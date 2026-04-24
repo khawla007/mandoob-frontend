@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { postJson } from '@/lib/http/post';
@@ -14,10 +14,12 @@ const CODE_LEN = 6;
 export function OtpForm({ email }: { email: string }) {
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LEN).fill(''));
   const [error, setError] = useState<string | null>(null);
+  const [succeeded, setSucceeded] = useState(false);
   const [pending, start] = useTransition();
   const [resendPending, startResend] = useTransition();
   const [cooldown, setCooldown] = useState(0);
   const refs = useRef<Array<HTMLInputElement | null>>(Array(CODE_LEN).fill(null));
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     refs.current[0]?.focus();
@@ -33,6 +35,8 @@ export function OtpForm({ email }: { email: string }) {
   const complete = code.length === CODE_LEN && digits.every((d) => /\d/.test(d));
 
   function submitCode(full: string) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError(null);
     start(async () => {
       const res = await postJson('/api/v1/auth/verify-otp', { email, token: full });
@@ -45,8 +49,10 @@ export function OtpForm({ email }: { email: string }) {
         setError(data?.error ?? 'Verification failed');
         setDigits(Array(CODE_LEN).fill(''));
         refs.current[0]?.focus();
+        submittingRef.current = false;
         return;
       }
+      setSucceeded(true);
       window.location.href = data.redirectTo ?? '/';
     });
   }
@@ -61,24 +67,20 @@ export function OtpForm({ email }: { email: string }) {
       });
       return;
     }
-    // Handle paste: fill forward from idx.
-    setDigits((prev) => {
-      const next = [...prev];
-      let cursor = idx;
-      for (const ch of clean) {
-        if (cursor >= CODE_LEN) break;
-        next[cursor] = ch;
-        cursor += 1;
-      }
-      const focusAt = Math.min(cursor, CODE_LEN - 1);
-      // Defer focus to after state commit.
-      setTimeout(() => refs.current[focusAt]?.focus(), 0);
-      const full = next.join('');
-      if (full.length === CODE_LEN && /^\d{6}$/.test(full)) {
-        setTimeout(() => submitCode(full), 0);
-      }
-      return next;
-    });
+    const next = [...digits];
+    let cursor = idx;
+    for (const ch of clean) {
+      if (cursor >= CODE_LEN) break;
+      next[cursor] = ch;
+      cursor += 1;
+    }
+    setDigits(next);
+    const focusAt = Math.min(cursor, CODE_LEN - 1);
+    refs.current[focusAt]?.focus();
+    const full = next.join('');
+    if (full.length === CODE_LEN && /^\d{6}$/.test(full)) {
+      submitCode(full);
+    }
   }
 
   function onKeyDown(idx: number, e: React.KeyboardEvent<HTMLInputElement>) {
@@ -115,6 +117,8 @@ export function OtpForm({ email }: { email: string }) {
       }
       toast.success('New code sent.');
       setDigits(Array(CODE_LEN).fill(''));
+      setError(null);
+      submittingRef.current = false;
       refs.current[0]?.focus();
       setCooldown(RESEND_COOLDOWN_SEC);
     });
@@ -150,8 +154,18 @@ export function OtpForm({ email }: { email: string }) {
         </p>
       </div>
       {error && <p className="text-destructive text-center text-sm">{error}</p>}
-      <Button type="submit" className="w-full" disabled={pending || !complete}>
-        {pending ? (
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={pending || succeeded || !complete}
+        aria-live="polite"
+      >
+        {succeeded ? (
+          <>
+            <Check className="size-4" />
+            Verified
+          </>
+        ) : pending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
             Verifying…
@@ -163,7 +177,7 @@ export function OtpForm({ email }: { email: string }) {
       <button
         type="button"
         onClick={onResend}
-        disabled={cooldown > 0 || resendPending}
+        disabled={cooldown > 0 || resendPending || succeeded}
         className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground w-full text-center text-xs underline-offset-4 hover:underline disabled:cursor-not-allowed"
       >
         {cooldown > 0 ? `Resend code in ${cooldown}s` : resendPending ? 'Sending…' : 'Resend code'}
