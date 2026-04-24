@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mandoob — frontend
 
-## Getting Started
+UAE Business Registration & PRO Management Platform. Next.js 16 + Supabase + Tailwind 4.
 
-First, run the development server:
+See repo-root `CLAUDE.md` and `docs/authentication/step-1-auth-plan.md` for the full architecture.
+
+## Quick start
+
+1. Copy `.env.example` → `.env.local`, paste Supabase URL + anon + service-role keys + Resend API key. See `docs/ops/pending-creds.md` for all required creds.
+2. Install + run:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:3000 (public), http://firm.localhost:3000 (tenant), http://admin.localhost:3000 (super admin). Modern browsers resolve `*.localhost` to 127.0.0.1 automatically.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Seed users (local dev)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Passwords in `docs/ops/seed-creds.md` (gitignored).
 
-## Learn More
+| Email                          | Role        | Host                 |
+| ------------------------------ | ----------- | -------------------- |
+| `khawla@fanaticcoders.com`     | super_admin | admin.localhost:3000 |
+| `pro-admin@firm.mandoob.local` | pro         | firm.localhost:3000  |
+| `customer@firm.mandoob.local`  | customer    | firm.localhost:3000  |
 
-To learn more about Next.js, take a look at the following resources:
+Re-seed:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+SEED_PASSWORD='<password>' npx tsx --env-file=.env.local scripts/seed-auth.ts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Commands
 
-## Deploy on Vercel
+```bash
+npm run dev          # next dev
+npm run build        # production build
+npm run lint         # eslint
+npm run format       # prettier write
+npx tsc --noEmit     # typecheck
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Supabase required config (post-migration)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Access Token hook — optional. Migrations keep `auth.users.raw_app_meta_data` in sync via a trigger; hook output is ignored by Supabase on free plan (see `memory/project_supabase_hook_gotcha.md`).
+- Auth → Providers → Phone → Twilio (pending creds).
+- Auth → Settings → Protection → Leaked password protection ON.
+
+## Project shape (Step 1)
+
+```
+src/
+├── proxy.ts                  # host resolve + session refresh + CSRF cookie
+├── lib/
+│   ├── env.ts / env.public.ts
+│   ├── supabase/{server,browser,service-role,update-session}.ts
+│   ├── tenant/{resolve-host,reserved-subdomains}.ts
+│   ├── auth/{require-user,require-role,lockout,mfa,csrf,csrf-guard,turnstile,request}.ts
+│   ├── rate-limit/index.ts
+│   ├── logging/auth-events.ts
+│   ├── validation/auth.ts
+│   ├── mail/{client,invite}.ts
+│   ├── http/post.ts          # CSRF-aware client fetch
+│   └── errors.ts
+├── app/
+│   ├── (public)/             # platform.com
+│   ├── (auth)/               # login/register/mfa/invite on every host
+│   ├── (tenant)/t/[tenant]/  # [firm].platform.com (rewritten)
+│   ├── admin/                # admin.platform.com (rewritten)
+│   └── api/v1/auth/...       # login/register/logout/mfa/invite/webhook
+└── components/auth/          # LoginForm, RegisterForm, MfaEnrollCard, ...
+```
