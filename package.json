@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "node --import tsx --conditions=react-server --test 'src/**/*.test.ts'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
