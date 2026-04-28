@@ -24,12 +24,9 @@ import { cn } from '@/lib/utils';
 
 const POLICY_VERSION = 'v1';
 
-const usernameRe = /^[a-z0-9_]{3,30}$/;
-
 const schema = z
   .object({
     fullName: z.string().min(1, 'Full name is required'),
-    username: z.string().regex(usernameRe, 'Username: 3–30 chars, lowercase, digits, underscore'),
     email: z.string().email('Enter a valid email'),
     phone: z.string().optional().or(z.literal('')),
     password: z
@@ -60,13 +57,6 @@ function computePasswordRules(pw: string): PasswordRule[] {
   ];
 }
 
-type UsernameState =
-  | { kind: 'idle' }
-  | { kind: 'checking' }
-  | { kind: 'invalid' }
-  | { kind: 'available' }
-  | { kind: 'taken' };
-
 export function RegisterForm() {
   const [pending, start] = useTransition();
   const form = useForm<FormInput, unknown, FormOutput>({
@@ -74,7 +64,6 @@ export function RegisterForm() {
     mode: 'onTouched',
     defaultValues: {
       fullName: '',
-      username: '',
       email: '',
       phone: '',
       password: '',
@@ -85,13 +74,10 @@ export function RegisterForm() {
 
   const password = form.watch('password');
   const confirmPassword = form.watch('confirmPassword');
-  const username = form.watch('username');
 
   const rules = useMemo(() => computePasswordRules(password ?? ''), [password]);
   const allRulesPassed = rules.every((r) => r.passed);
   const confirmMatches = (confirmPassword?.length ?? 0) > 0 && confirmPassword === password;
-
-  const [usernameState, setUsernameState] = useState<UsernameState>({ kind: 'idle' });
 
   const [pwFocused, setPwFocused] = useState(false);
   const [pwDismissed, setPwDismissed] = useState(false);
@@ -110,47 +96,9 @@ export function RegisterForm() {
 
   const showRules = pwFocused && !pwDismissed && (!allRulesPassed || lingerOpen);
 
-  useEffect(() => {
-    const u = (username ?? '').trim().toLowerCase();
-    if (!u) {
-      setUsernameState({ kind: 'idle' });
-      return;
-    }
-    if (!usernameRe.test(u)) {
-      setUsernameState({ kind: 'invalid' });
-      return;
-    }
-    setUsernameState({ kind: 'checking' });
-    const ctrl = new AbortController();
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/v1/auth/check-username?u=${encodeURIComponent(u)}`, {
-          signal: ctrl.signal,
-        });
-        if (!res.ok) {
-          setUsernameState({ kind: 'idle' });
-          return;
-        }
-        const data = (await res.json()) as { available: boolean };
-        setUsernameState({ kind: data.available ? 'available' : 'taken' });
-      } catch {
-        // aborted or network; ignore
-      }
-    }, 400);
-    return () => {
-      ctrl.abort();
-      clearTimeout(t);
-    };
-  }, [username]);
-
   function onSubmit(values: FormOutput) {
-    if (usernameState.kind === 'taken') {
-      form.setError('username', { message: 'That username is already taken' });
-      return;
-    }
     const payload = {
       email: values.email,
-      username: values.username.toLowerCase().trim(),
       password: values.password,
       confirmPassword: values.confirmPassword,
       fullName: values.fullName,
@@ -165,9 +113,6 @@ export function RegisterForm() {
           error?: string;
           code?: string;
         } | null;
-        if (data?.code === 'USERNAME_TAKEN') {
-          form.setError('username', { message: 'That username is already taken' });
-        }
         toast.error(data?.error ?? 'Registration failed');
         return;
       }
@@ -187,26 +132,6 @@ export function RegisterForm() {
               <FormControl>
                 <Input autoComplete="name" {...field} />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input
-                  autoComplete="username"
-                  placeholder="gurmeet_123"
-                  {...field}
-                  onChange={(e) => field.onChange(e.target.value.toLowerCase())}
-                />
-              </FormControl>
-              <UsernameHint state={usernameState} value={username ?? ''} />
               <FormMessage />
             </FormItem>
           )}
@@ -324,16 +249,7 @@ export function RegisterForm() {
           )}
         />
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={
-            pending ||
-            usernameState.kind === 'taken' ||
-            usernameState.kind === 'invalid' ||
-            usernameState.kind === 'checking'
-          }
-        >
+        <Button type="submit" className="w-full" disabled={pending}>
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
@@ -394,22 +310,4 @@ function PasswordRulesPopover({
       </ul>
     </div>
   );
-}
-
-function UsernameHint({ state, value }: { state: UsernameState; value: string }) {
-  if (!value) return null;
-  if (state.kind === 'checking') {
-    return <p className="text-muted-foreground text-xs">Checking availability…</p>;
-  }
-  if (state.kind === 'available') {
-    return (
-      <p className="flex items-center gap-1 text-xs text-emerald-600">
-        <Check className="size-3.5" aria-hidden /> Available
-      </p>
-    );
-  }
-  if (state.kind === 'taken') {
-    return <p className="text-destructive text-xs">Already taken</p>;
-  }
-  return null;
 }

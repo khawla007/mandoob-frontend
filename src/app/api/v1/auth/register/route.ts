@@ -6,6 +6,7 @@ import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
 import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { generateUniqueUsername } from '@/lib/auth/username';
 import { sendOtpEmail } from '@/lib/mail/otp';
 
 export const dynamic = 'force-dynamic';
@@ -53,16 +54,19 @@ export async function POST(request: NextRequest) {
       issues: parsed.error.issues,
     });
   }
-  const { email, username, password, fullName, phone, policyVersion } = parsed.data;
+  const { email, password, fullName, phone, policyVersion } = parsed.data;
 
   const admin = createSupabaseServiceRoleClient();
 
-  const { count: takenCount } = await admin
-    .from('profiles')
-    .select('id', { head: true, count: 'exact' })
-    .eq('username', username);
-  if ((takenCount ?? 0) > 0) {
-    return errorResponse('USERNAME_TAKEN', 'That username is already taken', 409);
+  let username: string;
+  try {
+    username = await generateUniqueUsername(admin, fullName);
+  } catch (err) {
+    return errorResponse(
+      'USERNAME_GENERATION_FAILED',
+      err instanceof Error ? err.message : 'Could not generate username',
+      500,
+    );
   }
 
   const tenantId = await getOrCreatePubTenant();
