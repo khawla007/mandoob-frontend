@@ -1,13 +1,12 @@
 import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-
-type Role = 'super_admin' | 'pro' | 'customer' | 'employee';
+import type { Role } from './roles';
 
 export async function resolveRoleHome(args: {
   role: Role | null;
   tenantId: string | null;
 }): Promise<string> {
-  if (args.role === 'super_admin') return '/admin';
+  if (args.role === 'super_admin' || args.role === 'admin') return '/admin';
   if (!args.tenantId) return '/login';
   const admin = createSupabaseServiceRoleClient();
   const { data } = await admin.from('tenants').select('slug').eq('id', args.tenantId).maybeSingle();
