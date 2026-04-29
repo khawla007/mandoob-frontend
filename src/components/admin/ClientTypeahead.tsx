@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -37,14 +37,13 @@ export function ClientTypeahead({
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<ClientLookupRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<ClientLookupRow | null>(null);
+  // Sticky cache of the last selected row's metadata so the trigger
+  // label survives even when filtering changes the visible rows list.
+  const [labelCache, setLabelCache] = useState<ClientLookupRow | null>(null);
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!tenantId) {
-      setRows([]);
-      return;
-    }
+    if (!tenantId) return;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
       const url = new URL('/api/v1/admin/clients', window.location.origin);
@@ -62,15 +61,18 @@ export function ClientTypeahead({
     };
   }, [tenantId, query]);
 
-  // Hydrate selected row label when value comes from outside (form reset)
-  useEffect(() => {
-    if (!value) {
-      setSelected(null);
-      return;
-    }
-    const match = rows.find((r) => r.id === value);
-    if (match) setSelected(match);
-  }, [value, rows]);
+  // Clear local rows synchronously when tenant goes away.
+  const effectiveRows: ClientLookupRow[] = tenantId ? rows : [];
+
+  // Resolve the trigger label without setState-in-effect: prefer a row from
+  // the live rows list, then the sticky cache (so it survives query changes).
+  const selected = useMemo<ClientLookupRow | null>(() => {
+    if (!value) return null;
+    const match = effectiveRows.find((r) => r.id === value);
+    if (match) return match;
+    if (labelCache && labelCache.id === value) return labelCache;
+    return null;
+  }, [value, effectiveRows, labelCache]);
 
   if (!tenantId) {
     return (
@@ -104,7 +106,7 @@ export function ClientTypeahead({
                   key={row.id}
                   value={row.id}
                   onSelect={() => {
-                    setSelected(row);
+                    setLabelCache(row);
                     onChange(row.id, row);
                     setOpen(false);
                   }}
