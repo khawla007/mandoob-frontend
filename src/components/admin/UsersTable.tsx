@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -7,11 +9,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import type { UserRow, Role, ProfileStatus } from '@/lib/data/users';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+import type { UserRow, Role, ProfileStatus, SortCol, SortDir } from '@/lib/data/users';
 
-const roleVariant: Record<Role, 'default' | 'secondary' | 'outline'> = {
+const roleVariant: Record<Role, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   super_admin: 'default',
+  admin: 'destructive',
   pro: 'secondary',
   customer: 'outline',
   employee: 'outline',
@@ -34,32 +38,66 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export function UsersTable({ rows }: { rows: UserRow[] }) {
+function SortHeader({
+  col,
+  label,
+  align,
+  active,
+}: {
+  col: SortCol;
+  label: string;
+  align?: 'right';
+  active: { col: SortCol; dir: SortDir };
+}) {
+  const isActive = active.col === col;
+  const nextDir: SortDir = isActive && active.dir === 'desc' ? 'asc' : 'desc';
+  const Icon = !isActive ? ChevronsUpDown : active.dir === 'desc' ? ChevronDown : ChevronUp;
+  return (
+    <Link
+      href={`?sort=${col}:${nextDir}`}
+      scroll={false}
+      className={cn(
+        'hover:text-foreground inline-flex items-center gap-1',
+        align === 'right' && 'justify-end',
+        isActive ? 'text-foreground' : 'text-muted-foreground',
+      )}
+    >
+      {label}
+      <Icon className="size-3" />
+    </Link>
+  );
+}
+
+export function UsersTable({
+  rows,
+  sort,
+}: {
+  rows: UserRow[];
+  sort: { col: SortCol; dir: SortDir };
+}) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>User</TableHead>
+          <TableHead>
+            <SortHeader col="full_name" label="User" active={sort} />
+          </TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Tenant</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Created</TableHead>
+          <TableHead>
+            <SortHeader col="created_at" label="Created" active={sort} />
+          </TableHead>
           <TableHead className="text-right">Last sign-in</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={6} className="text-muted-foreground py-10 text-center text-sm">
-              No users match this filter.
-            </TableCell>
-          </TableRow>
-        )}
         {rows.map((r) => (
-          <TableRow key={r.id}>
+          <TableRow key={r.id} className={cn(r.status === 'disabled' && 'opacity-50')}>
             <TableCell>
               <div className="flex items-center gap-2">
                 <Avatar className="size-8">
+                  {r.avatarUrl ? <AvatarImage src={r.avatarUrl} alt="" /> : null}
                   <AvatarFallback className="text-xs">
                     {(r.fullName ?? r.email ?? '?').slice(0, 1).toUpperCase()}
                   </AvatarFallback>
