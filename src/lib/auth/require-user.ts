@@ -1,17 +1,18 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { Role } from './roles';
 
 export type SessionProfile = {
   id: string;
   email: string | null;
-  role: 'super_admin' | 'pro' | 'customer' | 'employee' | null;
+  role: Role | null;
   tenantId: string | null;
   aal: 'aal1' | 'aal2';
   mfaEnrolled: boolean;
 };
 
 type AppMetadata = {
-  mandoob_role?: SessionProfile['role'];
+  mandoob_role?: Role | null;
   tenant_id?: string | null;
   mandoob_status?: string;
 };
