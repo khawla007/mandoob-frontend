@@ -63,8 +63,7 @@ export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUs
       full_name: form.getValues('full_name'),
       email: form.getValues('email'),
       phone: form.getValues('phone'),
-      tenant_id:
-        callerRole === 'admin' ? (callerTenantId ?? '') : form.getValues('tenant_id'),
+      tenant_id: callerRole === 'admin' ? (callerTenantId ?? '') : form.getValues('tenant_id'),
     };
     form.reset({ ...common, role } as CreateUserInput);
   }, [role, form, callerRole, callerTenantId]);
@@ -120,21 +119,13 @@ export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUs
                   <AlertDescription>{topError}</AlertDescription>
                 </Alert>
               )}
-              <CreateUserCommonFields
-                callerRole={callerRole}
-                tenants={tenants}
-                callerTenantId={callerTenantId}
-              />
+              <CreateUserCommonFields callerRole={callerRole} tenants={tenants} />
               {role && ROLE_TO_SECTION[role]()}
               <div className="flex gap-2">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'Creating…' : 'Create user'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/admin/users')}
-                >
+                <Button type="button" variant="outline" onClick={() => router.push('/admin/users')}>
                   Cancel
                 </Button>
               </div>

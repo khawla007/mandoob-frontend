@@ -30,14 +30,9 @@ const ALL_ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
 export type CreateUserCommonFieldsProps = {
   callerRole: 'super_admin' | 'admin';
   tenants: TenantSummary[];
-  callerTenantId: string | null;
 };
 
-export function CreateUserCommonFields({
-  callerRole,
-  tenants,
-  callerTenantId,
-}: CreateUserCommonFieldsProps) {
+export function CreateUserCommonFields({ callerRole, tenants }: CreateUserCommonFieldsProps) {
   const form = useFormContext<CreateUserInput>();
   const role = form.watch('role') as CreateUserRole | undefined;
   const showTenantPicker = callerRole === 'super_admin' && role && role !== 'admin';
