@@ -50,7 +50,10 @@ export async function adminCreateUser(
       .select('id, tenant_id')
       .eq('id', input.client_id)
       .maybeSingle();
-    if (clientErr) throw new ApiError('VALIDATION_FAILED', clientErr.message, 400);
+    if (clientErr) {
+      console.error('client lookup failed', clientErr);
+      throw new ApiError('VALIDATION_FAILED', 'Client lookup failed', 400);
+    }
     if (!client) throw new ApiError('VALIDATION_FAILED', 'client not found', 400);
     if (client.tenant_id !== input.tenant_id) {
       throw new ApiError('FORBIDDEN', 'client does not belong to selected tenant', 403);
@@ -68,14 +71,25 @@ export async function adminCreateUser(
   }
 
   // ── Email pre-flight (§4 step 6) ─────────────────────────────────────
+  // Paginate listUsers until exhausted. listUsers has no email-filter, so we
+  // page through all auth users; safety cap at 50 pages × 200 = 10k.
   const email = input.email.toLowerCase();
-  const { data: existing, error: listErr } = await admin.auth.admin.listUsers({
-    page: 1,
-    perPage: 200,
-  });
-  if (listErr) throw new ApiError('INVITE_FAILED', listErr.message, 502);
-  if ((existing?.users ?? []).some((u) => (u.email ?? '').toLowerCase() === email)) {
-    throw new ApiError('EMAIL_TAKEN', 'Email is already registered', 409);
+  const PER_PAGE = 200;
+  const MAX_PAGES = 50;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const { data, error: listErr } = await admin.auth.admin.listUsers({
+      page,
+      perPage: PER_PAGE,
+    });
+    if (listErr) {
+      console.error('listUsers pre-flight failed', listErr);
+      throw new ApiError('INVITE_FAILED', 'Email check failed', 502);
+    }
+    const users = data?.users ?? [];
+    if (users.some((u) => (u.email ?? '').toLowerCase() === email)) {
+      throw new ApiError('EMAIL_TAKEN', 'Email is already registered', 409);
+    }
+    if (users.length < PER_PAGE) break;
   }
 
   // ── Encrypt PII (§4 step 7) ──────────────────────────────────────────
@@ -128,6 +142,18 @@ export async function adminCreateUser(
   }
   const newUserId = invited.user.id;
 
+  // Compensating delete; logs failures so half-written state is observable.
+  // Relies on `profiles.id` having ON DELETE CASCADE from auth.users (migration
+  // 0001) and role sub-rows having ON DELETE CASCADE from `profiles`
+  // (migrations 0012/0013).
+  async function compensate(reason: string): Promise<void> {
+    try {
+      await admin.auth.admin.deleteUser(newUserId);
+    } catch (err) {
+      console.error('compensation deleteUser failed', { reason, newUserId, err });
+    }
+  }
+
   // ── Patch app_metadata (§4 step 9) ───────────────────────────────────
   try {
     const { error: updErr } = await admin.auth.admin.updateUserById(newUserId, {
@@ -138,17 +164,15 @@ export async function adminCreateUser(
       },
     });
     if (updErr) {
-      await admin.auth.admin.deleteUser(newUserId).catch(() => {});
-      throw new ApiError('INVITE_FAILED', updErr.message, 502);
+      console.error('updateUserById failed', updErr);
+      await compensate('updateUserById error');
+      throw new ApiError('INVITE_FAILED', 'Could not finalize invite', 502);
     }
   } catch (e) {
     if (e instanceof ApiError) throw e;
-    await admin.auth.admin.deleteUser(newUserId).catch(() => {});
-    throw new ApiError(
-      'INVITE_FAILED',
-      e instanceof Error ? e.message : 'updateUserById failed',
-      502,
-    );
+    console.error('updateUserById threw', e);
+    await compensate('updateUserById threw');
+    throw new ApiError('INVITE_FAILED', 'Could not finalize invite', 502);
   }
 
   // ── Update profile row (§4 step 10) ──────────────────────────────────
@@ -165,17 +189,15 @@ export async function adminCreateUser(
       })
       .eq('id', newUserId);
     if (profileErr) {
-      await admin.auth.admin.deleteUser(newUserId).catch(() => {});
-      throw new ApiError('VALIDATION_FAILED', profileErr.message, 500);
+      console.error('profiles update failed', profileErr);
+      await compensate('profiles update error');
+      throw new ApiError('VALIDATION_FAILED', 'Could not finalize profile', 500);
     }
   } catch (e) {
     if (e instanceof ApiError) throw e;
-    await admin.auth.admin.deleteUser(newUserId).catch(() => {});
-    throw new ApiError(
-      'VALIDATION_FAILED',
-      e instanceof Error ? e.message : 'profile update failed',
-      500,
-    );
+    console.error('profiles update threw', e);
+    await compensate('profiles update threw');
+    throw new ApiError('VALIDATION_FAILED', 'Could not finalize profile', 500);
   }
 
   // ── Insert role sub-row (§4 step 11) ─────────────────────────────────
@@ -215,12 +237,18 @@ export async function adminCreateUser(
       });
       if (error) throw error;
     }
-    // role === 'admin' has no sub-row
+    // role === 'admin' has no sub-row.
+    // Audit trail asymmetry: admin role logs to `admin_audit_actions` (§4 step 12);
+    // every role logs to `auth_events` via `recordAuthEvent` below (§4 step 13).
   } catch (e) {
-    await admin.auth.admin.deleteUser(newUserId).catch(() => {});
-    const msg = e instanceof Error ? e.message : 'sub-row insert failed';
+    console.error('sub-row insert failed', e);
+    await compensate('sub-row insert error');
     const isRls = typeof e === 'object' && e !== null && (e as { code?: string }).code === '42501';
-    throw new ApiError(isRls ? 'RLS_DENIED' : 'VALIDATION_FAILED', msg, isRls ? 403 : 500);
+    throw new ApiError(
+      isRls ? 'RLS_DENIED' : 'VALIDATION_FAILED',
+      isRls ? 'Row-level security denied the insert' : 'Could not create role profile',
+      isRls ? 403 : 500,
+    );
   }
 
   // ── Audit (§4 step 12 — best-effort) ─────────────────────────────────

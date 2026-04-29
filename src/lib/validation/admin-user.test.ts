@@ -15,7 +15,6 @@ const futureDate = (() => {
   d.setDate(d.getDate() + 30);
   return d.toISOString().slice(0, 10);
 })();
-void futureDate;
 
 describe('createUserSchema — happy paths', () => {
   it('accepts a minimal pro', () => {
@@ -41,6 +40,18 @@ describe('createUserSchema — happy paths', () => {
       ...baseCommon,
       role: 'employee',
       client_id: clientId,
+    });
+    assert.equal(r.success, true);
+  });
+
+  it('accepts an employee with future visa_expiry and eid_expiry', () => {
+    const r = createUserSchema.safeParse({
+      ...baseCommon,
+      role: 'employee',
+      client_id: clientId,
+      visa_expiry: futureDate,
+      eid_expiry: futureDate,
+      emirates_id: '784-1989-1234567-1',
     });
     assert.equal(r.success, true);
   });
@@ -164,5 +175,15 @@ describe('createUserSchema — service area enum', () => {
       service_areas: [],
     });
     assert.equal(r.success, true);
+  });
+
+  it('rejects unknown service_area value', () => {
+    const r = createUserSchema.safeParse({
+      ...baseCommon,
+      role: 'pro',
+      license_no: 'LIC-1',
+      service_areas: ['JEDDAH'],
+    });
+    assert.equal(r.success, false);
   });
 });

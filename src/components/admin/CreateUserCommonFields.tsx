@@ -141,9 +141,8 @@ export function CreateUserCommonFields({
           )}
         />
       )}
-      {callerRole === 'admin' && role && role !== 'admin' && (
-        <input type="hidden" {...form.register('tenant_id')} value={callerTenantId ?? ''} />
-      )}
+      {/* admin caller's tenant_id is wired via useForm defaultValues; no hidden
+          input needed. The CreateUserForm field-bleed reset preserves it. */}
     </div>
   );
 }

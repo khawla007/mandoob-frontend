@@ -45,19 +45,28 @@ export function ClientTypeahead({
   useEffect(() => {
     if (!tenantId) return;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    const controller = new AbortController();
     debounceRef.current = window.setTimeout(() => {
       const url = new URL('/api/v1/admin/clients', window.location.origin);
       url.searchParams.set('tenantId', tenantId);
       if (query) url.searchParams.set('q', query);
       setLoading(true);
-      fetch(url.toString())
+      fetch(url.toString(), { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-        .then((j: { rows: ClientLookupRow[] }) => setRows(j.rows ?? []))
-        .catch(() => setRows([]))
-        .finally(() => setLoading(false));
+        .then((j: { rows: ClientLookupRow[] }) => {
+          if (!controller.signal.aborted) setRows(j.rows ?? []);
+        })
+        .catch((err) => {
+          if (err?.name === 'AbortError') return;
+          if (!controller.signal.aborted) setRows([]);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
     }, 250);
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      controller.abort();
     };
   }, [tenantId, query]);
 
