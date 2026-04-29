@@ -14,6 +14,7 @@ export type AuthEventKind =
   | 'mfa_reset'
   | 'invite_created'
   | 'invite_accepted'
+  | 'admin_created'
   | 'session_revoked'
   | 'impersonation_started'
   | 'impersonation_ended';

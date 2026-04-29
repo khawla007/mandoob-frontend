@@ -77,7 +77,7 @@ export function ClientTypeahead({
   if (!tenantId) {
     return (
       <Button type="button" variant="outline" disabled className="w-full justify-start">
-        Select a tenant first
+        No tenant selected
       </Button>
     );
   }

@@ -155,4 +155,14 @@ describe('createUserSchema — service area enum', () => {
     });
     assert.equal(r.success, true);
   });
+
+  it('accepts pro with empty service_areas', () => {
+    const r = createUserSchema.safeParse({
+      ...baseCommon,
+      role: 'pro',
+      license_no: 'LIC-1',
+      service_areas: [],
+    });
+    assert.equal(r.success, true);
+  });
 });

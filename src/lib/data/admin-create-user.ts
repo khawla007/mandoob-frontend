@@ -240,7 +240,7 @@ export async function adminCreateUser(
 
   // ── Auth event (§4 step 13 — best-effort) ────────────────────────────
   await recordAuthEvent({
-    kind: 'invite_created',
+    kind: 'admin_created',
     actorUserId: ctx.caller.id,
     tenantId: tenantIdForMeta,
     ip: ctx.ip,
