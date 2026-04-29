@@ -26,11 +26,7 @@ const baseFields = z.object({
   tenant_id: z.string().uuid(),
 });
 
-const adminBase = z.object({
-  full_name: z.string().min(1).max(200),
-  email: emailSchema,
-  phone: phoneSchema,
-});
+const adminBase = baseFields.omit({ tenant_id: true });
 
 export const createUserSchema = z.discriminatedUnion('role', [
   baseFields.extend({

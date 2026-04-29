@@ -5,6 +5,7 @@ import { encryptOptional } from '@/lib/crypto/pii';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import type { CreateUserOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
+import { isUuid } from '@/lib/util/uuid';
 import { env } from '@/lib/env';
 
 export type AdminCreateUserCaller = {
@@ -24,8 +25,6 @@ export type AdminCreateUserContext = {
   userAgent: string | null;
 };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export async function adminCreateUser(
   input: CreateUserOutput,
   ctx: AdminCreateUserContext,
@@ -37,7 +36,9 @@ export async function adminCreateUser(
     throw new ApiError('FORBIDDEN', 'Only super admins can create admins', 403);
   }
   if (input.role !== 'admin') {
-    if (!input.tenant_id || !UUID_RE.test(input.tenant_id)) {
+    // Zod already enforces uuid; this is defense-in-depth in case the
+    // orchestrator gets called from a non-route caller in the future.
+    if (!input.tenant_id || !isUuid(input.tenant_id)) {
       throw new ApiError('VALIDATION_FAILED', 'tenant_id required for non-admin role', 400);
     }
     if (ctx.caller.role === 'admin' && ctx.caller.tenantId !== input.tenant_id) {
@@ -60,19 +61,27 @@ export async function adminCreateUser(
     }
   }
   if (input.role === 'customer' && input.linked_client_id) {
-    const { data: client } = await admin
+    const { data: client, error: linkedErr } = await admin
       .from('clients')
       .select('id, tenant_id')
       .eq('id', input.linked_client_id)
       .maybeSingle();
+    if (linkedErr) {
+      console.error('linked client lookup failed', linkedErr);
+      throw new ApiError('VALIDATION_FAILED', 'Linked client lookup failed', 400);
+    }
     if (client && client.tenant_id !== input.tenant_id) {
       throw new ApiError('FORBIDDEN', 'linked client does not belong to selected tenant', 403);
     }
   }
 
   // ── Email pre-flight (§4 step 6) ─────────────────────────────────────
-  // Paginate listUsers until exhausted. listUsers has no email-filter, so we
-  // page through all auth users; safety cap at 50 pages × 200 = 10k.
+  // Paginate listUsers until exhausted. listUsers has no email filter, so we
+  // page through all auth users; safety cap at 50 pages × 200 = 10k. Past
+  // 10k, the check silently passes — the invite call will then fail loudly
+  // on the existing-email path (`INVITE_FAILED` 502) rather than emit a
+  // duplicate. Replace with a dedicated `auth.users` index scan if user count
+  // crosses that threshold.
   const email = input.email.toLowerCase();
   const PER_PAGE = 200;
   const MAX_PAGES = 50;
@@ -120,10 +129,7 @@ export async function adminCreateUser(
   const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN;
   const protocol = rootDomain.startsWith('localhost') ? 'http' : 'https';
   const redirectTo = `${protocol}://${rootDomain}/login`;
-  const tenantIdForMeta =
-    input.role === 'admin'
-      ? null
-      : (input as Extract<CreateUserOutput, { tenant_id: string }>).tenant_id;
+  const tenantIdForMeta = input.role === 'admin' ? null : input.tenant_id;
   const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
     data: {
       full_name: input.full_name,

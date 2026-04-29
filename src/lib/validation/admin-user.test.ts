@@ -57,10 +57,10 @@ describe('createUserSchema — happy paths', () => {
   });
 
   it('accepts an admin with no tenant_id and a reason', () => {
-    const { tenant_id: _drop, ...common } = baseCommon;
-    void _drop;
     const r = createUserSchema.safeParse({
-      ...common,
+      full_name: baseCommon.full_name,
+      email: baseCommon.email,
+      phone: baseCommon.phone,
       role: 'admin',
       reason: 'Promoting Aisha to admin per ticket OPS-42',
     });

@@ -20,16 +20,11 @@ import {
 import type { CreateUserInput, CreateUserRole } from '@/lib/validation/admin-user';
 import type { TenantSummary } from '@/lib/data/tenants';
 
-const ROLE_OPTIONS_FOR_SUPER_ADMIN: { value: CreateUserRole; label: string }[] = [
+const ALL_ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
   { value: 'pro', label: 'PRO' },
   { value: 'customer', label: 'Customer' },
   { value: 'employee', label: 'Employee' },
   { value: 'admin', label: 'Admin' },
-];
-const ROLE_OPTIONS_FOR_ADMIN: { value: CreateUserRole; label: string }[] = [
-  { value: 'pro', label: 'PRO' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'employee', label: 'Employee' },
 ];
 
 export type CreateUserCommonFieldsProps = {
@@ -47,7 +42,9 @@ export function CreateUserCommonFields({
   const role = form.watch('role') as CreateUserRole | undefined;
   const showTenantPicker = callerRole === 'super_admin' && role && role !== 'admin';
   const options =
-    callerRole === 'super_admin' ? ROLE_OPTIONS_FOR_SUPER_ADMIN : ROLE_OPTIONS_FOR_ADMIN;
+    callerRole === 'super_admin'
+      ? ALL_ROLE_OPTIONS
+      : ALL_ROLE_OPTIONS.filter((o) => o.value !== 'admin');
 
   return (
     <div className="space-y-4">

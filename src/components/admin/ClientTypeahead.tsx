@@ -43,7 +43,9 @@ export function ClientTypeahead({
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!tenantId) return;
+    // Don't bootstrap requests until the user actually opens the typeahead.
+    // Saves a request per render of optional pickers (customer.linked_client_id).
+    if (!tenantId || !open) return;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     const controller = new AbortController();
     debounceRef.current = window.setTimeout(() => {
@@ -52,23 +54,19 @@ export function ClientTypeahead({
       if (query) url.searchParams.set('q', query);
       setLoading(true);
       fetch(url.toString(), { signal: controller.signal })
-        .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-        .then((j: { rows: ClientLookupRow[] }) => {
-          if (!controller.signal.aborted) setRows(j.rows ?? []);
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
+        .then((j: { rows: ClientLookupRow[] }) => setRows(j.rows ?? []))
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name === 'AbortError') return;
+          setRows([]);
         })
-        .catch((err) => {
-          if (err?.name === 'AbortError') return;
-          if (!controller.signal.aborted) setRows([]);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
+        .finally(() => setLoading(false));
     }, 250);
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       controller.abort();
     };
-  }, [tenantId, query]);
+  }, [tenantId, query, open]);
 
   // Clear local rows synchronously when tenant goes away.
   const effectiveRows: ClientLookupRow[] = tenantId ? rows : [];
