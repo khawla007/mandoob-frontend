@@ -81,7 +81,9 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
   const requestedRoles = (args.roles ?? []).filter((r) => allowedRoles.includes(r));
   const effectiveRoles = requestedRoles.length ? requestedRoles : null;
 
+  type AuthSnapshot = { email: string | null; lastSignInAt: string | null };
   let emailMatchIds: string[] | null = null;
+  const authPrefetch = new Map<string, AuthSnapshot>();
   if (args.q && args.q.trim()) {
     const needle = args.q.trim().toLowerCase();
     const { data: authPage, error: authErr } = await admin.auth.admin.listUsers({
@@ -89,7 +91,11 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
       perPage: EMAIL_SEARCH_CEILING,
     });
     if (authErr) throw authErr;
-    emailMatchIds = (authPage?.users ?? [])
+    const users = authPage?.users ?? [];
+    for (const u of users) {
+      authPrefetch.set(u.id, { email: u.email ?? null, lastSignInAt: u.last_sign_in_at ?? null });
+    }
+    emailMatchIds = users
       .filter((u) => (u.email ?? '').toLowerCase().includes(needle))
       .map((u) => u.id);
   }
@@ -128,7 +134,6 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
     }
     query = query.limit(perPage + 1);
   } else {
-    // sort.col === 'full_name' (last_sign_in_at not sortable in this deliverable — lives on auth.users)
     query = query.order('full_name', { ascending, nullsFirst: false }).range(0, perPage - 1);
   }
 
@@ -138,21 +143,30 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
   const slice = sort.col === 'created_at' ? profiles!.slice(0, perPage) : (profiles ?? []);
   const hasMore = sort.col === 'created_at' ? profiles!.length > perPage : false;
 
-  const authResults = await Promise.all(
-    slice.map((p) =>
+  const idsNeedingFetch = slice.map((p) => p.id as string).filter((id) => !authPrefetch.has(id));
+  const fetched = await Promise.all(
+    idsNeedingFetch.map((id) =>
       admin.auth.admin
-        .getUserById(p.id as string)
-        .catch(() => ({ data: { user: null }, error: null }) as const),
+        .getUserById(id)
+        .then(({ data }) => [id, data?.user] as const)
+        .catch(() => [id, null] as const),
     ),
   );
+  const authMap = new Map<string, AuthSnapshot>(authPrefetch);
+  for (const [id, user] of fetched) {
+    authMap.set(id, {
+      email: user?.email ?? null,
+      lastSignInAt: user?.last_sign_in_at ?? null,
+    });
+  }
 
-  const rows: UserRow[] = slice.map((p, i) => {
-    const auth = authResults[i].data?.user ?? null;
+  const rows: UserRow[] = slice.map((p) => {
+    const auth = authMap.get(p.id as string) ?? { email: null, lastSignInAt: null };
     const tenantJoin = (p as unknown as { tenants?: { slug: string; name: string } | null })
       .tenants;
     return {
       id: p.id as string,
-      email: auth?.email ?? null,
+      email: auth.email,
       fullName: (p.full_name as string | null) ?? null,
       role: (p.role as Role | null) ?? null,
       tenantId: (p.tenant_id as string | null) ?? null,
@@ -161,7 +175,7 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
       status: (p.status as ProfileStatus | null) ?? null,
       avatarUrl: (p.avatar_url as string | null) ?? null,
       createdAt: p.created_at as string,
-      lastSignInAt: auth?.last_sign_in_at ?? null,
+      lastSignInAt: auth.lastSignInAt,
     };
   });
 

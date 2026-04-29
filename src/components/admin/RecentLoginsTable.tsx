@@ -10,17 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { RecentLoginRow } from '@/lib/data/admin-metrics';
-
-const roleVariant: Record<
-  NonNullable<RecentLoginRow['role']>,
-  'default' | 'secondary' | 'outline' | 'destructive'
-> = {
-  super_admin: 'default',
-  admin: 'destructive',
-  pro: 'secondary',
-  customer: 'outline',
-  employee: 'outline',
-};
+import { roleBadgeVariant } from './role-badge';
 
 export function RecentLoginsTable({
   rows,
@@ -70,7 +60,7 @@ export function RecentLoginsTable({
                 </TableCell>
                 <TableCell>
                   {r.role ? (
-                    <Badge variant={roleVariant[r.role]} className="font-mono text-xs">
+                    <Badge variant={roleBadgeVariant[r.role]} className="font-mono text-xs">
                       {r.role}
                     </Badge>
                   ) : (

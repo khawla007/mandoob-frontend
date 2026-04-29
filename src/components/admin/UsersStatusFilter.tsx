@@ -1,7 +1,5 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { ProfileStatus } from '@/lib/data/users';
+import { useListFilterNav } from '@/hooks/use-list-filter-nav';
 
 type Value = ProfileStatus | 'all';
 const OPTIONS: { value: Value; label: string }[] = [
@@ -22,16 +21,10 @@ const OPTIONS: { value: Value; label: string }[] = [
 ];
 
 export function UsersStatusFilter({ initial }: { initial: Value }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [pending, start] = useTransition();
+  const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
 
   function set(value: Value) {
-    const next = new URLSearchParams(params.toString());
-    next.delete('cursor');
-    if (value === 'all') next.delete('status');
-    else next.set('status', value);
-    start(() => router.replace(`/admin/users?${next.toString()}`));
+    navigate({ status: value === 'all' ? null : value });
   }
 
   const current = OPTIONS.find((o) => o.value === initial)?.label ?? 'All statuses';

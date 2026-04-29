@@ -1,7 +1,5 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTransition } from 'react';
 import { Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ROLES, type Role } from '@/lib/auth/roles';
+import { useListFilterNav } from '@/hooks/use-list-filter-nav';
 
 const LABEL: Record<Role, string> = {
   super_admin: 'Super admin',
@@ -24,9 +23,7 @@ const LABEL: Record<Role, string> = {
 };
 
 export function UsersRoleFilter({ viewerRole, initial }: { viewerRole: Role; initial: Role[] }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [pending, start] = useTransition();
+  const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
 
   const selectable: Role[] =
     viewerRole === 'pro'
@@ -37,11 +34,7 @@ export function UsersRoleFilter({ viewerRole, initial }: { viewerRole: Role; ini
     const set = new Set(initial);
     if (set.has(role)) set.delete(role);
     else set.add(role);
-    const next = new URLSearchParams(params.toString());
-    next.delete('cursor');
-    if (set.size === 0) next.delete('roles');
-    else next.set('roles', Array.from(set).join(','));
-    start(() => router.replace(`/admin/users?${next.toString()}`));
+    navigate({ roles: set.size === 0 ? null : Array.from(set).join(',') });
   }
 
   return (

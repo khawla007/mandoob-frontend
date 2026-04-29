@@ -11,32 +11,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import type { UserRow, Role, ProfileStatus, SortCol, SortDir } from '@/lib/data/users';
-
-const roleVariant: Record<Role, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  super_admin: 'default',
-  admin: 'destructive',
-  pro: 'secondary',
-  customer: 'outline',
-  employee: 'outline',
-};
-
-const statusVariant: Record<ProfileStatus, 'outline' | 'secondary' | 'destructive'> = {
-  active: 'outline',
-  invited: 'secondary',
-  disabled: 'destructive',
-};
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-GB', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { formatAdminDateTime } from '@/lib/format/date';
+import { roleBadgeVariant, statusBadgeVariant } from './role-badge';
+import type { UserRow, SortCol, SortDir } from '@/lib/data/users';
 
 function SortHeader({
   col,
@@ -110,7 +87,7 @@ export function UsersTable({
             </TableCell>
             <TableCell>
               {r.role ? (
-                <Badge variant={roleVariant[r.role]} className="font-mono text-xs">
+                <Badge variant={roleBadgeVariant[r.role]} className="font-mono text-xs">
                   {r.role}
                 </Badge>
               ) : (
@@ -129,7 +106,7 @@ export function UsersTable({
             </TableCell>
             <TableCell>
               {r.status ? (
-                <Badge variant={statusVariant[r.status]} className="text-xs capitalize">
+                <Badge variant={statusBadgeVariant[r.status]} className="text-xs capitalize">
                   {r.status}
                 </Badge>
               ) : (
@@ -137,10 +114,10 @@ export function UsersTable({
               )}
             </TableCell>
             <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
-              {formatDate(r.createdAt)}
+              {formatAdminDateTime(r.createdAt)}
             </TableCell>
             <TableCell className="text-muted-foreground text-right font-mono text-xs tabular-nums">
-              {formatDate(r.lastSignInAt)}
+              {formatAdminDateTime(r.lastSignInAt)}
             </TableCell>
           </TableRow>
         ))}

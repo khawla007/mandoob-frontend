@@ -63,14 +63,17 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const session = await requireRole('super_admin', 'admin');
   const viewerRole = session.role as Role;
+  const roles = parseRoles(sp.roles);
+  const status = parseStatus(sp.status);
+  const sort = parseSort(sp.sort);
 
   const args: ListUsersArgs = {
     cursor: sp.cursor ?? null,
-    roles: parseRoles(sp.roles),
-    status: parseStatus(sp.status),
+    roles,
+    status,
     tenantId: viewerRole === 'super_admin' ? (sp.tenant ?? null) : null,
     q: sp.q,
-    sort: parseSort(sp.sort),
+    sort,
     viewer: { role: viewerRole, tenantId: session.tenantId },
   };
 
@@ -104,8 +107,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             viewerRole={viewerRole}
             tenants={tenants}
             initialQ={sp.q ?? ''}
-            initialRoles={parseRoles(sp.roles) ?? []}
-            initialStatus={parseStatus(sp.status)}
+            initialRoles={roles ?? []}
+            initialStatus={status}
             initialTenant={sp.tenant ?? null}
           />
           {rows.length === 0 ? (
@@ -113,7 +116,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           ) : (
             <>
               <div className="border-border/60 overflow-hidden rounded-lg border">
-                <UsersTable rows={rows} sort={args.sort!} />
+                <UsersTable rows={rows} sort={sort} />
               </div>
               <UsersPagination nextCursor={nextCursor} hasMore={hasMore} />
             </>

@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useTransition, useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { UsersRoleFilter } from './UsersRoleFilter';
@@ -10,6 +9,7 @@ import { UsersTenantFilter } from './UsersTenantFilter';
 import type { Role } from '@/lib/auth/roles';
 import type { ProfileStatus } from '@/lib/data/users';
 import type { TenantSummary } from '@/lib/data/tenants';
+import { useListFilterNav } from '@/hooks/use-list-filter-nav';
 
 type StatusValue = ProfileStatus | 'all';
 
@@ -28,25 +28,14 @@ export function UsersToolbar({
   initialStatus: StatusValue;
   initialTenant: string | null;
 }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
+  const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
   const [q, setQ] = useState(initialQ);
-  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    const id = setTimeout(() => {
-      const fresh = new URLSearchParams(window.location.search);
-      fresh.delete('cursor');
-      if (q) fresh.set('q', q);
-      else fresh.delete('q');
-      start(() => router.replace(`/admin/users?${fresh.toString()}`));
-    }, 250);
+    if (q === initialQ) return;
+    const id = setTimeout(() => navigate({ q: q || null }), 250);
     return () => clearTimeout(id);
-  }, [q, router]);
+  }, [q, initialQ, navigate]);
 
   return (
     <div className="flex flex-wrap items-center gap-3">

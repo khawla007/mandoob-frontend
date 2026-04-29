@@ -9,26 +9,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { TenantMember } from '@/lib/data/tenant-metrics';
-import type { Role } from '@/lib/data/users';
-
-const roleVariant: Record<Role, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  super_admin: 'default',
-  admin: 'destructive',
-  pro: 'secondary',
-  customer: 'outline',
-  employee: 'outline',
-};
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-GB', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { roleBadgeVariant, statusBadgeVariant } from '@/components/admin/role-badge';
+import { formatAdminDateTime } from '@/lib/format/date';
 
 export function TeamTable({ rows }: { rows: TenantMember[] }) {
   return (
@@ -67,7 +49,7 @@ export function TeamTable({ rows }: { rows: TenantMember[] }) {
             </TableCell>
             <TableCell>
               {r.role ? (
-                <Badge variant={roleVariant[r.role]} className="font-mono text-xs">
+                <Badge variant={roleBadgeVariant[r.role]} className="font-mono text-xs">
                   {r.role}
                 </Badge>
               ) : (
@@ -76,16 +58,7 @@ export function TeamTable({ rows }: { rows: TenantMember[] }) {
             </TableCell>
             <TableCell>
               {r.status ? (
-                <Badge
-                  variant={
-                    r.status === 'active'
-                      ? 'outline'
-                      : r.status === 'invited'
-                        ? 'secondary'
-                        : 'destructive'
-                  }
-                  className="text-xs capitalize"
-                >
+                <Badge variant={statusBadgeVariant[r.status]} className="text-xs capitalize">
                   {r.status}
                 </Badge>
               ) : (
@@ -93,10 +66,10 @@ export function TeamTable({ rows }: { rows: TenantMember[] }) {
               )}
             </TableCell>
             <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
-              {formatDate(r.createdAt)}
+              {formatAdminDateTime(r.createdAt)}
             </TableCell>
             <TableCell className="text-muted-foreground text-right font-mono text-xs tabular-nums">
-              {formatDate(r.lastSignInAt)}
+              {formatAdminDateTime(r.lastSignInAt)}
             </TableCell>
           </TableRow>
         ))}

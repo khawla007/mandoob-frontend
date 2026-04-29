@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { TenantSummary } from '@/lib/data/tenants';
+import { useListFilterNav } from '@/hooks/use-list-filter-nav';
 
 export function UsersTenantFilter({
   tenants,
@@ -21,9 +21,7 @@ export function UsersTenantFilter({
   tenants: TenantSummary[];
   initial: string | null;
 }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [pending, start] = useTransition();
+  const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
   const [filter, setFilter] = useState('');
 
   const filtered = useMemo(() => {
@@ -35,11 +33,7 @@ export function UsersTenantFilter({
   }, [filter, tenants]);
 
   function set(id: string | null) {
-    const next = new URLSearchParams(params.toString());
-    next.delete('cursor');
-    if (id === null) next.delete('tenant');
-    else next.set('tenant', id);
-    start(() => router.replace(`/admin/users?${next.toString()}`));
+    navigate({ tenant: id });
   }
 
   const currentName = initial ? tenants.find((t) => t.id === initial)?.name : null;

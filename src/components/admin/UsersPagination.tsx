@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, RotateCcw } from 'lucide-react';
+import { useListFilterNav } from '@/hooks/use-list-filter-nav';
 
 export function UsersPagination({
   nextCursor,
@@ -11,21 +12,14 @@ export function UsersPagination({
   nextCursor: string | null;
   hasMore: boolean;
 }) {
-  const router = useRouter();
   const params = useSearchParams();
+  const { navigate } = useListFilterNav('/admin/users');
   const onCursor = params.has('cursor');
-
-  function go(cursor: string | null) {
-    const next = new URLSearchParams(params.toString());
-    if (cursor) next.set('cursor', cursor);
-    else next.delete('cursor');
-    router.replace(`/admin/users?${next.toString()}`);
-  }
 
   return (
     <div className="flex items-center justify-end gap-2 pt-2">
       {onCursor && (
-        <Button variant="ghost" size="sm" onClick={() => go(null)}>
+        <Button variant="ghost" size="sm" onClick={() => navigate({ cursor: null })}>
           <RotateCcw className="size-3" />
           Back to start
         </Button>
@@ -34,7 +28,7 @@ export function UsersPagination({
         variant="outline"
         size="sm"
         disabled={!hasMore || !nextCursor}
-        onClick={() => nextCursor && go(nextCursor)}
+        onClick={() => nextCursor && navigate({ cursor: nextCursor })}
       >
         Next
         <ChevronRight className="size-3" />
