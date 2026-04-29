@@ -4,25 +4,39 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { UsersRoleFilter } from './UsersRoleFilter';
+import { UsersStatusFilter } from './UsersStatusFilter';
+import { UsersTenantFilter } from './UsersTenantFilter';
+import type { Role } from '@/lib/auth/roles';
+import type { ProfileStatus } from '@/lib/data/users';
+import type { TenantSummary } from '@/lib/data/tenants';
 
-const roles = [
-  { value: 'all', label: 'All roles' },
-  { value: 'super_admin', label: 'Super admin' },
-  { value: 'pro', label: 'PRO' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'employee', label: 'Employee' },
-] as const;
+type StatusValue = ProfileStatus | 'all';
 
-export function UsersToolbar() {
+export function UsersToolbar({
+  viewerRole,
+  tenants,
+  initialQ,
+  initialRoles,
+  initialStatus,
+  initialTenant,
+}: {
+  viewerRole: Role;
+  tenants: TenantSummary[];
+  initialQ: string;
+  initialRoles: Role[];
+  initialStatus: StatusValue;
+  initialTenant: string | null;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const [pending, start] = useTransition();
-  const [q, setQ] = useState(params.get('q') ?? '');
-  const role = params.get('role') ?? 'all';
+  const [q, setQ] = useState(initialQ);
 
   useEffect(() => {
     const id = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
+      next.delete('cursor');
       if (q) next.set('q', q);
       else next.delete('q');
       start(() => router.replace(`/admin/users?${next.toString()}`));
@@ -30,14 +44,6 @@ export function UsersToolbar() {
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
-
-  function onRoleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const value = e.target.value;
-    const next = new URLSearchParams(params.toString());
-    if (value === 'all') next.delete('role');
-    else next.set('role', value);
-    start(() => router.replace(`/admin/users?${next.toString()}`));
-  }
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -51,18 +57,11 @@ export function UsersToolbar() {
           aria-label="Search users"
         />
       </div>
-      <select
-        value={role}
-        onChange={onRoleChange}
-        className="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-        aria-label="Filter by role"
-      >
-        {roles.map((r) => (
-          <option key={r.value} value={r.value}>
-            {r.label}
-          </option>
-        ))}
-      </select>
+      <UsersRoleFilter viewerRole={viewerRole} initial={initialRoles} />
+      <UsersStatusFilter initial={initialStatus} />
+      {viewerRole === 'super_admin' && (
+        <UsersTenantFilter tenants={tenants} initial={initialTenant} />
+      )}
       {pending && <span className="text-muted-foreground text-xs">Loading…</span>}
     </div>
   );
