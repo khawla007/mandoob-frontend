@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-const emailSchema = z.string().email().max(254);
-const phoneSchema = z
+export const emailSchema = z.string().email().max(254);
+export const phoneSchema = z
   .string()
   .regex(/^\+[1-9]\d{7,14}$/, 'Phone must be E.164 (e.g. +971501234567)');
 
