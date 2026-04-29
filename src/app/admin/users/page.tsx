@@ -1,4 +1,7 @@
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { UsersToolbar } from '@/components/admin/UsersToolbar';
 import { UsersEmptyState } from '@/components/admin/UsersEmptyState';
@@ -32,6 +35,7 @@ type SearchParams = {
   tenant?: string;
   sort?: string;
   cursor?: string;
+  created?: string;
 };
 
 function parseRoles(raw: string | undefined): Role[] | undefined {
@@ -88,6 +92,14 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-6">
+      {sp.created && (
+        <Alert>
+          <AlertTitle>User created</AlertTitle>
+          <AlertDescription>
+            Invite email sent. The new user appears below once Supabase processes the invite.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
@@ -95,6 +107,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             Showing {rows.length} {hasMore ? '(more available)' : ''}
           </p>
         </div>
+        <Button asChild>
+          <Link href="/admin/users/new">Create user</Link>
+        </Button>
       </div>
 
       <Card>
