@@ -1,8 +1,11 @@
 import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { ROLES, type Role } from '@/lib/auth/roles';
 
-export type Role = 'super_admin' | 'pro' | 'customer' | 'employee';
+export { type Role } from '@/lib/auth/roles';
 export type ProfileStatus = 'active' | 'invited' | 'disabled';
+export type SortCol = 'created_at' | 'full_name';
+export type SortDir = 'asc' | 'desc';
 
 export type UserRow = {
   id: string;
@@ -13,75 +16,146 @@ export type UserRow = {
   tenantSlug: string | null;
   tenantName: string | null;
   status: ProfileStatus | null;
+  avatarUrl: string | null;
   createdAt: string;
   lastSignInAt: string | null;
 };
 
 export type ListUsersArgs = {
-  page?: number;
+  cursor?: string | null;
   perPage?: number;
-  role?: Role;
-  tenantId?: string;
+  roles?: Role[];
+  status?: ProfileStatus | 'all';
+  tenantId?: string | null;
   q?: string;
+  sort?: { col: SortCol; dir: SortDir };
+  viewer: { role: Role; tenantId: string | null };
 };
 
-export async function listUsersWithProfiles(args: ListUsersArgs = {}): Promise<{
+export type ListUsersResult = {
   rows: UserRow[];
-  total: number;
-}> {
-  const { page = 1, perPage = 50, role, tenantId, q } = args;
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
+const DEFAULT_PER_PAGE = 50;
+const EMAIL_SEARCH_CEILING = 200;
+
+type CursorPayload = { createdAt: string; id: string };
+
+function encodeCursor(p: CursorPayload): string {
+  return Buffer.from(`${p.createdAt}|${p.id}`).toString('base64url');
+}
+
+function decodeCursor(raw: string | null | undefined): CursorPayload | null {
+  if (!raw) return null;
+  try {
+    const decoded = Buffer.from(raw, 'base64url').toString('utf8');
+    const [createdAt, id] = decoded.split('|');
+    if (!createdAt || !id) return null;
+    return { createdAt, id };
+  } catch {
+    return null;
+  }
+}
+
+export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUsersResult> {
   const admin = createSupabaseServiceRoleClient();
+  const perPage = args.perPage ?? DEFAULT_PER_PAGE;
+  const sort = args.sort ?? { col: 'created_at' as SortCol, dir: 'desc' as SortDir };
+  const ascending = sort.dir === 'asc';
 
-  const { data: authList, error: authErr } = await admin.auth.admin.listUsers({
-    page,
-    perPage,
-  });
-  if (authErr) throw authErr;
+  const allowedRoles =
+    args.viewer.role === 'pro'
+      ? ROLES.filter((r) => r !== 'super_admin' && r !== 'admin')
+      : [...ROLES];
+  const requestedRoles = (args.roles ?? []).filter((r) => allowedRoles.includes(r));
+  const effectiveRoles = requestedRoles.length ? requestedRoles : null;
 
-  const ids = authList.users.map((u) => u.id);
-  if (ids.length === 0) return { rows: [], total: authList.total ?? 0 };
+  let emailMatchIds: string[] | null = null;
+  if (args.q && args.q.trim()) {
+    const needle = args.q.trim().toLowerCase();
+    const { data: authPage, error: authErr } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: EMAIL_SEARCH_CEILING,
+    });
+    if (authErr) throw authErr;
+    emailMatchIds = (authPage?.users ?? [])
+      .filter((u) => (u.email ?? '').toLowerCase().includes(needle))
+      .map((u) => u.id);
+  }
 
-  const { data: profiles, error: profilesErr } = await admin
+  let query = admin
     .from('profiles')
-    .select('id, tenant_id, role, status, full_name')
-    .in('id', ids);
+    .select('id, full_name, role, tenant_id, status, avatar_url, created_at, tenants(slug, name)');
+
+  if (effectiveRoles) query = query.in('role', effectiveRoles);
+  if (args.status && args.status !== 'all') query = query.eq('status', args.status);
+  if (args.viewer.role === 'pro') {
+    if (!args.viewer.tenantId) return { rows: [], nextCursor: null, hasMore: false };
+    query = query.eq('tenant_id', args.viewer.tenantId);
+  } else if (args.tenantId) {
+    query = query.eq('tenant_id', args.tenantId);
+  }
+
+  if (args.q && args.q.trim()) {
+    const needle = args.q.trim();
+    const ids = (emailMatchIds ?? []).join(',');
+    if (ids.length) {
+      query = query.or(`full_name.ilike.%${needle}%,id.in.(${ids})`);
+    } else {
+      query = query.ilike('full_name', `%${needle}%`);
+    }
+  }
+
+  if (sort.col === 'created_at') {
+    query = query.order('created_at', { ascending }).order('id', { ascending });
+    const cursor = decodeCursor(args.cursor);
+    if (cursor) {
+      query = ascending
+        ? query.gt('created_at', cursor.createdAt)
+        : query.lt('created_at', cursor.createdAt);
+    }
+    query = query.limit(perPage + 1);
+  } else {
+    // sort.col === 'full_name' (last_sign_in_at not sortable in this deliverable — lives on auth.users)
+    query = query.order('full_name', { ascending, nullsFirst: false }).range(0, perPage - 1);
+  }
+
+  const { data: profiles, error: profilesErr } = await query;
   if (profilesErr) throw profilesErr;
 
-  const tenantIds = Array.from(
-    new Set(profiles?.map((p) => p.tenant_id).filter((v): v is string => !!v) ?? []),
+  const slice = sort.col === 'created_at' ? profiles!.slice(0, perPage) : (profiles ?? []);
+  const hasMore = sort.col === 'created_at' ? profiles!.length > perPage : false;
+
+  const authResults = await Promise.all(
+    slice.map((p) => admin.auth.admin.getUserById(p.id as string)),
   );
-  const { data: tenants } = tenantIds.length
-    ? await admin.from('tenants').select('id, slug, name').in('id', tenantIds)
-    : { data: [] as { id: string; slug: string; name: string }[] };
 
-  const profileById = new Map(profiles?.map((p) => [p.id, p]) ?? []);
-  const tenantById = new Map(tenants?.map((t) => [t.id, t]) ?? []);
-
-  let rows: UserRow[] = authList.users.map((u) => {
-    const p = profileById.get(u.id);
-    const t = p?.tenant_id ? tenantById.get(p.tenant_id) : undefined;
+  const rows: UserRow[] = slice.map((p, i) => {
+    const auth = authResults[i].data?.user;
+    const tenantJoin = (p as unknown as { tenants?: { slug: string; name: string } | null })
+      .tenants;
     return {
-      id: u.id,
-      email: u.email ?? null,
-      fullName: (p?.full_name as string | null) ?? null,
-      role: (p?.role as Role | null) ?? null,
-      tenantId: (p?.tenant_id as string | null) ?? null,
-      tenantSlug: t?.slug ?? null,
-      tenantName: t?.name ?? null,
-      status: (p?.status as ProfileStatus | null) ?? null,
-      createdAt: u.created_at,
-      lastSignInAt: u.last_sign_in_at ?? null,
+      id: p.id as string,
+      email: auth?.email ?? null,
+      fullName: (p.full_name as string | null) ?? null,
+      role: (p.role as Role | null) ?? null,
+      tenantId: (p.tenant_id as string | null) ?? null,
+      tenantSlug: tenantJoin?.slug ?? null,
+      tenantName: tenantJoin?.name ?? null,
+      status: (p.status as ProfileStatus | null) ?? null,
+      avatarUrl: (p.avatar_url as string | null) ?? null,
+      createdAt: p.created_at as string,
+      lastSignInAt: auth?.last_sign_in_at ?? null,
     };
   });
 
-  if (role) rows = rows.filter((r) => r.role === role);
-  if (tenantId) rows = rows.filter((r) => r.tenantId === tenantId);
-  if (q) {
-    const needle = q.toLowerCase();
-    rows = rows.filter(
-      (r) => r.email?.toLowerCase().includes(needle) || r.fullName?.toLowerCase().includes(needle),
-    );
-  }
+  const last = rows[rows.length - 1];
+  const nextCursor =
+    sort.col === 'created_at' && hasMore && last
+      ? encodeCursor({ createdAt: last.createdAt, id: last.id })
+      : null;
 
-  return { rows, total: authList.total ?? rows.length };
+  return { rows, nextCursor, hasMore };
 }
