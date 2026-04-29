@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTransition, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTransition, useState, useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { UsersRoleFilter } from './UsersRoleFilter';
@@ -29,21 +29,24 @@ export function UsersToolbar({
   initialTenant: string | null;
 }) {
   const router = useRouter();
-  const params = useSearchParams();
   const [pending, start] = useTransition();
   const [q, setQ] = useState(initialQ);
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const id = setTimeout(() => {
-      const next = new URLSearchParams(params.toString());
-      next.delete('cursor');
-      if (q) next.set('q', q);
-      else next.delete('q');
-      start(() => router.replace(`/admin/users?${next.toString()}`));
+      const fresh = new URLSearchParams(window.location.search);
+      fresh.delete('cursor');
+      if (q) fresh.set('q', q);
+      else fresh.delete('q');
+      start(() => router.replace(`/admin/users?${fresh.toString()}`));
     }, 250);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, [q, router]);
 
   return (
     <div className="flex flex-wrap items-center gap-3">

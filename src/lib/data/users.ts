@@ -52,11 +52,20 @@ function decodeCursor(raw: string | null | undefined): CursorPayload | null {
   try {
     const decoded = Buffer.from(raw, 'base64url').toString('utf8');
     const [createdAt, id] = decoded.split('|');
-    if (!createdAt || !id) return null;
+    if (!createdAt || !id || !isUuid(id)) return null;
     return { createdAt, id };
   } catch {
     return null;
   }
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(s: string): boolean {
+  return UUID_RE.test(s);
+}
+
+function escapeOrValue(s: string): string {
+  return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUsersResult> {
@@ -99,12 +108,12 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
   }
 
   if (args.q && args.q.trim()) {
-    const needle = args.q.trim();
-    const ids = (emailMatchIds ?? []).join(',');
+    const safeNeedle = escapeOrValue(`%${args.q.trim()}%`);
+    const ids = (emailMatchIds ?? []).filter(isUuid).join(',');
     if (ids.length) {
-      query = query.or(`full_name.ilike.%${needle}%,id.in.(${ids})`);
+      query = query.or(`full_name.ilike.${safeNeedle},id.in.(${ids})`);
     } else {
-      query = query.ilike('full_name', `%${needle}%`);
+      query = query.ilike('full_name', `%${args.q.trim()}%`);
     }
   }
 
@@ -112,9 +121,10 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
     query = query.order('created_at', { ascending }).order('id', { ascending });
     const cursor = decodeCursor(args.cursor);
     if (cursor) {
-      query = ascending
-        ? query.gt('created_at', cursor.createdAt)
-        : query.lt('created_at', cursor.createdAt);
+      const op = ascending ? 'gt' : 'lt';
+      query = query.or(
+        `created_at.${op}.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.${op}.${cursor.id})`,
+      );
     }
     query = query.limit(perPage + 1);
   } else {
@@ -129,11 +139,15 @@ export async function listUsersWithProfiles(args: ListUsersArgs): Promise<ListUs
   const hasMore = sort.col === 'created_at' ? profiles!.length > perPage : false;
 
   const authResults = await Promise.all(
-    slice.map((p) => admin.auth.admin.getUserById(p.id as string)),
+    slice.map((p) =>
+      admin.auth.admin
+        .getUserById(p.id as string)
+        .catch(() => ({ data: { user: null }, error: null }) as const),
+    ),
   );
 
   const rows: UserRow[] = slice.map((p, i) => {
-    const auth = authResults[i].data?.user;
+    const auth = authResults[i].data?.user ?? null;
     const tenantJoin = (p as unknown as { tenants?: { slug: string; name: string } | null })
       .tenants;
     return {
