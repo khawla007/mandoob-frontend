@@ -11,8 +11,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { TenantMember } from '@/lib/data/tenant-metrics';
 import type { Role } from '@/lib/data/users';
 
-const roleVariant: Record<Role, 'default' | 'secondary' | 'outline'> = {
+const roleVariant: Record<Role, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   super_admin: 'default',
+  admin: 'destructive',
   pro: 'secondary',
   customer: 'outline',
   employee: 'outline',

@@ -13,9 +13,10 @@ import type { RecentLoginRow } from '@/lib/data/admin-metrics';
 
 const roleVariant: Record<
   NonNullable<RecentLoginRow['role']>,
-  'default' | 'secondary' | 'outline'
+  'default' | 'secondary' | 'outline' | 'destructive'
 > = {
   super_admin: 'default',
+  admin: 'destructive',
   pro: 'secondary',
   customer: 'outline',
   employee: 'outline',
