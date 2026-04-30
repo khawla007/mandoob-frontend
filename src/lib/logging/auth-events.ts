@@ -15,6 +15,9 @@ export type AuthEventKind =
   | 'invite_created'
   | 'invite_accepted'
   | 'admin_created'
+  | 'admin_user_edited'
+  | 'admin_user_role_changed'
+  | 'admin_user_status_changed'
   | 'session_revoked'
   | 'impersonation_started'
   | 'impersonation_ended';

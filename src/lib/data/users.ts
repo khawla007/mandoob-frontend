@@ -3,7 +3,7 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { ROLES, type Role } from '@/lib/auth/roles';
 
 export { type Role } from '@/lib/auth/roles';
-export type ProfileStatus = 'active' | 'invited' | 'disabled';
+export type ProfileStatus = 'active' | 'invited' | 'disabled' | 'suspended';
 export type SortCol = 'created_at' | 'full_name';
 export type SortDir = 'asc' | 'desc';
 

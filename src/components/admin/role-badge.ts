@@ -14,5 +14,6 @@ export const roleBadgeVariant: Record<Role, BadgeVariant> = {
 export const statusBadgeVariant: Record<ProfileStatus, BadgeVariant> = {
   active: 'outline',
   invited: 'secondary',
+  suspended: 'destructive',
   disabled: 'destructive',
 };

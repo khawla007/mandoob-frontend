@@ -19,9 +19,10 @@ import { listTenants, type TenantSummary } from '@/lib/data/tenants';
 
 export const dynamic = 'force-dynamic';
 
-const STATUS_VALUES: ('active' | 'invited' | 'disabled' | 'all')[] = [
+const STATUS_VALUES: (ProfileStatus | 'all')[] = [
   'active',
   'invited',
+  'suspended',
   'disabled',
   'all',
 ];
