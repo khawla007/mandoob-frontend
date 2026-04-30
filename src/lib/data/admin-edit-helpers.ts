@@ -32,6 +32,24 @@ export function statusRequiresSessionRevoke(to: ProfileStatus): boolean {
 }
 
 /**
+ * Tenant + role scoping for admin callers. super_admin sees everyone, but
+ * admin callers may only act on non-admin/non-super_admin users in their
+ * own tenant. Throws ApiError; pure logic — no DB calls.
+ */
+export function assertAdminCanModifyTarget(
+  caller: { role: Role; tenantId: string | null },
+  target: { role: Role; tenantId: string | null },
+): void {
+  if (caller.role !== 'admin') return;
+  if (target.role === 'admin' || target.role === 'super_admin') {
+    throw new ApiError('FORBIDDEN', 'Admin cannot modify this user', 403);
+  }
+  if (target.tenantId !== caller.tenantId) {
+    throw new ApiError('FORBIDDEN', 'User belongs to a different tenant', 403);
+  }
+}
+
+/**
  * D2a/b/c + Sub-Project 3 D3 (super_admin-only creates admin) + super_admin
  * promotion blocked. Pure logic — does not query the DB. The caller is
  * responsible for the count query feeding `remainingSuperAdmins` (D2b).

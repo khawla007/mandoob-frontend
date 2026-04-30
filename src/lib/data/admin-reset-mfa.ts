@@ -3,6 +3,7 @@ import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
+import { assertAdminCanModifyTarget } from './admin-edit-helpers';
 import type { MfaResetOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
 
@@ -31,14 +32,10 @@ export async function adminResetMfa(
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
   if (!existing) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
-  if (ctx.caller.role === 'admin') {
-    if (existing.role === 'admin' || existing.role === 'super_admin') {
-      throw new ApiError('FORBIDDEN', 'Admin cannot reset MFA for this user', 403);
-    }
-    if (existing.tenant_id !== ctx.caller.tenantId) {
-      throw new ApiError('FORBIDDEN', 'User belongs to a different tenant', 403);
-    }
-  }
+  assertAdminCanModifyTarget(
+    { role: ctx.caller.role, tenantId: ctx.caller.tenantId },
+    { role: existing.role as Role, tenantId: existing.tenant_id as string | null },
+  );
 
   // Pull factors. Supabase admin API exposes mfa.listFactors and
   // mfa.deleteFactor at the user-id-keyed endpoints.

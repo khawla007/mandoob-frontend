@@ -6,6 +6,7 @@ import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import {
   assertStatusTransition,
   statusRequiresSessionRevoke,
+  assertAdminCanModifyTarget,
   type ProfileStatus,
 } from './admin-edit-helpers';
 import type { ChangeStatusOutput } from '@/lib/validation/admin-user';
@@ -32,14 +33,10 @@ export async function adminChangeStatus(
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
   if (!existing) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
-  if (ctx.caller.role === 'admin') {
-    if (existing.role === 'admin' || existing.role === 'super_admin') {
-      throw new ApiError('FORBIDDEN', 'Admin cannot change this user’s status', 403);
-    }
-    if (existing.tenant_id !== ctx.caller.tenantId) {
-      throw new ApiError('FORBIDDEN', 'User belongs to a different tenant', 403);
-    }
-  }
+  assertAdminCanModifyTarget(
+    { role: ctx.caller.role, tenantId: ctx.caller.tenantId },
+    { role: existing.role as Role, tenantId: existing.tenant_id as string | null },
+  );
 
   const fromStatus = existing.status as ProfileStatus;
   const toStatus = input.newStatus;

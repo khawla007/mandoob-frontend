@@ -5,6 +5,7 @@ import { encryptOptional } from '@/lib/crypto/pii';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import type { EditUserOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
+import { assertAdminCanModifyTarget } from './admin-edit-helpers';
 
 type Caller = { id: string; role: Role; tenantId: string | null };
 
@@ -37,15 +38,10 @@ export async function adminEditUser(
     throw new ApiError('INVALID_ROLE_TRANSITION', 'PATCH cannot change role; use POST /role', 400);
   }
 
-  // admin caller scoping
-  if (ctx.caller.role === 'admin') {
-    if (existing.role === 'admin' || existing.role === 'super_admin') {
-      throw new ApiError('FORBIDDEN', 'Admin cannot edit this user', 403);
-    }
-    if (existing.tenant_id !== ctx.caller.tenantId) {
-      throw new ApiError('FORBIDDEN', 'User belongs to a different tenant', 403);
-    }
-  }
+  assertAdminCanModifyTarget(
+    { role: ctx.caller.role, tenantId: ctx.caller.tenantId },
+    { role: existing.role as Role, tenantId: existing.tenant_id as string | null },
+  );
 
   const changedKeys: string[] = [];
   const profileUpdate: Record<string, unknown> = {};

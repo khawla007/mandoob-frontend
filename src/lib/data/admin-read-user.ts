@@ -3,7 +3,7 @@ import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { decryptOptional } from '@/lib/crypto/pii';
 import type { Role } from '@/lib/auth/roles';
-import type { ProfileStatus } from './admin-edit-helpers';
+import { assertAdminCanModifyTarget, type ProfileStatus } from './admin-edit-helpers';
 
 type Caller = { id: string; role: Role; tenantId: string | null };
 
@@ -60,15 +60,10 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
   if (profileErr) throw new ApiError('INTERNAL', profileErr.message, 500);
   if (!profile) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
-  // Tenant scoping for admin caller. super_admin reads anyone.
-  if (caller.role === 'admin') {
-    if (profile.role === 'admin' || profile.role === 'super_admin') {
-      throw new ApiError('FORBIDDEN', 'Admin cannot view this user', 403);
-    }
-    if (profile.tenant_id !== caller.tenantId) {
-      throw new ApiError('FORBIDDEN', 'User belongs to a different tenant', 403);
-    }
-  }
+  assertAdminCanModifyTarget(
+    { role: caller.role, tenantId: caller.tenantId },
+    { role: profile.role as Role, tenantId: (profile.tenant_id as string | null) ?? null },
+  );
 
   const { data: authUser } = await admin.auth.admin.getUserById(targetId);
 

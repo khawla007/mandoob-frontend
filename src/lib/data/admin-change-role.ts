@@ -4,7 +4,7 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { encryptOptional } from '@/lib/crypto/pii';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
-import { assertRoleChangeAllowed } from './admin-edit-helpers';
+import { assertRoleChangeAllowed, assertAdminCanModifyTarget } from './admin-edit-helpers';
 import type { ChangeRoleOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
 
@@ -25,17 +25,13 @@ export async function adminChangeRole(
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
   if (!existing) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
-  // Tenant scoping for admin caller. Must verify against EXISTING tenant of
-  // the target — not the new tenant in the body — otherwise an admin from
-  // tenant A could mutate a user in tenant B by picking A as the new tenant.
-  if (ctx.caller.role === 'admin') {
-    if (existing.role === 'admin' || existing.role === 'super_admin') {
-      throw new ApiError('FORBIDDEN', 'Admin cannot change this user’s role', 403);
-    }
-    if (existing.tenant_id !== ctx.caller.tenantId) {
-      throw new ApiError('FORBIDDEN', 'User belongs to a different tenant', 403);
-    }
-  }
+  // Scope against the EXISTING tenant — never the new tenant in the body —
+  // otherwise an admin from tenant A could mutate a user in tenant B by
+  // picking A as the new tenant.
+  assertAdminCanModifyTarget(
+    { role: ctx.caller.role, tenantId: ctx.caller.tenantId },
+    { role: existing.role as Role, tenantId: existing.tenant_id as string | null },
+  );
 
   // D2b — count remaining super_admins excluding the target. Skip the query
   // if target is not a super_admin.
