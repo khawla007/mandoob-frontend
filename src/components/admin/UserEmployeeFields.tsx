@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { ClientTypeahead } from './ClientTypeahead';
 import type { CreateUserInput } from '@/lib/validation/admin-user';
 
-export function CreateUserEmployeeFields() {
+export function UserEmployeeFields() {
   const form = useFormContext<CreateUserInput>();
   const tenantId = (form.watch('tenant_id') as string | null | undefined) ?? null;
 

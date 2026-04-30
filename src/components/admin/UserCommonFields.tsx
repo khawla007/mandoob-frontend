@@ -20,6 +20,11 @@ import {
 import type { CreateUserInput, CreateUserRole } from '@/lib/validation/admin-user';
 import type { TenantSummary } from '@/lib/data/tenants';
 
+// The component is shared between create and edit. Both forms supply the
+// same field names for the parts touched here, so we type the form context
+// with CreateUserInput; the email field is conditionally rendered.
+type FormShape = CreateUserInput;
+
 const ALL_ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
   { value: 'pro', label: 'PRO' },
   { value: 'customer', label: 'Customer' },
@@ -27,15 +32,27 @@ const ALL_ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
   { value: 'admin', label: 'Admin' },
 ];
 
-export type CreateUserCommonFieldsProps = {
+export type UserCommonFieldsProps = {
+  mode: 'create' | 'edit';
   callerRole: 'super_admin' | 'admin';
   tenants: TenantSummary[];
+  /** Required in edit mode — rendered as disabled input. */
+  email?: string | null;
+  /** Required in edit mode for non-admin profiles — rendered as disabled name. */
+  tenantName?: string | null;
 };
 
-export function CreateUserCommonFields({ callerRole, tenants }: CreateUserCommonFieldsProps) {
-  const form = useFormContext<CreateUserInput>();
+export function UserCommonFields({
+  mode,
+  callerRole,
+  tenants,
+  email,
+  tenantName,
+}: UserCommonFieldsProps) {
+  const form = useFormContext<FormShape>();
   const role = form.watch('role') as CreateUserRole | undefined;
-  const showTenantPicker = callerRole === 'super_admin' && role && role !== 'admin';
+  const isEdit = mode === 'edit';
+  const showTenantPicker = !isEdit && callerRole === 'super_admin' && role && role !== 'admin';
   const options =
     callerRole === 'super_admin'
       ? ALL_ROLE_OPTIONS
@@ -56,20 +73,32 @@ export function CreateUserCommonFields({ callerRole, tenants }: CreateUserCommon
           </FormItem>
         )}
       />
-      <FormField
-        control={form.control}
-        name="email"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Email</FormLabel>
-            <FormControl>
-              <Input type="email" {...field} value={field.value ?? ''} />
-            </FormControl>
-            <FormDescription>An invite email is sent on submit.</FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {isEdit ? (
+        <FormItem>
+          <FormLabel>Email</FormLabel>
+          <FormControl>
+            <Input type="email" value={email ?? ''} disabled readOnly />
+          </FormControl>
+          <FormDescription>
+            Email is immutable here. Use the dedicated email-change flow.
+          </FormDescription>
+        </FormItem>
+      ) : (
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" {...field} value={field.value ?? ''} />
+              </FormControl>
+              <FormDescription>An invite email is sent on submit.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
       <FormField
         control={form.control}
         name="phone"
@@ -89,7 +118,7 @@ export function CreateUserCommonFields({ callerRole, tenants }: CreateUserCommon
         render={({ field }) => (
           <FormItem>
             <FormLabel>Role</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value ?? ''}>
+            <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={isEdit}>
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a role" />
@@ -103,10 +132,24 @@ export function CreateUserCommonFields({ callerRole, tenants }: CreateUserCommon
                 ))}
               </SelectContent>
             </Select>
+            {isEdit ? (
+              <FormDescription>
+                Use Change role action to change role; sessions revoke on save.
+              </FormDescription>
+            ) : null}
             <FormMessage />
           </FormItem>
         )}
       />
+      {isEdit && role && role !== 'admin' ? (
+        <FormItem>
+          <FormLabel>Tenant</FormLabel>
+          <FormControl>
+            <Input value={tenantName ?? ''} disabled readOnly />
+          </FormControl>
+          <FormDescription>Tenant cannot be moved from this form.</FormDescription>
+        </FormItem>
+      ) : null}
       {showTenantPicker && (
         <FormField
           control={form.control}
@@ -133,8 +176,6 @@ export function CreateUserCommonFields({ callerRole, tenants }: CreateUserCommon
           )}
         />
       )}
-      {/* admin caller's tenant_id is wired via useForm defaultValues; no hidden
-          input needed. The CreateUserForm field-bleed reset preserves it. */}
     </div>
   );
 }

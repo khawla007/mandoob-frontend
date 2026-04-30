@@ -1,27 +1,19 @@
 'use client';
 
 import { useFormContext } from 'react-hook-form';
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Toggle } from '@/components/ui/toggle';
 import type { CreateUserInput } from '@/lib/validation/admin-user';
 import { SERVICE_AREA_VALUES } from '@/lib/validation/admin-user';
 
-export function CreateUserProFields() {
+export function UserProFields() {
   const form = useFormContext<CreateUserInput>();
   const selected = (form.watch('service_areas') as string[] | undefined) ?? [];
 
   function toggle(area: string) {
-    const next = selected.includes(area)
-      ? selected.filter((s) => s !== area)
-      : [...selected, area];
+    const next = selected.includes(area) ? selected.filter((s) => s !== area) : [...selected, area];
     form.setValue('service_areas', next as never, { shouldValidate: true });
   }
 

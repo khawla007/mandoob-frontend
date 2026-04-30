@@ -11,7 +11,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import type { CreateUserInput } from '@/lib/validation/admin-user';
 
-export function CreateUserAdminFields() {
+export function UserAdminFields() {
   const form = useFormContext<CreateUserInput>();
   return (
     <FormField

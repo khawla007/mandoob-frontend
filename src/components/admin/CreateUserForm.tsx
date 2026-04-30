@@ -16,11 +16,11 @@ import {
   type CreateUserRole,
 } from '@/lib/validation/admin-user';
 import type { TenantSummary } from '@/lib/data/tenants';
-import { CreateUserCommonFields } from './CreateUserCommonFields';
-import { CreateUserProFields } from './CreateUserProFields';
-import { CreateUserCustomerFields } from './CreateUserCustomerFields';
-import { CreateUserEmployeeFields } from './CreateUserEmployeeFields';
-import { CreateUserAdminFields } from './CreateUserAdminFields';
+import { UserCommonFields } from './UserCommonFields';
+import { UserProFields } from './UserProFields';
+import { UserCustomerFields } from './UserCustomerFields';
+import { UserEmployeeFields } from './UserEmployeeFields';
+import { UserAdminFields } from './UserAdminFields';
 
 export type CreateUserFormProps = {
   callerRole: 'super_admin' | 'admin';
@@ -29,10 +29,10 @@ export type CreateUserFormProps = {
 };
 
 const ROLE_TO_SECTION: Record<CreateUserRole, () => React.ReactElement> = {
-  pro: () => <CreateUserProFields />,
-  customer: () => <CreateUserCustomerFields />,
-  employee: () => <CreateUserEmployeeFields />,
-  admin: () => <CreateUserAdminFields />,
+  pro: () => <UserProFields />,
+  customer: () => <UserCustomerFields />,
+  employee: () => <UserEmployeeFields />,
+  admin: () => <UserAdminFields />,
 };
 
 export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUserFormProps) {
@@ -119,7 +119,7 @@ export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUs
                   <AlertDescription>{topError}</AlertDescription>
                 </Alert>
               )}
-              <CreateUserCommonFields callerRole={callerRole} tenants={tenants} />
+              <UserCommonFields mode="create" callerRole={callerRole} tenants={tenants} />
               {role && ROLE_TO_SECTION[role]()}
               <div className="flex gap-2">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
