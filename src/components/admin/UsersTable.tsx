@@ -66,6 +66,7 @@ export function UsersTable({
             <SortHeader col="created_at" label="Created" active={sort} />
           </TableHead>
           <TableHead className="text-right">Last sign-in</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -118,6 +119,14 @@ export function UsersTable({
             </TableCell>
             <TableCell className="text-muted-foreground text-right font-mono text-xs tabular-nums">
               {formatAdminDateTime(r.lastSignInAt)}
+            </TableCell>
+            <TableCell className="text-right">
+              <Link
+                href={`/admin/users/${r.id}/edit`}
+                className="text-primary text-xs underline-offset-2 hover:underline"
+              >
+                Edit
+              </Link>
             </TableCell>
           </TableRow>
         ))}
