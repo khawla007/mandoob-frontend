@@ -14,6 +14,7 @@ import {
   type EditUserInput,
   type EditUserOutput,
   type CreateUserRole,
+  SERVICE_AREA_VALUES,
 } from '@/lib/validation/admin-user';
 import { UserCommonFields } from './UserCommonFields';
 import { UserProFields } from './UserProFields';
@@ -40,7 +41,7 @@ function buildDefaults(user: EditableUser): EditUserInput {
       license_no: user.pro.licenseNo ?? '',
       designation: user.pro.designation ?? '',
       department: user.pro.department ?? '',
-      service_areas: (user.pro.serviceAreas as never[]) ?? [],
+      service_areas: (user.pro.serviceAreas as (typeof SERVICE_AREA_VALUES)[number][]) ?? [],
       bio: user.pro.bio ?? '',
     };
   }
@@ -165,7 +166,6 @@ export function EditUserForm({ user, callerRole, callerTenantId, tenantName }: E
                 tenantName={tenantName}
               />
               {ShowSection ? ShowSection() : null}
-              <input type="hidden" value={callerTenantId ?? ''} readOnly aria-hidden />
               <div className="flex gap-2">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'Saving…' : 'Save changes'}

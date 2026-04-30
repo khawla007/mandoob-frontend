@@ -25,6 +25,18 @@ export async function adminChangeRole(
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
   if (!existing) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
+  // Tenant scoping for admin caller. Must verify against EXISTING tenant of
+  // the target — not the new tenant in the body — otherwise an admin from
+  // tenant A could mutate a user in tenant B by picking A as the new tenant.
+  if (ctx.caller.role === 'admin') {
+    if (existing.role === 'admin' || existing.role === 'super_admin') {
+      throw new ApiError('FORBIDDEN', 'Admin cannot change this user’s role', 403);
+    }
+    if (existing.tenant_id !== ctx.caller.tenantId) {
+      throw new ApiError('FORBIDDEN', 'User belongs to a different tenant', 403);
+    }
+  }
+
   // D2b — count remaining super_admins excluding the target. Skip the query
   // if target is not a super_admin.
   let remainingSuperAdmins = Number.MAX_SAFE_INTEGER;
