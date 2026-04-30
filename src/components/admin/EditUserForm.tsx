@@ -81,11 +81,10 @@ function buildDefaults(user: EditableUser): EditUserInput {
 export type EditUserFormProps = {
   user: EditableUser;
   callerRole: 'super_admin' | 'admin';
-  callerTenantId: string | null;
   tenantName: string | null;
 };
 
-export function EditUserForm({ user, callerRole, callerTenantId, tenantName }: EditUserFormProps) {
+export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps) {
   const router = useRouter();
   const [topError, setTopError] = useState<string | null>(null);
   const [savedOnce, setSavedOnce] = useState(false);

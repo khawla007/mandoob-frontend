@@ -40,12 +40,7 @@ export function EditUserPanel({
         </CardContent>
       </Card>
 
-      <EditUserForm
-        user={user}
-        callerRole={callerRole}
-        callerTenantId={callerTenantId}
-        tenantName={tenantName}
-      />
+      <EditUserForm user={user} callerRole={callerRole} tenantName={tenantName} />
 
       <Card>
         <CardHeader>
