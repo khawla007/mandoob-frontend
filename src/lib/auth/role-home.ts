@@ -7,6 +7,7 @@ export async function resolveRoleHome(args: {
   tenantId: string | null;
 }): Promise<string> {
   if (args.role === 'super_admin' || args.role === 'admin') return '/admin';
+  if (args.role === 'customer') return '/account';
   if (!args.tenantId) return '/login';
   const admin = createSupabaseServiceRoleClient();
   const { data } = await admin.from('tenants').select('slug').eq('id', args.tenantId).maybeSingle();
@@ -15,8 +16,6 @@ export async function resolveRoleHome(args: {
   switch (args.role) {
     case 'pro':
       return `/t/${slug}/dashboard`;
-    case 'customer':
-      return `/t/${slug}/portal`;
     case 'employee':
       return `/t/${slug}/me`;
     default:
