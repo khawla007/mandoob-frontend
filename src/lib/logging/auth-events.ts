@@ -23,7 +23,13 @@ export type AuthEventKind =
   | 'profile_self_edited'
   | 'session_revoked'
   | 'impersonation_started'
-  | 'impersonation_ended';
+  | 'impersonation_ended'
+  | 'tenant_provisioned'
+  | 'tenant_self_serve_submitted'
+  | 'tenant_approved'
+  | 'tenant_rejected'
+  | 'tenant_suspended'
+  | 'tenant_reactivated';
 
 export type AuthEventInput = {
   kind: AuthEventKind;

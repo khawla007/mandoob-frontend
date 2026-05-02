@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Monitor, ScrollText, ShieldCheck, Users } from 'lucide-react';
+import { Building2, LayoutDashboard, Monitor, ScrollText, ShieldCheck, Users } from 'lucide-react';
 
 import {
   Sidebar,
@@ -28,6 +28,8 @@ const auth: Item[] = [
   { title: 'MFA & Security', href: '/admin/security', icon: ShieldCheck },
   { title: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
 ];
+
+const tenants: Item[] = [{ title: 'PRO firms', href: '/admin/pro-firms', icon: Building2 }];
 
 export function AdminSidebar({ email }: { email: string | null }) {
   const pathname = usePathname();
@@ -63,6 +65,17 @@ export function AdminSidebar({ email }: { email: string | null }) {
           <SidebarGroupContent>
             <SidebarMenu>
               {auth.map((item) => (
+                <Item key={item.href} item={item} pathname={pathname} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Tenants</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {tenants.map((item) => (
                 <Item key={item.href} item={item} pathname={pathname} />
               ))}
             </SidebarMenu>
