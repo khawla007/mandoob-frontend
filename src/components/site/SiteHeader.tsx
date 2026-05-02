@@ -1,0 +1,50 @@
+import 'server-only';
+import Link from 'next/link';
+import { getSessionProfile } from '@/lib/auth/require-user';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserMenu } from './UserMenu';
+
+export const dynamic = 'force-dynamic';
+
+async function getDisplayName(userId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', userId)
+    .maybeSingle();
+  return (data?.full_name as string | null) ?? null;
+}
+
+export async function SiteHeader() {
+  const session = await getSessionProfile();
+  const displayName = session ? await getDisplayName(session.id) : null;
+
+  return (
+    <header className="flex items-center justify-between border-b px-6 py-4">
+      <Link href="/" className="text-lg font-semibold">
+        Mandoob
+      </Link>
+      <nav className="flex items-center gap-6 text-sm">
+        <Link href="/pricing" className="hover:text-foreground text-muted-foreground">
+          Pricing
+        </Link>
+        {session ? (
+          <UserMenu email={session.email} displayName={displayName} />
+        ) : (
+          <>
+            <Link href="/login" className="hover:text-foreground text-muted-foreground">
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1.5 font-medium"
+            >
+              Get started
+            </Link>
+          </>
+        )}
+      </nav>
+    </header>
+  );
+}
