@@ -15,7 +15,7 @@ export default async function AccountLayout({ children }: { children: ReactNode 
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">My account</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Manage your profile, password, MFA, and active sessions.
+            Manage your profile, password, and security.
           </p>
         </header>
         <AccountTabs role={session.role ?? 'customer'} />

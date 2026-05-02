@@ -14,7 +14,6 @@ export const TABS: TabDef[] = [
     visibleFor: ['super_admin', 'admin', 'pro', 'customer', 'employee'],
   },
   { href: '/account/role', label: 'Role details', visibleFor: ['pro', 'customer', 'employee'] },
-  { href: '/account/sessions', label: 'Sessions', visibleFor: ['super_admin', 'admin', 'pro'] },
 ];
 
 export function visibleTabs(role: Role): TabDef[] {

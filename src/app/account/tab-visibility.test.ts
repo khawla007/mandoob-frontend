@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { visibleTabs } from '@/components/account/tab-defs';
 
+// Sessions tab temporarily removed pending rebuild — see docs/issues/account-sessions-tab-rebuild.md
 const expected: Record<string, string[]> = {
-  super_admin: ['/account', '/account/security', '/account/sessions'],
-  admin: ['/account', '/account/security', '/account/sessions'],
-  pro: ['/account', '/account/security', '/account/role', '/account/sessions'],
+  super_admin: ['/account', '/account/security'],
+  admin: ['/account', '/account/security'],
+  pro: ['/account', '/account/security', '/account/role'],
   customer: ['/account', '/account/security', '/account/role'],
   employee: ['/account', '/account/security', '/account/role'],
 };
