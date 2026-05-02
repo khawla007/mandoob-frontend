@@ -29,7 +29,8 @@ export type AuthEventKind =
   | 'tenant_approved'
   | 'tenant_rejected'
   | 'tenant_suspended'
-  | 'tenant_reactivated';
+  | 'tenant_reactivated'
+  | 'tenant_self_updated';
 
 export type AuthEventInput = {
   kind: AuthEventKind;
