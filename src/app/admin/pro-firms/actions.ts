@@ -66,6 +66,98 @@ export async function reactivateTenantAction(tenantId: string): Promise<ActionRe
   return setTenantStatusAction(tenantId, 'active', 'tenant_reactivated');
 }
 
+export async function approveTenantAction(tenantId: string): Promise<ActionResult> {
+  try {
+    if (!tenantIdSchema.safeParse(tenantId).success) {
+      return { ok: false, error: 'Invalid tenant id', code: 'VALIDATION_FAILED' };
+    }
+    const ctx = await getCallerContext();
+    const admin = createSupabaseServiceRoleClient();
+    const { error } = await admin
+      .from('tenants')
+      .update({ status: 'active' })
+      .eq('id', tenantId)
+      .eq('status', 'pending');
+    if (error) {
+      console.error('approve tenant update failed', error);
+      return { ok: false, error: 'Could not approve tenant', code: 'INTERNAL' };
+    }
+    await admin.from('tenant_audit_log').insert({
+      tenant_id: tenantId,
+      actor_id: ctx.caller.id,
+      action: 'approved',
+      source: 'admin',
+      details: {},
+    });
+    await recordAuthEvent({
+      kind: 'tenant_approved',
+      actorUserId: ctx.caller.id,
+      tenantId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      details: {},
+    }).catch((err) => console.error('recordAuthEvent failed', err));
+    revalidatePath('/admin/pro-firms');
+    return { ok: true, data: undefined };
+  } catch (e) {
+    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+    console.error('approveTenantAction unexpected error', e);
+    return { ok: false, error: 'Could not approve tenant', code: 'INTERNAL' };
+  }
+}
+
+export async function rejectTenantAction(tenantId: string): Promise<ActionResult> {
+  try {
+    if (!tenantIdSchema.safeParse(tenantId).success) {
+      return { ok: false, error: 'Invalid tenant id', code: 'VALIDATION_FAILED' };
+    }
+    const ctx = await getCallerContext();
+    const admin = createSupabaseServiceRoleClient();
+
+    // Audit row first (tenant cascade-deletes it otherwise).
+    await admin.from('tenant_audit_log').insert({
+      tenant_id: tenantId,
+      actor_id: ctx.caller.id,
+      action: 'rejected',
+      source: 'admin',
+      details: {},
+    });
+
+    // Find the PRO admin user(s) bound to this tenant so we can delete
+    // them too — rejection should leave no auth account behind.
+    const { data: members } = await admin.from('profiles').select('id').eq('tenant_id', tenantId);
+    for (const m of members ?? []) {
+      const { error: delErr } = await admin.auth.admin.deleteUser(m.id as string);
+      if (delErr) console.error('reject: deleteUser failed', { id: m.id, delErr });
+    }
+
+    const { error: tErr } = await admin
+      .from('tenants')
+      .delete()
+      .eq('id', tenantId)
+      .eq('status', 'pending');
+    if (tErr) {
+      console.error('reject tenant delete failed', tErr);
+      return { ok: false, error: 'Could not reject tenant', code: 'INTERNAL' };
+    }
+
+    await recordAuthEvent({
+      kind: 'tenant_rejected',
+      actorUserId: ctx.caller.id,
+      tenantId,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+      details: {},
+    }).catch((err) => console.error('recordAuthEvent failed', err));
+    revalidatePath('/admin/pro-firms');
+    return { ok: true, data: undefined };
+  } catch (e) {
+    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+    console.error('rejectTenantAction unexpected error', e);
+    return { ok: false, error: 'Could not reject tenant', code: 'INTERNAL' };
+  }
+}
+
 async function setTenantStatusAction(
   tenantId: string,
   next: 'active' | 'suspended',

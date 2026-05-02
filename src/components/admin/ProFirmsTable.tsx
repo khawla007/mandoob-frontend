@@ -11,7 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { suspendTenantAction, reactivateTenantAction } from '@/app/admin/pro-firms/actions';
+import {
+  suspendTenantAction,
+  reactivateTenantAction,
+  approveTenantAction,
+  rejectTenantAction,
+} from '@/app/admin/pro-firms/actions';
 import type { ProFirmRow } from '@/lib/data/pro-firms';
 
 const STATUS_VARIANT: Record<ProFirmRow['status'], 'default' | 'secondary' | 'destructive'> = {
@@ -39,6 +44,25 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
     startTransition(async () => {
       const r = await reactivateTenantAction(id);
       if (!r.ok) alert(`Reactivate failed: ${r.error}`);
+      setBusyId(null);
+    });
+  }
+
+  function onApprove(id: string) {
+    setBusyId(id);
+    startTransition(async () => {
+      const r = await approveTenantAction(id);
+      if (!r.ok) alert(`Approve failed: ${r.error}`);
+      setBusyId(null);
+    });
+  }
+
+  function onReject(id: string) {
+    if (!confirm('Reject this PRO firm? The tenant and admin user will be deleted.')) return;
+    setBusyId(id);
+    startTransition(async () => {
+      const r = await rejectTenantAction(id);
+      if (!r.ok) alert(`Reject failed: ${r.error}`);
       setBusyId(null);
     });
   }
@@ -91,7 +115,24 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
                 </Button>
               )}
               {r.status === 'pending' && (
-                <span className="text-muted-foreground text-xs">awaiting approval</span>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={pending && busyId === r.id}
+                    onClick={() => onApprove(r.id)}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pending && busyId === r.id}
+                    onClick={() => onReject(r.id)}
+                  >
+                    Reject
+                  </Button>
+                </div>
               )}
             </TableCell>
           </TableRow>

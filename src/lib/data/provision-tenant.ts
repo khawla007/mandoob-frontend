@@ -83,20 +83,22 @@ export async function provisionTenant(
     throw e;
   }
 
-  // Audit row — best-effort; do not fail the call if it errors.
+  // For self-serve there is no logged-in actor. tenant_audit_log.actor_id has
+  // an FK to profiles.id, so we pass null. For admin-led we use the caller.
+  const actorId = input.source === 'self_serve' ? null : ctx.caller.id;
+
   const { error: auditErr } = await admin.from('tenant_audit_log').insert({
     tenant_id: tenantId,
-    actor_id: ctx.caller.id,
+    actor_id: actorId,
     action: 'created',
     source: input.source,
     details: { admin_user_id: adminUserId, plan: input.plan, status: input.status },
   });
   if (auditErr) console.error('tenant_audit_log insert failed', auditErr);
 
-  // Auth event — best-effort.
   await recordAuthEvent({
     kind: input.source === 'self_serve' ? 'tenant_self_serve_submitted' : 'tenant_provisioned',
-    actorUserId: ctx.caller.id,
+    actorUserId: actorId,
     tenantId,
     ip: ctx.ip,
     userAgent: ctx.userAgent,
