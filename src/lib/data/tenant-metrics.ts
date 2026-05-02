@@ -201,3 +201,24 @@ export async function listTenantMembers(tenantId: string): Promise<TenantMember[
       };
     });
 }
+
+// PRO workspace dashboard KPIs. Real client count is queried from the `clients`
+// table; renewal/document/payment counters are placeholders until Steps 11+
+// (renewals, document mgmt, payments) wire real data.
+export async function getProDashboardMetrics(tenantId: string): Promise<Kpi[]> {
+  const admin = createSupabaseServiceRoleClient();
+  const { count: activeClients } = await admin
+    .from('clients')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active');
+
+  const active = activeClients ?? 0;
+
+  return [
+    { label: 'Active clients', value: fmt(active), delta: 0, deltaLabel: 'live' },
+    { label: 'Renewals due (30d)', value: '—', delta: 0, deltaLabel: 'wired in step 11' },
+    { label: 'Docs awaiting review', value: '—', delta: 0, deltaLabel: 'wired in step 11' },
+    { label: 'Pending payments', value: '—', delta: 0, deltaLabel: 'wired in step 11' },
+  ];
+}

@@ -18,3 +18,7 @@ export async function resolveTenantBySlug(slug: string): Promise<Tenant | null> 
     .maybeSingle();
   return (data as Tenant | null) ?? null;
 }
+
+export function isTenantActive(status: string): boolean {
+  return status === 'active';
+}

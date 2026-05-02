@@ -5,7 +5,7 @@ import { SignupsChart } from '@/components/admin/SignupsChart';
 import { RecentLoginsTable } from '@/components/admin/RecentLoginsTable';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
-  getTenantKpis,
+  getProDashboardMetrics,
   getTenantRecentLogins,
   getTenantSignupSeries,
 } from '@/lib/data/tenant-metrics';
@@ -18,7 +18,7 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
   if (!tenant) notFound();
 
   const [kpis, series, logins] = await Promise.all([
-    getTenantKpis(tenant.id),
+    getProDashboardMetrics(tenant.id),
     getTenantSignupSeries(tenant.id, 30),
     getTenantRecentLogins(tenant.id, 10),
   ]);
