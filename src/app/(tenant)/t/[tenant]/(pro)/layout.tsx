@@ -16,7 +16,7 @@ export default async function ProLayout({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const session = await requireRole('pro');
+  const session = await requireRole('pro', 'admin', 'super_admin');
   // MFA enforcement toggles on in M6 once enrollment UI ships.
   await requireMfaEnrolled(session).catch(() => {});
 

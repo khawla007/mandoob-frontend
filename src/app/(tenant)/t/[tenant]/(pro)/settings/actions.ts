@@ -24,7 +24,7 @@ export type ActionResult<T = void> =
   | { ok: false; error: string; code: string };
 
 async function getCallerContext() {
-  const session = await requireRole('pro', 'super_admin');
+  const session = await requireRole('admin', 'super_admin');
   const hdr = await headers();
   const ip = hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const userAgent = hdr.get('user-agent') ?? null;
