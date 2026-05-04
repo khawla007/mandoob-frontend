@@ -2,6 +2,7 @@ import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import type { Kpi, SignupPoint, RecentLoginRow } from '@/lib/data/admin-metrics';
 import type { Role } from '@/lib/data/users';
+import { countDocsAwaitingReview } from '@/lib/data/documents';
 
 function fmt(n: number): string {
   return n.toLocaleString('en-US');
@@ -161,23 +162,30 @@ export async function getTenantRecentLogins(
     status: e.kind === 'login_success' ? 'success' : 'failed',
   }));
 }
-// PRO workspace dashboard KPIs. Real client count is queried from the `clients`
-// table; renewal/document/payment counters are placeholders until Steps 11+
-// (renewals, document mgmt, payments) wire real data.
+// PRO workspace dashboard KPIs. Active-client count + docs-awaiting-review are
+// live (Steps 9, 13); renewals + payments are placeholders until Steps 16, 23.
 export async function getProDashboardMetrics(tenantId: string): Promise<Kpi[]> {
   const admin = createSupabaseServiceRoleClient();
-  const { count: activeClients } = await admin
-    .from('clients')
-    .select('id', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId)
-    .eq('status', 'active');
+  const [{ count: activeClients }, awaitingReview] = await Promise.all([
+    admin
+      .from('clients')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active'),
+    countDocsAwaitingReview(tenantId),
+  ]);
 
   const active = activeClients ?? 0;
 
   return [
     { label: 'Active clients', value: fmt(active), delta: 0, deltaLabel: 'live' },
-    { label: 'Renewals due (30d)', value: '—', delta: 0, deltaLabel: 'wired in step 11' },
-    { label: 'Docs awaiting review', value: '—', delta: 0, deltaLabel: 'wired in step 11' },
-    { label: 'Pending payments', value: '—', delta: 0, deltaLabel: 'wired in step 11' },
+    { label: 'Renewals due (30d)', value: '—', delta: 0, deltaLabel: 'wired in step 16' },
+    {
+      label: 'Docs awaiting review',
+      value: fmt(awaitingReview),
+      delta: 0,
+      deltaLabel: 'across all clients',
+    },
+    { label: 'Pending payments', value: '—', delta: 0, deltaLabel: 'wired in step 23' },
   ];
 }
