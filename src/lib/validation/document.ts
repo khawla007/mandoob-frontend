@@ -31,6 +31,27 @@ export const documentReviewSchema = z.object({
 
 export type DocumentReviewInput = z.infer<typeof documentReviewSchema>;
 
+// PRO requesting a document from the customer. due_at is an optional ISO
+// date (YYYY-MM-DD) entered via <input type="date">; coerced to ISO string
+// on the server before insert.
+export const createDocumentRequestSchema = z.object({
+  client_id: z.string().uuid(),
+  doc_type: docTypeSchema,
+  label: z.string().min(1).max(120),
+  due_at: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'due_at must be YYYY-MM-DD')
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  notes: z
+    .string()
+    .max(500)
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+});
+
+export type CreateDocumentRequestInput = z.infer<typeof createDocumentRequestSchema>;
+
 const FILENAME_MAX_BASE = 100;
 
 // Sanitises a user-supplied filename for use in a Supabase Storage path.
