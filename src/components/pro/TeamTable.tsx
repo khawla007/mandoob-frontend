@@ -12,7 +12,14 @@ import type { TenantMember } from '@/lib/data/tenant-metrics';
 import { roleBadgeVariant, statusBadgeVariant } from '@/components/admin/role-badge';
 import { formatAdminDateTime } from '@/lib/format/date';
 
-export function TeamTable({ rows }: { rows: TenantMember[] }) {
+export function TeamTable({
+  rows,
+  rowActions,
+}: {
+  rows: TenantMember[];
+  rowActions?: (row: TenantMember) => React.ReactNode;
+}) {
+  const colCount = rowActions ? 6 : 5;
   return (
     <Table>
       <TableHeader>
@@ -21,13 +28,17 @@ export function TeamTable({ rows }: { rows: TenantMember[] }) {
           <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Joined</TableHead>
-          <TableHead className="text-right">Last sign-in</TableHead>
+          <TableHead className={rowActions ? '' : 'text-right'}>Last sign-in</TableHead>
+          {rowActions && <TableHead className="w-12 text-right" />}
         </TableRow>
       </TableHeader>
       <TableBody>
         {rows.length === 0 && (
           <TableRow>
-            <TableCell colSpan={5} className="text-muted-foreground py-10 text-center text-sm">
+            <TableCell
+              colSpan={colCount}
+              className="text-muted-foreground py-10 text-center text-sm"
+            >
               No members in this workspace yet.
             </TableCell>
           </TableRow>
@@ -68,9 +79,12 @@ export function TeamTable({ rows }: { rows: TenantMember[] }) {
             <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
               {formatAdminDateTime(r.createdAt)}
             </TableCell>
-            <TableCell className="text-muted-foreground text-right font-mono text-xs tabular-nums">
+            <TableCell
+              className={`text-muted-foreground font-mono text-xs tabular-nums ${rowActions ? '' : 'text-right'}`}
+            >
               {formatAdminDateTime(r.lastSignInAt)}
             </TableCell>
+            {rowActions && <TableCell className="text-right">{rowActions(r)}</TableCell>}
           </TableRow>
         ))}
       </TableBody>

@@ -167,7 +167,7 @@ export type TenantMember = {
   email: string | null;
   fullName: string | null;
   role: Role | null;
-  status: 'active' | 'invited' | 'disabled' | null;
+  status: 'active' | 'invited' | 'disabled' | 'suspended' | null;
   lastSignInAt: string | null;
   createdAt: string | null;
 };
