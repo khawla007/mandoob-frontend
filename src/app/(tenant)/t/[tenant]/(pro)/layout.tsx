@@ -4,7 +4,7 @@ import { isTenantActive, resolveTenantBySlug } from '@/lib/data/tenant';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { ProSidebar } from '@/components/pro/ProSidebar';
 import { ProTopbar } from '@/components/pro/ProTopbar';
-import { TenantSuspendedBanner } from '@/components/pro/TenantSuspendedBanner';
+import { TenantSuspendedBanner } from '@/components/tenant/TenantSuspendedBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,9 @@ export default async function ProLayout({
       <ProSidebar tenantSlug={tenant.slug} tenantName={tenant.name} email={session.email} />
       <SidebarInset>
         <ProTopbar tenantName={tenant.name} />
-        {!isTenantActive(tenant.status) ? <TenantSuspendedBanner status={tenant.status} /> : null}
+        {!isTenantActive(tenant.status) ? (
+          <TenantSuspendedBanner status={tenant.status} className="mx-6 mt-6 md:mx-8" />
+        ) : null}
         <main className="flex-1 p-6 md:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
