@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, User } from 'lucide-react';
+import { Briefcase, LogOut, User } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -24,9 +24,11 @@ function initialOf(displayName: string | null, email: string | null): string {
 export function UserMenu({
   email,
   displayName,
+  workspaceSlug,
 }: {
   email: string | null;
   displayName: string | null;
+  workspaceSlug?: string | null;
 }) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -68,6 +70,14 @@ export function UserMenu({
             My account
           </Link>
         </DropdownMenuItem>
+        {workspaceSlug && (
+          <DropdownMenuItem asChild>
+            <Link href={`/t/${workspaceSlug}/portal`} className="cursor-pointer">
+              <Briefcase className="size-4" />
+              Workspace
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={(e) => {
