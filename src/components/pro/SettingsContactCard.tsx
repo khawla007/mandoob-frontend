@@ -10,7 +10,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { updateContactAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/actions';
 import type { TenantContact } from '@/lib/data/tenant-settings';
 
-export function SettingsContactCard({ slug, initial }: { slug: string; initial: TenantContact }) {
+export function SettingsContactCard({
+  slug,
+  initial,
+  disabled = false,
+}: {
+  slug: string;
+  initial: TenantContact;
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +78,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
               value={senderName}
               onChange={(e) => setSenderName(e.target.value)}
               placeholder="Acme PRO Services"
+              disabled={disabled}
             />
           </div>
 
@@ -81,6 +90,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
               value={replyTo}
               onChange={(e) => setReplyTo(e.target.value)}
               placeholder="hello@acmepro.ae"
+              disabled={disabled}
             />
           </div>
 
@@ -92,6 +102,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               placeholder="https://acmepro.ae/terms"
+              disabled={disabled}
             />
           </div>
 
@@ -103,12 +114,15 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
               value={privacy}
               onChange={(e) => setPrivacy(e.target.value)}
               placeholder="https://acmepro.ae/privacy"
+              disabled={disabled}
             />
           </div>
 
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save contact info'}
-          </Button>
+          {!disabled && (
+            <Button type="submit" disabled={pending}>
+              {pending ? 'Saving…' : 'Save contact info'}
+            </Button>
+          )}
         </form>
       </CardContent>
     </Card>

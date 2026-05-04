@@ -11,7 +11,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { updateSmtpAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/actions';
 import type { TenantSmtpRedacted } from '@/lib/data/tenant-settings';
 
-export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: TenantSmtpRedacted }) {
+export function SettingsSmtpCard({
+  slug,
+  initial,
+  disabled = false,
+}: {
+  slug: string;
+  initial: TenantSmtpRedacted;
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +91,7 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
                 placeholder="smtp.example.com"
+                disabled={disabled}
               />
             </div>
             <div className="grid gap-2">
@@ -95,6 +104,7 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
                 required
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
+                disabled={disabled}
               />
             </div>
           </div>
@@ -106,6 +116,7 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              disabled={disabled}
             />
           </div>
 
@@ -118,6 +129,7 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
               onChange={(e) => setPassword(e.target.value)}
               placeholder={passwordPlaceholder}
               autoComplete="new-password"
+              disabled={disabled}
             />
           </div>
 
@@ -130,6 +142,7 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
               value={fromAddress}
               onChange={(e) => setFromAddress(e.target.value)}
               placeholder="no-reply@acmepro.ae"
+              disabled={disabled}
             />
           </div>
 
@@ -138,15 +151,18 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
               id="smtp-enabled"
               checked={enabled}
               onCheckedChange={(v) => setEnabled(v === true)}
+              disabled={disabled}
             />
             <Label htmlFor="smtp-enabled" className="font-normal">
               Enabled
             </Label>
           </div>
 
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save SMTP config'}
-          </Button>
+          {!disabled && (
+            <Button type="submit" disabled={pending}>
+              {pending ? 'Saving…' : 'Save SMTP config'}
+            </Button>
+          )}
         </form>
       </CardContent>
     </Card>

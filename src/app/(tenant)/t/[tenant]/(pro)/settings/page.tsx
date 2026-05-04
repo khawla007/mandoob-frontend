@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
   getTenantBranding,
@@ -8,13 +9,17 @@ import {
 import { SettingsBrandingCard } from '@/components/pro/SettingsBrandingCard';
 import { SettingsContactCard } from '@/components/pro/SettingsContactCard';
 import { SettingsSmtpCard } from '@/components/pro/SettingsSmtpCard';
+import { SettingsReadOnlyNotice } from '@/components/pro/SettingsReadOnlyNotice';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: slug } = await params;
+  const session = await requireRole('pro', 'admin', 'super_admin');
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
+
+  const readOnly = session.role === 'pro';
 
   const [branding, contact, smtp] = await Promise.all([
     getTenantBranding(tenant.id),
@@ -31,8 +36,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ tenan
         </p>
       </div>
 
+      {readOnly && <SettingsReadOnlyNotice />}
+
       <SettingsBrandingCard
         slug={slug}
+        disabled={readOnly}
         initial={
           branding ?? {
             name: tenant.name,
@@ -46,6 +54,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ tenan
 
       <SettingsContactCard
         slug={slug}
+        disabled={readOnly}
         initial={
           contact ?? {
             email_sender_name: null,
@@ -56,7 +65,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ tenan
         }
       />
 
-      <SettingsSmtpCard slug={slug} initial={smtp} />
+      <SettingsSmtpCard slug={slug} disabled={readOnly} initial={smtp} />
     </div>
   );
 }

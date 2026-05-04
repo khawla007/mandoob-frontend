@@ -10,7 +10,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { updateBrandingAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/actions';
 import type { TenantBranding } from '@/lib/data/tenant-settings';
 
-export function SettingsBrandingCard({ slug, initial }: { slug: string; initial: TenantBranding }) {
+export function SettingsBrandingCard({
+  slug,
+  initial,
+  disabled = false,
+}: {
+  slug: string;
+  initial: TenantBranding;
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +80,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
               maxLength={200}
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={disabled}
             />
           </div>
 
@@ -83,6 +92,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
               placeholder="https://cdn.example.com/logo.svg"
+              disabled={disabled}
             />
           </div>
 
@@ -94,6 +104,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
               value={faviconUrl}
               onChange={(e) => setFaviconUrl(e.target.value)}
               placeholder="https://cdn.example.com/favicon.ico"
+              disabled={disabled}
             />
           </div>
 
@@ -105,6 +116,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
                 value={primary}
                 onChange={(e) => setPrimary(e.target.value)}
                 placeholder="#4f46e5"
+                disabled={disabled}
               />
             </div>
             <div className="grid gap-2">
@@ -114,13 +126,16 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
                 value={secondary}
                 onChange={(e) => setSecondary(e.target.value)}
                 placeholder="#10b981"
+                disabled={disabled}
               />
             </div>
           </div>
 
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save branding'}
-          </Button>
+          {!disabled && (
+            <Button type="submit" disabled={pending}>
+              {pending ? 'Saving…' : 'Save branding'}
+            </Button>
+          )}
         </form>
       </CardContent>
     </Card>
