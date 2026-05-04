@@ -1,11 +1,23 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarClock, FileText, MessageSquare } from 'lucide-react';
+import { CalendarClock, MessageSquare } from 'lucide-react';
 import { ComingSoon } from '@/components/pro/ComingSoon';
+import { DocumentsTab } from '@/components/pro/DocumentsTab';
 import type { ClientDetail } from '@/lib/data/client-detail';
+import type { DocumentListEntry, OpenRequestEntry } from '@/lib/data/documents';
 
-export function ClientTabs({ client }: { client: ClientDetail }) {
+export function ClientTabs({
+  client,
+  slug,
+  documents,
+  openRequests,
+}: {
+  client: ClientDetail;
+  slug: string;
+  documents: DocumentListEntry[];
+  openRequests: OpenRequestEntry[];
+}) {
   return (
     <Tabs defaultValue="overview">
       <TabsList>
@@ -32,10 +44,11 @@ export function ClientTabs({ client }: { client: ClientDetail }) {
       </TabsContent>
 
       <TabsContent value="documents" className="pt-6">
-        <ComingSoon
-          title="Documents"
-          subtitle="Passport, Emirates ID, license, MoA — wired in Step 11."
-          icon={<FileText className="size-6" />}
+        <DocumentsTab
+          slug={slug}
+          clientId={client.id}
+          documents={documents}
+          openRequests={openRequests}
         />
       </TabsContent>
 
