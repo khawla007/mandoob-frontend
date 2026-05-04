@@ -6,9 +6,11 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { scanFile } from '@/lib/security/scan-file';
 import {
+  createDocumentRequestSchema,
   documentReviewSchema,
   sanitizeFilename,
   uploadDocumentMetadataSchema,
+  type CreateDocumentRequestInput,
   type DocType,
   type DocumentReviewInput,
 } from '@/lib/validation/document';
@@ -413,12 +415,31 @@ export async function setDocumentReview(
     .eq('id', versionId);
   if (updErr) throw new ApiError('INTERNAL', updErr.message, 500);
 
+  let fulfilledRequestId: string | null = null;
   if (input.status === 'approved') {
+    const { data: docHead, error: docReadErr } = await admin
+      .from('documents')
+      .select('id, request_id')
+      .eq('id', version.document_id as string)
+      .maybeSingle();
+    if (docReadErr) throw new ApiError('INTERNAL', docReadErr.message, 500);
+
     const { error: linkErr } = await admin
       .from('documents')
       .update({ current_version_id: versionId, updated_at: reviewedAt })
       .eq('id', version.document_id as string);
     if (linkErr) throw new ApiError('INTERNAL', linkErr.message, 500);
+
+    const requestId = (docHead?.request_id as string | null | undefined) ?? null;
+    if (requestId) {
+      const { error: reqErr } = await admin
+        .from('document_requests')
+        .update({ status: 'fulfilled', updated_at: reviewedAt })
+        .eq('id', requestId)
+        .neq('status', 'fulfilled');
+      if (reqErr) throw new ApiError('INTERNAL', reqErr.message, 500);
+      fulfilledRequestId = requestId;
+    }
   }
 
   await logDocumentAudit(ctx.tenantId, ctx.actorId, {
@@ -427,6 +448,7 @@ export async function setDocumentReview(
     version_id: versionId,
     document_id: version.document_id,
     review_status: input.status,
+    fulfilled_request_id: fulfilledRequestId,
   });
   await recordAuthEvent({
     kind: 'tenant_self_updated',
@@ -441,4 +463,131 @@ export async function setDocumentReview(
       review_status: input.status,
     },
   }).catch((err) => console.error('recordAuthEvent failed', err));
+}
+
+// ============================================================
+// Step 13 — PRO-side request flow + KPI helper
+// ============================================================
+
+export type CreateDocumentRequestCtx = {
+  tenantId: string;
+  actorId: string;
+  role: 'pro' | 'admin';
+  ip: string;
+  userAgent: string | null;
+};
+
+export async function createDocumentRequest(
+  ctx: CreateDocumentRequestCtx,
+  input: CreateDocumentRequestInput,
+): Promise<{ id: string }> {
+  if (ctx.role !== 'pro' && ctx.role !== 'admin') {
+    throw new ApiError('FORBIDDEN', 'only pro or admin can request documents', 403);
+  }
+  createDocumentRequestSchema.parse(input);
+
+  const admin = createSupabaseServiceRoleClient();
+
+  // Cross-tenant guard: client must belong to the caller's tenant.
+  const { data: clientRow, error: clientErr } = await admin
+    .from('clients')
+    .select('id, tenant_id')
+    .eq('id', input.client_id)
+    .maybeSingle();
+  if (clientErr) throw new ApiError('INTERNAL', clientErr.message, 500);
+  if (!clientRow) throw new ApiError('NOT_FOUND', 'client not found', 404);
+  if (clientRow.tenant_id !== ctx.tenantId) {
+    throw new ApiError('FORBIDDEN', 'client belongs to a different tenant', 403);
+  }
+
+  const dueAt = input.due_at ? new Date(`${input.due_at}T00:00:00Z`).toISOString() : null;
+
+  const { data: row, error: insertErr } = await admin
+    .from('document_requests')
+    .insert({
+      tenant_id: ctx.tenantId,
+      client_id: input.client_id,
+      requested_by: ctx.actorId,
+      doc_type: input.doc_type,
+      label: input.label,
+      notes: input.notes ?? null,
+      due_at: dueAt,
+    })
+    .select('id')
+    .single();
+  if (insertErr || !row) {
+    throw new ApiError('INTERNAL', insertErr?.message ?? 'request insert failed', 500);
+  }
+  const id = row.id as string;
+
+  await logDocumentAudit(ctx.tenantId, ctx.actorId, {
+    entity: 'document_request',
+    op: 'create',
+    request_id: id,
+    client_id: input.client_id,
+    doc_type: input.doc_type,
+  });
+  await recordAuthEvent({
+    kind: 'tenant_self_updated',
+    actorUserId: ctx.actorId,
+    tenantId: ctx.tenantId,
+    ip: ctx.ip,
+    userAgent: ctx.userAgent,
+    details: {
+      entity: 'document_request',
+      op: 'create',
+      request_id: id,
+    },
+  }).catch((err) => console.error('recordAuthEvent failed', err));
+
+  return { id };
+}
+
+export type OpenRequestEntry = {
+  id: string;
+  docType: DocType;
+  label: string;
+  notes: string | null;
+  dueAt: string | null;
+  createdAt: string;
+  requestedBy: string | null;
+};
+
+// Open (= status 'pending') document requests for a client. Surfaced
+// alongside `listDocumentsForClient` to render an "Awaiting upload"
+// section in the PRO Documents tab; fulfilled requests are reachable via
+// the document head (`documents.request_id`).
+export async function listOpenRequestsForClient(
+  tenantId: string,
+  clientId: string,
+): Promise<OpenRequestEntry[]> {
+  const admin = createSupabaseServiceRoleClient();
+  const { data, error } = await admin
+    .from('document_requests')
+    .select('id, doc_type, label, notes, due_at, created_at, requested_by')
+    .eq('tenant_id', tenantId)
+    .eq('client_id', clientId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  if (error) throw new ApiError('INTERNAL', error.message, 500);
+  return ((data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+    id: row.id as string,
+    docType: row.doc_type as DocType,
+    label: row.label as string,
+    notes: (row.notes as string | null) ?? null,
+    dueAt: (row.due_at as string | null) ?? null,
+    createdAt: row.created_at as string,
+    requestedBy: (row.requested_by as string | null) ?? null,
+  }));
+}
+
+export async function countDocsAwaitingReview(tenantId: string): Promise<number> {
+  const admin = createSupabaseServiceRoleClient();
+  const { count, error } = await admin
+    .from('document_versions')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('review_status', 'pending');
+  if (error) throw new ApiError('INTERNAL', error.message, 500);
+  return count ?? 0;
 }
