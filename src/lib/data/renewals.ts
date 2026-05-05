@@ -75,7 +75,7 @@ export type RenewalAuditAction = 'created' | 'updated' | 'completed' | 'cancelle
 export type RenewalActorCtx = {
   tenantId: string;
   actorId: string;
-  role: 'pro' | 'admin';
+  role: 'pro';
 };
 
 async function logRenewalAudit(
@@ -95,9 +95,9 @@ async function logRenewalAudit(
   if (error) console.error('tenant_audit_log insert failed', error);
 }
 
-function assertProOrAdmin(role: string): asserts role is 'pro' | 'admin' {
-  if (role !== 'pro' && role !== 'admin') {
-    throw new ApiError('FORBIDDEN', 'only pro or admin can mutate renewals', 403);
+function assertPro(role: string): asserts role is 'pro' {
+  if (role !== 'pro') {
+    throw new ApiError('FORBIDDEN', 'only pro can mutate renewals', 403);
   }
 }
 
@@ -177,7 +177,7 @@ export async function createRenewal(
   ctx: RenewalActorCtx,
   input: CreateRenewalInput,
 ): Promise<{ id: string }> {
-  assertProOrAdmin(ctx.role);
+  assertPro(ctx.role);
   createRenewalSchema.parse(input);
 
   const admin = createSupabaseServiceRoleClient();
@@ -246,7 +246,7 @@ export async function updateRenewal(
   ctx: RenewalActorCtx,
   patch: UpdateRenewalInput,
 ): Promise<void> {
-  assertProOrAdmin(ctx.role);
+  assertPro(ctx.role);
   updateRenewalSchema.parse(patch);
 
   const admin = createSupabaseServiceRoleClient();
@@ -286,7 +286,7 @@ export async function updateRenewal(
 }
 
 export async function markRenewalCompleted(id: string, ctx: RenewalActorCtx): Promise<void> {
-  assertProOrAdmin(ctx.role);
+  assertPro(ctx.role);
   const admin = createSupabaseServiceRoleClient();
 
   const { data: existing, error: readErr } = await admin
@@ -315,7 +315,7 @@ export async function markRenewalCompleted(id: string, ctx: RenewalActorCtx): Pr
 }
 
 export async function cancelRenewal(id: string, ctx: RenewalActorCtx): Promise<void> {
-  assertProOrAdmin(ctx.role);
+  assertPro(ctx.role);
   const admin = createSupabaseServiceRoleClient();
 
   const { data: existing, error: readErr } = await admin

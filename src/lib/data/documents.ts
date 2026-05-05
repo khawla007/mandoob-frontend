@@ -39,7 +39,7 @@ export type UploadDocumentInput = {
   };
   actor: {
     id: string;
-    role: 'pro' | 'admin' | 'customer';
+    role: 'pro' | 'customer';
     ip: string;
     userAgent: string | null;
   };
@@ -379,7 +379,7 @@ export async function getDocumentSignedUrl(
 export type SetDocumentReviewCtx = {
   tenantId: string;
   actorId: string;
-  role: 'pro' | 'admin';
+  role: 'pro';
   ip: string;
   userAgent: string | null;
 };
@@ -389,8 +389,8 @@ export async function setDocumentReview(
   ctx: SetDocumentReviewCtx,
   input: DocumentReviewInput,
 ): Promise<void> {
-  if (ctx.role !== 'pro' && ctx.role !== 'admin') {
-    throw new ApiError('FORBIDDEN', 'only pro or admin can review documents', 403);
+  if (ctx.role !== 'pro') {
+    throw new ApiError('FORBIDDEN', 'only pro can review documents', 403);
   }
   documentReviewSchema.parse(input);
 
@@ -475,7 +475,7 @@ export async function setDocumentReview(
 export type CreateDocumentRequestCtx = {
   tenantId: string;
   actorId: string;
-  role: 'pro' | 'admin';
+  role: 'pro';
   ip: string;
   userAgent: string | null;
 };
@@ -484,8 +484,8 @@ export async function createDocumentRequest(
   ctx: CreateDocumentRequestCtx,
   input: CreateDocumentRequestInput,
 ): Promise<{ id: string }> {
-  if (ctx.role !== 'pro' && ctx.role !== 'admin') {
-    throw new ApiError('FORBIDDEN', 'only pro or admin can request documents', 403);
+  if (ctx.role !== 'pro') {
+    throw new ApiError('FORBIDDEN', 'only pro can request documents', 403);
   }
   createDocumentRequestSchema.parse(input);
 
