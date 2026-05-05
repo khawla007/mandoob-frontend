@@ -1,19 +1,71 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
-import { getActiveDocRequests } from '@/lib/mocks/customer-portal';
+import { readSelfCustomer } from '@/lib/data/account-self';
+import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
 import { DocumentRequestRow } from '@/components/customer/DocumentRequestRow';
 
 export const dynamic = 'force-dynamic';
 
+// TODO Step 18: send customer email/in-app notification when a PRO inserts a
+// document_requests row (template lives in the comms engine, not here).
 export default async function DocumentsPage({ params }: { params: Promise<{ tenant: string }> }) {
+  await requireRole('customer', 'super_admin');
   const { tenant: slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
-  const docs = await getActiveDocRequests();
-  const awaitingYou = docs.filter((d) => d.status === 'requested');
-  const submitted = docs.filter((d) => d.status !== 'requested');
+  const customer = await readSelfCustomer();
+  const linkedClientId = customer.linkedClientId;
+
+  if (!linkedClientId) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Documents</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Upload requested documents and track items already submitted.
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Account not linked</CardTitle>
+            <CardDescription>
+              Your account is not linked to a client file yet. Ask your PRO firm to link you, then{' '}
+              <Link
+                href={`/t/${tenant.slug}/account`}
+                className="hover:text-foreground underline-offset-4 hover:underline"
+              >
+                review your account details
+              </Link>
+              .
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  const [docs, openRequests] = await Promise.all([
+    listDocumentsForClient(tenant.id, linkedClientId),
+    listOpenRequestsForClient(tenant.id, linkedClientId),
+  ]);
+
+  // Map the latest rejection note onto each open request so the row can show
+  // the reviewer's reason above the upload button.
+  const rejectionByRequest = new Map<string, { note: string | null; reviewedAt: string }>();
+  for (const d of docs) {
+    if (d.request && d.currentVersion?.reviewStatus === 'rejected') {
+      rejectionByRequest.set(d.request.id, {
+        note: d.currentVersion.reviewNote,
+        reviewedAt: d.currentVersion.reviewedAt ?? d.currentVersion.createdAt,
+      });
+    }
+  }
+
+  const submitted = docs.filter((d) => d.currentVersion);
 
   return (
     <div className="space-y-6">
@@ -30,14 +82,20 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
           <CardDescription>Items your PRO firm needs from you.</CardDescription>
         </CardHeader>
         <CardContent>
-          {awaitingYou.length === 0 ? (
+          {openRequests.length === 0 ? (
             <p className="text-muted-foreground py-6 text-center text-sm">
               All caught up. No documents pending upload.
             </p>
           ) : (
             <ul className="divide-border/60 divide-y">
-              {awaitingYou.map((d) => (
-                <DocumentRequestRow key={d.id} row={d} />
+              {openRequests.map((req) => (
+                <DocumentRequestRow
+                  key={req.id}
+                  variant="awaiting"
+                  slug={tenant.slug}
+                  request={req}
+                  rejection={rejectionByRequest.get(req.id) ?? null}
+                />
               ))}
             </ul>
           )}
@@ -56,8 +114,13 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
             </p>
           ) : (
             <ul className="divide-border/60 divide-y">
-              {submitted.map((d) => (
-                <DocumentRequestRow key={d.id} row={d} />
+              {submitted.map((doc) => (
+                <DocumentRequestRow
+                  key={doc.documentId}
+                  variant="submitted"
+                  slug={tenant.slug}
+                  doc={doc}
+                />
               ))}
             </ul>
           )}
