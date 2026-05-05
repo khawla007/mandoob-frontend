@@ -3,6 +3,7 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import type { Kpi, SignupPoint, RecentLoginRow } from '@/lib/data/admin-metrics';
 import type { Role } from '@/lib/data/users';
 import { countDocsAwaitingReview } from '@/lib/data/documents';
+import { countRenewalsDueWithin } from '@/lib/data/renewals';
 
 function fmt(n: number): string {
   return n.toLocaleString('en-US');
@@ -203,24 +204,31 @@ export async function listTenantMembers(tenantId: string): Promise<TenantMember[
     });
 }
 
-// PRO workspace dashboard KPIs. Active-client count + docs-awaiting-review are
-// live (Steps 9, 13); renewals + payments are placeholders until Steps 16, 23.
+// PRO workspace dashboard KPIs. Active clients, docs-awaiting-review, and
+// renewals-due-30d are live (Steps 9, 13, 15); payments is a placeholder
+// until Step 23.
 export async function getProDashboardMetrics(tenantId: string): Promise<Kpi[]> {
   const admin = createSupabaseServiceRoleClient();
-  const [{ count: activeClients }, awaitingReview] = await Promise.all([
+  const [{ count: activeClients }, awaitingReview, renewalsDue30d] = await Promise.all([
     admin
       .from('clients')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
       .eq('status', 'active'),
     countDocsAwaitingReview(tenantId),
+    countRenewalsDueWithin(tenantId, 30),
   ]);
 
   const active = activeClients ?? 0;
 
   return [
     { label: 'Active clients', value: fmt(active), delta: 0, deltaLabel: 'live' },
-    { label: 'Renewals due (30d)', value: '—', delta: 0, deltaLabel: 'wired in step 16' },
+    {
+      label: 'Renewals due (30d)',
+      value: fmt(renewalsDue30d),
+      delta: 0,
+      deltaLabel: 'license + manual',
+    },
     {
       label: 'Docs awaiting review',
       value: fmt(awaitingReview),
