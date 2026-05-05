@@ -8,6 +8,7 @@ import { ClientTabs } from '@/components/pro/ClientTabs';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getClientForTenant } from '@/lib/data/client-detail';
 import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
+import { listRenewalsForClient } from '@/lib/data/renewals';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,9 +24,10 @@ export default async function ClientDetailPage({
   const client = await getClientForTenant(tenant.id, clientId);
   if (!client) notFound();
 
-  const [documents, openRequests] = await Promise.all([
+  const [documents, openRequests, renewals] = await Promise.all([
     listDocumentsForClient(tenant.id, clientId),
     listOpenRequestsForClient(tenant.id, clientId),
+    listRenewalsForClient(tenant.id, clientId, { includeCancelled: true }),
   ]);
 
   return (
@@ -61,6 +63,7 @@ export default async function ClientDetailPage({
             slug={slug}
             documents={documents}
             openRequests={openRequests}
+            renewals={renewals}
           />
         </CardContent>
       </Card>

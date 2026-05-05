@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Renewal } from '@/lib/mocks/customer-portal';
+import type { Renewal } from '@/lib/types/renewals-ui';
 
 const TYPE_LABEL: Record<Renewal['type'], string> = {
   license: 'License',

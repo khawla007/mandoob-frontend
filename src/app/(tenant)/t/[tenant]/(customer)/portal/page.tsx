@@ -4,12 +4,13 @@ import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getProfileCard } from '@/lib/data/profile';
 import { readSelfCustomer } from '@/lib/data/account-self';
 import { listOpenRequestsForClient } from '@/lib/data/documents';
+import { listRenewalsForClient } from '@/lib/data/renewals';
 import {
   getPaymentHistory,
   getRecentComms,
   getRegistrationProgress,
-  getUpcomingRenewals,
 } from '@/lib/mocks/customer-portal';
+import type { Renewal } from '@/lib/types/renewals-ui';
 import { RegistrationProgressCard } from '@/components/customer/RegistrationProgressCard';
 import { ActiveDocRequestsCard } from '@/components/customer/ActiveDocRequestsCard';
 import { UpcomingRenewalsCard } from '@/components/customer/UpcomingRenewalsCard';
@@ -27,14 +28,25 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
   const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
   const linkedClientId = customer.linkedClientId;
 
-  const [profile, progress, docs, renewals, comms, payments] = await Promise.all([
+  const [profile, progress, docs, renewalRows, comms, payments] = await Promise.all([
     getProfileCard(session.id),
     getRegistrationProgress(),
     linkedClientId ? listOpenRequestsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
-    getUpcomingRenewals(),
+    linkedClientId ? listRenewalsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
     getRecentComms(),
     getPaymentHistory(),
   ]);
+
+  const renewals: Renewal[] = renewalRows
+    .filter((r) => r.status === 'upcoming' || r.status === 'due_soon' || r.status === 'overdue')
+    .slice(0, 5)
+    .map((r) => ({
+      id: r.id,
+      type: r.type,
+      label: r.label,
+      dueDate: r.dueDate,
+      daysOut: r.daysOut,
+    }));
 
   return (
     <div className="space-y-6">

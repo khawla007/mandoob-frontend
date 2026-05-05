@@ -34,49 +34,6 @@ export async function getRegistrationProgress(): Promise<RegistrationProgress> {
   };
 }
 
-export type Renewal = {
-  id: string;
-  type: 'license' | 'visa' | 'eid' | 'ejari';
-  label: string;
-  dueDate: string;
-  daysOut: number;
-};
-
-export async function getUpcomingRenewals(): Promise<Renewal[]> {
-  return [
-    {
-      id: 'r1',
-      type: 'license',
-      label: 'Trade license — DED-987654',
-      dueDate: '2026-09-12',
-      daysOut: 132,
-    },
-    {
-      id: 'r2',
-      type: 'visa',
-      label: 'Investor visa — Mr. Khan',
-      dueDate: '2026-07-20',
-      daysOut: 78,
-    },
-    { id: 'r3', type: 'eid', label: 'Emirates ID — Mr. Khan', dueDate: '2026-08-04', daysOut: 93 },
-    { id: 'r4', type: 'ejari', label: 'Office Ejari renewal', dueDate: '2026-11-30', daysOut: 211 },
-  ];
-}
-
-export type PastRenewal = {
-  id: string;
-  type: Renewal['type'];
-  label: string;
-  completedAt: string;
-};
-
-export async function getPastRenewals(): Promise<PastRenewal[]> {
-  return [
-    { id: 'pr1', type: 'license', label: 'Trade license renewal 2025', completedAt: '2025-09-12' },
-    { id: 'pr2', type: 'eid', label: 'Emirates ID renewal — Mr. Khan', completedAt: '2024-08-04' },
-  ];
-}
-
 export type Comm = {
   id: string;
   channel: 'email' | 'whatsapp' | 'sms' | 'in_app';

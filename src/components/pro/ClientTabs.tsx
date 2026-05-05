@@ -1,22 +1,26 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarClock, MessageSquare } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { ComingSoon } from '@/components/pro/ComingSoon';
 import { DocumentsTab } from '@/components/pro/DocumentsTab';
+import { ClientRenewalsPanel } from '@/components/pro/ClientRenewalsPanel';
 import type { ClientDetail } from '@/lib/data/client-detail';
 import type { DocumentListEntry, OpenRequestEntry } from '@/lib/data/documents';
+import type { RenewalRow } from '@/lib/data/renewals';
 
 export function ClientTabs({
   client,
   slug,
   documents,
   openRequests,
+  renewals,
 }: {
   client: ClientDetail;
   slug: string;
   documents: DocumentListEntry[];
   openRequests: OpenRequestEntry[];
+  renewals: RenewalRow[];
 }) {
   return (
     <Tabs defaultValue="overview">
@@ -53,10 +57,10 @@ export function ClientTabs({
       </TabsContent>
 
       <TabsContent value="renewals" className="pt-6">
-        <ComingSoon
-          title="Renewals"
-          subtitle="License, visa, EID, Ejari — wired in Step 11."
-          icon={<CalendarClock className="size-6" />}
+        <ClientRenewalsPanel
+          slug={slug}
+          client={{ id: client.id, company_name: client.company_name }}
+          renewals={renewals}
         />
       </TabsContent>
 
