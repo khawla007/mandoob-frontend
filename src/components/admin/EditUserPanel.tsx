@@ -10,19 +10,13 @@ import type { TenantSummary } from '@/lib/data/tenants';
 
 export type EditUserPanelProps = {
   user: EditableUser;
+  /** Caller is always platform-scoped (super_admin or admin) under /admin/*. */
   callerRole: 'super_admin' | 'admin';
-  callerTenantId: string | null;
   tenantName: string | null;
   tenants: TenantSummary[];
 };
 
-export function EditUserPanel({
-  user,
-  callerRole,
-  callerTenantId,
-  tenantName,
-  tenants,
-}: EditUserPanelProps) {
+export function EditUserPanel({ user, callerRole, tenantName, tenants }: EditUserPanelProps) {
   const { profile } = user;
   return (
     <div className="max-w-3xl space-y-6">
@@ -51,7 +45,6 @@ export function EditUserPanel({
             userId={profile.id}
             currentRole={profile.role}
             callerRole={callerRole}
-            callerTenantId={callerTenantId}
             tenants={tenants}
           />
           <ChangeStatusPanel userId={profile.id} currentStatus={profile.status} />

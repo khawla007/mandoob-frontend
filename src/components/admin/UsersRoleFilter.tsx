@@ -25,10 +25,10 @@ const LABEL: Record<Role, string> = {
 export function UsersRoleFilter({ viewerRole, initial }: { viewerRole: Role; initial: Role[] }) {
   const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
 
-  const selectable: Role[] =
-    viewerRole === 'pro'
-      ? (ROLES.filter((r) => r !== 'super_admin' && r !== 'admin') as Role[])
-      : [...ROLES];
+  // Both platform roles (super_admin, admin) see all 5 role buckets. The
+  // /admin/users page already gates entry; non-platform viewers never reach here.
+  void viewerRole;
+  const selectable: Role[] = [...ROLES];
 
   function toggle(role: Role) {
     const set = new Set(initial);

@@ -32,6 +32,9 @@ export async function adminCreateUser(
   const admin = createSupabaseServiceRoleClient();
 
   // ── Cross-checks (§4 step 4) ─────────────────────────────────────────
+  // Post role-rebase: admin is platform-scoped (no tenant); only super_admin
+  // can create another admin. Admin callers can create tenant-scoped users
+  // (pro/customer/employee) in any tenant — they are no longer tenant-bound.
   if (input.role === 'admin' && ctx.caller.role !== 'super_admin') {
     throw new ApiError('FORBIDDEN', 'Only super admins can create admins', 403);
   }
@@ -41,8 +44,28 @@ export async function adminCreateUser(
     if (!input.tenant_id || !isUuid(input.tenant_id)) {
       throw new ApiError('VALIDATION_FAILED', 'tenant_id required for non-admin role', 400);
     }
-    if (ctx.caller.role === 'admin' && ctx.caller.tenantId !== input.tenant_id) {
-      throw new ApiError('FORBIDDEN', 'Admin caller cannot pick a different tenant', 403);
+  }
+  // Pre-flight ONE_PRO_PER_TENANT check. The DB unique index
+  // `profiles_one_pro_per_tenant` (migration 0025) is the authoritative guard;
+  // this query produces a clean CONFLICT error before the invite/insert chain
+  // burns auth-side state.
+  if (input.role === 'pro') {
+    const { count, error: proCountErr } = await admin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', input.tenant_id)
+      .eq('role', 'pro')
+      .eq('status', 'active');
+    if (proCountErr) {
+      console.error('pro pre-check failed', proCountErr);
+      throw new ApiError('VALIDATION_FAILED', 'Could not verify tenant pro slot', 500);
+    }
+    if ((count ?? 0) > 0) {
+      throw new ApiError(
+        'TENANT_ALREADY_HAS_PRO',
+        'This tenant already has an active pro user',
+        409,
+      );
     }
   }
   if (input.role === 'employee') {

@@ -46,25 +46,19 @@ export async function adminChangeRole(
     remainingSuperAdmins = count ?? 0;
   }
 
+  // Tenant scope for non-admin newRole. admin caller must keep its own tenant.
+  const newTenantId = input.newRole === 'admin' ? null : input.tenant_id;
+
   assertRoleChangeAllowed({
     callerId: ctx.caller.id,
     callerRole: ctx.caller.role,
     targetId,
     targetRole: existing.role as Role,
     newRole: input.newRole,
+    newTenantId,
     confirmation: input.confirmation,
     remainingSuperAdminsExcludingTarget: remainingSuperAdmins,
   });
-
-  // Tenant scope for non-admin newRole. admin caller must keep its own tenant.
-  const newTenantId = input.newRole === 'admin' ? null : input.tenant_id;
-  if (
-    ctx.caller.role === 'admin' &&
-    input.newRole !== 'admin' &&
-    newTenantId !== ctx.caller.tenantId
-  ) {
-    throw new ApiError('FORBIDDEN', 'Admin caller cannot pick a different tenant', 403);
-  }
 
   // Validate cross-tenant client_id for employee newRole.
   if (input.newRole === 'employee') {

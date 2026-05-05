@@ -7,7 +7,9 @@ export const dynamic = 'force-dynamic';
 export default async function NewUserPage() {
   const session = await requireRole('super_admin', 'admin');
   const callerRole = session.role as 'super_admin' | 'admin';
-  const tenants = callerRole === 'super_admin' ? await listTenants() : [];
+  // Post role-rebase: both platform roles need the tenant list to assign
+  // pro/customer/employee accounts to any tenant.
+  const tenants = await listTenants();
 
   return (
     <div className="space-y-6">
@@ -17,11 +19,7 @@ export default async function NewUserPage() {
           Sends a Supabase invite email and creates the matching profile.
         </p>
       </div>
-      <CreateUserForm
-        callerRole={callerRole}
-        callerTenantId={session.tenantId}
-        tenants={tenants}
-      />
+      <CreateUserForm callerRole={callerRole} tenants={tenants} />
     </div>
   );
 }

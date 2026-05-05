@@ -25,7 +25,10 @@ export default async function SessionsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const session = await requireRole('super_admin');
+  // Post role-rebase: admin reads everything super_admin reads (sessions,
+  // audit logs, cross-tenant user data). Mutations stay super_admin-only —
+  // SessionsTable's revoke buttons gate on viewer identity per row.
+  const session = await requireRole('super_admin', 'admin');
   const sp = await searchParams;
   const filters = sessionsFiltersSchema.parse({
     tenant: sp.tenant || undefined,

@@ -58,6 +58,8 @@ export const createUserSchema = z.discriminatedUnion('role', [
   }),
   adminBase.extend({
     role: z.literal('admin'),
+    // Platform-scoped role: tenant_id MUST be null/absent (post role-rebase).
+    tenant_id: z.null().optional(),
     reason: z.string().max(500).nullable().optional(),
   }),
 ]);
@@ -105,6 +107,8 @@ export const editUserSchema = z.discriminatedUnion('role', [
   }),
   editAdminBase.extend({
     role: z.literal('admin'),
+    // Platform-scoped role: tenant_id MUST be null/absent (post role-rebase).
+    tenant_id: z.null().optional(),
   }),
 ]);
 
@@ -157,6 +161,8 @@ export const changeRoleSchema = z.discriminatedUnion('newRole', [
   }),
   z.object({
     newRole: z.literal('admin'),
+    // Platform-scoped role: tenant_id MUST be null/absent (post role-rebase).
+    tenant_id: z.null().optional(),
     confirmation: z.literal('DEMOTE').optional(),
     reason: z.string().max(500).nullable().optional(),
   }),

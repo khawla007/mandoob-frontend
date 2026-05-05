@@ -11,7 +11,6 @@ import { ThemeToggle } from '@/components/admin/ThemeToggle';
 
 const SEGMENT_TITLES: Record<string, string> = {
   dashboard: 'Overview',
-  team: 'Team',
   clients: 'Clients',
   renewals: 'Renewals',
   settings: 'Settings',
@@ -43,7 +42,7 @@ export function ProTopbar({ tenantName }: { tenantName: string }) {
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
             type="search"
-            placeholder="Search clients, team…"
+            placeholder="Search clients…"
             className="h-9 w-64 pl-8"
             aria-label="Search"
           />

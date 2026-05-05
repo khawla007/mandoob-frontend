@@ -2,6 +2,7 @@
 import { postJson } from '@/lib/http/post';
 import { useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { PasswordInput } from '@/components/auth/PasswordInput';
 
 export function ResetPasswordForm() {
   const params = useSearchParams();
@@ -41,9 +42,8 @@ export function ResetPasswordForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <label className="block space-y-1">
         <span className="text-sm font-medium">New password</span>
-        <input
+        <PasswordInput
           name="password"
-          type="password"
           required
           autoComplete="new-password"
           className="w-full rounded-lg border px-3 py-2 text-sm focus:border-black focus:outline-none"

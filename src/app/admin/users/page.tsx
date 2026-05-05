@@ -72,11 +72,14 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const status = parseStatus(sp.status);
   const sort = parseSort(sp.sort);
 
+  // Post role-rebase: both super_admin and admin are platform-scoped and see
+  // all tenants. The tenant filter is honored for either role.
+  const isPlatformAdmin = viewerRole === 'super_admin' || viewerRole === 'admin';
   const args: ListUsersArgs = {
     cursor: sp.cursor ?? null,
     roles,
     status,
-    tenantId: viewerRole === 'super_admin' ? (sp.tenant ?? null) : null,
+    tenantId: isPlatformAdmin ? (sp.tenant ?? null) : null,
     q: sp.q,
     sort,
     viewer: { role: viewerRole, tenantId: session.tenantId },
@@ -84,7 +87,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
 
   const [{ rows, nextCursor, hasMore }, tenants] = await Promise.all([
     listUsersWithProfiles(args),
-    viewerRole === 'super_admin' ? listTenants() : Promise.resolve<TenantSummary[]>([]),
+    isPlatformAdmin ? listTenants() : Promise.resolve<TenantSummary[]>([]),
   ]);
 
   const filtersActive = Boolean(
