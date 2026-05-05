@@ -82,7 +82,11 @@ function buildStoragePath(args: {
   // sniffed extension below for consistency with the magic-byte check.
   const baseNoExt = sanitised.replace(/\.[^/.]+$/, '');
   const safeBase = baseNoExt || 'file';
-  return `${args.tenantId}/${args.clientId}/${args.docType}/${today}_${shortHash}_${safeBase}.${args.ext}`;
+  // Epoch-ms keeps the storage path unique even when a customer re-uploads
+  // identical bytes (same sha256). Without this, the second PUT collides
+  // because the bucket is configured upsert: false.
+  const stamp = Date.now().toString(36);
+  return `${args.tenantId}/${args.clientId}/${args.docType}/${today}_${stamp}_${shortHash}_${safeBase}.${args.ext}`;
 }
 
 export async function uploadDocument(input: UploadDocumentInput): Promise<UploadDocumentResult> {
