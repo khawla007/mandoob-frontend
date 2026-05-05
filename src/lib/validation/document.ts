@@ -54,19 +54,16 @@ export type CreateDocumentRequestInput = z.infer<typeof createDocumentRequestSch
 
 // Step 14 — customer-side upload action body. Customer never picks the
 // client_id (it is resolved server-side from customer_profiles.linked_client_id),
-// so this schema only covers what comes off the dialog FormData.
+// so this schema only covers what comes off the dialog FormData. Empty-string
+// FormData values are coerced to undefined before validation so optional
+// fields stay truly optional.
+const emptyStringToUndefined = (value: unknown) =>
+  typeof value === 'string' && value.length === 0 ? undefined : value;
+
 export const customerUploadActionSchema = z.object({
   doc_type: docTypeSchema,
-  request_id: z
-    .string()
-    .uuid()
-    .optional()
-    .or(z.literal('').transform(() => undefined)),
-  label: z
-    .string()
-    .max(140)
-    .optional()
-    .or(z.literal('').transform(() => undefined)),
+  request_id: z.preprocess(emptyStringToUndefined, z.string().uuid().optional()),
+  label: z.preprocess(emptyStringToUndefined, z.string().max(140).optional()),
 });
 
 export type CustomerUploadActionInput = z.infer<typeof customerUploadActionSchema>;

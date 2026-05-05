@@ -1,21 +1,22 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { ActiveDocRequest, DocRequestStatus } from '@/lib/mocks/customer-portal';
+import type { OpenRequestEntry } from '@/lib/data/documents';
+import type { DocType } from '@/lib/validation/document';
 
-const STATUS_VARIANT: Record<DocRequestStatus, 'secondary' | 'default' | 'outline'> = {
-  requested: 'secondary',
-  uploaded: 'default',
-  under_review: 'outline',
+const DOC_TYPE_LABELS: Record<DocType, string> = {
+  passport: 'Passport',
+  visa: 'Visa',
+  emirates_id: 'Emirates ID',
+  trade_license: 'Trade license',
+  ejari: 'Ejari',
+  moa: 'MoA',
+  shareholder_id: 'Shareholder ID',
+  other: 'Other',
 };
 
-const STATUS_LABEL: Record<DocRequestStatus, string> = {
-  requested: 'Requested',
-  uploaded: 'Uploaded',
-  under_review: 'Under review',
-};
-
-function relativeDue(iso: string): string {
+function relativeDue(iso: string | null): string | null {
+  if (!iso) return null;
   const days = Math.round((new Date(iso).getTime() - Date.now()) / 864e5);
   if (days < 0) return `${Math.abs(days)} days overdue`;
   if (days === 0) return 'Due today';
@@ -23,7 +24,7 @@ function relativeDue(iso: string): string {
   return `Due in ${days} days`;
 }
 
-export function ActiveDocRequestsCard({ rows, slug }: { rows: ActiveDocRequest[]; slug: string }) {
+export function ActiveDocRequestsCard({ rows, slug }: { rows: OpenRequestEntry[]; slug: string }) {
   return (
     <Card>
       <CardHeader>
@@ -44,17 +45,21 @@ export function ActiveDocRequestsCard({ rows, slug }: { rows: ActiveDocRequest[]
           </p>
         ) : (
           <ul className="divide-border/60 divide-y">
-            {rows.map((r) => (
-              <li key={r.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
-                <div>
-                  <div className="text-sm font-medium">{r.title}</div>
-                  <div className="text-muted-foreground mt-0.5 text-xs">
-                    {relativeDue(r.dueDate)}
+            {rows.map((r) => {
+              const due = relativeDue(r.dueAt);
+              return (
+                <li key={r.id} className="flex items-start justify-between gap-4 py-3 first:pt-0">
+                  <div>
+                    <div className="text-sm font-medium">{r.label}</div>
+                    <div className="text-muted-foreground mt-0.5 text-xs">
+                      {DOC_TYPE_LABELS[r.docType]}
+                      {due && <> · {due}</>}
+                    </div>
                   </div>
-                </div>
-                <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>
-              </li>
-            ))}
+                  <Badge variant="secondary">Pending upload</Badge>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>
