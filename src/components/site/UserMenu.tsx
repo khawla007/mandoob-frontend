@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { LayoutDashboard, User } from 'lucide-react';
+import { Briefcase, LayoutDashboard, User } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -25,11 +25,13 @@ export function UserMenu({
   displayName,
   role,
   homeHref,
+  workspaceSlug,
 }: {
   email: string | null;
   displayName: string | null;
   role: Role | null;
   homeHref: string;
+  workspaceSlug?: string | null;
 }) {
   const isCustomer = role === 'customer';
   const href = isCustomer ? '/account' : homeHref;
@@ -61,6 +63,14 @@ export function UserMenu({
             {label}
           </Link>
         </DropdownMenuItem>
+        {workspaceSlug && (
+          <DropdownMenuItem asChild>
+            <Link href={`/t/${workspaceSlug}/portal`} className="cursor-pointer">
+              <Briefcase className="size-4" />
+              Workspace
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <LogoutMenuItem />
       </DropdownMenuContent>

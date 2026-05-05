@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import { requireRole, requireMfaEnrolled } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { isTenantActive, resolveTenantBySlug } from '@/lib/data/tenant';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
+import { TenantSuspendedBanner } from '@/components/tenant/TenantSuspendedBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export default async function ProLayout({
   if (!tenant) notFound();
 
   const initials = (session.email ?? 'P').slice(0, 1).toUpperCase();
+  const suspended = !isTenantActive(tenant.status);
 
   return (
     <DashboardLayout
@@ -32,6 +34,7 @@ export default async function ProLayout({
       brandInitial={tenant.name.slice(0, 1).toUpperCase()}
       user={{ email: session.email, role: 'pro', initials }}
     >
+      {suspended ? <TenantSuspendedBanner status={tenant.status} className="mb-6" /> : null}
       {children}
     </DashboardLayout>
   );
