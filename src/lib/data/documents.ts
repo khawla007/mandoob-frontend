@@ -160,7 +160,6 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
   }
 
   let documentId: string;
-  let isNewHead = false;
   if (existingHead?.id) {
     documentId = existingHead.id as string;
   } else {
@@ -179,7 +178,6 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
       throw new ApiError('INTERNAL', headInsertErr?.message ?? 'document insert failed', 500);
     }
     documentId = createdHead.id as string;
-    isNewHead = true;
   }
 
   const { data: createdVersion, error: versionInsertErr } = await admin
@@ -201,14 +199,15 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
   }
   const versionId = createdVersion.id as string;
 
-  if (isNewHead) {
-    const { error: linkErr } = await admin
-      .from('documents')
-      .update({ current_version_id: versionId, updated_at: new Date().toISOString() })
-      .eq('id', documentId);
-    if (linkErr) {
-      throw new ApiError('INTERNAL', linkErr.message, 500);
-    }
+  // Point the head at the just-uploaded version so list views always show the
+  // latest. Re-uploads after a rejection would otherwise keep the head pinned
+  // to the rejected version, breaking the "Pending review" badge.
+  const { error: linkErr } = await admin
+    .from('documents')
+    .update({ current_version_id: versionId, updated_at: new Date().toISOString() })
+    .eq('id', documentId);
+  if (linkErr) {
+    throw new ApiError('INTERNAL', linkErr.message, 500);
   }
 
   await logDocumentAudit(input.tenantId, input.actor.id, {
