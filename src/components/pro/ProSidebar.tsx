@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Briefcase, CalendarClock, LayoutDashboard, Settings, Users } from 'lucide-react';
+import { Briefcase, CalendarClock, LayoutDashboard, Settings } from 'lucide-react';
 
 import {
   Sidebar,
@@ -25,7 +25,6 @@ function buildNav(slug: string) {
     { title: 'Overview', href: `/t/${slug}/dashboard`, icon: LayoutDashboard },
   ];
   const workspace: Item[] = [
-    { title: 'Team', href: `/t/${slug}/team`, icon: Users },
     { title: 'Clients', href: `/t/${slug}/clients`, icon: Briefcase },
     { title: 'Renewals', href: `/t/${slug}/renewals`, icon: CalendarClock },
     { title: 'Settings', href: `/t/${slug}/settings`, icon: Settings },

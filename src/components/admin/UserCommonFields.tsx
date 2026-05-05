@@ -34,13 +34,21 @@ const ALL_ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
 
 export type UserCommonFieldsProps = {
   mode: 'create' | 'edit';
+  /**
+   * Role of the signed-in caller. Both values are platform-scoped post role-rebase;
+   * this is used only to gate the `admin` role option (only super_admin can create
+   * other platform admins).
+   */
   callerRole: 'super_admin' | 'admin';
   tenants: TenantSummary[];
   /** Required in edit mode — rendered as disabled input. */
   email?: string | null;
-  /** Required in edit mode for non-admin profiles — rendered as disabled name. */
+  /** Required in edit mode for tenant-scoped profiles — rendered as disabled name. */
   tenantName?: string | null;
 };
+
+// Roles that live inside a tenant. Selecting any of these requires picking a tenant.
+const TENANT_SCOPED_ROLES: ReadonlyArray<CreateUserRole> = ['pro', 'customer', 'employee'];
 
 export function UserCommonFields({
   mode,
@@ -52,7 +60,11 @@ export function UserCommonFields({
   const form = useFormContext<FormShape>();
   const role = form.watch('role') as CreateUserRole | undefined;
   const isEdit = mode === 'edit';
-  const showTenantPicker = !isEdit && callerRole === 'super_admin' && role && role !== 'admin';
+  const isTenantScoped = role !== undefined && TENANT_SCOPED_ROLES.includes(role);
+  // Tenant picker visibility is driven purely by the selected role: tenant-scoped
+  // roles need a tenant; platform roles (admin, super_admin) do not.
+  const showTenantPicker = !isEdit && isTenantScoped;
+  // Only super_admin may create another platform admin.
   const options =
     callerRole === 'super_admin'
       ? ALL_ROLE_OPTIONS
@@ -141,7 +153,7 @@ export function UserCommonFields({
           </FormItem>
         )}
       />
-      {isEdit && role && role !== 'admin' ? (
+      {isEdit && isTenantScoped ? (
         <FormItem>
           <FormLabel>Tenant</FormLabel>
           <FormControl>

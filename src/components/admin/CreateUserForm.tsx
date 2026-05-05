@@ -23,8 +23,11 @@ import { UserEmployeeFields } from './UserEmployeeFields';
 import { UserAdminFields } from './UserAdminFields';
 
 export type CreateUserFormProps = {
+  /**
+   * Caller is always a platform user (super_admin or admin) since this lives under
+   * /admin/*. Used only to gate which roles can be selected.
+   */
   callerRole: 'super_admin' | 'admin';
-  callerTenantId: string | null;
   tenants: TenantSummary[];
 };
 
@@ -35,7 +38,7 @@ const ROLE_TO_SECTION: Record<CreateUserRole, () => React.ReactElement> = {
   admin: () => <UserAdminFields />,
 };
 
-export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUserFormProps) {
+export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
   const router = useRouter();
   const [topError, setTopError] = useState<string | null>(null);
 
@@ -45,7 +48,7 @@ export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUs
       full_name: '',
       email: '',
       phone: '',
-      tenant_id: callerRole === 'admin' ? (callerTenantId ?? '') : '',
+      tenant_id: '',
     } as CreateUserInput,
     mode: 'onBlur',
   });
@@ -53,7 +56,7 @@ export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUs
   const role = form.watch('role') as CreateUserRole | undefined;
 
   // Field-bleed guard: when role flips, reset role-specific fields while
-  // preserving common ones.
+  // preserving common ones. Tenant ID only carries forward for tenant-scoped roles.
   const lastRoleRef = useRef<CreateUserRole | null>(null);
   useEffect(() => {
     if (!role) return;
@@ -63,10 +66,10 @@ export function CreateUserForm({ callerRole, callerTenantId, tenants }: CreateUs
       full_name: form.getValues('full_name'),
       email: form.getValues('email'),
       phone: form.getValues('phone'),
-      tenant_id: callerRole === 'admin' ? (callerTenantId ?? '') : form.getValues('tenant_id'),
+      tenant_id: form.getValues('tenant_id'),
     };
     form.reset({ ...common, role } as CreateUserInput);
-  }, [role, form, callerRole, callerTenantId]);
+  }, [role, form]);
 
   async function onSubmit(values: CreateUserOutput) {
     setTopError(null);

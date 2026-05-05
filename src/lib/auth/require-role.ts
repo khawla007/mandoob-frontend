@@ -30,7 +30,10 @@ export async function requireTenantMatch(
   session: SessionProfile,
   paramSlug: string,
 ): Promise<void> {
-  if (session.role === 'super_admin') return; // full cross-tenant access (PRD §2)
+  // Platform-scoped roles (super_admin, admin) bypass tenant matching —
+  // both have NULL tenant_id and full cross-tenant read access (PRD §2,
+  // role-semantics rebase).
+  if (session.role === 'super_admin' || session.role === 'admin') return;
   if (!session.tenantId) redirect('/login');
 
   // Cheap slug→id lookup would need DB here. Instead, store resolution in

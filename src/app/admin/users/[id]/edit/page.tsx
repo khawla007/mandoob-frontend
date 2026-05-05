@@ -24,7 +24,9 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
     notFound();
   }
 
-  const tenants = callerRole === 'super_admin' ? await listTenants() : [];
+  // Post role-rebase: both platform roles need the tenant list to display
+  // and edit non-admin user assignments.
+  const tenants = await listTenants();
   const tenantName = user.profile.tenantId
     ? (tenants.find((t) => t.id === user.profile.tenantId)?.name ?? null)
     : null;
@@ -40,7 +42,6 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
       <EditUserPanel
         user={user}
         callerRole={callerRole}
-        callerTenantId={session.tenantId}
         tenantName={tenantName}
         tenants={tenants}
       />

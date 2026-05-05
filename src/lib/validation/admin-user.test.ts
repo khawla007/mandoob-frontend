@@ -84,6 +84,25 @@ describe('createUserSchema — rejects', () => {
     assert.equal(r.success, true);
   });
 
+  it('rejects admin with a non-null tenant_id (post role-rebase coupling)', () => {
+    const r = createUserSchema.safeParse({
+      ...baseCommon,
+      role: 'admin',
+    });
+    assert.equal(r.success, false);
+  });
+
+  it('accepts admin with explicit tenant_id=null', () => {
+    const r = createUserSchema.safeParse({
+      full_name: 'A',
+      email: 'a@example.com',
+      phone: '+971501234567',
+      role: 'admin',
+      tenant_id: null,
+    });
+    assert.equal(r.success, true);
+  });
+
   it('rejects pro with >8 service_areas', () => {
     const r = createUserSchema.safeParse({
       ...baseCommon,

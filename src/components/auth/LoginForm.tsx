@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { postJson } from '@/lib/http/post';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
@@ -82,7 +83,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="current-password" {...field} />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
