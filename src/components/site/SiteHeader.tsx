@@ -1,6 +1,7 @@
 import 'server-only';
 import Link from 'next/link';
 import { getSessionProfile } from '@/lib/auth/require-user';
+import { resolveRoleHome } from '@/lib/auth/role-home';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { UserMenu } from './UserMenu';
 
@@ -19,6 +20,9 @@ async function getDisplayName(userId: string): Promise<string | null> {
 export async function SiteHeader() {
   const session = await getSessionProfile();
   const displayName = session ? await getDisplayName(session.id) : null;
+  const homeHref = session
+    ? await resolveRoleHome({ role: session.role, tenantId: session.tenantId })
+    : '/login';
 
   return (
     <header className="flex items-center justify-between border-b px-6 py-4">
@@ -30,7 +34,12 @@ export async function SiteHeader() {
           Pricing
         </Link>
         {session ? (
-          <UserMenu email={session.email} displayName={displayName} />
+          <UserMenu
+            email={session.email}
+            displayName={displayName}
+            role={session.role}
+            homeHref={homeHref}
+          />
         ) : (
           <>
             <Link href="/login" className="hover:text-foreground text-muted-foreground">

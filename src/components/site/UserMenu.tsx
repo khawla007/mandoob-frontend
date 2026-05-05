@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { User } from 'lucide-react';
+import { LayoutDashboard, User } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LogoutMenuItem } from '@/components/shell/LogoutButton';
+import type { Role } from '@/lib/auth/roles';
 
 function initialOf(displayName: string | null, email: string | null): string {
   const source = displayName?.trim() || email?.trim() || '';
@@ -22,10 +23,18 @@ function initialOf(displayName: string | null, email: string | null): string {
 export function UserMenu({
   email,
   displayName,
+  role,
+  homeHref,
 }: {
   email: string | null;
   displayName: string | null;
+  role: Role | null;
+  homeHref: string;
 }) {
+  const isCustomer = role === 'customer';
+  const href = isCustomer ? '/account' : homeHref;
+  const label = isCustomer ? 'My account' : 'Dashboard';
+  const Icon = isCustomer ? User : LayoutDashboard;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -47,9 +56,9 @@ export function UserMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/account" className="cursor-pointer">
-            <User className="size-4" />
-            My account
+          <Link href={href} className="cursor-pointer">
+            <Icon className="size-4" />
+            {label}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

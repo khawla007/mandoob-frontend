@@ -12,6 +12,13 @@ export type ReadSelfProfile = {
   tenantId: string | null;
   createdAt: string | null;
   mfaEnrolledAt: string | null;
+  username: string | null;
+  title: string | null;
+  bio: string | null;
+  locale: string;
+  timezone: string;
+  dateFormat: string;
+  avatarUrl: string | null;
 };
 
 export type ReadSelfPro = {
@@ -45,7 +52,9 @@ export async function readSelfProfile(): Promise<ReadSelfProfile> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, phone, role, tenant_id, created_at, mfa_enrolled_at')
+    .select(
+      'id, full_name, phone, role, tenant_id, created_at, mfa_enrolled_at, username, title, bio, locale, timezone, date_format, avatar_url',
+    )
     .eq('id', userRes.user.id)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
@@ -60,6 +69,13 @@ export async function readSelfProfile(): Promise<ReadSelfProfile> {
     tenantId: (data.tenant_id as string | null) ?? null,
     createdAt: (data.created_at as string | null) ?? null,
     mfaEnrolledAt: (data.mfa_enrolled_at as string | null) ?? null,
+    username: (data.username as string | null) ?? null,
+    title: (data.title as string | null) ?? null,
+    bio: (data.bio as string | null) ?? null,
+    locale: ((data.locale as string | null) ?? 'en') as string,
+    timezone: ((data.timezone as string | null) ?? 'Asia/Dubai') as string,
+    dateFormat: ((data.date_format as string | null) ?? 'YYYY-MM-DD') as string,
+    avatarUrl: (data.avatar_url as string | null) ?? null,
   };
 }
 
@@ -126,21 +142,70 @@ export async function readSelfEmployee(): Promise<ReadSelfEmployee> {
 export type ProfileDiffInput = {
   display_name: string;
   phone?: string | null;
+  username?: string | null;
+  title?: string | null;
+  avatar_url?: string | null;
+  locale?: string;
+  timezone?: string;
+  date_format?: string;
+  bio?: string | null;
+};
+
+type ProfileExistingRow = {
+  full_name: string | null;
+  phone: string | null;
+  username: string | null;
+  title: string | null;
+  avatar_url: string | null;
+  locale: string | null;
+  timezone: string | null;
+  date_format: string | null;
+  bio: string | null;
 };
 
 export function diffProfile(
-  existing: { full_name: string | null; phone: string | null },
+  existing: { full_name: string | null; phone: string | null } | ProfileExistingRow,
   next: ProfileDiffInput,
 ): { update: Record<string, unknown>; changedKeys: string[] } {
   const changedKeys: string[] = [];
   const update: Record<string, unknown> = {};
-  if (next.display_name !== existing.full_name) {
+  const e = existing as ProfileExistingRow;
+
+  if (next.display_name !== e.full_name) {
     update.full_name = next.display_name;
     changedKeys.push('full_name');
   }
-  if (next.phone !== undefined && next.phone !== existing.phone) {
+  if (next.phone !== undefined && next.phone !== e.phone) {
     update.phone = next.phone ?? null;
     changedKeys.push('phone');
+  }
+  if (next.username !== undefined && (next.username ?? null) !== (e.username ?? null)) {
+    update.username = next.username ?? null;
+    changedKeys.push('username');
+  }
+  if (next.title !== undefined && (next.title ?? null) !== (e.title ?? null)) {
+    update.title = next.title ?? null;
+    changedKeys.push('title');
+  }
+  if (next.avatar_url !== undefined && (next.avatar_url ?? null) !== (e.avatar_url ?? null)) {
+    update.avatar_url = next.avatar_url ?? null;
+    changedKeys.push('avatar_url');
+  }
+  if (next.locale !== undefined && next.locale !== e.locale) {
+    update.locale = next.locale;
+    changedKeys.push('locale');
+  }
+  if (next.timezone !== undefined && next.timezone !== e.timezone) {
+    update.timezone = next.timezone;
+    changedKeys.push('timezone');
+  }
+  if (next.date_format !== undefined && next.date_format !== e.date_format) {
+    update.date_format = next.date_format;
+    changedKeys.push('date_format');
+  }
+  if (next.bio !== undefined && (next.bio ?? null) !== (e.bio ?? null)) {
+    update.bio = next.bio ?? null;
+    changedKeys.push('bio');
   }
   return { update, changedKeys };
 }
@@ -200,7 +265,7 @@ export async function updateSelfProfile(input: ProfileDiffInput): Promise<Update
   if (!userRes.user) throw new ApiError('UNAUTHENTICATED', 'Not signed in', 401);
   const { data: existing, error: readErr } = await supabase
     .from('profiles')
-    .select('full_name, phone')
+    .select('full_name, phone, username, title, avatar_url, locale, timezone, date_format, bio')
     .eq('id', userRes.user.id)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
@@ -210,6 +275,13 @@ export async function updateSelfProfile(input: ProfileDiffInput): Promise<Update
     {
       full_name: (existing.full_name as string | null) ?? null,
       phone: (existing.phone as string | null) ?? null,
+      username: (existing.username as string | null) ?? null,
+      title: (existing.title as string | null) ?? null,
+      avatar_url: (existing.avatar_url as string | null) ?? null,
+      locale: (existing.locale as string | null) ?? null,
+      timezone: (existing.timezone as string | null) ?? null,
+      date_format: (existing.date_format as string | null) ?? null,
+      bio: (existing.bio as string | null) ?? null,
     },
     input,
   );

@@ -5,7 +5,7 @@ import { headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/auth/require-user';
 import {
-  ProfileBaseSchema,
+  ProfileGeneralSchema,
   ProfilePhoneSchema,
   PasswordChangeSchema,
   MfaEnrollFinalizeSchema,
@@ -42,19 +42,28 @@ export async function updateProfileAction(
 ): Promise<ActionResult<{ changedKeys: string[] }>> {
   try {
     const session = await requireUser();
-    const usePhone = session.role === 'customer' || session.role === 'employee';
-    let display_name: string;
-    let phone: string | undefined;
-    if (usePhone) {
-      const parsed = ProfilePhoneSchema.parse(formInput);
-      display_name = parsed.display_name;
-      phone = parsed.phone;
+    const useGeneral =
+      session.role === 'super_admin' || session.role === 'admin' || session.role === 'pro';
+    let updateInput: Parameters<typeof updateSelfProfile>[0];
+    if (useGeneral) {
+      const parsed = ProfileGeneralSchema.parse(formInput);
+      const blank = (v: string | undefined) => (v && v.length > 0 ? v : null);
+      updateInput = {
+        display_name: parsed.display_name,
+        phone: blank(parsed.phone),
+        username: blank(parsed.username),
+        title: blank(parsed.title),
+        avatar_url: blank(parsed.avatar_url),
+        locale: parsed.locale,
+        timezone: parsed.timezone,
+        date_format: parsed.date_format,
+        bio: blank(parsed.bio),
+      };
     } else {
-      const parsed = ProfileBaseSchema.parse(formInput);
-      display_name = parsed.display_name;
-      phone = undefined;
+      const parsed = ProfilePhoneSchema.parse(formInput);
+      updateInput = { display_name: parsed.display_name, phone: parsed.phone };
     }
-    const result = await updateSelfProfile({ display_name, phone });
+    const result = await updateSelfProfile(updateInput);
     if (result.changedKeys.length > 0) {
       const ctx = await getActionContext();
       await recordAuthEvent({
