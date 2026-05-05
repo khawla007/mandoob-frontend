@@ -1,9 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { LogOut, User } from 'lucide-react';
+import { User } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -14,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { postJson } from '@/lib/http/post';
+import { LogoutMenuItem } from '@/components/shell/LogoutButton';
 
 function initialOf(displayName: string | null, email: string | null): string {
   const source = displayName?.trim() || email?.trim() || '';
@@ -28,20 +26,6 @@ export function UserMenu({
   email: string | null;
   displayName: string | null;
 }) {
-  const router = useRouter();
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  async function handleLogout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try {
-      await postJson('/api/v1/auth/logout', {});
-    } finally {
-      router.replace('/login');
-      router.refresh();
-    }
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -69,17 +53,7 @@ export function UserMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            void handleLogout();
-          }}
-          disabled={loggingOut}
-          className="cursor-pointer"
-        >
-          <LogOut className="size-4" />
-          {loggingOut ? 'Logging out…' : 'Log out'}
-        </DropdownMenuItem>
+        <LogoutMenuItem />
       </DropdownMenuContent>
     </DropdownMenu>
   );
