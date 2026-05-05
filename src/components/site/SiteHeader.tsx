@@ -2,6 +2,7 @@ import 'server-only';
 import Link from 'next/link';
 import { getSessionProfile } from '@/lib/auth/require-user';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { UserMenu } from './UserMenu';
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +17,19 @@ async function getDisplayName(userId: string): Promise<string | null> {
   return (data?.full_name as string | null) ?? null;
 }
 
+async function getCustomerWorkspaceSlug(tenantId: string | null): Promise<string | null> {
+  if (!tenantId) return null;
+  const admin = createSupabaseServiceRoleClient();
+  const { data } = await admin.from('tenants').select('slug').eq('id', tenantId).maybeSingle();
+  const slug = (data?.slug as string | null) ?? null;
+  return slug && slug !== 'pub' ? slug : null;
+}
+
 export async function SiteHeader() {
   const session = await getSessionProfile();
   const displayName = session ? await getDisplayName(session.id) : null;
+  const workspaceSlug =
+    session?.role === 'customer' ? await getCustomerWorkspaceSlug(session.tenantId) : null;
 
   return (
     <header className="flex items-center justify-between border-b px-6 py-4">
@@ -30,7 +41,7 @@ export async function SiteHeader() {
           Pricing
         </Link>
         {session ? (
-          <UserMenu email={session.email} displayName={displayName} />
+          <UserMenu email={session.email} displayName={displayName} workspaceSlug={workspaceSlug} />
         ) : (
           <>
             <Link href="/login" className="hover:text-foreground text-muted-foreground">
