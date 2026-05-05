@@ -52,6 +52,25 @@ export const createDocumentRequestSchema = z.object({
 
 export type CreateDocumentRequestInput = z.infer<typeof createDocumentRequestSchema>;
 
+// Step 14 — customer-side upload action body. Customer never picks the
+// client_id (it is resolved server-side from customer_profiles.linked_client_id),
+// so this schema only covers what comes off the dialog FormData.
+export const customerUploadActionSchema = z.object({
+  doc_type: docTypeSchema,
+  request_id: z
+    .string()
+    .uuid()
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  label: z
+    .string()
+    .max(140)
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+});
+
+export type CustomerUploadActionInput = z.infer<typeof customerUploadActionSchema>;
+
 const FILENAME_MAX_BASE = 100;
 
 // Sanitises a user-supplied filename for use in a Supabase Storage path.
