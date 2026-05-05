@@ -2,8 +2,9 @@ import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getProfileCard } from '@/lib/data/profile';
+import { readSelfCustomer } from '@/lib/data/account-self';
+import { listOpenRequestsForClient } from '@/lib/data/documents';
 import {
-  getActiveDocRequests,
   getPaymentHistory,
   getRecentComms,
   getRegistrationProgress,
@@ -23,10 +24,13 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
+  const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
+  const linkedClientId = customer.linkedClientId;
+
   const [profile, progress, docs, renewals, comms, payments] = await Promise.all([
     getProfileCard(session.id),
     getRegistrationProgress(),
-    getActiveDocRequests(),
+    linkedClientId ? listOpenRequestsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
     getUpcomingRenewals(),
     getRecentComms(),
     getPaymentHistory(),

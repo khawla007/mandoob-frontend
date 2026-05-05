@@ -1,8 +1,7 @@
-// Customer portal mock data. Replaced by real data layers in:
-//   - Step 11/12: documents
-//   - Step 13: renewals
-//   - Phase 2: payments, comms
-// Signatures kept async so swapping in DB-backed implementations is a 1:1 swap.
+// Customer portal mock data. Documents swapped to live data in Step 14.
+// Remaining mocks (registration progress, renewals, comms, payments) are
+// replaced in later steps. Signatures kept async so swapping in DB-backed
+// implementations is a 1:1 swap.
 
 export type RegistrationStageKey =
   | 'onboarding'
@@ -33,35 +32,6 @@ export async function getRegistrationProgress(): Promise<RegistrationProgress> {
       { key: 'active', label: 'Active', state: 'pending' },
     ],
   };
-}
-
-export type DocRequestStatus = 'requested' | 'uploaded' | 'under_review';
-export type ActiveDocRequest = {
-  id: string;
-  title: string;
-  dueDate: string; // ISO
-  status: DocRequestStatus;
-};
-
-export async function getActiveDocRequests(): Promise<ActiveDocRequest[]> {
-  const today = new Date();
-  const inDays = (n: number) => new Date(today.getTime() + n * 864e5).toISOString();
-  return [
-    {
-      id: 'd1',
-      title: 'Passport copy (all shareholders)',
-      dueDate: inDays(2),
-      status: 'requested',
-    },
-    { id: 'd2', title: 'Emirates ID copy', dueDate: inDays(5), status: 'requested' },
-    { id: 'd3', title: 'Memorandum of Association draft', dueDate: inDays(7), status: 'uploaded' },
-    {
-      id: 'd4',
-      title: 'Office tenancy contract (Ejari)',
-      dueDate: inDays(12),
-      status: 'under_review',
-    },
-  ];
 }
 
 export type Renewal = {
