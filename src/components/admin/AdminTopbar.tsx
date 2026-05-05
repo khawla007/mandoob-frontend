@@ -1,16 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, LogOut, Search } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/admin/ThemeToggle';
-import { postJson } from '@/lib/http/post';
+import { LogoutButton } from '@/components/shell/LogoutButton';
 
 const TITLES: Record<string, string> = {
   admin: 'Overview',
@@ -22,20 +20,7 @@ const TITLES: Record<string, string> = {
 
 export function AdminTopbar() {
   const pathname = usePathname();
-  const router = useRouter();
   const segments = pathname.split('/').filter(Boolean);
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  async function handleLogout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try {
-      await postJson('/api/v1/auth/logout', {});
-    } finally {
-      router.replace('/login');
-      router.refresh();
-    }
-  }
 
   return (
     <header className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 items-center gap-3 border-b px-4 backdrop-blur">
@@ -74,17 +59,7 @@ export function AdminTopbar() {
           />
         </div>
         <ThemeToggle />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleLogout}
-          disabled={loggingOut}
-          aria-label="Log out"
-          className="gap-2"
-        >
-          <LogOut className="size-4" />
-          <span className="hidden sm:inline">{loggingOut ? 'Logging out…' : 'Logout'}</span>
-        </Button>
+        <LogoutButton />
       </div>
     </header>
   );
