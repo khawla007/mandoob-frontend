@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation';
 import { requireRole, requireMfaEnrolled } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { ProSidebar } from '@/components/pro/ProSidebar';
-import { ProTopbar } from '@/components/pro/ProTopbar';
+import { DashboardLayout } from '@/components/shell/DashboardLayout';
+import { buildProNav } from '@/lib/shell/nav-pro';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,13 +21,18 @@ export default async function ProLayout({
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
+  const initials = (session.email ?? 'P').slice(0, 1).toUpperCase();
+
   return (
-    <SidebarProvider>
-      <ProSidebar tenantSlug={tenant.slug} tenantName={tenant.name} email={session.email} />
-      <SidebarInset>
-        <ProTopbar tenantName={tenant.name} />
-        <main className="flex-1 p-6 md:p-8">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+    <DashboardLayout
+      nav={buildProNav(tenant.slug)}
+      brand={tenant.name}
+      brandSubtitle="PRO workspace"
+      brandHref={`/t/${tenant.slug}/dashboard`}
+      brandInitial={tenant.name.slice(0, 1).toUpperCase()}
+      user={{ email: session.email, role: 'pro', initials }}
+    >
+      {children}
+    </DashboardLayout>
   );
 }
