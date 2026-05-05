@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { requireRole, requireMfaEnrolled } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
-import { buildProNav } from '@/lib/shell/nav-pro';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +24,8 @@ export default async function ProLayout({
 
   return (
     <DashboardLayout
-      nav={buildProNav(tenant.slug)}
+      navKind="pro"
+      navSlug={tenant.slug}
       brand={tenant.name}
       brandSubtitle="PRO workspace"
       brandHref={`/t/${tenant.slug}/dashboard`}

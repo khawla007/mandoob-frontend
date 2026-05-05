@@ -1,6 +1,5 @@
 import { requireRole, requireAal2 } from '@/lib/auth/require-role';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
-import { adminNav } from '@/lib/shell/nav-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <DashboardLayout
-      nav={adminNav}
+      navKind="admin"
       brand="Mandoob"
       brandSubtitle={session.role === 'super_admin' ? 'Super Admin' : 'Admin'}
       brandHref="/admin"

@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
-import { buildEmployeeNav } from '@/lib/shell/nav-employee';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +22,8 @@ export default async function EmployeeLayout({
 
   return (
     <DashboardLayout
-      nav={buildEmployeeNav(tenant.slug)}
+      navKind="employee"
+      navSlug={tenant.slug}
       brand={tenant.name}
       brandSubtitle="Employee portal"
       brandHref={`/t/${tenant.slug}/employee/dashboard`}

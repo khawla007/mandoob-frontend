@@ -18,6 +18,9 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { ShellNavGroup } from '@/lib/shell/nav-config';
+import { adminNav } from '@/lib/shell/nav-admin';
+import { buildProNav } from '@/lib/shell/nav-pro';
+import { buildEmployeeNav } from '@/lib/shell/nav-employee';
 
 export type DashboardSidebarUser = {
   email: string | null;
@@ -25,22 +28,38 @@ export type DashboardSidebarUser = {
   initials: string;
 };
 
+export type DashboardNavKind = 'admin' | 'pro' | 'employee';
+
+function resolveNav(kind: DashboardNavKind, slug?: string): ShellNavGroup[] {
+  switch (kind) {
+    case 'admin':
+      return adminNav;
+    case 'pro':
+      return buildProNav(slug ?? '');
+    case 'employee':
+      return buildEmployeeNav(slug ?? '');
+  }
+}
+
 export function DashboardSidebar({
   brand,
   brandSubtitle,
   brandHref,
   brandInitial,
-  nav,
+  navKind,
+  navSlug,
   user,
 }: {
   brand: string;
   brandSubtitle?: string;
   brandHref: string;
   brandInitial: string;
-  nav: ShellNavGroup[];
+  navKind: DashboardNavKind;
+  navSlug?: string;
   user: DashboardSidebarUser;
 }) {
   const pathname = usePathname();
+  const nav = resolveNav(navKind, navSlug);
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>

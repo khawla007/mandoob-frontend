@@ -1,12 +1,16 @@
 import { ReactNode } from 'react';
 
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { DashboardSidebar, type DashboardSidebarUser } from './DashboardSidebar';
+import {
+  DashboardSidebar,
+  type DashboardSidebarUser,
+  type DashboardNavKind,
+} from './DashboardSidebar';
 import { DashboardTopbar } from './DashboardTopbar';
-import type { ShellNavGroup } from '@/lib/shell/nav-config';
 
 export type DashboardLayoutProps = {
-  nav: ShellNavGroup[];
+  navKind: DashboardNavKind;
+  navSlug?: string;
   brand: string;
   brandSubtitle?: string;
   brandHref: string;
@@ -18,7 +22,8 @@ export type DashboardLayoutProps = {
 };
 
 export function DashboardLayout({
-  nav,
+  navKind,
+  navSlug,
   brand,
   brandSubtitle,
   brandHref,
@@ -35,7 +40,8 @@ export function DashboardLayout({
         brandSubtitle={brandSubtitle}
         brandHref={brandHref}
         brandInitial={brandInitial}
-        nav={nav}
+        navKind={navKind}
+        navSlug={navSlug}
         user={user}
       />
       <SidebarInset>
