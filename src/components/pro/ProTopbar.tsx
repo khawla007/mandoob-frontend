@@ -8,6 +8,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/admin/ThemeToggle';
+import { LogoutButton } from '@/components/shell/LogoutButton';
 
 const SEGMENT_TITLES: Record<string, string> = {
   dashboard: 'Overview',
@@ -48,6 +49,7 @@ export function ProTopbar({ tenantName }: { tenantName: string }) {
           />
         </div>
         <ThemeToggle />
+        <LogoutButton />
       </div>
     </header>
   );
