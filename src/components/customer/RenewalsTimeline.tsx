@@ -1,4 +1,4 @@
-import type { PastRenewal, Renewal } from '@/lib/mocks/customer-portal';
+import type { PastRenewal, Renewal } from '@/lib/types/renewals-ui';
 
 const TYPE_LABEL: Record<Renewal['type'], string> = {
   license: 'License',
