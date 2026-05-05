@@ -1,9 +1,7 @@
 import { notFound } from 'next/navigation';
 import { requireRole, requireMfaEnrolled } from '@/lib/auth/require-role';
 import { isTenantActive, resolveTenantBySlug } from '@/lib/data/tenant';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { ProSidebar } from '@/components/pro/ProSidebar';
-import { ProTopbar } from '@/components/pro/ProTopbar';
+import { DashboardLayout } from '@/components/shell/DashboardLayout';
 import { TenantSuspendedBanner } from '@/components/tenant/TenantSuspendedBanner';
 
 export const dynamic = 'force-dynamic';
@@ -23,16 +21,21 @@ export default async function ProLayout({
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
+  const initials = (session.email ?? 'P').slice(0, 1).toUpperCase();
+  const suspended = !isTenantActive(tenant.status);
+
   return (
-    <SidebarProvider>
-      <ProSidebar tenantSlug={tenant.slug} tenantName={tenant.name} email={session.email} />
-      <SidebarInset>
-        <ProTopbar tenantName={tenant.name} />
-        {!isTenantActive(tenant.status) ? (
-          <TenantSuspendedBanner status={tenant.status} className="mx-6 mt-6 md:mx-8" />
-        ) : null}
-        <main className="flex-1 p-6 md:p-8">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+    <DashboardLayout
+      navKind="pro"
+      navSlug={tenant.slug}
+      brand={tenant.name}
+      brandSubtitle="PRO workspace"
+      brandHref={`/t/${tenant.slug}/dashboard`}
+      brandInitial={tenant.name.slice(0, 1).toUpperCase()}
+      user={{ email: session.email, role: 'pro', initials }}
+    >
+      {suspended ? <TenantSuspendedBanner status={tenant.status} className="mb-6" /> : null}
+      {children}
+    </DashboardLayout>
   );
 }

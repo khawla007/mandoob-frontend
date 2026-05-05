@@ -1,6 +1,7 @@
 import 'server-only';
 import Link from 'next/link';
 import { getSessionProfile } from '@/lib/auth/require-user';
+import { resolveRoleHome } from '@/lib/auth/role-home';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { UserMenu } from './UserMenu';
@@ -28,6 +29,9 @@ async function getCustomerWorkspaceSlug(tenantId: string | null): Promise<string
 export async function SiteHeader() {
   const session = await getSessionProfile();
   const displayName = session ? await getDisplayName(session.id) : null;
+  const homeHref = session
+    ? await resolveRoleHome({ role: session.role, tenantId: session.tenantId })
+    : '/login';
   const workspaceSlug =
     session?.role === 'customer' ? await getCustomerWorkspaceSlug(session.tenantId) : null;
 
@@ -41,7 +45,13 @@ export async function SiteHeader() {
           Pricing
         </Link>
         {session ? (
-          <UserMenu email={session.email} displayName={displayName} workspaceSlug={workspaceSlug} />
+          <UserMenu
+            email={session.email}
+            displayName={displayName}
+            role={session.role}
+            homeHref={homeHref}
+            workspaceSlug={workspaceSlug}
+          />
         ) : (
           <>
             <Link href="/login" className="hover:text-foreground text-muted-foreground">

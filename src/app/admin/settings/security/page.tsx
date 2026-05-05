@@ -3,7 +3,7 @@ import { MfaTab } from '@/components/account/MfaTab';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SecurityPage() {
+export default async function AdminSettingsSecurityPage() {
   return (
     <div className="space-y-10">
       <SecurityTab />

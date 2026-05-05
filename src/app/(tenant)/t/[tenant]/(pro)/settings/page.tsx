@@ -11,7 +11,11 @@ import { SettingsSmtpCard } from '@/components/pro/SettingsSmtpCard';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SettingsPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function WorkspaceSettingsPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
   const { tenant: slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
@@ -24,13 +28,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ tenan
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Workspace configuration for {tenant.name}.
-        </p>
-      </div>
-
       <SettingsBrandingCard
         slug={slug}
         initial={

@@ -1,9 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Briefcase, LogOut, User } from 'lucide-react';
+import { Briefcase, LayoutDashboard, User } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -14,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { postJson } from '@/lib/http/post';
+import { LogoutMenuItem } from '@/components/shell/LogoutButton';
+import type { Role } from '@/lib/auth/roles';
 
 function initialOf(displayName: string | null, email: string | null): string {
   const source = displayName?.trim() || email?.trim() || '';
@@ -24,26 +23,20 @@ function initialOf(displayName: string | null, email: string | null): string {
 export function UserMenu({
   email,
   displayName,
+  role,
+  homeHref,
   workspaceSlug,
 }: {
   email: string | null;
   displayName: string | null;
+  role: Role | null;
+  homeHref: string;
   workspaceSlug?: string | null;
 }) {
-  const router = useRouter();
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  async function handleLogout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try {
-      await postJson('/api/v1/auth/logout', {});
-    } finally {
-      router.replace('/login');
-      router.refresh();
-    }
-  }
-
+  const isCustomer = role === 'customer';
+  const href = isCustomer ? '/account' : homeHref;
+  const label = isCustomer ? 'My account' : 'Dashboard';
+  const Icon = isCustomer ? User : LayoutDashboard;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -65,9 +58,9 @@ export function UserMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/account" className="cursor-pointer">
-            <User className="size-4" />
-            My account
+          <Link href={href} className="cursor-pointer">
+            <Icon className="size-4" />
+            {label}
           </Link>
         </DropdownMenuItem>
         {workspaceSlug && (
@@ -79,17 +72,7 @@ export function UserMenu({
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            void handleLogout();
-          }}
-          disabled={loggingOut}
-          className="cursor-pointer"
-        >
-          <LogOut className="size-4" />
-          {loggingOut ? 'Logging out…' : 'Log out'}
-        </DropdownMenuItem>
+        <LogoutMenuItem />
       </DropdownMenuContent>
     </DropdownMenu>
   );
