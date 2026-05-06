@@ -1,7 +1,5 @@
 import { requireRole, requireAal2 } from '@/lib/auth/require-role';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { AdminTopbar } from '@/components/admin/AdminTopbar';
+import { DashboardLayout } from '@/components/shell/DashboardLayout';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,13 +7,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = await requireRole('super_admin', 'admin');
   await requireAal2(session).catch(() => {});
 
+  const initials = (session.email ?? 'A').slice(0, 1).toUpperCase();
+
   return (
-    <SidebarProvider>
-      <AdminSidebar email={session.email} />
-      <SidebarInset>
-        <AdminTopbar />
-        <main className="flex-1 p-6 md:p-8">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+    <DashboardLayout
+      navKind="admin"
+      brand="Mandoob"
+      brandSubtitle={session.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+      brandHref="/admin"
+      brandInitial="M"
+      user={{ email: session.email, role: session.role ?? 'admin', initials }}
+    >
+      {children}
+    </DashboardLayout>
   );
 }

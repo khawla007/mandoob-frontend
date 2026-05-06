@@ -51,7 +51,7 @@ export function UsersToolbar({
       </div>
       <UsersRoleFilter viewerRole={viewerRole} initial={initialRoles} />
       <UsersStatusFilter initial={initialStatus} />
-      {viewerRole === 'super_admin' && (
+      {(viewerRole === 'super_admin' || viewerRole === 'admin') && (
         <UsersTenantFilter tenants={tenants} initial={initialTenant} />
       )}
       {pending && <span className="text-muted-foreground text-xs">Loading…</span>}

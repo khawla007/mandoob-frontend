@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
 /**
- * Seed Supabase Auth with Mandoob demo users — 2 per PRD role × 2 tenants.
+ * Seed Supabase Auth with Mandoob demo users.
+ *
+ * Role semantics (post-0025_role_semantic_rebase):
+ *   super_admin — platform, NULL tenant. Provisions admins, pros, tenants.
+ *   admin       — platform sub-employee of super_admin, NULL tenant, read-all.
+ *   pro         — PRO firm owner. Exactly one per tenant. NOT NULL tenant.
+ *   customer    — tenant member. NOT NULL tenant.
+ *   employee    — employee of a customer. NOT NULL tenant.
  *
  * Tenants:
  *   - firm  (id 00000000-0000-0000-0000-000000000001, pre-existing)
@@ -8,7 +15,8 @@
  *
  * Users:
  *   super_admin: khawla@fanaticcoders.com, admin-ops@mandoob.local
- *   pro:         pro-admin@firm.mandoob.local, pro-admin@nova.mandoob.local
+ *   admin:       admin@mandoob.local            (platform admin — NULL tenant)
+ *   pro:         pro@firm.mandoob.local, pro@nova.mandoob.local
  *   customer:    customer@firm.mandoob.local, customer@nova.mandoob.local
  *   employee:    employee@firm.mandoob.local, employee@nova.mandoob.local
  *
@@ -38,7 +46,7 @@ const admin = createClient(url, key, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-type Role = 'super_admin' | 'pro' | 'customer' | 'employee';
+type Role = 'super_admin' | 'admin' | 'pro' | 'customer' | 'employee';
 type Seed = {
   email: string;
   role: Role;
@@ -60,18 +68,25 @@ const seeds: Seed[] = [
     tenantSlug: null,
     fullName: 'Ops Admin',
   },
-  // pros
+  // platform admin — NULL tenant, sub-employee of super_admin
   {
-    email: 'pro-admin@firm.mandoob.local',
+    email: 'admin@mandoob.local',
+    role: 'admin',
+    tenantSlug: null,
+    fullName: 'Platform Admin',
+  },
+  // pros — one per tenant (PRO firm owner)
+  {
+    email: 'pro@firm.mandoob.local',
     role: 'pro',
     tenantSlug: 'firm',
-    fullName: 'Firm PRO Admin',
+    fullName: 'Firm PRO Owner',
   },
   {
-    email: 'pro-admin@nova.mandoob.local',
+    email: 'pro@nova.mandoob.local',
     role: 'pro',
     tenantSlug: 'nova',
-    fullName: 'Nova PRO Admin',
+    fullName: 'Nova PRO Owner',
   },
   // customers
   {

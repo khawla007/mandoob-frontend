@@ -11,7 +11,7 @@ export default async function TenantRoot() {
     case 'customer':
       redirect('./portal');
     case 'employee':
-      redirect('./me');
+      redirect('./employee/dashboard');
     case 'super_admin':
       return null; // super_admin sees tenant shell via impersonation (M8-future)
     default:

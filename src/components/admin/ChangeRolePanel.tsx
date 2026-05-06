@@ -42,19 +42,18 @@ export function ChangeRolePanel({
   userId,
   currentRole,
   callerRole,
-  callerTenantId,
   tenants,
 }: {
   userId: string;
   currentRole: string;
+  /** Caller is always platform-scoped (super_admin or admin) under /admin/*. */
   callerRole: 'super_admin' | 'admin';
-  callerTenantId: string | null;
   tenants: TenantSummary[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [newRole, setNewRole] = useState<NewRole | ''>('');
-  const [tenantId, setTenantId] = useState<string>(callerTenantId ?? '');
+  const [tenantId, setTenantId] = useState<string>('');
   const [confirmation, setConfirmation] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -85,8 +84,8 @@ export function ChangeRolePanel({
   );
 
   const isSuperAdminTarget = currentRole === 'super_admin';
+  // Tenant required for tenant-scoped roles only; platform admin has no tenant.
   const needsTenant = newRole !== '' && newRole !== 'admin';
-  const tenantPickEnabled = callerRole === 'super_admin';
 
   function toggleArea(area: string) {
     setServiceAreas((s) => (s.includes(area) ? s.filter((x) => x !== area) : [...s, area]));
@@ -200,27 +199,18 @@ export function ChangeRolePanel({
           {needsTenant && (
             <div className="space-y-2">
               <Label>Tenant</Label>
-              {tenantPickEnabled ? (
-                <Select value={tenantId} onValueChange={setTenantId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose tenant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tenants.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  value={callerTenantId ?? ''}
-                  disabled
-                  readOnly
-                  aria-label="Tenant (locked to your tenant)"
-                />
-              )}
+              <Select value={tenantId} onValueChange={setTenantId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose tenant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

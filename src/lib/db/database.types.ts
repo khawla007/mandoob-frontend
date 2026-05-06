@@ -328,6 +328,77 @@ export type Database = {
           },
         ];
       };
+      outbound_emails: {
+        Row: {
+          attempts: number;
+          body_html: string;
+          body_text: string | null;
+          created_at: string;
+          from_address: string;
+          id: number;
+          last_error: string | null;
+          linked_entity_id: string | null;
+          linked_entity_type: string | null;
+          provider_id: string | null;
+          reply_to: string | null;
+          scheduled_for: string;
+          sent_at: string | null;
+          status: string;
+          subject: string;
+          template_id: string;
+          tenant_id: string | null;
+          to_address: string;
+        };
+        Insert: {
+          attempts?: number;
+          body_html: string;
+          body_text?: string | null;
+          created_at?: string;
+          from_address: string;
+          id?: number;
+          last_error?: string | null;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          provider_id?: string | null;
+          reply_to?: string | null;
+          scheduled_for?: string;
+          sent_at?: string | null;
+          status: string;
+          subject: string;
+          template_id: string;
+          tenant_id?: string | null;
+          to_address: string;
+        };
+        Update: {
+          attempts?: number;
+          body_html?: string;
+          body_text?: string | null;
+          created_at?: string;
+          from_address?: string;
+          id?: number;
+          last_error?: string | null;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          provider_id?: string | null;
+          reply_to?: string | null;
+          scheduled_for?: string;
+          sent_at?: string | null;
+          status?: string;
+          subject?: string;
+          template_id?: string;
+          tenant_id?: string | null;
+          to_address?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'outbound_emails_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       pro_profiles: {
         Row: {
           bio: string | null;

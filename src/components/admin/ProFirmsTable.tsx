@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,14 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
       <TableBody>
         {rows.map((r) => (
           <TableRow key={r.id}>
-            <TableCell className="font-medium">{r.name}</TableCell>
+            <TableCell className="font-medium">
+              <Link
+                href={`/admin/pro-firms/${r.id}`}
+                className="underline-offset-4 hover:underline"
+              >
+                {r.name}
+              </Link>
+            </TableCell>
             <TableCell className="text-muted-foreground font-mono text-xs">{r.slug}</TableCell>
             <TableCell>
               <Badge variant="outline">{r.plan}</Badge>

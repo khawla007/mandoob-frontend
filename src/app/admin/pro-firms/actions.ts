@@ -10,6 +10,7 @@ import { provisionTenant } from '@/lib/data/provision-tenant';
 import { provisionTenantSchema } from '@/lib/validation/tenant-onboarding';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
+import { enqueueEmail } from '@/lib/mail/send';
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -97,6 +98,11 @@ export async function approveTenantAction(tenantId: string): Promise<ActionResul
       userAgent: ctx.userAgent,
       details: {},
     }).catch((err) => console.error('recordAuthEvent failed', err));
+
+    await sendTenantApprovedEmail(tenantId, admin).catch((err) =>
+      console.error('sendTenantApprovedEmail failed', err),
+    );
+
     revalidatePath('/admin/pro-firms');
     return { ok: true, data: undefined };
   } catch (e) {
@@ -104,6 +110,47 @@ export async function approveTenantAction(tenantId: string): Promise<ActionResul
     console.error('approveTenantAction unexpected error', e);
     return { ok: false, error: 'Could not approve tenant', code: 'INTERNAL' };
   }
+}
+
+async function sendTenantApprovedEmail(
+  tenantId: string,
+  admin: ReturnType<typeof createSupabaseServiceRoleClient>,
+): Promise<void> {
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name')
+    .eq('id', tenantId)
+    .maybeSingle();
+  const { data: proAdmin } = await admin
+    .from('profiles')
+    .select('id, full_name')
+    .eq('tenant_id', tenantId)
+    .eq('role', 'pro')
+    .maybeSingle();
+  if (!proAdmin) return;
+  const { data: authUser } = await admin.auth.admin.getUserById(proAdmin.id as string);
+  const email = authUser.user?.email;
+  if (!email) return;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const { data: link } = await admin.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+    options: { redirectTo: `${appUrl}/account` },
+  });
+  const inviteUrl = link?.properties?.action_link ?? `${appUrl}/sign-in`;
+
+  await enqueueEmail({
+    tenantId,
+    templateId: 'tenant-approved',
+    toAddress: email,
+    input: {
+      adminName: (proAdmin.full_name as string | null) ?? 'there',
+      tenantName: (tenant?.name as string | null) ?? '',
+      inviteUrl,
+    },
+    linked: { entityType: 'tenant_approved', entityId: tenantId },
+  });
 }
 
 export async function rejectTenantAction(tenantId: string): Promise<ActionResult> {
@@ -122,6 +169,38 @@ export async function rejectTenantAction(tenantId: string): Promise<ActionResult
       source: 'admin',
       details: {},
     });
+
+    // Capture admin email + name before we delete the auth user, then
+    // enqueue the rejection email. The outbound_emails row survives the
+    // cascade (tenant_id sets to null) so the queue can still drain.
+    const { data: tenantRow } = await admin
+      .from('tenants')
+      .select('name')
+      .eq('id', tenantId)
+      .maybeSingle();
+    const { data: proAdmin } = await admin
+      .from('profiles')
+      .select('id, full_name')
+      .eq('tenant_id', tenantId)
+      .eq('role', 'pro')
+      .maybeSingle();
+    if (proAdmin) {
+      const { data: authUser } = await admin.auth.admin.getUserById(proAdmin.id as string);
+      const email = authUser.user?.email;
+      if (email) {
+        await enqueueEmail({
+          tenantId: null,
+          templateId: 'tenant-rejected',
+          toAddress: email,
+          input: {
+            adminName: (proAdmin.full_name as string | null) ?? 'there',
+            tenantName: (tenantRow?.name as string | null) ?? '',
+            reason: null,
+          },
+          linked: { entityType: 'tenant_rejected', entityId: tenantId },
+        }).catch((err) => console.error('enqueue tenant-rejected failed', err));
+      }
+    }
 
     // Find the PRO admin user(s) bound to this tenant so we can delete
     // them too — rejection should leave no auth account behind.

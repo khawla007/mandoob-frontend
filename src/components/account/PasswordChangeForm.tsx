@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { PasswordChangeSchema, type PasswordChangeInput } from '@/lib/validation/account';
 import { changePasswordAction } from '@/app/account/actions';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Label } from '@/components/ui/label';
 
 export function PasswordChangeForm() {
@@ -35,14 +35,13 @@ export function PasswordChangeForm() {
 
   return (
     <form onSubmit={onSubmit} className="max-w-md space-y-4">
-      <Field id="current_password" label="Current password" type="password" form={form} />
+      <Field id="current_password" label="Current password" form={form} />
       <Field
         id="new_password"
         label="New password (≥10 chars, mixed case + digit)"
-        type="password"
         form={form}
       />
-      <Field id="confirm_password" label="Confirm new password" type="password" form={form} />
+      <Field id="confirm_password" label="Confirm new password" form={form} />
       <Button type="submit" disabled={isPending}>
         {isPending ? 'Saving…' : 'Change password'}
       </Button>
@@ -53,21 +52,18 @@ export function PasswordChangeForm() {
 function Field({
   id,
   label,
-  type,
   form,
 }: {
   id: keyof PasswordChangeInput;
   label: string;
-  type: string;
   form: UseFormReturn<PasswordChangeInput>;
 }) {
   const err = form.formState.errors[id]?.message as string | undefined;
   return (
     <div className="space-y-1">
       <Label htmlFor={id}>{label}</Label>
-      <Input
+      <PasswordInput
         id={id}
-        type={type}
         autoComplete="new-password"
         {...form.register(id)}
         aria-describedby={`${id}_err`}

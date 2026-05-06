@@ -34,9 +34,8 @@ export async function GET(request: NextRequest) {
   if (limit !== undefined && (!Number.isFinite(limit) || limit < 1 || limit > 50)) {
     return errorResponse('VALIDATION_FAILED', 'limit out of range', 400);
   }
-  if (session.role === 'admin' && session.tenantId !== tenantId) {
-    return errorResponse('FORBIDDEN', 'Cross-tenant lookup denied', 403);
-  }
+  // Post role-rebase: admin is platform-scoped (NULL tenant) and may look up
+  // clients across any tenant, same as super_admin. No tenant gating here.
 
   const rows = await listClientsForTenant({ tenantId, q, limit });
   return jsonOk({ rows });

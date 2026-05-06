@@ -2,6 +2,8 @@ import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import type { Kpi, SignupPoint, RecentLoginRow } from '@/lib/data/admin-metrics';
 import type { Role } from '@/lib/data/users';
+import { countDocsAwaitingReview } from '@/lib/data/documents';
+import { countRenewalsDueWithin } from '@/lib/data/renewals';
 
 function fmt(n: number): string {
   return n.toLocaleString('en-US');
@@ -161,43 +163,37 @@ export async function getTenantRecentLogins(
     status: e.kind === 'login_success' ? 'success' : 'failed',
   }));
 }
-
-export type TenantMember = {
-  id: string;
-  email: string | null;
-  fullName: string | null;
-  role: Role | null;
-  status: 'active' | 'invited' | 'disabled' | null;
-  lastSignInAt: string | null;
-  createdAt: string | null;
-};
-
-export async function listTenantMembers(tenantId: string): Promise<TenantMember[]> {
+// PRO workspace dashboard KPIs. Active clients, docs-awaiting-review, and
+// renewals-due-30d are live (Steps 9, 13, 15); payments is a placeholder
+// until Step 23.
+export async function getProDashboardMetrics(tenantId: string): Promise<Kpi[]> {
   const admin = createSupabaseServiceRoleClient();
-  const { data: profiles } = await admin
-    .from('profiles')
-    .select('id, full_name, role, status, created_at')
-    .eq('tenant_id', tenantId)
-    .order('created_at', { ascending: false });
+  const [{ count: activeClients }, awaitingReview, renewalsDue30d] = await Promise.all([
+    admin
+      .from('clients')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active'),
+    countDocsAwaitingReview(tenantId),
+    countRenewalsDueWithin(tenantId, 30),
+  ]);
 
-  if (!profiles || profiles.length === 0) return [];
+  const active = activeClients ?? 0;
 
-  const ids = profiles.map((p) => p.id as string);
-  const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const userById = new Map(list?.users.map((u) => [u.id, u]) ?? []);
-
-  return profiles
-    .filter((p) => ids.includes(p.id as string))
-    .map((p) => {
-      const u = userById.get(p.id as string);
-      return {
-        id: p.id as string,
-        email: u?.email ?? null,
-        fullName: (p.full_name as string | null) ?? null,
-        role: (p.role as Role | null) ?? null,
-        status: (p.status as TenantMember['status']) ?? null,
-        lastSignInAt: u?.last_sign_in_at ?? null,
-        createdAt: (p.created_at as string | null) ?? null,
-      };
-    });
+  return [
+    { label: 'Active clients', value: fmt(active), delta: 0, deltaLabel: 'live' },
+    {
+      label: 'Renewals due (30d)',
+      value: fmt(renewalsDue30d),
+      delta: 0,
+      deltaLabel: 'license + manual',
+    },
+    {
+      label: 'Docs awaiting review',
+      value: fmt(awaitingReview),
+      delta: 0,
+      deltaLabel: 'across all clients',
+    },
+    { label: 'Pending payments', value: '—', delta: 0, deltaLabel: 'wired in step 23' },
+  ];
 }

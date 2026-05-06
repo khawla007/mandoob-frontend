@@ -16,6 +16,8 @@ import {
 
 const SELF = '11111111-1111-4111-8111-111111111111';
 const TARGET = '22222222-2222-4222-8222-222222222222';
+const TENANT_A = '33333333-3333-4333-8333-333333333333';
+const TENANT_B = '44444444-4444-4444-8444-444444444444';
 
 describe('assertStatusTransition — accepts every allowed edge', () => {
   const cases: Array<[ProfileStatus, ProfileStatus]> = [
@@ -80,6 +82,7 @@ describe('assertRoleChangeAllowed — D2a self-demotion', () => {
           targetId: SELF,
           targetRole: 'super_admin',
           newRole: 'admin',
+          newTenantId: null,
           confirmation: 'DEMOTE',
           remainingSuperAdminsExcludingTarget: 5,
         }),
@@ -98,6 +101,7 @@ describe('assertRoleChangeAllowed — D2b last super_admin', () => {
           targetId: TARGET,
           targetRole: 'super_admin',
           newRole: 'admin',
+          newTenantId: null,
           confirmation: 'DEMOTE',
           remainingSuperAdminsExcludingTarget: 0,
         }),
@@ -113,6 +117,7 @@ describe('assertRoleChangeAllowed — D2b last super_admin', () => {
         targetId: TARGET,
         targetRole: 'super_admin',
         newRole: 'admin',
+        newTenantId: null,
         confirmation: 'DEMOTE',
         remainingSuperAdminsExcludingTarget: 1,
       }),
@@ -130,6 +135,7 @@ describe('assertRoleChangeAllowed — D2c confirmation', () => {
           targetId: TARGET,
           targetRole: 'super_admin',
           newRole: 'admin',
+          newTenantId: null,
           remainingSuperAdminsExcludingTarget: 5,
         }),
       (err: unknown) => err instanceof ApiError && err.code === 'CONFIRMATION_REQUIRED',
@@ -144,6 +150,7 @@ describe('assertRoleChangeAllowed — D2c confirmation', () => {
         targetId: TARGET,
         targetRole: 'pro',
         newRole: 'customer',
+        newTenantId: TENANT_A,
         remainingSuperAdminsExcludingTarget: 0,
       }),
     );
@@ -160,6 +167,7 @@ describe('assertRoleChangeAllowed — super_admin promotion blocked', () => {
           targetId: TARGET,
           targetRole: 'admin',
           newRole: 'super_admin' as never,
+          newTenantId: null,
           remainingSuperAdminsExcludingTarget: 5,
         }),
       (err: unknown) => err instanceof ApiError && err.code === 'INVALID_ROLE_TRANSITION',
@@ -177,6 +185,7 @@ describe('assertRoleChangeAllowed — admin caller boundaries', () => {
           targetId: TARGET,
           targetRole: 'pro',
           newRole: 'admin',
+          newTenantId: null,
           remainingSuperAdminsExcludingTarget: 5,
         }),
       (err: unknown) => err instanceof ApiError && err.code === 'FORBIDDEN',
@@ -192,6 +201,7 @@ describe('assertRoleChangeAllowed — admin caller boundaries', () => {
           targetId: TARGET,
           targetRole: 'admin',
           newRole: 'pro',
+          newTenantId: TENANT_A,
           remainingSuperAdminsExcludingTarget: 5,
         }),
       (err: unknown) => err instanceof ApiError && err.code === 'FORBIDDEN',
@@ -206,6 +216,7 @@ describe('assertRoleChangeAllowed — admin caller boundaries', () => {
         targetId: TARGET,
         targetRole: 'pro',
         newRole: 'customer',
+        newTenantId: TENANT_A,
         remainingSuperAdminsExcludingTarget: 0,
       }),
     );
@@ -222,9 +233,104 @@ describe('assertRoleChangeAllowed — no-op rejected', () => {
           targetId: TARGET,
           targetRole: 'pro',
           newRole: 'pro',
+          newTenantId: TENANT_A,
           remainingSuperAdminsExcludingTarget: 5,
         }),
       (err: unknown) => err instanceof ApiError && err.code === 'INVALID_ROLE_TRANSITION',
+    );
+  });
+});
+
+describe('assertRoleChangeAllowed — tenant coupling (post role-rebase)', () => {
+  it('rejects newRole=pro with newTenantId=null', () => {
+    assert.throws(
+      () =>
+        assertRoleChangeAllowed({
+          callerId: SELF,
+          callerRole: 'super_admin',
+          targetId: TARGET,
+          targetRole: 'admin',
+          newRole: 'pro',
+          newTenantId: null,
+          remainingSuperAdminsExcludingTarget: 5,
+        }),
+      (err: unknown) => err instanceof ApiError && err.code === 'INVALID_TENANT_ASSIGNMENT',
+    );
+  });
+
+  it('rejects newRole=customer with newTenantId=null', () => {
+    assert.throws(
+      () =>
+        assertRoleChangeAllowed({
+          callerId: SELF,
+          callerRole: 'super_admin',
+          targetId: TARGET,
+          targetRole: 'admin',
+          newRole: 'customer',
+          newTenantId: null,
+          remainingSuperAdminsExcludingTarget: 5,
+        }),
+      (err: unknown) => err instanceof ApiError && err.code === 'INVALID_TENANT_ASSIGNMENT',
+    );
+  });
+
+  it('rejects newRole=employee with newTenantId=null', () => {
+    assert.throws(
+      () =>
+        assertRoleChangeAllowed({
+          callerId: SELF,
+          callerRole: 'super_admin',
+          targetId: TARGET,
+          targetRole: 'pro',
+          newRole: 'employee',
+          newTenantId: null,
+          remainingSuperAdminsExcludingTarget: 5,
+        }),
+      (err: unknown) => err instanceof ApiError && err.code === 'INVALID_TENANT_ASSIGNMENT',
+    );
+  });
+
+  it('rejects newRole=admin with non-null newTenantId', () => {
+    assert.throws(
+      () =>
+        assertRoleChangeAllowed({
+          callerId: SELF,
+          callerRole: 'super_admin',
+          targetId: TARGET,
+          targetRole: 'pro',
+          newRole: 'admin',
+          newTenantId: TENANT_A,
+          remainingSuperAdminsExcludingTarget: 5,
+        }),
+      (err: unknown) => err instanceof ApiError && err.code === 'INVALID_TENANT_ASSIGNMENT',
+    );
+  });
+
+  it('allows newRole=pro with a valid tenant', () => {
+    assert.doesNotThrow(() =>
+      assertRoleChangeAllowed({
+        callerId: SELF,
+        callerRole: 'super_admin',
+        targetId: TARGET,
+        targetRole: 'customer',
+        newRole: 'pro',
+        newTenantId: TENANT_B,
+        remainingSuperAdminsExcludingTarget: 5,
+      }),
+    );
+  });
+
+  it('allows newRole=admin with newTenantId=null', () => {
+    assert.doesNotThrow(() =>
+      assertRoleChangeAllowed({
+        callerId: SELF,
+        callerRole: 'super_admin',
+        targetId: TARGET,
+        targetRole: 'pro',
+        newRole: 'admin',
+        newTenantId: null,
+        remainingSuperAdminsExcludingTarget: 5,
+      }),
     );
   });
 });
