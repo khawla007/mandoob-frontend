@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientTabs } from '@/components/pro/ClientTabs';
+import { EditClientForm } from '@/components/pro/EditClientForm';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getClientForTenant } from '@/lib/data/client-detail';
 import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
@@ -54,6 +55,16 @@ export default async function ClientDetailPage({
             )}
           </div>
         </div>
+        <EditClientForm
+          slug={slug}
+          client={{
+            id: client.id,
+            company_name: client.company_name,
+            trade_license_no: client.trade_license_no,
+            jurisdiction: client.jurisdiction,
+            license_expiry: client.license_expiry,
+          }}
+        />
       </div>
 
       <Card>
