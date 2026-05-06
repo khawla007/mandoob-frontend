@@ -970,6 +970,241 @@ export type Database = {
           },
         ];
       };
+      invoices: {
+        Row: {
+          amount_minor: number;
+          client_id: string;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_profile_id: string | null;
+          due_at: string | null;
+          id: string;
+          label: string;
+          linked_entity_id: string | null;
+          linked_entity_type: string | null;
+          paid_at: string | null;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+          void_reason: string | null;
+        };
+        Insert: {
+          amount_minor: number;
+          client_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_profile_id?: string | null;
+          due_at?: string | null;
+          id?: string;
+          label: string;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          paid_at?: string | null;
+          status?: string;
+          tenant_id: string;
+          updated_at?: string;
+          void_reason?: string | null;
+        };
+        Update: {
+          amount_minor?: number;
+          client_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_profile_id?: string | null;
+          due_at?: string | null;
+          id?: string;
+          label?: string;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          paid_at?: string | null;
+          status?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          void_reason?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'invoices_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'invoices_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'invoices_customer_profile_id_fkey';
+            columns: ['customer_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'customer_profiles';
+            referencedColumns: ['profile_id'];
+          },
+          {
+            foreignKeyName: 'invoices_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payments: {
+        Row: {
+          amount_minor: number;
+          created_at: string;
+          currency: string;
+          failure_reason: string | null;
+          id: string;
+          invoice_id: string;
+          method: string | null;
+          provider: string;
+          provider_charge_id: string | null;
+          received_at: string | null;
+          status: string;
+          tenant_id: string;
+        };
+        Insert: {
+          amount_minor: number;
+          created_at?: string;
+          currency?: string;
+          failure_reason?: string | null;
+          id?: string;
+          invoice_id: string;
+          method?: string | null;
+          provider: string;
+          provider_charge_id?: string | null;
+          received_at?: string | null;
+          status?: string;
+          tenant_id: string;
+        };
+        Update: {
+          amount_minor?: number;
+          created_at?: string;
+          currency?: string;
+          failure_reason?: string | null;
+          id?: string;
+          invoice_id?: string;
+          method?: string | null;
+          provider?: string;
+          provider_charge_id?: string | null;
+          received_at?: string | null;
+          status?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payments_invoice_id_fkey';
+            columns: ['invoice_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      refunds: {
+        Row: {
+          amount_minor: number;
+          created_at: string;
+          id: string;
+          payment_id: string;
+          provider_refund_id: string | null;
+          reason: string | null;
+          status: string;
+          tenant_id: string;
+        };
+        Insert: {
+          amount_minor: number;
+          created_at?: string;
+          id?: string;
+          payment_id: string;
+          provider_refund_id?: string | null;
+          reason?: string | null;
+          status?: string;
+          tenant_id: string;
+        };
+        Update: {
+          amount_minor?: number;
+          created_at?: string;
+          id?: string;
+          payment_id?: string;
+          provider_refund_id?: string | null;
+          reason?: string | null;
+          status?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'refunds_payment_id_fkey';
+            columns: ['payment_id'];
+            isOneToOne: false;
+            referencedRelation: 'payments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'refunds_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      tenant_payment_config: {
+        Row: {
+          created_at: string;
+          enabled: boolean;
+          merchant_id: string;
+          provider: string;
+          secret_encrypted: string;
+          tenant_id: string;
+          updated_at: string;
+          webhook_secret_encrypted: string;
+        };
+        Insert: {
+          created_at?: string;
+          enabled?: boolean;
+          merchant_id: string;
+          provider: string;
+          secret_encrypted: string;
+          tenant_id: string;
+          updated_at?: string;
+          webhook_secret_encrypted: string;
+        };
+        Update: {
+          created_at?: string;
+          enabled?: boolean;
+          merchant_id?: string;
+          provider?: string;
+          secret_encrypted?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          webhook_secret_encrypted?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tenant_payment_config_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

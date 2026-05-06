@@ -5,7 +5,8 @@ import { getProfileCard } from '@/lib/data/profile';
 import { readSelfCustomer } from '@/lib/data/account-self';
 import { listOpenRequestsForClient } from '@/lib/data/documents';
 import { listRenewalsForClient } from '@/lib/data/renewals';
-import { getPaymentHistory, getRegistrationProgress } from '@/lib/mocks/customer-portal';
+import { getRegistrationProgress } from '@/lib/mocks/customer-portal';
+import { getInvoicesForCustomer } from '@/lib/data/payments';
 import { getCommsForCustomer } from '@/lib/data/comms';
 import type { Renewal } from '@/lib/types/renewals-ui';
 import { RegistrationProgressCard } from '@/components/customer/RegistrationProgressCard';
@@ -31,7 +32,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
     linkedClientId ? listOpenRequestsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
     linkedClientId ? listRenewalsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
     getCommsForCustomer(session.id, { limit: 10 }),
-    getPaymentHistory(),
+    getInvoicesForCustomer(session.id),
   ]);
 
   const renewals: Renewal[] = renewalRows
@@ -65,7 +66,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentCommsCard rows={comms} />
-        <PaymentHistoryCard data={payments} />
+        <PaymentHistoryCard data={payments} tenantSlug={tenant.slug} />
       </div>
     </div>
   );

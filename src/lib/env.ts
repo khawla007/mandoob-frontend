@@ -36,6 +36,11 @@ const schema = z.object({
   UNIFONIC_APP_SID: optionalStr,
   UNIFONIC_WEBHOOK_SECRET: optionalStr,
 
+  TAP_SECRET_KEY: optionalStr,
+  TAP_PUBLIC_KEY: optionalStr,
+  TAP_WEBHOOK_SECRET: optionalStr,
+  TAP_API_BASE: optionalStr,
+
   SENTRY_DSN: optionalStr,
 });
 
