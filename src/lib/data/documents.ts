@@ -6,6 +6,7 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { scanFile } from '@/lib/security/scan-file';
 import { enqueueEmail } from '@/lib/mail/send';
+import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import {
   createDocumentRequestSchema,
   documentReviewSchema,
@@ -579,19 +580,21 @@ async function notifyDocumentRequested(args: {
   if (!email) return;
   const { data: profile } = await admin
     .from('profiles')
-    .select('full_name')
+    .select('full_name, phone')
     .eq('id', link.profile_id)
     .maybeSingle();
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
   const dueDate = args.dueAtIso ? args.dueAtIso.slice(0, 10) : null;
+  const customerName = profile?.full_name ?? 'there';
+  const customerPhone = profile?.phone ?? null;
 
   await enqueueEmail({
     tenantId: args.tenantId,
     templateId: 'document-requested',
     toAddress: email,
     input: {
-      customerName: profile?.full_name ?? 'there',
+      customerName,
       tenantName: tenant?.name ?? '',
       documentLabel: args.documentLabel,
       uploadUrl: `${appUrl}/portal/documents?request=${args.requestId}`,
@@ -599,6 +602,34 @@ async function notifyDocumentRequested(args: {
     },
     linked: { entityType: 'document_request', entityId: args.requestId },
   });
+
+  if (customerPhone) {
+    await enqueueWhatsApp({
+      tenantId: args.tenantId,
+      templateId: 'document-requested',
+      toPhone: customerPhone,
+      input: {
+        customerName,
+        tenantName: tenant?.name ?? '',
+        documentLabel: args.documentLabel,
+        uploadPath: `/portal/documents?request=${args.requestId}`,
+        dueDate,
+      },
+      linked: { entityType: 'document_request_wa', entityId: args.requestId },
+    }).catch(() => {});
+  } else {
+    try {
+      await admin.from('tenant_audit_log').insert({
+        tenant_id: args.tenantId,
+        actor_id: null,
+        action: 'whatsapp_skipped_no_phone',
+        source: 'document_request',
+        details: { request_id: args.requestId },
+      });
+    } catch {
+      /* non-fatal */
+    }
+  }
 }
 
 export type OpenRequestEntry = {
