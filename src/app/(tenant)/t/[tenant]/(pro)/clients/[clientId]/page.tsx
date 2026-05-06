@@ -10,6 +10,8 @@ import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getClientForTenant } from '@/lib/data/client-detail';
 import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
 import { listRenewalsForClient } from '@/lib/data/renewals';
+import { getCommsForClient } from '@/lib/data/comms';
+import { loadOlderCommsAction } from './comms-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,11 +27,15 @@ export default async function ClientDetailPage({
   const client = await getClientForTenant(tenant.id, clientId);
   if (!client) notFound();
 
-  const [documents, openRequests, renewals] = await Promise.all([
+  const [documents, openRequests, renewals, comms] = await Promise.all([
     listDocumentsForClient(tenant.id, clientId),
     listOpenRequestsForClient(tenant.id, clientId),
     listRenewalsForClient(tenant.id, clientId, { includeCancelled: true }),
+    getCommsForClient(tenant.id, clientId, { limit: 25 }),
   ]);
+
+  const loadOlder = async (beforeIso: string) =>
+    loadOlderCommsAction(tenant.id, clientId, beforeIso);
 
   return (
     <div className="space-y-6">
@@ -75,6 +81,8 @@ export default async function ClientDetailPage({
             documents={documents}
             openRequests={openRequests}
             renewals={renewals}
+            comms={comms}
+            loadOlderComms={loadOlder}
           />
         </CardContent>
       </Card>

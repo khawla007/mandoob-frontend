@@ -34,49 +34,6 @@ export async function getRegistrationProgress(): Promise<RegistrationProgress> {
   };
 }
 
-export type Comm = {
-  id: string;
-  channel: 'email' | 'whatsapp' | 'sms' | 'in_app';
-  subject: string;
-  sentAt: string;
-  fromPro: boolean;
-};
-
-export async function getRecentComms(): Promise<Comm[]> {
-  const today = new Date();
-  const hoursAgo = (h: number) => new Date(today.getTime() - h * 36e5).toISOString();
-  return [
-    {
-      id: 'c1',
-      channel: 'email',
-      subject: 'MoA draft attached for review',
-      sentAt: hoursAgo(3),
-      fromPro: true,
-    },
-    {
-      id: 'c2',
-      channel: 'whatsapp',
-      subject: 'Reminder: passport copies still pending',
-      sentAt: hoursAgo(20),
-      fromPro: true,
-    },
-    {
-      id: 'c3',
-      channel: 'in_app',
-      subject: 'Document uploaded — Ejari draft',
-      sentAt: hoursAgo(48),
-      fromPro: false,
-    },
-    {
-      id: 'c4',
-      channel: 'sms',
-      subject: 'OTP for license submission',
-      sentAt: hoursAgo(96),
-      fromPro: true,
-    },
-  ];
-}
-
 export type PendingInvoice = {
   id: string;
   label: string;

@@ -7,6 +7,7 @@ import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { scanFile } from '@/lib/security/scan-file';
 import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
+import { enqueueSms } from '@/lib/sms/send';
 import {
   createDocumentRequestSchema,
   documentReviewSchema,
@@ -617,12 +618,33 @@ async function notifyDocumentRequested(args: {
       },
       linked: { entityType: 'document_request_wa', entityId: args.requestId },
     }).catch(() => {});
+
+    await enqueueSms({
+      tenantId: args.tenantId,
+      templateId: 'document-requested',
+      toPhone: customerPhone,
+      input: {
+        customerName,
+        tenantName: tenant?.name ?? '',
+        documentLabel: args.documentLabel,
+        uploadUrl: `${appUrl}/portal/documents?request=${args.requestId}`,
+        dueDate,
+      },
+      linked: { entityType: 'document_request_sms', entityId: args.requestId },
+    }).catch(() => {});
   } else {
     try {
       await admin.from('tenant_audit_log').insert({
         tenant_id: args.tenantId,
         actor_id: null,
         action: 'whatsapp_skipped_no_phone',
+        source: 'document_request',
+        details: { request_id: args.requestId },
+      });
+      await admin.from('tenant_audit_log').insert({
+        tenant_id: args.tenantId,
+        actor_id: null,
+        action: 'sms_skipped_no_phone',
         source: 'document_request',
         details: { request_id: args.requestId },
       });

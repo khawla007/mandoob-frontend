@@ -5,11 +5,8 @@ import { getProfileCard } from '@/lib/data/profile';
 import { readSelfCustomer } from '@/lib/data/account-self';
 import { listOpenRequestsForClient } from '@/lib/data/documents';
 import { listRenewalsForClient } from '@/lib/data/renewals';
-import {
-  getPaymentHistory,
-  getRecentComms,
-  getRegistrationProgress,
-} from '@/lib/mocks/customer-portal';
+import { getPaymentHistory, getRegistrationProgress } from '@/lib/mocks/customer-portal';
+import { getCommsForCustomer } from '@/lib/data/comms';
 import type { Renewal } from '@/lib/types/renewals-ui';
 import { RegistrationProgressCard } from '@/components/customer/RegistrationProgressCard';
 import { ActiveDocRequestsCard } from '@/components/customer/ActiveDocRequestsCard';
@@ -33,7 +30,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
     getRegistrationProgress(),
     linkedClientId ? listOpenRequestsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
     linkedClientId ? listRenewalsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
-    getRecentComms(),
+    getCommsForCustomer(session.id, { limit: 10 }),
     getPaymentHistory(),
   ]);
 
