@@ -829,6 +829,74 @@ export type Database = {
           },
         ];
       };
+      outbound_sms: {
+        Row: {
+          attempts: number;
+          body: string;
+          created_at: string;
+          delivered_at: string | null;
+          id: number;
+          last_error: string | null;
+          linked_entity_id: string | null;
+          linked_entity_type: string | null;
+          provider: string;
+          provider_message_id: string | null;
+          scheduled_for: string;
+          sender_id: string;
+          sent_at: string | null;
+          status: string;
+          template_id: string;
+          tenant_id: string;
+          to_phone: string;
+        };
+        Insert: {
+          attempts?: number;
+          body: string;
+          created_at?: string;
+          delivered_at?: string | null;
+          id?: number;
+          last_error?: string | null;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          provider: string;
+          provider_message_id?: string | null;
+          scheduled_for?: string;
+          sender_id: string;
+          sent_at?: string | null;
+          status: string;
+          template_id: string;
+          tenant_id: string;
+          to_phone: string;
+        };
+        Update: {
+          attempts?: number;
+          body?: string;
+          created_at?: string;
+          delivered_at?: string | null;
+          id?: number;
+          last_error?: string | null;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          provider?: string;
+          provider_message_id?: string | null;
+          scheduled_for?: string;
+          sender_id?: string;
+          sent_at?: string | null;
+          status?: string;
+          template_id?: string;
+          tenant_id?: string;
+          to_phone?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'outbound_sms_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       whatsapp_inbox: {
         Row: {
           body: string | null;
@@ -857,6 +925,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'whatsapp_inbox_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      sms_inbox: {
+        Row: {
+          body: string | null;
+          created_at: string;
+          from_phone: string;
+          id: number;
+          provider_message_id: string;
+          received_at: string;
+          tenant_id: string;
+        };
+        Insert: {
+          body?: string | null;
+          created_at?: string;
+          from_phone: string;
+          id?: number;
+          provider_message_id: string;
+          received_at?: string;
+          tenant_id: string;
+        };
+        Update: {
+          body?: string | null;
+          created_at?: string;
+          from_phone?: string;
+          id?: number;
+          provider_message_id?: string;
+          received_at?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'sms_inbox_tenant_id_fkey';
             columns: ['tenant_id'];
             isOneToOne: false;
             referencedRelation: 'tenants';

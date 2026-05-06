@@ -1,13 +1,13 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare } from 'lucide-react';
-import { ComingSoon } from '@/components/pro/ComingSoon';
 import { DocumentsTab } from '@/components/pro/DocumentsTab';
 import { ClientRenewalsPanel } from '@/components/pro/ClientRenewalsPanel';
+import { CommsThread } from '@/components/pro/CommsThread';
 import type { ClientDetail } from '@/lib/data/client-detail';
 import type { DocumentListEntry, OpenRequestEntry } from '@/lib/data/documents';
 import type { RenewalRow } from '@/lib/data/renewals';
+import type { CommRow } from '@/lib/data/comms';
 
 export function ClientTabs({
   client,
@@ -15,12 +15,16 @@ export function ClientTabs({
   documents,
   openRequests,
   renewals,
+  comms,
+  loadOlderComms,
 }: {
   client: ClientDetail;
   slug: string;
   documents: DocumentListEntry[];
   openRequests: OpenRequestEntry[];
   renewals: RenewalRow[];
+  comms: CommRow[];
+  loadOlderComms: (beforeIso: string) => Promise<CommRow[]>;
 }) {
   return (
     <Tabs defaultValue="overview">
@@ -65,11 +69,7 @@ export function ClientTabs({
       </TabsContent>
 
       <TabsContent value="communications" className="pt-6">
-        <ComingSoon
-          title="Communications"
-          subtitle="Email, WhatsApp, SMS history — wired in Phase 2."
-          icon={<MessageSquare className="size-6" />}
-        />
+        <CommsThread initialRows={comms} loadOlder={loadOlderComms} />
       </TabsContent>
     </Tabs>
   );

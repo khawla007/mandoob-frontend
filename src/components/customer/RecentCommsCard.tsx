@@ -1,8 +1,8 @@
 import { Mail, MessageCircle, MessageSquare, Bell } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Comm } from '@/lib/mocks/customer-portal';
+import type { CommChannel, CommRow } from '@/lib/data/comms';
 
-const ICONS: Record<Comm['channel'], React.ComponentType<{ className?: string }>> = {
+const ICONS: Record<CommChannel, React.ComponentType<{ className?: string }>> = {
   email: Mail,
   whatsapp: MessageCircle,
   sms: MessageSquare,
@@ -18,7 +18,7 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-export function RecentCommsCard({ rows }: { rows: Comm[] }) {
+export function RecentCommsCard({ rows }: { rows: CommRow[] }) {
   return (
     <Card>
       <CardHeader>
@@ -34,15 +34,17 @@ export function RecentCommsCard({ rows }: { rows: Comm[] }) {
           <ul className="space-y-3">
             {rows.map((c) => {
               const Icon = ICONS[c.channel];
+              const fromPro = c.direction === 'out';
+              const title = c.subject ?? c.preview;
               return (
                 <li key={c.id} className="flex items-start gap-3 text-sm">
                   <div className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
                     <Icon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{c.subject}</div>
+                    <div className="truncate font-medium">{title}</div>
                     <div className="text-muted-foreground text-xs">
-                      {c.fromPro ? 'From PRO' : 'From you'} · {timeAgo(c.sentAt)}
+                      {fromPro ? 'From PRO' : 'From you'} · {timeAgo(c.timestamp)}
                     </div>
                   </div>
                 </li>

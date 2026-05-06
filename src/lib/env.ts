@@ -33,6 +33,9 @@ const schema = z.object({
   WHATSAPP_VERIFY_TOKEN: optionalStr,
   WHATSAPP_APP_SECRET: optionalStr,
 
+  UNIFONIC_APP_SID: optionalStr,
+  UNIFONIC_WEBHOOK_SECRET: optionalStr,
+
   SENTRY_DSN: optionalStr,
 });
 
