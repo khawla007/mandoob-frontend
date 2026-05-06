@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { scanFile } from '@/lib/security/scan-file';
+import { enqueueEmail } from '@/lib/mail/send';
 import {
   createDocumentRequestSchema,
   documentReviewSchema,
@@ -543,7 +544,61 @@ export async function createDocumentRequest(
     },
   }).catch((err) => console.error('recordAuthEvent failed', err));
 
+  await notifyDocumentRequested({
+    tenantId: ctx.tenantId,
+    clientId: input.client_id,
+    requestId: id,
+    documentLabel: input.label,
+    dueAtIso: dueAt,
+  }).catch((err) => console.error('notifyDocumentRequested failed', err));
+
   return { id };
+}
+
+async function notifyDocumentRequested(args: {
+  tenantId: string;
+  clientId: string;
+  requestId: string;
+  documentLabel: string;
+  dueAtIso: string | null;
+}): Promise<void> {
+  const admin = createSupabaseServiceRoleClient();
+  const { data: tenant } = await admin
+    .from('tenants')
+    .select('name')
+    .eq('id', args.tenantId)
+    .maybeSingle();
+  const { data: link } = await admin
+    .from('customer_profiles')
+    .select('profile_id')
+    .eq('linked_client_id', args.clientId)
+    .maybeSingle();
+  if (!link) return;
+  const { data: authUser } = await admin.auth.admin.getUserById(link.profile_id);
+  const email = authUser.user?.email;
+  if (!email) return;
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('full_name')
+    .eq('id', link.profile_id)
+    .maybeSingle();
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const dueDate = args.dueAtIso ? args.dueAtIso.slice(0, 10) : null;
+
+  await enqueueEmail({
+    tenantId: args.tenantId,
+    templateId: 'document-requested',
+    toAddress: email,
+    input: {
+      customerName: profile?.full_name ?? 'there',
+      tenantName: tenant?.name ?? '',
+      documentLabel: args.documentLabel,
+      uploadUrl: `${appUrl}/portal/documents?request=${args.requestId}`,
+      dueDate,
+    },
+    linked: { entityType: 'document_request', entityId: args.requestId },
+  });
 }
 
 export type OpenRequestEntry = {

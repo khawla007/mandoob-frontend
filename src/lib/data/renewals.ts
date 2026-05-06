@@ -1,6 +1,7 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { scheduleRenewalReminders } from '@/lib/data/renewal-reminders';
 import {
   createRenewalSchema,
   updateRenewalSchema,
@@ -232,6 +233,10 @@ export async function createRenewal(
     source: 'manual',
   });
 
+  await scheduleRenewalReminders(id).catch((err) =>
+    console.error('scheduleRenewalReminders failed', err),
+  );
+
   return { id };
 }
 
@@ -283,6 +288,12 @@ export async function updateRenewal(
     fields: Object.keys(patch),
     source: existing.source,
   });
+
+  if (patch.due_date !== undefined || patch.status !== undefined) {
+    await scheduleRenewalReminders(id).catch((err) =>
+      console.error('scheduleRenewalReminders failed', err),
+    );
+  }
 }
 
 export async function markRenewalCompleted(id: string, ctx: RenewalActorCtx): Promise<void> {

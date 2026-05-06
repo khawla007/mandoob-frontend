@@ -3,6 +3,7 @@ import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { adminCreateUser, type AdminCreateUserCaller } from '@/lib/data/admin-create-user';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
+import { enqueueEmail } from '@/lib/mail/send';
 import type { ProvisionTenantInput } from '@/lib/validation/tenant-onboarding';
 
 export type ProvisionTenantResult = {
@@ -106,6 +107,19 @@ export async function provisionTenant(
   }).catch((err) => {
     console.error('recordAuthEvent failed', err);
   });
+
+  if (input.source === 'self_serve') {
+    await enqueueEmail({
+      tenantId,
+      templateId: 'tenant-pending-received',
+      toAddress: input.admin_email,
+      input: {
+        adminName: input.admin_full_name,
+        tenantName: input.name,
+      },
+      linked: { entityType: 'tenant_pending', entityId: tenantId },
+    }).catch((err) => console.error('enqueue tenant-pending-received failed', err));
+  }
 
   return { tenantId, adminUserId };
 }

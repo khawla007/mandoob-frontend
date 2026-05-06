@@ -1,21 +1,23 @@
 import 'server-only';
-import { DEFAULT_FROM, getResend } from './client';
+import { enqueueEmail } from './send';
 
 export async function sendInviteEmail(args: {
   to: string;
   tenantName: string;
-  role: 'pro' | 'customer' | 'employee';
+  role: 'pro' | 'customer' | 'employee' | 'admin';
   inviteUrl: string;
+  tenantId?: string | null;
 }): Promise<void> {
-  const resend = getResend();
-  const { error } = await resend.emails.send({
-    from: DEFAULT_FROM,
-    to: args.to,
-    subject: `You're invited to ${args.tenantName} on Mandoob`,
-    html: `<p>Hi,</p>
-<p>${args.tenantName} has invited you to join as <strong>${args.role}</strong>.</p>
-<p><a href="${args.inviteUrl}">Accept invite</a> (link expires in 7 days).</p>
-<p>If you weren't expecting this, ignore this email.</p>`,
+  const result = await enqueueEmail({
+    tenantId: args.tenantId ?? null,
+    templateId: 'generic-invite',
+    toAddress: args.to,
+    input: {
+      toName: 'there',
+      tenantName: args.tenantName,
+      role: args.role,
+      inviteUrl: args.inviteUrl,
+    },
   });
-  if (error) throw new Error(`Resend failed: ${error.message}`);
+  if (!result.ok) throw new Error(`enqueue invite failed: ${result.reason}`);
 }
