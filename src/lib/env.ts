@@ -30,6 +30,9 @@ const schema = z.object({
   SUPABASE_AUTH_WEBHOOK_SECRET: optionalStr,
   CRON_SECRET: optionalStr,
 
+  WHATSAPP_VERIFY_TOKEN: optionalStr,
+  WHATSAPP_APP_SECRET: optionalStr,
+
   SENTRY_DSN: optionalStr,
 });
 

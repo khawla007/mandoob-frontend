@@ -1,6 +1,7 @@
 import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { enqueueEmail } from '@/lib/mail/send';
+import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 
 export function reminderVariantFor(due: Date, at: Date): 30 | 7 | 1 {
   const daysOut = Math.round((due.getTime() - at.getTime()) / 86_400_000);
@@ -51,10 +52,11 @@ export async function scheduleRenewalReminders(renewalId: string): Promise<{ sch
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('full_name')
+    .select('full_name, phone')
     .eq('id', customerLink.profile_id)
     .maybeSingle();
   const customerName = profile?.full_name ?? 'there';
+  const customerPhone = profile?.phone ?? null;
 
   const due = new Date(`${r.due_date}T00:00:00Z`);
   const now = Date.now();
@@ -79,6 +81,36 @@ export async function scheduleRenewalReminders(renewalId: string): Promise<{ sch
       linked: { entityType: 'renewal', entityId: r.id },
     });
     if (result.ok) scheduled++;
+
+    if (customerPhone) {
+      await enqueueWhatsApp({
+        tenantId: r.tenant_id,
+        templateId: 'renewal-reminder',
+        toPhone: customerPhone,
+        input: {
+          customerName,
+          tenantName: tenant?.name ?? '',
+          renewalLabel: r.label,
+          dueDate: r.due_date,
+          daysOut: variant,
+          detailPath: `/portal/renewals/${r.id}`,
+        },
+        scheduledFor: at,
+        linked: { entityType: 'renewal_wa', entityId: r.id },
+      }).catch(() => {});
+    } else {
+      try {
+        await admin.from('tenant_audit_log').insert({
+          tenant_id: r.tenant_id,
+          actor_id: null,
+          action: 'whatsapp_skipped_no_phone',
+          source: 'renewal_reminder',
+          details: { renewal_id: r.id, scheduled_for: at.toISOString() },
+        });
+      } catch {
+        /* non-fatal */
+      }
+    }
   }
   return { scheduled };
 }

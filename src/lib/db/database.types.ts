@@ -758,6 +758,112 @@ export type Database = {
         };
         Relationships: [];
       };
+      outbound_whatsapp: {
+        Row: {
+          attempts: number;
+          components: Json;
+          created_at: string;
+          delivered_at: string | null;
+          id: number;
+          last_error: string | null;
+          linked_entity_id: string | null;
+          linked_entity_type: string | null;
+          meta_template_lang: string;
+          meta_template_name: string;
+          provider_message_id: string | null;
+          read_at: string | null;
+          scheduled_for: string;
+          sent_at: string | null;
+          status: string;
+          template_id: string;
+          tenant_id: string;
+          to_phone: string;
+        };
+        Insert: {
+          attempts?: number;
+          components: Json;
+          created_at?: string;
+          delivered_at?: string | null;
+          id?: number;
+          last_error?: string | null;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          meta_template_lang?: string;
+          meta_template_name: string;
+          provider_message_id?: string | null;
+          read_at?: string | null;
+          scheduled_for?: string;
+          sent_at?: string | null;
+          status?: string;
+          template_id: string;
+          tenant_id: string;
+          to_phone: string;
+        };
+        Update: {
+          attempts?: number;
+          components?: Json;
+          created_at?: string;
+          delivered_at?: string | null;
+          id?: number;
+          last_error?: string | null;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          meta_template_lang?: string;
+          meta_template_name?: string;
+          provider_message_id?: string | null;
+          read_at?: string | null;
+          scheduled_for?: string;
+          sent_at?: string | null;
+          status?: string;
+          template_id?: string;
+          tenant_id?: string;
+          to_phone?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'outbound_whatsapp_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      whatsapp_inbox: {
+        Row: {
+          body: string | null;
+          from_phone: string;
+          id: number;
+          received_at: string;
+          tenant_id: string;
+          wamid: string | null;
+        };
+        Insert: {
+          body?: string | null;
+          from_phone: string;
+          id?: number;
+          received_at?: string;
+          tenant_id: string;
+          wamid?: string | null;
+        };
+        Update: {
+          body?: string | null;
+          from_phone?: string;
+          id?: number;
+          received_at?: string;
+          tenant_id?: string;
+          wamid?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'whatsapp_inbox_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
