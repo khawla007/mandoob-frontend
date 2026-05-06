@@ -28,6 +28,7 @@ const schema = z.object({
 
   ENCRYPTION_KEY: optionalStr,
   SUPABASE_AUTH_WEBHOOK_SECRET: optionalStr,
+  CRON_SECRET: optionalStr,
 
   SENTRY_DSN: optionalStr,
 });
