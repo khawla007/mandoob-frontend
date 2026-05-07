@@ -110,6 +110,19 @@ test('renewal-reminder: 1-day variant says final or tomorrow', async () => {
   assert.ok(s.includes('final') || s.includes('tomorrow'));
 });
 
+test('renewal-reminder: 14-day variant', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('renewal-reminder', {
+    customerName: 'Omar',
+    tenantName: 'Acme',
+    renewalLabel: 'Trade License',
+    dueDate: '2026-06-05',
+    daysOut: 14,
+    detailUrl: 'https://app.example.com/r/1',
+  });
+  assert.ok(r.subject.includes('14 days'));
+});
+
 test('invoice-due: amount in subject', async () => {
   const { renderTemplate } = await load();
   const r = renderTemplate('invoice-due', {

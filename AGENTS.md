@@ -4,6 +4,17 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+# Codex Token Budget — Caveman Lite
+
+Codex must default to terse, high-signal communication to reduce token spend.
+
+- Use short status updates only when useful: current action, key finding, blocker, or verification.
+- Prefer 1-3 sentence final answers for simple tasks.
+- Avoid praise, filler, repeated summaries, and long file-by-file changelogs.
+- Do not paste large command output unless the user asks; summarize the relevant lines.
+- Keep necessary rigor: still mention failed verification, blockers, security issues, destructive actions, and user decisions.
+- Expand only when the user asks for detail, a plan, a review, or an explanation.
+
 
 <claude-mem-context>
 # Memory Context

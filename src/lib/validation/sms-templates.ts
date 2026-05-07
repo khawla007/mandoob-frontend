@@ -1,11 +1,21 @@
 import { z } from 'zod';
 
+const renewalReminderWindowSchema = z.union([
+  z.literal(90),
+  z.literal(60),
+  z.literal(30),
+  z.literal(14),
+  z.literal(7),
+  z.literal(3),
+  z.literal(1),
+]);
+
 export const SmsRenewalReminderInput = z.object({
   customerName: z.string().min(1),
   tenantName: z.string().min(1),
   renewalLabel: z.string().min(1),
   dueDate: z.string().min(1),
-  daysOut: z.union([z.literal(30), z.literal(7), z.literal(1)]),
+  daysOut: renewalReminderWindowSchema,
   detailUrl: z.string().min(1),
 });
 

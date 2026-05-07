@@ -7,10 +7,8 @@ import type { WhatsAppTemplateDefinition, MetaComponent } from './index';
 const META_TEMPLATE_NAME = 'renewal_reminder';
 const META_LANGUAGE = 'en';
 
-function headlineFor(daysOut: 30 | 7 | 1): string {
-  if (daysOut === 30) return 'in 30 days';
-  if (daysOut === 7) return 'in 7 days';
-  return 'tomorrow';
+function headlineFor(daysOut: WhatsAppRenewalReminder['daysOut']): string {
+  return daysOut === 1 ? 'tomorrow' : `in ${daysOut} days`;
 }
 
 export const renewalReminder: WhatsAppTemplateDefinition<WhatsAppRenewalReminder> = {

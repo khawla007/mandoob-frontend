@@ -38,10 +38,24 @@ test('renewal-reminder: rejects unknown daysOut value', () => {
       renewalLabel: 'Z',
       dueDate: '2026-06-10',
       // @ts-expect-error — invalid literal
-      daysOut: 14,
+      daysOut: 2,
       detailPath: '/x',
     }),
   );
+});
+
+test('renewal-reminder: accepts 14-day PRD window', () => {
+  const out = renderWhatsAppTemplate('renewal-reminder', {
+    customerName: 'Yusuf',
+    tenantName: 'Acme PRO',
+    renewalLabel: 'Trade License',
+    dueDate: '2026-06-10',
+    daysOut: 14,
+    detailPath: '/portal/renewals/abc-123',
+  });
+  if (out.components[0].type === 'body') {
+    assert.equal(out.components[0].parameters[4].text, 'in 14 days');
+  }
 });
 
 test('document-requested: handles null dueDate gracefully', () => {

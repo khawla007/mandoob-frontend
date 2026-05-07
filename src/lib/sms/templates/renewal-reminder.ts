@@ -1,10 +1,8 @@
 import { SmsRenewalReminderInput, type SmsRenewalReminder } from '@/lib/validation/sms-templates';
 import type { SmsTemplateDefinition } from './index';
 
-function headlineFor(daysOut: 30 | 7 | 1): string {
-  if (daysOut === 30) return 'in 30 days';
-  if (daysOut === 7) return 'in 7 days';
-  return 'tomorrow';
+function headlineFor(daysOut: SmsRenewalReminder['daysOut']): string {
+  return daysOut === 1 ? 'tomorrow' : `in ${daysOut} days`;
 }
 
 export const renewalReminder: SmsTemplateDefinition<SmsRenewalReminder> = {

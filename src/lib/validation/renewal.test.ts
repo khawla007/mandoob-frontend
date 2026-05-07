@@ -34,6 +34,16 @@ describe('createRenewalSchema', () => {
     assert.equal(r.success, false);
   });
 
+  it('keeps medical renewals out of the app-supported type set', () => {
+    const r = createRenewalSchema.safeParse({
+      client_id: validClientId,
+      type: 'medical',
+      label: 'Medical insurance',
+      due_date: '2026-12-31',
+    });
+    assert.equal(r.success, false);
+  });
+
   it('rejects a label longer than 140 characters', () => {
     const r = createRenewalSchema.safeParse({
       client_id: validClientId,

@@ -23,11 +23,18 @@ test('reminderVariantFor: 30 days out → 30', async () => {
   assert.equal(reminderVariantFor(due, at), 30);
 });
 
-test('reminderVariantFor: 21 days out → 30 (boundary)', async () => {
+test('reminderVariantFor: 90 days out → 90', async () => {
   const { reminderVariantFor } = await load();
   const due = new Date('2026-06-30T00:00:00Z');
-  const at = new Date('2026-06-09T00:00:00Z');
-  assert.equal(reminderVariantFor(due, at), 30);
+  const at = new Date('2026-04-01T00:00:00Z');
+  assert.equal(reminderVariantFor(due, at), 90);
+});
+
+test('reminderVariantFor: 60 days out → 60', async () => {
+  const { reminderVariantFor } = await load();
+  const due = new Date('2026-06-30T00:00:00Z');
+  const at = new Date('2026-05-01T00:00:00Z');
+  assert.equal(reminderVariantFor(due, at), 60);
 });
 
 test('reminderVariantFor: 7 days out → 7', async () => {
@@ -37,11 +44,11 @@ test('reminderVariantFor: 7 days out → 7', async () => {
   assert.equal(reminderVariantFor(due, at), 7);
 });
 
-test('reminderVariantFor: 14 days out → 7', async () => {
+test('reminderVariantFor: 14 days out → 14', async () => {
   const { reminderVariantFor } = await load();
   const due = new Date('2026-06-30T00:00:00Z');
   const at = new Date('2026-06-16T00:00:00Z');
-  assert.equal(reminderVariantFor(due, at), 7);
+  assert.equal(reminderVariantFor(due, at), 14);
 });
 
 test('reminderVariantFor: 1 day out → 1', async () => {
@@ -51,9 +58,9 @@ test('reminderVariantFor: 1 day out → 1', async () => {
   assert.equal(reminderVariantFor(due, at), 1);
 });
 
-test('reminderVariantFor: 3 days out → 1', async () => {
+test('reminderVariantFor: 3 days out → 3', async () => {
   const { reminderVariantFor } = await load();
   const due = new Date('2026-06-30T00:00:00Z');
   const at = new Date('2026-06-27T00:00:00Z');
-  assert.equal(reminderVariantFor(due, at), 1);
+  assert.equal(reminderVariantFor(due, at), 3);
 });
