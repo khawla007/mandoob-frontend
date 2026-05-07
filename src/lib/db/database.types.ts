@@ -1164,6 +1164,71 @@ export type Database = {
           },
         ];
       };
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean;
+          canceled_at: string | null;
+          created_at: string;
+          currency: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          id: string;
+          interval: string;
+          plan: string;
+          status: string;
+          stripe_customer_id: string;
+          stripe_price_id: string;
+          stripe_subscription_id: string;
+          tenant_id: string;
+          unit_amount_minor: number;
+          updated_at: string;
+        };
+        Insert: {
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          interval: string;
+          plan: string;
+          status: string;
+          stripe_customer_id: string;
+          stripe_price_id: string;
+          stripe_subscription_id: string;
+          tenant_id: string;
+          unit_amount_minor: number;
+          updated_at?: string;
+        };
+        Update: {
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          interval?: string;
+          plan?: string;
+          status?: string;
+          stripe_customer_id?: string;
+          stripe_price_id?: string;
+          stripe_subscription_id?: string;
+          tenant_id?: string;
+          unit_amount_minor?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: true;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       tenant_payment_config: {
         Row: {
           created_at: string;

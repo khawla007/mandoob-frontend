@@ -19,6 +19,7 @@ export default async function ProSettingsLayout({
       <SettingsTabs
         tabs={[
           { href: base, label: 'Workspace' },
+          { href: `${base}/billing`, label: 'Billing' },
           { href: `${base}/profile`, label: 'Profile' },
           { href: `${base}/security`, label: 'Security' },
         ]}

@@ -1,5 +1,6 @@
 import {
   Building2,
+  DollarSign,
   KeyRound,
   LayoutDashboard,
   ScrollText,
@@ -18,6 +19,7 @@ export const adminNav: ShellNavGroup[] = [
       { label: 'Sessions', href: '/admin/sessions', icon: KeyRound },
       { label: 'MFA & Security', href: '/admin/security', icon: ShieldCheck },
       { label: 'Audit logs', href: '/admin/audit-logs', icon: ScrollText },
+      { label: 'Finance', href: '/admin/finance', icon: DollarSign },
     ],
   },
   {
