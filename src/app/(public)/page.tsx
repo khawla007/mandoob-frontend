@@ -20,6 +20,9 @@ export default function ComingSoonPage() {
         </p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg">
+            <Link href="/estimate">Estimate setup cost</Link>
+          </Button>
+          <Button asChild size="lg">
             <Link href="/login">Sign in</Link>
           </Button>
           <Button asChild size="lg" variant="outline">

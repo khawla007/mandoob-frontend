@@ -41,6 +41,9 @@ export async function SiteHeader() {
         Mandoob
       </Link>
       <nav className="flex items-center gap-6 text-sm">
+        <Link href="/estimate" className="hover:text-foreground text-muted-foreground">
+          Estimate
+        </Link>
         <Link href="/pricing" className="hover:text-foreground text-muted-foreground">
           Pricing
         </Link>
