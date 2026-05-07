@@ -14,6 +14,7 @@ import {
   RoleEmployeeSchema,
 } from '@/lib/validation/account';
 import { updateSelfProfile, updateSelfRoleFields } from '@/lib/data/account-self';
+import { optInPhoneChannels } from '@/lib/comms/consent';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { listUserSessions, revokeSessionById, type SessionSummary } from '@/lib/auth/sessions';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
@@ -248,6 +249,37 @@ export async function updateRoleFieldsAction(
     });
     revalidatePath('/account/role');
     return { ok: true, data: result };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function optInSelfCommsAction(formInput: FormData): Promise<ActionResult> {
+  try {
+    const session = await requireUser();
+    if (session.role !== 'customer' && session.role !== 'super_admin') {
+      throw new ApiError('FORBIDDEN', 'Only customers can update communication preferences', 403);
+    }
+    const confirmation = String(formInput.get('confirmation') ?? '');
+    if (confirmation !== 'OPT IN') {
+      throw new ApiError('VALIDATION_FAILED', 'Confirmation is required', 400);
+    }
+
+    const supabase = await createSupabaseServerClient();
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('phone')
+      .eq('id', session.id)
+      .maybeSingle();
+    if (error) throw new ApiError('INTERNAL', error.message, 500);
+    const phone = (profile?.phone as string | null) ?? null;
+    if (!phone) throw new ApiError('VALIDATION_FAILED', 'No phone number on profile', 400);
+
+    await optInPhoneChannels({ phoneE164: phone, source: 'admin_action' });
+    revalidatePath('/account');
+    const returnPath = String(formInput.get('returnPath') ?? '');
+    if (returnPath.startsWith('/t/')) revalidatePath(returnPath);
+    return { ok: true };
   } catch (e) {
     return fail(e);
   }

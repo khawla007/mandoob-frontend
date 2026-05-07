@@ -1,5 +1,6 @@
 import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { isRecipientOptedOut } from '@/lib/comms/consent';
 import { nextScheduledFor, MAX_ATTEMPTS } from '@/lib/mail/send';
 import { resolveSmsForTenant, type TenantSmsConfig } from './config';
 import { consumeSmsQuota } from './rate-limit';
@@ -25,7 +26,7 @@ export type EnqueueSmsResult =
       queueId: number;
       status: 'pending' | 'sent' | 'delivered' | 'failed' | 'dead';
     }
-  | { ok: false; reason: 'SMS_NOT_CONFIGURED' | 'INVALID_PHONE' | string };
+  | { ok: false; reason: 'SMS_NOT_CONFIGURED' | 'INVALID_PHONE' | 'RECIPIENT_OPTED_OUT' | string };
 
 function providerAvailability(config: TenantSmsConfig): { unifonic: boolean; twilio: boolean } {
   return {
@@ -37,6 +38,25 @@ function providerAvailability(config: TenantSmsConfig): { unifonic: boolean; twi
 export async function enqueueSms<T extends SmsTemplateId>(
   args: EnqueueSmsArgs<T>,
 ): Promise<EnqueueSmsResult> {
+  const supabase = createSupabaseServiceRoleClient();
+  if (args.templateId !== 'opt-out-confirmation') {
+    const optedOut = await isRecipientOptedOut(args.toPhone, 'sms', supabase);
+    if (optedOut) {
+      await supabase.from('tenant_audit_log').insert({
+        tenant_id: args.tenantId,
+        actor_id: null,
+        action: 'comms_skipped_opted_out',
+        source: 'system',
+        details: {
+          phone_e164: args.toPhone,
+          channel: 'sms',
+          template_id: args.templateId,
+        },
+      });
+      return { ok: false, reason: 'RECIPIENT_OPTED_OUT' };
+    }
+  }
+
   const tenantConfig = await resolveSmsForTenant(args.tenantId);
   if (!tenantConfig) return { ok: false, reason: 'SMS_NOT_CONFIGURED' };
 
@@ -48,7 +68,6 @@ export async function enqueueSms<T extends SmsTemplateId>(
   }
 
   const rendered = renderSmsTemplate(args.templateId, args.input);
-  const supabase = createSupabaseServiceRoleClient();
   const scheduledFor = args.scheduledFor ?? new Date();
 
   const insert = {

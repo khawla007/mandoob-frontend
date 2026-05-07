@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyHubSignature } from '@/lib/whatsapp/signature';
+import { recordInboundConsentKeyword } from '@/lib/comms/consent';
+import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -127,6 +129,21 @@ async function recordInboundMessage(
     body: message.text?.body ?? null,
     wamid: message.id,
   });
+  const action = await recordInboundConsentKeyword({
+    supabase,
+    phoneE164: message.from,
+    channel: 'whatsapp',
+    body: message.text?.body ?? null,
+    inboundMessageId: message.id,
+  });
+  if (action) {
+    await enqueueWhatsApp({
+      tenantId,
+      templateId: 'opt-out-confirmation',
+      toPhone: message.from,
+      input: {},
+    });
+  }
 }
 
 type WhatsAppWebhookPayload = {

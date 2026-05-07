@@ -1,5 +1,6 @@
 import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { isRecipientOptedOut } from '@/lib/comms/consent';
 import { nextScheduledFor, MAX_ATTEMPTS } from '@/lib/mail/send';
 import { resolveWhatsAppForTenant } from './config';
 import { consumeWhatsAppQuota } from './rate-limit';
@@ -26,18 +27,39 @@ export type EnqueueWhatsAppResult =
       queueId: number;
       status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'dead';
     }
-  | { ok: false; reason: 'WHATSAPP_NOT_CONFIGURED' | 'RATE_LIMITED' | string };
+  | {
+      ok: false;
+      reason: 'WHATSAPP_NOT_CONFIGURED' | 'RATE_LIMITED' | 'RECIPIENT_OPTED_OUT' | string;
+    };
 
 export { nextScheduledFor, MAX_ATTEMPTS } from '@/lib/mail/send';
 
 export async function enqueueWhatsApp<T extends WhatsAppTemplateId>(
   args: EnqueueWhatsAppArgs<T>,
 ): Promise<EnqueueWhatsAppResult> {
+  const supabase = createSupabaseServiceRoleClient();
+  if (args.templateId !== 'opt-out-confirmation') {
+    const optedOut = await isRecipientOptedOut(args.toPhone, 'whatsapp', supabase);
+    if (optedOut) {
+      await supabase.from('tenant_audit_log').insert({
+        tenant_id: args.tenantId,
+        actor_id: null,
+        action: 'comms_skipped_opted_out',
+        source: 'system',
+        details: {
+          phone_e164: args.toPhone,
+          channel: 'whatsapp',
+          template_id: args.templateId,
+        },
+      });
+      return { ok: false, reason: 'RECIPIENT_OPTED_OUT' };
+    }
+  }
+
   const tenantConfig = await resolveWhatsAppForTenant(args.tenantId);
   if (!tenantConfig) return { ok: false, reason: 'WHATSAPP_NOT_CONFIGURED' };
 
   const rendered = renderWhatsAppTemplate(args.templateId, args.input);
-  const supabase = createSupabaseServiceRoleClient();
 
   const scheduledFor = args.scheduledFor ?? new Date();
   const insert = {

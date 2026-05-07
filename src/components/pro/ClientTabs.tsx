@@ -10,6 +10,7 @@ import type { DocumentListEntry, OpenRequestEntry } from '@/lib/data/documents';
 import type { ProInvoiceRow } from '@/lib/data/invoices';
 import type { RenewalRow } from '@/lib/data/renewals';
 import type { CommRow } from '@/lib/data/comms';
+import type { ConsentState } from '@/lib/comms/consent';
 
 export function ClientTabs({
   client,
@@ -19,6 +20,7 @@ export function ClientTabs({
   renewals,
   invoices,
   comms,
+  consentState,
   loadOlderComms,
 }: {
   client: ClientDetail;
@@ -28,6 +30,7 @@ export function ClientTabs({
   renewals: RenewalRow[];
   invoices: ProInvoiceRow[];
   comms: CommRow[];
+  consentState: ConsentState;
   loadOlderComms: (beforeIso: string) => Promise<CommRow[]>;
 }) {
   return (
@@ -46,6 +49,14 @@ export function ClientTabs({
           <Field label="Status" value={client.status} mono />
           <Field label="Jurisdiction" value={client.jurisdiction ?? '—'} />
           <Field label="Trade license #" value={client.trade_license_no ?? '—'} mono />
+          <Field label="Contact phone" value={client.contact_phone ?? '—'} mono />
+          <Field
+            label="Consent"
+            value={[
+              consentState.whatsapp ? 'WhatsApp opted out' : 'WhatsApp active',
+              consentState.sms ? 'SMS opted out' : 'SMS active',
+            ].join(' · ')}
+          />
           <Field label="License expiry" value={client.license_expiry ?? '—'} />
           <Field label="Shareholders" value={String(client.shareholders.length)} />
           <Field

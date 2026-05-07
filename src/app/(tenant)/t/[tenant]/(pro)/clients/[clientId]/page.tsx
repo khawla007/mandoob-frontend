@@ -12,6 +12,7 @@ import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/do
 import { listInvoicesForTenant } from '@/lib/data/invoices';
 import { listRenewalsForClient } from '@/lib/data/renewals';
 import { getCommsForClient } from '@/lib/data/comms';
+import { getConsentStateForPhone } from '@/lib/comms/consent';
 import { loadOlderCommsAction } from './comms-actions';
 
 export const dynamic = 'force-dynamic';
@@ -28,12 +29,13 @@ export default async function ClientDetailPage({
   const client = await getClientForTenant(tenant.id, clientId);
   if (!client) notFound();
 
-  const [documents, openRequests, renewals, invoices, comms] = await Promise.all([
+  const [documents, openRequests, renewals, invoices, comms, consentState] = await Promise.all([
     listDocumentsForClient(tenant.id, clientId),
     listOpenRequestsForClient(tenant.id, clientId),
     listRenewalsForClient(tenant.id, clientId, { includeCancelled: true }),
     listInvoicesForTenant(tenant.id, { clientId }),
     getCommsForClient(tenant.id, clientId, { limit: 25 }),
+    getConsentStateForPhone(client.contact_phone),
   ]);
 
   const loadOlder = async (beforeIso: string) =>
@@ -61,6 +63,13 @@ export default async function ClientDetailPage({
                 · License expires {client.license_expiry}
               </span>
             )}
+            {client.contact_phone && (
+              <>
+                <span className="text-muted-foreground">· {client.contact_phone}</span>
+                {consentState.whatsapp && <Badge variant="destructive">WhatsApp opted out</Badge>}
+                {consentState.sms && <Badge variant="destructive">SMS opted out</Badge>}
+              </>
+            )}
           </div>
         </div>
         <EditClientForm
@@ -85,6 +94,7 @@ export default async function ClientDetailPage({
             renewals={renewals}
             invoices={invoices}
             comms={comms}
+            consentState={consentState}
             loadOlderComms={loadOlder}
           />
         </CardContent>

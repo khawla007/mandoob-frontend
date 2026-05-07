@@ -12,6 +12,7 @@ export type ClientDetail = {
   license_expiry: string | null;
   shareholders: unknown[];
   registered_activities: unknown[];
+  contact_phone: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -31,6 +32,23 @@ export async function getClientForTenant(
     .maybeSingle();
 
   if (error || !data) return null;
+
+  const { data: customerLink } = await admin
+    .from('customer_profiles')
+    .select('profile_id')
+    .eq('linked_client_id', clientId)
+    .limit(1)
+    .maybeSingle();
+  let contactPhone: string | null = null;
+  if (customerLink?.profile_id) {
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('phone')
+      .eq('id', customerLink.profile_id)
+      .maybeSingle();
+    contactPhone = (profile?.phone as string | null) ?? null;
+  }
+
   return {
     id: data.id as string,
     tenant_id: data.tenant_id as string,
@@ -41,6 +59,7 @@ export async function getClientForTenant(
     license_expiry: (data.license_expiry as string | null) ?? null,
     shareholders: (data.shareholders as unknown[]) ?? [],
     registered_activities: (data.registered_activities as unknown[]) ?? [],
+    contact_phone: contactPhone,
     created_at: data.created_at as string,
     updated_at: data.updated_at as string,
   };

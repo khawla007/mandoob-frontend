@@ -31,6 +31,9 @@ export const SmsOtpCodeInput = z.object({
   code: z.string().min(4).max(10),
 });
 
+export const SmsOptOutConfirmationInput = z.object({});
+
 export type SmsRenewalReminder = z.infer<typeof SmsRenewalReminderInput>;
 export type SmsDocumentRequested = z.infer<typeof SmsDocumentRequestedInput>;
 export type SmsOtpCode = z.infer<typeof SmsOtpCodeInput>;
+export type SmsOptOutConfirmation = z.infer<typeof SmsOptOutConfirmationInput>;

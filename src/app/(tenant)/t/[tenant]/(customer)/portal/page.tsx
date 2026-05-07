@@ -8,7 +8,12 @@ import { listRenewalsForClient } from '@/lib/data/renewals';
 import { getRegistrationProgress } from '@/lib/mocks/customer-portal';
 import { getInvoicesForCustomer } from '@/lib/data/payments';
 import { getCommsForCustomer } from '@/lib/data/comms';
+import { getConsentStateForPhone } from '@/lib/comms/consent';
+import { optInSelfCommsAction } from '@/app/account/actions';
 import type { Renewal } from '@/lib/types/renewals-ui';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RegistrationProgressCard } from '@/components/customer/RegistrationProgressCard';
 import { ActiveDocRequestsCard } from '@/components/customer/ActiveDocRequestsCard';
 import { UpcomingRenewalsCard } from '@/components/customer/UpcomingRenewalsCard';
@@ -34,6 +39,8 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
     getCommsForCustomer(session.id, { limit: 10 }),
     getInvoicesForCustomer(session.id),
   ]);
+  const consentState = await getConsentStateForPhone(profile?.phone);
+  const hasOptOut = consentState.whatsapp || consentState.sms;
 
   const renewals: Renewal[] = renewalRows
     .filter((r) => r.status === 'upcoming' || r.status === 'due_soon' || r.status === 'overdue')
@@ -68,6 +75,38 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
         <RecentCommsCard rows={comms} />
         <PaymentHistoryCard data={payments} tenantSlug={tenant.slug} />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Communication preferences</CardTitle>
+          <CardDescription>WhatsApp and SMS delivery for your profile phone.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-mono">{profile?.phone ?? 'No phone on profile'}</span>
+            <Badge variant={consentState.whatsapp ? 'destructive' : 'secondary'}>
+              WhatsApp {consentState.whatsapp ? 'opted out' : 'active'}
+            </Badge>
+            <Badge variant={consentState.sms ? 'destructive' : 'secondary'}>
+              SMS {consentState.sms ? 'opted out' : 'active'}
+            </Badge>
+          </div>
+          {profile?.phone && hasOptOut && (
+            <form
+              action={async (formData) => {
+                'use server';
+                await optInSelfCommsAction(formData);
+              }}
+            >
+              <input type="hidden" name="confirmation" value="OPT IN" />
+              <input type="hidden" name="returnPath" value={`/t/${tenant.slug}/portal`} />
+              <Button type="submit" variant="outline" size="sm">
+                Opt back in
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
