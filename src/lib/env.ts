@@ -48,6 +48,8 @@ const schema = z.object({
   STRIPE_PRICE_PROFESSIONAL: optionalStr,
   STRIPE_PRICE_ENTERPRISE: optionalStr,
 
+  VIRUSTOTAL_API_KEY: optionalStr,
+
   SENTRY_DSN: optionalStr,
 });
 
