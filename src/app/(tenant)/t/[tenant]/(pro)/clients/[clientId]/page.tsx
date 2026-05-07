@@ -9,6 +9,7 @@ import { EditClientForm } from '@/components/pro/EditClientForm';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getClientForTenant } from '@/lib/data/client-detail';
 import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
+import { listInvoicesForTenant } from '@/lib/data/invoices';
 import { listRenewalsForClient } from '@/lib/data/renewals';
 import { getCommsForClient } from '@/lib/data/comms';
 import { loadOlderCommsAction } from './comms-actions';
@@ -27,10 +28,11 @@ export default async function ClientDetailPage({
   const client = await getClientForTenant(tenant.id, clientId);
   if (!client) notFound();
 
-  const [documents, openRequests, renewals, comms] = await Promise.all([
+  const [documents, openRequests, renewals, invoices, comms] = await Promise.all([
     listDocumentsForClient(tenant.id, clientId),
     listOpenRequestsForClient(tenant.id, clientId),
     listRenewalsForClient(tenant.id, clientId, { includeCancelled: true }),
+    listInvoicesForTenant(tenant.id, { clientId }),
     getCommsForClient(tenant.id, clientId, { limit: 25 }),
   ]);
 
@@ -81,6 +83,7 @@ export default async function ClientDetailPage({
             documents={documents}
             openRequests={openRequests}
             renewals={renewals}
+            invoices={invoices}
             comms={comms}
             loadOlderComms={loadOlder}
           />

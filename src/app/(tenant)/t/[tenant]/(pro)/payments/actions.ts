@@ -6,10 +6,18 @@ import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
 import { requireRole } from '@/lib/auth/require-role';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
+import { createInvoice } from '@/lib/data/invoices';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
 import { createRefund } from '@/lib/payments/providers/tap';
+import { resolveRefundLedgerState } from '@/lib/payments/refund-state';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import {
+  createInvoiceActionSchema,
+  manualPaymentActionSchema,
+  refundInvoiceActionSchema,
+  voidInvoiceActionSchema,
+} from '@/lib/validation/invoice';
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -42,6 +50,47 @@ async function resolveProCaller(slug: string): Promise<CallerCtx> {
   };
 }
 
+export async function createInvoiceAction(
+  tenantSlug: string,
+  raw: unknown,
+): Promise<ActionResult<{ invoiceId: string }>> {
+  try {
+    const ctx = await resolveProCaller(tenantSlug);
+    const input = createInvoiceActionSchema.parse(raw);
+    const admin = createSupabaseServiceRoleClient();
+    const { data: client } = await admin
+      .from('clients')
+      .select('id, tenant_id')
+      .eq('id', input.clientId)
+      .maybeSingle();
+
+    if (!client || client.tenant_id !== ctx.tenantId) {
+      return { ok: false, error: 'Client not found', code: 'NOT_FOUND' };
+    }
+
+    const result = await createInvoice({
+      tenantId: ctx.tenantId,
+      clientId: input.clientId,
+      label: input.label,
+      amountMinor: input.amountMinor,
+      currency: input.currency,
+      dueAt: input.dueAt,
+      createdBy: ctx.callerId,
+    });
+
+    if (!result.ok) {
+      return { ok: false, error: result.error, code: result.code };
+    }
+
+    revalidatePath(`/t/${ctx.tenantSlug}/payments`);
+    revalidatePath(`/t/${ctx.tenantSlug}/clients/${input.clientId}`);
+    revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
+    return { ok: true, data: { invoiceId: result.data.id } };
+  } catch (err) {
+    return mapError(err);
+  }
+}
+
 export async function markInvoicePaidAction(args: {
   tenantSlug: string;
   invoiceId: string;
@@ -49,13 +98,18 @@ export async function markInvoicePaidAction(args: {
   note?: string;
 }): Promise<ActionResult<{ paymentId: string }>> {
   try {
+    const parsed = manualPaymentActionSchema.parse({
+      invoiceId: args.invoiceId,
+      method: args.method,
+      note: args.note,
+    });
     const ctx = await resolveProCaller(args.tenantSlug);
     const admin = createSupabaseServiceRoleClient();
 
     const { data: invoice } = await admin
       .from('invoices')
       .select('id, tenant_id, status, amount_minor, currency')
-      .eq('id', args.invoiceId)
+      .eq('id', parsed.invoiceId)
       .maybeSingle();
 
     if (!invoice || invoice.tenant_id !== ctx.tenantId) {
@@ -78,7 +132,7 @@ export async function markInvoicePaidAction(args: {
         provider: 'manual',
         amount_minor: invoice.amount_minor,
         currency: invoice.currency,
-        method: args.method,
+        method: parsed.method,
         status: 'succeeded',
         received_at: nowIso,
       })
@@ -104,13 +158,14 @@ export async function markInvoicePaidAction(args: {
         entity: 'invoice',
         invoice_id: invoice.id,
         payment_id: paymentRow.id,
-        method: args.method,
-        note: args.note ?? null,
+        method: parsed.method,
+        note: parsed.note ?? null,
         ip: ctx.ip,
       },
     });
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
+    revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { paymentId: paymentRow.id } };
   } catch (err) {
     return mapError(err);
@@ -123,16 +178,17 @@ export async function voidInvoiceAction(args: {
   reason: string;
 }): Promise<ActionResult<{ invoiceId: string }>> {
   try {
+    const parsed = voidInvoiceActionSchema.parse({
+      invoiceId: args.invoiceId,
+      reason: args.reason,
+    });
     const ctx = await resolveProCaller(args.tenantSlug);
-    if (!args.reason || args.reason.trim().length < 3) {
-      return { ok: false, error: 'Reason is required', code: 'VALIDATION_FAILED' };
-    }
     const admin = createSupabaseServiceRoleClient();
 
     const { data: invoice } = await admin
       .from('invoices')
       .select('id, tenant_id, status')
-      .eq('id', args.invoiceId)
+      .eq('id', parsed.invoiceId)
       .maybeSingle();
 
     if (!invoice || invoice.tenant_id !== ctx.tenantId) {
@@ -148,7 +204,7 @@ export async function voidInvoiceAction(args: {
 
     await admin
       .from('invoices')
-      .update({ status: 'void', void_reason: args.reason })
+      .update({ status: 'void', void_reason: parsed.reason })
       .eq('id', invoice.id);
 
     await admin.from('tenant_audit_log').insert({
@@ -159,12 +215,13 @@ export async function voidInvoiceAction(args: {
       details: {
         entity: 'invoice',
         invoice_id: invoice.id,
-        reason: args.reason,
+        reason: parsed.reason,
         ip: ctx.ip,
       },
     });
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
+    revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { invoiceId: invoice.id } };
   } catch (err) {
     return mapError(err);
@@ -178,20 +235,19 @@ export async function issueRefundAction(args: {
   reason: string;
 }): Promise<ActionResult<{ refundId: string; partial: boolean }>> {
   try {
+    const parsed = refundInvoiceActionSchema.parse({
+      invoiceId: args.invoiceId,
+      amountMinor: args.amountMinor,
+      reason: args.reason,
+    });
     const ctx = await resolveProCaller(args.tenantSlug);
-    if (args.amountMinor <= 0) {
-      return { ok: false, error: 'Amount must be positive', code: 'VALIDATION_FAILED' };
-    }
-    if (!args.reason || args.reason.trim().length < 3) {
-      return { ok: false, error: 'Reason is required', code: 'VALIDATION_FAILED' };
-    }
 
     const admin = createSupabaseServiceRoleClient();
 
     const { data: invoice } = await admin
       .from('invoices')
       .select('id, tenant_id, status, amount_minor, currency')
-      .eq('id', args.invoiceId)
+      .eq('id', parsed.invoiceId)
       .maybeSingle();
 
     if (!invoice || invoice.tenant_id !== ctx.tenantId) {
@@ -204,7 +260,7 @@ export async function issueRefundAction(args: {
         code: 'INVALID_STATE',
       };
     }
-    if (args.amountMinor > invoice.amount_minor) {
+    if (parsed.amountMinor > invoice.amount_minor) {
       return {
         ok: false,
         error: 'Refund exceeds invoice amount',
@@ -216,13 +272,31 @@ export async function issueRefundAction(args: {
       .from('payments')
       .select('id, provider, provider_charge_id, amount_minor')
       .eq('invoice_id', invoice.id)
-      .eq('status', 'succeeded')
+      .in('status', ['succeeded', 'partially_refunded'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (!payment) {
       return { ok: false, error: 'No succeeded payment to refund', code: 'INVALID_STATE' };
+    }
+
+    const { data: existingRefunds } = await admin
+      .from('refunds')
+      .select('amount_minor, status')
+      .eq('payment_id', payment.id)
+      .neq('status', 'failed');
+    const alreadyRefundedMinor = (existingRefunds ?? []).reduce(
+      (sum, row) => sum + (row.amount_minor as number),
+      0,
+    );
+    const remainingMinor = invoice.amount_minor - alreadyRefundedMinor;
+    if (parsed.amountMinor > remainingMinor) {
+      return {
+        ok: false,
+        error: 'Refund exceeds remaining refundable amount',
+        code: 'INVALID_AMOUNT',
+      };
     }
 
     let providerRefundId: string | null = null;
@@ -239,9 +313,9 @@ export async function issueRefundAction(args: {
       const refundResult = await createRefund({
         config,
         chargeId: payment.provider_charge_id,
-        amountMinor: args.amountMinor,
+        amountMinor: parsed.amountMinor,
         currency: invoice.currency,
-        reason: args.reason,
+        reason: parsed.reason,
       });
       if (!refundResult.ok) {
         return { ok: false, error: refundResult.error, code: 'TAP_ERROR' };
@@ -256,8 +330,8 @@ export async function issueRefundAction(args: {
         tenant_id: ctx.tenantId,
         payment_id: payment.id,
         provider_refund_id: providerRefundId,
-        amount_minor: args.amountMinor,
-        reason: args.reason,
+        amount_minor: parsed.amountMinor,
+        reason: parsed.reason,
         status: refundStatus,
       })
       .select('id')
@@ -271,12 +345,15 @@ export async function issueRefundAction(args: {
       };
     }
 
-    const isFull = args.amountMinor >= invoice.amount_minor;
-    const newInvoiceStatus = isFull ? 'refunded' : 'partially_refunded';
-    const newPaymentStatus = isFull ? 'refunded' : 'partially_refunded';
-
-    await admin.from('invoices').update({ status: newInvoiceStatus }).eq('id', invoice.id);
-    await admin.from('payments').update({ status: newPaymentStatus }).eq('id', payment.id);
+    const ledgerState = resolveRefundLedgerState({
+      refundStatus,
+      amountMinor: parsed.amountMinor,
+      remainingMinor,
+    });
+    if (ledgerState.settlesImmediately && ledgerState.invoiceStatus && ledgerState.paymentStatus) {
+      await admin.from('invoices').update({ status: ledgerState.invoiceStatus }).eq('id', invoice.id);
+      await admin.from('payments').update({ status: ledgerState.paymentStatus }).eq('id', payment.id);
+    }
 
     await admin.from('tenant_audit_log').insert({
       tenant_id: ctx.tenantId,
@@ -288,17 +365,19 @@ export async function issueRefundAction(args: {
         refund_id: refundRow.id,
         payment_id: payment.id,
         invoice_id: invoice.id,
-        amount_minor: args.amountMinor,
+        amount_minor: parsed.amountMinor,
         currency: invoice.currency,
         provider: payment.provider,
-        partial: !isFull,
-        reason: args.reason,
+        partial: !ledgerState.isFull,
+        pending: !ledgerState.settlesImmediately,
+        reason: parsed.reason,
         ip: ctx.ip,
       },
     });
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
-    return { ok: true, data: { refundId: refundRow.id, partial: !isFull } };
+    revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
+    return { ok: true, data: { refundId: refundRow.id, partial: !ledgerState.isFull } };
   } catch (err) {
     return mapError(err);
   }

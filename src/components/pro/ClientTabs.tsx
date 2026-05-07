@@ -2,10 +2,12 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DocumentsTab } from '@/components/pro/DocumentsTab';
+import { ClientInvoicesPanel } from '@/components/pro/ClientInvoicesPanel';
 import { ClientRenewalsPanel } from '@/components/pro/ClientRenewalsPanel';
 import { CommsThread } from '@/components/pro/CommsThread';
 import type { ClientDetail } from '@/lib/data/client-detail';
 import type { DocumentListEntry, OpenRequestEntry } from '@/lib/data/documents';
+import type { ProInvoiceRow } from '@/lib/data/invoices';
 import type { RenewalRow } from '@/lib/data/renewals';
 import type { CommRow } from '@/lib/data/comms';
 
@@ -15,6 +17,7 @@ export function ClientTabs({
   documents,
   openRequests,
   renewals,
+  invoices,
   comms,
   loadOlderComms,
 }: {
@@ -23,6 +26,7 @@ export function ClientTabs({
   documents: DocumentListEntry[];
   openRequests: OpenRequestEntry[];
   renewals: RenewalRow[];
+  invoices: ProInvoiceRow[];
   comms: CommRow[];
   loadOlderComms: (beforeIso: string) => Promise<CommRow[]>;
 }) {
@@ -32,6 +36,7 @@ export function ClientTabs({
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
         <TabsTrigger value="renewals">Renewals</TabsTrigger>
+        <TabsTrigger value="invoices">Invoices</TabsTrigger>
         <TabsTrigger value="communications">Communications</TabsTrigger>
       </TabsList>
 
@@ -65,6 +70,14 @@ export function ClientTabs({
           slug={slug}
           client={{ id: client.id, company_name: client.company_name }}
           renewals={renewals}
+        />
+      </TabsContent>
+
+      <TabsContent value="invoices" className="pt-6">
+        <ClientInvoicesPanel
+          slug={slug}
+          client={{ id: client.id, company_name: client.company_name }}
+          invoices={invoices}
         />
       </TabsContent>
 
