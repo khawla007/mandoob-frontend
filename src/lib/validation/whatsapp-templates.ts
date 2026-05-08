@@ -33,7 +33,14 @@ export const WhatsAppOtpCodeInput = z.object({
 
 export const WhatsAppOptOutConfirmationInput = z.object({});
 
+export const WhatsAppLeadAcknowledgementInput = z.object({
+  leadName: z.string().min(1),
+  tenantName: z.string().min(1),
+  leadReference: z.string().min(1),
+});
+
 export type WhatsAppRenewalReminder = z.infer<typeof WhatsAppRenewalReminderInput>;
 export type WhatsAppDocumentRequested = z.infer<typeof WhatsAppDocumentRequestedInput>;
 export type WhatsAppOtpCode = z.infer<typeof WhatsAppOtpCodeInput>;
 export type WhatsAppOptOutConfirmation = z.infer<typeof WhatsAppOptOutConfirmationInput>;
+export type WhatsAppLeadAcknowledgement = z.infer<typeof WhatsAppLeadAcknowledgementInput>;

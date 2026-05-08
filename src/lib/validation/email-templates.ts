@@ -86,6 +86,14 @@ export const OtpCodeInput = z.object({
   code: z.string().min(4).max(10),
 });
 
+export const LeadAcknowledgementInput = z.object({
+  leadName: z.string().min(1),
+  tenantName: z.string().min(1),
+  leadReference: z.string().min(1),
+  jurisdiction: z.enum(['mainland', 'free_zone', 'offshore']),
+  authority: z.string().min(1),
+});
+
 export type TenantPendingReceived = z.infer<typeof TenantPendingReceivedInput>;
 export type TenantApproved = z.infer<typeof TenantApprovedInput>;
 export type TenantRejected = z.infer<typeof TenantRejectedInput>;
@@ -98,3 +106,4 @@ export type SubscriptionReceipt = z.infer<typeof SubscriptionReceiptInput>;
 export type SubscriptionSuspension = z.infer<typeof SubscriptionSuspensionInput>;
 export type GenericInvite = z.infer<typeof GenericInviteInput>;
 export type OtpCode = z.infer<typeof OtpCodeInput>;
+export type LeadAcknowledgement = z.infer<typeof LeadAcknowledgementInput>;

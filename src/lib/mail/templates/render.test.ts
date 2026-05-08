@@ -152,3 +152,35 @@ test('otp-code: code appears in subject + body', async () => {
   assert.ok(r.subject.includes('123456'));
   assert.ok(r.html.includes('123456'));
 });
+
+test('lead-acknowledgement: includes lead reference and next step context', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('lead-acknowledgement', {
+    leadName: 'Aisha',
+    tenantName: 'Mandoob',
+    leadReference: 'lead-1',
+    jurisdiction: 'free_zone',
+    authority: 'DMCC',
+  });
+
+  assert.ok(r.subject.includes('lead-1'));
+  assert.ok(r.html.includes('Aisha'));
+  assert.ok(r.html.includes('DMCC'));
+  assert.ok(!r.html.includes('{{'));
+});
+
+test('lead-acknowledgement: escapes public HTML values', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('lead-acknowledgement', {
+    leadName: '<script>alert(1)</script>',
+    tenantName: 'Mandoob',
+    leadReference: 'lead-1',
+    jurisdiction: 'free_zone',
+    authority: '<a href="https://evil.test">DMCC</a>',
+  });
+
+  assert.ok(!r.html.includes('<script>'));
+  assert.ok(!r.html.includes('<a href='));
+  assert.ok(r.html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+  assert.ok(r.html.includes('&lt;a href=&quot;https://evil.test&quot;&gt;DMCC&lt;/a&gt;'));
+});

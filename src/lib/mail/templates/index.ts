@@ -11,6 +11,7 @@ import type {
   SubscriptionSuspension,
   GenericInvite,
   OtpCode,
+  LeadAcknowledgement,
 } from '@/lib/validation/email-templates';
 import { tenantPendingReceived } from './tenant-pending-received';
 import { tenantApproved } from './tenant-approved';
@@ -24,6 +25,7 @@ import { subscriptionReceipt } from './subscription-receipt';
 import { subscriptionSuspension } from './subscription-suspension';
 import { genericInvite } from './generic-invite';
 import { otpCode } from './otp-code';
+import { leadAcknowledgement } from './lead-acknowledgement';
 
 export type Rendered = { subject: string; html: string; text?: string };
 
@@ -40,6 +42,7 @@ export type TemplateMap = {
   'subscription-suspension': SubscriptionSuspension;
   'generic-invite': GenericInvite;
   'otp-code': OtpCode;
+  'lead-acknowledgement': LeadAcknowledgement;
 };
 export type TemplateId = keyof TemplateMap;
 export type TemplateInputFor<T extends TemplateId> = TemplateMap[T];
@@ -57,6 +60,7 @@ const registry: { [K in TemplateId]: (input: TemplateMap[K]) => Rendered } = {
   'subscription-suspension': subscriptionSuspension,
   'generic-invite': genericInvite,
   'otp-code': otpCode,
+  'lead-acknowledgement': leadAcknowledgement,
 };
 
 export function renderTemplate<T extends TemplateId>(id: T, input: TemplateMap[T]): Rendered {

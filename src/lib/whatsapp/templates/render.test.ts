@@ -83,3 +83,21 @@ test('otp-code: accepts 6-digit code', () => {
     assert.equal(out.components[0].parameters[0].text, '123456');
   }
 });
+
+test('lead-acknowledgement: produces compact body parameters', () => {
+  const out = renderWhatsAppTemplate('lead-acknowledgement', {
+    leadName: 'Aisha',
+    tenantName: 'Acme PRO',
+    leadReference: 'lead-1',
+  });
+
+  assert.equal(out.metaTemplateName, 'lead_acknowledgement');
+  assert.equal(out.language, 'en');
+  assert.equal(out.components.length, 1);
+  if (out.components[0].type === 'body') {
+    assert.deepEqual(
+      out.components[0].parameters.map((parameter) => parameter.text),
+      ['Aisha', 'Acme PRO', 'lead-1'],
+    );
+  }
+});
