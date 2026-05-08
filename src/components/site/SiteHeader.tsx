@@ -44,6 +44,9 @@ export async function SiteHeader() {
         <Link href="/estimate" className="hover:text-foreground text-muted-foreground">
           Estimate
         </Link>
+        <Link href="/knowledge-base" className="hover:text-foreground text-muted-foreground">
+          Knowledge Base
+        </Link>
         <Link href="/pricing" className="hover:text-foreground text-muted-foreground">
           Pricing
         </Link>
