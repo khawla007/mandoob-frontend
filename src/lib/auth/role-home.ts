@@ -17,7 +17,7 @@ export async function resolveRoleHome(args: {
     case 'pro':
       return `/t/${slug}/dashboard`;
     case 'employee':
-      return `/t/${slug}/employee/dashboard`;
+      return `/t/${slug}/me`;
     default:
       return '/login';
   }
