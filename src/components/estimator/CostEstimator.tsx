@@ -73,7 +73,10 @@ const ACTIVITY_OPTIONS = [{ value: 'consulting', label: 'Consulting / profession
 export function CostEstimator({ authorities }: { authorities: AuthorityOption[] }) {
   const [input, setInput] = useState<EstimateInput>(() => ({
     jurisdiction: 'free_zone',
-    authority: authorities.find((a) => a.jurisdiction === 'free_zone')?.authority ?? authorities[0]?.authority ?? '',
+    authority:
+      authorities.find((a) => a.jurisdiction === 'free_zone')?.authority ??
+      authorities[0]?.authority ??
+      '',
     emirate: authorities.find((a) => a.jurisdiction === 'free_zone')?.emirate ?? null,
     activityKey: 'consulting',
     shareholderCount: 1,
@@ -92,11 +95,15 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
     [authorities, input.jurisdiction],
   );
   const legalStructureOptions = useMemo(
-    () => LEGAL_STRUCTURES.filter((structure) => legalStructureAllowed(input.jurisdiction, structure.value)),
+    () =>
+      LEGAL_STRUCTURES.filter((structure) =>
+        legalStructureAllowed(input.jurisdiction, structure.value),
+      ),
     [input.jurisdiction],
   );
   const officeTypeOptions = useMemo(
-    () => OFFICE_TYPES.filter((office) => input.jurisdiction !== 'offshore' || office.value === 'none'),
+    () =>
+      OFFICE_TYPES.filter((office) => input.jurisdiction !== 'offshore' || office.value === 'none'),
     [input.jurisdiction],
   );
 
@@ -113,7 +120,11 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
       authority: firstAuthority?.authority ?? '',
       emirate: firstAuthority?.emirate ?? null,
       legalStructure:
-        jurisdiction === 'mainland' ? 'llc' : jurisdiction === 'offshore' ? 'offshore_company' : 'fz_llc',
+        jurisdiction === 'mainland'
+          ? 'llc'
+          : jurisdiction === 'offshore'
+            ? 'offshore_company'
+            : 'fz_llc',
       officeType: jurisdiction === 'offshore' ? 'none' : 'flexi',
     });
   }
@@ -184,12 +195,10 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
 
   return (
     <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,1.05fr)] lg:px-8">
-      <form onSubmit={calculate} className="rounded-lg border bg-background p-4 shadow-sm sm:p-5">
+      <form onSubmit={calculate} className="bg-background rounded-lg border p-4 shadow-sm sm:p-5">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-muted-foreground text-xs font-medium uppercase">
-              Public estimator
-            </p>
+            <p className="text-muted-foreground text-xs font-medium uppercase">Public estimator</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">UAE company setup quote</h1>
           </div>
           <div className="bg-primary/10 text-primary rounded-md p-2">
@@ -198,9 +207,12 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Jurisdiction">
-            <Select value={input.jurisdiction} onValueChange={(value) => setJurisdiction(value as Jurisdiction)}>
-              <SelectTrigger className="w-full">
+          <Field id="estimate-jurisdiction" label="Jurisdiction">
+            <Select
+              value={input.jurisdiction}
+              onValueChange={(value) => setJurisdiction(value as Jurisdiction)}
+            >
+              <SelectTrigger id="estimate-jurisdiction" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -213,9 +225,9 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             </Select>
           </Field>
 
-          <Field label="Authority">
+          <Field id="estimate-authority" label="Authority">
             <Select value={input.authority} onValueChange={setAuthority}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="estimate-authority" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -228,9 +240,12 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             </Select>
           </Field>
 
-          <Field label="Business activity">
-            <Select value={input.activityKey} onValueChange={(activityKey) => patch({ activityKey })}>
-              <SelectTrigger className="w-full">
+          <Field id="estimate-activity" label="Business activity">
+            <Select
+              value={input.activityKey}
+              onValueChange={(activityKey) => patch({ activityKey })}
+            >
+              <SelectTrigger id="estimate-activity" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -243,12 +258,14 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             </Select>
           </Field>
 
-          <Field label="Legal structure">
+          <Field id="estimate-legal-structure" label="Legal structure">
             <Select
               value={input.legalStructure}
-              onValueChange={(legalStructure) => patch({ legalStructure: legalStructure as LegalStructure })}
+              onValueChange={(legalStructure) =>
+                patch({ legalStructure: legalStructure as LegalStructure })
+              }
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="estimate-legal-structure" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -261,8 +278,9 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             </Select>
           </Field>
 
-          <Field label="Shareholders">
+          <Field id="estimate-shareholders" label="Shareholders">
             <Input
+              id="estimate-shareholders"
               min={1}
               max={50}
               type="number"
@@ -271,8 +289,9 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             />
           </Field>
 
-          <Field label="Visas">
+          <Field id="estimate-visas" label="Visas">
             <Input
+              id="estimate-visas"
               min={0}
               max={200}
               type="number"
@@ -281,9 +300,12 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             />
           </Field>
 
-          <Field label="Office type">
-            <Select value={input.officeType} onValueChange={(officeType) => patch({ officeType: officeType as OfficeType })}>
-              <SelectTrigger className="w-full">
+          <Field id="estimate-office-type" label="Office type">
+            <Select
+              value={input.officeType}
+              onValueChange={(officeType) => patch({ officeType: officeType as OfficeType })}
+            >
+              <SelectTrigger id="estimate-office-type" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -297,7 +319,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
           </Field>
         </div>
 
-        <div className="mt-5 rounded-md border bg-muted/30 p-3">
+        <div className="bg-muted/30 mt-5 rounded-md border p-3">
           <Label className="text-sm font-medium">Add-ons</Label>
           <div className="mt-3 grid gap-3">
             {ADD_ONS.map((addOn) => (
@@ -313,7 +335,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="border-destructive/30 bg-destructive/10 text-destructive mt-4 rounded-md border px-3 py-2 text-sm">
             {error}
           </p>
         ) : null}
@@ -323,23 +345,24 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
         </Button>
       </form>
 
-      <aside className="rounded-lg border bg-background p-4 shadow-sm sm:p-5">
+      <section
+        aria-labelledby="estimate-result-heading"
+        className="bg-background rounded-lg border p-4 shadow-sm sm:p-5"
+      >
         {quote ? (
-          <QuoteResult
-            quote={quote}
-            downloading={downloading}
-            onDownloadPdf={downloadPdf}
-          />
+          <QuoteResult quote={quote} downloading={downloading} onDownloadPdf={downloadPdf} />
         ) : (
           <div className="flex min-h-[520px] flex-col justify-between">
             <div>
-              <div className="bg-amber-500/10 text-amber-700 dark:text-amber-300 mb-5 inline-flex rounded-md p-2">
+              <div className="mb-5 inline-flex rounded-md bg-amber-500/10 p-2 text-amber-700 dark:text-amber-300">
                 <FileText className="size-5" aria-hidden />
               </div>
-              <h2 className="text-xl font-semibold">Transparent estimate before the first call</h2>
+              <h2 id="estimate-result-heading" className="text-xl font-semibold">
+                Transparent estimate before the first call
+              </h2>
               <p className="text-muted-foreground mt-3 text-sm leading-6">
-                The quote uses estimate-grade authority rows for Mainland, Offshore, and 45+ Free Zones.
-                No lead is created until the application questionnaire is submitted.
+                The quote uses estimate-grade authority rows for Mainland, Offshore, and 45+ Free
+                Zones. No lead is created until the application questionnaire is submitted.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3 text-sm">
@@ -349,14 +372,18 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             </div>
           </div>
         )}
-      </aside>
+      </section>
     </section>
   );
 }
 
-function legalStructureAllowed(jurisdiction: Jurisdiction, legalStructure: LegalStructure): boolean {
+function legalStructureAllowed(
+  jurisdiction: Jurisdiction,
+  legalStructure: LegalStructure,
+): boolean {
   if (jurisdiction === 'mainland') return legalStructure === 'llc' || legalStructure === 'branch';
-  if (jurisdiction === 'free_zone') return legalStructure === 'fz_llc' || legalStructure === 'branch';
+  if (jurisdiction === 'free_zone')
+    return legalStructure === 'fz_llc' || legalStructure === 'branch';
   return legalStructure === 'offshore_company';
 }
 
@@ -375,8 +402,12 @@ function QuoteResult({
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-muted-foreground text-xs font-medium uppercase">Estimate {estimate.reference}</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight">{estimate.oneTimeTotal}</h2>
+          <p className="text-muted-foreground text-xs font-medium uppercase">
+            Estimate {estimate.reference}
+          </p>
+          <h2 id="estimate-result-heading" className="mt-1 text-2xl font-semibold tracking-tight">
+            {estimate.oneTimeTotal}
+          </h2>
           <p className="text-muted-foreground mt-1 text-sm">One-time setup estimate</p>
         </div>
         <div className="rounded-md border px-3 py-2 text-right">
@@ -386,12 +417,15 @@ function QuoteResult({
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <Metric value={`${estimate.timelineDays.min}-${estimate.timelineDays.max}`} label="Business days" />
+        <Metric
+          value={`${estimate.timelineDays.min}-${estimate.timelineDays.max}`}
+          label="Business days"
+        />
         <Metric value={estimate.lineItems.length.toString()} label="Fee lines" />
       </div>
 
       <div className="mt-5 overflow-hidden rounded-md border">
-        <div className="bg-muted/40 grid grid-cols-[1fr_72px_112px] gap-3 px-3 py-2 text-xs font-medium text-muted-foreground">
+        <div className="bg-muted/40 text-muted-foreground grid grid-cols-[1fr_72px_112px] gap-3 px-3 py-2 text-xs font-medium">
           <span>Fee</span>
           <span>Qty</span>
           <span className="text-right">Total</span>
@@ -401,7 +435,9 @@ function QuoteResult({
             <div key={item.id} className="grid grid-cols-[1fr_72px_112px] gap-3 px-3 py-3 text-sm">
               <div>
                 <div className="font-medium">{item.label}</div>
-                <div className="text-muted-foreground text-xs">{item.recurrence.replace('_', ' ')}</div>
+                <div className="text-muted-foreground text-xs">
+                  {item.recurrence.replace('_', ' ')}
+                </div>
               </div>
               <div className="text-muted-foreground">{item.quantity}</div>
               <div className="text-right font-medium">
@@ -419,15 +455,15 @@ function QuoteResult({
         <h3 className="text-sm font-medium">Required documents</h3>
         <div className="mt-2 flex flex-wrap gap-2">
           {estimate.requiredDocumentKeys.map((key) => (
-            <span key={key} className="rounded-md border bg-muted/30 px-2 py-1 text-xs">
+            <span key={key} className="bg-muted/30 rounded-md border px-2 py-1 text-xs">
               {DOCUMENT_LABELS[key] ?? key}
             </span>
           ))}
         </div>
       </div>
 
-      <div className="mt-5 rounded-md bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-        <div className="font-medium text-foreground">Estimate-grade pricing</div>
+      <div className="bg-muted/30 text-muted-foreground mt-5 rounded-md p-3 text-xs leading-5">
+        <div className="text-foreground font-medium">Estimate-grade pricing</div>
         <div className="mt-1">
           Generated {new Date(estimate.generatedAt).toLocaleString('en-GB')} from active cost rows.
         </div>
@@ -439,7 +475,13 @@ function QuoteResult({
       </div>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <Button type="button" variant="outline" className="flex-1" onClick={onDownloadPdf} disabled={downloading}>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={onDownloadPdf}
+          disabled={downloading}
+        >
           <Download aria-hidden />
           {downloading ? 'Preparing...' : 'Download PDF'}
         </Button>
@@ -454,10 +496,10 @@ function QuoteResult({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return (
     <div className="grid gap-2">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       {children}
     </div>
   );
@@ -465,7 +507,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Metric({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-md border bg-background p-3">
+    <div className="bg-background rounded-md border p-3">
       <div className="text-lg font-semibold">{value}</div>
       <div className="text-muted-foreground text-xs">{label}</div>
     </div>

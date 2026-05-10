@@ -11,7 +11,7 @@
     "format:check": "prettier --check .",
     "test": "node --import tsx --conditions=react-server --test 'src/**/*.test.ts'",
     "test:a11y": "playwright test tests/a11y",
-    "lighthouse": "lhci autorun"
+    "lighthouse": "npm run build && lhci autorun"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

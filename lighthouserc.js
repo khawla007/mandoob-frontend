@@ -8,8 +8,8 @@ module.exports = {
     collect: {
       startServerCommand: process.env.LAUNCH_SKIP_WEB_SERVER
         ? undefined
-        : `NEXT_PUBLIC_ROOT_DOMAIN=${launchRootDomain} npm run dev -- -p ${launchPort}`,
-      startServerReadyPattern: 'Ready',
+        : `NEXT_PUBLIC_ROOT_DOMAIN=${launchRootDomain} npm run start -- -p ${launchPort}`,
+      startServerReadyPattern: 'Ready|Local:',
       startServerReadyTimeout: 120000,
       url: [`${baseUrl}/`, `${baseUrl}/estimate`, `${baseUrl}/pricing`, `${baseUrl}/login`],
       numberOfRuns: 1,

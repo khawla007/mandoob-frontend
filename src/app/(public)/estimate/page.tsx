@@ -12,14 +12,21 @@ export default function EstimatePage() {
   const authorities = uniqueAuthorities();
 
   return (
-    <div className="bg-muted/20 min-h-screen">
+    <main className="bg-muted/20 min-h-screen">
       <CostEstimator authorities={authorities} />
-    </div>
+    </main>
   );
 }
 
-function uniqueAuthorities(): { authority: string; jurisdiction: Jurisdiction; emirate: string | null }[] {
-  const map = new Map<string, { authority: string; jurisdiction: Jurisdiction; emirate: string | null }>();
+function uniqueAuthorities(): {
+  authority: string;
+  jurisdiction: Jurisdiction;
+  emirate: string | null;
+}[] {
+  const map = new Map<
+    string,
+    { authority: string; jurisdiction: Jurisdiction; emirate: string | null }
+  >();
   for (const row of seededCostDataRows) {
     const key = `${row.jurisdiction}:${row.authority}`;
     if (!map.has(key)) {
