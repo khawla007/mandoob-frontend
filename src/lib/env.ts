@@ -50,6 +50,11 @@ const schema = z.object({
 
   VIRUSTOTAL_API_KEY: optionalStr,
 
+  OPENAI_API_KEY: optionalStr,
+  OPENAI_TRANSCRIPTION_MODEL: optionalStr,
+  OPENAI_SUMMARY_MODEL: optionalStr,
+  MEETING_AI_MAX_RECORDING_BYTES: optionalStr,
+
   SENTRY_DSN: optionalStr,
 });
 

@@ -1,5 +1,6 @@
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { attachMeetingRecording, findMeetingByDailyRoom } from '@/lib/data/meetings';
+import { ensurePendingMeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 import { verifyDailyWebhook } from '@/lib/meetings/daily';
 
 export const runtime = 'nodejs';
@@ -25,6 +26,15 @@ export async function POST(request: Request): Promise<Response> {
     storagePath,
     recordingUrl: null,
   });
+
+  try {
+    await ensurePendingMeetingAiSummary(meeting.id);
+  } catch (error) {
+    console.warn('meeting AI summary enqueue failed', {
+      meetingId: meeting.id,
+      code: error instanceof Error ? error.name : 'UNKNOWN',
+    });
+  }
 
   return jsonOk({ ok: true });
 }

@@ -7,6 +7,7 @@ import { requireRole } from '@/lib/auth/require-role';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { cancelMeeting, createMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
+import { retryMeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 
 export type MeetingActionResult =
   | { ok: true }
@@ -73,5 +74,19 @@ export async function cancelMeetingAction(
     return { ok: true };
   } catch (error) {
     return toResult(error, 'Could not cancel meeting');
+  }
+}
+
+export async function retryMeetingSummaryAction(
+  slug: string,
+  meetingId: string,
+): Promise<MeetingActionResult> {
+  try {
+    const { actor } = await resolveActor(slug);
+    await retryMeetingAiSummary(meetingId, actor);
+    revalidatePath(`/t/${slug}/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not retry meeting summary');
   }
 }

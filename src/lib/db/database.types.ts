@@ -1340,6 +1340,87 @@ export type Database = {
         };
         Relationships: [];
       };
+      meeting_ai_summaries: {
+        Row: {
+          action_items: Json;
+          attempts: number;
+          completed_at: string | null;
+          created_at: string;
+          customer_visible: boolean;
+          decisions: Json;
+          error: string | null;
+          error_code: string | null;
+          id: string;
+          language: string | null;
+          meeting_id: string;
+          model: string | null;
+          provider: string | null;
+          risks_or_followups: Json;
+          status: string;
+          summary_text: string | null;
+          tenant_id: string;
+          transcript_text: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          action_items?: Json;
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          customer_visible?: boolean;
+          decisions?: Json;
+          error?: string | null;
+          error_code?: string | null;
+          id?: string;
+          language?: string | null;
+          meeting_id: string;
+          model?: string | null;
+          provider?: string | null;
+          risks_or_followups?: Json;
+          status?: string;
+          summary_text?: string | null;
+          tenant_id: string;
+          transcript_text?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          action_items?: Json;
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          customer_visible?: boolean;
+          decisions?: Json;
+          error?: string | null;
+          error_code?: string | null;
+          id?: string;
+          language?: string | null;
+          meeting_id?: string;
+          model?: string | null;
+          provider?: string | null;
+          risks_or_followups?: Json;
+          status?: string;
+          summary_text?: string | null;
+          tenant_id?: string;
+          transcript_text?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'meeting_ai_summaries_meeting_id_fkey';
+            columns: ['meeting_id'];
+            isOneToOne: true;
+            referencedRelation: 'meetings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'meeting_ai_summaries_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       tenant_payment_config: {
         Row: {
           created_at: string;

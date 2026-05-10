@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { MeetingAiSummaryCard } from '@/components/pro/MeetingAiSummaryCard';
 import { requireRole } from '@/lib/auth/require-role';
 import {
   getMeetingRecordingSignedUrl,
@@ -13,6 +14,7 @@ import {
   type Meeting,
   type MeetingActor,
 } from '@/lib/data/meetings';
+import { listMeetingAiSummariesForMeetings, type MeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { cancelMeetingAction, createMeetingSlotAction } from './actions';
 
@@ -38,10 +40,12 @@ async function MeetingList({
   meetings,
   slug,
   recordingUrls,
+  summaries,
 }: {
   meetings: Meeting[];
   slug: string;
   recordingUrls: Map<string, string>;
+  summaries: Map<string, MeetingAiSummary>;
 }) {
   if (!meetings.length) {
     return <p className="text-muted-foreground text-sm">No meetings in this list.</p>;
@@ -52,42 +56,45 @@ async function MeetingList({
       {meetings.map((meeting) => {
         const recordingUrl = recordingUrls.get(meeting.id);
         return (
-          <div key={meeting.id} className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium">{meeting.title}</p>
-                <Badge variant={meeting.status === 'recording_ready' ? 'default' : 'secondary'}>
-                  {meeting.status.replace('_', ' ')}
-                </Badge>
+          <div key={meeting.id} className="py-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{meeting.title}</p>
+                  <Badge variant={meeting.status === 'recording_ready' ? 'default' : 'secondary'}>
+                    {meeting.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {formatDate(meeting.scheduledAt)} · {meeting.durationMinutes} min
+                </p>
               </div>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {formatDate(meeting.scheduledAt)} · {meeting.durationMinutes} min
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {meeting.meetingUrl ? (
-                <Button asChild size="sm" variant="outline">
-                  <Link href={meeting.meetingUrl}>Join</Link>
-                </Button>
-              ) : null}
-              {recordingUrl ? (
-                <Button asChild size="sm" variant="outline">
-                  <Link href={recordingUrl}>Recording</Link>
-                </Button>
-              ) : null}
-              {meeting.status === 'scheduled' ? (
-                <form
-                  action={async () => {
-                    'use server';
-                    await cancelMeetingAction(slug, meeting.id);
-                  }}
-                >
-                  <Button type="submit" size="sm" variant="ghost">
-                    Cancel
+              <div className="flex flex-wrap gap-2">
+                {meeting.meetingUrl ? (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={meeting.meetingUrl}>Join</Link>
                   </Button>
-                </form>
-              ) : null}
+                ) : null}
+                {recordingUrl ? (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={recordingUrl}>Recording</Link>
+                  </Button>
+                ) : null}
+                {meeting.status === 'scheduled' ? (
+                  <form
+                    action={async () => {
+                      'use server';
+                      await cancelMeetingAction(slug, meeting.id);
+                    }}
+                  >
+                    <Button type="submit" size="sm" variant="ghost">
+                      Cancel
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
             </div>
+            <MeetingAiSummaryCard meetingId={meeting.id} slug={slug} summary={summaries.get(meeting.id) ?? null} />
           </div>
         );
       })}
@@ -118,6 +125,10 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
       .map(async (meeting) => [meeting.id, await getMeetingRecordingSignedUrl(meeting.id, actor)] as const),
   );
   const recordingUrls = new Map(recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])));
+  const summaries = await listMeetingAiSummariesForMeetings(
+    meetings.map((meeting) => meeting.id),
+    actor,
+  );
   const { upcoming, past } = splitMeetings(meetings);
 
   return (
@@ -183,7 +194,7 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
             <CardTitle className="text-lg">Upcoming</CardTitle>
           </CardHeader>
           <CardContent>
-            <MeetingList meetings={upcoming} slug={slug} recordingUrls={recordingUrls} />
+            <MeetingList meetings={upcoming} slug={slug} recordingUrls={recordingUrls} summaries={summaries} />
           </CardContent>
         </Card>
       </div>
@@ -193,7 +204,7 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
           <CardTitle className="text-lg">Past and recordings</CardTitle>
         </CardHeader>
         <CardContent>
-          <MeetingList meetings={past} slug={slug} recordingUrls={recordingUrls} />
+          <MeetingList meetings={past} slug={slug} recordingUrls={recordingUrls} summaries={summaries} />
         </CardContent>
       </Card>
     </div>
