@@ -18,6 +18,12 @@ const STAGE_LABELS: Record<(typeof LEAD_STAGES)[number], string> = {
   lost: 'Lost',
 };
 
+const SCORE_BADGE_VARIANT = {
+  hot: 'destructive',
+  warm: 'secondary',
+  cold: 'outline',
+} as const;
+
 export function LeadKanbanBoard({
   kanban,
   baseHref,
@@ -84,7 +90,9 @@ function LeadCard({ lead, href }: { lead: LeadCardRow; href: string }) {
         <CardHeader className="space-y-2 p-4">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="line-clamp-2 text-sm">{lead.name}</CardTitle>
-            <Badge variant="secondary">{lead.score}</Badge>
+            <Badge variant={SCORE_BADGE_VARIANT[lead.scoreTemperature]} className="shrink-0 capitalize">
+              {lead.score} {lead.scoreTemperature}
+            </Badge>
           </div>
           <div className="text-muted-foreground flex flex-wrap gap-1 text-xs">
             {lead.email ? <span>Email</span> : null}
@@ -148,8 +156,20 @@ function LeadDetailPanel({
             <Fact label="Jurisdiction" value={detail.jurisdiction ?? 'Not set'} />
             <Fact label="Authority" value={detail.authority ?? 'Not set'} />
             <Fact label="Visas" value={String(detail.visaCount)} />
-            <Fact label="Score" value={String(detail.score)} />
+            <Fact label="Score" value={`${detail.score} ${detail.scoreTemperature}`} />
           </div>
+
+          <section>
+            <h3 className="mb-2 text-sm font-medium">Score factors</h3>
+            <div className="space-y-1 text-xs">
+              {detail.scoreFactors.slice(0, 6).map((factor) => (
+                <div key={factor.key} className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{factor.label}</span>
+                  <span className="font-medium">+{factor.points}</span>
+                </div>
+              ))}
+            </div>
+          </section>
 
           {canAssign && assignAction ? (
             <form action={assignAction as never} className="space-y-2">

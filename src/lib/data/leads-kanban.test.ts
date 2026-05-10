@@ -125,6 +125,8 @@ test('platform kanban lists all questionnaire leads grouped by stage', async () 
 
   assert.equal(kanban.new[0].id, 'lead-1');
   assert.equal(kanban.new[0].assignedTenantName, null);
+  assert.equal(kanban.new[0].scoreTemperature, 'warm');
+  assert.ok(kanban.new[0].scoreFactors.some((factor) => factor.key === 'jurisdiction'));
   assert.equal(kanban.contacted.length, 0);
 });
 

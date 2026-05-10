@@ -95,4 +95,54 @@ test('createLeadFromQuestionnaire inserts normalized payload and soft-fails ackn
   assert.equal(inserts[0].payload.name, 'Aisha Khan');
   assert.equal(inserts[0].payload.routing_reason, 'platform_unassigned');
   assert.deepEqual(inserts[0].payload.estimate_data, { reference: 'EST-1234567890' });
+  assert.equal(inserts[0].payload.score, 70);
+});
+
+test('recalculateLeadScores updates existing questionnaire leads explicitly', async () => {
+  const { recalculateLeadScores } = await loadLeads();
+  const rows = [
+    {
+      id: 'lead-1',
+      form_data: {
+        ...input.answers,
+        jurisdiction: 'mainland',
+        investorVisaCount: 2,
+        employeeVisaCount: 3,
+        familyVisaCount: 0,
+        documentReadiness: 'ready',
+      },
+      estimate_data: { reference: 'EST-1234567890' },
+    },
+  ];
+  const updates: Array<{ payload: Record<string, unknown>; filters: Record<string, unknown> }> = [];
+  const supabase = {
+    from(table: string) {
+      assert.equal(table, 'leads');
+      const filters: Record<string, unknown> = {};
+      return {
+        select: () => this.from(table),
+        eq(key: string, value: unknown) {
+          filters[key] = value;
+          return this;
+        },
+        limit() {
+          return Promise.resolve({ data: rows, error: null });
+        },
+        update(payload: Record<string, unknown>) {
+          return {
+            eq(key: string, value: unknown) {
+              updates.push({ payload, filters: { [key]: value } });
+              return Promise.resolve({ error: null });
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const result = await recalculateLeadScores({ limit: 10 }, { supabase: supabase as never });
+
+  assert.deepEqual(result, { scanned: 1, updated: 1 });
+  assert.deepEqual(updates[0].filters, { id: 'lead-1' });
+  assert.equal(updates[0].payload.score, 100);
 });

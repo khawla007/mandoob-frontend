@@ -1,5 +1,6 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
+import { scoreLead, scoreTemperatureFromScore, type LeadScoreFactor, type LeadTemperature } from '@/lib/leads/scoring';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 type SupabaseClient = ReturnType<typeof createSupabaseServiceRoleClient>;
@@ -38,6 +39,8 @@ export type LeadCardRow = {
   visaCount: number;
   addOns: string[];
   score: number;
+  scoreTemperature: LeadTemperature;
+  scoreFactors: LeadScoreFactor[];
   createdAt: string;
 };
 
@@ -104,6 +107,7 @@ function toLeadCard(row: LeadDbRow): LeadCardRow {
   const familyVisaCount = numberValue(form.familyVisaCount);
   const addOns = Array.isArray(form.addOns) ? form.addOns.filter((v): v is string => typeof v === 'string') : [];
   const tenants = Array.isArray(row.tenants) ? row.tenants[0] : row.tenants;
+  const scoreContext = scoreLead({ answers: form, estimateData: row.estimate_data ?? {} });
 
   return {
     id: row.id,
@@ -118,6 +122,8 @@ function toLeadCard(row: LeadDbRow): LeadCardRow {
     visaCount: investorVisaCount + employeeVisaCount + familyVisaCount,
     addOns,
     score: row.score,
+    scoreTemperature: scoreTemperatureFromScore(row.score),
+    scoreFactors: scoreContext.factors,
     createdAt: row.created_at,
   };
 }

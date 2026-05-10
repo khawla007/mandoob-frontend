@@ -7,6 +7,7 @@ import {
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
+import { scoreLead } from '@/lib/leads/scoring';
 
 type SupabaseClient = ReturnType<typeof createSupabaseServiceRoleClient>;
 
@@ -27,6 +28,11 @@ export type LeadDeps = {
   supabase?: SupabaseClient;
   enqueueEmail?: typeof enqueueEmail;
   enqueueWhatsApp?: typeof enqueueWhatsApp;
+};
+
+export type RecalculateLeadScoresResult = {
+  scanned: number;
+  updated: number;
 };
 
 export function selectTenantForQuestionnaireLead(rows: TenantRoutingRow[]): {
@@ -59,7 +65,7 @@ export async function createLeadFromQuestionnaire(
     form_data: answers,
     estimate_data: input.estimateData ?? {},
     routing_reason: routing.routingReason,
-    score: calculateLeadScore(input),
+    score: scoreLead({ answers, estimateData: input.estimateData ?? {} }).score,
     assigned_team_member_id: null,
     converted_client_id: null,
   };
@@ -98,16 +104,39 @@ async function routeLead(supabase: SupabaseClient) {
   return selectTenantForQuestionnaireLead([]);
 }
 
-function calculateLeadScore(input: QuestionnaireSubmission): number {
-  const answers = input.answers;
-  let score = 10;
-  if (answers.email) score += 10;
-  if (answers.phone) score += 10;
-  if ((input.estimateData as Record<string, unknown> | null)?.reference) score += 15;
-  if (answers.addOns.length > 0) score += answers.addOns.length * 5;
-  const visas = answers.investorVisaCount + answers.employeeVisaCount + answers.familyVisaCount;
-  if (visas > 0) score += Math.min(20, visas * 5);
-  return Math.min(score, 100);
+export async function recalculateLeadScores(
+  args: { limit?: number } = {},
+  deps: LeadDeps = {},
+): Promise<RecalculateLeadScoresResult> {
+  const supabase = deps.supabase ?? createSupabaseServiceRoleClient();
+  const limit = Math.max(1, Math.min(args.limit ?? 100, 500));
+  const { data, error } = await supabase
+    .from('leads')
+    .select('id, form_data, estimate_data, score')
+    .eq('source', 'questionnaire')
+    .limit(limit);
+
+  if (error) throw new ApiError('INTERNAL', error.message, 500);
+
+  const rows =
+    (data as Array<{
+      id: string;
+      form_data: Record<string, unknown> | null;
+      estimate_data: Record<string, unknown> | null;
+      score?: number | null;
+    }> | null) ?? [];
+
+  let updated = 0;
+  for (const row of rows) {
+    const nextScore = scoreLead({ answers: row.form_data ?? {}, estimateData: row.estimate_data ?? {} }).score;
+    if (row.score === nextScore) continue;
+    const { error: updateError } = await supabase.from('leads').update({ score: nextScore }).eq('id', row.id);
+    if (updateError) throw new ApiError('INTERNAL', updateError.message, 500);
+    updated += 1;
+  }
+
+  console.info('lead scores recalculated', { scanned: rows.length, updated });
+  return { scanned: rows.length, updated };
 }
 
 async function recordLeadAudit(
