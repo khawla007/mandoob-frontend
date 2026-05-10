@@ -1229,6 +1229,117 @@ export type Database = {
           },
         ];
       };
+      meeting_slots: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          ends_at: string;
+          id: string;
+          starts_at: string;
+          status: Database['public']['Enums']['meeting_slot_status'];
+          tenant_id: string;
+          timezone: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          ends_at: string;
+          id?: string;
+          starts_at: string;
+          status?: Database['public']['Enums']['meeting_slot_status'];
+          tenant_id: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          ends_at?: string;
+          id?: string;
+          starts_at?: string;
+          status?: Database['public']['Enums']['meeting_slot_status'];
+          tenant_id?: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      meetings: {
+        Row: {
+          client_id: string | null;
+          consent_notice_shown_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_profile_id: string | null;
+          duration_minutes: number;
+          id: string;
+          lead_id: string | null;
+          meeting_url: string | null;
+          notes: string | null;
+          provider: string;
+          provider_event_id: string | null;
+          provider_room_name: string | null;
+          recording_ready_at: string | null;
+          recording_storage_path: string | null;
+          recording_url: string | null;
+          scheduled_at: string;
+          status: Database['public']['Enums']['meeting_status'];
+          tenant_id: string;
+          timezone: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          client_id?: string | null;
+          consent_notice_shown_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_profile_id?: string | null;
+          duration_minutes?: number;
+          id?: string;
+          lead_id?: string | null;
+          meeting_url?: string | null;
+          notes?: string | null;
+          provider?: string;
+          provider_event_id?: string | null;
+          provider_room_name?: string | null;
+          recording_ready_at?: string | null;
+          recording_storage_path?: string | null;
+          recording_url?: string | null;
+          scheduled_at: string;
+          status?: Database['public']['Enums']['meeting_status'];
+          tenant_id: string;
+          timezone?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string | null;
+          consent_notice_shown_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_profile_id?: string | null;
+          duration_minutes?: number;
+          id?: string;
+          lead_id?: string | null;
+          meeting_url?: string | null;
+          notes?: string | null;
+          provider?: string;
+          provider_event_id?: string | null;
+          provider_room_name?: string | null;
+          recording_ready_at?: string | null;
+          recording_storage_path?: string | null;
+          recording_url?: string | null;
+          scheduled_at?: string;
+          status?: Database['public']['Enums']['meeting_status'];
+          tenant_id?: string;
+          timezone?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       tenant_payment_config: {
         Row: {
           created_at: string;
@@ -1323,6 +1434,8 @@ export type Database = {
         | 'suspended'
         | 'churned';
       employee_status: 'active' | 'inactive' | 'terminated';
+      meeting_slot_status: 'open' | 'booked' | 'cancelled';
+      meeting_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show' | 'recording_ready';
       profile_status: 'active' | 'invited' | 'disabled' | 'suspended';
     };
     CompositeTypes: {
@@ -1488,6 +1601,8 @@ export const Constants = {
         'churned',
       ],
       employee_status: ['active', 'inactive', 'terminated'],
+      meeting_slot_status: ['open', 'booked', 'cancelled'],
+      meeting_status: ['scheduled', 'completed', 'cancelled', 'no_show', 'recording_ready'],
       profile_status: ['active', 'invited', 'disabled', 'suspended'],
     },
   },

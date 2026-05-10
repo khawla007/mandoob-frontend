@@ -15,6 +15,7 @@ function buildNav(slug: string): Item[] {
   return [
     { label: 'Overview', href: `/t/${slug}/portal`, icon: LayoutDashboard },
     { label: 'Documents', href: `/t/${slug}/portal/documents`, icon: FileText },
+    { label: 'Meetings', href: `/t/${slug}/portal/meetings`, icon: CalendarClock },
     { label: 'Renewals', href: `/t/${slug}/portal/renewals`, icon: CalendarClock },
     { label: 'Erasure', href: `/t/${slug}/portal/account/erasure`, icon: ShieldAlert },
     { label: 'Profile', href: '/account', icon: User, external: true },
