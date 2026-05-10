@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   CalendarClock,
+  Columns3,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -17,6 +18,7 @@ export function buildProNav(slug: string): ShellNavGroup[] {
       label: 'Workspace',
       items: [
         { label: 'Clients', href: `${base}/clients`, icon: Users },
+        { label: 'Leads', href: `${base}/leads`, icon: Columns3 },
         { label: 'Renewals', href: `${base}/renewals`, icon: CalendarClock },
         { label: 'Documents', href: `${base}/documents`, icon: FileText },
         { label: 'Payments', href: `${base}/payments`, icon: CreditCard },
