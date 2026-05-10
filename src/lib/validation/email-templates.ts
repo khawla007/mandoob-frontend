@@ -94,6 +94,25 @@ export const LeadAcknowledgementInput = z.object({
   authority: z.string().min(1),
 });
 
+export const ErasureVerificationInput = z.object({
+  subjectName: z.string().min(1),
+  tenantName: z.string().min(1),
+  verificationUrl: z.string().url(),
+});
+
+export const ErasureCompletedInput = z.object({
+  subjectName: z.string().min(1),
+  tenantName: z.string().min(1),
+  requestId: z.string().min(1),
+});
+
+export const ErasureRejectedInput = z.object({
+  subjectName: z.string().min(1),
+  tenantName: z.string().min(1),
+  requestId: z.string().min(1),
+  reason: z.string().nullable(),
+});
+
 export type TenantPendingReceived = z.infer<typeof TenantPendingReceivedInput>;
 export type TenantApproved = z.infer<typeof TenantApprovedInput>;
 export type TenantRejected = z.infer<typeof TenantRejectedInput>;
@@ -107,3 +126,6 @@ export type SubscriptionSuspension = z.infer<typeof SubscriptionSuspensionInput>
 export type GenericInvite = z.infer<typeof GenericInviteInput>;
 export type OtpCode = z.infer<typeof OtpCodeInput>;
 export type LeadAcknowledgement = z.infer<typeof LeadAcknowledgementInput>;
+export type ErasureVerification = z.infer<typeof ErasureVerificationInput>;
+export type ErasureCompleted = z.infer<typeof ErasureCompletedInput>;
+export type ErasureRejected = z.infer<typeof ErasureRejectedInput>;

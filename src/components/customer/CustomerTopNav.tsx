@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileText, CalendarClock, User } from 'lucide-react';
+import { LayoutDashboard, FileText, CalendarClock, ShieldAlert, User } from 'lucide-react';
 
 type Item = {
   label: string;
@@ -16,6 +16,7 @@ function buildNav(slug: string): Item[] {
     { label: 'Overview', href: `/t/${slug}/portal`, icon: LayoutDashboard },
     { label: 'Documents', href: `/t/${slug}/portal/documents`, icon: FileText },
     { label: 'Renewals', href: `/t/${slug}/portal/renewals`, icon: CalendarClock },
+    { label: 'Erasure', href: `/t/${slug}/portal/account/erasure`, icon: ShieldAlert },
     { label: 'Profile', href: '/account', icon: User, external: true },
   ];
 }

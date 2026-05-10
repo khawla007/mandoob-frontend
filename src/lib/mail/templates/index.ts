@@ -12,6 +12,9 @@ import type {
   GenericInvite,
   OtpCode,
   LeadAcknowledgement,
+  ErasureVerification,
+  ErasureCompleted,
+  ErasureRejected,
 } from '@/lib/validation/email-templates';
 import { tenantPendingReceived } from './tenant-pending-received';
 import { tenantApproved } from './tenant-approved';
@@ -26,6 +29,9 @@ import { subscriptionSuspension } from './subscription-suspension';
 import { genericInvite } from './generic-invite';
 import { otpCode } from './otp-code';
 import { leadAcknowledgement } from './lead-acknowledgement';
+import { erasureVerification } from './erasure-verification';
+import { erasureCompleted } from './erasure-completed';
+import { erasureRejected } from './erasure-rejected';
 
 export type Rendered = { subject: string; html: string; text?: string };
 
@@ -43,6 +49,9 @@ export type TemplateMap = {
   'generic-invite': GenericInvite;
   'otp-code': OtpCode;
   'lead-acknowledgement': LeadAcknowledgement;
+  'erasure-verification': ErasureVerification;
+  'erasure-completed': ErasureCompleted;
+  'erasure-rejected': ErasureRejected;
 };
 export type TemplateId = keyof TemplateMap;
 export type TemplateInputFor<T extends TemplateId> = TemplateMap[T];
@@ -61,6 +70,9 @@ const registry: { [K in TemplateId]: (input: TemplateMap[K]) => Rendered } = {
   'generic-invite': genericInvite,
   'otp-code': otpCode,
   'lead-acknowledgement': leadAcknowledgement,
+  'erasure-verification': erasureVerification,
+  'erasure-completed': erasureCompleted,
+  'erasure-rejected': erasureRejected,
 };
 
 export function renderTemplate<T extends TemplateId>(id: T, input: TemplateMap[T]): Rendered {

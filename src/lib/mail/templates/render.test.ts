@@ -184,3 +184,40 @@ test('lead-acknowledgement: escapes public HTML values', async () => {
   assert.ok(r.html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
   assert.ok(r.html.includes('&lt;a href=&quot;https://evil.test&quot;&gt;DMCC&lt;/a&gt;'));
 });
+
+test('erasure-verification: includes verification link and escapes name', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('erasure-verification', {
+    subjectName: '<Omar>',
+    tenantName: 'Acme',
+    verificationUrl: 'https://app.example.com/verify?token=abc',
+  });
+
+  assert.ok(r.html.includes('https://app.example.com/verify?token=abc'));
+  assert.ok(r.html.includes('&lt;Omar&gt;'));
+  assert.ok(!r.html.includes('<Omar>'));
+});
+
+test('erasure-completed: includes request id', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('erasure-completed', {
+    subjectName: 'Omar',
+    tenantName: 'Acme',
+    requestId: 'req-1',
+  });
+
+  assert.ok(r.subject.includes('req-1'));
+  assert.ok(r.html.includes('completed'));
+});
+
+test('erasure-rejected: renders reviewer note when present', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('erasure-rejected', {
+    subjectName: 'Omar',
+    tenantName: 'Acme',
+    requestId: 'req-1',
+    reason: 'Legal hold',
+  });
+
+  assert.ok(r.html.includes('Legal hold'));
+});
