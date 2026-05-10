@@ -14,6 +14,12 @@ test('tenantSlugSchema rejects bad slugs', () => {
   }
 });
 
+test('tenantSlugSchema rejects reserved white-label labels', () => {
+  for (const s of ['admin', 'api', 'app', 'dashboard', 'www']) {
+    assert.equal(tenantSlugSchema.safeParse(s).success, false, `expected '${s}' to fail`);
+  }
+});
+
 test('provisionTenantSchema accepts a valid admin-created tenant', () => {
   const r = provisionTenantSchema.safeParse({
     name: 'Acme PRO Services',

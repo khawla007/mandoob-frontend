@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { requireRole, requireMfaEnrolled } from '@/lib/auth/require-role';
 import { isTenantActive, resolveTenantBySlug } from '@/lib/data/tenant';
+import { getTenantBranding } from '@/lib/data/tenant-settings';
+import { buildTenantBrandingView } from '@/lib/tenant/branding';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
 import { TenantSuspendedBanner } from '@/components/tenant/TenantSuspendedBanner';
 
@@ -20,6 +22,15 @@ export default async function ProLayout({
 
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
+  const branding = buildTenantBrandingView(
+    (await getTenantBranding(tenant.id)) ?? {
+      name: tenant.name,
+      logo_url: null,
+      favicon_url: null,
+      primary_color: null,
+      secondary_color: null,
+    },
+  );
 
   const initials = (session.email ?? 'P').slice(0, 1).toUpperCase();
   const suspended = !isTenantActive(tenant.status);
@@ -28,10 +39,11 @@ export default async function ProLayout({
     <DashboardLayout
       navKind="pro"
       navSlug={tenant.slug}
-      brand={tenant.name}
+      brand={branding.name}
       brandSubtitle="PRO workspace"
       brandHref={`/t/${tenant.slug}/dashboard`}
-      brandInitial={tenant.name.slice(0, 1).toUpperCase()}
+      brandInitial={branding.initial}
+      brandLogoUrl={branding.logoUrl}
       user={{ email: session.email, role: 'pro', initials }}
     >
       {suspended ? <TenantSuspendedBanner status={tenant.status} className="mb-6" /> : null}

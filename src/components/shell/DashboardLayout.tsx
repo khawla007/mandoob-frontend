@@ -15,6 +15,7 @@ export type DashboardLayoutProps = {
   brandSubtitle?: string;
   brandHref: string;
   brandInitial: string;
+  brandLogoUrl?: string | null;
   user: DashboardSidebarUser;
   search?: ReactNode;
   breadcrumbs?: ReactNode;
@@ -28,6 +29,7 @@ export function DashboardLayout({
   brandSubtitle,
   brandHref,
   brandInitial,
+  brandLogoUrl,
   user,
   search,
   breadcrumbs,
@@ -40,6 +42,7 @@ export function DashboardLayout({
         brandSubtitle={brandSubtitle}
         brandHref={brandHref}
         brandInitial={brandInitial}
+        brandLogoUrl={brandLogoUrl}
         navKind={navKind}
         navSlug={navSlug}
         user={user}

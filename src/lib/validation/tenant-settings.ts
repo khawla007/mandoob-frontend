@@ -38,3 +38,19 @@ export const smtpSchema = z.object({
   enabled: z.boolean(),
 });
 export type SmtpInput = z.infer<typeof smtpSchema>;
+
+const metaId = z.string().trim().regex(/^[0-9]{5,32}$/, 'Use the numeric Meta ID');
+
+export const whatsappSchema = z
+  .object({
+    phone_number_id: metaId,
+    business_account_id: metaId,
+    access_token: z.string().trim().max(500).optional().or(z.literal('')),
+    enabled: z.boolean(),
+    has_existing_token: z.boolean().optional(),
+  })
+  .refine((input) => input.has_existing_token || Boolean(input.access_token?.trim()), {
+    message: 'Access token is required when connecting WhatsApp for the first time',
+    path: ['access_token'],
+  });
+export type WhatsAppInput = z.infer<typeof whatsappSchema>;

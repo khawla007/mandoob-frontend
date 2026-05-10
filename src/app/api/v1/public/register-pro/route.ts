@@ -6,6 +6,7 @@ import { consumeRateLimit } from '@/lib/rate-limit';
 import { provisionTenant } from '@/lib/data/provision-tenant';
 import { provisionTenantSchema } from '@/lib/validation/tenant-onboarding';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { baseTenantSlug, suggestTenantSlug } from '@/lib/tenant/slug';
 import { z } from 'zod';
 import { emailSchema, phoneSchema } from '@/lib/validation/auth';
 
@@ -13,7 +14,6 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const SELF_SERVE_LIMIT = { capacity: 5, refillPerSec: 5 / 3600 }; // 5/hour per IP
-const SLUG_SUFFIX_TRIES = 9;
 
 const publicProRegisterSchema = z.object({
   name: z.string().min(3).max(200),
@@ -23,25 +23,16 @@ const publicProRegisterSchema = z.object({
   admin_phone: phoneSchema,
 });
 
-function baseSlug(name: string): string {
-  const cleaned = name
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 38);
-  return cleaned.length >= 3 ? cleaned : `tenant-${Date.now().toString(36)}`;
-}
-
 async function pickAvailableSlug(seed: string): Promise<string | null> {
   const admin = createSupabaseServiceRoleClient();
-  const candidates = [seed, ...Array.from({ length: SLUG_SUFFIX_TRIES }, (_, i) => `${seed}-${i + 2}`)];
+  const candidates = [seed, ...Array.from({ length: 25 }, (_, i) => `${seed}-${i + 2}`)];
   const { data, error } = await admin.from('tenants').select('slug').in('slug', candidates);
   if (error) {
     console.error('slug lookup failed', error);
     return null;
   }
   const taken = new Set((data ?? []).map((r) => r.slug as string));
-  return candidates.find((c) => !taken.has(c)) ?? null;
+  return suggestTenantSlug(seed, taken);
 }
 
 export async function POST(request: NextRequest) {
@@ -63,7 +54,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const slug = await pickAvailableSlug(baseSlug(parsed.data.name));
+  const slug = await pickAvailableSlug(baseTenantSlug(parsed.data.name));
   if (!slug) {
     return errorResponse('SLUG_TAKEN', 'Could not allocate a unique slug. Try a different firm name.', 409);
   }

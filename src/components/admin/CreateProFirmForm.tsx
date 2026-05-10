@@ -15,14 +15,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { createProFirmAction } from '@/app/admin/pro-firms/actions';
 import { TENANT_PLANS } from '@/lib/validation/tenant-onboarding';
-
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40);
-}
+import { baseTenantSlug } from '@/lib/tenant/slug';
 
 export function CreateProFirmForm() {
   const router = useRouter();
@@ -39,7 +32,7 @@ export function CreateProFirmForm() {
 
   function onNameChange(v: string) {
     setName(v);
-    if (!slugTouched) setSlug(slugify(v));
+    if (!slugTouched) setSlug(baseTenantSlug(v));
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -101,7 +94,8 @@ export function CreateProFirmForm() {
             placeholder="acme-pro"
           />
           <p className="text-muted-foreground text-xs">
-            Lowercase letters, digits, hyphens. 3–40 chars. Used in URLs.
+            Lowercase letters, digits, hyphens. Reserved labels like admin, api, app, dashboard,
+            and www are blocked.
           </p>
         </div>
         <div className="grid gap-2">

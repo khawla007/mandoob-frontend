@@ -14,9 +14,11 @@ import {
   brandingSchema,
   contactSchema,
   smtpSchema,
+  whatsappSchema,
   type BrandingInput,
   type ContactInput,
   type SmtpInput,
+  type WhatsAppInput,
 } from '@/lib/validation/tenant-settings';
 
 export type ActionResult<T = void> =
@@ -55,7 +57,7 @@ function emptyToNull(v: string | undefined | null): string | null {
 async function logSettingsUpdate(
   ctx: { caller: { id: string }; ip: string; userAgent: string | null },
   tenantId: string,
-  section: 'branding' | 'contact' | 'smtp',
+  section: 'branding' | 'contact' | 'smtp' | 'whatsapp',
   changedFields: string[],
 ) {
   const admin = createSupabaseServiceRoleClient();
@@ -202,5 +204,64 @@ export async function updateSmtpAction(slug: string, raw: unknown): Promise<Acti
     if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
     console.error('updateSmtpAction unexpected error', e);
     return { ok: false, error: 'Could not save SMTP config', code: 'INTERNAL' };
+  }
+}
+
+export async function updateWhatsAppAction(
+  slug: string,
+  raw: unknown,
+): Promise<ActionResult<void>> {
+  try {
+    const parsed = whatsappSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
+    }
+    const { ctx, tenant } = await resolveAndAuthorize(slug);
+    const input: WhatsAppInput = parsed.data;
+
+    const admin = createSupabaseServiceRoleClient();
+    const { data: existing } = await admin
+      .from('tenant_whatsapp_config')
+      .select('access_token_encrypted')
+      .eq('tenant_id', tenant.id)
+      .maybeSingle();
+
+    const newToken = (input.access_token ?? '').trim();
+    const accessTokenEncrypted = newToken
+      ? encrypt(newToken)
+      : ((existing?.access_token_encrypted as string | undefined) ?? null);
+
+    if (!accessTokenEncrypted) {
+      return {
+        ok: false,
+        error: 'Access token is required when configuring WhatsApp for the first time',
+        code: 'VALIDATION_FAILED',
+      };
+    }
+
+    const { error } = await admin.from('tenant_whatsapp_config').upsert(
+      {
+        tenant_id: tenant.id,
+        business_account_id: input.business_account_id,
+        phone_number_id: input.phone_number_id,
+        access_token_encrypted: accessTokenEncrypted,
+        enabled: input.enabled,
+      },
+      { onConflict: 'tenant_id' },
+    );
+    if (error) {
+      console.error('updateWhatsApp failed', error);
+      return { ok: false, error: 'Could not save WhatsApp config', code: 'INTERNAL' };
+    }
+
+    const changed = ['business_account_id', 'phone_number_id', 'enabled'];
+    if (newToken) changed.push('access_token');
+    await logSettingsUpdate(ctx, tenant.id, 'whatsapp', changed);
+    revalidatePath(`/t/${slug}/settings`);
+    return { ok: true, data: undefined };
+  } catch (e) {
+    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+    console.error('updateWhatsAppAction unexpected error', e);
+    return { ok: false, error: 'Could not save WhatsApp config', code: 'INTERNAL' };
   }
 }

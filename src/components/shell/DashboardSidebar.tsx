@@ -46,6 +46,7 @@ export function DashboardSidebar({
   brandSubtitle,
   brandHref,
   brandInitial,
+  brandLogoUrl,
   navKind,
   navSlug,
   user,
@@ -54,6 +55,7 @@ export function DashboardSidebar({
   brandSubtitle?: string;
   brandHref: string;
   brandInitial: string;
+  brandLogoUrl?: string | null;
   navKind: DashboardNavKind;
   navSlug?: string;
   user: DashboardSidebarUser;
@@ -64,9 +66,18 @@ export function DashboardSidebar({
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <Link href={brandHref} className="flex items-center gap-2 px-2 py-1.5">
-          <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md font-semibold">
-            {brandInitial}
-          </div>
+          {brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- Tenant logos can come from arbitrary configured hosts.
+            <img
+              src={brandLogoUrl}
+              alt=""
+              className="bg-background size-8 rounded-md border object-contain"
+            />
+          ) : (
+            <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md font-semibold">
+              {brandInitial}
+            </div>
+          )}
           <div className="group-data-[collapsible=icon]:hidden">
             <div className="truncate text-sm font-semibold tracking-tight">{brand}</div>
             {brandSubtitle && <div className="text-muted-foreground text-xs">{brandSubtitle}</div>}

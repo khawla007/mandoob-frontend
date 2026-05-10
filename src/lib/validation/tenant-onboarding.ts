@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { emailSchema, phoneSchema } from '@/lib/validation/auth';
+import { isReservedSubdomain } from '@/lib/tenant/reserved-subdomains';
 
 export const TENANT_PLANS = ['starter', 'professional', 'enterprise'] as const;
 export type TenantPlan = (typeof TENANT_PLANS)[number];
@@ -13,7 +14,8 @@ export const tenantSlugSchema = z
   .string()
   .min(3)
   .max(40)
-  .regex(SLUG_REGEX, 'Slug must be lowercase letters, digits, hyphens (3-40 chars)');
+  .regex(SLUG_REGEX, 'Slug must be lowercase letters, digits, hyphens (3-40 chars)')
+  .refine((slug) => !isReservedSubdomain(slug), 'This subdomain is reserved');
 
 export const provisionTenantSchema = z.object({
   name: z.string().min(3).max(200),

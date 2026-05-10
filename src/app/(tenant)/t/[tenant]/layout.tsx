@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { requireSession } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { getTenantBranding } from '@/lib/data/tenant-settings';
+import { buildTenantBrandingView, tenantBrandingStyle } from '@/lib/tenant/branding';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,5 +23,15 @@ export default async function TenantLayout({
     redirect('/login');
   }
 
-  return <>{children}</>;
+  const branding = buildTenantBrandingView(
+    (await getTenantBranding(tenant.id)) ?? {
+      name: tenant.name,
+      logo_url: null,
+      favicon_url: null,
+      primary_color: null,
+      secondary_color: null,
+    },
+  );
+
+  return <div style={tenantBrandingStyle(branding)}>{children}</div>;
 }
