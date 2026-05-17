@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import {
   ProfileBaseSchema,
   ProfilePhoneSchema,
@@ -25,6 +26,8 @@ type Props = {
 type FormValues = ProfileBaseInput | ProfilePhoneInput;
 
 export function ProfileForm({ initial, role, readOnly }: Props) {
+  const t = useTranslations('account');
+  const tCommon = useTranslations('common');
   const showsPhone = role === 'customer' || role === 'employee';
   const schema = showsPhone ? ProfilePhoneSchema : ProfileBaseSchema;
   const [isPending, startTransition] = useTransition();
@@ -45,16 +48,16 @@ export function ProfileForm({ initial, role, readOnly }: Props) {
         toast.error(res.error.message);
         return;
       }
-      toast.success(res.data?.changedKeys.length ? 'Profile saved' : 'No changes');
+      toast.success(res.data?.changedKeys.length ? t('profileSaved') : t('noChanges'));
     });
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Editable</h2>
+        <h2 className="text-lg font-medium">{t('editable')}</h2>
         <div className="space-y-1">
-          <Label htmlFor="display_name">Display name</Label>
+          <Label htmlFor="display_name">{t('displayName')}</Label>
           <Input
             id="display_name"
             {...form.register('display_name')}
@@ -68,7 +71,7 @@ export function ProfileForm({ initial, role, readOnly }: Props) {
         </div>
         {showsPhone && (
           <div className="space-y-1">
-            <Label htmlFor="phone">Phone (E.164)</Label>
+            <Label htmlFor="phone">{t('phone')} (E.164)</Label>
             <Input
               id="phone"
               placeholder="+971501234567"
@@ -85,22 +88,22 @@ export function ProfileForm({ initial, role, readOnly }: Props) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Read-only</h2>
+        <h2 className="text-lg font-medium">{t('readOnly')}</h2>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-muted-foreground">Email</dt>
+            <dt className="text-muted-foreground">{t('email')}</dt>
             <dd>{readOnly.email}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Role</dt>
+            <dt className="text-muted-foreground">{t('role')}</dt>
             <dd>{readOnly.role}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Tenant</dt>
+            <dt className="text-muted-foreground">{t('tenant')}</dt>
             <dd>{readOnly.tenantId ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Created</dt>
+            <dt className="text-muted-foreground">{t('created')}</dt>
             <dd>{readOnly.createdAt ?? '—'}</dd>
           </div>
         </dl>
@@ -113,7 +116,7 @@ export function ProfileForm({ initial, role, readOnly }: Props) {
       )}
 
       <Button type="submit" disabled={isPending}>
-        {isPending ? 'Saving…' : 'Save changes'}
+        {isPending ? tCommon('saving') : t('saveChanges')}
       </Button>
     </form>
   );

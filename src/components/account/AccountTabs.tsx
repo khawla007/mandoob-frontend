@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/lib/auth/roles';
 import { visibleTabs } from './tab-defs';
@@ -10,12 +11,19 @@ export { visibleTabs } from './tab-defs';
 
 export function AccountTabs({ role }: { role: Role }) {
   const pathname = usePathname();
+  const tAccount = useTranslations('account');
   const tabs = visibleTabs(role);
   return (
     <nav role="tablist" aria-label="Account sections" className="border-b">
       <ul className="-mb-px flex flex-wrap gap-1">
         {tabs.map((t) => {
           const active = pathname === t.href;
+          let label = t.label;
+          try {
+            label = tAccount(t.labelKey);
+          } catch {
+            label = t.label;
+          }
           return (
             <li key={t.href}>
               <Link
@@ -29,7 +37,7 @@ export function AccountTabs({ role }: { role: Role }) {
                     : 'text-muted-foreground hover:text-foreground border-transparent',
                 )}
               >
-                {t.label}
+                {label}
               </Link>
             </li>
           );

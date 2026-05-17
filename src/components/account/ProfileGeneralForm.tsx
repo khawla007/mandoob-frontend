@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import {
   ProfileGeneralSchema,
   SUPPORTED_DATE_FORMATS,
@@ -73,6 +74,9 @@ function initials(name: string): string {
 }
 
 export function ProfileGeneralForm({ initial, readOnly }: Props) {
+  const t = useTranslations('account');
+  const tCommon = useTranslations('common');
+  const tShell = useTranslations('shell');
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const form = useForm<ProfileGeneralInput>({
@@ -104,7 +108,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
         toast.error(res.error.message);
         return;
       }
-      toast.success(res.data?.changedKeys.length ? 'Profile saved' : 'No changes');
+      toast.success(res.data?.changedKeys.length ? t('profileSaved') : t('noChanges'));
     });
   });
 
@@ -114,30 +118,30 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
     <form onSubmit={onSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Account</CardTitle>
+          <CardTitle>{tShell('account')}</CardTitle>
           <CardDescription>Read-only details from your account record.</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-muted-foreground">Email</dt>
+              <dt className="text-muted-foreground">{t('email')}</dt>
               <dd>{readOnly.email}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Role</dt>
+              <dt className="text-muted-foreground">{t('role')}</dt>
               <dd className="capitalize">{readOnly.role.replace('_', ' ')}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Tenant</dt>
+              <dt className="text-muted-foreground">{t('tenant')}</dt>
               <dd>{readOnly.tenantId ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Created</dt>
+              <dt className="text-muted-foreground">{t('created')}</dt>
               <dd>{readOnly.createdAt ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">MFA enrolled</dt>
-              <dd>{readOnly.mfaEnrolledAt ?? 'Not enrolled'}</dd>
+              <dt className="text-muted-foreground">{t('mfaEnrolled')}</dt>
+              <dd>{readOnly.mfaEnrolledAt ?? t('notEnrolled')}</dd>
             </div>
           </dl>
         </CardContent>
@@ -155,7 +159,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
               <AvatarFallback>{initials(watchedName || readOnly.email)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-1">
-              <Label htmlFor="avatar_url">Avatar URL</Label>
+              <Label htmlFor="avatar_url">{t('avatarUrl')}</Label>
               <Input
                 id="avatar_url"
                 placeholder="https://example.com/me.jpg"
@@ -173,7 +177,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="display_name">
-                Full name <span className="text-destructive">*</span>
+                {t('fullName')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="display_name"
@@ -189,7 +193,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t('username')}</Label>
               <Input
                 id="username"
                 placeholder="harman_admin"
@@ -205,7 +209,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
             </div>
 
             <div className="space-y-1 sm:col-span-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">{t('title_field')}</Label>
               <Input
                 id="title"
                 placeholder="Platform Administrator"
@@ -230,7 +234,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">{t('phone')}</Label>
               <Input
                 id="phone"
                 placeholder="+971501234567"
@@ -247,7 +251,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
 
             <div className="space-y-1">
               <Label htmlFor="locale">
-                Language <span className="text-destructive">*</span>
+                {t('locale')} <span className="text-destructive">*</span>
               </Label>
               <Select
                 value={form.watch('locale')}
@@ -273,7 +277,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
 
             <div className="space-y-1">
               <Label htmlFor="timezone">
-                Timezone <span className="text-destructive">*</span>
+                {t('timezone')} <span className="text-destructive">*</span>
               </Label>
               <Select
                 value={form.watch('timezone')}
@@ -301,7 +305,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
 
             <div className="space-y-1">
               <Label htmlFor="date_format">
-                Date format <span className="text-destructive">*</span>
+                {t('dateFormat')} <span className="text-destructive">*</span>
               </Label>
               <Select
                 value={form.watch('date_format')}
@@ -337,7 +341,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
-            <Label htmlFor="bio">Bio</Label>
+            <Label htmlFor="bio">{t('bio')}</Label>
             <Textarea
               id="bio"
               rows={4}
@@ -375,10 +379,10 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
           disabled={isPending || !form.formState.isDirty}
           onClick={() => form.reset()}
         >
-          Reset
+          {t('reset')}
         </Button>
         <Button type="submit" disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save changes'}
+          {isPending ? tCommon('saving') : t('saveChanges')}
         </Button>
       </div>
     </form>
