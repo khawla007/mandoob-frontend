@@ -107,7 +107,7 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
             <img src={enroll.qrCode} alt="MFA QR code" className="size-48" />
           </div>
           <p className="text-muted-foreground text-xs">
-            <code>{enroll.secret}</code>
+            {t('mfaEnterSecretManually')} <code>{enroll.secret}</code>
           </p>
           <div className="space-y-1">
             <Label htmlFor="mfa_code">{t('verificationCode')}</Label>

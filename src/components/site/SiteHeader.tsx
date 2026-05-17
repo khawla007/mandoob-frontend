@@ -38,6 +38,7 @@ export async function SiteHeader() {
     session?.role === 'customer' ? await getCustomerWorkspaceSlug(session.tenantId) : null;
   const tAuth = await getTranslations('auth');
   const tSite = await getTranslations('site');
+  const tCommon = await getTranslations('common');
 
   return (
     <header className="flex items-center justify-between border-b px-6 py-4">
@@ -72,7 +73,7 @@ export async function SiteHeader() {
               href="/register"
               className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1.5 font-medium"
             >
-              {tAuth('register')}
+              {tCommon('getStarted')}
             </Link>
           </>
         )}

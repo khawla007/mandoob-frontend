@@ -47,21 +47,13 @@ export default async function ClientsPage({
 
   const rows = await listClientsForPro({ tenantId: tenant.id, status, q: sp.q ?? null });
 
-  const statusLabel = (key: string): string => {
-    try {
-      return t(key);
-    } catch {
-      return key;
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('clients')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {tenant.name} · {rows.length}
+            {t('clientsSubtitle', { tenant: tenant.name, count: rows.length })}
           </p>
         </div>
         <CreateClientForm slug={slug} />
@@ -77,7 +69,7 @@ export default async function ClientsPage({
                 slug={slug}
                 current={status}
                 value={o.value}
-                label={statusLabel(o.labelKey)}
+                label={t(o.labelKey)}
               />
             ))}
           </CardDescription>

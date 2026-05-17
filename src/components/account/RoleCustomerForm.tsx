@@ -61,7 +61,10 @@ export function RoleCustomerForm({ initial }: { initial: Initial }) {
         )}
       </div>
       <div className="space-y-1">
-        <Label>{t('linkedCompany')}</Label>
+        <Label>
+          {t('linkedCompany')}{' '}
+          <span className="text-muted-foreground text-xs">({t('readOnly')})</span>
+        </Label>
         <p className="text-muted-foreground text-sm">{initial.linkedClientId ?? '—'}</p>
       </div>
       <Button type="submit" disabled={isPending}>
