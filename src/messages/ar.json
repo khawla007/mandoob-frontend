@@ -1,0 +1,173 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "submit": "إرسال",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "next": "التالي",
+    "loading": "جارٍ التحميل…",
+    "search": "بحث",
+    "yes": "نعم",
+    "no": "لا",
+    "confirm": "تأكيد",
+    "actions": "إجراءات",
+    "more": "المزيد",
+    "settings": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "logout": "تسجيل الخروج",
+    "language": "اللغة",
+    "english": "الإنجليزية",
+    "arabic": "العربية"
+  },
+  "shell": {
+    "overview": "نظرة عامة",
+    "workspace": "مساحة العمل",
+    "account": "الحساب",
+    "clients": "العملاء",
+    "renewals": "التجديدات",
+    "documents": "المستندات",
+    "employees": "الموظفون",
+    "settings": "الإعدادات",
+    "myRecords": "سجلاتي",
+    "visaAndEid": "التأشيرة والهوية الإماراتية",
+    "auth": "المصادقة",
+    "users": "المستخدمون",
+    "sessions": "الجلسات",
+    "mfaAndSecurity": "المصادقة الثنائية والأمان",
+    "auditLogs": "سجلات التدقيق",
+    "tenants": "المستأجرون",
+    "proFirms": "شركات الـ PRO",
+    "skipToContent": "تخطي إلى المحتوى",
+    "toggleSidebar": "تبديل الشريط الجانبي",
+    "breadcrumb": "مسار التنقل"
+  },
+  "auth": {
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "currentPassword": "كلمة المرور الحالية",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "register": "إنشاء حساب",
+    "forgotPassword": "هل نسيت كلمة المرور؟",
+    "resetPassword": "إعادة تعيين كلمة المرور",
+    "verifyCode": "تأكيد الرمز",
+    "code": "الرمز",
+    "rememberMe": "تذكرني",
+    "mfaCode": "رمز التحقق",
+    "longCopy": {
+      "mfaInstructions": "Open your authenticator app and enter the 6-digit code shown for Mandoob.",
+      "recoveryCodesIntro": "Save these one-time recovery codes somewhere safe. Each works exactly once if you lose your authenticator.",
+      "passwordResetIntro": "We will send a one-time link to the email registered on your account.",
+      "resetSentNotice": "If an account exists for that email, a reset link is on its way."
+    }
+  },
+  "account": {
+    "title": "حسابي",
+    "subtitle": "إدارة الملف الشخصي وكلمة المرور والأمان.",
+    "tabProfile": "الملف الشخصي",
+    "tabSecurity": "الأمان",
+    "tabSessions": "الجلسات",
+    "tabRole": "الدور",
+    "displayName": "الاسم الظاهر",
+    "phone": "الهاتف",
+    "username": "اسم المستخدم",
+    "title_field": "المسمى الوظيفي",
+    "bio": "نبذة",
+    "locale": "اللغة",
+    "timezone": "المنطقة الزمنية",
+    "dateFormat": "صيغة التاريخ",
+    "longCopy": {
+      "phoneHelp": "Used for SMS notifications about renewals and approvals.",
+      "bioHelp": "A short description shown to clients you collaborate with.",
+      "passwordPolicy": "Use at least 12 characters with a mix of upper-case, lower-case, numbers, and symbols.",
+      "sessionsExplanation": "These are the devices currently signed in to your account. Revoke any you do not recognise."
+    }
+  },
+  "customer": {
+    "portalLabel": "بوابة العميل",
+    "welcome": "مرحبًا",
+    "registrationProgress": "تقدم التسجيل",
+    "openRequests": "طلبات المستندات المفتوحة",
+    "upcomingRenewals": "التجديدات القادمة",
+    "recentComms": "آخر التواصلات",
+    "paymentHistory": "سجل المدفوعات",
+    "longCopy": {
+      "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",
+      "noOpenRequests": "You have no open document requests right now.",
+      "noUpcomingRenewals": "No upcoming renewals in the next 90 days."
+    }
+  },
+  "employee": {
+    "portalLabel": "بوابة الموظف",
+    "identity": "التأشيرة والهوية الإماراتية",
+    "myDocuments": "مستنداتي",
+    "longCopy": {
+      "identityHelp": "These details are kept private and only shared with your assigned PRO when required."
+    }
+  },
+  "documents": {
+    "title": "المستندات",
+    "upload": "رفع",
+    "download": "تنزيل",
+    "delete": "حذف",
+    "fileName": "اسم الملف",
+    "status": "الحالة",
+    "uploadedAt": "تاريخ الرفع",
+    "longCopy": {
+      "uploadHelp": "Allowed file types: PDF, JPG, PNG, DOCX, XLSX up to 25 MB.",
+      "scanInProgress": "We are scanning your file for viruses. This usually takes a few seconds."
+    }
+  },
+  "renewals": {
+    "title": "التجديدات",
+    "due": "مستحق",
+    "overdue": "متأخر",
+    "upcoming": "قادم",
+    "dueSoon": "مستحق قريبًا",
+    "longCopy": {
+      "lateFineWarning": "Some UAE authorities charge AED 25 per day after the deadline. Renew before the due date to avoid fines.",
+      "ejariDeadlineNotice": "Ejari must be renewed before submitting your trade-license renewal."
+    }
+  },
+  "payments": {
+    "title": "Payments",
+    "amount": "Amount",
+    "status": "Status",
+    "method": "Method",
+    "invoice": "Invoice",
+    "longCopy": {
+      "invoiceFooter": "All amounts are in UAE Dirham (AED) unless otherwise stated. VAT is included where applicable.",
+      "refundPolicy": "Refunds for cancelled registrations are processed within 7 business days to the original payment method.",
+      "subscriptionExplainer": "Your subscription renews automatically on the same day each month. Cancel any time before the next billing cycle."
+    }
+  },
+  "meetings": {
+    "title": "Meetings",
+    "join": "Join",
+    "schedule": "Schedule",
+    "longCopy": {
+      "recordingConsent": "By joining this meeting you consent to it being recorded and stored on your tenant workspace for compliance review.",
+      "aiSummaryNotice": "An AI summary will be generated after the meeting and shared with you and your PRO."
+    }
+  },
+  "errors": {
+    "required": "مطلوب",
+    "invalidEmail": "بريد إلكتروني غير صالح",
+    "invalidPhone": "رقم هاتف غير صالح",
+    "tooShort": "قصير جدًا",
+    "tooLong": "طويل جدًا",
+    "passwordMismatch": "كلمتا المرور غير متطابقتين",
+    "networkError": "خطأ في الشبكة",
+    "unauthorized": "غير مصرح",
+    "longCopy": {
+      "unexpected": "Something went wrong on our side. Please try again, and contact support if the problem persists.",
+      "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",
+      "rateLimited": "You have made too many requests in a short time. Please wait a minute before trying again."
+    }
+  }
+}

@@ -13,6 +13,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local agent worktree caches — these contain stale build artifacts and
+    // copies of source files that would double-report lint errors.
+    ".claude/**",
   ]),
 ]);
 
