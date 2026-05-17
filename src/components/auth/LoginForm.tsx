@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 import { postJson } from '@/lib/http/post';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,8 @@ type FormInput = z.input<typeof schema>;
 type FormOutput = z.output<typeof schema>;
 
 export function LoginForm() {
+  const t = useTranslations('auth');
+  const tErrors = useTranslations('errors');
   const [pending, start] = useTransition();
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
@@ -53,7 +56,7 @@ export function LoginForm() {
           window.location.href = `/verify-otp?email=${encodeURIComponent(data.details.email)}`;
           return;
         }
-        toast.error(data?.error ?? 'Sign-in failed');
+        toast.error(data?.error ?? tErrors('signInFailed'));
         return;
       }
       window.location.href = data.redirectTo ?? '/';
@@ -68,7 +71,7 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('email')}</FormLabel>
               <FormControl>
                 <Input type="email" autoComplete="email" placeholder="you@company.com" {...field} />
               </FormControl>
@@ -81,7 +84,7 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{t('password')}</FormLabel>
               <FormControl>
                 <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
@@ -100,7 +103,7 @@ export function LoginForm() {
                   onCheckedChange={(v) => field.onChange(v === true)}
                 />
               </FormControl>
-              <FormLabel className="font-normal">Remember me on this device</FormLabel>
+              <FormLabel className="font-normal">{t('rememberMeOnDevice')}</FormLabel>
             </FormItem>
           )}
         />
@@ -108,10 +111,10 @@ export function LoginForm() {
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Signing in…
+              {t('signingIn')}
             </>
           ) : (
-            'Sign in'
+            t('signIn')
           )}
         </Button>
       </form>

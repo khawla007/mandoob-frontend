@@ -1,12 +1,14 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { LoginForm } from '@/components/auth/LoginForm';
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const t = await getTranslations('auth');
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Welcome back to Mandoob.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('signIn')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('welcomeBack')}</p>
       </div>
       <LoginForm />
       <div className="flex justify-between text-sm">
@@ -14,10 +16,10 @@ export default function LoginPage() {
           href="/forgot-password"
           className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
         >
-          Forgot password?
+          {t('forgotPassword')}
         </Link>
         <Link href="/register" className="font-medium underline-offset-4 hover:underline">
-          Create an account
+          {t('createAccount')}
         </Link>
       </div>
     </div>
