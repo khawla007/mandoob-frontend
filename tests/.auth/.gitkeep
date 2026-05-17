@@ -1,0 +1,3 @@
+# Playwright storage states for the launch a11y gate land here.
+# Each file (admin.json, pro.json, customer.json, employee.json) is gitignored.
+# See tests/auth.setup.ts.

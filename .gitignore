@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -42,3 +43,12 @@ next-env.d.ts
 
 # claude code local state
 .claude/
+
+# playwright storage states (per-role auth for the launch a11y gate)
+tests/.auth/*.json
+!tests/.auth/.gitkeep
+
+# playwright artifacts
+/test-results/
+/playwright-report/
+/playwright/.cache/
