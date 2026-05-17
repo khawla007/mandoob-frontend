@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Renewal } from '@/lib/types/renewals-ui';
 
@@ -16,25 +17,24 @@ function chipColor(daysOut: number): string {
   return 'bg-muted text-muted-foreground border-border';
 }
 
-export function UpcomingRenewalsCard({ rows, slug }: { rows: Renewal[]; slug: string }) {
+export async function UpcomingRenewalsCard({ rows, slug }: { rows: Renewal[]; slug: string }) {
+  const t = await getTranslations('customer');
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Upcoming renewals</CardTitle>
+        <CardTitle className="text-lg">{t('upcomingRenewals')}</CardTitle>
         <CardDescription>
           <Link
             href={`/t/${slug}/portal/renewals`}
             className="hover:text-foreground underline-offset-4 hover:underline"
           >
-            View renewals timeline
+            {t('viewRenewalsTimeline')}
           </Link>
         </CardDescription>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">
-            No renewals due in the next year.
-          </p>
+          <p className="text-muted-foreground py-6 text-center text-sm">{t('noRenewalsDueYear')}</p>
         ) : (
           <ul className="divide-border/60 divide-y">
             {rows.map((r) => (

@@ -5,6 +5,7 @@ import { useForm, type UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { RoleProSchema } from '@/lib/validation/account';
 import { updateRoleFieldsAction } from '@/app/account/actions';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,8 @@ type Initial = {
 };
 
 export function RoleProForm({ initial }: { initial: Initial }) {
+  const t = useTranslations('account');
+  const tCommon = useTranslations('common');
   const [isPending, startTransition] = useTransition();
   const form = useForm<RoleProInput, unknown, RoleProOutput>({
     resolver: zodResolver(RoleProSchema),
@@ -43,17 +46,17 @@ export function RoleProForm({ initial }: { initial: Initial }) {
         toast.error(res.error.message);
         return;
       }
-      toast.success('Saved');
+      toast.success(t('saved'));
     });
   });
 
   return (
     <form onSubmit={onSubmit} className="max-w-xl space-y-4">
-      <TextField id="license_no" label="License number" form={form} />
-      <TextField id="designation" label="Designation" form={form} />
-      <TextField id="department" label="Department" form={form} />
+      <TextField id="license_no" label={t('licenseNo')} form={form} />
+      <TextField id="designation" label={t('designation')} form={form} />
+      <TextField id="department" label={t('department')} form={form} />
       <div className="space-y-1">
-        <Label htmlFor="service_areas">Service areas (comma-separated)</Label>
+        <Label htmlFor="service_areas">{t('serviceAreas')}</Label>
         <Input
           id="service_areas"
           defaultValue={initial.serviceAreas.join(', ')}
@@ -70,7 +73,7 @@ export function RoleProForm({ initial }: { initial: Initial }) {
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="bio">Bio</Label>
+        <Label htmlFor="bio">{t('bio')}</Label>
         <Textarea id="bio" rows={4} {...form.register('bio')} />
         {form.formState.errors.bio && (
           <p role="alert" className="text-destructive text-sm">
@@ -79,7 +82,7 @@ export function RoleProForm({ initial }: { initial: Initial }) {
         )}
       </div>
       <Button type="submit" disabled={isPending}>
-        {isPending ? 'Saving…' : 'Save'}
+        {isPending ? tCommon('saving') : tCommon('save')}
       </Button>
     </form>
   );

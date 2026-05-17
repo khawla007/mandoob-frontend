@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 import { postJson } from '@/lib/http/post';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ const RESEND_COOLDOWN_SEC = 60;
 const CODE_LEN = 6;
 
 export function OtpForm({ email }: { email: string }) {
+  const t = useTranslations('auth');
+  const tErrors = useTranslations('errors');
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LEN).fill(''));
   const [error, setError] = useState<string | null>(null);
   const [succeeded, setSucceeded] = useState(false);
@@ -46,7 +49,7 @@ export function OtpForm({ email }: { email: string }) {
         redirectTo?: string;
       } | null;
       if (!res.ok || !data?.ok) {
-        setError(data?.error ?? 'Verification failed');
+        setError(data?.error ?? tErrors('verificationFailed'));
         setDigits(Array(CODE_LEN).fill(''));
         refs.current[0]?.focus();
         submittingRef.current = false;
@@ -112,10 +115,10 @@ export function OtpForm({ email }: { email: string }) {
     startResend(async () => {
       const res = await postJson('/api/v1/auth/resend-otp', { email });
       if (!res.ok) {
-        toast.error('Could not resend. Try again shortly.');
+        toast.error(tErrors('couldNotResend'));
         return;
       }
-      toast.success('New code sent.');
+      toast.success(tErrors('newCodeSent'));
       setDigits(Array(CODE_LEN).fill(''));
       setError(null);
       submittingRef.current = false;
@@ -150,7 +153,7 @@ export function OtpForm({ email }: { email: string }) {
           ))}
         </div>
         <p className="text-muted-foreground text-center text-xs">
-          Check your inbox (and spam). The code expires in 10 minutes.
+          {t('longCopy.checkInbox')}
         </p>
       </div>
       {error && <p className="text-destructive text-center text-sm">{error}</p>}
@@ -163,15 +166,15 @@ export function OtpForm({ email }: { email: string }) {
         {succeeded ? (
           <>
             <Check className="size-4" />
-            Verified
+            {t('verified')}
           </>
         ) : pending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
-            Verifying…
+            {t('verifying')}
           </>
         ) : (
-          'Verify'
+          t('verify')
         )}
       </Button>
       <button
@@ -180,7 +183,11 @@ export function OtpForm({ email }: { email: string }) {
         disabled={cooldown > 0 || resendPending || succeeded}
         className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground w-full text-center text-xs underline-offset-4 hover:underline disabled:cursor-not-allowed"
       >
-        {cooldown > 0 ? `Resend code in ${cooldown}s` : resendPending ? 'Sending…' : 'Resend code'}
+        {cooldown > 0
+          ? t('resendIn', { seconds: cooldown })
+          : resendPending
+            ? t('resending')
+            : t('resendCode')}
       </button>
     </form>
   );

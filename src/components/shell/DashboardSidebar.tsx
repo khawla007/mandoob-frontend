@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 import {
   Sidebar,
@@ -62,6 +63,13 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
   const nav = resolveNav(navKind, navSlug);
+  const t = useTranslations('shell');
+
+  const translate = (key: string | undefined, fallback: string | undefined) => {
+    if (!key) return fallback ?? '';
+    return t(key);
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -86,34 +94,38 @@ export function DashboardSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {nav.map((group, idx) => (
-          <SidebarGroup key={group.label ?? `group-${idx}`}>
-            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = pathname === item.href || pathname.startsWith(item.href + '/');
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-                        <Link href={item.href}>
-                          {Icon && <Icon className="size-4" />}
-                          <span>{item.label}</span>
-                          {item.badge !== undefined && (
-                            <Badge variant="secondary" className="ml-auto">
-                              {item.badge}
-                            </Badge>
-                          )}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {nav.map((group, idx) => {
+          const groupLabel = translate(group.labelKey, group.labelFallback);
+          return (
+            <SidebarGroup key={group.labelKey ?? `group-${idx}`}>
+              {groupLabel && <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = pathname === item.href || pathname.startsWith(item.href + '/');
+                    const label = translate(item.labelKey, item.labelFallback);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={active} tooltip={label}>
+                          <Link href={item.href}>
+                            {Icon && <Icon className="size-4" />}
+                            <span>{label}</span>
+                            {item.badge !== undefined && (
+                              <Badge variant="secondary" className="ms-auto">
+                                {item.badge}
+                              </Badge>
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter>

@@ -1,4 +1,6 @@
-export function ComingSoon({
+import { getTranslations } from 'next-intl/server';
+
+export async function ComingSoon({
   title,
   subtitle,
   icon,
@@ -7,6 +9,7 @@ export function ComingSoon({
   subtitle: string;
   icon: React.ReactNode;
 }) {
+  const tCommon = await getTranslations('common');
   return (
     <div className="space-y-6">
       <div>
@@ -16,7 +19,7 @@ export function ComingSoon({
       <div className="border-border/60 text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed">
         <div className="flex flex-col items-center gap-2 text-sm">
           {icon}
-          Coming soon.
+          {tCommon('comingSoon')}
         </div>
       </div>
     </div>

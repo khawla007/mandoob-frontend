@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { getCustomerDocumentSignedUrlAction } from '@/app/(tenant)/t/[tenant]/(customer)/portal/documents/actions';
 
 export function OpenSignedUrlButton({ slug, versionId }: { slug: string; versionId: string }) {
+  const tCommon = useTranslations('common');
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +25,7 @@ export function OpenSignedUrlButton({ slug, versionId }: { slug: string; version
   return (
     <div className="flex flex-col items-end gap-1">
       <Button type="button" size="sm" variant="outline" onClick={onOpen} disabled={pending}>
-        {pending ? 'Opening…' : 'Open'}
+        {pending ? tCommon('opening') : tCommon('open')}
       </Button>
       {error && <p className="text-destructive text-xs">{error}</p>}
     </div>

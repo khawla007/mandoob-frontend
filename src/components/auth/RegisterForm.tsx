@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Check, Circle, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 import { postJson } from '@/lib/http/post';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,8 @@ function computePasswordRules(pw: string): PasswordRule[] {
 }
 
 export function RegisterForm() {
+  const t = useTranslations('auth');
+  const tErrors = useTranslations('errors');
   const [pending, start] = useTransition();
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
@@ -113,7 +116,7 @@ export function RegisterForm() {
           error?: string;
           code?: string;
         } | null;
-        toast.error(data?.error ?? 'Registration failed');
+        toast.error(data?.error ?? tErrors('registrationFailed'));
         return;
       }
       window.location.href = `/verify-otp?email=${encodeURIComponent(values.email)}`;
@@ -128,7 +131,7 @@ export function RegisterForm() {
           name="fullName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full name</FormLabel>
+              <FormLabel>{t('fullName')}</FormLabel>
               <FormControl>
                 <Input autoComplete="name" {...field} />
               </FormControl>
@@ -142,7 +145,7 @@ export function RegisterForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('email')}</FormLabel>
               <FormControl>
                 <Input type="email" autoComplete="email" placeholder="you@company.com" {...field} />
               </FormControl>
@@ -157,7 +160,7 @@ export function RegisterForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Phone <span className="text-muted-foreground">(optional)</span>
+                {t('phone')} <span className="text-muted-foreground">({t('optional')})</span>
               </FormLabel>
               <FormControl>
                 <Input type="tel" autoComplete="tel" placeholder="+971501234567" {...field} />
@@ -172,7 +175,7 @@ export function RegisterForm() {
           name="password"
           render={({ field }) => (
             <FormItem className="relative pb-4">
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{t('password')}</FormLabel>
               <FormControl>
                 <PasswordInput
                   autoComplete="new-password"
@@ -202,7 +205,7 @@ export function RegisterForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem className="relative pb-4">
-              <FormLabel>Confirm password</FormLabel>
+              <FormLabel>{t('confirmPassword')}</FormLabel>
               <FormControl>
                 <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
@@ -253,10 +256,10 @@ export function RegisterForm() {
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Creating…
+              {t('creating')}
             </>
           ) : (
-            'Create account'
+            t('createAccount')
           )}
         </Button>
       </form>

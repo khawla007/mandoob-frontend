@@ -1,4 +1,5 @@
 import { Mail, MessageCircle, MessageSquare, Bell } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { CommChannel, CommRow } from '@/lib/data/comms';
 
@@ -18,18 +19,17 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-export function RecentCommsCard({ rows }: { rows: CommRow[] }) {
+export async function RecentCommsCard({ rows }: { rows: CommRow[] }) {
+  const t = await getTranslations('customer');
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Recent communications</CardTitle>
-        <CardDescription>Latest messages between you and your PRO firm.</CardDescription>
+        <CardTitle className="text-lg">{t('recentComms')}</CardTitle>
+        <CardDescription>{t('longCopy.recentCommsDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">
-            No recent communications.
-          </p>
+          <p className="text-muted-foreground py-6 text-center text-sm">{t('noRecentComms')}</p>
         ) : (
           <ul className="space-y-3">
             {rows.map((c) => {
@@ -44,7 +44,7 @@ export function RecentCommsCard({ rows }: { rows: CommRow[] }) {
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{title}</div>
                     <div className="text-muted-foreground text-xs">
-                      {fromPro ? 'From PRO' : 'From you'} · {timeAgo(c.timestamp)}
+                      {fromPro ? t('fromPro') : t('fromYou')} · {timeAgo(c.timestamp)}
                     </div>
                   </div>
                 </li>

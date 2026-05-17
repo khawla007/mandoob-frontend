@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +17,8 @@ export type Factor = { id: string; status: string; friendlyName: string | null }
 type EnrollState = { factorId: string; qrCode: string; secret: string } | null;
 
 export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory: boolean }) {
+  const t = useTranslations('account');
+  const tCommon = useTranslations('common');
   const [enroll, setEnroll] = useState<EnrollState>(null);
   const [code, setCode] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -42,7 +45,7 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
         toast.error(res.error.message);
         return;
       }
-      toast.success('MFA enrolled');
+      toast.success(t('mfaEnrolledToast'));
       setEnroll(null);
       setCode('');
       window.location.reload();
@@ -56,7 +59,7 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
         toast.error(res.error.message);
         return;
       }
-      toast.success('Factor removed');
+      toast.success(t('factorRemoved'));
       window.location.reload();
     });
   };
@@ -65,7 +68,7 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
     <div className="space-y-6">
       <ul className="space-y-2">
         {factors.length === 0 && (
-          <li className="text-muted-foreground text-sm">No factors enrolled yet.</li>
+          <li className="text-muted-foreground text-sm">{t('noFactorsEnrolled')}</li>
         )}
         {factors.map((f) => {
           const blocked = f.status === 'verified' && lastVerified;
@@ -81,11 +84,9 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
                 size="sm"
                 disabled={isPending || blocked}
                 onClick={() => remove(f.id)}
-                title={
-                  blocked ? 'MFA mandatory for this role; add another factor first' : undefined
-                }
+                title={blocked ? t('longCopy.mfaLastFactorBlock') : undefined}
               >
-                Remove
+                {t('removeFactor')}
               </Button>
             </li>
           );
@@ -94,24 +95,22 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
 
       {!enroll && (
         <Button type="button" onClick={startEnroll} disabled={isPending}>
-          {isPending ? 'Loading…' : 'Add TOTP factor'}
+          {isPending ? tCommon('loading') : t('addTotpFactor')}
         </Button>
       )}
 
       {enroll && (
         <div className="space-y-4 rounded border p-4">
-          <p className="text-sm">
-            Scan this QR code with your authenticator app, then enter the 6-digit code.
-          </p>
+          <p className="text-sm">{t('longCopy.mfaScanInstruction')}</p>
           <div className="bg-white p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={enroll.qrCode} alt="MFA QR code" className="size-48" />
           </div>
           <p className="text-muted-foreground text-xs">
-            Or enter manually: <code>{enroll.secret}</code>
+            {t('mfaEnterSecretManually')} <code>{enroll.secret}</code>
           </p>
           <div className="space-y-1">
-            <Label htmlFor="mfa_code">Verification code</Label>
+            <Label htmlFor="mfa_code">{t('verificationCode')}</Label>
             <Input
               id="mfa_code"
               inputMode="numeric"
@@ -123,10 +122,10 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
           </div>
           <div className="flex gap-2">
             <Button type="button" onClick={finalize} disabled={isPending || code.length !== 6}>
-              Verify and enable
+              {t('verifyAndEnable')}
             </Button>
             <Button type="button" variant="outline" onClick={() => setEnroll(null)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
           </div>
         </div>

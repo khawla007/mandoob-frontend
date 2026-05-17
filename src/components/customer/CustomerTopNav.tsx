@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { LayoutDashboard, FileText, CalendarClock, ShieldAlert, User } from 'lucide-react';
 
 type Item = {
-  label: string;
+  labelKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   external?: boolean;
@@ -13,18 +14,25 @@ type Item = {
 
 function buildNav(slug: string): Item[] {
   return [
-    { label: 'Overview', href: `/t/${slug}/portal`, icon: LayoutDashboard },
-    { label: 'Documents', href: `/t/${slug}/portal/documents`, icon: FileText },
-    { label: 'Meetings', href: `/t/${slug}/portal/meetings`, icon: CalendarClock },
-    { label: 'Renewals', href: `/t/${slug}/portal/renewals`, icon: CalendarClock },
-    { label: 'Erasure', href: `/t/${slug}/portal/account/erasure`, icon: ShieldAlert },
-    { label: 'Profile', href: '/account', icon: User, external: true },
+    { labelKey: 'overview', href: `/t/${slug}/portal`, icon: LayoutDashboard },
+    { labelKey: 'documents', href: `/t/${slug}/portal/documents`, icon: FileText },
+    { labelKey: 'meetings', href: `/t/${slug}/portal/meetings`, icon: CalendarClock },
+    { labelKey: 'renewals', href: `/t/${slug}/portal/renewals`, icon: CalendarClock },
+    { labelKey: 'erasure', href: `/t/${slug}/portal/account/erasure`, icon: ShieldAlert },
+    { labelKey: 'profile', href: '/account', icon: User, external: true },
   ];
 }
 
 export function CustomerTopNav({ slug }: { slug: string }) {
   const pathname = usePathname();
   const items = buildNav(slug);
+  const tShell = useTranslations('shell');
+  const tCommon = useTranslations('common');
+
+  const labelFor = (key: string) => {
+    if (key === 'profile') return tCommon('profile');
+    return tShell(key);
+  };
 
   return (
     <nav className="border-border/60 -mx-6 mb-6 flex gap-1 overflow-x-auto border-b px-6 text-sm">
@@ -44,7 +52,7 @@ export function CustomerTopNav({ slug }: { slug: string }) {
             }
           >
             <Icon className="size-4" />
-            {item.label}
+            {labelFor(item.labelKey)}
           </Link>
         );
       })}

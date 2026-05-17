@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getProfileCard } from '@/lib/data/profile';
@@ -27,6 +28,8 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
   const { tenant: slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
+
+  const t = await getTranslations('customer');
 
   const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
   const linkedClientId = customer.linkedClientId;
@@ -57,11 +60,10 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome{profile?.fullName ? `, ${profile.fullName}` : ''}
+          {t('welcome')}
+          {profile?.fullName ? `, ${profile.fullName}` : ''}
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Your registration, documents, renewals, and invoices at a glance.
-        </p>
+        <p className="text-muted-foreground mt-1 text-sm">{t('longCopy.welcomeIntro')}</p>
       </div>
 
       <RegistrationProgressCard data={progress} />

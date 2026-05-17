@@ -14,26 +14,72 @@ import {
 import type { ShellNavGroup } from './nav-config';
 
 export const adminNav: ShellNavGroup[] = [
-  { items: [{ label: 'Overview', href: '/admin', icon: LayoutDashboard }] },
   {
-    label: 'Auth',
     items: [
-      { label: 'Users', href: '/admin/users', icon: Users },
-      { label: 'Sessions', href: '/admin/sessions', icon: KeyRound },
-      { label: 'MFA & Security', href: '/admin/security', icon: ShieldCheck },
-      { label: 'Audit logs', href: '/admin/audit-logs', icon: ScrollText },
-      { label: 'Erasure requests', href: '/admin/erasure-requests', icon: ShieldAlert },
-      { label: 'Finance', href: '/admin/finance', icon: DollarSign },
-      { label: 'Leads', href: '/admin/leads', icon: Columns3 },
-      { label: 'Cost data', href: '/admin/cost-data', icon: FileSpreadsheet },
+      { labelKey: 'overview', labelFallback: 'Overview', href: '/admin', icon: LayoutDashboard },
     ],
   },
   {
-    label: 'Tenants',
-    items: [{ label: 'PRO firms', href: '/admin/pro-firms', icon: Building2 }],
+    labelKey: 'auth',
+    labelFallback: 'Auth',
+    items: [
+      { labelKey: 'users', labelFallback: 'Users', href: '/admin/users', icon: Users },
+      { labelKey: 'sessions', labelFallback: 'Sessions', href: '/admin/sessions', icon: KeyRound },
+      {
+        labelKey: 'mfaAndSecurity',
+        labelFallback: 'MFA & Security',
+        href: '/admin/security',
+        icon: ShieldCheck,
+      },
+      {
+        labelKey: 'auditLogs',
+        labelFallback: 'Audit logs',
+        href: '/admin/audit-logs',
+        icon: ScrollText,
+      },
+      {
+        labelKey: 'erasureRequests',
+        labelFallback: 'Erasure requests',
+        href: '/admin/erasure-requests',
+        icon: ShieldAlert,
+      },
+      {
+        labelKey: 'finance',
+        labelFallback: 'Finance',
+        href: '/admin/finance',
+        icon: DollarSign,
+      },
+      {
+        labelKey: 'leads',
+        labelFallback: 'Leads',
+        href: '/admin/leads',
+        icon: Columns3,
+      },
+      {
+        labelKey: 'costData',
+        labelFallback: 'Cost data',
+        href: '/admin/cost-data',
+        icon: FileSpreadsheet,
+      },
+    ],
   },
   {
-    label: 'Account',
-    items: [{ label: 'Settings', href: '/admin/settings', icon: Settings }],
+    labelKey: 'tenants',
+    labelFallback: 'Tenants',
+    items: [
+      {
+        labelKey: 'proFirms',
+        labelFallback: 'PRO firms',
+        href: '/admin/pro-firms',
+        icon: Building2,
+      },
+    ],
+  },
+  {
+    labelKey: 'account',
+    labelFallback: 'Account',
+    items: [
+      { labelKey: 'settings', labelFallback: 'Settings', href: '/admin/settings', icon: Settings },
+    ],
   },
 ];

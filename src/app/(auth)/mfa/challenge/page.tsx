@@ -1,9 +1,11 @@
+import { getTranslations } from 'next-intl/server';
 import { MfaChallengeForm } from '@/components/auth/MfaChallengeForm';
 
-export default function MfaChallengePage() {
+export default async function MfaChallengePage() {
+  const t = await getTranslations('auth');
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Enter two-factor code</h1>
+      <h1 className="text-2xl font-semibold">{t('enterTwoFactorCode')}</h1>
       <MfaChallengeForm />
     </div>
   );

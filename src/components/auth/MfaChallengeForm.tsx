@@ -1,9 +1,12 @@
 'use client';
 import { postJson } from '@/lib/http/post';
 import { useEffect, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 export function MfaChallengeForm() {
+  const t = useTranslations('auth');
+  const tErrors = useTranslations('errors');
   const [factorId, setFactorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -23,10 +26,14 @@ export function MfaChallengeForm() {
     if (!factorId) return;
     const code = new FormData(e.currentTarget).get('code');
     start(async () => {
-      const res = await postJson('/api/v1/auth/mfa/verify', { factorId, code, context: 'challenge' });
+      const res = await postJson('/api/v1/auth/mfa/verify', {
+        factorId,
+        code,
+        context: 'challenge',
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        setError(data?.error ?? 'Verification failed');
+        setError(data?.error ?? tErrors('verificationFailed'));
         return;
       }
       const next = new URLSearchParams(window.location.search).get('next') ?? '/';
@@ -34,12 +41,12 @@ export function MfaChallengeForm() {
     });
   }
 
-  if (!factorId) return <p className="text-sm text-zinc-600">No TOTP factor found.</p>;
+  if (!factorId) return <p className="text-sm text-zinc-600">{t('noFactorFound')}</p>;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <label className="block space-y-1">
-        <span className="text-sm font-medium">6-digit code</span>
+        <span className="text-sm font-medium">{t('twoFactorCode')}</span>
         <input
           name="code"
           inputMode="numeric"
@@ -54,7 +61,7 @@ export function MfaChallengeForm() {
         disabled={pending}
         className="w-full rounded-lg bg-black py-2.5 text-sm font-medium text-white disabled:opacity-50"
       >
-        {pending ? 'Verifying…' : 'Continue'}
+        {pending ? t('verifying') : t('continue')}
       </button>
     </form>
   );

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClientsTable } from '@/components/pro/ClientsTable';
 import { CreateClientForm } from '@/components/pro/CreateClientForm';
@@ -16,14 +17,16 @@ function parseStatus(raw: string | undefined): ClientStatus | 'all' {
   return (CLIENT_STATUSES as readonly string[]).includes(raw) ? (raw as ClientStatus) : 'all';
 }
 
-const STATUS_OPTIONS: { value: ClientStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'onboarding', label: 'Onboarding' },
-  { value: 'active', label: 'Active' },
-  { value: 'renewal_due', label: 'Renewal due' },
-  { value: 'renewal_overdue', label: 'Overdue' },
-  { value: 'suspended', label: 'Suspended' },
-  { value: 'churned', label: 'Churned' },
+type StatusOption = { value: ClientStatus | 'all'; labelKey: string };
+
+const STATUS_OPTIONS: StatusOption[] = [
+  { value: 'all', labelKey: 'all' },
+  { value: 'onboarding', labelKey: 'onboarding' },
+  { value: 'active', labelKey: 'active' },
+  { value: 'renewal_due', labelKey: 'renewalDue' },
+  { value: 'renewal_overdue', labelKey: 'overdue' },
+  { value: 'suspended', labelKey: 'suspended' },
+  { value: 'churned', labelKey: 'churned' },
 ];
 
 export default async function ClientsPage({
@@ -40,15 +43,17 @@ export default async function ClientsPage({
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
+  const t = await getTranslations('pro');
+
   const rows = await listClientsForPro({ tenantId: tenant.id, status, q: sp.q ?? null });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('clients')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Companies under {tenant.name}. Showing {rows.length}.
+            {t('clientsSubtitle', { tenant: tenant.name, count: rows.length })}
           </p>
         </div>
         <CreateClientForm slug={slug} />
@@ -56,7 +61,7 @@ export default async function ClientsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Directory</CardTitle>
+          <CardTitle className="text-lg">{t('directory')}</CardTitle>
           <CardDescription className="flex flex-wrap gap-x-3 gap-y-1">
             {STATUS_OPTIONS.map((o) => (
               <StatusLink
@@ -64,16 +69,14 @@ export default async function ClientsPage({
                 slug={slug}
                 current={status}
                 value={o.value}
-                label={o.label}
+                label={t(o.labelKey)}
               />
             ))}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              No clients yet. Click <span className="font-medium">Add client</span> to get started.
-            </p>
+            <p className="text-muted-foreground py-8 text-center text-sm">{t('noClientsYet')}</p>
           ) : (
             <div className="border-border/60 overflow-hidden rounded-lg border">
               <ClientsTable slug={slug} rows={rows} />

@@ -4,6 +4,7 @@ import { useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { RoleEmployeeSchema, type RoleEmployeeInput } from '@/lib/validation/account';
 import { updateRoleFieldsAction } from '@/app/account/actions';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,8 @@ type Initial = {
 };
 
 export function RoleEmployeeForm({ initial }: { initial: Initial }) {
+  const t = useTranslations('account');
+  const tCommon = useTranslations('common');
   const [isPending, startTransition] = useTransition();
   const form = useForm<RoleEmployeeInput>({
     resolver: zodResolver(RoleEmployeeSchema),
@@ -32,14 +35,14 @@ export function RoleEmployeeForm({ initial }: { initial: Initial }) {
         toast.error(res.error.message);
         return;
       }
-      toast.success('Saved');
+      toast.success(t('saved'));
     });
   });
 
   return (
     <form onSubmit={onSubmit} className="max-w-md space-y-4">
       <div className="space-y-1">
-        <Label htmlFor="passport_no">Passport number</Label>
+        <Label htmlFor="passport_no">{t('passportNo')}</Label>
         <Input id="passport_no" {...form.register('passport_no')} />
         {form.formState.errors.passport_no && (
           <p role="alert" className="text-destructive text-sm">
@@ -49,17 +52,17 @@ export function RoleEmployeeForm({ initial }: { initial: Initial }) {
       </div>
 
       <section className="space-y-2">
-        <h3 className="text-muted-foreground text-sm font-medium">Employer-managed (read-only)</h3>
+        <h3 className="text-muted-foreground text-sm font-medium">{t('employerManaged')}</h3>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-          <ReadOnlyRow label="Visa number" value={initial.visaNo} />
-          <ReadOnlyRow label="Visa expiry" value={initial.visaExpiry} />
-          <ReadOnlyRow label="Emirates ID" value={initial.emiratesId} />
-          <ReadOnlyRow label="EID expiry" value={initial.eidExpiry} />
+          <ReadOnlyRow label={t('visaNumber')} value={initial.visaNo} />
+          <ReadOnlyRow label={t('visaExpiry')} value={initial.visaExpiry} />
+          <ReadOnlyRow label={t('emiratesId')} value={initial.emiratesId} />
+          <ReadOnlyRow label={t('eidExpiry')} value={initial.eidExpiry} />
         </dl>
       </section>
 
       <Button type="submit" disabled={isPending}>
-        {isPending ? 'Saving…' : 'Save'}
+        {isPending ? tCommon('saving') : tCommon('save')}
       </Button>
     </form>
   );
