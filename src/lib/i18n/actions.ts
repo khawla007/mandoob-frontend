@@ -26,18 +26,15 @@ export async function setLocaleAction(
 ): Promise<SetLocaleResult> {
   const locale = coerceLocale(rawLocale);
 
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set({
-      name: NEXT_LOCALE_COOKIE,
-      value: locale,
-      path: '/',
-      maxAge: COOKIE_MAX_AGE_SECONDS,
-      sameSite: 'lax',
-    });
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'cookie_failed' };
-  }
+  // Cookie set must succeed under normal conditions; let exceptions surface.
+  const cookieStore = await cookies();
+  cookieStore.set({
+    name: NEXT_LOCALE_COOKIE,
+    value: locale,
+    path: '/',
+    maxAge: COOKIE_MAX_AGE_SECONDS,
+    sameSite: 'lax',
+  });
 
   // Best-effort profile update; never blocks the locale switch for anonymous
   // users or when Supabase is unreachable.

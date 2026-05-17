@@ -13,6 +13,8 @@
 
 import 'server-only';
 
+import { cache } from 'react';
+
 import {
   coerceLocale,
   defaultLocale,
@@ -74,8 +76,8 @@ export function resolveLocaleFromInputs(inputs: ResolveLocaleInputs): Locale {
  * to cookie → header → default. Failures to read the profile (no session,
  * Supabase down, etc.) silently degrade — locale is never blocking.
  */
-export async function getRequestLocale(): Promise<Locale> {
-  const [{ cookies, headers }] = await Promise.all([import('next/headers')]);
+export const getRequestLocale = cache(async function getRequestLocale(): Promise<Locale> {
+  const { cookies, headers } = await import('next/headers');
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
 
   const cookieLocale = cookieStore.get(NEXT_LOCALE_COOKIE)?.value ?? null;
@@ -99,7 +101,7 @@ export async function getRequestLocale(): Promise<Locale> {
   }
 
   return resolveLocaleFromInputs({ profileLocale, cookieLocale, acceptLanguage });
-}
+});
 
 export function listSupportedLocales(): readonly Locale[] {
   return locales;
