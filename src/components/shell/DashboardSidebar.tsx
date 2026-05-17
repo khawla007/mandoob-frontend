@@ -67,11 +67,7 @@ export function DashboardSidebar({
 
   const translate = (key: string | undefined, fallback: string | undefined) => {
     if (!key) return fallback ?? '';
-    try {
-      return t(key);
-    } catch {
-      return fallback ?? key;
-    }
+    return t(key);
   };
 
   return (

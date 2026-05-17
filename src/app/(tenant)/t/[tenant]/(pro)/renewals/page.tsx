@@ -97,13 +97,7 @@ export default async function RenewalsPage({
                 slug={slug}
                 current={tab}
                 value={tab2.value}
-                label={(() => {
-                  try {
-                    return t(tab2.labelKey);
-                  } catch {
-                    return tab2.labelKey;
-                  }
-                })()}
+                label={t(tab2.labelKey)}
               />
             ))}
           </CardDescription>

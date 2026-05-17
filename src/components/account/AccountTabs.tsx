@@ -16,20 +16,15 @@ export function AccountTabs({ role }: { role: Role }) {
   return (
     <nav role="tablist" aria-label="Account sections" className="border-b">
       <ul className="-mb-px flex flex-wrap gap-1">
-        {tabs.map((t) => {
-          const active = pathname === t.href;
-          let label = t.label;
-          try {
-            label = tAccount(t.labelKey);
-          } catch {
-            label = t.label;
-          }
+        {tabs.map((tab) => {
+          const active = pathname === tab.href;
+          const label = tAccount(tab.labelKey);
           return (
-            <li key={t.href}>
+            <li key={tab.href}>
               <Link
                 role="tab"
                 aria-selected={active}
-                href={t.href}
+                href={tab.href}
                 className={cn(
                   'inline-block border-b-2 px-3 py-2 text-sm font-medium transition-colors',
                   active

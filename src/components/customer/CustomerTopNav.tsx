@@ -31,11 +31,7 @@ export function CustomerTopNav({ slug }: { slug: string }) {
 
   const labelFor = (key: string) => {
     if (key === 'profile') return tCommon('profile');
-    try {
-      return tShell(key);
-    } catch {
-      return key;
-    }
+    return tShell(key);
   };
 
   return (
