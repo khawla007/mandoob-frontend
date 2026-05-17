@@ -19,11 +19,14 @@ type AuthedRoute = {
 
 const tenant = process.env.E2E_TENANT_SLUG ?? process.env.LAUNCH_TENANT_SLUG ?? 'firm';
 
+// Canonical paths only — never alias/redirect routes. The employee canonical
+// path is /t/{slug}/employee/dashboard (see
+// src/app/(tenant)/t/[tenant]/(employee)/employee/dashboard/page.tsx).
 const routes: AuthedRoute[] = [
   { name: 'admin overview', role: 'admin', path: '/admin' },
   { name: 'PRO dashboard', role: 'pro', path: `/t/${tenant}/dashboard` },
   { name: 'customer portal', role: 'customer', path: `/t/${tenant}/portal` },
-  { name: 'employee dashboard', role: 'employee', path: `/t/${tenant}/me` },
+  { name: 'employee dashboard', role: 'employee', path: `/t/${tenant}/employee/dashboard` },
 ];
 
 for (const route of routes) {
@@ -33,7 +36,7 @@ for (const route of routes) {
     const storagePath = resolve(process.cwd(), 'tests/.auth', `${route.role}.json`);
     if (!existsSync(storagePath)) {
       const reason = `Storage state for ${route.role} not found at ${storagePath}. Set E2E_${route.role.toUpperCase()}_EMAIL/PASSWORD and rerun.`;
-       
+
       console.warn(`[a11y] SKIP ${route.name}: ${reason}`);
       testInfo.skip(true, reason);
       return;
@@ -44,6 +47,14 @@ for (const route of routes) {
     try {
       await page.goto(route.path, { waitUntil: 'networkidle' });
       await expect(page.locator('body')).toBeVisible();
+
+      // Auth assertion: a stale storage state would silently redirect to
+      // /login and axe would still pass on the login page, certifying the
+      // wrong surface. Guard against that before running axe.
+      expect(
+        page.url(),
+        `[a11y] ${route.name} redirected to /login — storage state for ${route.role} is stale or invalid`,
+      ).not.toContain('/login');
 
       const results = await new AxeBuilder({ page }).analyze();
       expect(results.violations).toEqual([]);
