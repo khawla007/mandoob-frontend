@@ -129,7 +129,6 @@ test('isExplicitlyAllowedHost recognizes loopback + dev suffixes', () => {
   assert.equal(isExplicitlyAllowedHost('preview.dev.local'), true);
   assert.equal(isExplicitlyAllowedHost('mandoob-pr-1.vercel.app'), true);
   assert.equal(isExplicitlyAllowedHost('random.example.com'), false);
-  // staging.mandoob.io passes the suffix allow-list only by way of STAGING_HOST
-  // override; deny-list precedence is checked by resolveBaseUrl, not here.
+  // deny-list parent prevents allow-listing; verified via resolveBaseUrl on line 60.
   assert.equal(isExplicitlyAllowedHost('app.staging.mandoob.io'), false);
 });
