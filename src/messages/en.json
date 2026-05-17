@@ -234,6 +234,8 @@
     "noRecentComms": "No recent communications.",
     "due": "Due",
     "paid": "Paid",
+    "noDueDate": "No due date",
+    "receipt": "Receipt",
     "reviewerNote": "Reviewer note:",
     "pleaseReupload": "Please re-upload.",
     "longCopy": {

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { OpenRequestEntry } from '@/lib/data/documents';
@@ -24,25 +25,30 @@ function relativeDue(iso: string | null): string | null {
   return `Due in ${days} days`;
 }
 
-export function ActiveDocRequestsCard({ rows, slug }: { rows: OpenRequestEntry[]; slug: string }) {
+export async function ActiveDocRequestsCard({
+  rows,
+  slug,
+}: {
+  rows: OpenRequestEntry[];
+  slug: string;
+}) {
+  const t = await getTranslations('customer');
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Active document requests</CardTitle>
+        <CardTitle className="text-lg">{t('activeDocumentRequests')}</CardTitle>
         <CardDescription>
           <Link
             href={`/t/${slug}/portal/documents`}
             className="hover:text-foreground underline-offset-4 hover:underline"
           >
-            View all documents
+            {t('viewAllDocuments')}
           </Link>
         </CardDescription>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">
-            No active document requests.
-          </p>
+          <p className="text-muted-foreground py-6 text-center text-sm">{t('noActiveRequests')}</p>
         ) : (
           <ul className="divide-border/60 divide-y">
             {rows.map((r) => {
@@ -56,7 +62,7 @@ export function ActiveDocRequestsCard({ rows, slug }: { rows: OpenRequestEntry[]
                       {due && <> · {due}</>}
                     </div>
                   </div>
-                  <Badge variant="secondary">Pending upload</Badge>
+                  <Badge variant="secondary">{t('pendingUpload')}</Badge>
                 </li>
               );
             })}

@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 
 import { StatCard } from '@/components/admin/StatCard';
 import { SignupsChart } from '@/components/admin/SignupsChart';
@@ -17,6 +18,8 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
+  const t = await getTranslations('pro');
+
   const [kpis, series, logins] = await Promise.all([
     getProDashboardMetrics(tenant.id),
     getTenantSignupSeries(tenant.id, 30),
@@ -27,12 +30,12 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('overview')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {tenant.name} · workspace signals for your team.
           </p>
         </div>
-        <div className="text-muted-foreground hidden text-xs md:block">Last 30 days · live</div>
+        <div className="text-muted-foreground hidden text-xs md:block">{t('lastThirtyDays')}</div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -45,7 +48,7 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
 
       <RecentLoginsTable
         rows={logins}
-        title="Recent team activity"
+        title={t('recentTeamActivity')}
         description={`Latest authentication events for ${tenant.name}.`}
       />
     </div>

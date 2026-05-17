@@ -234,6 +234,8 @@
     "noRecentComms": "لا توجد تواصلات حديثة.",
     "due": "مستحق",
     "paid": "مدفوع",
+    "noDueDate": "بدون تاريخ استحقاق",
+    "receipt": "الإيصال",
     "reviewerNote": "ملاحظة المراجع:",
     "pleaseReupload": "يرجى إعادة الرفع.",
     "longCopy": {

@@ -1,13 +1,15 @@
 import { Check } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { RegistrationProgress } from '@/lib/mocks/customer-portal';
 
-export function RegistrationProgressCard({ data }: { data: RegistrationProgress }) {
+export async function RegistrationProgressCard({ data }: { data: RegistrationProgress }) {
+  const t = await getTranslations('customer');
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Registration progress</CardTitle>
-        <CardDescription>Where your company stands in the UAE registration flow.</CardDescription>
+        <CardTitle className="text-lg">{t('registrationProgress')}</CardTitle>
+        <CardDescription>{t('longCopy.registrationProgressDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <ol className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-0">

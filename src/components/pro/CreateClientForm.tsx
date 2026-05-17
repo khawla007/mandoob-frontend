@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,6 +20,8 @@ import { createClientAction } from '@/app/(tenant)/t/[tenant]/(pro)/clients/acti
 
 export function CreateClientForm({ slug }: { slug: string }) {
   const router = useRouter();
+  const t = useTranslations('pro');
+  const tCommon = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -65,11 +68,11 @@ export function CreateClientForm({ slug }: { slug: string }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>Add client</Button>
+        <Button>{t('addClient')}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a new client</DialogTitle>
+          <DialogTitle>{t('newClient')}</DialogTitle>
           <DialogDescription>
             Capture the basics now — license, shareholders, and documents can be filled in later.
           </DialogDescription>
@@ -78,13 +81,13 @@ export function CreateClientForm({ slug }: { slug: string }) {
         <form className="space-y-4" onSubmit={onSubmit}>
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Could not add client</AlertTitle>
+              <AlertTitle>{t('couldNotAddClient')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           <div className="grid gap-2">
-            <Label htmlFor="client-name">Company name</Label>
+            <Label htmlFor="client-name">{t('companyName')}</Label>
             <Input
               id="client-name"
               required
@@ -97,7 +100,7 @@ export function CreateClientForm({ slug }: { slug: string }) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="client-license">Trade license #</Label>
+            <Label htmlFor="client-license">{t('tradeLicense')}</Label>
             <Input
               id="client-license"
               maxLength={64}
@@ -108,7 +111,7 @@ export function CreateClientForm({ slug }: { slug: string }) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="client-jurisdiction">Jurisdiction</Label>
+            <Label htmlFor="client-jurisdiction">{t('jurisdiction')}</Label>
             <Input
               id="client-jurisdiction"
               maxLength={120}
@@ -119,7 +122,7 @@ export function CreateClientForm({ slug }: { slug: string }) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="client-expiry">License expiry</Label>
+            <Label htmlFor="client-expiry">{t('licenseExpiry')}</Label>
             <Input
               id="client-expiry"
               type="date"
@@ -130,10 +133,10 @@ export function CreateClientForm({ slug }: { slug: string }) {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Adding…' : 'Add client'}
+              {pending ? t('adding') : t('addClient')}
             </Button>
           </DialogFooter>
         </form>

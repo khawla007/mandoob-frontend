@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
@@ -16,6 +17,8 @@ export default async function RenewalsPage({ params }: { params: Promise<{ tenan
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
+  const t = await getTranslations('customer');
+
   const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
   const linkedClientId = customer.linkedClientId;
 
@@ -23,21 +26,19 @@ export default async function RenewalsPage({ params }: { params: Promise<{ tenan
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Renewals</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Trade license, visas, Emirates IDs, and Ejari renewals — past and upcoming.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('renewals')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('longCopy.renewalsIntro')}</p>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Account not linked</CardTitle>
+            <CardTitle className="text-lg">{t('accountNotLinked')}</CardTitle>
             <CardDescription>
-              Your account is not linked to a client file yet. Ask your PRO firm to link you, then{' '}
+              {t('longCopy.accountNotLinkedNote')}{' '}
               <Link
                 href={`/t/${tenant.slug}/account`}
                 className="hover:text-foreground underline-offset-4 hover:underline"
               >
-                review your account details
+                {t('viewAllDocuments')}
               </Link>
               .
             </CardDescription>
@@ -71,18 +72,14 @@ export default async function RenewalsPage({ params }: { params: Promise<{ tenan
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Renewals</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Trade license, visas, Emirates IDs, and Ejari renewals — past and upcoming.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('renewals')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('longCopy.renewalsIntro')}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Timeline</CardTitle>
-          <CardDescription>
-            Color cues: red = within 30 days · amber = within 90 days.
-          </CardDescription>
+          <CardTitle className="text-lg">{t('timeline')}</CardTitle>
+          <CardDescription>{t('longCopy.renewalsColorCues')}</CardDescription>
         </CardHeader>
         <CardContent>
           <RenewalsTimeline upcoming={upcoming} past={past} />

@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import type { PastRenewal, Renewal } from '@/lib/types/renewals-ui';
 
 const TYPE_LABEL: Record<Renewal['type'], string> = {
@@ -15,14 +16,23 @@ function urgencyColor(daysOut: number): string {
 
 type Item = { kind: 'upcoming'; row: Renewal } | { kind: 'past'; row: PastRenewal };
 
-export function RenewalsTimeline({ upcoming, past }: { upcoming: Renewal[]; past: PastRenewal[] }) {
+export async function RenewalsTimeline({
+  upcoming,
+  past,
+}: {
+  upcoming: Renewal[];
+  past: PastRenewal[];
+}) {
+  const t = await getTranslations('customer');
   const items: Item[] = [
     ...upcoming.map((r) => ({ kind: 'upcoming' as const, row: r })),
     ...past.map((r) => ({ kind: 'past' as const, row: r })),
   ];
 
   if (items.length === 0) {
-    return <p className="text-muted-foreground py-8 text-center text-sm">No renewals to show.</p>;
+    return (
+      <p className="text-muted-foreground py-8 text-center text-sm">{t('noRenewalsToShow')}</p>
+    );
   }
 
   return (

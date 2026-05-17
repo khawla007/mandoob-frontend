@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
@@ -17,6 +18,8 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
+  const t = await getTranslations('customer');
+
   const customer = await readSelfCustomer();
   const linkedClientId = customer.linkedClientId;
 
@@ -24,21 +27,19 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Documents</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Upload requested documents and track items already submitted.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('documents')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('longCopy.documentsIntro')}</p>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Account not linked</CardTitle>
+            <CardTitle className="text-lg">{t('accountNotLinked')}</CardTitle>
             <CardDescription>
-              Your account is not linked to a client file yet. Ask your PRO firm to link you, then{' '}
+              {t('longCopy.accountNotLinkedNote')}{' '}
               <Link
                 href={`/t/${tenant.slug}/account`}
                 className="hover:text-foreground underline-offset-4 hover:underline"
               >
-                review your account details
+                {t('viewAllDocuments')}
               </Link>
               .
             </CardDescription>
@@ -70,22 +71,18 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Documents</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Upload requested documents and track items already submitted.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('documents')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('longCopy.documentsIntro')}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Awaiting your action</CardTitle>
-          <CardDescription>Items your PRO firm needs from you.</CardDescription>
+          <CardTitle className="text-lg">{t('awaitingYourAction')}</CardTitle>
+          <CardDescription>{t('longCopy.awaitingDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           {openRequests.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">
-              All caught up. No documents pending upload.
-            </p>
+            <p className="text-muted-foreground py-6 text-center text-sm">{t('allCaughtUp')}</p>
           ) : (
             <ul className="divide-border/60 divide-y">
               {openRequests.map((req) => (
@@ -104,13 +101,13 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Submitted</CardTitle>
-          <CardDescription>Documents already uploaded or under PRO review.</CardDescription>
+          <CardTitle className="text-lg">{t('submitted')}</CardTitle>
+          <CardDescription>{t('longCopy.submittedDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           {submitted.length === 0 ? (
             <p className="text-muted-foreground py-6 text-center text-sm">
-              No submitted documents yet.
+              {t('noSubmittedDocuments')}
             </p>
           ) : (
             <ul className="divide-border/60 divide-y">

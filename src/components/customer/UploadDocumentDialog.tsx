@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,6 +38,9 @@ export function UploadDocumentDialog(props: {
 }) {
   const { slug, docType, requestId, label } = props;
   const router = useRouter();
+  const t = useTranslations('customer');
+  const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -73,16 +77,16 @@ export function UploadDocumentDialog(props: {
     >
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          Upload
+          {t('uploadButton')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form action={onSubmit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Upload — {label}</DialogTitle>
-            <DialogDescription>
-              PDF, JPEG, PNG, DOCX, or XLSX up to 25 MB. The file is scanned before storage.
-            </DialogDescription>
+            <DialogTitle>
+              {t('uploadButton')} — {label}
+            </DialogTitle>
+            <DialogDescription>{t('longCopy.uploadDialogDescription')}</DialogDescription>
           </DialogHeader>
 
           <input type="hidden" name="doc_type" value={docType} />
@@ -90,7 +94,7 @@ export function UploadDocumentDialog(props: {
           <input type="hidden" name="label" value={label} />
 
           <div className="grid gap-2">
-            <Label htmlFor="upload-file">File</Label>
+            <Label htmlFor="upload-file">{label}</Label>
             <Input
               id="upload-file"
               name="file"
@@ -103,7 +107,7 @@ export function UploadDocumentDialog(props: {
 
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Upload failed</AlertTitle>
+              <AlertTitle>{tErrors('uploadFailed')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -115,10 +119,10 @@ export function UploadDocumentDialog(props: {
               onClick={() => setOpen(false)}
               disabled={pending}
             >
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Uploading…' : 'Upload'}
+              {pending ? t('uploading') : t('uploadButton')}
             </Button>
           </DialogFooter>
         </form>
