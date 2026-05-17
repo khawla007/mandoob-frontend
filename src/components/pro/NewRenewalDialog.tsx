@@ -48,7 +48,6 @@ export function NewRenewalDialog({
 }) {
   const router = useRouter();
   const t = useTranslations('pro');
-  const tCommon = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
