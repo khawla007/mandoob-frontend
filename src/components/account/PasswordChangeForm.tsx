@@ -33,7 +33,7 @@ export function PasswordChangeForm() {
         return;
       }
       form.reset();
-      toast.success(tAccount('changePassword'));
+      toast.success(tAccount('passwordChanged'));
     });
   });
 
@@ -42,6 +42,7 @@ export function PasswordChangeForm() {
       <Field id="current_password" label={tAuth('currentPassword')} form={form} />
       <Field id="new_password" label={tAuth('newPassword')} form={form} />
       <Field id="confirm_password" label={tAuth('confirmPassword')} form={form} />
+      <p className="text-muted-foreground text-xs">{tAccount('passwordPolicyHint')}</p>
       <Button type="submit" disabled={isPending}>
         {isPending ? tCommon('saving') : tAccount('changePassword')}
       </Button>

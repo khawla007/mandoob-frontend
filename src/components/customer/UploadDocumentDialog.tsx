@@ -94,7 +94,7 @@ export function UploadDocumentDialog(props: {
           <input type="hidden" name="label" value={label} />
 
           <div className="grid gap-2">
-            <Label htmlFor="upload-file">{label}</Label>
+            <Label htmlFor="upload-file">{tCommon('file')}</Label>
             <Input
               id="upload-file"
               name="file"

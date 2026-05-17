@@ -27,7 +27,9 @@
     "remove": "Remove",
     "view": "View",
     "all": "All",
-    "comingSoon": "Coming soon."
+    "comingSoon": "Coming soon.",
+    "file": "File",
+    "getStarted": "Get started"
   },
   "site": {
     "primaryNav": "Primary navigation",
@@ -156,6 +158,9 @@
     "profileSaved": "Profile saved",
     "noChanges": "No changes",
     "changePassword": "Change password",
+    "passwordChanged": "Password changed",
+    "passwordPolicyHint": "≥10 chars, mixed case + digit",
+    "mfaEnterSecretManually": "Or enter manually:",
     "twoFactorAuth": "Two-factor authentication",
     "addTotpFactor": "Add TOTP factor",
     "removeFactor": "Remove",
@@ -206,6 +211,7 @@
     "renewals": "Renewals",
     "activeDocumentRequests": "Active document requests",
     "viewAllDocuments": "View all documents",
+    "reviewAccountDetails": "review your account details",
     "viewRenewalsTimeline": "View renewals timeline",
     "awaitingYourAction": "Awaiting your action",
     "submitted": "Submitted",
@@ -311,7 +317,8 @@
     "ejari": "Ejari",
     "license": "License",
     "lastThirtyDays": "Last 30 days · live",
-    "recentTeamActivity": "Recent team activity"
+    "recentTeamActivity": "Recent team activity",
+    "clientsSubtitle": "{tenant} · {count} client(s)"
   },
   "documents": {
     "title": "Documents",
@@ -332,6 +339,13 @@
     "overdue": "Overdue",
     "upcoming": "Upcoming",
     "dueSoon": "Due soon",
+    "completedOn": "Completed {date}",
+    "dueOn": "Due {date}",
+    "dueOnWithDays": "Due {date} · {days} days out",
+    "dueToday": "Due today",
+    "dueTomorrow": "Due tomorrow",
+    "dueInDays": "Due in {days} days",
+    "daysOverdue": "{days} days overdue",
     "longCopy": {
       "lateFineWarning": "Some UAE authorities charge AED 25 per day after the deadline. Renew before the due date to avoid fines.",
       "ejariDeadlineNotice": "Ejari must be renewed before submitting your trade-license renewal."

@@ -27,7 +27,9 @@
     "remove": "إزالة",
     "view": "عرض",
     "all": "الكل",
-    "comingSoon": "قريبًا."
+    "comingSoon": "قريبًا.",
+    "file": "ملف",
+    "getStarted": "ابدأ الآن"
   },
   "site": {
     "primaryNav": "التنقل الرئيسي",
@@ -156,6 +158,9 @@
     "profileSaved": "تم حفظ الملف الشخصي",
     "noChanges": "لا توجد تغييرات",
     "changePassword": "تغيير كلمة المرور",
+    "passwordChanged": "تم تغيير كلمة المرور",
+    "passwordPolicyHint": "١٠ أحرف على الأقل، حالات مختلطة ورقم",
+    "mfaEnterSecretManually": "أو أدخله يدويًا:",
     "twoFactorAuth": "المصادقة الثنائية",
     "addTotpFactor": "إضافة عامل TOTP",
     "removeFactor": "إزالة",
@@ -206,6 +211,7 @@
     "renewals": "التجديدات",
     "activeDocumentRequests": "طلبات المستندات النشطة",
     "viewAllDocuments": "عرض جميع المستندات",
+    "reviewAccountDetails": "راجع تفاصيل حسابك",
     "viewRenewalsTimeline": "عرض جدول التجديدات",
     "awaitingYourAction": "بانتظار إجراء منك",
     "submitted": "تم الإرسال",
@@ -311,7 +317,8 @@
     "ejari": "إيجاري",
     "license": "رخصة",
     "lastThirtyDays": "آخر 30 يومًا · مباشر",
-    "recentTeamActivity": "نشاط الفريق الأخير"
+    "recentTeamActivity": "نشاط الفريق الأخير",
+    "clientsSubtitle": "{tenant} · {count} عميل"
   },
   "documents": {
     "title": "المستندات",
@@ -332,6 +339,13 @@
     "overdue": "متأخر",
     "upcoming": "قادم",
     "dueSoon": "مستحق قريبًا",
+    "completedOn": "اكتمل في {date}",
+    "dueOn": "مستحق في {date}",
+    "dueOnWithDays": "مستحق في {date} · بعد {days} يومًا",
+    "dueToday": "مستحق اليوم",
+    "dueTomorrow": "مستحق غدًا",
+    "dueInDays": "مستحق بعد {days} يومًا",
+    "daysOverdue": "متأخر بـ {days} يومًا",
     "longCopy": {
       "lateFineWarning": "Some UAE authorities charge AED 25 per day after the deadline. Renew before the due date to avoid fines.",
       "ejariDeadlineNotice": "Ejari must be renewed before submitting your trade-license renewal."

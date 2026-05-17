@@ -39,7 +39,7 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
                 href={`/t/${tenant.slug}/account`}
                 className="hover:text-foreground underline-offset-4 hover:underline"
               >
-                {t('viewAllDocuments')}
+                {t('reviewAccountDetails')}
               </Link>
               .
             </CardDescription>

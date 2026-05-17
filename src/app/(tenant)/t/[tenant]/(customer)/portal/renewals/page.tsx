@@ -38,7 +38,7 @@ export default async function RenewalsPage({ params }: { params: Promise<{ tenan
                 href={`/t/${tenant.slug}/account`}
                 className="hover:text-foreground underline-offset-4 hover:underline"
               >
-                {t('viewAllDocuments')}
+                {t('reviewAccountDetails')}
               </Link>
               .
             </CardDescription>
