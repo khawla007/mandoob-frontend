@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { brandingSchema, contactSchema, smtpSchema } from './tenant-settings';
+import { brandingSchema, contactSchema, smtpSchema, whatsappSchema } from './tenant-settings';
 
 test('brandingSchema accepts hex colors and URLs', () => {
   const r = brandingSchema.safeParse({
@@ -81,6 +81,39 @@ test('smtpSchema treats empty password as unset (kept on update)', () => {
     password: '',
     from_address: 'a@b.co',
     enabled: true,
+  });
+  assert.equal(r.success, true);
+});
+
+test('whatsappSchema accepts Meta ids and first-save access token', () => {
+  const r = whatsappSchema.safeParse({
+    business_account_id: '123456789012345',
+    phone_number_id: '987654321098765',
+    access_token: 'EAABValidLongTokenValue',
+    enabled: true,
+    has_existing_token: false,
+  });
+  assert.equal(r.success, true);
+});
+
+test('whatsappSchema requires token when there is no existing token', () => {
+  const r = whatsappSchema.safeParse({
+    business_account_id: '123456789012345',
+    phone_number_id: '987654321098765',
+    access_token: '',
+    enabled: true,
+    has_existing_token: false,
+  });
+  assert.equal(r.success, false);
+});
+
+test('whatsappSchema allows blank token when existing token is retained', () => {
+  const r = whatsappSchema.safeParse({
+    business_account_id: '123456789012345',
+    phone_number_id: '987654321098765',
+    access_token: '',
+    enabled: false,
+    has_existing_token: true,
   });
   assert.equal(r.success, true);
 });

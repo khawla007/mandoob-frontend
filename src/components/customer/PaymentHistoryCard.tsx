@@ -1,7 +1,16 @@
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { PaymentHistory } from '@/lib/mocks/customer-portal';
+import { Button } from '@/components/ui/button';
+import type { PaymentHistory } from '@/lib/data/payments';
+import { PayButton } from '@/components/customer/PayButton';
 
-export function PaymentHistoryCard({ data }: { data: PaymentHistory }) {
+export function PaymentHistoryCard({
+  data,
+  tenantSlug,
+}: {
+  data: PaymentHistory;
+  tenantSlug: string;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -21,9 +30,14 @@ export function PaymentHistoryCard({ data }: { data: PaymentHistory }) {
                 <li key={p.id} className="flex items-start justify-between gap-4 py-2 first:pt-0">
                   <div>
                     <div className="text-sm font-medium">{p.label}</div>
-                    <div className="text-muted-foreground text-xs">Due {p.dueDate}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {p.dueDate ? `Due ${p.dueDate}` : 'No due date'}
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold">{p.amount}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm font-semibold">{p.amount}</div>
+                    <PayButton invoiceId={p.id} tenantSlug={tenantSlug} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -44,7 +58,14 @@ export function PaymentHistoryCard({ data }: { data: PaymentHistory }) {
                     <div className="text-sm font-medium">{h.label}</div>
                     <div className="text-muted-foreground text-xs">Paid {h.paidAt}</div>
                   </div>
-                  <div className="text-muted-foreground text-sm">{h.amount}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-muted-foreground text-sm">{h.amount}</div>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/t/${tenantSlug}/portal/payments/${h.id}/receipt`} target="_blank">
+                        Receipt
+                      </Link>
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>

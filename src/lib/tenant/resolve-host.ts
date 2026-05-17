@@ -40,6 +40,7 @@ export function isAuthPath(pathname: string): boolean {
   return (
     pathname === '/login' ||
     pathname === '/register' ||
+    pathname.startsWith('/register/') ||
     pathname === '/forgot-password' ||
     pathname === '/reset-password' ||
     pathname === '/verify-otp' ||

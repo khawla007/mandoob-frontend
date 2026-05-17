@@ -970,6 +970,498 @@ export type Database = {
           },
         ];
       };
+      invoices: {
+        Row: {
+          amount_minor: number;
+          client_id: string;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_profile_id: string | null;
+          due_at: string | null;
+          id: string;
+          label: string;
+          linked_entity_id: string | null;
+          linked_entity_type: string | null;
+          paid_at: string | null;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+          void_reason: string | null;
+        };
+        Insert: {
+          amount_minor: number;
+          client_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_profile_id?: string | null;
+          due_at?: string | null;
+          id?: string;
+          label: string;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          paid_at?: string | null;
+          status?: string;
+          tenant_id: string;
+          updated_at?: string;
+          void_reason?: string | null;
+        };
+        Update: {
+          amount_minor?: number;
+          client_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_profile_id?: string | null;
+          due_at?: string | null;
+          id?: string;
+          label?: string;
+          linked_entity_id?: string | null;
+          linked_entity_type?: string | null;
+          paid_at?: string | null;
+          status?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          void_reason?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'invoices_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'invoices_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'invoices_customer_profile_id_fkey';
+            columns: ['customer_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'customer_profiles';
+            referencedColumns: ['profile_id'];
+          },
+          {
+            foreignKeyName: 'invoices_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payments: {
+        Row: {
+          amount_minor: number;
+          created_at: string;
+          currency: string;
+          failure_reason: string | null;
+          id: string;
+          invoice_id: string;
+          method: string | null;
+          provider: string;
+          provider_charge_id: string | null;
+          received_at: string | null;
+          status: string;
+          tenant_id: string;
+        };
+        Insert: {
+          amount_minor: number;
+          created_at?: string;
+          currency?: string;
+          failure_reason?: string | null;
+          id?: string;
+          invoice_id: string;
+          method?: string | null;
+          provider: string;
+          provider_charge_id?: string | null;
+          received_at?: string | null;
+          status?: string;
+          tenant_id: string;
+        };
+        Update: {
+          amount_minor?: number;
+          created_at?: string;
+          currency?: string;
+          failure_reason?: string | null;
+          id?: string;
+          invoice_id?: string;
+          method?: string | null;
+          provider?: string;
+          provider_charge_id?: string | null;
+          received_at?: string | null;
+          status?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payments_invoice_id_fkey';
+            columns: ['invoice_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      refunds: {
+        Row: {
+          amount_minor: number;
+          created_at: string;
+          id: string;
+          payment_id: string;
+          provider_refund_id: string | null;
+          reason: string | null;
+          status: string;
+          tenant_id: string;
+        };
+        Insert: {
+          amount_minor: number;
+          created_at?: string;
+          id?: string;
+          payment_id: string;
+          provider_refund_id?: string | null;
+          reason?: string | null;
+          status?: string;
+          tenant_id: string;
+        };
+        Update: {
+          amount_minor?: number;
+          created_at?: string;
+          id?: string;
+          payment_id?: string;
+          provider_refund_id?: string | null;
+          reason?: string | null;
+          status?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'refunds_payment_id_fkey';
+            columns: ['payment_id'];
+            isOneToOne: false;
+            referencedRelation: 'payments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'refunds_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean;
+          canceled_at: string | null;
+          created_at: string;
+          currency: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          id: string;
+          interval: string;
+          plan: string;
+          status: string;
+          stripe_customer_id: string;
+          stripe_price_id: string;
+          stripe_subscription_id: string;
+          tenant_id: string;
+          unit_amount_minor: number;
+          updated_at: string;
+        };
+        Insert: {
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          interval: string;
+          plan: string;
+          status: string;
+          stripe_customer_id: string;
+          stripe_price_id: string;
+          stripe_subscription_id: string;
+          tenant_id: string;
+          unit_amount_minor: number;
+          updated_at?: string;
+        };
+        Update: {
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          created_at?: string;
+          currency?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          interval?: string;
+          plan?: string;
+          status?: string;
+          stripe_customer_id?: string;
+          stripe_price_id?: string;
+          stripe_subscription_id?: string;
+          tenant_id?: string;
+          unit_amount_minor?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: true;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      meeting_slots: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          ends_at: string;
+          id: string;
+          starts_at: string;
+          status: Database['public']['Enums']['meeting_slot_status'];
+          tenant_id: string;
+          timezone: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          ends_at: string;
+          id?: string;
+          starts_at: string;
+          status?: Database['public']['Enums']['meeting_slot_status'];
+          tenant_id: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          ends_at?: string;
+          id?: string;
+          starts_at?: string;
+          status?: Database['public']['Enums']['meeting_slot_status'];
+          tenant_id?: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      meetings: {
+        Row: {
+          client_id: string | null;
+          consent_notice_shown_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_profile_id: string | null;
+          duration_minutes: number;
+          id: string;
+          lead_id: string | null;
+          meeting_url: string | null;
+          notes: string | null;
+          provider: string;
+          provider_event_id: string | null;
+          provider_room_name: string | null;
+          recording_ready_at: string | null;
+          recording_storage_path: string | null;
+          recording_url: string | null;
+          scheduled_at: string;
+          status: Database['public']['Enums']['meeting_status'];
+          tenant_id: string;
+          timezone: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          client_id?: string | null;
+          consent_notice_shown_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_profile_id?: string | null;
+          duration_minutes?: number;
+          id?: string;
+          lead_id?: string | null;
+          meeting_url?: string | null;
+          notes?: string | null;
+          provider?: string;
+          provider_event_id?: string | null;
+          provider_room_name?: string | null;
+          recording_ready_at?: string | null;
+          recording_storage_path?: string | null;
+          recording_url?: string | null;
+          scheduled_at: string;
+          status?: Database['public']['Enums']['meeting_status'];
+          tenant_id: string;
+          timezone?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string | null;
+          consent_notice_shown_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_profile_id?: string | null;
+          duration_minutes?: number;
+          id?: string;
+          lead_id?: string | null;
+          meeting_url?: string | null;
+          notes?: string | null;
+          provider?: string;
+          provider_event_id?: string | null;
+          provider_room_name?: string | null;
+          recording_ready_at?: string | null;
+          recording_storage_path?: string | null;
+          recording_url?: string | null;
+          scheduled_at?: string;
+          status?: Database['public']['Enums']['meeting_status'];
+          tenant_id?: string;
+          timezone?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      meeting_ai_summaries: {
+        Row: {
+          action_items: Json;
+          attempts: number;
+          completed_at: string | null;
+          created_at: string;
+          customer_visible: boolean;
+          decisions: Json;
+          error: string | null;
+          error_code: string | null;
+          id: string;
+          language: string | null;
+          meeting_id: string;
+          model: string | null;
+          provider: string | null;
+          risks_or_followups: Json;
+          status: string;
+          summary_text: string | null;
+          tenant_id: string;
+          transcript_text: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          action_items?: Json;
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          customer_visible?: boolean;
+          decisions?: Json;
+          error?: string | null;
+          error_code?: string | null;
+          id?: string;
+          language?: string | null;
+          meeting_id: string;
+          model?: string | null;
+          provider?: string | null;
+          risks_or_followups?: Json;
+          status?: string;
+          summary_text?: string | null;
+          tenant_id: string;
+          transcript_text?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          action_items?: Json;
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          customer_visible?: boolean;
+          decisions?: Json;
+          error?: string | null;
+          error_code?: string | null;
+          id?: string;
+          language?: string | null;
+          meeting_id?: string;
+          model?: string | null;
+          provider?: string | null;
+          risks_or_followups?: Json;
+          status?: string;
+          summary_text?: string | null;
+          tenant_id?: string;
+          transcript_text?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'meeting_ai_summaries_meeting_id_fkey';
+            columns: ['meeting_id'];
+            isOneToOne: true;
+            referencedRelation: 'meetings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'meeting_ai_summaries_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      tenant_payment_config: {
+        Row: {
+          created_at: string;
+          enabled: boolean;
+          merchant_id: string;
+          provider: string;
+          secret_encrypted: string;
+          tenant_id: string;
+          updated_at: string;
+          webhook_secret_encrypted: string;
+        };
+        Insert: {
+          created_at?: string;
+          enabled?: boolean;
+          merchant_id: string;
+          provider: string;
+          secret_encrypted: string;
+          tenant_id: string;
+          updated_at?: string;
+          webhook_secret_encrypted: string;
+        };
+        Update: {
+          created_at?: string;
+          enabled?: boolean;
+          merchant_id?: string;
+          provider?: string;
+          secret_encrypted?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          webhook_secret_encrypted?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tenant_payment_config_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1023,6 +1515,8 @@ export type Database = {
         | 'suspended'
         | 'churned';
       employee_status: 'active' | 'inactive' | 'terminated';
+      meeting_slot_status: 'open' | 'booked' | 'cancelled';
+      meeting_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show' | 'recording_ready';
       profile_status: 'active' | 'invited' | 'disabled' | 'suspended';
     };
     CompositeTypes: {
@@ -1188,6 +1682,8 @@ export const Constants = {
         'churned',
       ],
       employee_status: ['active', 'inactive', 'terminated'],
+      meeting_slot_status: ['open', 'booked', 'cancelled'],
+      meeting_status: ['scheduled', 'completed', 'cancelled', 'no_show', 'recording_ready'],
       profile_status: ['active', 'invited', 'disabled', 'suspended'],
     },
   },

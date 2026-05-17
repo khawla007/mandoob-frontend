@@ -36,6 +36,25 @@ const schema = z.object({
   UNIFONIC_APP_SID: optionalStr,
   UNIFONIC_WEBHOOK_SECRET: optionalStr,
 
+  TAP_SECRET_KEY: optionalStr,
+  TAP_PUBLIC_KEY: optionalStr,
+  TAP_WEBHOOK_SECRET: optionalStr,
+  TAP_API_BASE: optionalStr,
+
+  STRIPE_SECRET_KEY: optionalStr,
+  STRIPE_PUBLISHABLE_KEY: optionalStr,
+  STRIPE_WEBHOOK_SECRET: optionalStr,
+  STRIPE_PRICE_STARTER: optionalStr,
+  STRIPE_PRICE_PROFESSIONAL: optionalStr,
+  STRIPE_PRICE_ENTERPRISE: optionalStr,
+
+  VIRUSTOTAL_API_KEY: optionalStr,
+
+  OPENAI_API_KEY: optionalStr,
+  OPENAI_TRANSCRIPTION_MODEL: optionalStr,
+  OPENAI_SUMMARY_MODEL: optionalStr,
+  MEETING_AI_MAX_RECORDING_BYTES: optionalStr,
+
   SENTRY_DSN: optionalStr,
 });
 

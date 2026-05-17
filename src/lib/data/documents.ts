@@ -70,6 +70,36 @@ async function logDocumentAudit(
   if (error) console.error('tenant_audit_log insert failed', error);
 }
 
+async function logBlockedScanAudit(args: {
+  tenantId: string;
+  actorId: string;
+  requestId?: string;
+  docType: DocType;
+  filename: string;
+  fileHash: string;
+  reason: string | null;
+  provider: string | null;
+}) {
+  const admin = createSupabaseServiceRoleClient();
+  const { error } = await admin.from('tenant_audit_log').insert({
+    tenant_id: args.tenantId,
+    actor_id: args.actorId,
+    action: 'infected_blocked',
+    source: 'system',
+    details: {
+      entity: args.requestId ? 'document_request' : 'document',
+      op: 'upload_blocked',
+      request_id: args.requestId ?? null,
+      doc_type: args.docType,
+      filename: args.filename,
+      file_hash: args.fileHash,
+      reason: args.reason,
+      scanner_provider: args.provider,
+    },
+  });
+  if (error) console.error('tenant_audit_log infected_blocked insert failed', error);
+}
+
 function buildStoragePath(args: {
   tenantId: string;
   clientId: string;
@@ -125,14 +155,42 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
     });
   }
 
-  const scan = await scanFile(data);
+  const sha256 = createHash('sha256').update(data).digest('hex');
+  const scan = await scanFile(data, { filename: originalName });
   if (!scan.clean) {
+    await logBlockedScanAudit({
+      tenantId: input.tenantId,
+      actorId: input.actor.id,
+      requestId: input.requestId,
+      docType: input.docType,
+      filename: originalName,
+      fileHash: sha256,
+      reason: scan.reason ?? null,
+      provider: scan.provider ?? null,
+    });
+
+    if (scan.reason === 'scanner_unavailable') {
+      console.warn('virus scanner unavailable', {
+        feature: 'virus-scan',
+        provider: scan.provider ?? 'unknown',
+      });
+      throw new ApiError(
+        'SCANNER_UNAVAILABLE',
+        'Virus scanner is temporarily unavailable. Try again shortly.',
+        503,
+        {
+          reason: scan.reason,
+          scanner_provider: scan.provider ?? null,
+        },
+      );
+    }
+
     throw new ApiError('FILE_REJECTED_BY_SCAN', 'file failed virus scan', 422, {
       reason: scan.reason ?? null,
+      scanner_provider: scan.provider ?? null,
     });
   }
 
-  const sha256 = createHash('sha256').update(data).digest('hex');
   const storagePath = buildStoragePath({
     tenantId: input.tenantId,
     clientId: input.clientId,

@@ -20,6 +20,9 @@ export default function ComingSoonPage() {
         </p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg">
+            <Link href="/estimate">Estimate setup cost</Link>
+          </Button>
+          <Button asChild size="lg">
             <Link href="/login">Sign in</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
@@ -27,15 +30,6 @@ export default function ComingSoonPage() {
           </Button>
         </div>
       </main>
-      <footer className="text-muted-foreground border-t py-6 text-center text-xs">
-        © {new Date().getFullYear()} Mandoob ·{' '}
-        <Link
-          href="/legal/privacy"
-          className="hover:text-foreground underline-offset-4 hover:underline"
-        >
-          Privacy
-        </Link>
-      </footer>
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyTwilioSignature } from '@/lib/sms/signature';
+import { recordInboundConsentKeyword } from '@/lib/comms/consent';
+import { enqueueSms } from '@/lib/sms/send';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -118,4 +120,19 @@ async function recordInbound(
     body,
     provider_message_id: providerMessageId,
   });
+  const action = await recordInboundConsentKeyword({
+    supabase,
+    phoneE164: fromPhone,
+    channel: 'sms',
+    body,
+    inboundMessageId: providerMessageId,
+  });
+  if (action) {
+    await enqueueSms({
+      tenantId: tenant.tenant_id,
+      templateId: 'opt-out-confirmation',
+      toPhone: fromPhone,
+      input: {},
+    });
+  }
 }

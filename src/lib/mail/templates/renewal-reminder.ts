@@ -3,11 +3,9 @@ import type { Rendered } from './index';
 
 export function renewalReminder(input: RenewalReminder): Rendered {
   const headline =
-    input.daysOut === 30
-      ? 'Renewal due in 30 days'
-      : input.daysOut === 7
-        ? 'Renewal due in 7 days'
-        : 'Final reminder: renewal due tomorrow';
+    input.daysOut === 1
+      ? 'Final reminder: renewal due tomorrow'
+      : `Renewal due in ${input.daysOut} days`;
   const subject = `${headline} — ${input.renewalLabel} (${input.tenantName})`;
   const html = `<p>Hi ${input.customerName},</p>
 <p><strong>${headline}.</strong></p>

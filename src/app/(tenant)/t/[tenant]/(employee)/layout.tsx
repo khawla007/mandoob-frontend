@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth/require-role';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
 
@@ -17,6 +18,8 @@ export default async function EmployeeLayout({
 
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
+  if (session.tenantId !== tenant.id) notFound();
+  await requireActiveTenant(tenant.id);
 
   const initials = (session.email ?? 'E').slice(0, 1).toUpperCase();
 

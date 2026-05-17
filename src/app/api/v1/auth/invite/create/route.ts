@@ -10,6 +10,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { sendInviteEmail } from '@/lib/mail/invite';
 import { env } from '@/lib/env';
+import { buildTenantUrl } from '@/lib/tenant/url';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -73,9 +74,11 @@ export async function POST(request: NextRequest) {
   });
   if (error) return errorResponse('INVITE_CREATE_FAILED', error.message, 500);
 
-  const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN;
-  const protocol = rootDomain.startsWith('localhost') ? 'http' : 'https';
-  const inviteUrl = `${protocol}://${tenant.slug}.${rootDomain}/invite/${token}`;
+  const inviteUrl = buildTenantUrl({
+    slug: tenant.slug as string,
+    rootDomain: env.NEXT_PUBLIC_ROOT_DOMAIN,
+    path: `/invite/${token}`,
+  });
 
   try {
     await sendInviteEmail({ to: email, tenantName: tenant.name as string, role, inviteUrl });

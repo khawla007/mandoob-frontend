@@ -3,10 +3,14 @@ import type {
   WhatsAppRenewalReminder,
   WhatsAppDocumentRequested,
   WhatsAppOtpCode,
+  WhatsAppOptOutConfirmation,
+  WhatsAppLeadAcknowledgement,
 } from '@/lib/validation/whatsapp-templates';
 import { renewalReminder } from './renewal-reminder';
 import { documentRequested } from './document-requested';
 import { otpCode } from './otp-code';
+import { optOutConfirmation } from './opt-out-confirmation';
+import { leadAcknowledgement } from './lead-acknowledgement';
 
 export type MetaTextParameter = { type: 'text'; text: string };
 export type MetaBodyComponent = {
@@ -25,6 +29,8 @@ export type WhatsAppTemplateMap = {
   'renewal-reminder': WhatsAppRenewalReminder;
   'document-requested': WhatsAppDocumentRequested;
   'otp-code': WhatsAppOtpCode;
+  'opt-out-confirmation': WhatsAppOptOutConfirmation;
+  'lead-acknowledgement': WhatsAppLeadAcknowledgement;
 };
 export type WhatsAppTemplateId = keyof WhatsAppTemplateMap;
 export type WhatsAppTemplateInputFor<T extends WhatsAppTemplateId> = WhatsAppTemplateMap[T];
@@ -48,6 +54,8 @@ const registry: { [K in WhatsAppTemplateId]: WhatsAppTemplateDefinition<WhatsApp
     'renewal-reminder': renewalReminder,
     'document-requested': documentRequested,
     'otp-code': otpCode,
+    'opt-out-confirmation': optOutConfirmation,
+    'lead-acknowledgement': leadAcknowledgement,
   };
 
 export function renderWhatsAppTemplate<T extends WhatsAppTemplateId>(

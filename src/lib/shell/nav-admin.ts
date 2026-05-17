@@ -1,9 +1,13 @@
 import {
   Building2,
+  Columns3,
+  DollarSign,
+  FileSpreadsheet,
   KeyRound,
   LayoutDashboard,
   ScrollText,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Users,
 } from 'lucide-react';
@@ -18,6 +22,10 @@ export const adminNav: ShellNavGroup[] = [
       { label: 'Sessions', href: '/admin/sessions', icon: KeyRound },
       { label: 'MFA & Security', href: '/admin/security', icon: ShieldCheck },
       { label: 'Audit logs', href: '/admin/audit-logs', icon: ScrollText },
+      { label: 'Erasure requests', href: '/admin/erasure-requests', icon: ShieldAlert },
+      { label: 'Finance', href: '/admin/finance', icon: DollarSign },
+      { label: 'Leads', href: '/admin/leads', icon: Columns3 },
+      { label: 'Cost data', href: '/admin/cost-data', icon: FileSpreadsheet },
     ],
   },
   {

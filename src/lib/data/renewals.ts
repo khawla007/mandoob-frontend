@@ -196,6 +196,7 @@ export async function createRenewal(
 
   const { data: notifyRow, error: notifyErr } = await admin.rpc('compute_notify_at', {
     due: input.due_date,
+    renewal_type: input.type,
   });
   if (notifyErr) throw new ApiError('INTERNAL', notifyErr.message, 500);
   const notifyAt = (notifyRow as string[] | null) ?? [];
@@ -258,7 +259,7 @@ export async function updateRenewal(
 
   const { data: existing, error: readErr } = await admin
     .from('renewals')
-    .select('id, tenant_id, source, status, due_date')
+    .select('id, tenant_id, source, status, due_date, type')
     .eq('id', id)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
@@ -274,6 +275,7 @@ export async function updateRenewal(
     update.due_date = patch.due_date;
     const { data: notifyRow, error: notifyErr } = await admin.rpc('compute_notify_at', {
       due: patch.due_date,
+      renewal_type: existing.type,
     });
     if (notifyErr) throw new ApiError('INTERNAL', notifyErr.message, 500);
     update.notify_at = (notifyRow as string[] | null) ?? [];

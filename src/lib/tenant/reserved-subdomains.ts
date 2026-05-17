@@ -9,6 +9,7 @@ export const RESERVED_SUBDOMAINS = new Set<string>([
   'mail',
   'ws',
   'cdn',
+  'dashboard',
 ]);
 
 export function isReservedSubdomain(label: string): boolean {

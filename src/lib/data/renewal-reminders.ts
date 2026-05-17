@@ -4,10 +4,16 @@ import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import { enqueueSms } from '@/lib/sms/send';
 
-export function reminderVariantFor(due: Date, at: Date): 30 | 7 | 1 {
+export type RenewalReminderWindow = 90 | 60 | 30 | 14 | 7 | 3 | 1;
+
+export function reminderVariantFor(due: Date, at: Date): RenewalReminderWindow {
   const daysOut = Math.round((due.getTime() - at.getTime()) / 86_400_000);
-  if (daysOut >= 21) return 30;
-  if (daysOut >= 4) return 7;
+  if (daysOut >= 75) return 90;
+  if (daysOut >= 45) return 60;
+  if (daysOut >= 22) return 30;
+  if (daysOut >= 11) return 14;
+  if (daysOut >= 5) return 7;
+  if (daysOut >= 2) return 3;
   return 1;
 }
 

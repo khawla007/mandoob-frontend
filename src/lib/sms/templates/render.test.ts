@@ -25,10 +25,22 @@ test('renewal-reminder: rejects unknown daysOut', () => {
       renewalLabel: 'Z',
       dueDate: '2026-06-10',
       // @ts-expect-error invalid literal
-      daysOut: 14,
+      daysOut: 2,
       detailUrl: '/x',
     }),
   );
+});
+
+test('renewal-reminder: accepts 14-day PRD window', () => {
+  const out = renderSmsTemplate('renewal-reminder', {
+    customerName: 'Yusuf',
+    tenantName: 'Acme PRO',
+    renewalLabel: 'Trade License',
+    dueDate: '2026-06-10',
+    daysOut: 14,
+    detailUrl: 'https://app.example.com/r/1',
+  });
+  assert.match(out.body, /in 14 days/);
 });
 
 test('document-requested: handles null due date', () => {

@@ -62,8 +62,23 @@ export const verifyEmailOtpSchema = z.object({
   token: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
 });
 
+export const verifyEmailOrPhoneOtpSchema = z
+  .object({
+    email: emailSchema.optional(),
+    phone: phoneSchema.optional(),
+    token: z.string().regex(/^\d{4,8}$/, 'Enter the verification code'),
+  })
+  .refine((value) => Boolean(value.email) !== Boolean(value.phone), {
+    message: 'Provide either email or phone',
+    path: ['email'],
+  });
+
 export const resendEmailOtpSchema = z.object({
   email: emailSchema,
+});
+
+export const startPhoneOtpSchema = z.object({
+  phone: phoneSchema,
 });
 
 export const inviteCreateSchema = z.object({

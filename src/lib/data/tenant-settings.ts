@@ -7,6 +7,8 @@ export type TenantBranding = {
   favicon_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
+  terms_url?: string | null;
+  privacy_url?: string | null;
 };
 
 export type TenantContact = {
@@ -25,11 +27,18 @@ export type TenantSmtpRedacted = {
   has_password: boolean;
 } | null;
 
+export type TenantWhatsAppRedacted = {
+  phone_number_id: string;
+  business_account_id: string;
+  enabled: boolean;
+  has_access_token: boolean;
+} | null;
+
 export async function getTenantBranding(tenantId: string): Promise<TenantBranding | null> {
   const admin = createSupabaseServiceRoleClient();
   const { data } = await admin
     .from('tenants')
-    .select('name, logo_url, favicon_url, primary_color, secondary_color')
+    .select('name, logo_url, favicon_url, primary_color, secondary_color, terms_url, privacy_url')
     .eq('id', tenantId)
     .maybeSingle();
   if (!data) return null;
@@ -39,6 +48,26 @@ export async function getTenantBranding(tenantId: string): Promise<TenantBrandin
     favicon_url: (data.favicon_url as string | null) ?? null,
     primary_color: (data.primary_color as string | null) ?? null,
     secondary_color: (data.secondary_color as string | null) ?? null,
+    terms_url: (data.terms_url as string | null) ?? null,
+    privacy_url: (data.privacy_url as string | null) ?? null,
+  };
+}
+
+export async function getTenantWhatsAppRedacted(
+  tenantId: string,
+): Promise<TenantWhatsAppRedacted> {
+  const admin = createSupabaseServiceRoleClient();
+  const { data } = await admin
+    .from('tenant_whatsapp_config')
+    .select('phone_number_id, business_account_id, enabled, access_token_encrypted')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    phone_number_id: data.phone_number_id as string,
+    business_account_id: data.business_account_id as string,
+    enabled: data.enabled as boolean,
+    has_access_token: Boolean(data.access_token_encrypted),
   };
 }
 

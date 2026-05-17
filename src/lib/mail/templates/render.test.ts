@@ -110,6 +110,19 @@ test('renewal-reminder: 1-day variant says final or tomorrow', async () => {
   assert.ok(s.includes('final') || s.includes('tomorrow'));
 });
 
+test('renewal-reminder: 14-day variant', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('renewal-reminder', {
+    customerName: 'Omar',
+    tenantName: 'Acme',
+    renewalLabel: 'Trade License',
+    dueDate: '2026-06-05',
+    daysOut: 14,
+    detailUrl: 'https://app.example.com/r/1',
+  });
+  assert.ok(r.subject.includes('14 days'));
+});
+
 test('invoice-due: amount in subject', async () => {
   const { renderTemplate } = await load();
   const r = renderTemplate('invoice-due', {
@@ -138,4 +151,73 @@ test('otp-code: code appears in subject + body', async () => {
   const r = renderTemplate('otp-code', { code: '123456' });
   assert.ok(r.subject.includes('123456'));
   assert.ok(r.html.includes('123456'));
+});
+
+test('lead-acknowledgement: includes lead reference and next step context', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('lead-acknowledgement', {
+    leadName: 'Aisha',
+    tenantName: 'Mandoob',
+    leadReference: 'lead-1',
+    jurisdiction: 'free_zone',
+    authority: 'DMCC',
+  });
+
+  assert.ok(r.subject.includes('lead-1'));
+  assert.ok(r.html.includes('Aisha'));
+  assert.ok(r.html.includes('DMCC'));
+  assert.ok(!r.html.includes('{{'));
+});
+
+test('lead-acknowledgement: escapes public HTML values', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('lead-acknowledgement', {
+    leadName: '<script>alert(1)</script>',
+    tenantName: 'Mandoob',
+    leadReference: 'lead-1',
+    jurisdiction: 'free_zone',
+    authority: '<a href="https://evil.test">DMCC</a>',
+  });
+
+  assert.ok(!r.html.includes('<script>'));
+  assert.ok(!r.html.includes('<a href='));
+  assert.ok(r.html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+  assert.ok(r.html.includes('&lt;a href=&quot;https://evil.test&quot;&gt;DMCC&lt;/a&gt;'));
+});
+
+test('erasure-verification: includes verification link and escapes name', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('erasure-verification', {
+    subjectName: '<Omar>',
+    tenantName: 'Acme',
+    verificationUrl: 'https://app.example.com/verify?token=abc',
+  });
+
+  assert.ok(r.html.includes('https://app.example.com/verify?token=abc'));
+  assert.ok(r.html.includes('&lt;Omar&gt;'));
+  assert.ok(!r.html.includes('<Omar>'));
+});
+
+test('erasure-completed: includes request id', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('erasure-completed', {
+    subjectName: 'Omar',
+    tenantName: 'Acme',
+    requestId: 'req-1',
+  });
+
+  assert.ok(r.subject.includes('req-1'));
+  assert.ok(r.html.includes('completed'));
+});
+
+test('erasure-rejected: renders reviewer note when present', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('erasure-rejected', {
+    subjectName: 'Omar',
+    tenantName: 'Acme',
+    requestId: 'req-1',
+    reason: 'Legal hold',
+  });
+
+  assert.ok(r.html.includes('Legal hold'));
 });
