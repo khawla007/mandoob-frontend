@@ -10,14 +10,22 @@ describe('i18n/format: formatDateTime', () => {
     assert.equal(formatDateTime(null), '—');
   });
 
-  it('uses Arabic numerals for ar locale', () => {
+  it('uses Arabic-locale formatter for ar', () => {
     const arabic = formatDateTime(ISO, 'ar');
-    // Arabic-Indic digits OR Latin digits depending on Intl impl —
-    // we just assert the string contains a digit and a non-Latin char or
-    // the explicit Arabic month name. Realistically Intl on Node yields
-    // Arabic-Indic numerals for ar-AE.
-    assert.ok(arabic && arabic.length > 0);
-    assert.notEqual(arabic, formatDateTime(ISO, 'en'));
+    const expected = new Intl.DateTimeFormat('ar-AE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(ISO));
+    assert.equal(arabic, expected);
+    // Sanity: the resolved locale chain for ar-AE must include "ar".
+    const resolved = new Intl.DateTimeFormat('ar-AE').resolvedOptions().locale;
+    assert.ok(
+      resolved.startsWith('ar'),
+      `expected resolved locale to start with "ar", got ${resolved}`,
+    );
   });
 
   it('falls back to default locale on unknown input', () => {
