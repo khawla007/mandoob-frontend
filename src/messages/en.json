@@ -22,6 +22,12 @@
     "english": "English",
     "arabic": "Arabic"
   },
+  "site": {
+    "primaryNav": "Primary navigation",
+    "estimate": "Estimate",
+    "knowledgeBase": "Knowledge Base",
+    "pricing": "Pricing"
+  },
   "shell": {
     "overview": "Overview",
     "workspace": "Workspace",
@@ -40,6 +46,13 @@
     "auditLogs": "Audit logs",
     "tenants": "Tenants",
     "proFirms": "PRO firms",
+    "meetings": "Meetings",
+    "erasure": "Erasure",
+    "erasureRequests": "Erasure requests",
+    "finance": "Finance",
+    "leads": "Leads",
+    "costData": "Cost data",
+    "payments": "Payments",
     "skipToContent": "Skip to content",
     "toggleSidebar": "Toggle sidebar",
     "breadcrumb": "Breadcrumb"

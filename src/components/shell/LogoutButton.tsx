@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { LogOut } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -34,23 +35,27 @@ function useLogout(onAfterLogout?: () => void) {
 
 export function LogoutButton({ className, onAfterLogout }: CommonProps) {
   const { loggingOut, handleLogout } = useLogout(onAfterLogout);
+  const t = useTranslations('common');
+  const label = loggingOut ? `${t('logout')}…` : t('logout');
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={handleLogout}
       disabled={loggingOut}
-      aria-label="Log out"
+      aria-label={t('logout')}
       className={className ?? 'gap-2'}
     >
       <LogOut className="size-4" />
-      <span className="hidden sm:inline">{loggingOut ? 'Logging out…' : 'Logout'}</span>
+      <span className="hidden sm:inline">{label}</span>
     </Button>
   );
 }
 
 export function LogoutMenuItem({ onAfterLogout }: CommonProps) {
   const { loggingOut, handleLogout } = useLogout(onAfterLogout);
+  const t = useTranslations('common');
+  const label = loggingOut ? `${t('logout')}…` : t('logout');
   return (
     <DropdownMenuItem
       onSelect={(e) => {
@@ -61,7 +66,7 @@ export function LogoutMenuItem({ onAfterLogout }: CommonProps) {
       className="cursor-pointer"
     >
       <LogOut className="size-4" />
-      {loggingOut ? 'Logging out…' : 'Log out'}
+      {label}
     </DropdownMenuItem>
   );
 }

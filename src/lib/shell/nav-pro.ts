@@ -13,22 +13,65 @@ import type { ShellNavGroup } from './nav-config';
 export function buildProNav(slug: string): ShellNavGroup[] {
   const base = `/t/${slug}`;
   return [
-    { items: [{ label: 'Overview', href: `${base}/dashboard`, icon: LayoutDashboard }] },
     {
-      label: 'Workspace',
       items: [
-        { label: 'Clients', href: `${base}/clients`, icon: Users },
-        { label: 'Leads', href: `${base}/leads`, icon: Columns3 },
-        { label: 'Meetings', href: `${base}/meetings`, icon: CalendarClock },
-        { label: 'Renewals', href: `${base}/renewals`, icon: CalendarClock },
-        { label: 'Documents', href: `${base}/documents`, icon: FileText },
-        { label: 'Payments', href: `${base}/payments`, icon: CreditCard },
-        { label: 'Employees', href: `${base}/employees`, icon: BadgeCheck },
+        {
+          labelKey: 'overview',
+          labelFallback: 'Overview',
+          href: `${base}/dashboard`,
+          icon: LayoutDashboard,
+        },
       ],
     },
     {
-      label: 'Account',
-      items: [{ label: 'Settings', href: `${base}/settings`, icon: Settings }],
+      labelKey: 'workspace',
+      labelFallback: 'Workspace',
+      items: [
+        { labelKey: 'clients', labelFallback: 'Clients', href: `${base}/clients`, icon: Users },
+        { labelKey: 'leads', labelFallback: 'Leads', href: `${base}/leads`, icon: Columns3 },
+        {
+          labelKey: 'meetings',
+          labelFallback: 'Meetings',
+          href: `${base}/meetings`,
+          icon: CalendarClock,
+        },
+        {
+          labelKey: 'renewals',
+          labelFallback: 'Renewals',
+          href: `${base}/renewals`,
+          icon: CalendarClock,
+        },
+        {
+          labelKey: 'documents',
+          labelFallback: 'Documents',
+          href: `${base}/documents`,
+          icon: FileText,
+        },
+        {
+          labelKey: 'payments',
+          labelFallback: 'Payments',
+          href: `${base}/payments`,
+          icon: CreditCard,
+        },
+        {
+          labelKey: 'employees',
+          labelFallback: 'Employees',
+          href: `${base}/employees`,
+          icon: BadgeCheck,
+        },
+      ],
+    },
+    {
+      labelKey: 'account',
+      labelFallback: 'Account',
+      items: [
+        {
+          labelKey: 'settings',
+          labelFallback: 'Settings',
+          href: `${base}/settings`,
+          icon: Settings,
+        },
+      ],
     },
   ];
 }

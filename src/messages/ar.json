@@ -22,6 +22,12 @@
     "english": "الإنجليزية",
     "arabic": "العربية"
   },
+  "site": {
+    "primaryNav": "التنقل الرئيسي",
+    "estimate": "تقدير التكلفة",
+    "knowledgeBase": "قاعدة المعرفة",
+    "pricing": "الأسعار"
+  },
   "shell": {
     "overview": "نظرة عامة",
     "workspace": "مساحة العمل",
@@ -40,6 +46,13 @@
     "auditLogs": "سجلات التدقيق",
     "tenants": "المستأجرون",
     "proFirms": "شركات الـ PRO",
+    "meetings": "الاجتماعات",
+    "erasure": "حذف البيانات",
+    "erasureRequests": "طلبات حذف البيانات",
+    "finance": "المالية",
+    "leads": "العملاء المحتملون",
+    "costData": "بيانات التكلفة",
+    "payments": "المدفوعات",
     "skipToContent": "تخطي إلى المحتوى",
     "toggleSidebar": "تبديل الشريط الجانبي",
     "breadcrumb": "مسار التنقل"

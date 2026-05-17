@@ -4,17 +4,40 @@ import type { ShellNavGroup } from './nav-config';
 export function buildEmployeeNav(slug: string): ShellNavGroup[] {
   const base = `/t/${slug}/employee`;
   return [
-    { items: [{ label: 'Overview', href: `${base}/dashboard`, icon: LayoutDashboard }] },
     {
-      label: 'My records',
       items: [
-        { label: 'Visa & EID', href: `${base}/identity`, icon: IdCard },
-        { label: 'Documents', href: `${base}/documents`, icon: FileText },
+        {
+          labelKey: 'overview',
+          labelFallback: 'Overview',
+          href: `${base}/dashboard`,
+          icon: LayoutDashboard,
+        },
       ],
     },
     {
-      label: 'Account',
-      items: [{ label: 'Settings', href: `${base}/settings`, icon: Settings }],
+      labelKey: 'myRecords',
+      labelFallback: 'My records',
+      items: [
+        {
+          labelKey: 'visaAndEid',
+          labelFallback: 'Visa & EID',
+          href: `${base}/identity`,
+          icon: IdCard,
+        },
+        {
+          labelKey: 'documents',
+          labelFallback: 'Documents',
+          href: `${base}/documents`,
+          icon: FileText,
+        },
+      ],
+    },
+    {
+      labelKey: 'account',
+      labelFallback: 'Account',
+      items: [
+        { labelKey: 'settings', labelFallback: 'Settings', href: `${base}/settings`, icon: Settings },
+      ],
     },
   ];
 }

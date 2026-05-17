@@ -1,9 +1,11 @@
 import 'server-only';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { getSessionProfile } from '@/lib/auth/require-user';
 import { resolveRoleHome } from '@/lib/auth/role-home';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
 import { UserMenu } from './UserMenu';
 
 export const dynamic = 'force-dynamic';
@@ -34,22 +36,25 @@ export async function SiteHeader() {
     : '/login';
   const workspaceSlug =
     session?.role === 'customer' ? await getCustomerWorkspaceSlug(session.tenantId) : null;
+  const tAuth = await getTranslations('auth');
+  const tSite = await getTranslations('site');
 
   return (
     <header className="flex items-center justify-between border-b px-6 py-4">
       <Link href="/" className="text-lg font-semibold">
         Mandoob
       </Link>
-      <nav aria-label="Primary navigation" className="flex items-center gap-6 text-sm">
+      <nav aria-label={tSite('primaryNav')} className="flex items-center gap-6 text-sm">
         <Link href="/estimate" className="hover:text-foreground text-muted-foreground">
-          Estimate
+          {tSite('estimate')}
         </Link>
         <Link href="/knowledge-base" className="hover:text-foreground text-muted-foreground">
-          Knowledge Base
+          {tSite('knowledgeBase')}
         </Link>
         <Link href="/pricing" className="hover:text-foreground text-muted-foreground">
-          Pricing
+          {tSite('pricing')}
         </Link>
+        <LanguageSwitcher />
         {session ? (
           <UserMenu
             email={session.email}
@@ -61,13 +66,13 @@ export async function SiteHeader() {
         ) : (
           <>
             <Link href="/login" className="hover:text-foreground text-muted-foreground">
-              Sign in
+              {tAuth('signIn')}
             </Link>
             <Link
               href="/register"
               className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1.5 font-medium"
             >
-              Get started
+              {tAuth('register')}
             </Link>
           </>
         )}
