@@ -2,9 +2,20 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { LEAD_STAGES, type LeadCardRow, type LeadDetail, type LeadKanban } from '@/lib/data/leads-kanban';
+import {
+  LEAD_STAGES,
+  type LeadCardRow,
+  type LeadDetail,
+  type LeadKanban,
+} from '@/lib/data/leads-kanban';
 
 type TenantOption = { id: string; name: string; slug: string };
 
@@ -59,11 +70,7 @@ export function LeadKanbanBoard({
                 </div>
               ) : (
                 kanban[stage].map((lead) => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    href={`${baseHref}?lead=${lead.id}`}
-                  />
+                  <LeadCard key={lead.id} lead={lead} href={`${baseHref}?lead=${lead.id}`} />
                 ))
               )}
             </div>
@@ -90,7 +97,10 @@ function LeadCard({ lead, href }: { lead: LeadCardRow; href: string }) {
         <CardHeader className="space-y-2 p-4">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="line-clamp-2 text-sm">{lead.name}</CardTitle>
-            <Badge variant={SCORE_BADGE_VARIANT[lead.scoreTemperature]} className="shrink-0 capitalize">
+            <Badge
+              variant={SCORE_BADGE_VARIANT[lead.scoreTemperature]}
+              className="shrink-0 capitalize"
+            >
               {lead.score} {lead.scoreTemperature}
             </Badge>
           </div>
@@ -224,7 +234,10 @@ function LeadDetailPanel({
             <h3 className="mb-2 text-sm font-medium">Estimate</h3>
             <div className="text-muted-foreground space-y-1 text-xs">
               <p>Reference: {text(detail.estimateData.reference) ?? 'None'}</p>
-              <p>Total: {text(detail.estimateData.total) ?? text(detail.estimateData.totalAed) ?? 'Not set'}</p>
+              <p>
+                Total:{' '}
+                {text(detail.estimateData.total) ?? text(detail.estimateData.totalAed) ?? 'Not set'}
+              </p>
             </div>
           </section>
 
@@ -247,17 +260,48 @@ function LeadDetailPanel({
             <p className="text-muted-foreground text-sm">No activity recorded yet.</p>
           ) : (
             detail.events.map((event) => (
-              <div key={event.id} className="border-border/70 border-b pb-3 last:border-0 last:pb-0">
-                <div className="font-medium">{event.eventType.replaceAll('_', ' ')}</div>
-                <div className="text-muted-foreground text-xs">
-                  {event.note ?? [event.fromValue, event.toValue].filter(Boolean).join(' → ')}
-                </div>
+              <div
+                key={event.id}
+                className="border-border/70 border-b pb-3 last:border-0 last:pb-0"
+              >
+                {event.eventType === 'inbound_reply' ? (
+                  <InboundReplyActivity event={event} />
+                ) : (
+                  <>
+                    <div className="font-medium">{event.eventType.replaceAll('_', ' ')}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {event.note ?? [event.fromValue, event.toValue].filter(Boolean).join(' → ')}
+                    </div>
+                  </>
+                )}
               </div>
             ))
           )}
         </CardContent>
       </Card>
     </aside>
+  );
+}
+
+function InboundReplyActivity({ event }: { event: LeadDetail['events'][number] }) {
+  const channel = text(event.metadata.channel)?.toUpperCase() ?? 'MESSAGE';
+  const fromPhone = text(event.metadata.from_phone) ?? event.fromValue ?? 'Unknown sender';
+  const body = text(event.metadata.body_preview) ?? event.note ?? 'No message body';
+  const receivedAt = text(event.metadata.received_at) ?? event.createdAt;
+  const ambiguous = event.metadata.ambiguous === true;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium">Inbound reply</span>
+        <Badge variant="outline">{channel}</Badge>
+        {ambiguous ? <Badge variant="secondary">Ambiguous match</Badge> : null}
+      </div>
+      <div className="text-muted-foreground text-xs">
+        {fromPhone} · {formatDateTime(receivedAt)}
+      </div>
+      <p className="text-sm break-words">{body}</p>
+    </div>
   );
 }
 
@@ -277,4 +321,13 @@ function text(value: unknown): string | null {
 
 function arrayText(value: unknown): string | null {
   return Array.isArray(value) ? value.filter((item) => typeof item === 'string').join(', ') : null;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-AE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 }

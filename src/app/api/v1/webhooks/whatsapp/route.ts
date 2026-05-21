@@ -3,6 +3,7 @@ import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyHubSignature } from '@/lib/whatsapp/signature';
 import { recordInboundConsentKeyword } from '@/lib/comms/consent';
+import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,7 @@ export async function POST(req: Request): Promise<Response> {
 
       for (const message of value.messages ?? []) {
         if (!tenantId) continue;
-        await recordInboundMessage(supabase, tenantId, message);
+        await recordWhatsAppInboundMessage(supabase, tenantId, message);
       }
     }
   }
@@ -117,23 +118,30 @@ async function applyStatusUpdate(supabase: Supa, status: WhatsAppStatus): Promis
   await supabase.from('outbound_whatsapp').update(update).eq('id', row.id);
 }
 
-async function recordInboundMessage(
+export async function recordWhatsAppInboundMessage(
   supabase: Supa,
   tenantId: string,
   message: WhatsAppInboundMessage,
 ): Promise<void> {
   if (!message.from || !message.id) return;
-  await supabase.from('whatsapp_inbox').insert({
-    tenant_id: tenantId,
-    from_phone: message.from,
-    body: message.text?.body ?? null,
-    wamid: message.id,
-  });
+  const { data: inboxRow, error: inboxError } = await supabase
+    .from('whatsapp_inbox')
+    .insert({
+      tenant_id: tenantId,
+      from_phone: message.from,
+      body: message.text?.body ?? null,
+      wamid: message.id,
+    })
+    .select('id, received_at')
+    .single();
+  if (inboxError) return;
+
+  const body = message.text?.body ?? null;
   const action = await recordInboundConsentKeyword({
     supabase,
     phoneE164: message.from,
     channel: 'whatsapp',
-    body: message.text?.body ?? null,
+    body,
     inboundMessageId: message.id,
   });
   if (action) {
@@ -144,6 +152,18 @@ async function recordInboundMessage(
       input: {},
     });
   }
+  await routeInboundReplyToLeadSafely(
+    {
+      tenantId,
+      channel: 'whatsapp',
+      inboxId: inboxRow.id,
+      fromPhone: message.from,
+      body,
+      providerMessageId: message.id,
+      receivedAt: inboxRow.received_at,
+    },
+    { supabase },
+  );
 }
 
 type WhatsAppWebhookPayload = {

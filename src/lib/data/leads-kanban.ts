@@ -1,6 +1,11 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
-import { scoreLead, scoreTemperatureFromScore, type LeadScoreFactor, type LeadTemperature } from '@/lib/leads/scoring';
+import {
+  scoreLead,
+  scoreTemperatureFromScore,
+  type LeadScoreFactor,
+  type LeadTemperature,
+} from '@/lib/leads/scoring';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 type SupabaseClient = ReturnType<typeof createSupabaseServiceRoleClient>;
@@ -46,10 +51,11 @@ export type LeadCardRow = {
 
 export type LeadEventRow = {
   id: string;
-  eventType: 'lead_assigned' | 'lead_stage_changed' | 'lead_note_added';
+  eventType: 'lead_assigned' | 'lead_stage_changed' | 'lead_note_added' | 'inbound_reply';
   fromValue: string | null;
   toValue: string | null;
   note: string | null;
+  metadata: Record<string, unknown>;
   actorId: string | null;
   createdAt: string;
 };
@@ -105,7 +111,9 @@ function toLeadCard(row: LeadDbRow): LeadCardRow {
   const investorVisaCount = numberValue(form.investorVisaCount);
   const employeeVisaCount = numberValue(form.employeeVisaCount);
   const familyVisaCount = numberValue(form.familyVisaCount);
-  const addOns = Array.isArray(form.addOns) ? form.addOns.filter((v): v is string => typeof v === 'string') : [];
+  const addOns = Array.isArray(form.addOns)
+    ? form.addOns.filter((v): v is string => typeof v === 'string')
+    : [];
   const tenants = Array.isArray(row.tenants) ? row.tenants[0] : row.tenants;
   const scoreContext = scoreLead({ answers: form, estimateData: row.estimate_data ?? {} });
 
@@ -190,7 +198,7 @@ export async function getLeadDetail(
 
   const { data: events, error: eventsError } = await admin
     .from('lead_events')
-    .select('id, event_type, from_value, to_value, note, actor_id, created_at')
+    .select('id, event_type, from_value, to_value, note, metadata, actor_id, created_at')
     .eq('lead_id', leadId)
     .order('created_at', { ascending: false });
   if (eventsError) throw new ApiError('INTERNAL', eventsError.message, 500);
@@ -205,6 +213,7 @@ export async function getLeadDetail(
       fromValue: (row.from_value as string | null) ?? null,
       toValue: (row.to_value as string | null) ?? null,
       note: (row.note as string | null) ?? null,
+      metadata: (row.metadata as Record<string, unknown> | null) ?? {},
       actorId: (row.actor_id as string | null) ?? null,
       createdAt: row.created_at as string,
     })),
@@ -219,7 +228,7 @@ export async function listActiveLeadAssigneeTenants(deps: LeadKanbanDeps = {}) {
     .order('name', { ascending: true })
     .limit(200);
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  return ((data as Array<{ id: string; name: string; slug: string; status: string }> | null) ?? []);
+  return (data as Array<{ id: string; name: string; slug: string; status: string }> | null) ?? [];
 }
 
 export async function assignLeadToTenant(
@@ -302,7 +311,9 @@ export async function addLeadNote(
 async function readLeadForMutation(admin: SupabaseClient, leadId: string): Promise<LeadDbRow> {
   const { data, error } = await admin
     .from('leads')
-    .select('id, tenant_id, name, email, phone, stage, form_data, estimate_data, routing_reason, score, created_at')
+    .select(
+      'id, tenant_id, name, email, phone, stage, form_data, estimate_data, routing_reason, score, created_at',
+    )
     .eq('id', leadId)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);

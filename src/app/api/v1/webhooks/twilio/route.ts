@@ -3,6 +3,7 @@ import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyTwilioSignature } from '@/lib/sms/signature';
 import { recordInboundConsentKeyword } from '@/lib/comms/consent';
+import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
 import { enqueueSms } from '@/lib/sms/send';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // Inbound SMS: presence of Body + From, no status field.
   if (!messageStatus && params.From && params.Body !== undefined && messageSid) {
-    await recordInbound(supabase, params.From, params.Body, messageSid);
+    await recordTwilioInbound(supabase, params.From, params.Body, messageSid);
   }
 
   return NextResponse.json({ ok: true });
@@ -99,7 +100,7 @@ async function applyDeliveryStatus(
   await supabase.from('outbound_sms').update(update).eq('id', row.id);
 }
 
-async function recordInbound(
+export async function recordTwilioInbound(
   supabase: Supa,
   fromPhone: string,
   body: string,
@@ -114,12 +115,18 @@ async function recordInbound(
     .maybeSingle();
   if (!tenant) return;
 
-  await supabase.from('sms_inbox').insert({
-    tenant_id: tenant.tenant_id,
-    from_phone: fromPhone,
-    body,
-    provider_message_id: providerMessageId,
-  });
+  const { data: inboxRow, error: inboxError } = await supabase
+    .from('sms_inbox')
+    .insert({
+      tenant_id: tenant.tenant_id,
+      from_phone: fromPhone,
+      body,
+      provider_message_id: providerMessageId,
+    })
+    .select('id, received_at')
+    .single();
+  if (inboxError) return;
+
   const action = await recordInboundConsentKeyword({
     supabase,
     phoneE164: fromPhone,
@@ -135,4 +142,16 @@ async function recordInbound(
       input: {},
     });
   }
+  await routeInboundReplyToLeadSafely(
+    {
+      tenantId: tenant.tenant_id,
+      channel: 'sms',
+      inboxId: inboxRow.id,
+      fromPhone,
+      body,
+      providerMessageId,
+      receivedAt: inboxRow.received_at,
+    },
+    { supabase },
+  );
 }
