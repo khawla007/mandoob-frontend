@@ -11,6 +11,7 @@ export const documentRequested: WhatsAppTemplateDefinition<WhatsAppDocumentReque
   id: 'document-requested',
   metaTemplateName: META_TEMPLATE_NAME,
   language: META_LANGUAGE,
+  category: 'utility',
   schema: WhatsAppDocumentRequestedInput,
   buildComponents(input): MetaComponent[] {
     return [

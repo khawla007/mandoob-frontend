@@ -15,6 +15,7 @@ export const renewalReminder: WhatsAppTemplateDefinition<WhatsAppRenewalReminder
   id: 'renewal-reminder',
   metaTemplateName: META_TEMPLATE_NAME,
   language: META_LANGUAGE,
+  category: 'utility',
   schema: WhatsAppRenewalReminderInput,
   buildComponents(input): MetaComponent[] {
     return [

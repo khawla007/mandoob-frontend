@@ -34,11 +34,13 @@ export type WhatsAppTemplateMap = {
 };
 export type WhatsAppTemplateId = keyof WhatsAppTemplateMap;
 export type WhatsAppTemplateInputFor<T extends WhatsAppTemplateId> = WhatsAppTemplateMap[T];
+export type WhatsAppTemplateCategory = 'marketing' | 'utility' | 'authentication';
 
 export type WhatsAppTemplateDefinition<TInput> = {
   id: WhatsAppTemplateId;
   metaTemplateName: string;
   language: string;
+  category: WhatsAppTemplateCategory;
   schema: ZodType<TInput>;
   buildComponents: (input: TInput) => MetaComponent[];
 };
@@ -57,6 +59,12 @@ const registry: { [K in WhatsAppTemplateId]: WhatsAppTemplateDefinition<WhatsApp
     'opt-out-confirmation': optOutConfirmation,
     'lead-acknowledgement': leadAcknowledgement,
   };
+
+export type WhatsAppTemplateRegistryDefinition = (typeof registry)[WhatsAppTemplateId];
+
+export function listWhatsAppTemplateDefinitions(): WhatsAppTemplateRegistryDefinition[] {
+  return Object.values(registry);
+}
 
 export function renderWhatsAppTemplate<T extends WhatsAppTemplateId>(
   id: T,

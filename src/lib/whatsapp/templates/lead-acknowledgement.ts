@@ -8,6 +8,7 @@ export const leadAcknowledgement: WhatsAppTemplateDefinition<WhatsAppLeadAcknowl
   id: 'lead-acknowledgement',
   metaTemplateName: 'lead_acknowledgement',
   language: 'en',
+  category: 'utility',
   schema: WhatsAppLeadAcknowledgementInput,
   buildComponents: (input) => [
     {

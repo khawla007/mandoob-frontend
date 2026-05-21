@@ -1,6 +1,7 @@
 import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { isRecipientOptedOut } from '@/lib/comms/consent';
+import { getWhatsAppTemplateApproval } from '@/lib/data/whatsapp-template-approvals';
 import { nextScheduledFor, MAX_ATTEMPTS } from '@/lib/mail/send';
 import { resolveWhatsAppForTenant } from './config';
 import { consumeWhatsAppQuota } from './rate-limit';
@@ -29,7 +30,12 @@ export type EnqueueWhatsAppResult =
     }
   | {
       ok: false;
-      reason: 'WHATSAPP_NOT_CONFIGURED' | 'RATE_LIMITED' | 'RECIPIENT_OPTED_OUT' | string;
+      reason:
+        | 'WHATSAPP_NOT_CONFIGURED'
+        | 'RATE_LIMITED'
+        | 'RECIPIENT_OPTED_OUT'
+        | 'WHATSAPP_TEMPLATE_NOT_APPROVED'
+        | string;
     };
 
 export { nextScheduledFor, MAX_ATTEMPTS } from '@/lib/mail/send';
@@ -54,6 +60,22 @@ export async function enqueueWhatsApp<T extends WhatsAppTemplateId>(
       });
       return { ok: false, reason: 'RECIPIENT_OPTED_OUT' };
     }
+  }
+
+  const templateApproval = await getWhatsAppTemplateApproval(args.templateId, args.tenantId);
+  if (templateApproval?.status !== 'approved') {
+    await supabase.from('tenant_audit_log').insert({
+      tenant_id: args.tenantId,
+      actor_id: null,
+      action: 'whatsapp_template_status_updated',
+      source: 'system',
+      details: {
+        template_id: args.templateId,
+        approval_status: templateApproval?.status ?? 'missing',
+        skip_reason: 'WHATSAPP_TEMPLATE_NOT_APPROVED',
+      },
+    });
+    return { ok: false, reason: 'WHATSAPP_TEMPLATE_NOT_APPROVED' };
   }
 
   const tenantConfig = await resolveWhatsAppForTenant(args.tenantId);

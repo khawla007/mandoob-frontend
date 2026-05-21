@@ -5,6 +5,7 @@ export const optOutConfirmation: WhatsAppTemplateDefinition<WhatsAppOptOutConfir
   id: 'opt-out-confirmation',
   metaTemplateName: 'mandoob_opt_out_confirmation',
   language: 'en',
+  category: 'utility',
   schema: WhatsAppOptOutConfirmationInput,
   buildComponents: () => [
     {

@@ -8,6 +8,7 @@ export const otpCode: WhatsAppTemplateDefinition<WhatsAppOtpCode> = {
   id: 'otp-code',
   metaTemplateName: META_TEMPLATE_NAME,
   language: META_LANGUAGE,
+  category: 'authentication',
   schema: WhatsAppOtpCodeInput,
   buildComponents(input): MetaComponent[] {
     return [

@@ -5,6 +5,7 @@ import {
   FileSpreadsheet,
   KeyRound,
   LayoutDashboard,
+  MessagesSquare,
   ScrollText,
   Settings,
   ShieldAlert,
@@ -54,6 +55,12 @@ export const adminNav: ShellNavGroup[] = [
         labelFallback: 'Leads',
         href: '/admin/leads',
         icon: Columns3,
+      },
+      {
+        labelKey: 'whatsappTemplates',
+        labelFallback: 'WhatsApp templates',
+        href: '/admin/whatsapp-templates',
+        icon: MessagesSquare,
       },
       {
         labelKey: 'costData',
