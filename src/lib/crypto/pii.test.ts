@@ -12,7 +12,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -193,22 +193,32 @@ describe('pii boot-time errors', () => {
   it('a ciphertext encrypted under one key fails to decrypt under another', () => {
     const keyA = Buffer.alloc(32, 1).toString('base64');
     const keyB = Buffer.alloc(32, 2).toString('base64');
+    const dir = mkdtempSync(path.join(tmpdir(), 'pii-ciphertext-'));
+    const ciphertextFile = path.join(dir, 'ciphertext.txt');
+    const errorFile = path.join(dir, 'error.txt');
 
-    const enc = runUnderEnv(
-      { ENCRYPTION_KEY: keyA },
-      'console.log("CT:" + mod.encrypt("secret"))',
-    );
-    assert.equal(enc.status, 0, enc.stderr);
-    const m = enc.stdout.match(/CT:(\S+)/);
-    assert.ok(m, 'no ciphertext captured');
-    const ct = m![1];
+    try {
+      const enc = runUnderEnv(
+        { ENCRYPTION_KEY: keyA },
+        `const { writeFileSync } = await import('node:fs');
+         writeFileSync(${JSON.stringify(ciphertextFile)}, mod.encrypt("secret"), 'utf8');`,
+      );
+      assert.equal(enc.status, 0, enc.stderr);
+      const ct = readFileSync(ciphertextFile, 'utf8');
 
-    const dec = runUnderEnv(
-      { ENCRYPTION_KEY: keyB },
-      `try { console.log("OK:" + mod.decrypt(${JSON.stringify(ct)})); }
-       catch (e) { console.log('THREW:' + e.message); process.exit(2); }`,
-    );
-    assert.match(dec.stdout + dec.stderr, /PII_DECRYPT_FAILED/);
-    assert.notEqual(dec.status, 0);
+      const dec = runUnderEnv(
+        { ENCRYPTION_KEY: keyB },
+        `try { console.log("OK:" + mod.decrypt(${JSON.stringify(ct)})); }
+         catch (e) {
+           const { writeFileSync } = await import('node:fs');
+           writeFileSync(${JSON.stringify(errorFile)}, e.message, 'utf8');
+           process.exit(2);
+         }`,
+      );
+      assert.match(readFileSync(errorFile, 'utf8'), /PII_DECRYPT_FAILED/);
+      assert.notEqual(dec.status, 0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

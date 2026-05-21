@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewInvoiceDialog } from '@/components/pro/NewInvoiceDialog';
 import { InvoicesTable } from '@/components/pro/InvoicesTable';
@@ -27,7 +29,12 @@ export default async function ProPaymentsPage({ params }: { params: Promise<{ te
             Issue invoices, track pending payments, and manage receipts.
           </p>
         </div>
-        <NewInvoiceDialog slug={tenant.slug} clients={clients} />
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Button asChild variant="outline">
+            <Link href={`/t/${tenant.slug}/payments/analytics`}>Analytics</Link>
+          </Button>
+          <NewInvoiceDialog slug={tenant.slug} clients={clients} />
+        </div>
       </div>
 
       <Card>
