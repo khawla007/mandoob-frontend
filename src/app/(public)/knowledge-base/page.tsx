@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   getArticlesByCategory,
   knowledgeBaseArticles,
@@ -25,116 +22,167 @@ export default function KnowledgeBasePage() {
   const faqHighlights = articles.flatMap((article) => article.faq).slice(0, 4);
 
   return (
-    <div className="bg-muted/20">
-      <section className="mx-auto grid max-w-6xl gap-8 px-6 py-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:py-16">
-        <div>
-          <Badge variant="secondary">Knowledge Base</Badge>
-          <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight md:text-5xl">
-            UAE company setup guidance by topic, authority, and decision point
+    <>
+      {/* ============ HERO ============ */}
+      <section className="hero" aria-labelledby="kb-h">
+        <div className="container">
+          <span className="eyebrow">Knowledge Base</span>
+          <h1 id="kb-h" className="display">
+            UAE company setup, <span className="u-accent">decoded.</span>
           </h1>
-          <p className="text-muted-foreground mt-4 max-w-2xl text-base">
+          <p className="lede">
             Compare setup paths, required documents, timelines, cost assumptions, and compliance
             steps before moving into an indicative estimate.
           </p>
+          <div className="cta-row">
+            <Link className="btn btn--accent" href="/estimate">
+              Estimate setup cost
+            </Link>
+            <a className="btn btn--outline" href="#topics">
+              Browse topics
+            </a>
+          </div>
         </div>
-        <Card className="self-start">
-          <CardHeader>
-            <CardTitle>Start with an estimate</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              Use the public estimator after narrowing down a jurisdiction or authority.
-            </p>
-            <Button asChild className="w-full">
-              <Link href="/estimate">Estimate setup cost</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="hero__rule" aria-hidden="true" />
+        <div className="container">
+          <div className="hero__metrics">
+            <div>
+              <span className="mono hero__metric">{articles.length}</span>
+              <span className="hero__metricL">guides</span>
+            </div>
+            <div>
+              <span className="mono hero__metric">{groupedArticles.length}</span>
+              <span className="hero__metricL">topics</span>
+            </div>
+            <div>
+              <span className="mono hero__metric u-accent">45+</span>
+              <span className="hero__metricL">free zones</span>
+            </div>
+            <div>
+              <span className="mono hero__metric">Monthly</span>
+              <span className="hero__metricL">updates</span>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="grid gap-4 lg:grid-cols-3">
-          {featured.map((article) => (
-            <ArticleCard key={article.slug} article={article} featured />
-          ))}
-        </div>
-
-        <div className="mt-10 grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="space-y-3">
-            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              Categories
+      {/* ============ FEATURED ============ */}
+      <section className="section" aria-labelledby="kb-featured-h">
+        <div className="container">
+          <header className="section__head">
+            <span className="eyebrow">01 · Featured</span>
+            <h2 id="kb-featured-h" className="h2">
+              Start here.
             </h2>
-            <div className="flex flex-wrap gap-2 lg:block lg:space-y-2">
-              {groupedArticles.map((group) => (
-                <a
-                  key={group.category.id}
-                  href={`#${group.category.id}`}
-                  className="inline-flex rounded-lg border bg-background px-3 py-2 text-sm hover:bg-muted lg:w-full"
-                >
-                  {group.category.label}
-                </a>
-              ))}
-            </div>
-          </aside>
-
-          <div className="space-y-8">
-            {groupedArticles.map((group) => (
-              <section key={group.category.id} id={group.category.id} className="scroll-mt-24">
-                <div className="mb-3 flex items-end justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-semibold tracking-tight">{group.category.label}</h2>
-                    <p className="text-muted-foreground mt-1 text-sm">{group.category.description}</p>
-                  </div>
-                  <span className="text-muted-foreground text-sm">{group.articles.length} guides</span>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {group.articles.map((article) => (
-                    <ArticleCard key={article.slug} article={article} />
-                  ))}
-                </div>
-              </section>
+          </header>
+        </div>
+        <div className="container">
+          <div className="cell-row">
+            {featured.map((article) => (
+              <ArticleCell key={article.slug} article={article} />
             ))}
           </div>
         </div>
+      </section>
 
-        {faqHighlights.length > 0 ? (
-          <section className="mt-12 rounded-lg border bg-background p-6">
-            <h2 className="text-2xl font-semibold tracking-tight">Common setup questions</h2>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+      {/* ============ TOPICS ============ */}
+      <section id="topics" className="section" aria-labelledby="kb-topics-h">
+        <div className="container">
+          <header className="section__head">
+            <span className="eyebrow">02 · Topics</span>
+            <h2 id="kb-topics-h" className="h2">
+              Guidance by topic.
+            </h2>
+          </header>
+          <div className="kb-cats">
+            {groupedArticles.map((group) => (
+              <a
+                key={group.category.id}
+                className="btn btn--outline btn--sm"
+                href={`#${group.category.id}`}
+              >
+                {group.category.label}
+              </a>
+            ))}
+          </div>
+        </div>
+        <div className="container">
+          {groupedArticles.map((group) => (
+            <section key={group.category.id} id={group.category.id} className="kb-cat">
+              <div className="kb-cat__head">
+                <div>
+                  <h3>{group.category.label}</h3>
+                  <p>{group.category.description}</p>
+                </div>
+                <span className="kb-cat__count mono">{group.articles.length} guides</span>
+              </div>
+              <div className="kb-grid kb-grid--3">
+                {group.articles.map((article) => (
+                  <ArticleCell key={article.slug} article={article} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ FAQ ============ */}
+      {faqHighlights.length > 0 ? (
+        <section className="section" aria-labelledby="kb-faq-h">
+          <div className="container">
+            <header className="section__head">
+              <span className="eyebrow">03 · FAQ</span>
+              <h2 id="kb-faq-h" className="h2">
+                Common setup questions.
+              </h2>
+            </header>
+          </div>
+          <div className="container">
+            <div className="kb-grid kb-faq">
               {faqHighlights.map((item) => (
-                <div key={item.question}>
-                  <h3 className="font-medium">{item.question}</h3>
-                  <p className="text-muted-foreground mt-1 text-sm leading-6">{item.answer}</p>
+                <div key={item.question} className="cell">
+                  <h4>{item.question}</h4>
+                  <p>{item.answer}</p>
                 </div>
               ))}
             </div>
-          </section>
-        ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {/* ============ CTA ============ */}
+      <section className="cta-section" aria-labelledby="kb-cta-h">
+        <div className="cta-section__inner container">
+          <span className="eyebrow">Get started</span>
+          <h2 id="kb-cta-h" className="display display--cta">
+            Run your free UAE setup estimate.
+          </h2>
+          <Link className="btn btn--accent btn--lg" href="/estimate">
+            Start Estimate
+          </Link>
+          <p className="micro mono">No card. No call. 90 seconds.</p>
+        </div>
       </section>
-    </div>
+    </>
   );
 }
 
-function ArticleCard({ article, featured = false }: { article: KnowledgeBaseArticle; featured?: boolean }) {
+function ArticleCell({ article }: { article: KnowledgeBaseArticle }) {
   const readingTime = `${article.readingTimeMinutes} min read`;
 
   return (
-    <Card className={featured ? 'bg-background' : 'bg-card'}>
-      <CardHeader>
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{article.category}</Badge>
-          <span className="text-muted-foreground text-xs">{readingTime}</span>
-        </div>
-        <CardTitle>
-          <Link href={`/knowledge-base/${article.slug}`} className="hover:underline">
-            {article.title}
-          </Link>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground leading-6">{article.description}</p>
-        <p className="text-muted-foreground mt-4 text-xs">Updated {article.updatedAt}</p>
-      </CardContent>
-    </Card>
+    <article className="cell cell--svc">
+      <div className="kb-meta">
+        <span className="eyebrow">{article.category}</span>
+        <span className="cell__sub mono">{readingTime}</span>
+      </div>
+      <h3>
+        <Link href={`/knowledge-base/${article.slug}`} className="kb-card__title">
+          {article.title}
+        </Link>
+      </h3>
+      <p>{article.description}</p>
+      <p className="cell__sub mono kb-card__updated">Updated {article.updatedAt}</p>
+    </article>
   );
 }

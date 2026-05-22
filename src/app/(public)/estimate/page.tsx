@@ -12,9 +12,23 @@ export default function EstimatePage() {
   const authorities = uniqueAuthorities();
 
   return (
-    <main className="bg-muted/20 min-h-screen">
-      <CostEstimator authorities={authorities} />
-    </main>
+    <section className="section" aria-labelledby="estimate-page-h">
+      <div className="container">
+        <header className="section__head">
+          <span className="eyebrow">Cost estimator</span>
+          <h1 id="estimate-page-h" className="h2">
+            Transparent UAE setup quote.
+          </h1>
+          <p className="lede">
+            Itemized across DED, free zone, MOHRE, GDRFA, ICP, and PRO lines. No lead is created
+            until you submit the application questionnaire.
+          </p>
+        </header>
+      </div>
+      <div className="container">
+        <CostEstimator authorities={authorities} />
+      </div>
+    </section>
   );
 }
 

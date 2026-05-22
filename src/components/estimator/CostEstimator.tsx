@@ -1,8 +1,6 @@
 'use client';
 
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowRight, Calculator, Download, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -194,19 +192,14 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,1.05fr)] lg:px-8">
-      <form onSubmit={calculate} className="bg-background rounded-lg border p-4 shadow-sm sm:p-5">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-muted-foreground text-xs font-medium uppercase">Public estimator</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">UAE company setup quote</h1>
-          </div>
-          <div className="bg-primary/10 text-primary rounded-md p-2">
-            <Calculator className="size-5" aria-hidden />
-          </div>
+    <div className="est-cols">
+      <form onSubmit={calculate} className="est-cols__form">
+        <div className="est-form__head">
+          <span className="eyebrow">Public estimator</span>
+          <h1>UAE company setup quote</h1>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="est-grid">
           <Field id="estimate-jurisdiction" label="Jurisdiction">
             <Select
               value={input.jurisdiction}
@@ -319,11 +312,11 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
           </Field>
         </div>
 
-        <div className="bg-muted/30 mt-5 rounded-md border p-3">
-          <Label className="text-sm font-medium">Add-ons</Label>
-          <div className="mt-3 grid gap-3">
+        <div className="est-addons">
+          <span className="est-addons__title">Add-ons</span>
+          <div className="est-addons__list">
             {ADD_ONS.map((addOn) => (
-              <label key={addOn.value} className="flex items-center gap-3 text-sm">
+              <label key={addOn.value} className="est-addon">
                 <Checkbox
                   checked={(input.addOns ?? []).includes(addOn.value)}
                   onCheckedChange={() => toggleAddOn(addOn.value)}
@@ -334,38 +327,29 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
           </div>
         </div>
 
-        {error ? (
-          <p className="border-destructive/30 bg-destructive/10 text-destructive mt-4 rounded-md border px-3 py-2 text-sm">
-            {error}
-          </p>
-        ) : null}
+        {error ? <p className="est-error">{error}</p> : null}
 
-        <Button type="submit" size="lg" className="mt-5 w-full" disabled={loading}>
-          {loading ? 'Calculating...' : 'Calculate quote'}
-        </Button>
+        <button type="submit" className="btn btn--accent btn--lg est-btn-block" disabled={loading}>
+          {loading ? 'Calculating…' : 'Calculate quote'}
+        </button>
       </form>
 
-      <section
-        aria-labelledby="estimate-result-heading"
-        className="bg-background rounded-lg border p-4 shadow-sm sm:p-5"
-      >
+      <section aria-labelledby="estimate-result-heading" className="est-cols__result">
         {quote ? (
           <QuoteResult quote={quote} downloading={downloading} onDownloadPdf={downloadPdf} />
         ) : (
-          <div className="flex min-h-[520px] flex-col justify-between">
+          <div className="est-placeholder">
             <div>
-              <div className="mb-5 inline-flex rounded-md bg-amber-500/10 p-2 text-amber-700 dark:text-amber-300">
-                <FileText className="size-5" aria-hidden />
-              </div>
-              <h2 id="estimate-result-heading" className="text-xl font-semibold">
-                Transparent estimate before the first call
+              <span className="eyebrow">Preview</span>
+              <h2 id="estimate-result-heading" className="mt-3">
+                Transparent estimate before the first call.
               </h2>
-              <p className="text-muted-foreground mt-3 text-sm leading-6">
+              <p>
                 The quote uses estimate-grade authority rows for Mainland, Offshore, and 45+ Free
                 Zones. No lead is created until the application questionnaire is submitted.
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-sm">
+            <div className="est-metrics">
               <Metric value="AED" label="Currency" />
               <Metric value="45+" label="Free Zones" />
               <Metric value="PDF" label="Export" />
@@ -373,7 +357,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
           </div>
         )}
       </section>
-    </section>
+    </div>
   );
 }
 
@@ -400,23 +384,21 @@ function QuoteResult({
 
   return (
     <div>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="est-result__head">
         <div>
-          <p className="text-muted-foreground text-xs font-medium uppercase">
-            Estimate {estimate.reference}
-          </p>
-          <h2 id="estimate-result-heading" className="mt-1 text-2xl font-semibold tracking-tight">
+          <span className="eyebrow">Estimate {estimate.reference}</span>
+          <h2 id="estimate-result-heading" className="est-result__total">
             {estimate.oneTimeTotal}
           </h2>
-          <p className="text-muted-foreground mt-1 text-sm">One-time setup estimate</p>
+          <p className="est-result__sub">One-time setup estimate</p>
         </div>
-        <div className="rounded-md border px-3 py-2 text-right">
-          <div className="text-sm font-medium">{estimate.annualTotal}</div>
-          <div className="text-muted-foreground text-xs">Annual recurring</div>
+        <div className="est-result__annual">
+          <div className="est-result__annualV mono">{estimate.annualTotal}</div>
+          <div className="est-result__annualL">Annual recurring</div>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <div className="est-metrics est-metrics--2" style={{ marginTop: 'var(--sp-4)' }}>
         <Metric
           value={`${estimate.timelineDays.min}-${estimate.timelineDays.max}`}
           label="Business days"
@@ -424,73 +406,64 @@ function QuoteResult({
         <Metric value={estimate.lineItems.length.toString()} label="Fee lines" />
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-md border">
-        <div className="bg-muted/40 text-muted-foreground grid grid-cols-[1fr_72px_112px] gap-3 px-3 py-2 text-xs font-medium">
+      <div className="est-table">
+        <div className="est-table__head">
           <span>Fee</span>
           <span>Qty</span>
-          <span className="text-right">Total</span>
+          <span style={{ textAlign: 'end' }}>Total</span>
         </div>
-        <div className="divide-y">
-          {estimate.lineItems.map((item) => (
-            <div key={item.id} className="grid grid-cols-[1fr_72px_112px] gap-3 px-3 py-3 text-sm">
-              <div>
-                <div className="font-medium">{item.label}</div>
-                <div className="text-muted-foreground text-xs">
-                  {item.recurrence.replace('_', ' ')}
-                </div>
-              </div>
-              <div className="text-muted-foreground">{item.quantity}</div>
-              <div className="text-right font-medium">
-                {new Intl.NumberFormat('en-AE', {
-                  style: 'currency',
-                  currency: estimate.currency,
-                }).format(item.totalMinor / 100)}
-              </div>
+        {estimate.lineItems.map((item) => (
+          <div key={item.id} className="est-table__row">
+            <div>
+              <div className="est-table__label">{item.label}</div>
+              <div className="est-table__rec mono">{item.recurrence.replace('_', ' ')}</div>
             </div>
-          ))}
-        </div>
+            <div className="mono">{item.quantity}</div>
+            <div className="est-table__num mono">
+              {new Intl.NumberFormat('en-AE', {
+                style: 'currency',
+                currency: estimate.currency,
+              }).format(item.totalMinor / 100)}
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="mt-5">
-        <h3 className="text-sm font-medium">Required documents</h3>
-        <div className="mt-2 flex flex-wrap gap-2">
+      <div className="est-docs">
+        <h3>Required documents</h3>
+        <div className="est-docs__list">
           {estimate.requiredDocumentKeys.map((key) => (
-            <span key={key} className="bg-muted/30 rounded-md border px-2 py-1 text-xs">
+            <span key={key} className="est-docchip">
               {DOCUMENT_LABELS[key] ?? key}
             </span>
           ))}
         </div>
       </div>
 
-      <div className="bg-muted/30 text-muted-foreground mt-5 rounded-md p-3 text-xs leading-5">
-        <div className="text-foreground font-medium">Estimate-grade pricing</div>
-        <div className="mt-1">
+      <div className="est-note">
+        <div className="est-note__title">Estimate-grade pricing</div>
+        <div style={{ marginTop: 4 }}>
           Generated {new Date(estimate.generatedAt).toLocaleString('en-GB')} from active cost rows.
         </div>
-        <ul className="mt-2 list-disc space-y-1 pl-4">
+        <ul>
           {estimate.assumptions.map((assumption) => (
             <li key={assumption}>{assumption}</li>
           ))}
         </ul>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <Button
+      <div className="est-cta">
+        <button
           type="button"
-          variant="outline"
-          className="flex-1"
+          className="btn btn--outline"
           onClick={onDownloadPdf}
           disabled={downloading}
         >
-          <Download aria-hidden />
-          {downloading ? 'Preparing...' : 'Download PDF'}
-        </Button>
-        <Button asChild className="flex-1">
-          <a href={quote.handoffUrl}>
-            Apply now
-            <ArrowRight aria-hidden />
-          </a>
-        </Button>
+          {downloading ? 'Preparing…' : 'Download PDF'}
+        </button>
+        <a className="btn btn--accent" href={quote.handoffUrl}>
+          Apply now <span aria-hidden="true">↗</span>
+        </a>
       </div>
     </div>
   );
@@ -499,7 +472,9 @@ function QuoteResult({
 function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return (
     <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="est-label">
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -507,9 +482,9 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 
 function Metric({ value, label }: { value: string; label: string }) {
   return (
-    <div className="bg-background rounded-md border p-3">
-      <div className="text-lg font-semibold">{value}</div>
-      <div className="text-muted-foreground text-xs">{label}</div>
+    <div className="est-metric">
+      <div className="est-metric__v mono">{value}</div>
+      <div className="est-metric__l">{label}</div>
     </div>
   );
 }
