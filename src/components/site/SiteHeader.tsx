@@ -7,6 +7,25 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
 import { UserMenu } from './UserMenu';
+import { MobileNav } from './MobileNav';
+
+function BrandMark() {
+  return (
+    <span className="nav__mark" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 26 26">
+        <rect x="1.5" y="1.5" width="23" height="23" rx="5" fill="#000" />
+        <path
+          d="M8 18V8l5 5 5-5v10"
+          stroke="#fff"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -40,44 +59,61 @@ export async function SiteHeader() {
   const tSite = await getTranslations('site');
   const tCommon = await getTranslations('common');
 
+  const navLinks = [
+    { href: '/#services', label: 'Platform' },
+    { href: '/estimate', label: tSite('estimate') },
+    { href: '/#pro-suite', label: 'Solutions' },
+    { href: '/#customers', label: 'Customers' },
+    { href: '/pricing', label: tSite('pricing') },
+  ];
+
   return (
-    <header className="flex items-center justify-between border-b px-6 py-4">
-      <Link href="/" className="text-lg font-semibold">
-        Mandoob
-      </Link>
-      <nav aria-label={tSite('primaryNav')} className="flex items-center gap-6 text-sm">
-        <Link href="/estimate" className="hover:text-foreground text-muted-foreground">
-          {tSite('estimate')}
-        </Link>
-        <Link href="/knowledge-base" className="hover:text-foreground text-muted-foreground">
-          {tSite('knowledgeBase')}
-        </Link>
-        <Link href="/pricing" className="hover:text-foreground text-muted-foreground">
-          {tSite('pricing')}
-        </Link>
-        <LanguageSwitcher />
-        {session ? (
-          <UserMenu
-            email={session.email}
-            displayName={displayName}
-            role={session.role}
-            homeHref={homeHref}
-            workspaceSlug={workspaceSlug}
+    <div className="site-public">
+      <header className="nav" role="banner">
+        <div className="nav__inner container">
+          <Link href="/" className="nav__brand" aria-label="Mandoob home">
+            <BrandMark />
+            <span className="nav__brandName">Mandoob</span>
+          </Link>
+
+          <nav className="nav__links" aria-label={tSite('primaryNav')}>
+            {navLinks.map((l) => (
+              <Link key={l.href} href={l.href}>
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="nav__cta">
+            <LanguageSwitcher />
+            {session ? (
+              <UserMenu
+                email={session.email}
+                displayName={displayName}
+                role={session.role}
+                homeHref={homeHref}
+                workspaceSlug={workspaceSlug}
+              />
+            ) : (
+              <>
+                <Link className="link-muted" href="/login">
+                  {tAuth('signIn')}
+                </Link>
+                <Link className="btn btn--accent btn--sm" href="/estimate">
+                  {tCommon('getStarted')}
+                </Link>
+              </>
+            )}
+          </div>
+
+          <MobileNav
+            links={navLinks}
+            authed={Boolean(session)}
+            signInLabel={tAuth('signIn')}
+            ctaLabel={tCommon('getStarted')}
           />
-        ) : (
-          <>
-            <Link href="/login" className="hover:text-foreground text-muted-foreground">
-              {tAuth('signIn')}
-            </Link>
-            <Link
-              href="/register"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1.5 font-medium"
-            >
-              {tCommon('getStarted')}
-            </Link>
-          </>
-        )}
-      </nav>
-    </header>
+        </div>
+      </header>
+    </div>
   );
 }

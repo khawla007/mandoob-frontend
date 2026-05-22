@@ -1,6 +1,4 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatMoney } from '@/lib/format/money';
 
 const plans = [
@@ -23,36 +21,37 @@ const plans = [
 
 export default function PricingPage() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-16">
-      <div className="max-w-2xl">
-        <h1 className="text-4xl font-semibold tracking-tight">Mandoob pricing</h1>
-        <p className="text-muted-foreground mt-4">
-          Subscription plans for UAE PRO firms running client onboarding, renewals, documents, and
-          payment operations.
-        </p>
+    <section className="section" aria-labelledby="pricing-h">
+      <div className="container">
+        <header className="section__head">
+          <span className="eyebrow">Pricing</span>
+          <h1 id="pricing-h" className="h2">
+            Mandoob pricing
+          </h1>
+          <p className="lede">
+            Subscription plans for UAE PRO firms running client onboarding, renewals, documents, and
+            payment operations.
+          </p>
+        </header>
       </div>
-      <div className="mt-8 grid gap-4 lg:grid-cols-3">
-        {plans.map((plan) => (
-          <Card key={plan.name}>
-            <CardHeader>
-              <CardTitle>{plan.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div>
-                <span className="text-3xl font-semibold">{formatMoney(plan.price, 'USD')}</span>
-                <span className="text-muted-foreground text-sm"> / month</span>
-              </div>
-              <ul className="text-muted-foreground space-y-2 text-sm">
+      <div className="container">
+        <div className="cell-row">
+          {plans.map((plan) => (
+            <article key={plan.name} className="cell cell--svc">
+              <span className="eyebrow">{plan.name}</span>
+              <p className="cell__metric">{formatMoney(plan.price, 'USD')}</p>
+              <p className="cell__sub">/ month</p>
+              <ul className="dash-list">
                 {plan.features.map((feature) => (
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>
-              <Button asChild className="w-full">
-                <Link href="/register/pro">Get started</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+              <Link className="btn btn--accent btn--sm" href="/register/pro">
+                Get started
+              </Link>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );

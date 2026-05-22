@@ -6,6 +6,9 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { coerceLocale, dirOf } from '@/lib/i18n/config';
 import './globals.css';
+// design-4 marketing theme — fully namespaced under .site-public, so it only
+// affects the shared SiteHeader/SiteFooter chrome and public pages, never dashboards.
+import './(public)/public-theme.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });

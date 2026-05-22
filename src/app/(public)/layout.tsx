@@ -3,9 +3,14 @@ import { SiteFooter } from '@/components/site/SiteFooter';
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="site-public flex min-h-screen flex-col">
+      <a href="#main" className="skip-link">
+        Skip to main content
+      </a>
       <SiteHeader />
-      <div className="flex-1">{children}</div>
+      <main id="main" className="flex-1">
+        {children}
+      </main>
       <SiteFooter />
     </div>
   );
