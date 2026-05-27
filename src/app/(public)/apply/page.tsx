@@ -13,11 +13,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
   const params = toUrlSearchParams(await searchParams);
   const { answers, estimateData } = normalizeEstimatorHandoff(params);
 
-  return (
-    <main className="bg-muted/20 min-h-screen">
-      <QuestionnaireForm initialAnswers={answers} estimateData={estimateData} />
-    </main>
-  );
+  return <QuestionnaireForm initialAnswers={answers} estimateData={estimateData} />;
 }
 
 function toUrlSearchParams(searchParams: SearchParams): URLSearchParams {

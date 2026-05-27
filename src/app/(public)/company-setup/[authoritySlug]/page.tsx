@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   authoritySetupPages,
   buildFaqJsonLd,
@@ -60,112 +57,167 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
   const faqJsonLd = buildFaqJsonLd(faq);
 
   return (
-    <article className="bg-muted/20">
+    <>
       <JsonLd data={faqJsonLd} />
-      <header className="mx-auto max-w-5xl px-6 py-12 lg:py-16">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{jurisdictionLabel(page.jurisdiction)}</Badge>
-          {page.emirate ? <Badge variant="outline">{emirateLabel(page.emirate)}</Badge> : null}
-        </div>
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">{page.title}</h1>
-        <p className="text-muted-foreground mt-5 max-w-3xl text-lg leading-8">{page.description}</p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Button asChild size="lg">
-            <Link href={relativeEstimateHref(page.handoffUrl)}>Estimate {page.authority} setup</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/knowledge-base">Browse Knowledge Base</Link>
-          </Button>
-        </div>
-      </header>
 
-      <div className="mx-auto grid max-w-6xl gap-6 px-6 pb-16 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Indicative setup cost positioning</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground leading-7">{page.setupCostPositioning}</p>
-            </CardContent>
-          </Card>
+      <section className="hero" aria-labelledby="auth-h">
+        <div className="container">
+          <div className="cta-row">
+            <span className="eyebrow">{jurisdictionLabel(page.jurisdiction)}</span>
+            {page.emirate ? <span className="eyebrow">{emirateLabel(page.emirate)}</span> : null}
+          </div>
+          <h1 id="auth-h" className="display">
+            {page.authority} <span className="u-accent">setup, costed.</span>
+          </h1>
+          <p className="lede">{page.description}</p>
+          <div className="cta-row">
+            <Link className="btn btn--accent btn--lg" href={relativeEstimateHref(page.handoffUrl)}>
+              Estimate {page.authority} setup
+            </Link>
+            <Link className="btn btn--outline btn--lg" href="/knowledge-base">
+              Browse Knowledge Base
+            </Link>
+          </div>
+        </div>
+      </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Expected timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground leading-7">
+      <section className="section" aria-labelledby="auth-cost-h">
+        <div className="container">
+          <header className="section__head">
+            <span className="eyebrow">01 · Cost</span>
+            <h2 id="auth-cost-h" className="h2">
+              Indicative setup cost positioning.
+            </h2>
+          </header>
+        </div>
+        <div className="container">
+          <div className="cell-row">
+            <article className="cell">
+              <p>{page.setupCostPositioning}</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="section" aria-labelledby="auth-timeline-h">
+        <div className="container">
+          <header className="section__head">
+            <span className="eyebrow">02 · Timeline</span>
+            <h2 id="auth-timeline-h" className="h2">
+              Expected timeline.
+            </h2>
+          </header>
+        </div>
+        <div className="container">
+          <div className="cell-row">
+            <article className="cell">
+              <p>
                 A straightforward {page.authority} setup is currently modeled at{' '}
-                <strong className="text-foreground">
+                <strong className="mono">
                   {page.timelineDays.min}-{page.timelineDays.max} days
                 </strong>{' '}
                 before add-on services, immigration steps, or authority-specific approvals.
               </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Common document checklist</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {page.requiredDocumentKeys.map((key) => (
-                  <li key={key} className="rounded-md border bg-background px-3 py-2 text-sm">
-                    {DOCUMENT_LABELS[key] ?? key.replace(/_/g, ' ')}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Frequently asked questions</CardTitle>
-            </CardHeader>
-            <CardContent className="divide-y">
-              {faq.map((item) => (
-                <div key={item.question} className="py-4 first:pt-0 last:pb-0">
-                  <h2 className="font-medium">{item.question}</h2>
-                  <p className="text-muted-foreground mt-2 leading-7">{item.answer}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+            </article>
+          </div>
         </div>
+      </section>
 
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <Card>
-            <CardHeader>
-              <CardTitle>Plan this setup</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Open the estimator with {page.authority} preselected and adjust visas,
-                shareholders, office type, and add-ons.
+      <section className="section" aria-labelledby="auth-docs-h">
+        <div className="container">
+          <header className="section__head">
+            <span className="eyebrow">03 · Documents</span>
+            <h2 id="auth-docs-h" className="h2">
+              Common document checklist.
+            </h2>
+          </header>
+        </div>
+        <div className="container">
+          <ul className="kb-grid kb-grid--3">
+            {page.requiredDocumentKeys.map((key) => (
+              <li key={key} className="cell">
+                <h3>{DOCUMENT_LABELS[key] ?? key.replace(/_/g, ' ')}</h3>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="section" aria-labelledby="auth-faq-h">
+        <div className="container">
+          <header className="section__head">
+            <span className="eyebrow">04 · FAQ</span>
+            <h2 id="auth-faq-h" className="h2">
+              Frequently asked questions.
+            </h2>
+          </header>
+        </div>
+        <div className="container">
+          <ul className="kb-grid kb-grid--3">
+            {faq.map((item) => (
+              <li key={item.question} className="cell">
+                <h3>{item.question}</h3>
+                <p>{item.answer}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="section" aria-labelledby="auth-plan-h">
+        <div className="container">
+          <header className="section__head">
+            <span className="eyebrow">05 · Plan</span>
+            <h2 id="auth-plan-h" className="h2">
+              Plan this setup.
+            </h2>
+          </header>
+        </div>
+        <div className="container">
+          <div className="cell-row">
+            <article className="cell">
+              <span className="eyebrow">Estimator</span>
+              <h3>Plan this setup</h3>
+              <p>
+                Open the estimator with {page.authority} preselected and adjust visas, shareholders,
+                office type, and add-ons.
               </p>
-              <Button asChild className="w-full">
-                <Link href={relativeEstimateHref(page.handoffUrl)}>Open estimator</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Assumptions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3 text-sm text-muted-foreground">
+              <div className="cta-row">
+                <Link className="btn btn--accent btn--sm" href={relativeEstimateHref(page.handoffUrl)}>
+                  Open estimator
+                </Link>
+              </div>
+            </article>
+            <article className="cell">
+              <span className="eyebrow">Assumptions</span>
+              <h3>What this estimate assumes</h3>
+              <ul>
                 {page.assumptions.map((assumption) => (
                   <li key={assumption}>{assumption}</li>
                 ))}
               </ul>
-            </CardContent>
-          </Card>
-        </aside>
-      </div>
-    </article>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="cta-section" aria-labelledby="auth-cta-h">
+        <div className="cta-section__inner container">
+          <span className="eyebrow">Next step</span>
+          <h2 id="auth-cta-h" className="display display--cta">
+            Ready to model your <span className="u-accent">{page.authority}</span> setup?
+          </h2>
+          <div className="cta-row">
+            <Link className="btn btn--accent btn--lg" href={relativeEstimateHref(page.handoffUrl)}>
+              Open estimator
+            </Link>
+            <Link className="btn btn--outline btn--lg" href="/knowledge-base">
+              Browse Knowledge Base
+            </Link>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
