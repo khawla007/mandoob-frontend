@@ -1774,12 +1774,33 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Shadcn control overrides — focus rings, checked states
+   Shadcn control overrides — focus rings, checked states,
+   and a light-mode surface lock for public pages.
    Scoped to .site-public so dashboard (blue) theme is untouched.
-   Routes shadcn ring/primary tokens to the design-4 accent (#FF5722).
+
+   1. Routes shadcn ring/primary tokens to design-4 accent (#FF5722).
+   2. Pins all shadcn surface tokens (background/foreground/card/
+      popover/secondary/muted/border/input) to their LIGHT values
+      so shadcn-driven controls inside public pages (QuestionnaireForm,
+      auth forms, etc.) stay light even when the user's OS / next-themes
+      sets `html.dark`. The dashboard theme stays untouched because
+      these declarations are scoped to .site-public only.
    ───────────────────────────────────────────────────────────── */
 .site-public {
   --ring: var(--accent);
   --primary: var(--accent);
   --primary-foreground: #ffffff;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
 }
