@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   buildArticleJsonLd,
   buildFaqJsonLd,
@@ -62,80 +59,82 @@ export default async function KnowledgeBaseArticlePage({ params }: { params: Pro
   const readingTime = `${article.readingTimeMinutes} min read`;
 
   return (
-    <article className="bg-muted/20">
+    <article>
       <JsonLd data={articleJsonLd} />
       {faqJsonLd ? <JsonLd data={faqJsonLd} /> : null}
 
-      <header className="mx-auto max-w-4xl px-6 py-12 lg:py-16">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{article.category}</Badge>
-          <span className="text-muted-foreground text-sm">{readingTime}</span>
-          <span className="text-muted-foreground text-sm">Updated {article.updatedAt}</span>
+      <section className="section" aria-labelledby="kb-article-h">
+        <div className="container">
+          <div className="kb-article__meta">
+            <span className="eyebrow">{article.category}</span>
+            <span className="mono">{readingTime}</span>
+            <span className="mono">Updated {article.updatedAt}</span>
+          </div>
+          <h1 id="kb-article-h" className="display">
+            {article.title}
+          </h1>
+          <p className="lede">{article.description}</p>
         </div>
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">{article.title}</h1>
-        <p className="text-muted-foreground mt-5 max-w-3xl text-lg leading-8">{article.description}</p>
-      </header>
+      </section>
 
-      <div className="mx-auto grid max-w-6xl gap-8 px-6 pb-16 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
-          {article.sections.map((section) => (
-            <section key={section.heading} className="rounded-lg border bg-background p-6">
-              <h2 className="text-2xl font-semibold tracking-tight">{section.heading}</h2>
-              <SectionBody section={section} />
-            </section>
-          ))}
+      <section className="section" aria-label="Article body">
+        <div className="container">
+          <div className="kb-article">
+            <div className="kb-article__main">
+              {article.sections.map((section) => (
+                <article key={section.heading} className="cell">
+                  <h2>{section.heading}</h2>
+                  <SectionBody section={section} />
+                </article>
+              ))}
 
-          {article.faq.length ? (
-            <section className="rounded-lg border bg-background p-6">
-              <h2 className="text-2xl font-semibold tracking-tight">Frequently asked questions</h2>
-              <div className="mt-5 divide-y">
-                {article.faq.map((item) => (
-                  <div key={item.question} className="py-4 first:pt-0 last:pb-0">
-                    <h3 className="font-medium">{item.question}</h3>
-                    <p className="text-muted-foreground mt-2 leading-7">{item.answer}</p>
+              {article.faq.length ? (
+                <article className="cell">
+                  <h2>Frequently asked questions</h2>
+                  <div className="kb-faq__list">
+                    {article.faq.map((item) => (
+                      <div key={item.question} className="kb-faq__item">
+                        <h3>{item.question}</h3>
+                        <p>{item.answer}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </article>
+              ) : null}
+            </div>
+
+            <aside className="kb-article__aside">
+              <div className="cell">
+                <span className="eyebrow">Estimate</span>
+                <h3>Estimate your setup</h3>
+                <p>Turn this guidance into an indicative UAE company setup estimate.</p>
+                <Link className="btn btn--accent" href={estimateHref}>
+                  {article.cta.label ?? 'Open estimator'}
+                </Link>
               </div>
-            </section>
-          ) : null}
+
+              {relatedArticles.length > 0 ? (
+                <div className="cell">
+                  <span className="eyebrow">Related</span>
+                  <h3>Related guides</h3>
+                  <div className="kb-related">
+                    {relatedArticles.map((related) => (
+                      <Link
+                        key={related.slug}
+                        href={`/knowledge-base/${related.slug}`}
+                        className="kb-related__item"
+                      >
+                        <strong>{related.title}</strong>
+                        <span>{related.description}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </aside>
+          </div>
         </div>
-
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <Card>
-            <CardHeader>
-              <CardTitle>Estimate your setup</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Turn this guidance into an indicative UAE company setup estimate.
-              </p>
-              <Button asChild className="w-full">
-                <Link href={estimateHref}>{article.cta.label ?? 'Open estimator'}</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {relatedArticles.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Related guides</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {relatedArticles.map((related) => (
-                  <Link
-                    key={related.slug}
-                    href={`/knowledge-base/${related.slug}`}
-                    className="block rounded-lg border p-3 text-sm hover:bg-muted"
-                  >
-                    <span className="font-medium">{related.title}</span>
-                    <span className="text-muted-foreground mt-1 block">{related.description}</span>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
-          ) : null}
-        </aside>
-      </div>
+      </section>
     </article>
   );
 }
@@ -144,11 +143,9 @@ function SectionBody({ section }: { section: ArticleSection }) {
   const paragraphs = Array.isArray(section.body) ? section.body : section.body ? [section.body] : [];
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="kb-prose">
       {paragraphs.map((paragraph) => (
-        <p key={paragraph} className="text-muted-foreground leading-7">
-          {paragraph}
-        </p>
+        <p key={paragraph}>{paragraph}</p>
       ))}
     </div>
   );
