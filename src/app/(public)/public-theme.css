@@ -1759,6 +1759,65 @@
   }
 }
 
+/* ---------- 15f. AUTH CARD (signin / register / etc.) ---------- */
+.site-public .auth-shell {
+  display: grid;
+  place-items: center;
+  padding-block: var(--sp-6);
+}
+.site-public .auth-card {
+  width: 100%;
+  max-width: 460px;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  padding: var(--sp-5);
+  display: grid;
+  gap: var(--sp-5);
+}
+.site-public .auth-card__head {
+  display: grid;
+  gap: var(--sp-2);
+}
+.site-public .auth-card__head .eyebrow {
+  margin-bottom: var(--sp-2);
+}
+.site-public .auth-card__head h1 {
+  font-size: var(--fs-28);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.site-public .auth-card__head p {
+  font-size: var(--fs-14);
+  color: var(--zinc-600);
+}
+.site-public .auth-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-13);
+  color: var(--zinc-600);
+  border-top: 1px solid var(--pb-border);
+  padding-top: var(--sp-4);
+}
+.site-public .auth-card__foot--center {
+  justify-content: center;
+}
+.site-public .auth-card__foot a {
+  color: var(--zinc-600);
+  font-weight: 500;
+}
+.site-public .auth-card__foot a:hover {
+  color: var(--ink);
+}
+.site-public .auth-card__foot a.is-accent {
+  color: var(--accent);
+}
+.site-public .auth-card__foot a.is-accent:hover {
+  color: #e64a19;
+}
+
 /* ---------- 16. REDUCED MOTION ---------- */
 @media (prefers-reduced-motion: reduce) {
   .site-public *,
