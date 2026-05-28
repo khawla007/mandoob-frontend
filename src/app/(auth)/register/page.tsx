@@ -14,13 +14,11 @@ export default async function RegisterPage() {
 
       <RegisterForm />
 
-      <div className="auth-card__foot auth-card__foot--center">
-        <span>
-          {t('alreadyHaveAccount')}{' '}
-          <Link href="/login" className="is-accent">
-            {t('signIn')} <span aria-hidden="true">↗</span>
-          </Link>
-        </span>
+      <div className="auth-card__foot">
+        <span>{t('alreadyHaveAccount')}</span>
+        <Link href="/login" className="btn btn--sm btn--accent-outline">
+          {t('signIn')}
+        </Link>
       </div>
     </>
   );

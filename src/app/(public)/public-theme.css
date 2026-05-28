@@ -267,6 +267,16 @@
 .site-public .btn--outline:hover {
   border-color: var(--ink);
 }
+.site-public .btn--accent-outline {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.site-public .btn--accent-outline:hover {
+  background: #ffffff;
+  color: var(--accent);
+  border-color: var(--accent);
+}
 
 /* ---------- 4. NAV ---------- */
 .site-public .nav {
@@ -1804,18 +1814,26 @@
 .site-public .auth-card__foot--center {
   justify-content: center;
 }
-.site-public .auth-card__foot a {
+.site-public button[role='checkbox'] {
+  border-width: 1.5px !important;
+  border-style: solid !important;
+  border-color: var(--zinc-500) !important;
+  background: var(--paper) !important;
+}
+.site-public button[role='checkbox']:hover {
+  border-color: var(--zinc-700) !important;
+}
+.site-public button[role='checkbox'][data-state='checked'] {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #ffffff !important;
+}
+.site-public .auth-card__foot a:not(.btn) {
   color: var(--zinc-600);
   font-weight: 500;
 }
-.site-public .auth-card__foot a:hover {
+.site-public .auth-card__foot a:not(.btn):hover {
   color: var(--ink);
-}
-.site-public .auth-card__foot a.is-accent {
-  color: var(--accent);
-}
-.site-public .auth-card__foot a.is-accent:hover {
-  color: #e64a19;
 }
 
 /* ---------- 16. REDUCED MOTION ---------- */

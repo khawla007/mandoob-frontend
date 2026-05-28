@@ -16,8 +16,8 @@ export default async function LoginPage() {
 
       <div className="auth-card__foot">
         <Link href="/forgot-password">{t('forgotPassword')}</Link>
-        <Link href="/register" className="is-accent">
-          {t('createAccount')} <span aria-hidden="true">↗</span>
+        <Link href="/register" className="btn btn--sm btn--accent-outline">
+          {t('createAccount')}
         </Link>
       </div>
     </>

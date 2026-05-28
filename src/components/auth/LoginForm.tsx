@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
 import { postJson } from '@/lib/http/post';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -107,7 +106,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={pending}>
+        <button type="submit" className="btn btn--accent w-full justify-center" disabled={pending}>
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
@@ -116,7 +115,7 @@ export function LoginForm() {
           ) : (
             t('signIn')
           )}
-        </Button>
+        </button>
       </form>
     </Form>
   );
