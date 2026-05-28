@@ -151,7 +151,7 @@ export function QuestionnaireForm({
     event.preventDefault();
     const payload = buildQuestionnaireSubmission(answers, estimateData);
     if (!payload.ok) {
-      setFieldErrors(payload.fieldErrors);
+      setFieldErrors({ ...payload.fieldErrors, form: 'Please fix the highlighted fields before submitting.' });
       setStepIndex(firstStepWithError(payload.fieldErrors));
       return;
     }
