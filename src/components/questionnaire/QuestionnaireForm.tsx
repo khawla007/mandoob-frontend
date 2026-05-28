@@ -184,7 +184,7 @@ export function QuestionnaireForm({
           <div className="mb-4 inline-flex rounded-md bg-emerald-500/10 p-2 text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 className="size-5" aria-hidden />
           </div>
-          <p className="text-muted-foreground text-xs font-medium uppercase">Application received</p>
+          <p className="eyebrow">Application received</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Lead reference {success.leadId}</h1>
           <p className="text-muted-foreground mt-3 text-sm leading-6">
             Your questionnaire is queued for review. Current stage: <span className="font-medium text-foreground">{success.stage}</span>.
@@ -199,7 +199,7 @@ export function QuestionnaireForm({
       <aside className="rounded-lg border bg-background p-4 shadow-sm">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-muted-foreground text-xs font-medium uppercase">Public application</p>
+            <p className="eyebrow">Public application</p>
             <h1 className="mt-1 text-xl font-semibold tracking-tight">Company setup questionnaire</h1>
           </div>
           <div className="bg-primary/10 text-primary rounded-md p-2">
@@ -231,7 +231,7 @@ export function QuestionnaireForm({
         </div>
 
         {hasEstimate ? (
-          <div className="mt-5 rounded-md border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
+          <div className="mt-5 rounded-md border border-border bg-card p-3 text-xs leading-5 text-muted-foreground">
             <div className="font-medium text-foreground">Estimator handoff</div>
             <div className="mt-1">Reference: {String(estimateData.reference ?? 'not provided')}</div>
           </div>
@@ -308,7 +308,7 @@ export function QuestionnaireForm({
                 </Select>
               </Field>
             </div>
-            <div className="mt-4 rounded-md border bg-muted/30 p-3">
+            <div className="mt-4 rounded-md border border-border bg-card p-3">
               <Label className="text-sm font-medium">Add-ons</Label>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {ADD_ONS.map((addOn) => (
@@ -342,7 +342,7 @@ export function QuestionnaireForm({
               </Field>
             ) : null}
 
-            <label className="mt-4 flex items-center gap-3 rounded-md border bg-muted/30 p-3 text-sm">
+            <label className="mt-4 flex items-center gap-3 rounded-md border border-border bg-card p-3 text-sm">
               <Checkbox
                 checked={showVisaInputs}
                 onCheckedChange={(checked) => {
@@ -417,7 +417,7 @@ function StepSection({ title, description, children }: { title: string; descript
   return (
     <div>
       <div className="mb-5">
-        <p className="text-muted-foreground text-xs font-medium uppercase">Questionnaire</p>
+        <p className="eyebrow">Questionnaire</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h2>
         <p className="text-muted-foreground mt-2 text-sm">{description}</p>
       </div>
