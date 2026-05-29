@@ -42,6 +42,10 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     {
+      name: 'public-questionnaire-smoke',
+      testMatch: /smoke\/public-questionnaire\.spec\.ts/,
+    },
+    {
       name: 'authenticated-a11y',
       testMatch: /a11y\/authenticated-routes\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
