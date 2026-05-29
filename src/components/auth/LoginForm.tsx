@@ -1,14 +1,16 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 
 import { postJson } from '@/lib/http/post';
+import { startRouteProgress } from '@/components/navigation/RouteProgress';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -33,14 +35,16 @@ type FormOutput = z.output<typeof schema>;
 export function LoginForm() {
   const t = useTranslations('auth');
   const tErrors = useTranslations('errors');
-  const [pending, start] = useTransition();
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '', rememberMe: false },
   });
 
-  function onSubmit(values: FormOutput) {
-    start(async () => {
+  async function onSubmit(values: FormOutput) {
+    setPending(true);
+    try {
       const res = await postJson('/api/v1/auth/login', values);
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
@@ -52,14 +56,21 @@ export function LoginForm() {
       if (!res.ok || !data?.ok) {
         if (data?.code === 'EMAIL_NOT_VERIFIED' && data.details?.email) {
           toast.message('Verify your email to continue.');
-          window.location.href = `/verify-otp?email=${encodeURIComponent(data.details.email)}`;
+          startRouteProgress();
+          router.replace(`/verify-otp?email=${encodeURIComponent(data.details.email)}`);
           return;
         }
         toast.error(data?.error ?? tErrors('signInFailed'));
+        setPending(false);
         return;
       }
-      window.location.href = data.redirectTo ?? '/';
-    });
+      startRouteProgress();
+      router.replace(data.redirectTo ?? '/');
+      router.refresh();
+    } catch {
+      toast.error(tErrors('signInFailed'));
+      setPending(false);
+    }
   }
 
   return (
@@ -106,7 +117,12 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <button type="submit" className="btn btn--accent w-full justify-center" disabled={pending}>
+        <button
+          type="submit"
+          className="btn btn--accent w-full justify-center"
+          disabled={pending}
+          aria-busy={pending}
+        >
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" />

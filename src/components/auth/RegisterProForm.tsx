@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +17,7 @@ import { postJson } from '@/lib/http/post';
 import { TENANT_PLANS } from '@/lib/validation/tenant-onboarding';
 
 export function RegisterProForm() {
-  const [pending, start] = useTransition();
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
@@ -26,10 +27,11 @@ export function RegisterProForm() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPhone, setAdminPhone] = useState('');
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    start(async () => {
+    setPending(true);
+    try {
       const res = await postJson('/api/v1/public/register-pro', {
         name,
         plan,
@@ -44,10 +46,14 @@ export function RegisterProForm() {
         } catch {
           setError(`HTTP ${res.status}: Could not submit`);
         }
+        setPending(false);
         return;
       }
       setSubmitted(true);
-    });
+    } catch {
+      setError('ERROR: Could not submit');
+      setPending(false);
+    }
   }
 
   if (submitted) {
@@ -138,8 +144,15 @@ export function RegisterProForm() {
         </div>
       </section>
 
-      <Button type="submit" disabled={pending}>
-        {pending ? 'Submitting…' : 'Submit for review'}
+      <Button type="submit" disabled={pending} aria-busy={pending}>
+        {pending ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Submitting…
+          </>
+        ) : (
+          'Submit for review'
+        )}
       </Button>
     </form>
   );

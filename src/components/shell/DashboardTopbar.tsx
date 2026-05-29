@@ -47,7 +47,10 @@ export function DashboardTopbar({
     });
 
   return (
-    <header className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 items-center gap-3 border-b px-4 backdrop-blur">
+    <header
+      data-route-progress-anchor
+      className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 items-center gap-3 border-b px-4 backdrop-blur"
+    >
       <SidebarTrigger />
       <Separator orientation="vertical" className="h-5" />
       <nav

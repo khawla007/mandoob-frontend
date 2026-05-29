@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Check, Circle, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 
 import { postJson } from '@/lib/http/post';
+import { startRouteProgress } from '@/components/navigation/RouteProgress';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -60,7 +62,8 @@ function computePasswordRules(pw: string): PasswordRule[] {
 export function RegisterForm() {
   const t = useTranslations('auth');
   const tErrors = useTranslations('errors');
-  const [pending, start] = useTransition();
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
     mode: 'onTouched',
@@ -98,7 +101,7 @@ export function RegisterForm() {
 
   const showRules = pwFocused && !pwDismissed && (!allRulesPassed || lingerOpen);
 
-  function onSubmit(values: FormOutput) {
+  async function onSubmit(values: FormOutput) {
     const payload = {
       email: values.email,
       password: values.password,
@@ -108,7 +111,8 @@ export function RegisterForm() {
       consentAccepted: values.consentAccepted,
       policyVersion: POLICY_VERSION,
     };
-    start(async () => {
+    setPending(true);
+    try {
       const res = await postJson('/api/v1/auth/register', payload);
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as {
@@ -116,10 +120,15 @@ export function RegisterForm() {
           code?: string;
         } | null;
         toast.error(data?.error ?? tErrors('registrationFailed'));
+        setPending(false);
         return;
       }
-      window.location.href = `/verify-otp?email=${encodeURIComponent(values.email)}`;
-    });
+      startRouteProgress();
+      router.replace(`/verify-otp?email=${encodeURIComponent(values.email)}`);
+    } catch {
+      toast.error(tErrors('registrationFailed'));
+      setPending(false);
+    }
   }
 
   return (
@@ -251,7 +260,12 @@ export function RegisterForm() {
           )}
         />
 
-        <button type="submit" className="btn btn--accent w-full justify-center" disabled={pending}>
+        <button
+          type="submit"
+          className="btn btn--accent w-full justify-center"
+          disabled={pending}
+          aria-busy={pending}
+        >
           {pending ? (
             <>
               <Loader2 className="size-4 animate-spin" />

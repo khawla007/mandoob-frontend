@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { RouteProgress } from '@/components/navigation/RouteProgress';
 import { coerceLocale, dirOf } from '@/lib/i18n/config';
 import './globals.css';
 // design-4 marketing theme — fully namespaced under .site-public, so it only
@@ -39,6 +41,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             disableTransitionOnChange
           >
             {children}
+            <Suspense fallback={null}>
+              <RouteProgress />
+            </Suspense>
             <Toaster richColors position="top-right" />
           </ThemeProvider>
         </NextIntlClientProvider>

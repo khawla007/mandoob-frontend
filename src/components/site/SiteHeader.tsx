@@ -69,7 +69,7 @@ export async function SiteHeader() {
 
   return (
     <div className="site-public">
-      <header className="nav" role="banner">
+      <header className="nav" role="banner" data-route-progress-anchor>
         <div className="nav__inner container">
           <Link href="/" className="nav__brand" aria-label="Mandoob home">
             <BrandMark />
