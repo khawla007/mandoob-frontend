@@ -1,7 +1,7 @@
 /* ========================================================================
    Mandoob — design-4 "Vercel Bento Monochrome", ported & scoped.
    Every rule is namespaced under .site-public so these tokens and
-   component styles never leak into the dashboard (blue) theme.
+   component styles never leak into the dashboard app theme.
    Source: html-design/design-4/styles.css
    ======================================================================== */
 
@@ -1853,7 +1853,7 @@
 /* ─────────────────────────────────────────────────────────────
    Shadcn control overrides — focus rings, checked states,
    and a light-mode surface lock for public pages.
-   Scoped to .site-public so dashboard (blue) theme is untouched.
+   Scoped to .site-public so the dashboard app theme is untouched.
 
    1. Routes shadcn ring/primary tokens to design-4 accent (#FF5722).
    2. Pins all shadcn surface tokens (background/foreground/card/
