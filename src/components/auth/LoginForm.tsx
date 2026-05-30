@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,6 +37,8 @@ export function LoginForm() {
   const tErrors = useTranslations('errors');
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [isNavigating, startTransition] = useTransition();
+  const busy = pending || isNavigating;
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '', rememberMe: false },
@@ -55,18 +57,25 @@ export function LoginForm() {
       } | null;
       if (!res.ok || !data?.ok) {
         if (data?.code === 'EMAIL_NOT_VERIFIED' && data.details?.email) {
+          const unverifiedEmail = data.details.email;
           toast.message('Verify your email to continue.');
+          setPending(false);
           startRouteProgress();
-          router.replace(`/verify-otp?email=${encodeURIComponent(data.details.email)}`);
+          startTransition(() => {
+            router.replace(`/verify-otp?email=${encodeURIComponent(unverifiedEmail)}`);
+          });
           return;
         }
         toast.error(data?.error ?? tErrors('signInFailed'));
         setPending(false);
         return;
       }
+      setPending(false);
       startRouteProgress();
-      router.replace(data.redirectTo ?? '/');
-      router.refresh();
+      startTransition(() => {
+        router.replace(data.redirectTo ?? '/');
+        router.refresh();
+      });
     } catch {
       toast.error(tErrors('signInFailed'));
       setPending(false);
@@ -120,10 +129,10 @@ export function LoginForm() {
         <button
           type="submit"
           className="btn btn--accent w-full justify-center"
-          disabled={pending}
-          aria-busy={pending}
+          disabled={busy}
+          aria-busy={busy}
         >
-          {pending ? (
+          {busy ? (
             <>
               <Loader2 className="size-4 animate-spin" />
               {t('signingIn')}
