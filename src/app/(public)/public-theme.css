@@ -600,10 +600,15 @@
   border-bottom: 1px solid var(--pb-border);
 }
 .site-public .est__tab {
+  appearance: none;
+  background: none;
+  cursor: pointer;
   padding: 16px 24px;
+  font-family: inherit;
   font-size: var(--fs-14);
   font-weight: 500;
   color: var(--zinc-500);
+  border: 0;
   border-inline-end: 1px solid var(--pb-border);
 }
 .site-public .est__tab.is-active {
@@ -776,7 +781,7 @@
 
 /* ---------- 10. SHOWCASE (dark) ---------- */
 .site-public .showcase {
-  background: var(--ink);
+  background: var(--zinc-950);
   color: #fff;
   padding-block: var(--sp-7);
 }
@@ -828,8 +833,15 @@
 .site-public .fside li {
   font-size: var(--fs-13);
   color: var(--zinc-500);
-  padding: 8px 12px;
   border-radius: var(--r-sm);
+}
+.site-public .fside li button {
+  all: unset;
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 .site-public .fside li.is-active {
   background: var(--zinc-900);

@@ -1,5 +1,8 @@
 import Link from 'next/link';
 
+import { DashboardPreview } from '@/components/site/DashboardPreview';
+import { EstimatorPreview } from '@/components/site/EstimatorPreview';
+
 export default function MarketingHomePage() {
   return (
     <>
@@ -28,20 +31,16 @@ export default function MarketingHomePage() {
         <div className="container">
           <div className="hero__metrics">
             <div>
-              <span className="mono hero__metric">320+</span>
-              <span className="hero__metricL">businesses</span>
-            </div>
-            <div>
-              <span className="mono hero__metric">45</span>
+              <span className="mono hero__metric">45+</span>
               <span className="hero__metricL">free zones</span>
             </div>
             <div>
-              <span className="mono hero__metric u-accent">AED 2.4M</span>
-              <span className="hero__metricL">fines saved</span>
+              <span className="mono hero__metric">3</span>
+              <span className="hero__metricL">jurisdictions</span>
             </div>
             <div>
-              <span className="mono hero__metric">98%</span>
-              <span className="hero__metricL">on-time</span>
+              <span className="mono hero__metric u-accent">90·30·7</span>
+              <span className="hero__metricL">day alerts</span>
             </div>
           </div>
         </div>
@@ -50,7 +49,7 @@ export default function MarketingHomePage() {
       {/* ============ TRUSTED + STATS ============ */}
       <section className="trust-band" aria-labelledby="trust-h">
         <h2 id="trust-h" className="visually-hidden">
-          Trusted by UAE Free Zones
+          Free zones and authorities supported
         </h2>
         <div className="logo-band">
           <div className="logo-track">
@@ -64,26 +63,6 @@ export default function MarketingHomePage() {
             <span>RAK ICC</span>
             <span>DMCC</span>
             <span>IFZA</span>
-          </div>
-        </div>
-        <div className="container">
-          <div className="megastats">
-            <div className="megastat">
-              <p className="mono megastat__num">320+</p>
-              <p className="megastat__l mono">businesses launched</p>
-            </div>
-            <div className="megastat">
-              <p className="mono megastat__num u-accent">AED 2.4M</p>
-              <p className="megastat__l mono">fines avoided 2025</p>
-            </div>
-            <div className="megastat">
-              <p className="mono megastat__num">45+</p>
-              <p className="megastat__l mono">free zones supported</p>
-            </div>
-            <div className="megastat">
-              <p className="mono megastat__num">98%</p>
-              <p className="megastat__l mono">on-time renewals</p>
-            </div>
           </div>
         </div>
       </section>
@@ -183,6 +162,55 @@ export default function MarketingHomePage() {
             </article>
           </div>
         </div>
+        <div className="container">
+          <div className="cell compare">
+            <table className="compare__table">
+              <caption className="visually-hidden">
+                Mainland vs Free Zone vs Offshore comparison
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Compare</th>
+                  <th scope="col">Mainland</th>
+                  <th scope="col">Free Zone</th>
+                  <th scope="col">Offshore</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Foreign ownership</td>
+                  <td>100% (most activities)</td>
+                  <td>100%</td>
+                  <td>100%</td>
+                </tr>
+                <tr>
+                  <td>Trade inside UAE market</td>
+                  <td className="yes">✓ Direct</td>
+                  <td>Within zone / via agent</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>Physical office required</td>
+                  <td>Yes</td>
+                  <td>Flexi / shared / executive</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>Residence visa eligibility</td>
+                  <td className="yes">✓</td>
+                  <td>✓ (quota-based)</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>Best for</td>
+                  <td>Local trade &amp; services</td>
+                  <td>Export, services, low cost</td>
+                  <td>Asset holding / intl trade</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       {/* ============ ESTIMATOR ============ */}
@@ -192,51 +220,7 @@ export default function MarketingHomePage() {
             <span className="eyebrow">02 · Cost estimator</span>
           </header>
           <div className="cell-row cell-row--est">
-            <div className="cell cell--estmain">
-              <div className="est__tabs">
-                <span className="est__tab is-active">Mainland</span>
-                <span className="est__tab">Free Zone</span>
-                <span className="est__tab">Offshore</span>
-              </div>
-              <div className="est__grid">
-                <div className="est__inputs">
-                  <label className="ufield">
-                    <span className="ufield__label">Business activity</span>
-                    <span className="ufield__val">Consulting &amp; advisory</span>
-                  </label>
-                  <label className="ufield">
-                    <span className="ufield__label">Visa count</span>
-                    <span className="ufield__val mono">2</span>
-                  </label>
-                  <label className="ufield">
-                    <span className="ufield__label">Office type</span>
-                    <span className="ufield__val">Flexi desk</span>
-                  </label>
-                </div>
-                <div className="est__total">
-                  <p className="est__totalL mono">TOTAL ESTIMATE</p>
-                  <p className="est__totalV mono u-accent-underline">AED 18,450</p>
-                  <ul className="est__lines">
-                    <li>
-                      <span>DED Initial Approval</span>
-                      <span className="mono">600</span>
-                    </li>
-                    <li>
-                      <span>Trade Licence · 1 yr</span>
-                      <span className="mono">12,500</span>
-                    </li>
-                    <li>
-                      <span>Visa × 2</span>
-                      <span className="mono">4,200</span>
-                    </li>
-                    <li>
-                      <span>Mandoob PRO fee</span>
-                      <span className="mono">1,150</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <EstimatorPreview />
             <div className="cell cell--estside">
               <h3>No surprise fees. Ever.</h3>
               <p>
@@ -321,14 +305,12 @@ ts=2026-05-18T09:00:00Z`}</pre>
             <article className="cell">
               <span className="eyebrow">Visas</span>
               <h3>Type → medical → stamp</h3>
-              <p className="mono cell__metric">2,840</p>
-              <p className="cell__sub">visas processed</p>
+              <p className="cell__sub">Every visa stage tracked end to end.</p>
             </article>
             <article className="cell">
               <span className="eyebrow">Emirates ID</span>
               <h3>One source of truth</h3>
-              <p className="mono cell__metric">100%</p>
-              <p className="cell__sub">expiry tracked</p>
+              <p className="cell__sub">Every ID expiry tracked and alerted.</p>
             </article>
             <article className="cell">
               <span className="eyebrow">Renewals</span>
@@ -339,8 +321,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
             <article className="cell">
               <span className="eyebrow">Invoices</span>
               <h3>Tap + Stripe</h3>
-              <p className="mono cell__metric">AED 42K</p>
-              <p className="cell__sub">collected · month</p>
+              <p className="cell__sub">Itemized invoices, paid online.</p>
             </article>
           </div>
         </div>
@@ -357,63 +338,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
           </header>
         </div>
         <div className="container">
-          <figure className="frame">
-            <div className="frame__bar">
-              <span className="fdot" />
-              <span className="fdot" />
-              <span className="fdot" />
-              <span className="frame__url mono">app.mandoob.ae/t/horizon</span>
-            </div>
-            <div className="frame__body">
-              <aside className="fside">
-                <ul>
-                  <li className="is-active">Overview</li>
-                  <li>Clients</li>
-                  <li>Renewals</li>
-                  <li>Documents</li>
-                  <li>Invoices</li>
-                  <li>Activity</li>
-                </ul>
-              </aside>
-              <div className="fmain">
-                <div className="fkpis">
-                  <div>
-                    <p className="fkpiL mono">CLIENTS</p>
-                    <p className="fkpiV mono">128</p>
-                  </div>
-                  <div>
-                    <p className="fkpiL mono">RENEWALS 30D</p>
-                    <p className="fkpiV mono">14</p>
-                  </div>
-                  <div>
-                    <p className="fkpiL mono">OPEN INV</p>
-                    <p className="fkpiV mono">AED 42,180</p>
-                  </div>
-                  <div>
-                    <p className="fkpiL mono">ON-TIME</p>
-                    <p className="fkpiV mono">98%</p>
-                  </div>
-                </div>
-                <div className="ffeed">
-                  <p className="ffeedT mono">ACTIVITY</p>
-                  <ul>
-                    <li>
-                      <span>Visa stamped · Reem A.</span>
-                      <span className="mono">12:42</span>
-                    </li>
-                    <li>
-                      <span>Renewal · Acme FZ-LLC · 7 days</span>
-                      <span className="mono">12:18</span>
-                    </li>
-                    <li>
-                      <span>Invoice paid · INV-1042</span>
-                      <span className="mono">11:55</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </figure>
+          <DashboardPreview />
           <div className="frame-features">
             <div>
               <h4>Live renewal alerts</h4>
@@ -496,79 +421,49 @@ ts=2026-05-18T09:00:00Z`}</pre>
               <p>Custom subdomain, logo, sender per firm.</p>
             </article>
           </div>
-          <div className="cell compare">
-            <table className="compare__table">
-              <thead>
-                <tr>
-                  <th scope="col">Capability</th>
-                  <th scope="col" className="us">
-                    Mandoob
-                  </th>
-                  <th scope="col">Manual</th>
-                  <th scope="col">Generic SaaS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  'UAE license tracking',
-                  'Automated renewal alerts',
-                  'Tenant isolation (RLS)',
-                  'White-label portal',
-                  'Audit log + PDPL',
-                  'Cost estimator',
-                ].map((cap) => (
-                  <tr key={cap}>
-                    <td>{cap}</td>
-                    <td className="us yes">✓</td>
-                    <td className="dash">—</td>
-                    <td className="dash">—</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       </section>
 
-      {/* ============ TESTIMONIALS ============ */}
-      <section id="customers" className="section" aria-labelledby="test-h">
+      {/* ============ TRUST & COMPLIANCE ============ */}
+      <section id="trust" className="section" aria-labelledby="trustsec-h">
         <div className="container">
           <header className="section__head">
-            <span className="eyebrow">07 · Customers</span>
-            <h2 id="test-h" className="h2">
-              Trusted by people who can&apos;t get it wrong.
+            <span className="eyebrow">07 · Trust</span>
+            <h2 id="trustsec-h" className="h2">
+              Security and compliance, by design.
             </h2>
           </header>
         </div>
         <div className="container">
-          <div className="quote-row">
-            <blockquote className="cell cell--quotelg">
+          <div className="why-row">
+            <article className="cell cell--why">
+              <h4>PDPL-aligned</h4>
               <p>
-                &ldquo;Renewed 47 licences last month with zero late fines. The renewal calendar
-                alone paid for the annual subscription twice over.&rdquo;
+                Built to UAE Federal Decree-Law No. 45 of 2021 — consent tracking and right to
+                erasure.
               </p>
-              <footer>
-                <span className="mono">SA</span> Sarah Al Marri · PRO Manager · Horizon, Dubai
-              </footer>
-            </blockquote>
-            <blockquote className="cell cell--quotesm">
-              <p>&ldquo;Set up an IFZA company from Berlin in 9 days. No flights.&rdquo;</p>
-              <footer>
-                <span className="mono">JK</span> Jonas Keller · Founder · Linthos
-              </footer>
-            </blockquote>
-            <blockquote className="cell cell--quotesm">
-              <p>&ldquo;The audit log sold our compliance team instantly.&rdquo;</p>
-              <footer>
-                <span className="mono">FH</span> Fatima Hussein · Counsel · Naseej
-              </footer>
-            </blockquote>
-            <blockquote className="cell cell--quotesm">
-              <p>&ldquo;Replaced WhatsApp, Excel, and a CRM with one workspace.&rdquo;</p>
-              <footer>
-                <span className="mono">AK</span> Ahmed Khalifa · Partner · Khalifa Consultants
-              </footer>
-            </blockquote>
+            </article>
+            <article className="cell cell--why">
+              <h4>Immutable audit trail</h4>
+              <p>
+                Every action logged with actor, entity, IP, and timestamp. Exportable for legal
+                review.
+              </p>
+            </article>
+            <article className="cell cell--why">
+              <h4>Tenant isolation</h4>
+              <p>
+                Postgres row-level security enforces tenant_id on every table. No cross-tenant
+                leaks.
+              </p>
+            </article>
+            <article className="cell cell--why">
+              <h4>Encrypted end to end</h4>
+              <p>
+                TLS 1.3 in transit, AES-256 at rest, plus app-layer encryption for passport, EID,
+                and visa data.
+              </p>
+            </article>
           </div>
         </div>
       </section>
