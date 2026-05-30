@@ -20,7 +20,7 @@
   --zinc-900: #18181b;
   --zinc-950: #09090b;
 
-  --accent: #ff5722; /* UAE-saffron warm red, used <8% */
+  --accent: var(--brand-accent); /* UAE-saffron warm red, used <8% */
   --accent-soft: #fff1ed;
 
   --pb-border: #e4e4e7;
@@ -1867,29 +1867,15 @@
    and a light-mode surface lock for public pages.
    Scoped to .site-public so the dashboard app theme is untouched.
 
-   1. Routes shadcn ring/primary tokens to design-4 accent (#FF5722).
-   2. Pins all shadcn surface tokens (background/foreground/card/
-      popover/secondary/muted/border/input) to their LIGHT values
-      so shadcn-driven controls inside public pages (QuestionnaireForm,
-      auth forms, etc.) stay light even when the user's OS / next-themes
-      sets `html.dark`. The dashboard theme stays untouched because
-      these declarations are scoped to .site-public only.
+   1. Routes shadcn ring/primary tokens to the brand accent (var(--brand-accent)).
+   2. The light surface tokens (background/foreground/card/popover/secondary/
+      muted/border/input) are inherited from the shared `:root, .site-public`
+      light palette in globals.css, so shadcn-driven controls inside public
+      pages stay light even when next-themes sets `html.dark` — without
+      forking the values here.
    ───────────────────────────────────────────────────────────── */
 .site-public {
   --ring: var(--accent);
   --primary: var(--accent);
   --primary-foreground: #ffffff;
-
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
 }
