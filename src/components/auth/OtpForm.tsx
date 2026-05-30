@@ -8,7 +8,6 @@ import { useTranslations } from 'next-intl';
 
 import { postJson } from '@/lib/http/post';
 import { startRouteProgress } from '@/components/navigation/RouteProgress';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const RESEND_COOLDOWN_SEC = 60;
@@ -159,10 +158,11 @@ export function OtpForm({ email }: { email: string }) {
         <p className="text-muted-foreground text-center text-xs">{t('longCopy.checkInbox')}</p>
       </div>
       {error && <p className="text-destructive text-center text-sm">{error}</p>}
-      <Button
+      <button
         type="submit"
-        className="w-full"
+        className="btn btn--accent w-full justify-center"
         disabled={pending || succeeded || !complete}
+        aria-busy={pending}
         aria-live="polite"
       >
         {succeeded ? (
@@ -178,7 +178,7 @@ export function OtpForm({ email }: { email: string }) {
         ) : (
           t('verify')
         )}
-      </Button>
+      </button>
       <button
         type="button"
         onClick={onResend}
