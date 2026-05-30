@@ -67,7 +67,8 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
             {page.emirate ? <span className="eyebrow">{emirateLabel(page.emirate)}</span> : null}
           </div>
           <h1 id="auth-h" className="display">
-            {page.authority} <span className="u-accent">setup, costed.</span>
+            <span className="u-accent">{page.authority}</span>
+            {page.title.slice(page.authority.length)}
           </h1>
           <p className="lede">{page.description}</p>
           <div className="cta-row">
@@ -183,7 +184,10 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
                 office type, and add-ons.
               </p>
               <div className="cta-row">
-                <Link className="btn btn--accent btn--sm" href={relativeEstimateHref(page.handoffUrl)}>
+                <Link
+                  className="btn btn--accent btn--sm"
+                  href={relativeEstimateHref(page.handoffUrl)}
+                >
                   Open estimator
                 </Link>
               </div>
