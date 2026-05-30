@@ -431,5 +431,99 @@
       "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",
       "rateLimited": "You have made too many requests in a short time. Please wait a minute before trying again."
     }
+  },
+  "questionnaire": {
+    "eyebrow": "الاستبيان",
+    "asideEyebrow": "طلب عام",
+    "asideTitle": "استبيان تأسيس الشركة",
+    "estimatorHandoff": "تسليم من المُقدِّر",
+    "reference": "المرجع: {value}",
+    "notProvided": "غير متوفر",
+    "submissionIssue": "مشكلة في الإرسال",
+    "continue": "متابعة",
+    "submit": "إرسال الاستبيان",
+    "submitting": "جارٍ الإرسال…",
+    "steps": {
+      "contact": "التواصل",
+      "business": "النشاط",
+      "setup": "الإعداد",
+      "details": "الملكية",
+      "review": "المراجعة"
+    },
+    "jurisdiction": {
+      "mainland": "البر الرئيسي",
+      "free_zone": "المنطقة الحرة",
+      "offshore": "أوفشور"
+    },
+    "office": {
+      "none": "بدون مكتب",
+      "flexi": "مكتب مرن",
+      "physical": "مكتب فعلي",
+      "virtual": "مكتب افتراضي"
+    },
+    "documentReadiness": {
+      "ready": "جاهزة",
+      "partial": "جاهزة جزئيًا",
+      "not_ready": "غير جاهزة"
+    },
+    "addOns": {
+      "bank_account": "المساعدة في فتح حساب بنكي",
+      "tax_registration": "تسجيل ضريبة الشركات",
+      "document_attestation": "تصديق المستندات",
+      "pro_services": "خدمات العلاقات الحكومية"
+    },
+    "sections": {
+      "contactTitle": "تفاصيل التواصل",
+      "contactDesc": "استخدم قناة تواصل واحدة قابلة للوصول على الأقل.",
+      "businessTitle": "تفاصيل النشاط",
+      "businessDesc": "اجعلها موجزة بما يكفي للتوجيه وتحضير المستندات.",
+      "setupTitle": "تفضيلات الإعداد",
+      "setupDesc": "تُملأ قيم المُقدِّر مسبقًا عند توفرها في الرابط.",
+      "detailsTitle": "الملكية والتأشيرات والمكتب",
+      "detailsDesc": "تظهر فقط الحقول الشرطية اللازمة لهذا الإعداد.",
+      "reviewTitle": "المراجعة والإرسال",
+      "reviewDesc": "أكّد الملخص قبل إنشاء العميل المحتمل المجهول."
+    },
+    "fields": {
+      "fullName": "الاسم الكامل",
+      "nationality": "الجنسية",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "activity": "النشاط التجاري",
+      "preferredNames": "أسماء الشركة المفضلة",
+      "nameOption": "خيار {index}",
+      "businessSummary": "ملخص النشاط",
+      "jurisdiction": "الولاية",
+      "authority": "الجهة",
+      "documentReadiness": "جاهزية المستندات",
+      "addOns": "إضافات",
+      "shareholderCount": "عدد المساهمين",
+      "officeType": "نوع المكتب",
+      "shareholderSplit": "توزيع الحصص",
+      "addVisas": "إضافة تأشيرات إقامة لهذا الإعداد",
+      "investorVisas": "تأشيرات المستثمرين",
+      "employeeVisas": "تأشيرات الموظفين",
+      "familyVisas": "تأشيرات العائلة",
+      "officeNotes": "ملاحظات المكتب",
+      "additionalNotes": "ملاحظات إضافية"
+    },
+    "review": {
+      "contact": "التواصل",
+      "business": "النشاط",
+      "setup": "الإعداد",
+      "ownership": "الملكية",
+      "visas": "التأشيرات",
+      "office": "المكتب",
+      "notSet": "غير محدد",
+      "noNamesYet": "لا أسماء بعد",
+      "authorityPending": "الجهة قيد التحديد",
+      "shareholders": "{count, plural, zero {# مساهم} one {# مساهم} two {# مساهمان} few {# مساهمين} many {# مساهمًا} other {# مساهم}}",
+      "visasRequested": "{count, plural, zero {لا تأشيرات مطلوبة} one {تأشيرة واحدة مطلوبة} two {تأشيرتان مطلوبتان} few {# تأشيرات مطلوبة} many {# تأشيرة مطلوبة} other {# تأشيرة مطلوبة}}"
+    },
+    "success": {
+      "eyebrow": "تم استلام الطلب",
+      "leadReference": "مرجع العميل المحتمل {leadId}",
+      "queued": "استبيانك في قائمة المراجعة. المرحلة الحالية: {stage}."
+    }
   }
 }

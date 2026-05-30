@@ -39,31 +39,18 @@ type SubmissionSuccess = { leadId: string; stage: string; assignedTenantId: stri
 
 const STEPS: {
   id: StepId;
-  label: string;
   icon: typeof ClipboardList;
   fields: (keyof QuestionnaireAnswers)[];
 }[] = [
-  {
-    id: 'contact',
-    label: 'Contact',
-    icon: ClipboardList,
-    fields: ['fullName', 'email', 'phone', 'nationality'],
-  },
-  {
-    id: 'business',
-    label: 'Business',
-    icon: Building2,
-    fields: ['activity', 'preferredNames', 'businessSummary'],
-  },
+  { id: 'contact', icon: ClipboardList, fields: ['fullName', 'email', 'phone', 'nationality'] },
+  { id: 'business', icon: Building2, fields: ['activity', 'preferredNames', 'businessSummary'] },
   {
     id: 'setup',
-    label: 'Setup',
     icon: FileCheck2,
     fields: ['jurisdiction', 'authority', 'addOns', 'documentReadiness'],
   },
   {
     id: 'details',
-    label: 'Ownership',
     icon: Users,
     fields: [
       'shareholderCount',
@@ -75,33 +62,33 @@ const STEPS: {
       'officeAreaNotes',
     ],
   },
-  { id: 'review', label: 'Review', icon: CheckCircle2, fields: ['notes'] },
+  { id: 'review', icon: CheckCircle2, fields: ['notes'] },
 ];
 
 const JURISDICTION_OPTIONS = [
-  { value: 'mainland', label: 'Mainland' },
-  { value: 'free_zone', label: 'Free Zone' },
-  { value: 'offshore', label: 'Offshore' },
+  { value: 'mainland' },
+  { value: 'free_zone' },
+  { value: 'offshore' },
 ] as const;
 
 const OFFICE_OPTIONS = [
-  { value: 'none', label: 'No office' },
-  { value: 'flexi', label: 'Flexi desk' },
-  { value: 'physical', label: 'Physical office' },
-  { value: 'virtual', label: 'Virtual office' },
+  { value: 'none' },
+  { value: 'flexi' },
+  { value: 'physical' },
+  { value: 'virtual' },
 ] as const;
 
 const DOCUMENT_OPTIONS = [
-  { value: 'ready', label: 'Ready' },
-  { value: 'partial', label: 'Partially ready' },
-  { value: 'not_ready', label: 'Not ready' },
+  { value: 'ready' },
+  { value: 'partial' },
+  { value: 'not_ready' },
 ] as const;
 
 const ADD_ONS = [
-  { value: 'bank_account', label: 'Bank account assistance' },
-  { value: 'tax_registration', label: 'Corporate tax registration' },
-  { value: 'document_attestation', label: 'Document attestation' },
-  { value: 'pro_services', label: 'PRO services' },
+  { value: 'bank_account' },
+  { value: 'tax_registration' },
+  { value: 'document_attestation' },
+  { value: 'pro_services' },
 ] as const;
 
 export function QuestionnaireForm({
@@ -112,6 +99,8 @@ export function QuestionnaireForm({
   estimateData: Record<string, unknown>;
 }) {
   const tErrors = useTranslations('errors');
+  const t = useTranslations('questionnaire');
+  const tCommon = useTranslations('common');
   const [answers, setAnswers] = useState<QuestionnaireFormAnswers>(() =>
     createQuestionnaireDefaults(initialAnswers),
   );
@@ -129,23 +118,23 @@ export function QuestionnaireForm({
 
   const reviewRows = useMemo(
     () => [
-      ['Contact', [answers.fullName, answers.email || answers.phone].filter(Boolean).join(' / ')],
       [
-        'Business',
-        `${answers.activity || 'Not set'} · ${answers.preferredNames.filter(Boolean).join(', ') || 'No names yet'}`,
+        t('review.contact'),
+        [answers.fullName, answers.email || answers.phone].filter(Boolean).join(' / '),
       ],
       [
-        'Setup',
-        `${labelFor(JURISDICTION_OPTIONS, answers.jurisdiction)} · ${answers.authority || 'Authority pending'}`,
+        t('review.business'),
+        `${answers.activity || t('review.notSet')} · ${answers.preferredNames.filter(Boolean).join(', ') || t('review.noNamesYet')}`,
       ],
       [
-        'Ownership',
-        `${answers.shareholderCount} shareholder${answers.shareholderCount === 1 ? '' : 's'}`,
+        t('review.setup'),
+        `${t(`jurisdiction.${answers.jurisdiction}`)} · ${answers.authority || t('review.authorityPending')}`,
       ],
-      ['Visas', `${requestedVisaCount(answers)} requested`],
-      ['Office', labelFor(OFFICE_OPTIONS, answers.officeType)],
+      [t('review.ownership'), t('review.shareholders', { count: answers.shareholderCount })],
+      [t('review.visas'), t('review.visasRequested', { count: requestedVisaCount(answers) })],
+      [t('review.office'), t(`office.${answers.officeType}`)],
     ],
-    [answers],
+    [answers, t],
   );
 
   function patch(next: Partial<QuestionnaireFormAnswers>) {
@@ -204,7 +193,7 @@ export function QuestionnaireForm({
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
-        setFieldErrors(apiErrorsToFieldErrors(body));
+        setFieldErrors(apiErrorsToFieldErrors(body, tErrors('questionnaireSubmitFailed')));
         return;
       }
       setSuccess(body as SubmissionSuccess);
@@ -224,13 +213,12 @@ export function QuestionnaireForm({
           <div className="mb-4 inline-flex rounded-md bg-emerald-500/10 p-2 text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 className="size-5" aria-hidden />
           </div>
-          <p className="eyebrow">Application received</p>
+          <p className="eyebrow">{t('success.eyebrow')}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            Lead reference {success.leadId}
+            {t('success.leadReference', { leadId: success.leadId })}
           </h1>
           <p className="text-muted-foreground mt-3 text-sm leading-6">
-            Your questionnaire is queued for review. Current stage:{' '}
-            <span className="text-foreground font-medium">{success.stage}</span>.
+            {t('success.queued', { stage: success.stage })}
           </p>
         </div>
       </section>
@@ -242,9 +230,9 @@ export function QuestionnaireForm({
       <aside className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow">Public application</p>
+            <p className="eyebrow">{t('asideEyebrow')}</p>
             <h1 className="mt-1 text-xl font-semibold tracking-tight">
-              Company setup questionnaire
+              {t('asideTitle')}
             </h1>
           </div>
           <div className="bg-primary/10 text-primary rounded-md p-2">
@@ -271,7 +259,7 @@ export function QuestionnaireForm({
                 }`}
               >
                 <Icon className="size-4" aria-hidden />
-                <span className="font-medium">{step.label}</span>
+                <span className="font-medium">{t(`steps.${step.id}`)}</span>
               </button>
             );
           })}
@@ -279,9 +267,9 @@ export function QuestionnaireForm({
 
         {hasEstimate ? (
           <div className="border-border bg-card text-muted-foreground mt-5 rounded-md border p-3 text-xs leading-5">
-            <div className="text-foreground font-medium">Estimator handoff</div>
+            <div className="text-foreground font-medium">{t('estimatorHandoff')}</div>
             <div className="mt-1">
-              Reference: {String(estimateData.reference ?? 'not provided')}
+              {t('reference', { value: String(estimateData.reference ?? t('notProvided')) })}
             </div>
           </div>
         ) : null}
@@ -291,32 +279,32 @@ export function QuestionnaireForm({
         {fieldErrors.form ? (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="size-4" aria-hidden />
-            <AlertTitle>Submission issue</AlertTitle>
+            <AlertTitle>{t('submissionIssue')}</AlertTitle>
             <AlertDescription>{fieldErrors.form}</AlertDescription>
           </Alert>
         ) : null}
 
         {currentStep.id === 'contact' ? (
           <StepSection
-            title="Contact details"
-            description="Use at least one reachable contact channel."
+            title={t('sections.contactTitle')}
+            description={t('sections.contactDesc')}
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Full name" error={fieldErrors.fullName}>
+              <Field label={t('fields.fullName')} error={fieldErrors.fullName}>
                 <Input
                   value={answers.fullName}
                   onChange={(event) => patch({ fullName: event.target.value })}
                   autoComplete="name"
                 />
               </Field>
-              <Field label="Nationality" error={fieldErrors.nationality}>
+              <Field label={t('fields.nationality')} error={fieldErrors.nationality}>
                 <Input
                   value={answers.nationality}
                   onChange={(event) => patch({ nationality: event.target.value })}
                   autoComplete="country-name"
                 />
               </Field>
-              <Field label="Email" error={fieldErrors.email}>
+              <Field label={t('fields.email')} error={fieldErrors.email}>
                 <Input
                   type="email"
                   value={answers.email}
@@ -324,7 +312,7 @@ export function QuestionnaireForm({
                   autoComplete="email"
                 />
               </Field>
-              <Field label="Phone" error={fieldErrors.phone}>
+              <Field label={t('fields.phone')} error={fieldErrors.phone}>
                 <Input
                   value={answers.phone}
                   onChange={(event) => patch({ phone: event.target.value })}
@@ -337,21 +325,23 @@ export function QuestionnaireForm({
 
         {currentStep.id === 'business' ? (
           <StepSection
-            title="Business details"
-            description="Keep this concise enough for routing and document preparation."
+            title={t('sections.businessTitle')}
+            description={t('sections.businessDesc')}
           >
             <div className="grid gap-4">
-              <Field label="Business activity" error={fieldErrors.activity}>
+              <Field label={t('fields.activity')} error={fieldErrors.activity}>
                 <Input
                   value={answers.activity}
                   onChange={(event) => patch({ activity: event.target.value })}
                 />
               </Field>
-              <Field label="Preferred company names" error={fieldErrors.preferredNames}>
+              <Field label={t('fields.preferredNames')} error={fieldErrors.preferredNames}>
                 <div className="grid gap-2">
                   {answers.preferredNames.map((name, index) => (
                     <div key={index} className="grid gap-2">
-                      <Label className="text-muted-foreground text-xs">Option {index + 1}</Label>
+                      <Label className="text-muted-foreground text-xs">
+                        {t('fields.nameOption', { index: index + 1 })}
+                      </Label>
                       <Input
                         value={name}
                         onChange={(event) => setPreferredName(index, event.target.value)}
@@ -360,7 +350,7 @@ export function QuestionnaireForm({
                   ))}
                 </div>
               </Field>
-              <Field label="Business summary" error={fieldErrors.businessSummary}>
+              <Field label={t('fields.businessSummary')} error={fieldErrors.businessSummary}>
                 <Textarea
                   value={answers.businessSummary}
                   onChange={(event) => patch({ businessSummary: event.target.value })}
@@ -373,11 +363,11 @@ export function QuestionnaireForm({
 
         {currentStep.id === 'setup' ? (
           <StepSection
-            title="Setup preferences"
-            description="Estimator values are prefilled when present in the URL."
+            title={t('sections.setupTitle')}
+            description={t('sections.setupDesc')}
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Jurisdiction" error={fieldErrors.jurisdiction}>
+              <Field label={t('fields.jurisdiction')} error={fieldErrors.jurisdiction}>
                 <Select
                   value={answers.jurisdiction}
                   onValueChange={(value) =>
@@ -390,19 +380,19 @@ export function QuestionnaireForm({
                   <SelectContent>
                     {JURISDICTION_OPTIONS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(`jurisdiction.${item.value}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Authority" error={fieldErrors.authority}>
+              <Field label={t('fields.authority')} error={fieldErrors.authority}>
                 <Input
                   value={answers.authority}
                   onChange={(event) => patch({ authority: event.target.value })}
                 />
               </Field>
-              <Field label="Document readiness" error={fieldErrors.documentReadiness}>
+              <Field label={t('fields.documentReadiness')} error={fieldErrors.documentReadiness}>
                 <Select
                   value={answers.documentReadiness}
                   onValueChange={(value) =>
@@ -415,7 +405,7 @@ export function QuestionnaireForm({
                   <SelectContent>
                     {DOCUMENT_OPTIONS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(`documentReadiness.${item.value}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -423,7 +413,7 @@ export function QuestionnaireForm({
               </Field>
             </div>
             <div className="border-border bg-card mt-4 rounded-md border p-3">
-              <Label className="text-sm font-medium">Add-ons</Label>
+              <Label className="text-sm font-medium">{t('fields.addOns')}</Label>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {ADD_ONS.map((addOn) => (
                   <label key={addOn.value} className="flex items-center gap-3 text-sm">
@@ -431,7 +421,7 @@ export function QuestionnaireForm({
                       checked={answers.addOns.includes(addOn.value)}
                       onCheckedChange={() => toggleAddOn(addOn.value)}
                     />
-                    {addOn.label}
+                    {t(`addOns.${addOn.value}`)}
                   </label>
                 ))}
               </div>
@@ -441,11 +431,11 @@ export function QuestionnaireForm({
 
         {currentStep.id === 'details' ? (
           <StepSection
-            title="Ownership, visas, and office"
-            description="Only the conditional fields needed for this setup are shown."
+            title={t('sections.detailsTitle')}
+            description={t('sections.detailsDesc')}
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Shareholder count" error={fieldErrors.shareholderCount}>
+              <Field label={t('fields.shareholderCount')} error={fieldErrors.shareholderCount}>
                 <Input
                   min={1}
                   max={50}
@@ -454,7 +444,7 @@ export function QuestionnaireForm({
                   onChange={(event) => patch({ shareholderCount: Number(event.target.value) })}
                 />
               </Field>
-              <Field label="Office type" error={fieldErrors.officeType}>
+              <Field label={t('fields.officeType')} error={fieldErrors.officeType}>
                 <Select
                   value={answers.officeType}
                   onValueChange={(value) =>
@@ -467,7 +457,7 @@ export function QuestionnaireForm({
                   <SelectContent>
                     {OFFICE_OPTIONS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
-                        {item.label}
+                        {t(`office.${item.value}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -477,7 +467,7 @@ export function QuestionnaireForm({
 
             {answers.shareholderCount > 1 ? (
               <Field
-                label="Shareholder split"
+                label={t('fields.shareholderSplit')}
                 error={fieldErrors.shareholderSplitSummary}
                 className="mt-4"
               >
@@ -498,12 +488,12 @@ export function QuestionnaireForm({
                     patch({ investorVisaCount: 0, employeeVisaCount: 0, familyVisaCount: 0 });
                 }}
               />
-              Add residence visas to this setup
+              {t('fields.addVisas')}
             </label>
 
             {showVisaInputs ? (
               <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <Field label="Investor visas" error={fieldErrors.investorVisaCount}>
+                <Field label={t('fields.investorVisas')} error={fieldErrors.investorVisaCount}>
                   <Input
                     min={0}
                     max={200}
@@ -512,7 +502,7 @@ export function QuestionnaireForm({
                     onChange={(event) => patch({ investorVisaCount: Number(event.target.value) })}
                   />
                 </Field>
-                <Field label="Employee visas" error={fieldErrors.employeeVisaCount}>
+                <Field label={t('fields.employeeVisas')} error={fieldErrors.employeeVisaCount}>
                   <Input
                     min={0}
                     max={200}
@@ -521,7 +511,7 @@ export function QuestionnaireForm({
                     onChange={(event) => patch({ employeeVisaCount: Number(event.target.value) })}
                   />
                 </Field>
-                <Field label="Family visas" error={fieldErrors.familyVisaCount}>
+                <Field label={t('fields.familyVisas')} error={fieldErrors.familyVisaCount}>
                   <Input
                     min={0}
                     max={200}
@@ -534,7 +524,7 @@ export function QuestionnaireForm({
             ) : null}
 
             {answers.officeType !== 'none' ? (
-              <Field label="Office notes" error={fieldErrors.officeAreaNotes} className="mt-4">
+              <Field label={t('fields.officeNotes')} error={fieldErrors.officeAreaNotes} className="mt-4">
                 <Textarea
                   value={answers.officeAreaNotes}
                   onChange={(event) => patch({ officeAreaNotes: event.target.value })}
@@ -547,8 +537,8 @@ export function QuestionnaireForm({
 
         {currentStep.id === 'review' ? (
           <StepSection
-            title="Review and submit"
-            description="Confirm the summary before creating the anonymous lead."
+            title={t('sections.reviewTitle')}
+            description={t('sections.reviewDesc')}
           >
             <div className="overflow-hidden rounded-md border">
               {reviewRows.map(([label, value]) => (
@@ -561,7 +551,7 @@ export function QuestionnaireForm({
                 </div>
               ))}
             </div>
-            <Field label="Additional notes" error={fieldErrors.notes} className="mt-4">
+            <Field label={t('fields.additionalNotes')} error={fieldErrors.notes} className="mt-4">
               <Textarea
                 value={answers.notes}
                 onChange={(event) => patch({ notes: event.target.value })}
@@ -579,7 +569,7 @@ export function QuestionnaireForm({
             disabled={stepIndex === 0 || submitting}
           >
             <ArrowLeft aria-hidden />
-            Back
+            {tCommon('back')}
           </Button>
           {currentStep.id === 'review' ? (
             <Button type="submit" disabled={submitting}>
@@ -588,11 +578,11 @@ export function QuestionnaireForm({
               ) : (
                 <CheckCircle2 aria-hidden />
               )}
-              {submitting ? 'Submitting...' : 'Submit questionnaire'}
+              {submitting ? t('submitting') : t('submit')}
             </Button>
           ) : (
             <Button type="button" onClick={goNext}>
-              Continue
+              {t('continue')}
               <ArrowRight aria-hidden />
             </Button>
           )}
@@ -611,10 +601,11 @@ function StepSection({
   description: string;
   children: ReactNode;
 }) {
+  const t = useTranslations('questionnaire');
   return (
     <div>
       <div className="mb-5">
-        <p className="eyebrow">Questionnaire</p>
+        <p className="eyebrow">{t('eyebrow')}</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h2>
         <p className="text-muted-foreground mt-2 text-sm">{description}</p>
       </div>
@@ -656,13 +647,6 @@ function requestedVisaCount(
   );
 }
 
-function labelFor<T extends string>(
-  options: readonly { value: T; label: string }[],
-  value: T,
-): string {
-  return options.find((option) => option.value === value)?.label ?? value;
-}
-
 function pickStepErrors(
   errors: QuestionnaireFieldErrors,
   fields: (keyof QuestionnaireAnswers)[],
@@ -678,8 +662,8 @@ function firstStepWithError(errors: QuestionnaireFieldErrors): number {
   return index === -1 ? STEPS.length - 1 : index;
 }
 
-function apiErrorsToFieldErrors(body: unknown): QuestionnaireFieldErrors {
-  if (!body || typeof body !== 'object') return { form: 'Could not submit the questionnaire.' };
+function apiErrorsToFieldErrors(body: unknown, fallback: string): QuestionnaireFieldErrors {
+  if (!body || typeof body !== 'object') return { form: fallback };
   const record = body as {
     message?: unknown;
     details?: { issues?: { path?: unknown[]; message?: unknown }[] };
@@ -687,8 +671,7 @@ function apiErrorsToFieldErrors(body: unknown): QuestionnaireFieldErrors {
   const issues = record.details?.issues;
   if (!Array.isArray(issues)) {
     return {
-      form:
-        typeof record.message === 'string' ? record.message : 'Could not submit the questionnaire.',
+      form: typeof record.message === 'string' ? record.message : fallback,
     };
   }
   return issues.reduce<QuestionnaireFieldErrors>((acc, issue) => {

@@ -431,5 +431,99 @@
       "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",
       "rateLimited": "You have made too many requests in a short time. Please wait a minute before trying again."
     }
+  },
+  "questionnaire": {
+    "eyebrow": "Questionnaire",
+    "asideEyebrow": "Public application",
+    "asideTitle": "Company setup questionnaire",
+    "estimatorHandoff": "Estimator handoff",
+    "reference": "Reference: {value}",
+    "notProvided": "not provided",
+    "submissionIssue": "Submission issue",
+    "continue": "Continue",
+    "submit": "Submit questionnaire",
+    "submitting": "Submitting…",
+    "steps": {
+      "contact": "Contact",
+      "business": "Business",
+      "setup": "Setup",
+      "details": "Ownership",
+      "review": "Review"
+    },
+    "jurisdiction": {
+      "mainland": "Mainland",
+      "free_zone": "Free Zone",
+      "offshore": "Offshore"
+    },
+    "office": {
+      "none": "No office",
+      "flexi": "Flexi desk",
+      "physical": "Physical office",
+      "virtual": "Virtual office"
+    },
+    "documentReadiness": {
+      "ready": "Ready",
+      "partial": "Partially ready",
+      "not_ready": "Not ready"
+    },
+    "addOns": {
+      "bank_account": "Bank account assistance",
+      "tax_registration": "Corporate tax registration",
+      "document_attestation": "Document attestation",
+      "pro_services": "PRO services"
+    },
+    "sections": {
+      "contactTitle": "Contact details",
+      "contactDesc": "Use at least one reachable contact channel.",
+      "businessTitle": "Business details",
+      "businessDesc": "Keep this concise enough for routing and document preparation.",
+      "setupTitle": "Setup preferences",
+      "setupDesc": "Estimator values are prefilled when present in the URL.",
+      "detailsTitle": "Ownership, visas, and office",
+      "detailsDesc": "Only the conditional fields needed for this setup are shown.",
+      "reviewTitle": "Review and submit",
+      "reviewDesc": "Confirm the summary before creating the anonymous lead."
+    },
+    "fields": {
+      "fullName": "Full name",
+      "nationality": "Nationality",
+      "email": "Email",
+      "phone": "Phone",
+      "activity": "Business activity",
+      "preferredNames": "Preferred company names",
+      "nameOption": "Option {index}",
+      "businessSummary": "Business summary",
+      "jurisdiction": "Jurisdiction",
+      "authority": "Authority",
+      "documentReadiness": "Document readiness",
+      "addOns": "Add-ons",
+      "shareholderCount": "Shareholder count",
+      "officeType": "Office type",
+      "shareholderSplit": "Shareholder split",
+      "addVisas": "Add residence visas to this setup",
+      "investorVisas": "Investor visas",
+      "employeeVisas": "Employee visas",
+      "familyVisas": "Family visas",
+      "officeNotes": "Office notes",
+      "additionalNotes": "Additional notes"
+    },
+    "review": {
+      "contact": "Contact",
+      "business": "Business",
+      "setup": "Setup",
+      "ownership": "Ownership",
+      "visas": "Visas",
+      "office": "Office",
+      "notSet": "Not set",
+      "noNamesYet": "No names yet",
+      "authorityPending": "Authority pending",
+      "shareholders": "{count, plural, one {# shareholder} other {# shareholders}}",
+      "visasRequested": "{count, plural, =0 {No visas requested} one {# visa requested} other {# visas requested}}"
+    },
+    "success": {
+      "eyebrow": "Application received",
+      "leadReference": "Lead reference {leadId}",
+      "queued": "Your questionnaire is queued for review. Current stage: {stage}."
+    }
   }
 }
