@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ import { postJson } from '@/lib/http/post';
 import { TENANT_PLANS } from '@/lib/validation/tenant-onboarding';
 
 export function RegisterProForm() {
+  const tErrors = useTranslations('errors');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -42,16 +44,16 @@ export function RegisterProForm() {
       if (!res.ok) {
         try {
           const body = (await res.json()) as { error?: string; code?: string };
-          setError(`${body.code ?? 'ERROR'}: ${body.error ?? 'Could not submit'}`);
+          setError(body.error ?? tErrors('couldNotSubmit'));
         } catch {
-          setError(`HTTP ${res.status}: Could not submit`);
+          setError(tErrors('couldNotSubmit'));
         }
         setPending(false);
         return;
       }
       setSubmitted(true);
     } catch {
-      setError('ERROR: Could not submit');
+      setError(tErrors('couldNotSubmit'));
       setPending(false);
     }
   }
@@ -73,7 +75,7 @@ export function RegisterProForm() {
     <form className="space-y-6" onSubmit={onSubmit}>
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Could not submit</AlertTitle>
+          <AlertTitle>{tErrors('couldNotSubmit')}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

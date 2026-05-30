@@ -390,6 +390,9 @@
     "couldNotResend": "Could not resend. Try again shortly.",
     "newCodeSent": "New code sent.",
     "uploadFailed": "Upload failed",
+    "fixHighlighted": "Please fix the highlighted fields before submitting.",
+    "questionnaireSubmitFailed": "Could not submit the questionnaire. Check your connection and try again.",
+    "couldNotSubmit": "Could not submit",
     "longCopy": {
       "unexpected": "Something went wrong on our side. Please try again, and contact support if the problem persists.",
       "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",
