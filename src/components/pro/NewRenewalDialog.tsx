@@ -105,10 +105,7 @@ export function NewRenewalDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('newRenewal')}</DialogTitle>
-          <DialogDescription>
-            License renewals are created automatically from a client&apos;s license_expiry. Use this
-            form for visas, Emirates IDs, and Ejari.
-          </DialogDescription>
+          <DialogDescription>{t('newRenewalIntro')}</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={onSubmit}>
@@ -158,7 +155,7 @@ export function NewRenewalDialog({
               required
               minLength={1}
               maxLength={140}
-              placeholder="e.g. Investor visa — Mr. Khan"
+              placeholder={t('renewalLabelPlaceholder')}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />

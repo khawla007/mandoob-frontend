@@ -117,6 +117,22 @@
     "settingUp": "جارٍ الإعداد…",
     "agreePdpl": "I agree to the privacy policy (PDPL).",
     "noFactorFound": "لا يوجد عامل TOTP.",
+    "emailPlaceholder": "you@company.com",
+    "passwordsMatch": "كلمتا المرور متطابقتان.",
+    "pwRuleLength": "٨ أحرف على الأقل",
+    "pwRuleUppercase": "حرف كبير واحد",
+    "pwRuleLowercase": "حرف صغير واحد",
+    "pwRuleSpecial": "رمز خاص واحد",
+    "passwordRequirements": "متطلبات كلمة المرور",
+    "dismissPasswordRequirements": "إغلاق متطلبات كلمة المرور",
+    "firmSection": "الشركة",
+    "firmName": "اسم الشركة",
+    "plan": "الباقة",
+    "phoneE164": "الهاتف (E.164)",
+    "yourAccount": "حسابك",
+    "submittingReview": "جارٍ الإرسال…",
+    "submitForReview": "إرسال للمراجعة",
+    "proSubmittedTitle": "تم الإرسال",
     "longCopy": {
       "mfaInstructions": "Open your authenticator app and enter the 6-digit code shown for Mandoob.",
       "recoveryCodesIntro": "Save these one-time recovery codes somewhere safe. Each works exactly once if you lose your authenticator.",
@@ -125,7 +141,8 @@
       "checkInbox": "Check your inbox (and spam). The code expires in 10 minutes.",
       "ifAccountExists": "If an account exists for that email, we sent a reset link. Check your inbox.",
       "scanQrIntro": "Scan the QR with an authenticator app, then enter the 6-digit code.",
-      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL."
+      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL.",
+      "proSignupPending": "تسجيل شركتك قيد الموافقة. سنراسلك على {email} عند مراجعة المشرف له. حتى ذلك الحين، يكون حسابك في حالة انتظار."
     }
   },
   "account": {
@@ -190,6 +207,14 @@
     "eidExpiry": "انتهاء الهوية الإماراتية",
     "employerManaged": "مُدار من قِبل صاحب العمل (للقراءة فقط)",
     "saved": "تم الحفظ",
+    "identitySection": "الهوية",
+    "contactLocaleSection": "الاتصال واللغة",
+    "aboutSection": "نبذة",
+    "selectLanguage": "اختر اللغة",
+    "selectTimezone": "اختر المنطقة الزمنية",
+    "selectDateFormat": "اختر تنسيق التاريخ",
+    "bioPlaceholder": "بضع جمل عن نفسك…",
+    "markdownNotSupported": "تنسيق ماركداون غير مدعوم.",
     "longCopy": {
       "phoneHelp": "Used for SMS notifications about renewals and approvals.",
       "bioHelp": "A short description shown to clients you collaborate with.",
@@ -197,7 +222,11 @@
       "sessionsExplanation": "These are the devices currently signed in to your account. Revoke any you do not recognise.",
       "signOutEverywhereConfirm": "Sign out of every session, including this one? You will need to log in again.",
       "mfaScanInstruction": "Scan this QR code with your authenticator app, then enter the 6-digit code.",
-      "mfaLastFactorBlock": "MFA mandatory for this role; add another factor first"
+      "mfaLastFactorBlock": "MFA mandatory for this role; add another factor first",
+      "readOnlyDetails": "تفاصيل للقراءة فقط من سجل حسابك.",
+      "identityHelp": "كيف يظهر اسمك وصورتك عبر المنصة.",
+      "contactLocaleHelp": "الهاتف واللغة والمنطقة الزمنية وتنسيق التاريخ.",
+      "aboutHelp": "نبذة قصيرة تظهر في ملفك الشخصي."
     }
   },
   "customer": {
@@ -319,7 +348,10 @@
     "license": "رخصة",
     "lastThirtyDays": "آخر 30 يومًا · مباشر",
     "recentTeamActivity": "نشاط الفريق الأخير",
-    "clientsSubtitle": "{tenant} · {count} عميل"
+    "clientsSubtitle": "{tenant} · {count} عميل",
+    "newClientIntro": "سجّل الأساسيات الآن — يمكن إدخال الرخصة والمساهمين والمستندات لاحقًا.",
+    "newRenewalIntro": "تُنشأ تجديدات الرخصة تلقائيًا من تاريخ انتهاء رخصة العميل. استخدم هذا النموذج للتأشيرات والهويات الإماراتية وإيجاري.",
+    "renewalLabelPlaceholder": "مثال: تأشيرة مستثمر — السيد خان"
   },
   "documents": {
     "title": "المستندات",
@@ -393,6 +425,7 @@
     "fixHighlighted": "يرجى تصحيح الحقول المظللة قبل الإرسال.",
     "questionnaireSubmitFailed": "تعذّر إرسال الاستبيان. تحقق من اتصالك وحاول مرة أخرى.",
     "couldNotSubmit": "تعذّر الإرسال",
+    "pickFileFirst": "اختر ملفًا قبل الرفع.",
     "longCopy": {
       "unexpected": "Something went wrong on our side. Please try again, and contact support if the problem persists.",
       "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",

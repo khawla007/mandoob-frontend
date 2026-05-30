@@ -48,14 +48,14 @@ const schema = z
 type FormInput = z.input<typeof schema>;
 type FormOutput = z.output<typeof schema>;
 
-type PasswordRule = { id: string; label: string; passed: boolean };
+type PasswordRule = { id: string; labelKey: string; passed: boolean };
 
 function computePasswordRules(pw: string): PasswordRule[] {
   return [
-    { id: 'len', label: 'At least 8 characters', passed: pw.length >= 8 },
-    { id: 'upper', label: 'An uppercase letter', passed: /[A-Z]/.test(pw) },
-    { id: 'lower', label: 'A lowercase letter', passed: /[a-z]/.test(pw) },
-    { id: 'special', label: 'A special character', passed: /[^A-Za-z0-9]/.test(pw) },
+    { id: 'len', labelKey: 'pwRuleLength', passed: pw.length >= 8 },
+    { id: 'upper', labelKey: 'pwRuleUppercase', passed: /[A-Z]/.test(pw) },
+    { id: 'lower', labelKey: 'pwRuleLowercase', passed: /[a-z]/.test(pw) },
+    { id: 'special', labelKey: 'pwRuleSpecial', passed: /[^A-Za-z0-9]/.test(pw) },
   ];
 }
 
@@ -155,7 +155,12 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>{t('email')}</FormLabel>
               <FormControl>
-                <Input type="email" autoComplete="email" placeholder="you@company.com" {...field} />
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  placeholder={t('emailPlaceholder')}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -199,7 +204,7 @@ export function RegisterForm() {
                 />
               </FormControl>
               {showRules && (
-                <PasswordRulesPopover rules={rules} onDismiss={() => setPwDismissed(true)} />
+                <PasswordRulesPopover rules={rules} onDismiss={() => setPwDismissed(true)} t={t} />
               )}
               <p className="text-destructive absolute top-[80%] left-0 mt-1 text-xs">
                 {form.formState.errors.password?.message as string | undefined}
@@ -229,8 +234,8 @@ export function RegisterForm() {
               >
                 {confirmPassword
                   ? confirmMatches
-                    ? 'Passwords match.'
-                    : 'Passwords do not match.'
+                    ? t('passwordsMatch')
+                    : tErrors('passwordMismatch')
                   : ''}
               </p>
             </FormItem>
@@ -251,8 +256,7 @@ export function RegisterForm() {
               </FormControl>
               <div className="space-y-1">
                 <FormLabel className="leading-snug font-normal">
-                  I agree to the privacy policy and consent to processing of my personal data per
-                  UAE PDPL.
+                  {t('longCopy.consentPdpl')}
                 </FormLabel>
                 <FormMessage />
               </div>
@@ -283,9 +287,11 @@ export function RegisterForm() {
 function PasswordRulesPopover({
   rules,
   onDismiss,
+  t,
 }: {
   rules: PasswordRule[];
   onDismiss: () => void;
+  t: ReturnType<typeof useTranslations<'auth'>>;
 }) {
   return (
     <div
@@ -298,13 +304,13 @@ function PasswordRulesPopover({
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Dismiss password requirements"
+        aria-label={t('dismissPasswordRequirements')}
         className="text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-1.5 right-1.5 rounded-sm p-0.5 focus-visible:ring-2 focus-visible:outline-none"
       >
         <X className="size-3.5" />
       </button>
       <div className="text-muted-foreground mb-2 text-[11px] font-medium tracking-wide uppercase">
-        Password requirements
+        {t('passwordRequirements')}
       </div>
       <ul className="space-y-1">
         {rules.map((r) => (
@@ -320,7 +326,7 @@ function PasswordRulesPopover({
             ) : (
               <Circle className="size-3.5" aria-hidden />
             )}
-            <span>{r.label}</span>
+            <span>{t(r.labelKey as Parameters<typeof t>[0])}</span>
           </li>
         ))}
       </ul>

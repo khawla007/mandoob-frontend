@@ -119,7 +119,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
       <Card>
         <CardHeader>
           <CardTitle>{tShell('account')}</CardTitle>
-          <CardDescription>Read-only details from your account record.</CardDescription>
+          <CardDescription>{t('longCopy.readOnlyDetails')}</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
@@ -149,8 +149,8 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Identity</CardTitle>
-          <CardDescription>How your name and avatar appear across the platform.</CardDescription>
+          <CardTitle>{t('identitySection')}</CardTitle>
+          <CardDescription>{t('longCopy.identityHelp')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
@@ -228,8 +228,8 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Contact & Locale</CardTitle>
-          <CardDescription>Phone, language, timezone, and date format.</CardDescription>
+          <CardTitle>{t('contactLocaleSection')}</CardTitle>
+          <CardDescription>{t('longCopy.contactLocaleHelp')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -258,7 +258,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 onValueChange={(v) => form.setValue('locale', v as ProfileGeneralInput['locale'])}
               >
                 <SelectTrigger id="locale" aria-invalid={!!errors.locale}>
-                  <SelectValue placeholder="Select language" />
+                  <SelectValue placeholder={t('selectLanguage')} />
                 </SelectTrigger>
                 <SelectContent>
                   {SUPPORTED_LOCALES.map((l) => (
@@ -286,7 +286,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 }
               >
                 <SelectTrigger id="timezone" aria-invalid={!!errors.timezone}>
-                  <SelectValue placeholder="Select timezone" />
+                  <SelectValue placeholder={t('selectTimezone')} />
                 </SelectTrigger>
                 <SelectContent>
                   {SUPPORTED_TIMEZONES.map((tz) => (
@@ -314,7 +314,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 }
               >
                 <SelectTrigger id="date_format" aria-invalid={!!errors.date_format}>
-                  <SelectValue placeholder="Select date format" />
+                  <SelectValue placeholder={t('selectDateFormat')} />
                 </SelectTrigger>
                 <SelectContent>
                   {SUPPORTED_DATE_FORMATS.map((f) => (
@@ -336,8 +336,8 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>About</CardTitle>
-          <CardDescription>A short bio shown on your profile.</CardDescription>
+          <CardTitle>{t('aboutSection')}</CardTitle>
+          <CardDescription>{t('longCopy.aboutHelp')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
@@ -346,7 +346,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
               id="bio"
               rows={4}
               maxLength={500}
-              placeholder="A few sentences about yourself…"
+              placeholder={t('bioPlaceholder')}
               {...form.register('bio')}
               aria-describedby="bio_err bio_count"
             />
@@ -356,7 +356,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                   {errors.bio.message}
                 </p>
               ) : (
-                <span className="text-muted-foreground">Markdown not supported.</span>
+                <span className="text-muted-foreground">{t('markdownNotSupported')}</span>
               )}
               <span id="bio_count" className="text-muted-foreground tabular-nums">
                 {watchedBio.length}/500

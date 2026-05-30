@@ -117,6 +117,22 @@
     "settingUp": "Setting up…",
     "agreePdpl": "I agree to the privacy policy (PDPL).",
     "noFactorFound": "No TOTP factor found.",
+    "emailPlaceholder": "you@company.com",
+    "passwordsMatch": "Passwords match.",
+    "pwRuleLength": "At least 8 characters",
+    "pwRuleUppercase": "An uppercase letter",
+    "pwRuleLowercase": "A lowercase letter",
+    "pwRuleSpecial": "A special character",
+    "passwordRequirements": "Password requirements",
+    "dismissPasswordRequirements": "Dismiss password requirements",
+    "firmSection": "Firm",
+    "firmName": "Firm name",
+    "plan": "Plan",
+    "phoneE164": "Phone (E.164)",
+    "yourAccount": "Your account",
+    "submittingReview": "Submitting…",
+    "submitForReview": "Submit for review",
+    "proSubmittedTitle": "Submitted",
     "longCopy": {
       "mfaInstructions": "Open your authenticator app and enter the 6-digit code shown for Mandoob.",
       "recoveryCodesIntro": "Save these one-time recovery codes somewhere safe. Each works exactly once if you lose your authenticator.",
@@ -125,7 +141,8 @@
       "checkInbox": "Check your inbox (and spam). The code expires in 10 minutes.",
       "ifAccountExists": "If an account exists for that email, we sent a reset link. Check your inbox.",
       "scanQrIntro": "Scan the QR with an authenticator app, then enter the 6-digit code.",
-      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL."
+      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL.",
+      "proSignupPending": "Your PRO firm signup is awaiting approval. We'll email {email} when an admin reviews it. Until then, your tenant is in pending status."
     }
   },
   "account": {
@@ -190,6 +207,14 @@
     "eidExpiry": "EID expiry",
     "employerManaged": "Employer-managed (read-only)",
     "saved": "Saved",
+    "identitySection": "Identity",
+    "contactLocaleSection": "Contact & Locale",
+    "aboutSection": "About",
+    "selectLanguage": "Select language",
+    "selectTimezone": "Select timezone",
+    "selectDateFormat": "Select date format",
+    "bioPlaceholder": "A few sentences about yourself…",
+    "markdownNotSupported": "Markdown not supported.",
     "longCopy": {
       "phoneHelp": "Used for SMS notifications about renewals and approvals.",
       "bioHelp": "A short description shown to clients you collaborate with.",
@@ -197,7 +222,11 @@
       "sessionsExplanation": "These are the devices currently signed in to your account. Revoke any you do not recognise.",
       "signOutEverywhereConfirm": "Sign out of every session, including this one? You will need to log in again.",
       "mfaScanInstruction": "Scan this QR code with your authenticator app, then enter the 6-digit code.",
-      "mfaLastFactorBlock": "MFA mandatory for this role; add another factor first"
+      "mfaLastFactorBlock": "MFA mandatory for this role; add another factor first",
+      "readOnlyDetails": "Read-only details from your account record.",
+      "identityHelp": "How your name and avatar appear across the platform.",
+      "contactLocaleHelp": "Phone, language, timezone, and date format.",
+      "aboutHelp": "A short bio shown on your profile."
     }
   },
   "customer": {
@@ -319,7 +348,10 @@
     "license": "License",
     "lastThirtyDays": "Last 30 days · live",
     "recentTeamActivity": "Recent team activity",
-    "clientsSubtitle": "{tenant} · {count} client(s)"
+    "clientsSubtitle": "{tenant} · {count} client(s)",
+    "newClientIntro": "Capture the basics now — license, shareholders, and documents can be filled in later.",
+    "newRenewalIntro": "License renewals are created automatically from a client's license_expiry. Use this form for visas, Emirates IDs, and Ejari.",
+    "renewalLabelPlaceholder": "e.g. Investor visa — Mr. Khan"
   },
   "documents": {
     "title": "Documents",
@@ -393,6 +425,7 @@
     "fixHighlighted": "Please fix the highlighted fields before submitting.",
     "questionnaireSubmitFailed": "Could not submit the questionnaire. Check your connection and try again.",
     "couldNotSubmit": "Could not submit",
+    "pickFileFirst": "Pick a file before uploading.",
     "longCopy": {
       "unexpected": "Something went wrong on our side. Please try again, and contact support if the problem persists.",
       "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",

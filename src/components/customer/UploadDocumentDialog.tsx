@@ -49,11 +49,11 @@ export function UploadDocumentDialog(props: {
     setError(null);
     const file = formData.get('file');
     if (!(file instanceof File) || file.size === 0) {
-      setError('PAYLOAD_EMPTY: Pick a file before uploading.');
+      setError(tErrors('pickFileFirst'));
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      setError('PAYLOAD_TOO_LARGE: File exceeds 25 MB.');
+      setError(tErrors('longCopy.uploadTooLarge'));
       return;
     }
     startTransition(async () => {

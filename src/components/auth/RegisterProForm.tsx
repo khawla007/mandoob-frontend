@@ -18,6 +18,7 @@ import { TENANT_PLANS } from '@/lib/validation/tenant-onboarding';
 
 export function RegisterProForm() {
   const tErrors = useTranslations('errors');
+  const t = useTranslations('auth');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -60,12 +61,8 @@ export function RegisterProForm() {
   if (submitted) {
     return (
       <Alert>
-        <AlertTitle>Submitted</AlertTitle>
-        <AlertDescription>
-          Your PRO firm signup is awaiting approval. We&apos;ll email{' '}
-          <span className="font-mono">{adminEmail}</span> when an admin reviews it. Until then, your
-          tenant is in pending status.
-        </AlertDescription>
+        <AlertTitle>{t('proSubmittedTitle')}</AlertTitle>
+        <AlertDescription>{t('longCopy.proSignupPending', { email: adminEmail })}</AlertDescription>
       </Alert>
     );
   }
@@ -80,9 +77,9 @@ export function RegisterProForm() {
       )}
 
       <section className="space-y-4">
-        <h2 className="text-base font-semibold">Firm</h2>
+        <h2 className="text-base font-semibold">{t('firmSection')}</h2>
         <div className="grid gap-2">
-          <Label htmlFor="firm-name">Firm name</Label>
+          <Label htmlFor="firm-name">{t('firmName')}</Label>
           <Input
             id="firm-name"
             required
@@ -94,7 +91,7 @@ export function RegisterProForm() {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="firm-plan">Plan</Label>
+          <Label htmlFor="firm-plan">{t('plan')}</Label>
           <Select value={plan} onValueChange={(v) => setPlan(v as (typeof TENANT_PLANS)[number])}>
             <SelectTrigger id="firm-plan">
               <SelectValue />
@@ -111,9 +108,9 @@ export function RegisterProForm() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-base font-semibold">Your account</h2>
+        <h2 className="text-base font-semibold">{t('yourAccount')}</h2>
         <div className="grid gap-2">
-          <Label htmlFor="admin-name">Full name</Label>
+          <Label htmlFor="admin-name">{t('fullName')}</Label>
           <Input
             id="admin-name"
             required
@@ -124,7 +121,7 @@ export function RegisterProForm() {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="admin-email">Email</Label>
+          <Label htmlFor="admin-email">{t('email')}</Label>
           <Input
             id="admin-email"
             type="email"
@@ -134,7 +131,7 @@ export function RegisterProForm() {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="admin-phone">Phone (E.164)</Label>
+          <Label htmlFor="admin-phone">{t('phoneE164')}</Label>
           <Input
             id="admin-phone"
             required
@@ -154,10 +151,10 @@ export function RegisterProForm() {
         {pending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
-            Submitting…
+            {t('submittingReview')}
           </>
         ) : (
-          'Submit for review'
+          t('submitForReview')
         )}
       </button>
     </form>

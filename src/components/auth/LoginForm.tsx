@@ -91,7 +91,12 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>{t('email')}</FormLabel>
               <FormControl>
-                <Input type="email" autoComplete="email" placeholder="you@company.com" {...field} />
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  placeholder={t('emailPlaceholder')}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

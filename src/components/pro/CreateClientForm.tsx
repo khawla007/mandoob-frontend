@@ -73,9 +73,7 @@ export function CreateClientForm({ slug }: { slug: string }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('newClient')}</DialogTitle>
-          <DialogDescription>
-            Capture the basics now — license, shareholders, and documents can be filled in later.
-          </DialogDescription>
+          <DialogDescription>{t('newClientIntro')}</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={onSubmit}>
