@@ -74,7 +74,6 @@ export function LoginForm() {
       startRouteProgress();
       startTransition(() => {
         router.replace(data.redirectTo ?? '/');
-        router.refresh();
       });
     } catch {
       toast.error(tErrors('signInFailed'));
