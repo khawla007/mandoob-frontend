@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 const ROUTE_START_EVENT = 'mandoob:route-start';
-const MAX_PENDING_MS = 30_000;
+// Navigations that change the URL complete instantly via the pathname/search
+// effect. This is the safety net for navigations that resolve to the SAME URL
+// (redirect-back, cancelled, programmatic replace to the current route) where
+// no path change ever fires — without it the bar would hang. Kept short so a
+// stuck bar self-heals quickly; real navigations finish well before this.
+const MAX_PENDING_MS = 8_000;
 
 export function startRouteProgress() {
   window.dispatchEvent(new Event(ROUTE_START_EVENT));
