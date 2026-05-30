@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -146,7 +145,12 @@ export function RegisterProForm() {
         </div>
       </section>
 
-      <Button type="submit" disabled={pending} aria-busy={pending}>
+      <button
+        type="submit"
+        className="btn btn--accent w-full justify-center"
+        disabled={pending}
+        aria-busy={pending}
+      >
         {pending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
@@ -155,7 +159,7 @@ export function RegisterProForm() {
         ) : (
           'Submit for review'
         )}
-      </Button>
+      </button>
     </form>
   );
 }
