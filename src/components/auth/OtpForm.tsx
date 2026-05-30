@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
 import { postJson } from '@/lib/http/post';
+import { startRouteProgress } from '@/components/navigation/RouteProgress';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +17,7 @@ const CODE_LEN = 6;
 export function OtpForm({ email }: { email: string }) {
   const t = useTranslations('auth');
   const tErrors = useTranslations('errors');
+  const router = useRouter();
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LEN).fill(''));
   const [error, setError] = useState<string | null>(null);
   const [succeeded, setSucceeded] = useState(false);
@@ -56,7 +59,8 @@ export function OtpForm({ email }: { email: string }) {
         return;
       }
       setSucceeded(true);
-      window.location.href = data.redirectTo ?? '/';
+      startRouteProgress();
+      router.replace(data.redirectTo ?? '/');
     });
   }
 
@@ -152,9 +156,7 @@ export function OtpForm({ email }: { email: string }) {
             />
           ))}
         </div>
-        <p className="text-muted-foreground text-center text-xs">
-          {t('longCopy.checkInbox')}
-        </p>
+        <p className="text-muted-foreground text-center text-xs">{t('longCopy.checkInbox')}</p>
       </div>
       {error && <p className="text-destructive text-center text-sm">{error}</p>}
       <Button
