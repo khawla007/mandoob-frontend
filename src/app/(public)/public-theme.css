@@ -254,7 +254,7 @@
 }
 .site-public .btn--accent {
   background: var(--accent);
-  color: #fff;
+  color: var(--ink);
 }
 .site-public .btn--accent:hover {
   background: #e64a19;
@@ -1877,5 +1877,5 @@
 .site-public {
   --ring: var(--accent);
   --primary: var(--accent);
-  --primary-foreground: #ffffff;
+  --primary-foreground: oklch(0.145 0 0);
 }
