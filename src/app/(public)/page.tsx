@@ -2,10 +2,12 @@ import Link from 'next/link';
 
 import { DashboardPreview } from '@/components/site/DashboardPreview';
 import { EstimatorPreview } from '@/components/site/EstimatorPreview';
+import { ScrollReveal } from '@/components/site/ScrollReveal';
 
 export default function MarketingHomePage() {
   return (
     <>
+      <ScrollReveal />
       {/* ============ HERO ============ */}
       <section className="hero" aria-labelledby="hero-h">
         <div className="container">
@@ -51,28 +53,24 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ TRUSTED + STATS ============ */}
-      <section className="trust-band" aria-labelledby="trust-h">
+      <section className="trust-band" aria-labelledby="trust-h" data-reveal>
         <h2 id="trust-h" className="visually-hidden">
           Free zones and authorities supported
         </h2>
         <div className="logo-band">
-          <div className="logo-track">
-            <span>DMCC</span>
-            <span>IFZA</span>
-            <span>SHAMS</span>
-            <span>RAKEZ</span>
-            <span>JAFZA</span>
-            <span>ADGM</span>
-            <span>DAFZA</span>
-            <span>RAK ICC</span>
-            <span>DMCC</span>
-            <span>IFZA</span>
+          <div className="logo-track" aria-hidden="true">
+            {/* Two identical halves so the -50% scroll loops seamlessly */}
+            {[0, 1].map((half) =>
+              ['DMCC', 'IFZA', 'SHAMS', 'RAKEZ', 'JAFZA', 'ADGM', 'DAFZA', 'RAK ICC'].map(
+                (zone) => <span key={`${half}-${zone}`}>{zone}</span>,
+              ),
+            )}
           </div>
         </div>
       </section>
 
       {/* ============ SERVICES ============ */}
-      <section id="services" className="section" aria-labelledby="services-h">
+      <section id="services" className="section" aria-labelledby="services-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">01 · Services</span>
@@ -218,7 +216,7 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ ESTIMATOR ============ */}
-      <section id="estimator" className="section" aria-labelledby="est-h">
+      <section id="estimator" className="section" aria-labelledby="est-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">02 · Cost estimator</span>
@@ -240,7 +238,7 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ PRO SUITE ============ */}
-      <section id="pro-suite" className="section" aria-labelledby="suite-h">
+      <section id="pro-suite" className="section" aria-labelledby="suite-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">03 · Platform</span>
@@ -332,7 +330,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ DASHBOARD SHOWCASE ============ */}
-      <section className="showcase" aria-labelledby="show-h">
+      <section className="showcase" aria-labelledby="show-h" data-reveal>
         <div className="container">
           <header className="section__head section__head--inv">
             <span className="eyebrow eyebrow--inv">04 · Dashboard</span>
@@ -361,7 +359,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ HOW IT WORKS ============ */}
-      <section id="flow" className="section section--flush" aria-labelledby="flow-h">
+      <section id="flow" className="section section--flush" aria-labelledby="flow-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">05 · How it works</span>
@@ -397,7 +395,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ WHY + COMPARE ============ */}
-      <section className="section" aria-labelledby="why-h">
+      <section className="section" aria-labelledby="why-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">06 · Why Mandoob</span>
@@ -429,7 +427,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ TRUST & COMPLIANCE ============ */}
-      <section id="trust" className="section" aria-labelledby="trustsec-h">
+      <section id="trust" className="section" aria-labelledby="trustsec-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">07 · Trust</span>
@@ -473,7 +471,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ FINAL CTA ============ */}
-      <section className="cta-section" aria-labelledby="cta-h">
+      <section className="cta-section" aria-labelledby="cta-h" data-reveal>
         <div className="cta-section__inner container">
           <span className="eyebrow">08 · Get started</span>
           <h2 id="cta-h" className="display display--cta">

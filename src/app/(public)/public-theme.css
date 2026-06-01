@@ -322,7 +322,7 @@
 }
 .site-public .btn--accent {
   background: var(--accent);
-  color: var(--ink);
+  color: #fff;
 }
 .site-public .btn--accent:hover {
   background: var(--accent-hover);
@@ -485,6 +485,23 @@
 .site-public .hero .display {
   max-width: 14ch;
 }
+
+/* Scroll-reveal: below-hero sections fade-rise when scrolled into view.
+   Hidden state applies ONLY after ScrollReveal marks the root (.reveal-on),
+   so no-JS / pre-hydration content stays visible. transform + opacity only;
+   same ease-out-expo curve as the hero entrance. */
+.site-public.reveal-on [data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.site-public.reveal-on [data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
 .site-public .hero .lede {
   margin-top: var(--sp-5);
 }
@@ -582,11 +599,16 @@
   padding-inline: var(--sp-6);
   animation: pb-scroll-x 28s linear infinite;
   white-space: nowrap;
+  will-change: transform;
+}
+.site-public .logo-track:hover,
+.site-public .logo-track:focus-within {
+  animation-play-state: paused;
 }
 .site-public .logo-track span {
   font-weight: 600;
   font-size: var(--fs-20);
-  color: var(--zinc-400);
+  color: var(--zinc-600);
   letter-spacing: 0.04em;
 }
 @keyframes pb-scroll-x {
@@ -2006,6 +2028,11 @@
   }
   .site-public .logo-track {
     animation: none !important;
+  }
+  /* Never hide scroll-reveal content for reduced-motion users. */
+  .site-public.reveal-on [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 
