@@ -71,6 +71,63 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ---------- 1b. Dark palette (scoped) ----------
+   next-themes sets html.dark; `.dark .site-public` (specificity 0,2,0) beats
+   the light `.site-public` declarations here and in globals.css (0,1,0), so the
+   public design system flips to dark only when the user toggles. The monochrome
+   zinc ramp is reversed (50 = darkest, 950 = lightest) so token roles invert
+   without touching any component rule. Brand accent is unchanged.
+   The .showcase block below re-pins the always-dark "terminal" mock so the
+   inverted ramp does not turn it light. */
+.dark .site-public {
+  --paper: #0a0a0a;
+  --ink: #fafafa;
+
+  --zinc-50: #09090b;
+  --zinc-100: #18181b;
+  --zinc-200: #27272a;
+  --zinc-300: #3f3f46;
+  --zinc-400: #52525b;
+  --zinc-500: #71717a;
+  --zinc-600: #a1a1aa;
+  --zinc-700: #d4d4d8;
+  --zinc-900: #e4e4e7;
+  --zinc-950: #f4f4f5;
+
+  --pb-border: #27272a;
+  --pb-border-dark: #3f3f46;
+  --accent-soft: #2a1611;
+
+  /* shadcn surface tokens — mirror globals.css .dark so shadcn-driven controls
+     (UserMenu, buttons) inside public pages darken too. */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+}
+
+/* The showcase mock is dark by design in BOTH themes. Re-pinning the ramp
+   tokens it uses onto the showcase root (a descendant of .site-public) makes
+   the subtree immune to the dark inversion above — inherited token values are
+   overridden closest-ancestor-wins, no specificity conflict. */
+.site-public .showcase {
+  --zinc-950: #09090b;
+  --zinc-900: #18181b;
+  --zinc-700: #3f3f46;
+  --zinc-600: #52525b;
+  --zinc-500: #71717a;
+  --zinc-400: #a1a1aa;
+  --pb-border-dark: #27272a;
+}
+
 /* ---------- 2. Base elements (scoped) ---------- */
 .site-public img,
 .site-public svg {
@@ -273,7 +330,7 @@
   border: 1px solid var(--accent);
 }
 .site-public .btn--accent-outline:hover {
-  background: #ffffff;
+  background: var(--paper);
   color: var(--accent);
   border-color: var(--accent);
 }
@@ -287,6 +344,9 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--pb-border);
+}
+.dark .site-public .nav {
+  background: rgba(10, 10, 10, 0.85);
 }
 .site-public .nav__inner {
   display: flex;

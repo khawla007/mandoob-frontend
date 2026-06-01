@@ -6,6 +6,7 @@ import { resolveRoleHome } from '@/lib/auth/role-home';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
+import { ThemeToggle } from '@/components/admin/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { MobileNav } from './MobileNav';
 
@@ -13,10 +14,10 @@ function BrandMark() {
   return (
     <span className="nav__mark" aria-hidden="true">
       <svg width="26" height="26" viewBox="0 0 26 26">
-        <rect x="1.5" y="1.5" width="23" height="23" rx="5" fill="#000" />
+        <rect x="1.5" y="1.5" width="23" height="23" rx="5" fill="var(--ink)" />
         <path
           d="M8 18V8l5 5 5-5v10"
-          stroke="#fff"
+          stroke="var(--paper)"
           strokeWidth="2"
           fill="none"
           strokeLinecap="round"
@@ -85,6 +86,7 @@ export async function SiteHeader() {
           </nav>
 
           <div className="nav__cta">
+            <ThemeToggle />
             <LanguageSwitcher />
             {session ? (
               <UserMenu
