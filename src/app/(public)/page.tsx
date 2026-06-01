@@ -226,14 +226,17 @@ export default function MarketingHomePage() {
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">02 · Cost estimator</span>
+            <h2 id="est-h" className="h2">
+              Know the full cost before you commit.
+            </h2>
           </header>
           <div className="cell-row cell-row--est">
             <EstimatorPreview />
             <div className="cell cell--estside">
               <h3>No surprise fees. Ever.</h3>
               <p>
-                Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line —
-                itemized before you commit. The quote saves to your dashboard as a versioned PDF.
+                Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line: itemized
+                before you commit. The quote saves to your dashboard as a versioned PDF.
               </p>
               <Link className="cell__link" href="/estimate">
                 Run a live estimate <span aria-hidden="true">↗</span>

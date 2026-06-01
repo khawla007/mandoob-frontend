@@ -756,10 +756,13 @@
   font-size: var(--fs-14);
   font-weight: 600;
   color: var(--accent-ink);
-  transition: gap var(--dur);
 }
-.site-public .cell__link:hover {
-  gap: 8px;
+.site-public .cell__link span {
+  display: inline-block;
+  transition: transform var(--dur) var(--ease);
+}
+.site-public .cell__link:hover span {
+  transform: translateX(4px);
 }
 
 /* ---------- 8. ESTIMATOR ---------- */
@@ -774,6 +777,9 @@
 .site-public .cell--estmain {
   padding: 0;
 }
+.site-public #estimator .eyebrow {
+  color: var(--zinc-600); /* a11y: lift muted label to 4.5:1 on --paper */
+}
 .site-public .est__tabs {
   display: flex;
   border-bottom: 1px solid var(--pb-border);
@@ -786,7 +792,7 @@
   font-family: inherit;
   font-size: var(--fs-14);
   font-weight: 500;
-  color: var(--zinc-500);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --paper */
   border: 0;
   border-inline-end: 1px solid var(--pb-border);
 }
@@ -822,7 +828,7 @@
 }
 .site-public .ufield__label {
   font-size: var(--fs-12);
-  color: var(--zinc-500);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --paper */
   font-family: var(--mono-font);
   letter-spacing: 0.04em;
 }
@@ -837,7 +843,7 @@
 }
 .site-public .est__totalL {
   font-size: var(--fs-12);
-  color: var(--zinc-500);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --zinc-50 */
   letter-spacing: 0.1em;
 }
 .site-public .est__totalV {
