@@ -80,7 +80,7 @@ export default function MarketingHomePage() {
           </header>
         </div>
         <div className="container">
-          <div className="cell-row">
+          <div className="cell-row cell-row--joined">
             <article className="cell cell--svc">
               <span className="cell__mark" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24">
@@ -97,7 +97,8 @@ export default function MarketingHomePage() {
               </span>
               <h3>Mainland Registration</h3>
               <p>
-                Full UAE-market trading via DED. Local agent, MOHRE permits, GDRFA visas — managed.
+                Full UAE-market trading via DED. Local agent, MOHRE permits, GDRFA visas, all
+                managed.
               </p>
               <ul className="dash-list">
                 <li>DED trade license</li>
@@ -165,7 +166,12 @@ export default function MarketingHomePage() {
           </div>
         </div>
         <div className="container">
-          <div className="cell compare">
+          <div
+            className="cell compare"
+            tabIndex={0}
+            role="region"
+            aria-label="Compare Mainland, Free Zone and Offshore (scrollable)"
+          >
             <table className="compare__table">
               <caption className="visually-hidden">
                 Mainland vs Free Zone vs Offshore comparison

@@ -12,6 +12,7 @@
      chroma (0.004-0.011) is added so nothing reads as pure #000/#fff. */
   --paper: oklch(0.995 0.004 45);
   --ink: oklch(0.18 0.01 45);
+  --ink-inv: oklch(0.99 0.004 45); /* warm near-white text on dark/accent surfaces (no pure #fff) */
   --zinc-50: oklch(0.985 0.004 45);
   --zinc-100: oklch(0.967 0.005 45);
   --zinc-200: oklch(0.918 0.006 45);
@@ -25,6 +26,7 @@
 
   --accent: var(--brand-accent); /* UAE-saffron warm red, used <8% */
   --accent-hover: oklch(0.585 0.195 38); /* darker saffron for :hover */
+  --accent-ink: oklch(0.57 0.19 38); /* accent as text on light paper, ~4.7:1 WCAG AA */
   --accent-soft: oklch(0.96 0.02 40);
 
   --pb-border: oklch(0.918 0.006 45);
@@ -102,6 +104,7 @@
   --pb-border: oklch(0.268 0.008 45);
   --pb-border-dark: oklch(0.357 0.01 45);
   --accent-soft: oklch(0.22 0.04 38);
+  --accent-ink: var(--accent); /* bright accent reads fine on dark paper (~4.6:1) */
 
   /* shadcn surface tokens — mirror globals.css .dark so shadcn-driven controls
      (UserMenu, buttons) inside public pages darken too. */
@@ -194,7 +197,7 @@
   inset-inline-start: -9999px;
   top: 0;
   background: var(--ink);
-  color: #fff;
+  color: var(--ink-inv);
   padding: 12px 16px;
   z-index: 1000;
 }
@@ -269,7 +272,7 @@
   line-height: 1.05;
 }
 .site-public .h2--inv {
-  color: #fff;
+  color: var(--ink-inv);
 }
 .site-public .display {
   font-size: clamp(2.75rem, 9vw, var(--fs-112));
@@ -322,7 +325,7 @@
 }
 .site-public .btn--accent {
   background: var(--accent);
-  color: #fff;
+  color: var(--ink-inv);
 }
 .site-public .btn--accent:hover {
   background: var(--accent-hover);
@@ -688,6 +691,12 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+/* Joined: cards-row sits directly above the comparison table; round the top
+   only so the two read as one continuous bordered block (the .compare below
+   has border-top:0 and bottom-only radius to match this seam). */
+.site-public .cell-row--joined {
+  border-radius: var(--r-md) var(--r-md) 0 0;
+}
 .site-public .cell {
   padding: var(--sp-5);
   border-bottom: 1px solid var(--pb-border);
@@ -743,9 +752,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 24px; /* WCAG 2.5.8 AA target size */
   font-size: var(--fs-14);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-ink);
   transition: gap var(--dur);
 }
 .site-public .cell__link:hover {
@@ -951,7 +961,7 @@
 /* ---------- 10. SHOWCASE (dark) ---------- */
 .site-public .showcase {
   background: var(--zinc-950);
-  color: #fff;
+  color: var(--ink-inv);
   padding-block: var(--sp-7);
 }
 .site-public .frame {
@@ -1014,7 +1024,7 @@
 }
 .site-public .fside li.is-active {
   background: var(--zinc-900);
-  color: #fff;
+  color: var(--ink-inv);
 }
 .site-public .fmain {
   padding: var(--sp-4);
@@ -1046,7 +1056,7 @@
 }
 .site-public .fkpiV {
   font-size: var(--fs-17);
-  color: #fff;
+  color: var(--ink-inv);
   font-weight: 600;
   margin-top: 4px;
 }
@@ -1085,7 +1095,7 @@
 }
 .site-public .frame-features h4 {
   font-size: var(--fs-15);
-  color: #fff;
+  color: var(--ink-inv);
   margin-bottom: 6px;
 }
 .site-public .frame-features p {
@@ -1196,6 +1206,11 @@
   color: var(--zinc-500);
   font-weight: 500;
 }
+/* Center the vehicle-column headers so each label sits over its (centered)
+   data; the first column (row labels) stays left-aligned. */
+.site-public .compare__table thead th:not(:first-child) {
+  text-align: center;
+}
 .site-public .compare__table th.us,
 .site-public .compare__table td.us {
   background: var(--zinc-50);
@@ -1213,7 +1228,7 @@
   font-weight: 700;
 }
 .site-public .compare__table .dash {
-  color: var(--zinc-300);
+  color: var(--zinc-500);
 }
 .site-public .compare__table tbody tr:last-child td {
   border-bottom: 0;
@@ -2007,7 +2022,7 @@
 .site-public button[role='checkbox'][data-state='checked'] {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: #ffffff !important;
+  color: var(--ink-inv) !important;
 }
 .site-public .auth-card__foot a:not(.btn) {
   color: var(--zinc-600);
