@@ -29,20 +29,24 @@ export default function MarketingHomePage() {
         </div>
         <div className="hero__rule" aria-hidden="true" />
         <div className="container">
-          <div className="hero__metrics">
-            <div>
-              <span className="mono hero__metric">45+</span>
-              <span className="hero__metricL">free zones</span>
+          <dl className="hero__spec">
+            <div className="hero__stat">
+              <dt className="hero__statL">businesses</dt>
+              <dd className="mono hero__statV">320+</dd>
             </div>
-            <div>
-              <span className="mono hero__metric">3</span>
-              <span className="hero__metricL">jurisdictions</span>
+            <div className="hero__stat">
+              <dt className="hero__statL">free zones</dt>
+              <dd className="mono hero__statV">45</dd>
             </div>
-            <div>
-              <span className="mono hero__metric u-accent">90·30·7</span>
-              <span className="hero__metricL">day alerts</span>
+            <div className="hero__stat">
+              <dt className="hero__statL">fines saved</dt>
+              <dd className="mono hero__statV u-accent">AED 2.4M</dd>
             </div>
-          </div>
+            <div className="hero__stat">
+              <dt className="hero__statL">on-time</dt>
+              <dd className="mono hero__statV">98%</dd>
+            </div>
+          </dl>
         </div>
       </section>
 

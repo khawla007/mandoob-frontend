@@ -7,24 +7,28 @@
 
 /* ---------- 1. Tokens (scoped) ---------- */
 .site-public {
-  --paper: #ffffff;
-  --ink: #000000;
-  --zinc-50: #fafafa;
-  --zinc-100: #f4f4f5;
-  --zinc-200: #e4e4e7;
-  --zinc-300: #d4d4d8;
-  --zinc-400: #a1a1aa;
-  --zinc-500: #71717a;
-  --zinc-600: #52525b;
-  --zinc-700: #3f3f46;
-  --zinc-900: #18181b;
-  --zinc-950: #09090b;
+  /* Neutrals tinted toward the saffron brand hue (~h45). Lightness held to the
+     original hex values so every contrast ratio is preserved; only a faint warm
+     chroma (0.004-0.011) is added so nothing reads as pure #000/#fff. */
+  --paper: oklch(0.995 0.004 45);
+  --ink: oklch(0.18 0.01 45);
+  --zinc-50: oklch(0.985 0.004 45);
+  --zinc-100: oklch(0.967 0.005 45);
+  --zinc-200: oklch(0.918 0.006 45);
+  --zinc-300: oklch(0.872 0.007 45);
+  --zinc-400: oklch(0.714 0.009 45);
+  --zinc-500: oklch(0.553 0.011 45);
+  --zinc-600: oklch(0.435 0.011 45);
+  --zinc-700: oklch(0.357 0.01 45);
+  --zinc-900: oklch(0.227 0.008 45);
+  --zinc-950: oklch(0.157 0.007 45);
 
   --accent: var(--brand-accent); /* UAE-saffron warm red, used <8% */
-  --accent-soft: #fff1ed;
+  --accent-hover: oklch(0.585 0.195 38); /* darker saffron for :hover */
+  --accent-soft: oklch(0.96 0.02 40);
 
-  --pb-border: #e4e4e7;
-  --pb-border-dark: #27272a;
+  --pb-border: oklch(0.918 0.006 45);
+  --pb-border-dark: oklch(0.268 0.008 45);
 
   /* Geist is already loaded app-wide via globals.css */
   --font: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -80,23 +84,24 @@
    The .showcase block below re-pins the always-dark "terminal" mock so the
    inverted ramp does not turn it light. */
 .dark .site-public {
-  --paper: #0a0a0a;
-  --ink: #fafafa;
+  /* Warm-tinted, lightness-matched mirror of the light ramp (reversed roles). */
+  --paper: oklch(0.17 0.008 45);
+  --ink: oklch(0.985 0.004 45);
 
-  --zinc-50: #09090b;
-  --zinc-100: #18181b;
-  --zinc-200: #27272a;
-  --zinc-300: #3f3f46;
-  --zinc-400: #52525b;
-  --zinc-500: #71717a;
-  --zinc-600: #a1a1aa;
-  --zinc-700: #d4d4d8;
-  --zinc-900: #e4e4e7;
-  --zinc-950: #f4f4f5;
+  --zinc-50: oklch(0.157 0.007 45);
+  --zinc-100: oklch(0.227 0.008 45);
+  --zinc-200: oklch(0.268 0.008 45);
+  --zinc-300: oklch(0.357 0.01 45);
+  --zinc-400: oklch(0.435 0.011 45);
+  --zinc-500: oklch(0.553 0.011 45);
+  --zinc-600: oklch(0.714 0.009 45);
+  --zinc-700: oklch(0.872 0.007 45);
+  --zinc-900: oklch(0.918 0.006 45);
+  --zinc-950: oklch(0.967 0.005 45);
 
-  --pb-border: #27272a;
-  --pb-border-dark: #3f3f46;
-  --accent-soft: #2a1611;
+  --pb-border: oklch(0.268 0.008 45);
+  --pb-border-dark: oklch(0.357 0.01 45);
+  --accent-soft: oklch(0.22 0.04 38);
 
   /* shadcn surface tokens — mirror globals.css .dark so shadcn-driven controls
      (UserMenu, buttons) inside public pages darken too. */
@@ -290,7 +295,9 @@
 .site-public .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-height: 44px; /* WCAG 2.5.5 touch target */
   padding: 13px 24px;
   border-radius: var(--r-pill);
   font-weight: 600;
@@ -299,7 +306,11 @@
   transition:
     background var(--dur) var(--ease),
     color var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
+    border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.site-public .btn:active {
+  transform: translateY(1px);
 }
 .site-public .btn--sm {
   padding: 9px 16px;
@@ -314,7 +325,7 @@
   color: var(--ink);
 }
 .site-public .btn--accent:hover {
-  background: #e64a19;
+  background: var(--accent-hover);
 }
 .site-public .btn--outline {
   background: var(--paper);
@@ -429,6 +440,45 @@
 .site-public .hero {
   padding-top: var(--sp-8);
 }
+
+/* Page-load entrance: one orchestrated, staggered fade-rise. transform + opacity
+   only (GPU-safe); ease-out-expo for a confident, decisive settle. backwards
+   fill holds the hidden state through each delay. Disabled by the
+   prefers-reduced-motion block (section 16), which snaps everything to the
+   resolved `to` state. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.site-public .hero .eyebrow,
+.site-public .hero .display,
+.site-public .hero .lede,
+.site-public .hero .cta-row,
+.site-public .hero__rule,
+.site-public .hero__spec {
+  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.site-public .hero .display {
+  animation-delay: 0.08s;
+}
+.site-public .hero .lede {
+  animation-delay: 0.16s;
+}
+.site-public .hero .cta-row {
+  animation-delay: 0.24s;
+}
+.site-public .hero__rule {
+  animation-delay: 0.32s;
+}
+.site-public .hero__spec {
+  animation-delay: 0.36s;
+}
 .site-public .hero .eyebrow {
   margin-bottom: var(--sp-4);
 }
@@ -449,6 +499,43 @@
   background: var(--pb-border);
   margin-block: var(--sp-6);
 }
+/* Inline editorial spec rail (replaces the 3-up metric grid). Figures lead at
+   display scale, label trails inline; natural widths, not equal columns. */
+.site-public .hero__spec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--sp-6);
+  row-gap: var(--sp-4);
+  padding-bottom: var(--sp-6);
+}
+.site-public .hero__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+}
+.site-public .hero__statV {
+  order: -1;
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, var(--fs-40));
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.site-public .hero__statV.u-accent {
+  color: var(--accent);
+}
+.site-public .hero__statL {
+  margin: 0;
+  font-size: var(--fs-13);
+  color: var(--zinc-500);
+  font-family: var(--mono-font);
+  letter-spacing: 0.04em;
+}
+
+/* Legacy metric grid — still used by about/ and knowledge-base/ hero stats. */
 .site-public .hero__metrics {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
