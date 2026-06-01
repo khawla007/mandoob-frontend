@@ -268,10 +268,12 @@ export default function MarketingHomePage() {
               <table className="mini-table">
                 <thead>
                   <tr>
-                    <th>Client</th>
-                    <th>Type</th>
-                    <th>Renewal</th>
-                    <th className="num">Status</th>
+                    <th scope="col">Client</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Renewal</th>
+                    <th scope="col" className="num">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
