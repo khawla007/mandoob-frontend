@@ -19,7 +19,7 @@ export function UserAdminFields() {
           <FormControl>
             <Textarea
               rows={3}
-              placeholder="Recorded in admin_audit_actions for traceability"
+              placeholder={t('user.fields.reasonPlaceholder')}
               {...field}
               value={field.value ?? ''}
             />

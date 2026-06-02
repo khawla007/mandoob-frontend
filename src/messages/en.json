@@ -790,6 +790,7 @@
         "chooseTenant": "Choose a tenant",
         "tenantImmutable": "Tenant cannot be moved from this form.",
         "reason": "Reason (optional)",
+        "reasonPlaceholder": "Recorded in admin_audit_actions for traceability",
         "nationality": "Nationality (ISO 2-letter)",
         "passportNo": "Passport number",
         "linkedClient": "Linked client (optional)",

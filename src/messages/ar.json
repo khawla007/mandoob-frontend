@@ -791,6 +791,7 @@
         "chooseTenant": "اختر مستأجرًا",
         "tenantImmutable": "لا يمكن نقل المستأجر من هذا النموذج.",
         "reason": "السبب (اختياري)",
+        "reasonPlaceholder": "يُسجَّل في admin_audit_actions لأغراض التتبّع",
         "nationality": "الجنسية (رمز من حرفين ISO)",
         "passportNo": "رقم جواز السفر",
         "linkedClient": "العميل المرتبط (اختياري)",
