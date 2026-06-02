@@ -2,10 +2,12 @@ import Link from 'next/link';
 
 import { DashboardPreview } from '@/components/site/DashboardPreview';
 import { EstimatorPreview } from '@/components/site/EstimatorPreview';
+import { ScrollReveal } from '@/components/site/ScrollReveal';
 
 export default function MarketingHomePage() {
   return (
     <>
+      <ScrollReveal />
       {/* ============ HERO ============ */}
       <section className="hero" aria-labelledby="hero-h">
         <div className="container">
@@ -29,46 +31,46 @@ export default function MarketingHomePage() {
         </div>
         <div className="hero__rule" aria-hidden="true" />
         <div className="container">
-          <div className="hero__metrics">
-            <div>
-              <span className="mono hero__metric">45+</span>
-              <span className="hero__metricL">free zones</span>
+          <dl className="hero__spec">
+            <div className="hero__stat">
+              <dt className="hero__statL">businesses</dt>
+              <dd className="mono hero__statV">320+</dd>
             </div>
-            <div>
-              <span className="mono hero__metric">3</span>
-              <span className="hero__metricL">jurisdictions</span>
+            <div className="hero__stat">
+              <dt className="hero__statL">free zones</dt>
+              <dd className="mono hero__statV">45</dd>
             </div>
-            <div>
-              <span className="mono hero__metric u-accent">90·30·7</span>
-              <span className="hero__metricL">day alerts</span>
+            <div className="hero__stat">
+              <dt className="hero__statL">fines saved</dt>
+              <dd className="mono hero__statV u-accent">AED 2.4M</dd>
             </div>
-          </div>
+            <div className="hero__stat">
+              <dt className="hero__statL">on-time</dt>
+              <dd className="mono hero__statV">98%</dd>
+            </div>
+          </dl>
         </div>
       </section>
 
       {/* ============ TRUSTED + STATS ============ */}
-      <section className="trust-band" aria-labelledby="trust-h">
+      <section className="trust-band" aria-labelledby="trust-h" data-reveal>
         <h2 id="trust-h" className="visually-hidden">
           Free zones and authorities supported
         </h2>
         <div className="logo-band">
-          <div className="logo-track">
-            <span>DMCC</span>
-            <span>IFZA</span>
-            <span>SHAMS</span>
-            <span>RAKEZ</span>
-            <span>JAFZA</span>
-            <span>ADGM</span>
-            <span>DAFZA</span>
-            <span>RAK ICC</span>
-            <span>DMCC</span>
-            <span>IFZA</span>
+          <div className="logo-track" aria-hidden="true">
+            {/* Two identical halves so the -50% scroll loops seamlessly */}
+            {[0, 1].map((half) =>
+              ['DMCC', 'IFZA', 'SHAMS', 'RAKEZ', 'JAFZA', 'ADGM', 'DAFZA', 'RAK ICC'].map(
+                (zone) => <span key={`${half}-${zone}`}>{zone}</span>,
+              ),
+            )}
           </div>
         </div>
       </section>
 
       {/* ============ SERVICES ============ */}
-      <section id="services" className="section" aria-labelledby="services-h">
+      <section id="services" className="section" aria-labelledby="services-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">01 · Services</span>
@@ -78,7 +80,7 @@ export default function MarketingHomePage() {
           </header>
         </div>
         <div className="container">
-          <div className="cell-row">
+          <div className="cell-row cell-row--joined">
             <article className="cell cell--svc">
               <span className="cell__mark" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24">
@@ -95,7 +97,8 @@ export default function MarketingHomePage() {
               </span>
               <h3>Mainland Registration</h3>
               <p>
-                Full UAE-market trading via DED. Local agent, MOHRE permits, GDRFA visas — managed.
+                Full UAE-market trading via DED. Local agent, MOHRE permits, GDRFA visas, all
+                managed.
               </p>
               <ul className="dash-list">
                 <li>DED trade license</li>
@@ -163,7 +166,12 @@ export default function MarketingHomePage() {
           </div>
         </div>
         <div className="container">
-          <div className="cell compare">
+          <div
+            className="cell compare"
+            tabIndex={0}
+            role="region"
+            aria-label="Compare Mainland, Free Zone and Offshore (scrollable)"
+          >
             <table className="compare__table">
               <caption className="visually-hidden">
                 Mainland vs Free Zone vs Offshore comparison
@@ -214,18 +222,21 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ ESTIMATOR ============ */}
-      <section id="estimator" className="section" aria-labelledby="est-h">
+      <section id="estimator" className="section" aria-labelledby="est-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">02 · Cost estimator</span>
+            <h2 id="est-h" className="h2">
+              Know the full cost before you commit.
+            </h2>
           </header>
           <div className="cell-row cell-row--est">
             <EstimatorPreview />
             <div className="cell cell--estside">
               <h3>No surprise fees. Ever.</h3>
               <p>
-                Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line —
-                itemized before you commit. The quote saves to your dashboard as a versioned PDF.
+                Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line: itemized
+                before you commit. The quote saves to your dashboard as a versioned PDF.
               </p>
               <Link className="cell__link" href="/estimate">
                 Run a live estimate <span aria-hidden="true">↗</span>
@@ -236,7 +247,7 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ PRO SUITE ============ */}
-      <section id="pro-suite" className="section" aria-labelledby="suite-h">
+      <section id="pro-suite" className="section" aria-labelledby="suite-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">03 · Platform</span>
@@ -257,10 +268,12 @@ export default function MarketingHomePage() {
               <table className="mini-table">
                 <thead>
                   <tr>
-                    <th>Client</th>
-                    <th>Type</th>
-                    <th>Renewal</th>
-                    <th className="num">Status</th>
+                    <th scope="col">Client</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Renewal</th>
+                    <th scope="col" className="num">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -328,7 +341,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ DASHBOARD SHOWCASE ============ */}
-      <section className="showcase" aria-labelledby="show-h">
+      <section className="showcase" aria-labelledby="show-h" data-reveal>
         <div className="container">
           <header className="section__head section__head--inv">
             <span className="eyebrow eyebrow--inv">04 · Dashboard</span>
@@ -357,7 +370,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ HOW IT WORKS ============ */}
-      <section id="flow" className="section section--flush" aria-labelledby="flow-h">
+      <section id="flow" className="section section--flush" aria-labelledby="flow-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">05 · How it works</span>
@@ -393,7 +406,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ WHY + COMPARE ============ */}
-      <section className="section" aria-labelledby="why-h">
+      <section className="section" aria-labelledby="why-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">06 · Why Mandoob</span>
@@ -425,7 +438,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ TRUST & COMPLIANCE ============ */}
-      <section id="trust" className="section" aria-labelledby="trustsec-h">
+      <section id="trust" className="section" aria-labelledby="trustsec-h" data-reveal>
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">07 · Trust</span>
@@ -469,7 +482,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ FINAL CTA ============ */}
-      <section className="cta-section" aria-labelledby="cta-h">
+      <section className="cta-section" aria-labelledby="cta-h" data-reveal>
         <div className="cta-section__inner container">
           <span className="eyebrow">08 · Get started</span>
           <h2 id="cta-h" className="display display--cta">

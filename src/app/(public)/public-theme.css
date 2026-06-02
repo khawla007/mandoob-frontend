@@ -7,24 +7,30 @@
 
 /* ---------- 1. Tokens (scoped) ---------- */
 .site-public {
-  --paper: #ffffff;
-  --ink: #000000;
-  --zinc-50: #fafafa;
-  --zinc-100: #f4f4f5;
-  --zinc-200: #e4e4e7;
-  --zinc-300: #d4d4d8;
-  --zinc-400: #a1a1aa;
-  --zinc-500: #71717a;
-  --zinc-600: #52525b;
-  --zinc-700: #3f3f46;
-  --zinc-900: #18181b;
-  --zinc-950: #09090b;
+  /* Neutrals tinted toward the saffron brand hue (~h45). Lightness held to the
+     original hex values so every contrast ratio is preserved; only a faint warm
+     chroma (0.004-0.011) is added so nothing reads as pure #000/#fff. */
+  --paper: oklch(0.995 0.004 45);
+  --ink: oklch(0.18 0.01 45);
+  --ink-inv: oklch(0.99 0.004 45); /* warm near-white text on dark/accent surfaces (no pure #fff) */
+  --zinc-50: oklch(0.985 0.004 45);
+  --zinc-100: oklch(0.967 0.005 45);
+  --zinc-200: oklch(0.918 0.006 45);
+  --zinc-300: oklch(0.872 0.007 45);
+  --zinc-400: oklch(0.714 0.009 45);
+  --zinc-500: oklch(0.553 0.011 45);
+  --zinc-600: oklch(0.435 0.011 45);
+  --zinc-700: oklch(0.357 0.01 45);
+  --zinc-900: oklch(0.227 0.008 45);
+  --zinc-950: oklch(0.157 0.007 45);
 
   --accent: var(--brand-accent); /* UAE-saffron warm red, used <8% */
-  --accent-soft: #fff1ed;
+  --accent-hover: oklch(0.585 0.195 38); /* darker saffron for :hover */
+  --accent-ink: oklch(0.57 0.19 38); /* accent as text on light paper, ~4.7:1 WCAG AA */
+  --accent-soft: oklch(0.96 0.02 40);
 
-  --pb-border: #e4e4e7;
-  --pb-border-dark: #27272a;
+  --pb-border: oklch(0.918 0.006 45);
+  --pb-border-dark: oklch(0.268 0.008 45);
 
   /* Geist is already loaded app-wide via globals.css */
   --font: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -80,23 +86,25 @@
    The .showcase block below re-pins the always-dark "terminal" mock so the
    inverted ramp does not turn it light. */
 .dark .site-public {
-  --paper: #0a0a0a;
-  --ink: #fafafa;
+  /* Warm-tinted, lightness-matched mirror of the light ramp (reversed roles). */
+  --paper: oklch(0.17 0.008 45);
+  --ink: oklch(0.985 0.004 45);
 
-  --zinc-50: #09090b;
-  --zinc-100: #18181b;
-  --zinc-200: #27272a;
-  --zinc-300: #3f3f46;
-  --zinc-400: #52525b;
-  --zinc-500: #71717a;
-  --zinc-600: #a1a1aa;
-  --zinc-700: #d4d4d8;
-  --zinc-900: #e4e4e7;
-  --zinc-950: #f4f4f5;
+  --zinc-50: oklch(0.157 0.007 45);
+  --zinc-100: oklch(0.227 0.008 45);
+  --zinc-200: oklch(0.268 0.008 45);
+  --zinc-300: oklch(0.357 0.01 45);
+  --zinc-400: oklch(0.435 0.011 45);
+  --zinc-500: oklch(0.553 0.011 45);
+  --zinc-600: oklch(0.714 0.009 45);
+  --zinc-700: oklch(0.872 0.007 45);
+  --zinc-900: oklch(0.918 0.006 45);
+  --zinc-950: oklch(0.967 0.005 45);
 
-  --pb-border: #27272a;
-  --pb-border-dark: #3f3f46;
-  --accent-soft: #2a1611;
+  --pb-border: oklch(0.268 0.008 45);
+  --pb-border-dark: oklch(0.357 0.01 45);
+  --accent-soft: oklch(0.22 0.04 38);
+  --accent-ink: var(--accent); /* bright accent reads fine on dark paper (~4.6:1) */
 
   /* shadcn surface tokens — mirror globals.css .dark so shadcn-driven controls
      (UserMenu, buttons) inside public pages darken too. */
@@ -189,7 +197,7 @@
   inset-inline-start: -9999px;
   top: 0;
   background: var(--ink);
-  color: #fff;
+  color: var(--ink-inv);
   padding: 12px 16px;
   z-index: 1000;
 }
@@ -217,7 +225,7 @@
   font-size: var(--fs-13);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--zinc-500);
+  color: var(--zinc-600);
 }
 .site-public .eyebrow--inv {
   color: var(--zinc-400);
@@ -264,7 +272,7 @@
   line-height: 1.05;
 }
 .site-public .h2--inv {
-  color: #fff;
+  color: var(--ink-inv);
 }
 .site-public .display {
   font-size: clamp(2.75rem, 9vw, var(--fs-112));
@@ -290,7 +298,9 @@
 .site-public .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-height: 44px; /* WCAG 2.5.5 touch target */
   padding: 13px 24px;
   border-radius: var(--r-pill);
   font-weight: 600;
@@ -299,7 +309,11 @@
   transition:
     background var(--dur) var(--ease),
     color var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
+    border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.site-public .btn:active {
+  transform: translateY(1px);
 }
 .site-public .btn--sm {
   padding: 9px 16px;
@@ -311,10 +325,10 @@
 }
 .site-public .btn--accent {
   background: var(--accent);
-  color: var(--ink);
+  color: var(--ink-inv);
 }
 .site-public .btn--accent:hover {
-  background: #e64a19;
+  background: var(--accent-hover);
 }
 .site-public .btn--outline {
   background: var(--paper);
@@ -429,11 +443,68 @@
 .site-public .hero {
   padding-top: var(--sp-8);
 }
+
+/* Page-load entrance: one orchestrated, staggered fade-rise. transform + opacity
+   only (GPU-safe); ease-out-expo for a confident, decisive settle. backwards
+   fill holds the hidden state through each delay. Disabled by the
+   prefers-reduced-motion block (section 16), which snaps everything to the
+   resolved `to` state. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.site-public .hero .eyebrow,
+.site-public .hero .display,
+.site-public .hero .lede,
+.site-public .hero .cta-row,
+.site-public .hero__rule,
+.site-public .hero__spec {
+  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.site-public .hero .display {
+  animation-delay: 0.08s;
+}
+.site-public .hero .lede {
+  animation-delay: 0.16s;
+}
+.site-public .hero .cta-row {
+  animation-delay: 0.24s;
+}
+.site-public .hero__rule {
+  animation-delay: 0.32s;
+}
+.site-public .hero__spec {
+  animation-delay: 0.36s;
+}
 .site-public .hero .eyebrow {
   margin-bottom: var(--sp-4);
 }
 .site-public .hero .display {
   max-width: 14ch;
+}
+
+/* Scroll-reveal: below-hero sections fade-rise when scrolled into view.
+   Hidden state applies ONLY after ScrollReveal marks the root (.reveal-on),
+   so no-JS / pre-hydration content stays visible. transform + opacity only;
+   same ease-out-expo curve as the hero entrance. */
+.site-public.reveal-on [data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.site-public.reveal-on [data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
 }
 .site-public .hero .lede {
   margin-top: var(--sp-5);
@@ -449,6 +520,43 @@
   background: var(--pb-border);
   margin-block: var(--sp-6);
 }
+/* Inline editorial spec rail (replaces the 3-up metric grid). Figures lead at
+   display scale, label trails inline; natural widths, not equal columns. */
+.site-public .hero__spec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--sp-6);
+  row-gap: var(--sp-4);
+  padding-bottom: var(--sp-6);
+}
+.site-public .hero__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+}
+.site-public .hero__statV {
+  order: -1;
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, var(--fs-40));
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.site-public .hero__statV.u-accent {
+  color: var(--accent);
+}
+.site-public .hero__statL {
+  margin: 0;
+  font-size: var(--fs-13);
+  color: var(--zinc-500);
+  font-family: var(--mono-font);
+  letter-spacing: 0.04em;
+}
+
+/* Legacy metric grid — still used by about/ and knowledge-base/ hero stats. */
 .site-public .hero__metrics {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -495,11 +603,16 @@
   padding-inline: var(--sp-6);
   animation: pb-scroll-x 28s linear infinite;
   white-space: nowrap;
+  will-change: transform;
+}
+.site-public .logo-track:hover,
+.site-public .logo-track:focus-within {
+  animation-play-state: paused;
 }
 .site-public .logo-track span {
   font-weight: 600;
   font-size: var(--fs-20);
-  color: var(--zinc-400);
+  color: var(--zinc-600);
   letter-spacing: 0.04em;
 }
 @keyframes pb-scroll-x {
@@ -579,6 +692,12 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+/* Joined: cards-row sits directly above the comparison table; round the top
+   only so the two read as one continuous bordered block (the .compare below
+   has border-top:0 and bottom-only radius to match this seam). */
+.site-public .cell-row--joined {
+  border-radius: var(--r-md) var(--r-md) 0 0;
+}
 .site-public .cell {
   padding: var(--sp-5);
   border-bottom: 1px solid var(--pb-border);
@@ -634,13 +753,17 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 24px; /* WCAG 2.5.8 AA target size */
   font-size: var(--fs-14);
   font-weight: 600;
-  color: var(--accent);
-  transition: gap var(--dur);
+  color: var(--accent-ink);
 }
-.site-public .cell__link:hover {
-  gap: 8px;
+.site-public .cell__link span {
+  display: inline-block;
+  transition: transform var(--dur) var(--ease);
+}
+.site-public .cell__link:hover span {
+  transform: translateX(4px);
 }
 
 /* ---------- 8. ESTIMATOR ---------- */
@@ -655,6 +778,9 @@
 .site-public .cell--estmain {
   padding: 0;
 }
+.site-public #estimator .eyebrow {
+  color: var(--zinc-600); /* a11y: lift muted label to 4.5:1 on --paper */
+}
 .site-public .est__tabs {
   display: flex;
   border-bottom: 1px solid var(--pb-border);
@@ -667,7 +793,7 @@
   font-family: inherit;
   font-size: var(--fs-14);
   font-weight: 500;
-  color: var(--zinc-500);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --paper */
   border: 0;
   border-inline-end: 1px solid var(--pb-border);
 }
@@ -703,7 +829,7 @@
 }
 .site-public .ufield__label {
   font-size: var(--fs-12);
-  color: var(--zinc-500);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --paper */
   font-family: var(--mono-font);
   letter-spacing: 0.04em;
 }
@@ -718,7 +844,7 @@
 }
 .site-public .est__totalL {
   font-size: var(--fs-12);
-  color: var(--zinc-500);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --zinc-50 */
   letter-spacing: 0.1em;
 }
 .site-public .est__totalV {
@@ -799,20 +925,22 @@
 }
 .site-public .cell__sub {
   font-size: var(--fs-13);
-  color: var(--zinc-500);
+  color: var(--zinc-600);
   font-family: var(--mono-font);
 }
 .site-public .mini-table {
+  display: block;
   width: 100%;
   border-collapse: collapse;
   margin-top: var(--sp-4);
+  overflow-x: auto;
 }
 .site-public .mini-table th {
   font-family: var(--mono-font);
   font-size: var(--fs-12);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--zinc-400);
+  color: var(--zinc-600);
   font-weight: 500;
   text-align: start;
   padding: 8px 0;
@@ -842,7 +970,7 @@
 /* ---------- 10. SHOWCASE (dark) ---------- */
 .site-public .showcase {
   background: var(--zinc-950);
-  color: #fff;
+  color: var(--ink-inv);
   padding-block: var(--sp-7);
 }
 .site-public .frame {
@@ -905,7 +1033,7 @@
 }
 .site-public .fside li.is-active {
   background: var(--zinc-900);
-  color: #fff;
+  color: var(--ink-inv);
 }
 .site-public .fmain {
   padding: var(--sp-4);
@@ -937,7 +1065,7 @@
 }
 .site-public .fkpiV {
   font-size: var(--fs-17);
-  color: #fff;
+  color: var(--ink-inv);
   font-weight: 600;
   margin-top: 4px;
 }
@@ -976,7 +1104,7 @@
 }
 .site-public .frame-features h4 {
   font-size: var(--fs-15);
-  color: #fff;
+  color: var(--ink-inv);
   margin-bottom: 6px;
 }
 .site-public .frame-features p {
@@ -1087,6 +1215,11 @@
   color: var(--zinc-500);
   font-weight: 500;
 }
+/* Center the vehicle-column headers so each label sits over its (centered)
+   data; the first column (row labels) stays left-aligned. */
+.site-public .compare__table thead th:not(:first-child) {
+  text-align: center;
+}
 .site-public .compare__table th.us,
 .site-public .compare__table td.us {
   background: var(--zinc-50);
@@ -1104,7 +1237,7 @@
   font-weight: 700;
 }
 .site-public .compare__table .dash {
-  color: var(--zinc-300);
+  color: var(--zinc-500);
 }
 .site-public .compare__table tbody tr:last-child td {
   border-bottom: 0;
@@ -1898,7 +2031,7 @@
 .site-public button[role='checkbox'][data-state='checked'] {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: #ffffff !important;
+  color: var(--ink-inv) !important;
 }
 .site-public .auth-card__foot a:not(.btn) {
   color: var(--zinc-600);
@@ -1919,6 +2052,11 @@
   }
   .site-public .logo-track {
     animation: none !important;
+  }
+  /* Never hide scroll-reveal content for reduced-motion users. */
+  .site-public.reveal-on [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 
