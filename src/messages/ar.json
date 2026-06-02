@@ -542,5 +542,73 @@
     "officeHours": "الأحد–الخميس · 09:00–18:00 بتوقيت الخليج",
     "proCtaPrefix": "هل أنت شركة PRO؟",
     "proCtaLink": "احجز عرضًا توضيحيًا"
+  },
+  "estimator": {
+    "pageEyebrow": "مُقدّر التكلفة",
+    "pageTitle": "عرض سعر شفّاف لتأسيس شركتك في الإمارات.",
+    "pageLede": "مُفصّل عبر بنود الدائرة الاقتصادية والمنطقة الحرة ووزارة الموارد البشرية والإقامة والهوية وخدمات PRO. لا يُنشأ أي عميل محتمل حتى ترسل استبيان الطلب.",
+    "formEyebrow": "المُقدّر العام",
+    "formTitle": "عرض سعر تأسيس شركة في الإمارات",
+    "addOnsTitle": "الإضافات",
+    "calculating": "جارٍ الحساب…",
+    "calculate": "احسب عرض السعر",
+    "fields": {
+      "jurisdiction": "الولاية",
+      "authority": "الجهة",
+      "activity": "النشاط التجاري",
+      "legalStructure": "الهيكل القانوني",
+      "shareholders": "المساهمون",
+      "visas": "التأشيرات",
+      "officeType": "نوع المكتب"
+    },
+    "jurisdiction": {
+      "mainland": "البر الرئيسي",
+      "free_zone": "المنطقة الحرة",
+      "offshore": "أوفشور"
+    },
+    "legalStructure": {
+      "fz_llc": "شركة منطقة حرة ذ.م.م / FZE",
+      "llc": "ذ.م.م بر رئيسي",
+      "branch": "فرع",
+      "offshore_company": "شركة أوفشور"
+    },
+    "officeType": { "flexi": "مكتب مرن", "none": "بدون مكتب" },
+    "addOns": {
+      "bank_account": "المساعدة في فتح حساب بنكي",
+      "tax_registration": "تسجيل ضريبة الشركات",
+      "document_attestation": "تصديق المستندات"
+    },
+    "activity": { "consulting": "الاستشارات / الخدمات المهنية" },
+    "documents": {
+      "attested_documents": "مستندات الشركة المُصدّقة",
+      "business_plan": "خطة العمل أو ملخص النشاط",
+      "lease_agreement": "عقد الإيجار أو تأكيد المكتب المرن",
+      "medical_fitness": "مستندات الفحص الطبي والهوية الإماراتية",
+      "passport": "نسخة جواز السفر",
+      "photo": "صورة شخصية لجواز السفر",
+      "shareholder_resolution": "قرار المساهمين",
+      "trade_license": "نسخة الرخصة التجارية"
+    },
+    "errors": { "calculateFailed": "تعذّر حساب التقدير", "pdfFailed": "تعذّر إنشاء ملف PDF" },
+    "preview": {
+      "eyebrow": "معاينة",
+      "title": "تقدير شفّاف قبل أول مكالمة.",
+      "body": "يستخدم العرض صفوف جهات بدرجة تقديرية للبر الرئيسي والأوفشور وأكثر من ٤٥ منطقة حرة. لا يُنشأ أي عميل محتمل حتى يُرسَل استبيان الطلب."
+    },
+    "metrics": { "currency": "العملة", "freeZones": "مناطق حرة", "export": "تصدير" },
+    "table": { "fee": "الرسم", "qty": "الكمية", "total": "الإجمالي" },
+    "result": {
+      "estimateRef": "تقدير {reference}",
+      "oneTimeLabel": "تقدير التأسيس لمرة واحدة",
+      "annualLabel": "المتكرر سنويًا",
+      "businessDays": "أيام العمل",
+      "feeLines": "بنود الرسوم",
+      "requiredDocs": "المستندات المطلوبة",
+      "noteTitle": "تسعير بدرجة تقديرية",
+      "generated": "أُنشئ في {date} من صفوف التكلفة النشطة.",
+      "preparing": "جارٍ التحضير…",
+      "downloadPdf": "تنزيل PDF",
+      "applyNow": "قدّم الآن"
+    }
   }
 }

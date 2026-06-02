@@ -542,5 +542,72 @@
     "officeHours": "Sun–Thu · 09:00–18:00 GST",
     "proCtaPrefix": "Are you a PRO firm?",
     "proCtaLink": "Book a demo"
+  },
+  "estimator": {
+    "pageEyebrow": "Cost estimator",
+    "pageTitle": "Transparent UAE setup quote.",
+    "pageLede": "Itemized across DED, free zone, MOHRE, GDRFA, ICP, and PRO lines. No lead is created until you submit the application questionnaire.",
+    "formEyebrow": "Public estimator",
+    "formTitle": "UAE company setup quote",
+    "addOnsTitle": "Add-ons",
+    "calculating": "Calculating…",
+    "calculate": "Calculate quote",
+    "fields": {
+      "jurisdiction": "Jurisdiction",
+      "authority": "Authority",
+      "activity": "Business activity",
+      "legalStructure": "Legal structure",
+      "shareholders": "Shareholders",
+      "visas": "Visas",
+      "officeType": "Office type"
+    },
+    "jurisdiction": { "mainland": "Mainland", "free_zone": "Free Zone", "offshore": "Offshore" },
+    "legalStructure": {
+      "fz_llc": "FZ-LLC / FZE",
+      "llc": "Mainland LLC",
+      "branch": "Branch",
+      "offshore_company": "Offshore company"
+    },
+    "officeType": { "flexi": "Flexi desk", "none": "No office" },
+    "addOns": {
+      "bank_account": "Bank account assistance",
+      "tax_registration": "Corporate tax registration",
+      "document_attestation": "Document attestation"
+    },
+    "activity": { "consulting": "Consulting / professional services" },
+    "documents": {
+      "attested_documents": "Attested corporate documents",
+      "business_plan": "Business plan or activity summary",
+      "lease_agreement": "Lease or flexi desk confirmation",
+      "medical_fitness": "Medical fitness and Emirates ID documents",
+      "passport": "Passport copy",
+      "photo": "Passport photo",
+      "shareholder_resolution": "Shareholder resolution",
+      "trade_license": "Trade license copy"
+    },
+    "errors": {
+      "calculateFailed": "Could not calculate estimate",
+      "pdfFailed": "Could not generate PDF"
+    },
+    "preview": {
+      "eyebrow": "Preview",
+      "title": "Transparent estimate before the first call.",
+      "body": "The quote uses estimate-grade authority rows for Mainland, Offshore, and 45+ Free Zones. No lead is created until the application questionnaire is submitted."
+    },
+    "metrics": { "currency": "Currency", "freeZones": "Free Zones", "export": "Export" },
+    "table": { "fee": "Fee", "qty": "Qty", "total": "Total" },
+    "result": {
+      "estimateRef": "Estimate {reference}",
+      "oneTimeLabel": "One-time setup estimate",
+      "annualLabel": "Annual recurring",
+      "businessDays": "Business days",
+      "feeLines": "Fee lines",
+      "requiredDocs": "Required documents",
+      "noteTitle": "Estimate-grade pricing",
+      "generated": "Generated {date} from active cost rows.",
+      "preparing": "Preparing…",
+      "downloadPdf": "Download PDF",
+      "applyNow": "Apply now"
+    }
   }
 }
