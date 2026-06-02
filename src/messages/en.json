@@ -525,5 +525,22 @@
       "leadReference": "Lead reference {leadId}",
       "queued": "Your questionnaire is queued for review. Current stage: {stage}."
     }
+  },
+  "contact": {
+    "eyebrow": "Contact",
+    "title": "Talk to the Mandoob team.",
+    "lede": "Questions about UAE setup, PRO subscriptions, or white-label portals? Send a note and a specialist replies within one business day.",
+    "nameLabel": "Full name",
+    "namePlaceholder": "Your name",
+    "emailLabel": "Email",
+    "messageLabel": "Message",
+    "messagePlaceholder": "How can we help?",
+    "submit": "Send message",
+    "comingSoonNote": "Form submission is coming soon. For now, reach us by email below.",
+    "officeCity": "Downtown Dubai",
+    "officeCountry": "United Arab Emirates",
+    "officeHours": "Sun–Thu · 09:00–18:00 GST",
+    "proCtaPrefix": "Are you a PRO firm?",
+    "proCtaLink": "Book a demo"
   }
 }
