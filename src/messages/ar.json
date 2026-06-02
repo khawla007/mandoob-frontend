@@ -754,5 +754,82 @@
       "title": "العملاء المحتملون",
       "subtitle": "عملاء محتملون من الاستبيان مُعيّنون لـ {tenant}. عرض {total}."
     }
+  },
+  "admin": {
+    "user": {
+      "createTitle": "إنشاء مستخدم",
+      "createIntro": "يرسل بريد دعوة عبر Supabase وينشئ الملف الشخصي المطابق.",
+      "editTitle": "تعديل المستخدم",
+      "editIntro": "إجراءات الملف الشخصي والدور والحالة والمصادقة الثنائية. تغييرات دورة الحياة تُلغي الجلسات النشطة.",
+      "profileDetailsTitle": "تفاصيل الملف الشخصي",
+      "cardTitle": "إنشاء مستخدم",
+      "unnamedUser": "مستخدم بدون اسم",
+      "suspensionReason": "سبب التعليق: {reason}",
+      "lifecycleActionsTitle": "إجراءات دورة الحياة",
+      "couldNotCreate": "تعذّر إنشاء المستخدم",
+      "couldNotSave": "تعذّر حفظ التغييرات",
+      "savedTitle": "تم الحفظ",
+      "savedDescription": "تم تحديث الملف الشخصي.",
+      "creating": "جارٍ الإنشاء…",
+      "createUser": "إنشاء مستخدم",
+      "saving": "جارٍ الحفظ…",
+      "saveChanges": "حفظ التغييرات",
+      "cancel": "إلغاء",
+      "back": "رجوع",
+      "requestFailed": "فشل الطلب ({status})",
+      "emailTaken": "البريد الإلكتروني مُسجّل بالفعل",
+      "fields": {
+        "fullName": "الاسم الكامل",
+        "email": "البريد الإلكتروني",
+        "emailImmutable": "البريد الإلكتروني غير قابل للتعديل هنا. استخدم مسار تغيير البريد المخصص.",
+        "inviteEmailSent": "يُرسل بريد دعوة عند الإرسال.",
+        "phone": "الهاتف (E.164)",
+        "role": "الدور",
+        "chooseRole": "اختر دورًا",
+        "changeRoleHint": "استخدم إجراء تغيير الدور لتغيير الدور؛ تُلغى الجلسات عند الحفظ.",
+        "tenant": "المستأجر",
+        "chooseTenant": "اختر مستأجرًا",
+        "tenantImmutable": "لا يمكن نقل المستأجر من هذا النموذج.",
+        "reason": "السبب (اختياري)",
+        "nationality": "الجنسية (رمز من حرفين ISO)",
+        "passportNo": "رقم جواز السفر",
+        "linkedClient": "العميل المرتبط (اختياري)",
+        "employer": "صاحب العمل (العميل)",
+        "visaNo": "رقم التأشيرة",
+        "visaExpiry": "انتهاء التأشيرة",
+        "emiratesId": "الهوية الإماراتية (784-YYYY-NNNNNNN-N)",
+        "eidExpiry": "انتهاء الهوية الإماراتية",
+        "licenseNo": "رقم الرخصة",
+        "designation": "المسمى الوظيفي",
+        "department": "القسم",
+        "serviceAreasLabel": "مناطق الخدمة",
+        "bio": "نبذة"
+      },
+      "serviceAreas": {
+        "ABU_DHABI": "أبوظبي",
+        "DUBAI": "دبي",
+        "SHARJAH": "الشارقة",
+        "AJMAN": "عجمان",
+        "UAQ": "أم القيوين",
+        "RAK": "رأس الخيمة",
+        "FUJAIRAH": "الفجيرة",
+        "ALL_UAE": "كل الإمارات"
+      }
+    },
+    "enums": {
+      "role": {
+        "super_admin": "مدير عام",
+        "admin": "مدير",
+        "pro": "PRO",
+        "customer": "عميل",
+        "employee": "موظف"
+      },
+      "status": {
+        "active": "نشط",
+        "invited": "مدعو",
+        "suspended": "معلّق",
+        "disabled": "معطّل"
+      }
+    }
   }
 }

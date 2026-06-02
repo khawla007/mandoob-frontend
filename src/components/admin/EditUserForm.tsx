@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,6 +87,7 @@ export type EditUserFormProps = {
 
 export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps) {
   const router = useRouter();
+  const t = useTranslations('admin');
   const [topError, setTopError] = useState<string | null>(null);
   const [savedOnce, setSavedOnce] = useState(false);
 
@@ -125,7 +127,7 @@ export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps
       }
       return;
     }
-    setTopError(body.error ?? `Request failed (${res.status})`);
+    setTopError(body.error ?? t('user.requestFailed', { status: res.status }));
   }
 
   // Edit form does not show admin/super_admin field-level edits beyond common
@@ -136,7 +138,7 @@ export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile details</CardTitle>
+        <CardTitle>{t('user.profileDetailsTitle')}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -147,14 +149,14 @@ export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps
             >
               {topError && (
                 <Alert variant="destructive">
-                  <AlertTitle>Could not save changes</AlertTitle>
+                  <AlertTitle>{t('user.couldNotSave')}</AlertTitle>
                   <AlertDescription>{topError}</AlertDescription>
                 </Alert>
               )}
               {savedOnce && !topError && (
                 <Alert>
-                  <AlertTitle>Saved</AlertTitle>
-                  <AlertDescription>Profile updated.</AlertDescription>
+                  <AlertTitle>{t('user.savedTitle')}</AlertTitle>
+                  <AlertDescription>{t('user.savedDescription')}</AlertDescription>
                 </Alert>
               )}
               <UserCommonFields
@@ -167,10 +169,10 @@ export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps
               {ShowSection ? ShowSection() : null}
               <div className="flex gap-2">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Saving…' : 'Save changes'}
+                  {form.formState.isSubmitting ? t('user.saving') : t('user.saveChanges')}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => router.push('/admin/users')}>
-                  Back
+                  {t('user.back')}
                 </Button>
               </div>
             </form>

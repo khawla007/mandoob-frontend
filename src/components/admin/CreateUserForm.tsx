@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,6 +41,7 @@ const ROLE_TO_SECTION: Record<CreateUserRole, () => React.ReactElement> = {
 
 export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
   const router = useRouter();
+  const t = useTranslations('admin');
   const [topError, setTopError] = useState<string | null>(null);
 
   const form = useForm<CreateUserInput, unknown, CreateUserOutput>({
@@ -91,7 +93,7 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
     }
     const code = body.code ?? 'UNKNOWN';
     if (code === 'EMAIL_TAKEN') {
-      form.setError('email', { type: 'server', message: 'Email is already registered' });
+      form.setError('email', { type: 'server', message: t('user.emailTaken') });
       return;
     }
     if (code === 'VALIDATION_FAILED' && body.details?.issues) {
@@ -101,13 +103,13 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
       }
       return;
     }
-    setTopError(body.error ?? `Request failed (${res.status})`);
+    setTopError(body.error ?? t('user.requestFailed', { status: res.status }));
   }
 
   return (
     <Card className="max-w-3xl">
       <CardHeader>
-        <CardTitle>Create user</CardTitle>
+        <CardTitle>{t('user.cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -118,7 +120,7 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
             >
               {topError && (
                 <Alert variant="destructive">
-                  <AlertTitle>Could not create user</AlertTitle>
+                  <AlertTitle>{t('user.couldNotCreate')}</AlertTitle>
                   <AlertDescription>{topError}</AlertDescription>
                 </Alert>
               )}
@@ -126,10 +128,10 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
               {role && ROLE_TO_SECTION[role]()}
               <div className="flex gap-2">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Creating…' : 'Create user'}
+                  {form.formState.isSubmitting ? t('user.creating') : t('user.createUser')}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => router.push('/admin/users')}>
-                  Cancel
+                  {t('user.cancel')}
                 </Button>
               </div>
             </form>

@@ -1,18 +1,14 @@
 'use client';
 
 import { useFormContext } from 'react-hook-form';
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { useTranslations } from 'next-intl';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ClientTypeahead } from './ClientTypeahead';
 import type { CreateUserInput } from '@/lib/validation/admin-user';
 
 export function UserCustomerFields() {
+  const t = useTranslations('admin');
   const form = useFormContext<CreateUserInput>();
   const tenantId = (form.watch('tenant_id') as string | null | undefined) ?? null;
 
@@ -23,7 +19,7 @@ export function UserCustomerFields() {
         name="nationality"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Nationality (ISO 2-letter)</FormLabel>
+            <FormLabel>{t('user.fields.nationality')}</FormLabel>
             <FormControl>
               <Input
                 placeholder="AE"
@@ -42,7 +38,7 @@ export function UserCustomerFields() {
         name="passport_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Passport number</FormLabel>
+            <FormLabel>{t('user.fields.passportNo')}</FormLabel>
             <FormControl>
               <Input {...field} value={field.value ?? ''} />
             </FormControl>
@@ -55,7 +51,7 @@ export function UserCustomerFields() {
         name="linked_client_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Linked client (optional)</FormLabel>
+            <FormLabel>{t('user.fields.linkedClient')}</FormLabel>
             <FormControl>
               <ClientTypeahead
                 tenantId={tenantId}

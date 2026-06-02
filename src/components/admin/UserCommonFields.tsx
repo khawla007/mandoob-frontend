@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormContext } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import {
   FormControl,
   FormDescription,
@@ -25,11 +26,11 @@ import type { TenantSummary } from '@/lib/data/tenants';
 // with CreateUserInput; the email field is conditionally rendered.
 type FormShape = CreateUserInput;
 
-const ALL_ROLE_OPTIONS: { value: CreateUserRole; label: string }[] = [
-  { value: 'pro', label: 'PRO' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'employee', label: 'Employee' },
-  { value: 'admin', label: 'Admin' },
+const ALL_ROLE_OPTIONS: { value: CreateUserRole }[] = [
+  { value: 'pro' },
+  { value: 'customer' },
+  { value: 'employee' },
+  { value: 'admin' },
 ];
 
 export type UserCommonFieldsProps = {
@@ -57,6 +58,7 @@ export function UserCommonFields({
   email,
   tenantName,
 }: UserCommonFieldsProps) {
+  const t = useTranslations('admin');
   const form = useFormContext<FormShape>();
   const role = form.watch('role') as CreateUserRole | undefined;
   const isEdit = mode === 'edit';
@@ -77,7 +79,7 @@ export function UserCommonFields({
         name="full_name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Full name</FormLabel>
+            <FormLabel>{t('user.fields.fullName')}</FormLabel>
             <FormControl>
               <Input {...field} value={field.value ?? ''} />
             </FormControl>
@@ -87,13 +89,11 @@ export function UserCommonFields({
       />
       {isEdit ? (
         <FormItem>
-          <FormLabel>Email</FormLabel>
+          <FormLabel>{t('user.fields.email')}</FormLabel>
           <FormControl>
             <Input type="email" value={email ?? ''} disabled readOnly />
           </FormControl>
-          <FormDescription>
-            Email is immutable here. Use the dedicated email-change flow.
-          </FormDescription>
+          <FormDescription>{t('user.fields.emailImmutable')}</FormDescription>
         </FormItem>
       ) : (
         <FormField
@@ -101,11 +101,11 @@ export function UserCommonFields({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('user.fields.email')}</FormLabel>
               <FormControl>
                 <Input type="email" {...field} value={field.value ?? ''} />
               </FormControl>
-              <FormDescription>An invite email is sent on submit.</FormDescription>
+              <FormDescription>{t('user.fields.inviteEmailSent')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -116,7 +116,7 @@ export function UserCommonFields({
         name="phone"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Phone (E.164)</FormLabel>
+            <FormLabel>{t('user.fields.phone')}</FormLabel>
             <FormControl>
               <Input placeholder="+971501234567" {...field} value={field.value ?? ''} />
             </FormControl>
@@ -129,37 +129,33 @@ export function UserCommonFields({
         name="role"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Role</FormLabel>
+            <FormLabel>{t('user.fields.role')}</FormLabel>
             <Select onValueChange={field.onChange} value={field.value ?? ''} disabled={isEdit}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a role" />
+                  <SelectValue placeholder={t('user.fields.chooseRole')} />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
                 {options.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
-                    {o.label}
+                    {t(`enums.role.${o.value}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {isEdit ? (
-              <FormDescription>
-                Use Change role action to change role; sessions revoke on save.
-              </FormDescription>
-            ) : null}
+            {isEdit ? <FormDescription>{t('user.fields.changeRoleHint')}</FormDescription> : null}
             <FormMessage />
           </FormItem>
         )}
       />
       {isEdit && isTenantScoped ? (
         <FormItem>
-          <FormLabel>Tenant</FormLabel>
+          <FormLabel>{t('user.fields.tenant')}</FormLabel>
           <FormControl>
             <Input value={tenantName ?? ''} disabled readOnly />
           </FormControl>
-          <FormDescription>Tenant cannot be moved from this form.</FormDescription>
+          <FormDescription>{t('user.fields.tenantImmutable')}</FormDescription>
         </FormItem>
       ) : null}
       {showTenantPicker && (
@@ -168,11 +164,11 @@ export function UserCommonFields({
           name="tenant_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tenant</FormLabel>
+              <FormLabel>{t('user.fields.tenant')}</FormLabel>
               <Select onValueChange={field.onChange} value={field.value ?? ''}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a tenant" />
+                    <SelectValue placeholder={t('user.fields.chooseTenant')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>

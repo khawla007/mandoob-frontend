@@ -753,5 +753,82 @@
       "title": "Leads",
       "subtitle": "Assigned questionnaire leads for {tenant}. Showing {total}."
     }
+  },
+  "admin": {
+    "user": {
+      "createTitle": "Create user",
+      "createIntro": "Sends a Supabase invite email and creates the matching profile.",
+      "editTitle": "Edit user",
+      "editIntro": "Profile, role, status, and MFA actions. Lifecycle changes revoke active sessions.",
+      "profileDetailsTitle": "Profile details",
+      "cardTitle": "Create user",
+      "unnamedUser": "Unnamed user",
+      "suspensionReason": "Suspension reason: {reason}",
+      "lifecycleActionsTitle": "Lifecycle actions",
+      "couldNotCreate": "Could not create user",
+      "couldNotSave": "Could not save changes",
+      "savedTitle": "Saved",
+      "savedDescription": "Profile updated.",
+      "creating": "Creating…",
+      "createUser": "Create user",
+      "saving": "Saving…",
+      "saveChanges": "Save changes",
+      "cancel": "Cancel",
+      "back": "Back",
+      "requestFailed": "Request failed ({status})",
+      "emailTaken": "Email is already registered",
+      "fields": {
+        "fullName": "Full name",
+        "email": "Email",
+        "emailImmutable": "Email is immutable here. Use the dedicated email-change flow.",
+        "inviteEmailSent": "An invite email is sent on submit.",
+        "phone": "Phone (E.164)",
+        "role": "Role",
+        "chooseRole": "Choose a role",
+        "changeRoleHint": "Use Change role action to change role; sessions revoke on save.",
+        "tenant": "Tenant",
+        "chooseTenant": "Choose a tenant",
+        "tenantImmutable": "Tenant cannot be moved from this form.",
+        "reason": "Reason (optional)",
+        "nationality": "Nationality (ISO 2-letter)",
+        "passportNo": "Passport number",
+        "linkedClient": "Linked client (optional)",
+        "employer": "Employer (client)",
+        "visaNo": "Visa number",
+        "visaExpiry": "Visa expiry",
+        "emiratesId": "Emirates ID (784-YYYY-NNNNNNN-N)",
+        "eidExpiry": "EID expiry",
+        "licenseNo": "License number",
+        "designation": "Designation",
+        "department": "Department",
+        "serviceAreasLabel": "Service areas",
+        "bio": "Bio"
+      },
+      "serviceAreas": {
+        "ABU_DHABI": "Abu Dhabi",
+        "DUBAI": "Dubai",
+        "SHARJAH": "Sharjah",
+        "AJMAN": "Ajman",
+        "UAQ": "Umm Al Quwain",
+        "RAK": "Ras Al Khaimah",
+        "FUJAIRAH": "Fujairah",
+        "ALL_UAE": "All UAE"
+      }
+    },
+    "enums": {
+      "role": {
+        "super_admin": "Super Admin",
+        "admin": "Admin",
+        "pro": "PRO",
+        "customer": "Customer",
+        "employee": "Employee"
+      },
+      "status": {
+        "active": "Active",
+        "invited": "Invited",
+        "suspended": "Suspended",
+        "disabled": "Disabled"
+      }
+    }
   }
 }
