@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -19,24 +20,23 @@ function previewDetails(d: unknown): string {
   return s.length > 120 ? s.slice(0, 120) + '…' : s;
 }
 
-export function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
+export async function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
+  const t = await getTranslations('admin');
   if (rows.length === 0) {
     return (
-      <p className="text-muted-foreground py-8 text-center text-sm">
-        No audit entries match the current filters.
-      </p>
+      <p className="text-muted-foreground py-8 text-center text-sm">{t('audit.table.empty')}</p>
     );
   }
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-44">When</TableHead>
-          <TableHead className="w-28">Kind</TableHead>
-          <TableHead>Tenant</TableHead>
-          <TableHead>Actor</TableHead>
-          <TableHead>Action</TableHead>
-          <TableHead>Details</TableHead>
+          <TableHead className="w-44">{t('audit.table.when')}</TableHead>
+          <TableHead className="w-28">{t('audit.table.kind')}</TableHead>
+          <TableHead>{t('audit.table.tenant')}</TableHead>
+          <TableHead>{t('audit.table.actor')}</TableHead>
+          <TableHead>{t('audit.table.action')}</TableHead>
+          <TableHead>{t('audit.table.details')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -47,7 +47,7 @@ export function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
             </TableCell>
             <TableCell>
               <Badge variant={r.kind === 'tenant_audit' ? 'default' : 'secondary'}>
-                {r.kind === 'tenant_audit' ? 'tenant' : 'auth'}
+                {t(`audit.kindBadge.${r.kind}`)}
               </Badge>
             </TableCell>
             <TableCell className="text-sm">
@@ -61,7 +61,9 @@ export function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
               )}
               {r.actorRole && (
                 <Badge variant="outline" className="ml-2">
-                  {r.actorRole}
+                  {t.has(`enums.role.${r.actorRole}`)
+                    ? t(`enums.role.${r.actorRole}`)
+                    : r.actorRole}
                 </Badge>
               )}
             </TableCell>
@@ -71,7 +73,7 @@ export function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
             <TableCell>
               <details className="max-w-xl">
                 <summary className="text-muted-foreground cursor-pointer text-xs">
-                  {previewDetails(r.details) || <em>empty</em>}
+                  {previewDetails(r.details) || <em>{t('audit.table.emptyDetails')}</em>}
                 </summary>
                 <pre className="bg-muted/40 mt-2 max-h-64 overflow-auto rounded p-2 text-xs">
                   {JSON.stringify(

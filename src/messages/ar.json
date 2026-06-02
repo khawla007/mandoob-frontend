@@ -961,6 +961,218 @@
         "invited": "مدعو",
         "suspended": "معلّق",
         "disabled": "معطّل"
+      },
+      "tenantStatus": {
+        "active": "نشط",
+        "pending": "قيد الانتظار",
+        "suspended": "معلّق"
+      }
+    },
+    "costData": {
+      "newRow": "صف جديد",
+      "edit": "تحرير",
+      "createTitle": "صف تكلفة جديد",
+      "editTitle": "تحرير صف التكلفة",
+      "dialogDescription": "الصفوف النشطة وذات درجة التقدير تغذّي مقدّر التكلفة العام.",
+      "couldNotSave": "تعذّر حفظ الصف",
+      "saving": "جارٍ الحفظ...",
+      "saveRow": "حفظ الصف",
+      "fields": {
+        "authority": "الجهة",
+        "jurisdiction": "الاختصاص",
+        "emirate": "الإمارة",
+        "feeType": "نوع الرسوم",
+        "recurrence": "التكرار",
+        "activityKey": "مفتاح النشاط",
+        "label": "التسمية",
+        "amountAed": "المبلغ بالدرهم",
+        "minShareholders": "أدنى عدد مساهمين",
+        "maxShareholders": "أقصى عدد مساهمين",
+        "minVisas": "أدنى عدد تأشيرات",
+        "maxVisas": "أقصى عدد تأشيرات",
+        "timelineMin": "أدنى مدة",
+        "timelineMax": "أقصى مدة",
+        "validFrom": "صالح من",
+        "validTo": "صالح حتى",
+        "requiredDocumentKeys": "مفاتيح المستندات المطلوبة"
+      },
+      "import": {
+        "trigger": "استيراد CSV",
+        "title": "استيراد بيانات التكلفة",
+        "description": "الصق ملف CSV المصدَّر من هذه الصفحة، ثم استورد الصفوف المُتحقَّق منها.",
+        "resultTitle": "نتيجة الاستيراد",
+        "inserted": "تم إدراج {inserted}",
+        "insertedWithErrors": "تم إدراج {inserted}، فشل {failed}",
+        "importing": "جارٍ الاستيراد...",
+        "importRows": "استيراد الصفوف"
+      },
+      "status": {
+        "deactivate": "إلغاء التفعيل",
+        "reactivate": "إعادة التفعيل"
+      },
+      "table": {
+        "empty": "لا توجد صفوف بيانات تكلفة مطابقة للمرشّحات الحالية.",
+        "authority": "الجهة",
+        "fee": "الرسوم",
+        "status": "الحالة",
+        "range": "النطاق",
+        "timeline": "المدة الزمنية",
+        "validity": "الصلاحية",
+        "amount": "المبلغ",
+        "actions": "إجراءات",
+        "active": "نشط",
+        "inactive": "غير نشط",
+        "estimate": "تقدير",
+        "shareholders": "مساهمون {min}-{max}",
+        "visas": "تأشيرات {min}-{max}",
+        "days": "{min}-{max} يوم",
+        "openEnded": "مفتوح"
+      },
+      "page": {
+        "title": "بيانات التكلفة",
+        "intro": "إدارة صفوف رسوم المقدّر المستخدمة في عروض الأسعار العامة للتأسيس.",
+        "exportCsv": "تصدير CSV",
+        "summaryRows": "الصفوف",
+        "summaryActive": "نشط",
+        "summaryEstimateGrade": "درجة التقدير",
+        "summaryAuthorities": "الجهات",
+        "summaryExpired": "{count} منتهٍ",
+        "feeRows": "صفوف الرسوم",
+        "filterAll": "الكل",
+        "filterActive": "نشط",
+        "filterInactive": "غير نشط"
+      }
+    },
+    "proFirms": {
+      "page": {
+        "title": "شركات PRO",
+        "intro": "المستأجرون على المنصة. عرض {count}.",
+        "createButton": "إنشاء شركة PRO",
+        "createdTitle": "تم إنشاء شركة PRO",
+        "createdDescription": "تم تجهيز المستأجر وإرسال بريد دعوة إلى مدير PRO.",
+        "directory": "الدليل",
+        "statusFilterLabel": "مرشّح الحالة:",
+        "filterAll": "الكل",
+        "empty": "لا توجد شركات PRO مطابقة للمرشّح الحالي."
+      },
+      "table": {
+        "name": "الاسم",
+        "slug": "المعرّف",
+        "plan": "الخطة",
+        "status": "الحالة",
+        "created": "أُنشئ في",
+        "actions": "إجراءات",
+        "suspend": "تعليق",
+        "reactivate": "إعادة التفعيل",
+        "approve": "اعتماد",
+        "reject": "رفض"
+      },
+      "actions": {
+        "confirmSuspend": "تعليق شركة PRO هذه؟ سيفقد الأعضاء الوصول حتى إعادة التفعيل.",
+        "confirmReject": "رفض شركة PRO هذه؟ سيتم حذف المستأجر ومستخدم المدير.",
+        "suspendFailed": "فشل التعليق: {error}",
+        "reactivateFailed": "فشلت إعادة التفعيل: {error}",
+        "approveFailed": "فشل الاعتماد: {error}",
+        "rejectFailed": "فشل الرفض: {error}",
+        "actionFailed": "فشل {action} ({code}): {error}"
+      },
+      "detail": {
+        "slug": "المعرّف",
+        "created": "أُنشئ في",
+        "suspend": "تعليق",
+        "suspending": "جارٍ التعليق…",
+        "reactivate": "إعادة التفعيل",
+        "reactivating": "جارٍ إعادة التفعيل…",
+        "approve": "اعتماد",
+        "approving": "جارٍ الاعتماد…",
+        "reject": "رفض",
+        "rejecting": "جارٍ الرفض…"
+      },
+      "create": {
+        "couldNotCreate": "تعذّر إنشاء شركة PRO",
+        "firmSection": "الشركة",
+        "firmName": "اسم الشركة",
+        "slug": "المعرّف",
+        "slugHint": "أحرف صغيرة وأرقام وشرطات. التسميات المحجوزة مثل admin وapi وapp وdashboard وwww محظورة.",
+        "plan": "الخطة",
+        "adminSection": "مدير PRO الأولي",
+        "adminIntro": "سيتم إرسال بريد دعوة من Supabase. يحدّث المدير معلومات الترخيص عبر /account/role بعد أول تسجيل دخول.",
+        "fullName": "الاسم الكامل",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف (E.164)",
+        "creating": "جارٍ الإنشاء…",
+        "submit": "إنشاء شركة PRO"
+      },
+      "newPage": {
+        "title": "إنشاء شركة PRO",
+        "intro": "يجهّز مستأجرًا وينشئ مستخدم مدير PRO الأولي. يصبح المستأجر مفعّلًا (الحالة = نشط) فورًا."
+      },
+      "detailPage": {
+        "members": "الأعضاء",
+        "membersDescription": "{count} ملف تعريف في هذا المستأجر.",
+        "memberName": "الاسم",
+        "memberRole": "الدور",
+        "memberLastLogin": "آخر تسجيل دخول",
+        "noMembers": "لا يوجد أعضاء.",
+        "clients": "العملاء",
+        "clientsDescription": "الإجمالي {total}. عرض {recent} الأحدث.",
+        "clientCompany": "الشركة",
+        "clientStatus": "الحالة",
+        "clientCreated": "أُنشئ في",
+        "noClients": "لا يوجد عملاء بعد.",
+        "recentAudit": "آخر التدقيقات (آخر 10)",
+        "recentAuditDescription": "أحداث على نطاق المستأجر.",
+        "seeAll": "عرض الكل ←",
+        "auditWhen": "متى",
+        "auditAction": "الإجراء",
+        "auditSource": "المصدر",
+        "auditActor": "الفاعل",
+        "auditDetails": "التفاصيل",
+        "noAudit": "لا توجد إدخالات تدقيق بعد.",
+        "billing": "الفوترة",
+        "billingPending": "قيد الانتظار — الخطوة 23.",
+        "billingDescription": "ستصل خطة الاشتراك والفواتير وسجل الدفع مع وحدة المدفوعات والمالية."
+      }
+    },
+    "audit": {
+      "kind": {
+        "tenant_audit": "تدقيق المستأجر",
+        "auth_event": "أحداث المصادقة"
+      },
+      "kindBadge": {
+        "tenant_audit": "مستأجر",
+        "auth_event": "مصادقة"
+      },
+      "table": {
+        "empty": "لا توجد إدخالات تدقيق مطابقة للمرشّحات الحالية.",
+        "when": "متى",
+        "kind": "النوع",
+        "tenant": "المستأجر",
+        "actor": "الفاعل",
+        "action": "الإجراء",
+        "details": "التفاصيل",
+        "emptyDetails": "فارغ"
+      },
+      "page": {
+        "title": "سجلات التدقيق",
+        "intro": "واجهة تحقيق عبر المستأجرين. أحداث المنتج على جانب المستأجر وأحداث مصادقة المنصة.",
+        "filters": "المرشّحات",
+        "filtersDescription": "النوع، المستأجر، الفاعل، الإجراء، النطاق الزمني، نص حر.",
+        "tenant": "المستأجر",
+        "allTenants": "كل المستأجرين",
+        "actor": "الفاعل (uuid)",
+        "from": "من",
+        "to": "إلى",
+        "actions": "الإجراءات",
+        "searchDetails": "البحث في التفاصيل (JSONB)",
+        "apply": "تطبيق",
+        "reset": "إعادة تعيين",
+        "tenantAuditLog": "سجل تدقيق المستأجر",
+        "authEvents": "أحداث المصادقة",
+        "resultsDescription": "عرض حتى 50 إدخالًا، الأحدث أولًا. انقر تفاصيل الصف لتوسيع حمولة JSONB.",
+        "nextPage": "الصفحة التالية ←",
+        "endOfResults": "نهاية النتائج",
+        "firstPage": "← الصفحة الأولى"
       }
     }
   }

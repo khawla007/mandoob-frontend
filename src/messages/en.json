@@ -960,6 +960,218 @@
         "invited": "Invited",
         "suspended": "Suspended",
         "disabled": "Disabled"
+      },
+      "tenantStatus": {
+        "active": "Active",
+        "pending": "Pending",
+        "suspended": "Suspended"
+      }
+    },
+    "costData": {
+      "newRow": "New row",
+      "edit": "Edit",
+      "createTitle": "New cost row",
+      "editTitle": "Edit cost row",
+      "dialogDescription": "Rows with active + estimate-grade feed the public estimator.",
+      "couldNotSave": "Could not save row",
+      "saving": "Saving...",
+      "saveRow": "Save row",
+      "fields": {
+        "authority": "Authority",
+        "jurisdiction": "Jurisdiction",
+        "emirate": "Emirate",
+        "feeType": "Fee type",
+        "recurrence": "Recurrence",
+        "activityKey": "Activity key",
+        "label": "Label",
+        "amountAed": "Amount AED",
+        "minShareholders": "Min shareholders",
+        "maxShareholders": "Max shareholders",
+        "minVisas": "Min visas",
+        "maxVisas": "Max visas",
+        "timelineMin": "Timeline min",
+        "timelineMax": "Timeline max",
+        "validFrom": "Valid from",
+        "validTo": "Valid to",
+        "requiredDocumentKeys": "Required document keys"
+      },
+      "import": {
+        "trigger": "Import CSV",
+        "title": "Import cost data",
+        "description": "Paste CSV exported from this page, then import validated rows.",
+        "resultTitle": "Import result",
+        "inserted": "Inserted {inserted}",
+        "insertedWithErrors": "Inserted {inserted}, {failed} failed",
+        "importing": "Importing...",
+        "importRows": "Import rows"
+      },
+      "status": {
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate"
+      },
+      "table": {
+        "empty": "No cost-data rows match the current filters.",
+        "authority": "Authority",
+        "fee": "Fee",
+        "status": "Status",
+        "range": "Range",
+        "timeline": "Timeline",
+        "validity": "Validity",
+        "amount": "Amount",
+        "actions": "Actions",
+        "active": "active",
+        "inactive": "inactive",
+        "estimate": "estimate",
+        "shareholders": "Shareholders {min}-{max}",
+        "visas": "Visas {min}-{max}",
+        "days": "{min}-{max} days",
+        "openEnded": "open-ended"
+      },
+      "page": {
+        "title": "Cost data",
+        "intro": "Manage estimator fee rows used by public setup quotes.",
+        "exportCsv": "Export CSV",
+        "summaryRows": "Rows",
+        "summaryActive": "Active",
+        "summaryEstimateGrade": "Estimate-grade",
+        "summaryAuthorities": "Authorities",
+        "summaryExpired": "{count} expired",
+        "feeRows": "Fee rows",
+        "filterAll": "All",
+        "filterActive": "Active",
+        "filterInactive": "Inactive"
+      }
+    },
+    "proFirms": {
+      "page": {
+        "title": "PRO firms",
+        "intro": "Tenants on the platform. Showing {count}.",
+        "createButton": "Create PRO firm",
+        "createdTitle": "PRO firm created",
+        "createdDescription": "Tenant provisioned and invite email sent to the PRO admin.",
+        "directory": "Directory",
+        "statusFilterLabel": "Status filter:",
+        "filterAll": "All",
+        "empty": "No PRO firms match the current filter."
+      },
+      "table": {
+        "name": "Name",
+        "slug": "Slug",
+        "plan": "Plan",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions",
+        "suspend": "Suspend",
+        "reactivate": "Reactivate",
+        "approve": "Approve",
+        "reject": "Reject"
+      },
+      "actions": {
+        "confirmSuspend": "Suspend this PRO firm? Members will lose access until reactivated.",
+        "confirmReject": "Reject this PRO firm? The tenant and admin user will be deleted.",
+        "suspendFailed": "Suspend failed: {error}",
+        "reactivateFailed": "Reactivate failed: {error}",
+        "approveFailed": "Approve failed: {error}",
+        "rejectFailed": "Reject failed: {error}",
+        "actionFailed": "{action} failed ({code}): {error}"
+      },
+      "detail": {
+        "slug": "slug",
+        "created": "created",
+        "suspend": "Suspend",
+        "suspending": "Suspending…",
+        "reactivate": "Reactivate",
+        "reactivating": "Reactivating…",
+        "approve": "Approve",
+        "approving": "Approving…",
+        "reject": "Reject",
+        "rejecting": "Rejecting…"
+      },
+      "create": {
+        "couldNotCreate": "Could not create PRO firm",
+        "firmSection": "Firm",
+        "firmName": "Firm name",
+        "slug": "Slug",
+        "slugHint": "Lowercase letters, digits, hyphens. Reserved labels like admin, api, app, dashboard, and www are blocked.",
+        "plan": "Plan",
+        "adminSection": "Initial PRO admin",
+        "adminIntro": "A Supabase invite email will be sent. The admin updates license info via /account/role after first login.",
+        "fullName": "Full name",
+        "email": "Email",
+        "phone": "Phone (E.164)",
+        "creating": "Creating…",
+        "submit": "Create PRO firm"
+      },
+      "newPage": {
+        "title": "Create PRO firm",
+        "intro": "Provisions a tenant and creates the initial PRO admin user. Tenant goes live (status = active) immediately."
+      },
+      "detailPage": {
+        "members": "Members",
+        "membersDescription": "{count} profile(s) in this tenant.",
+        "memberName": "Name",
+        "memberRole": "Role",
+        "memberLastLogin": "Last login",
+        "noMembers": "No members.",
+        "clients": "Clients",
+        "clientsDescription": "Total {total}. Showing {recent} most recent.",
+        "clientCompany": "Company",
+        "clientStatus": "Status",
+        "clientCreated": "Created",
+        "noClients": "No clients yet.",
+        "recentAudit": "Recent audit (last 10)",
+        "recentAuditDescription": "Tenant-scoped events.",
+        "seeAll": "See all →",
+        "auditWhen": "When",
+        "auditAction": "Action",
+        "auditSource": "Source",
+        "auditActor": "Actor",
+        "auditDetails": "Details",
+        "noAudit": "No audit entries yet.",
+        "billing": "Billing",
+        "billingPending": "Pending — Step 23.",
+        "billingDescription": "Subscription plan, invoices, and payment history will land with the Payment & Financial module."
+      }
+    },
+    "audit": {
+      "kind": {
+        "tenant_audit": "Tenant audit",
+        "auth_event": "Auth events"
+      },
+      "kindBadge": {
+        "tenant_audit": "tenant",
+        "auth_event": "auth"
+      },
+      "table": {
+        "empty": "No audit entries match the current filters.",
+        "when": "When",
+        "kind": "Kind",
+        "tenant": "Tenant",
+        "actor": "Actor",
+        "action": "Action",
+        "details": "Details",
+        "emptyDetails": "empty"
+      },
+      "page": {
+        "title": "Audit Logs",
+        "intro": "Cross-tenant investigation surface. Tenant-side product events and platform auth events.",
+        "filters": "Filters",
+        "filtersDescription": "Kind, tenant, actor, action, date range, free-text.",
+        "tenant": "Tenant",
+        "allTenants": "All tenants",
+        "actor": "Actor (uuid)",
+        "from": "From",
+        "to": "To",
+        "actions": "Actions",
+        "searchDetails": "Search details (JSONB)",
+        "apply": "Apply",
+        "reset": "Reset",
+        "tenantAuditLog": "Tenant audit log",
+        "authEvents": "Auth events",
+        "resultsDescription": "Showing up to 50 entries, newest first. Click a row's details to expand the JSONB payload.",
+        "nextPage": "Next page →",
+        "endOfResults": "End of results",
+        "firstPage": "← First page"
       }
     }
   }

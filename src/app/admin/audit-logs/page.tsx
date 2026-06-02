@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -69,6 +70,7 @@ export default async function AuditLogsPage({
   searchParams: Promise<SearchParams>;
 }) {
   await requireRole('super_admin');
+  const t = await getTranslations('admin');
   const sp = await searchParams;
   const filters = parseFilters(sp);
 
@@ -80,34 +82,38 @@ export default async function AuditLogsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Audit Logs</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Cross-tenant investigation surface. Tenant-side product events and platform auth events.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('audit.page.title')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('audit.page.intro')}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-          <CardDescription>Kind, tenant, actor, action, date range, free-text.</CardDescription>
+          <CardTitle className="text-lg">{t('audit.page.filters')}</CardTitle>
+          <CardDescription>{t('audit.page.filtersDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2 pb-4">
             {AUDIT_KIND.map((k) => (
-              <KindLink key={k} sp={sp} value={k} active={filters.kind === k} />
+              <KindLink
+                key={k}
+                sp={sp}
+                value={k}
+                active={filters.kind === k}
+                label={t(`audit.kind.${k}`)}
+              />
             ))}
           </div>
           <form className="grid grid-cols-1 gap-3 md:grid-cols-6" action="/admin/audit-logs">
             <input type="hidden" name="kind" value={filters.kind} />
             <div className="md:col-span-2">
-              <Label htmlFor="tenant">Tenant</Label>
+              <Label htmlFor="tenant">{t('audit.page.tenant')}</Label>
               <select
                 id="tenant"
                 name="tenant"
                 defaultValue={filters.tenant ?? ''}
                 className="border-input bg-background mt-1 h-9 w-full rounded-md border px-2 text-sm"
               >
-                <option value="">All tenants</option>
+                <option value="">{t('audit.page.allTenants')}</option>
                 {tenants.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -116,7 +122,7 @@ export default async function AuditLogsPage({
               </select>
             </div>
             <div className="md:col-span-2">
-              <Label htmlFor="actor">Actor (uuid)</Label>
+              <Label htmlFor="actor">{t('audit.page.actor')}</Label>
               <Input
                 id="actor"
                 name="actor"
@@ -126,7 +132,7 @@ export default async function AuditLogsPage({
               />
             </div>
             <div>
-              <Label htmlFor="from">From</Label>
+              <Label htmlFor="from">{t('audit.page.from')}</Label>
               <Input
                 type="date"
                 id="from"
@@ -136,7 +142,7 @@ export default async function AuditLogsPage({
               />
             </div>
             <div>
-              <Label htmlFor="to">To</Label>
+              <Label htmlFor="to">{t('audit.page.to')}</Label>
               <Input
                 type="date"
                 id="to"
@@ -146,7 +152,7 @@ export default async function AuditLogsPage({
               />
             </div>
             <div className="md:col-span-3">
-              <Label htmlFor="actions">Actions</Label>
+              <Label htmlFor="actions">{t('audit.page.actions')}</Label>
               <select
                 id="actions"
                 name="actions"
@@ -162,7 +168,7 @@ export default async function AuditLogsPage({
               </select>
             </div>
             <div className="md:col-span-2">
-              <Label htmlFor="q">Search details (JSONB)</Label>
+              <Label htmlFor="q">{t('audit.page.searchDetails')}</Label>
               <Input
                 id="q"
                 name="q"
@@ -172,9 +178,9 @@ export default async function AuditLogsPage({
               />
             </div>
             <div className="flex items-end gap-2">
-              <Button type="submit">Apply</Button>
+              <Button type="submit">{t('audit.page.apply')}</Button>
               <Button asChild variant="outline">
-                <Link href={`/admin/audit-logs?kind=${filters.kind}`}>Reset</Link>
+                <Link href={`/admin/audit-logs?kind=${filters.kind}`}>{t('audit.page.reset')}</Link>
               </Button>
             </div>
           </form>
@@ -184,28 +190,29 @@ export default async function AuditLogsPage({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
-            {filters.kind === 'tenant_audit' ? 'Tenant audit log' : 'Auth events'}
+            {filters.kind === 'tenant_audit'
+              ? t('audit.page.tenantAuditLog')
+              : t('audit.page.authEvents')}
           </CardTitle>
-          <CardDescription>
-            Showing up to 50 entries, newest first. Click a row&apos;s details to expand the JSONB
-            payload.
-          </CardDescription>
+          <CardDescription>{t('audit.page.resultsDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <AuditLogTable rows={page.rows} />
           <div className="mt-4 flex justify-end">
             {page.nextCursor ? (
               <Button asChild variant="outline" size="sm">
-                <Link href={buildHref(sp, { cursor: page.nextCursor })}>Next page →</Link>
+                <Link href={buildHref(sp, { cursor: page.nextCursor })}>
+                  {t('audit.page.nextPage')}
+                </Link>
               </Button>
             ) : (
-              <span className="text-muted-foreground text-xs">End of results</span>
+              <span className="text-muted-foreground text-xs">{t('audit.page.endOfResults')}</span>
             )}
           </div>
           {sp.cursor && (
             <div className="mt-2 flex justify-end">
               <Button asChild variant="ghost" size="sm">
-                <Link href={buildHref(sp, { cursor: '' })}>← First page</Link>
+                <Link href={buildHref(sp, { cursor: '' })}>{t('audit.page.firstPage')}</Link>
               </Button>
             </div>
           )}
@@ -215,7 +222,17 @@ export default async function AuditLogsPage({
   );
 }
 
-function KindLink({ sp, value, active }: { sp: SearchParams; value: AuditKind; active: boolean }) {
+function KindLink({
+  sp,
+  value,
+  active,
+  label,
+}: {
+  sp: SearchParams;
+  value: AuditKind;
+  active: boolean;
+  label: string;
+}) {
   const href = buildHref(sp, { kind: value, cursor: '' });
   return (
     <Link
@@ -226,7 +243,7 @@ function KindLink({ sp, value, active }: { sp: SearchParams; value: AuditKind; a
           : 'border-border hover:bg-muted rounded border px-3 py-1 text-sm'
       }
     >
-      {value === 'tenant_audit' ? 'Tenant audit' : 'Auth events'}
+      {label}
     </Link>
   );
 }

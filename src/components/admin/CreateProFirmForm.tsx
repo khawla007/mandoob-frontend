@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,7 @@ import { TENANT_PLANS } from '@/lib/validation/tenant-onboarding';
 import { baseTenantSlug } from '@/lib/tenant/slug';
 
 export function CreateProFirmForm() {
+  const t = useTranslations('admin');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -59,15 +61,15 @@ export function CreateProFirmForm() {
     <form className="space-y-6" onSubmit={onSubmit}>
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Could not create PRO firm</AlertTitle>
+          <AlertTitle>{t('proFirms.create.couldNotCreate')}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       <section className="space-y-4">
-        <h2 className="text-base font-semibold">Firm</h2>
+        <h2 className="text-base font-semibold">{t('proFirms.create.firmSection')}</h2>
         <div className="grid gap-2">
-          <Label htmlFor="firm-name">Firm name</Label>
+          <Label htmlFor="firm-name">{t('proFirms.create.firmName')}</Label>
           <Input
             id="firm-name"
             required
@@ -79,7 +81,7 @@ export function CreateProFirmForm() {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="firm-slug">Slug</Label>
+          <Label htmlFor="firm-slug">{t('proFirms.create.slug')}</Label>
           <Input
             id="firm-slug"
             required
@@ -93,13 +95,10 @@ export function CreateProFirmForm() {
             }}
             placeholder="acme-pro"
           />
-          <p className="text-muted-foreground text-xs">
-            Lowercase letters, digits, hyphens. Reserved labels like admin, api, app, dashboard,
-            and www are blocked.
-          </p>
+          <p className="text-muted-foreground text-xs">{t('proFirms.create.slugHint')}</p>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="firm-plan">Plan</Label>
+          <Label htmlFor="firm-plan">{t('proFirms.create.plan')}</Label>
           <Select value={plan} onValueChange={(v) => setPlan(v as (typeof TENANT_PLANS)[number])}>
             <SelectTrigger id="firm-plan">
               <SelectValue />
@@ -116,13 +115,10 @@ export function CreateProFirmForm() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-base font-semibold">Initial PRO admin</h2>
-        <p className="text-muted-foreground text-xs">
-          A Supabase invite email will be sent. The admin updates license info via /account/role
-          after first login.
-        </p>
+        <h2 className="text-base font-semibold">{t('proFirms.create.adminSection')}</h2>
+        <p className="text-muted-foreground text-xs">{t('proFirms.create.adminIntro')}</p>
         <div className="grid gap-2">
-          <Label htmlFor="admin-name">Full name</Label>
+          <Label htmlFor="admin-name">{t('proFirms.create.fullName')}</Label>
           <Input
             id="admin-name"
             required
@@ -133,7 +129,7 @@ export function CreateProFirmForm() {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="admin-email">Email</Label>
+          <Label htmlFor="admin-email">{t('proFirms.create.email')}</Label>
           <Input
             id="admin-email"
             type="email"
@@ -143,7 +139,7 @@ export function CreateProFirmForm() {
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="admin-phone">Phone (E.164)</Label>
+          <Label htmlFor="admin-phone">{t('proFirms.create.phone')}</Label>
           <Input
             id="admin-phone"
             required
@@ -156,7 +152,7 @@ export function CreateProFirmForm() {
 
       <div className="flex gap-2">
         <Button type="submit" disabled={pending}>
-          {pending ? 'Creating…' : 'Create PRO firm'}
+          {pending ? t('proFirms.create.creating') : t('proFirms.create.submit')}
         </Button>
       </div>
     </form>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,15 +28,16 @@ const STATUS_VARIANT: Record<ProFirmRow['status'], 'default' | 'secondary' | 'de
 };
 
 export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
+  const t = useTranslations('admin');
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   function onSuspend(id: string) {
-    if (!confirm('Suspend this PRO firm? Members will lose access until reactivated.')) return;
+    if (!confirm(t('proFirms.actions.confirmSuspend'))) return;
     setBusyId(id);
     startTransition(async () => {
       const r = await suspendTenantAction(id);
-      if (!r.ok) alert(`Suspend failed: ${r.error}`);
+      if (!r.ok) alert(t('proFirms.actions.suspendFailed', { error: r.error ?? '' }));
       setBusyId(null);
     });
   }
@@ -44,7 +46,7 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
     setBusyId(id);
     startTransition(async () => {
       const r = await reactivateTenantAction(id);
-      if (!r.ok) alert(`Reactivate failed: ${r.error}`);
+      if (!r.ok) alert(t('proFirms.actions.reactivateFailed', { error: r.error ?? '' }));
       setBusyId(null);
     });
   }
@@ -53,17 +55,17 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
     setBusyId(id);
     startTransition(async () => {
       const r = await approveTenantAction(id);
-      if (!r.ok) alert(`Approve failed: ${r.error}`);
+      if (!r.ok) alert(t('proFirms.actions.approveFailed', { error: r.error ?? '' }));
       setBusyId(null);
     });
   }
 
   function onReject(id: string) {
-    if (!confirm('Reject this PRO firm? The tenant and admin user will be deleted.')) return;
+    if (!confirm(t('proFirms.actions.confirmReject'))) return;
     setBusyId(id);
     startTransition(async () => {
       const r = await rejectTenantAction(id);
-      if (!r.ok) alert(`Reject failed: ${r.error}`);
+      if (!r.ok) alert(t('proFirms.actions.rejectFailed', { error: r.error ?? '' }));
       setBusyId(null);
     });
   }
@@ -72,12 +74,12 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Slug</TableHead>
-          <TableHead>Plan</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead>{t('proFirms.table.name')}</TableHead>
+          <TableHead>{t('proFirms.table.slug')}</TableHead>
+          <TableHead>{t('proFirms.table.plan')}</TableHead>
+          <TableHead>{t('proFirms.table.status')}</TableHead>
+          <TableHead>{t('proFirms.table.created')}</TableHead>
+          <TableHead className="text-right">{t('proFirms.table.actions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -96,7 +98,9 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
               <Badge variant="outline">{r.plan}</Badge>
             </TableCell>
             <TableCell>
-              <Badge variant={STATUS_VARIANT[r.status]}>{r.status}</Badge>
+              <Badge variant={STATUS_VARIANT[r.status]}>
+                {t(`enums.tenantStatus.${r.status}`)}
+              </Badge>
             </TableCell>
             <TableCell className="text-muted-foreground text-xs">
               {new Date(r.createdAt).toLocaleDateString()}
@@ -109,7 +113,7 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
                   disabled={pending && busyId === r.id}
                   onClick={() => onSuspend(r.id)}
                 >
-                  Suspend
+                  {t('proFirms.table.suspend')}
                 </Button>
               )}
               {r.status === 'suspended' && (
@@ -119,7 +123,7 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
                   disabled={pending && busyId === r.id}
                   onClick={() => onReactivate(r.id)}
                 >
-                  Reactivate
+                  {t('proFirms.table.reactivate')}
                 </Button>
               )}
               {r.status === 'pending' && (
@@ -130,7 +134,7 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
                     disabled={pending && busyId === r.id}
                     onClick={() => onApprove(r.id)}
                   >
-                    Approve
+                    {t('proFirms.table.approve')}
                   </Button>
                   <Button
                     variant="outline"
@@ -138,7 +142,7 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
                     disabled={pending && busyId === r.id}
                     onClick={() => onReject(r.id)}
                   >
-                    Reject
+                    {t('proFirms.table.reject')}
                   </Button>
                 </div>
               )}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +20,13 @@ type SearchParams = {
   estimateGrade?: string;
 };
 
-export default async function CostDataPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+export default async function CostDataPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   await requireRole('super_admin', 'admin');
+  const t = await getTranslations('admin');
   const sp = await searchParams;
   const filters: CostDataFilters = {
     jurisdiction: sp.jurisdiction ?? 'all',
@@ -36,32 +42,44 @@ export default async function CostDataPage({ searchParams }: { searchParams: Pro
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Cost data</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage estimator fee rows used by public setup quotes.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('costData.page.title')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('costData.page.intro')}</p>
         </div>
         <div className="flex gap-2">
           <CostDataImportDialog />
           <Button asChild variant="outline">
-            <Link href={exportHref}>Export CSV</Link>
+            <Link href={exportHref}>{t('costData.page.exportCsv')}</Link>
           </Button>
           <CostDataDialog mode="create" />
         </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <SummaryCard label="Rows" value={summary.totalRows} />
-        <SummaryCard label="Active" value={summary.activeRows} />
-        <SummaryCard label="Estimate-grade" value={summary.estimateGradeRows} />
-        <SummaryCard label="Authorities" value={summary.uniqueAuthorities} badge={`${summary.staleRows} expired`} />
+        <SummaryCard label={t('costData.page.summaryRows')} value={summary.totalRows} />
+        <SummaryCard label={t('costData.page.summaryActive')} value={summary.activeRows} />
+        <SummaryCard
+          label={t('costData.page.summaryEstimateGrade')}
+          value={summary.estimateGradeRows}
+        />
+        <SummaryCard
+          label={t('costData.page.summaryAuthorities')}
+          value={summary.uniqueAuthorities}
+          badge={t('costData.page.summaryExpired', { count: summary.staleRows })}
+        />
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle className="text-lg">Fee rows</CardTitle>
-            <FilterLinks filters={filters} />
+            <CardTitle className="text-lg">{t('costData.page.feeRows')}</CardTitle>
+            <FilterLinks
+              filters={filters}
+              labels={{
+                all: t('costData.page.filterAll'),
+                active: t('costData.page.filterActive'),
+                inactive: t('costData.page.filterInactive'),
+              }}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -94,17 +112,32 @@ function SummaryCard({ label, value, badge }: { label: string; value: number; ba
   );
 }
 
-function FilterLinks({ filters }: { filters: CostDataFilters }) {
+function FilterLinks({
+  filters,
+  labels,
+}: {
+  filters: CostDataFilters;
+  labels: { all: string; active: string; inactive: string };
+}) {
   return (
     <div className="text-muted-foreground flex flex-wrap gap-2 text-sm">
-      <Link className={filters.active === 'all' ? 'text-foreground font-medium' : ''} href="/admin/cost-data">
-        All
+      <Link
+        className={filters.active === 'all' ? 'text-foreground font-medium' : ''}
+        href="/admin/cost-data"
+      >
+        {labels.all}
       </Link>
-      <Link className={filters.active === 'active' ? 'text-foreground font-medium' : ''} href="/admin/cost-data?active=active">
-        Active
+      <Link
+        className={filters.active === 'active' ? 'text-foreground font-medium' : ''}
+        href="/admin/cost-data?active=active"
+      >
+        {labels.active}
       </Link>
-      <Link className={filters.active === 'inactive' ? 'text-foreground font-medium' : ''} href="/admin/cost-data?active=inactive">
-        Inactive
+      <Link
+        className={filters.active === 'inactive' ? 'text-foreground font-medium' : ''}
+        href="/admin/cost-data?active=inactive"
+      >
+        {labels.inactive}
       </Link>
     </div>
   );
@@ -119,5 +152,7 @@ function parseEstimateGrade(value: string | undefined): 'all' | 'yes' | 'no' {
 }
 
 function cleanParams(params: SearchParams): Record<string, string> {
-  return Object.fromEntries(Object.entries(params).filter((entry): entry is [string, string] => Boolean(entry[1])));
+  return Object.fromEntries(
+    Object.entries(params).filter((entry): entry is [string, string] => Boolean(entry[1])),
+  );
 }
