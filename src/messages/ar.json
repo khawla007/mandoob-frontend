@@ -815,6 +815,137 @@
         "RAK": "رأس الخيمة",
         "FUJAIRAH": "الفجيرة",
         "ALL_UAE": "كل الإمارات"
+      },
+      "listTitle": "المستخدمون",
+      "listShowing": "عرض {count} {more, select, true {(يتوفّر المزيد)} other {}}",
+      "directoryTitle": "الدليل",
+      "directoryDescription": "جميع هويات مندوب عبر المستأجرين.",
+      "createdAlertTitle": "تم إنشاء المستخدم",
+      "createdAlertDescription": "تم إرسال بريد الدعوة. يظهر المستخدم الجديد أدناه بعد معالجة Supabase للدعوة.",
+      "table": {
+        "user": "المستخدم",
+        "role": "الدور",
+        "tenant": "المستأجر",
+        "status": "الحالة",
+        "created": "تاريخ الإنشاء",
+        "lastSignIn": "آخر تسجيل دخول",
+        "actions": "الإجراءات",
+        "edit": "تعديل"
+      },
+      "emptyState": {
+        "noMatch": "لا يوجد مستخدمون مطابقون لعوامل التصفية",
+        "resetFilters": "إعادة ضبط عوامل التصفية",
+        "noneYet": "لم يتم إنشاء أي مستخدمين بعد."
+      },
+      "filters": {
+        "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني",
+        "searchAria": "بحث المستخدمين",
+        "loading": "جارٍ التحميل…",
+        "rolesLabel": "الأدوار",
+        "filterByRole": "تصفية حسب الدور",
+        "allStatuses": "جميع الحالات",
+        "filterByStatus": "تصفية حسب الحالة",
+        "allTenants": "جميع المستأجرين",
+        "filterByTenant": "تصفية حسب المستأجر",
+        "searchTenantsPlaceholder": "ابحث عن المستأجرين…",
+        "noTenantMatches": "لا توجد نتائج."
+      },
+      "pagination": {
+        "backToStart": "العودة إلى البداية",
+        "next": "التالي"
+      },
+      "roleChange": {
+        "trigger": "تغيير الدور",
+        "title": "تغيير الدور",
+        "description": "الدور الحالي: {role}. ستُلغى الجلسات عند الحفظ.",
+        "superAdminWarning": "يتطلّب تخفيض مدير عام تأكيدًا صريحًا.",
+        "errorTitle": "تعذّر تغيير الدور",
+        "newRoleLabel": "الدور الجديد",
+        "newRolePlaceholder": "اختر دورًا جديدًا",
+        "tenantPlaceholder": "اختر مستأجرًا",
+        "clientRequiredLabel": "العميل (مطلوب)",
+        "pickTenantFirst": "اختر مستأجرًا أولًا لتفعيل البحث عن العميل.",
+        "confirmLabel": "اكتب DEMOTE للتأكيد",
+        "errPickRole": "اختر دورًا مستهدفًا.",
+        "errTypeDemote": "اكتب DEMOTE لتأكيد تخفيض مدير عام.",
+        "errPickClient": "اختر عميلًا لدور الموظف.",
+        "apply": "تطبيق"
+      },
+      "statusChange": {
+        "trigger": "تغيير الحالة",
+        "title": "تغيير حالة الحساب",
+        "description": "الحالة الحالية: {status}. كل من التعليق والتعطيل يُلغي الجلسات النشطة.",
+        "noChanges": "لا تتوفّر تغييرات للحالة — المستخدم {status}.",
+        "errorTitle": "تعذّر تغيير الحالة",
+        "targetStatusLabel": "الحالة المستهدفة",
+        "targetStatusPlaceholder": "اختر الحالة المستهدفة",
+        "reasonRequired": "السبب (مطلوب)",
+        "reasonOptional": "السبب (اختياري)",
+        "errPickStatus": "اختر حالة مستهدفة.",
+        "errReasonRequired": "السبب مطلوب عند التعليق.",
+        "apply": "تطبيق",
+        "transitions": {
+          "suspend": "تعليق (قابل للعكس، يتطلّب سببًا)",
+          "disable": "تعطيل (نهائي)",
+          "reactivate": "إعادة التفعيل",
+          "cancelInvite": "إلغاء الدعوة المعلّقة"
+        }
+      },
+      "mfaReset": {
+        "trigger": "إعادة ضبط المصادقة الثنائية",
+        "notEnrolled": "المصادقة الثنائية غير مُفعّلة",
+        "title": "إعادة ضبط المصادقة الثنائية",
+        "description": "يحذف جميع عوامل المصادقة الثنائية ويُلغي الجلسات النشطة. سيُجبر المستخدم على إعادة التسجيل عند تسجيل الدخول التالي.",
+        "errorTitle": "تعذّر إعادة ضبط المصادقة الثنائية",
+        "successTitle": "تمت إعادة ضبط المصادقة الثنائية",
+        "successDescription": "تمت إزالة {count} من العوامل.",
+        "confirm": "تأكيد إعادة الضبط",
+        "resetting": "جارٍ إعادة الضبط…"
+      },
+      "sessions": {
+        "empty": "لا توجد جلسات نشطة مطابقة لعوامل التصفية الحالية.",
+        "user": "المستخدم",
+        "tenant": "المستأجر",
+        "role": "الدور",
+        "ip": "عنوان IP",
+        "started": "البدء",
+        "lastSeen": "آخر ظهور",
+        "actions": "الإجراءات",
+        "you": "أنت",
+        "revoke": "إلغاء",
+        "revoking": "جارٍ الإلغاء…",
+        "revokeAll": "إلغاء الكل",
+        "revokingAll": "جارٍ إلغاء الكل…",
+        "confirmRevokeOne": "إلغاء هذه الجلسة لـ {name}؟",
+        "confirmRevokeAll": "إلغاء جميع الجلسات لـ {name}؟ سيتم تسجيل خروجهم من كل مكان.",
+        "revokeFailed": "فشل الإلغاء ({code}): {error}",
+        "revokeAllFailed": "فشل إلغاء الكل ({code}): {error}"
+      },
+      "lockedAccounts": {
+        "empty": "لا توجد حسابات مقفلة حاليًا.",
+        "account": "الحساب",
+        "failures": "المحاولات الفاشلة",
+        "lockedUntil": "مقفل حتى",
+        "lastAttempt": "آخر محاولة",
+        "actions": "الإجراءات",
+        "unlock": "إلغاء القفل",
+        "unlocking": "جارٍ إلغاء القفل…",
+        "confirmUnlock": "إلغاء قفل {key}؟ يؤدي ذلك إلى مسح عدّاد الإخفاقات ونافذة القفل.",
+        "unlockFailed": "فشل إلغاء القفل ({code}): {error}"
+      },
+      "recentLogins": {
+        "title": "عمليات تسجيل الدخول الأخيرة",
+        "description": "أحدث أحداث المصادقة عبر جميع المستأجرين.",
+        "user": "المستخدم",
+        "role": "الدور",
+        "ip": "عنوان IP",
+        "time": "الوقت",
+        "status": "الحالة",
+        "empty": "لا توجد أحداث تسجيل دخول بعد.",
+        "loginStatus": {
+          "success": "ناجح",
+          "failed": "فاشل"
+        }
       }
     },
     "enums": {

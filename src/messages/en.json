@@ -814,6 +814,137 @@
         "RAK": "Ras Al Khaimah",
         "FUJAIRAH": "Fujairah",
         "ALL_UAE": "All UAE"
+      },
+      "listTitle": "Users",
+      "listShowing": "Showing {count} {more, select, true {(more available)} other {}}",
+      "directoryTitle": "Directory",
+      "directoryDescription": "All Mandoob identities across tenants.",
+      "createdAlertTitle": "User created",
+      "createdAlertDescription": "Invite email sent. The new user appears below once Supabase processes the invite.",
+      "table": {
+        "user": "User",
+        "role": "Role",
+        "tenant": "Tenant",
+        "status": "Status",
+        "created": "Created",
+        "lastSignIn": "Last sign-in",
+        "actions": "Actions",
+        "edit": "Edit"
+      },
+      "emptyState": {
+        "noMatch": "No users match your filters",
+        "resetFilters": "Reset filters",
+        "noneYet": "No users have been created yet."
+      },
+      "filters": {
+        "searchPlaceholder": "Search name or email",
+        "searchAria": "Search users",
+        "loading": "Loading…",
+        "rolesLabel": "Roles",
+        "filterByRole": "Filter by role",
+        "allStatuses": "All statuses",
+        "filterByStatus": "Filter by status",
+        "allTenants": "All tenants",
+        "filterByTenant": "Filter by tenant",
+        "searchTenantsPlaceholder": "Search tenants…",
+        "noTenantMatches": "No matches."
+      },
+      "pagination": {
+        "backToStart": "Back to start",
+        "next": "Next"
+      },
+      "roleChange": {
+        "trigger": "Change role",
+        "title": "Change role",
+        "description": "Current role: {role}. Sessions will be revoked on save.",
+        "superAdminWarning": "Demoting a super_admin requires explicit confirmation.",
+        "errorTitle": "Cannot change role",
+        "newRoleLabel": "New role",
+        "newRolePlaceholder": "Choose new role",
+        "tenantPlaceholder": "Choose tenant",
+        "clientRequiredLabel": "Client (required)",
+        "pickTenantFirst": "Pick a tenant first to enable client lookup.",
+        "confirmLabel": "Type DEMOTE to confirm",
+        "errPickRole": "Pick a target role.",
+        "errTypeDemote": "Type DEMOTE to confirm super_admin demotion.",
+        "errPickClient": "Pick a client for employee role.",
+        "apply": "Apply"
+      },
+      "statusChange": {
+        "trigger": "Change status",
+        "title": "Change account status",
+        "description": "Current status: {status}. Suspended and disabled both revoke active sessions.",
+        "noChanges": "No status changes available — user is {status}.",
+        "errorTitle": "Cannot change status",
+        "targetStatusLabel": "Target status",
+        "targetStatusPlaceholder": "Choose target status",
+        "reasonRequired": "Reason (required)",
+        "reasonOptional": "Reason (optional)",
+        "errPickStatus": "Pick a target status.",
+        "errReasonRequired": "Reason is required when suspending.",
+        "apply": "Apply",
+        "transitions": {
+          "suspend": "Suspend (reversible, requires reason)",
+          "disable": "Disable (terminal)",
+          "reactivate": "Reactivate",
+          "cancelInvite": "Cancel pending invite"
+        }
+      },
+      "mfaReset": {
+        "trigger": "Reset MFA",
+        "notEnrolled": "MFA not enrolled",
+        "title": "Reset MFA",
+        "description": "Deletes all MFA factors and revokes active sessions. The user will be forced to re-enrol on next login.",
+        "errorTitle": "Cannot reset MFA",
+        "successTitle": "MFA reset",
+        "successDescription": "{count} factor(s) removed.",
+        "confirm": "Confirm reset",
+        "resetting": "Resetting…"
+      },
+      "sessions": {
+        "empty": "No active sessions match the current filters.",
+        "user": "User",
+        "tenant": "Tenant",
+        "role": "Role",
+        "ip": "IP",
+        "started": "Started",
+        "lastSeen": "Last seen",
+        "actions": "Actions",
+        "you": "you",
+        "revoke": "Revoke",
+        "revoking": "Revoking…",
+        "revokeAll": "Revoke all",
+        "revokingAll": "Revoking all…",
+        "confirmRevokeOne": "Revoke this session for {name}?",
+        "confirmRevokeAll": "Revoke ALL sessions for {name}? They will be signed out everywhere.",
+        "revokeFailed": "Revoke failed ({code}): {error}",
+        "revokeAllFailed": "Revoke-all failed ({code}): {error}"
+      },
+      "lockedAccounts": {
+        "empty": "No accounts are currently locked.",
+        "account": "Account",
+        "failures": "Failures",
+        "lockedUntil": "Locked until",
+        "lastAttempt": "Last attempt",
+        "actions": "Actions",
+        "unlock": "Unlock",
+        "unlocking": "Unlocking…",
+        "confirmUnlock": "Unlock {key}? This clears the failure counter and lockout window.",
+        "unlockFailed": "Unlock failed ({code}): {error}"
+      },
+      "recentLogins": {
+        "title": "Recent logins",
+        "description": "Latest authentication events across all tenants.",
+        "user": "User",
+        "role": "Role",
+        "ip": "IP",
+        "time": "Time",
+        "status": "Status",
+        "empty": "No login events yet.",
+        "loginStatus": {
+          "success": "success",
+          "failed": "failed"
+        }
       }
     },
     "enums": {

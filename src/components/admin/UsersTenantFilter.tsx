@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ export function UsersTenantFilter({
   tenants: TenantSummary[];
   initial: string | null;
 }) {
+  const t = useTranslations('admin');
   const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
   const [filter, setFilter] = useState('');
 
@@ -43,18 +45,20 @@ export function UsersTenantFilter({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-9">
           <Building2 className="size-3" />
-          <span className="max-w-[10rem] truncate">{currentName ?? 'All tenants'}</span>
+          <span className="max-w-[10rem] truncate">
+            {currentName ?? t('user.filters.allTenants')}
+          </span>
           {pending && <span className="text-muted-foreground ml-2 text-xs">…</span>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64 p-0">
-        <DropdownMenuLabel>Filter by tenant</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('user.filters.filterByTenant')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="p-2">
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search tenants…"
+            placeholder={t('user.filters.searchTenantsPlaceholder')}
             className="h-8 text-sm"
           />
         </div>
@@ -64,7 +68,7 @@ export function UsersTenantFilter({
             onClick={() => set(null)}
             className="hover:bg-accent flex w-full items-center px-2 py-1.5 text-sm"
           >
-            All tenants
+            {t('user.filters.allTenants')}
           </button>
           {filtered.map((t) => (
             <button
@@ -78,7 +82,9 @@ export function UsersTenantFilter({
             </button>
           ))}
           {filtered.length === 0 && (
-            <p className="text-muted-foreground px-2 py-2 text-xs">No matches.</p>
+            <p className="text-muted-foreground px-2 py-2 text-xs">
+              {t('user.filters.noTenantMatches')}
+            </p>
           )}
         </div>
       </DropdownMenuContent>

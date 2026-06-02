@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -25,18 +26,19 @@ import { Label } from '@/components/ui/label';
 import { postJson } from '@/lib/http/post';
 import type { ProfileStatus } from '@/lib/data/admin-edit-helpers';
 
-type Transition = { value: 'active' | 'suspended' | 'disabled'; label: string };
+type TransitionKey = 'suspend' | 'disable' | 'reactivate' | 'cancelInvite';
+type Transition = { value: 'active' | 'suspended' | 'disabled'; labelKey: TransitionKey };
 
 const ALLOWED_TRANSITIONS: Record<ProfileStatus, Transition[]> = {
   active: [
-    { value: 'suspended', label: 'Suspend (reversible, requires reason)' },
-    { value: 'disabled', label: 'Disable (terminal)' },
+    { value: 'suspended', labelKey: 'suspend' },
+    { value: 'disabled', labelKey: 'disable' },
   ],
   suspended: [
-    { value: 'active', label: 'Reactivate' },
-    { value: 'disabled', label: 'Disable (terminal)' },
+    { value: 'active', labelKey: 'reactivate' },
+    { value: 'disabled', labelKey: 'disable' },
   ],
-  invited: [{ value: 'disabled', label: 'Cancel pending invite' }],
+  invited: [{ value: 'disabled', labelKey: 'cancelInvite' }],
   disabled: [],
 };
 
@@ -47,6 +49,7 @@ export function ChangeStatusPanel({
   userId: string;
   currentStatus: ProfileStatus;
 }) {
+  const t = useTranslations('admin');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<Transition['value'] | ''>('');
@@ -58,11 +61,11 @@ export function ChangeStatusPanel({
 
   async function submit() {
     if (!newStatus) {
-      setError('Pick a target status.');
+      setError(t('user.statusChange.errPickStatus'));
       return;
     }
     if (newStatus === 'suspended' && reason.trim().length === 0) {
-      setError('Reason is required when suspending.');
+      setError(t('user.statusChange.errReasonRequired'));
       return;
     }
     setError(null);
@@ -88,13 +91,13 @@ export function ChangeStatusPanel({
     } catch {
       // ignore
     }
-    setError(payload.error ?? `Request failed (${res.status})`);
+    setError(payload.error ?? t('user.requestFailed', { status: res.status }));
   }
 
   if (options.length === 0) {
     return (
       <div className="text-muted-foreground text-sm">
-        No status changes available — user is {currentStatus}.
+        {t('user.statusChange.noChanges', { status: t(`enums.status.${currentStatus}`) })}
       </div>
     );
   }
@@ -102,32 +105,32 @@ export function ChangeStatusPanel({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Change status</Button>
+        <Button variant="outline">{t('user.statusChange.trigger')}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Change account status</DialogTitle>
+          <DialogTitle>{t('user.statusChange.title')}</DialogTitle>
           <DialogDescription>
-            Current status: {currentStatus}. Suspended and disabled both revoke active sessions.
+            {t('user.statusChange.description', { status: t(`enums.status.${currentStatus}`) })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Cannot change status</AlertTitle>
+              <AlertTitle>{t('user.statusChange.errorTitle')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           <div className="space-y-2">
-            <Label>Target status</Label>
+            <Label>{t('user.statusChange.targetStatusLabel')}</Label>
             <Select value={newStatus} onValueChange={(v) => setNewStatus(v as never)}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose target status" />
+                <SelectValue placeholder={t('user.statusChange.targetStatusPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {options.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
-                    {o.label}
+                    {t(`user.statusChange.transitions.${o.labelKey}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -135,7 +138,11 @@ export function ChangeStatusPanel({
           </div>
           {(newStatus === 'suspended' || newStatus === 'disabled') && (
             <div className="space-y-2">
-              <Label>Reason {newStatus === 'suspended' ? '(required)' : '(optional)'}</Label>
+              <Label>
+                {newStatus === 'suspended'
+                  ? t('user.statusChange.reasonRequired')
+                  : t('user.statusChange.reasonOptional')}
+              </Label>
               <Textarea
                 rows={3}
                 value={reason}
@@ -147,10 +154,10 @@ export function ChangeStatusPanel({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {t('user.cancel')}
           </Button>
           <Button onClick={submit} disabled={submitting}>
-            {submitting ? 'Saving…' : 'Apply'}
+            {submitting ? t('user.saving') : t('user.statusChange.apply')}
           </Button>
         </DialogFooter>
       </DialogContent>

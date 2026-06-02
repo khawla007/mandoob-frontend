@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -19,15 +20,16 @@ function fmt(iso: string): string {
 }
 
 export function LockedAccountsTable({ rows }: { rows: LockedAccountRow[] }) {
+  const t = useTranslations('admin');
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
 
   function unlock(key: string) {
-    if (!confirm(`Unlock ${key}? This clears the failure counter and lockout window.`)) return;
+    if (!confirm(t('user.lockedAccounts.confirmUnlock', { key }))) return;
     setBusy(key);
     start(async () => {
       const r = await unlockAccountAction({ key });
-      if (!r.ok) alert(`Unlock failed (${r.code}): ${r.error}`);
+      if (!r.ok) alert(t('user.lockedAccounts.unlockFailed', { code: r.code, error: r.error }));
       setBusy(null);
     });
   }
@@ -35,7 +37,7 @@ export function LockedAccountsTable({ rows }: { rows: LockedAccountRow[] }) {
   if (rows.length === 0) {
     return (
       <p className="text-muted-foreground py-8 text-center text-sm">
-        No accounts are currently locked.
+        {t('user.lockedAccounts.empty')}
       </p>
     );
   }
@@ -44,11 +46,11 @@ export function LockedAccountsTable({ rows }: { rows: LockedAccountRow[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Account</TableHead>
-          <TableHead>Failures</TableHead>
-          <TableHead>Locked until</TableHead>
-          <TableHead>Last attempt</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead>{t('user.lockedAccounts.account')}</TableHead>
+          <TableHead>{t('user.lockedAccounts.failures')}</TableHead>
+          <TableHead>{t('user.lockedAccounts.lockedUntil')}</TableHead>
+          <TableHead>{t('user.lockedAccounts.lastAttempt')}</TableHead>
+          <TableHead className="text-right">{t('user.lockedAccounts.actions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -70,7 +72,7 @@ export function LockedAccountsTable({ rows }: { rows: LockedAccountRow[] }) {
                   disabled={pending}
                   onClick={() => unlock(r.key)}
                 >
-                  {isBusy ? 'Unlocking…' : 'Unlock'}
+                  {isBusy ? t('user.lockedAccounts.unlocking') : t('user.lockedAccounts.unlock')}
                 </Button>
               </TableCell>
             </TableRow>

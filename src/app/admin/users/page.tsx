@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -66,6 +67,7 @@ function parseSort(raw: string | undefined): { col: SortCol; dir: SortDir } {
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
+  const t = await getTranslations('admin');
   const session = await requireRole('super_admin', 'admin');
   const viewerRole = session.role as Role;
   const roles = parseRoles(sp.roles);
@@ -98,28 +100,26 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     <div className="space-y-6">
       {sp.created && (
         <Alert>
-          <AlertTitle>User created</AlertTitle>
-          <AlertDescription>
-            Invite email sent. The new user appears below once Supabase processes the invite.
-          </AlertDescription>
+          <AlertTitle>{t('user.createdAlertTitle')}</AlertTitle>
+          <AlertDescription>{t('user.createdAlertDescription')}</AlertDescription>
         </Alert>
       )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('user.listTitle')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Showing {rows.length} {hasMore ? '(more available)' : ''}
+            {t('user.listShowing', { count: rows.length, more: hasMore ? 'true' : 'false' })}
           </p>
         </div>
         <Button asChild>
-          <Link href="/admin/users/new">Create user</Link>
+          <Link href="/admin/users/new">{t('user.createUser')}</Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Directory</CardTitle>
-          <CardDescription>All Mandoob identities across tenants.</CardDescription>
+          <CardTitle className="text-lg">{t('user.directoryTitle')}</CardTitle>
+          <CardDescription>{t('user.directoryDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <UsersToolbar

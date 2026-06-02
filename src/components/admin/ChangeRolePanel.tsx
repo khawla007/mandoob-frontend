@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -31,12 +32,7 @@ import { ClientTypeahead } from './ClientTypeahead';
 
 type NewRole = 'pro' | 'customer' | 'employee' | 'admin';
 
-const ALL_NEW_ROLES: { value: NewRole; label: string }[] = [
-  { value: 'pro', label: 'PRO' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'employee', label: 'Employee' },
-  { value: 'admin', label: 'Admin' },
-];
+const ALL_NEW_ROLES: NewRole[] = ['pro', 'customer', 'employee', 'admin'];
 
 export function ChangeRolePanel({
   userId,
@@ -50,6 +46,7 @@ export function ChangeRolePanel({
   callerRole: 'super_admin' | 'admin';
   tenants: TenantSummary[];
 }) {
+  const t = useTranslations('admin');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [newRole, setNewRole] = useState<NewRole | ''>('');
@@ -78,8 +75,8 @@ export function ChangeRolePanel({
     () =>
       (callerRole === 'super_admin'
         ? ALL_NEW_ROLES
-        : ALL_NEW_ROLES.filter((o) => o.value !== 'admin')
-      ).filter((o) => o.value !== currentRole),
+        : ALL_NEW_ROLES.filter((r) => r !== 'admin')
+      ).filter((r) => r !== currentRole),
     [callerRole, currentRole],
   );
 
@@ -94,11 +91,11 @@ export function ChangeRolePanel({
   async function submit() {
     setError(null);
     if (!newRole) {
-      setError('Pick a target role.');
+      setError(t('user.roleChange.errPickRole'));
       return;
     }
     if (isSuperAdminTarget && confirmation !== 'DEMOTE') {
-      setError('Type DEMOTE to confirm super_admin demotion.');
+      setError(t('user.roleChange.errTypeDemote'));
       return;
     }
 
@@ -123,7 +120,7 @@ export function ChangeRolePanel({
       });
     } else if (newRole === 'employee') {
       if (!clientId) {
-        setError('Pick a client for employee role.');
+        setError(t('user.roleChange.errPickClient'));
         return;
       }
       Object.assign(base, {
@@ -153,7 +150,7 @@ export function ChangeRolePanel({
     } catch {
       // ignore
     }
-    setError(payload.error ?? `Request failed (${res.status})`);
+    setError(payload.error ?? t('user.requestFailed', { status: res.status }));
   }
 
   if (currentRole === 'super_admin' && callerRole !== 'super_admin') {
@@ -163,33 +160,33 @@ export function ChangeRolePanel({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Change role</Button>
+        <Button variant="outline">{t('user.roleChange.trigger')}</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Change role</DialogTitle>
+          <DialogTitle>{t('user.roleChange.title')}</DialogTitle>
           <DialogDescription>
-            Current role: {currentRole}. Sessions will be revoked on save.
-            {isSuperAdminTarget && ' Demoting a super_admin requires explicit confirmation.'}
+            {t('user.roleChange.description', { role: t(`enums.role.${currentRole}`) })}
+            {isSuperAdminTarget && ` ${t('user.roleChange.superAdminWarning')}`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Cannot change role</AlertTitle>
+              <AlertTitle>{t('user.roleChange.errorTitle')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           <div className="space-y-2">
-            <Label>New role</Label>
+            <Label>{t('user.roleChange.newRoleLabel')}</Label>
             <Select value={newRole} onValueChange={(v) => setNewRole(v as NewRole)}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose new role" />
+                <SelectValue placeholder={t('user.roleChange.newRolePlaceholder')} />
               </SelectTrigger>
               <SelectContent>
-                {roleOptions.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
+                {roleOptions.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {t(`enums.role.${r}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -198,10 +195,10 @@ export function ChangeRolePanel({
 
           {needsTenant && (
             <div className="space-y-2">
-              <Label>Tenant</Label>
+              <Label>{t('user.fields.tenant')}</Label>
               <Select value={tenantId} onValueChange={setTenantId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose tenant" />
+                  <SelectValue placeholder={t('user.roleChange.tenantPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {tenants.map((t) => (
@@ -217,19 +214,19 @@ export function ChangeRolePanel({
           {newRole === 'pro' && (
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>License number</Label>
+                <Label>{t('user.fields.licenseNo')}</Label>
                 <Input value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Designation</Label>
+                <Label>{t('user.fields.designation')}</Label>
                 <Input value={designation} onChange={(e) => setDesignation(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Department</Label>
+                <Label>{t('user.fields.department')}</Label>
                 <Input value={department} onChange={(e) => setDepartment(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Service areas</Label>
+                <Label>{t('user.fields.serviceAreasLabel')}</Label>
                 <div className="flex flex-wrap gap-2">
                   {SERVICE_AREA_VALUES.map((area) => (
                     <Toggle
@@ -240,13 +237,13 @@ export function ChangeRolePanel({
                       variant="outline"
                       size="sm"
                     >
-                      {area.replace(/_/g, ' ')}
+                      {t(`user.serviceAreas.${area}`)}
                     </Toggle>
                   ))}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Bio</Label>
+                <Label>{t('user.fields.bio')}</Label>
                 <Textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
               </div>
             </div>
@@ -255,7 +252,7 @@ export function ChangeRolePanel({
           {newRole === 'customer' && (
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>Nationality (ISO-2)</Label>
+                <Label>{t('user.fields.nationality')}</Label>
                 <Input
                   value={nationality}
                   maxLength={2}
@@ -263,12 +260,12 @@ export function ChangeRolePanel({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Passport number</Label>
+                <Label>{t('user.fields.passportNo')}</Label>
                 <Input value={passportNo} onChange={(e) => setPassportNo(e.target.value)} />
               </div>
               {tenantId && (
                 <div className="space-y-2">
-                  <Label>Linked client (optional)</Label>
+                  <Label>{t('user.fields.linkedClient')}</Label>
                   <ClientTypeahead
                     tenantId={tenantId}
                     value={linkedClientId}
@@ -283,7 +280,7 @@ export function ChangeRolePanel({
             <div className="space-y-3">
               {tenantId ? (
                 <div className="space-y-2">
-                  <Label>Client (required)</Label>
+                  <Label>{t('user.roleChange.clientRequiredLabel')}</Label>
                   <ClientTypeahead
                     tenantId={tenantId}
                     value={clientId}
@@ -293,23 +290,23 @@ export function ChangeRolePanel({
                 </div>
               ) : (
                 <div className="text-muted-foreground text-sm">
-                  Pick a tenant first to enable client lookup.
+                  {t('user.roleChange.pickTenantFirst')}
                 </div>
               )}
               <div className="space-y-2">
-                <Label>Passport number</Label>
+                <Label>{t('user.fields.passportNo')}</Label>
                 <Input value={passportNo} onChange={(e) => setPassportNo(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Visa number</Label>
+                <Label>{t('user.fields.visaNo')}</Label>
                 <Input value={visaNo} onChange={(e) => setVisaNo(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Visa expiry (YYYY-MM-DD)</Label>
+                <Label>{t('user.fields.visaExpiry')}</Label>
                 <Input value={visaExpiry} onChange={(e) => setVisaExpiry(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Emirates ID</Label>
+                <Label>{t('user.fields.emiratesId')}</Label>
                 <Input
                   value={emiratesId}
                   placeholder="784-YYYY-NNNNNNN-N"
@@ -317,7 +314,7 @@ export function ChangeRolePanel({
                 />
               </div>
               <div className="space-y-2">
-                <Label>EID expiry (YYYY-MM-DD)</Label>
+                <Label>{t('user.fields.eidExpiry')}</Label>
                 <Input value={eidExpiry} onChange={(e) => setEidExpiry(e.target.value)} />
               </div>
             </div>
@@ -325,7 +322,7 @@ export function ChangeRolePanel({
 
           {isSuperAdminTarget && (
             <div className="space-y-2">
-              <Label>Type DEMOTE to confirm</Label>
+              <Label>{t('user.roleChange.confirmLabel')}</Label>
               <Input
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
@@ -335,7 +332,7 @@ export function ChangeRolePanel({
           )}
 
           <div className="space-y-2">
-            <Label>Reason (optional)</Label>
+            <Label>{t('user.fields.reason')}</Label>
             <Textarea
               rows={3}
               value={reason}
@@ -346,10 +343,10 @@ export function ChangeRolePanel({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {t('user.cancel')}
           </Button>
           <Button onClick={submit} disabled={submitting}>
-            {submitting ? 'Saving…' : 'Apply'}
+            {submitting ? t('user.saving') : t('user.roleChange.apply')}
           </Button>
         </DialogFooter>
       </DialogContent>

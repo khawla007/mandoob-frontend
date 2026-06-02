@@ -1,6 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, RotateCcw } from 'lucide-react';
 import { useListFilterNav } from '@/hooks/use-list-filter-nav';
@@ -12,6 +13,7 @@ export function UsersPagination({
   nextCursor: string | null;
   hasMore: boolean;
 }) {
+  const t = useTranslations('admin');
   const params = useSearchParams();
   const { navigate } = useListFilterNav('/admin/users');
   const onCursor = params.has('cursor');
@@ -21,7 +23,7 @@ export function UsersPagination({
       {onCursor && (
         <Button variant="ghost" size="sm" onClick={() => navigate({ cursor: null })}>
           <RotateCcw className="size-3" />
-          Back to start
+          {t('user.pagination.backToStart')}
         </Button>
       )}
       <Button
@@ -30,7 +32,7 @@ export function UsersPagination({
         disabled={!hasMore || !nextCursor}
         onClick={() => nextCursor && navigate({ cursor: nextCursor })}
       >
-        Next
+        {t('user.pagination.next')}
         <ChevronRight className="size-3" />
       </Button>
     </div>
