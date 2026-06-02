@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { CostEstimator } from '@/components/estimator/CostEstimator';
 import { seededCostDataRows } from '@/lib/estimator/seed-data';
 import type { Jurisdiction } from '@/lib/estimator';
@@ -8,21 +9,19 @@ export const metadata: Metadata = {
   description: 'Estimate UAE Mainland, Free Zone, and Offshore company setup costs.',
 };
 
-export default function EstimatePage() {
+export default async function EstimatePage() {
+  const t = await getTranslations('estimator');
   const authorities = uniqueAuthorities();
 
   return (
     <section className="section" aria-labelledby="estimate-page-h">
       <div className="container">
         <header className="section__head">
-          <span className="eyebrow">Cost estimator</span>
+          <span className="eyebrow">{t('pageEyebrow')}</span>
           <h1 id="estimate-page-h" className="h2">
-            Transparent UAE setup quote.
+            {t('pageTitle')}
           </h1>
-          <p className="lede">
-            Itemized across DED, free zone, MOHRE, GDRFA, ICP, and PRO lines. No lead is created
-            until you submit the application questionnaire.
-          </p>
+          <p className="lede">{t('pageLede')}</p>
         </header>
       </div>
       <div className="container">

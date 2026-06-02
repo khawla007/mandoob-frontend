@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ function fmtDate(iso: string | null): string {
 
 export default async function ProFirmDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole('super_admin');
+  const t = await getTranslations('admin');
   const { id } = await params;
   if (!idSchema.safeParse(id).success) notFound();
 
@@ -39,19 +41,23 @@ export default async function ProFirmDetailPage({ params }: { params: Promise<{ 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Members</CardTitle>
-            <CardDescription>{data.members.length} profile(s) in this tenant.</CardDescription>
+            <CardTitle className="text-lg">{t('proFirms.detailPage.members')}</CardTitle>
+            <CardDescription>
+              {t('proFirms.detailPage.membersDescription', { count: data.members.length })}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {data.members.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm">No members.</p>
+              <p className="text-muted-foreground py-6 text-center text-sm">
+                {t('proFirms.detailPage.noMembers')}
+              </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Last login</TableHead>
+                    <TableHead>{t('proFirms.detailPage.memberName')}</TableHead>
+                    <TableHead>{t('proFirms.detailPage.memberRole')}</TableHead>
+                    <TableHead>{t('proFirms.detailPage.memberLastLogin')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -65,7 +71,13 @@ export default async function ProFirmDetailPage({ params }: { params: Promise<{ 
                           {m.fullName ?? <em>—</em>}
                         </Link>
                       </TableCell>
-                      <TableCell>{m.role && <Badge variant="outline">{m.role}</Badge>}</TableCell>
+                      <TableCell>
+                        {m.role && (
+                          <Badge variant="outline">
+                            {t.has(`enums.role.${m.role}`) ? t(`enums.role.${m.role}`) : m.role}
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
                         {fmtDate(m.lastLoginAt)}
                       </TableCell>
@@ -79,22 +91,26 @@ export default async function ProFirmDetailPage({ params }: { params: Promise<{ 
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Clients</CardTitle>
+            <CardTitle className="text-lg">{t('proFirms.detailPage.clients')}</CardTitle>
             <CardDescription>
-              Total {data.clientsSummary.total}. Showing {data.clientsSummary.recent.length} most
-              recent.
+              {t('proFirms.detailPage.clientsDescription', {
+                total: data.clientsSummary.total,
+                recent: data.clientsSummary.recent.length,
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {data.clientsSummary.recent.length === 0 ? (
-              <p className="text-muted-foreground py-6 text-center text-sm">No clients yet.</p>
+              <p className="text-muted-foreground py-6 text-center text-sm">
+                {t('proFirms.detailPage.noClients')}
+              </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>{t('proFirms.detailPage.clientCompany')}</TableHead>
+                    <TableHead>{t('proFirms.detailPage.clientStatus')}</TableHead>
+                    <TableHead>{t('proFirms.detailPage.clientCreated')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,7 +118,13 @@ export default async function ProFirmDetailPage({ params }: { params: Promise<{ 
                     <TableRow key={c.id}>
                       <TableCell className="text-sm">{c.companyName}</TableCell>
                       <TableCell>
-                        {c.status && <Badge variant="outline">{c.status}</Badge>}
+                        {c.status && (
+                          <Badge variant="outline">
+                            {t.has(`enums.clientStatus.${c.status}`)
+                              ? t(`enums.clientStatus.${c.status}`)
+                              : c.status}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
                         {fmtDate(c.createdAt)}
@@ -118,29 +140,31 @@ export default async function ProFirmDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent audit (last 10)</CardTitle>
+          <CardTitle className="text-lg">{t('proFirms.detailPage.recentAudit')}</CardTitle>
           <CardDescription>
-            Tenant-scoped events.{' '}
+            {t('proFirms.detailPage.recentAuditDescription')}{' '}
             <Link
               href={`/admin/audit-logs?kind=tenant_audit&tenant=${data.tenant.id}`}
               className="underline-offset-4 hover:underline"
             >
-              See all →
+              {t('proFirms.detailPage.seeAll')}
             </Link>
           </CardDescription>
         </CardHeader>
         <CardContent>
           {data.recentAudit.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">No audit entries yet.</p>
+            <p className="text-muted-foreground py-6 text-center text-sm">
+              {t('proFirms.detailPage.noAudit')}
+            </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-44">When</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>Details</TableHead>
+                  <TableHead className="w-44">{t('proFirms.detailPage.auditWhen')}</TableHead>
+                  <TableHead>{t('proFirms.detailPage.auditAction')}</TableHead>
+                  <TableHead>{t('proFirms.detailPage.auditSource')}</TableHead>
+                  <TableHead>{t('proFirms.detailPage.auditActor')}</TableHead>
+                  <TableHead>{t('proFirms.detailPage.auditDetails')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -169,13 +193,12 @@ export default async function ProFirmDetailPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Billing</CardTitle>
-          <CardDescription>Pending — Step 23.</CardDescription>
+          <CardTitle className="text-lg">{t('proFirms.detailPage.billing')}</CardTitle>
+          <CardDescription>{t('proFirms.detailPage.billingPending')}</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm">
-            Subscription plan, invoices, and payment history will land with the Payment &amp;
-            Financial module.
+            {t('proFirms.detailPage.billingDescription')}
           </p>
         </CardContent>
       </Card>

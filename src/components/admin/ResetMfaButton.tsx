@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { postJson } from '@/lib/http/post';
 
 export function ResetMfaButton({ userId, mfaEnrolled }: { userId: string; mfaEnrolled: boolean }) {
+  const t = useTranslations('admin');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -44,39 +46,38 @@ export function ResetMfaButton({ userId, mfaEnrolled }: { userId: string; mfaEnr
     } catch {
       // ignore
     }
-    setError(payload.error ?? `Request failed (${res.status})`);
+    setError(payload.error ?? t('user.requestFailed', { status: res.status }));
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" disabled={!mfaEnrolled}>
-          {mfaEnrolled ? 'Reset MFA' : 'MFA not enrolled'}
+          {mfaEnrolled ? t('user.mfaReset.trigger') : t('user.mfaReset.notEnrolled')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reset MFA</DialogTitle>
-          <DialogDescription>
-            Deletes all MFA factors and revokes active sessions. The user will be forced to re-enrol
-            on next login.
-          </DialogDescription>
+          <DialogTitle>{t('user.mfaReset.title')}</DialogTitle>
+          <DialogDescription>{t('user.mfaReset.description')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Cannot reset MFA</AlertTitle>
+              <AlertTitle>{t('user.mfaReset.errorTitle')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           {removed !== null && (
             <Alert>
-              <AlertTitle>MFA reset</AlertTitle>
-              <AlertDescription>{removed} factor(s) removed.</AlertDescription>
+              <AlertTitle>{t('user.mfaReset.successTitle')}</AlertTitle>
+              <AlertDescription>
+                {t('user.mfaReset.successDescription', { count: removed })}
+              </AlertDescription>
             </Alert>
           )}
           <div className="space-y-2">
-            <Label>Reason (optional)</Label>
+            <Label>{t('user.fields.reason')}</Label>
             <Textarea
               rows={3}
               value={reason}
@@ -87,10 +88,10 @@ export function ResetMfaButton({ userId, mfaEnrolled }: { userId: string; mfaEnr
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {t('user.cancel')}
           </Button>
           <Button onClick={submit} disabled={submitting}>
-            {submitting ? 'Resetting…' : 'Confirm reset'}
+            {submitting ? t('user.mfaReset.resetting') : t('user.mfaReset.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

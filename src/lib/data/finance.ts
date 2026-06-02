@@ -14,9 +14,11 @@ export type FinanceKpiNumbers = {
 };
 
 export type FinanceKpi = {
-  label: string;
+  /** Stable i18n key under admin.finance.kpi.* (resolved at the render boundary). */
+  labelKey: string;
   value: string;
-  helper: string;
+  /** Stable i18n key under admin.finance.kpi.* (resolved at the render boundary). */
+  helperKey: string;
 };
 
 export type TenantMrrRow = {
@@ -78,17 +80,21 @@ export async function getFinanceKpis(): Promise<FinanceKpi[]> {
   });
 
   return [
-    { label: 'MRR', value: formatMoney(numbers.mrrMinor, 'USD'), helper: 'active monthly value' },
-    { label: 'ARR', value: formatMoney(numbers.arrMinor, 'USD'), helper: 'MRR x 12' },
     {
-      label: 'Active tenants',
+      labelKey: 'mrr',
+      value: formatMoney(numbers.mrrMinor, 'USD'),
+      helperKey: 'helperMonthlyValue',
+    },
+    { labelKey: 'arr', value: formatMoney(numbers.arrMinor, 'USD'), helperKey: 'helperMrrTimes12' },
+    {
+      labelKey: 'activeTenants',
       value: numbers.activeTenantCount.toLocaleString('en-US'),
-      helper: 'active subscriptions',
+      helperKey: 'helperActiveSubscriptions',
     },
     {
-      label: 'Churn',
+      labelKey: 'churn',
       value: `${numbers.churnRate.toFixed(1)}%`,
-      helper: 'last 30 days',
+      helperKey: 'helperLast30Days',
     },
   ];
 }
@@ -98,19 +104,23 @@ export async function getTenantMrrRows(): Promise<TenantMrrRow[]> {
   const admin = createSupabaseServiceRoleClient();
   const { data } = await admin
     .from('subscriptions')
-    .select('tenant_id, plan, status, current_period_end, unit_amount_minor, interval, tenants(name)')
+    .select(
+      'tenant_id, plan, status, current_period_end, unit_amount_minor, interval, tenants(name)',
+    )
     .order('unit_amount_minor', { ascending: false })
     .limit(200);
 
-  return ((data ?? []) as unknown as Array<{
-    tenant_id: string;
-    plan: string;
-    status: string;
-    current_period_end: string | null;
-    unit_amount_minor: number;
-    interval: string;
-    tenants: { name: string } | null;
-  }>)
+  return (
+    (data ?? []) as unknown as Array<{
+      tenant_id: string;
+      plan: string;
+      status: string;
+      current_period_end: string | null;
+      unit_amount_minor: number;
+      interval: string;
+      tenants: { name: string } | null;
+    }>
+  )
     .map((row) => {
       const mrrMinor = monthlyAmountMinor(row.unit_amount_minor, row.interval);
       return {

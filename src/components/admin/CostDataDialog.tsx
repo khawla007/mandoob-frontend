@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +16,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { createCostDataAction, updateCostDataAction } from '@/app/admin/cost-data/actions';
 import type { CostDataRow } from '@/lib/data/cost-data';
@@ -27,6 +34,7 @@ import {
 } from '@/lib/validation/cost-data';
 
 export function CostDataDialog({ mode, row }: { mode: 'create' | 'edit'; row?: CostDataRow }) {
+  const t = useTranslations('admin');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -52,51 +60,137 @@ export function CostDataDialog({ mode, row }: { mode: 'create' | 'edit'; row?: C
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size={mode === 'edit' ? 'sm' : 'default'} variant={mode === 'edit' ? 'outline' : 'default'}>
-          {mode === 'edit' ? 'Edit' : 'New row'}
+        <Button
+          size={mode === 'edit' ? 'sm' : 'default'}
+          variant={mode === 'edit' ? 'outline' : 'default'}
+        >
+          {mode === 'edit' ? t('costData.edit') : t('costData.newRow')}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>{mode === 'edit' ? 'Edit cost row' : 'New cost row'}</DialogTitle>
-          <DialogDescription>Rows with active + estimate-grade feed the public estimator.</DialogDescription>
+          <DialogTitle>
+            {mode === 'edit' ? t('costData.editTitle') : t('costData.createTitle')}
+          </DialogTitle>
+          <DialogDescription>{t('costData.dialogDescription')}</DialogDescription>
         </DialogHeader>
         <form action={onSubmit} className="grid gap-4">
           {error ? (
             <Alert variant="destructive">
-              <AlertTitle>Could not save row</AlertTitle>
+              <AlertTitle>{t('costData.couldNotSave')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Field label="Authority" name="authority" defaultValue={row?.authority} required />
-            <SelectField label="Jurisdiction" name="jurisdiction" defaultValue={row?.jurisdiction ?? 'free_zone'} options={COST_DATA_JURISDICTIONS} />
-            <Field label="Emirate" name="emirate" defaultValue={row?.emirate ?? ''} />
+            <Field
+              label={t('costData.fields.authority')}
+              name="authority"
+              defaultValue={row?.authority}
+              required
+            />
+            <SelectField
+              label={t('costData.fields.jurisdiction')}
+              name="jurisdiction"
+              defaultValue={row?.jurisdiction ?? 'free_zone'}
+              options={COST_DATA_JURISDICTIONS}
+            />
+            <Field
+              label={t('costData.fields.emirate')}
+              name="emirate"
+              defaultValue={row?.emirate ?? ''}
+            />
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            <SelectField label="Fee type" name="feeType" defaultValue={row?.feeType ?? 'license'} options={COST_DATA_FEE_TYPES} />
-            <SelectField label="Recurrence" name="recurrence" defaultValue={row?.recurrence ?? 'one_time'} options={COST_DATA_RECURRENCES} />
-            <Field label="Activity key" name="activityKey" defaultValue={row?.activityKey ?? ''} />
+            <SelectField
+              label={t('costData.fields.feeType')}
+              name="feeType"
+              defaultValue={row?.feeType ?? 'license'}
+              options={COST_DATA_FEE_TYPES}
+            />
+            <SelectField
+              label={t('costData.fields.recurrence')}
+              name="recurrence"
+              defaultValue={row?.recurrence ?? 'one_time'}
+              options={COST_DATA_RECURRENCES}
+            />
+            <Field
+              label={t('costData.fields.activityKey')}
+              name="activityKey"
+              defaultValue={row?.activityKey ?? ''}
+            />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Label" name="label" defaultValue={row?.label} required />
-            <Field label="Amount AED" name="amount" defaultValue={row ? formatMinorAsAed(row.amountMinor) : ''} required inputMode="decimal" />
+            <Field
+              label={t('costData.fields.label')}
+              name="label"
+              defaultValue={row?.label}
+              required
+            />
+            <Field
+              label={t('costData.fields.amountAed')}
+              name="amount"
+              defaultValue={row ? formatMinorAsAed(row.amountMinor) : ''}
+              required
+              inputMode="decimal"
+            />
           </div>
           <div className="grid gap-4 md:grid-cols-4">
-            <Field label="Min shareholders" name="minShareholders" defaultValue={row?.minShareholders ?? 1} type="number" />
-            <Field label="Max shareholders" name="maxShareholders" defaultValue={row?.maxShareholders ?? 50} type="number" />
-            <Field label="Min visas" name="minVisas" defaultValue={row?.minVisas ?? 0} type="number" />
-            <Field label="Max visas" name="maxVisas" defaultValue={row?.maxVisas ?? 200} type="number" />
+            <Field
+              label={t('costData.fields.minShareholders')}
+              name="minShareholders"
+              defaultValue={row?.minShareholders ?? 1}
+              type="number"
+            />
+            <Field
+              label={t('costData.fields.maxShareholders')}
+              name="maxShareholders"
+              defaultValue={row?.maxShareholders ?? 50}
+              type="number"
+            />
+            <Field
+              label={t('costData.fields.minVisas')}
+              name="minVisas"
+              defaultValue={row?.minVisas ?? 0}
+              type="number"
+            />
+            <Field
+              label={t('costData.fields.maxVisas')}
+              name="maxVisas"
+              defaultValue={row?.maxVisas ?? 200}
+              type="number"
+            />
           </div>
           <div className="grid gap-4 md:grid-cols-4">
-            <Field label="Timeline min" name="timelineMinDays" defaultValue={row?.timelineMinDays ?? 0} type="number" />
-            <Field label="Timeline max" name="timelineMaxDays" defaultValue={row?.timelineMaxDays ?? 0} type="number" />
-            <Field label="Valid from" name="validFrom" defaultValue={row?.validFrom ?? new Date().toISOString().slice(0, 10)} type="date" />
-            <Field label="Valid to" name="validTo" defaultValue={row?.validTo ?? ''} type="date" />
+            <Field
+              label={t('costData.fields.timelineMin')}
+              name="timelineMinDays"
+              defaultValue={row?.timelineMinDays ?? 0}
+              type="number"
+            />
+            <Field
+              label={t('costData.fields.timelineMax')}
+              name="timelineMaxDays"
+              defaultValue={row?.timelineMaxDays ?? 0}
+              type="number"
+            />
+            <Field
+              label={t('costData.fields.validFrom')}
+              name="validFrom"
+              defaultValue={row?.validFrom ?? new Date().toISOString().slice(0, 10)}
+              type="date"
+            />
+            <Field
+              label={t('costData.fields.validTo')}
+              name="validTo"
+              defaultValue={row?.validTo ?? ''}
+              type="date"
+            />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="requiredDocumentKeys">Required document keys</Label>
+            <Label htmlFor="requiredDocumentKeys">
+              {t('costData.fields.requiredDocumentKeys')}
+            </Label>
             <Textarea
               id="requiredDocumentKeys"
               name="requiredDocumentKeys"
@@ -109,7 +203,7 @@ export function CostDataDialog({ mode, row }: { mode: 'create' | 'edit'; row?: C
           <input type="hidden" name="active" value={String(row?.active ?? true)} />
           <DialogFooter>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Saving...' : 'Save row'}
+              {pending ? t('costData.saving') : t('costData.saveRow')}
             </Button>
           </DialogFooter>
         </form>
@@ -136,7 +230,14 @@ function Field({
   return (
     <div className="grid gap-2">
       <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} type={type} required={required} defaultValue={defaultValue} inputMode={inputMode} />
+      <Input
+        id={name}
+        name={name}
+        type={type}
+        required={required}
+        defaultValue={defaultValue}
+        inputMode={inputMode}
+      />
     </div>
   );
 }

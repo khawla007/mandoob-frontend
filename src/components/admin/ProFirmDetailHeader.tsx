@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,14 +19,26 @@ const STATUS_VARIANT: Record<ProFirmRow['status'], 'default' | 'secondary' | 'de
 };
 
 export function ProFirmDetailHeader({ tenant }: { tenant: ProFirmRow }) {
+  const t = useTranslations('admin');
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
 
-  function run(label: string, fn: () => Promise<{ ok: boolean; error?: string; code?: string }>) {
-    setBusy(label);
+  function run(
+    action: string,
+    label: string,
+    fn: () => Promise<{ ok: boolean; error?: string; code?: string }>,
+  ) {
+    setBusy(action);
     start(async () => {
       const r = await fn();
-      if (!r.ok) alert(`${label} failed (${r.code ?? '—'}): ${r.error ?? ''}`);
+      if (!r.ok)
+        alert(
+          t('proFirms.actions.actionFailed', {
+            action: label,
+            code: r.code ?? '—',
+            error: r.error ?? '',
+          }),
+        );
       setBusy(null);
     });
   }
@@ -35,12 +48,14 @@ export function ProFirmDetailHeader({ tenant }: { tenant: ProFirmRow }) {
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{tenant.name}</h1>
-          <Badge variant={STATUS_VARIANT[tenant.status]}>{tenant.status}</Badge>
-          <Badge variant="outline">{tenant.plan}</Badge>
+          <Badge variant={STATUS_VARIANT[tenant.status]}>
+            {t(`enums.tenantStatus.${tenant.status}`)}
+          </Badge>
+          <Badge variant="outline">{t(`enums.plan.${tenant.plan}`)}</Badge>
         </div>
         <div className="text-muted-foreground mt-1 text-xs">
-          slug <span className="font-mono">{tenant.slug}</span> · created{' '}
-          {new Date(tenant.createdAt).toLocaleDateString()}
+          {t('proFirms.detail.slug')} <span className="font-mono">{tenant.slug}</span> ·{' '}
+          {t('proFirms.detail.created')} {new Date(tenant.createdAt).toLocaleDateString()}
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -50,12 +65,11 @@ export function ProFirmDetailHeader({ tenant }: { tenant: ProFirmRow }) {
             size="sm"
             disabled={pending}
             onClick={() => {
-              if (!confirm('Suspend this PRO firm? Members will lose access until reactivated.'))
-                return;
-              run('Suspend', () => suspendTenantAction(tenant.id));
+              if (!confirm(t('proFirms.actions.confirmSuspend'))) return;
+              run('suspend', t('proFirms.detail.suspend'), () => suspendTenantAction(tenant.id));
             }}
           >
-            {busy === 'Suspend' ? 'Suspending…' : 'Suspend'}
+            {busy === 'suspend' ? t('proFirms.detail.suspending') : t('proFirms.detail.suspend')}
           </Button>
         )}
         {tenant.status === 'suspended' && (
@@ -63,9 +77,15 @@ export function ProFirmDetailHeader({ tenant }: { tenant: ProFirmRow }) {
             variant="outline"
             size="sm"
             disabled={pending}
-            onClick={() => run('Reactivate', () => reactivateTenantAction(tenant.id))}
+            onClick={() =>
+              run('reactivate', t('proFirms.detail.reactivate'), () =>
+                reactivateTenantAction(tenant.id),
+              )
+            }
           >
-            {busy === 'Reactivate' ? 'Reactivating…' : 'Reactivate'}
+            {busy === 'reactivate'
+              ? t('proFirms.detail.reactivating')
+              : t('proFirms.detail.reactivate')}
           </Button>
         )}
         {tenant.status === 'pending' && (
@@ -73,21 +93,22 @@ export function ProFirmDetailHeader({ tenant }: { tenant: ProFirmRow }) {
             <Button
               size="sm"
               disabled={pending}
-              onClick={() => run('Approve', () => approveTenantAction(tenant.id))}
+              onClick={() =>
+                run('approve', t('proFirms.detail.approve'), () => approveTenantAction(tenant.id))
+              }
             >
-              {busy === 'Approve' ? 'Approving…' : 'Approve'}
+              {busy === 'approve' ? t('proFirms.detail.approving') : t('proFirms.detail.approve')}
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled={pending}
               onClick={() => {
-                if (!confirm('Reject this PRO firm? The tenant and admin user will be deleted.'))
-                  return;
-                run('Reject', () => rejectTenantAction(tenant.id));
+                if (!confirm(t('proFirms.actions.confirmReject'))) return;
+                run('reject', t('proFirms.detail.reject'), () => rejectTenantAction(tenant.id));
               }}
             >
-              {busy === 'Reject' ? 'Rejecting…' : 'Reject'}
+              {busy === 'reject' ? t('proFirms.detail.rejecting') : t('proFirms.detail.reject')}
             </Button>
           </>
         )}

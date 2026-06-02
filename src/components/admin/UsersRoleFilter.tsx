@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,15 +15,8 @@ import {
 import { ROLES, type Role } from '@/lib/auth/roles';
 import { useListFilterNav } from '@/hooks/use-list-filter-nav';
 
-const LABEL: Record<Role, string> = {
-  super_admin: 'Super admin',
-  admin: 'Admin',
-  pro: 'PRO',
-  customer: 'Customer',
-  employee: 'Employee',
-};
-
 export function UsersRoleFilter({ viewerRole, initial }: { viewerRole: Role; initial: Role[] }) {
+  const t = useTranslations('admin');
   const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
 
   // Both platform roles (super_admin, admin) see all 5 role buckets. The
@@ -42,7 +36,7 @@ export function UsersRoleFilter({ viewerRole, initial }: { viewerRole: Role; ini
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-9">
           <Filter className="size-3" />
-          <span>Roles</span>
+          <span>{t('user.filters.rolesLabel')}</span>
           {initial.length > 0 && (
             <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
               {initial.length}
@@ -52,7 +46,7 @@ export function UsersRoleFilter({ viewerRole, initial }: { viewerRole: Role; ini
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
-        <DropdownMenuLabel>Filter by role</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('user.filters.filterByRole')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {selectable.map((r) => {
           const checked = initial.includes(r);
@@ -64,7 +58,7 @@ export function UsersRoleFilter({ viewerRole, initial }: { viewerRole: Role; ini
               className="hover:bg-accent flex w-full items-center gap-2 px-2 py-1.5 text-sm"
             >
               <Checkbox checked={checked} />
-              <span>{LABEL[r]}</span>
+              <span>{t(`enums.role.${r}`)}</span>
             </button>
           );
         })}

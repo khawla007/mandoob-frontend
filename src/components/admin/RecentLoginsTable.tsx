@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -12,37 +13,38 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { RecentLoginRow } from '@/lib/data/admin-metrics';
 import { roleBadgeVariant } from './role-badge';
 
-export function RecentLoginsTable({
+export async function RecentLoginsTable({
   rows,
-  title = 'Recent logins',
-  description = 'Latest authentication events across all tenants.',
+  title,
+  description,
 }: {
   rows: RecentLoginRow[];
   title?: string;
   description?: string;
 }) {
+  const t = await getTranslations('admin');
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle className="text-lg">{title ?? t('user.recentLogins.title')}</CardTitle>
+        <CardDescription>{description ?? t('user.recentLogins.description')}</CardDescription>
       </CardHeader>
       <CardContent className="px-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>IP</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead className="text-right">Status</TableHead>
+              <TableHead>{t('user.recentLogins.user')}</TableHead>
+              <TableHead>{t('user.recentLogins.role')}</TableHead>
+              <TableHead>{t('user.recentLogins.ip')}</TableHead>
+              <TableHead>{t('user.recentLogins.time')}</TableHead>
+              <TableHead className="text-right">{t('user.recentLogins.status')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="text-muted-foreground py-10 text-center text-sm">
-                  No login events yet.
+                  {t('user.recentLogins.empty')}
                 </TableCell>
               </TableRow>
             )}
@@ -61,7 +63,7 @@ export function RecentLoginsTable({
                 <TableCell>
                   {r.role ? (
                     <Badge variant={roleBadgeVariant[r.role]} className="font-mono text-xs">
-                      {r.role}
+                      {t(`enums.role.${r.role}`)}
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground text-xs">—</span>
@@ -71,7 +73,7 @@ export function RecentLoginsTable({
                 <TableCell className="font-mono text-xs tabular-nums">{r.time}</TableCell>
                 <TableCell className="text-right">
                   <Badge variant={r.status === 'success' ? 'outline' : 'destructive'}>
-                    {r.status}
+                    {t(`user.recentLogins.loginStatus.${r.status}`)}
                   </Badge>
                 </TableCell>
               </TableRow>

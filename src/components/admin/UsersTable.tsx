@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import {
   Table,
@@ -45,28 +46,29 @@ function SortHeader({
   );
 }
 
-export function UsersTable({
+export async function UsersTable({
   rows,
   sort,
 }: {
   rows: UserRow[];
   sort: { col: SortCol; dir: SortDir };
 }) {
+  const t = await getTranslations('admin');
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>
-            <SortHeader col="full_name" label="User" active={sort} />
+            <SortHeader col="full_name" label={t('user.table.user')} active={sort} />
           </TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Tenant</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>{t('user.table.role')}</TableHead>
+          <TableHead>{t('user.table.tenant')}</TableHead>
+          <TableHead>{t('user.table.status')}</TableHead>
           <TableHead>
-            <SortHeader col="created_at" label="Created" active={sort} />
+            <SortHeader col="created_at" label={t('user.table.created')} active={sort} />
           </TableHead>
-          <TableHead className="text-right">Last sign-in</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead className="text-right">{t('user.table.lastSignIn')}</TableHead>
+          <TableHead className="text-right">{t('user.table.actions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -89,7 +91,7 @@ export function UsersTable({
             <TableCell>
               {r.role ? (
                 <Badge variant={roleBadgeVariant[r.role]} className="font-mono text-xs">
-                  {r.role}
+                  {t(`enums.role.${r.role}`)}
                 </Badge>
               ) : (
                 <span className="text-muted-foreground text-xs">—</span>
@@ -107,8 +109,8 @@ export function UsersTable({
             </TableCell>
             <TableCell>
               {r.status ? (
-                <Badge variant={statusBadgeVariant[r.status]} className="text-xs capitalize">
-                  {r.status}
+                <Badge variant={statusBadgeVariant[r.status]} className="text-xs">
+                  {t(`enums.status.${r.status}`)}
                 </Badge>
               ) : (
                 <span className="text-muted-foreground text-xs">—</span>
@@ -125,7 +127,7 @@ export function UsersTable({
                 href={`/admin/users/${r.id}/edit`}
                 className="text-primary text-xs underline-offset-2 hover:underline"
               >
-                Edit
+                {t('user.table.edit')}
               </Link>
             </TableCell>
           </TableRow>

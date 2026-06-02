@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { importCostDataCsvAction } from '@/app/admin/cost-data/actions';
 
 export function CostDataImportDialog() {
+  const t = useTranslations('admin');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [csv, setCsv] = useState('');
@@ -32,8 +34,14 @@ export function CostDataImportDialog() {
         setMessage(`${result.code}: ${result.error}`);
         return;
       }
-      const suffix = result.data.errors.length ? `, ${result.data.errors.length} failed` : '';
-      setMessage(`Inserted ${result.data.inserted}${suffix}`);
+      setMessage(
+        result.data.errors.length
+          ? t('costData.import.insertedWithErrors', {
+              inserted: result.data.inserted,
+              failed: result.data.errors.length,
+            })
+          : t('costData.import.inserted', { inserted: result.data.inserted }),
+      );
       router.refresh();
     });
   }
@@ -41,17 +49,17 @@ export function CostDataImportDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Import CSV</Button>
+        <Button variant="outline">{t('costData.import.trigger')}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Import cost data</DialogTitle>
-          <DialogDescription>Paste CSV exported from this page, then import validated rows.</DialogDescription>
+          <DialogTitle>{t('costData.import.title')}</DialogTitle>
+          <DialogDescription>{t('costData.import.description')}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={onSubmit}>
           {message ? (
             <Alert>
-              <AlertTitle>Import result</AlertTitle>
+              <AlertTitle>{t('costData.import.resultTitle')}</AlertTitle>
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           ) : null}
@@ -63,7 +71,7 @@ export function CostDataImportDialog() {
           />
           <DialogFooter>
             <Button type="submit" disabled={pending || !csv.trim()}>
-              {pending ? 'Importing...' : 'Import rows'}
+              {pending ? t('costData.import.importing') : t('costData.import.importRows')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { roleBadgeVariant, statusBadgeVariant } from './role-badge';
@@ -16,20 +17,25 @@ export type EditUserPanelProps = {
   tenants: TenantSummary[];
 };
 
-export function EditUserPanel({ user, callerRole, tenantName, tenants }: EditUserPanelProps) {
+export async function EditUserPanel({ user, callerRole, tenantName, tenants }: EditUserPanelProps) {
   const { profile } = user;
+  const t = await getTranslations('admin');
   return (
     <div className="max-w-3xl space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>{profile.fullName ?? profile.email ?? 'Unnamed user'}</CardTitle>
+          <CardTitle>{profile.fullName ?? profile.email ?? t('user.unnamedUser')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3 text-sm">
-          <Badge variant={roleBadgeVariant[profile.role]}>{profile.role}</Badge>
-          <Badge variant={statusBadgeVariant[profile.status]}>{profile.status}</Badge>
+          <Badge variant={roleBadgeVariant[profile.role]}>{t(`enums.role.${profile.role}`)}</Badge>
+          <Badge variant={statusBadgeVariant[profile.status]}>
+            {t(`enums.status.${profile.status}`)}
+          </Badge>
           {profile.email ? <span className="text-muted-foreground">{profile.email}</span> : null}
           {profile.suspensionReason ? (
-            <span className="text-destructive">Suspension reason: {profile.suspensionReason}</span>
+            <span className="text-destructive">
+              {t('user.suspensionReason', { reason: profile.suspensionReason })}
+            </span>
           ) : null}
         </CardContent>
       </Card>
@@ -38,7 +44,7 @@ export function EditUserPanel({ user, callerRole, tenantName, tenants }: EditUse
 
       <Card>
         <CardHeader>
-          <CardTitle>Lifecycle actions</CardTitle>
+          <CardTitle>{t('user.lifecycleActionsTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <ChangeRolePanel

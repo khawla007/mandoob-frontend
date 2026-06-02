@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,21 +14,19 @@ import type { ProfileStatus } from '@/lib/data/users';
 import { useListFilterNav } from '@/hooks/use-list-filter-nav';
 
 type Value = ProfileStatus | 'all';
-const OPTIONS: { value: Value; label: string }[] = [
-  { value: 'all', label: 'All statuses' },
-  { value: 'active', label: 'Active' },
-  { value: 'invited', label: 'Invited' },
-  { value: 'disabled', label: 'Disabled' },
-];
+const OPTION_VALUES: Value[] = ['all', 'active', 'invited', 'disabled'];
 
 export function UsersStatusFilter({ initial }: { initial: Value }) {
+  const t = useTranslations('admin');
   const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
 
   function set(value: Value) {
     navigate({ status: value === 'all' ? null : value });
   }
 
-  const current = OPTIONS.find((o) => o.value === initial)?.label ?? 'All statuses';
+  const label = (value: Value) =>
+    value === 'all' ? t('user.filters.allStatuses') : t(`enums.status.${value}`);
+  const current = label(OPTION_VALUES.includes(initial) ? initial : 'all');
 
   return (
     <DropdownMenu>
@@ -38,15 +37,15 @@ export function UsersStatusFilter({ initial }: { initial: Value }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-44">
-        <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('user.filters.filterByStatus')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {OPTIONS.map((o) => (
+        {OPTION_VALUES.map((value) => (
           <DropdownMenuCheckboxItem
-            key={o.value}
-            checked={o.value === initial}
-            onCheckedChange={() => set(o.value)}
+            key={value}
+            checked={value === initial}
+            onCheckedChange={() => set(value)}
           >
-            {o.label}
+            {label(value)}
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>

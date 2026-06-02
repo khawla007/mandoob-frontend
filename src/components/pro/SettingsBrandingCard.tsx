@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { updateBrandingAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/a
 import type { TenantBranding } from '@/lib/data/tenant-settings';
 
 export function SettingsBrandingCard({ slug, initial }: { slug: string; initial: TenantBranding }) {
+  const t = useTranslations('pro.settings');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -46,26 +48,26 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Branding</CardTitle>
-        <CardDescription>Workspace name, logo, favicon, and accent colors.</CardDescription>
+        <CardTitle className="text-lg">{t('branding.title')}</CardTitle>
+        <CardDescription>{t('branding.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Could not save</AlertTitle>
+              <AlertTitle>{t('couldNotSave')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           {saved && (
             <Alert>
-              <AlertTitle>Saved</AlertTitle>
-              <AlertDescription>Branding updated.</AlertDescription>
+              <AlertTitle>{t('saved')}</AlertTitle>
+              <AlertDescription>{t('branding.savedDescription')}</AlertDescription>
             </Alert>
           )}
 
           <div className="grid gap-2">
-            <Label htmlFor="branding-name">Workspace name</Label>
+            <Label htmlFor="branding-name">{t('branding.workspaceName')}</Label>
             <Input
               id="branding-name"
               minLength={2}
@@ -76,7 +78,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="branding-logo">Logo URL</Label>
+            <Label htmlFor="branding-logo">{t('branding.logoUrl')}</Label>
             <Input
               id="branding-logo"
               type="url"
@@ -87,7 +89,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="branding-favicon">Favicon URL</Label>
+            <Label htmlFor="branding-favicon">{t('branding.faviconUrl')}</Label>
             <Input
               id="branding-favicon"
               type="url"
@@ -99,7 +101,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="branding-primary">Primary color</Label>
+              <Label htmlFor="branding-primary">{t('branding.primaryColor')}</Label>
               <Input
                 id="branding-primary"
                 value={primary}
@@ -108,7 +110,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="branding-secondary">Secondary color</Label>
+              <Label htmlFor="branding-secondary">{t('branding.secondaryColor')}</Label>
               <Input
                 id="branding-secondary"
                 value={secondary}
@@ -119,7 +121,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
           </div>
 
           <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save branding'}
+            {pending ? t('saving') : t('branding.save')}
           </Button>
         </form>
       </CardContent>

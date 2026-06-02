@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,39 +30,33 @@ export function SessionsTable({
   rows: SessionOverviewRow[];
   viewerUserId: string;
 }) {
+  const t = useTranslations('admin');
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
 
   function revokeOne(row: SessionOverviewRow) {
-    if (!confirm(`Revoke this session for ${row.fullName ?? row.userId}?`)) return;
+    if (!confirm(t('user.sessions.confirmRevokeOne', { name: row.fullName ?? row.userId }))) return;
     setBusy(row.sessionId);
     start(async () => {
       const r = await revokeSessionAction({ sessionId: row.sessionId, userId: row.userId });
-      if (!r.ok) alert(`Revoke failed (${r.code}): ${r.error}`);
+      if (!r.ok) alert(t('user.sessions.revokeFailed', { code: r.code, error: r.error }));
       setBusy(null);
     });
   }
 
   function revokeAll(row: SessionOverviewRow) {
-    if (
-      !confirm(
-        `Revoke ALL sessions for ${row.fullName ?? row.userId}? They will be signed out everywhere.`,
-      )
-    )
-      return;
+    if (!confirm(t('user.sessions.confirmRevokeAll', { name: row.fullName ?? row.userId }))) return;
     setBusy(`all:${row.userId}`);
     start(async () => {
       const r = await revokeAllSessionsForUserAction({ userId: row.userId });
-      if (!r.ok) alert(`Revoke-all failed (${r.code}): ${r.error}`);
+      if (!r.ok) alert(t('user.sessions.revokeAllFailed', { code: r.code, error: r.error }));
       setBusy(null);
     });
   }
 
   if (rows.length === 0) {
     return (
-      <p className="text-muted-foreground py-8 text-center text-sm">
-        No active sessions match the current filters.
-      </p>
+      <p className="text-muted-foreground py-8 text-center text-sm">{t('user.sessions.empty')}</p>
     );
   }
 
@@ -69,13 +64,13 @@ export function SessionsTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>User</TableHead>
-          <TableHead>Tenant</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>IP</TableHead>
-          <TableHead>Started</TableHead>
-          <TableHead>Last seen</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead>{t('user.sessions.user')}</TableHead>
+          <TableHead>{t('user.sessions.tenant')}</TableHead>
+          <TableHead>{t('user.sessions.role')}</TableHead>
+          <TableHead>{t('user.sessions.ip')}</TableHead>
+          <TableHead>{t('user.sessions.started')}</TableHead>
+          <TableHead>{t('user.sessions.lastSeen')}</TableHead>
+          <TableHead className="text-right">{t('user.sessions.actions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -96,7 +91,7 @@ export function SessionsTable({
               </TableCell>
               <TableCell>
                 {r.role ? (
-                  <Badge variant="outline">{r.role}</Badge>
+                  <Badge variant="outline">{t(`enums.role.${r.role}`)}</Badge>
                 ) : (
                   <span className="text-muted-foreground">—</span>
                 )}
@@ -106,7 +101,7 @@ export function SessionsTable({
               <TableCell className="text-xs whitespace-nowrap">{fmt(r.refreshedAt)}</TableCell>
               <TableCell className="space-x-2 text-right">
                 {isSelf ? (
-                  <Badge variant="secondary">you</Badge>
+                  <Badge variant="secondary">{t('user.sessions.you')}</Badge>
                 ) : (
                   <>
                     <Button
@@ -115,7 +110,7 @@ export function SessionsTable({
                       disabled={pending}
                       onClick={() => revokeOne(r)}
                     >
-                      {oneBusy ? 'Revoking…' : 'Revoke'}
+                      {oneBusy ? t('user.sessions.revoking') : t('user.sessions.revoke')}
                     </Button>
                     <Button
                       size="sm"
@@ -123,7 +118,7 @@ export function SessionsTable({
                       disabled={pending}
                       onClick={() => revokeAll(r)}
                     >
-                      {allBusy ? 'Revoking all…' : 'Revoke all'}
+                      {allBusy ? t('user.sessions.revokingAll') : t('user.sessions.revokeAll')}
                     </Button>
                   </>
                 )}

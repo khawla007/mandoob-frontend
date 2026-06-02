@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormContext } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +10,7 @@ import type { CreateUserInput } from '@/lib/validation/admin-user';
 import { SERVICE_AREA_VALUES } from '@/lib/validation/admin-user';
 
 export function UserProFields() {
+  const t = useTranslations('admin');
   const form = useFormContext<CreateUserInput>();
   const selected = (form.watch('service_areas') as string[] | undefined) ?? [];
 
@@ -24,7 +26,7 @@ export function UserProFields() {
         name="license_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>License number</FormLabel>
+            <FormLabel>{t('user.fields.licenseNo')}</FormLabel>
             <FormControl>
               <Input {...field} value={field.value ?? ''} />
             </FormControl>
@@ -37,7 +39,7 @@ export function UserProFields() {
         name="designation"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Designation</FormLabel>
+            <FormLabel>{t('user.fields.designation')}</FormLabel>
             <FormControl>
               <Input {...field} value={field.value ?? ''} />
             </FormControl>
@@ -50,7 +52,7 @@ export function UserProFields() {
         name="department"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Department</FormLabel>
+            <FormLabel>{t('user.fields.department')}</FormLabel>
             <FormControl>
               <Input {...field} value={field.value ?? ''} />
             </FormControl>
@@ -59,7 +61,7 @@ export function UserProFields() {
         )}
       />
       <FormItem>
-        <FormLabel>Service areas</FormLabel>
+        <FormLabel>{t('user.fields.serviceAreasLabel')}</FormLabel>
         <div className="flex flex-wrap gap-2">
           {SERVICE_AREA_VALUES.map((area) => (
             <Toggle
@@ -70,7 +72,7 @@ export function UserProFields() {
               variant="outline"
               size="sm"
             >
-              {area.replace(/_/g, ' ')}
+              {t(`user.serviceAreas.${area}`)}
             </Toggle>
           ))}
         </div>
@@ -81,7 +83,7 @@ export function UserProFields() {
         name="bio"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Bio</FormLabel>
+            <FormLabel>{t('user.fields.bio')}</FormLabel>
             <FormControl>
               <Textarea rows={4} {...field} value={field.value ?? ''} />
             </FormControl>

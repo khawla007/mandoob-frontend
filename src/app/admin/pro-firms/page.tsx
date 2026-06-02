@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -22,6 +23,7 @@ export default async function ProFirmsPage({
   searchParams: Promise<SearchParams>;
 }) {
   await requireRole('super_admin');
+  const t = await getTranslations('admin');
   const sp = await searchParams;
   const status = parseStatus(sp.status);
   const rows = await listProFirms({ status, q: sp.q ?? null });
@@ -30,39 +32,42 @@ export default async function ProFirmsPage({
     <div className="space-y-6">
       {sp.created && (
         <Alert>
-          <AlertTitle>PRO firm created</AlertTitle>
-          <AlertDescription>
-            Tenant provisioned and invite email sent to the PRO admin.
-          </AlertDescription>
+          <AlertTitle>{t('proFirms.page.createdTitle')}</AlertTitle>
+          <AlertDescription>{t('proFirms.page.createdDescription')}</AlertDescription>
         </Alert>
       )}
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">PRO firms</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('proFirms.page.title')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Tenants on the platform. Showing {rows.length}.
+            {t('proFirms.page.intro', { count: rows.length })}
           </p>
         </div>
         <Button asChild>
-          <Link href="/admin/pro-firms/new">Create PRO firm</Link>
+          <Link href="/admin/pro-firms/new">{t('proFirms.page.createButton')}</Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Directory</CardTitle>
+          <CardTitle className="text-lg">{t('proFirms.page.directory')}</CardTitle>
           <CardDescription>
-            Status filter: <StatusLink current={status} value="all" label="All" />{' '}
-            <StatusLink current={status} value="active" label="Active" />{' '}
-            <StatusLink current={status} value="pending" label="Pending" />{' '}
-            <StatusLink current={status} value="suspended" label="Suspended" />
+            {t('proFirms.page.statusFilterLabel')}{' '}
+            <StatusLink current={status} value="all" label={t('proFirms.page.filterAll')} />{' '}
+            <StatusLink current={status} value="active" label={t('enums.tenantStatus.active')} />{' '}
+            <StatusLink current={status} value="pending" label={t('enums.tenantStatus.pending')} />{' '}
+            <StatusLink
+              current={status}
+              value="suspended"
+              label={t('enums.tenantStatus.suspended')}
+            />
           </CardDescription>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
-              No PRO firms match the current filter.
+              {t('proFirms.page.empty')}
             </p>
           ) : (
             <div className="border-border/60 overflow-hidden rounded-lg border">

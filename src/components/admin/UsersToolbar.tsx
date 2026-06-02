@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { UsersRoleFilter } from './UsersRoleFilter';
@@ -28,6 +29,7 @@ export function UsersToolbar({
   initialStatus: StatusValue;
   initialTenant: string | null;
 }) {
+  const t = useTranslations('admin');
   const { navigate, pending } = useListFilterNav('/admin/users', { resetKeys: ['cursor'] });
   const [q, setQ] = useState(initialQ);
 
@@ -44,9 +46,9 @@ export function UsersToolbar({
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name or email"
+          placeholder={t('user.filters.searchPlaceholder')}
           className="pl-8"
-          aria-label="Search users"
+          aria-label={t('user.filters.searchAria')}
         />
       </div>
       <UsersRoleFilter viewerRole={viewerRole} initial={initialRoles} />
@@ -54,7 +56,9 @@ export function UsersToolbar({
       {(viewerRole === 'super_admin' || viewerRole === 'admin') && (
         <UsersTenantFilter tenants={tenants} initial={initialTenant} />
       )}
-      {pending && <span className="text-muted-foreground text-xs">Loading…</span>}
+      {pending && (
+        <span className="text-muted-foreground text-xs">{t('user.filters.loading')}</span>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/require-role';
 import { listTenants } from '@/lib/data/tenants';
 import { getUserForEdit } from '@/lib/data/admin-read-user';
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole('super_admin', 'admin');
   const callerRole = session.role as 'super_admin' | 'admin';
+  const t = await getTranslations('admin');
   const { id } = await params;
   if (!isUuid(id)) notFound();
 
@@ -34,10 +36,8 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Edit user</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Profile, role, status, and MFA actions. Lifecycle changes revoke active sessions.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('user.editTitle')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('user.editIntro')}</p>
       </div>
       <EditUserPanel
         user={user}

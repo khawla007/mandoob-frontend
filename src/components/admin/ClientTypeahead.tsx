@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -31,8 +32,10 @@ export function ClientTypeahead({
   value,
   onChange,
   required,
-  placeholder = 'Search clients…',
+  placeholder,
 }: ClientTypeaheadProps) {
+  const t = useTranslations('admin');
+  const resolvedPlaceholder = placeholder ?? t('clientTypeahead.searchPlaceholder');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<ClientLookupRow[]>([]);
@@ -84,7 +87,7 @@ export function ClientTypeahead({
   if (!tenantId) {
     return (
       <Button type="button" variant="outline" disabled className="w-full justify-start">
-        No tenant selected
+        {t('clientTypeahead.noTenant')}
       </Button>
     );
   }
@@ -98,15 +101,25 @@ export function ClientTypeahead({
           aria-required={required}
           className="w-full justify-between"
         >
-          {selected ? selected.company_name : placeholder}
+          {selected ? selected.company_name : resolvedPlaceholder}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Type to search…" value={query} onValueChange={setQuery} />
+          <CommandInput
+            placeholder={t('clientTypeahead.typeToSearch')}
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList>
-            {loading && <div className="text-muted-foreground p-3 text-xs">Loading…</div>}
-            {!loading && rows.length === 0 && <CommandEmpty>No matches.</CommandEmpty>}
+            {loading && (
+              <div className="text-muted-foreground p-3 text-xs">
+                {t('clientTypeahead.loading')}
+              </div>
+            )}
+            {!loading && rows.length === 0 && (
+              <CommandEmpty>{t('clientTypeahead.noMatches')}</CommandEmpty>
+            )}
             <CommandGroup>
               {rows.map((row) => (
                 <CommandItem
@@ -119,7 +132,11 @@ export function ClientTypeahead({
                   }}
                 >
                   <span className="flex-1 truncate">{row.company_name}</span>
-                  <span className="text-muted-foreground ml-2 text-xs">{row.status}</span>
+                  <span className="text-muted-foreground ml-2 text-xs">
+                    {t.has(`enums.clientStatus.${row.status}`)
+                      ? t(`enums.clientStatus.${row.status}`)
+                      : row.status}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>

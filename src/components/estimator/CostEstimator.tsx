@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,44 +32,27 @@ type EstimateResponse = {
   handoffUrl: string;
 };
 
-const JURISDICTION_LABELS: Record<Jurisdiction, string> = {
-  mainland: 'Mainland',
-  free_zone: 'Free Zone',
-  offshore: 'Offshore',
-};
+const JURISDICTION_VALUES: Jurisdiction[] = ['mainland', 'free_zone', 'offshore'];
 
-const LEGAL_STRUCTURES: { value: LegalStructure; label: string }[] = [
-  { value: 'fz_llc', label: 'FZ-LLC / FZE' },
-  { value: 'llc', label: 'Mainland LLC' },
-  { value: 'branch', label: 'Branch' },
-  { value: 'offshore_company', label: 'Offshore company' },
+const LEGAL_STRUCTURES: { value: LegalStructure }[] = [
+  { value: 'fz_llc' },
+  { value: 'llc' },
+  { value: 'branch' },
+  { value: 'offshore_company' },
 ];
 
-const OFFICE_TYPES: { value: OfficeType; label: string }[] = [
-  { value: 'flexi', label: 'Flexi desk' },
-  { value: 'none', label: 'No office' },
+const OFFICE_TYPES: { value: OfficeType }[] = [{ value: 'flexi' }, { value: 'none' }];
+
+const ADD_ONS: { value: AddOn }[] = [
+  { value: 'bank_account' },
+  { value: 'tax_registration' },
+  { value: 'document_attestation' },
 ];
 
-const ADD_ONS: { value: AddOn; label: string }[] = [
-  { value: 'bank_account', label: 'Bank account assistance' },
-  { value: 'tax_registration', label: 'Corporate tax registration' },
-  { value: 'document_attestation', label: 'Document attestation' },
-];
-
-const DOCUMENT_LABELS: Record<string, string> = {
-  attested_documents: 'Attested corporate documents',
-  business_plan: 'Business plan or activity summary',
-  lease_agreement: 'Lease or flexi desk confirmation',
-  medical_fitness: 'Medical fitness and Emirates ID documents',
-  passport: 'Passport copy',
-  photo: 'Passport photo',
-  shareholder_resolution: 'Shareholder resolution',
-  trade_license: 'Trade license copy',
-};
-
-const ACTIVITY_OPTIONS = [{ value: 'consulting', label: 'Consulting / professional services' }];
+const ACTIVITY_OPTIONS = [{ value: 'consulting' }];
 
 export function CostEstimator({ authorities }: { authorities: AuthorityOption[] }) {
+  const t = useTranslations('estimator');
   const [input, setInput] = useState<EstimateInput>(() => ({
     jurisdiction: 'free_zone',
     authority:
@@ -153,10 +137,10 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
         body: JSON.stringify(input),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? 'Could not calculate estimate');
+      if (!response.ok) throw new Error(body.error ?? t('errors.calculateFailed'));
       setQuote(body as EstimateResponse);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not calculate estimate');
+      setError(err instanceof Error ? err.message : t('errors.calculateFailed'));
     } finally {
       setLoading(false);
     }
@@ -173,7 +157,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.error ?? 'Could not generate PDF');
+        throw new Error(body?.error ?? t('errors.pdfFailed'));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -185,7 +169,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate PDF');
+      setError(err instanceof Error ? err.message : t('errors.pdfFailed'));
     } finally {
       setDownloading(false);
     }
@@ -195,12 +179,12 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
     <div className="est-cols">
       <form onSubmit={calculate} className="est-cols__form">
         <div className="est-form__head">
-          <span className="eyebrow">Public estimator</span>
-          <h1>UAE company setup quote</h1>
+          <span className="eyebrow">{t('formEyebrow')}</span>
+          <h1>{t('formTitle')}</h1>
         </div>
 
         <div className="est-grid">
-          <Field id="estimate-jurisdiction" label="Jurisdiction">
+          <Field id="estimate-jurisdiction" label={t('fields.jurisdiction')}>
             <Select
               value={input.jurisdiction}
               onValueChange={(value) => setJurisdiction(value as Jurisdiction)}
@@ -209,16 +193,16 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(JURISDICTION_LABELS).map(([value, label]) => (
+                {JURISDICTION_VALUES.map((value) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    {t(`jurisdiction.${value}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Field>
 
-          <Field id="estimate-authority" label="Authority">
+          <Field id="estimate-authority" label={t('fields.authority')}>
             <Select value={input.authority} onValueChange={setAuthority}>
               <SelectTrigger id="estimate-authority" className="w-full">
                 <SelectValue />
@@ -233,7 +217,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             </Select>
           </Field>
 
-          <Field id="estimate-activity" label="Business activity">
+          <Field id="estimate-activity" label={t('fields.activity')}>
             <Select
               value={input.activityKey}
               onValueChange={(activityKey) => patch({ activityKey })}
@@ -244,14 +228,14 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
               <SelectContent>
                 {ACTIVITY_OPTIONS.map((activity) => (
                   <SelectItem key={activity.value} value={activity.value}>
-                    {activity.label}
+                    {t(`activity.${activity.value}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Field>
 
-          <Field id="estimate-legal-structure" label="Legal structure">
+          <Field id="estimate-legal-structure" label={t('fields.legalStructure')}>
             <Select
               value={input.legalStructure}
               onValueChange={(legalStructure) =>
@@ -264,14 +248,14 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
               <SelectContent>
                 {legalStructureOptions.map((structure) => (
                   <SelectItem key={structure.value} value={structure.value}>
-                    {structure.label}
+                    {t(`legalStructure.${structure.value}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Field>
 
-          <Field id="estimate-shareholders" label="Shareholders">
+          <Field id="estimate-shareholders" label={t('fields.shareholders')}>
             <Input
               id="estimate-shareholders"
               min={1}
@@ -282,7 +266,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             />
           </Field>
 
-          <Field id="estimate-visas" label="Visas">
+          <Field id="estimate-visas" label={t('fields.visas')}>
             <Input
               id="estimate-visas"
               min={0}
@@ -293,7 +277,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
             />
           </Field>
 
-          <Field id="estimate-office-type" label="Office type">
+          <Field id="estimate-office-type" label={t('fields.officeType')}>
             <Select
               value={input.officeType}
               onValueChange={(officeType) => patch({ officeType: officeType as OfficeType })}
@@ -304,7 +288,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
               <SelectContent>
                 {officeTypeOptions.map((office) => (
                   <SelectItem key={office.value} value={office.value}>
-                    {office.label}
+                    {t(`officeType.${office.value}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -313,7 +297,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
         </div>
 
         <div className="est-addons">
-          <span className="est-addons__title">Add-ons</span>
+          <span className="est-addons__title">{t('addOnsTitle')}</span>
           <div className="est-addons__list">
             {ADD_ONS.map((addOn) => (
               <label key={addOn.value} className="est-addon">
@@ -321,7 +305,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
                   checked={(input.addOns ?? []).includes(addOn.value)}
                   onCheckedChange={() => toggleAddOn(addOn.value)}
                 />
-                {addOn.label}
+                {t(`addOns.${addOn.value}`)}
               </label>
             ))}
           </div>
@@ -330,7 +314,7 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
         {error ? <p className="est-error">{error}</p> : null}
 
         <button type="submit" className="btn btn--accent btn--lg est-btn-block" disabled={loading}>
-          {loading ? 'Calculating…' : 'Calculate quote'}
+          {loading ? t('calculating') : t('calculate')}
         </button>
       </form>
 
@@ -340,19 +324,16 @@ export function CostEstimator({ authorities }: { authorities: AuthorityOption[] 
         ) : (
           <div className="est-placeholder">
             <div>
-              <span className="eyebrow">Preview</span>
+              <span className="eyebrow">{t('preview.eyebrow')}</span>
               <h2 id="estimate-result-heading" className="mt-3">
-                Transparent estimate before the first call.
+                {t('preview.title')}
               </h2>
-              <p>
-                The quote uses estimate-grade authority rows for Mainland, Offshore, and 45+ Free
-                Zones. No lead is created until the application questionnaire is submitted.
-              </p>
+              <p>{t('preview.body')}</p>
             </div>
             <div className="est-metrics">
-              <Metric value="AED" label="Currency" />
-              <Metric value="45+" label="Free Zones" />
-              <Metric value="PDF" label="Export" />
+              <Metric value="AED" label={t('metrics.currency')} />
+              <Metric value="45+" label={t('metrics.freeZones')} />
+              <Metric value="PDF" label={t('metrics.export')} />
             </div>
           </div>
         )}
@@ -380,37 +361,40 @@ function QuoteResult({
   downloading: boolean;
   onDownloadPdf: () => void;
 }) {
+  const t = useTranslations('estimator');
   const { estimate } = quote;
 
   return (
     <div>
       <div className="est-result__head">
         <div>
-          <span className="eyebrow">Estimate {estimate.reference}</span>
+          <span className="eyebrow">
+            {t('result.estimateRef', { reference: estimate.reference })}
+          </span>
           <h2 id="estimate-result-heading" className="est-result__total">
             {estimate.oneTimeTotal}
           </h2>
-          <p className="est-result__sub">One-time setup estimate</p>
+          <p className="est-result__sub">{t('result.oneTimeLabel')}</p>
         </div>
         <div className="est-result__annual">
           <div className="est-result__annualV mono">{estimate.annualTotal}</div>
-          <div className="est-result__annualL">Annual recurring</div>
+          <div className="est-result__annualL">{t('result.annualLabel')}</div>
         </div>
       </div>
 
       <div className="est-metrics est-metrics--2" style={{ marginTop: 'var(--sp-4)' }}>
         <Metric
           value={`${estimate.timelineDays.min}-${estimate.timelineDays.max}`}
-          label="Business days"
+          label={t('result.businessDays')}
         />
-        <Metric value={estimate.lineItems.length.toString()} label="Fee lines" />
+        <Metric value={estimate.lineItems.length.toString()} label={t('result.feeLines')} />
       </div>
 
       <div className="est-table">
         <div className="est-table__head">
-          <span>Fee</span>
-          <span>Qty</span>
-          <span style={{ textAlign: 'end' }}>Total</span>
+          <span>{t('table.fee')}</span>
+          <span>{t('table.qty')}</span>
+          <span style={{ textAlign: 'end' }}>{t('table.total')}</span>
         </div>
         {estimate.lineItems.map((item) => (
           <div key={item.id} className="est-table__row">
@@ -430,20 +414,22 @@ function QuoteResult({
       </div>
 
       <div className="est-docs">
-        <h3>Required documents</h3>
+        <h3>{t('result.requiredDocs')}</h3>
         <div className="est-docs__list">
           {estimate.requiredDocumentKeys.map((key) => (
             <span key={key} className="est-docchip">
-              {DOCUMENT_LABELS[key] ?? key}
+              {t.has(`documents.${key}`) ? t(`documents.${key}`) : key}
             </span>
           ))}
         </div>
       </div>
 
       <div className="est-note">
-        <div className="est-note__title">Estimate-grade pricing</div>
+        <div className="est-note__title">{t('result.noteTitle')}</div>
         <div style={{ marginTop: 4 }}>
-          Generated {new Date(estimate.generatedAt).toLocaleString('en-GB')} from active cost rows.
+          {t('result.generated', {
+            date: new Date(estimate.generatedAt).toLocaleString('en-GB'),
+          })}
         </div>
         <ul>
           {estimate.assumptions.map((assumption) => (
@@ -459,10 +445,10 @@ function QuoteResult({
           onClick={onDownloadPdf}
           disabled={downloading}
         >
-          {downloading ? 'Preparing…' : 'Download PDF'}
+          {downloading ? t('result.preparing') : t('result.downloadPdf')}
         </button>
         <a className="btn btn--accent" href={quote.handoffUrl}>
-          Apply now <span aria-hidden="true">↗</span>
+          {t('result.applyNow')} <span aria-hidden="true">↗</span>
         </a>
       </div>
     </div>

@@ -311,7 +311,81 @@
     "renewals": "التجديدات",
     "documents": "المستندات",
     "employees": "الموظفون",
-    "settings": "الإعدادات",
+    "settings": {
+      "saving": "جارٍ الحفظ…",
+      "saved": "تم الحفظ",
+      "couldNotSave": "تعذر الحفظ",
+      "enabled": "مُفعّل",
+      "contact": {
+        "title": "التواصل والشؤون القانونية",
+        "description": "هوية مُرسِل البريد وروابط الصفحات القانونية العامة.",
+        "savedDescription": "تم تحديث معلومات التواصل.",
+        "senderName": "اسم مُرسِل البريد",
+        "replyTo": "بريد الرد",
+        "termsUrl": "رابط الشروط",
+        "privacyUrl": "رابط الخصوصية",
+        "save": "حفظ معلومات التواصل"
+      },
+      "branding": {
+        "title": "الهوية البصرية",
+        "description": "اسم مساحة العمل والشعار والأيقونة وألوان التمييز.",
+        "savedDescription": "تم تحديث الهوية البصرية.",
+        "workspaceName": "اسم مساحة العمل",
+        "logoUrl": "رابط الشعار",
+        "faviconUrl": "رابط أيقونة الموقع",
+        "primaryColor": "اللون الأساسي",
+        "secondaryColor": "اللون الثانوي",
+        "save": "حفظ الهوية البصرية"
+      },
+      "smtp": {
+        "title": "SMTP",
+        "description": "خادم البريد الصادر الخاص بالمستأجر. كلمة المرور مشفّرة عند التخزين (AES-256-GCM).",
+        "savedDescription": "تم تحديث إعدادات SMTP.",
+        "host": "المضيف",
+        "port": "المنفذ",
+        "username": "اسم المستخدم",
+        "password": "كلمة المرور",
+        "passwordKeepPlaceholder": "•••••••• (اتركها فارغة للإبقاء عليها)",
+        "passwordPlaceholder": "كلمة مرور SMTP",
+        "fromAddress": "عنوان المُرسِل",
+        "save": "حفظ إعدادات SMTP"
+      },
+      "whatsapp": {
+        "title": "واتساب",
+        "description": "بيانات اعتماد Meta Cloud API للمراسلة الخاصة بالمستأجر.",
+        "savedDescription": "تم تحديث إعدادات واتساب.",
+        "statusConnected": "متصل",
+        "statusDisabled": "مُعطّل",
+        "statusNotConfigured": "غير مُهيّأ",
+        "phoneNumberId": "معرّف رقم الهاتف",
+        "businessAccountId": "معرّف حساب الأعمال",
+        "accessToken": "رمز الوصول",
+        "tokenStoredPlaceholder": "الرمز مُخزَّن (اتركه فارغًا للإبقاء عليه)",
+        "tokenPlaceholder": "رمز وصول Meta",
+        "save": "حفظ إعدادات واتساب"
+      },
+      "whiteLabel": {
+        "title": "إعداد العلامة البيضاء",
+        "description": "جاهزية النطاق الفرعي والعلامة والمُرسِل والاتصالات.",
+        "ready": "{complete}/{total} جاهز",
+        "items": {
+          "branding": "الهوية البصرية",
+          "contact": "التواصل والشؤون القانونية",
+          "smtp": "SMTP",
+          "whatsapp": "واتساب"
+        },
+        "details": {
+          "brandingComplete": "تم ضبط الشعار واللون الأساسي",
+          "brandingIncomplete": "الحرف الافتراضي مُفعّل",
+          "contactComplete": "تم ضبط الروابط القانونية",
+          "contactIncomplete": "أضف المُرسِل والروابط القانونية",
+          "smtpComplete": "تم تفعيل SMTP الخاص بالمستأجر",
+          "smtpIncomplete": "استخدام البريد الاحتياطي للمنصة",
+          "whatsappComplete": "تم تفعيل واتساب الخاص بالمستأجر",
+          "whatsappIncomplete": "غير مُهيّأ أو مُعطّل"
+        }
+      }
+    },
     "dashboard": "لوحة التحكم",
     "leads": "العملاء المحتملون",
     "addClient": "إضافة عميل",
@@ -524,6 +598,812 @@
       "eyebrow": "تم استلام الطلب",
       "leadReference": "مرجع العميل المحتمل {leadId}",
       "queued": "استبيانك في قائمة المراجعة. المرحلة الحالية: {stage}."
+    }
+  },
+  "contact": {
+    "eyebrow": "تواصل",
+    "title": "تحدّث مع فريق مندوب.",
+    "lede": "أسئلة حول التأسيس في الإمارات أو اشتراكات PRO أو البوابات ذات العلامة البيضاء؟ أرسل ملاحظة وسيرد أحد المختصين خلال يوم عمل واحد.",
+    "nameLabel": "الاسم الكامل",
+    "namePlaceholder": "اسمك",
+    "emailLabel": "البريد الإلكتروني",
+    "messageLabel": "الرسالة",
+    "messagePlaceholder": "كيف يمكننا المساعدة؟",
+    "submit": "إرسال الرسالة",
+    "comingSoonNote": "إرسال النموذج قادم قريبًا. في الوقت الحالي، تواصل معنا عبر البريد الإلكتروني أدناه.",
+    "officeCity": "وسط مدينة دبي",
+    "officeCountry": "الإمارات العربية المتحدة",
+    "officeHours": "الأحد–الخميس · 09:00–18:00 بتوقيت الخليج",
+    "proCtaPrefix": "هل أنت شركة PRO؟",
+    "proCtaLink": "احجز عرضًا توضيحيًا"
+  },
+  "estimator": {
+    "pageEyebrow": "مُقدّر التكلفة",
+    "pageTitle": "عرض سعر شفّاف لتأسيس شركتك في الإمارات.",
+    "pageLede": "مُفصّل عبر بنود الدائرة الاقتصادية والمنطقة الحرة ووزارة الموارد البشرية والإقامة والهوية وخدمات PRO. لا يُنشأ أي عميل محتمل حتى ترسل استبيان الطلب.",
+    "formEyebrow": "المُقدّر العام",
+    "formTitle": "عرض سعر تأسيس شركة في الإمارات",
+    "addOnsTitle": "الإضافات",
+    "calculating": "جارٍ الحساب…",
+    "calculate": "احسب عرض السعر",
+    "fields": {
+      "jurisdiction": "الولاية",
+      "authority": "الجهة",
+      "activity": "النشاط التجاري",
+      "legalStructure": "الهيكل القانوني",
+      "shareholders": "المساهمون",
+      "visas": "التأشيرات",
+      "officeType": "نوع المكتب"
+    },
+    "jurisdiction": {
+      "mainland": "البر الرئيسي",
+      "free_zone": "المنطقة الحرة",
+      "offshore": "أوفشور"
+    },
+    "legalStructure": {
+      "fz_llc": "شركة منطقة حرة ذ.م.م / FZE",
+      "llc": "ذ.م.م بر رئيسي",
+      "branch": "فرع",
+      "offshore_company": "شركة أوفشور"
+    },
+    "officeType": {
+      "flexi": "مكتب مرن",
+      "none": "بدون مكتب"
+    },
+    "addOns": {
+      "bank_account": "المساعدة في فتح حساب بنكي",
+      "tax_registration": "تسجيل ضريبة الشركات",
+      "document_attestation": "تصديق المستندات"
+    },
+    "activity": {
+      "consulting": "الاستشارات / الخدمات المهنية"
+    },
+    "documents": {
+      "attested_documents": "مستندات الشركة المُصدّقة",
+      "business_plan": "خطة العمل أو ملخص النشاط",
+      "lease_agreement": "عقد الإيجار أو تأكيد المكتب المرن",
+      "medical_fitness": "مستندات الفحص الطبي والهوية الإماراتية",
+      "passport": "نسخة جواز السفر",
+      "photo": "صورة شخصية لجواز السفر",
+      "shareholder_resolution": "قرار المساهمين",
+      "trade_license": "نسخة الرخصة التجارية"
+    },
+    "errors": {
+      "calculateFailed": "تعذّر حساب التقدير",
+      "pdfFailed": "تعذّر إنشاء ملف PDF"
+    },
+    "preview": {
+      "eyebrow": "معاينة",
+      "title": "تقدير شفّاف قبل أول مكالمة.",
+      "body": "يستخدم العرض صفوف جهات بدرجة تقديرية للبر الرئيسي والأوفشور وأكثر من ٤٥ منطقة حرة. لا يُنشأ أي عميل محتمل حتى يُرسَل استبيان الطلب."
+    },
+    "metrics": {
+      "currency": "العملة",
+      "freeZones": "مناطق حرة",
+      "export": "تصدير"
+    },
+    "table": {
+      "fee": "الرسم",
+      "qty": "الكمية",
+      "total": "الإجمالي"
+    },
+    "result": {
+      "estimateRef": "تقدير {reference}",
+      "oneTimeLabel": "تقدير التأسيس لمرة واحدة",
+      "annualLabel": "المتكرر سنويًا",
+      "businessDays": "أيام العمل",
+      "feeLines": "بنود الرسوم",
+      "requiredDocs": "المستندات المطلوبة",
+      "noteTitle": "تسعير بدرجة تقديرية",
+      "generated": "أُنشئ في {date} من صفوف التكلفة النشطة.",
+      "preparing": "جارٍ التحضير…",
+      "downloadPdf": "تنزيل PDF",
+      "applyNow": "قدّم الآن"
+    }
+  },
+  "leads": {
+    "stage": {
+      "new": "جديد",
+      "contacted": "تم التواصل",
+      "qualified": "مؤهّل",
+      "won": "ناجح",
+      "lost": "خاسر"
+    },
+    "empty": {
+      "noLeads": "لا عملاء محتملون"
+    },
+    "card": {
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "noContact": "لا جهة اتصال",
+      "anyJurisdiction": "أي ولاية",
+      "authorityTbd": "الجهة قيد التحديد",
+      "visas": "{count, plural, zero {لا تأشيرات} one {تأشيرة واحدة} two {تأشيرتان} few {# تأشيرات} many {# تأشيرة} other {# تأشيرة}}",
+      "noAddOns": "بدون إضافات",
+      "unassigned": "غير مُعيّن"
+    },
+    "detail": {
+      "emptyTitle": "تفاصيل العميل المحتمل",
+      "emptyBody": "اختر بطاقة عميل محتمل لمراجعة الإجابات والتعيين وعناصر التحكم بالمرحلة والنشاط.",
+      "noEmail": "لا بريد إلكتروني",
+      "noPhone": "لا هاتف",
+      "jurisdiction": "الولاية",
+      "authority": "الجهة",
+      "visas": "التأشيرات",
+      "score": "النقاط",
+      "notSet": "غير محدد",
+      "scoreFactors": "عوامل التقييم",
+      "assignPlaceholder": "عيّن شركة PRO نشطة",
+      "assignLead": "تعيين العميل المحتمل",
+      "save": "حفظ",
+      "questionnaire": "الاستبيان",
+      "businessLabel": "النشاط",
+      "namesLabel": "الأسماء",
+      "officeLabel": "المكتب",
+      "notProvided": "غير متوفر",
+      "estimate": "التقدير",
+      "referenceLabel": "المرجع",
+      "totalLabel": "الإجمالي",
+      "none": "لا يوجد",
+      "notePlaceholder": "أضف ملاحظة داخلية",
+      "addNote": "إضافة ملاحظة",
+      "activity": "النشاط",
+      "noActivity": "لا نشاط مُسجّل بعد."
+    },
+    "activity": {
+      "inboundReply": "رد وارد",
+      "ambiguousMatch": "تطابق غير مؤكد",
+      "message": "رسالة",
+      "unknownSender": "مُرسِل غير معروف",
+      "noMessageBody": "لا يوجد نص للرسالة"
+    },
+    "filters": {
+      "searchPlaceholder": "ابحث بالاسم أو البريد أو الهاتف",
+      "allAssignments": "كل التعيينات",
+      "unassigned": "غير مُعيّن",
+      "allStages": "كل المراحل",
+      "filter": "تصفية"
+    },
+    "admin": {
+      "title": "خط أنابيب العملاء المحتملين",
+      "subtitle": "عملاء محتملون من الاستبيان عبر كل المستأجرين. عرض {total}."
+    },
+    "pro": {
+      "title": "العملاء المحتملون",
+      "subtitle": "عملاء محتملون من الاستبيان مُعيّنون لـ {tenant}. عرض {total}."
+    }
+  },
+  "admin": {
+    "user": {
+      "createTitle": "إنشاء مستخدم",
+      "createIntro": "يرسل بريد دعوة عبر Supabase وينشئ الملف الشخصي المطابق.",
+      "editTitle": "تعديل المستخدم",
+      "editIntro": "إجراءات الملف الشخصي والدور والحالة والمصادقة الثنائية. تغييرات دورة الحياة تُلغي الجلسات النشطة.",
+      "profileDetailsTitle": "تفاصيل الملف الشخصي",
+      "cardTitle": "إنشاء مستخدم",
+      "unnamedUser": "مستخدم بدون اسم",
+      "suspensionReason": "سبب التعليق: {reason}",
+      "lifecycleActionsTitle": "إجراءات دورة الحياة",
+      "couldNotCreate": "تعذّر إنشاء المستخدم",
+      "couldNotSave": "تعذّر حفظ التغييرات",
+      "savedTitle": "تم الحفظ",
+      "savedDescription": "تم تحديث الملف الشخصي.",
+      "creating": "جارٍ الإنشاء…",
+      "createUser": "إنشاء مستخدم",
+      "saving": "جارٍ الحفظ…",
+      "saveChanges": "حفظ التغييرات",
+      "cancel": "إلغاء",
+      "back": "رجوع",
+      "requestFailed": "فشل الطلب ({status})",
+      "emailTaken": "البريد الإلكتروني مُسجّل بالفعل",
+      "fields": {
+        "fullName": "الاسم الكامل",
+        "email": "البريد الإلكتروني",
+        "emailImmutable": "البريد الإلكتروني غير قابل للتعديل هنا. استخدم مسار تغيير البريد المخصص.",
+        "inviteEmailSent": "يُرسل بريد دعوة عند الإرسال.",
+        "phone": "الهاتف (E.164)",
+        "role": "الدور",
+        "chooseRole": "اختر دورًا",
+        "changeRoleHint": "استخدم إجراء تغيير الدور لتغيير الدور؛ تُلغى الجلسات عند الحفظ.",
+        "tenant": "المستأجر",
+        "chooseTenant": "اختر مستأجرًا",
+        "tenantImmutable": "لا يمكن نقل المستأجر من هذا النموذج.",
+        "reason": "السبب (اختياري)",
+        "reasonPlaceholder": "يُسجَّل في admin_audit_actions لأغراض التتبّع",
+        "nationality": "الجنسية (رمز من حرفين ISO)",
+        "passportNo": "رقم جواز السفر",
+        "linkedClient": "العميل المرتبط (اختياري)",
+        "employer": "صاحب العمل (العميل)",
+        "visaNo": "رقم التأشيرة",
+        "visaExpiry": "انتهاء التأشيرة",
+        "emiratesId": "الهوية الإماراتية (784-YYYY-NNNNNNN-N)",
+        "eidExpiry": "انتهاء الهوية الإماراتية",
+        "licenseNo": "رقم الرخصة",
+        "designation": "المسمى الوظيفي",
+        "department": "القسم",
+        "serviceAreasLabel": "مناطق الخدمة",
+        "bio": "نبذة"
+      },
+      "serviceAreas": {
+        "ABU_DHABI": "أبوظبي",
+        "DUBAI": "دبي",
+        "SHARJAH": "الشارقة",
+        "AJMAN": "عجمان",
+        "UAQ": "أم القيوين",
+        "RAK": "رأس الخيمة",
+        "FUJAIRAH": "الفجيرة",
+        "ALL_UAE": "كل الإمارات"
+      },
+      "listTitle": "المستخدمون",
+      "listShowing": "عرض {count} {more, select, true {(يتوفّر المزيد)} other {}}",
+      "directoryTitle": "الدليل",
+      "directoryDescription": "جميع هويات مندوب عبر المستأجرين.",
+      "createdAlertTitle": "تم إنشاء المستخدم",
+      "createdAlertDescription": "تم إرسال بريد الدعوة. يظهر المستخدم الجديد أدناه بعد معالجة Supabase للدعوة.",
+      "table": {
+        "user": "المستخدم",
+        "role": "الدور",
+        "tenant": "المستأجر",
+        "status": "الحالة",
+        "created": "تاريخ الإنشاء",
+        "lastSignIn": "آخر تسجيل دخول",
+        "actions": "الإجراءات",
+        "edit": "تعديل"
+      },
+      "emptyState": {
+        "noMatch": "لا يوجد مستخدمون مطابقون لعوامل التصفية",
+        "resetFilters": "إعادة ضبط عوامل التصفية",
+        "noneYet": "لم يتم إنشاء أي مستخدمين بعد."
+      },
+      "filters": {
+        "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني",
+        "searchAria": "بحث المستخدمين",
+        "loading": "جارٍ التحميل…",
+        "rolesLabel": "الأدوار",
+        "filterByRole": "تصفية حسب الدور",
+        "allStatuses": "جميع الحالات",
+        "filterByStatus": "تصفية حسب الحالة",
+        "allTenants": "جميع المستأجرين",
+        "filterByTenant": "تصفية حسب المستأجر",
+        "searchTenantsPlaceholder": "ابحث عن المستأجرين…",
+        "noTenantMatches": "لا توجد نتائج."
+      },
+      "pagination": {
+        "backToStart": "العودة إلى البداية",
+        "next": "التالي"
+      },
+      "roleChange": {
+        "trigger": "تغيير الدور",
+        "title": "تغيير الدور",
+        "description": "الدور الحالي: {role}. ستُلغى الجلسات عند الحفظ.",
+        "superAdminWarning": "يتطلّب تخفيض مدير عام تأكيدًا صريحًا.",
+        "errorTitle": "تعذّر تغيير الدور",
+        "newRoleLabel": "الدور الجديد",
+        "newRolePlaceholder": "اختر دورًا جديدًا",
+        "tenantPlaceholder": "اختر مستأجرًا",
+        "clientRequiredLabel": "العميل (مطلوب)",
+        "pickTenantFirst": "اختر مستأجرًا أولًا لتفعيل البحث عن العميل.",
+        "confirmLabel": "اكتب DEMOTE للتأكيد",
+        "errPickRole": "اختر دورًا مستهدفًا.",
+        "errTypeDemote": "اكتب DEMOTE لتأكيد تخفيض مدير عام.",
+        "errPickClient": "اختر عميلًا لدور الموظف.",
+        "apply": "تطبيق"
+      },
+      "statusChange": {
+        "trigger": "تغيير الحالة",
+        "title": "تغيير حالة الحساب",
+        "description": "الحالة الحالية: {status}. كل من التعليق والتعطيل يُلغي الجلسات النشطة.",
+        "noChanges": "لا تتوفّر تغييرات للحالة — المستخدم {status}.",
+        "errorTitle": "تعذّر تغيير الحالة",
+        "targetStatusLabel": "الحالة المستهدفة",
+        "targetStatusPlaceholder": "اختر الحالة المستهدفة",
+        "reasonRequired": "السبب (مطلوب)",
+        "reasonOptional": "السبب (اختياري)",
+        "errPickStatus": "اختر حالة مستهدفة.",
+        "errReasonRequired": "السبب مطلوب عند التعليق.",
+        "apply": "تطبيق",
+        "transitions": {
+          "suspend": "تعليق (قابل للعكس، يتطلّب سببًا)",
+          "disable": "تعطيل (نهائي)",
+          "reactivate": "إعادة التفعيل",
+          "cancelInvite": "إلغاء الدعوة المعلّقة"
+        }
+      },
+      "mfaReset": {
+        "trigger": "إعادة ضبط المصادقة الثنائية",
+        "notEnrolled": "المصادقة الثنائية غير مُفعّلة",
+        "title": "إعادة ضبط المصادقة الثنائية",
+        "description": "يحذف جميع عوامل المصادقة الثنائية ويُلغي الجلسات النشطة. سيُجبر المستخدم على إعادة التسجيل عند تسجيل الدخول التالي.",
+        "errorTitle": "تعذّر إعادة ضبط المصادقة الثنائية",
+        "successTitle": "تمت إعادة ضبط المصادقة الثنائية",
+        "successDescription": "تمت إزالة {count} من العوامل.",
+        "confirm": "تأكيد إعادة الضبط",
+        "resetting": "جارٍ إعادة الضبط…"
+      },
+      "sessions": {
+        "empty": "لا توجد جلسات نشطة مطابقة لعوامل التصفية الحالية.",
+        "user": "المستخدم",
+        "tenant": "المستأجر",
+        "role": "الدور",
+        "ip": "عنوان IP",
+        "started": "البدء",
+        "lastSeen": "آخر ظهور",
+        "actions": "الإجراءات",
+        "you": "أنت",
+        "revoke": "إلغاء",
+        "revoking": "جارٍ الإلغاء…",
+        "revokeAll": "إلغاء الكل",
+        "revokingAll": "جارٍ إلغاء الكل…",
+        "confirmRevokeOne": "إلغاء هذه الجلسة لـ {name}؟",
+        "confirmRevokeAll": "إلغاء جميع الجلسات لـ {name}؟ سيتم تسجيل خروجهم من كل مكان.",
+        "revokeFailed": "فشل الإلغاء ({code}): {error}",
+        "revokeAllFailed": "فشل إلغاء الكل ({code}): {error}"
+      },
+      "lockedAccounts": {
+        "empty": "لا توجد حسابات مقفلة حاليًا.",
+        "account": "الحساب",
+        "failures": "المحاولات الفاشلة",
+        "lockedUntil": "مقفل حتى",
+        "lastAttempt": "آخر محاولة",
+        "actions": "الإجراءات",
+        "unlock": "إلغاء القفل",
+        "unlocking": "جارٍ إلغاء القفل…",
+        "confirmUnlock": "إلغاء قفل {key}؟ يؤدي ذلك إلى مسح عدّاد الإخفاقات ونافذة القفل.",
+        "unlockFailed": "فشل إلغاء القفل ({code}): {error}"
+      },
+      "recentLogins": {
+        "title": "عمليات تسجيل الدخول الأخيرة",
+        "description": "أحدث أحداث المصادقة عبر جميع المستأجرين.",
+        "user": "المستخدم",
+        "role": "الدور",
+        "ip": "عنوان IP",
+        "time": "الوقت",
+        "status": "الحالة",
+        "empty": "لا توجد أحداث تسجيل دخول بعد.",
+        "loginStatus": {
+          "success": "ناجح",
+          "failed": "فاشل"
+        }
+      }
+    },
+    "enums": {
+      "role": {
+        "super_admin": "مدير عام",
+        "admin": "مدير",
+        "pro": "PRO",
+        "customer": "عميل",
+        "employee": "موظف"
+      },
+      "status": {
+        "active": "نشط",
+        "invited": "مدعو",
+        "suspended": "معلّق",
+        "disabled": "معطّل"
+      },
+      "tenantStatus": {
+        "active": "نشط",
+        "pending": "قيد الانتظار",
+        "suspended": "معلّق"
+      },
+      "plan": {
+        "starter": "مبتدئ",
+        "professional": "احترافي",
+        "enterprise": "مؤسسي"
+      },
+      "clientStatus": {
+        "onboarding": "قيد الإعداد",
+        "active": "نشط",
+        "renewal_due": "تجديد مستحق",
+        "renewal_overdue": "تجديد متأخر",
+        "suspended": "معلّق",
+        "churned": "منسحب"
+      }
+    },
+    "costData": {
+      "newRow": "صف جديد",
+      "edit": "تحرير",
+      "createTitle": "صف تكلفة جديد",
+      "editTitle": "تحرير صف التكلفة",
+      "dialogDescription": "الصفوف النشطة وذات درجة التقدير تغذّي مقدّر التكلفة العام.",
+      "couldNotSave": "تعذّر حفظ الصف",
+      "saving": "جارٍ الحفظ...",
+      "saveRow": "حفظ الصف",
+      "fields": {
+        "authority": "الجهة",
+        "jurisdiction": "الاختصاص",
+        "emirate": "الإمارة",
+        "feeType": "نوع الرسوم",
+        "recurrence": "التكرار",
+        "activityKey": "مفتاح النشاط",
+        "label": "التسمية",
+        "amountAed": "المبلغ بالدرهم",
+        "minShareholders": "أدنى عدد مساهمين",
+        "maxShareholders": "أقصى عدد مساهمين",
+        "minVisas": "أدنى عدد تأشيرات",
+        "maxVisas": "أقصى عدد تأشيرات",
+        "timelineMin": "أدنى مدة",
+        "timelineMax": "أقصى مدة",
+        "validFrom": "صالح من",
+        "validTo": "صالح حتى",
+        "requiredDocumentKeys": "مفاتيح المستندات المطلوبة"
+      },
+      "import": {
+        "trigger": "استيراد CSV",
+        "title": "استيراد بيانات التكلفة",
+        "description": "الصق ملف CSV المصدَّر من هذه الصفحة، ثم استورد الصفوف المُتحقَّق منها.",
+        "resultTitle": "نتيجة الاستيراد",
+        "inserted": "تم إدراج {inserted}",
+        "insertedWithErrors": "تم إدراج {inserted}، فشل {failed}",
+        "importing": "جارٍ الاستيراد...",
+        "importRows": "استيراد الصفوف"
+      },
+      "status": {
+        "deactivate": "إلغاء التفعيل",
+        "reactivate": "إعادة التفعيل"
+      },
+      "table": {
+        "empty": "لا توجد صفوف بيانات تكلفة مطابقة للمرشّحات الحالية.",
+        "authority": "الجهة",
+        "fee": "الرسوم",
+        "status": "الحالة",
+        "range": "النطاق",
+        "timeline": "المدة الزمنية",
+        "validity": "الصلاحية",
+        "amount": "المبلغ",
+        "actions": "إجراءات",
+        "active": "نشط",
+        "inactive": "غير نشط",
+        "estimate": "تقدير",
+        "shareholders": "مساهمون {min}-{max}",
+        "visas": "تأشيرات {min}-{max}",
+        "days": "{min}-{max} يوم",
+        "openEnded": "مفتوح"
+      },
+      "page": {
+        "title": "بيانات التكلفة",
+        "intro": "إدارة صفوف رسوم المقدّر المستخدمة في عروض الأسعار العامة للتأسيس.",
+        "exportCsv": "تصدير CSV",
+        "summaryRows": "الصفوف",
+        "summaryActive": "نشط",
+        "summaryEstimateGrade": "درجة التقدير",
+        "summaryAuthorities": "الجهات",
+        "summaryExpired": "{count} منتهٍ",
+        "feeRows": "صفوف الرسوم",
+        "filterAll": "الكل",
+        "filterActive": "نشط",
+        "filterInactive": "غير نشط"
+      }
+    },
+    "proFirms": {
+      "page": {
+        "title": "شركات PRO",
+        "intro": "المستأجرون على المنصة. عرض {count}.",
+        "createButton": "إنشاء شركة PRO",
+        "createdTitle": "تم إنشاء شركة PRO",
+        "createdDescription": "تم تجهيز المستأجر وإرسال بريد دعوة إلى مدير PRO.",
+        "directory": "الدليل",
+        "statusFilterLabel": "مرشّح الحالة:",
+        "filterAll": "الكل",
+        "empty": "لا توجد شركات PRO مطابقة للمرشّح الحالي."
+      },
+      "table": {
+        "name": "الاسم",
+        "slug": "المعرّف",
+        "plan": "الخطة",
+        "status": "الحالة",
+        "created": "أُنشئ في",
+        "actions": "إجراءات",
+        "suspend": "تعليق",
+        "reactivate": "إعادة التفعيل",
+        "approve": "اعتماد",
+        "reject": "رفض"
+      },
+      "actions": {
+        "confirmSuspend": "تعليق شركة PRO هذه؟ سيفقد الأعضاء الوصول حتى إعادة التفعيل.",
+        "confirmReject": "رفض شركة PRO هذه؟ سيتم حذف المستأجر ومستخدم المدير.",
+        "suspendFailed": "فشل التعليق: {error}",
+        "reactivateFailed": "فشلت إعادة التفعيل: {error}",
+        "approveFailed": "فشل الاعتماد: {error}",
+        "rejectFailed": "فشل الرفض: {error}",
+        "actionFailed": "فشل {action} ({code}): {error}"
+      },
+      "detail": {
+        "slug": "المعرّف",
+        "created": "أُنشئ في",
+        "suspend": "تعليق",
+        "suspending": "جارٍ التعليق…",
+        "reactivate": "إعادة التفعيل",
+        "reactivating": "جارٍ إعادة التفعيل…",
+        "approve": "اعتماد",
+        "approving": "جارٍ الاعتماد…",
+        "reject": "رفض",
+        "rejecting": "جارٍ الرفض…"
+      },
+      "create": {
+        "couldNotCreate": "تعذّر إنشاء شركة PRO",
+        "firmSection": "الشركة",
+        "firmName": "اسم الشركة",
+        "slug": "المعرّف",
+        "slugHint": "أحرف صغيرة وأرقام وشرطات. التسميات المحجوزة مثل admin وapi وapp وdashboard وwww محظورة.",
+        "plan": "الخطة",
+        "adminSection": "مدير PRO الأولي",
+        "adminIntro": "سيتم إرسال بريد دعوة من Supabase. يحدّث المدير معلومات الترخيص عبر /account/role بعد أول تسجيل دخول.",
+        "fullName": "الاسم الكامل",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف (E.164)",
+        "creating": "جارٍ الإنشاء…",
+        "submit": "إنشاء شركة PRO"
+      },
+      "newPage": {
+        "title": "إنشاء شركة PRO",
+        "intro": "يجهّز مستأجرًا وينشئ مستخدم مدير PRO الأولي. يصبح المستأجر مفعّلًا (الحالة = نشط) فورًا."
+      },
+      "detailPage": {
+        "members": "الأعضاء",
+        "membersDescription": "{count} ملف تعريف في هذا المستأجر.",
+        "memberName": "الاسم",
+        "memberRole": "الدور",
+        "memberLastLogin": "آخر تسجيل دخول",
+        "noMembers": "لا يوجد أعضاء.",
+        "clients": "العملاء",
+        "clientsDescription": "الإجمالي {total}. عرض {recent} الأحدث.",
+        "clientCompany": "الشركة",
+        "clientStatus": "الحالة",
+        "clientCreated": "أُنشئ في",
+        "noClients": "لا يوجد عملاء بعد.",
+        "recentAudit": "آخر التدقيقات (آخر 10)",
+        "recentAuditDescription": "أحداث على نطاق المستأجر.",
+        "seeAll": "عرض الكل ←",
+        "auditWhen": "متى",
+        "auditAction": "الإجراء",
+        "auditSource": "المصدر",
+        "auditActor": "الفاعل",
+        "auditDetails": "التفاصيل",
+        "noAudit": "لا توجد إدخالات تدقيق بعد.",
+        "billing": "الفوترة",
+        "billingPending": "قيد الانتظار — الخطوة 23.",
+        "billingDescription": "ستصل خطة الاشتراك والفواتير وسجل الدفع مع وحدة المدفوعات والمالية."
+      }
+    },
+    "audit": {
+      "kind": {
+        "tenant_audit": "تدقيق المستأجر",
+        "auth_event": "أحداث المصادقة"
+      },
+      "kindBadge": {
+        "tenant_audit": "مستأجر",
+        "auth_event": "مصادقة"
+      },
+      "table": {
+        "empty": "لا توجد إدخالات تدقيق مطابقة للمرشّحات الحالية.",
+        "when": "متى",
+        "kind": "النوع",
+        "tenant": "المستأجر",
+        "actor": "الفاعل",
+        "action": "الإجراء",
+        "details": "التفاصيل",
+        "emptyDetails": "فارغ"
+      },
+      "page": {
+        "title": "سجلات التدقيق",
+        "intro": "واجهة تحقيق عبر المستأجرين. أحداث المنتج على جانب المستأجر وأحداث مصادقة المنصة.",
+        "filters": "المرشّحات",
+        "filtersDescription": "النوع، المستأجر، الفاعل، الإجراء، النطاق الزمني، نص حر.",
+        "tenant": "المستأجر",
+        "allTenants": "كل المستأجرين",
+        "actor": "الفاعل (uuid)",
+        "from": "من",
+        "to": "إلى",
+        "actions": "الإجراءات",
+        "searchDetails": "البحث في التفاصيل (JSONB)",
+        "apply": "تطبيق",
+        "reset": "إعادة تعيين",
+        "tenantAuditLog": "سجل تدقيق المستأجر",
+        "authEvents": "أحداث المصادقة",
+        "resultsDescription": "عرض حتى 50 إدخالًا، الأحدث أولًا. انقر تفاصيل الصف لتوسيع حمولة JSONB.",
+        "nextPage": "الصفحة التالية ←",
+        "endOfResults": "نهاية النتائج",
+        "firstPage": "← الصفحة الأولى"
+      }
+    },
+    "dashboard": {
+      "title": "نظرة عامة",
+      "intro": "إشارات المصادقة والهوية عبر المستأجرين.",
+      "lastDaysLive": "آخر 30 يومًا · مباشر"
+    },
+    "stats": {
+      "totalUsers": "إجمالي المستخدمين",
+      "activeTenants": "المستأجرون النشطون",
+      "logins7d": "تسجيلات الدخول (7 أيام)",
+      "failedLogins24h": "تسجيلات الدخول الفاشلة (24 ساعة)",
+      "allTime": "كل الأوقات",
+      "statusActive": "الحالة=نشط",
+      "vsPrior7d": "مقارنة بالـ7 أيام السابقة",
+      "vsPrior24h": "مقارنة بالـ24 ساعة السابقة"
+    },
+    "charts": {
+      "signupsTitle": "التسجيلات · آخر 30 يومًا",
+      "signupsLegend": "التسجيلات"
+    },
+    "finance": {
+      "title": "المالية",
+      "intro": "إيرادات اشتراكات Stripe.",
+      "tenantMrr": "الإيراد الشهري المتكرر للمستأجر",
+      "table": {
+        "tenant": "المستأجر",
+        "plan": "الخطة",
+        "status": "الحالة",
+        "periodEnd": "نهاية الفترة",
+        "mrr": "الإيراد الشهري المتكرر"
+      },
+      "kpi": {
+        "mrr": "الإيراد الشهري المتكرر",
+        "arr": "الإيراد السنوي المتكرر",
+        "activeTenants": "المستأجرون النشطون",
+        "churn": "معدل التسرب",
+        "helperMonthlyValue": "القيمة الشهرية النشطة",
+        "helperMrrTimes12": "الإيراد الشهري × 12",
+        "helperActiveSubscriptions": "الاشتراكات النشطة",
+        "helperLast30Days": "آخر 30 يومًا"
+      },
+      "subStatus": {
+        "active": "نشط",
+        "trialing": "تجريبي",
+        "past_due": "متأخر السداد",
+        "canceled": "ملغى",
+        "unpaid": "غير مدفوع",
+        "incomplete": "غير مكتمل",
+        "incomplete_expired": "غير مكتمل ومنتهي",
+        "paused": "متوقف مؤقتًا"
+      }
+    },
+    "erasure": {
+      "list": {
+        "title": "طلبات المحو",
+        "intro": "طلبات الحق في المحو (PDPL) المُتحقق منها بانتظار المراجعة.",
+        "subject": "الموضوع",
+        "tenant": "المستأجر",
+        "status": "الحالة",
+        "submitted": "تاريخ التقديم",
+        "action": "إجراء",
+        "review": "مراجعة",
+        "empty": "لا توجد طلبات محو مُتحقق منها بانتظار المراجعة."
+      },
+      "detail": {
+        "title": "طلب المحو",
+        "subjectTitle": "الموضوع",
+        "subjectDescription": "سياق الهوية والمستأجر للمراجعة.",
+        "name": "الاسم",
+        "email": "البريد الإلكتروني",
+        "kind": "النوع",
+        "tenant": "المستأجر",
+        "reason": "السبب",
+        "unknown": "غير معروف",
+        "noReason": "لم يُقدَّم سبب",
+        "decisionTitle": "القرار",
+        "decisionDescription": "الموافقة تنفّذ سلسلة إخفاء الهوية.",
+        "approveExecute": "الموافقة والتنفيذ",
+        "rejectionReason": "سبب الرفض",
+        "rejectRequest": "رفض الطلب",
+        "cascadeTitle": "نطاق السلسلة",
+        "cascadeDescription": "الحقول التي تُحذف عند الموافقة.",
+        "profilePii": "بيانات الملف الشخصي",
+        "profilePiiDesc": "الاسم، الهاتف، اسم المستخدم، اللقب، النبذة.",
+        "identityFields": "حقول الهوية",
+        "identityFieldsDesc": "قيم جواز السفر والتأشيرة والهوية الإماراتية المشفّرة.",
+        "documents": "المستندات",
+        "documentsDesc": "صفوف مستندات جواز السفر والتأشيرة والهوية الإماراتية وهوية المساهم."
+      },
+      "status": {
+        "pending_verification": "بانتظار التحقق",
+        "submitted": "تم التقديم",
+        "under_review": "قيد المراجعة",
+        "approved": "تمت الموافقة",
+        "rejected": "مرفوض",
+        "completed": "مكتمل",
+        "cancelled": "ملغى"
+      },
+      "subjectKind": {
+        "customer": "عميل",
+        "employee": "موظف"
+      }
+    },
+    "security": {
+      "title": "المصادقة الثنائية والأمان",
+      "intro": "لوحة تسجيلات الدخول الفاشلة والإقفال. مؤشرات الأداء خلال آخر 24 ساعة؛ القوائم محدودة لكل استعلام.",
+      "kpiFailedLogins": "تسجيلات الدخول الفاشلة (24 ساعة)",
+      "kpiFailedLoginsHint": "login_failure + mfa_challenge_failure",
+      "kpiLockedAccounts": "الحسابات المقفلة (الآن)",
+      "kpiLockedAccountsHint": "auth_failed_attempts where key like acct:%",
+      "kpiLockedNetblocks": "كتل الشبكة المقفلة (الآن)",
+      "kpiLockedNetblocksHint": "auth_failed_attempts where key like net:%",
+      "lockedAccountsTitle": "الحسابات المقفلة حاليًا",
+      "lockedAccountsDescription": "انقر فتح القفل لمسح العداد ونافذة الإقفال. مُسجَّل في tenant_audit_log.",
+      "topIpsTitle": "أعلى عناوين IP لتسجيلات الدخول الفاشلة (24 ساعة)",
+      "topIpsDescription": "يساعد في رصد محاولات التخمين من مصدر واحد.",
+      "topIpsEmpty": "لا توجد تسجيلات دخول فاشلة في آخر 24 ساعة.",
+      "ip": "IP",
+      "failures": "حالات الفشل",
+      "mfaFailuresTitle": "حالات فشل المصادقة الثنائية الأخيرة (آخر 50)",
+      "mfaFailuresDescription": "kind=mfa_challenge_failure، الأحدث أولًا.",
+      "mfaFailuresEmpty": "لا توجد حالات فشل مصادقة ثنائية حديثة.",
+      "when": "متى",
+      "user": "المستخدم"
+    },
+    "sessions": {
+      "title": "الجلسات",
+      "intro": "الجلسات النشطة عبر جميع المستأجرين. ألغِ جلسة واحدة أو جميع جلسات المستخدم.",
+      "filtersTitle": "عوامل التصفية",
+      "filtersDescription": "المستأجر، الدور، نافذة تسجيل الدخول.",
+      "tenant": "المستأجر",
+      "allTenants": "كل المستأجرين",
+      "role": "الدور",
+      "allRoles": "كل الأدوار",
+      "window": "النافذة",
+      "apply": "تطبيق",
+      "reset": "إعادة تعيين",
+      "activeTitle": "الجلسات النشطة",
+      "activeDescription": "عرض {count} جلسة. الحد الأقصى 200 لكل استعلام.",
+      "windowOptions": {
+        "24h": "آخر 24 ساعة",
+        "7d": "آخر 7 أيام",
+        "30d": "آخر 30 يومًا",
+        "all": "كل الأوقات"
+      }
+    },
+    "whatsapp": {
+      "title": "قوالب واتساب",
+      "intro": "تتبّع حالة موافقة Meta قبل السماح للقوالب بالدخول إلى قائمة الإرسال.",
+      "tenantPlaceholder": "معرّف UUID للمستأجر للتجاوزات",
+      "allStatuses": "كل الحالات",
+      "allCategories": "كل الفئات",
+      "filter": "تصفية",
+      "template": "القالب",
+      "scope": "النطاق",
+      "status": "الحالة",
+      "timestamps": "الطوابع الزمنية",
+      "notes": "ملاحظات",
+      "update": "تحديث",
+      "metaPrefix": "Meta: {name}",
+      "empty": "لا توجد قوالب واتساب تطابق عوامل التصفية هذه.",
+      "save": "حفظ",
+      "submittedPlaceholder": "طابع زمني ISO للتقديم",
+      "lastCheckedPlaceholder": "طابع زمني ISO لآخر فحص",
+      "notesPlaceholder": "ملاحظات داخلية",
+      "rejectionPlaceholder": "سبب الرفض",
+      "tsSubmitted": "تم التقديم",
+      "tsChecked": "تم الفحص",
+      "tsUpdated": "تم التحديث",
+      "blockNotes": "ملاحظات",
+      "blockRejection": "الرفض",
+      "statusEnum": {
+        "pending": "قيد الانتظار",
+        "approved": "تمت الموافقة",
+        "rejected": "مرفوض",
+        "disabled": "معطّل",
+        "missing": "مفقود"
+      },
+      "category": {
+        "marketing": "تسويق",
+        "utility": "خدمي",
+        "authentication": "مصادقة"
+      },
+      "scopeEnum": {
+        "global": "عام",
+        "tenant": "مستأجر"
+      },
+      "scopeMissingTenant": "تجاوز المستأجر مفقود",
+      "scopeMissingGlobal": "الصف العام مفقود"
+    },
+    "clientTypeahead": {
+      "noTenant": "لم يُحدَّد مستأجر",
+      "searchPlaceholder": "البحث عن العملاء…",
+      "typeToSearch": "اكتب للبحث…",
+      "loading": "جارٍ التحميل…",
+      "noMatches": "لا توجد مطابقات."
+    },
+    "theme": {
+      "toggle": "تبديل السمة"
     }
   }
 }

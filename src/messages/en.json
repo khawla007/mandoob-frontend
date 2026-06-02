@@ -311,7 +311,81 @@
     "renewals": "Renewals",
     "documents": "Documents",
     "employees": "Employees",
-    "settings": "Settings",
+    "settings": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "couldNotSave": "Could not save",
+      "enabled": "Enabled",
+      "contact": {
+        "title": "Contact & legal",
+        "description": "Email sender identity and public legal page links.",
+        "savedDescription": "Contact info updated.",
+        "senderName": "Email sender name",
+        "replyTo": "Reply-to email",
+        "termsUrl": "Terms URL",
+        "privacyUrl": "Privacy URL",
+        "save": "Save contact info"
+      },
+      "branding": {
+        "title": "Branding",
+        "description": "Workspace name, logo, favicon, and accent colors.",
+        "savedDescription": "Branding updated.",
+        "workspaceName": "Workspace name",
+        "logoUrl": "Logo URL",
+        "faviconUrl": "Favicon URL",
+        "primaryColor": "Primary color",
+        "secondaryColor": "Secondary color",
+        "save": "Save branding"
+      },
+      "smtp": {
+        "title": "SMTP",
+        "description": "Per-tenant outbound email server. Password is encrypted at rest (AES-256-GCM).",
+        "savedDescription": "SMTP config updated.",
+        "host": "Host",
+        "port": "Port",
+        "username": "Username",
+        "password": "Password",
+        "passwordKeepPlaceholder": "•••••••• (leave blank to keep)",
+        "passwordPlaceholder": "SMTP password",
+        "fromAddress": "From address",
+        "save": "Save SMTP config"
+      },
+      "whatsapp": {
+        "title": "WhatsApp",
+        "description": "Meta Cloud API credentials for tenant-owned messaging.",
+        "savedDescription": "WhatsApp config updated.",
+        "statusConnected": "Connected",
+        "statusDisabled": "Disabled",
+        "statusNotConfigured": "Not configured",
+        "phoneNumberId": "Phone number ID",
+        "businessAccountId": "Business account ID",
+        "accessToken": "Access token",
+        "tokenStoredPlaceholder": "Token stored (leave blank to keep)",
+        "tokenPlaceholder": "Meta access token",
+        "save": "Save WhatsApp config"
+      },
+      "whiteLabel": {
+        "title": "White-label setup",
+        "description": "Subdomain, brand, sender, and comms readiness.",
+        "ready": "{complete}/{total} ready",
+        "items": {
+          "branding": "Branding",
+          "contact": "Contact & legal",
+          "smtp": "SMTP",
+          "whatsapp": "WhatsApp"
+        },
+        "details": {
+          "brandingComplete": "Logo and primary color set",
+          "brandingIncomplete": "Fallback initial is active",
+          "contactComplete": "Legal links configured",
+          "contactIncomplete": "Add sender and legal links",
+          "smtpComplete": "Tenant SMTP enabled",
+          "smtpIncomplete": "Using platform email fallback",
+          "whatsappComplete": "Tenant WhatsApp enabled",
+          "whatsappIncomplete": "Not configured or disabled"
+        }
+      }
+    },
     "dashboard": "Dashboard",
     "leads": "Leads",
     "addClient": "Add client",
@@ -524,6 +598,812 @@
       "eyebrow": "Application received",
       "leadReference": "Lead reference {leadId}",
       "queued": "Your questionnaire is queued for review. Current stage: {stage}."
+    }
+  },
+  "contact": {
+    "eyebrow": "Contact",
+    "title": "Talk to the Mandoob team.",
+    "lede": "Questions about UAE setup, PRO subscriptions, or white-label portals? Send a note and a specialist replies within one business day.",
+    "nameLabel": "Full name",
+    "namePlaceholder": "Your name",
+    "emailLabel": "Email",
+    "messageLabel": "Message",
+    "messagePlaceholder": "How can we help?",
+    "submit": "Send message",
+    "comingSoonNote": "Form submission is coming soon. For now, reach us by email below.",
+    "officeCity": "Downtown Dubai",
+    "officeCountry": "United Arab Emirates",
+    "officeHours": "Sun–Thu · 09:00–18:00 GST",
+    "proCtaPrefix": "Are you a PRO firm?",
+    "proCtaLink": "Book a demo"
+  },
+  "estimator": {
+    "pageEyebrow": "Cost estimator",
+    "pageTitle": "Transparent UAE setup quote.",
+    "pageLede": "Itemized across DED, free zone, MOHRE, GDRFA, ICP, and PRO lines. No lead is created until you submit the application questionnaire.",
+    "formEyebrow": "Public estimator",
+    "formTitle": "UAE company setup quote",
+    "addOnsTitle": "Add-ons",
+    "calculating": "Calculating…",
+    "calculate": "Calculate quote",
+    "fields": {
+      "jurisdiction": "Jurisdiction",
+      "authority": "Authority",
+      "activity": "Business activity",
+      "legalStructure": "Legal structure",
+      "shareholders": "Shareholders",
+      "visas": "Visas",
+      "officeType": "Office type"
+    },
+    "jurisdiction": {
+      "mainland": "Mainland",
+      "free_zone": "Free Zone",
+      "offshore": "Offshore"
+    },
+    "legalStructure": {
+      "fz_llc": "FZ-LLC / FZE",
+      "llc": "Mainland LLC",
+      "branch": "Branch",
+      "offshore_company": "Offshore company"
+    },
+    "officeType": {
+      "flexi": "Flexi desk",
+      "none": "No office"
+    },
+    "addOns": {
+      "bank_account": "Bank account assistance",
+      "tax_registration": "Corporate tax registration",
+      "document_attestation": "Document attestation"
+    },
+    "activity": {
+      "consulting": "Consulting / professional services"
+    },
+    "documents": {
+      "attested_documents": "Attested corporate documents",
+      "business_plan": "Business plan or activity summary",
+      "lease_agreement": "Lease or flexi desk confirmation",
+      "medical_fitness": "Medical fitness and Emirates ID documents",
+      "passport": "Passport copy",
+      "photo": "Passport photo",
+      "shareholder_resolution": "Shareholder resolution",
+      "trade_license": "Trade license copy"
+    },
+    "errors": {
+      "calculateFailed": "Could not calculate estimate",
+      "pdfFailed": "Could not generate PDF"
+    },
+    "preview": {
+      "eyebrow": "Preview",
+      "title": "Transparent estimate before the first call.",
+      "body": "The quote uses estimate-grade authority rows for Mainland, Offshore, and 45+ Free Zones. No lead is created until the application questionnaire is submitted."
+    },
+    "metrics": {
+      "currency": "Currency",
+      "freeZones": "Free Zones",
+      "export": "Export"
+    },
+    "table": {
+      "fee": "Fee",
+      "qty": "Qty",
+      "total": "Total"
+    },
+    "result": {
+      "estimateRef": "Estimate {reference}",
+      "oneTimeLabel": "One-time setup estimate",
+      "annualLabel": "Annual recurring",
+      "businessDays": "Business days",
+      "feeLines": "Fee lines",
+      "requiredDocs": "Required documents",
+      "noteTitle": "Estimate-grade pricing",
+      "generated": "Generated {date} from active cost rows.",
+      "preparing": "Preparing…",
+      "downloadPdf": "Download PDF",
+      "applyNow": "Apply now"
+    }
+  },
+  "leads": {
+    "stage": {
+      "new": "New",
+      "contacted": "Contacted",
+      "qualified": "Qualified",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "empty": {
+      "noLeads": "No leads"
+    },
+    "card": {
+      "email": "Email",
+      "phone": "Phone",
+      "noContact": "No contact",
+      "anyJurisdiction": "Any jurisdiction",
+      "authorityTbd": "Authority TBD",
+      "visas": "{count, plural, one {# visa} other {# visas}}",
+      "noAddOns": "No add-ons",
+      "unassigned": "Unassigned"
+    },
+    "detail": {
+      "emptyTitle": "Lead detail",
+      "emptyBody": "Select a lead card to review answers, assignment, stage controls, and activity.",
+      "noEmail": "No email",
+      "noPhone": "No phone",
+      "jurisdiction": "Jurisdiction",
+      "authority": "Authority",
+      "visas": "Visas",
+      "score": "Score",
+      "notSet": "Not set",
+      "scoreFactors": "Score factors",
+      "assignPlaceholder": "Assign active PRO firm",
+      "assignLead": "Assign lead",
+      "save": "Save",
+      "questionnaire": "Questionnaire",
+      "businessLabel": "Business",
+      "namesLabel": "Names",
+      "officeLabel": "Office",
+      "notProvided": "Not provided",
+      "estimate": "Estimate",
+      "referenceLabel": "Reference",
+      "totalLabel": "Total",
+      "none": "None",
+      "notePlaceholder": "Add an internal note",
+      "addNote": "Add note",
+      "activity": "Activity",
+      "noActivity": "No activity recorded yet."
+    },
+    "activity": {
+      "inboundReply": "Inbound reply",
+      "ambiguousMatch": "Ambiguous match",
+      "message": "MESSAGE",
+      "unknownSender": "Unknown sender",
+      "noMessageBody": "No message body"
+    },
+    "filters": {
+      "searchPlaceholder": "Search name, email, phone",
+      "allAssignments": "All assignments",
+      "unassigned": "Unassigned",
+      "allStages": "All stages",
+      "filter": "Filter"
+    },
+    "admin": {
+      "title": "Lead pipeline",
+      "subtitle": "Questionnaire leads across every tenant. Showing {total}."
+    },
+    "pro": {
+      "title": "Leads",
+      "subtitle": "Assigned questionnaire leads for {tenant}. Showing {total}."
+    }
+  },
+  "admin": {
+    "user": {
+      "createTitle": "Create user",
+      "createIntro": "Sends a Supabase invite email and creates the matching profile.",
+      "editTitle": "Edit user",
+      "editIntro": "Profile, role, status, and MFA actions. Lifecycle changes revoke active sessions.",
+      "profileDetailsTitle": "Profile details",
+      "cardTitle": "Create user",
+      "unnamedUser": "Unnamed user",
+      "suspensionReason": "Suspension reason: {reason}",
+      "lifecycleActionsTitle": "Lifecycle actions",
+      "couldNotCreate": "Could not create user",
+      "couldNotSave": "Could not save changes",
+      "savedTitle": "Saved",
+      "savedDescription": "Profile updated.",
+      "creating": "Creating…",
+      "createUser": "Create user",
+      "saving": "Saving…",
+      "saveChanges": "Save changes",
+      "cancel": "Cancel",
+      "back": "Back",
+      "requestFailed": "Request failed ({status})",
+      "emailTaken": "Email is already registered",
+      "fields": {
+        "fullName": "Full name",
+        "email": "Email",
+        "emailImmutable": "Email is immutable here. Use the dedicated email-change flow.",
+        "inviteEmailSent": "An invite email is sent on submit.",
+        "phone": "Phone (E.164)",
+        "role": "Role",
+        "chooseRole": "Choose a role",
+        "changeRoleHint": "Use Change role action to change role; sessions revoke on save.",
+        "tenant": "Tenant",
+        "chooseTenant": "Choose a tenant",
+        "tenantImmutable": "Tenant cannot be moved from this form.",
+        "reason": "Reason (optional)",
+        "reasonPlaceholder": "Recorded in admin_audit_actions for traceability",
+        "nationality": "Nationality (ISO 2-letter)",
+        "passportNo": "Passport number",
+        "linkedClient": "Linked client (optional)",
+        "employer": "Employer (client)",
+        "visaNo": "Visa number",
+        "visaExpiry": "Visa expiry",
+        "emiratesId": "Emirates ID (784-YYYY-NNNNNNN-N)",
+        "eidExpiry": "EID expiry",
+        "licenseNo": "License number",
+        "designation": "Designation",
+        "department": "Department",
+        "serviceAreasLabel": "Service areas",
+        "bio": "Bio"
+      },
+      "serviceAreas": {
+        "ABU_DHABI": "Abu Dhabi",
+        "DUBAI": "Dubai",
+        "SHARJAH": "Sharjah",
+        "AJMAN": "Ajman",
+        "UAQ": "Umm Al Quwain",
+        "RAK": "Ras Al Khaimah",
+        "FUJAIRAH": "Fujairah",
+        "ALL_UAE": "All UAE"
+      },
+      "listTitle": "Users",
+      "listShowing": "Showing {count} {more, select, true {(more available)} other {}}",
+      "directoryTitle": "Directory",
+      "directoryDescription": "All Mandoob identities across tenants.",
+      "createdAlertTitle": "User created",
+      "createdAlertDescription": "Invite email sent. The new user appears below once Supabase processes the invite.",
+      "table": {
+        "user": "User",
+        "role": "Role",
+        "tenant": "Tenant",
+        "status": "Status",
+        "created": "Created",
+        "lastSignIn": "Last sign-in",
+        "actions": "Actions",
+        "edit": "Edit"
+      },
+      "emptyState": {
+        "noMatch": "No users match your filters",
+        "resetFilters": "Reset filters",
+        "noneYet": "No users have been created yet."
+      },
+      "filters": {
+        "searchPlaceholder": "Search name or email",
+        "searchAria": "Search users",
+        "loading": "Loading…",
+        "rolesLabel": "Roles",
+        "filterByRole": "Filter by role",
+        "allStatuses": "All statuses",
+        "filterByStatus": "Filter by status",
+        "allTenants": "All tenants",
+        "filterByTenant": "Filter by tenant",
+        "searchTenantsPlaceholder": "Search tenants…",
+        "noTenantMatches": "No matches."
+      },
+      "pagination": {
+        "backToStart": "Back to start",
+        "next": "Next"
+      },
+      "roleChange": {
+        "trigger": "Change role",
+        "title": "Change role",
+        "description": "Current role: {role}. Sessions will be revoked on save.",
+        "superAdminWarning": "Demoting a super_admin requires explicit confirmation.",
+        "errorTitle": "Cannot change role",
+        "newRoleLabel": "New role",
+        "newRolePlaceholder": "Choose new role",
+        "tenantPlaceholder": "Choose tenant",
+        "clientRequiredLabel": "Client (required)",
+        "pickTenantFirst": "Pick a tenant first to enable client lookup.",
+        "confirmLabel": "Type DEMOTE to confirm",
+        "errPickRole": "Pick a target role.",
+        "errTypeDemote": "Type DEMOTE to confirm super_admin demotion.",
+        "errPickClient": "Pick a client for employee role.",
+        "apply": "Apply"
+      },
+      "statusChange": {
+        "trigger": "Change status",
+        "title": "Change account status",
+        "description": "Current status: {status}. Suspended and disabled both revoke active sessions.",
+        "noChanges": "No status changes available — user is {status}.",
+        "errorTitle": "Cannot change status",
+        "targetStatusLabel": "Target status",
+        "targetStatusPlaceholder": "Choose target status",
+        "reasonRequired": "Reason (required)",
+        "reasonOptional": "Reason (optional)",
+        "errPickStatus": "Pick a target status.",
+        "errReasonRequired": "Reason is required when suspending.",
+        "apply": "Apply",
+        "transitions": {
+          "suspend": "Suspend (reversible, requires reason)",
+          "disable": "Disable (terminal)",
+          "reactivate": "Reactivate",
+          "cancelInvite": "Cancel pending invite"
+        }
+      },
+      "mfaReset": {
+        "trigger": "Reset MFA",
+        "notEnrolled": "MFA not enrolled",
+        "title": "Reset MFA",
+        "description": "Deletes all MFA factors and revokes active sessions. The user will be forced to re-enrol on next login.",
+        "errorTitle": "Cannot reset MFA",
+        "successTitle": "MFA reset",
+        "successDescription": "{count} factor(s) removed.",
+        "confirm": "Confirm reset",
+        "resetting": "Resetting…"
+      },
+      "sessions": {
+        "empty": "No active sessions match the current filters.",
+        "user": "User",
+        "tenant": "Tenant",
+        "role": "Role",
+        "ip": "IP",
+        "started": "Started",
+        "lastSeen": "Last seen",
+        "actions": "Actions",
+        "you": "you",
+        "revoke": "Revoke",
+        "revoking": "Revoking…",
+        "revokeAll": "Revoke all",
+        "revokingAll": "Revoking all…",
+        "confirmRevokeOne": "Revoke this session for {name}?",
+        "confirmRevokeAll": "Revoke ALL sessions for {name}? They will be signed out everywhere.",
+        "revokeFailed": "Revoke failed ({code}): {error}",
+        "revokeAllFailed": "Revoke-all failed ({code}): {error}"
+      },
+      "lockedAccounts": {
+        "empty": "No accounts are currently locked.",
+        "account": "Account",
+        "failures": "Failures",
+        "lockedUntil": "Locked until",
+        "lastAttempt": "Last attempt",
+        "actions": "Actions",
+        "unlock": "Unlock",
+        "unlocking": "Unlocking…",
+        "confirmUnlock": "Unlock {key}? This clears the failure counter and lockout window.",
+        "unlockFailed": "Unlock failed ({code}): {error}"
+      },
+      "recentLogins": {
+        "title": "Recent logins",
+        "description": "Latest authentication events across all tenants.",
+        "user": "User",
+        "role": "Role",
+        "ip": "IP",
+        "time": "Time",
+        "status": "Status",
+        "empty": "No login events yet.",
+        "loginStatus": {
+          "success": "success",
+          "failed": "failed"
+        }
+      }
+    },
+    "enums": {
+      "role": {
+        "super_admin": "Super Admin",
+        "admin": "Admin",
+        "pro": "PRO",
+        "customer": "Customer",
+        "employee": "Employee"
+      },
+      "status": {
+        "active": "Active",
+        "invited": "Invited",
+        "suspended": "Suspended",
+        "disabled": "Disabled"
+      },
+      "tenantStatus": {
+        "active": "Active",
+        "pending": "Pending",
+        "suspended": "Suspended"
+      },
+      "plan": {
+        "starter": "Starter",
+        "professional": "Professional",
+        "enterprise": "Enterprise"
+      },
+      "clientStatus": {
+        "onboarding": "Onboarding",
+        "active": "Active",
+        "renewal_due": "Renewal Due",
+        "renewal_overdue": "Renewal Overdue",
+        "suspended": "Suspended",
+        "churned": "Churned"
+      }
+    },
+    "costData": {
+      "newRow": "New row",
+      "edit": "Edit",
+      "createTitle": "New cost row",
+      "editTitle": "Edit cost row",
+      "dialogDescription": "Rows with active + estimate-grade feed the public estimator.",
+      "couldNotSave": "Could not save row",
+      "saving": "Saving...",
+      "saveRow": "Save row",
+      "fields": {
+        "authority": "Authority",
+        "jurisdiction": "Jurisdiction",
+        "emirate": "Emirate",
+        "feeType": "Fee type",
+        "recurrence": "Recurrence",
+        "activityKey": "Activity key",
+        "label": "Label",
+        "amountAed": "Amount AED",
+        "minShareholders": "Min shareholders",
+        "maxShareholders": "Max shareholders",
+        "minVisas": "Min visas",
+        "maxVisas": "Max visas",
+        "timelineMin": "Timeline min",
+        "timelineMax": "Timeline max",
+        "validFrom": "Valid from",
+        "validTo": "Valid to",
+        "requiredDocumentKeys": "Required document keys"
+      },
+      "import": {
+        "trigger": "Import CSV",
+        "title": "Import cost data",
+        "description": "Paste CSV exported from this page, then import validated rows.",
+        "resultTitle": "Import result",
+        "inserted": "Inserted {inserted}",
+        "insertedWithErrors": "Inserted {inserted}, {failed} failed",
+        "importing": "Importing...",
+        "importRows": "Import rows"
+      },
+      "status": {
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate"
+      },
+      "table": {
+        "empty": "No cost-data rows match the current filters.",
+        "authority": "Authority",
+        "fee": "Fee",
+        "status": "Status",
+        "range": "Range",
+        "timeline": "Timeline",
+        "validity": "Validity",
+        "amount": "Amount",
+        "actions": "Actions",
+        "active": "active",
+        "inactive": "inactive",
+        "estimate": "estimate",
+        "shareholders": "Shareholders {min}-{max}",
+        "visas": "Visas {min}-{max}",
+        "days": "{min}-{max} days",
+        "openEnded": "open-ended"
+      },
+      "page": {
+        "title": "Cost data",
+        "intro": "Manage estimator fee rows used by public setup quotes.",
+        "exportCsv": "Export CSV",
+        "summaryRows": "Rows",
+        "summaryActive": "Active",
+        "summaryEstimateGrade": "Estimate-grade",
+        "summaryAuthorities": "Authorities",
+        "summaryExpired": "{count} expired",
+        "feeRows": "Fee rows",
+        "filterAll": "All",
+        "filterActive": "Active",
+        "filterInactive": "Inactive"
+      }
+    },
+    "proFirms": {
+      "page": {
+        "title": "PRO firms",
+        "intro": "Tenants on the platform. Showing {count}.",
+        "createButton": "Create PRO firm",
+        "createdTitle": "PRO firm created",
+        "createdDescription": "Tenant provisioned and invite email sent to the PRO admin.",
+        "directory": "Directory",
+        "statusFilterLabel": "Status filter:",
+        "filterAll": "All",
+        "empty": "No PRO firms match the current filter."
+      },
+      "table": {
+        "name": "Name",
+        "slug": "Slug",
+        "plan": "Plan",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions",
+        "suspend": "Suspend",
+        "reactivate": "Reactivate",
+        "approve": "Approve",
+        "reject": "Reject"
+      },
+      "actions": {
+        "confirmSuspend": "Suspend this PRO firm? Members will lose access until reactivated.",
+        "confirmReject": "Reject this PRO firm? The tenant and admin user will be deleted.",
+        "suspendFailed": "Suspend failed: {error}",
+        "reactivateFailed": "Reactivate failed: {error}",
+        "approveFailed": "Approve failed: {error}",
+        "rejectFailed": "Reject failed: {error}",
+        "actionFailed": "{action} failed ({code}): {error}"
+      },
+      "detail": {
+        "slug": "slug",
+        "created": "created",
+        "suspend": "Suspend",
+        "suspending": "Suspending…",
+        "reactivate": "Reactivate",
+        "reactivating": "Reactivating…",
+        "approve": "Approve",
+        "approving": "Approving…",
+        "reject": "Reject",
+        "rejecting": "Rejecting…"
+      },
+      "create": {
+        "couldNotCreate": "Could not create PRO firm",
+        "firmSection": "Firm",
+        "firmName": "Firm name",
+        "slug": "Slug",
+        "slugHint": "Lowercase letters, digits, hyphens. Reserved labels like admin, api, app, dashboard, and www are blocked.",
+        "plan": "Plan",
+        "adminSection": "Initial PRO admin",
+        "adminIntro": "A Supabase invite email will be sent. The admin updates license info via /account/role after first login.",
+        "fullName": "Full name",
+        "email": "Email",
+        "phone": "Phone (E.164)",
+        "creating": "Creating…",
+        "submit": "Create PRO firm"
+      },
+      "newPage": {
+        "title": "Create PRO firm",
+        "intro": "Provisions a tenant and creates the initial PRO admin user. Tenant goes live (status = active) immediately."
+      },
+      "detailPage": {
+        "members": "Members",
+        "membersDescription": "{count} profile(s) in this tenant.",
+        "memberName": "Name",
+        "memberRole": "Role",
+        "memberLastLogin": "Last login",
+        "noMembers": "No members.",
+        "clients": "Clients",
+        "clientsDescription": "Total {total}. Showing {recent} most recent.",
+        "clientCompany": "Company",
+        "clientStatus": "Status",
+        "clientCreated": "Created",
+        "noClients": "No clients yet.",
+        "recentAudit": "Recent audit (last 10)",
+        "recentAuditDescription": "Tenant-scoped events.",
+        "seeAll": "See all →",
+        "auditWhen": "When",
+        "auditAction": "Action",
+        "auditSource": "Source",
+        "auditActor": "Actor",
+        "auditDetails": "Details",
+        "noAudit": "No audit entries yet.",
+        "billing": "Billing",
+        "billingPending": "Pending — Step 23.",
+        "billingDescription": "Subscription plan, invoices, and payment history will land with the Payment & Financial module."
+      }
+    },
+    "audit": {
+      "kind": {
+        "tenant_audit": "Tenant audit",
+        "auth_event": "Auth events"
+      },
+      "kindBadge": {
+        "tenant_audit": "tenant",
+        "auth_event": "auth"
+      },
+      "table": {
+        "empty": "No audit entries match the current filters.",
+        "when": "When",
+        "kind": "Kind",
+        "tenant": "Tenant",
+        "actor": "Actor",
+        "action": "Action",
+        "details": "Details",
+        "emptyDetails": "empty"
+      },
+      "page": {
+        "title": "Audit Logs",
+        "intro": "Cross-tenant investigation surface. Tenant-side product events and platform auth events.",
+        "filters": "Filters",
+        "filtersDescription": "Kind, tenant, actor, action, date range, free-text.",
+        "tenant": "Tenant",
+        "allTenants": "All tenants",
+        "actor": "Actor (uuid)",
+        "from": "From",
+        "to": "To",
+        "actions": "Actions",
+        "searchDetails": "Search details (JSONB)",
+        "apply": "Apply",
+        "reset": "Reset",
+        "tenantAuditLog": "Tenant audit log",
+        "authEvents": "Auth events",
+        "resultsDescription": "Showing up to 50 entries, newest first. Click a row's details to expand the JSONB payload.",
+        "nextPage": "Next page →",
+        "endOfResults": "End of results",
+        "firstPage": "← First page"
+      }
+    },
+    "dashboard": {
+      "title": "Overview",
+      "intro": "Cross-tenant authentication and identity signals.",
+      "lastDaysLive": "Last 30 days · live"
+    },
+    "stats": {
+      "totalUsers": "Total users",
+      "activeTenants": "Active tenants",
+      "logins7d": "Logins (7d)",
+      "failedLogins24h": "Failed logins (24h)",
+      "allTime": "all time",
+      "statusActive": "status=active",
+      "vsPrior7d": "vs prior 7d",
+      "vsPrior24h": "vs prior 24h"
+    },
+    "charts": {
+      "signupsTitle": "Signups · last 30 days",
+      "signupsLegend": "Signups"
+    },
+    "finance": {
+      "title": "Finance",
+      "intro": "Stripe subscription revenue.",
+      "tenantMrr": "Tenant MRR",
+      "table": {
+        "tenant": "Tenant",
+        "plan": "Plan",
+        "status": "Status",
+        "periodEnd": "Period end",
+        "mrr": "MRR"
+      },
+      "kpi": {
+        "mrr": "MRR",
+        "arr": "ARR",
+        "activeTenants": "Active tenants",
+        "churn": "Churn",
+        "helperMonthlyValue": "active monthly value",
+        "helperMrrTimes12": "MRR x 12",
+        "helperActiveSubscriptions": "active subscriptions",
+        "helperLast30Days": "last 30 days"
+      },
+      "subStatus": {
+        "active": "Active",
+        "trialing": "Trialing",
+        "past_due": "Past due",
+        "canceled": "Canceled",
+        "unpaid": "Unpaid",
+        "incomplete": "Incomplete",
+        "incomplete_expired": "Incomplete expired",
+        "paused": "Paused"
+      }
+    },
+    "erasure": {
+      "list": {
+        "title": "Erasure requests",
+        "intro": "Verified PDPL right-to-erasure requests awaiting review.",
+        "subject": "Subject",
+        "tenant": "Tenant",
+        "status": "Status",
+        "submitted": "Submitted",
+        "action": "Action",
+        "review": "Review",
+        "empty": "No verified erasure requests are waiting for review."
+      },
+      "detail": {
+        "title": "Erasure request",
+        "subjectTitle": "Subject",
+        "subjectDescription": "Identity and tenant context for review.",
+        "name": "Name",
+        "email": "Email",
+        "kind": "Kind",
+        "tenant": "Tenant",
+        "reason": "Reason",
+        "unknown": "Unknown",
+        "noReason": "No reason provided",
+        "decisionTitle": "Decision",
+        "decisionDescription": "Approval executes the anonymization cascade.",
+        "approveExecute": "Approve and execute",
+        "rejectionReason": "Rejection reason",
+        "rejectRequest": "Reject request",
+        "cascadeTitle": "Cascade scope",
+        "cascadeDescription": "Fields removed on approval.",
+        "profilePii": "Profile PII",
+        "profilePiiDesc": "Name, phone, username, title, bio.",
+        "identityFields": "Identity fields",
+        "identityFieldsDesc": "Passport, visa, and Emirates ID encrypted values.",
+        "documents": "Documents",
+        "documentsDesc": "Passport, visa, Emirates ID, and shareholder ID document rows."
+      },
+      "status": {
+        "pending_verification": "Pending verification",
+        "submitted": "Submitted",
+        "under_review": "Under review",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "subjectKind": {
+        "customer": "Customer",
+        "employee": "Employee"
+      }
+    },
+    "security": {
+      "title": "MFA & Security",
+      "intro": "Failed-login + lockout dashboard. KPIs over the last 24 hours; lists capped per query.",
+      "kpiFailedLogins": "Failed logins (24h)",
+      "kpiFailedLoginsHint": "login_failure + mfa_challenge_failure",
+      "kpiLockedAccounts": "Locked accounts (now)",
+      "kpiLockedAccountsHint": "auth_failed_attempts where key like acct:%",
+      "kpiLockedNetblocks": "Locked netblocks (now)",
+      "kpiLockedNetblocksHint": "auth_failed_attempts where key like net:%",
+      "lockedAccountsTitle": "Currently locked accounts",
+      "lockedAccountsDescription": "Click Unlock to clear the counter and lockout window. Audited to tenant_audit_log.",
+      "topIpsTitle": "Top failed-login IPs (24h)",
+      "topIpsDescription": "Helps spot brute-force from one source.",
+      "topIpsEmpty": "No failed logins in the last 24 hours.",
+      "ip": "IP",
+      "failures": "Failures",
+      "mfaFailuresTitle": "Recent MFA failures (last 50)",
+      "mfaFailuresDescription": "kind=mfa_challenge_failure, newest first.",
+      "mfaFailuresEmpty": "No recent MFA failures.",
+      "when": "When",
+      "user": "User"
+    },
+    "sessions": {
+      "title": "Sessions",
+      "intro": "Active sessions across all tenants. Revoke a single session or all of a user's sessions.",
+      "filtersTitle": "Filters",
+      "filtersDescription": "Tenant, role, signed-in window.",
+      "tenant": "Tenant",
+      "allTenants": "All tenants",
+      "role": "Role",
+      "allRoles": "All roles",
+      "window": "Window",
+      "apply": "Apply",
+      "reset": "Reset",
+      "activeTitle": "Active sessions",
+      "activeDescription": "Showing {count} session(s). Capped at 200 per query.",
+      "windowOptions": {
+        "24h": "Past 24 hours",
+        "7d": "Past 7 days",
+        "30d": "Past 30 days",
+        "all": "All time"
+      }
+    },
+    "whatsapp": {
+      "title": "WhatsApp templates",
+      "intro": "Track Meta approval state before templates are allowed into the outbound queue.",
+      "tenantPlaceholder": "Tenant UUID for overrides",
+      "allStatuses": "All statuses",
+      "allCategories": "All categories",
+      "filter": "Filter",
+      "template": "Template",
+      "scope": "Scope",
+      "status": "Status",
+      "timestamps": "Timestamps",
+      "notes": "Notes",
+      "update": "Update",
+      "metaPrefix": "Meta: {name}",
+      "empty": "No WhatsApp templates match these filters.",
+      "save": "Save",
+      "submittedPlaceholder": "Submitted ISO timestamp",
+      "lastCheckedPlaceholder": "Last checked ISO timestamp",
+      "notesPlaceholder": "Internal notes",
+      "rejectionPlaceholder": "Rejection reason",
+      "tsSubmitted": "Submitted",
+      "tsChecked": "Checked",
+      "tsUpdated": "Updated",
+      "blockNotes": "Notes",
+      "blockRejection": "Rejection",
+      "statusEnum": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "disabled": "Disabled",
+        "missing": "Missing"
+      },
+      "category": {
+        "marketing": "Marketing",
+        "utility": "Utility",
+        "authentication": "Authentication"
+      },
+      "scopeEnum": {
+        "global": "Global",
+        "tenant": "Tenant"
+      },
+      "scopeMissingTenant": "Missing tenant override",
+      "scopeMissingGlobal": "Missing global row"
+    },
+    "clientTypeahead": {
+      "noTenant": "No tenant selected",
+      "searchPlaceholder": "Search clients…",
+      "typeToSearch": "Type to search…",
+      "loading": "Loading…",
+      "noMatches": "No matches."
+    },
+    "theme": {
+      "toggle": "Toggle theme"
     }
   }
 }

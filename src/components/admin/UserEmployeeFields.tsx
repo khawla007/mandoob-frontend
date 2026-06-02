@@ -1,18 +1,14 @@
 'use client';
 
 import { useFormContext } from 'react-hook-form';
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { useTranslations } from 'next-intl';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ClientTypeahead } from './ClientTypeahead';
 import type { CreateUserInput } from '@/lib/validation/admin-user';
 
 export function UserEmployeeFields() {
+  const t = useTranslations('admin');
   const form = useFormContext<CreateUserInput>();
   const tenantId = (form.watch('tenant_id') as string | null | undefined) ?? null;
 
@@ -23,7 +19,7 @@ export function UserEmployeeFields() {
         name="client_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Employer (client)</FormLabel>
+            <FormLabel>{t('user.fields.employer')}</FormLabel>
             <FormControl>
               <ClientTypeahead
                 tenantId={tenantId}
@@ -41,7 +37,7 @@ export function UserEmployeeFields() {
         name="passport_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Passport number</FormLabel>
+            <FormLabel>{t('user.fields.passportNo')}</FormLabel>
             <FormControl>
               <Input {...field} value={field.value ?? ''} />
             </FormControl>
@@ -54,7 +50,7 @@ export function UserEmployeeFields() {
         name="visa_no"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Visa number</FormLabel>
+            <FormLabel>{t('user.fields.visaNo')}</FormLabel>
             <FormControl>
               <Input {...field} value={field.value ?? ''} />
             </FormControl>
@@ -67,7 +63,7 @@ export function UserEmployeeFields() {
         name="visa_expiry"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Visa expiry</FormLabel>
+            <FormLabel>{t('user.fields.visaExpiry')}</FormLabel>
             <FormControl>
               <Input type="date" {...field} value={field.value ?? ''} />
             </FormControl>
@@ -80,7 +76,7 @@ export function UserEmployeeFields() {
         name="emirates_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Emirates ID (784-YYYY-NNNNNNN-N)</FormLabel>
+            <FormLabel>{t('user.fields.emiratesId')}</FormLabel>
             <FormControl>
               <Input placeholder="784-1989-1234567-1" {...field} value={field.value ?? ''} />
             </FormControl>
@@ -93,7 +89,7 @@ export function UserEmployeeFields() {
         name="eid_expiry"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>EID expiry</FormLabel>
+            <FormLabel>{t('user.fields.eidExpiry')}</FormLabel>
             <FormControl>
               <Input type="date" {...field} value={field.value ?? ''} />
             </FormControl>
