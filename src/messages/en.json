@@ -965,6 +965,19 @@
         "active": "Active",
         "pending": "Pending",
         "suspended": "Suspended"
+      },
+      "plan": {
+        "starter": "Starter",
+        "professional": "Professional",
+        "enterprise": "Enterprise"
+      },
+      "clientStatus": {
+        "onboarding": "Onboarding",
+        "active": "Active",
+        "renewal_due": "Renewal Due",
+        "renewal_overdue": "Renewal Overdue",
+        "suspended": "Suspended",
+        "churned": "Churned"
       }
     },
     "costData": {

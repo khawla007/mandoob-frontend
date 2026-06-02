@@ -51,7 +51,7 @@ export function ProFirmDetailHeader({ tenant }: { tenant: ProFirmRow }) {
           <Badge variant={STATUS_VARIANT[tenant.status]}>
             {t(`enums.tenantStatus.${tenant.status}`)}
           </Badge>
-          <Badge variant="outline">{tenant.plan}</Badge>
+          <Badge variant="outline">{t(`enums.plan.${tenant.plan}`)}</Badge>
         </div>
         <div className="text-muted-foreground mt-1 text-xs">
           {t('proFirms.detail.slug')} <span className="font-mono">{tenant.slug}</span> ·{' '}

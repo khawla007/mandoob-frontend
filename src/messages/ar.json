@@ -966,6 +966,19 @@
         "active": "نشط",
         "pending": "قيد الانتظار",
         "suspended": "معلّق"
+      },
+      "plan": {
+        "starter": "مبتدئ",
+        "professional": "احترافي",
+        "enterprise": "مؤسسي"
+      },
+      "clientStatus": {
+        "onboarding": "قيد الإعداد",
+        "active": "نشط",
+        "renewal_due": "تجديد مستحق",
+        "renewal_overdue": "تجديد متأخر",
+        "suspended": "معلّق",
+        "churned": "منسحب"
       }
     },
     "costData": {

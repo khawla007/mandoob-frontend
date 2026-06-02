@@ -106,7 +106,7 @@ export function CreateProFirmForm() {
             <SelectContent>
               {TENANT_PLANS.map((p) => (
                 <SelectItem key={p} value={p}>
-                  {p}
+                  {t(`enums.plan.${p}`)}
                 </SelectItem>
               ))}
             </SelectContent>

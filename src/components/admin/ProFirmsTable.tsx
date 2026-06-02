@@ -95,7 +95,7 @@ export function ProFirmsTable({ rows }: { rows: ProFirmRow[] }) {
             </TableCell>
             <TableCell className="text-muted-foreground font-mono text-xs">{r.slug}</TableCell>
             <TableCell>
-              <Badge variant="outline">{r.plan}</Badge>
+              <Badge variant="outline">{t(`enums.plan.${r.plan}`)}</Badge>
             </TableCell>
             <TableCell>
               <Badge variant={STATUS_VARIANT[r.status]}>

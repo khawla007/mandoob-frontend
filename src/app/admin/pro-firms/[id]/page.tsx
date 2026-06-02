@@ -118,7 +118,13 @@ export default async function ProFirmDetailPage({ params }: { params: Promise<{ 
                     <TableRow key={c.id}>
                       <TableCell className="text-sm">{c.companyName}</TableCell>
                       <TableCell>
-                        {c.status && <Badge variant="outline">{c.status}</Badge>}
+                        {c.status && (
+                          <Badge variant="outline">
+                            {t.has(`enums.clientStatus.${c.status}`)
+                              ? t(`enums.clientStatus.${c.status}`)
+                              : c.status}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
                         {fmtDate(c.createdAt)}
