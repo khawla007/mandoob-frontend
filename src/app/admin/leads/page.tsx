@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,11 +11,7 @@ import {
   listPlatformLeadKanban,
   type LeadKanbanFilters,
 } from '@/lib/data/leads-kanban';
-import {
-  addAdminLeadNoteAction,
-  assignLeadAction,
-  setAdminLeadStageAction,
-} from './actions';
+import { addAdminLeadNoteAction, assignLeadAction, setAdminLeadStageAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,29 +42,32 @@ export default async function AdminLeadsPage({
     sp.lead ? getLeadDetail(sp.lead, { kind: 'platform' }) : Promise.resolve(null),
   ]);
   const total = Object.values(kanban).reduce((sum, rows) => sum + rows.length, 0);
+  const t = await getTranslations('leads');
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Lead pipeline</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Questionnaire leads across every tenant. Showing {total}.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('admin.title')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('admin.subtitle', { total })}</p>
         </div>
       </div>
 
       <Card>
         <CardContent className="p-4">
           <form className="grid gap-3 md:grid-cols-[1fr_160px_160px_auto]" action="/admin/leads">
-            <Input name="q" defaultValue={sp.q ?? ''} placeholder="Search name, email, phone" />
+            <Input
+              name="q"
+              defaultValue={sp.q ?? ''}
+              placeholder={t('filters.searchPlaceholder')}
+            />
             <select
               name="assigned"
               defaultValue={filters.assigned}
               className="border-input bg-background h-9 rounded-md border px-3 text-sm"
             >
-              <option value="all">All assignments</option>
-              <option value="unassigned">Unassigned</option>
+              <option value="all">{t('filters.allAssignments')}</option>
+              <option value="unassigned">{t('filters.unassigned')}</option>
               {tenants.map((tenant) => (
                 <option key={tenant.id} value={tenant.id}>
                   {tenant.name}
@@ -79,15 +79,15 @@ export default async function AdminLeadsPage({
               defaultValue={filters.stage}
               className="border-input bg-background h-9 rounded-md border px-3 text-sm"
             >
-              <option value="all">All stages</option>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
+              <option value="all">{t('filters.allStages')}</option>
+              <option value="new">{t('stage.new')}</option>
+              <option value="contacted">{t('stage.contacted')}</option>
+              <option value="qualified">{t('stage.qualified')}</option>
+              <option value="won">{t('stage.won')}</option>
+              <option value="lost">{t('stage.lost')}</option>
             </select>
             <Button type="submit" variant="outline">
-              Filter
+              {t('filters.filter')}
             </Button>
           </form>
         </CardContent>

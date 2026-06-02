@@ -610,5 +610,75 @@
       "downloadPdf": "تنزيل PDF",
       "applyNow": "قدّم الآن"
     }
+  },
+  "leads": {
+    "stage": {
+      "new": "جديد",
+      "contacted": "تم التواصل",
+      "qualified": "مؤهّل",
+      "won": "ناجح",
+      "lost": "خاسر"
+    },
+    "empty": { "noLeads": "لا عملاء محتملون" },
+    "card": {
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "noContact": "لا جهة اتصال",
+      "anyJurisdiction": "أي ولاية",
+      "authorityTbd": "الجهة قيد التحديد",
+      "visas": "{count, plural, zero {لا تأشيرات} one {تأشيرة واحدة} two {تأشيرتان} few {# تأشيرات} many {# تأشيرة} other {# تأشيرة}}",
+      "noAddOns": "بدون إضافات",
+      "unassigned": "غير مُعيّن"
+    },
+    "detail": {
+      "emptyTitle": "تفاصيل العميل المحتمل",
+      "emptyBody": "اختر بطاقة عميل محتمل لمراجعة الإجابات والتعيين وعناصر التحكم بالمرحلة والنشاط.",
+      "noEmail": "لا بريد إلكتروني",
+      "noPhone": "لا هاتف",
+      "jurisdiction": "الولاية",
+      "authority": "الجهة",
+      "visas": "التأشيرات",
+      "score": "النقاط",
+      "notSet": "غير محدد",
+      "scoreFactors": "عوامل التقييم",
+      "assignPlaceholder": "عيّن شركة PRO نشطة",
+      "assignLead": "تعيين العميل المحتمل",
+      "save": "حفظ",
+      "questionnaire": "الاستبيان",
+      "businessLabel": "النشاط",
+      "namesLabel": "الأسماء",
+      "officeLabel": "المكتب",
+      "notProvided": "غير متوفر",
+      "estimate": "التقدير",
+      "referenceLabel": "المرجع",
+      "totalLabel": "الإجمالي",
+      "none": "لا يوجد",
+      "notePlaceholder": "أضف ملاحظة داخلية",
+      "addNote": "إضافة ملاحظة",
+      "activity": "النشاط",
+      "noActivity": "لا نشاط مُسجّل بعد."
+    },
+    "activity": {
+      "inboundReply": "رد وارد",
+      "ambiguousMatch": "تطابق غير مؤكد",
+      "message": "رسالة",
+      "unknownSender": "مُرسِل غير معروف",
+      "noMessageBody": "لا يوجد نص للرسالة"
+    },
+    "filters": {
+      "searchPlaceholder": "ابحث بالاسم أو البريد أو الهاتف",
+      "allAssignments": "كل التعيينات",
+      "unassigned": "غير مُعيّن",
+      "allStages": "كل المراحل",
+      "filter": "تصفية"
+    },
+    "admin": {
+      "title": "خط أنابيب العملاء المحتملين",
+      "subtitle": "عملاء محتملون من الاستبيان عبر كل المستأجرين. عرض {total}."
+    },
+    "pro": {
+      "title": "العملاء المحتملون",
+      "subtitle": "عملاء محتملون من الاستبيان مُعيّنون لـ {tenant}. عرض {total}."
+    }
   }
 }

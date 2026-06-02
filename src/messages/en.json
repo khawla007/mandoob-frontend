@@ -609,5 +609,75 @@
       "downloadPdf": "Download PDF",
       "applyNow": "Apply now"
     }
+  },
+  "leads": {
+    "stage": {
+      "new": "New",
+      "contacted": "Contacted",
+      "qualified": "Qualified",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "empty": { "noLeads": "No leads" },
+    "card": {
+      "email": "Email",
+      "phone": "Phone",
+      "noContact": "No contact",
+      "anyJurisdiction": "Any jurisdiction",
+      "authorityTbd": "Authority TBD",
+      "visas": "{count, plural, one {# visa} other {# visas}}",
+      "noAddOns": "No add-ons",
+      "unassigned": "Unassigned"
+    },
+    "detail": {
+      "emptyTitle": "Lead detail",
+      "emptyBody": "Select a lead card to review answers, assignment, stage controls, and activity.",
+      "noEmail": "No email",
+      "noPhone": "No phone",
+      "jurisdiction": "Jurisdiction",
+      "authority": "Authority",
+      "visas": "Visas",
+      "score": "Score",
+      "notSet": "Not set",
+      "scoreFactors": "Score factors",
+      "assignPlaceholder": "Assign active PRO firm",
+      "assignLead": "Assign lead",
+      "save": "Save",
+      "questionnaire": "Questionnaire",
+      "businessLabel": "Business",
+      "namesLabel": "Names",
+      "officeLabel": "Office",
+      "notProvided": "Not provided",
+      "estimate": "Estimate",
+      "referenceLabel": "Reference",
+      "totalLabel": "Total",
+      "none": "None",
+      "notePlaceholder": "Add an internal note",
+      "addNote": "Add note",
+      "activity": "Activity",
+      "noActivity": "No activity recorded yet."
+    },
+    "activity": {
+      "inboundReply": "Inbound reply",
+      "ambiguousMatch": "Ambiguous match",
+      "message": "MESSAGE",
+      "unknownSender": "Unknown sender",
+      "noMessageBody": "No message body"
+    },
+    "filters": {
+      "searchPlaceholder": "Search name, email, phone",
+      "allAssignments": "All assignments",
+      "unassigned": "Unassigned",
+      "allStages": "All stages",
+      "filter": "Filter"
+    },
+    "admin": {
+      "title": "Lead pipeline",
+      "subtitle": "Questionnaire leads across every tenant. Showing {total}."
+    },
+    "pro": {
+      "title": "Leads",
+      "subtitle": "Assigned questionnaire leads for {tenant}. Showing {total}."
+    }
   }
 }

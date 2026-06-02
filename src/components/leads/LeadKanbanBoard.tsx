@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { getTranslations } from 'next-intl/server';
 import {
   LEAD_STAGES,
   type LeadCardRow,
@@ -21,21 +22,13 @@ type TenantOption = { id: string; name: string; slug: string };
 
 type LeadAction = (formData: FormData) => Promise<unknown>;
 
-const STAGE_LABELS: Record<(typeof LEAD_STAGES)[number], string> = {
-  new: 'New',
-  contacted: 'Contacted',
-  qualified: 'Qualified',
-  won: 'Won',
-  lost: 'Lost',
-};
-
 const SCORE_BADGE_VARIANT = {
   hot: 'destructive',
   warm: 'secondary',
   cold: 'outline',
 } as const;
 
-export function LeadKanbanBoard({
+export async function LeadKanbanBoard({
   kanban,
   baseHref,
   detail,
@@ -54,19 +47,20 @@ export function LeadKanbanBoard({
   noteAction: LeadAction;
   canAssign?: boolean;
 }) {
+  const t = await getTranslations('leads');
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="grid gap-4 lg:grid-cols-5">
         {LEAD_STAGES.map((stage) => (
           <section key={stage} className="min-w-0">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold">{STAGE_LABELS[stage]}</h2>
+              <h2 className="text-sm font-semibold">{t(`stage.${stage}`)}</h2>
               <Badge variant="outline">{kanban[stage].length}</Badge>
             </div>
             <div className="space-y-3">
               {kanban[stage].length === 0 ? (
                 <div className="border-border/70 text-muted-foreground rounded-lg border border-dashed p-4 text-center text-xs">
-                  No leads
+                  {t('empty.noLeads')}
                 </div>
               ) : (
                 kanban[stage].map((lead) => (
@@ -90,7 +84,8 @@ export function LeadKanbanBoard({
   );
 }
 
-function LeadCard({ lead, href }: { lead: LeadCardRow; href: string }) {
+async function LeadCard({ lead, href }: { lead: LeadCardRow; href: string }) {
+  const t = await getTranslations('leads');
   return (
     <Link href={href} className="block">
       <Card className="hover:border-foreground/30 transition-colors">
@@ -105,20 +100,22 @@ function LeadCard({ lead, href }: { lead: LeadCardRow; href: string }) {
             </Badge>
           </div>
           <div className="text-muted-foreground flex flex-wrap gap-1 text-xs">
-            {lead.email ? <span>Email</span> : null}
-            {lead.phone ? <span>Phone</span> : null}
-            {!lead.email && !lead.phone ? <span>No contact</span> : null}
+            {lead.email ? <span>{t('card.email')}</span> : null}
+            {lead.phone ? <span>{t('card.phone')}</span> : null}
+            {!lead.email && !lead.phone ? <span>{t('card.noContact')}</span> : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-2 p-4 pt-0 text-xs">
           <div className="text-muted-foreground">
-            {lead.jurisdiction ?? 'Any jurisdiction'} · {lead.authority ?? 'Authority TBD'}
+            {lead.jurisdiction ?? t('card.anyJurisdiction')} ·{' '}
+            {lead.authority ?? t('card.authorityTbd')}
           </div>
           <div className="text-muted-foreground">
-            {lead.visaCount} visas · {lead.addOns.length ? lead.addOns.join(', ') : 'No add-ons'}
+            {t('card.visas', { count: lead.visaCount })} ·{' '}
+            {lead.addOns.length ? lead.addOns.join(', ') : t('card.noAddOns')}
           </div>
           <Badge variant={lead.tenantId ? 'outline' : 'destructive'}>
-            {lead.assignedTenantName ?? 'Unassigned'}
+            {lead.assignedTenantName ?? t('card.unassigned')}
           </Badge>
         </CardContent>
       </Card>
@@ -126,7 +123,7 @@ function LeadCard({ lead, href }: { lead: LeadCardRow; href: string }) {
   );
 }
 
-function LeadDetailPanel({
+async function LeadDetailPanel({
   detail,
   tenants,
   assignAction,
@@ -141,13 +138,12 @@ function LeadDetailPanel({
   noteAction: LeadAction;
   canAssign: boolean;
 }) {
+  const t = await getTranslations('leads');
   if (!detail) {
     return (
       <aside className="border-border/70 bg-muted/20 rounded-lg border p-6">
-        <h2 className="font-semibold">Lead detail</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Select a lead card to review answers, assignment, stage controls, and activity.
-        </p>
+        <h2 className="font-semibold">{t('detail.emptyTitle')}</h2>
+        <p className="text-muted-foreground mt-2 text-sm">{t('detail.emptyBody')}</p>
       </aside>
     );
   }
@@ -158,19 +154,22 @@ function LeadDetailPanel({
         <CardHeader>
           <CardTitle className="text-lg">{detail.name}</CardTitle>
           <p className="text-muted-foreground text-sm">
-            {detail.email ?? 'No email'} · {detail.phone ?? 'No phone'}
+            {detail.email ?? t('detail.noEmail')} · {detail.phone ?? t('detail.noPhone')}
           </p>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="grid grid-cols-2 gap-3">
-            <Fact label="Jurisdiction" value={detail.jurisdiction ?? 'Not set'} />
-            <Fact label="Authority" value={detail.authority ?? 'Not set'} />
-            <Fact label="Visas" value={String(detail.visaCount)} />
-            <Fact label="Score" value={`${detail.score} ${detail.scoreTemperature}`} />
+            <Fact
+              label={t('detail.jurisdiction')}
+              value={detail.jurisdiction ?? t('detail.notSet')}
+            />
+            <Fact label={t('detail.authority')} value={detail.authority ?? t('detail.notSet')} />
+            <Fact label={t('detail.visas')} value={String(detail.visaCount)} />
+            <Fact label={t('detail.score')} value={`${detail.score} ${detail.scoreTemperature}`} />
           </div>
 
           <section>
-            <h3 className="mb-2 text-sm font-medium">Score factors</h3>
+            <h3 className="mb-2 text-sm font-medium">{t('detail.scoreFactors')}</h3>
             <div className="space-y-1 text-xs">
               {detail.scoreFactors.slice(0, 6).map((factor) => (
                 <div key={factor.key} className="flex items-center justify-between gap-3">
@@ -186,7 +185,7 @@ function LeadDetailPanel({
               <input type="hidden" name="leadId" value={detail.id} />
               <Select name="tenantId" defaultValue={detail.tenantId ?? undefined}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Assign active PRO firm" />
+                  <SelectValue placeholder={t('detail.assignPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {tenants.map((tenant) => (
@@ -197,7 +196,7 @@ function LeadDetailPanel({
                 </SelectContent>
               </Select>
               <Button type="submit" size="sm" className="w-full">
-                Assign lead
+                {t('detail.assignLead')}
               </Button>
             </form>
           ) : null}
@@ -211,41 +210,55 @@ function LeadDetailPanel({
               <SelectContent>
                 {LEAD_STAGES.map((stage) => (
                   <SelectItem key={stage} value={stage}>
-                    {STAGE_LABELS[stage]}
+                    {t(`stage.${stage}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button type="submit" size="sm">
-              Save
+              {t('detail.save')}
             </Button>
           </form>
 
           <section>
-            <h3 className="mb-2 text-sm font-medium">Questionnaire</h3>
+            <h3 className="mb-2 text-sm font-medium">{t('detail.questionnaire')}</h3>
             <div className="text-muted-foreground space-y-1 text-xs">
-              <p>Business: {text(detail.formData.businessSummary) ?? 'Not provided'}</p>
-              <p>Names: {arrayText(detail.formData.preferredNames) ?? 'Not provided'}</p>
-              <p>Office: {text(detail.formData.officeType) ?? 'Not provided'}</p>
+              <p>
+                {t('detail.businessLabel')}:{' '}
+                {text(detail.formData.businessSummary) ?? t('detail.notProvided')}
+              </p>
+              <p>
+                {t('detail.namesLabel')}:{' '}
+                {arrayText(detail.formData.preferredNames) ?? t('detail.notProvided')}
+              </p>
+              <p>
+                {t('detail.officeLabel')}:{' '}
+                {text(detail.formData.officeType) ?? t('detail.notProvided')}
+              </p>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-sm font-medium">Estimate</h3>
+            <h3 className="mb-2 text-sm font-medium">{t('detail.estimate')}</h3>
             <div className="text-muted-foreground space-y-1 text-xs">
-              <p>Reference: {text(detail.estimateData.reference) ?? 'None'}</p>
               <p>
-                Total:{' '}
-                {text(detail.estimateData.total) ?? text(detail.estimateData.totalAed) ?? 'Not set'}
+                {t('detail.referenceLabel')}:{' '}
+                {text(detail.estimateData.reference) ?? t('detail.none')}
+              </p>
+              <p>
+                {t('detail.totalLabel')}:{' '}
+                {text(detail.estimateData.total) ??
+                  text(detail.estimateData.totalAed) ??
+                  t('detail.notSet')}
               </p>
             </div>
           </section>
 
           <form action={noteAction as never} className="space-y-2">
             <input type="hidden" name="leadId" value={detail.id} />
-            <Textarea name="note" placeholder="Add an internal note" rows={3} />
+            <Textarea name="note" placeholder={t('detail.notePlaceholder')} rows={3} />
             <Button type="submit" size="sm" variant="outline" className="w-full">
-              Add note
+              {t('detail.addNote')}
             </Button>
           </form>
         </CardContent>
@@ -253,11 +266,11 @@ function LeadDetailPanel({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Activity</CardTitle>
+          <CardTitle className="text-base">{t('detail.activity')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {detail.events.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No activity recorded yet.</p>
+            <p className="text-muted-foreground text-sm">{t('detail.noActivity')}</p>
           ) : (
             detail.events.map((event) => (
               <div
@@ -283,19 +296,21 @@ function LeadDetailPanel({
   );
 }
 
-function InboundReplyActivity({ event }: { event: LeadDetail['events'][number] }) {
-  const channel = text(event.metadata.channel)?.toUpperCase() ?? 'MESSAGE';
-  const fromPhone = text(event.metadata.from_phone) ?? event.fromValue ?? 'Unknown sender';
-  const body = text(event.metadata.body_preview) ?? event.note ?? 'No message body';
+async function InboundReplyActivity({ event }: { event: LeadDetail['events'][number] }) {
+  const t = await getTranslations('leads');
+  const channel = text(event.metadata.channel)?.toUpperCase() ?? t('activity.message');
+  const fromPhone =
+    text(event.metadata.from_phone) ?? event.fromValue ?? t('activity.unknownSender');
+  const body = text(event.metadata.body_preview) ?? event.note ?? t('activity.noMessageBody');
   const receivedAt = text(event.metadata.received_at) ?? event.createdAt;
   const ambiguous = event.metadata.ambiguous === true;
 
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">Inbound reply</span>
+        <span className="font-medium">{t('activity.inboundReply')}</span>
         <Badge variant="outline">{channel}</Badge>
-        {ambiguous ? <Badge variant="secondary">Ambiguous match</Badge> : null}
+        {ambiguous ? <Badge variant="secondary">{t('activity.ambiguousMatch')}</Badge> : null}
       </div>
       <div className="text-muted-foreground text-xs">
         {fromPhone} · {formatDateTime(receivedAt)}

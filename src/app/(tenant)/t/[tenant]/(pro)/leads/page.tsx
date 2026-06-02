@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getLeadDetail, listTenantLeadKanban } from '@/lib/data/leads-kanban';
@@ -22,16 +23,19 @@ export default async function ProLeadsPage({
 
   const [kanban, detail] = await Promise.all([
     listTenantLeadKanban(tenant.id),
-    sp.lead ? getLeadDetail(sp.lead, { kind: 'tenant', tenantId: tenant.id }) : Promise.resolve(null),
+    sp.lead
+      ? getLeadDetail(sp.lead, { kind: 'tenant', tenantId: tenant.id })
+      : Promise.resolve(null),
   ]);
   const total = Object.values(kanban).reduce((sum, rows) => sum + rows.length, 0);
+  const t = await getTranslations('leads');
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('pro.title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Assigned questionnaire leads for {tenant.name}. Showing {total}.
+          {t('pro.subtitle', { tenant: tenant.name, total })}
         </p>
       </div>
 
