@@ -311,7 +311,81 @@
     "renewals": "Renewals",
     "documents": "Documents",
     "employees": "Employees",
-    "settings": "Settings",
+    "settings": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "couldNotSave": "Could not save",
+      "enabled": "Enabled",
+      "contact": {
+        "title": "Contact & legal",
+        "description": "Email sender identity and public legal page links.",
+        "savedDescription": "Contact info updated.",
+        "senderName": "Email sender name",
+        "replyTo": "Reply-to email",
+        "termsUrl": "Terms URL",
+        "privacyUrl": "Privacy URL",
+        "save": "Save contact info"
+      },
+      "branding": {
+        "title": "Branding",
+        "description": "Workspace name, logo, favicon, and accent colors.",
+        "savedDescription": "Branding updated.",
+        "workspaceName": "Workspace name",
+        "logoUrl": "Logo URL",
+        "faviconUrl": "Favicon URL",
+        "primaryColor": "Primary color",
+        "secondaryColor": "Secondary color",
+        "save": "Save branding"
+      },
+      "smtp": {
+        "title": "SMTP",
+        "description": "Per-tenant outbound email server. Password is encrypted at rest (AES-256-GCM).",
+        "savedDescription": "SMTP config updated.",
+        "host": "Host",
+        "port": "Port",
+        "username": "Username",
+        "password": "Password",
+        "passwordKeepPlaceholder": "•••••••• (leave blank to keep)",
+        "passwordPlaceholder": "SMTP password",
+        "fromAddress": "From address",
+        "save": "Save SMTP config"
+      },
+      "whatsapp": {
+        "title": "WhatsApp",
+        "description": "Meta Cloud API credentials for tenant-owned messaging.",
+        "savedDescription": "WhatsApp config updated.",
+        "statusConnected": "Connected",
+        "statusDisabled": "Disabled",
+        "statusNotConfigured": "Not configured",
+        "phoneNumberId": "Phone number ID",
+        "businessAccountId": "Business account ID",
+        "accessToken": "Access token",
+        "tokenStoredPlaceholder": "Token stored (leave blank to keep)",
+        "tokenPlaceholder": "Meta access token",
+        "save": "Save WhatsApp config"
+      },
+      "whiteLabel": {
+        "title": "White-label setup",
+        "description": "Subdomain, brand, sender, and comms readiness.",
+        "ready": "{complete}/{total} ready",
+        "items": {
+          "branding": "Branding",
+          "contact": "Contact & legal",
+          "smtp": "SMTP",
+          "whatsapp": "WhatsApp"
+        },
+        "details": {
+          "brandingComplete": "Logo and primary color set",
+          "brandingIncomplete": "Fallback initial is active",
+          "contactComplete": "Legal links configured",
+          "contactIncomplete": "Add sender and legal links",
+          "smtpComplete": "Tenant SMTP enabled",
+          "smtpIncomplete": "Using platform email fallback",
+          "whatsappComplete": "Tenant WhatsApp enabled",
+          "whatsappIncomplete": "Not configured or disabled"
+        }
+      }
+    },
     "dashboard": "Dashboard",
     "leads": "Leads",
     "addClient": "Add client",

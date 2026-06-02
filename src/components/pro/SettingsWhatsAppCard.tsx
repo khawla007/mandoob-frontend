@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ export function SettingsWhatsAppCard({
   slug: string;
   initial: TenantWhatsAppRedacted;
 }) {
+  const t = useTranslations('pro.settings');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -52,37 +54,48 @@ export function SettingsWhatsAppCard({
     });
   }
 
-  const status = initial?.enabled && initial.has_access_token ? 'Connected' : initial ? 'Disabled' : 'Not configured';
+  const status =
+    initial?.enabled && initial.has_access_token
+      ? 'connected'
+      : initial
+        ? 'disabled'
+        : 'notConfigured';
+  const statusLabel =
+    status === 'connected'
+      ? t('whatsapp.statusConnected')
+      : status === 'disabled'
+        ? t('whatsapp.statusDisabled')
+        : t('whatsapp.statusNotConfigured');
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-lg">WhatsApp</CardTitle>
-            <CardDescription>Meta Cloud API credentials for tenant-owned messaging.</CardDescription>
+            <CardTitle className="text-lg">{t('whatsapp.title')}</CardTitle>
+            <CardDescription>{t('whatsapp.description')}</CardDescription>
           </div>
-          <Badge variant={status === 'Connected' ? 'default' : 'secondary'}>{status}</Badge>
+          <Badge variant={status === 'connected' ? 'default' : 'secondary'}>{statusLabel}</Badge>
         </div>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Could not save</AlertTitle>
+              <AlertTitle>{t('couldNotSave')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           {saved && (
             <Alert>
-              <AlertTitle>Saved</AlertTitle>
-              <AlertDescription>WhatsApp config updated.</AlertDescription>
+              <AlertTitle>{t('saved')}</AlertTitle>
+              <AlertDescription>{t('whatsapp.savedDescription')}</AlertDescription>
             </Alert>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="wa-phone-number-id">Phone number ID</Label>
+              <Label htmlFor="wa-phone-number-id">{t('whatsapp.phoneNumberId')}</Label>
               <Input
                 id="wa-phone-number-id"
                 required
@@ -92,7 +105,7 @@ export function SettingsWhatsAppCard({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="wa-business-account-id">Business account ID</Label>
+              <Label htmlFor="wa-business-account-id">{t('whatsapp.businessAccountId')}</Label>
               <Input
                 id="wa-business-account-id"
                 required
@@ -104,13 +117,17 @@ export function SettingsWhatsAppCard({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="wa-token">Access token</Label>
+            <Label htmlFor="wa-token">{t('whatsapp.accessToken')}</Label>
             <Input
               id="wa-token"
               type="password"
               value={accessToken}
               onChange={(e) => setAccessToken(e.target.value)}
-              placeholder={hasExistingToken ? 'Token stored (leave blank to keep)' : 'Meta access token'}
+              placeholder={
+                hasExistingToken
+                  ? t('whatsapp.tokenStoredPlaceholder')
+                  : t('whatsapp.tokenPlaceholder')
+              }
               autoComplete="new-password"
             />
           </div>
@@ -122,12 +139,12 @@ export function SettingsWhatsAppCard({
               onCheckedChange={(v) => setEnabled(v === true)}
             />
             <Label htmlFor="wa-enabled" className="font-normal">
-              Enabled
+              {t('enabled')}
             </Label>
           </div>
 
           <Button type="submit" disabled={pending}>
-            {pending ? 'Saving...' : 'Save WhatsApp config'}
+            {pending ? t('saving') : t('whatsapp.save')}
           </Button>
         </form>
       </CardContent>

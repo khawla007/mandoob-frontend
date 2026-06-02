@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { updateContactAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/ac
 import type { TenantContact } from '@/lib/data/tenant-settings';
 
 export function SettingsContactCard({ slug, initial }: { slug: string; initial: TenantContact }) {
+  const t = useTranslations('pro.settings');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -44,26 +46,26 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Contact & legal</CardTitle>
-        <CardDescription>Email sender identity and public legal page links.</CardDescription>
+        <CardTitle className="text-lg">{t('contact.title')}</CardTitle>
+        <CardDescription>{t('contact.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Could not save</AlertTitle>
+              <AlertTitle>{t('couldNotSave')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           {saved && (
             <Alert>
-              <AlertTitle>Saved</AlertTitle>
-              <AlertDescription>Contact info updated.</AlertDescription>
+              <AlertTitle>{t('saved')}</AlertTitle>
+              <AlertDescription>{t('contact.savedDescription')}</AlertDescription>
             </Alert>
           )}
 
           <div className="grid gap-2">
-            <Label htmlFor="contact-sender-name">Email sender name</Label>
+            <Label htmlFor="contact-sender-name">{t('contact.senderName')}</Label>
             <Input
               id="contact-sender-name"
               maxLength={120}
@@ -74,7 +76,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="contact-reply-to">Reply-to email</Label>
+            <Label htmlFor="contact-reply-to">{t('contact.replyTo')}</Label>
             <Input
               id="contact-reply-to"
               type="email"
@@ -85,7 +87,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="contact-terms">Terms URL</Label>
+            <Label htmlFor="contact-terms">{t('contact.termsUrl')}</Label>
             <Input
               id="contact-terms"
               type="url"
@@ -96,7 +98,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="contact-privacy">Privacy URL</Label>
+            <Label htmlFor="contact-privacy">{t('contact.privacyUrl')}</Label>
             <Input
               id="contact-privacy"
               type="url"
@@ -107,7 +109,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
           </div>
 
           <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save contact info'}
+            {pending ? t('saving') : t('contact.save')}
           </Button>
         </form>
       </CardContent>

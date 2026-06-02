@@ -311,7 +311,81 @@
     "renewals": "التجديدات",
     "documents": "المستندات",
     "employees": "الموظفون",
-    "settings": "الإعدادات",
+    "settings": {
+      "saving": "جارٍ الحفظ…",
+      "saved": "تم الحفظ",
+      "couldNotSave": "تعذر الحفظ",
+      "enabled": "مُفعّل",
+      "contact": {
+        "title": "التواصل والشؤون القانونية",
+        "description": "هوية مُرسِل البريد وروابط الصفحات القانونية العامة.",
+        "savedDescription": "تم تحديث معلومات التواصل.",
+        "senderName": "اسم مُرسِل البريد",
+        "replyTo": "بريد الرد",
+        "termsUrl": "رابط الشروط",
+        "privacyUrl": "رابط الخصوصية",
+        "save": "حفظ معلومات التواصل"
+      },
+      "branding": {
+        "title": "الهوية البصرية",
+        "description": "اسم مساحة العمل والشعار والأيقونة وألوان التمييز.",
+        "savedDescription": "تم تحديث الهوية البصرية.",
+        "workspaceName": "اسم مساحة العمل",
+        "logoUrl": "رابط الشعار",
+        "faviconUrl": "رابط أيقونة الموقع",
+        "primaryColor": "اللون الأساسي",
+        "secondaryColor": "اللون الثانوي",
+        "save": "حفظ الهوية البصرية"
+      },
+      "smtp": {
+        "title": "SMTP",
+        "description": "خادم البريد الصادر الخاص بالمستأجر. كلمة المرور مشفّرة عند التخزين (AES-256-GCM).",
+        "savedDescription": "تم تحديث إعدادات SMTP.",
+        "host": "المضيف",
+        "port": "المنفذ",
+        "username": "اسم المستخدم",
+        "password": "كلمة المرور",
+        "passwordKeepPlaceholder": "•••••••• (اتركها فارغة للإبقاء عليها)",
+        "passwordPlaceholder": "كلمة مرور SMTP",
+        "fromAddress": "عنوان المُرسِل",
+        "save": "حفظ إعدادات SMTP"
+      },
+      "whatsapp": {
+        "title": "واتساب",
+        "description": "بيانات اعتماد Meta Cloud API للمراسلة الخاصة بالمستأجر.",
+        "savedDescription": "تم تحديث إعدادات واتساب.",
+        "statusConnected": "متصل",
+        "statusDisabled": "مُعطّل",
+        "statusNotConfigured": "غير مُهيّأ",
+        "phoneNumberId": "معرّف رقم الهاتف",
+        "businessAccountId": "معرّف حساب الأعمال",
+        "accessToken": "رمز الوصول",
+        "tokenStoredPlaceholder": "الرمز مُخزَّن (اتركه فارغًا للإبقاء عليه)",
+        "tokenPlaceholder": "رمز وصول Meta",
+        "save": "حفظ إعدادات واتساب"
+      },
+      "whiteLabel": {
+        "title": "إعداد العلامة البيضاء",
+        "description": "جاهزية النطاق الفرعي والعلامة والمُرسِل والاتصالات.",
+        "ready": "{complete}/{total} جاهز",
+        "items": {
+          "branding": "الهوية البصرية",
+          "contact": "التواصل والشؤون القانونية",
+          "smtp": "SMTP",
+          "whatsapp": "واتساب"
+        },
+        "details": {
+          "brandingComplete": "تم ضبط الشعار واللون الأساسي",
+          "brandingIncomplete": "الحرف الافتراضي مُفعّل",
+          "contactComplete": "تم ضبط الروابط القانونية",
+          "contactIncomplete": "أضف المُرسِل والروابط القانونية",
+          "smtpComplete": "تم تفعيل SMTP الخاص بالمستأجر",
+          "smtpIncomplete": "استخدام البريد الاحتياطي للمنصة",
+          "whatsappComplete": "تم تفعيل واتساب الخاص بالمستأجر",
+          "whatsappIncomplete": "غير مُهيّأ أو مُعطّل"
+        }
+      }
+    },
     "dashboard": "لوحة التحكم",
     "leads": "العملاء المحتملون",
     "addClient": "إضافة عميل",
