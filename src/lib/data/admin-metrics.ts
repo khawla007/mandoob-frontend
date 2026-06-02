@@ -9,6 +9,18 @@ export type Kpi = {
   deltaLabel: string;
 };
 
+/**
+ * Admin dashboard KPI carrying stable i18n keys (under admin.stats.*) instead
+ * of pre-rendered labels. Resolved to text at the render boundary so the admin
+ * dashboard is locale-aware without coupling the data layer to next-intl.
+ */
+export type AdminKpi = {
+  labelKey: string;
+  value: string;
+  delta: number;
+  deltaLabelKey: string;
+};
+
 export type SignupPoint = { date: string; signups: number };
 
 export type RecentLoginRow = {
@@ -37,7 +49,7 @@ async function countAuthUsers(): Promise<number> {
   return count ?? 0;
 }
 
-export async function getAdminKpis(): Promise<Kpi[]> {
+export async function getAdminKpis(): Promise<AdminKpi[]> {
   const admin = createSupabaseServiceRoleClient();
   const now = new Date();
   const d7 = new Date(now.getTime() - 7 * 864e5).toISOString();
@@ -82,28 +94,28 @@ export async function getAdminKpis(): Promise<Kpi[]> {
 
   return [
     {
-      label: 'Total users',
+      labelKey: 'totalUsers',
       value: fmtNumber(totalUsers),
       delta: 0,
-      deltaLabel: 'all time',
+      deltaLabelKey: 'allTime',
     },
     {
-      label: 'Active tenants',
+      labelKey: 'activeTenants',
       value: fmtNumber(tenantCount),
       delta: 0,
-      deltaLabel: 'status=active',
+      deltaLabelKey: 'statusActive',
     },
     {
-      label: 'Logins (7d)',
+      labelKey: 'logins7d',
       value: fmtNumber(logins),
       delta: pctDelta(logins, loginsPrev),
-      deltaLabel: 'vs prior 7d',
+      deltaLabelKey: 'vsPrior7d',
     },
     {
-      label: 'Failed logins (24h)',
+      labelKey: 'failedLogins24h',
       value: fmtNumber(failed),
       delta: pctDelta(failed, failedPrev),
-      deltaLabel: 'vs prior 24h',
+      deltaLabelKey: 'vsPrior24h',
     },
   ];
 }

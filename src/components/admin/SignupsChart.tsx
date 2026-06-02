@@ -1,6 +1,7 @@
 'use client';
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ChartContainer,
@@ -10,20 +11,21 @@ import {
 } from '@/components/ui/chart';
 import type { SignupPoint } from '@/lib/data/admin-metrics';
 
-const config = {
-  signups: {
-    label: 'Signups',
-    color: 'var(--chart-1)',
-  },
-} satisfies ChartConfig;
-
 export function SignupsChart({ data }: { data: SignupPoint[] }) {
+  const t = useTranslations('admin');
   const total = data.reduce((sum, p) => sum + p.signups, 0);
+
+  const config = {
+    signups: {
+      label: t('charts.signupsLegend'),
+      color: 'var(--chart-1)',
+    },
+  } satisfies ChartConfig;
 
   return (
     <Card>
       <CardHeader>
-        <CardDescription>Signups · last 30 days</CardDescription>
+        <CardDescription>{t('charts.signupsTitle')}</CardDescription>
         <CardTitle className="font-mono text-2xl font-semibold tabular-nums">
           {total.toLocaleString()}
         </CardTitle>

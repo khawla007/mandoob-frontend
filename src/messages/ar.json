@@ -646,13 +646,18 @@
       "branch": "فرع",
       "offshore_company": "شركة أوفشور"
     },
-    "officeType": { "flexi": "مكتب مرن", "none": "بدون مكتب" },
+    "officeType": {
+      "flexi": "مكتب مرن",
+      "none": "بدون مكتب"
+    },
     "addOns": {
       "bank_account": "المساعدة في فتح حساب بنكي",
       "tax_registration": "تسجيل ضريبة الشركات",
       "document_attestation": "تصديق المستندات"
     },
-    "activity": { "consulting": "الاستشارات / الخدمات المهنية" },
+    "activity": {
+      "consulting": "الاستشارات / الخدمات المهنية"
+    },
     "documents": {
       "attested_documents": "مستندات الشركة المُصدّقة",
       "business_plan": "خطة العمل أو ملخص النشاط",
@@ -663,14 +668,25 @@
       "shareholder_resolution": "قرار المساهمين",
       "trade_license": "نسخة الرخصة التجارية"
     },
-    "errors": { "calculateFailed": "تعذّر حساب التقدير", "pdfFailed": "تعذّر إنشاء ملف PDF" },
+    "errors": {
+      "calculateFailed": "تعذّر حساب التقدير",
+      "pdfFailed": "تعذّر إنشاء ملف PDF"
+    },
     "preview": {
       "eyebrow": "معاينة",
       "title": "تقدير شفّاف قبل أول مكالمة.",
       "body": "يستخدم العرض صفوف جهات بدرجة تقديرية للبر الرئيسي والأوفشور وأكثر من ٤٥ منطقة حرة. لا يُنشأ أي عميل محتمل حتى يُرسَل استبيان الطلب."
     },
-    "metrics": { "currency": "العملة", "freeZones": "مناطق حرة", "export": "تصدير" },
-    "table": { "fee": "الرسم", "qty": "الكمية", "total": "الإجمالي" },
+    "metrics": {
+      "currency": "العملة",
+      "freeZones": "مناطق حرة",
+      "export": "تصدير"
+    },
+    "table": {
+      "fee": "الرسم",
+      "qty": "الكمية",
+      "total": "الإجمالي"
+    },
     "result": {
       "estimateRef": "تقدير {reference}",
       "oneTimeLabel": "تقدير التأسيس لمرة واحدة",
@@ -693,7 +709,9 @@
       "won": "ناجح",
       "lost": "خاسر"
     },
-    "empty": { "noLeads": "لا عملاء محتملون" },
+    "empty": {
+      "noLeads": "لا عملاء محتملون"
+    },
     "card": {
       "email": "البريد الإلكتروني",
       "phone": "الهاتف",
@@ -1187,6 +1205,205 @@
         "endOfResults": "نهاية النتائج",
         "firstPage": "← الصفحة الأولى"
       }
+    },
+    "dashboard": {
+      "title": "نظرة عامة",
+      "intro": "إشارات المصادقة والهوية عبر المستأجرين.",
+      "lastDaysLive": "آخر 30 يومًا · مباشر"
+    },
+    "stats": {
+      "totalUsers": "إجمالي المستخدمين",
+      "activeTenants": "المستأجرون النشطون",
+      "logins7d": "تسجيلات الدخول (7 أيام)",
+      "failedLogins24h": "تسجيلات الدخول الفاشلة (24 ساعة)",
+      "allTime": "كل الأوقات",
+      "statusActive": "الحالة=نشط",
+      "vsPrior7d": "مقارنة بالـ7 أيام السابقة",
+      "vsPrior24h": "مقارنة بالـ24 ساعة السابقة"
+    },
+    "charts": {
+      "signupsTitle": "التسجيلات · آخر 30 يومًا",
+      "signupsLegend": "التسجيلات"
+    },
+    "finance": {
+      "title": "المالية",
+      "intro": "إيرادات اشتراكات Stripe.",
+      "tenantMrr": "الإيراد الشهري المتكرر للمستأجر",
+      "table": {
+        "tenant": "المستأجر",
+        "plan": "الخطة",
+        "status": "الحالة",
+        "periodEnd": "نهاية الفترة",
+        "mrr": "الإيراد الشهري المتكرر"
+      },
+      "kpi": {
+        "mrr": "الإيراد الشهري المتكرر",
+        "arr": "الإيراد السنوي المتكرر",
+        "activeTenants": "المستأجرون النشطون",
+        "churn": "معدل التسرب",
+        "helperMonthlyValue": "القيمة الشهرية النشطة",
+        "helperMrrTimes12": "الإيراد الشهري × 12",
+        "helperActiveSubscriptions": "الاشتراكات النشطة",
+        "helperLast30Days": "آخر 30 يومًا"
+      },
+      "subStatus": {
+        "active": "نشط",
+        "trialing": "تجريبي",
+        "past_due": "متأخر السداد",
+        "canceled": "ملغى",
+        "unpaid": "غير مدفوع",
+        "incomplete": "غير مكتمل",
+        "incomplete_expired": "غير مكتمل ومنتهي",
+        "paused": "متوقف مؤقتًا"
+      }
+    },
+    "erasure": {
+      "list": {
+        "title": "طلبات المحو",
+        "intro": "طلبات الحق في المحو (PDPL) المُتحقق منها بانتظار المراجعة.",
+        "subject": "الموضوع",
+        "tenant": "المستأجر",
+        "status": "الحالة",
+        "submitted": "تاريخ التقديم",
+        "action": "إجراء",
+        "review": "مراجعة",
+        "empty": "لا توجد طلبات محو مُتحقق منها بانتظار المراجعة."
+      },
+      "detail": {
+        "title": "طلب المحو",
+        "subjectTitle": "الموضوع",
+        "subjectDescription": "سياق الهوية والمستأجر للمراجعة.",
+        "name": "الاسم",
+        "email": "البريد الإلكتروني",
+        "kind": "النوع",
+        "tenant": "المستأجر",
+        "reason": "السبب",
+        "unknown": "غير معروف",
+        "noReason": "لم يُقدَّم سبب",
+        "decisionTitle": "القرار",
+        "decisionDescription": "الموافقة تنفّذ سلسلة إخفاء الهوية.",
+        "approveExecute": "الموافقة والتنفيذ",
+        "rejectionReason": "سبب الرفض",
+        "rejectRequest": "رفض الطلب",
+        "cascadeTitle": "نطاق السلسلة",
+        "cascadeDescription": "الحقول التي تُحذف عند الموافقة.",
+        "profilePii": "بيانات الملف الشخصي",
+        "profilePiiDesc": "الاسم، الهاتف، اسم المستخدم، اللقب، النبذة.",
+        "identityFields": "حقول الهوية",
+        "identityFieldsDesc": "قيم جواز السفر والتأشيرة والهوية الإماراتية المشفّرة.",
+        "documents": "المستندات",
+        "documentsDesc": "صفوف مستندات جواز السفر والتأشيرة والهوية الإماراتية وهوية المساهم."
+      },
+      "status": {
+        "pending_verification": "بانتظار التحقق",
+        "submitted": "تم التقديم",
+        "under_review": "قيد المراجعة",
+        "approved": "تمت الموافقة",
+        "rejected": "مرفوض",
+        "completed": "مكتمل",
+        "cancelled": "ملغى"
+      },
+      "subjectKind": {
+        "customer": "عميل",
+        "employee": "موظف"
+      }
+    },
+    "security": {
+      "title": "المصادقة الثنائية والأمان",
+      "intro": "لوحة تسجيلات الدخول الفاشلة والإقفال. مؤشرات الأداء خلال آخر 24 ساعة؛ القوائم محدودة لكل استعلام.",
+      "kpiFailedLogins": "تسجيلات الدخول الفاشلة (24 ساعة)",
+      "kpiFailedLoginsHint": "login_failure + mfa_challenge_failure",
+      "kpiLockedAccounts": "الحسابات المقفلة (الآن)",
+      "kpiLockedAccountsHint": "auth_failed_attempts where key like acct:%",
+      "kpiLockedNetblocks": "كتل الشبكة المقفلة (الآن)",
+      "kpiLockedNetblocksHint": "auth_failed_attempts where key like net:%",
+      "lockedAccountsTitle": "الحسابات المقفلة حاليًا",
+      "lockedAccountsDescription": "انقر فتح القفل لمسح العداد ونافذة الإقفال. مُسجَّل في tenant_audit_log.",
+      "topIpsTitle": "أعلى عناوين IP لتسجيلات الدخول الفاشلة (24 ساعة)",
+      "topIpsDescription": "يساعد في رصد محاولات التخمين من مصدر واحد.",
+      "topIpsEmpty": "لا توجد تسجيلات دخول فاشلة في آخر 24 ساعة.",
+      "ip": "IP",
+      "failures": "حالات الفشل",
+      "mfaFailuresTitle": "حالات فشل المصادقة الثنائية الأخيرة (آخر 50)",
+      "mfaFailuresDescription": "kind=mfa_challenge_failure، الأحدث أولًا.",
+      "mfaFailuresEmpty": "لا توجد حالات فشل مصادقة ثنائية حديثة.",
+      "when": "متى",
+      "user": "المستخدم"
+    },
+    "sessions": {
+      "title": "الجلسات",
+      "intro": "الجلسات النشطة عبر جميع المستأجرين. ألغِ جلسة واحدة أو جميع جلسات المستخدم.",
+      "filtersTitle": "عوامل التصفية",
+      "filtersDescription": "المستأجر، الدور، نافذة تسجيل الدخول.",
+      "tenant": "المستأجر",
+      "allTenants": "كل المستأجرين",
+      "role": "الدور",
+      "allRoles": "كل الأدوار",
+      "window": "النافذة",
+      "apply": "تطبيق",
+      "reset": "إعادة تعيين",
+      "activeTitle": "الجلسات النشطة",
+      "activeDescription": "عرض {count} جلسة. الحد الأقصى 200 لكل استعلام.",
+      "windowOptions": {
+        "24h": "آخر 24 ساعة",
+        "7d": "آخر 7 أيام",
+        "30d": "آخر 30 يومًا",
+        "all": "كل الأوقات"
+      }
+    },
+    "whatsapp": {
+      "title": "قوالب واتساب",
+      "intro": "تتبّع حالة موافقة Meta قبل السماح للقوالب بالدخول إلى قائمة الإرسال.",
+      "tenantPlaceholder": "معرّف UUID للمستأجر للتجاوزات",
+      "allStatuses": "كل الحالات",
+      "allCategories": "كل الفئات",
+      "filter": "تصفية",
+      "template": "القالب",
+      "scope": "النطاق",
+      "status": "الحالة",
+      "timestamps": "الطوابع الزمنية",
+      "notes": "ملاحظات",
+      "update": "تحديث",
+      "metaPrefix": "Meta: {name}",
+      "empty": "لا توجد قوالب واتساب تطابق عوامل التصفية هذه.",
+      "save": "حفظ",
+      "submittedPlaceholder": "طابع زمني ISO للتقديم",
+      "lastCheckedPlaceholder": "طابع زمني ISO لآخر فحص",
+      "notesPlaceholder": "ملاحظات داخلية",
+      "rejectionPlaceholder": "سبب الرفض",
+      "tsSubmitted": "تم التقديم",
+      "tsChecked": "تم الفحص",
+      "tsUpdated": "تم التحديث",
+      "blockNotes": "ملاحظات",
+      "blockRejection": "الرفض",
+      "statusEnum": {
+        "pending": "قيد الانتظار",
+        "approved": "تمت الموافقة",
+        "rejected": "مرفوض",
+        "disabled": "معطّل",
+        "missing": "مفقود"
+      },
+      "category": {
+        "marketing": "تسويق",
+        "utility": "خدمي",
+        "authentication": "مصادقة"
+      },
+      "scopeEnum": {
+        "global": "عام",
+        "tenant": "مستأجر"
+      },
+      "scopeMissingTenant": "تجاوز المستأجر مفقود",
+      "scopeMissingGlobal": "الصف العام مفقود"
+    },
+    "clientTypeahead": {
+      "noTenant": "لم يُحدَّد مستأجر",
+      "searchPlaceholder": "البحث عن العملاء…",
+      "typeToSearch": "اكتب للبحث…",
+      "loading": "جارٍ التحميل…",
+      "noMatches": "لا توجد مطابقات."
+    },
+    "theme": {
+      "toggle": "تبديل السمة"
     }
   }
 }

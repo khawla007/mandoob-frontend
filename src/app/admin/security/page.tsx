@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -19,41 +20,38 @@ function fmt(iso: string): string {
 
 export default async function SecurityPage() {
   await requireRole('super_admin');
+  const t = await getTranslations('admin');
   const data = await loadSecurityDashboard();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">MFA &amp; Security</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Failed-login + lockout dashboard. KPIs over the last 24 hours; lists capped per query.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('security.title')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('security.intro')}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Kpi
-          label="Failed logins (24h)"
+          label={t('security.kpiFailedLogins')}
           value={data.kpis.failedLogins24h}
-          hint="login_failure + mfa_challenge_failure"
+          hint={t('security.kpiFailedLoginsHint')}
         />
         <Kpi
-          label="Locked accounts (now)"
+          label={t('security.kpiLockedAccounts')}
           value={data.kpis.lockedAccounts}
-          hint="auth_failed_attempts where key like acct:%"
+          hint={t('security.kpiLockedAccountsHint')}
         />
         <Kpi
-          label="Locked netblocks (now)"
+          label={t('security.kpiLockedNetblocks')}
           value={data.kpis.lockedNetblocks}
-          hint="auth_failed_attempts where key like net:%"
+          hint={t('security.kpiLockedNetblocksHint')}
         />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Currently locked accounts</CardTitle>
-          <CardDescription>
-            Click Unlock to clear the counter and lockout window. Audited to tenant_audit_log.
-          </CardDescription>
+          <CardTitle className="text-lg">{t('security.lockedAccountsTitle')}</CardTitle>
+          <CardDescription>{t('security.lockedAccountsDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <LockedAccountsTable rows={data.lockedAccounts} />
@@ -63,20 +61,20 @@ export default async function SecurityPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Top failed-login IPs (24h)</CardTitle>
-            <CardDescription>Helps spot brute-force from one source.</CardDescription>
+            <CardTitle className="text-lg">{t('security.topIpsTitle')}</CardTitle>
+            <CardDescription>{t('security.topIpsDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             {data.topFailedIps24h.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm">
-                No failed logins in the last 24 hours.
+                {t('security.topIpsEmpty')}
               </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>IP</TableHead>
-                    <TableHead className="text-right">Failures</TableHead>
+                    <TableHead>{t('security.ip')}</TableHead>
+                    <TableHead className="text-right">{t('security.failures')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -94,21 +92,21 @@ export default async function SecurityPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Recent MFA failures (last 50)</CardTitle>
-            <CardDescription>kind=mfa_challenge_failure, newest first.</CardDescription>
+            <CardTitle className="text-lg">{t('security.mfaFailuresTitle')}</CardTitle>
+            <CardDescription>{t('security.mfaFailuresDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             {data.recentMfaFailures.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm">
-                No recent MFA failures.
+                {t('security.mfaFailuresEmpty')}
               </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>When</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>IP</TableHead>
+                    <TableHead>{t('security.when')}</TableHead>
+                    <TableHead>{t('security.user')}</TableHead>
+                    <TableHead>{t('security.ip')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
