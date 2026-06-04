@@ -6,7 +6,7 @@ import { useEffect } from 'react';
  * Cuberto-style entrance reveal.
  *
  * Renders nothing. Adds `reveal-on` to `.site-public` (idempotent — also added
- * by ScrollReveal), then drives two motion paths:
+ * by ScrollReveal), then drives three motion paths:
  *
  * 1. Hero on-mount: every `.hero .reveal` reveal-group fires via double-rAF
  *    (paint hidden frame first, THEN flip to `is-in` so the transition runs).
@@ -16,6 +16,10 @@ import { useEffect } from 'react';
  * 2. Per-item card stagger: each `[data-reveal-cards]` group is observed
  *    by IntersectionObserver. On intersect, its `.reveal` descendants
  *    reveal in DOM order at 90 ms stagger.
+ *
+ * 3. Orphan `.reveal` elements (NOT inside `.hero` and NOT inside a
+ *    `[data-reveal-cards]` group) are observed individually and reveal
+ *    themselves when they intersect.
  *
  * Reduced-motion / no-IO -> all targets get `.is-in` synchronously on mount.
  */
@@ -29,8 +33,11 @@ export function EntranceReveal() {
 
     const hero = Array.from(root.querySelectorAll<HTMLElement>('.hero .reveal'));
     const groupNodes = Array.from(root.querySelectorAll<HTMLElement>('[data-reveal-cards]'));
+    const orphans = Array.from(root.querySelectorAll<HTMLElement>('.reveal')).filter(
+      (el) => !el.closest('.hero') && !el.closest('[data-reveal-cards]'),
+    );
 
-    if (hero.length === 0 && groupNodes.length === 0) return;
+    if (hero.length === 0 && groupNodes.length === 0 && orphans.length === 0) return;
 
     root.classList.add('reveal-on');
 
@@ -47,6 +54,7 @@ export function EntranceReveal() {
     if (prefersReduce || !('IntersectionObserver' in window)) {
       showAll(hero);
       groupNodes.forEach((g) => showAll(Array.from(g.querySelectorAll<HTMLElement>('.reveal'))));
+      showAll(orphans);
       return;
     }
 
@@ -62,6 +70,7 @@ export function EntranceReveal() {
     groupNodes.forEach((g) =>
       groupMap.set(g, Array.from(g.querySelectorAll<HTMLElement>('.reveal'))),
     );
+    orphans.forEach((el) => groupMap.set(el, [el]));
 
     const io = new IntersectionObserver(
       (entries, obs) => {
@@ -75,6 +84,7 @@ export function EntranceReveal() {
       { threshold: 0.15, rootMargin: '0px 0px -10% 0px' },
     );
     groupNodes.forEach((g) => io.observe(g));
+    orphans.forEach((el) => io.observe(el));
 
     return () => {
       cancelAnimationFrame(raf1);
