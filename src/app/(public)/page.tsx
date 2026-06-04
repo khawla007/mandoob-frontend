@@ -532,46 +532,45 @@ ts=2026-05-18T09:00:00Z`}</pre>
         </div>
       </section>
 
-      {/* ============ TRUST & COMPLIANCE ============ */}
-      <section id="trust" className="section" aria-labelledby="trustsec-h" data-reveal>
+      {/* ============ CUSTOMERS ============ */}
+      <section id="customers" className="section" aria-labelledby="cust-h" data-reveal>
         <div className="container">
           <header className="section__head">
-            <span className="eyebrow">07 · Trust</span>
-            <h2 id="trustsec-h" className="h2">
-              Security and compliance, by design.
+            <span className="eyebrow">07 · Customers</span>
+            <h2 id="cust-h" className="h2">
+              Trusted by people who can&apos;t get it wrong.
             </h2>
           </header>
         </div>
         <div className="container">
-          <div className="why-row">
-            <article className="cell cell--why">
-              <h4>PDPL-aligned</h4>
+          <div className="quote-row cards-stagger" data-reveal-cards>
+            <blockquote className="cell cell--quotelg reveal">
               <p>
-                Built to UAE Federal Decree-Law No. 45 of 2021 — consent tracking and right to
-                erasure.
+                &ldquo;Renewed 47 licences last month with zero late fines. The renewal calendar
+                alone paid for the annual subscription twice over.&rdquo;
               </p>
-            </article>
-            <article className="cell cell--why">
-              <h4>Immutable audit trail</h4>
-              <p>
-                Every action logged with actor, entity, IP, and timestamp. Exportable for legal
-                review.
-              </p>
-            </article>
-            <article className="cell cell--why">
-              <h4>Tenant isolation</h4>
-              <p>
-                Postgres row-level security enforces tenant_id on every table. No cross-tenant
-                leaks.
-              </p>
-            </article>
-            <article className="cell cell--why">
-              <h4>Encrypted end to end</h4>
-              <p>
-                TLS 1.3 in transit, AES-256 at rest, plus app-layer encryption for passport, EID,
-                and visa data.
-              </p>
-            </article>
+              <footer>
+                <span className="mono">SA</span> Sarah Al Marri · PRO Manager · Horizon, Dubai
+              </footer>
+            </blockquote>
+            <blockquote className="cell cell--quotesm reveal">
+              <p>&ldquo;Set up an IFZA company from Berlin in 9 days. No flights.&rdquo;</p>
+              <footer>
+                <span className="mono">JK</span> Jonas Keller · Founder · Linthos
+              </footer>
+            </blockquote>
+            <blockquote className="cell cell--quotesm reveal">
+              <p>&ldquo;The audit log sold our compliance team instantly.&rdquo;</p>
+              <footer>
+                <span className="mono">FH</span> Fatima Hussein · Counsel · Naseej
+              </footer>
+            </blockquote>
+            <blockquote className="cell cell--quotesm reveal">
+              <p>&ldquo;Replaced WhatsApp, Excel, and a CRM with one workspace.&rdquo;</p>
+              <footer>
+                <span className="mono">AK</span> Ahmed Khalifa · Partner · Khalifa Consultants
+              </footer>
+            </blockquote>
           </div>
         </div>
       </section>
