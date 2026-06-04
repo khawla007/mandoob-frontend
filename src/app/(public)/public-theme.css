@@ -2077,3 +2077,79 @@
   --primary: var(--accent);
   --primary-foreground: oklch(0.145 0 0);
 }
+
+/* ============================================================
+   Entrance reveal — hero mask-rise + per-item card stagger.
+   Selectors are gated by `.reveal-on` (added by EntranceReveal
+   client component) so SSR/no-JS users see fully-visible content.
+   Coexists with the existing `[data-reveal]` whole-block system
+   in ScrollReveal — selectors do not overlap.
+   ============================================================ */
+
+.site-public.reveal-on .reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.site-public.reveal-on .reveal.is-in {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+/* mask variant: container stays visible; .rise__i does the clip rise */
+.site-public.reveal-on .reveal.reveal--mask {
+  opacity: 1;
+  transform: none;
+}
+.site-public .rise {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.15em;
+  margin-bottom: -0.15em;
+}
+.site-public .rise--block {
+  display: block;
+}
+.site-public.reveal-on .rise__i {
+  display: inline-block;
+  transform: translateY(130%);
+  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--rise-delay, 0ms);
+  will-change: transform;
+}
+.site-public.reveal-on .rise--block .rise__i {
+  display: block;
+}
+.site-public.reveal-on .reveal--mask.is-in .rise__i {
+  transform: translateY(0);
+}
+
+/* cards-stagger: container drops shared frame; each child gets its own
+   bordered box. !important required because .cell-row--joined, .flow,
+   .why-row, .quote-row are defined LATER in this file at equal
+   specificity — without !important the later rules would re-apply the
+   shared frame. Same specificity collision verified in the sandbox. */
+.site-public .cards-stagger {
+  border: 0 !important;
+  border-radius: 0;
+  overflow: visible;
+  gap: var(--sp-4);
+}
+.site-public .cards-stagger > * {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-public.reveal-on .reveal,
+  .site-public.reveal-on .rise__i {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
