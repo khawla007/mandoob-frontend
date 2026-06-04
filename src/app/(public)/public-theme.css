@@ -2088,7 +2088,7 @@
 
 .site-public.reveal-on .reveal {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translateY(40px);
   transition:
     opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
