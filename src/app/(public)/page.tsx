@@ -57,21 +57,13 @@ export default function MarketingHomePage() {
               </span>
             </span>
           </p>
-          <div className="cta-row reveal reveal--mask">
-            <span className="rise">
-              <span className="rise__i" style={{ '--rise-delay': '600ms' } as React.CSSProperties}>
-                <Link className="btn btn--accent" href="/estimate">
-                  Get Estimate
-                </Link>
-              </span>
-            </span>
-            <span className="rise">
-              <span className="rise__i" style={{ '--rise-delay': '680ms' } as React.CSSProperties}>
-                <a className="btn btn--outline" href="#pro-suite">
-                  View Platform
-                </a>
-              </span>
-            </span>
+          <div className="cta-row reveal">
+            <Link className="btn btn--accent" href="/estimate">
+              Get Estimate
+            </Link>
+            <a className="btn btn--outline" href="#pro-suite">
+              View Platform
+            </a>
           </div>
         </div>
         <div className="hero__rule" aria-hidden="true" />
