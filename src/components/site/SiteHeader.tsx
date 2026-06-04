@@ -64,7 +64,7 @@ export async function SiteHeader() {
     { href: '/#services', label: 'Platform' },
     { href: '/estimate', label: tSite('estimate') },
     { href: '/#pro-suite', label: 'Solutions' },
-    { href: '/#trust', label: 'Trust' },
+    { href: '/#customers', label: 'Customers' },
     { href: '/pricing', label: tSite('pricing') },
   ];
 
