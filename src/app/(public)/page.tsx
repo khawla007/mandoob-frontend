@@ -3,12 +3,10 @@ import Link from 'next/link';
 import { DashboardPreview } from '@/components/site/DashboardPreview';
 import { EntranceReveal } from '@/components/site/EntranceReveal';
 import { EstimatorPreview } from '@/components/site/EstimatorPreview';
-import { ScrollReveal } from '@/components/site/ScrollReveal';
 
 export default function MarketingHomePage() {
   return (
     <>
-      <ScrollReveal />
       <EntranceReveal />
       {/* ============ HERO ============ */}
       <section className="hero" aria-labelledby="hero-h">
@@ -90,7 +88,7 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ TRUSTED + STATS ============ */}
-      <section className="trust-band" aria-labelledby="trust-h" data-reveal>
+      <section className="trust-band" aria-labelledby="trust-h">
         <h2 id="trust-h" className="visually-hidden">
           Free zones and authorities supported
         </h2>
@@ -109,7 +107,7 @@ export default function MarketingHomePage() {
       {/* ============ SERVICES ============ */}
       <section id="services" className="section" aria-labelledby="services-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">01 · Services</span>
             <h2 id="services-h" className="h2">
               Three vehicles. One platform.
@@ -204,7 +202,7 @@ export default function MarketingHomePage() {
         </div>
         <div className="container">
           <div
-            className="cell compare"
+            className="cell compare reveal"
             tabIndex={0}
             role="region"
             aria-label="Compare Mainland, Free Zone and Offshore (scrollable)"
@@ -259,17 +257,17 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ ESTIMATOR ============ */}
-      <section id="estimator" className="section" aria-labelledby="est-h" data-reveal>
+      <section id="estimator" className="section" aria-labelledby="est-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">02 · Cost estimator</span>
             <h2 id="est-h" className="h2">
               Know the full cost before you commit.
             </h2>
           </header>
-          <div className="cell-row cell-row--est">
+          <div className="cell-row cell-row--est" data-reveal-cards>
             <EstimatorPreview />
-            <div className="cell cell--estside">
+            <div className="cell cell--estside reveal">
               <h3>No surprise fees. Ever.</h3>
               <p>
                 Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line: itemized
@@ -284,9 +282,9 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ PRO SUITE ============ */}
-      <section id="pro-suite" className="section" aria-labelledby="suite-h" data-reveal>
+      <section id="pro-suite" className="section" aria-labelledby="suite-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">03 · Platform</span>
             <h2 id="suite-h" className="h2">
               Built for PROs managing 50 to 5,000 clients.
@@ -294,8 +292,8 @@ export default function MarketingHomePage() {
           </header>
         </div>
         <div className="container">
-          <div className="mosaic">
-            <article className="cell cell--wide">
+          <div className="mosaic" data-reveal-cards>
+            <article className="cell cell--wide reveal">
               <span className="eyebrow">Multi-tenant control</span>
               <h3>Every client, isolated at the row.</h3>
               <p>
@@ -336,7 +334,7 @@ export default function MarketingHomePage() {
               </table>
             </article>
 
-            <article className="cell cell--tall">
+            <article className="cell cell--tall reveal">
               <span className="eyebrow">Audit trail</span>
               <h3>Every action, logged.</h3>
               <pre className="logbox mono">{`actor=pro action=visa.stamp
@@ -352,23 +350,23 @@ entity=lic/acme ip=internal
 ts=2026-05-18T09:00:00Z`}</pre>
             </article>
 
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Visas</span>
               <h3>Type → medical → stamp</h3>
               <p className="cell__sub">Every visa stage tracked end to end.</p>
             </article>
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Emirates ID</span>
               <h3>One source of truth</h3>
               <p className="cell__sub">Every ID expiry tracked and alerted.</p>
             </article>
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Renewals</span>
               <h3>No AED 25/day fines</h3>
               <p className="mono cell__metric">90·30·7</p>
               <p className="cell__sub">day reminders</p>
             </article>
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Invoices</span>
               <h3>Tap + Stripe</h3>
               <p className="cell__sub">Itemized invoices, paid online.</p>
@@ -378,9 +376,9 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ DASHBOARD SHOWCASE ============ */}
-      <section className="showcase" aria-labelledby="show-h" data-reveal>
+      <section className="showcase" aria-labelledby="show-h">
         <div className="container">
-          <header className="section__head section__head--inv">
+          <header className="section__head section__head--inv reveal">
             <span className="eyebrow eyebrow--inv">04 · Dashboard</span>
             <h2 id="show-h" className="h2 h2--inv">
               One dashboard. Every client.
@@ -389,16 +387,16 @@ ts=2026-05-18T09:00:00Z`}</pre>
         </div>
         <div className="container">
           <DashboardPreview />
-          <div className="frame-features">
-            <div>
+          <div className="frame-features" data-reveal-cards>
+            <div className="reveal">
               <h4>Live renewal alerts</h4>
               <p>90 / 30 / 7-day across email, WhatsApp, in-app.</p>
             </div>
-            <div>
+            <div className="reveal">
               <h4>Audit-ready</h4>
               <p>Immutable log with actor, entity, IP, timestamp.</p>
             </div>
-            <div>
+            <div className="reveal">
               <h4>White-label</h4>
               <p>Custom subdomain, logo, sender per tenant.</p>
             </div>
@@ -409,7 +407,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       {/* ============ HOW IT WORKS ============ */}
       <section id="flow" className="section section--flush" aria-labelledby="flow-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">05 · How it works</span>
             <h2 id="flow-h" className="h2">
               From idea to trade license in 7–14 days.
@@ -445,7 +443,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       {/* ============ WHY + COMPARE ============ */}
       <section className="section" aria-labelledby="why-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">06 · Why Mandoob</span>
             <h2 id="why-h" className="h2">
               Confident, restrained, built for UAE.
@@ -537,7 +535,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       {/* ============ CUSTOMERS ============ */}
       <section id="customers" className="section" aria-labelledby="cust-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">07 · Customers</span>
             <h2 id="cust-h" className="h2">
               Trusted by people who can&apos;t get it wrong.
@@ -578,8 +576,8 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ FINAL CTA ============ */}
-      <section className="cta-section" aria-labelledby="cta-h" data-reveal>
-        <div className="cta-section__inner container">
+      <section className="cta-section" aria-labelledby="cta-h">
+        <div className="cta-section__inner container reveal">
           <span className="eyebrow">08 · Get started</span>
           <h2 id="cta-h" className="display display--cta">
             Run your free UAE setup estimate.

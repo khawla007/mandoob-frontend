@@ -2,26 +2,8 @@
 
 import { useEffect } from 'react';
 
-/**
- * Cuberto-style entrance reveal — direct port of the design-4 sandbox
- * script (html-design/design-4/index.html lines 449-507). Behavior:
- *
- * 1. Hero on-mount: `.hero .reveal` items reveal-group via double rAF
- *    (paint hidden frame first, THEN flip to `is-in`), staggered 90 ms
- *    apart with an 80 ms base delay.
- *
- * 2. Per-item card stagger: each `[data-reveal-cards]` group is
- *    observed; on intersect its `.reveal` descendants reveal in DOM
- *    order at 90 ms stagger.
- *
- * 3. Orphan `.reveal` elements (outside `.hero` and outside any
- *    `[data-reveal-cards]` group) are observed individually.
- *
- * Reduced-motion or no IntersectionObserver -> every target gets
- * `.is-in` synchronously on mount.
- */
 const STAGGER_MS = 90;
-const HERO_BASE_DELAY_MS = 80;
+const HERO_BASE_DELAY_MS = 0;
 
 type Target = { node: Element; items: HTMLElement[] };
 
@@ -43,8 +25,6 @@ export function EntranceReveal() {
     });
 
     if (hero.length === 0 && targets.length === 0) return;
-
-    root.classList.add('reveal-on');
 
     const revealGroup = (els: HTMLElement[], baseDelay: number) => {
       els.forEach((el, i) => {

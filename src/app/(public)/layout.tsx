@@ -5,8 +5,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   return (
     <div className="site-public reveal-on flex min-h-screen flex-col">
       {/* SSR HTML already carries reveal-on so .reveal items are hidden from
-          first paint — no visible flash before EntranceReveal mounts and
-          arms the staggered transition. */}
+          first paint before the React-safe reveal controller mounts. */}
       <noscript>
         <style>{`.site-public .reveal,.site-public .rise__i{opacity:1!important;transform:none!important;}`}</style>
       </noscript>

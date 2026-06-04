@@ -444,67 +444,11 @@
   padding-top: var(--sp-8);
 }
 
-/* Page-load entrance: one orchestrated, staggered fade-rise. transform + opacity
-   only (GPU-safe); ease-out-expo for a confident, decisive settle. backwards
-   fill holds the hidden state through each delay. Disabled by the
-   prefers-reduced-motion block (section 16), which snaps everything to the
-   resolved `to` state. */
-@keyframes hero-rise {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.site-public .hero .eyebrow,
-.site-public .hero .display,
-.site-public .hero .lede,
-.site-public .hero .cta-row,
-.site-public .hero__rule,
-.site-public .hero__spec {
-  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-}
-.site-public .hero .display {
-  animation-delay: 0.08s;
-}
-.site-public .hero .lede {
-  animation-delay: 0.16s;
-}
-.site-public .hero .cta-row {
-  animation-delay: 0.24s;
-}
-.site-public .hero__rule {
-  animation-delay: 0.32s;
-}
-.site-public .hero__spec {
-  animation-delay: 0.36s;
-}
 .site-public .hero .eyebrow {
   margin-bottom: var(--sp-4);
 }
 .site-public .hero .display {
   max-width: 14ch;
-}
-
-/* Scroll-reveal: below-hero sections fade-rise when scrolled into view.
-   Hidden state applies ONLY after ScrollReveal marks the root (.reveal-on),
-   so no-JS / pre-hydration content stays visible. transform + opacity only;
-   same ease-out-expo curve as the hero entrance. */
-.site-public.reveal-on [data-reveal] {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
-}
-.site-public.reveal-on [data-reveal].is-revealed {
-  opacity: 1;
-  transform: none;
-  will-change: auto;
 }
 .site-public .hero .lede {
   margin-top: var(--sp-5);
@@ -2053,11 +1997,6 @@
   .site-public .logo-track {
     animation: none !important;
   }
-  /* Never hide scroll-reveal content for reduced-motion users. */
-  .site-public.reveal-on [data-reveal] {
-    opacity: 1 !important;
-    transform: none !important;
-  }
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2080,10 +2019,11 @@
 
 /* ============================================================
    Entrance reveal — hero mask-rise + per-item card stagger.
-   Selectors are gated by `.reveal-on` (added by EntranceReveal
-   client component) so SSR/no-JS users see fully-visible content.
-   Coexists with the existing `[data-reveal]` whole-block system
-   in ScrollReveal — selectors do not overlap.
+   Selectors are gated by `.reveal-on`; no-JS users are handled by the
+   public layout noscript override.
+   Direct port of html-design/design-4: hero reveals on load,
+   [data-reveal-cards] groups stagger their .reveal children,
+   and standalone .reveal elements reveal on scroll.
    ============================================================ */
 
 .site-public.reveal-on .reveal {
