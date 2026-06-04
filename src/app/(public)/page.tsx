@@ -107,7 +107,7 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ SERVICES ============ */}
-      <section id="services" className="section" aria-labelledby="services-h" data-reveal>
+      <section id="services" className="section" aria-labelledby="services-h">
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">01 · Services</span>
@@ -407,7 +407,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ HOW IT WORKS ============ */}
-      <section id="flow" className="section section--flush" aria-labelledby="flow-h" data-reveal>
+      <section id="flow" className="section section--flush" aria-labelledby="flow-h">
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">05 · How it works</span>
@@ -443,7 +443,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ WHY + COMPARE ============ */}
-      <section className="section" aria-labelledby="why-h" data-reveal>
+      <section className="section" aria-labelledby="why-h">
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">06 · Why Mandoob</span>
@@ -535,7 +535,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ CUSTOMERS ============ */}
-      <section id="customers" className="section" aria-labelledby="cust-h" data-reveal>
+      <section id="customers" className="section" aria-labelledby="cust-h">
         <div className="container">
           <header className="section__head">
             <span className="eyebrow">07 · Customers</span>
