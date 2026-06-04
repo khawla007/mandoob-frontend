@@ -60,11 +60,23 @@ export function EntranceReveal() {
 
     // Double-rAF: paint the opacity:0 starting frame, then flip to is-in
     // so the transition actually runs (single rAF coalesces both into one paint).
-    let raf1 = 0;
-    let raf2 = 0;
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => revealGroup(hero, HERO_BASE_DELAY_MS));
-    });
+    // Required for hero on mount AND for any group already in viewport when
+    // the observer arms — without it the browser consolidates opacity 0 -> 1
+    // into one paint and the staggered card reveal appears instant.
+    const pendingRafs = new Set<number>();
+    const scheduleReveal = (items: HTMLElement[], base = 0) => {
+      const raf1 = requestAnimationFrame(() => {
+        pendingRafs.delete(raf1);
+        const raf2 = requestAnimationFrame(() => {
+          pendingRafs.delete(raf2);
+          revealGroup(items, base);
+        });
+        pendingRafs.add(raf2);
+      });
+      pendingRafs.add(raf1);
+    };
+
+    scheduleReveal(hero, HERO_BASE_DELAY_MS);
 
     const groupMap = new WeakMap<Element, HTMLElement[]>();
     groupNodes.forEach((g) =>
@@ -77,7 +89,7 @@ export function EntranceReveal() {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const items = groupMap.get(entry.target);
-          if (items) revealGroup(items, 0);
+          if (items) scheduleReveal(items, 0);
           obs.unobserve(entry.target);
         }
       },
@@ -87,8 +99,8 @@ export function EntranceReveal() {
     orphans.forEach((el) => io.observe(el));
 
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      pendingRafs.forEach((id) => cancelAnimationFrame(id));
+      pendingRafs.clear();
       io.disconnect();
     };
   }, []);
