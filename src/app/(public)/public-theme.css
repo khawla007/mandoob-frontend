@@ -2130,18 +2130,21 @@
 }
 
 /* cards-stagger: container drops shared frame; each child gets its own
-   bordered box. !important required because .cell-row--joined, .flow,
-   .why-row, .quote-row are defined LATER in this file at equal
-   specificity — without !important the later rules would re-apply the
-   shared frame. Same specificity collision verified in the sandbox. */
+   bordered box. !important on the child border overrides
+   higher-specificity rules from the joined-frame layouts (e.g.
+   `.cell-row .cell` and `.quote-row blockquote`, both more specific
+   than `.cards-stagger > *`), which would otherwise zero out
+   borders or apply only side dividers. Container `border: 0` is
+   for symmetry — without it the same rule would have to be repeated
+   per container variant. */
 .site-public .cards-stagger {
-  border: 0 !important;
+  border: 0;
   border-radius: 0;
   overflow: visible;
   gap: var(--sp-4);
 }
 .site-public .cards-stagger > * {
-  border: 1px solid var(--border) !important;
+  border: 1px solid var(--pb-border) !important;
   border-radius: var(--r-md);
 }
 
