@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { DashboardPreview } from '@/components/site/DashboardPreview';
+import { EntranceReveal } from '@/components/site/EntranceReveal';
 import { EstimatorPreview } from '@/components/site/EstimatorPreview';
 import { ScrollReveal } from '@/components/site/ScrollReveal';
 
@@ -8,6 +9,7 @@ export default function MarketingHomePage() {
   return (
     <>
       <ScrollReveal />
+      <EntranceReveal />
       {/* ============ HERO ============ */}
       <section className="hero" aria-labelledby="hero-h">
         <div className="container">
