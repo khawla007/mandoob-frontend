@@ -3,28 +3,27 @@
 import { useEffect } from 'react';
 
 /**
- * Cuberto-style entrance reveal.
+ * Cuberto-style entrance reveal — direct port of the design-4 sandbox
+ * script (html-design/design-4/index.html lines 449-507). Behavior:
  *
- * Renders nothing. Adds `reveal-on` to `.site-public` (idempotent — also added
- * by ScrollReveal), then drives three motion paths:
+ * 1. Hero on-mount: `.hero .reveal` items reveal-group via double rAF
+ *    (paint hidden frame first, THEN flip to `is-in`), staggered 90 ms
+ *    apart with an 80 ms base delay.
  *
- * 1. Hero on-mount: every `.hero .reveal` reveal-group fires via double-rAF
- *    (paint hidden frame first, THEN flip to `is-in` so the transition runs).
- *    Hero items NOT inside `[data-reveal-cards]` get a `transitionDelay`
- *    spaced 90 ms apart.
+ * 2. Per-item card stagger: each `[data-reveal-cards]` group is
+ *    observed; on intersect its `.reveal` descendants reveal in DOM
+ *    order at 90 ms stagger.
  *
- * 2. Per-item card stagger: each `[data-reveal-cards]` group is observed
- *    by IntersectionObserver. On intersect, its `.reveal` descendants
- *    reveal in DOM order at 90 ms stagger.
+ * 3. Orphan `.reveal` elements (outside `.hero` and outside any
+ *    `[data-reveal-cards]` group) are observed individually.
  *
- * 3. Orphan `.reveal` elements (NOT inside `.hero` and NOT inside a
- *    `[data-reveal-cards]` group) are observed individually and reveal
- *    themselves when they intersect.
- *
- * Reduced-motion / no-IO -> all targets get `.is-in` synchronously on mount.
+ * Reduced-motion or no IntersectionObserver -> every target gets
+ * `.is-in` synchronously on mount.
  */
 const STAGGER_MS = 90;
 const HERO_BASE_DELAY_MS = 80;
+
+type Target = { node: Element; items: HTMLElement[] };
 
 export function EntranceReveal() {
   useEffect(() => {
@@ -32,18 +31,24 @@ export function EntranceReveal() {
     if (!root) return;
 
     const hero = Array.from(root.querySelectorAll<HTMLElement>('.hero .reveal'));
-    const groupNodes = Array.from(root.querySelectorAll<HTMLElement>('[data-reveal-cards]'));
-    const orphans = Array.from(root.querySelectorAll<HTMLElement>('.reveal')).filter(
-      (el) => !el.closest('.hero') && !el.closest('[data-reveal-cards]'),
-    );
 
-    if (hero.length === 0 && groupNodes.length === 0 && orphans.length === 0) return;
+    const targets: Target[] = [];
+    Array.from(root.querySelectorAll<HTMLElement>('[data-reveal-cards]')).forEach((g) => {
+      targets.push({ node: g, items: Array.from(g.querySelectorAll<HTMLElement>('.reveal')) });
+    });
+    Array.from(root.querySelectorAll<HTMLElement>('.reveal')).forEach((el) => {
+      if (el.closest('.hero')) return;
+      if (el.closest('[data-reveal-cards]')) return;
+      targets.push({ node: el, items: [el] });
+    });
+
+    if (hero.length === 0 && targets.length === 0) return;
 
     root.classList.add('reveal-on');
 
-    const revealGroup = (els: HTMLElement[], base = 0) => {
+    const revealGroup = (els: HTMLElement[], baseDelay: number) => {
       els.forEach((el, i) => {
-        el.style.transitionDelay = `${base + i * STAGGER_MS}ms`;
+        el.style.transitionDelay = `${baseDelay + i * STAGGER_MS}ms`;
         el.classList.add('is-in');
       });
     };
@@ -53,54 +58,35 @@ export function EntranceReveal() {
 
     if (prefersReduce || !('IntersectionObserver' in window)) {
       showAll(hero);
-      groupNodes.forEach((g) => showAll(Array.from(g.querySelectorAll<HTMLElement>('.reveal'))));
-      showAll(orphans);
+      targets.forEach((t) => showAll(t.items));
       return;
     }
 
-    // Double-rAF: paint the opacity:0 starting frame, then flip to is-in
-    // so the transition actually runs (single rAF coalesces both into one paint).
-    // Required for hero on mount AND for any group already in viewport when
-    // the observer arms — without it the browser consolidates opacity 0 -> 1
-    // into one paint and the staggered card reveal appears instant.
-    const pendingRafs = new Set<number>();
-    const scheduleReveal = (items: HTMLElement[], base = 0) => {
-      const raf1 = requestAnimationFrame(() => {
-        pendingRafs.delete(raf1);
-        const raf2 = requestAnimationFrame(() => {
-          pendingRafs.delete(raf2);
-          revealGroup(items, base);
-        });
-        pendingRafs.add(raf2);
-      });
-      pendingRafs.add(raf1);
-    };
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => revealGroup(hero, HERO_BASE_DELAY_MS));
+    });
 
-    scheduleReveal(hero, HERO_BASE_DELAY_MS);
-
-    const groupMap = new WeakMap<Element, HTMLElement[]>();
-    groupNodes.forEach((g) =>
-      groupMap.set(g, Array.from(g.querySelectorAll<HTMLElement>('.reveal'))),
-    );
-    orphans.forEach((el) => groupMap.set(el, [el]));
+    const dataMap = new WeakMap<Element, Target>();
+    targets.forEach((t) => dataMap.set(t.node, t));
 
     const io = new IntersectionObserver(
       (entries, obs) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const items = groupMap.get(entry.target);
-          if (items) scheduleReveal(items, 0);
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const t = dataMap.get(entry.target);
+          if (t) revealGroup(t.items, 0);
           obs.unobserve(entry.target);
-        }
+        });
       },
       { threshold: 0.15, rootMargin: '0px 0px -10% 0px' },
     );
-    groupNodes.forEach((g) => io.observe(g));
-    orphans.forEach((el) => io.observe(el));
+    targets.forEach((t) => io.observe(t.node));
 
     return () => {
-      pendingRafs.forEach((id) => cancelAnimationFrame(id));
-      pendingRafs.clear();
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       io.disconnect();
     };
   }, []);
