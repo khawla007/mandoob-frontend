@@ -10,6 +10,7 @@ export default function MarketingHomePage() {
       <EntranceReveal />
       {/* ============ HERO ============ */}
       <section className="hero" aria-labelledby="hero-h">
+        <div className="hero__overlay" aria-hidden="true" />
         <div className="container">
           <span className="eyebrow reveal reveal--mask">
             <span className="rise">
@@ -64,7 +65,10 @@ export default function MarketingHomePage() {
             </a>
           </div>
         </div>
-        <div className="hero__rule" aria-hidden="true" />
+      </section>
+
+      {/* ============ HERO STATS (short band) ============ */}
+      <section className="stats-band" aria-label="Platform stats">
         <div className="container">
           <dl className="hero__spec">
             <div className="hero__stat reveal">
@@ -577,7 +581,7 @@ ts=2026-05-18T09:00:00Z`}</pre>
 
       {/* ============ FINAL CTA ============ */}
       <section className="cta-section" aria-labelledby="cta-h">
-        <div className="cta-section__inner container reveal">
+        <div className="cta-section__inner reveal container">
           <span className="eyebrow">08 · Get started</span>
           <h2 id="cta-h" className="display display--cta">
             Run your free UAE setup estimate.

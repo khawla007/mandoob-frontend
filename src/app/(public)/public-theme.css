@@ -441,7 +441,43 @@
 
 /* ---------- 5. HERO ---------- */
 .site-public .hero {
-  padding-top: var(--sp-8);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 65px);
+  padding-block: var(--sp-8);
+  overflow: hidden;
+  isolation: isolate;
+  background-image: url('/hero/skyline.jpg');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: right bottom;
+  background-color: var(--paper);
+}
+.site-public .hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      var(--paper) 0%,
+      color-mix(in oklch, var(--paper) 60%, transparent) 25%,
+      transparent 55%
+    ),
+    linear-gradient(
+      90deg,
+      var(--paper) 0%,
+      color-mix(in oklch, var(--paper) 88%, transparent) 38%,
+      color-mix(in oklch, var(--paper) 50%, transparent) 62%,
+      color-mix(in oklch, var(--paper) 15%, transparent) 100%
+    );
+  pointer-events: none;
+}
+.site-public .hero .container {
+  position: relative;
+  z-index: 1;
 }
 
 .site-public .hero .eyebrow {
@@ -464,6 +500,12 @@
   background: var(--pb-border);
   margin-block: var(--sp-6);
 }
+/* Short stats band beneath hero. */
+.site-public .stats-band {
+  border-top: 1px solid var(--pb-border);
+  border-bottom: 1px solid var(--pb-border);
+  padding-block: var(--sp-5);
+}
 /* Inline editorial spec rail (replaces the 3-up metric grid). Figures lead at
    display scale, label trails inline; natural widths, not equal columns. */
 .site-public .hero__spec {
@@ -472,7 +514,7 @@
   align-items: baseline;
   column-gap: var(--sp-6);
   row-gap: var(--sp-4);
-  padding-bottom: var(--sp-6);
+  margin: 0;
 }
 .site-public .hero__stat {
   display: inline-flex;
