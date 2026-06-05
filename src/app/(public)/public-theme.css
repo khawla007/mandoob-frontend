@@ -441,70 +441,50 @@
 
 /* ---------- 5. HERO ---------- */
 .site-public .hero {
-  padding-top: var(--sp-8);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 65px);
+  padding-block: var(--sp-8);
+  overflow: hidden;
+  isolation: isolate;
+  background-image: url('/hero/skyline.jpg');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: right bottom;
+  background-color: var(--paper);
+}
+.site-public .hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      var(--paper) 0%,
+      color-mix(in oklch, var(--paper) 60%, transparent) 25%,
+      transparent 55%
+    ),
+    linear-gradient(
+      90deg,
+      var(--paper) 0%,
+      color-mix(in oklch, var(--paper) 88%, transparent) 38%,
+      color-mix(in oklch, var(--paper) 50%, transparent) 62%,
+      color-mix(in oklch, var(--paper) 15%, transparent) 100%
+    );
+  pointer-events: none;
+}
+.site-public .hero .container {
+  position: relative;
+  z-index: 1;
 }
 
-/* Page-load entrance: one orchestrated, staggered fade-rise. transform + opacity
-   only (GPU-safe); ease-out-expo for a confident, decisive settle. backwards
-   fill holds the hidden state through each delay. Disabled by the
-   prefers-reduced-motion block (section 16), which snaps everything to the
-   resolved `to` state. */
-@keyframes hero-rise {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.site-public .hero .eyebrow,
-.site-public .hero .display,
-.site-public .hero .lede,
-.site-public .hero .cta-row,
-.site-public .hero__rule,
-.site-public .hero__spec {
-  animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-}
-.site-public .hero .display {
-  animation-delay: 0.08s;
-}
-.site-public .hero .lede {
-  animation-delay: 0.16s;
-}
-.site-public .hero .cta-row {
-  animation-delay: 0.24s;
-}
-.site-public .hero__rule {
-  animation-delay: 0.32s;
-}
-.site-public .hero__spec {
-  animation-delay: 0.36s;
-}
 .site-public .hero .eyebrow {
   margin-bottom: var(--sp-4);
 }
 .site-public .hero .display {
   max-width: 14ch;
-}
-
-/* Scroll-reveal: below-hero sections fade-rise when scrolled into view.
-   Hidden state applies ONLY after ScrollReveal marks the root (.reveal-on),
-   so no-JS / pre-hydration content stays visible. transform + opacity only;
-   same ease-out-expo curve as the hero entrance. */
-.site-public.reveal-on [data-reveal] {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
-}
-.site-public.reveal-on [data-reveal].is-revealed {
-  opacity: 1;
-  transform: none;
-  will-change: auto;
 }
 .site-public .hero .lede {
   margin-top: var(--sp-5);
@@ -520,6 +500,12 @@
   background: var(--pb-border);
   margin-block: var(--sp-6);
 }
+/* Short stats band beneath hero. */
+.site-public .stats-band {
+  border-top: 1px solid var(--pb-border);
+  border-bottom: 1px solid var(--pb-border);
+  padding-block: var(--sp-5);
+}
 /* Inline editorial spec rail (replaces the 3-up metric grid). Figures lead at
    display scale, label trails inline; natural widths, not equal columns. */
 .site-public .hero__spec {
@@ -528,7 +514,7 @@
   align-items: baseline;
   column-gap: var(--sp-6);
   row-gap: var(--sp-4);
-  padding-bottom: var(--sp-6);
+  margin: 0;
 }
 .site-public .hero__stat {
   display: inline-flex;
@@ -2053,11 +2039,6 @@
   .site-public .logo-track {
     animation: none !important;
   }
-  /* Never hide scroll-reveal content for reduced-motion users. */
-  .site-public.reveal-on [data-reveal] {
-    opacity: 1 !important;
-    transform: none !important;
-  }
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2076,4 +2057,84 @@
   --ring: var(--accent);
   --primary: var(--accent);
   --primary-foreground: oklch(0.145 0 0);
+}
+
+/* ============================================================
+   Entrance reveal — hero mask-rise + per-item card stagger.
+   Selectors are gated by `.reveal-on`; no-JS users are handled by the
+   public layout noscript override.
+   Direct port of html-design/design-4: hero reveals on load,
+   [data-reveal-cards] groups stagger their .reveal children,
+   and standalone .reveal elements reveal on scroll.
+   ============================================================ */
+
+.site-public.reveal-on .reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.site-public.reveal-on .reveal.is-in {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+/* mask variant: container stays visible; .rise__i does the clip rise */
+.site-public.reveal-on .reveal.reveal--mask {
+  opacity: 1;
+  transform: none;
+}
+.site-public .rise {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.15em;
+  margin-bottom: -0.15em;
+}
+.site-public .rise--block {
+  display: block;
+}
+.site-public.reveal-on .rise__i {
+  display: inline-block;
+  transform: translateY(130%);
+  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--rise-delay, 0ms);
+  will-change: transform;
+}
+.site-public.reveal-on .rise--block .rise__i {
+  display: block;
+}
+.site-public.reveal-on .reveal--mask.is-in .rise__i {
+  transform: translateY(0);
+}
+
+/* cards-stagger: container drops shared frame; each child gets its own
+   bordered box. !important on the child border overrides
+   higher-specificity rules from the joined-frame layouts (e.g.
+   `.cell-row .cell` and `.quote-row blockquote`, both more specific
+   than `.cards-stagger > *`), which would otherwise zero out
+   borders or apply only side dividers. Container `border: 0` is
+   for symmetry — without it the same rule would have to be repeated
+   per container variant. */
+.site-public .cards-stagger {
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  gap: var(--sp-4);
+}
+.site-public .cards-stagger > * {
+  border: 1px solid var(--pb-border) !important;
+  border-radius: var(--r-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-public.reveal-on .reveal,
+  .site-public.reveal-on .rise__i {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }

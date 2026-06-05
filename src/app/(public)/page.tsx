@@ -1,26 +1,62 @@
 import Link from 'next/link';
 
 import { DashboardPreview } from '@/components/site/DashboardPreview';
+import { EntranceReveal } from '@/components/site/EntranceReveal';
 import { EstimatorPreview } from '@/components/site/EstimatorPreview';
-import { ScrollReveal } from '@/components/site/ScrollReveal';
 
 export default function MarketingHomePage() {
   return (
     <>
-      <ScrollReveal />
+      <EntranceReveal />
       {/* ============ HERO ============ */}
       <section className="hero" aria-labelledby="hero-h">
+        <div className="hero__overlay" aria-hidden="true" />
         <div className="container">
-          <span className="eyebrow">.AE · UAE Business Platform</span>
-          <h1 id="hero-h" className="display">
-            Set up. Stay <span className="u-accent">compliant.</span> Scale.
+          <span className="eyebrow reveal reveal--mask">
+            <span className="rise">
+              <span className="rise__i">.AE · UAE Business Platform</span>
+            </span>
+          </span>
+          <h1 id="hero-h" className="display reveal reveal--mask">
+            <span className="rise">
+              <span className="rise__i" style={{ '--rise-delay': '120ms' } as React.CSSProperties}>
+                Set
+              </span>
+            </span>{' '}
+            <span className="rise">
+              <span className="rise__i" style={{ '--rise-delay': '200ms' } as React.CSSProperties}>
+                up.
+              </span>
+            </span>{' '}
+            <span className="rise">
+              <span className="rise__i" style={{ '--rise-delay': '280ms' } as React.CSSProperties}>
+                Stay
+              </span>
+            </span>{' '}
+            <span className="rise">
+              <span
+                className="rise__i u-accent"
+                style={{ '--rise-delay': '360ms' } as React.CSSProperties}
+              >
+                compliant.
+              </span>
+            </span>{' '}
+            <span className="rise">
+              <span className="rise__i" style={{ '--rise-delay': '440ms' } as React.CSSProperties}>
+                Scale.
+              </span>
+            </span>
           </h1>
-          <p className="lede">
-            The multi-tenant platform for UAE company registration and PRO management. Mainland,
-            Free Zone, Offshore — estimator, visas, Emirates ID, renewals, documents, and
-            white-label portals in one workspace.
+          <p className="lede reveal reveal--mask">
+            <span className="rise rise--block">
+              <span className="rise__i" style={{ '--rise-delay': '520ms' } as React.CSSProperties}>
+                The multi-tenant platform for UAE company registration and PRO management. Mainland,
+                Free Zone, Offshore — estimator, visas, Emirates ID, renewals, documents, and
+                white-label portals in one workspace.
+              </span>
+            </span>
           </p>
-          <div className="cta-row">
+          <div className="cta-row reveal">
             <Link className="btn btn--accent" href="/estimate">
               Get Estimate
             </Link>
@@ -29,22 +65,25 @@ export default function MarketingHomePage() {
             </a>
           </div>
         </div>
-        <div className="hero__rule" aria-hidden="true" />
+      </section>
+
+      {/* ============ HERO STATS (short band) ============ */}
+      <section className="stats-band" aria-label="Platform stats">
         <div className="container">
           <dl className="hero__spec">
-            <div className="hero__stat">
+            <div className="hero__stat reveal">
               <dt className="hero__statL">businesses</dt>
               <dd className="mono hero__statV">320+</dd>
             </div>
-            <div className="hero__stat">
+            <div className="hero__stat reveal">
               <dt className="hero__statL">free zones</dt>
               <dd className="mono hero__statV">45</dd>
             </div>
-            <div className="hero__stat">
+            <div className="hero__stat reveal">
               <dt className="hero__statL">fines saved</dt>
               <dd className="mono hero__statV u-accent">AED 2.4M</dd>
             </div>
-            <div className="hero__stat">
+            <div className="hero__stat reveal">
               <dt className="hero__statL">on-time</dt>
               <dd className="mono hero__statV">98%</dd>
             </div>
@@ -53,7 +92,7 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ TRUSTED + STATS ============ */}
-      <section className="trust-band" aria-labelledby="trust-h" data-reveal>
+      <section className="trust-band" aria-labelledby="trust-h">
         <h2 id="trust-h" className="visually-hidden">
           Free zones and authorities supported
         </h2>
@@ -70,9 +109,9 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ SERVICES ============ */}
-      <section id="services" className="section" aria-labelledby="services-h" data-reveal>
+      <section id="services" className="section" aria-labelledby="services-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">01 · Services</span>
             <h2 id="services-h" className="h2">
               Three vehicles. One platform.
@@ -80,8 +119,8 @@ export default function MarketingHomePage() {
           </header>
         </div>
         <div className="container">
-          <div className="cell-row cell-row--joined">
-            <article className="cell cell--svc">
+          <div className="cell-row cell-row--joined cards-stagger" data-reveal-cards>
+            <article className="cell cell--svc reveal">
               <span className="cell__mark" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24">
                   <rect
@@ -110,7 +149,7 @@ export default function MarketingHomePage() {
               </Link>
             </article>
 
-            <article className="cell cell--svc">
+            <article className="cell cell--svc reveal">
               <span className="cell__mark" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24">
                   <path
@@ -136,7 +175,7 @@ export default function MarketingHomePage() {
               </Link>
             </article>
 
-            <article className="cell cell--svc">
+            <article className="cell cell--svc reveal">
               <span className="cell__mark" aria-hidden="true">
                 <svg width="28" height="28" viewBox="0 0 24 24">
                   <circle
@@ -167,7 +206,7 @@ export default function MarketingHomePage() {
         </div>
         <div className="container">
           <div
-            className="cell compare"
+            className="cell compare reveal"
             tabIndex={0}
             role="region"
             aria-label="Compare Mainland, Free Zone and Offshore (scrollable)"
@@ -222,17 +261,17 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ ESTIMATOR ============ */}
-      <section id="estimator" className="section" aria-labelledby="est-h" data-reveal>
+      <section id="estimator" className="section" aria-labelledby="est-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">02 · Cost estimator</span>
             <h2 id="est-h" className="h2">
               Know the full cost before you commit.
             </h2>
           </header>
-          <div className="cell-row cell-row--est">
+          <div className="cell-row cell-row--est" data-reveal-cards>
             <EstimatorPreview />
-            <div className="cell cell--estside">
+            <div className="cell cell--estside reveal">
               <h3>No surprise fees. Ever.</h3>
               <p>
                 Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line: itemized
@@ -247,9 +286,9 @@ export default function MarketingHomePage() {
       </section>
 
       {/* ============ PRO SUITE ============ */}
-      <section id="pro-suite" className="section" aria-labelledby="suite-h" data-reveal>
+      <section id="pro-suite" className="section" aria-labelledby="suite-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">03 · Platform</span>
             <h2 id="suite-h" className="h2">
               Built for PROs managing 50 to 5,000 clients.
@@ -257,8 +296,8 @@ export default function MarketingHomePage() {
           </header>
         </div>
         <div className="container">
-          <div className="mosaic">
-            <article className="cell cell--wide">
+          <div className="mosaic" data-reveal-cards>
+            <article className="cell cell--wide reveal">
               <span className="eyebrow">Multi-tenant control</span>
               <h3>Every client, isolated at the row.</h3>
               <p>
@@ -299,7 +338,7 @@ export default function MarketingHomePage() {
               </table>
             </article>
 
-            <article className="cell cell--tall">
+            <article className="cell cell--tall reveal">
               <span className="eyebrow">Audit trail</span>
               <h3>Every action, logged.</h3>
               <pre className="logbox mono">{`actor=pro action=visa.stamp
@@ -315,23 +354,23 @@ entity=lic/acme ip=internal
 ts=2026-05-18T09:00:00Z`}</pre>
             </article>
 
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Visas</span>
               <h3>Type → medical → stamp</h3>
               <p className="cell__sub">Every visa stage tracked end to end.</p>
             </article>
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Emirates ID</span>
               <h3>One source of truth</h3>
               <p className="cell__sub">Every ID expiry tracked and alerted.</p>
             </article>
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Renewals</span>
               <h3>No AED 25/day fines</h3>
               <p className="mono cell__metric">90·30·7</p>
               <p className="cell__sub">day reminders</p>
             </article>
-            <article className="cell">
+            <article className="cell reveal">
               <span className="eyebrow">Invoices</span>
               <h3>Tap + Stripe</h3>
               <p className="cell__sub">Itemized invoices, paid online.</p>
@@ -341,9 +380,9 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ DASHBOARD SHOWCASE ============ */}
-      <section className="showcase" aria-labelledby="show-h" data-reveal>
+      <section className="showcase" aria-labelledby="show-h">
         <div className="container">
-          <header className="section__head section__head--inv">
+          <header className="section__head section__head--inv reveal">
             <span className="eyebrow eyebrow--inv">04 · Dashboard</span>
             <h2 id="show-h" className="h2 h2--inv">
               One dashboard. Every client.
@@ -352,16 +391,16 @@ ts=2026-05-18T09:00:00Z`}</pre>
         </div>
         <div className="container">
           <DashboardPreview />
-          <div className="frame-features">
-            <div>
+          <div className="frame-features" data-reveal-cards>
+            <div className="reveal">
               <h4>Live renewal alerts</h4>
               <p>90 / 30 / 7-day across email, WhatsApp, in-app.</p>
             </div>
-            <div>
+            <div className="reveal">
               <h4>Audit-ready</h4>
               <p>Immutable log with actor, entity, IP, timestamp.</p>
             </div>
-            <div>
+            <div className="reveal">
               <h4>White-label</h4>
               <p>Custom subdomain, logo, sender per tenant.</p>
             </div>
@@ -370,9 +409,9 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ HOW IT WORKS ============ */}
-      <section id="flow" className="section section--flush" aria-labelledby="flow-h" data-reveal>
+      <section id="flow" className="section section--flush" aria-labelledby="flow-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">05 · How it works</span>
             <h2 id="flow-h" className="h2">
               From idea to trade license in 7–14 days.
@@ -380,23 +419,23 @@ ts=2026-05-18T09:00:00Z`}</pre>
           </header>
         </div>
         <div className="container">
-          <ol className="flow">
-            <li className="flow__cell">
+          <ol className="flow cards-stagger" data-reveal-cards>
+            <li className="flow__cell reveal">
               <span className="flow__num mono">01</span>
               <h4>Submit</h4>
               <p>10-minute dynamic questionnaire, branched by ownership and activity.</p>
             </li>
-            <li className="flow__cell">
+            <li className="flow__cell reveal">
               <span className="flow__num mono">02</span>
               <h4>Estimate</h4>
               <p>Itemized AED quote across DED, free zone, MOHRE, GDRFA, ICP, PRO.</p>
             </li>
-            <li className="flow__cell">
+            <li className="flow__cell reveal">
               <span className="flow__num mono">03</span>
               <h4>Onboard</h4>
               <p>A licensed PRO firm picks up your file. Shared dashboard, signed docs.</p>
             </li>
-            <li className="flow__cell">
+            <li className="flow__cell reveal">
               <span className="flow__num mono">04</span>
               <h4>Operate</h4>
               <p>License, visas, Emirates ID, renewals — tracked to the day.</p>
@@ -406,9 +445,9 @@ ts=2026-05-18T09:00:00Z`}</pre>
       </section>
 
       {/* ============ WHY + COMPARE ============ */}
-      <section className="section" aria-labelledby="why-h" data-reveal>
+      <section className="section" aria-labelledby="why-h">
         <div className="container">
-          <header className="section__head">
+          <header className="section__head reveal">
             <span className="eyebrow">06 · Why Mandoob</span>
             <h2 id="why-h" className="h2">
               Confident, restrained, built for UAE.
@@ -416,74 +455,133 @@ ts=2026-05-18T09:00:00Z`}</pre>
           </header>
         </div>
         <div className="container">
-          <div className="why-row">
-            <article className="cell cell--why">
+          <div className="why-row" data-reveal-cards>
+            <article className="cell cell--why reveal">
               <h4>Built for UAE</h4>
               <p>Aligned to PDPL, MOHRE, GDRFA, ICP, DED.</p>
             </article>
-            <article className="cell cell--why">
+            <article className="cell cell--why reveal">
               <h4>Replaces 6 tools</h4>
               <p>WhatsApp, Excel, Drive, invoices, CRM, reminders.</p>
             </article>
-            <article className="cell cell--why">
+            <article className="cell cell--why reveal">
               <h4>Audit-grade</h4>
               <p>Immutable log, exportable for legal review.</p>
             </article>
-            <article className="cell cell--why">
+            <article className="cell cell--why reveal">
               <h4>White-label ready</h4>
               <p>Custom subdomain, logo, sender per firm.</p>
             </article>
           </div>
+          <div
+            className="cell compare reveal"
+            tabIndex={0}
+            role="region"
+            aria-label="Mandoob vs Manual vs Generic SaaS comparison"
+          >
+            <table className="compare__table">
+              <caption className="visually-hidden">
+                Mandoob versus manual processes versus generic SaaS
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Capability</th>
+                  <th scope="col" className="us">
+                    Mandoob
+                  </th>
+                  <th scope="col">Manual</th>
+                  <th scope="col">Generic SaaS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>UAE license tracking</td>
+                  <td className="us yes">✓</td>
+                  <td className="dash">—</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>Automated renewal alerts</td>
+                  <td className="us yes">✓</td>
+                  <td className="dash">—</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>Tenant isolation (RLS)</td>
+                  <td className="us yes">✓</td>
+                  <td className="dash">—</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>White-label portal</td>
+                  <td className="us yes">✓</td>
+                  <td className="dash">—</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>Audit log + PDPL</td>
+                  <td className="us yes">✓</td>
+                  <td className="dash">—</td>
+                  <td className="dash">—</td>
+                </tr>
+                <tr>
+                  <td>Cost estimator</td>
+                  <td className="us yes">✓</td>
+                  <td className="dash">—</td>
+                  <td className="dash">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
-      {/* ============ TRUST & COMPLIANCE ============ */}
-      <section id="trust" className="section" aria-labelledby="trustsec-h" data-reveal>
+      {/* ============ CUSTOMERS ============ */}
+      <section id="customers" className="section" aria-labelledby="cust-h">
         <div className="container">
-          <header className="section__head">
-            <span className="eyebrow">07 · Trust</span>
-            <h2 id="trustsec-h" className="h2">
-              Security and compliance, by design.
+          <header className="section__head reveal">
+            <span className="eyebrow">07 · Customers</span>
+            <h2 id="cust-h" className="h2">
+              Trusted by people who can&apos;t get it wrong.
             </h2>
           </header>
         </div>
         <div className="container">
-          <div className="why-row">
-            <article className="cell cell--why">
-              <h4>PDPL-aligned</h4>
+          <div className="quote-row cards-stagger" data-reveal-cards>
+            <blockquote className="cell cell--quotelg reveal">
               <p>
-                Built to UAE Federal Decree-Law No. 45 of 2021 — consent tracking and right to
-                erasure.
+                &ldquo;Renewed 47 licences last month with zero late fines. The renewal calendar
+                alone paid for the annual subscription twice over.&rdquo;
               </p>
-            </article>
-            <article className="cell cell--why">
-              <h4>Immutable audit trail</h4>
-              <p>
-                Every action logged with actor, entity, IP, and timestamp. Exportable for legal
-                review.
-              </p>
-            </article>
-            <article className="cell cell--why">
-              <h4>Tenant isolation</h4>
-              <p>
-                Postgres row-level security enforces tenant_id on every table. No cross-tenant
-                leaks.
-              </p>
-            </article>
-            <article className="cell cell--why">
-              <h4>Encrypted end to end</h4>
-              <p>
-                TLS 1.3 in transit, AES-256 at rest, plus app-layer encryption for passport, EID,
-                and visa data.
-              </p>
-            </article>
+              <footer>
+                <span className="mono">SA</span> Sarah Al Marri · PRO Manager · Horizon, Dubai
+              </footer>
+            </blockquote>
+            <blockquote className="cell cell--quotesm reveal">
+              <p>&ldquo;Set up an IFZA company from Berlin in 9 days. No flights.&rdquo;</p>
+              <footer>
+                <span className="mono">JK</span> Jonas Keller · Founder · Linthos
+              </footer>
+            </blockquote>
+            <blockquote className="cell cell--quotesm reveal">
+              <p>&ldquo;The audit log sold our compliance team instantly.&rdquo;</p>
+              <footer>
+                <span className="mono">FH</span> Fatima Hussein · Counsel · Naseej
+              </footer>
+            </blockquote>
+            <blockquote className="cell cell--quotesm reveal">
+              <p>&ldquo;Replaced WhatsApp, Excel, and a CRM with one workspace.&rdquo;</p>
+              <footer>
+                <span className="mono">AK</span> Ahmed Khalifa · Partner · Khalifa Consultants
+              </footer>
+            </blockquote>
           </div>
         </div>
       </section>
 
       {/* ============ FINAL CTA ============ */}
-      <section className="cta-section" aria-labelledby="cta-h" data-reveal>
-        <div className="cta-section__inner container">
+      <section className="cta-section" aria-labelledby="cta-h">
+        <div className="cta-section__inner reveal container">
           <span className="eyebrow">08 · Get started</span>
           <h2 id="cta-h" className="display display--cta">
             Run your free UAE setup estimate.

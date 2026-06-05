@@ -102,7 +102,7 @@ export function DashboardPreview() {
   const panel = PANELS[active];
 
   return (
-    <figure className="frame">
+    <figure className="frame reveal">
       <div className="frame__bar">
         <span className="fdot" />
         <span className="fdot" />

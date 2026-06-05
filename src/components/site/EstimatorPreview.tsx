@@ -92,7 +92,7 @@ export function EstimatorPreview() {
   };
 
   return (
-    <div className="cell cell--estmain">
+    <div className="cell cell--estmain reveal">
       <div className="est__tabs" role="tablist" aria-label="Jurisdiction" onKeyDown={onKeyDown}>
         {TABS.map((tab, i) => {
           const selected = active === tab;
