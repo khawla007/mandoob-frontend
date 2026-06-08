@@ -5,16 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { OpenRequestEntry } from '@/lib/data/documents';
 import type { DocType } from '@/lib/validation/document';
 
-// TODO i18n: doc-type labels are domain-specific; queued for Arabic review (surface=customer.documents).
-const DOC_TYPE_LABELS: Record<DocType, string> = {
-  passport: 'Passport',
-  visa: 'Visa',
-  emirates_id: 'Emirates ID',
-  trade_license: 'Trade license',
-  ejari: 'Ejari',
-  moa: 'MoA',
-  shareholder_id: 'Shareholder ID',
-  other: 'Other',
+const DOC_TYPE_KEYS: Record<DocType, string> = {
+  passport: 'passport',
+  visa: 'visa',
+  emirates_id: 'emiratesId',
+  trade_license: 'tradeLicense',
+  ejari: 'ejari',
+  moa: 'moa',
+  shareholder_id: 'shareholderId',
+  other: 'other',
 };
 
 type RenewalsTranslator = Awaited<ReturnType<typeof getTranslations<'renewals'>>>;
@@ -36,6 +35,7 @@ export async function ActiveDocRequestsCard({
   slug: string;
 }) {
   const t = await getTranslations('customer');
+  const tDocTypes = await getTranslations('customer.docTypeLabels');
   const tRenewals = await getTranslations('renewals');
 
   return (
@@ -63,7 +63,7 @@ export async function ActiveDocRequestsCard({
                   <div>
                     <div className="text-sm font-medium">{r.label}</div>
                     <div className="text-muted-foreground mt-0.5 text-xs">
-                      {DOC_TYPE_LABELS[r.docType]}
+                      {tDocTypes(DOC_TYPE_KEYS[r.docType])}
                       {due && <> · {due}</>}
                     </div>
                   </div>

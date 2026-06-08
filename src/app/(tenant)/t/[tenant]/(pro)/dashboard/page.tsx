@@ -32,7 +32,7 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('overview')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {tenant.name} · workspace signals for your team.
+            {t('dashboardSignalsSubtitle', { tenant: tenant.name })}
           </p>
         </div>
         <div className="text-muted-foreground hidden text-xs md:block">{t('lastThirtyDays')}</div>
@@ -49,7 +49,7 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
       <RecentLoginsTable
         rows={logins}
         title={t('recentTeamActivity')}
-        description={`Latest authentication events for ${tenant.name}.`}
+        description={t('dashboardRecentLoginsDescription', { tenant: tenant.name })}
       />
     </div>
   );

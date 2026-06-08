@@ -215,6 +215,8 @@
     "selectDateFormat": "اختر تنسيق التاريخ",
     "bioPlaceholder": "بضع جمل عن نفسك…",
     "markdownNotSupported": "تنسيق ماركداون غير مدعوم.",
+    "tablistLabel": "أقسام الحساب",
+    "mfaQrAlt": "رمز QR للمصادقة الثنائية",
     "longCopy": {
       "phoneHelp": "يُستخدم لإرسال إشعارات الرسائل النصية القصيرة (SMS) المتعلقة بالتجديدات والموافقات.",
       "bioHelp": "نبذة قصيرة تظهر للعملاء الذين تتعاون معهم.",
@@ -274,6 +276,16 @@
     "receipt": "الإيصال",
     "reviewerNote": "ملاحظة المراجع:",
     "pleaseReupload": "يرجى إعادة الرفع.",
+    "docTypeLabels": {
+      "passport": "جواز السفر",
+      "visa": "التأشيرة",
+      "emiratesId": "الهوية الإماراتية",
+      "tradeLicense": "الرخصة التجارية",
+      "ejari": "عقد Ejari",
+      "moa": "عقد التأسيس (MoA)",
+      "shareholderId": "هوية المساهم",
+      "other": "أخرى"
+    },
     "longCopy": {
       "welcomeIntro": "نظرة سريعة على تسجيلك، ومستنداتك، وتجديداتك، وفواتيرك.",
       "noOpenRequests": "لا توجد لديك طلبات مستندات مفتوحة في الوقت الحالي.",
@@ -387,6 +399,12 @@
       }
     },
     "dashboard": "لوحة التحكم",
+    "dashboardSignalsSubtitle": "{tenant} · إشارات مساحة العمل لفريقك.",
+    "dashboardRecentLoginsDescription": "أحدث أحداث المصادقة لـ {tenant}.",
+    "renewalsPageSubtitle": "تجديدات الرخصة والتأشيرة والهوية الإماراتية وعقد Ejari عبر {tenant}.",
+    "renewalsEmptyActive": "لا توجد تجديدات نشطة. أنشئ تجديدًا أو انتظر حقل license_expiry لإضافة صف تلقائي.",
+    "renewalsEmptyCompleted": "لا توجد تجديدات مكتملة بعد.",
+    "renewalsEmptyCancelled": "لا توجد تجديدات ملغاة.",
     "leads": "العملاء المحتملون",
     "addClient": "إضافة عميل",
     "adding": "جارٍ الإضافة…",
