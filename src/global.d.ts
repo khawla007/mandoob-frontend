@@ -7,4 +7,4 @@ type Messages = typeof import('./messages/en/common.json') &
   typeof import('./messages/en/company-setup.json') &
   typeof import('./messages/en/apply.json');
 
-declare interface IntlMessages extends Messages {}
+type IntlMessages = Messages;
