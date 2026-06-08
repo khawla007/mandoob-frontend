@@ -1,4 +1,20 @@
 {
-  "title": "Pricing",
-  "subtitle": "Choose a plan that fits your PRO firm."
+  "title": "Mandoob pricing",
+  "subtitle": "Subscription plans for UAE PRO firms running client onboarding, renewals, documents, and payment operations.",
+  "perMonth": "/ month",
+  "getStarted": "Get started",
+  "tiers": {
+    "starter": {
+      "name": "Starter",
+      "features": ["Client records", "Document requests", "Renewal alerts"]
+    },
+    "professional": {
+      "name": "Professional",
+      "features": ["Payments", "WhatsApp + SMS", "Audit exports"]
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "features": ["Scale limits", "Advanced controls", "Priority support"]
+    }
+  }
 }
