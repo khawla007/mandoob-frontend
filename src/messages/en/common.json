@@ -1,0 +1,24 @@
+{
+  "brand": "Mandoob",
+  "tagline": "UAE company registration & PRO management.",
+  "nav": {
+    "estimate": "Estimate",
+    "knowledgeBase": "Knowledge Base",
+    "pricing": "Pricing",
+    "signIn": "Sign in",
+    "getStarted": "Get started"
+  },
+  "footer": {
+    "copyright": "© {year} Mandoob. UAE company registration & PRO management.",
+    "knowledgeBase": "Knowledge Base",
+    "estimate": "Estimate",
+    "pricing": "Pricing",
+    "privacy": "Privacy",
+    "terms": "Terms"
+  },
+  "languageSwitcher": {
+    "label": "Language",
+    "english": "English",
+    "arabic": "عربي"
+  }
+}
