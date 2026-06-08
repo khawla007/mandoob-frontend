@@ -1,0 +1,7 @@
+{
+  "_meta": {
+    "schema": 1,
+    "generatedBy": "manual-placeholder",
+    "note": "All entries default to status 'manual_placeholder'; i18n-seed-arabic.mjs will overwrite to status 'auto' or 'auto_plural' on first run."
+  }
+}

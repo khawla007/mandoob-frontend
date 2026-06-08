@@ -1,0 +1,24 @@
+{
+  "brand": "مندوب",
+  "tagline": "تسجيل الشركات في الإمارات وإدارة العلاقات العامة.",
+  "nav": {
+    "estimate": "تقدير",
+    "knowledgeBase": "قاعدة المعرفة",
+    "pricing": "الأسعار",
+    "signIn": "تسجيل الدخول",
+    "getStarted": "ابدأ الآن"
+  },
+  "footer": {
+    "copyright": "© {year} مندوب. تسجيل الشركات في الإمارات وإدارة العلاقات العامة.",
+    "knowledgeBase": "قاعدة المعرفة",
+    "estimate": "تقدير",
+    "pricing": "الأسعار",
+    "privacy": "الخصوصية",
+    "terms": "الشروط"
+  },
+  "languageSwitcher": {
+    "label": "اللغة",
+    "english": "English",
+    "arabic": "عربي"
+  }
+}
