@@ -1,4 +1,38 @@
 {
   "title": "Company Setup",
-  "subtitle": "Begin your UAE business registration."
+  "subtitle": "Begin your UAE business registration.",
+  "estimateCta": "Estimate {authority} setup",
+  "browseKnowledgeBase": "Browse Knowledge Base",
+  "costPositioningTitle": "Indicative setup cost positioning",
+  "timelineTitle": "Expected timeline",
+  "timelineBody": "A straightforward {authority} setup is currently modeled at {min}-{max} days before add-on services, immigration steps, or authority-specific approvals.",
+  "documentsTitle": "Common document checklist",
+  "faqTitle": "Frequently asked questions",
+  "planSetupTitle": "Plan this setup",
+  "planSetupBody": "Open the estimator with {authority} preselected and adjust visas, shareholders, office type, and add-ons.",
+  "openEstimator": "Open estimator",
+  "assumptionsTitle": "Assumptions",
+  "jurisdictions": {
+    "freeZone": "Free Zone",
+    "mainland": "Mainland",
+    "offshore": "Offshore"
+  },
+  "documentLabels": {
+    "attested_documents": "Attested corporate documents",
+    "business_plan": "Business plan or activity summary",
+    "lease_agreement": "Lease or flexi desk confirmation",
+    "medical_fitness": "Medical fitness and Emirates ID documents",
+    "passport": "Passport copy",
+    "photo": "Passport photo",
+    "shareholder_resolution": "Shareholder resolution",
+    "trade_license": "Trade license copy"
+  },
+  "faq": {
+    "costQuestion": "How much does {authority} company setup cost?",
+    "costAnswer": "{positioning} Use the estimator to model visas, shareholders, office type, and add-ons.",
+    "timelineQuestion": "How long does {authority} setup take?",
+    "timelineAnswer": "The current public model estimates {min}-{max} days for core setup components before special approvals or post-license services.",
+    "officialQuestion": "Is this {authority} fee data official?",
+    "officialAnswer": "No. Mandoob public pages use estimate-grade planning data. Final authority pricing must be confirmed before submission or payment."
+  }
 }

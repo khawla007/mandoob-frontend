@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,18 +12,7 @@ import {
   type AuthorityPageData,
 } from '@/lib/knowledge-base';
 
-type Params = { authoritySlug: string };
-
-const DOCUMENT_LABELS: Record<string, string> = {
-  attested_documents: 'Attested corporate documents',
-  business_plan: 'Business plan or activity summary',
-  lease_agreement: 'Lease or flexi desk confirmation',
-  medical_fitness: 'Medical fitness and Emirates ID documents',
-  passport: 'Passport copy',
-  photo: 'Passport photo',
-  shareholder_resolution: 'Shareholder resolution',
-  trade_license: 'Trade license copy',
-};
+type Params = { locale: string; authoritySlug: string };
 
 export function generateStaticParams() {
   return authoritySetupPages.map((page) => ({ authoritySlug: page.slug }));
@@ -51,30 +41,35 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 }
 
 export default async function AuthoritySetupPage({ params }: { params: Promise<Params> }) {
-  const { authoritySlug } = await params;
-  const page = getAuthorityPageBySlug(authoritySlug);
+  const { locale, authoritySlug } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'company-setup' });
 
+  const page = getAuthorityPageBySlug(authoritySlug);
   if (!page) notFound();
 
-  const faq = buildAuthorityFaq(page);
+  const faq = buildAuthorityFaq(page, t);
   const faqJsonLd = buildFaqJsonLd(faq);
+
+  const jurisdictionBadge = jurisdictionLabel(page.jurisdiction, t);
+  const estimateHref = relativeEstimateHref(page.handoffUrl);
 
   return (
     <article className="bg-muted/20">
       <JsonLd data={faqJsonLd} />
       <header className="mx-auto max-w-5xl px-6 py-12 lg:py-16">
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{jurisdictionLabel(page.jurisdiction)}</Badge>
+          <Badge variant="secondary">{jurisdictionBadge}</Badge>
           {page.emirate ? <Badge variant="outline">{emirateLabel(page.emirate)}</Badge> : null}
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">{page.title}</h1>
         <p className="text-muted-foreground mt-5 max-w-3xl text-lg leading-8">{page.description}</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <Link href={relativeEstimateHref(page.handoffUrl)}>Estimate {page.authority} setup</Link>
+            <Link href={estimateHref}>{t('estimateCta', { authority: page.authority })}</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/knowledge-base">Browse Knowledge Base</Link>
+            <Link href="/knowledge-base">{t('browseKnowledgeBase')}</Link>
           </Button>
         </div>
       </header>
@@ -83,7 +78,7 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Indicative setup cost positioning</CardTitle>
+              <CardTitle>{t('costPositioningTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-7">{page.setupCostPositioning}</p>
@@ -92,28 +87,30 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
 
           <Card>
             <CardHeader>
-              <CardTitle>Expected timeline</CardTitle>
+              <CardTitle>{t('timelineTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-7">
-                A straightforward {page.authority} setup is currently modeled at{' '}
-                <strong className="text-foreground">
-                  {page.timelineDays.min}-{page.timelineDays.max} days
-                </strong>{' '}
-                before add-on services, immigration steps, or authority-specific approvals.
+                {t.rich('timelineBody', {
+                  authority: page.authority,
+                  min: page.timelineDays.min,
+                  max: page.timelineDays.max,
+                  strong: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+                })}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Common document checklist</CardTitle>
+              <CardTitle>{t('documentsTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {page.requiredDocumentKeys.map((key) => (
-                  <li key={key} className="rounded-md border bg-background px-3 py-2 text-sm">
-                    {DOCUMENT_LABELS[key] ?? key.replace(/_/g, ' ')}
+                  <li key={key} className="bg-background rounded-md border px-3 py-2 text-sm">
+                    {(t.raw('documentLabels') as Record<string, string>)[key] ??
+                      key.replace(/_/g, ' ')}
                   </li>
                 ))}
               </ul>
@@ -122,7 +119,7 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
 
           <Card>
             <CardHeader>
-              <CardTitle>Frequently asked questions</CardTitle>
+              <CardTitle>{t('faqTitle')}</CardTitle>
             </CardHeader>
             <CardContent className="divide-y">
               {faq.map((item) => (
@@ -138,25 +135,24 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <Card>
             <CardHeader>
-              <CardTitle>Plan this setup</CardTitle>
+              <CardTitle>{t('planSetupTitle')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Open the estimator with {page.authority} preselected and adjust visas,
-                shareholders, office type, and add-ons.
+                {t('planSetupBody', { authority: page.authority })}
               </p>
               <Button asChild className="w-full">
-                <Link href={relativeEstimateHref(page.handoffUrl)}>Open estimator</Link>
+                <Link href={estimateHref}>{t('openEstimator')}</Link>
               </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Assumptions</CardTitle>
+              <CardTitle>{t('assumptionsTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-3 text-sm text-muted-foreground">
+              <ul className="text-muted-foreground space-y-3 text-sm">
                 {page.assumptions.map((assumption) => (
                   <li key={assumption}>{assumption}</li>
                 ))}
@@ -169,20 +165,25 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
   );
 }
 
-function buildAuthorityFaq(page: AuthorityPageData) {
+type TranslateFn = Awaited<ReturnType<typeof getTranslations<'company-setup'>>>;
+
+function buildAuthorityFaq(page: AuthorityPageData, t: TranslateFn) {
   return [
     {
-      question: `How much does ${page.authority} company setup cost?`,
-      answer: `${page.setupCostPositioning} Use the estimator to model visas, shareholders, office type, and add-ons.`,
+      question: t('faq.costQuestion', { authority: page.authority }),
+      answer: t('faq.costAnswer', { positioning: page.setupCostPositioning }),
     },
     {
-      question: `How long does ${page.authority} setup take?`,
-      answer: `The current public model estimates ${page.timelineDays.min}-${page.timelineDays.max} days for core setup components before special approvals or post-license services.`,
+      question: t('faq.timelineQuestion', { authority: page.authority }),
+      answer: t('faq.timelineAnswer', {
+        authority: page.authority,
+        min: page.timelineDays.min,
+        max: page.timelineDays.max,
+      }),
     },
     {
-      question: `Is this ${page.authority} fee data official?`,
-      answer:
-        'No. Mandoob public pages use estimate-grade planning data. Final authority pricing must be confirmed before submission or payment.',
+      question: t('faq.officialQuestion', { authority: page.authority }),
+      answer: t('faq.officialAnswer'),
     },
   ];
 }
@@ -192,10 +193,13 @@ function relativeEstimateHref(handoffUrl: string): string {
   return `${url.pathname}?${url.searchParams.toString()}`;
 }
 
-function jurisdictionLabel(jurisdiction: AuthorityPageData['jurisdiction']): string {
-  if (jurisdiction === 'free_zone') return 'Free Zone';
-  if (jurisdiction === 'mainland') return 'Mainland';
-  return 'Offshore';
+function jurisdictionLabel(
+  jurisdiction: AuthorityPageData['jurisdiction'],
+  t: TranslateFn,
+): string {
+  if (jurisdiction === 'free_zone') return t('jurisdictions.freeZone');
+  if (jurisdiction === 'mainland') return t('jurisdictions.mainland');
+  return t('jurisdictions.offshore');
 }
 
 function emirateLabel(emirate: string): string {
