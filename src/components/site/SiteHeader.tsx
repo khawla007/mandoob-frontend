@@ -1,10 +1,13 @@
 import 'server-only';
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { getSessionProfile } from '@/lib/auth/require-user';
 import { resolveRoleHome } from '@/lib/auth/role-home';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import type { Locale } from '@/i18n/routing';
 import { UserMenu } from './UserMenu';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +29,13 @@ async function getCustomerWorkspaceSlug(tenantId: string | null): Promise<string
   return slug && slug !== 'pub' ? slug : null;
 }
 
-export async function SiteHeader() {
+interface SiteHeaderProps {
+  locale: Locale | 'en';
+  showLanguageSwitcher?: boolean;
+}
+
+export async function SiteHeader({ locale, showLanguageSwitcher = false }: SiteHeaderProps) {
+  const t = await getTranslations({ locale, namespace: 'common' });
   const session = await getSessionProfile();
   const displayName = session ? await getDisplayName(session.id) : null;
   const homeHref = session
@@ -38,18 +47,19 @@ export async function SiteHeader() {
   return (
     <header className="flex items-center justify-between border-b px-6 py-4">
       <Link href="/" className="text-lg font-semibold">
-        Mandoob
+        {t('brand')}
       </Link>
       <nav aria-label="Primary navigation" className="flex items-center gap-6 text-sm">
         <Link href="/estimate" className="hover:text-foreground text-muted-foreground">
-          Estimate
+          {t('nav.estimate')}
         </Link>
         <Link href="/knowledge-base" className="hover:text-foreground text-muted-foreground">
-          Knowledge Base
+          {t('nav.knowledgeBase')}
         </Link>
         <Link href="/pricing" className="hover:text-foreground text-muted-foreground">
-          Pricing
+          {t('nav.pricing')}
         </Link>
+        {showLanguageSwitcher && <LanguageSwitcher />}
         {session ? (
           <UserMenu
             email={session.email}
@@ -61,13 +71,13 @@ export async function SiteHeader() {
         ) : (
           <>
             <Link href="/login" className="hover:text-foreground text-muted-foreground">
-              Sign in
+              {t('nav.signIn')}
             </Link>
             <Link
               href="/register"
               className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1.5 font-medium"
             >
-              Get started
+              {t('nav.getStarted')}
             </Link>
           </>
         )}
