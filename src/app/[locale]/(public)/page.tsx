@@ -1,8 +1,17 @@
-import Link from 'next/link';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Link } from '@/i18n/navigation';
 
-export default function ComingSoonPage() {
+interface HomeProps {
+  params: Promise<{ locale: string }>;
+}
+
+export default async function ComingSoonPage({ params }: HomeProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'home' });
+
   return (
     <div className="relative isolate flex min-h-screen flex-col overflow-hidden">
       <div
@@ -11,22 +20,21 @@ export default function ComingSoonPage() {
       />
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 text-center">
         <Badge variant="secondary" className="mb-8 font-mono text-xs tracking-wide">
-          Mandoob · Private Beta
+          {t('badge')}
         </Badge>
-        <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">Coming Soon.</h1>
+        <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">{t('heroTitle')}</h1>
         <p className="text-muted-foreground mt-5 max-w-xl text-base md:text-lg">
-          UAE business registration and PRO management, reimagined. A modern platform for
-          entrepreneurs, PRO firms, and employees.
+          {t('heroSubtitle')}
         </p>
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <Link href="/estimate">Estimate setup cost</Link>
+            <Link href="/estimate">{t('ctaEstimate')}</Link>
           </Button>
           <Button asChild size="lg">
-            <Link href="/login">Sign in</Link>
+            <Link href="/login">{t('ctaSignIn')}</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/register">Create account</Link>
+            <Link href="/register">{t('ctaRegister')}</Link>
           </Button>
         </div>
       </main>
