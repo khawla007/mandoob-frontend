@@ -436,8 +436,8 @@
     "status": "الحالة",
     "uploadedAt": "تاريخ الرفع",
     "longCopy": {
-      "uploadHelp": "Allowed file types: PDF, JPG, PNG, DOCX, XLSX up to 25 MB.",
-      "scanInProgress": "We are scanning your file for viruses. This usually takes a few seconds."
+      "uploadHelp": "أنواع الملفات المسموح بها: PDF أو JPG أو PNG أو DOCX أو XLSX بحجم يصل إلى 25 ميغابايت.",
+      "scanInProgress": "نقوم بفحص ملفك للكشف عن الفيروسات. يستغرق ذلك عادةً بضع ثوانٍ."
     }
   },
   "renewals": {
@@ -454,8 +454,8 @@
     "dueInDays": "مستحق بعد {days} يومًا",
     "daysOverdue": "متأخر بـ {days} يومًا",
     "longCopy": {
-      "lateFineWarning": "Some UAE authorities charge AED 25 per day after the deadline. Renew before the due date to avoid fines.",
-      "ejariDeadlineNotice": "Ejari must be renewed before submitting your trade-license renewal."
+      "lateFineWarning": "تفرض بعض الجهات في دولة الإمارات غرامة تأخير قدرها 25 درهمًا (AED) عن كل يوم بعد الموعد النهائي. قم بالتجديد قبل تاريخ الاستحقاق لتجنّب الغرامات.",
+      "ejariDeadlineNotice": "يجب تجديد عقد Ejari قبل تقديم طلب تجديد الرخصة التجارية."
     }
   },
   "payments": {
@@ -465,9 +465,9 @@
     "method": "الطريقة",
     "invoice": "الفاتورة",
     "longCopy": {
-      "invoiceFooter": "All amounts are in UAE Dirham (AED) unless otherwise stated. VAT is included where applicable.",
-      "refundPolicy": "Refunds for cancelled registrations are processed within 7 business days to the original payment method.",
-      "subscriptionExplainer": "Your subscription renews automatically on the same day each month. Cancel any time before the next billing cycle."
+      "invoiceFooter": "جميع المبالغ بالدرهم الإماراتي (AED) ما لم يُذكر خلاف ذلك. تشمل ضريبة القيمة المضافة (VAT) حيثما ينطبق.",
+      "refundPolicy": "تتم معالجة المبالغ المستردة للتسجيلات الملغاة خلال 7 أيام عمل إلى طريقة الدفع الأصلية.",
+      "subscriptionExplainer": "يتم تجديد اشتراكك تلقائيًا في اليوم نفسه من كل شهر. يمكنك الإلغاء في أي وقت قبل دورة الفوترة التالية."
     }
   },
   "meetings": {
@@ -475,8 +475,8 @@
     "join": "انضمام",
     "schedule": "جدولة",
     "longCopy": {
-      "recordingConsent": "By joining this meeting you consent to it being recorded and stored on your tenant workspace for compliance review.",
-      "aiSummaryNotice": "An AI summary will be generated after the meeting and shared with you and your PRO."
+      "recordingConsent": "بانضمامك إلى هذا الاجتماع فإنك توافق على تسجيله وتخزينه في مساحة العمل الخاصة بمؤسستك لأغراض مراجعة الامتثال.",
+      "aiSummaryNotice": "سيتم إنشاء ملخص بالذكاء الاصطناعي بعد الاجتماع ومشاركته معك ومع شركة الـ PRO الخاصة بك."
     }
   },
   "errors": {
@@ -501,9 +501,9 @@
     "couldNotSubmit": "تعذّر الإرسال",
     "pickFileFirst": "اختر ملفًا قبل الرفع.",
     "longCopy": {
-      "unexpected": "Something went wrong on our side. Please try again, and contact support if the problem persists.",
-      "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",
-      "rateLimited": "You have made too many requests in a short time. Please wait a minute before trying again."
+      "unexpected": "حدث خطأ من جانبنا. يُرجى المحاولة مرة أخرى، والتواصل مع الدعم إذا استمرت المشكلة.",
+      "uploadTooLarge": "حجم هذا الملف يتجاوز الحد المسموح به وهو 25 ميغابايت. يُرجى ضغطه أو رفعه على أجزاء أصغر.",
+      "rateLimited": "لقد قمت بإرسال عدد كبير جدًا من الطلبات في وقت قصير. يُرجى الانتظار دقيقة قبل المحاولة مرة أخرى."
     }
   },
   "questionnaire": {
