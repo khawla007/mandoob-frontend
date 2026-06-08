@@ -11,7 +11,9 @@
     "format:check": "prettier --check .",
     "test": "node --import tsx --conditions=react-server --test 'src/**/*.test.ts'",
     "test:a11y": "playwright test tests/a11y",
-    "lighthouse": "npm run build && lhci autorun"
+    "lighthouse": "npm run build && lhci autorun",
+    "i18n:seed": "node scripts/i18n-seed-arabic.mjs",
+    "i18n:seed:dry": "node scripts/i18n-seed-arabic.mjs --dry-run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
