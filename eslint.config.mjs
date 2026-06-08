@@ -17,7 +17,7 @@ const eslintConfig = defineConfig([
   // Tier B i18n: forbid physical Tailwind directional classes inside the [locale] tree
   // so RTL layouts (e.g. /ar/*) flip automatically via logical properties.
   {
-    files: ['src/app/[locale]/**/*.{ts,tsx}'],
+    files: ['src/app/\\[locale\\]/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
         'error',
