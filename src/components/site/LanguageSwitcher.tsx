@@ -36,7 +36,7 @@ export function LanguageSwitcher() {
             type="button"
             onClick={() => switchTo(code)}
             aria-pressed={active}
-            className={`rounded-full px-3 py-1 transition-colors ${
+            className={`focus-visible:ring-ring rounded-full px-3 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none ${
               active ? 'bg-background text-foreground shadow-xs' : 'hover:text-foreground'
             }`}
           >
