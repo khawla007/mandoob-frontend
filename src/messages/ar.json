@@ -275,19 +275,19 @@
     "reviewerNote": "ملاحظة المراجع:",
     "pleaseReupload": "يرجى إعادة الرفع.",
     "longCopy": {
-      "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",
-      "noOpenRequests": "You have no open document requests right now.",
-      "noUpcomingRenewals": "No upcoming renewals in the next 90 days.",
-      "documentsIntro": "Upload requested documents and track items already submitted.",
-      "renewalsIntro": "Trade license, visas, Emirates IDs, and Ejari renewals — past and upcoming.",
-      "renewalsColorCues": "Color cues: red = within 30 days · amber = within 90 days.",
-      "submittedDescription": "Documents already uploaded or under PRO review.",
-      "awaitingDescription": "Items your PRO firm needs from you.",
-      "accountNotLinkedNote": "Your account is not linked to a client file yet. Ask your PRO firm to link you, then review your account details.",
-      "registrationProgressDescription": "Where your company stands in the UAE registration flow.",
-      "paymentsDescription": "Pending invoices and recent receipts.",
-      "recentCommsDescription": "Latest messages between you and your PRO firm.",
-      "uploadDialogDescription": "PDF, JPEG, PNG, DOCX, or XLSX up to 25 MB. The file is scanned before storage."
+      "welcomeIntro": "نظرة سريعة على تسجيلك، ومستنداتك، وتجديداتك، وفواتيرك.",
+      "noOpenRequests": "لا توجد لديك طلبات مستندات مفتوحة في الوقت الحالي.",
+      "noUpcomingRenewals": "لا توجد تجديدات قادمة خلال الـ 90 يومًا التالية.",
+      "documentsIntro": "ارفع المستندات المطلوبة وتتبّع العناصر المُرسلة سابقًا.",
+      "renewalsIntro": "تجديدات الرخصة التجارية والتأشيرات والهويات الإماراتية وعقد Ejari — السابقة والقادمة.",
+      "renewalsColorCues": "مؤشرات الألوان: الأحمر = خلال 30 يومًا · العنبري = خلال 90 يومًا.",
+      "submittedDescription": "المستندات التي تم رفعها أو قيد مراجعة شركة الـ PRO.",
+      "awaitingDescription": "العناصر التي تحتاجها منك شركة الـ PRO.",
+      "accountNotLinkedNote": "لم يتم ربط حسابك بملف عميل بعد. اطلب من شركة الـ PRO ربطك، ثم راجع تفاصيل حسابك.",
+      "registrationProgressDescription": "موقع شركتك في مسار التسجيل في دولة الإمارات.",
+      "paymentsDescription": "الفواتير المعلقة والإيصالات الأخيرة.",
+      "recentCommsDescription": "آخر الرسائل المتبادلة بينك وبين شركة الـ PRO.",
+      "uploadDialogDescription": "ملفات PDF أو JPEG أو PNG أو DOCX أو XLSX بحجم يصل إلى 25 ميغابايت. يتم فحص الملف قبل تخزينه."
     }
   },
   "employee": {
@@ -297,10 +297,10 @@
     "myDashboard": "لوحتي",
     "documents": "المستندات",
     "longCopy": {
-      "identityHelp": "These details are kept private and only shared with your assigned PRO when required.",
-      "dashboardSubtitle": "Your records and tasks summary will live here.",
-      "documentsSubtitle": "Your documents ship in a later step.",
-      "identitySubtitle": "Identity records ship in a later step."
+      "identityHelp": "تظل هذه التفاصيل خاصة ولا تُشارك إلا مع شركة الـ PRO المُعيَّنة لك عند الحاجة.",
+      "dashboardSubtitle": "ستظهر هنا سجلاتك وملخص مهامك.",
+      "documentsSubtitle": "ستتوفر مستنداتك في مرحلة لاحقة.",
+      "identitySubtitle": "ستتوفر سجلات الهوية في مرحلة لاحقة."
     }
   },
   "pro": {
