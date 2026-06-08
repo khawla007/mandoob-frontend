@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 # Codex Token Budget — Caveman Lite
@@ -15,7 +17,6 @@ Codex must default to terse, high-signal communication to reduce token spend.
 - Keep necessary rigor: still mention failed verification, blockers, security issues, destructive actions, and user decisions.
 - Expand only when the user asks for detail, a plan, a review, or an explanation.
 
-
 <claude-mem-context>
 # Memory Context
 
@@ -28,7 +29,17 @@ Fetch details: get_observations([IDs]) | Search: mem-search skill
 Stats: 1 obs (506t read) | 9,958t work | 95% savings
 
 ### Apr 24, 2026
+
 196 1:32p 🔵 Admin Dashboard Full-Stack Code Review — Technical Concerns Identified
 
 Access 10k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
+
+## i18n (Tier B) conventions
+
+- Message files live in `frontend/src/messages/{en,ar}/<namespace>.json`.
+- Add a new namespace by extending `src/i18n/request.ts` `MESSAGES_BY_LOCALE` AND `src/global.d.ts` `Messages` type intersection.
+- Page files import `Link` from `@/i18n/navigation`, NOT `next/link`.
+- Inside `src/app/[locale]/**`, use logical Tailwind classes only (`ms-*`, `me-*`, `ps-*`, `pe-*`, `text-start`, `text-end`). ESLint blocks the physical equivalents.
+- Locale routing lives in `src/proxy.ts` (Next 16 renamed `middleware.ts` → `proxy.ts`). Do NOT create a separate `src/middleware.ts`.
+- To add a new public route: create the page under `src/app/[locale]/(public)/<route>` using the async-server-component skeleton (`await params` → `setRequestLocale(locale)` → `getTranslations({locale, namespace})`), then add a namespace JSON file in both `messages/en/` and `messages/ar/`.
