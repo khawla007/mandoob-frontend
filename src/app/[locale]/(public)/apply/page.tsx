@@ -1,17 +1,31 @@
 import type { Metadata } from 'next';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { QuestionnaireForm } from '@/components/questionnaire/QuestionnaireForm';
 import { normalizeEstimatorHandoff } from '@/lib/questionnaire';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-export const metadata: Metadata = {
-  title: 'Company Setup Application | Mandoob',
-  description: 'Submit your UAE company setup questionnaire.',
-};
+interface PageProps {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<SearchParams>;
+}
 
-export default async function ApplyPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const params = toUrlSearchParams(await searchParams);
-  const { answers, estimateData } = normalizeEstimatorHandoff(params);
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'apply' });
+  return {
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+  };
+}
+
+export default async function ApplyPage({ params, searchParams }: PageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const rawParams = await searchParams;
+  const urlParams = toUrlSearchParams(rawParams);
+  const { answers, estimateData } = normalizeEstimatorHandoff(urlParams);
 
   return (
     <main className="bg-muted/20 min-h-screen">
