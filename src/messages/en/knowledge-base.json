@@ -1,4 +1,24 @@
 {
   "title": "Knowledge Base",
-  "subtitle": "Articles, guides, and FAQs for UAE company setup."
+  "subtitle": "Articles, guides, and FAQs for UAE company setup.",
+  "metaTitle": "UAE Company Setup Knowledge Base | Mandoob",
+  "metaDescription": "Browse practical UAE company setup guides covering free zones, mainland licensing, documents, timelines, visas, costs, and compliance.",
+  "badge": "Knowledge Base",
+  "pageTitle": "UAE company setup guidance by topic, authority, and decision point",
+  "pageSubtitle": "Compare setup paths, required documents, timelines, cost assumptions, and compliance steps before moving into an indicative estimate.",
+  "estimateCardTitle": "Start with an estimate",
+  "estimateCardBody": "Use the public estimator after narrowing down a jurisdiction or authority.",
+  "estimateButton": "Estimate setup cost",
+  "categoriesHeading": "Categories",
+  "guidesCount": "{count} guides",
+  "faqSectionTitle": "Common setup questions",
+  "readingTime": "{minutes} min read",
+  "updatedAt": "Updated {date}",
+  "article": {
+    "faqTitle": "Frequently asked questions",
+    "estimateCardTitle": "Estimate your setup",
+    "estimateCardBody": "Turn this guidance into an indicative UAE company setup estimate.",
+    "defaultCta": "Open estimator",
+    "relatedGuidesTitle": "Related guides"
+  }
 }
