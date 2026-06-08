@@ -115,7 +115,7 @@
     "acceptInvitationIntro": "حدد كلمة المرور وأكمل الإعداد.",
     "acceptAndContinue": "القبول والمتابعة",
     "settingUp": "جارٍ الإعداد…",
-    "agreePdpl": "I agree to the privacy policy (PDPL).",
+    "agreePdpl": "أوافق على سياسة الخصوصية (PDPL).",
     "noFactorFound": "لا يوجد عامل TOTP.",
     "emailPlaceholder": "you@company.com",
     "passwordsMatch": "كلمتا المرور متطابقتان.",
@@ -134,14 +134,14 @@
     "submitForReview": "إرسال للمراجعة",
     "proSubmittedTitle": "تم الإرسال",
     "longCopy": {
-      "mfaInstructions": "Open your authenticator app and enter the 6-digit code shown for Mandoob.",
-      "recoveryCodesIntro": "Save these one-time recovery codes somewhere safe. Each works exactly once if you lose your authenticator.",
-      "passwordResetIntro": "We will send a one-time link to the email registered on your account.",
-      "resetSentNotice": "If an account exists for that email, a reset link is on its way.",
-      "checkInbox": "Check your inbox (and spam). The code expires in 10 minutes.",
-      "ifAccountExists": "If an account exists for that email, we sent a reset link. Check your inbox.",
-      "scanQrIntro": "Scan the QR with an authenticator app, then enter the 6-digit code.",
-      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL.",
+      "mfaInstructions": "افتح تطبيق المصادقة الخاص بك وأدخل الرمز المكوّن من 6 أرقام المعروض لتطبيق Mandoob.",
+      "recoveryCodesIntro": "احفظ رموز الاسترداد لمرة واحدة هذه في مكان آمن. يُستخدم كل رمز مرة واحدة فقط في حال فقدان تطبيق المصادقة.",
+      "passwordResetIntro": "سنرسل رابطًا لمرة واحدة إلى البريد الإلكتروني المسجّل في حسابك.",
+      "resetSentNotice": "إذا كان هناك حساب مرتبط بهذا البريد الإلكتروني، فسيصلك رابط إعادة التعيين قريبًا.",
+      "checkInbox": "تحقّق من صندوق الوارد (ومجلد الرسائل غير المرغوب فيها). تنتهي صلاحية الرمز خلال 10 دقائق.",
+      "ifAccountExists": "إذا كان هناك حساب مرتبط بهذا البريد الإلكتروني، فقد أرسلنا إليك رابط إعادة التعيين. يُرجى التحقق من صندوق الوارد.",
+      "scanQrIntro": "امسح رمز QR ضوئيًا باستخدام تطبيق المصادقة، ثم أدخل الرمز المكوّن من 6 أرقام.",
+      "consentPdpl": "أوافق على سياسة الخصوصية وأمنح موافقتي على معالجة بياناتي الشخصية وفقًا لقانون حماية البيانات الشخصية في دولة الإمارات (PDPL).",
       "proSignupPending": "تسجيل شركتك قيد الموافقة. سنراسلك على {email} عند مراجعة المشرف له. حتى ذلك الحين، يكون حسابك في حالة انتظار."
     }
   },
@@ -215,14 +215,16 @@
     "selectDateFormat": "اختر تنسيق التاريخ",
     "bioPlaceholder": "بضع جمل عن نفسك…",
     "markdownNotSupported": "تنسيق ماركداون غير مدعوم.",
+    "tablistLabel": "أقسام الحساب",
+    "mfaQrAlt": "رمز QR للمصادقة الثنائية",
     "longCopy": {
-      "phoneHelp": "Used for SMS notifications about renewals and approvals.",
-      "bioHelp": "A short description shown to clients you collaborate with.",
-      "passwordPolicy": "Use at least 12 characters with a mix of upper-case, lower-case, numbers, and symbols.",
-      "sessionsExplanation": "These are the devices currently signed in to your account. Revoke any you do not recognise.",
-      "signOutEverywhereConfirm": "Sign out of every session, including this one? You will need to log in again.",
-      "mfaScanInstruction": "Scan this QR code with your authenticator app, then enter the 6-digit code.",
-      "mfaLastFactorBlock": "MFA mandatory for this role; add another factor first",
+      "phoneHelp": "يُستخدم لإرسال إشعارات الرسائل النصية القصيرة (SMS) المتعلقة بالتجديدات والموافقات.",
+      "bioHelp": "نبذة قصيرة تظهر للعملاء الذين تتعاون معهم.",
+      "passwordPolicy": "استخدم 12 حرفًا على الأقل مع مزيج من الأحرف الكبيرة والصغيرة والأرقام والرموز.",
+      "sessionsExplanation": "هذه هي الأجهزة المسجَّل دخولها حاليًا إلى حسابك. قم بإلغاء أي جهاز لا تعرفه.",
+      "signOutEverywhereConfirm": "هل تريد تسجيل الخروج من جميع الجلسات، بما في ذلك هذه الجلسة؟ ستحتاج إلى تسجيل الدخول مجددًا.",
+      "mfaScanInstruction": "امسح رمز QR هذا ضوئيًا باستخدام تطبيق المصادقة، ثم أدخل الرمز المكوّن من 6 أرقام.",
+      "mfaLastFactorBlock": "المصادقة الثنائية إلزامية لهذا الدور؛ أضف عاملًا آخر أولًا",
       "readOnlyDetails": "تفاصيل للقراءة فقط من سجل حسابك.",
       "identityHelp": "كيف يظهر اسمك وصورتك عبر المنصة.",
       "contactLocaleHelp": "الهاتف واللغة والمنطقة الزمنية وتنسيق التاريخ.",
@@ -274,20 +276,30 @@
     "receipt": "الإيصال",
     "reviewerNote": "ملاحظة المراجع:",
     "pleaseReupload": "يرجى إعادة الرفع.",
+    "docTypeLabels": {
+      "passport": "جواز السفر",
+      "visa": "التأشيرة",
+      "emiratesId": "الهوية الإماراتية",
+      "tradeLicense": "الرخصة التجارية",
+      "ejari": "عقد Ejari",
+      "moa": "عقد التأسيس (MoA)",
+      "shareholderId": "هوية المساهم",
+      "other": "أخرى"
+    },
     "longCopy": {
-      "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",
-      "noOpenRequests": "You have no open document requests right now.",
-      "noUpcomingRenewals": "No upcoming renewals in the next 90 days.",
-      "documentsIntro": "Upload requested documents and track items already submitted.",
-      "renewalsIntro": "Trade license, visas, Emirates IDs, and Ejari renewals — past and upcoming.",
-      "renewalsColorCues": "Color cues: red = within 30 days · amber = within 90 days.",
-      "submittedDescription": "Documents already uploaded or under PRO review.",
-      "awaitingDescription": "Items your PRO firm needs from you.",
-      "accountNotLinkedNote": "Your account is not linked to a client file yet. Ask your PRO firm to link you, then review your account details.",
-      "registrationProgressDescription": "Where your company stands in the UAE registration flow.",
-      "paymentsDescription": "Pending invoices and recent receipts.",
-      "recentCommsDescription": "Latest messages between you and your PRO firm.",
-      "uploadDialogDescription": "PDF, JPEG, PNG, DOCX, or XLSX up to 25 MB. The file is scanned before storage."
+      "welcomeIntro": "نظرة سريعة على تسجيلك، ومستنداتك، وتجديداتك، وفواتيرك.",
+      "noOpenRequests": "لا توجد لديك طلبات مستندات مفتوحة في الوقت الحالي.",
+      "noUpcomingRenewals": "لا توجد تجديدات قادمة خلال الـ 90 يومًا التالية.",
+      "documentsIntro": "ارفع المستندات المطلوبة وتتبّع العناصر المُرسلة سابقًا.",
+      "renewalsIntro": "تجديدات الرخصة التجارية والتأشيرات والهويات الإماراتية وعقد Ejari — السابقة والقادمة.",
+      "renewalsColorCues": "مؤشرات الألوان: الأحمر = خلال 30 يومًا · العنبري = خلال 90 يومًا.",
+      "submittedDescription": "المستندات التي تم رفعها أو قيد مراجعة شركة الـ PRO.",
+      "awaitingDescription": "العناصر التي تحتاجها منك شركة الـ PRO.",
+      "accountNotLinkedNote": "لم يتم ربط حسابك بملف عميل بعد. اطلب من شركة الـ PRO ربطك، ثم راجع تفاصيل حسابك.",
+      "registrationProgressDescription": "موقع شركتك في مسار التسجيل في دولة الإمارات.",
+      "paymentsDescription": "الفواتير المعلقة والإيصالات الأخيرة.",
+      "recentCommsDescription": "آخر الرسائل المتبادلة بينك وبين شركة الـ PRO.",
+      "uploadDialogDescription": "ملفات PDF أو JPEG أو PNG أو DOCX أو XLSX بحجم يصل إلى 25 ميغابايت. يتم فحص الملف قبل تخزينه."
     }
   },
   "employee": {
@@ -297,10 +309,10 @@
     "myDashboard": "لوحتي",
     "documents": "المستندات",
     "longCopy": {
-      "identityHelp": "These details are kept private and only shared with your assigned PRO when required.",
-      "dashboardSubtitle": "Your records and tasks summary will live here.",
-      "documentsSubtitle": "Your documents ship in a later step.",
-      "identitySubtitle": "Identity records ship in a later step."
+      "identityHelp": "تظل هذه التفاصيل خاصة ولا تُشارك إلا مع شركة الـ PRO المُعيَّنة لك عند الحاجة.",
+      "dashboardSubtitle": "ستظهر هنا سجلاتك وملخص مهامك.",
+      "documentsSubtitle": "ستتوفر مستنداتك في مرحلة لاحقة.",
+      "identitySubtitle": "ستتوفر سجلات الهوية في مرحلة لاحقة."
     }
   },
   "pro": {
@@ -387,6 +399,12 @@
       }
     },
     "dashboard": "لوحة التحكم",
+    "dashboardSignalsSubtitle": "{tenant} · إشارات مساحة العمل لفريقك.",
+    "dashboardRecentLoginsDescription": "أحدث أحداث المصادقة لـ {tenant}.",
+    "renewalsPageSubtitle": "تجديدات الرخصة والتأشيرة والهوية الإماراتية وعقد Ejari عبر {tenant}.",
+    "renewalsEmptyActive": "لا توجد تجديدات نشطة. أنشئ تجديدًا أو انتظر حقل license_expiry لإضافة صف تلقائي.",
+    "renewalsEmptyCompleted": "لا توجد تجديدات مكتملة بعد.",
+    "renewalsEmptyCancelled": "لا توجد تجديدات ملغاة.",
     "leads": "العملاء المحتملون",
     "addClient": "إضافة عميل",
     "adding": "جارٍ الإضافة…",
@@ -436,8 +454,8 @@
     "status": "الحالة",
     "uploadedAt": "تاريخ الرفع",
     "longCopy": {
-      "uploadHelp": "Allowed file types: PDF, JPG, PNG, DOCX, XLSX up to 25 MB.",
-      "scanInProgress": "We are scanning your file for viruses. This usually takes a few seconds."
+      "uploadHelp": "أنواع الملفات المسموح بها: PDF أو JPG أو PNG أو DOCX أو XLSX بحجم يصل إلى 25 ميغابايت.",
+      "scanInProgress": "نقوم بفحص ملفك للكشف عن الفيروسات. يستغرق ذلك عادةً بضع ثوانٍ."
     }
   },
   "renewals": {
@@ -454,8 +472,8 @@
     "dueInDays": "مستحق بعد {days} يومًا",
     "daysOverdue": "متأخر بـ {days} يومًا",
     "longCopy": {
-      "lateFineWarning": "Some UAE authorities charge AED 25 per day after the deadline. Renew before the due date to avoid fines.",
-      "ejariDeadlineNotice": "Ejari must be renewed before submitting your trade-license renewal."
+      "lateFineWarning": "تفرض بعض الجهات في دولة الإمارات غرامة تأخير قدرها 25 درهمًا (AED) عن كل يوم بعد الموعد النهائي. قم بالتجديد قبل تاريخ الاستحقاق لتجنّب الغرامات.",
+      "ejariDeadlineNotice": "يجب تجديد عقد Ejari قبل تقديم طلب تجديد الرخصة التجارية."
     }
   },
   "payments": {
@@ -465,9 +483,9 @@
     "method": "الطريقة",
     "invoice": "الفاتورة",
     "longCopy": {
-      "invoiceFooter": "All amounts are in UAE Dirham (AED) unless otherwise stated. VAT is included where applicable.",
-      "refundPolicy": "Refunds for cancelled registrations are processed within 7 business days to the original payment method.",
-      "subscriptionExplainer": "Your subscription renews automatically on the same day each month. Cancel any time before the next billing cycle."
+      "invoiceFooter": "جميع المبالغ بالدرهم الإماراتي (AED) ما لم يُذكر خلاف ذلك. تشمل ضريبة القيمة المضافة (VAT) حيثما ينطبق.",
+      "refundPolicy": "تتم معالجة المبالغ المستردة للتسجيلات الملغاة خلال 7 أيام عمل إلى طريقة الدفع الأصلية.",
+      "subscriptionExplainer": "يتم تجديد اشتراكك تلقائيًا في اليوم نفسه من كل شهر. يمكنك الإلغاء في أي وقت قبل دورة الفوترة التالية."
     }
   },
   "meetings": {
@@ -475,8 +493,8 @@
     "join": "انضمام",
     "schedule": "جدولة",
     "longCopy": {
-      "recordingConsent": "By joining this meeting you consent to it being recorded and stored on your tenant workspace for compliance review.",
-      "aiSummaryNotice": "An AI summary will be generated after the meeting and shared with you and your PRO."
+      "recordingConsent": "بانضمامك إلى هذا الاجتماع فإنك توافق على تسجيله وتخزينه في مساحة العمل الخاصة بمؤسستك لأغراض مراجعة الامتثال.",
+      "aiSummaryNotice": "سيتم إنشاء ملخص بالذكاء الاصطناعي بعد الاجتماع ومشاركته معك ومع شركة الـ PRO الخاصة بك."
     }
   },
   "errors": {
@@ -501,9 +519,9 @@
     "couldNotSubmit": "تعذّر الإرسال",
     "pickFileFirst": "اختر ملفًا قبل الرفع.",
     "longCopy": {
-      "unexpected": "Something went wrong on our side. Please try again, and contact support if the problem persists.",
-      "uploadTooLarge": "That file is larger than the 25 MB limit. Please compress it or upload it in smaller parts.",
-      "rateLimited": "You have made too many requests in a short time. Please wait a minute before trying again."
+      "unexpected": "حدث خطأ من جانبنا. يُرجى المحاولة مرة أخرى، والتواصل مع الدعم إذا استمرت المشكلة.",
+      "uploadTooLarge": "حجم هذا الملف يتجاوز الحد المسموح به وهو 25 ميغابايت. يُرجى ضغطه أو رفعه على أجزاء أصغر.",
+      "rateLimited": "لقد قمت بإرسال عدد كبير جدًا من الطلبات في وقت قصير. يُرجى الانتظار دقيقة قبل المحاولة مرة أخرى."
     }
   },
   "questionnaire": {

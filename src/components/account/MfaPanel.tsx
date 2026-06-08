@@ -104,7 +104,7 @@ export function MfaPanel({ factors, mandatory }: { factors: Factor[]; mandatory:
           <p className="text-sm">{t('longCopy.mfaScanInstruction')}</p>
           <div className="bg-white p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={enroll.qrCode} alt="MFA QR code" className="size-48" />
+            <img src={enroll.qrCode} alt={t('mfaQrAlt')} className="size-48" />
           </div>
           <p className="text-muted-foreground text-xs">
             {t('mfaEnterSecretManually')} <code>{enroll.secret}</code>
