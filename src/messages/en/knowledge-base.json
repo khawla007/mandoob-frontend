@@ -19,6 +19,7 @@
     "estimateCardTitle": "Estimate your setup",
     "estimateCardBody": "Turn this guidance into an indicative UAE company setup estimate.",
     "defaultCta": "Open estimator",
-    "relatedGuidesTitle": "Related guides"
+    "relatedGuidesTitle": "Related guides",
+    "metaTitle": "{title} | Mandoob Knowledge Base"
   }
 }

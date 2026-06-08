@@ -27,15 +27,17 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const article = getArticleBySlug(slug);
 
   if (!article) {
     return {};
   }
 
+  const t = await getTranslations({ locale, namespace: 'knowledge-base' });
+
   return {
-    title: `${article.title} | Mandoob Knowledge Base`,
+    title: t('article.metaTitle', { title: article.title }),
     description: article.description,
     keywords: article.keywords,
     alternates: {

@@ -19,13 +19,15 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const { authoritySlug } = await params;
+  const { locale, authoritySlug } = await params;
   const page = getAuthorityPageBySlug(authoritySlug);
 
   if (!page) return {};
 
+  const t = await getTranslations({ locale, namespace: 'company-setup' });
+
   return {
-    title: `${page.authority} Company Setup Cost Guide | Mandoob`,
+    title: t('metaTitle', { authority: page.authority }),
     description: page.description,
     keywords: page.keywords,
     alternates: {
