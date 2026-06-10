@@ -133,6 +133,7 @@
   --zinc-600: #52525b;
   --zinc-500: #71717a;
   --zinc-400: #a1a1aa;
+  --zinc-300: #d4d4d8;
   --pb-border-dark: #27272a;
 }
 
@@ -663,7 +664,7 @@
   margin-bottom: var(--sp-3);
 }
 .site-public .section__head--inv .eyebrow {
-  color: var(--zinc-400);
+  color: var(--zinc-500);
 }
 
 .site-public .cell-row {
@@ -958,6 +959,7 @@
   background: var(--zinc-950);
   color: var(--ink-inv);
   padding-block: var(--sp-7);
+  scroll-margin-top: 96px;
 }
 .site-public .frame {
   margin: 0;
@@ -992,7 +994,7 @@
   min-height: 360px;
   background: var(--zinc-950);
 }
-@media (max-width: 768px) {
+@media (max-width: 899px) {
   .site-public .frame__body {
     grid-template-columns: 1fr;
   }
@@ -1080,7 +1082,7 @@
 .site-public .frame-features {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
   margin-top: var(--sp-5);
 }
 @media (min-width: 768px) {
@@ -1088,14 +1090,22 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+.site-public .frame-features__cell {
+  padding: var(--sp-4);
+  border: 1px solid var(--pb-border-dark);
+  border-radius: var(--r-md);
+  background: var(--zinc-950);
+}
 .site-public .frame-features h4 {
-  font-size: var(--fs-15);
+  font-size: var(--fs-17);
   color: var(--ink-inv);
-  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--sp-2);
 }
 .site-public .frame-features p {
-  font-size: var(--fs-13);
-  color: var(--zinc-400);
+  font-size: var(--fs-14);
+  color: var(--zinc-300);
+  margin: 0;
 }
 
 /* ---------- 11. FLOW edge-to-edge numbers ---------- */
