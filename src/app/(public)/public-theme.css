@@ -679,11 +679,10 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
-/* Joined: cards-row sits directly above the comparison table; round the top
-   only so the two read as one continuous bordered block (the .compare below
-   has border-top:0 and bottom-only radius to match this seam). */
+/* Cards-row and the comparison table render as two separate bordered blocks
+   with a vertical gap between them. */
 .site-public .cell-row--joined {
-  border-radius: var(--r-md) var(--r-md) 0 0;
+  border-radius: var(--r-md);
 }
 .site-public .cell {
   padding: var(--sp-5);
@@ -1185,9 +1184,9 @@
   color: var(--zinc-600);
 }
 .site-public .compare {
+  margin-top: var(--sp-5);
   border: 1px solid var(--pb-border);
-  border-top: 0;
-  border-radius: 0 0 var(--r-md) var(--r-md);
+  border-radius: var(--r-md);
   padding: 0;
   overflow-x: auto;
 }
