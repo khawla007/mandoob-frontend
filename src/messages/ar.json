@@ -37,6 +37,60 @@
     "knowledgeBase": "قاعدة المعرفة",
     "pricing": "الأسعار"
   },
+  "marketing": {
+    "estimatorPreview": {
+      "tablistLabel": "الولاية",
+      "tabs": {
+        "mainland": "البر الرئيسي",
+        "freeZone": "المنطقة الحرة",
+        "offshore": "أوفشور"
+      },
+      "fields": {
+        "activity": "النشاط التجاري",
+        "visas": "عدد التأشيرات",
+        "office": "نوع المكتب"
+      },
+      "totalLabel": "إجمالي التقدير",
+      "presets": {
+        "mainland": {
+          "activity": "الاستشارات والخدمات الإدارية",
+          "visas": "2",
+          "office": "مكتب مرن",
+          "total": "AED 18,450",
+          "lines": [
+            { "label": "موافقة الدائرة الاقتصادية الأولية", "amount": "600" },
+            { "label": "الرخصة التجارية · سنة واحدة", "amount": "12,500" },
+            { "label": "تأشيرة × 2", "amount": "4,200" },
+            { "label": "رسوم Mandoob PRO", "amount": "1,150" }
+          ]
+        },
+        "freeZone": {
+          "activity": "التجارة العامة",
+          "visas": "3",
+          "office": "مكتب مشترك",
+          "total": "AED 23,900",
+          "lines": [
+            { "label": "تسجيل المنطقة الحرة", "amount": "1,500" },
+            { "label": "الرخصة · سنة واحدة", "amount": "15,000" },
+            { "label": "تأشيرة × 3", "amount": "6,300" },
+            { "label": "رسوم Mandoob PRO", "amount": "1,100" }
+          ]
+        },
+        "offshore": {
+          "activity": "حيازة أصول",
+          "visas": "0",
+          "office": "غير مطلوب",
+          "total": "AED 11,000",
+          "lines": [
+            { "label": "تأسيس شركة IBC", "amount": "3,500" },
+            { "label": "وكيل مسجَّل · سنة واحدة", "amount": "4,000" },
+            { "label": "تقديم بنكي", "amount": "2,500" },
+            { "label": "رسوم Mandoob PRO", "amount": "1,000" }
+          ]
+        }
+      }
+    }
+  },
   "shell": {
     "overview": "نظرة عامة",
     "workspace": "مساحة العمل",
@@ -386,7 +440,17 @@
         }
       }
     },
-    "dashboard": "لوحة التحكم",
+    "dashboard": {
+      "title": "لوحة التحكم",
+      "subtitle": "{tenant} · مؤشرات مساحة عمل فريقك.",
+      "recentActivityDescription": "آخر أحداث المصادقة لـ {tenant}.",
+      "kpis": {
+        "activeClients": { "label": "العملاء النشطون", "delta": "مباشر" },
+        "renewalsDue": { "label": "التجديدات المستحقة (30 يومًا)", "delta": "ترخيص + يدوي" },
+        "docsAwaitingReview": { "label": "مستندات بانتظار المراجعة", "delta": "عبر جميع العملاء" },
+        "pendingPayments": { "label": "المدفوعات المعلقة", "delta": "فواتير مفتوحة" }
+      }
+    },
     "leads": "العملاء المحتملون",
     "addClient": "إضافة عميل",
     "adding": "جارٍ الإضافة…",

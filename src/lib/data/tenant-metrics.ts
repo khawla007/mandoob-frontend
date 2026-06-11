@@ -164,36 +164,36 @@ export async function getTenantRecentLogins(
     status: e.kind === 'login_success' ? 'success' : 'failed',
   }));
 }
-export async function getProDashboardMetrics(tenantId: string): Promise<Kpi[]> {
+export type ProDashboardKpiKey =
+  | 'activeClients'
+  | 'renewalsDue'
+  | 'docsAwaitingReview'
+  | 'pendingPayments';
+
+export type ProDashboardMetric = {
+  key: ProDashboardKpiKey;
+  value: string;
+  delta: number;
+};
+
+export async function getProDashboardMetrics(tenantId: string): Promise<ProDashboardMetric[]> {
   const admin = createSupabaseServiceRoleClient();
   const [{ count: activeClients }, awaitingReview, renewalsDue30d, pendingPayments] =
     await Promise.all([
-    admin
-      .from('clients')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId)
-      .eq('status', 'active'),
-    countDocsAwaitingReview(tenantId),
-    countRenewalsDueWithin(tenantId, 30),
-    countOpenInvoicesForTenant(tenantId),
-  ]);
-
-  const active = activeClients ?? 0;
+      admin
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('status', 'active'),
+      countDocsAwaitingReview(tenantId),
+      countRenewalsDueWithin(tenantId, 30),
+      countOpenInvoicesForTenant(tenantId),
+    ]);
 
   return [
-    { label: 'Active clients', value: fmt(active), delta: 0, deltaLabel: 'live' },
-    {
-      label: 'Renewals due (30d)',
-      value: fmt(renewalsDue30d),
-      delta: 0,
-      deltaLabel: 'license + manual',
-    },
-    {
-      label: 'Docs awaiting review',
-      value: fmt(awaitingReview),
-      delta: 0,
-      deltaLabel: 'across all clients',
-    },
-    { label: 'Pending payments', value: fmt(pendingPayments), delta: 0, deltaLabel: 'open invoices' },
+    { key: 'activeClients', value: fmt(activeClients ?? 0), delta: 0 },
+    { key: 'renewalsDue', value: fmt(renewalsDue30d), delta: 0 },
+    { key: 'docsAwaitingReview', value: fmt(awaitingReview), delta: 0 },
+    { key: 'pendingPayments', value: fmt(pendingPayments), delta: 0 },
   ];
 }
