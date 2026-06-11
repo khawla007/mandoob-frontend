@@ -19,6 +19,7 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
   if (!tenant) notFound();
 
   const t = await getTranslations('pro');
+  const tKpis = await getTranslations('pro.dashboard.kpis');
 
   const [kpis, series, logins] = await Promise.all([
     getProDashboardMetrics(tenant.id),
@@ -32,7 +33,7 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('overview')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {tenant.name} · workspace signals for your team.
+            {t('dashboard.subtitle', { tenant: tenant.name })}
           </p>
         </div>
         <div className="text-muted-foreground hidden text-xs md:block">{t('lastThirtyDays')}</div>
@@ -40,7 +41,13 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
-          <StatCard key={k.label} {...k} />
+          <StatCard
+            key={k.key}
+            label={tKpis(`${k.key}.label`)}
+            value={k.value}
+            delta={k.delta}
+            deltaLabel={tKpis(`${k.key}.delta`)}
+          />
         ))}
       </div>
 
@@ -49,7 +56,7 @@ export default async function ProDashboard({ params }: { params: Promise<{ tenan
       <RecentLoginsTable
         rows={logins}
         title={t('recentTeamActivity')}
-        description={`Latest authentication events for ${tenant.name}.`}
+        description={t('dashboard.recentActivityDescription', { tenant: tenant.name })}
       />
     </div>
   );

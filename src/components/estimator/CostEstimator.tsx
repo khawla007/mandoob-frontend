@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -362,6 +362,9 @@ function QuoteResult({
   onDownloadPdf: () => void;
 }) {
   const t = useTranslations('estimator');
+  const locale = useLocale();
+  const currencyLocale = locale === 'ar' ? 'ar-AE' : 'en-AE';
+  const dateLocale = locale === 'ar' ? 'ar-AE' : 'en-GB';
   const { estimate } = quote;
 
   return (
@@ -404,7 +407,7 @@ function QuoteResult({
             </div>
             <div className="mono">{item.quantity}</div>
             <div className="est-table__num mono">
-              {new Intl.NumberFormat('en-AE', {
+              {new Intl.NumberFormat(currencyLocale, {
                 style: 'currency',
                 currency: estimate.currency,
               }).format(item.totalMinor / 100)}
@@ -428,7 +431,7 @@ function QuoteResult({
         <div className="est-note__title">{t('result.noteTitle')}</div>
         <div style={{ marginTop: 4 }}>
           {t('result.generated', {
-            date: new Date(estimate.generatedAt).toLocaleString('en-GB'),
+            date: new Date(estimate.generatedAt).toLocaleString(dateLocale),
           })}
         </div>
         <ul>

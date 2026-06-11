@@ -37,6 +37,60 @@
     "knowledgeBase": "Knowledge Base",
     "pricing": "Pricing"
   },
+  "marketing": {
+    "estimatorPreview": {
+      "tablistLabel": "Jurisdiction",
+      "tabs": {
+        "mainland": "Mainland",
+        "freeZone": "Free Zone",
+        "offshore": "Offshore"
+      },
+      "fields": {
+        "activity": "Business activity",
+        "visas": "Visa count",
+        "office": "Office type"
+      },
+      "totalLabel": "TOTAL ESTIMATE",
+      "presets": {
+        "mainland": {
+          "activity": "Consulting & advisory",
+          "visas": "2",
+          "office": "Flexi desk",
+          "total": "AED 18,450",
+          "lines": [
+            { "label": "DED Initial Approval", "amount": "600" },
+            { "label": "Trade Licence · 1 yr", "amount": "12,500" },
+            { "label": "Visa × 2", "amount": "4,200" },
+            { "label": "Mandoob PRO fee", "amount": "1,150" }
+          ]
+        },
+        "freeZone": {
+          "activity": "Trading (general)",
+          "visas": "3",
+          "office": "Shared office",
+          "total": "AED 23,900",
+          "lines": [
+            { "label": "FZ Registration", "amount": "1,500" },
+            { "label": "Licence · 1 yr", "amount": "15,000" },
+            { "label": "Visa × 3", "amount": "6,300" },
+            { "label": "Mandoob PRO fee", "amount": "1,100" }
+          ]
+        },
+        "offshore": {
+          "activity": "Asset holding",
+          "visas": "0",
+          "office": "Not required",
+          "total": "AED 11,000",
+          "lines": [
+            { "label": "IBC Incorporation", "amount": "3,500" },
+            { "label": "Registered agent · 1 yr", "amount": "4,000" },
+            { "label": "Bank introduction", "amount": "2,500" },
+            { "label": "Mandoob PRO fee", "amount": "1,000" }
+          ]
+        }
+      }
+    }
+  },
   "shell": {
     "overview": "Overview",
     "workspace": "Workspace",
@@ -386,7 +440,17 @@
         }
       }
     },
-    "dashboard": "Dashboard",
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "{tenant} · workspace signals for your team.",
+      "recentActivityDescription": "Latest authentication events for {tenant}.",
+      "kpis": {
+        "activeClients": { "label": "Active clients", "delta": "live" },
+        "renewalsDue": { "label": "Renewals due (30d)", "delta": "license + manual" },
+        "docsAwaitingReview": { "label": "Docs awaiting review", "delta": "across all clients" },
+        "pendingPayments": { "label": "Pending payments", "delta": "open invoices" }
+      }
+    },
     "leads": "Leads",
     "addClient": "Add client",
     "adding": "Adding…",
@@ -774,6 +838,16 @@
     }
   },
   "admin": {
+    "settings": {
+      "layout": {
+        "title": "Settings",
+        "description": "Account configuration.",
+        "tabs": {
+          "profile": "Profile",
+          "security": "Security"
+        }
+      }
+    },
     "user": {
       "createTitle": "Create user",
       "createIntro": "Sends a Supabase invite email and creates the matching profile.",
