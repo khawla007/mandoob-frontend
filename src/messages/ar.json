@@ -838,6 +838,16 @@
     }
   },
   "admin": {
+    "settings": {
+      "layout": {
+        "title": "الإعدادات",
+        "description": "إعدادات الحساب.",
+        "tabs": {
+          "profile": "الملف الشخصي",
+          "security": "الأمان"
+        }
+      }
+    },
     "user": {
       "createTitle": "إنشاء مستخدم",
       "createIntro": "يرسل بريد دعوة عبر Supabase وينشئ الملف الشخصي المطابق.",

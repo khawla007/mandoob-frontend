@@ -838,6 +838,16 @@
     }
   },
   "admin": {
+    "settings": {
+      "layout": {
+        "title": "Settings",
+        "description": "Account configuration.",
+        "tabs": {
+          "profile": "Profile",
+          "security": "Security"
+        }
+      }
+    },
     "user": {
       "createTitle": "Create user",
       "createIntro": "Sends a Supabase invite email and creates the matching profile.",
