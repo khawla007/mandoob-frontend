@@ -9,6 +9,7 @@ type PresetKey = (typeof PRESET_KEYS)[number];
 type Line = { label: string; amount: string };
 
 const PANEL_ID = 'est-panel';
+const TOTAL_LABEL_ID = 'est-total-label';
 const tabId = (key: PresetKey) => `est-tab-${key}`;
 
 export function EstimatorPreview() {
@@ -74,13 +75,7 @@ export function EstimatorPreview() {
           );
         })}
       </div>
-      <div
-        className="est__grid"
-        role="tabpanel"
-        id={PANEL_ID}
-        aria-labelledby={tabId(active)}
-        tabIndex={0}
-      >
+      <div className="est__grid" role="tabpanel" id={PANEL_ID} aria-labelledby={tabId(active)}>
         <div className="est__inputs">
           <div className="ufield">
             <span className="ufield__label">{t('fields.activity')}</span>
@@ -95,9 +90,18 @@ export function EstimatorPreview() {
             <span className="ufield__val">{t(`presets.${active}.office`)}</span>
           </div>
         </div>
-        <div className="est__total" aria-live="polite">
-          <p className="est__totalL mono">{t('totalLabel')}</p>
-          <p className="est__totalV mono u-accent-underline">{t(`presets.${active}.total`)}</p>
+        <div className="est__total">
+          <p className="est__totalL mono" id={TOTAL_LABEL_ID}>
+            {t('totalLabel')}
+          </p>
+          <p
+            className="est__totalV mono u-accent-underline"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-labelledby={TOTAL_LABEL_ID}
+          >
+            {t(`presets.${active}.total`)}
+          </p>
           <ul className="est__lines">
             {lines.map((line) => (
               <li key={line.label}>

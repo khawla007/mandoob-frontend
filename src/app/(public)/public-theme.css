@@ -799,13 +799,24 @@
   appearance: none;
   background: none;
   cursor: pointer;
-  padding: 16px 24px;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  padding: 16px 16px;
   font-family: inherit;
   font-size: var(--fs-14);
   font-weight: 500;
   color: var(--zinc-600); /* a11y: 4.5:1 on --paper */
   border: 0;
   border-inline-end: 1px solid var(--pb-border);
+}
+.site-public .est__tab:last-child {
+  border-inline-end: 0;
+}
+@media (min-width: 600px) {
+  .site-public .est__tab {
+    padding: 16px 24px;
+  }
 }
 .site-public .est__tab.is-active {
   color: var(--ink);
@@ -820,10 +831,14 @@
   .site-public .est__grid {
     grid-template-columns: 1fr 1fr;
   }
+  .site-public .est__inputs {
+    border-inline-end: 1px solid var(--pb-border);
+    border-block-end: 0;
+  }
 }
 .site-public .est__inputs {
   padding: var(--sp-5);
-  border-inline-end: 1px solid var(--pb-border);
+  border-block-end: 1px solid var(--pb-border);
   display: grid;
   gap: var(--sp-4);
   align-content: start;
@@ -875,6 +890,9 @@
   color: var(--zinc-600);
   padding: 6px 0;
   border-bottom: 1px dotted var(--pb-border);
+}
+.site-public .est__lines li:last-child {
+  border-bottom: 0;
 }
 .site-public .cell--estside {
   display: flex;

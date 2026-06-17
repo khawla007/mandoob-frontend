@@ -15,10 +15,10 @@ export function EstimatorSection() {
         <div className="cell-row cell-row--est" data-reveal-cards>
           <EstimatorPreview />
           <div className="cell cell--estside reveal">
-            <h3>No surprise fees. Ever.</h3>
+            <h3>Itemized, versioned, archived.</h3>
             <p>
-              Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line: itemized
-              before you commit. The quote saves to your dashboard as a versioned PDF.
+              Every government fee, free zone surcharge, MOHRE, GDRFA, ICP, and PRO line broken out
+              on one quote. Saved to your dashboard as a versioned PDF, with every revision logged.
             </p>
             <Link className="cell__link" href="/estimate">
               Run a live estimate <span aria-hidden="true">↗</span>
