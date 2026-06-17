@@ -575,6 +575,7 @@
 /* ---------- 6. TRUST BAND ---------- */
 .site-public .trust-band {
   border-block: 1px solid var(--pb-border);
+  margin-bottom: var(--sp-7);
 }
 .site-public .logo-band {
   overflow: hidden;
@@ -650,10 +651,10 @@
 
 /* ---------- 7. SECTION + BENTO cells ---------- */
 .site-public .section {
-  padding-block: var(--sp-7);
+  padding-block: 0 var(--sp-7);
 }
 .site-public .section--flush {
-  padding-block: var(--sp-7) 0;
+  padding-block: 0;
 }
 .site-public .section__head {
   max-width: 760px;
@@ -999,7 +1000,7 @@
 .site-public .showcase {
   background: var(--zinc-950);
   color: var(--ink-inv);
-  padding-block: var(--sp-7);
+  padding-block: 0 var(--sp-7);
   scroll-margin-top: 96px;
 }
 .site-public .frame {
