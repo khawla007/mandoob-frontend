@@ -698,6 +698,8 @@
   }
 }
 .site-public .cell--svc {
+  display: flex;
+  flex-direction: column;
   transition: background var(--dur) var(--ease);
 }
 .site-public .cell--svc:hover {
@@ -707,6 +709,26 @@
   display: inline-flex;
   color: var(--ink);
   margin-bottom: var(--sp-4);
+}
+/* Editorial numeric/letter mark replacing decorative geometric icons on
+   service cells. Uses the eyebrow typographic register at display scale so
+   each vehicle reads as a labelled chapter rather than an interchangeable
+   icon slot. */
+.site-public .cell__mark--num {
+  font-family: var(--mono-font);
+  font-size: var(--fs-28);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  margin-bottom: var(--sp-4);
+  line-height: 1;
+}
+/* Asymmetric three-up: Mainland + Free Zone carry the volume, Offshore
+   sits as the specialist sidecar. Breaks the identical-card-grid rhythm
+   without abandoning the joined-row composition. */
+@media (min-width: 768px) {
+  .site-public .cell-row--svc {
+    grid-template-columns: 1.2fr 1.2fr 0.9fr;
+  }
 }
 .site-public .cell h3 {
   font-size: var(--fs-20);
@@ -739,7 +761,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 24px; /* WCAG 2.5.8 AA target size */
+  min-height: 44px; /* Comfortable touch target (HIG/Material), exceeds WCAG 2.5.8 AA */
+  margin-top: auto;
+  align-self: flex-start;
   font-size: var(--fs-14);
   font-weight: 600;
   color: var(--accent-ink);
@@ -1207,8 +1231,20 @@
   font-size: var(--fs-12);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--zinc-500);
+  /* zinc-500 fails 4.5:1 on --paper; zinc-600 (oklch 0.435) lands ~5.7:1. */
+  color: var(--zinc-600);
   font-weight: 500;
+}
+/* Row-header column on the comparison table. Promoting the first cell of
+   each tbody row to <th scope="row"> wires AT row-context announcements;
+   this style keeps it visually identical to the prior <td>. */
+.site-public .compare__table tbody th {
+  text-align: start;
+  font-weight: 500;
+  color: var(--ink);
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: normal;
 }
 /* Center the vehicle-column headers so each label sits over its (centered)
    data; the first column (row labels) stays left-aligned. */
@@ -1234,7 +1270,8 @@
 .site-public .compare__table .dash {
   color: var(--zinc-500);
 }
-.site-public .compare__table tbody tr:last-child td {
+.site-public .compare__table tbody tr:last-child td,
+.site-public .compare__table tbody tr:last-child th {
   border-bottom: 0;
 }
 

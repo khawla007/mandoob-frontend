@@ -12,20 +12,10 @@ export function ServicesSection() {
         </header>
       </div>
       <div className="container">
-        <div className="cell-row cell-row--joined cards-stagger" data-reveal-cards>
+        <div className="cell-row cell-row--joined cell-row--svc cards-stagger" data-reveal-cards>
           <article className="cell cell--svc reveal">
-            <span className="cell__mark" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24">
-                <rect
-                  x="4"
-                  y="4"
-                  width="16"
-                  height="16"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  fill="none"
-                />
-              </svg>
+            <span className="cell__mark cell__mark--num" aria-hidden="true">
+              M·01
             </span>
             <h3>Mainland Registration</h3>
             <p>
@@ -36,21 +26,16 @@ export function ServicesSection() {
               <li>MOHRE labor file</li>
               <li>Investor + employee visas</li>
             </ul>
-            <Link className="cell__link" href="/estimate">
-              Learn more <span aria-hidden="true">↗</span>
+            <Link className="cell__link" href="/estimate?vehicle=mainland">
+              Learn more
+              <span className="visually-hidden"> about Mainland Registration</span>
+              <span aria-hidden="true">↗</span>
             </Link>
           </article>
 
           <article className="cell cell--svc reveal">
-            <span className="cell__mark" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24">
-                <path
-                  d="M12 4l8 4.6v8.8L12 22l-8-4.6V8.6z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  fill="none"
-                />
-              </svg>
+            <span className="cell__mark cell__mark--num" aria-hidden="true">
+              FZ·02
             </span>
             <h3>Free Zone Setup</h3>
             <p>
@@ -61,16 +46,16 @@ export function ServicesSection() {
               <li>Flexi / shared / executive offices</li>
               <li>Bundled visa quota</li>
             </ul>
-            <Link className="cell__link" href="/estimate">
-              Learn more <span aria-hidden="true">↗</span>
+            <Link className="cell__link" href="/estimate?vehicle=free-zone">
+              Learn more
+              <span className="visually-hidden"> about Free Zone Setup</span>
+              <span aria-hidden="true">↗</span>
             </Link>
           </article>
 
-          <article className="cell cell--svc reveal">
-            <span className="cell__mark" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" fill="none" />
-              </svg>
+          <article className="cell cell--svc cell--svc-aside reveal">
+            <span className="cell__mark cell__mark--num" aria-hidden="true">
+              OS·03
             </span>
             <h3>Offshore Incorporation</h3>
             <p>
@@ -82,8 +67,10 @@ export function ServicesSection() {
               <li>Bank account introductions</li>
               <li>UBO + economic substance</li>
             </ul>
-            <Link className="cell__link" href="/estimate">
-              Learn more <span aria-hidden="true">↗</span>
+            <Link className="cell__link" href="/estimate?vehicle=offshore">
+              Learn more
+              <span className="visually-hidden"> about Offshore Incorporation</span>
+              <span aria-hidden="true">↗</span>
             </Link>
           </article>
         </div>
@@ -97,7 +84,8 @@ export function ServicesSection() {
         >
           <table className="compare__table">
             <caption className="visually-hidden">
-              Mainland vs Free Zone vs Offshore comparison
+              Compare ownership, UAE-market access, office, and residence-visa eligibility across
+              the three vehicles.
             </caption>
             <thead>
               <tr>
@@ -109,31 +97,51 @@ export function ServicesSection() {
             </thead>
             <tbody>
               <tr>
-                <td>Foreign ownership</td>
+                <th scope="row">Foreign ownership</th>
                 <td>100% (most activities)</td>
                 <td>100%</td>
                 <td>100%</td>
               </tr>
               <tr>
-                <td>Trade inside UAE market</td>
-                <td className="yes">✓ Direct</td>
+                <th scope="row">Trade inside UAE market</th>
+                <td className="yes">
+                  <span className="visually-hidden">Yes — </span>
+                  <span aria-hidden="true">✓ </span>
+                  Direct
+                </td>
                 <td>Within zone / via agent</td>
-                <td className="dash">—</td>
+                <td className="dash">
+                  <span className="visually-hidden">Not available</span>
+                  <span aria-hidden="true">—</span>
+                </td>
               </tr>
               <tr>
-                <td>Physical office required</td>
+                <th scope="row">Physical office required</th>
                 <td>Yes</td>
                 <td>Flexi / shared / executive</td>
-                <td className="dash">—</td>
+                <td className="dash">
+                  <span className="visually-hidden">Not required</span>
+                  <span aria-hidden="true">—</span>
+                </td>
               </tr>
               <tr>
-                <td>Residence visa eligibility</td>
-                <td className="yes">✓</td>
-                <td>✓ (quota-based)</td>
-                <td className="dash">—</td>
+                <th scope="row">Residence visa eligibility</th>
+                <td className="yes">
+                  <span className="visually-hidden">Yes</span>
+                  <span aria-hidden="true">✓</span>
+                </td>
+                <td>
+                  <span className="visually-hidden">Yes, </span>
+                  <span aria-hidden="true">✓ </span>
+                  quota-based
+                </td>
+                <td className="dash">
+                  <span className="visually-hidden">Not eligible</span>
+                  <span aria-hidden="true">—</span>
+                </td>
               </tr>
               <tr>
-                <td>Best for</td>
+                <th scope="row">Best for</th>
                 <td>Local trade &amp; services</td>
                 <td>Export, services, low cost</td>
                 <td>Asset holding / intl trade</td>
