@@ -98,19 +98,19 @@ export default function AboutPage() {
         <div className="container">
           <div className="why-row">
             <article className="cell cell--why">
-              <h4>Built for UAE</h4>
+              <h3>Built for UAE</h3>
               <p>Aligned to PDPL, MOHRE, GDRFA, ICP, and DED workflows.</p>
             </article>
             <article className="cell cell--why">
-              <h4>Multi-tenant</h4>
+              <h3>Multi-tenant</h3>
               <p>Postgres RLS isolates every client at the row.</p>
             </article>
             <article className="cell cell--why">
-              <h4>Audit-grade</h4>
+              <h3>Audit-grade</h3>
               <p>Immutable logs, exportable for legal review.</p>
             </article>
             <article className="cell cell--why">
-              <h4>White-label</h4>
+              <h3>White-label</h3>
               <p>Custom subdomain, logo, and sender per firm.</p>
             </article>
           </div>

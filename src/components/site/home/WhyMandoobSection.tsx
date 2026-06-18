@@ -12,19 +12,19 @@ export function WhyMandoobSection() {
       <div className="container">
         <div className="why-row" data-reveal-cards>
           <article className="cell cell--why reveal">
-            <h4>Built for UAE</h4>
+            <h3>Built for UAE</h3>
             <p>Aligned to PDPL, MOHRE, GDRFA, ICP, DED.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h4>Replaces 6 tools</h4>
+            <h3>Replaces 6 tools</h3>
             <p>WhatsApp, Excel, Drive, invoices, CRM, reminders.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h4>Audit-grade</h4>
+            <h3>Audit-grade</h3>
             <p>Immutable log, exportable for legal review.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h4>White-label ready</h4>
+            <h3>White-label ready</h3>
             <p>Custom subdomain, logo, sender per firm.</p>
           </article>
         </div>
@@ -34,6 +34,9 @@ export function WhyMandoobSection() {
           role="region"
           aria-label="Mandoob vs Manual vs Generic SaaS comparison"
         >
+          <span className="visually-hidden">
+            Scrollable table. Use arrow keys to view all columns.
+          </span>
           <table className="compare__table">
             <caption className="visually-hidden">
               Mandoob versus manual processes versus generic SaaS
@@ -50,40 +53,94 @@ export function WhyMandoobSection() {
             </thead>
             <tbody>
               <tr>
-                <td>UAE license tracking</td>
-                <td className="us yes">✓</td>
-                <td className="dash">—</td>
-                <td className="dash">—</td>
+                <th scope="row">UAE license tracking</th>
+                <td className="us yes">
+                  <span aria-hidden="true">✓</span>
+                  <span className="visually-hidden">Supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
               </tr>
               <tr>
-                <td>Automated renewal alerts</td>
-                <td className="us yes">✓</td>
-                <td className="dash">—</td>
-                <td className="dash">—</td>
+                <th scope="row">Automated renewal alerts</th>
+                <td className="us yes">
+                  <span aria-hidden="true">✓</span>
+                  <span className="visually-hidden">Supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
               </tr>
               <tr>
-                <td>Tenant isolation (RLS)</td>
-                <td className="us yes">✓</td>
-                <td className="dash">—</td>
-                <td className="dash">—</td>
+                <th scope="row">Tenant isolation (RLS)</th>
+                <td className="us yes">
+                  <span aria-hidden="true">✓</span>
+                  <span className="visually-hidden">Supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
               </tr>
               <tr>
-                <td>White-label portal</td>
-                <td className="us yes">✓</td>
-                <td className="dash">—</td>
-                <td className="dash">—</td>
+                <th scope="row">White-label portal</th>
+                <td className="us yes">
+                  <span aria-hidden="true">✓</span>
+                  <span className="visually-hidden">Supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
               </tr>
               <tr>
-                <td>Audit log + PDPL</td>
-                <td className="us yes">✓</td>
-                <td className="dash">—</td>
-                <td className="dash">—</td>
+                <th scope="row">Audit log + PDPL</th>
+                <td className="us yes">
+                  <span aria-hidden="true">✓</span>
+                  <span className="visually-hidden">Supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
               </tr>
               <tr>
-                <td>Cost estimator</td>
-                <td className="us yes">✓</td>
-                <td className="dash">—</td>
-                <td className="dash">—</td>
+                <th scope="row">Cost estimator</th>
+                <td className="us yes">
+                  <span aria-hidden="true">✓</span>
+                  <span className="visually-hidden">Supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
+                <td className="dash">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">Not supported</span>
+                </td>
               </tr>
             </tbody>
           </table>
