@@ -36,6 +36,7 @@
   --font: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono-font: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  --fs-11: 0.6875rem;
   --fs-12: 0.75rem;
   --fs-13: 0.8125rem;
   --fs-14: 0.875rem;
@@ -1449,7 +1450,7 @@
   display: grid;
   grid-template-columns: 1fr;
   border: 1px solid var(--pb-border);
-  border-radius: var(--r-md) var(--r-md) 0 0;
+  border-radius: var(--r-md);
   overflow: hidden;
 }
 @media (min-width: 768px) {
@@ -1469,7 +1470,7 @@
     border-inline-end: 0;
   }
 }
-.site-public .cell--why h4 {
+.site-public .cell--why h3 {
   font-size: var(--fs-17);
   margin-bottom: var(--sp-2);
 }
@@ -1538,7 +1539,8 @@
   font-weight: 700;
 }
 .site-public .compare__table .dash {
-  color: var(--zinc-500);
+  /* zinc-500 fails 4.5:1 on --paper; bump to zinc-600 (same fix as thead). */
+  color: var(--zinc-600);
 }
 .site-public .compare__table tbody tr:last-child td,
 .site-public .compare__table tbody tr:last-child th {
@@ -1590,20 +1592,21 @@
 .site-public .quote-row footer {
   margin-top: var(--sp-4);
   font-size: var(--fs-12);
-  color: var(--zinc-500);
+  /* zinc-500 fails 4.5:1 on --paper; bump to zinc-600. */
+  color: var(--zinc-600);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 .site-public .quote-row footer .mono {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: var(--sp-4);
+  height: var(--sp-4);
   border: 1px solid var(--pb-border);
   border-radius: 50%;
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--ink);
   font-weight: 500;
 }
