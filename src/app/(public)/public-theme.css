@@ -208,6 +208,17 @@
 }
 
 /* ---------- 3. Helpers ---------- */
+.site-public .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .site-public .container {
   width: 100%;
   max-width: var(--container);
@@ -909,18 +920,33 @@
   font-size: var(--fs-15);
 }
 
-/* ---------- 9. MOSAIC ---------- */
+/* ---------- 9. MOSAIC ----------
+   Asymmetric grid for the "03 · Platform" section. Five cells, five shapes:
+   - cell--table: tenant roster, top-left, wide block
+   - cell--log:   audit log, full-height right column
+   - cell--visas: visa workflow rail, bottom-left tall
+   - cell--eid:   Emirates ID chip, mid bottom
+   - cell--renewals: reminder cadence + payments, mid bottom-low
+   Mobile stack → tablet 2-col → desktop (≥1024px) 6-col asymmetric. */
 .site-public .mosaic {
   display: grid;
   grid-template-columns: 1fr;
+  list-style: none;
+  margin: 0;
+  padding: 0;
   border: 1px solid var(--pb-border);
   border-radius: var(--r-md);
   overflow: hidden;
 }
 @media (min-width: 768px) {
   .site-public .mosaic {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     grid-auto-rows: minmax(150px, auto);
+  }
+}
+@media (min-width: 1024px) {
+  .site-public .mosaic {
+    grid-template-columns: repeat(6, 1fr);
   }
 }
 .site-public .mosaic .cell {
@@ -931,13 +957,33 @@
   .site-public .mosaic .cell {
     border-inline-end: 1px solid var(--pb-border);
   }
-  .site-public .cell--wide {
+  /* tablet: table + log + renewals span full row; visas + eid pair */
+  .site-public .cell--table,
+  .site-public .cell--log,
+  .site-public .cell--renewals {
     grid-column: span 2;
-    grid-row: span 2;
   }
-  .site-public .cell--tall {
-    grid-column: span 2;
-    grid-row: span 2;
+}
+@media (min-width: 1024px) {
+  .site-public .cell--table {
+    grid-column: 1 / span 4;
+    grid-row: 1 / span 2;
+  }
+  .site-public .cell--log {
+    grid-column: 5 / span 2;
+    grid-row: 1 / span 4;
+  }
+  .site-public .cell--visas {
+    grid-column: 1 / span 2;
+    grid-row: 3 / span 2;
+  }
+  .site-public .cell--eid {
+    grid-column: 3 / span 2;
+    grid-row: 3 / span 1;
+  }
+  .site-public .cell--renewals {
+    grid-column: 3 / span 2;
+    grid-row: 4 / span 1;
   }
 }
 .site-public .cell .eyebrow {
@@ -945,18 +991,73 @@
   margin-bottom: var(--sp-3);
   font-size: var(--fs-12);
 }
-.site-public .cell__metric {
-  font-size: var(--fs-40);
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.03em;
-  margin-top: var(--sp-3);
-}
 .site-public .cell__sub {
   font-size: var(--fs-13);
   color: var(--zinc-600);
   font-family: var(--mono-font);
+  margin-top: var(--sp-3);
 }
+.site-public .cell__chip {
+  display: inline-block;
+  margin: var(--sp-3) 0 var(--sp-2);
+  padding: 6px 10px;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-14);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: var(--zinc-50);
+}
+
+/* Visa workflow rail: numbered stages, hairline-divided. */
+.site-public .step-rail {
+  display: grid;
+  gap: 0;
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-15);
+  color: var(--zinc-700);
+}
+.site-public .step-rail li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding-block: 10px;
+  border-bottom: 1px solid var(--pb-border);
+}
+.site-public .step-rail li:last-child {
+  border-bottom: 0;
+}
+.site-public .step-rail__n {
+  font-size: var(--fs-12);
+  letter-spacing: 0.06em;
+  color: var(--zinc-500);
+}
+
+/* Reminder cadence: 3-column tick rail, no big-number hero. */
+.site-public .reminder-rail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+  margin: var(--sp-4) 0 var(--sp-3);
+  padding: 0;
+  border-block: 1px solid var(--pb-border);
+}
+.site-public .reminder-rail li {
+  padding: var(--sp-3) 0;
+  font-size: var(--fs-17);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-align: center;
+  border-inline-end: 1px solid var(--pb-border);
+}
+.site-public .reminder-rail li:last-child {
+  border-inline-end: 0;
+}
+
 .site-public .mini-table {
   display: block;
   width: 100%;
@@ -984,11 +1085,15 @@
 .site-public .mini-table .num {
   text-align: end;
 }
-.site-public .logbox {
+.site-public .logbox-wrap {
   margin: var(--sp-4) 0 0;
+}
+.site-public .logbox {
+  margin: 0;
   font-size: var(--fs-12);
   line-height: 1.8;
-  color: var(--zinc-600);
+  /* a11y: bumped to zinc-700 for ≥4.5:1 contrast on --zinc-50 ground */
+  color: var(--zinc-700);
   background: var(--zinc-50);
   border: 1px solid var(--pb-border);
   border-radius: var(--r-sm);
