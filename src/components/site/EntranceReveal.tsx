@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-const STAGGER_MS = 90;
+const STAGGER_MS = 60;
 const HERO_BASE_DELAY_MS = 0;
 
 type Target = { node: Element; items: HTMLElement[] };

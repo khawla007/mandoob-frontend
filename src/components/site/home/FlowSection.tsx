@@ -1,6 +1,6 @@
 export function FlowSection() {
   return (
-    <section id="flow" className="section section--flush" aria-labelledby="flow-h">
+    <section id="flow" className="section" aria-labelledby="flow-h">
       <div className="container">
         <header className="section__head reveal">
           <span className="eyebrow">05 · How it works</span>
@@ -10,26 +10,34 @@ export function FlowSection() {
         </header>
       </div>
       <div className="container">
-        <ol className="flow cards-stagger" data-reveal-cards>
+        <ol className="flow" data-reveal-cards>
           <li className="flow__cell reveal">
-            <span className="flow__num mono">01</span>
-            <h4>Submit</h4>
+            <span className="flow__num mono" aria-hidden="true">
+              01
+            </span>
+            <h3>Submit</h3>
             <p>10-minute dynamic questionnaire, branched by ownership and activity.</p>
           </li>
           <li className="flow__cell reveal">
-            <span className="flow__num mono">02</span>
-            <h4>Estimate</h4>
+            <span className="flow__num mono" aria-hidden="true">
+              02
+            </span>
+            <h3>Estimate</h3>
             <p>Itemized AED quote across DED, free zone, MOHRE, GDRFA, ICP, PRO.</p>
           </li>
           <li className="flow__cell reveal">
-            <span className="flow__num mono">03</span>
-            <h4>Onboard</h4>
+            <span className="flow__num mono" aria-hidden="true">
+              03
+            </span>
+            <h3>Onboard</h3>
             <p>A licensed PRO firm picks up your file. Shared dashboard, signed docs.</p>
           </li>
           <li className="flow__cell reveal">
-            <span className="flow__num mono">04</span>
-            <h4>Operate</h4>
-            <p>License, visas, Emirates ID, renewals — tracked to the day.</p>
+            <span className="flow__num mono" aria-hidden="true">
+              04
+            </span>
+            <h3>Operate</h3>
+            <p>License, visas, Emirates ID, renewals, tracked to the day.</p>
           </li>
         </ol>
       </div>
