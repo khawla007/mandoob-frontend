@@ -60,7 +60,7 @@ export function SiteFooter() {
 
           {cols.map((col) => (
             <nav key={col.heading} className="footer__col" aria-label={col.heading}>
-              <h5>{col.heading}</h5>
+              <h3>{col.heading}</h3>
               <ul>
                 {col.links.map((l) => (
                   <li key={l.href + l.label}>
