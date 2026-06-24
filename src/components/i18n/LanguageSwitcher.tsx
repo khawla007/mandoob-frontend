@@ -36,7 +36,7 @@ export function LanguageSwitcher({ pathToRevalidate = '/' }: { pathToRevalidate?
         <Button
           variant="ghost"
           size="sm"
-          aria-label={t('language')}
+          aria-label={`${localeLabels[current]} — ${t('language')}`}
           disabled={pending}
           className="gap-2"
         >

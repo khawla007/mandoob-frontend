@@ -12,19 +12,19 @@ export function WhyMandoobSection() {
       <div className="container">
         <div className="why-row" data-reveal-cards>
           <article className="cell cell--why reveal">
-            <h4>Built for UAE</h4>
+            <h3>Built for UAE</h3>
             <p>Aligned to PDPL, MOHRE, GDRFA, ICP, DED.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h4>Replaces 6 tools</h4>
+            <h3>Replaces 6 tools</h3>
             <p>WhatsApp, Excel, Drive, invoices, CRM, reminders.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h4>Audit-grade</h4>
+            <h3>Audit-grade</h3>
             <p>Immutable log, exportable for legal review.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h4>White-label ready</h4>
+            <h3>White-label ready</h3>
             <p>Custom subdomain, logo, sender per firm.</p>
           </article>
         </div>

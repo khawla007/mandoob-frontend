@@ -337,7 +337,8 @@
 }
 .site-public .btn--accent {
   background: var(--accent);
-  color: var(--ink-inv);
+  /* a11y: dark ink on saffron yields ~5.5:1 (WCAG AA); near-white was 3.07:1. */
+  color: var(--ink);
 }
 .site-public .btn--accent:hover {
   background: var(--accent-hover);
@@ -1658,7 +1659,7 @@
     border-inline-end: 0;
   }
 }
-.site-public .cell--why h4 {
+.site-public .cell--why h3 {
   font-size: var(--fs-17);
   margin-bottom: var(--sp-2);
 }
@@ -1871,9 +1872,9 @@
 }
 .site-public .footer__addr {
   font-size: var(--fs-12);
-  color: var(--zinc-400);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --paper (was --zinc-400 = 2.5:1) */
 }
-.site-public .footer__col h5 {
+.site-public .footer__col h3 {
   font-family: var(--mono-font);
   font-size: var(--fs-12);
   text-transform: uppercase;
@@ -1919,7 +1920,7 @@
 }
 .site-public .footer__badges {
   font-size: var(--fs-12);
-  color: var(--zinc-400);
+  color: var(--zinc-600); /* a11y: 4.5:1 on --paper (was --zinc-400 = 2.5:1) */
   letter-spacing: 0.02em;
 }
 .site-public .lang-toggle {

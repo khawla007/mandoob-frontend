@@ -150,11 +150,15 @@ export function DashboardPreview() {
           aria-label="Dashboard preview sections"
           onKeyDown={onKeyDown}
         >
-          <ul>
+          <ul role="presentation">
             {NAV.map((item, i) => {
               const selected = active === item;
               return (
-                <li key={item} className={selected ? 'is-active' : undefined}>
+                <li
+                  key={item}
+                  role="presentation"
+                  className={selected ? 'is-active' : undefined}
+                >
                   <button
                     ref={(el) => {
                       tabRefs.current[i] = el;
