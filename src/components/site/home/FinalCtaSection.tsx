@@ -15,8 +15,8 @@ export function FinalCtaSection() {
         <div className="cta-divider" aria-hidden="true" />
         <p className="cta-secondary">
           Are you a PRO firm?{' '}
-          <Link className="cell__link" href="/register/pro">
-            Book the platform demo <span aria-hidden="true">↗</span>
+          <Link className="cell__link" href="/pro">
+            See the platform for PRO firms <span aria-hidden="true">↗</span>
           </Link>
         </p>
       </div>

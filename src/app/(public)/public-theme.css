@@ -2658,11 +2658,607 @@
   border-radius: var(--r-md);
 }
 
+/* ========================================================================
+   Bento grid — 6-tile product surface preview (BentoGridSection).
+   Tiles are CSS/JSX mockups. One tile carries a CSS micro-loop.
+   ======================================================================== */
+.site-public .bento-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+@media (min-width: 768px) {
+  .site-public .bento-grid {
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: minmax(180px, auto);
+    gap: var(--sp-3);
+  }
+  .site-public .bento-tile--feature {
+    grid-column: span 7;
+    grid-row: span 2;
+  }
+  .site-public .bento-tile--renewals {
+    grid-column: span 5;
+  }
+  .site-public .bento-tile--docs {
+    grid-column: span 5;
+  }
+  .site-public .bento-tile--tenant {
+    grid-column: span 4;
+  }
+  .site-public .bento-tile--audit {
+    grid-column: span 4;
+  }
+  .site-public .bento-tile--pay {
+    grid-column: span 4;
+  }
+}
+.site-public .bento-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  background: var(--paper);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.site-public .bento-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--zinc-300);
+}
+.site-public .bento-tile__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.site-public .bento-tile__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+.site-public .bento-tile__live {
+  margin-inline-start: auto;
+  font-size: var(--fs-12);
+  color: var(--zinc-500);
+  padding: 2px 8px;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-pill);
+}
+.site-public .bento-tile__title {
+  font-size: var(--fs-20);
+  letter-spacing: -0.02em;
+  margin: 4px 0 var(--sp-2);
+}
+
+/* Tile A — Kanban with micro-loop */
+.site-public .bento-kanban {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+  flex: 1;
+  min-height: 220px;
+}
+.site-public .bento-kanban__col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sp-2);
+  background: var(--zinc-50);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+}
+.site-public .bento-kanban__col header {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-12);
+  color: var(--zinc-600);
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--pb-border);
+}
+.site-public .bento-kanban__card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--paper);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-13);
+}
+.site-public .bento-kanban__card--ghost {
+  min-height: 38px;
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--zinc-200);
+}
+.site-public .bento-kanban__card--won {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.site-public .bento-kanban__name {
+  font-weight: 600;
+  color: var(--ink);
+}
+.site-public .bento-kanban__meta {
+  font-size: var(--fs-12);
+  color: var(--zinc-500);
+}
+.site-public .bento-kanban__card--mover {
+  animation: bento-kanban-loop 6s var(--ease) infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes bento-kanban-loop {
+  0%,
+  10% {
+    transform: translate(-115%, -42px);
+    opacity: 0.95;
+    box-shadow: 0 8px 24px oklch(0 0 0 / 0.08);
+  }
+  35%,
+  65% {
+    transform: translate(0, 0);
+    opacity: 1;
+    box-shadow: 0 4px 12px oklch(0 0 0 / 0.06);
+  }
+  90%,
+  100% {
+    transform: translate(115%, 56px);
+    opacity: 0;
+    box-shadow: none;
+  }
+}
+
+/* Tile B — Renewal toasts */
+.site-public .bento-toasts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+}
+.site-public .bento-toast {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--pb-border);
+  border-left-width: 3px;
+  border-radius: var(--r-sm);
+}
+.site-public .bento-toast--danger {
+  border-left-color: var(--accent);
+}
+.site-public .bento-toast--warn {
+  border-left-color: oklch(0.78 0.14 80);
+}
+.site-public .bento-toast--ok {
+  border-left-color: oklch(0.7 0.15 145);
+}
+.site-public .bento-toast__mark {
+  font-size: var(--fs-12);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--zinc-100);
+  color: var(--zinc-700);
+  flex-shrink: 0;
+}
+.site-public .bento-toast__title {
+  display: block;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--ink);
+}
+.site-public .bento-toast__sub {
+  display: block;
+  font-size: var(--fs-12);
+  color: var(--zinc-500);
+}
+
+/* Tile C — Document vault */
+.site-public .bento-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.site-public .bento-docs li {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 10px;
+  background: var(--paper);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-13);
+}
+.site-public .bento-docs__type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.site-public .bento-docs__type--pdf {
+  background: oklch(0.96 0.04 25);
+  color: oklch(0.45 0.18 25);
+}
+.site-public .bento-docs__type--img {
+  background: oklch(0.95 0.04 220);
+  color: oklch(0.45 0.16 235);
+}
+.site-public .bento-docs__type--doc {
+  background: oklch(0.95 0.03 260);
+  color: oklch(0.42 0.16 270);
+}
+.site-public .bento-docs__name {
+  color: var(--zinc-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.site-public .bento-docs__ver {
+  font-size: var(--fs-12);
+  color: var(--zinc-500);
+  padding: 2px 6px;
+  border: 1px solid var(--pb-border);
+  border-radius: 4px;
+}
+
+/* Tile D — Tenant switcher */
+.site-public .bento-tenant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+}
+.site-public .bento-tenant__active {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: 10px;
+  background: var(--zinc-50);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+}
+.site-public .bento-tenant__name {
+  display: block;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--ink);
+}
+.site-public .bento-tenant__sub {
+  display: block;
+  font-size: var(--fs-12);
+  color: var(--zinc-500);
+}
+.site-public .bento-tenant__pill {
+  font-size: var(--fs-12);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.site-public .bento-tenant__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--zinc-100);
+  border: 1px solid var(--pb-border);
+  font-weight: 700;
+  font-size: var(--fs-13);
+  color: var(--zinc-700);
+}
+.site-public .bento-tenant__avatar::before {
+  content: attr(data-letter);
+}
+.site-public .bento-tenant__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.site-public .bento-tenant__list li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px;
+  font-size: var(--fs-13);
+  color: var(--zinc-600);
+  border-radius: var(--r-sm);
+}
+.site-public .bento-tenant__list li:hover {
+  background: var(--zinc-50);
+}
+
+/* Tile E — Audit feed */
+.site-public .bento-audit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.site-public .bento-audit li {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--paper);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-13);
+}
+.site-public .bento-audit__time {
+  font-size: var(--fs-12);
+  color: var(--zinc-500);
+}
+.site-public .bento-audit__actor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--zinc-700);
+}
+.site-public .bento-audit__verb {
+  font-size: var(--fs-12);
+  color: var(--accent-ink);
+  padding: 2px 8px;
+  background: var(--accent-soft);
+  border-radius: var(--r-pill);
+}
+
+/* Tile F — Invoice */
+.site-public .bento-invoice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+  padding: var(--sp-3);
+  background: var(--zinc-50);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+}
+.site-public .bento-invoice header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.site-public .bento-invoice__id {
+  font-size: var(--fs-12);
+  color: var(--zinc-600);
+}
+.site-public .bento-invoice__paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-12);
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  background: oklch(0.95 0.06 145);
+  color: oklch(0.42 0.15 145);
+  font-weight: 600;
+}
+.site-public .bento-invoice__amount {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.site-public .bento-invoice__currency {
+  font-size: var(--fs-14);
+  color: var(--zinc-500);
+}
+.site-public .bento-invoice__value {
+  font-size: var(--fs-40);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  line-height: 1;
+}
+.site-public .bento-invoice footer {
+  font-size: var(--fs-12);
+  color: var(--zinc-500);
+}
+
+/* ========================================================================
+   Annotated showcase — centered product mock + floating callout chips.
+   ======================================================================== */
+.site-public .annotated-showcase {
+  position: relative;
+  margin-top: var(--sp-4);
+  padding: var(--sp-5) 0;
+}
+.site-public .annotated-showcase__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: none;
+}
+.site-public .annotated-showcase__lines line {
+  stroke: var(--zinc-300);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  fill: none;
+}
+.site-public .annotated-chip {
+  display: none;
+  position: absolute;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--paper);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-13);
+  color: var(--ink);
+  white-space: nowrap;
+  box-shadow: 0 4px 16px oklch(0 0 0 / 0.06);
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}
+.site-public .annotated-chip svg {
+  color: var(--accent-ink);
+}
+
+@media (min-width: 1024px) {
+  .site-public .annotated-showcase {
+    min-height: 540px;
+  }
+  .site-public .annotated-showcase__lines {
+    display: block;
+  }
+  .site-public .annotated-chip {
+    display: inline-flex;
+  }
+  .site-public .annotated-mobile-list {
+    display: none;
+  }
+}
+
+/* Mock — estimator result */
+.site-public .annotated-mock {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  box-shadow: 0 12px 40px oklch(0 0 0 / 0.06);
+}
+.site-public .annotated-mock__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--pb-border);
+}
+.site-public .annotated-mock__title {
+  font-size: var(--fs-20);
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+}
+.site-public .annotated-mock__title .mono {
+  color: var(--zinc-500);
+  font-weight: 400;
+}
+.site-public .annotated-mock__save {
+  font-size: var(--fs-12);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.site-public .annotated-mock__table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--sp-3);
+}
+.site-public .annotated-mock__table th,
+.site-public .annotated-mock__table td {
+  padding: 10px 0;
+  text-align: start;
+  font-size: var(--fs-14);
+  color: var(--zinc-700);
+  border-bottom: 1px dashed var(--pb-border);
+}
+.site-public .annotated-mock__table th[scope='col']:last-child,
+.site-public .annotated-mock__table td:last-child {
+  text-align: end;
+}
+.site-public .annotated-mock__table thead th {
+  font-size: var(--fs-12);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--zinc-500);
+  font-weight: 600;
+}
+.site-public .annotated-mock__table tfoot th,
+.site-public .annotated-mock__table tfoot td {
+  font-size: var(--fs-17);
+  font-weight: 700;
+  color: var(--ink);
+  border-bottom: 0;
+  padding-top: var(--sp-3);
+}
+.site-public .annotated-mock__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--pb-border);
+}
+.site-public .annotated-mock__note {
+  font-size: var(--fs-13);
+  color: var(--zinc-500);
+}
+.site-public .annotated-mock__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+/* Mobile fallback list — replaces chips below 1024px */
+.site-public .annotated-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 640px;
+  margin: var(--sp-4) auto 0;
+  padding-inline-start: var(--sp-3);
+}
+.site-public .annotated-mobile-list li {
+  position: relative;
+  padding-inline-start: var(--sp-3);
+  font-size: var(--fs-14);
+  color: var(--zinc-700);
+}
+.site-public .annotated-mobile-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .site-public.reveal-on .reveal,
   .site-public.reveal-on .rise__i {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+  .site-public .bento-kanban__card--mover {
+    animation: none;
+    transform: none;
   }
 }

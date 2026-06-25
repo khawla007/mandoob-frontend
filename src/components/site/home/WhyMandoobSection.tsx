@@ -12,75 +12,75 @@ export function WhyMandoobSection() {
       <div className="container">
         <div className="why-row" data-reveal-cards>
           <article className="cell cell--why reveal">
-            <h3>Built for UAE</h3>
-            <p>Aligned to PDPL, MOHRE, GDRFA, ICP, DED.</p>
+            <h3>Set up in 7 to 14 days</h3>
+            <p>Mainland, Free Zone, or Offshore — no flights, no chasing officials.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h3>Replaces 6 tools</h3>
-            <p>WhatsApp, Excel, Drive, invoices, CRM, reminders.</p>
+            <h3>Real cost, up front</h3>
+            <p>Every government fee itemized before you commit. No mark-ups, no surprises.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h3>Audit-grade</h3>
-            <p>Immutable log, exportable for legal review.</p>
+            <h3>Compliance done for you</h3>
+            <p>Visas, Emirates ID, renewals tracked and alerted so you never pay a late fine.</p>
           </article>
           <article className="cell cell--why reveal">
-            <h3>White-label ready</h3>
-            <p>Custom subdomain, logo, sender per firm.</p>
+            <h3>One workspace, end to end</h3>
+            <p>Documents, signatures, invoices, and updates — all in your customer portal.</p>
           </article>
         </div>
         <div
           className="cell compare reveal"
           tabIndex={0}
           role="region"
-          aria-label="Mandoob vs Manual vs Generic SaaS comparison"
+          aria-label="Mandoob vs DIY vs Generic agency comparison"
         >
           <table className="compare__table">
             <caption className="visually-hidden">
-              Mandoob versus manual processes versus generic SaaS
+              Mandoob versus doing it yourself versus a generic agency
             </caption>
             <thead>
               <tr>
-                <th scope="col">Capability</th>
+                <th scope="col">What you get</th>
                 <th scope="col" className="us">
                   Mandoob
                 </th>
-                <th scope="col">Manual</th>
-                <th scope="col">Generic SaaS</th>
+                <th scope="col">DIY</th>
+                <th scope="col">Generic agency</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>UAE license tracking</td>
+                <td>Itemized cost estimate before you commit</td>
                 <td className="us yes">✓</td>
                 <td className="dash">—</td>
                 <td className="dash">—</td>
               </tr>
               <tr>
-                <td>Automated renewal alerts</td>
+                <td>Automated visa + EID + renewal alerts</td>
                 <td className="us yes">✓</td>
                 <td className="dash">—</td>
                 <td className="dash">—</td>
               </tr>
               <tr>
-                <td>Tenant isolation (RLS)</td>
+                <td>Document vault with version history</td>
                 <td className="us yes">✓</td>
                 <td className="dash">—</td>
                 <td className="dash">—</td>
               </tr>
               <tr>
-                <td>White-label portal</td>
+                <td>Customer portal — track every step</td>
                 <td className="us yes">✓</td>
                 <td className="dash">—</td>
                 <td className="dash">—</td>
               </tr>
               <tr>
-                <td>Audit log + PDPL</td>
+                <td>Zero AED 25/day late-renewal fines</td>
                 <td className="us yes">✓</td>
                 <td className="dash">—</td>
                 <td className="dash">—</td>
               </tr>
               <tr>
-                <td>Cost estimator</td>
+                <td>Full PDPL-compliant data handling</td>
                 <td className="us yes">✓</td>
                 <td className="dash">—</td>
                 <td className="dash">—</td>

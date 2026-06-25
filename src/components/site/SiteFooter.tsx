@@ -5,8 +5,8 @@ const cols = [
     heading: 'Product',
     links: [
       { href: '/estimate', label: 'Estimator' },
-      { href: '/#pro-suite', label: 'Platform' },
-      { href: '/#why-h', label: 'White-label' },
+      { href: '/apply', label: 'Start Application' },
+      { href: '/pro', label: 'For PRO firms' },
       { href: '/pricing', label: 'Pricing' },
     ],
   },

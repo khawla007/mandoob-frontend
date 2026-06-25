@@ -11,31 +11,34 @@ export function CustomersSection() {
       </div>
       <div className="container">
         <div className="quote-row cards-stagger" data-reveal-cards>
+          {/* TODO: replace placeholder testimonials with real customer quotes once collected. */}
           <blockquote className="cell cell--quotelg reveal">
             <p>
-              &ldquo;Renewed 47 licences last month with zero late fines. The renewal calendar alone
-              paid for the annual subscription twice over.&rdquo;
+              &ldquo;Set up our Mainland LLC from London in 11 days. The estimator showed every
+              government fee up front — final invoice matched the quote to the dirham.&rdquo;
             </p>
             <footer>
-              <span className="mono">SA</span> Sarah Al Marri · PRO Manager · Horizon, Dubai
+              <span className="mono">JK</span> Jonas Keller · Founder · Linthos Trading
             </footer>
           </blockquote>
           <blockquote className="cell cell--quotesm reveal">
-            <p>&ldquo;Set up an IFZA company from Berlin in 9 days. No flights.&rdquo;</p>
+            <p>
+              &ldquo;IFZA Free Zone company live in 9 days. Zero flights, zero surprises.&rdquo;
+            </p>
             <footer>
-              <span className="mono">JK</span> Jonas Keller · Founder · Linthos
+              <span className="mono">PR</span> Priya Ramesh · Founder · Saffron Studio
             </footer>
           </blockquote>
           <blockquote className="cell cell--quotesm reveal">
-            <p>&ldquo;The audit log sold our compliance team instantly.&rdquo;</p>
+            <p>&ldquo;Renewal alerts kicked in 90 days out. Saved us the AED 25/day fine.&rdquo;</p>
             <footer>
-              <span className="mono">FH</span> Fatima Hussein · Counsel · Naseej
+              <span className="mono">OB</span> Omar Bensalem · Director · Mira Holdings
             </footer>
           </blockquote>
           <blockquote className="cell cell--quotesm reveal">
-            <p>&ldquo;Replaced WhatsApp, Excel, and a CRM with one workspace.&rdquo;</p>
+            <p>&ldquo;Visas, EID, and Ejari — all tracked in one portal. Felt in control.&rdquo;</p>
             <footer>
-              <span className="mono">AK</span> Ahmed Khalifa · Partner · Khalifa Consultants
+              <span className="mono">LC</span> Lina Chen · Co-founder · Northstar Logistics
             </footer>
           </blockquote>
         </div>
