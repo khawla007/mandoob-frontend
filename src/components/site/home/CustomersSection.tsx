@@ -1,3 +1,6 @@
+const dicebear = (seed: string) =>
+  `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f3f4f6&radius=50`;
+
 export function CustomersSection() {
   return (
     <section id="customers" className="section" aria-labelledby="cust-h">
@@ -42,8 +45,9 @@ export function CustomersSection() {
             <span className="qchip qchip--accent">11 days · zero variance</span>
           </div>
           <footer className="qfeature__foot">
-            <span className="qavatar" aria-hidden="true">
-              JK
+            <span className="qavatar qavatar--photo" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={dicebear('Jonas Keller')} alt="" width={44} height={44} />
             </span>
             <span className="qwho">
               <strong>Jonas Keller</strong>
@@ -63,8 +67,9 @@ export function CustomersSection() {
               <span className="qchip qchip--accent">9 days</span>
             </div>
             <footer className="qcard__foot">
-              <span className="qavatar" aria-hidden="true">
-                PR
+              <span className="qavatar qavatar--photo" aria-hidden="true">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={dicebear('Priya Ramesh')} alt="" width={36} height={36} />
               </span>
               <span className="qwho">
                 <strong>Priya Ramesh</strong>
@@ -82,8 +87,9 @@ export function CustomersSection() {
               <span className="qchip qchip--accent">AED 25/day saved</span>
             </div>
             <footer className="qcard__foot">
-              <span className="qavatar" aria-hidden="true">
-                OB
+              <span className="qavatar qavatar--photo" aria-hidden="true">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={dicebear('Omar Bensalem')} alt="" width={36} height={36} />
               </span>
               <span className="qwho">
                 <strong>Omar Bensalem</strong>
@@ -101,8 +107,9 @@ export function CustomersSection() {
               <span className="qchip qchip--accent">1 portal</span>
             </div>
             <footer className="qcard__foot">
-              <span className="qavatar" aria-hidden="true">
-                LC
+              <span className="qavatar qavatar--photo" aria-hidden="true">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={dicebear('Lina Chen')} alt="" width={36} height={36} />
               </span>
               <span className="qwho">
                 <strong>Lina Chen</strong>

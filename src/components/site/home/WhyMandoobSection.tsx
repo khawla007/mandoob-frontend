@@ -1,3 +1,5 @@
+import { SplitImageContent } from '@/components/site/SplitImageContent';
+
 export function WhyMandoobSection() {
   return (
     <section className="section" aria-labelledby="why-h">
@@ -10,24 +12,44 @@ export function WhyMandoobSection() {
         </header>
       </div>
       <div className="container">
-        <div className="why-row" data-reveal-cards>
-          <article className="cell cell--why reveal">
-            <h3>Set up in 7 to 14 days</h3>
-            <p>Mainland, Free Zone, or Offshore — no flights, no chasing officials.</p>
-          </article>
-          <article className="cell cell--why reveal">
-            <h3>Real cost, up front</h3>
-            <p>Every government fee itemized before you commit. No mark-ups, no surprises.</p>
-          </article>
-          <article className="cell cell--why reveal">
-            <h3>Compliance done for you</h3>
-            <p>Visas, Emirates ID, renewals tracked and alerted so you never pay a late fine.</p>
-          </article>
-          <article className="cell cell--why reveal">
-            <h3>One workspace, end to end</h3>
-            <p>Documents, signatures, invoices, and updates — all in your customer portal.</p>
-          </article>
-        </div>
+        <SplitImageContent
+          reverse
+          mediaTone="soft"
+          media={
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="https://illustrations.popsy.co/orange/remote-work.svg"
+              alt="Illustration of a founder running UAE company setup remotely from a laptop"
+              className="split-showcase__illust"
+              loading="lazy"
+              decoding="async"
+            />
+          }
+        >
+          <span className="split-showcase__eyebrow">Why founders pick Mandoob</span>
+          <h3 className="split-showcase__title">
+            A single workspace for setup, compliance, and renewals — without the chase.
+          </h3>
+          <ul className="split-showcase__list">
+            <li>
+              <h3>Set up in 7 to 14 days</h3>
+              <p>Mainland, Free Zone, or Offshore — no flights, no chasing officials.</p>
+            </li>
+            <li>
+              <h3>Real cost, up front</h3>
+              <p>Every government fee itemized before you commit. No mark-ups, no surprises.</p>
+            </li>
+            <li>
+              <h3>Compliance done for you</h3>
+              <p>Visas, Emirates ID, renewals tracked and alerted so you never pay a late fine.</p>
+            </li>
+            <li>
+              <h3>One workspace, end to end</h3>
+              <p>Documents, signatures, invoices, and updates — all in your customer portal.</p>
+            </li>
+          </ul>
+        </SplitImageContent>
+
         <div
           className="cell compare reveal"
           tabIndex={0}
