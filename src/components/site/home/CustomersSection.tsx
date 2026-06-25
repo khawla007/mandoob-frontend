@@ -3,7 +3,7 @@ export function CustomersSection() {
     <section id="customers" className="section" aria-labelledby="cust-h">
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">07 · Customers</span>
+          <span className="eyebrow">06 · Customers</span>
           <h2 id="cust-h" className="h2">
             Trusted by people who can&apos;t get it wrong.
           </h2>

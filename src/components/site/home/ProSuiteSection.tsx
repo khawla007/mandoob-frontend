@@ -5,7 +5,7 @@ export function ProSuiteSection() {
     <section id="pro-suite" className="section" aria-labelledby="suite-h">
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">03 · Platform</span>
+          <span className="eyebrow">01 · Platform</span>
           <h2 id="suite-h" className="h2">
             Built for PROs managing 50 to 5,000 clients.
           </h2>

@@ -4,7 +4,7 @@ export function ProFinalCtaSection() {
   return (
     <section className="cta-section" aria-labelledby="pro-cta-h">
       <div className="cta-section__inner reveal container">
-        <span className="eyebrow">06 · Get started</span>
+        <span className="eyebrow">04 · Get started</span>
         <h2 id="pro-cta-h" className="display display--cta">
           Ready to operate at scale?
         </h2>

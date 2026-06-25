@@ -3,7 +3,7 @@ export function WhyMandoobSection() {
     <section className="section" aria-labelledby="why-h">
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">06 · Why Mandoob</span>
+          <span className="eyebrow">04 · Why Mandoob</span>
           <h2 id="why-h" className="h2">
             Confident, restrained, built for UAE.
           </h2>

@@ -3,7 +3,7 @@ export function FlowSection() {
     <section id="flow" className="section" aria-labelledby="flow-h">
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">05 · How it works</span>
+          <span className="eyebrow">03 · How it works</span>
           <h2 id="flow-h" className="h2">
             From idea to trade license in 7–14 days.
           </h2>

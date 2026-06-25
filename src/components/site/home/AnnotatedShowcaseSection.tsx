@@ -44,9 +44,9 @@ export function AnnotatedShowcaseSection() {
     >
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">07 · See it before you buy</span>
+          <span className="eyebrow">05 · Inside an estimate</span>
           <h2 id="annotated-h" className="h2">
-            Real costs. No surprises.
+            Anatomy of an itemized estimate.
           </h2>
         </header>
       </div>

@@ -5,7 +5,7 @@ export function DashboardSection() {
     <section id="dashboard" className="showcase" aria-labelledby="show-h">
       <div className="container">
         <header className="section__head section__head--inv reveal">
-          <span className="eyebrow eyebrow--inv">04 · Dashboard</span>
+          <span className="eyebrow eyebrow--inv">02 · Dashboard</span>
           <h2 id="show-h" className="h2 h2--inv">
             One dashboard. Every client.
           </h2>

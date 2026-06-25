@@ -14,7 +14,7 @@ export function BentoGridSection() {
     <section id="bento" className="section" aria-labelledby="bento-h">
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">06 · Inside the product</span>
+          <span className="eyebrow">03 · Inside the product</span>
           <h2 id="bento-h" className="h2">
             Every workflow a PRO firm runs, in one place.
           </h2>
