@@ -63,8 +63,8 @@ export async function SiteHeader() {
   const navLinks = [
     { href: '/#services', label: 'Platform' },
     { href: '/estimate', label: tSite('estimate') },
-    { href: '/#pro-suite', label: 'Solutions' },
     { href: '/#customers', label: 'Customers' },
+    { href: '/pro', label: 'For PRO firms' },
     { href: '/pricing', label: tSite('pricing') },
   ];
 
