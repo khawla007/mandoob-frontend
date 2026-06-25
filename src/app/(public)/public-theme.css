@@ -1616,6 +1616,17 @@
     border-inline-end: 0;
   }
 }
+.site-public .flow__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent, var(--ink));
+  margin-bottom: var(--sp-2);
+}
+.site-public .flow__icon svg {
+  width: 22px;
+  height: 22px;
+}
 .site-public .flow__num {
   display: block;
   font-size: clamp(2.5rem, 9vw, var(--fs-80));
@@ -1736,7 +1747,10 @@
 }
 
 /* ---------- 13. TESTIMONIALS ---------- */
-.site-public .customers-stack > * + * {
+/* Doubled .customers-stack class bumps specificity above per-child margin
+   resets (.qfeature { margin: 0 }) which would otherwise win on source
+   order and collapse the gap between proof-strip and the featured quote. */
+.site-public .customers-stack.customers-stack > * + * {
   margin-top: var(--sp-5);
 }
 .site-public .section__lede {
@@ -1824,6 +1838,21 @@
   color: var(--accent-ink);
   opacity: 0.14;
   pointer-events: none;
+}
+.site-public .qfeature::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 120px;
+  background-color: var(--ink);
+  -webkit-mask: url('/decor/dubai-skyline.svg') bottom center / cover no-repeat;
+  mask: url('/decor/dubai-skyline.svg') bottom center / cover no-repeat;
+  opacity: 0.06;
+  pointer-events: none;
+}
+.site-public .qfeature > * {
+  position: relative;
+  z-index: 1;
 }
 .site-public .qfeature__quote {
   position: relative;
@@ -1939,6 +1968,11 @@
   background: var(--paper);
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  object-fit: cover;
+}
+.site-public img.qavatar {
+  object-fit: cover;
 }
 .site-public .qfeature .qavatar {
   width: 44px;

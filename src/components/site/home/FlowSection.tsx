@@ -1,3 +1,5 @@
+import { Calculator, FileText, Handshake, ShieldCheck } from 'lucide-react';
+
 export function FlowSection() {
   return (
     <section id="flow" className="section" aria-labelledby="flow-h">
@@ -12,6 +14,9 @@ export function FlowSection() {
       <div className="container">
         <ol className="flow" data-reveal-cards>
           <li className="flow__cell reveal">
+            <span className="flow__icon" aria-hidden="true">
+              <FileText size={22} strokeWidth={1.75} />
+            </span>
             <span className="flow__num mono" aria-hidden="true">
               01
             </span>
@@ -19,6 +24,9 @@ export function FlowSection() {
             <p>10-minute dynamic questionnaire, branched by ownership and activity.</p>
           </li>
           <li className="flow__cell reveal">
+            <span className="flow__icon" aria-hidden="true">
+              <Calculator size={22} strokeWidth={1.75} />
+            </span>
             <span className="flow__num mono" aria-hidden="true">
               02
             </span>
@@ -26,6 +34,9 @@ export function FlowSection() {
             <p>Itemized AED quote across DED, free zone, MOHRE, GDRFA, ICP, PRO.</p>
           </li>
           <li className="flow__cell reveal">
+            <span className="flow__icon" aria-hidden="true">
+              <Handshake size={22} strokeWidth={1.75} />
+            </span>
             <span className="flow__num mono" aria-hidden="true">
               03
             </span>
@@ -33,6 +44,9 @@ export function FlowSection() {
             <p>A licensed PRO firm picks up your file. Shared dashboard, signed docs.</p>
           </li>
           <li className="flow__cell reveal">
+            <span className="flow__icon" aria-hidden="true">
+              <ShieldCheck size={22} strokeWidth={1.75} />
+            </span>
             <span className="flow__num mono" aria-hidden="true">
               04
             </span>

@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export function CustomersSection() {
   return (
     <section id="customers" className="section" aria-labelledby="cust-h">
@@ -42,9 +44,15 @@ export function CustomersSection() {
             <span className="qchip qchip--accent">11 days · zero variance</span>
           </div>
           <footer className="qfeature__foot">
-            <span className="qavatar" aria-hidden="true">
-              JK
-            </span>
+            <Image
+              className="qavatar"
+              src="/customers/jonas-keller.svg"
+              alt=""
+              width={44}
+              height={44}
+              unoptimized
+              aria-hidden="true"
+            />
             <span className="qwho">
               <strong>Jonas Keller</strong>
               <span>Founder · Linthos Trading</span>
@@ -63,9 +71,15 @@ export function CustomersSection() {
               <span className="qchip qchip--accent">9 days</span>
             </div>
             <footer className="qcard__foot">
-              <span className="qavatar" aria-hidden="true">
-                PR
-              </span>
+              <Image
+                className="qavatar"
+                src="/customers/priya-ramesh.svg"
+                alt=""
+                width={36}
+                height={36}
+                unoptimized
+                aria-hidden="true"
+              />
               <span className="qwho">
                 <strong>Priya Ramesh</strong>
                 <span>Founder · Saffron Studio</span>
@@ -82,9 +96,15 @@ export function CustomersSection() {
               <span className="qchip qchip--accent">AED 25/day saved</span>
             </div>
             <footer className="qcard__foot">
-              <span className="qavatar" aria-hidden="true">
-                OB
-              </span>
+              <Image
+                className="qavatar"
+                src="/customers/omar-bensalem.svg"
+                alt=""
+                width={36}
+                height={36}
+                unoptimized
+                aria-hidden="true"
+              />
               <span className="qwho">
                 <strong>Omar Bensalem</strong>
                 <span>Director · Mira Holdings</span>
@@ -101,9 +121,15 @@ export function CustomersSection() {
               <span className="qchip qchip--accent">1 portal</span>
             </div>
             <footer className="qcard__foot">
-              <span className="qavatar" aria-hidden="true">
-                LC
-              </span>
+              <Image
+                className="qavatar"
+                src="/customers/lina-chen.svg"
+                alt=""
+                width={36}
+                height={36}
+                unoptimized
+                aria-hidden="true"
+              />
               <span className="qwho">
                 <strong>Lina Chen</strong>
                 <span>Co-founder · Northstar Logistics</span>
