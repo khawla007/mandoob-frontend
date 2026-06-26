@@ -4,14 +4,6 @@ export function WhyMandoobSection() {
   return (
     <section className="section" aria-labelledby="why-h">
       <div className="container">
-        <header className="section__head reveal">
-          <span className="eyebrow">04 · Why Mandoob</span>
-          <h2 id="why-h" className="h2">
-            Confident, restrained, built for UAE.
-          </h2>
-        </header>
-      </div>
-      <div className="container">
         <SplitImageContent
           reverse
           mediaTone="soft"
@@ -26,6 +18,10 @@ export function WhyMandoobSection() {
             />
           }
         >
+          <span className="eyebrow">04 · Why Mandoob</span>
+          <h2 id="why-h" className="h2">
+            Confident, restrained, built for UAE.
+          </h2>
           <span className="split-showcase__eyebrow">Why founders pick Mandoob</span>
           <h3 className="split-showcase__title">
             A single workspace for setup, compliance, and renewals — without the chase.
