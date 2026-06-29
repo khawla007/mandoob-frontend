@@ -21,10 +21,6 @@ export function FlowSection() {
           <h2 id="flow-h" className="h2">
             From idea to trade license in 7–14 days.
           </h2>
-          <span className="split-showcase__eyebrow">Four steps, fully tracked</span>
-          <h3 className="split-showcase__title">
-            Submit once. We carry it from estimate to license.
-          </h3>
           <ol className="split-showcase__list split-showcase__list--steps">
             <li>
               <span className="flow__num mono" aria-hidden="true">

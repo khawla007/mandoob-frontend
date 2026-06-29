@@ -14,7 +14,7 @@ export default async function EstimatePage() {
   const authorities = uniqueAuthorities();
 
   return (
-    <section className="section" aria-labelledby="estimate-page-h">
+    <section className="section section--estimate" aria-labelledby="estimate-page-h">
       <div className="container">
         <header className="section__head">
           <span className="eyebrow">{t('pageEyebrow')}</span>

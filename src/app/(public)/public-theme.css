@@ -242,6 +242,9 @@
 .site-public .eyebrow--inv {
   color: var(--zinc-400);
 }
+.site-public .eyebrow--accent {
+  color: var(--accent-ink);
+}
 .site-public .mono {
   font-family: var(--mono-font);
   font-variant-numeric: tabular-nums;
@@ -667,6 +670,19 @@
 }
 .site-public .section--flush {
   padding-block: 0;
+}
+.site-public .section--estimate {
+  padding-block: 48px;
+}
+@media (min-width: 768px) {
+  .site-public .section--estimate {
+    padding-block: 64px;
+  }
+}
+@media (min-width: 1024px) {
+  .site-public .section--estimate {
+    padding-block: 96px;
+  }
 }
 .site-public .section__head {
   max-width: 760px;
@@ -2185,6 +2201,7 @@
 /* ---------- 15. FOOTER ---------- */
 .site-public .footer {
   padding-top: var(--sp-6);
+  border-top: 1px solid var(--pb-border);
 }
 .site-public .footer__grid {
   display: grid;
