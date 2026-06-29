@@ -18,7 +18,7 @@ export function WhyMandoobSection() {
             />
           }
         >
-          <span className="eyebrow">04 · Why Mandoob</span>
+          <span className="eyebrow eyebrow--accent">04 · Why Mandoob</span>
           <h2 id="why-h" className="h2">
             Confident, restrained, built for UAE.
           </h2>

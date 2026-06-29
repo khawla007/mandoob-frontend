@@ -17,7 +17,7 @@ export function FlowSection() {
             />
           }
         >
-          <span className="eyebrow">03 · How it works</span>
+          <span className="eyebrow eyebrow--accent">03 · How it works</span>
           <h2 id="flow-h" className="h2">
             From idea to trade license in 7–14 days.
           </h2>

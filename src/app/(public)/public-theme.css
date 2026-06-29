@@ -820,6 +820,9 @@
 .site-public #estimator .eyebrow {
   color: var(--zinc-600); /* a11y: lift muted label to 4.5:1 on --paper */
 }
+.site-public #estimator .eyebrow--accent {
+  color: var(--accent-ink);
+}
 .site-public .est__tabs {
   display: flex;
   border-bottom: 1px solid var(--pb-border);
@@ -3449,6 +3452,30 @@
   stroke-dasharray: 4 4;
   fill: none;
 }
+.site-public.reveal-on .annotated-showcase__lines line {
+  opacity: 0;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-showcase__lines line {
+  opacity: 1;
+  transition-delay: 0.35s;
+  animation: annotated-line-flow 14s linear infinite;
+  animation-delay: 1s;
+}
+@keyframes annotated-line-flow {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-showcase__lines line:nth-child(2) {
+  transition-delay: 0.45s;
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-showcase__lines line:nth-child(3) {
+  transition-delay: 0.55s;
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-showcase__lines line:nth-child(4) {
+  transition-delay: 0.65s;
+}
 .site-public .annotated-chip {
   display: none;
   position: absolute;
@@ -3467,6 +3494,61 @@
 }
 .site-public .annotated-chip svg {
   color: var(--accent-ink);
+}
+.site-public.reveal-on .annotated-chip {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 10px));
+  will-change: opacity, transform;
+}
+@keyframes annotated-chip-enter {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+@keyframes annotated-chip-bob {
+  0%,
+  100% {
+    transform: translate(-50%, calc(-50% - 3px));
+  }
+  50% {
+    transform: translate(-50%, calc(-50% + 3px));
+  }
+}
+@keyframes annotated-sparkle-twinkle {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-chip {
+  animation:
+    annotated-chip-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    annotated-chip-bob 5s ease-in-out infinite alternate;
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-chip:nth-of-type(1) {
+  animation-delay: 0.45s, 1.45s;
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-chip:nth-of-type(2) {
+  animation-delay: 0.55s, 1s;
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-chip:nth-of-type(3) {
+  animation-delay: 0.65s, 1.8s;
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-chip:nth-of-type(4) {
+  animation-delay: 0.75s, 1.25s;
+}
+.site-public.reveal-on .annotated-showcase.is-in .annotated-chip svg {
+  animation: annotated-sparkle-twinkle 2.4s ease-in-out infinite;
 }
 
 @media (min-width: 1024px) {
@@ -3612,5 +3694,21 @@
   .site-public .bento-kanban__card--mover {
     animation: none;
     transform: none;
+  }
+  .site-public.reveal-on .annotated-chip,
+  .site-public.reveal-on .annotated-showcase.is-in .annotated-chip {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+    transition: none;
+    animation: none;
+  }
+  .site-public.reveal-on .annotated-showcase.is-in .annotated-chip svg {
+    animation: none;
+  }
+  .site-public.reveal-on .annotated-showcase__lines line,
+  .site-public.reveal-on .annotated-showcase.is-in .annotated-showcase__lines line {
+    opacity: 1;
+    transition: none;
+    animation: none;
   }
 }
