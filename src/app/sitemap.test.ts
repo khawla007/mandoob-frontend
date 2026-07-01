@@ -16,11 +16,32 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
   });
 
   assert.deepEqual(
-    ['/', '/estimate', '/apply', '/pricing', '/knowledge-base'].filter((path) => !paths(entries).includes(path)),
+    ['/', '/estimate', '/apply', '/pricing', '/knowledge-base', '/blog'].filter(
+      (path) => !paths(entries).includes(path),
+    ),
     [],
   );
   assert.ok(paths(entries).includes('/knowledge-base/mainland-vs-free-zone'));
   assert.ok(paths(entries).includes('/knowledge-base/uae-company-documents'));
+});
+
+test('public sitemap includes published blog posts with updated timestamps', () => {
+  const entries = buildPublicSitemap({
+    origin,
+    knowledgeBaseArticleSlugs: [],
+    blogPosts: [
+      {
+        slug: 'dubai-license-renewal',
+        updatedAt: '2026-07-01T10:30:00.000Z',
+      },
+    ],
+  });
+
+  const blogEntry = entries.find((entry) => entry.url === `${origin}/blog/dubai-license-renewal`);
+
+  assert.ok(paths(entries).includes('/blog'));
+  assert.ok(blogEntry);
+  assert.deepEqual(blogEntry.lastModified, new Date('2026-07-01T10:30:00.000Z'));
 });
 
 test('public sitemap covers every estimator authority company setup page', () => {
