@@ -629,10 +629,9 @@
 }
 .site-public .blog-hero__inner {
   min-height: 520px;
-  padding-block: var(--sp-8) var(--sp-7);
+  padding-block: var(--sp-8) var(--sp-6);
   display: grid;
   align-content: end;
-  gap: var(--sp-6);
 }
 .site-public .blog-hero__copy {
   max-width: 760px;
@@ -649,19 +648,34 @@
   margin-top: var(--sp-5);
   color: var(--blog-hero-muted);
 }
-.site-public .blog-hero__rail {
+.site-public .blog-hero-summary {
+  --blog-hero-paper: oklch(0.995 0.004 45);
+  --blog-hero-ink: oklch(0.18 0.01 45);
+  --blog-hero-muted: oklch(0.435 0.011 45);
+  --blog-hero-border: oklch(0.895 0.01 45);
+  margin-bottom: var(--sp-7);
+  padding-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--blog-hero-border);
+  background: linear-gradient(
+    90deg,
+    var(--blog-hero-paper) 0%,
+    color-mix(in oklch, var(--blog-hero-paper) 94%, white) 42%,
+    color-mix(in oklch, var(--accent-soft) 76%, white) 100%
+  );
+}
+.site-public .blog-hero-summary__rail {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border-block: 1px solid var(--blog-hero-border);
   background: color-mix(in oklch, var(--blog-hero-paper) 72%, white);
 }
-.site-public .blog-hero__rail > div {
+.site-public .blog-hero-summary__rail > div {
   display: grid;
   gap: var(--sp-1);
   padding: var(--sp-4);
   border-inline-end: 1px solid var(--blog-hero-border);
 }
-.site-public .blog-hero__rail > div:last-child {
+.site-public .blog-hero-summary__rail > div:last-child {
   border-inline-end: 0;
 }
 .site-public .blog-hero__metric {
@@ -682,15 +696,17 @@
   .site-public .blog-hero__inner {
     min-height: 0;
     padding-block: var(--sp-7) var(--sp-6);
-    gap: var(--sp-5);
   }
-  .site-public .blog-hero__rail {
+  .site-public .blog-hero-summary {
+    padding-bottom: var(--sp-6);
+  }
+  .site-public .blog-hero-summary__rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .site-public .blog-hero__rail > div:nth-child(2) {
+  .site-public .blog-hero-summary__rail > div:nth-child(2) {
     border-inline-end: 0;
   }
-  .site-public .blog-hero__rail > div:nth-child(-n + 2) {
+  .site-public .blog-hero-summary__rail > div:nth-child(-n + 2) {
     border-bottom: 1px solid var(--blog-hero-border);
   }
 }
