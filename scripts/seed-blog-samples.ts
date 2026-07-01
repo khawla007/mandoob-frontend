@@ -57,7 +57,6 @@ const titles = [
   'How establishment cards fit the setup timeline',
   'Common delays in medical and Emirates ID steps',
   'Choosing between consultant and commercial activities',
-  'Post-incorporation tasks after license issuance',
 ];
 
 const basePublishedAt = new Date('2026-07-01T09:00:00.000Z');
