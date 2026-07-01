@@ -22,7 +22,8 @@ function toDateTimeLocal(value: string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 16);
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
 function termsByKind(terms: BlogTerm[], kind: BlogTermKind): BlogTerm[] {

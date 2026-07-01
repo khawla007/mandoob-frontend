@@ -58,7 +58,13 @@ export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | n
           )}
           <div className="flex items-center justify-between gap-2 p-2">
             <span className="text-muted-foreground truncate text-xs">{media.name ?? media.id}</span>
-            <Button type="button" size="icon-xs" variant="ghost" onClick={() => setMedia(null)}>
+            <Button
+              type="button"
+              size="icon-xs"
+              variant="ghost"
+              onClick={() => setMedia(null)}
+              aria-label="Remove featured image"
+            >
               <X />
             </Button>
           </div>
