@@ -655,13 +655,12 @@
   --blog-hero-muted: oklch(0.435 0.011 45);
   --blog-hero-border: oklch(0.895 0.01 45);
   margin-bottom: var(--sp-7);
-  padding-bottom: var(--sp-6);
   background: var(--blog-hero-paper);
 }
 .site-public .blog-hero-summary__rail {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-block: 1px solid var(--blog-hero-border);
+  border-bottom: 1px solid var(--blog-hero-border);
   background: color-mix(in oklch, var(--blog-hero-paper) 72%, white);
 }
 .site-public .blog-hero-summary__rail > div {
@@ -691,9 +690,6 @@
   .site-public .blog-hero__inner {
     min-height: 0;
     padding-block: var(--sp-7) var(--sp-6);
-  }
-  .site-public .blog-hero-summary {
-    padding-bottom: var(--sp-6);
   }
   .site-public .blog-hero-summary__rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
