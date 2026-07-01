@@ -1,5 +1,10 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+'use client';
+
+import { useState, useTransition, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { saveBlogTermAction, deleteBlogTermAction } from '@/app/admin/blog/actions';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,12 +23,84 @@ type BlogTaxonomyManagerProps = {
   terms: BlogTerm[];
 };
 
+type StatusMessage = {
+  type: 'success' | 'error';
+  title: string;
+  description: string;
+};
+
 export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<StatusMessage | null>(null);
   const label = kindLabels[kind];
   const emptyLabel = label.toLowerCase();
 
+  function submitSave(id: string | null, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setMessage(null);
+
+    startTransition(async () => {
+      const result = await saveBlogTermAction(id, formData);
+      if (!result.ok) {
+        setMessage({
+          type: 'error',
+          title: `Could not save ${emptyLabel}`,
+          description: `${result.code}: ${result.error}`,
+        });
+        return;
+      }
+
+      if (!id) form.reset();
+      setMessage({
+        type: 'success',
+        title: id ? `${label} saved` : `${label} added`,
+        description: id ? `${emptyLabel} changes were saved.` : `The new ${emptyLabel} was added.`,
+      });
+      router.refresh();
+    });
+  }
+
+  function submitDelete(term: BlogTerm, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const confirmed = window.confirm(
+      `Delete "${term.name}"? This removes the ${emptyLabel} from any associated blog posts.`,
+    );
+    if (!confirmed) return;
+
+    setMessage(null);
+    startTransition(async () => {
+      const result = await deleteBlogTermAction(term.id);
+      if (!result.ok) {
+        setMessage({
+          type: 'error',
+          title: `Could not delete ${emptyLabel}`,
+          description: `${result.code}: ${result.error}`,
+        });
+        return;
+      }
+
+      setMessage({
+        type: 'success',
+        title: `${label} deleted`,
+        description: `"${term.name}" was deleted.`,
+      });
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-6">
+      {message && (
+        <Alert variant={message.type === 'error' ? 'destructive' : 'default'} aria-live="polite">
+          {message.type === 'success' && <CheckCircle2 className="size-4" aria-hidden />}
+          <AlertTitle>{message.title}</AlertTitle>
+          <AlertDescription>{message.description}</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Add {emptyLabel}</CardTitle>
@@ -33,7 +110,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
         </CardHeader>
         <CardContent>
           <form
-            action={saveBlogTermAction.bind(null, null) as never}
+            onSubmit={(event) => submitSave(null, event)}
             className="grid gap-4 lg:grid-cols-12"
           >
             <input type="hidden" name="kind" value={kind} />
@@ -79,7 +156,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
               />
             </div>
             <div className="lg:col-span-12">
-              <Button type="submit">
+              <Button type="submit" disabled={pending}>
                 <Plus />
                 Add {emptyLabel}
               </Button>
@@ -101,7 +178,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
               {terms.map((term) => (
                 <div key={term.id} className="divide-border/60 border-b last:border-b-0">
                   <form
-                    action={saveBlogTermAction.bind(null, term.id) as never}
+                    onSubmit={(event) => submitSave(term.id, event)}
                     className="grid gap-3 p-3 lg:grid-cols-12 lg:items-start"
                   >
                     <input type="hidden" name="kind" value={kind} />
@@ -153,6 +230,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
                         type="submit"
                         size="icon-sm"
                         variant="outline"
+                        disabled={pending}
                         aria-label={`Save ${term.name}`}
                       >
                         <Pencil />
@@ -160,11 +238,12 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
                     </div>
                   </form>
                   <div className="flex justify-end px-3 pb-3">
-                    <form action={deleteBlogTermAction.bind(null, term.id) as never}>
+                    <form onSubmit={(event) => submitDelete(term, event)}>
                       <Button
                         type="submit"
                         size="sm"
                         variant="destructive"
+                        disabled={pending}
                         aria-label={`Delete ${term.name}`}
                       >
                         <Trash2 />
