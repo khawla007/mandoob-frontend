@@ -7,6 +7,7 @@ import { isBlogPostPublic } from '@/lib/blog/visibility';
 import { ApiError } from '@/lib/errors';
 import {
   createBlogTerm,
+  getAdminBlogPost,
   mapBlogMediaRow,
   mapBlogPostRow,
   mapBlogTermRow,
@@ -379,6 +380,8 @@ test('mapBlogPostRow converts database fields to blog post shape', () => {
       canonicalUrl: 'https://example.com/blog/mainland-setup-guide',
       noindex: false,
       featuredMediaId: '00000000-0000-4000-8000-000000000021',
+      termIds: [],
+      galleryMediaIds: [],
       authorId: '00000000-0000-4000-8000-000000000022',
       createdBy: '00000000-0000-4000-8000-000000000023',
       updatedBy: '00000000-0000-4000-8000-000000000024',
@@ -498,6 +501,55 @@ test('upsertBlogPost soft-deletes a new post when relation or revision writes fa
   );
 
   assert.equal(typeof supabase.tables.get('blog_posts')?.[0].deleted_at, 'string');
+});
+
+test('getAdminBlogPost includes selected term and gallery media ids for edit forms', async () => {
+  const postId = '00000000-0000-4000-8000-000000000090';
+  const supabase = createBlogSupabaseStub({
+    blog_posts: [
+      {
+        id: postId,
+        slug: 'uae-setup',
+        title: 'UAE Setup',
+        excerpt: null,
+        content_json: { type: 'doc', content: [] },
+        content_html: '<p>Body</p>',
+        status: 'draft',
+        published_at: null,
+        scheduled_for: null,
+        meta_title: null,
+        meta_description: null,
+        canonical_url: null,
+        noindex: false,
+        featured_media_id: null,
+        author_id: null,
+        created_by: '00000000-0000-4000-8000-000000000091',
+        updated_by: '00000000-0000-4000-8000-000000000091',
+        deleted_at: null,
+        created_at: '2026-07-01T07:00:00.000Z',
+        updated_at: '2026-07-01T09:00:00.000Z',
+      },
+    ],
+    blog_post_terms: [
+      { post_id: postId, term_id: '00000000-0000-4000-8000-000000000101' },
+      { post_id: postId, term_id: '00000000-0000-4000-8000-000000000102' },
+    ],
+    blog_post_gallery_items: [
+      { post_id: postId, media_id: '00000000-0000-4000-8000-000000000202', sort_order: 1 },
+      { post_id: postId, media_id: '00000000-0000-4000-8000-000000000201', sort_order: 0 },
+    ],
+  });
+
+  const post = await getAdminBlogPost(postId, { supabase: supabase as never });
+
+  assert.deepEqual(post?.termIds, [
+    '00000000-0000-4000-8000-000000000101',
+    '00000000-0000-4000-8000-000000000102',
+  ]);
+  assert.deepEqual(post?.galleryMediaIds, [
+    '00000000-0000-4000-8000-000000000201',
+    '00000000-0000-4000-8000-000000000202',
+  ]);
 });
 
 test('uploadBlogMedia rejects invalid files and uses injected scanner/storage for valid images', async () => {

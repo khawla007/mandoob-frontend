@@ -40,6 +40,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
   const [status, setStatus] = useState<BlogPostStatus>(post?.status ?? 'draft');
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const selectedTermIds = useMemo(() => new Set(post?.termIds ?? []), [post?.termIds]);
   const groupedTerms = useMemo(
     () =>
       Object.fromEntries(termKinds.map((kind) => [kind, termsByKind(terms, kind)])) as Record<
@@ -101,7 +102,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
             <CardTitle>Gallery</CardTitle>
           </CardHeader>
           <CardContent>
-            <BlogGalleryManager />
+            <BlogGalleryManager initialMediaIds={post?.galleryMediaIds ?? []} />
           </CardContent>
         </Card>
       </div>
@@ -180,6 +181,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
                           type="checkbox"
                           name="termIds"
                           value={term.id}
+                          defaultChecked={selectedTermIds.has(term.id)}
                           className="border-input size-4 rounded"
                         />
                         <span>{term.name}</span>

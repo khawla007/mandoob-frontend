@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
@@ -63,19 +64,29 @@ function contentOrEmpty(content: JsonContent | null | undefined): JsonContent {
 
 export function BlogEditorContent({ initialContent }: { initialContent?: JsonContent | null }) {
   const initialJson = useMemo(() => contentOrEmpty(initialContent), [initialContent]);
+  const initialHtml = useMemo(() => generateHTML(initialJson, extensions), [initialJson]);
+  const [contentState, setContentState] = useState(() => ({
+    json: initialJson,
+    html: initialHtml,
+  }));
+  const updateContentState = useCallback((editorInstance: Editor) => {
+    setContentState({
+      json: editorInstance.getJSON() as JsonContent,
+      html: editorInstance.getHTML(),
+    });
+  }, []);
   const editor = useEditor({
     extensions,
     content: initialJson,
     immediatelyRender: false,
+    onCreate: ({ editor }) => updateContentState(editor),
+    onUpdate: ({ editor }) => updateContentState(editor),
     editorProps: {
       attributes: {
         class: 'prose prose-sm dark:prose-invert max-w-none min-h-96 px-4 py-3 focus:outline-none',
       },
     },
   });
-
-  const json = editor ? (editor.getJSON() as JsonContent) : initialJson;
-  const html = editor ? editor.getHTML() : generateHTML(initialJson, extensions);
 
   function setLink() {
     if (!editor) return;
@@ -98,8 +109,8 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
 
   return (
     <div className="space-y-3">
-      <input type="hidden" name="contentJson" value={JSON.stringify(json)} readOnly />
-      <input type="hidden" name="contentHtml" value={html} readOnly />
+      <input type="hidden" name="contentJson" value={JSON.stringify(contentState.json)} readOnly />
+      <input type="hidden" name="contentHtml" value={contentState.html} readOnly />
       <div className="border-border/70 overflow-hidden rounded-lg border">
         <div className="bg-muted/40 flex flex-wrap gap-1 border-b p-2">
           <ToolbarButton

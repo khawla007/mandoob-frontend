@@ -92,6 +92,8 @@ export type BlogPost = {
   canonicalUrl: string | null;
   noindex: boolean;
   featuredMediaId: string | null;
+  termIds: string[];
+  galleryMediaIds: string[];
   authorId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
@@ -180,6 +182,15 @@ type BlogMediaRow = {
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type BlogPostTermRow = {
+  term_id: string;
+};
+
+type BlogPostGalleryItemRow = {
+  media_id: string;
+  sort_order: number;
 };
 
 type Deps = {
@@ -303,12 +314,28 @@ export function mapBlogPostRow(row: BlogPostRow): BlogPost {
     canonicalUrl: row.canonical_url,
     noindex: row.noindex,
     featuredMediaId: row.featured_media_id,
+    termIds: [],
+    galleryMediaIds: [],
     authorId: row.author_id,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
     deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function withBlogPostSelections(
+  post: BlogPost,
+  terms: BlogPostTermRow[] | null,
+  gallery: BlogPostGalleryItemRow[] | null,
+): BlogPost {
+  return {
+    ...post,
+    termIds: (terms ?? []).map((row) => row.term_id),
+    galleryMediaIds: (gallery ?? [])
+      .toSorted((a, b) => a.sort_order - b.sort_order)
+      .map((row) => row.media_id),
   };
 }
 
@@ -422,14 +449,30 @@ export async function listAdminBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
 
 export async function getAdminBlogPost(id: string, deps: Deps = {}): Promise<BlogPost | null> {
   const supabase = await getSupabase(deps);
-  const { data, error } = await supabase
-    .from('blog_posts')
-    .select(BLOG_POST_COLUMNS)
-    .eq('id', id)
-    .is('deleted_at', null)
-    .maybeSingle();
-  handleError(error, 'Could not read blog post');
-  return data ? mapBlogPostRow(data as BlogPostRow) : null;
+  const [postResult, termsResult, galleryResult] = await Promise.all([
+    supabase
+      .from('blog_posts')
+      .select(BLOG_POST_COLUMNS)
+      .eq('id', id)
+      .is('deleted_at', null)
+      .maybeSingle(),
+    supabase.from('blog_post_terms').select('term_id').eq('post_id', id),
+    supabase
+      .from('blog_post_gallery_items')
+      .select('media_id, sort_order')
+      .eq('post_id', id)
+      .order('sort_order', { ascending: true }),
+  ]);
+  handleError(postResult.error, 'Could not read blog post');
+  handleError(termsResult.error, 'Could not read blog post terms');
+  handleError(galleryResult.error, 'Could not read blog post gallery');
+  return postResult.data
+    ? withBlogPostSelections(
+        mapBlogPostRow(postResult.data as BlogPostRow),
+        termsResult.data as BlogPostTermRow[] | null,
+        galleryResult.data as BlogPostGalleryItemRow[] | null,
+      )
+    : null;
 }
 
 export async function upsertBlogPost(
