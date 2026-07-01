@@ -596,9 +596,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  margin-bottom: var(--sp-7);
   color: var(--blog-hero-ink);
-  border-bottom: 1px solid var(--blog-hero-border);
   background:
     radial-gradient(
       circle at 82% 18%,
