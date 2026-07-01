@@ -2527,6 +2527,9 @@
   .site-public .kb-grid--3 {
     grid-template-columns: repeat(3, 1fr);
   }
+  .site-public .kb-grid--4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 .site-public .kb-grid > .cell {
   border: 0;

@@ -18,9 +18,6 @@ export default async function BlogPage() {
   } catch (error) {
     console.warn('Could not load public blog posts', error);
   }
-  const featured = posts.slice(0, 3);
-  const remainingPosts = posts.slice(3);
-
   return (
     <>
       <section className="blog-hero" aria-labelledby="blog-h">
@@ -72,21 +69,11 @@ export default async function BlogPage() {
         </div>
         <div className="container">
           {posts.length > 0 ? (
-            <>
-              <div className="cell-row">
-                {featured.map((post) => (
-                  <BlogPostCell key={post.id} post={post} />
-                ))}
-              </div>
-
-              {remainingPosts.length > 0 ? (
-                <div className="kb-grid kb-grid--3">
-                  {remainingPosts.map((post) => (
-                    <BlogPostCell key={post.id} post={post} />
-                  ))}
-                </div>
-              ) : null}
-            </>
+            <div className="kb-grid kb-grid--4">
+              {posts.map((post) => (
+                <BlogPostCell key={post.id} post={post} />
+              ))}
+            </div>
           ) : (
             <article className="cell">
               <span className="eyebrow">No articles yet</span>
