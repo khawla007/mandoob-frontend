@@ -89,5 +89,7 @@ export const blogTermInputSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(10_000).default(0),
 });
 
-export type BlogPostInput = z.infer<typeof blogPostInputSchema>;
-export type BlogTermInput = z.infer<typeof blogTermInputSchema>;
+export type BlogPostInput = z.input<typeof blogPostInputSchema>;
+export type ParsedBlogPostInput = z.infer<typeof blogPostInputSchema>;
+export type BlogTermInput = z.input<typeof blogTermInputSchema>;
+export type ParsedBlogTermInput = z.infer<typeof blogTermInputSchema>;
