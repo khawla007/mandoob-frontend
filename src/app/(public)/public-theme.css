@@ -340,8 +340,7 @@
 }
 .site-public .btn--accent {
   background: var(--accent);
-  /* a11y: dark ink on saffron yields ~5.5:1 (WCAG AA); near-white was 3.07:1. */
-  color: var(--ink);
+  color: #fff;
 }
 .site-public .btn--accent:hover {
   background: var(--accent-hover);
@@ -3115,7 +3114,7 @@
 .site-public {
   --ring: var(--accent);
   --primary: var(--accent);
-  --primary-foreground: oklch(0.145 0 0);
+  --primary-foreground: oklch(1 0 0);
 }
 
 /* ============================================================
