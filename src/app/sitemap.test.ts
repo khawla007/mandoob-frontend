@@ -44,6 +44,28 @@ test('public sitemap includes published blog posts with updated timestamps', () 
   assert.deepEqual(blogEntry.lastModified, new Date('2026-07-01T10:30:00.000Z'));
 });
 
+test('public sitemap excludes noindex blog posts', () => {
+  const entries = buildPublicSitemap({
+    origin,
+    knowledgeBaseArticleSlugs: [],
+    blogPosts: [
+      {
+        slug: 'indexable-post',
+        updatedAt: '2026-07-01T10:30:00.000Z',
+        noindex: false,
+      },
+      {
+        slug: 'private-campaign-post',
+        updatedAt: '2026-07-01T11:00:00.000Z',
+        noindex: true,
+      },
+    ],
+  });
+
+  assert.ok(paths(entries).includes('/blog/indexable-post'));
+  assert.equal(paths(entries).includes('/blog/private-campaign-post'), false);
+});
+
 test('public sitemap covers every estimator authority company setup page', () => {
   const authoritySlugs = getAuthoritySlugs(seededCostDataRows);
   const entries = buildPublicSitemap({ origin, knowledgeBaseArticleSlugs: [] });

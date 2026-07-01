@@ -8,6 +8,7 @@ const DEFAULT_ORIGIN = 'https://mandoob.ae';
 type SitemapBlogPost = {
   slug: string;
   updatedAt: string;
+  noindex?: boolean;
 };
 
 type SitemapInput = {
@@ -36,12 +37,14 @@ export function buildPublicSitemap({
     priority: path === '/' ? 1 : path === '/estimate' ? 0.9 : 0.7,
   }));
 
-  const blogEntries = blogPosts.map((post) => ({
-    url: `${base}/blog/${post.slug}`,
-    lastModified: new Date(post.updatedAt),
-    changeFrequency: 'monthly' as const,
-    priority: 0.7,
-  }));
+  const blogEntries = blogPosts
+    .filter((post) => !post.noindex)
+    .map((post) => ({
+      url: `${base}/blog/${post.slug}`,
+      lastModified: new Date(post.updatedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    }));
 
   return [...staticEntries, ...blogEntries];
 }
