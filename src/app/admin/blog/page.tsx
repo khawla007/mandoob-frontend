@@ -25,6 +25,18 @@ export default async function AdminBlogPage() {
         </Button>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        {[
+          { href: '/admin/blog/categories', label: 'Categories' },
+          { href: '/admin/blog/attributes', label: 'Attributes' },
+          { href: '/admin/blog/tags', label: 'Tags' },
+        ].map((item) => (
+          <Button key={item.href} asChild variant="outline">
+            <Link href={item.href}>{item.label}</Link>
+          </Button>
+        ))}
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Posts</CardTitle>
