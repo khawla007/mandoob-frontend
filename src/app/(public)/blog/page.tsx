@@ -35,7 +35,12 @@ export default async function BlogPage() {
               operating details that shape company formation in the UAE.
             </p>
           </div>
-          <div className="blog-hero__rail" aria-label="Blog summary">
+        </div>
+      </section>
+
+      <section className="blog-hero-summary" aria-label="Blog summary">
+        <div className="container">
+          <div className="blog-hero-summary__rail">
             <div>
               <span className="mono blog-hero__metric">{posts.length}</span>
               <span className="blog-hero__metricL">articles</span>
