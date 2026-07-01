@@ -601,15 +601,15 @@
   border-bottom: 1px solid var(--blog-hero-border);
   background:
     radial-gradient(
-      circle at 18% 18%,
-      color-mix(in oklch, var(--accent) 14%, white) 0,
-      transparent 34%
+      circle at 82% 18%,
+      color-mix(in oklch, var(--accent) 18%, white) 0,
+      transparent 36%
     ),
     linear-gradient(
-      135deg,
-      color-mix(in oklch, var(--accent-soft) 72%, white) 0%,
-      color-mix(in oklch, var(--blog-hero-paper) 92%, white) 48%,
-      var(--blog-hero-paper) 100%
+      90deg,
+      var(--blog-hero-paper) 0%,
+      color-mix(in oklch, var(--blog-hero-paper) 94%, white) 42%,
+      color-mix(in oklch, var(--accent-soft) 76%, white) 100%
     );
 }
 .site-public .blog-hero::before {
@@ -625,7 +625,7 @@
       transparent 1px
     );
   background-size: 48px 48px;
-  mask-image: linear-gradient(90deg, black, transparent 72%);
+  mask-image: linear-gradient(90deg, transparent, black 34%, black);
   opacity: 0.45;
   pointer-events: none;
 }
