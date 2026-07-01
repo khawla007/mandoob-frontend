@@ -6,6 +6,7 @@ import {
   KeyRound,
   LayoutDashboard,
   MessagesSquare,
+  Newspaper,
   ScrollText,
   Settings,
   ShieldAlert,
@@ -55,6 +56,12 @@ export const adminNav: ShellNavGroup[] = [
         labelFallback: 'Leads',
         href: '/admin/leads',
         icon: Columns3,
+      },
+      {
+        labelKey: 'blog',
+        labelFallback: 'Blog',
+        href: '/admin/blog',
+        icon: Newspaper,
       },
       {
         labelKey: 'whatsappTemplates',
