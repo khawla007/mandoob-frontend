@@ -597,6 +597,7 @@
   isolation: isolate;
   overflow: hidden;
   color: var(--blog-hero-ink);
+  border-bottom: 1px solid var(--blog-hero-border);
   background:
     radial-gradient(
       circle at 82% 18%,
@@ -655,13 +656,7 @@
   --blog-hero-border: oklch(0.895 0.01 45);
   margin-bottom: var(--sp-7);
   padding-bottom: var(--sp-6);
-  border-bottom: 1px solid var(--blog-hero-border);
-  background: linear-gradient(
-    90deg,
-    var(--blog-hero-paper) 0%,
-    color-mix(in oklch, var(--blog-hero-paper) 94%, white) 42%,
-    color-mix(in oklch, var(--accent-soft) 76%, white) 100%
-  );
+  background: var(--blog-hero-paper);
 }
 .site-public .blog-hero-summary__rail {
   display: grid;
