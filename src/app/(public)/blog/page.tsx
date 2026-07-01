@@ -23,35 +23,34 @@ export default async function BlogPage() {
 
   return (
     <>
-      <section className="hero" aria-labelledby="blog-h">
-        <div className="container">
-          <span className="eyebrow">Blog</span>
-          <h1 id="blog-h" className="display">
-            Field notes for UAE business operators.
-          </h1>
-          <p className="lede">
-            Practical commentary on setup decisions, licensing work, renewals, compliance, and the
-            operating details that shape company formation in the UAE.
-          </p>
-        </div>
-        <div className="hero__rule" aria-hidden="true" />
-        <div className="container">
-          <div className="hero__metrics">
+      <section className="blog-hero" aria-labelledby="blog-h">
+        <div className="container blog-hero__inner">
+          <div className="blog-hero__copy">
+            <span className="eyebrow">Blog</span>
+            <h1 id="blog-h" className="display">
+              Field notes for UAE business operators.
+            </h1>
+            <p className="lede">
+              Practical commentary on setup decisions, licensing work, renewals, compliance, and the
+              operating details that shape company formation in the UAE.
+            </p>
+          </div>
+          <div className="blog-hero__rail" aria-label="Blog summary">
             <div>
-              <span className="mono hero__metric">{posts.length}</span>
-              <span className="hero__metricL">articles</span>
+              <span className="mono blog-hero__metric">{posts.length}</span>
+              <span className="blog-hero__metricL">articles</span>
             </div>
             <div>
-              <span className="mono hero__metric">Public</span>
-              <span className="hero__metricL">guidance</span>
+              <span className="mono blog-hero__metric">Public</span>
+              <span className="blog-hero__metricL">guidance</span>
             </div>
             <div>
-              <span className="mono hero__metric u-accent">UAE</span>
-              <span className="hero__metricL">company setup</span>
+              <span className="mono blog-hero__metric blog-hero__metric--accent">UAE</span>
+              <span className="blog-hero__metricL">company setup</span>
             </div>
             <div>
-              <span className="mono hero__metric">Updated</span>
-              <span className="hero__metricL">by editors</span>
+              <span className="mono blog-hero__metric">Updated</span>
+              <span className="blog-hero__metricL">by editors</span>
             </div>
           </div>
         </div>
