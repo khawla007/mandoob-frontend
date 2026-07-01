@@ -79,7 +79,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
         <div className="container">
           {posts.length > 0 ? (
             <>
-              <div className="kb-grid kb-grid--4">
+              <div className="kb-grid kb-grid--4 blog-post-grid">
                 {pagePosts.map((post) => (
                   <BlogPostCell key={post.id} post={post} />
                 ))}

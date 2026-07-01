@@ -2535,6 +2535,16 @@
   border: 0;
   background: var(--paper);
 }
+.site-public .blog-post-grid {
+  border: 0;
+  gap: var(--sp-3);
+  overflow: visible;
+  background: transparent;
+}
+.site-public .blog-post-grid > .cell {
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+}
 .site-public .kb-meta {
   display: flex;
   align-items: center;
