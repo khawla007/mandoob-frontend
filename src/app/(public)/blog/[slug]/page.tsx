@@ -8,7 +8,12 @@ type Params = { slug: string };
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getPublishedBlogPostBySlug(slug);
+  let post = null;
+  try {
+    post = await getPublishedBlogPostBySlug(slug);
+  } catch (error) {
+    console.warn('Could not load blog post metadata', error);
+  }
 
   if (!post) {
     return {};
@@ -37,7 +42,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function BlogPostPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const post = await getPublishedBlogPostBySlug(slug);
+  let post = null;
+  try {
+    post = await getPublishedBlogPostBySlug(slug);
+  } catch (error) {
+    console.warn('Could not load public blog post', error);
+  }
 
   if (!post) notFound();
 

@@ -54,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     blogPosts = await listPublishedBlogPosts();
   } catch (error) {
-    console.error('Could not load blog posts for sitemap', error);
+    console.warn('Could not load blog posts for sitemap', error);
   }
   return buildPublicSitemap({ blogPosts });
 }

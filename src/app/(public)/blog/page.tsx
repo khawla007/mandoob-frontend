@@ -12,7 +12,12 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
-  const posts = await listPublishedBlogPosts();
+  let posts: BlogPost[] = [];
+  try {
+    posts = await listPublishedBlogPosts();
+  } catch (error) {
+    console.warn('Could not load public blog posts', error);
+  }
   const featured = posts.slice(0, 3);
   const remainingPosts = posts.slice(3);
 
