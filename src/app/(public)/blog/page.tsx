@@ -2,6 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { listPublishedBlogPosts, type BlogPost } from '@/lib/data/blog';
 
+const BLOG_POSTS_PER_PAGE = 12;
+
+type SearchParams = Record<string, string | string[] | undefined>;
+
 export const metadata: Metadata = {
   title: 'UAE Business Blog | Mandoob',
   description:
@@ -11,13 +15,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function BlogPage() {
+export default async function BlogPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const currentPage = getBlogPageNumber((await searchParams).page);
   let posts: BlogPost[] = [];
   try {
     posts = await listPublishedBlogPosts();
   } catch (error) {
     console.warn('Could not load public blog posts', error);
   }
+  const totalPages = Math.max(1, Math.ceil(posts.length / BLOG_POSTS_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const pagePosts = posts.slice((page - 1) * BLOG_POSTS_PER_PAGE, page * BLOG_POSTS_PER_PAGE);
+
   return (
     <>
       <section className="blog-hero" aria-labelledby="blog-h">
@@ -69,11 +78,14 @@ export default async function BlogPage() {
         </div>
         <div className="container">
           {posts.length > 0 ? (
-            <div className="kb-grid kb-grid--4">
-              {posts.map((post) => (
-                <BlogPostCell key={post.id} post={post} />
-              ))}
-            </div>
+            <>
+              <div className="kb-grid kb-grid--4">
+                {pagePosts.map((post) => (
+                  <BlogPostCell key={post.id} post={post} />
+                ))}
+              </div>
+              {totalPages > 1 ? <BlogPagination currentPage={page} totalPages={totalPages} /> : null}
+            </>
           ) : (
             <article className="cell">
               <span className="eyebrow">No articles yet</span>
@@ -88,6 +100,52 @@ export default async function BlogPage() {
       </section>
     </>
   );
+}
+
+function getBlogPageNumber(value: SearchParams['page']) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const parsed = Number.parseInt(rawValue ?? '1', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function BlogPagination({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
+  const previousPage = Math.max(1, currentPage - 1);
+  const nextPage = Math.min(totalPages, currentPage + 1);
+
+  return (
+    <nav className="blog-pagination" aria-label="Blog pagination">
+      <Link
+        className="blog-pagination__link"
+        href={blogPageHref(previousPage)}
+        aria-disabled={currentPage === 1}
+      >
+        Previous
+      </Link>
+      <div className="blog-pagination__pages">
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+          <Link
+            key={page}
+            className="blog-pagination__page"
+            href={blogPageHref(page)}
+            aria-current={page === currentPage ? 'page' : undefined}
+          >
+            {page}
+          </Link>
+        ))}
+      </div>
+      <Link
+        className="blog-pagination__link"
+        href={blogPageHref(nextPage)}
+        aria-disabled={currentPage === totalPages}
+      >
+        Next
+      </Link>
+    </nav>
+  );
+}
+
+function blogPageHref(page: number) {
+  return page <= 1 ? '/blog' : `/blog?page=${page}`;
 }
 
 function BlogPostCell({ post }: { post: BlogPost }) {
