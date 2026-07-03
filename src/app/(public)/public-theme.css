@@ -2689,6 +2689,74 @@
   color: var(--zinc-700);
   line-height: 1.7;
 }
+.site-public .kb-prose h1,
+.site-public .kb-prose h2,
+.site-public .kb-prose h3,
+.site-public .kb-prose h4 {
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--zinc-950);
+}
+.site-public .kb-prose h1 {
+  font-size: var(--fs-32);
+}
+.site-public .kb-prose h2 {
+  font-size: var(--fs-24);
+}
+.site-public .kb-prose h3 {
+  font-size: var(--fs-20);
+}
+.site-public .kb-prose h4 {
+  font-size: var(--fs-17);
+}
+.site-public .kb-prose span[data-heading-level] {
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--zinc-950);
+}
+.site-public .kb-prose span[data-heading-level='1'] {
+  font-size: var(--fs-32);
+}
+.site-public .kb-prose span[data-heading-level='2'] {
+  font-size: var(--fs-24);
+}
+.site-public .kb-prose span[data-heading-level='3'] {
+  font-size: var(--fs-20);
+}
+.site-public .kb-prose span[data-heading-level='4'] {
+  font-size: var(--fs-17);
+}
+.site-public .kb-prose ul,
+.site-public .kb-prose ol {
+  padding-inline-start: 1.5rem;
+}
+.site-public .kb-prose ul {
+  list-style: disc;
+}
+.site-public .kb-prose ol {
+  list-style: decimal;
+}
+.site-public .kb-prose blockquote {
+  border-inline-start: 3px solid var(--pb-border);
+  color: var(--zinc-600);
+  padding-inline-start: var(--sp-3);
+}
+.site-public .kb-prose pre {
+  overflow-x: auto;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+  background: var(--zinc-50);
+  padding: var(--sp-3);
+}
+.site-public .kb-prose table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.site-public .kb-prose th,
+.site-public .kb-prose td {
+  border: 1px solid var(--pb-border);
+  padding: var(--sp-2);
+}
 .site-public .kb-faq__list {
   display: grid;
   margin-top: var(--sp-3);

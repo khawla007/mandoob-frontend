@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
+import { Mark, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
@@ -10,23 +11,32 @@ import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
+import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Placeholder from '@tiptap/extension-placeholder';
 import { generateHTML } from '@tiptap/html';
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Bold,
+  Code2,
+  Heading1,
   Heading2,
   Heading3,
+  Heading4,
   ImageIcon,
   Italic,
   LinkIcon,
   List,
   ListChecks,
   ListOrdered,
+  Minus,
   Quote,
   Redo2,
+  Strikethrough,
   Table2,
   UnderlineIcon,
   Undo2,
@@ -41,8 +51,38 @@ const emptyContent: JsonContent = {
   content: [{ type: 'paragraph' }],
 };
 
+const InlineHeading = Mark.create({
+  name: 'inlineHeading',
+
+  inclusive: false,
+
+  addAttributes() {
+    return {
+      level: {
+        default: 1,
+        parseHTML: (element) => Number(element.getAttribute('data-heading-level') ?? 1),
+        renderHTML: (attributes) => ({
+          'data-heading-level': String(attributes.level),
+        }),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'span[data-heading-level]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+});
+
 const extensions = [
-  StarterKit,
+  StarterKit.configure({
+    heading: {
+      levels: [1, 2, 3, 4],
+    },
+  }),
   Link.configure({
     openOnClick: false,
     HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
@@ -52,6 +92,11 @@ const extensions = [
   TableRow,
   TableHeader,
   TableCell,
+  InlineHeading,
+  TextAlign.configure({
+    types: ['heading', 'paragraph'],
+    alignments: ['left', 'center', 'right'],
+  }),
   Underline,
   TaskList,
   TaskItem.configure({ nested: true }),
@@ -62,6 +107,15 @@ function contentOrEmpty(content: JsonContent | null | undefined): JsonContent {
   return content && Object.keys(content).length > 0 ? content : emptyContent;
 }
 
+function toggleInlineHeading(editor: Editor | null, level: 1 | 2 | 3 | 4): void {
+  if (!editor) return;
+  if (editor.isActive('inlineHeading', { level })) {
+    editor.chain().focus().unsetMark('inlineHeading').run();
+    return;
+  }
+  editor.chain().focus().unsetMark('inlineHeading').setMark('inlineHeading', { level }).run();
+}
+
 export function BlogEditorContent({ initialContent }: { initialContent?: JsonContent | null }) {
   const initialJson = useMemo(() => contentOrEmpty(initialContent), [initialContent]);
   const initialHtml = useMemo(() => generateHTML(initialJson, extensions), [initialJson]);
@@ -69,21 +123,34 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
     json: initialJson,
     html: initialHtml,
   }));
+  const [, refreshToolbarState] = useState(0);
   const updateContentState = useCallback((editorInstance: Editor) => {
     setContentState({
       json: editorInstance.getJSON() as JsonContent,
       html: editorInstance.getHTML(),
     });
   }, []);
+  const updateToolbarState = useCallback(() => {
+    refreshToolbarState((value) => value + 1);
+  }, []);
   const editor = useEditor({
     extensions,
     content: initialJson,
     immediatelyRender: false,
-    onCreate: ({ editor }) => updateContentState(editor),
-    onUpdate: ({ editor }) => updateContentState(editor),
+    onCreate: ({ editor }) => {
+      updateContentState(editor);
+      updateToolbarState();
+    },
+    onUpdate: ({ editor }) => {
+      updateContentState(editor);
+      updateToolbarState();
+    },
+    onSelectionUpdate: updateToolbarState,
+    onFocus: updateToolbarState,
+    onBlur: updateToolbarState,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none min-h-96 px-4 py-3 focus:outline-none',
+        class: 'blog-editor-content min-h-96 px-4 py-3 focus:outline-none',
       },
     },
   });
@@ -107,6 +174,8 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
     editor.chain().focus().setImage({ src: url.trim() }).run();
   }
 
+  const hasTextSelection = editor ? !editor.state.selection.empty : false;
+
   return (
     <div className="space-y-3">
       <input type="hidden" name="contentJson" value={JSON.stringify(contentState.json)} readOnly />
@@ -115,68 +184,127 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
         <div className="bg-muted/40 flex flex-wrap gap-1 border-b p-2">
           <ToolbarButton
             label="Bold"
-            active={editor?.isActive('bold')}
+            active={hasTextSelection && editor?.isActive('bold')}
             onClick={() => editor?.chain().focus().toggleBold().run()}
           >
             <Bold />
           </ToolbarButton>
           <ToolbarButton
             label="Italic"
-            active={editor?.isActive('italic')}
+            active={hasTextSelection && editor?.isActive('italic')}
             onClick={() => editor?.chain().focus().toggleItalic().run()}
           >
             <Italic />
           </ToolbarButton>
           <ToolbarButton
             label="Underline"
-            active={editor?.isActive('underline')}
+            active={hasTextSelection && editor?.isActive('underline')}
             onClick={() => editor?.chain().focus().toggleUnderline().run()}
           >
             <UnderlineIcon />
           </ToolbarButton>
           <ToolbarButton
+            label="Strikethrough"
+            active={hasTextSelection && editor?.isActive('strike')}
+            onClick={() => editor?.chain().focus().toggleStrike().run()}
+          >
+            <Strikethrough />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Heading 1"
+            active={hasTextSelection && editor?.isActive('inlineHeading', { level: 1 })}
+            onClick={() => toggleInlineHeading(editor, 1)}
+          >
+            <Heading1 />
+          </ToolbarButton>
+          <ToolbarButton
             label="Heading 2"
-            active={editor?.isActive('heading', { level: 2 })}
-            onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+            active={hasTextSelection && editor?.isActive('inlineHeading', { level: 2 })}
+            onClick={() => toggleInlineHeading(editor, 2)}
           >
             <Heading2 />
           </ToolbarButton>
           <ToolbarButton
             label="Heading 3"
-            active={editor?.isActive('heading', { level: 3 })}
-            onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+            active={hasTextSelection && editor?.isActive('inlineHeading', { level: 3 })}
+            onClick={() => toggleInlineHeading(editor, 3)}
           >
             <Heading3 />
           </ToolbarButton>
           <ToolbarButton
+            label="Heading 4"
+            active={hasTextSelection && editor?.isActive('inlineHeading', { level: 4 })}
+            onClick={() => toggleInlineHeading(editor, 4)}
+          >
+            <Heading4 />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Align left"
+            active={hasTextSelection && editor?.isActive({ textAlign: 'left' })}
+            onClick={() => editor?.chain().focus().setTextAlign('left').run()}
+          >
+            <AlignLeft />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Align center"
+            active={hasTextSelection && editor?.isActive({ textAlign: 'center' })}
+            onClick={() => editor?.chain().focus().setTextAlign('center').run()}
+          >
+            <AlignCenter />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Align right"
+            active={hasTextSelection && editor?.isActive({ textAlign: 'right' })}
+            onClick={() => editor?.chain().focus().setTextAlign('right').run()}
+          >
+            <AlignRight />
+          </ToolbarButton>
+          <ToolbarButton
             label="Bullet list"
-            active={editor?.isActive('bulletList')}
+            active={hasTextSelection && editor?.isActive('bulletList')}
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
           >
             <List />
           </ToolbarButton>
           <ToolbarButton
             label="Ordered list"
-            active={editor?.isActive('orderedList')}
+            active={hasTextSelection && editor?.isActive('orderedList')}
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
           >
             <ListOrdered />
           </ToolbarButton>
           <ToolbarButton
             label="Task list"
-            active={editor?.isActive('taskList')}
+            active={hasTextSelection && editor?.isActive('taskList')}
             onClick={() => editor?.chain().focus().toggleTaskList().run()}
           >
             <ListChecks />
           </ToolbarButton>
           <ToolbarButton
             label="Quote"
-            active={editor?.isActive('blockquote')}
+            active={hasTextSelection && editor?.isActive('blockquote')}
             onClick={() => editor?.chain().focus().toggleBlockquote().run()}
           >
             <Quote />
           </ToolbarButton>
-          <ToolbarButton label="Link" active={editor?.isActive('link')} onClick={setLink}>
+          <ToolbarButton
+            label="Code block"
+            active={hasTextSelection && editor?.isActive('codeBlock')}
+            onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+          >
+            <Code2 />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Divider"
+            onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+          >
+            <Minus />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Link"
+            active={hasTextSelection && editor?.isActive('link')}
+            onClick={setLink}
+          >
             <LinkIcon />
           </ToolbarButton>
           <ToolbarButton label="Image URL" onClick={addImage}>
@@ -221,7 +349,12 @@ function ToolbarButton({
       variant="ghost"
       aria-label={label}
       title={label}
-      className={cn(active && 'bg-muted text-foreground')}
+      aria-pressed={active}
+      className={cn(
+        active &&
+          'bg-zinc-400 text-zinc-950 shadow-inner ring-1 ring-zinc-500/50 hover:bg-zinc-400 dark:bg-zinc-500 dark:text-zinc-50 dark:ring-zinc-300/40 dark:hover:bg-zinc-500',
+      )}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
     >
       {children}

@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { ChevronDown } from 'lucide-react';
 
 import {
   Sidebar,
@@ -15,10 +17,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { ShellNavGroup } from '@/lib/shell/nav-config';
+import { resolveActiveShellHref, type ShellNavGroup } from '@/lib/shell/nav-config';
 import { adminNav } from '@/lib/shell/nav-admin';
 import { buildProNav } from '@/lib/shell/nav-pro';
 import { buildEmployeeNav } from '@/lib/shell/nav-employee';
@@ -42,6 +47,90 @@ function resolveNav(kind: DashboardNavKind, slug?: string): ShellNavGroup[] {
   }
 }
 
+function DashboardSidebarNavItem({
+  item,
+  activeHref,
+  translate,
+}: {
+  item: ShellNavGroup['items'][number];
+  activeHref: string | null;
+  translate: (key: string | undefined, fallback: string | undefined) => string;
+}) {
+  const Icon = item.icon;
+  const hasChildren = Boolean(item.children?.length);
+  const childActive = item.children?.some((child) => child.href === activeHref) ?? false;
+  const active = activeHref === item.href || childActive;
+  const label = translate(item.labelKey, item.labelFallback);
+  const [open, setOpen] = useState(childActive);
+
+  return (
+    <SidebarMenuItem key={item.href}>
+      <SidebarMenuButton
+        asChild={!hasChildren}
+        isActive={active}
+        tooltip={label}
+        type={hasChildren ? 'button' : undefined}
+        onClick={hasChildren ? () => setOpen((value) => !value) : undefined}
+        aria-expanded={hasChildren ? open : undefined}
+      >
+        {hasChildren ? (
+          <>
+            {Icon && <Icon className="size-4" />}
+            <span>{label}</span>
+            <ChevronDown
+              className={`ms-auto size-3.5 transition-transform duration-300 ease-in-out group-data-[collapsible=icon]:hidden ${
+                open ? 'rotate-180' : ''
+              }`}
+              aria-hidden
+            />
+          </>
+        ) : (
+          <Link href={item.href}>
+            {Icon && <Icon className="size-4" />}
+            <span>{label}</span>
+            {item.badge !== undefined && (
+              <Badge variant="secondary" className="ms-auto">
+                {item.badge}
+              </Badge>
+            )}
+          </Link>
+        )}
+      </SidebarMenuButton>
+      {hasChildren && (
+        <div
+          aria-hidden={!open}
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out group-data-[collapsible=icon]:hidden ${
+            open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <SidebarMenuSub className="border-l-0 py-1">
+              {item.children?.map((child) => {
+                const ChildIcon = child.icon;
+                const childLabel = translate(child.labelKey, child.labelFallback);
+                return (
+                  <SidebarMenuSubItem key={child.href}>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={activeHref === child.href}
+                      aria-current={activeHref === child.href ? 'page' : undefined}
+                    >
+                      <Link href={child.href}>
+                        {ChildIcon && <ChildIcon className="size-3.5" />}
+                        <span>{childLabel}</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                );
+              })}
+            </SidebarMenuSub>
+          </div>
+        </div>
+      )}
+    </SidebarMenuItem>
+  );
+}
+
 export function DashboardSidebar({
   brand,
   brandSubtitle,
@@ -63,6 +152,7 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
   const nav = resolveNav(navKind, navSlug);
+  const activeHref = resolveActiveShellHref(nav, pathname);
   const t = useTranslations('shell');
 
   const translate = (key: string | undefined, fallback: string | undefined) => {
@@ -101,26 +191,14 @@ export function DashboardSidebar({
               {groupLabel && <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    const active = pathname === item.href || pathname.startsWith(item.href + '/');
-                    const label = translate(item.labelKey, item.labelFallback);
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild isActive={active} tooltip={label}>
-                          <Link href={item.href}>
-                            {Icon && <Icon className="size-4" />}
-                            <span>{label}</span>
-                            {item.badge !== undefined && (
-                              <Badge variant="secondary" className="ms-auto">
-                                {item.badge}
-                              </Badge>
-                            )}
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
+                  {group.items.map((item) => (
+                    <DashboardSidebarNavItem
+                      key={item.href}
+                      item={item}
+                      activeHref={activeHref}
+                      translate={translate}
+                    />
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

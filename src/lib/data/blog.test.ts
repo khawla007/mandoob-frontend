@@ -208,9 +208,14 @@ test('isBlogPostPublic only allows non-deleted published posts at or before now'
 
 test('sanitizeBlogHtml strips scripts and unsafe event handlers', () => {
   const sanitized = sanitizeBlogHtml(
-    '<p onclick="alert(1)">Hi<script>alert(2)</script><a href="javascript:alert(3)" onmouseover="x">bad</a><img src="https://example.com/a.jpg" onerror="x"><img src="data:image/png;base64,abc"></p>',
+    '<h1 style="text-align: center; color: red">Title</h1><p onclick="alert(1)" style="text-align: right; position: absolute">Hi <span data-heading-level="1" onclick="x">selected</span><script>alert(2)</script><a href="javascript:alert(3)" onmouseover="x">bad</a><img src="https://example.com/a.jpg" onerror="x"><img src="data:image/png;base64,abc"></p>',
   );
 
+  assert.match(sanitized, /<h1 style="text-align:center">Title<\/h1>/);
+  assert.match(sanitized, /<p style="text-align:right">/);
+  assert.match(sanitized, /<span data-heading-level="1">selected<\/span>/);
+  assert.equal(sanitized.includes('color:'), false);
+  assert.equal(sanitized.includes('position:'), false);
   assert.equal(sanitized.includes('<script>'), false);
   assert.equal(sanitized.includes('onclick'), false);
   assert.equal(sanitized.includes('onmouseover'), false);

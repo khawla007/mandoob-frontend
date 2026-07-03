@@ -3,10 +3,12 @@ import {
   Columns3,
   DollarSign,
   FileSpreadsheet,
+  FolderTree,
   KeyRound,
   LayoutDashboard,
   MessagesSquare,
   Newspaper,
+  Tags,
   ScrollText,
   Settings,
   ShieldAlert,
@@ -58,12 +60,6 @@ export const adminNav: ShellNavGroup[] = [
         icon: Columns3,
       },
       {
-        labelKey: 'blog',
-        labelFallback: 'Blog',
-        href: '/admin/blog',
-        icon: Newspaper,
-      },
-      {
         labelKey: 'whatsappTemplates',
         labelFallback: 'WhatsApp templates',
         href: '/admin/whatsapp-templates',
@@ -74,6 +70,50 @@ export const adminNav: ShellNavGroup[] = [
         labelFallback: 'Cost data',
         href: '/admin/cost-data',
         icon: FileSpreadsheet,
+      },
+    ],
+  },
+  {
+    labelKey: 'catalog',
+    labelFallback: 'Catalog',
+    items: [
+      {
+        labelKey: 'taxonomies',
+        labelFallback: 'Taxonomies',
+        href: '/admin/blog/categories',
+        icon: FolderTree,
+        children: [
+          {
+            labelKey: 'blogCategories',
+            labelFallback: 'Categories',
+            href: '/admin/blog/categories',
+            icon: FolderTree,
+          },
+          {
+            labelKey: 'blogAttributes',
+            labelFallback: 'Attributes',
+            href: '/admin/blog/attributes',
+            icon: Columns3,
+          },
+          {
+            labelKey: 'blogTags',
+            labelFallback: 'Tags',
+            href: '/admin/blog/tags',
+            icon: Tags,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    labelKey: 'editorial',
+    labelFallback: 'Editorial',
+    items: [
+      {
+        labelKey: 'blog',
+        labelFallback: 'Blog',
+        href: '/admin/blog',
+        icon: Newspaper,
       },
     ],
   },
