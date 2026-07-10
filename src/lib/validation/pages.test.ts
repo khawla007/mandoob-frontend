@@ -34,6 +34,25 @@ test('button href permits internal paths and absolute HTTP(S) only', () => {
   }
 });
 
+test('URL fields reject non-HTTP schemes and malformed absolute URLs', () => {
+  for (const backgroundImageUrl of ['https://example.com/hero.jpg', 'http://example.com/a']) {
+    assert.equal(pageHeroSettingsSchema.safeParse({ backgroundImageUrl }).success, true);
+  }
+  for (const backgroundImageUrl of ['javascript:alert(1)', 'data:text/html,x', 'file:///tmp/x', '/local.jpg', 'not a url']) {
+    assert.equal(pageHeroSettingsSchema.safeParse({ backgroundImageUrl }).success, false);
+  }
+  for (const canonicalUrl of ['javascript:alert(1)', 'data:text/html,x', 'file:///tmp/x', '/about', 'broken']) {
+    assert.equal(pageInputSchema.safeParse({ ...base, canonicalUrl }).success, false);
+  }
+  assert.equal(pageInputSchema.safeParse({ ...base, canonicalUrl: 'https://example.com/about' }).success, true);
+});
+
+test('button href rejects path confusion, encoded bypasses, and controls', () => {
+  for (const buttonHref of ['/%5cevil.com', '/%2fevil.com', '/%252fevil.com', '/%255cevil.com', '/\\evil.com', '/safe\npath', '/safe\tpath', '//evil.com']) {
+    assert.equal(pageHeroSettingsSchema.safeParse({ buttonHref }).success, false, buttonHref);
+  }
+});
+
 test('page publishing timestamps are required for their statuses', () => {
   assert.equal(pageInputSchema.safeParse({ ...base, status: 'published' }).success, false);
   assert.equal(pageInputSchema.safeParse({ ...base, status: 'published', publishedAt: '2026-07-01T00:00:00.000Z' }).success, true);
@@ -46,4 +65,10 @@ test('page metadata has limits and schema markup must be an object', () => {
   assert.equal(pageInputSchema.safeParse({ ...base, metaDescription: 'x'.repeat(171) }).success, false);
   assert.equal(pageInputSchema.safeParse({ ...base, schemaMarkup: ['not', 'object'] }).success, false);
   assert.equal(pageInputSchema.safeParse({ ...base, schemaMarkup: { '@type': 'WebPage' } }).success, true);
+});
+
+test('page input rejects normalized reserved platform routes', () => {
+  for (const slug of ['ADMIN', ' Admin ', 'Callback', 'contact']) {
+    assert.equal(pageInputSchema.safeParse({ ...base, slug }).success, false, slug);
+  }
 });

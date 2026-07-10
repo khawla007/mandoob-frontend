@@ -1,7 +1,7 @@
 import { normalizeBlogSlug } from '@/lib/blog/slug';
 
 export const RESERVED_PAGE_SLUGS = new Set([
-  '_next', 'about', 'account', 'admin', 'api', 'apply', 'blog', 'company-setup', 'contact',
+  '_next', 'about', 'account', 'admin', 'api', 'apply', 'blog', 'callback', 'company-setup', 'contact',
   'estimate', 'forgot-password', 'invite', 'knowledge-base', 'legal', 'login', 'mfa', 'pricing',
   'pro', 'register', 'reset-password', 'signin', 't', 'verify-otp',
 ]);
