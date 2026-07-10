@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { parseCmsPageFormData } from '@/app/admin/pages/action-logic';
-import { clampAdminPage, createHeroState, nextDialogFocusIndex, pageHref, serializeHeroState, updateHeroField } from './admin-page-state';
+import { clampAdminPage, createHeroState, dialogTabDestination, nextDialogFocusIndex, pageHref, serializeHeroState, updateHeroField } from './admin-page-state';
 
 test('pagination parses and clamps invalid and overflowing page values', () => {
   assert.equal(clampAdminPage(undefined, 17, 8), 1);
@@ -51,6 +51,11 @@ test('dialog focus cycling wraps in both keyboard directions', () => {
   assert.equal(nextDialogFocusIndex(1, 2, false), 0);
   assert.equal(nextDialogFocusIndex(0, 2, true), 1);
   assert.equal(nextDialogFocusIndex(1, 2, true), 0);
+});
+
+test('pending dialog with zero enabled controls keeps Tab focus in the dialog', () => {
+  assert.equal(dialogTabDestination(-1, 0, false), 'dialog');
+  assert.equal(dialogTabDestination(-1, 0, true), 'dialog');
 });
 
 test('admin routes retain server contracts and editor FormData names', async () => {

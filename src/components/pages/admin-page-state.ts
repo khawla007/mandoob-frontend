@@ -30,6 +30,10 @@ export function nextDialogFocusIndex(current: number, count: number, backwards: 
   return (current + (backwards ? -1 : 1) + count) % count;
 }
 
+export function dialogTabDestination(current: number, count: number, backwards: boolean): number | 'dialog' {
+  return count > 0 ? nextDialogFocusIndex(current, count, backwards) : 'dialog';
+}
+
 export function clampAdminPage(raw: string | string[] | undefined, total: number, pageSize: number): number {
   const value = Array.isArray(raw) ? raw[0] : raw;
   const parsed = Number.parseInt(value ?? '1', 10);
