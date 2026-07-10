@@ -31,7 +31,10 @@ const groups: ShellNavGroup[] = [
   {
     labelKey: 'editorial',
     labelFallback: 'Editorial',
-    items: [{ labelKey: 'blog', labelFallback: 'Blog', href: '/admin/blog' }],
+    items: [
+      { labelKey: 'blog', labelFallback: 'Blog', href: '/admin/blog' },
+      { labelKey: 'pages', labelFallback: 'Pages', href: '/admin/pages' },
+    ],
   },
 ];
 
@@ -43,5 +46,11 @@ describe('resolveActiveShellHref', () => {
       resolveActiveShellHref(groups, '/admin/blog/categories/child'),
       '/admin/blog/categories',
     );
+  });
+
+  it('keeps Pages active on its child edit routes', () => {
+    assert.equal(resolveActiveShellHref(groups, '/admin/pages'), '/admin/pages');
+    assert.equal(resolveActiveShellHref(groups, '/admin/pages/new'), '/admin/pages');
+    assert.equal(resolveActiveShellHref(groups, '/admin/pages/page-id/edit'), '/admin/pages');
   });
 });

@@ -21,6 +21,19 @@ describe('adminNav', () => {
     assert.match(editorial, /labelKey: 'blog'[\s\S]+href: '\/admin\/blog'/);
   });
 
+  it('puts Pages after Blog under Editorial and nowhere else', () => {
+    const auth = groupSource('auth');
+    const catalog = groupSource('catalog');
+    const editorial = groupSource('editorial');
+
+    assert.equal(auth.includes("labelKey: 'pages'"), false);
+    assert.equal(catalog.includes("labelKey: 'pages'"), false);
+    assert.match(
+      editorial,
+      /labelKey: 'blog'[\s\S]+labelKey: 'pages'[\s\S]+href: '\/admin\/pages'/,
+    );
+  });
+
   it('puts blog taxonomy children in a Catalog taxonomy dropdown', () => {
     const catalog = groupSource('catalog');
     const taxonomyStart = catalog.indexOf("labelKey: 'taxonomies'");
