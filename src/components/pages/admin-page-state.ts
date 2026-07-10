@@ -17,7 +17,18 @@ export function updateHeroField<K extends keyof PageHeroSettings>(state: HeroEdi
   return { ...state, settings: { ...state.settings, [key]: value } };
 }
 
-export function serializeHeroState(state: HeroEditorState): string { return JSON.stringify(state.settings); }
+export function serializeHeroState(state: HeroEditorState): string {
+  const settings: Record<string, unknown> = { ...state.settings, backgroundImageMediaId: state.mediaId };
+  for (const key of ['minHeight', 'maxWidth', 'padding', 'margin']) {
+    if (typeof settings[key] === 'string' && !settings[key].trim()) delete settings[key];
+  }
+  return JSON.stringify(settings);
+}
+
+export function nextDialogFocusIndex(current: number, count: number, backwards: boolean): number {
+  if (count <= 0) return -1;
+  return (current + (backwards ? -1 : 1) + count) % count;
+}
 
 export function clampAdminPage(raw: string | string[] | undefined, total: number, pageSize: number): number {
   const value = Array.isArray(raw) ? raw[0] : raw;

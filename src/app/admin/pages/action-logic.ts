@@ -43,12 +43,18 @@ function jsonObject(data: FormData, key: string, empty: Record<string, unknown> 
 
 export function parseCmsPageFormData(data: FormData): ParsedCmsPageFormData {
   const title = formString(data, 'title');
+  const rawHero = jsonObject(data, 'heroSettings', {}) ?? {};
+  const heroMediaId = typeof rawHero.backgroundImageMediaId === 'string'
+    ? rawHero.backgroundImageMediaId.trim() || null
+    : null;
+  const heroSettings = { ...rawHero };
+  delete heroSettings.backgroundImageMediaId;
   const parsed = pageInputSchema.parse({
     title,
     slug: normalizePageSlug(optionalString(data, 'slug') ?? title),
     contentJson: jsonObject(data, 'contentJson', {}),
     contentHtml: formString(data, 'contentHtml'),
-    heroSettings: jsonObject(data, 'heroSettings', {}),
+    heroSettings,
     status: formString(data, 'status'),
     publishedAt: optionalIsoTimestamp(data, 'publishedAt'),
     scheduledFor: optionalIsoTimestamp(data, 'scheduledFor'),
@@ -63,7 +69,7 @@ export function parseCmsPageFormData(data: FormData): ParsedCmsPageFormData {
   });
   return {
     ...parsed,
-    backgroundImageMediaId: optionalString(data, 'backgroundImageMediaId'),
+    backgroundImageMediaId: heroMediaId ?? optionalString(data, 'backgroundImageMediaId'),
   };
 }
 
