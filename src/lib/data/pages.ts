@@ -1,0 +1,171 @@
+import 'server-only';
+
+import { sanitizeBlogHtml } from '@/lib/blog/render';
+import { ApiError } from '@/lib/errors';
+import { pageInputSchema, type PageHeroSettings, type PageInput, type PageStatus } from '@/lib/validation/pages';
+
+const CMS_PAGE_COLUMNS =
+  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, created_by, updated_by, deleted_at, created_at, updated_at';
+const CMS_PAGE_LIST_COLUMNS =
+  'id, slug, title, status, published_at, scheduled_for, noindex, deleted_at, created_at, updated_at';
+
+type QueryResult = { data: unknown; error: { message: string; code?: string } | null; count?: number | null };
+type Query = PromiseLike<QueryResult> & {
+  select(columns?: string, options?: { count?: 'exact' }): Query;
+  eq(column: string, value: unknown): Query;
+  is(column: string, value: unknown): Query;
+  lte(column: string, value: unknown): Query;
+  order(column: string, options?: { ascending?: boolean }): Query;
+  range(from: number, to: number): Query;
+  insert(payload: unknown): Query;
+  update(payload: unknown): Query;
+  maybeSingle(): Promise<QueryResult>;
+  single(): Promise<QueryResult>;
+};
+type SupabaseLike = { from(table: string): Query };
+export type CmsPageActor = { id: string; role: 'super_admin' | 'admin' | string };
+type Deps = { supabase?: SupabaseLike; now?: Date };
+
+type CmsPageRow = {
+  id: string; slug: string; title: string; content_json: Record<string, unknown>; content_html: string;
+  hero_settings: PageHeroSettings; background_image_media_id: string | null; status: PageStatus;
+  published_at: string | null; scheduled_for: string | null; meta_title: string | null;
+  meta_description: string | null; canonical_url: string | null; noindex: boolean;
+  schema_markup: Record<string, unknown> | null; created_by: string | null; updated_by: string | null;
+  deleted_at: string | null; created_at: string; updated_at: string;
+};
+
+export type CmsPage = {
+  id: string; slug: string; title: string; contentJson: Record<string, unknown>; contentHtml: string;
+  heroSettings: PageHeroSettings; backgroundImageMediaId: string | null; status: PageStatus;
+  publishedAt: string | null; scheduledFor: string | null; metaTitle: string | null;
+  metaDescription: string | null; canonicalUrl: string | null; noindex: boolean;
+  schemaMarkup: Record<string, unknown> | null; createdBy: string | null; updatedBy: string | null;
+  deletedAt: string | null; createdAt: string; updatedAt: string;
+};
+export type CmsPageListItem = Pick<CmsPage, 'id' | 'slug' | 'title' | 'status' | 'publishedAt' | 'scheduledFor' | 'noindex' | 'deletedAt' | 'createdAt' | 'updatedAt'>;
+export type CmsPagePage = { items: CmsPageListItem[]; total: number; page: number; pageSize: number };
+export type CmsPageUpsertInput = PageInput & { id?: string; backgroundImageMediaId?: string | null };
+
+async function getSupabase(deps: Deps): Promise<SupabaseLike> {
+  if (deps.supabase) return deps.supabase;
+  const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
+  return createSupabaseServiceRoleClient() as unknown as SupabaseLike;
+}
+
+function requireActor(actor: CmsPageActor): void {
+  if (actor.role !== 'admin' && actor.role !== 'super_admin') {
+    throw new ApiError('FORBIDDEN', 'Only platform admins can manage CMS pages', 403);
+  }
+}
+
+function throwQueryError(error: QueryResult['error'], fallback: string): void {
+  if (!error) return;
+  if (error.code === '23505' || /duplicate|unique/i.test(error.message)) {
+    throw new ApiError('DUPLICATE_SLUG', 'A CMS page with this slug already exists', 409);
+  }
+  throw new ApiError('INTERNAL', error.message || fallback, 500);
+}
+
+export function mapCmsPageRow(value: unknown): CmsPage {
+  const row = value as CmsPageRow;
+  return {
+    id: row.id, slug: row.slug, title: row.title, contentJson: row.content_json,
+    contentHtml: row.content_html, heroSettings: row.hero_settings,
+    backgroundImageMediaId: row.background_image_media_id, status: row.status,
+    publishedAt: row.published_at, scheduledFor: row.scheduled_for, metaTitle: row.meta_title,
+    metaDescription: row.meta_description, canonicalUrl: row.canonical_url, noindex: row.noindex,
+    schemaMarkup: row.schema_markup, createdBy: row.created_by, updatedBy: row.updated_by,
+    deletedAt: row.deleted_at, createdAt: row.created_at, updatedAt: row.updated_at,
+  };
+}
+
+function mapListRow(value: unknown): CmsPageListItem {
+  const row = value as CmsPageRow;
+  return { id: row.id, slug: row.slug, title: row.title, status: row.status, publishedAt: row.published_at,
+    scheduledFor: row.scheduled_for, noindex: row.noindex, deletedAt: row.deleted_at,
+    createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export async function listAdminCmsPages(
+  options: { page?: number; pageSize?: number } = {}, deps: Deps = {},
+): Promise<CmsPagePage> {
+  const page = Math.max(1, Math.trunc(Number.isFinite(options.page) ? options.page! : 1));
+  const pageSize = Math.min(100, Math.max(1, Math.trunc(Number.isFinite(options.pageSize) ? options.pageSize! : 8)));
+  const from = (page - 1) * pageSize;
+  const db = await getSupabase(deps);
+  const { data, error, count } = await db.from('cms_pages').select(CMS_PAGE_LIST_COLUMNS, { count: 'exact' })
+    .is('deleted_at', null).order('updated_at', { ascending: false }).order('id', { ascending: false })
+    .range(from, from + pageSize - 1);
+  throwQueryError(error, 'Unable to list CMS pages');
+  return { items: ((data ?? []) as unknown[]).map(mapListRow), total: count ?? 0, page, pageSize };
+}
+
+export async function getAdminCmsPage(id: string, deps: Deps = {}): Promise<CmsPage | null> {
+  const db = await getSupabase(deps);
+  const { data, error } = await db.from('cms_pages').select(CMS_PAGE_COLUMNS).eq('id', id)
+    .is('deleted_at', null).maybeSingle();
+  throwQueryError(error, 'Unable to load CMS page');
+  return data ? mapCmsPageRow(data) : null;
+}
+
+async function canonicalHero(
+  db: SupabaseLike, heroSettings: PageHeroSettings | undefined, mediaId: string | null | undefined,
+): Promise<{ heroSettings: PageHeroSettings; mediaId: string | null }> {
+  const hero = { ...(heroSettings ?? {}) } as PageHeroSettings;
+  if (!mediaId) return { heroSettings: { ...hero, backgroundImageUrl: null }, mediaId: null };
+  const { data, error } = await db.from('blog_media').select('id, public_url').eq('id', mediaId).maybeSingle();
+  throwQueryError(error, 'Unable to validate background image');
+  const media = data as { id: string; public_url: string } | null;
+  if (!media?.public_url) throw new ApiError('INVALID_MEDIA', 'Background image is unavailable', 400);
+  return { heroSettings: { ...hero, backgroundImageUrl: media.public_url }, mediaId: media.id };
+}
+
+export async function upsertCmsPage(input: CmsPageUpsertInput, actor: CmsPageActor, deps: Deps = {}): Promise<CmsPage> {
+  requireActor(actor);
+  const { id, backgroundImageMediaId, ...pageInput } = input;
+  const parsed = pageInputSchema.parse(pageInput);
+  const db = await getSupabase(deps);
+  const canonical = await canonicalHero(db, parsed.heroSettings, backgroundImageMediaId);
+  const payload = {
+    slug: parsed.slug, title: parsed.title, content_json: parsed.contentJson,
+    content_html: sanitizeBlogHtml(parsed.contentHtml), hero_settings: canonical.heroSettings,
+    background_image_media_id: canonical.mediaId, status: parsed.status, published_at: parsed.publishedAt ?? null,
+    scheduled_for: parsed.scheduledFor ?? null, meta_title: parsed.metaTitle ?? null,
+    meta_description: parsed.metaDescription ?? null, canonical_url: parsed.canonicalUrl ?? null,
+    noindex: parsed.noindex, schema_markup: parsed.schemaMarkup ?? null, updated_by: actor.id,
+  };
+  const query = id
+    ? db.from('cms_pages').update(payload).eq('id', id).is('deleted_at', null)
+    : db.from('cms_pages').insert({ ...payload, created_by: actor.id });
+  const { data, error } = await query.select(CMS_PAGE_COLUMNS).single();
+  throwQueryError(error, 'Unable to save CMS page');
+  if (!data) throw new ApiError('NOT_FOUND', 'CMS page not found', 404);
+  return mapCmsPageRow(data);
+}
+
+export async function softDeleteCmsPage(id: string, actor: CmsPageActor, deps: Deps = {}): Promise<void> {
+  requireActor(actor);
+  const db = await getSupabase(deps);
+  const { error } = await db.from('cms_pages').update({ deleted_at: (deps.now ?? new Date()).toISOString(), updated_by: actor.id })
+    .eq('id', id).is('deleted_at', null);
+  throwQueryError(error, 'Unable to delete CMS page');
+}
+
+export async function getPublishedCmsPageBySlug(slug: string, deps: Deps = {}): Promise<CmsPage | null> {
+  const db = await getSupabase(deps);
+  const now = (deps.now ?? new Date()).toISOString();
+  const { data, error } = await db.from('cms_pages').select(CMS_PAGE_COLUMNS).eq('slug', slug)
+    .eq('status', 'published').is('deleted_at', null).lte('published_at', now).maybeSingle();
+  throwQueryError(error, 'Unable to load CMS page');
+  return data ? mapCmsPageRow(data) : null;
+}
+
+export async function listPublishedCmsPages(deps: Deps = {}): Promise<Array<{ slug: string; updatedAt: string }>> {
+  const db = await getSupabase(deps);
+  const now = (deps.now ?? new Date()).toISOString();
+  const { data, error } = await db.from('cms_pages').select('slug, updated_at').eq('status', 'published')
+    .is('deleted_at', null).lte('published_at', now).order('updated_at', { ascending: false }).order('slug', { ascending: true });
+  throwQueryError(error, 'Unable to list published CMS pages');
+  return ((data ?? []) as Array<{ slug: string; updated_at: string }>).map((row) => ({ slug: row.slug, updatedAt: row.updated_at }));
+}
