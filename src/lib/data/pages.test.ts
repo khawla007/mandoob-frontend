@@ -16,7 +16,10 @@ type Row = Record<string, unknown>;
 
 const pageRow = (overrides: Row = {}): Row => ({
   id: 'page-1', slug: 'hello', title: 'Hello', content_json: { type: 'doc' },
-  content_html: '<p>Hello</p>', hero_settings: { backgroundColor: '#ffffff' },
+  content_html: '<p>Hello</p>', hero_settings: {
+    backgroundColor: '#ffffff', overlayColor: '#000000', overlayOpacity: 0,
+    headingAlignment: 'center', textAlignment: 'center', buttonAlignment: 'center',
+  },
   background_image_media_id: null, status: 'draft', published_at: null, scheduled_for: null,
   meta_title: null, meta_description: null, canonical_url: null, noindex: false,
   schema_markup: null, created_by: 'creator', updated_by: 'updater', deleted_at: null,
@@ -66,8 +69,24 @@ test('maps database rows into CmsPage properties', () => {
   assert.equal(mapped.updatedBy, 'updater');
 });
 
+test('rejects malformed CMS page rows with a safe API error', () => {
+  assert.throws(
+    () => mapCmsPageRow(pageRow({ status: 'not-a-status', noindex: 'false' })),
+    (error: unknown) =>
+      error instanceof ApiError && error.code === 'INVALID_DATA' && error.status === 500,
+  );
+});
+
+test('admin list safely rejects malformed list rows', async () => {
+  const db = stub({ cms_pages: [pageRow({ title: null })] });
+  await assert.rejects(
+    () => listAdminCmsPages({}, { supabase: db }),
+    (error: unknown) => error instanceof ApiError && error.code === 'INVALID_DATA',
+  );
+});
+
 test('admin list clamps page and uses exact count, range, and deterministic ordering', async () => {
-  const db = stub({ cms_pages: Array.from({ length: 10 }, (_, i) => pageRow({ id: `p-${i}`, updated_at: `2026-07-${String(i + 1).padStart(2, '0')}` })) });
+  const db = stub({ cms_pages: Array.from({ length: 10 }, (_, i) => pageRow({ id: `p-${i}`, updated_at: `2026-07-${String(i + 1).padStart(2, '0')}T00:00:00.000Z` })) });
   const result = await listAdminCmsPages({ page: -4, pageSize: 3 }, { supabase: db });
   assert.deepEqual({ total: result.total, page: result.page, pageSize: result.pageSize, size: result.items.length }, { total: 10, page: 1, pageSize: 3, size: 3 });
   assert.ok(db.calls.some((c) => c.method === 'select' && (c.args[1] as { count?: string })?.count === 'exact'));
@@ -89,6 +108,7 @@ test('upsert sanitizes HTML, records actor IDs, and canonicalizes media URL', as
   assert.equal(result.contentHtml.includes('script'), false);
   const insert = db.calls.find((c) => c.method === 'insert')?.args[0] as Row;
   assert.equal(insert.created_by, 'admin-1'); assert.equal(insert.updated_by, 'admin-1');
+  assert.ok(db.calls.some((c) => c.table === 'blog_media' && c.method === 'is' && c.args[0] === 'deleted_at' && c.args[1] === null));
 });
 
 test('upsert update sets updated actor and clears unbacked client image URL', async () => {
@@ -104,6 +124,15 @@ test('upsert rejects unavailable media and maps duplicate slug errors', async ()
   await assert.rejects(() => upsertCmsPage({ title: 'P', slug: 'p', contentJson: {}, contentHtml: '', backgroundImageMediaId: 'missing', status: 'draft' }, { id: 'a', role: 'admin' }, { supabase: missing }), (e: unknown) => e instanceof ApiError && e.code === 'INVALID_MEDIA');
   const duplicate = stub({}, true);
   await assert.rejects(() => upsertCmsPage({ title: 'P', slug: 'p', contentJson: {}, contentHtml: '', status: 'draft' }, { id: 'a', role: 'admin' }, { supabase: duplicate }), (e: unknown) => e instanceof ApiError && e.code === 'DUPLICATE_SLUG');
+});
+
+test('upsert rejects deleted background media without persisting the page', async () => {
+  const db = stub({ blog_media: [{ id: 'media-deleted', public_url: 'https://cdn.example/deleted.jpg', deleted_at: '2026-07-01T00:00:00.000Z' }] });
+  await assert.rejects(
+    () => upsertCmsPage({ title: 'P', slug: 'p', contentJson: {}, contentHtml: '', backgroundImageMediaId: 'media-deleted', status: 'draft' }, { id: 'a', role: 'admin' }, { supabase: db }),
+    (error: unknown) => error instanceof ApiError && error.code === 'INVALID_MEDIA',
+  );
+  assert.equal(db.calls.some((c) => c.table === 'cms_pages' && c.method === 'insert'), false);
 });
 
 test('soft delete records actor and timestamp', async () => {

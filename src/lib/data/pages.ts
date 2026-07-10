@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { z } from 'zod';
+
 import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { ApiError } from '@/lib/errors';
 import { pageInputSchema, type PageHeroSettings, type PageInput, type PageStatus } from '@/lib/validation/pages';
@@ -26,14 +28,40 @@ type SupabaseLike = { from(table: string): Query };
 export type CmsPageActor = { id: string; role: 'super_admin' | 'admin' | string };
 type Deps = { supabase?: SupabaseLike; now?: Date };
 
-type CmsPageRow = {
-  id: string; slug: string; title: string; content_json: Record<string, unknown>; content_html: string;
-  hero_settings: PageHeroSettings; background_image_media_id: string | null; status: PageStatus;
-  published_at: string | null; scheduled_for: string | null; meta_title: string | null;
-  meta_description: string | null; canonical_url: string | null; noindex: boolean;
-  schema_markup: Record<string, unknown> | null; created_by: string | null; updated_by: string | null;
-  deleted_at: string | null; created_at: string; updated_at: string;
-};
+const nullableString = z.string().nullable();
+const nullableTimestamp = z.string().datetime().nullable();
+const timestamp = z.string().datetime();
+const jsonObject = z.record(z.string(), z.unknown());
+const heroSettingsRowSchema = z.object({
+  backgroundColor: z.string(),
+  overlayColor: z.string(),
+  overlayOpacity: z.number(),
+  headingAlignment: z.enum(['left', 'center', 'right']),
+  textAlignment: z.enum(['left', 'center', 'right']),
+  buttonAlignment: z.enum(['left', 'center', 'right']),
+  backgroundImageUrl: nullableString.optional(),
+  heading: nullableString.optional(),
+  text: nullableString.optional(),
+  buttonLabel: nullableString.optional(),
+  buttonHref: nullableString.optional(),
+  minHeight: z.string().optional(),
+  maxWidth: z.string().optional(),
+  padding: z.string().optional(),
+  margin: z.string().optional(),
+}).passthrough();
+const cmsPageRowSchema = z.object({
+  id: z.string().min(1), slug: z.string().min(1), title: z.string().min(1),
+  content_json: jsonObject, content_html: z.string(), hero_settings: heroSettingsRowSchema,
+  background_image_media_id: nullableString, status: z.enum(['draft', 'scheduled', 'published', 'archived']),
+  published_at: nullableTimestamp, scheduled_for: nullableTimestamp, meta_title: nullableString,
+  meta_description: nullableString, canonical_url: nullableString, noindex: z.boolean(),
+  schema_markup: jsonObject.nullable(), created_by: nullableString, updated_by: nullableString,
+  deleted_at: nullableTimestamp, created_at: timestamp, updated_at: timestamp,
+});
+const cmsPageListRowSchema = cmsPageRowSchema.pick({
+  id: true, slug: true, title: true, status: true, published_at: true, scheduled_for: true,
+  noindex: true, deleted_at: true, created_at: true, updated_at: true,
+});
 
 export type CmsPage = {
   id: string; slug: string; title: string; contentJson: Record<string, unknown>; contentHtml: string;
@@ -68,7 +96,11 @@ function throwQueryError(error: QueryResult['error'], fallback: string): void {
 }
 
 export function mapCmsPageRow(value: unknown): CmsPage {
-  const row = value as CmsPageRow;
+  const parsed = cmsPageRowSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ApiError('INVALID_DATA', 'CMS page data is malformed', 500);
+  }
+  const row = parsed.data;
   return {
     id: row.id, slug: row.slug, title: row.title, contentJson: row.content_json,
     contentHtml: row.content_html, heroSettings: row.hero_settings,
@@ -81,7 +113,11 @@ export function mapCmsPageRow(value: unknown): CmsPage {
 }
 
 function mapListRow(value: unknown): CmsPageListItem {
-  const row = value as CmsPageRow;
+  const parsed = cmsPageListRowSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ApiError('INVALID_DATA', 'CMS page list data is malformed', 500);
+  }
+  const row = parsed.data;
   return { id: row.id, slug: row.slug, title: row.title, status: row.status, publishedAt: row.published_at,
     scheduledFor: row.scheduled_for, noindex: row.noindex, deletedAt: row.deleted_at,
     createdAt: row.created_at, updatedAt: row.updated_at };
@@ -114,7 +150,8 @@ async function canonicalHero(
 ): Promise<{ heroSettings: PageHeroSettings; mediaId: string | null }> {
   const hero = { ...(heroSettings ?? {}) } as PageHeroSettings;
   if (!mediaId) return { heroSettings: { ...hero, backgroundImageUrl: null }, mediaId: null };
-  const { data, error } = await db.from('blog_media').select('id, public_url').eq('id', mediaId).maybeSingle();
+  const { data, error } = await db.from('blog_media').select('id, public_url').eq('id', mediaId)
+    .is('deleted_at', null).maybeSingle();
   throwQueryError(error, 'Unable to validate background image');
   const media = data as { id: string; public_url: string } | null;
   if (!media?.public_url) throw new ApiError('INVALID_MEDIA', 'Background image is unavailable', 400);
