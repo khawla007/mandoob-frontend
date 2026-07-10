@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { listPublishedBlogPosts } from '@/lib/data/blog';
+import { listPublishedCmsPages } from '@/lib/data/pages';
 import { seededCostDataRows } from '@/lib/estimator/seed-data';
 import { authoritySlugFor, knowledgeBaseArticles } from '@/lib/knowledge-base';
 
@@ -11,10 +12,17 @@ type SitemapBlogPost = {
   noindex?: boolean;
 };
 
+type SitemapCmsPage = {
+  slug: string;
+  updatedAt: string;
+  noindex: boolean;
+};
+
 type SitemapInput = {
   origin?: string;
   knowledgeBaseArticleSlugs?: string[];
   blogPosts?: SitemapBlogPost[];
+  cmsPages?: SitemapCmsPage[];
 };
 
 export function getAuthoritySlugs(rows = seededCostDataRows): string[] {
@@ -25,6 +33,7 @@ export function buildPublicSitemap({
   origin = DEFAULT_ORIGIN,
   knowledgeBaseArticleSlugs = knowledgeBaseArticles.map((article) => article.slug),
   blogPosts = [],
+  cmsPages = [],
 }: SitemapInput = {}): MetadataRoute.Sitemap {
   const base = origin.replace(/\/+$/, '');
   const staticPaths = ['/', '/estimate', '/apply', '/pricing', '/knowledge-base', '/blog'];
@@ -46,15 +55,51 @@ export function buildPublicSitemap({
       priority: 0.7,
     }));
 
-  return [...staticEntries, ...blogEntries];
+  const cmsEntries = cmsPages
+    .filter((page) => !page.noindex)
+    .map((page) => ({
+      url: `${base}/${page.slug}`,
+      lastModified: new Date(page.updatedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    }));
+
+  const seenUrls = new Set<string>();
+  return [...staticEntries, ...blogEntries, ...cmsEntries].filter((entry) => {
+    if (seenUrls.has(entry.url)) return false;
+    seenUrls.add(entry.url);
+    return true;
+  });
+}
+
+type SitemapLoaders = {
+  listBlogPosts?: () => Promise<SitemapBlogPost[]>;
+  listCmsPages?: () => Promise<SitemapCmsPage[]>;
+  warn?: (...args: unknown[]) => void;
+};
+
+export async function loadSitemapContent({
+  listBlogPosts = listPublishedBlogPosts,
+  listCmsPages = listPublishedCmsPages,
+  warn = console.warn,
+}: SitemapLoaders = {}): Promise<{ blogPosts: SitemapBlogPost[]; cmsPages: SitemapCmsPage[] }> {
+  let blogPosts: SitemapBlogPost[] = [];
+  try {
+    blogPosts = await listBlogPosts();
+  } catch {
+    warn('Could not load blog posts for sitemap');
+  }
+
+  let cmsPages: SitemapCmsPage[] = [];
+  try {
+    cmsPages = await listCmsPages();
+  } catch {
+    warn('Could not load CMS pages for sitemap');
+  }
+
+  return { blogPosts, cmsPages };
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  let blogPosts: SitemapBlogPost[] = [];
-  try {
-    blogPosts = await listPublishedBlogPosts();
-  } catch (error) {
-    console.warn('Could not load blog posts for sitemap', error);
-  }
-  return buildPublicSitemap({ blogPosts });
+  return buildPublicSitemap(await loadSitemapContent());
 }

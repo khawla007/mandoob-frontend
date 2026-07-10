@@ -213,12 +213,12 @@ test('public lookup applies published, date, and deletion filters', async () => 
 test('published sitemap list returns only public columns in deterministic order', async () => {
   const db = stub({ cms_pages: [pageRow({ status: 'published', published_at: '2026-01-01T00:00:00.000Z' })] });
   const pages = await listPublishedCmsPages({ supabase: db, now: new Date('2026-07-01T00:00:00.000Z') });
-  assert.deepEqual(pages, [{ slug: 'hello', updatedAt: '2026-07-02T00:00:00.000Z' }]);
-  assert.ok(db.calls.some((c) => c.method === 'select' && c.args[0] === 'slug, updated_at'));
+  assert.deepEqual(pages, [{ slug: 'hello', updatedAt: '2026-07-02T00:00:00.000Z', noindex: false }]);
+  assert.ok(db.calls.some((c) => c.method === 'select' && c.args[0] === 'slug, updated_at, noindex'));
 });
 
 test('published sitemap list rejects malformed projection rows', async () => {
-  for (const bad of [{ slug: null }, { updated_at: null }]) {
+  for (const bad of [{ slug: null }, { updated_at: null }, { noindex: 'false' }]) {
     const db = stub({ cms_pages: [pageRow({ status: 'published', published_at: '2026-01-01T00:00:00.000Z', ...bad })] });
     await assert.rejects(
       () => listPublishedCmsPages({ supabase: db, now: new Date('2026-07-01T00:00:00.000Z') }),

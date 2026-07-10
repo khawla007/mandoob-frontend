@@ -69,6 +69,7 @@ const cmsPagePublicRowSchema = cmsPageRowSchema.omit({ created_by: true, updated
 const sitemapRowSchema = z.object({
   slug: z.string().min(1),
   updated_at: timestamp,
+  noindex: z.boolean(),
 }).strict();
 
 export type CmsPage = {
@@ -228,15 +229,15 @@ export async function getPublishedCmsPageBySlug(slug: string, deps: Deps = {}): 
   return data ? mapPublicRow(data) : null;
 }
 
-export async function listPublishedCmsPages(deps: Deps = {}): Promise<Array<{ slug: string; updatedAt: string }>> {
+export async function listPublishedCmsPages(deps: Deps = {}): Promise<Array<{ slug: string; updatedAt: string; noindex: boolean }>> {
   const db = await getSupabase(deps);
   const now = (deps.now ?? new Date()).toISOString();
-  const { data, error } = await db.from('cms_pages').select('slug, updated_at').eq('status', 'published')
+  const { data, error } = await db.from('cms_pages').select('slug, updated_at, noindex').eq('status', 'published')
     .is('deleted_at', null).lte('published_at', now).order('updated_at', { ascending: false }).order('slug', { ascending: true });
   throwQueryError(error, 'Unable to list published CMS pages');
   return ((data ?? []) as unknown[]).map((value) => {
     const parsed = sitemapRowSchema.safeParse(value);
     if (!parsed.success) throw new ApiError('INVALID_DATA', 'CMS sitemap data is malformed', 500);
-    return { slug: parsed.data.slug, updatedAt: parsed.data.updated_at };
+    return { slug: parsed.data.slug, updatedAt: parsed.data.updated_at, noindex: parsed.data.noindex };
   });
 }
