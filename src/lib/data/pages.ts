@@ -10,6 +10,8 @@ const CMS_PAGE_COLUMNS =
   'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, created_by, updated_by, deleted_at, created_at, updated_at';
 const CMS_PAGE_LIST_COLUMNS =
   'id, slug, title, status, published_at, scheduled_for, noindex, deleted_at, created_at, updated_at';
+const CMS_PAGE_PUBLIC_COLUMNS =
+  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, created_at, updated_at';
 
 type QueryResult = { data: unknown; error: { message: string; code?: string } | null; count?: number | null };
 type Query = PromiseLike<QueryResult> & {
@@ -62,6 +64,11 @@ const cmsPageListRowSchema = cmsPageRowSchema.pick({
   id: true, slug: true, title: true, status: true, published_at: true, scheduled_for: true,
   noindex: true, deleted_at: true, created_at: true, updated_at: true,
 });
+const cmsPagePublicRowSchema = cmsPageRowSchema.omit({ created_by: true, updated_by: true, deleted_at: true });
+const sitemapRowSchema = z.object({
+  slug: z.string().min(1),
+  updated_at: timestamp,
+}).strict();
 
 export type CmsPage = {
   id: string; slug: string; title: string; contentJson: Record<string, unknown>; contentHtml: string;
@@ -89,10 +96,15 @@ function requireActor(actor: CmsPageActor): void {
 
 function throwQueryError(error: QueryResult['error'], fallback: string): void {
   if (!error) return;
-  if (error.code === '23505' || /duplicate|unique/i.test(error.message)) {
+  console.error(fallback, error);
+  if (error.code === '23505') {
     throw new ApiError('DUPLICATE_SLUG', 'A CMS page with this slug already exists', 409);
   }
-  throw new ApiError('INTERNAL', error.message || fallback, 500);
+  throw new ApiError('INTERNAL', fallback, 500);
+}
+
+function isMissingMutation(error: QueryResult['error'], data: unknown): boolean {
+  return !data || error?.code === 'PGRST116';
 }
 
 export function mapCmsPageRow(value: unknown): CmsPage {
@@ -121,6 +133,12 @@ function mapListRow(value: unknown): CmsPageListItem {
   return { id: row.id, slug: row.slug, title: row.title, status: row.status, publishedAt: row.published_at,
     scheduledFor: row.scheduled_for, noindex: row.noindex, deletedAt: row.deleted_at,
     createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+function mapPublicRow(value: unknown): CmsPage {
+  const parsed = cmsPagePublicRowSchema.safeParse(value);
+  if (!parsed.success) throw new ApiError('INVALID_DATA', 'CMS page data is malformed', 500);
+  return mapCmsPageRow({ ...parsed.data, created_by: null, updated_by: null, deleted_at: null });
 }
 
 export async function listAdminCmsPages(
@@ -176,6 +194,9 @@ export async function upsertCmsPage(input: CmsPageUpsertInput, actor: CmsPageAct
     ? db.from('cms_pages').update(payload).eq('id', id).is('deleted_at', null)
     : db.from('cms_pages').insert({ ...payload, created_by: actor.id });
   const { data, error } = await query.select(CMS_PAGE_COLUMNS).single();
+  if (isMissingMutation(error, data) && error?.code === 'PGRST116') {
+    throw new ApiError('NOT_FOUND', 'CMS page not found', 404);
+  }
   throwQueryError(error, 'Unable to save CMS page');
   if (!data) throw new ApiError('NOT_FOUND', 'CMS page not found', 404);
   return mapCmsPageRow(data);
@@ -184,18 +205,22 @@ export async function upsertCmsPage(input: CmsPageUpsertInput, actor: CmsPageAct
 export async function softDeleteCmsPage(id: string, actor: CmsPageActor, deps: Deps = {}): Promise<void> {
   requireActor(actor);
   const db = await getSupabase(deps);
-  const { error } = await db.from('cms_pages').update({ deleted_at: (deps.now ?? new Date()).toISOString(), updated_by: actor.id })
-    .eq('id', id).is('deleted_at', null);
+  const { data, error } = await db.from('cms_pages').update({ deleted_at: (deps.now ?? new Date()).toISOString(), updated_by: actor.id })
+    .eq('id', id).is('deleted_at', null).select('id').single();
+  if (isMissingMutation(error, data)) {
+    if (error && error.code !== 'PGRST116') throwQueryError(error, 'Unable to delete CMS page');
+    throw new ApiError('NOT_FOUND', 'CMS page not found', 404);
+  }
   throwQueryError(error, 'Unable to delete CMS page');
 }
 
 export async function getPublishedCmsPageBySlug(slug: string, deps: Deps = {}): Promise<CmsPage | null> {
   const db = await getSupabase(deps);
   const now = (deps.now ?? new Date()).toISOString();
-  const { data, error } = await db.from('cms_pages').select(CMS_PAGE_COLUMNS).eq('slug', slug)
+  const { data, error } = await db.from('cms_pages').select(CMS_PAGE_PUBLIC_COLUMNS).eq('slug', slug)
     .eq('status', 'published').is('deleted_at', null).lte('published_at', now).maybeSingle();
   throwQueryError(error, 'Unable to load CMS page');
-  return data ? mapCmsPageRow(data) : null;
+  return data ? mapPublicRow(data) : null;
 }
 
 export async function listPublishedCmsPages(deps: Deps = {}): Promise<Array<{ slug: string; updatedAt: string }>> {
@@ -204,5 +229,9 @@ export async function listPublishedCmsPages(deps: Deps = {}): Promise<Array<{ sl
   const { data, error } = await db.from('cms_pages').select('slug, updated_at').eq('status', 'published')
     .is('deleted_at', null).lte('published_at', now).order('updated_at', { ascending: false }).order('slug', { ascending: true });
   throwQueryError(error, 'Unable to list published CMS pages');
-  return ((data ?? []) as Array<{ slug: string; updated_at: string }>).map((row) => ({ slug: row.slug, updatedAt: row.updated_at }));
+  return ((data ?? []) as unknown[]).map((value) => {
+    const parsed = sitemapRowSchema.safeParse(value);
+    if (!parsed.success) throw new ApiError('INVALID_DATA', 'CMS sitemap data is malformed', 500);
+    return { slug: parsed.data.slug, updatedAt: parsed.data.updated_at };
+  });
 }

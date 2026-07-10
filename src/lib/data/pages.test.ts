@@ -27,15 +27,16 @@ const pageRow = (overrides: Row = {}): Row => ({
   ...overrides,
 });
 
-function stub(seed: Record<string, Row[]> = {}, duplicate = false) {
+function stub(seed: Record<string, Row[]> = {}, options: { duplicate?: boolean; queryError?: { message: string; code?: string } } = {}) {
   const tables = new Map(Object.entries(seed).map(([name, rows]) => [name, rows.map((r) => ({ ...r }))]));
   const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
   const getRows = (table: string) => tables.get(table) ?? (tables.set(table, []), tables.get(table)!);
   function from(table: string) {
     let op = 'select'; let payload: Row = {}; const filters: Array<(r: Row) => boolean> = [];
     const orders: Array<{ column: string; ascending: boolean }> = []; let bounds: [number, number] | null = null;
+    let selectedColumns: string | undefined;
     const builder = {
-      select(...args: unknown[]) { calls.push({ table, method: 'select', args }); return builder; },
+      select(...args: unknown[]) { selectedColumns = args[0] as string | undefined; calls.push({ table, method: 'select', args }); return builder; },
       eq(column: string, value: unknown) { filters.push((r) => r[column] === value); calls.push({ table, method: 'eq', args: [column, value] }); return builder; },
       is(column: string, value: unknown) { filters.push((r) => r[column] === value); calls.push({ table, method: 'is', args: [column, value] }); return builder; },
       lte(column: string, value: unknown) { filters.push((r) => String(r[column]) <= String(value)); calls.push({ table, method: 'lte', args: [column, value] }); return builder; },
@@ -44,17 +45,22 @@ function stub(seed: Record<string, Row[]> = {}, duplicate = false) {
       insert(value: Row) { op = 'insert'; payload = value; calls.push({ table, method: 'insert', args: [value] }); return builder; },
       update(value: Row) { op = 'update'; payload = value; calls.push({ table, method: 'update', args: [value] }); return builder; },
       async maybeSingle() { const result = apply(); return { data: result.data[0] ?? null, error: result.error }; },
-      async single() { const result = apply(); return { data: result.data[0] ?? null, error: result.error ?? (result.data[0] ? null : { message: 'not found' }) }; },
+      async single() { const result = apply(); return { data: result.data[0] ?? null, error: result.error ?? (result.data[0] ? null : { message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116' }) }; },
       then(resolve: (v: unknown) => void) { const result = apply(); resolve({ data: result.data, error: result.error, count: result.count }); },
     };
     function apply(): { data: Row[]; error: { message: string; code?: string } | null; count: number } {
-      if (duplicate && (op === 'insert' || op === 'update')) return { data: [], error: { message: 'duplicate key', code: '23505' }, count: 0 };
+      if (options.duplicate && (op === 'insert' || op === 'update')) return { data: [], error: { message: 'duplicate key', code: '23505' }, count: 0 };
+      if (options.queryError) return { data: [], error: options.queryError, count: 0 };
       let rows = getRows(table).filter((r) => filters.every((f) => f(r)));
       if (op === 'insert') { const row = pageRow({ id: 'page-new', ...payload }); getRows(table).push(row); rows = [row]; }
       if (op === 'update') { rows.forEach((r) => Object.assign(r, payload)); }
       const count = rows.length;
       rows = [...rows].sort((a, b) => { for (const order of orders) { const cmp = String(a[order.column]).localeCompare(String(b[order.column])); if (cmp) return order.ascending ? cmp : -cmp; } return 0; });
       if (bounds) rows = rows.slice(bounds[0], bounds[1] + 1);
+      if (selectedColumns && selectedColumns !== '*') {
+        const columns = selectedColumns.split(',').map((column) => column.trim());
+        rows = rows.map((row) => Object.fromEntries(columns.map((column) => [column, row[column]])));
+      }
       return { data: rows, error: null, count };
     }
     return builder;
@@ -82,6 +88,15 @@ test('admin list safely rejects malformed list rows', async () => {
   await assert.rejects(
     () => listAdminCmsPages({}, { supabase: db }),
     (error: unknown) => error instanceof ApiError && error.code === 'INVALID_DATA',
+  );
+});
+
+test('query failures use fixed public messages without leaking database details', async () => {
+  const secret = 'relation cms_pages password=server-secret';
+  const db = stub({}, { queryError: { message: secret, code: 'XX000' } });
+  await assert.rejects(
+    () => listAdminCmsPages({}, { supabase: db }),
+    (error: unknown) => error instanceof ApiError && error.message === 'Unable to list CMS pages' && !error.message.includes(secret),
   );
 });
 
@@ -122,7 +137,7 @@ test('upsert update sets updated actor and clears unbacked client image URL', as
 test('upsert rejects unavailable media and maps duplicate slug errors', async () => {
   const missing = stub();
   await assert.rejects(() => upsertCmsPage({ title: 'P', slug: 'p', contentJson: {}, contentHtml: '', backgroundImageMediaId: 'missing', status: 'draft' }, { id: 'a', role: 'admin' }, { supabase: missing }), (e: unknown) => e instanceof ApiError && e.code === 'INVALID_MEDIA');
-  const duplicate = stub({}, true);
+  const duplicate = stub({}, { duplicate: true });
   await assert.rejects(() => upsertCmsPage({ title: 'P', slug: 'p', contentJson: {}, contentHtml: '', status: 'draft' }, { id: 'a', role: 'admin' }, { supabase: duplicate }), (e: unknown) => e instanceof ApiError && e.code === 'DUPLICATE_SLUG');
 });
 
@@ -142,11 +157,33 @@ test('soft delete records actor and timestamp', async () => {
   assert.equal(update.updated_by, 'admin-3'); assert.equal(typeof update.deleted_at, 'string');
 });
 
+test('update maps missing and already-deleted page IDs to NOT_FOUND', async () => {
+  for (const db of [stub(), stub({ cms_pages: [pageRow({ deleted_at: '2026-07-01T00:00:00.000Z' })] })]) {
+    await assert.rejects(
+      () => upsertCmsPage({ id: 'page-1', title: 'Page', slug: 'page', contentJson: {}, contentHtml: '', status: 'draft' }, { id: 'admin', role: 'admin' }, { supabase: db }),
+      (error: unknown) => error instanceof ApiError && error.code === 'NOT_FOUND' && error.status === 404,
+    );
+  }
+});
+
+test('soft delete maps missing and already-deleted page IDs to NOT_FOUND', async () => {
+  for (const db of [stub(), stub({ cms_pages: [pageRow({ deleted_at: '2026-07-01T00:00:00.000Z' })] })]) {
+    await assert.rejects(
+      () => softDeleteCmsPage('page-1', { id: 'admin', role: 'admin' }, { supabase: db }),
+      (error: unknown) => error instanceof ApiError && error.code === 'NOT_FOUND' && error.status === 404,
+    );
+  }
+});
+
 test('public lookup applies published, date, and deletion filters', async () => {
   const db = stub({ cms_pages: [pageRow({ status: 'published', published_at: '2026-01-01T00:00:00.000Z' })] });
   assert.equal((await getPublishedCmsPageBySlug('hello', { supabase: db, now: new Date('2026-07-01T00:00:00.000Z') }))?.slug, 'hello');
   assert.ok(db.calls.some((c) => c.method === 'eq' && c.args[0] === 'status' && c.args[1] === 'published'));
   assert.ok(db.calls.some((c) => c.method === 'lte' && c.args[0] === 'published_at'));
+  const projection = db.calls.find((c) => c.method === 'select')?.args[0] as string;
+  assert.equal(projection.includes('created_by'), false);
+  assert.equal(projection.includes('updated_by'), false);
+  assert.equal(projection.includes('deleted_at'), false);
 });
 
 test('published sitemap list returns only public columns in deterministic order', async () => {
@@ -154,4 +191,14 @@ test('published sitemap list returns only public columns in deterministic order'
   const pages = await listPublishedCmsPages({ supabase: db, now: new Date('2026-07-01T00:00:00.000Z') });
   assert.deepEqual(pages, [{ slug: 'hello', updatedAt: '2026-07-02T00:00:00.000Z' }]);
   assert.ok(db.calls.some((c) => c.method === 'select' && c.args[0] === 'slug, updated_at'));
+});
+
+test('published sitemap list rejects malformed projection rows', async () => {
+  for (const bad of [{ slug: null }, { updated_at: null }]) {
+    const db = stub({ cms_pages: [pageRow({ status: 'published', published_at: '2026-01-01T00:00:00.000Z', ...bad })] });
+    await assert.rejects(
+      () => listPublishedCmsPages({ supabase: db, now: new Date('2026-07-01T00:00:00.000Z') }),
+      (error: unknown) => error instanceof ApiError && error.code === 'INVALID_DATA',
+    );
+  }
 });
