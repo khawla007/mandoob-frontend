@@ -100,8 +100,7 @@ test('save maps duplicate slugs to a stable public result', async () => {
 
 test('save orchestrates auth, prior lookup, mutation, and old/new root revalidation', async () => {
   let persisted: Record<string, unknown> | undefined;
-  let context: ReturnType<typeof deps>;
-  context = deps({
+  const context = deps({
     upsertPage: async (input: Record<string, unknown>) => {
       persisted = input;
       context.calls.push('upsert');

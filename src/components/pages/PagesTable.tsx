@@ -20,7 +20,9 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
   const dialogRef = useRef<HTMLElement>(null);
   const invokerRef = useRef<HTMLButtonElement>(null);
   const pendingRef = useRef(pending);
-  pendingRef.current = pending;
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
   useEffect(() => {
     if (!target) return;
     cancelRef.current?.focus();
