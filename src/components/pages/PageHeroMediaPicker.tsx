@@ -6,6 +6,7 @@ import { useRef, useState, useTransition } from 'react';
 import { uploadBlogMediaAction } from '@/app/admin/blog/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { runHeroUpload } from './page-hero-upload';
 
 export type HeroMedia = { id: string | null; previewUrl: string | null };
 
@@ -14,11 +15,12 @@ export function PageHeroMediaPicker({ media, onChange }: { media: HeroMedia; onC
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   function upload(file: File | null) {
-    if (!file) return;
     setError(null);
-    const data = new FormData(); data.append('file', file);
     startTransition(async () => {
-      const result = await uploadBlogMediaAction(data);
+      const result = await runHeroUpload(file, async (validatedFile) => {
+        const data = new FormData(); data.append('file', validatedFile as File);
+        return uploadBlogMediaAction(data);
+      });
       if (!result.ok) { setError(result.error); return; }
       onChange({ id: result.data.id, previewUrl: result.data.publicUrl });
       if (inputRef.current) inputRef.current.value = '';
