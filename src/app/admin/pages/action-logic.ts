@@ -8,9 +8,6 @@ export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error:
 export type CmsPageAdminActor = { id: string; role: 'super_admin' | 'admin' };
 export type ParsedCmsPageFormData = ParsedPageInput & {
   backgroundImageMediaId: string | null;
-  headScripts: string;
-  bodyStartScripts: string;
-  bodyEndScripts: string;
 };
 export type CmsPageActionDependencies = {
   requireActor: () => Promise<CmsPageAdminActor>;
@@ -60,13 +57,13 @@ export function parseCmsPageFormData(data: FormData): ParsedCmsPageFormData {
     canonicalUrl: optionalString(data, 'canonicalUrl'),
     noindex: ['true', '1', 'on', 'yes'].includes(formString(data, 'noindex')),
     schemaMarkup: jsonObject(data, 'schemaMarkup', null),
+    scriptHead: optionalString(data, 'scriptHead'),
+    scriptBodyStart: optionalString(data, 'scriptBodyStart'),
+    scriptBodyEnd: optionalString(data, 'scriptBodyEnd'),
   });
   return {
     ...parsed,
     backgroundImageMediaId: optionalString(data, 'backgroundImageMediaId'),
-    headScripts: formString(data, 'headScripts'),
-    bodyStartScripts: formString(data, 'bodyStartScripts'),
-    bodyEndScripts: formString(data, 'bodyEndScripts'),
   };
 }
 

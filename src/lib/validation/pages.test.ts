@@ -67,6 +67,14 @@ test('page metadata has limits and schema markup must be an object', () => {
   assert.equal(pageInputSchema.safeParse({ ...base, schemaMarkup: { '@type': 'WebPage' } }).success, true);
 });
 
+test('page script slots are nullable and bounded', () => {
+  const scripts = { scriptHead: '<script>head()</script>', scriptBodyStart: null, scriptBodyEnd: '' };
+  assert.equal(pageInputSchema.safeParse({ ...base, ...scripts }).success, true);
+  for (const key of ['scriptHead', 'scriptBodyStart', 'scriptBodyEnd'] as const) {
+    assert.equal(pageInputSchema.safeParse({ ...base, [key]: 'x'.repeat(100_001) }).success, false, key);
+  }
+});
+
 test('page input rejects normalized reserved platform routes', () => {
   for (const slug of ['ADMIN', ' Admin ', 'Callback', 'contact']) {
     assert.equal(pageInputSchema.safeParse({ ...base, slug }).success, false, slug);

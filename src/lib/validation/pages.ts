@@ -84,6 +84,9 @@ export const pageInputSchema = z.object({
   canonicalUrl: absoluteHttpUrlSchema.optional().nullable(),
   noindex: z.boolean().default(false),
   schemaMarkup: z.record(z.string(), z.unknown()).optional().nullable(),
+  scriptHead: z.string().max(100_000).optional().nullable(),
+  scriptBodyStart: z.string().max(100_000).optional().nullable(),
+  scriptBodyEnd: z.string().max(100_000).optional().nullable(),
 }).superRefine((value, ctx) => {
   if (value.status === 'published' && !value.publishedAt) {
     ctx.addIssue({ code: 'custom', path: ['publishedAt'], message: 'publishedAt is required when status is published' });

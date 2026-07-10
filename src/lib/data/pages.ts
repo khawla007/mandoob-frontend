@@ -7,11 +7,11 @@ import { ApiError } from '@/lib/errors';
 import { pageInputSchema, type PageHeroSettings, type PageInput, type PageStatus } from '@/lib/validation/pages';
 
 const CMS_PAGE_COLUMNS =
-  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, created_by, updated_by, deleted_at, created_at, updated_at';
+  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, script_head, script_body_start, script_body_end, created_by, updated_by, deleted_at, created_at, updated_at';
 const CMS_PAGE_LIST_COLUMNS =
   'id, slug, title, status, published_at, scheduled_for, noindex, deleted_at, created_at, updated_at';
 const CMS_PAGE_PUBLIC_COLUMNS =
-  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, created_at, updated_at';
+  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, script_head, script_body_start, script_body_end, created_at, updated_at';
 
 type QueryResult = { data: unknown; error: { message: string; code?: string } | null; count?: number | null };
 type Query = PromiseLike<QueryResult> & {
@@ -58,6 +58,7 @@ const cmsPageRowSchema = z.object({
   published_at: nullableTimestamp, scheduled_for: nullableTimestamp, meta_title: nullableString,
   meta_description: nullableString, canonical_url: nullableString, noindex: z.boolean(),
   schema_markup: jsonObject.nullable(), created_by: nullableString, updated_by: nullableString,
+  script_head: nullableString, script_body_start: nullableString, script_body_end: nullableString,
   deleted_at: nullableTimestamp, created_at: timestamp, updated_at: timestamp,
 });
 const cmsPageListRowSchema = cmsPageRowSchema.pick({
@@ -76,6 +77,7 @@ export type CmsPage = {
   publishedAt: string | null; scheduledFor: string | null; metaTitle: string | null;
   metaDescription: string | null; canonicalUrl: string | null; noindex: boolean;
   schemaMarkup: Record<string, unknown> | null; createdBy: string | null; updatedBy: string | null;
+  scriptHead: string | null; scriptBodyStart: string | null; scriptBodyEnd: string | null;
   deletedAt: string | null; createdAt: string; updatedAt: string;
 };
 export type CmsPageListItem = Pick<CmsPage, 'id' | 'slug' | 'title' | 'status' | 'publishedAt' | 'scheduledFor' | 'noindex' | 'deletedAt' | 'createdAt' | 'updatedAt'>;
@@ -120,6 +122,7 @@ export function mapCmsPageRow(value: unknown): CmsPage {
     publishedAt: row.published_at, scheduledFor: row.scheduled_for, metaTitle: row.meta_title,
     metaDescription: row.meta_description, canonicalUrl: row.canonical_url, noindex: row.noindex,
     schemaMarkup: row.schema_markup, createdBy: row.created_by, updatedBy: row.updated_by,
+    scriptHead: row.script_head, scriptBodyStart: row.script_body_start, scriptBodyEnd: row.script_body_end,
     deletedAt: row.deleted_at, createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
@@ -189,6 +192,8 @@ export async function upsertCmsPage(input: CmsPageUpsertInput, actor: CmsPageAct
     scheduled_for: parsed.scheduledFor ?? null, meta_title: parsed.metaTitle ?? null,
     meta_description: parsed.metaDescription ?? null, canonical_url: parsed.canonicalUrl ?? null,
     noindex: parsed.noindex, schema_markup: parsed.schemaMarkup ?? null, updated_by: actor.id,
+    script_head: parsed.scriptHead ?? null, script_body_start: parsed.scriptBodyStart ?? null,
+    script_body_end: parsed.scriptBodyEnd ?? null,
   };
   const query = id
     ? db.from('cms_pages').update(payload).eq('id', id).is('deleted_at', null)

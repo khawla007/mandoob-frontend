@@ -26,9 +26,9 @@ function validForm(): FormData {
   form.set('canonicalUrl', 'https://example.com/about');
   form.set('noindex', 'on');
   form.set('schemaMarkup', '{"@type":"WebPage"}');
-  form.set('headScripts', '<script>head()</script>');
-  form.set('bodyStartScripts', '<script>start()</script>');
-  form.set('bodyEndScripts', '<script>end()</script>');
+  form.set('scriptHead', '<script>head()</script>');
+  form.set('scriptBodyStart', '<script>start()</script>');
+  form.set('scriptBodyEnd', '<script>end()</script>');
   return form;
 }
 
@@ -44,8 +44,8 @@ test('parseCmsPageFormData parses every page input, JSON, booleans, timestamps, 
     metaTitle: 'About meta', metaDescription: 'Description',
     canonicalUrl: 'https://example.com/about', noindex: true,
     schemaMarkup: { '@type': 'WebPage' },
-    headScripts: '<script>head()</script>', bodyStartScripts: '<script>start()</script>',
-    bodyEndScripts: '<script>end()</script>',
+    scriptHead: '<script>head()</script>', scriptBodyStart: '<script>start()</script>',
+    scriptBodyEnd: '<script>end()</script>',
   });
 });
 
@@ -99,7 +99,15 @@ test('save maps duplicate slugs to a stable public result', async () => {
 });
 
 test('save orchestrates auth, prior lookup, mutation, and old/new root revalidation', async () => {
-  const context = deps();
+  let persisted: Record<string, unknown> | undefined;
+  let context: ReturnType<typeof deps>;
+  context = deps({
+    upsertPage: async (input: Record<string, unknown>) => {
+      persisted = input;
+      context.calls.push('upsert');
+      return { id: pageId, slug: 'about-us' };
+    },
+  });
   assert.deepEqual(await runSaveCmsPageAction(pageId, validForm(), context.dependencies), {
     ok: true, data: { id: pageId },
   });
@@ -107,6 +115,18 @@ test('save orchestrates auth, prior lookup, mutation, and old/new root revalidat
     'auth', 'get', 'upsert', 'revalidate:/admin/pages', 'revalidate:/sitemap.xml',
     'revalidate:/old-page', 'revalidate:/about-us',
   ]);
+  assert.deepEqual(
+    persisted && {
+      scriptHead: persisted.scriptHead,
+      scriptBodyStart: persisted.scriptBodyStart,
+      scriptBodyEnd: persisted.scriptBodyEnd,
+    },
+    {
+      scriptHead: '<script>head()</script>',
+      scriptBodyStart: '<script>start()</script>',
+      scriptBodyEnd: '<script>end()</script>',
+    },
+  );
 });
 
 test('delete authenticates, validates before reads/mutation, deletes, and revalidates the deleted slug', async () => {

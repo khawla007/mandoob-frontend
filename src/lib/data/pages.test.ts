@@ -22,7 +22,8 @@ const pageRow = (overrides: Row = {}): Row => ({
   },
   background_image_media_id: null, status: 'draft', published_at: null, scheduled_for: null,
   meta_title: null, meta_description: null, canonical_url: null, noindex: false,
-  schema_markup: null, created_by: 'creator', updated_by: 'updater', deleted_at: null,
+  schema_markup: null, script_head: null, script_body_start: null, script_body_end: null,
+  created_by: 'creator', updated_by: 'updater', deleted_at: null,
   created_at: '2026-07-01T00:00:00.000Z', updated_at: '2026-07-02T00:00:00.000Z',
   ...overrides,
 });
@@ -124,6 +125,29 @@ test('upsert sanitizes HTML, records actor IDs, and canonicalizes media URL', as
   const insert = db.calls.find((c) => c.method === 'insert')?.args[0] as Row;
   assert.equal(insert.created_by, 'admin-1'); assert.equal(insert.updated_by, 'admin-1');
   assert.ok(db.calls.some((c) => c.table === 'blog_media' && c.method === 'is' && c.args[0] === 'deleted_at' && c.args[1] === null));
+});
+
+test('upsert persists and round-trips all script slots without executing them', async () => {
+  const db = stub();
+  const scripts = {
+    scriptHead: '<script>window.headSlot = true</script>',
+    scriptBodyStart: '<script>window.startSlot = true</script>',
+    scriptBodyEnd: '<script>window.endSlot = true</script>',
+  };
+  const result = await upsertCmsPage(
+    { title: 'Scripts', slug: 'scripts', contentJson: {}, contentHtml: '', heroSettings: {}, status: 'draft', ...scripts },
+    { id: 'admin-1', role: 'admin' },
+    { supabase: db },
+  );
+  const insert = db.calls.find((call) => call.method === 'insert')?.args[0] as Row;
+  assert.deepEqual(
+    { script_head: insert.script_head, script_body_start: insert.script_body_start, script_body_end: insert.script_body_end },
+    { script_head: scripts.scriptHead, script_body_start: scripts.scriptBodyStart, script_body_end: scripts.scriptBodyEnd },
+  );
+  assert.deepEqual(
+    { scriptHead: result.scriptHead, scriptBodyStart: result.scriptBodyStart, scriptBodyEnd: result.scriptBodyEnd },
+    scripts,
+  );
 });
 
 test('upsert update sets updated actor and clears unbacked client image URL', async () => {
