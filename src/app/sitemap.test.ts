@@ -103,6 +103,43 @@ test('public sitemap defensively deduplicates CMS paths', () => {
   );
 });
 
+test('public sitemap skips unsafe CMS page slugs while keeping valid CMS pages', () => {
+  const entries = buildPublicSitemap({
+    origin,
+    knowledgeBaseArticleSlugs: [],
+    cmsPages: [
+      { slug: 'about-weelp', updatedAt: '2026-07-08T09:15:00.000Z', noindex: false },
+      { slug: 'pricing?x=1', updatedAt: '2026-07-09T09:15:00.000Z', noindex: false },
+      { slug: '/evil', updatedAt: '2026-07-09T09:15:00.000Z', noindex: false },
+      { slug: ' whitespace ', updatedAt: '2026-07-09T09:15:00.000Z', noindex: false },
+    ],
+  });
+
+  assert.ok(paths(entries).includes('/about-weelp'));
+  assert.equal(paths(entries).includes('/pricing'), true);
+  assert.equal(paths(entries).includes('/evil'), false);
+  assert.equal(entries.some((entry) => entry.url.includes('?x=1')), false);
+  assert.equal(paths(entries).includes('/%20whitespace%20'), false);
+});
+
+test('public sitemap keeps newest CMS page when duplicate CMS slugs are present', () => {
+  const entries = buildPublicSitemap({
+    origin,
+    knowledgeBaseArticleSlugs: [],
+    cmsPages: [
+      { slug: 'about-weelp', updatedAt: '2026-07-08T09:15:00.000Z', noindex: false },
+      { slug: 'about-weelp', updatedAt: '2026-07-10T09:15:00.000Z', noindex: false },
+      { slug: 'about-weelp', updatedAt: '2026-07-09T09:15:00.000Z', noindex: false },
+    ],
+  });
+
+  assert.equal(paths(entries).filter((path) => path === '/about-weelp').length, 1);
+  assert.deepEqual(
+    entries.find((entry) => entry.url === `${origin}/about-weelp`)?.lastModified,
+    new Date('2026-07-10T09:15:00.000Z'),
+  );
+});
+
 test('sitemap content loads blog and CMS sources independently and logs sanitized warnings', async () => {
   const warnings: unknown[][] = [];
   const result = await loadSitemapContent({

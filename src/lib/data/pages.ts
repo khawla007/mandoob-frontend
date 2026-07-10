@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { ApiError } from '@/lib/errors';
+import { assertPageSlugAvailable, normalizePageSlug } from '@/lib/pages/slug';
 import { pageInputSchema, type PageHeroSettings, type PageInput, type PageStatus } from '@/lib/validation/pages';
 
 const CMS_PAGE_COLUMNS =
@@ -235,9 +236,15 @@ export async function listPublishedCmsPages(deps: Deps = {}): Promise<Array<{ sl
   const { data, error } = await db.from('cms_pages').select('slug, updated_at, noindex').eq('status', 'published')
     .is('deleted_at', null).lte('published_at', now).order('updated_at', { ascending: false }).order('slug', { ascending: true });
   throwQueryError(error, 'Unable to list published CMS pages');
-  return ((data ?? []) as unknown[]).map((value) => {
+  return ((data ?? []) as unknown[]).flatMap((value) => {
     const parsed = sitemapRowSchema.safeParse(value);
     if (!parsed.success) throw new ApiError('INVALID_DATA', 'CMS sitemap data is malformed', 500);
-    return { slug: parsed.data.slug, updatedAt: parsed.data.updated_at, noindex: parsed.data.noindex };
+    try {
+      const normalized = normalizePageSlug(parsed.data.slug);
+      if (normalized !== parsed.data.slug) return [];
+      return [{ slug: assertPageSlugAvailable(parsed.data.slug), updatedAt: parsed.data.updated_at, noindex: parsed.data.noindex }];
+    } catch {
+      return [];
+    }
   });
 }

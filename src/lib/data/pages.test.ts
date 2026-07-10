@@ -218,11 +218,27 @@ test('published sitemap list returns only public columns in deterministic order'
 });
 
 test('published sitemap list rejects malformed projection rows', async () => {
-  for (const bad of [{ slug: null }, { updated_at: null }, { noindex: 'false' }]) {
+  for (const bad of [{ updated_at: null }, { noindex: 'false' }]) {
     const db = stub({ cms_pages: [pageRow({ status: 'published', published_at: '2026-01-01T00:00:00.000Z', ...bad })] });
     await assert.rejects(
       () => listPublishedCmsPages({ supabase: db, now: new Date('2026-07-01T00:00:00.000Z') }),
       (error: unknown) => error instanceof ApiError && error.code === 'INVALID_DATA',
     );
   }
+});
+
+test('published sitemap list skips malformed slug rows while preserving valid rows', async () => {
+  const db = stub({
+    cms_pages: [
+      pageRow({ slug: 'about-weelp', status: 'published', published_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-07-02T00:00:00.000Z' }),
+      pageRow({ slug: 'pricing?x=1', status: 'published', published_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-07-03T00:00:00.000Z' }),
+      pageRow({ slug: '/evil', status: 'published', published_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-07-04T00:00:00.000Z' }),
+      pageRow({ slug: ' whitespace ', status: 'published', published_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-07-05T00:00:00.000Z' }),
+    ],
+  });
+
+  assert.deepEqual(
+    await listPublishedCmsPages({ supabase: db, now: new Date('2026-07-01T00:00:00.000Z') }),
+    [{ slug: 'about-weelp', updatedAt: '2026-07-02T00:00:00.000Z', noindex: false }],
+  );
 });

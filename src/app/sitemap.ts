@@ -3,6 +3,7 @@ import { listPublishedBlogPosts } from '@/lib/data/blog';
 import { listPublishedCmsPages } from '@/lib/data/pages';
 import { seededCostDataRows } from '@/lib/estimator/seed-data';
 import { authoritySlugFor, knowledgeBaseArticles } from '@/lib/knowledge-base';
+import { assertPageSlugAvailable, normalizePageSlug } from '@/lib/pages/slug';
 
 const DEFAULT_ORIGIN = 'https://mandoob.ae';
 
@@ -27,6 +28,15 @@ type SitemapInput = {
 
 export function getAuthoritySlugs(rows = seededCostDataRows): string[] {
   return [...new Set(rows.map((row) => authoritySlugFor(row.authority)))].sort();
+}
+
+function canonicalCmsSlug(slug: string): string | null {
+  try {
+    const normalized = normalizePageSlug(slug);
+    return normalized === slug ? assertPageSlugAvailable(slug) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function buildPublicSitemap({
@@ -55,14 +65,24 @@ export function buildPublicSitemap({
       priority: 0.7,
     }));
 
-  const cmsEntries = cmsPages
+  const cmsEntriesByUrl = new Map<string, MetadataRoute.Sitemap[number]>();
+  cmsPages
     .filter((page) => !page.noindex)
-    .map((page) => ({
-      url: `${base}/${page.slug}`,
-      lastModified: new Date(page.updatedAt),
-      changeFrequency: 'monthly' as const,
-      priority: 0.7,
-    }));
+    .forEach((page) => {
+      const slug = canonicalCmsSlug(page.slug);
+      if (!slug) return;
+      const entry = {
+        url: `${base}/${slug}`,
+        lastModified: new Date(page.updatedAt),
+        changeFrequency: 'monthly' as const,
+        priority: 0.7,
+      };
+      const current = cmsEntriesByUrl.get(entry.url);
+      if (!current || entry.lastModified.getTime() > current.lastModified!.getTime()) {
+        cmsEntriesByUrl.set(entry.url, entry);
+      }
+    });
+  const cmsEntries = [...cmsEntriesByUrl.values()];
 
   const seenUrls = new Set<string>();
   return [...staticEntries, ...blogEntries, ...cmsEntries].filter((entry) => {
