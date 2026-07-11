@@ -56,7 +56,15 @@ export default async function ClientsPage({
             {t('clientsSubtitle', { tenant: tenant.name, count: rows.length })}
           </p>
         </div>
-        <CreateClientForm slug={slug} />
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/t/${slug}/clients/import`}
+            className="border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-9 items-center justify-center rounded-md border px-4 py-2 text-sm font-medium"
+          >
+            Import CSV
+          </Link>
+          <CreateClientForm slug={slug} />
+        </div>
       </div>
 
       <Card>

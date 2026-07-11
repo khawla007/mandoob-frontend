@@ -97,6 +97,78 @@ export type Database = {
         };
         Relationships: [];
       };
+      bulk_import_jobs: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          created_by: string;
+          dedupe_key: string | null;
+          error_rows: number | null;
+          errors: Json;
+          id: string;
+          kind: Database['public']['Enums']['bulk_import_kind'];
+          parent_client_id: string | null;
+          processed_rows: number | null;
+          started_at: string | null;
+          status: Database['public']['Enums']['bulk_import_status'];
+          storage_path: string;
+          tenant_id: string;
+          total_rows: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          dedupe_key?: string | null;
+          error_rows?: number | null;
+          errors?: Json;
+          id?: string;
+          kind: Database['public']['Enums']['bulk_import_kind'];
+          parent_client_id?: string | null;
+          processed_rows?: number | null;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['bulk_import_status'];
+          storage_path: string;
+          tenant_id: string;
+          total_rows?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          dedupe_key?: string | null;
+          error_rows?: number | null;
+          errors?: Json;
+          id?: string;
+          kind?: Database['public']['Enums']['bulk_import_kind'];
+          parent_client_id?: string | null;
+          processed_rows?: number | null;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['bulk_import_status'];
+          storage_path?: string;
+          tenant_id?: string;
+          total_rows?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'bulk_import_jobs_parent_client_id_fkey';
+            columns: ['parent_client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bulk_import_jobs_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       clients: {
         Row: {
           assigned_pro_profile_id: string | null;
@@ -1507,6 +1579,15 @@ export type Database = {
         | 'admin_user_edited'
         | 'admin_user_role_changed'
         | 'admin_user_status_changed';
+      bulk_import_kind: 'clients' | 'employees';
+      bulk_import_status:
+        | 'uploaded'
+        | 'validating'
+        | 'validated'
+        | 'importing'
+        | 'completed'
+        | 'failed'
+        | 'cancelled';
       client_status:
         | 'onboarding'
         | 'active'
