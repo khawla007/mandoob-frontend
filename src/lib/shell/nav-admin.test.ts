@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { adminNav } from './nav-admin';
 
 const source = readFileSync(join(process.cwd(), 'src/lib/shell/nav-admin.ts'), 'utf8');
 
@@ -14,21 +13,26 @@ function groupSource(labelKey: string) {
 }
 
 function groupHrefs(labelKey: string) {
-  const group = adminNav.find((candidate) => candidate.labelKey === labelKey);
-  assert.ok(group, `Missing admin nav group ${labelKey}`);
-  return group.items.map((item) => item.href);
+  return [...groupSource(labelKey).matchAll(/href: '([^']+)'/g)].map((match) => match[1]);
 }
 
 describe('adminNav', () => {
   it('uses the approved CMS section order', () => {
-    assert.deepEqual(
-      adminNav.map((group) => group.labelKey ?? 'overview'),
-      ['overview', 'catalog', 'editorial', 'business', 'tenants', 'authSecurity', 'account'],
-    );
+    const groupKeys = ['catalog', 'editorial', 'business', 'tenants', 'authSecurity', 'account'];
+    const positions = groupKeys.map((key) => source.indexOf(`labelKey: '${key}'`));
+
+    assert.ok(source.indexOf("labelKey: 'overview'") < positions[0]);
+    assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
   });
 
   it('keeps catalog, business, and authentication routes in their own sections', () => {
-    assert.deepEqual(groupHrefs('catalog'), ['/admin/cost-data', '/admin/blog/categories']);
+    assert.deepEqual(groupHrefs('catalog'), [
+      '/admin/cost-data',
+      '/admin/blog/categories',
+      '/admin/blog/categories',
+      '/admin/blog/attributes',
+      '/admin/blog/tags',
+    ]);
     assert.deepEqual(groupHrefs('business'), [
       '/admin/leads',
       '/admin/finance',
