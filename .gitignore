@@ -52,3 +52,6 @@ tests/.auth/*.json
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# graphify
+/graphify-out/
