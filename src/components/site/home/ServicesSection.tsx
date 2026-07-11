@@ -5,7 +5,7 @@ export function ServicesSection() {
     <section id="services" className="section" aria-labelledby="services-h">
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">01 · Services</span>
+          <span className="eyebrow eyebrow--accent">01 · Services</span>
           <h2 id="services-h" className="h2">
             Three vehicles. One platform.
           </h2>

@@ -7,7 +7,7 @@ export function EstimatorSection() {
     <section id="estimator" className="section" aria-labelledby="est-h">
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">02 · Cost estimator</span>
+          <span className="eyebrow eyebrow--accent">02 · Cost estimator</span>
           <h2 id="est-h" className="h2">
             Know the full cost before you commit.
           </h2>

@@ -11,6 +11,7 @@ export type ShellNavItem = {
   href: string;
   icon?: LucideIcon;
   badge?: string | number;
+  children?: ShellNavItem[];
 };
 
 export type ShellNavGroup = {
@@ -19,3 +20,12 @@ export type ShellNavGroup = {
   labelFallback?: string;
   items: ShellNavItem[];
 };
+
+export function resolveActiveShellHref(groups: ShellNavGroup[], pathname: string): string | null {
+  const matches = groups
+    .flatMap((group) => group.items.flatMap((item) => [item, ...(item.children ?? [])]))
+    .filter((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
+    .toSorted((a, b) => b.href.length - a.href.length);
+
+  return matches[0]?.href ?? null;
+}

@@ -1,6 +1,7 @@
 'use client';
 import { postJson } from '@/lib/http/post';
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { PasswordInput } from '@/components/auth/PasswordInput';
@@ -34,9 +35,9 @@ export function ResetPasswordForm() {
     return (
       <p className="text-sm text-zinc-600">
         {t('passwordUpdated')}{' '}
-        <a href="/login" className="underline">
+        <Link href="/login" className="underline">
           {t('signIn')}
-        </a>
+        </Link>
         .
       </p>
     );

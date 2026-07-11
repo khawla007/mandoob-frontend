@@ -4,14 +4,6 @@ export function FlowSection() {
   return (
     <section id="flow" className="section" aria-labelledby="flow-h">
       <div className="container">
-        <header className="section__head reveal">
-          <span className="eyebrow">03 · How it works</span>
-          <h2 id="flow-h" className="h2">
-            From idea to trade license in 7–14 days.
-          </h2>
-        </header>
-      </div>
-      <div className="container">
         <SplitImageContent
           mediaTone="soft"
           media={
@@ -25,10 +17,10 @@ export function FlowSection() {
             />
           }
         >
-          <span className="split-showcase__eyebrow">Four steps, fully tracked</span>
-          <h3 className="split-showcase__title">
-            Submit once. We carry it from estimate to license.
-          </h3>
+          <span className="eyebrow eyebrow--accent">03 · How it works</span>
+          <h2 id="flow-h" className="h2">
+            From idea to trade license in 7–14 days.
+          </h2>
           <ol className="split-showcase__list split-showcase__list--steps">
             <li>
               <span className="flow__num mono" aria-hidden="true">

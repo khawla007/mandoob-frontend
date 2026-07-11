@@ -8,8 +8,8 @@ process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'mandoob.test';
 
 async function postEstimate(request: Request) {
   const { seededCostDataRows } = await import('@/lib/estimator/seed-data');
-  const route = await import('./route');
-  return route.handleEstimatePost(request as never, {
+  const { handleEstimatePost } = await import('./handler');
+  return handleEstimatePost(request as never, {
     consume: async () => true,
     listRows: async () => seededCostDataRows,
   });

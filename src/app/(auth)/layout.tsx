@@ -8,8 +8,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         Skip to main content
       </a>
       <SiteHeader />
-      <main id="main" className="flex-1">
-        <section className="section">
+      <main id="main" className="flex flex-1 items-center justify-center">
+        <section className="section section--flush w-full">
           <div className="container">
             <div className="auth-shell">
               <div className="auth-card">{children}</div>

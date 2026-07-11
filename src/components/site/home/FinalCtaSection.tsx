@@ -4,7 +4,7 @@ export function FinalCtaSection() {
   return (
     <section className="cta-section" aria-labelledby="cta-h">
       <div className="cta-section__inner reveal container">
-        <span className="eyebrow">07 · Get started</span>
+        <span className="eyebrow eyebrow--accent">07 · Get started</span>
         <h2 id="cta-h" className="display display--cta">
           Run your free UAE setup estimate.
         </h2>
