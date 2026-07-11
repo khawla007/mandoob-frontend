@@ -44,7 +44,7 @@ describe('adminNav', () => {
   });
 
   it('keeps blog management out of the Auth group and under Editorial', () => {
-    const auth = groupSource('auth');
+    const auth = groupSource('authSecurity');
     const editorial = groupSource('editorial');
 
     assert.equal(auth.includes("labelKey: 'blog'"), false);
@@ -52,7 +52,7 @@ describe('adminNav', () => {
   });
 
   it('puts Pages after Blog under Editorial and nowhere else', () => {
-    const auth = groupSource('auth');
+    const auth = groupSource('authSecurity');
     const catalog = groupSource('catalog');
     const editorial = groupSource('editorial');
 

@@ -25,59 +25,15 @@ export const adminNav: ShellNavGroup[] = [
     ],
   },
   {
-    labelKey: 'auth',
-    labelFallback: 'Auth',
+    labelKey: 'catalog',
+    labelFallback: 'Catalog',
     items: [
-      { labelKey: 'users', labelFallback: 'Users', href: '/admin/users', icon: Users },
-      { labelKey: 'sessions', labelFallback: 'Sessions', href: '/admin/sessions', icon: KeyRound },
-      {
-        labelKey: 'mfaAndSecurity',
-        labelFallback: 'MFA & Security',
-        href: '/admin/security',
-        icon: ShieldCheck,
-      },
-      {
-        labelKey: 'auditLogs',
-        labelFallback: 'Audit logs',
-        href: '/admin/audit-logs',
-        icon: ScrollText,
-      },
-      {
-        labelKey: 'erasureRequests',
-        labelFallback: 'Erasure requests',
-        href: '/admin/erasure-requests',
-        icon: ShieldAlert,
-      },
-      {
-        labelKey: 'finance',
-        labelFallback: 'Finance',
-        href: '/admin/finance',
-        icon: DollarSign,
-      },
-      {
-        labelKey: 'leads',
-        labelFallback: 'Leads',
-        href: '/admin/leads',
-        icon: Columns3,
-      },
-      {
-        labelKey: 'whatsappTemplates',
-        labelFallback: 'WhatsApp templates',
-        href: '/admin/whatsapp-templates',
-        icon: MessagesSquare,
-      },
       {
         labelKey: 'costData',
         labelFallback: 'Cost data',
         href: '/admin/cost-data',
         icon: FileSpreadsheet,
       },
-    ],
-  },
-  {
-    labelKey: 'catalog',
-    labelFallback: 'Catalog',
-    items: [
       {
         labelKey: 'taxonomies',
         labelFallback: 'Taxonomies',
@@ -125,6 +81,30 @@ export const adminNav: ShellNavGroup[] = [
     ],
   },
   {
+    labelKey: 'business',
+    labelFallback: 'Business',
+    items: [
+      {
+        labelKey: 'leads',
+        labelFallback: 'Leads',
+        href: '/admin/leads',
+        icon: Columns3,
+      },
+      {
+        labelKey: 'finance',
+        labelFallback: 'Finance',
+        href: '/admin/finance',
+        icon: DollarSign,
+      },
+      {
+        labelKey: 'whatsappTemplates',
+        labelFallback: 'WhatsApp templates',
+        href: '/admin/whatsapp-templates',
+        icon: MessagesSquare,
+      },
+    ],
+  },
+  {
     labelKey: 'tenants',
     labelFallback: 'Tenants',
     items: [
@@ -133,6 +113,32 @@ export const adminNav: ShellNavGroup[] = [
         labelFallback: 'PRO firms',
         href: '/admin/pro-firms',
         icon: Building2,
+      },
+    ],
+  },
+  {
+    labelKey: 'authSecurity',
+    labelFallback: 'Auth & Security',
+    items: [
+      { labelKey: 'users', labelFallback: 'Users', href: '/admin/users', icon: Users },
+      { labelKey: 'sessions', labelFallback: 'Sessions', href: '/admin/sessions', icon: KeyRound },
+      {
+        labelKey: 'mfaAndSecurity',
+        labelFallback: 'MFA & Security',
+        href: '/admin/security',
+        icon: ShieldCheck,
+      },
+      {
+        labelKey: 'auditLogs',
+        labelFallback: 'Audit logs',
+        href: '/admin/audit-logs',
+        icon: ScrollText,
+      },
+      {
+        labelKey: 'erasureRequests',
+        labelFallback: 'Erasure requests',
+        href: '/admin/erasure-requests',
+        icon: ShieldAlert,
       },
     ],
   },

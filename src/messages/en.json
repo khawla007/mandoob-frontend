@@ -49,6 +49,8 @@
     "myRecords": "My records",
     "visaAndEid": "Visa & EID",
     "auth": "Auth",
+    "authSecurity": "Auth & Security",
+    "business": "Business",
     "users": "Users",
     "sessions": "Sessions",
     "mfaAndSecurity": "MFA & Security",
