@@ -37,60 +37,6 @@
     "knowledgeBase": "قاعدة المعرفة",
     "pricing": "الأسعار"
   },
-  "marketing": {
-    "estimatorPreview": {
-      "tablistLabel": "الولاية",
-      "tabs": {
-        "mainland": "البر الرئيسي",
-        "freeZone": "المنطقة الحرة",
-        "offshore": "أوفشور"
-      },
-      "fields": {
-        "activity": "النشاط التجاري",
-        "visas": "عدد التأشيرات",
-        "office": "نوع المكتب"
-      },
-      "totalLabel": "إجمالي التقدير",
-      "presets": {
-        "mainland": {
-          "activity": "الاستشارات والخدمات الإدارية",
-          "visas": "2",
-          "office": "مكتب مرن",
-          "total": "AED 18,450",
-          "lines": [
-            { "label": "موافقة الدائرة الاقتصادية الأولية", "amount": "600" },
-            { "label": "الرخصة التجارية · سنة واحدة", "amount": "12,500" },
-            { "label": "تأشيرة × 2", "amount": "4,200" },
-            { "label": "رسوم Mandoob PRO", "amount": "1,150" }
-          ]
-        },
-        "freeZone": {
-          "activity": "التجارة العامة",
-          "visas": "3",
-          "office": "مكتب مشترك",
-          "total": "AED 23,900",
-          "lines": [
-            { "label": "تسجيل المنطقة الحرة", "amount": "1,500" },
-            { "label": "الرخصة · سنة واحدة", "amount": "15,000" },
-            { "label": "تأشيرة × 3", "amount": "6,300" },
-            { "label": "رسوم Mandoob PRO", "amount": "1,100" }
-          ]
-        },
-        "offshore": {
-          "activity": "حيازة أصول",
-          "visas": "0",
-          "office": "غير مطلوب",
-          "total": "AED 11,000",
-          "lines": [
-            { "label": "تأسيس شركة IBC", "amount": "3,500" },
-            { "label": "وكيل مسجَّل · سنة واحدة", "amount": "4,000" },
-            { "label": "تقديم بنكي", "amount": "2,500" },
-            { "label": "رسوم Mandoob PRO", "amount": "1,000" }
-          ]
-        }
-      }
-    }
-  },
   "shell": {
     "overview": "نظرة عامة",
     "workspace": "مساحة العمل",
@@ -269,6 +215,8 @@
     "selectDateFormat": "اختر تنسيق التاريخ",
     "bioPlaceholder": "بضع جمل عن نفسك…",
     "markdownNotSupported": "تنسيق ماركداون غير مدعوم.",
+    "tablistLabel": "أقسام الحساب",
+    "mfaQrAlt": "رمز QR للمصادقة الثنائية",
     "longCopy": {
       "phoneHelp": "Used for SMS notifications about renewals and approvals.",
       "bioHelp": "A short description shown to clients you collaborate with.",
@@ -328,6 +276,16 @@
     "receipt": "الإيصال",
     "reviewerNote": "ملاحظة المراجع:",
     "pleaseReupload": "يرجى إعادة الرفع.",
+    "docTypeLabels": {
+      "passport": "جواز السفر",
+      "visa": "التأشيرة",
+      "emiratesId": "الهوية الإماراتية",
+      "tradeLicense": "الرخصة التجارية",
+      "ejari": "عقد Ejari",
+      "moa": "عقد التأسيس (MoA)",
+      "shareholderId": "هوية المساهم",
+      "other": "أخرى"
+    },
     "longCopy": {
       "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",
       "noOpenRequests": "You have no open document requests right now.",
@@ -445,12 +403,30 @@
       "subtitle": "{tenant} · مؤشرات مساحة عمل فريقك.",
       "recentActivityDescription": "آخر أحداث المصادقة لـ {tenant}.",
       "kpis": {
-        "activeClients": { "label": "العملاء النشطون", "delta": "مباشر" },
-        "renewalsDue": { "label": "التجديدات المستحقة (30 يومًا)", "delta": "ترخيص + يدوي" },
-        "docsAwaitingReview": { "label": "مستندات بانتظار المراجعة", "delta": "عبر جميع العملاء" },
-        "pendingPayments": { "label": "المدفوعات المعلقة", "delta": "فواتير مفتوحة" }
+        "activeClients": {
+          "label": "العملاء النشطون",
+          "delta": "مباشر"
+        },
+        "renewalsDue": {
+          "label": "التجديدات المستحقة (30 يومًا)",
+          "delta": "ترخيص + يدوي"
+        },
+        "docsAwaitingReview": {
+          "label": "مستندات بانتظار المراجعة",
+          "delta": "عبر جميع العملاء"
+        },
+        "pendingPayments": {
+          "label": "المدفوعات المعلقة",
+          "delta": "فواتير مفتوحة"
+        }
       }
     },
+    "dashboardSignalsSubtitle": "{tenant} · إشارات مساحة العمل لفريقك.",
+    "dashboardRecentLoginsDescription": "أحدث أحداث المصادقة لـ {tenant}.",
+    "renewalsPageSubtitle": "تجديدات الرخصة والتأشيرة والهوية الإماراتية وعقد Ejari عبر {tenant}.",
+    "renewalsEmptyActive": "لا توجد تجديدات نشطة. أنشئ تجديدًا أو انتظر حقل license_expiry لإضافة صف تلقائي.",
+    "renewalsEmptyCompleted": "لا توجد تجديدات مكتملة بعد.",
+    "renewalsEmptyCancelled": "لا توجد تجديدات ملغاة.",
     "leads": "العملاء المحتملون",
     "addClient": "إضافة عميل",
     "adding": "جارٍ الإضافة…",
@@ -838,16 +814,6 @@
     }
   },
   "admin": {
-    "settings": {
-      "layout": {
-        "title": "الإعدادات",
-        "description": "إعدادات الحساب.",
-        "tabs": {
-          "profile": "الملف الشخصي",
-          "security": "الأمان"
-        }
-      }
-    },
     "user": {
       "createTitle": "إنشاء مستخدم",
       "createIntro": "يرسل بريد دعوة عبر Supabase وينشئ الملف الشخصي المطابق.",
@@ -1478,6 +1444,106 @@
     },
     "theme": {
       "toggle": "تبديل السمة"
+    },
+    "settings": {
+      "layout": {
+        "title": "الإعدادات",
+        "description": "إعدادات الحساب.",
+        "tabs": {
+          "profile": "الملف الشخصي",
+          "security": "الأمان"
+        }
+      }
+    }
+  },
+  "marketing": {
+    "estimatorPreview": {
+      "tablistLabel": "الولاية",
+      "tabs": {
+        "mainland": "البر الرئيسي",
+        "freeZone": "المنطقة الحرة",
+        "offshore": "أوفشور"
+      },
+      "fields": {
+        "activity": "النشاط التجاري",
+        "visas": "عدد التأشيرات",
+        "office": "نوع المكتب"
+      },
+      "totalLabel": "إجمالي التقدير",
+      "presets": {
+        "mainland": {
+          "activity": "الاستشارات والخدمات الإدارية",
+          "visas": "2",
+          "office": "مكتب مرن",
+          "total": "AED 18,450",
+          "lines": [
+            {
+              "label": "موافقة الدائرة الاقتصادية الأولية",
+              "amount": "600"
+            },
+            {
+              "label": "الرخصة التجارية · سنة واحدة",
+              "amount": "12,500"
+            },
+            {
+              "label": "تأشيرة × 2",
+              "amount": "4,200"
+            },
+            {
+              "label": "رسوم Mandoob PRO",
+              "amount": "1,150"
+            }
+          ]
+        },
+        "freeZone": {
+          "activity": "التجارة العامة",
+          "visas": "3",
+          "office": "مكتب مشترك",
+          "total": "AED 23,900",
+          "lines": [
+            {
+              "label": "تسجيل المنطقة الحرة",
+              "amount": "1,500"
+            },
+            {
+              "label": "الرخصة · سنة واحدة",
+              "amount": "15,000"
+            },
+            {
+              "label": "تأشيرة × 3",
+              "amount": "6,300"
+            },
+            {
+              "label": "رسوم Mandoob PRO",
+              "amount": "1,100"
+            }
+          ]
+        },
+        "offshore": {
+          "activity": "حيازة أصول",
+          "visas": "0",
+          "office": "غير مطلوب",
+          "total": "AED 11,000",
+          "lines": [
+            {
+              "label": "تأسيس شركة IBC",
+              "amount": "3,500"
+            },
+            {
+              "label": "وكيل مسجَّل · سنة واحدة",
+              "amount": "4,000"
+            },
+            {
+              "label": "تقديم بنكي",
+              "amount": "2,500"
+            },
+            {
+              "label": "رسوم Mandoob PRO",
+              "amount": "1,000"
+            }
+          ]
+        }
+      }
     }
   }
 }

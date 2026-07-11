@@ -78,7 +78,7 @@ export default async function RenewalsPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('renewals')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            License, visa, Emirates ID, and Ejari renewals across {tenant.name}.
+            {t('renewalsPageSubtitle', { tenant: tenant.name })}
           </p>
         </div>
         <NewRenewalDialog
@@ -111,10 +111,10 @@ export default async function RenewalsPage({
             mode={tab === 'active' ? 'bucketed' : 'flat'}
             emptyMessage={
               tab === 'active'
-                ? 'No active renewals. Create one or wait for a license_expiry to seed an auto-row.'
+                ? t('renewalsEmptyActive')
                 : tab === 'completed'
-                  ? 'No completed renewals yet.'
-                  : 'No cancelled renewals.'
+                  ? t('renewalsEmptyCompleted')
+                  : t('renewalsEmptyCancelled')
             }
           />
         </CardContent>
