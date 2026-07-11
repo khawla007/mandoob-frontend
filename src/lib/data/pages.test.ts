@@ -76,6 +76,16 @@ test('maps database rows into CmsPage properties', () => {
   assert.equal(mapped.updatedBy, 'updater');
 });
 
+test('maps Supabase timestamps that include an explicit UTC offset', () => {
+  const mapped = mapCmsPageRow(
+    pageRow({
+      created_at: '2026-07-11T09:51:49.502322+00:00',
+      updated_at: '2026-07-11T09:51:49.502322+00:00',
+    }),
+  );
+  assert.equal(mapped.createdAt, '2026-07-11T09:51:49.502322+00:00');
+});
+
 test('rejects malformed CMS page rows with a safe API error', () => {
   assert.throws(
     () => mapCmsPageRow(pageRow({ status: 'not-a-status', noindex: 'false' })),
@@ -125,6 +135,17 @@ test('upsert sanitizes HTML, records actor IDs, and canonicalizes media URL', as
   const insert = db.calls.find((c) => c.method === 'insert')?.args[0] as Row;
   assert.equal(insert.created_by, 'admin-1'); assert.equal(insert.updated_by, 'admin-1');
   assert.ok(db.calls.some((c) => c.table === 'blog_media' && c.method === 'is' && c.args[0] === 'deleted_at' && c.args[1] === null));
+});
+
+test('upsert persists an empty schema object when schema markup is omitted', async () => {
+  const db = stub();
+  await upsertCmsPage(
+    { title: 'Page', slug: 'page', contentJson: {}, contentHtml: '', heroSettings: {}, status: 'draft' },
+    { id: 'admin-1', role: 'admin' },
+    { supabase: db },
+  );
+  const insert = db.calls.find((call) => call.method === 'insert')?.args[0] as Row;
+  assert.deepEqual(insert.schema_markup, {});
 });
 
 test('upsert persists and round-trips all script slots without executing them', async () => {

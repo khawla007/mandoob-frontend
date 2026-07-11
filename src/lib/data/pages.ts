@@ -32,8 +32,8 @@ export type CmsPageActor = { id: string; role: 'super_admin' | 'admin' | string 
 type Deps = { supabase?: SupabaseLike; now?: Date };
 
 const nullableString = z.string().nullable();
-const nullableTimestamp = z.string().datetime().nullable();
-const timestamp = z.string().datetime();
+const nullableTimestamp = z.string().datetime({ offset: true }).nullable();
+const timestamp = z.string().datetime({ offset: true });
 const jsonObject = z.record(z.string(), z.unknown());
 const heroSettingsRowSchema = z.object({
   backgroundColor: z.string(),
@@ -193,7 +193,7 @@ export async function upsertCmsPage(input: CmsPageUpsertInput, actor: CmsPageAct
     background_image_media_id: canonical.mediaId, status: parsed.status, published_at: parsed.publishedAt ?? null,
     scheduled_for: parsed.scheduledFor ?? null, meta_title: parsed.metaTitle ?? null,
     meta_description: parsed.metaDescription ?? null, canonical_url: parsed.canonicalUrl ?? null,
-    noindex: parsed.noindex, schema_markup: parsed.schemaMarkup ?? null, updated_by: actor.id,
+    noindex: parsed.noindex, schema_markup: parsed.schemaMarkup ?? {}, updated_by: actor.id,
     script_head: parsed.scriptHead ?? null, script_body_start: parsed.scriptBodyStart ?? null,
     script_body_end: parsed.scriptBodyEnd ?? null,
   };

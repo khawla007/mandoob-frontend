@@ -78,7 +78,7 @@ export function buildPublicSitemap({
         priority: 0.7,
       };
       const current = cmsEntriesByUrl.get(entry.url);
-      if (!current || entry.lastModified.getTime() > current.lastModified!.getTime()) {
+      if (!current || entry.lastModified.getTime() > new Date(current.lastModified!).getTime()) {
         cmsEntriesByUrl.set(entry.url, entry);
       }
     });

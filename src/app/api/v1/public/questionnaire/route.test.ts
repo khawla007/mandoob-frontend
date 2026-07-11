@@ -30,8 +30,8 @@ const validBody = {
 };
 
 test('public questionnaire API rejects invalid submissions with structured validation errors', async () => {
-  const route = await import('./route');
-  const response = await route.handleQuestionnairePost(
+  const { handleQuestionnairePost } = await import('./handler');
+  const response = await handleQuestionnairePost(
     new Request('https://mandoob.test/api/v1/public/questionnaire', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -52,8 +52,8 @@ test('public questionnaire API rejects invalid submissions with structured valid
 });
 
 test('public questionnaire API returns lead reference on successful anonymous submit', async () => {
-  const route = await import('./route');
-  const response = await route.handleQuestionnairePost(
+  const { handleQuestionnairePost } = await import('./handler');
+  const response = await handleQuestionnairePost(
     new Request('https://mandoob.test/api/v1/public/questionnaire', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -78,8 +78,8 @@ test('public questionnaire API returns lead reference on successful anonymous su
 });
 
 test('public questionnaire API applies public IP rate limiting before validation', async () => {
-  const route = await import('./route');
-  const response = await route.handleQuestionnairePost(
+  const { handleQuestionnairePost } = await import('./handler');
+  const response = await handleQuestionnairePost(
     new Request('https://mandoob.test/api/v1/public/questionnaire', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
