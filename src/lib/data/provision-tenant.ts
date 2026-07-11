@@ -2,6 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { adminCreateUser, type AdminCreateUserCaller } from '@/lib/data/admin-create-user';
+import { promoteToTenantAdmin } from '@/lib/data/promote-to-tenant-admin';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { enqueueEmail } from '@/lib/mail/send';
 import type { ProvisionTenantInput } from '@/lib/validation/tenant-onboarding';
@@ -81,6 +82,21 @@ export async function provisionTenant(
     adminUserId = result.userId;
   } catch (e) {
     await deleteTenant('admin user create failed');
+    throw e;
+  }
+
+  // Promote the freshly-created PRO user to the per-tenant `admin` role.
+  // adminCreateUser blocks non-super_admin callers from creating admins
+  // directly, so we always create as 'pro' and flip here.
+  try {
+    await promoteToTenantAdmin(adminUserId, tenantId);
+  } catch (e) {
+    await deleteTenant('promote-to-admin failed');
+    try {
+      await admin.auth.admin.deleteUser(adminUserId);
+    } catch (err) {
+      console.error('compensation deleteUser after promote failed', err);
+    }
     throw e;
   }
 
