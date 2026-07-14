@@ -84,6 +84,24 @@ test('public sitemap includes indexable CMS pages at root paths with updated tim
   assert.equal(paths(entries).includes('/private-offer'), false);
 });
 
+test('public sitemap maps legal CMS pages to nested canonical paths without root aliases', () => {
+  const entries = buildPublicSitemap({
+    origin,
+    knowledgeBaseArticleSlugs: [],
+    cmsPages: ['privacy', 'terms', 'pdpl', 'trust'].map((slug) => ({
+      slug,
+      updatedAt: '2026-07-14T00:00:00.000Z',
+      noindex: false,
+    })),
+  });
+
+  const sitemapPaths = paths(entries);
+  for (const slug of ['privacy', 'terms', 'pdpl', 'trust']) {
+    assert.ok(sitemapPaths.includes(`/legal/${slug}`));
+    assert.equal(sitemapPaths.includes(`/${slug}`), false);
+  }
+});
+
 test('public sitemap defensively deduplicates CMS paths', () => {
   const entries = buildPublicSitemap({
     origin,

@@ -3,6 +3,7 @@ import { listPublishedBlogPosts } from '@/lib/data/blog';
 import { listPublishedCmsPages } from '@/lib/data/pages';
 import { seededCostDataRows } from '@/lib/estimator/seed-data';
 import { authoritySlugFor, knowledgeBaseArticles } from '@/lib/knowledge-base';
+import { legalCmsPagePath } from '@/lib/pages/legal';
 import { assertPageSlugAvailable, normalizePageSlug } from '@/lib/pages/slug';
 
 const DEFAULT_ORIGIN = 'https://mandoob.ae';
@@ -71,8 +72,9 @@ export function buildPublicSitemap({
     .forEach((page) => {
       const slug = canonicalCmsSlug(page.slug);
       if (!slug) return;
+      const path = legalCmsPagePath(slug) ?? `/${slug}`;
       const entry = {
-        url: `${base}/${slug}`,
+        url: `${base}${path}`,
         lastModified: new Date(page.updatedAt),
         changeFrequency: 'monthly' as const,
         priority: 0.7,
