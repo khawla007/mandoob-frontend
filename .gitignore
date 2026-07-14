@@ -55,3 +55,6 @@ tests/.auth/*.json
 
 # graphify
 /graphify-out/
+
+# local isolated feature workspaces
+/.worktrees/
