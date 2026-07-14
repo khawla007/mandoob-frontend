@@ -24,7 +24,8 @@ export default function KnowledgeBasePage() {
   return (
     <>
       {/* ============ HERO ============ */}
-      <section className="hero" aria-labelledby="kb-h">
+      <section className="hero hero--knowledge-base" aria-labelledby="kb-h">
+        <div className="hero__overlay" aria-hidden="true" />
         <div className="container">
           <span className="eyebrow">Knowledge Base</span>
           <h1 id="kb-h" className="display">

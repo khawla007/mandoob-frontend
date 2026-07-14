@@ -631,6 +631,79 @@
   font-family: var(--mono-font);
 }
 
+.site-public .hero--knowledge-base {
+  padding-block: var(--sp-5);
+  background-image: url('/hero/knowledge-base-research.webp');
+  background-position: center center;
+}
+.site-public .hero--knowledge-base .hero__overlay {
+  background:
+    linear-gradient(
+      180deg,
+      var(--paper) 0%,
+      color-mix(in oklch, var(--paper) 58%, transparent) 30%,
+      color-mix(in oklch, var(--paper) 18%, transparent) 100%
+    ),
+    linear-gradient(
+      90deg,
+      var(--paper) 0%,
+      color-mix(in oklch, var(--paper) 94%, transparent) 43%,
+      color-mix(in oklch, var(--paper) 56%, transparent) 67%,
+      color-mix(in oklch, var(--paper) 16%, transparent) 100%
+    );
+}
+.site-public .hero--knowledge-base .display {
+  max-width: 15ch;
+  font-size: clamp(3rem, 7.5vw, 6rem);
+  line-height: 0.94;
+}
+.site-public .hero--knowledge-base .lede,
+.site-public .hero--knowledge-base .cta-row {
+  margin-top: var(--sp-4);
+}
+.site-public .hero--knowledge-base .hero__rule {
+  margin-block: var(--sp-4);
+}
+.site-public .hero--knowledge-base .hero__metrics {
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-5);
+}
+.site-public .hero--knowledge-base .btn--accent {
+  background: oklch(0.57 0.19 38);
+}
+.site-public .hero--knowledge-base .btn--accent:hover {
+  background: oklch(0.52 0.17 38);
+}
+@media (max-width: 767px) {
+  .site-public .hero--knowledge-base {
+    padding-block: var(--sp-5);
+    background-position: 70% center;
+  }
+  .site-public .hero--knowledge-base .eyebrow {
+    margin-bottom: var(--sp-3);
+  }
+  .site-public .hero--knowledge-base .display {
+    max-width: 15ch;
+    font-size: clamp(2.5rem, 11.3vw, 3.25rem);
+    line-height: 0.96;
+  }
+  .site-public .hero--knowledge-base .lede {
+    margin-top: var(--sp-3);
+    font-size: var(--fs-17);
+    line-height: 1.45;
+  }
+  .site-public .hero--knowledge-base .cta-row {
+    margin-top: var(--sp-4);
+  }
+  .site-public .hero--knowledge-base .hero__rule {
+    margin-block: var(--sp-4);
+  }
+  .site-public .hero--knowledge-base .hero__metrics {
+    gap: var(--sp-3);
+    padding-bottom: var(--sp-5);
+  }
+}
+
 /* Blog index hero: image-free editorial field note surface. */
 .site-public .blog-hero {
   --blog-hero-paper: oklch(0.995 0.004 45);
