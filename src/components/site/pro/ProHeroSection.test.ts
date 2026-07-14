@@ -34,10 +34,10 @@ test('PRO hero has compact desktop and mobile spacing without a fixed height', (
 test('PRO hero scopes accessible primary CTA colors to its own accent button', () => {
   assert.match(
     css,
-    /\.site-public \.hero--pro \.btn--accent\s*\{[^}]*background:\s*oklch\([^)]+\)/,
+    /\.site-public \.hero--pro \.btn--accent\s*\{[^}]*background:\s*oklch\(0\.57 0\.19 38\)/,
   );
   assert.match(
     css,
-    /\.site-public \.hero--pro \.btn--accent:hover\s*\{[^}]*background:\s*oklch\([^)]+\)/,
+    /\.site-public \.hero--pro \.btn--accent:hover\s*\{[^}]*background:\s*oklch\(0\.52 0\.17 38\)/,
   );
 });

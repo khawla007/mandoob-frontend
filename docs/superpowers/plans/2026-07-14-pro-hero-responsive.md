@@ -262,4 +262,3 @@ Expected: all commands exit 0.
 - [ ] **Step 3: Merge and push**
 
 Merge the reviewed feature branch into local `main`, rerun the focused test on the merged result, and push `main` to the configured remote as explicitly requested by the user.
-

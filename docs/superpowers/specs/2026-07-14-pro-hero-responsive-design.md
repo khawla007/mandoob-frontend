@@ -47,4 +47,3 @@ Constraints: no people; no readable personal information; no readable text; no l
 - At 390px and 768px widths, there is no horizontal overflow, clipped copy, overlapping controls, or undersized touch target.
 - The image remains legible behind both light and dark overlays and does not reduce text contrast.
 - Focused regression test, lint, and production build pass; the unrelated missing load-test fixture is reported separately if the full suite still encounters it.
-
