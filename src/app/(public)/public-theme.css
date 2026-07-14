@@ -511,6 +511,12 @@
       color-mix(in oklch, var(--paper) 20%, transparent) 100%
     );
 }
+.site-public .hero--pro .btn--accent {
+  background: oklch(0.57 0.19 38);
+}
+.site-public .hero--pro .btn--accent:hover {
+  background: oklch(0.52 0.17 38);
+}
 @media (max-width: 767px) {
   .site-public .hero--pro {
     padding-block: var(--sp-6);
