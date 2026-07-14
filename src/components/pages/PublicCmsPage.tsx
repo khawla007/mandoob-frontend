@@ -127,7 +127,7 @@ export function PublicCmsPage({ page }: { page: CmsPage }) {
           </div>
         </header>
       ) : (
-        <header className="section pb-0">
+        <header className="section cms-page__title-section">
           <div className="container"><h1 className="h2">{page.title}</h1></div>
         </header>
       )}

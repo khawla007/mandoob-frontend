@@ -2482,6 +2482,9 @@
 }
 
 /* ---------- 15c. LONG-FORM DOC (legal) ---------- */
+.site-public .cms-page__title-section {
+  padding-block: 96px 20px;
+}
 .site-public .prose-doc {
   max-width: 720px;
   display: grid;
