@@ -33,6 +33,11 @@ test('legal CMS migration seeds all canonical published pages idempotently', asy
   assert.match(sql, /'published'/);
   assert.match(sql, /published_at/);
   assert.match(sql, /on conflict \(slug\) where deleted_at is null do update/i);
+  assert.equal(
+    sql.match(/"backgroundColor": "#ffffff"/g)?.length,
+    4,
+    'every seeded page must use the complete default hero settings shape',
+  );
 });
 
 test('legal CMS migration preserves editable content from every former document', async () => {
