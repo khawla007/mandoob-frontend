@@ -8,7 +8,7 @@ Move Privacy, Terms, PDPL, and Trust Center content from the hardcoded legal rou
 
 Keep the existing nested legal route as a thin CMS adapter. It will accept only the four supported legal slugs, load the matching published `cms_pages` record, apply the standard CMS visibility rules, and render `PublicCmsPage`. The route will also use the shared CMS metadata and schema serialization helpers.
 
-This avoids redirects and does not broaden the page system to arbitrary nested slugs. Root CMS routes remain unchanged.
+This avoids redirects and does not broaden the page system to arbitrary nested slugs. The root CMS route will exclude these four legal slugs so the migration does not create duplicate `/privacy`, `/terms`, `/pdpl`, or `/trust` aliases.
 
 ## Data migration
 
@@ -40,6 +40,8 @@ The migration will update a matching live slug rather than creating duplicates, 
 - Load through `getPublishedCmsPageBySlug` and the shared visibility policy.
 - Render with `PublicCmsPage`, `buildCmsPageMetadata`, and `serializeSchema`.
 - Return the standard 404 for unsupported, missing, draft, scheduled-future, archived, or deleted records.
+- Return the standard 404 when a legal slug is requested from the root CMS route.
+- Emit legal CMS records at `/legal/{slug}` in the sitemap instead of at root.
 - Keep the existing footer links unchanged.
 
 ## Template behavior
