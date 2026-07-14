@@ -17,10 +17,16 @@ test('PRO hero uses a dedicated page modifier and background asset', () => {
 });
 
 test('PRO hero has compact desktop and mobile spacing without a fixed height', () => {
-  assert.match(css, /\.site-public \.hero--pro\s*\{[^}]*padding-block:\s*var\(--sp-7\)/s);
+  assert.match(
+    css,
+    /\.site-public \.hero--pro\s*\{(?:(?!})[\s\S])*padding-block:\s*var\(--sp-7\)/,
+  );
   assert.match(
     css,
     /@media \(max-width: 767px\)[\s\S]*?\.site-public \.hero--pro\s*\{[^}]*padding-block:\s*var\(--sp-6\)/,
   );
-  assert.doesNotMatch(css, /\.site-public \.hero--pro\s*\{[^}]*(?:height|max-height):/s);
+  assert.doesNotMatch(
+    css,
+    /\.site-public \.hero--pro\s*\{(?:(?!})[\s\S])*(?:height|max-height):/,
+  );
 });
