@@ -3,7 +3,7 @@ import Link from 'next/link';
 export function ProHeroSection() {
   return (
     <>
-      <section className="hero" aria-labelledby="pro-hero-h">
+      <section className="hero hero--pro" aria-labelledby="pro-hero-h">
         <div className="hero__overlay" aria-hidden="true" />
         <div className="container">
           <span className="eyebrow reveal reveal--mask">
