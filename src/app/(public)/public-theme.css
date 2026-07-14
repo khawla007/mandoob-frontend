@@ -632,7 +632,7 @@
 }
 
 .site-public .hero--knowledge-base {
-  padding-block: var(--sp-5);
+  padding-block: 98px;
   background-image: url('/hero/knowledge-base-research.webp');
   background-position: center center;
 }
