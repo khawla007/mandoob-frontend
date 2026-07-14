@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import type { CmsPage } from '@/lib/data/pages';
@@ -73,4 +74,17 @@ test('returns only currently published legal CMS records', async () => {
   ]) {
     assert.equal(await resolveLegalCmsPage('privacy', async () => unavailable, now), null);
   }
+});
+
+test('public routes use the legal CMS policy without hardcoded documents or root aliases', async () => {
+  const [legalRoute, rootRoute] = await Promise.all([
+    readFile(new URL('../../app/(public)/legal/[slug]/page.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../../app/(public)/[slug]/page.tsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(legalRoute, /resolveLegalCmsPage/);
+  assert.match(legalRoute, /PublicCmsPage/);
+  assert.doesNotMatch(legalRoute, /const DOCS|type LegalDoc|This Privacy Policy explains/);
+  assert.match(rootRoute, /isLegalCmsPageSlug/);
+  assert.match(rootRoute, /if \(isLegalCmsPageSlug\(slug\)\) notFound\(\)/);
 });
