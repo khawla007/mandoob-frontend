@@ -34,9 +34,16 @@ test('Knowledge Base hero preserves CTAs and ordered in-hero metrics', () => {
 });
 
 test('Knowledge Base hero has scoped natural-height responsive rules', () => {
-  assert.match(css, /\.site-public \.hero--knowledge-base\s*\{(?:(?!})[\s\S])*padding-block:\s*var\(--sp-5\)/);
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.site-public \.hero--knowledge-base\s*\{/);
-  assert.doesNotMatch(css, /\.site-public \.hero--knowledge-base\s*\{(?:(?!})[\s\S])*(?:height|max-height):/);
+  const desktopBlock = css.match(/\.site-public \.hero--knowledge-base\s*\{[^}]*\}/)?.[0];
+  assert.ok(desktopBlock, 'desktop Knowledge Base hero block must exist');
+  assert.match(desktopBlock, /padding-block:\s*98px/);
+  assert.doesNotMatch(desktopBlock, /(?:height|max-height):/);
+
+  const desktopIndex = css.indexOf(desktopBlock);
+  const mobileCss = css.slice(css.indexOf('@media (max-width: 767px)', desktopIndex + desktopBlock.length));
+  const mobileBlock = mobileCss.match(/\.site-public \.hero--knowledge-base\s*\{[^}]*\}/)?.[0];
+  assert.ok(mobileBlock, 'mobile Knowledge Base hero block must exist');
+  assert.match(mobileBlock, /padding-block:\s*var\(--sp-5\)/);
 });
 
 test('Knowledge Base primary CTA has scoped accessible normal and hover colors', () => {

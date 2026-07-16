@@ -632,6 +632,7 @@
 }
 
 .site-public .hero--knowledge-base {
+  /* Measured: 98px keeps the 1280x720 KB/home delta at 21px; 96px exceeds the 24px tolerance. */
   padding-block: 98px;
   background-image: url('/hero/knowledge-base-research.webp');
   background-position: center center;
