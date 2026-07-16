@@ -44,6 +44,7 @@ test('Knowledge Base hero has scoped natural-height responsive rules', () => {
   const mobileBlock = mobileCss.match(/\.site-public \.hero--knowledge-base\s*\{[^}]*\}/)?.[0];
   assert.ok(mobileBlock, 'mobile Knowledge Base hero block must exist');
   assert.match(mobileBlock, /padding-block:\s*var\(--sp-5\)/);
+  assert.doesNotMatch(mobileBlock, /(?:height|max-height):/);
 });
 
 test('Knowledge Base primary CTA has scoped accessible normal and hover colors', () => {
