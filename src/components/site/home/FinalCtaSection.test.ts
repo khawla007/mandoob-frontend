@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-const componentSource = readFileSync(
-  new URL('./FinalCtaSection.tsx', import.meta.url),
-  'utf8',
-);
+const componentSource = readFileSync(new URL('./FinalCtaSection.tsx', import.meta.url), 'utf8');
 
 describe('FinalCtaSection background interaction', () => {
   it('uses the fabric mesh background without old fake hover layers', () => {
@@ -26,7 +23,7 @@ describe('FinalCtaSection background interaction', () => {
   it('uses a compact, restrained fabric bump', () => {
     assert.match(
       componentSource,
-      /params=\{\{\s*sphereRadius:\s*0\.13,\s*deformationStrength:\s*105,\s*\}\}/,
+      /params=\{\{\s*sphereRadius:\s*0\.13,\s*deformationStrength:\s*105\s*\}\}/,
     );
   });
 });
