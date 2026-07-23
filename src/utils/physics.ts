@@ -64,9 +64,10 @@ export function stepFabric(
       const dy = v - pointer.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       const radius = params.sphereRadius;
+      const normalizedDistance = distance / radius;
       const spherePush =
         pointer.active && distance < radius
-          ? Math.pow(1 - distance / radius, 2.2) * params.deformationStrength
+          ? 0.5 * (1 + Math.cos(Math.PI * normalizedDistance)) * params.deformationStrength
           : 0;
 
       const recovery = -h * params.recoverySpeed;
