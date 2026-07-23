@@ -27,12 +27,9 @@ export const fabricFragmentShader = `
   void main() {
     vec2 repeatedUv = vec2(vUv.x, 1.0 - vUv.y) * uTextureRepeat;
     vec4 tex = texture2D(uMap, repeatedUv);
-    vec3 lightDir = normalize(vec3(-0.42, 0.36, 0.84));
-    float diffuse = max(dot(normalize(vNormal), lightDir), 0.0);
     float lift = smoothstep(0.0008, 0.12, vHeight);
     float rimShadow = smoothstep(0.002, 0.08, vTension) * (1.0 - lift * 0.18);
-    float directionalLight = (diffuse - 0.5) * 0.14 * uLightIntensity;
-    float neutralShade = clamp(1.0 + directionalLight * lift - rimShadow * 0.08, 0.78, 1.12);
+    float neutralShade = clamp(1.0 - lift * 0.08 - rimShadow * 0.08, 0.84, 1.0);
     vec3 clothBase = tex.rgb;
     vec3 color = clothBase * neutralShade;
     gl_FragColor = vec4(color, uOpacity);
