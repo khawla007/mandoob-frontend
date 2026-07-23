@@ -23,7 +23,7 @@ describe('FinalCtaSection background interaction', () => {
   it('uses a compact, restrained fabric bump', () => {
     assert.match(
       componentSource,
-      /params=\{\{\s*sphereRadius:\s*0\.13,\s*deformationStrength:\s*105\s*\}\}/,
+      /params=\{\{\s*sphereRadius:\s*0\.13,\s*deformationStrength:\s*32\s*\}\}/,
     );
   });
 });

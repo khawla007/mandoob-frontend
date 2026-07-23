@@ -16,7 +16,7 @@ export function FinalCtaSection() {
     >
       <FabricBackground
         pointer={pointer}
-        params={{ sphereRadius: 0.13, deformationStrength: 105 }}
+        params={{ sphereRadius: 0.13, deformationStrength: 32 }}
       />
       <div className="cta-section__inner reveal container">
         <span className="eyebrow eyebrow--accent">07 · Get started</span>
