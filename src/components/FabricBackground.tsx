@@ -8,6 +8,7 @@ import { fabricFragmentShader, fabricVertexShader } from '@/shaders/fabric';
 import {
   createFabricState,
   estimateTension,
+  getCursorCenteredFabricPosition,
   qualityToGrid,
   stepFabric,
   type FabricParams,
@@ -140,17 +141,17 @@ function FabricMesh({ pointer, textureSrc, textureAspect, params }: FabricMeshPr
 
     for (let i = 0; i < state.heights.length; i++) {
       const height = Math.max(state.heights[i] * 0.95, 0);
-      const perspectiveScale = Math.max(
-        0.05,
-        (CAMERA_DISTANCE - height) / CAMERA_DISTANCE,
-      );
-
-      position.setXYZ(
-        i,
-        basePositions[i * 3] * perspectiveScale,
-        basePositions[i * 3 + 1] * perspectiveScale,
+      const transformed = getCursorCenteredFabricPosition({
+        baseX: basePositions[i * 3],
+        baseY: basePositions[i * 3 + 1],
         height,
-      );
+        pointer: pointer.current,
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        cameraDistance: CAMERA_DISTANCE,
+      });
+
+      position.setXYZ(i, transformed.x, transformed.y, transformed.z);
       tension.setX(i, estimateTension(state, i));
     }
 

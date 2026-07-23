@@ -14,11 +14,11 @@ describe('FabricBackground mesh deformation', () => {
     assert.match(componentSource, /const CAMERA_DISTANCE = 6;/);
     assert.match(
       componentSource,
-      /const perspectiveScale = Math\.max\(\s*0\.05,\s*\(CAMERA_DISTANCE - height\) \/ CAMERA_DISTANCE,\s*\);/,
+      /getCursorCenteredFabricPosition\(\{\s*baseX: basePositions\[i \* 3\],\s*baseY: basePositions\[i \* 3 \+ 1\],\s*height,\s*pointer: pointer\.current,\s*viewportWidth: viewport\.width,\s*viewportHeight: viewport\.height,\s*cameraDistance: CAMERA_DISTANCE,\s*\}\)/,
     );
     assert.match(
       componentSource,
-      /position\.setXYZ\(\s*i,\s*basePositions\[i \* 3\] \* perspectiveScale,\s*basePositions\[i \* 3 \+ 1\] \* perspectiveScale,\s*height,\s*\)/,
+      /position\.setXYZ\(i, transformed\.x, transformed\.y, transformed\.z\)/,
     );
   });
 

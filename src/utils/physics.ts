@@ -21,6 +21,39 @@ export type PointerState = {
   active: boolean;
 };
 
+type CursorCenteredFabricPositionParams = {
+  baseX: number;
+  baseY: number;
+  height: number;
+  pointer: PointerState;
+  viewportWidth: number;
+  viewportHeight: number;
+  cameraDistance: number;
+};
+
+export function getCursorCenteredFabricPosition({
+  baseX,
+  baseY,
+  height,
+  pointer,
+  viewportWidth,
+  viewportHeight,
+  cameraDistance,
+}: CursorCenteredFabricPositionParams) {
+  const perspectiveScale = Math.max(0.05, (cameraDistance - height) / cameraDistance);
+  const radialScale = Math.min(Math.max(height, 0) * 0.05, 0.12);
+  const pointerX = (pointer.x - 0.5) * viewportWidth;
+  const pointerY = (0.5 - pointer.y) * viewportHeight;
+  const expandedX = baseX + (baseX - pointerX) * radialScale;
+  const expandedY = baseY + (baseY - pointerY) * radialScale;
+
+  return {
+    x: expandedX * perspectiveScale,
+    y: expandedY * perspectiveScale,
+    z: height,
+  };
+}
+
 export function qualityToGrid(quality: FabricQuality) {
   if (quality === 'high') return { cols: 88, rows: 44 };
   if (quality === 'medium') return { cols: 62, rows: 32 };
