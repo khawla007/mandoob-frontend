@@ -144,11 +144,10 @@ function FabricMesh({ pointer, textureSrc, textureAspect, params }: FabricMeshPr
         0.05,
         (CAMERA_DISTANCE - height) / CAMERA_DISTANCE,
       );
-      const inwardScale = Math.min(height * 0.05, 0.12);
 
       position.setXYZ(
         i,
-        basePositions[i * 3] * (perspectiveScale - inwardScale),
+        basePositions[i * 3] * perspectiveScale,
         basePositions[i * 3 + 1] * perspectiveScale,
         height,
       );
