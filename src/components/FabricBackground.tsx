@@ -18,14 +18,14 @@ import {
 type FabricBackgroundProps = {
   pointer: MutableRefObject<PointerState>;
   textureSrc?: string;
-  textureRepeat?: [number, number];
+  textureAspect?: number;
   params?: Partial<FabricParams & { lightingIntensity: number }>;
 };
 
 type FabricMeshProps = {
   pointer: MutableRefObject<PointerState>;
   textureSrc: string;
-  textureRepeat: [number, number];
+  textureAspect: number;
   params: FabricParams & { lightingIntensity: number };
 };
 
@@ -80,7 +80,7 @@ function getQuality(width: number): FabricQuality {
   return 'low';
 }
 
-function FabricMesh({ pointer, textureSrc, textureRepeat, params }: FabricMeshProps) {
+function FabricMesh({ pointer, textureSrc, textureAspect, params }: FabricMeshProps) {
   const meshRef = useRef<THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>>(null);
   const { viewport, size } = useThree();
   const quality = getQuality(size.width);
@@ -88,10 +88,13 @@ function FabricMesh({ pointer, textureSrc, textureRepeat, params }: FabricMeshPr
   const texture = useMemo(() => {
     const loaded = new THREE.TextureLoader().load(textureSrc);
     loaded.wrapS = THREE.RepeatWrapping;
-    loaded.wrapT = THREE.RepeatWrapping;
-    loaded.repeat.set(...textureRepeat);
+    loaded.wrapT = THREE.ClampToEdgeWrapping;
     return loaded;
-  }, [textureRepeat, textureSrc]);
+  }, [textureSrc]);
+  const textureRepeat = useMemo(
+    () => new THREE.Vector2(size.width / size.height / textureAspect, 1),
+    [size.height, size.width, textureAspect],
+  );
 
   useEffect(() => {
     stateRef.current = createFabricState(quality);
@@ -114,7 +117,7 @@ function FabricMesh({ pointer, textureSrc, textureRepeat, params }: FabricMeshPr
         depthWrite: false,
         uniforms: {
           uMap: { value: texture },
-          uTextureRepeat: { value: new THREE.Vector2(textureRepeat[0], textureRepeat[1]) },
+          uTextureRepeat: { value: textureRepeat },
           uLightIntensity: { value: params.lightingIntensity },
           uOpacity: { value: 1 },
         },
@@ -171,7 +174,7 @@ function FabricMesh({ pointer, textureSrc, textureRepeat, params }: FabricMeshPr
 export function FabricBackground({
   pointer,
   textureSrc = '/images/cta-mashrabiya.png',
-  textureRepeat = [2.2, 1],
+  textureAspect = 1774 / 887,
   params = {},
 }: FabricBackgroundProps) {
   const mergedParams = { ...DEFAULT_PARAMS, ...params };
@@ -198,7 +201,7 @@ export function FabricBackground({
           <FabricMesh
             pointer={pointer}
             textureSrc={textureSrc}
-            textureRepeat={textureRepeat}
+            textureAspect={textureAspect}
             params={mergedParams}
           />
         </Canvas>

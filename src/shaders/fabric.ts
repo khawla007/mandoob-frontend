@@ -25,7 +25,7 @@ export const fabricFragmentShader = `
   varying float vTension;
 
   void main() {
-    vec2 repeatedUv = vec2(vUv.x, 1.0 - vUv.y) * uTextureRepeat;
+    vec2 repeatedUv = vec2((vUv.x - 0.5) * uTextureRepeat.x + 0.5, 1.0 - vUv.y);
     vec4 tex = texture2D(uMap, repeatedUv);
     vec3 color = tex.rgb;
     gl_FragColor = vec4(color, uOpacity);

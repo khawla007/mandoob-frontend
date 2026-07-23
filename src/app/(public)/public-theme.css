@@ -2482,6 +2482,11 @@
   font-size: var(--fs-15);
   color: oklch(0.45 0.01 45);
 }
+@media (prefers-reduced-motion: no-preference) {
+  .site-public .cta-section:has(.fabric-background) {
+    background-image: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .site-public .fabric-background {
     display: none;
