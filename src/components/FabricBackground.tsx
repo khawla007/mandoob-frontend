@@ -132,26 +132,12 @@ function FabricMesh({ pointer, textureSrc, textureRepeat, params }: FabricMeshPr
     const position = mesh.geometry.attributes.position as THREE.BufferAttribute;
     const tension = mesh.geometry.attributes.tension as THREE.BufferAttribute;
     const basePositions = mesh.geometry.userData.basePositions as Float32Array;
-    const { cols, rows } = state;
 
     for (let i = 0; i < state.heights.length; i++) {
-      const xIndex = i % cols;
-      const yIndex = Math.floor(i / cols);
-      const u = xIndex / (cols - 1);
-      const v = yIndex / (rows - 1);
-      const dx = u - pointer.current.x;
-      const dy = v - pointer.current.y;
-      const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-      const lift = Math.min(state.heights[i] * 0.018, 1);
-      const lateralFalloff = pointer.current.active
-        ? Math.max(0, 1 - distance / (params.sphereRadius * 1.45))
-        : 0;
-      const lateral = lift * lateralFalloff * 0.14;
-
       position.setXYZ(
         i,
-        basePositions[i * 3] - (dx / distance) * lateral * viewport.width,
-        basePositions[i * 3 + 1] + (dy / distance) * lateral * viewport.height,
+        basePositions[i * 3],
+        basePositions[i * 3 + 1],
         state.heights[i] * 0.95,
       );
       tension.setX(i, estimateTension(state, i));
