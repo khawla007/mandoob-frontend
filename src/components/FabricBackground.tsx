@@ -29,6 +29,8 @@ type FabricMeshProps = {
   params: FabricParams & { lightingIntensity: number };
 };
 
+const CAMERA_DISTANCE = 6;
+
 const DEFAULT_PARAMS: FabricParams & { lightingIntensity: number } = {
   stiffness: 58,
   damping: 0.86,
@@ -134,11 +136,18 @@ function FabricMesh({ pointer, textureSrc, textureRepeat, params }: FabricMeshPr
     const basePositions = mesh.geometry.userData.basePositions as Float32Array;
 
     for (let i = 0; i < state.heights.length; i++) {
+      const height = Math.max(state.heights[i] * 0.95, 0);
+      const perspectiveScale = Math.max(
+        0.05,
+        (CAMERA_DISTANCE - height) / CAMERA_DISTANCE,
+      );
+      const inwardScale = Math.min(height * 0.05, 0.12);
+
       position.setXYZ(
         i,
-        basePositions[i * 3],
-        basePositions[i * 3 + 1],
-        state.heights[i] * 0.95,
+        basePositions[i * 3] * (perspectiveScale - inwardScale),
+        basePositions[i * 3 + 1] * perspectiveScale,
+        height,
       );
       tension.setX(i, estimateTension(state, i));
     }
@@ -182,7 +191,7 @@ export function FabricBackground({
     <div className="fabric-background" aria-hidden="true">
       <WebGLBoundary onError={() => setWebglAvailable(false)}>
         <Canvas
-          camera={{ position: [0, 0, 6], fov: 32 }}
+          camera={{ position: [0, 0, CAMERA_DISTANCE], fov: 32 }}
           dpr={[1, 1.5]}
           gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
         >
