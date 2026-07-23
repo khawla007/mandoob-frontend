@@ -14,7 +14,10 @@ export function FinalCtaSection() {
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
     >
-      <FabricBackground pointer={pointer} />
+      <FabricBackground
+        pointer={pointer}
+        params={{ sphereRadius: 0.13, deformationStrength: 105, }}
+      />
       <div className="cta-section__inner reveal container">
         <span className="eyebrow eyebrow--accent">07 · Get started</span>
         <h2 id="cta-h" className="display display--cta">

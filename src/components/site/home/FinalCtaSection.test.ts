@@ -22,4 +22,11 @@ describe('FinalCtaSection background interaction', () => {
     assert.doesNotMatch(componentSource, /cta-final-honeycomb/);
     assert.doesNotMatch(componentSource, /\/images\/cta-honeycomb\.svg/);
   });
+
+  it('uses a compact, restrained fabric bump', () => {
+    assert.match(
+      componentSource,
+      /params=\{\{\s*sphereRadius:\s*0\.13,\s*deformationStrength:\s*105,\s*\}\}/,
+    );
+  });
 });
