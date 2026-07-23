@@ -71,18 +71,16 @@ export function ClientTypeahead({
     };
   }, [tenantId, query, open]);
 
-  // Clear local rows synchronously when tenant goes away.
-  const effectiveRows: ClientLookupRow[] = tenantId ? rows : [];
-
   // Resolve the trigger label without setState-in-effect: prefer a row from
   // the live rows list, then the sticky cache (so it survives query changes).
   const selected = useMemo<ClientLookupRow | null>(() => {
     if (!value) return null;
+    const effectiveRows: ClientLookupRow[] = tenantId ? rows : [];
     const match = effectiveRows.find((r) => r.id === value);
     if (match) return match;
     if (labelCache && labelCache.id === value) return labelCache;
     return null;
-  }, [value, effectiveRows, labelCache]);
+  }, [value, tenantId, rows, labelCache]);
 
   if (!tenantId) {
     return (

@@ -15,6 +15,12 @@ Codex must default to terse, high-signal communication to reduce token spend.
 - Keep necessary rigor: still mention failed verification, blockers, security issues, destructive actions, and user decisions.
 - Expand only when the user asks for detail, a plan, a review, or an explanation.
 
+# Browser Verification Preference
+
+- When the user asks to check UI/browser work visually, use the visible browser inside the existing Antigravity workflow/window so the user can see and test it too.
+- Do not use direct `google-chrome` launches for this project unless the user explicitly asks.
+- Headless `agent-browser` is acceptable for supplemental console, DOM, screenshot, and automation checks, but it must not replace the visible Antigravity browser check when the user asks to see the browser.
+
 
 <claude-mem-context>
 # Memory Context

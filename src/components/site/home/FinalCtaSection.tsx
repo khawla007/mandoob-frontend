@@ -1,8 +1,20 @@
+'use client';
+
+import { FabricBackground } from '@/components/FabricBackground';
+import { useMouse } from '@/hooks/useMouse';
 import Link from 'next/link';
 
 export function FinalCtaSection() {
+  const { pointer, onPointerMove, onPointerLeave } = useMouse();
+
   return (
-    <section className="cta-section" aria-labelledby="cta-h">
+    <section
+      className="cta-section"
+      aria-labelledby="cta-h"
+      onPointerMove={onPointerMove}
+      onPointerLeave={onPointerLeave}
+    >
+      <FabricBackground pointer={pointer} />
       <div className="cta-section__inner reveal container">
         <span className="eyebrow eyebrow--accent">07 · Get started</span>
         <h2 id="cta-h" className="display display--cta">

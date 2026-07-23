@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Check, Circle, Loader2, X } from 'lucide-react';
@@ -77,8 +77,8 @@ export function RegisterForm() {
     },
   });
 
-  const password = form.watch('password');
-  const confirmPassword = form.watch('confirmPassword');
+  const password = useWatch({ control: form.control, name: 'password' });
+  const confirmPassword = useWatch({ control: form.control, name: 'confirmPassword' });
 
   const rules = useMemo(() => computePasswordRules(password ?? ''), [password]);
   const allRulesPassed = rules.every((r) => r.passed);

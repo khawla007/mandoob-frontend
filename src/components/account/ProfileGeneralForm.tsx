@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -95,9 +95,12 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
     mode: 'onBlur',
   });
 
-  const watchedAvatar = form.watch('avatar_url');
-  const watchedName = form.watch('display_name');
-  const watchedBio = form.watch('bio') ?? '';
+  const watchedAvatar = useWatch({ control: form.control, name: 'avatar_url' });
+  const watchedName = useWatch({ control: form.control, name: 'display_name' });
+  const watchedBio = useWatch({ control: form.control, name: 'bio' }) ?? '';
+  const watchedLocale = useWatch({ control: form.control, name: 'locale' });
+  const watchedTimezone = useWatch({ control: form.control, name: 'timezone' });
+  const watchedDateFormat = useWatch({ control: form.control, name: 'date_format' });
 
   const onSubmit = form.handleSubmit((values) => {
     setServerError(null);
@@ -254,7 +257,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 {t('locale')} <span className="text-destructive">*</span>
               </Label>
               <Select
-                value={form.watch('locale')}
+                value={watchedLocale}
                 onValueChange={(v) => form.setValue('locale', v as ProfileGeneralInput['locale'])}
               >
                 <SelectTrigger id="locale" aria-invalid={!!errors.locale}>
@@ -280,7 +283,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 {t('timezone')} <span className="text-destructive">*</span>
               </Label>
               <Select
-                value={form.watch('timezone')}
+                value={watchedTimezone}
                 onValueChange={(v) =>
                   form.setValue('timezone', v as ProfileGeneralInput['timezone'])
                 }
@@ -308,7 +311,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 {t('dateFormat')} <span className="text-destructive">*</span>
               </Label>
               <Select
-                value={form.watch('date_format')}
+                value={watchedDateFormat}
                 onValueChange={(v) =>
                   form.setValue('date_format', v as ProfileGeneralInput['date_format'])
                 }

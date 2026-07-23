@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,7 +55,7 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
     mode: 'onBlur',
   });
 
-  const role = form.watch('role') as CreateUserRole | undefined;
+  const role = useWatch({ control: form.control, name: 'role' }) as CreateUserRole | undefined;
 
   // Field-bleed guard: when role flips, reset role-specific fields while
   // preserving common ones. Tenant ID only carries forward for tenant-scoped roles.

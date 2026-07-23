@@ -17,6 +17,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@node-rs/argon2": "^2.0.2",
+    "@react-three/fiber": "^9.6.1",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
     "@tiptap/extension-image": "^3.27.1",
@@ -33,6 +34,7 @@
     "@tiptap/html": "^3.27.1",
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
+    "@types/three": "^0.182.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -55,6 +57,7 @@
     "sonner": "^2.0.7",
     "stripe": "^22.1.1",
     "tailwind-merge": "^3.5.0",
+    "three": "^0.182.0",
     "zod": "^4.3.6",
     "zxcvbn": "^4.4.2"
   },
