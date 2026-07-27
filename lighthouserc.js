@@ -1,7 +1,7 @@
 const baseUrl = process.env.LAUNCH_BASE_URL || 'http://localhost:3100';
 const launchUrl = new URL(baseUrl);
 const launchRootDomain = launchUrl.host;
-const launchPort = launchUrl.port || '3000';
+const launchPort = launchUrl.port || '3001';
 
 module.exports = {
   ci: {

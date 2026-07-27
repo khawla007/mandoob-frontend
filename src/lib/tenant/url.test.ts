@@ -9,8 +9,8 @@ test('buildTenantPath preserves direct /t slug links', () => {
 
 test('buildTenantUrl builds localhost tenant subdomain URLs', () => {
   assert.equal(
-    buildTenantUrl({ slug: 'firm-a', rootDomain: 'localhost:3000', path: '/dashboard' }),
-    'http://firm-a.localhost:3000/dashboard',
+    buildTenantUrl({ slug: 'firm-a', rootDomain: 'localhost:3001', path: '/dashboard' }),
+    'http://firm-a.localhost:3001/dashboard',
   );
 });
 

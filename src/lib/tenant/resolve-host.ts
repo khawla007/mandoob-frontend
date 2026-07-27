@@ -13,7 +13,7 @@ export type ResolveHostInput = {
 /**
  * Decide whether a request targets the marketing site, the admin console, or a
  * tenant subdomain. Handles apex, `www`, reserved labels, and local dev on
- * `*.localhost:3000`.
+ * `*.localhost:3001`.
  */
 export function resolveHost({ host, rootDomain }: ResolveHostInput): HostContext {
   const normalized = host.toLowerCase();

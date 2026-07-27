@@ -6,7 +6,7 @@ const SERVICE_KEY = 'service_role_key_for_tests_padded_to_min_length_';
 process.env.NEXT_PUBLIC_SUPABASE_URL = SUPABASE_URL;
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon_key_for_tests_padded_to_min_';
 process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_KEY;
-process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3000';
+process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

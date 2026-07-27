@@ -4,7 +4,7 @@ import { test } from 'node:test';
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon_key_for_tests_padded_to_min_';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
-process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3000';
+process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 process.env.TWILIO_AUTH_TOKEN = 'twilio_token';
 process.env.UNIFONIC_WEBHOOK_SECRET = 'unifonic_secret';

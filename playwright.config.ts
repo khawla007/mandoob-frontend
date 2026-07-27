@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
 const baseURL = process.env.E2E_BASE_URL ?? process.env.LAUNCH_BASE_URL ?? 'http://localhost:3100';
 const launchUrl = new URL(baseURL);
 const launchRootDomain = launchUrl.host;
-const launchPort = launchUrl.port || '3000';
+const launchPort = launchUrl.port || '3001';
 
 export default defineConfig({
   testDir: './tests',

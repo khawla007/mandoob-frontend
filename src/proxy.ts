@@ -5,7 +5,7 @@ import { updateSession } from '@/lib/supabase/update-session';
 
 const CSRF_COOKIE = 'mandoob-csrf';
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3000';
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'localhost:3001';
 
 export async function proxy(request: NextRequest) {
   const host = request.headers.get('host') ?? ROOT_DOMAIN;

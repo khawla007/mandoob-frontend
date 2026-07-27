@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-Visit http://localhost:3000 (public), http://firm.localhost:3000 (tenant), http://admin.localhost:3000 (super admin). Modern browsers resolve `*.localhost` to 127.0.0.1 automatically.
+Visit http://localhost:3001 (public), http://firm.localhost:3001 (tenant), http://admin.localhost:3001 (super admin). Modern browsers resolve `*.localhost` to 127.0.0.1 automatically.
 
 ## Seed users (local dev)
 
@@ -22,9 +22,9 @@ Passwords in `docs/ops/seed-creds.md` (gitignored).
 
 | Email                          | Role        | Host                 |
 | ------------------------------ | ----------- | -------------------- |
-| `khawla@fanaticcoders.com`     | super_admin | admin.localhost:3000 |
-| `pro-admin@firm.mandoob.local` | pro         | firm.localhost:3000  |
-| `customer@firm.mandoob.local`  | customer    | firm.localhost:3000  |
+| `khawla@fanaticcoders.com`     | super_admin | admin.localhost:3001 |
+| `pro-admin@firm.mandoob.local` | pro         | firm.localhost:3001  |
+| `customer@firm.mandoob.local`  | customer    | firm.localhost:3001  |
 
 Re-seed:
 

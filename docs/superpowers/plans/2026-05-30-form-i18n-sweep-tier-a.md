@@ -414,7 +414,7 @@ Run: `npx tsc --noEmit` → exit 0. `npm run lint` → 0 errors, no new warnings
 
 Run the parity command from Task 1 Step 4. Expected: `PARITY OK`.
 
-- [ ] **Step 3: Browser smoke (dev server must be running on :3000)**
+- [ ] **Step 3: Browser smoke (dev server must be running on :3001)**
 
 Using `agent-browser` (via `npx --no-install agent-browser`), for each route below: open it, run `list_console_messages`, confirm **no** `MISSING_MESSAGE` / `IntlError` entries, and confirm the touched labels render. Then toggle to Arabic via the Language switcher and re-check the same route for missing-key errors + RTL.
 
@@ -806,7 +806,7 @@ Run: `grep -n "label:" src/components/questionnaire/QuestionnaireForm.tsx` → e
 
 - [ ] **Step 2: JSON parity** — parity command from Task 1 Step 4 → `PARITY OK`.
 
-- [ ] **Step 3: Browser smoke** — dev server on :3000. Open the public questionnaire route (the page rendering `QuestionnaireForm`, e.g. the public company-setup application route). Walk all 5 steps: confirm sidebar step names, section titles/descriptions, field labels, jurisdiction/office/document/add-on options, and the Back/Continue/Submit buttons render. Submit a complete form to hit the success view; confirm "Application received" + lead reference render. Check `list_console_messages` for zero `MISSING_MESSAGE`/`IntlError`. Toggle to Arabic; repeat the walk; confirm Arabic strings + RTL, no missing-key errors, and the shareholder plural renders.
+- [ ] **Step 3: Browser smoke** — dev server on :3001. Open the public questionnaire route (the page rendering `QuestionnaireForm`, e.g. the public company-setup application route). Walk all 5 steps: confirm sidebar step names, section titles/descriptions, field labels, jurisdiction/office/document/add-on options, and the Back/Continue/Submit buttons render. Submit a complete form to hit the success view; confirm "Application received" + lead reference render. Check `list_console_messages` for zero `MISSING_MESSAGE`/`IntlError`. Toggle to Arabic; repeat the walk; confirm Arabic strings + RTL, no missing-key errors, and the shareholder plural renders.
 
 - [ ] **Step 4: Commit**
 
