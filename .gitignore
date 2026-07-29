@@ -58,3 +58,6 @@ tests/.auth/*.json
 
 # local isolated feature workspaces
 /.worktrees/
+
+# Local Netlify folder
+.netlify
