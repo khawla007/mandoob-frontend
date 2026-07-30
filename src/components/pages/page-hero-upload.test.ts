@@ -7,7 +7,9 @@ import { runHeroUpload, validateHeroUpload } from './page-hero-upload';
 test('oversized hero files short-circuit before invoking the server action', async () => {
   let calls = 0;
   const file = { name: 'huge.webp', type: 'image/webp', size: MAX_GALLERY_IMAGE_BYTES + 1 };
-  assert.match(validateHeroUpload(file), /8 MiB/);
+  const validationError = validateHeroUpload(file);
+  assert.ok(validationError);
+  assert.match(validationError, /8 MiB/);
   const result = await runHeroUpload(file, async () => { calls += 1; throw new Error('must not run'); });
   assert.equal(calls, 0);
   assert.deepEqual(result, { ok: false, error: 'Hero image must be 8 MiB or smaller.' });

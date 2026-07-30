@@ -13,6 +13,11 @@ import {
 } from '@/lib/data/pages';
 
 type Row = Record<string, unknown>;
+type StubQueryResult = {
+  data: Row[];
+  error: { message: string; code?: string } | null;
+  count: number;
+};
 
 const pageRow = (overrides: Row = {}): Row => ({
   id: 'page-1', slug: 'hello', title: 'Hello', content_json: { type: 'doc' },
@@ -47,7 +52,17 @@ function stub(seed: Record<string, Row[]> = {}, options: { duplicate?: boolean; 
       update(value: Row) { op = 'update'; payload = value; calls.push({ table, method: 'update', args: [value] }); return builder; },
       async maybeSingle() { const result = apply(); return { data: result.data[0] ?? null, error: result.error }; },
       async single() { const result = apply(); return { data: result.data[0] ?? null, error: result.error ?? (result.data[0] ? null : { message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116' }) }; },
-      then(resolve: (v: unknown) => void) { const result = apply(); resolve({ data: result.data, error: result.error, count: result.count }); },
+      then<TResult1 = StubQueryResult, TResult2 = never>(
+        onfulfilled?: ((value: StubQueryResult) => TResult1 | PromiseLike<TResult1>) | null,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+      ): PromiseLike<TResult1 | TResult2> {
+        const result = apply();
+        return Promise.resolve({
+          data: result.data,
+          error: result.error,
+          count: result.count,
+        }).then(onfulfilled, onrejected);
+      },
     };
     function apply(): { data: Row[]; error: { message: string; code?: string } | null; count: number } {
       if (options.duplicate && (op === 'insert' || op === 'update')) return { data: [], error: { message: 'duplicate key', code: '23505' }, count: 0 };
@@ -68,6 +83,35 @@ function stub(seed: Record<string, Row[]> = {}, options: { duplicate?: boolean; 
   }
   return { from, tables, calls };
 }
+
+test('stub query builders preserve chains and implement PromiseLike results', async () => {
+  const db = stub({
+    cms_pages: [
+      pageRow({ status: 'published', published_at: '2026-01-01T00:00:00.000Z' }),
+    ],
+  });
+  const result = await db.from('cms_pages')
+    .select('*')
+    .eq('status', 'published')
+    .is('deleted_at', null)
+    .lte('published_at', '2026-07-01T00:00:00.000Z')
+    .order('updated_at', { ascending: false })
+    .range(0, 0)
+    .then((value) => value);
+
+  assert.deepEqual(result, { data: [pageRow({
+    status: 'published',
+    published_at: '2026-01-01T00:00:00.000Z',
+  })], error: null, count: 1 });
+  assert.deepEqual(
+    db.calls.map((call) => call.method),
+    ['select', 'eq', 'is', 'lte', 'order', 'range'],
+  );
+  assert.equal(
+    (await db.from('cms_pages').eq('id', 'page-1').maybeSingle()).data?.id,
+    'page-1',
+  );
+});
 
 test('maps database rows into CmsPage properties', () => {
   const mapped = mapCmsPageRow(pageRow({ background_image_media_id: 'media-1' }));

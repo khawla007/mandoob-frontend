@@ -64,10 +64,21 @@ test('public component never includes advanced script slots in its element tree'
 });
 
 test('no-hero CMS pages use the shared 96px by 20px title spacing', () => {
-  const element = PublicCmsPage({ page: cmsPage({ heroSettings: null }) });
+  const element = PublicCmsPage({
+    page: cmsPage({
+      heroSettings: {
+        backgroundColor: '#ffffff',
+        overlayColor: '#000000',
+        overlayOpacity: 0,
+        headingAlignment: 'center',
+        textAlignment: 'center',
+        buttonAlignment: 'center',
+      },
+    }),
+  });
   const serialized = JSON.stringify(element);
   assert.match(serialized, /cms-page__title-section/);
 
   const css = readFileSync(new URL('../../app/(public)/public-theme.css', import.meta.url), 'utf8');
-  assert.match(css, /\.site-public \.cms-page__title-section\s*{[^}]*padding-block:\s*96px 20px;/s);
+  assert.match(css, /\.site-public \.cms-page__title-section\s*{[^}]*padding-block:\s*96px 20px;/);
 });

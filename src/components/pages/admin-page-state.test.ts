@@ -33,6 +33,7 @@ test('new editor hero serialization parses end-to-end without blank CSS validati
   form.set('heroSettings', serializeHeroState(createHeroState()));
   const parsed = parseCmsPageFormData(form);
   assert.equal(parsed.backgroundImageMediaId, null);
+  assert.ok(parsed.heroSettings);
   assert.equal(parsed.heroSettings.minHeight, undefined);
   assert.equal(parsed.heroSettings.margin, undefined);
 });
@@ -43,6 +44,7 @@ test('hero JSON carries media identity and URL into parsed persistence input', (
   form.set('heroSettings', serializeHeroState(createHeroState({}, 'media-9', 'https://cdn.example/hero.jpg')));
   const parsed = parseCmsPageFormData(form);
   assert.equal(parsed.backgroundImageMediaId, 'media-9');
+  assert.ok(parsed.heroSettings);
   assert.equal(parsed.heroSettings.backgroundImageUrl, 'https://cdn.example/hero.jpg');
 });
 
