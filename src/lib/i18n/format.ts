@@ -25,6 +25,9 @@ export function formatDateTime(
   return new Intl.DateTimeFormat(tag, options).format(new Date(iso));
 }
 
-export function formatDateShort(iso: string | null, locale: Locale | string = defaultLocale): string {
+export function formatDateShort(
+  iso: string | null,
+  locale: Locale | string = defaultLocale,
+): string {
   return formatDateTime(iso, locale, { year: 'numeric', month: 'short', day: 'numeric' });
 }

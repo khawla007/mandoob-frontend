@@ -141,7 +141,10 @@ test('tenant kanban lists only leads assigned to that tenant', async () => {
 
   const kanban = await listTenantLeadKanban('tenant-1', { supabase: supabase as never });
 
-  assert.deepEqual(kanban.new.map((row) => row.id), ['lead-1']);
+  assert.deepEqual(
+    kanban.new.map((row) => row.id),
+    ['lead-1'],
+  );
 });
 
 test('assignment rejects inactive tenants', async () => {

@@ -103,6 +103,7 @@ export function isMaterialSubscriptionChange(
   incoming: { status: string | null; current_period_end: string | null },
 ): boolean {
   return (
-    existing.status !== incoming.status || existing.current_period_end !== incoming.current_period_end
+    existing.status !== incoming.status ||
+    existing.current_period_end !== incoming.current_period_end
   );
 }

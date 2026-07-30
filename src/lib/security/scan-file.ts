@@ -88,9 +88,12 @@ async function pollVirusTotalAnalysis(
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() <= deadline) {
-    const response = await fetch(`${VIRUSTOTAL_API_BASE}/analyses/${encodeURIComponent(analysisId)}`, {
-      headers: { 'x-apikey': env.VIRUSTOTAL_API_KEY },
-    });
+    const response = await fetch(
+      `${VIRUSTOTAL_API_BASE}/analyses/${encodeURIComponent(analysisId)}`,
+      {
+        headers: { 'x-apikey': env.VIRUSTOTAL_API_KEY },
+      },
+    );
     if (!response.ok) return unavailable();
 
     const stats = readStats((await response.json()) as VirusTotalAnalysis);

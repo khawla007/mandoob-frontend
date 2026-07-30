@@ -45,7 +45,11 @@ test('createCostDataSchema normalizes optional fields and document keys', () => 
 });
 
 test('createCostDataSchema preserves false boolean strings', () => {
-  const parsed = createCostDataSchema.parse({ ...validInput, estimateGrade: 'false', active: 'false' });
+  const parsed = createCostDataSchema.parse({
+    ...validInput,
+    estimateGrade: 'false',
+    active: 'false',
+  });
   assert.equal(parsed.estimateGrade, false);
   assert.equal(parsed.active, false);
 });

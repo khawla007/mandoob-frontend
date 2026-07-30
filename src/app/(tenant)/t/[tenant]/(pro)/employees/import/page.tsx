@@ -4,14 +4,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { listClientsForTenant } from '@/lib/data/clients';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { uploadBulkImportAction } from '../../imports/actions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EmployeeImportPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function EmployeeImportPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
   const { tenant: slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
   const clients = tenant ? await listClientsForTenant({ tenantId: tenant.id, limit: 50 }) : [];

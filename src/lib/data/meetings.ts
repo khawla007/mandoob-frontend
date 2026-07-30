@@ -149,7 +149,8 @@ export async function createMeetingSlot(
     })
     .select('id, tenant_id, created_by, starts_at, ends_at, timezone, status')
     .single();
-  if (error || !data) throw new ApiError('INTERNAL', error?.message ?? 'Could not create meeting slot', 500);
+  if (error || !data)
+    throw new ApiError('INTERNAL', error?.message ?? 'Could not create meeting slot', 500);
 
   await recordAudit(client(deps), input.tenantId, actor.id, 'meeting_slot_created', {
     slot_id: (data as MeetingSlotRow).id,
@@ -205,7 +206,9 @@ export async function bookMeetingSlot(
 
   const durationMinutes = Math.max(
     1,
-    Math.round((new Date(slotRow.ends_at).getTime() - new Date(slotRow.starts_at).getTime()) / 60000),
+    Math.round(
+      (new Date(slotRow.ends_at).getTime() - new Date(slotRow.starts_at).getTime()) / 60000,
+    ),
   );
   const { data: created, error: createError } = await admin
     .from('meetings')
@@ -223,9 +226,12 @@ export async function bookMeetingSlot(
       provider: 'daily',
       consent_notice_shown_at: new Date().toISOString(),
     })
-    .select('id, tenant_id, lead_id, client_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at')
+    .select(
+      'id, tenant_id, lead_id, client_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at',
+    )
     .single();
-  if (createError || !created) throw new ApiError('INTERNAL', createError?.message ?? 'Could not book meeting', 500);
+  if (createError || !created)
+    throw new ApiError('INTERNAL', createError?.message ?? 'Could not book meeting', 500);
 
   const meeting = created as MeetingRow;
   const roomFactory = deps.createRoom ?? createDailyRoom;
@@ -241,7 +247,10 @@ export async function bookMeetingSlot(
     .eq('id', meeting.id);
   if (meetingUpdateError) throw new ApiError('INTERNAL', meetingUpdateError.message, 500);
 
-  const { error: slotUpdateError } = await admin.from('meeting_slots').update({ status: 'booked' }).eq('id', slotId);
+  const { error: slotUpdateError } = await admin
+    .from('meeting_slots')
+    .update({ status: 'booked' })
+    .eq('id', slotId);
   if (slotUpdateError) throw new ApiError('INTERNAL', slotUpdateError.message, 500);
 
   await recordAudit(admin, slotRow.tenant_id, actor.id, 'meeting_scheduled', {
@@ -326,9 +335,14 @@ export async function cancelMeeting(
   const meeting = await readMeeting(admin, meetingId);
   authorizeTenant(actor, meeting.tenant_id);
   if (meeting.status === 'cancelled') return;
-  const { error } = await admin.from('meetings').update({ status: 'cancelled' }).eq('id', meetingId);
+  const { error } = await admin
+    .from('meetings')
+    .update({ status: 'cancelled' })
+    .eq('id', meetingId);
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  await recordAudit(admin, meeting.tenant_id, actor.id, 'meeting_cancelled', { meeting_id: meetingId });
+  await recordAudit(admin, meeting.tenant_id, actor.id, 'meeting_cancelled', {
+    meeting_id: meetingId,
+  });
 }
 
 export async function attachMeetingRecording(
@@ -348,7 +362,9 @@ export async function attachMeetingRecording(
     })
     .eq('id', meetingId);
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  await recordAudit(admin, meeting.tenant_id, null, 'meeting_recording_attached', { meeting_id: meetingId });
+  await recordAudit(admin, meeting.tenant_id, null, 'meeting_recording_attached', {
+    meeting_id: meetingId,
+  });
 }
 
 export async function findMeetingByDailyRoom(
@@ -391,7 +407,11 @@ const MEETING_COLUMNS =
   'id, tenant_id, lead_id, client_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at';
 
 async function readMeeting(admin: SupabaseClient, meetingId: string): Promise<MeetingRow> {
-  const { data, error } = await admin.from('meetings').select(MEETING_COLUMNS).eq('id', meetingId).maybeSingle();
+  const { data, error } = await admin
+    .from('meetings')
+    .select(MEETING_COLUMNS)
+    .eq('id', meetingId)
+    .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   if (!data) throw new ApiError('NOT_FOUND', 'Meeting not found', 404);
   return data as MeetingRow;

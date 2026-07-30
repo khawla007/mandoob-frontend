@@ -21,15 +21,7 @@ function masked(value: string | null) {
   return `${'*'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}`;
 }
 
-function Row({
-  label,
-  value,
-  badge,
-}: {
-  label: string;
-  value: string;
-  badge?: React.ReactNode;
-}) {
+function Row({ label, value, badge }: { label: string; value: string; badge?: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1 border-b py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
       <dt className="text-muted-foreground text-sm">{label}</dt>
@@ -69,7 +61,8 @@ export default async function EmployeeIdentityPage({
             Identity file
           </CardTitle>
           <CardDescription>
-            Sensitive numbers are masked here. Ask your PRO firm to correct official document values.
+            Sensitive numbers are masked here. Ask your PRO firm to correct official document
+            values.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,12 +74,20 @@ export default async function EmployeeIdentityPage({
             <Row
               label="Visa number"
               value={masked(identity.visaNo)}
-              badge={<Badge variant={bucketVariant(identity.visaBucket)}>{identity.visaExpiry ?? 'Missing'}</Badge>}
+              badge={
+                <Badge variant={bucketVariant(identity.visaBucket)}>
+                  {identity.visaExpiry ?? 'Missing'}
+                </Badge>
+              }
             />
             <Row
               label="Emirates ID"
               value={masked(identity.emiratesId)}
-              badge={<Badge variant={bucketVariant(identity.eidBucket)}>{identity.eidExpiry ?? 'Missing'}</Badge>}
+              badge={
+                <Badge variant={bucketVariant(identity.eidBucket)}>
+                  {identity.eidExpiry ?? 'Missing'}
+                </Badge>
+              }
             />
           </dl>
         </CardContent>

@@ -76,7 +76,10 @@ test('enqueueSms skips opted-out recipients and writes audit without queue inser
   });
 
   assert.deepEqual(result, { ok: false, reason: 'RECIPIENT_OPTED_OUT' });
-  assert.equal(urls.some((url) => url.includes('/rest/v1/outbound_sms')), false);
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/outbound_sms')),
+    false,
+  );
   assert.equal(urls.filter((url) => url.includes('/rest/v1/tenant_audit_log')).length, 1);
 });
 
@@ -92,7 +95,9 @@ test('enqueueSms allows opt-out confirmation template to bypass consent guard', 
           tenant_id: 'tenant-1',
           provider: 'twilio',
           sender_id: '+15551234567',
-          credentials_encrypted: encrypt(JSON.stringify({ account_sid: 'AC123', auth_token: 'tok' })),
+          credentials_encrypted: encrypt(
+            JSON.stringify({ account_sid: 'AC123', auth_token: 'tok' }),
+          ),
           enabled: true,
         },
         { status: 200 },
@@ -114,6 +119,9 @@ test('enqueueSms allows opt-out confirmation template to bypass consent guard', 
   });
 
   assert.deepEqual(result, { ok: true, queueId: 456, status: 'pending' });
-  assert.equal(urls.some((url) => url.includes('/rest/v1/consent_opt_outs')), false);
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/consent_opt_outs')),
+    false,
+  );
   assert.equal(urls.filter((url) => url.includes('/rest/v1/outbound_sms')).length, 1);
 });

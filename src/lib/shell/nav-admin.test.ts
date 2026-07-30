@@ -22,7 +22,10 @@ describe('adminNav', () => {
     const positions = groupKeys.map((key) => source.indexOf(`labelKey: '${key}'`));
 
     assert.ok(source.indexOf("labelKey: 'overview'") < positions[0]);
-    assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+    assert.deepEqual(
+      positions,
+      [...positions].sort((a, b) => a - b),
+    );
   });
 
   it('keeps catalog, business, and authentication routes in their own sections', () => {

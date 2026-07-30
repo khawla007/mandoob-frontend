@@ -14,7 +14,10 @@ import {
   type Meeting,
   type MeetingActor,
 } from '@/lib/data/meetings';
-import { listMeetingAiSummariesForMeetings, type MeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
+import {
+  listMeetingAiSummariesForMeetings,
+  type MeetingAiSummary,
+} from '@/lib/data/meeting-ai-summaries';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { cancelMeetingAction, createMeetingSlotAction } from './actions';
 
@@ -31,8 +34,12 @@ function formatDate(value: string) {
 function splitMeetings(rows: Meeting[]) {
   const now = Date.now();
   return {
-    upcoming: rows.filter((row) => row.status === 'scheduled' && new Date(row.scheduledAt).getTime() >= now),
-    past: rows.filter((row) => row.status !== 'scheduled' || new Date(row.scheduledAt).getTime() < now),
+    upcoming: rows.filter(
+      (row) => row.status === 'scheduled' && new Date(row.scheduledAt).getTime() >= now,
+    ),
+    past: rows.filter(
+      (row) => row.status !== 'scheduled' || new Date(row.scheduledAt).getTime() < now,
+    ),
   };
 }
 
@@ -94,7 +101,11 @@ async function MeetingList({
                 ) : null}
               </div>
             </div>
-            <MeetingAiSummaryCard meetingId={meeting.id} slug={slug} summary={summaries.get(meeting.id) ?? null} />
+            <MeetingAiSummaryCard
+              meetingId={meeting.id}
+              slug={slug}
+              summary={summaries.get(meeting.id) ?? null}
+            />
           </div>
         );
       })}
@@ -113,18 +124,19 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
   const slotWindowEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const [meetings, openSlots] = await Promise.all([
     listMeetingsForTenant(tenant.id, actor),
-    listOpenMeetingSlots(
-      tenant.id,
-      now.toISOString(),
-      slotWindowEnd.toISOString(),
-    ),
+    listOpenMeetingSlots(tenant.id, now.toISOString(), slotWindowEnd.toISOString()),
   ]);
   const recordingPairs = await Promise.all(
     meetings
       .filter((meeting) => meeting.recordingStoragePath)
-      .map(async (meeting) => [meeting.id, await getMeetingRecordingSignedUrl(meeting.id, actor)] as const),
+      .map(
+        async (meeting) =>
+          [meeting.id, await getMeetingRecordingSignedUrl(meeting.id, actor)] as const,
+      ),
   );
-  const recordingUrls = new Map(recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])));
+  const recordingUrls = new Map(
+    recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])),
+  );
   const summaries = await listMeetingAiSummariesForMeetings(
     meetings.map((meeting) => meeting.id),
     actor,
@@ -159,7 +171,14 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
             </div>
             <div className="space-y-2">
               <Label htmlFor="duration_minutes">Duration</Label>
-              <Input id="duration_minutes" name="duration_minutes" type="number" min="15" max="180" defaultValue="30" />
+              <Input
+                id="duration_minutes"
+                name="duration_minutes"
+                type="number"
+                min="15"
+                max="180"
+                defaultValue="30"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone</Label>
@@ -194,7 +213,12 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
             <CardTitle className="text-lg">Upcoming</CardTitle>
           </CardHeader>
           <CardContent>
-            <MeetingList meetings={upcoming} slug={slug} recordingUrls={recordingUrls} summaries={summaries} />
+            <MeetingList
+              meetings={upcoming}
+              slug={slug}
+              recordingUrls={recordingUrls}
+              summaries={summaries}
+            />
           </CardContent>
         </Card>
       </div>
@@ -204,7 +228,12 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
           <CardTitle className="text-lg">Past and recordings</CardTitle>
         </CardHeader>
         <CardContent>
-          <MeetingList meetings={past} slug={slug} recordingUrls={recordingUrls} summaries={summaries} />
+          <MeetingList
+            meetings={past}
+            slug={slug}
+            recordingUrls={recordingUrls}
+            summaries={summaries}
+          />
         </CardContent>
       </Card>
     </div>

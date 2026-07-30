@@ -53,11 +53,11 @@ type DocumentRow = {
 };
 
 type DocumentVersionView = {
-    id: string;
-    review_status: string;
-    created_at: string;
-    mime_type: string;
-    size_bytes: number;
+  id: string;
+  review_status: string;
+  created_at: string;
+  mime_type: string;
+  size_bytes: number;
 };
 
 export type EmployeePortalSummary = {
@@ -177,24 +177,27 @@ export async function getEmployeePortalSummary(
 ): Promise<EmployeePortalSummary> {
   const employee = await getOwnedEmployee(actorProfileId, tenantId);
   const admin = createSupabaseServiceRoleClient();
-  const [{ count: documentCount, error: docCountError }, { count: approvedCount, error: approvedError }, reminders] =
-    await Promise.all([
-      admin
-        .from('documents')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .eq('employee_id', employee.id),
-      admin
-        .from('documents')
-        .select('id, currentVersion:document_versions!documents_current_version_fk(review_status)', {
-          count: 'exact',
-          head: true,
-        })
-        .eq('tenant_id', tenantId)
-        .eq('employee_id', employee.id)
-        .eq('document_versions.review_status', 'approved'),
-      getPreference(employee),
-    ]);
+  const [
+    { count: documentCount, error: docCountError },
+    { count: approvedCount, error: approvedError },
+    reminders,
+  ] = await Promise.all([
+    admin
+      .from('documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('employee_id', employee.id),
+    admin
+      .from('documents')
+      .select('id, currentVersion:document_versions!documents_current_version_fk(review_status)', {
+        count: 'exact',
+        head: true,
+      })
+      .eq('tenant_id', tenantId)
+      .eq('employee_id', employee.id)
+      .eq('document_versions.review_status', 'approved'),
+    getPreference(employee),
+  ]);
   if (docCountError) throw new ApiError('INTERNAL', docCountError.message, 500);
   if (approvedError) throw new ApiError('INTERNAL', approvedError.message, 500);
 
@@ -255,7 +258,7 @@ export async function listEmployeeDocuments(
     .eq('employee_id', employee.id)
     .order('created_at', { ascending: false });
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  return (((data as unknown as DocumentRow[] | null) ?? [])).map((doc) => {
+  return ((data as unknown as DocumentRow[] | null) ?? []).map((doc) => {
     const version = currentVersion(doc);
     return {
       id: doc.id,
@@ -284,14 +287,12 @@ export async function getEmployeeDocumentSignedUrl(
     .eq('tenant_id', tenantId)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  const row = data as
-    | {
-        storage_path: string;
-        documents:
-          | { tenant_id: string; employee_id: string | null }
-          | { tenant_id: string; employee_id: string | null }[];
-      }
-    | null;
+  const row = data as {
+    storage_path: string;
+    documents:
+      | { tenant_id: string; employee_id: string | null }
+      | { tenant_id: string; employee_id: string | null }[];
+  } | null;
   const doc = Array.isArray(row?.documents) ? row?.documents[0] : row?.documents;
   if (!row || !doc || doc.tenant_id !== tenantId || doc.employee_id !== employee.id) {
     throw new ApiError('FORBIDDEN', 'Document is not accessible', 403);

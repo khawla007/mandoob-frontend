@@ -32,10 +32,7 @@ describe('fabric pointer deformation', () => {
 
   it('projects a visible deformation symmetrically around the cursor', async () => {
     const physics = await import('./physics');
-    const getCursorCenteredFabricPosition = Reflect.get(
-      physics,
-      'getCursorCenteredFabricPosition',
-    );
+    const getCursorCenteredFabricPosition = Reflect.get(physics, 'getCursorCenteredFabricPosition');
 
     assert.equal(typeof getCursorCenteredFabricPosition, 'function');
     if (typeof getCursorCenteredFabricPosition !== 'function') return;

@@ -8,4 +8,3 @@ export function subscriptionWelcome(input: SubscriptionWelcome): Rendered {
     text: `Hello ${input.adminName}, your PRO firm has been approved. Choose a plan: ${input.pricingUrl}`,
   };
 }
-

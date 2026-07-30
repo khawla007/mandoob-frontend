@@ -13,6 +13,7 @@
 ### Task 1: Generate and optimize the PRO hero asset
 
 **Files:**
+
 - Create: `public/hero/pro-firm-operations.webp`
 
 - [ ] **Step 1: Generate the source image**
@@ -53,6 +54,7 @@ git commit -m "feat: add PRO hero background"
 ### Task 2: Add the PRO hero modifier through TDD
 
 **Files:**
+
 - Create: `src/components/site/pro/ProHeroSection.test.ts`
 - Modify: `src/components/site/pro/ProHeroSection.tsx`
 - Modify: `src/app/(public)/public-theme.css`
@@ -68,10 +70,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 const root = process.cwd();
-const component = readFileSync(
-  join(root, 'src/components/site/pro/ProHeroSection.tsx'),
-  'utf8',
-);
+const component = readFileSync(join(root, 'src/components/site/pro/ProHeroSection.tsx'), 'utf8');
 const css = readFileSync(join(root, 'src/app/(public)/public-theme.css'), 'utf8');
 
 test('PRO hero uses a dedicated page modifier and background asset', () => {
@@ -187,6 +186,7 @@ git commit -m "fix: compact PRO hero responsively"
 ### Task 3: Tune and verify responsive behavior
 
 **Files:**
+
 - Modify if measurements require it: `src/app/(public)/public-theme.css`
 
 - [ ] **Step 1: Start the isolated development server**
@@ -241,6 +241,7 @@ git commit -m "fix: tune PRO hero breakpoints"
 ### Task 4: Final requirement review and integration
 
 **Files:**
+
 - Review: all files changed since `main`
 
 - [ ] **Step 1: Review the final diff against the design spec**

@@ -41,7 +41,10 @@ const groups: ShellNavGroup[] = [
 describe('resolveActiveShellHref', () => {
   it('chooses the deepest matching route for nested blog taxonomy pages', () => {
     assert.equal(resolveActiveShellHref(groups, '/admin/blog'), '/admin/blog');
-    assert.equal(resolveActiveShellHref(groups, '/admin/blog/categories'), '/admin/blog/categories');
+    assert.equal(
+      resolveActiveShellHref(groups, '/admin/blog/categories'),
+      '/admin/blog/categories',
+    );
     assert.equal(
       resolveActiveShellHref(groups, '/admin/blog/categories/child'),
       '/admin/blog/categories',

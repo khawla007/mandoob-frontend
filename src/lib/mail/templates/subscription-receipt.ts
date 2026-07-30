@@ -8,4 +8,3 @@ export function subscriptionReceipt(input: SubscriptionReceipt): Rendered {
     text: `Your ${input.plan} subscription payment for ${input.tenantName} was received. Amount: ${input.amount}. Receipt: ${input.receiptUrl}`,
   };
 }
-

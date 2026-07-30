@@ -34,7 +34,10 @@ export async function POST(request: NextRequest) {
     .eq('role', 'employee')
     .maybeSingle();
 
-  const tenantRows = profile?.tenants as { status: string | null } | { status: string | null }[] | null;
+  const tenantRows = profile?.tenants as
+    | { status: string | null }
+    | { status: string | null }[]
+    | null;
   const tenantStatus = Array.isArray(tenantRows) ? tenantRows[0]?.status : tenantRows?.status;
   const canStart =
     profile?.role === 'employee' && profile.status === 'active' && tenantStatus === 'active';

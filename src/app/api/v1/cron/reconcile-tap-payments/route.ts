@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
 import { getCharge } from '@/lib/payments/providers/tap';
-import {
-  applyTapChargeReconciliation,
-  extractTapChargeStatus,
-} from '@/lib/payments/reconcile';
+import { applyTapChargeReconciliation, extractTapChargeStatus } from '@/lib/payments/reconcile';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 export const dynamic = 'force-dynamic';
@@ -42,10 +39,7 @@ export async function POST(req: Request): Promise<Response> {
     .limit(BATCH_SIZE);
 
   if (error) {
-    return NextResponse.json(
-      { error: error.message, code: 'DB_QUERY_FAILED' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: error.message, code: 'DB_QUERY_FAILED' }, { status: 500 });
   }
 
   const rows = (data ?? []) as PaymentRow[];

@@ -88,7 +88,8 @@ export function isLegalStructureSupportedForJurisdiction(
   legalStructure: LegalStructure,
 ): boolean {
   if (jurisdiction === 'mainland') return legalStructure === 'llc' || legalStructure === 'branch';
-  if (jurisdiction === 'free_zone') return legalStructure === 'fz_llc' || legalStructure === 'branch';
+  if (jurisdiction === 'free_zone')
+    return legalStructure === 'fz_llc' || legalStructure === 'branch';
   return legalStructure === 'offshore_company';
 }
 
@@ -105,7 +106,11 @@ export function validateEstimateInput(input: EstimateInput): EstimateInput {
   if (!input.activityKey?.trim()) {
     throw new EstimateError('INVALID_INPUT', 'Activity key is required');
   }
-  if (!Number.isInteger(input.shareholderCount) || input.shareholderCount < 1 || input.shareholderCount > 50) {
+  if (
+    !Number.isInteger(input.shareholderCount) ||
+    input.shareholderCount < 1 ||
+    input.shareholderCount > 50
+  ) {
     throw new EstimateError('INVALID_INPUT', 'Shareholder count must be between 1 and 50');
   }
   if (!Number.isInteger(input.visaCount) || input.visaCount < 0 || input.visaCount > 200) {
@@ -115,7 +120,10 @@ export function validateEstimateInput(input: EstimateInput): EstimateInput {
     throw new EstimateError('INVALID_INPUT', 'Unsupported legal structure');
   }
   if (!isLegalStructureSupportedForJurisdiction(input.jurisdiction, input.legalStructure)) {
-    throw new EstimateError('UNSUPPORTED_COMBINATION', 'Legal structure is not supported for this jurisdiction');
+    throw new EstimateError(
+      'UNSUPPORTED_COMBINATION',
+      'Legal structure is not supported for this jurisdiction',
+    );
   }
   if (!OFFICE_TYPES.has(input.officeType)) {
     throw new EstimateError('INVALID_INPUT', 'Unsupported office type');
@@ -123,27 +131,55 @@ export function validateEstimateInput(input: EstimateInput): EstimateInput {
   for (const addOn of input.addOns ?? []) {
     if (!ADD_ONS.has(addOn)) throw new EstimateError('INVALID_INPUT', 'Unsupported add-on');
   }
-  return { ...input, authority: input.authority.trim(), activityKey: input.activityKey.trim(), addOns: input.addOns ?? [] };
+  return {
+    ...input,
+    authority: input.authority.trim(),
+    activityKey: input.activityKey.trim(),
+    addOns: input.addOns ?? [],
+  };
 }
 
-export function calculateEstimate(input: EstimateInput, rows: CostDataRow[], now = new Date()): EstimateOutput {
+export function calculateEstimate(
+  input: EstimateInput,
+  rows: CostDataRow[],
+  now = new Date(),
+): EstimateOutput {
   const normalized = validateEstimateInput(input);
   const today = now.toISOString().slice(0, 10);
   const matchingRows = rows.filter((row) => rowMatchesInput(row, normalized, today));
   const lineItems = matchingRows.flatMap((row) => toLineItem(row, normalized));
 
-  if (!lineItems.some((item) => item.feeType === 'license') || !lineItems.some((item) => item.feeType === 'registration')) {
-    throw new EstimateError('MISSING_COST_DATA', 'Missing base cost data for this estimator selection');
+  if (
+    !lineItems.some((item) => item.feeType === 'license') ||
+    !lineItems.some((item) => item.feeType === 'registration')
+  ) {
+    throw new EstimateError(
+      'MISSING_COST_DATA',
+      'Missing base cost data for this estimator selection',
+    );
   }
-  if (normalized.officeType !== 'none' && !lineItems.some((item) => item.feeType === `office_${normalized.officeType}`)) {
-    throw new EstimateError('MISSING_COST_DATA', 'Missing office cost data for this estimator selection');
+  if (
+    normalized.officeType !== 'none' &&
+    !lineItems.some((item) => item.feeType === `office_${normalized.officeType}`)
+  ) {
+    throw new EstimateError(
+      'MISSING_COST_DATA',
+      'Missing office cost data for this estimator selection',
+    );
   }
   if (normalized.visaCount > 0 && !lineItems.some((item) => item.feeType === 'visa')) {
-    throw new EstimateError('MISSING_COST_DATA', 'Missing visa cost data for this estimator selection');
+    throw new EstimateError(
+      'MISSING_COST_DATA',
+      'Missing visa cost data for this estimator selection',
+    );
   }
 
-  const oneTimeTotalMinor = sum(lineItems.filter((item) => item.recurrence === 'one_time').map((item) => item.totalMinor));
-  const annualTotalMinor = sum(lineItems.filter((item) => item.recurrence === 'annual').map((item) => item.totalMinor));
+  const oneTimeTotalMinor = sum(
+    lineItems.filter((item) => item.recurrence === 'one_time').map((item) => item.totalMinor),
+  );
+  const annualTotalMinor = sum(
+    lineItems.filter((item) => item.recurrence === 'annual').map((item) => item.totalMinor),
+  );
   const includedRows = matchingRows.filter((row) => lineItems.some((item) => item.id === row.id));
   const reference = estimateReference(normalized, oneTimeTotalMinor, annualTotalMinor);
 
@@ -160,7 +196,9 @@ export function calculateEstimate(input: EstimateInput, rows: CostDataRow[], now
       min: sum(includedRows.map((row) => row.timelineMinDays)),
       max: sum(includedRows.map((row) => row.timelineMaxDays)),
     },
-    requiredDocumentKeys: [...new Set(includedRows.flatMap((row) => row.requiredDocumentKeys))].sort(),
+    requiredDocumentKeys: [
+      ...new Set(includedRows.flatMap((row) => row.requiredDocumentKeys)),
+    ].sort(),
     assumptions: [
       'Estimate-grade public pricing. Government and authority fees may change.',
       'Final pricing depends on selected activity, authority approval, document readiness, and immigration quota.',
@@ -170,7 +208,10 @@ export function calculateEstimate(input: EstimateInput, rows: CostDataRow[], now
   };
 }
 
-export function buildApplyNowUrl(input: EstimateInput, estimate: Pick<EstimateOutput, 'reference'>): URL {
+export function buildApplyNowUrl(
+  input: EstimateInput,
+  estimate: Pick<EstimateOutput, 'reference'>,
+): URL {
   const normalized = validateEstimateInput(input);
   const url = new URL('/apply', 'https://mandoob.local');
   url.searchParams.set('estimate_ref', estimate.reference);
@@ -230,9 +271,19 @@ function quantityForFee(feeType: string, input: EstimateInput): number {
   return 0;
 }
 
-function estimateReference(input: EstimateInput, oneTimeTotalMinor: number, annualTotalMinor: number): string {
-  const digest = createHash('sha256').update(JSON.stringify({ input, oneTimeTotalMinor, annualTotalMinor })).digest('hex');
-  const token = BigInt(`0x${digest.slice(0, 12)}`).toString(36).toUpperCase().padStart(10, '0').slice(0, 10);
+function estimateReference(
+  input: EstimateInput,
+  oneTimeTotalMinor: number,
+  annualTotalMinor: number,
+): string {
+  const digest = createHash('sha256')
+    .update(JSON.stringify({ input, oneTimeTotalMinor, annualTotalMinor }))
+    .digest('hex');
+  const token = BigInt(`0x${digest.slice(0, 12)}`)
+    .toString(36)
+    .toUpperCase()
+    .padStart(10, '0')
+    .slice(0, 10);
   return `EST-${token}`;
 }
 

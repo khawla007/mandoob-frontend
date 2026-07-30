@@ -39,7 +39,10 @@ export const smtpSchema = z.object({
 });
 export type SmtpInput = z.infer<typeof smtpSchema>;
 
-const metaId = z.string().trim().regex(/^[0-9]{5,32}$/, 'Use the numeric Meta ID');
+const metaId = z
+  .string()
+  .trim()
+  .regex(/^[0-9]{5,32}$/, 'Use the numeric Meta ID');
 
 export const whatsappSchema = z
   .object({

@@ -36,9 +36,12 @@ test('resolveHost maps tenant subdomains to tenant slugs', () => {
 
 test('resolveHost treats reserved tenant labels as marketing', () => {
   for (const host of ['api.localhost:3001', 'dashboard.localhost:3001', 'app.mandoob.test']) {
-    assert.deepEqual(resolveHost({ host, rootDomain: host.endsWith('test') ? 'mandoob.test' : 'localhost:3001' }), {
-      kind: 'marketing',
-    });
+    assert.deepEqual(
+      resolveHost({ host, rootDomain: host.endsWith('test') ? 'mandoob.test' : 'localhost:3001' }),
+      {
+        kind: 'marketing',
+      },
+    );
   }
 });
 

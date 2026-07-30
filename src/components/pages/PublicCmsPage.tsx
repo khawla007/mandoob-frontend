@@ -8,7 +8,11 @@ import { RESERVED_PAGE_SLUGS } from '@/lib/pages/slug';
 import { isCmsPagePublic } from '@/lib/pages/visibility';
 
 const ALIGN_TEXT = { left: 'text-left', center: 'text-center', right: 'text-right' } as const;
-const ALIGN_FLEX = { left: 'justify-start', center: 'justify-center', right: 'justify-end' } as const;
+const ALIGN_FLEX = {
+  left: 'justify-start',
+  center: 'justify-center',
+  right: 'justify-end',
+} as const;
 
 type PublicHero = {
   heading: string;
@@ -26,14 +30,21 @@ type PublicHero = {
 export type PublicCmsPageView = { bodyHtml: string; hero: PublicHero | null };
 type CmsPageLoader = (slug: string) => Promise<CmsPage | null>;
 
-export async function resolvePublicCmsPage(slug: string, load: CmsPageLoader, now: Date = new Date()): Promise<CmsPage | null> {
+export async function resolvePublicCmsPage(
+  slug: string,
+  load: CmsPageLoader,
+  now: Date = new Date(),
+): Promise<CmsPage | null> {
   if (RESERVED_PAGE_SLUGS.has(slug.toLowerCase())) return null;
   const page = await load(slug);
   return page && isCmsPagePublic(page, now) ? page : null;
 }
 
 function excerpt(html: string): string | undefined {
-  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const text = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   return text ? text.slice(0, 170) : undefined;
 }
 
@@ -73,12 +84,15 @@ export function getPublicCmsPageView(page: CmsPage): PublicCmsPageView {
   const text = clean(settings.text);
   const buttonLabel = clean(settings.buttonLabel);
   const buttonHref = clean(settings.buttonHref);
-  const button = buttonLabel && buttonHref
-    ? { href: buttonHref, label: buttonLabel, external: /^https?:\/\//i.test(buttonHref) }
-    : null;
+  const button =
+    buttonLabel && buttonHref
+      ? { href: buttonHref, label: buttonLabel, external: /^https?:\/\//i.test(buttonHref) }
+      : null;
   if (!heading && !text && !button) return { bodyHtml, hero: null };
 
-  const backgroundImage = settings.backgroundImageUrl ? cssUrl(settings.backgroundImageUrl) : undefined;
+  const backgroundImage = settings.backgroundImageUrl
+    ? cssUrl(settings.backgroundImageUrl)
+    : undefined;
   return {
     bodyHtml,
     hero: {
@@ -108,17 +122,27 @@ export function PublicCmsPage({ page }: { page: CmsPage }) {
   return (
     <article>
       {view.hero ? (
-        <header className="relative flex items-center overflow-hidden" style={view.hero.sectionStyle}>
+        <header
+          className="relative flex items-center overflow-hidden"
+          style={view.hero.sectionStyle}
+        >
           <div aria-hidden="true" className="absolute inset-0" style={view.hero.overlayStyle} />
-          <div className="container relative z-10 w-full py-16 sm:py-24" style={view.hero.contentStyle}>
+          <div
+            className="relative z-10 container w-full py-16 sm:py-24"
+            style={view.hero.contentStyle}
+          >
             <h1 className={`h2 ${view.hero.headingClassName}`}>{view.hero.heading}</h1>
-            {view.hero.text ? <p className={`mt-5 text-lg ${view.hero.textClassName}`}>{view.hero.text}</p> : null}
+            {view.hero.text ? (
+              <p className={`mt-5 text-lg ${view.hero.textClassName}`}>{view.hero.text}</p>
+            ) : null}
             {view.hero.button ? (
               <div className={`mt-8 flex ${view.hero.buttonClassName}`}>
                 <a
                   className="btn btn--accent"
                   href={view.hero.button.href}
-                  {...(view.hero.button.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  {...(view.hero.button.external
+                    ? { target: '_blank', rel: 'noopener noreferrer' }
+                    : {})}
                 >
                   {view.hero.button.label}
                 </a>
@@ -128,7 +152,9 @@ export function PublicCmsPage({ page }: { page: CmsPage }) {
         </header>
       ) : (
         <header className="section cms-page__title-section">
-          <div className="container"><h1 className="h2">{page.title}</h1></div>
+          <div className="container">
+            <h1 className="h2">{page.title}</h1>
+          </div>
         </header>
       )}
       <section className="section" aria-label={`${page.title} content`}>

@@ -33,7 +33,11 @@ export function InvoiceActions({
         action === 'paid'
           ? await markInvoicePaidAction({ tenantSlug: slug, invoiceId, method: 'bank_transfer' })
           : action === 'void'
-            ? await voidInvoiceAction({ tenantSlug: slug, invoiceId, reason: reason || 'Voided by PRO' })
+            ? await voidInvoiceAction({
+                tenantSlug: slug,
+                invoiceId,
+                reason: reason || 'Voided by PRO',
+              })
             : await issueRefundAction({
                 tenantSlug: slug,
                 invoiceId,
@@ -79,7 +83,9 @@ export function InvoiceActions({
           onChange={(e) => setReason(e.target.value)}
         />
       )}
-      {message ? <p className="text-muted-foreground max-w-52 text-right text-xs">{message}</p> : null}
+      {message ? (
+        <p className="text-muted-foreground max-w-52 text-right text-xs">{message}</p>
+      ) : null}
     </div>
   );
 }

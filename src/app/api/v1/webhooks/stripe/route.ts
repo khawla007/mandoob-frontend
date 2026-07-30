@@ -57,7 +57,10 @@ async function handleCheckoutCompleted(
   return syncSubscription(supabase, subscription);
 }
 
-async function syncSubscription(supabase: Supa, subscription: Stripe.Subscription): Promise<string> {
+async function syncSubscription(
+  supabase: Supa,
+  subscription: Stripe.Subscription,
+): Promise<string> {
   const tenantId = subscription.metadata?.tenant_id;
   if (!tenantId) return 'noop';
   const row = normalizeStripeSubscription(subscription, mapPriceIdToPlan);
@@ -74,19 +77,17 @@ async function syncSubscription(supabase: Supa, subscription: Stripe.Subscriptio
     .from('subscriptions')
     .upsert({ tenant_id: tenantId, ...row }, { onConflict: 'stripe_subscription_id' });
 
-  await supabase
-    .from('tenant_payment_config')
-    .upsert(
-      {
-        tenant_id: tenantId,
-        provider: 'stripe',
-        merchant_id: row.stripe_customer_id,
-        secret_encrypted: row.stripe_subscription_id,
-        webhook_secret_encrypted: row.stripe_price_id,
-        enabled: true,
-      },
-      { onConflict: 'tenant_id,provider' },
-    );
+  await supabase.from('tenant_payment_config').upsert(
+    {
+      tenant_id: tenantId,
+      provider: 'stripe',
+      merchant_id: row.stripe_customer_id,
+      secret_encrypted: row.stripe_subscription_id,
+      webhook_secret_encrypted: row.stripe_price_id,
+      enabled: true,
+    },
+    { onConflict: 'tenant_id,provider' },
+  );
 
   if (row.status === 'active' || row.status === 'trialing') {
     await supabase.from('tenants').update({ plan: row.plan, status: 'active' }).eq('id', tenantId);
@@ -134,7 +135,10 @@ async function handleInvoicePaid(supabase: Supa, invoice: Stripe.Invoice): Promi
   return 'receipt_queued';
 }
 
-async function handleInvoicePaymentFailed(supabase: Supa, invoice: Stripe.Invoice): Promise<string> {
+async function handleInvoicePaymentFailed(
+  supabase: Supa,
+  invoice: Stripe.Invoice,
+): Promise<string> {
   const subscriptionId = extractInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return 'noop';
   const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);

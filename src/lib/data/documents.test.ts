@@ -69,16 +69,23 @@ test.afterEach(() => {
 test('uploadDocument rejects EICAR before storage or document inserts and writes audit', async () => {
   const eicar = 'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
 
-  const urls = await assertUploadRejects(
-    pdfWith(eicar),
-    'FILE_REJECTED_BY_SCAN',
-    async () => Response.json([], { status: 201 }),
+  const urls = await assertUploadRejects(pdfWith(eicar), 'FILE_REJECTED_BY_SCAN', async () =>
+    Response.json([], { status: 201 }),
   );
 
   assert.equal(urls.filter((url) => url.includes('/rest/v1/tenant_audit_log')).length, 1);
-  assert.equal(urls.some((url) => url.includes('/storage/v1/object/tenant-documents')), false);
-  assert.equal(urls.some((url) => url.includes('/rest/v1/documents')), false);
-  assert.equal(urls.some((url) => url.includes('/rest/v1/document_versions')), false);
+  assert.equal(
+    urls.some((url) => url.includes('/storage/v1/object/tenant-documents')),
+    false,
+  );
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/documents')),
+    false,
+  );
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/document_versions')),
+    false,
+  );
 });
 
 test('uploadDocument returns SCANNER_UNAVAILABLE when provider fails closed', async () => {
@@ -95,7 +102,16 @@ test('uploadDocument returns SCANNER_UNAVAILABLE when provider fails closed', as
   );
 
   assert.equal(urls.filter((url) => url.includes('/rest/v1/tenant_audit_log')).length, 1);
-  assert.equal(urls.some((url) => url.includes('/storage/v1/object/tenant-documents')), false);
-  assert.equal(urls.some((url) => url.includes('/rest/v1/documents')), false);
-  assert.equal(urls.some((url) => url.includes('/rest/v1/document_versions')), false);
+  assert.equal(
+    urls.some((url) => url.includes('/storage/v1/object/tenant-documents')),
+    false,
+  );
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/documents')),
+    false,
+  );
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/document_versions')),
+    false,
+  );
 });

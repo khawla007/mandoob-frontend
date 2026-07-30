@@ -67,7 +67,13 @@ export type InvoiceDetail = ProInvoiceRow & {
     receivedAt: string | null;
     failureReason: string | null;
   }[];
-  refunds: { id: string; amount: string; reason: string | null; status: string; createdAt: string }[];
+  refunds: {
+    id: string;
+    amount: string;
+    reason: string | null;
+    status: string;
+    createdAt: string;
+  }[];
   audit: { id: string; action: string; createdAt: string; details: unknown }[];
 };
 
@@ -316,9 +322,7 @@ async function loadReceiptPayload(
 ): Promise<ReceiptPayload | null> {
   const { data: invoice } = await admin
     .from('invoices')
-    .select(
-      'id, client_id, customer_profile_id, label, amount_minor, currency, status, paid_at',
-    )
+    .select('id, client_id, customer_profile_id, label, amount_minor, currency, status, paid_at')
     .eq('tenant_id', tenantId)
     .eq('id', invoiceId)
     .maybeSingle();
@@ -327,7 +331,11 @@ async function loadReceiptPayload(
 
   const [{ data: tenant }, { data: client }, { data: payment }] = await Promise.all([
     admin.from('tenants').select('name, primary_color').eq('id', tenantId).maybeSingle(),
-    admin.from('clients').select('company_name').eq('id', invoice.client_id as string).maybeSingle(),
+    admin
+      .from('clients')
+      .select('company_name')
+      .eq('id', invoice.client_id as string)
+      .maybeSingle(),
     admin
       .from('payments')
       .select('id, provider, method, status, received_at')

@@ -27,7 +27,11 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
     return Object.entries(filters).every(([key, value]) => row[key] === value);
   }
 
-  function applyFilters(table: string, filters: Record<string, unknown>, inFilters: Record<string, unknown[]>) {
+  function applyFilters(
+    table: string,
+    filters: Record<string, unknown>,
+    inFilters: Record<string, unknown[]>,
+  ) {
     let result = rows(table).filter((row) => matches(row, filters));
     for (const [key, allowed] of Object.entries(inFilters)) {
       result = result.filter((row) => allowed.includes(row[key]));
@@ -47,7 +51,14 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
         ascending: boolean;
         limitCount: number | null;
         updatePayload: Row | null;
-      } = { filters: {}, inFilters: {}, orderKey: null, ascending: true, limitCount: null, updatePayload: null };
+      } = {
+        filters: {},
+        inFilters: {},
+        orderKey: null,
+        ascending: true,
+        limitCount: null,
+        updatePayload: null,
+      };
       const builder = {
         select: () => builder,
         eq(key: string, value: unknown) {
@@ -108,7 +119,9 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
         },
         async single() {
           const result = await builder.maybeSingle();
-          return result.data ? { data: result.data, error: null } : { data: null, error: { message: 'not found' } };
+          return result.data
+            ? { data: result.data, error: null }
+            : { data: null, error: { message: 'not found' } };
         },
         then(resolve: (value: { data: Row[]; error: null }) => void) {
           resolve(builder.collect());
@@ -124,7 +137,13 @@ const proActor = { id: 'pro-1', role: 'pro' as const, tenantId: 'tenant-1' };
 test('ensurePendingMeetingAiSummary is idempotent per meeting', async () => {
   const { ensurePendingMeetingAiSummary } = await loadSummaries();
   const supabase = createSupabaseStub({
-    meetings: [{ id: 'meeting-1', tenant_id: 'tenant-1', recording_storage_path: 'tenant-1/meetings/meeting-1/rec.mp4' }],
+    meetings: [
+      {
+        id: 'meeting-1',
+        tenant_id: 'tenant-1',
+        recording_storage_path: 'tenant-1/meetings/meeting-1/rec.mp4',
+      },
+    ],
     meeting_ai_summaries: [],
   });
 
@@ -140,10 +159,14 @@ test('PRO can read own-tenant summary but cross-tenant reads are denied', async 
   const { getMeetingAiSummaryForMeeting } = await loadSummaries();
   const supabase = createSupabaseStub({
     meetings: [{ id: 'meeting-1', tenant_id: 'tenant-1' }],
-    meeting_ai_summaries: [{ id: 'summary-1', meeting_id: 'meeting-1', tenant_id: 'tenant-1', status: 'completed' }],
+    meeting_ai_summaries: [
+      { id: 'summary-1', meeting_id: 'meeting-1', tenant_id: 'tenant-1', status: 'completed' },
+    ],
   });
 
-  const own = await getMeetingAiSummaryForMeeting('meeting-1', proActor, { supabase: supabase as never });
+  const own = await getMeetingAiSummaryForMeeting('meeting-1', proActor, {
+    supabase: supabase as never,
+  });
   assert.equal(own?.id, 'summary-1');
 
   await assert.rejects(
@@ -161,14 +184,30 @@ test('pending summaries are claimed and marked processing before provider work',
   const { listPendingMeetingAiSummaries } = await loadSummaries();
   const supabase = createSupabaseStub({
     meeting_ai_summaries: [
-      { id: 'summary-2', tenant_id: 'tenant-1', meeting_id: 'meeting-2', status: 'completed', created_at: '2026-05-10T02:00:00.000Z' },
-      { id: 'summary-1', tenant_id: 'tenant-1', meeting_id: 'meeting-1', status: 'pending', attempts: 0, created_at: '2026-05-10T01:00:00.000Z' },
+      {
+        id: 'summary-2',
+        tenant_id: 'tenant-1',
+        meeting_id: 'meeting-2',
+        status: 'completed',
+        created_at: '2026-05-10T02:00:00.000Z',
+      },
+      {
+        id: 'summary-1',
+        tenant_id: 'tenant-1',
+        meeting_id: 'meeting-1',
+        status: 'pending',
+        attempts: 0,
+        created_at: '2026-05-10T01:00:00.000Z',
+      },
     ],
   });
 
   const pending = await listPendingMeetingAiSummaries(5, { supabase: supabase as never });
 
-  assert.deepEqual(pending.map((row) => row.id), ['summary-1']);
+  assert.deepEqual(
+    pending.map((row) => row.id),
+    ['summary-1'],
+  );
   assert.equal(supabase.tables.get('meeting_ai_summaries')![1].status, 'processing');
   assert.equal(supabase.tables.get('meeting_ai_summaries')![1].attempts, 1);
 });
@@ -176,7 +215,15 @@ test('pending summaries are claimed and marked processing before provider work',
 test('summary completion stores validated action items and safe failure codes', async () => {
   const { completeMeetingAiSummary, failMeetingAiSummary } = await loadSummaries();
   const supabase = createSupabaseStub({
-    meeting_ai_summaries: [{ id: 'summary-1', tenant_id: 'tenant-1', meeting_id: 'meeting-1', status: 'processing', attempts: 1 }],
+    meeting_ai_summaries: [
+      {
+        id: 'summary-1',
+        tenant_id: 'tenant-1',
+        meeting_id: 'meeting-1',
+        status: 'processing',
+        attempts: 1,
+      },
+    ],
   });
 
   await completeMeetingAiSummary(
@@ -185,7 +232,15 @@ test('summary completion stores validated action items and safe failure codes', 
       transcriptText: 'Client asked about DMCC licensing.',
       summaryText: 'Client needs DMCC licensing support.',
       decisions: ['Proceed with DMCC estimate'],
-      actionItems: [{ title: 'Send document checklist', owner_label: 'PRO', due_date: null, priority: 'high', source_quote: 'document checklist' }],
+      actionItems: [
+        {
+          title: 'Send document checklist',
+          owner_label: 'PRO',
+          due_date: null,
+          priority: 'high',
+          source_quote: 'document checklist',
+        },
+      ],
       risksOrFollowups: ['Confirm activity list'],
       language: 'en',
       provider: 'openai',
@@ -195,18 +250,34 @@ test('summary completion stores validated action items and safe failure codes', 
   );
 
   assert.equal(supabase.tables.get('meeting_ai_summaries')![0].status, 'completed');
-  assert.equal((supabase.tables.get('meeting_ai_summaries')![0].action_items as Row[])[0].title, 'Send document checklist');
+  assert.equal(
+    (supabase.tables.get('meeting_ai_summaries')![0].action_items as Row[])[0].title,
+    'Send document checklist',
+  );
 
-  await failMeetingAiSummary('summary-1', 'PROVIDER_NOT_CONFIGURED', { supabase: supabase as never });
+  await failMeetingAiSummary('summary-1', 'PROVIDER_NOT_CONFIGURED', {
+    supabase: supabase as never,
+  });
   assert.equal(supabase.tables.get('meeting_ai_summaries')![0].status, 'failed');
-  assert.equal(supabase.tables.get('meeting_ai_summaries')![0].error_code, 'PROVIDER_NOT_CONFIGURED');
+  assert.equal(
+    supabase.tables.get('meeting_ai_summaries')![0].error_code,
+    'PROVIDER_NOT_CONFIGURED',
+  );
 });
 
 test('retryMeetingAiSummary only allows own-tenant PRO users', async () => {
   const { retryMeetingAiSummary } = await loadSummaries();
   const supabase = createSupabaseStub({
     meetings: [{ id: 'meeting-1', tenant_id: 'tenant-1' }],
-    meeting_ai_summaries: [{ id: 'summary-1', tenant_id: 'tenant-1', meeting_id: 'meeting-1', status: 'failed', attempts: 2 }],
+    meeting_ai_summaries: [
+      {
+        id: 'summary-1',
+        tenant_id: 'tenant-1',
+        meeting_id: 'meeting-1',
+        status: 'failed',
+        attempts: 2,
+      },
+    ],
   });
 
   await retryMeetingAiSummary('meeting-1', proActor, { supabase: supabase as never });

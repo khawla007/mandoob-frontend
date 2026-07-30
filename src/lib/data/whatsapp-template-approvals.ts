@@ -17,8 +17,7 @@ export const WHATSAPP_TEMPLATE_APPROVAL_STATUSES = [
   'rejected',
   'disabled',
 ] as const;
-export type WhatsAppTemplateApprovalStatus =
-  (typeof WHATSAPP_TEMPLATE_APPROVAL_STATUSES)[number];
+export type WhatsAppTemplateApprovalStatus = (typeof WHATSAPP_TEMPLATE_APPROVAL_STATUSES)[number];
 export type WhatsAppTemplateApprovalViewStatus = WhatsAppTemplateApprovalStatus | 'missing';
 
 export const WHATSAPP_TEMPLATE_CATEGORIES = [
@@ -232,7 +231,9 @@ export async function listWhatsAppTemplateApprovals(
       const dbRow = byKey.get(rowKey(def.id, def.language));
       return dbRow ? viewRowFromDb(dbRow) : missingRow(def);
     })
-    .filter((row) => !filters.category || filters.category === 'all' || row.category === filters.category)
+    .filter(
+      (row) => !filters.category || filters.category === 'all' || row.category === filters.category,
+    )
     .filter((row) => !filters.status || filters.status === 'all' || row.status === filters.status);
 }
 

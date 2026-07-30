@@ -4,7 +4,14 @@ import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { InvoiceActions } from '@/components/pro/InvoiceActions';
 import { getInvoiceDetailForTenant } from '@/lib/data/invoices';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
@@ -165,7 +172,10 @@ export default async function ProInvoiceDetailPage({
           ) : (
             <ul className="divide-border divide-y text-sm">
               {invoice.audit.map((entry) => (
-                <li key={entry.id} className="flex items-center justify-between gap-4 py-2 first:pt-0">
+                <li
+                  key={entry.id}
+                  className="flex items-center justify-between gap-4 py-2 first:pt-0"
+                >
                   <span className="font-medium">{entry.action}</span>
                   <span className="text-muted-foreground">{entry.createdAt}</span>
                 </li>
@@ -182,7 +192,7 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
   return (
     <div>
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={mono ? 'break-all font-mono' : 'font-medium'}>{value}</dd>
+      <dd className={mono ? 'font-mono break-all' : 'font-medium'}>{value}</dd>
     </div>
   );
 }

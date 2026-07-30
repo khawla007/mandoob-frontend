@@ -5,18 +5,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatMoney } from '@/lib/format/money';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import {
-  cancelSubscriptionAction,
-  openBillingPortalAction,
-  startCheckoutAction,
-} from './actions';
+import { cancelSubscriptionAction, openBillingPortalAction, startCheckoutAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 const plans = [
-  { id: 'starter', label: 'Starter', amount: 4900, features: ['Client workspace', 'Email queue', 'Renewal alerts'] },
-  { id: 'professional', label: 'Professional', amount: 9900, features: ['Payments', 'WhatsApp + SMS', 'Audit exports'] },
-  { id: 'enterprise', label: 'Enterprise', amount: 19900, features: ['Priority support', 'Advanced controls', 'Scale limits'] },
+  {
+    id: 'starter',
+    label: 'Starter',
+    amount: 4900,
+    features: ['Client workspace', 'Email queue', 'Renewal alerts'],
+  },
+  {
+    id: 'professional',
+    label: 'Professional',
+    amount: 9900,
+    features: ['Payments', 'WhatsApp + SMS', 'Audit exports'],
+  },
+  {
+    id: 'enterprise',
+    label: 'Enterprise',
+    amount: 19900,
+    features: ['Priority support', 'Advanced controls', 'Scale limits'],
+  },
 ] as const;
 
 export default async function BillingSettingsPage({
@@ -31,7 +42,9 @@ export default async function BillingSettingsPage({
   const admin = createSupabaseServiceRoleClient();
   const { data: subscription } = await admin
     .from('subscriptions')
-    .select('plan, status, current_period_end, cancel_at_period_end, unit_amount_minor, currency, interval')
+    .select(
+      'plan, status, current_period_end, cancel_at_period_end, unit_amount_minor, currency, interval',
+    )
     .eq('tenant_id', tenant.id)
     .maybeSingle();
 
@@ -44,7 +57,9 @@ export default async function BillingSettingsPage({
         <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-medium capitalize">{subscription?.plan ?? tenant.plan}</span>
+              <span className="text-lg font-medium capitalize">
+                {subscription?.plan ?? tenant.plan}
+              </span>
               <Badge variant="outline">{subscription?.status ?? 'not subscribed'}</Badge>
             </div>
             <p className="text-muted-foreground mt-1 text-sm">
@@ -54,7 +69,8 @@ export default async function BillingSettingsPage({
             </p>
             {subscription?.current_period_end ? (
               <p className="text-muted-foreground mt-1 text-xs">
-                Current period ends {new Date(subscription.current_period_end).toLocaleDateString('en-GB')}
+                Current period ends{' '}
+                {new Date(subscription.current_period_end).toLocaleDateString('en-GB')}
               </p>
             ) : null}
           </div>
@@ -104,4 +120,3 @@ export default async function BillingSettingsPage({
     </div>
   );
 }
-

@@ -46,4 +46,3 @@ Reorganize the admin dashboard sidebar into clear WordPress-inspired CMS section
 - Confirm no business or catalog route remains in Auth & Security.
 - Run the focused sidebar tests, TypeScript compilation, and lint checks.
 - Inspect the rendered admin sidebar at desktop and collapsed/mobile widths if the local application can be run.
-

@@ -29,7 +29,10 @@ const dependencies: CmsPageActionDependencies = {
   revalidate: revalidatePath,
 };
 
-export async function saveCmsPageAction(id: string | null, formData: FormData): Promise<ActionResult<{ id: string }>> {
+export async function saveCmsPageAction(
+  id: string | null,
+  formData: FormData,
+): Promise<ActionResult<{ id: string }>> {
   return runSaveCmsPageAction(id, formData, dependencies);
 }
 

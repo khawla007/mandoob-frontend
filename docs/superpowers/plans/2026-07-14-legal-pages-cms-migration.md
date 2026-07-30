@@ -23,6 +23,7 @@
 ### Task 1: Legal page policy
 
 **Files:**
+
 - Create: `src/lib/pages/legal.test.ts`
 - Create: `src/lib/pages/legal.ts`
 
@@ -35,13 +36,30 @@ import type { CmsPage } from '@/lib/data/pages';
 import { isLegalCmsPageSlug, legalCmsPagePath, resolveLegalCmsPage } from './legal';
 
 const page = (overrides: Partial<CmsPage> = {}): CmsPage => ({
-  id: 'page-1', slug: 'privacy', title: 'Privacy Policy', contentJson: {}, contentHtml: '<p>Body</p>',
-  heroSettings: {}, backgroundImageMediaId: null, status: 'published',
-  publishedAt: '2026-05-22T00:00:00.000Z', scheduledFor: null,
-  metaTitle: null, metaDescription: null, canonicalUrl: 'https://mandoob.ae/legal/privacy', noindex: false,
-  schemaMarkup: null, scriptHead: null, scriptBodyStart: null, scriptBodyEnd: null,
-  createdBy: null, updatedBy: null, deletedAt: null,
-  createdAt: '2026-05-22T00:00:00.000Z', updatedAt: '2026-05-22T00:00:00.000Z', ...overrides,
+  id: 'page-1',
+  slug: 'privacy',
+  title: 'Privacy Policy',
+  contentJson: {},
+  contentHtml: '<p>Body</p>',
+  heroSettings: {},
+  backgroundImageMediaId: null,
+  status: 'published',
+  publishedAt: '2026-05-22T00:00:00.000Z',
+  scheduledFor: null,
+  metaTitle: null,
+  metaDescription: null,
+  canonicalUrl: 'https://mandoob.ae/legal/privacy',
+  noindex: false,
+  schemaMarkup: null,
+  scriptHead: null,
+  scriptBodyStart: null,
+  scriptBodyEnd: null,
+  createdBy: null,
+  updatedBy: null,
+  deletedAt: null,
+  createdAt: '2026-05-22T00:00:00.000Z',
+  updatedAt: '2026-05-22T00:00:00.000Z',
+  ...overrides,
 });
 
 test('allows only the four legal CMS slugs and maps their canonical paths', () => {
@@ -56,14 +74,24 @@ test('allows only the four legal CMS slugs and maps their canonical paths', () =
 
 test('does not query unsupported legal slugs', async () => {
   let calls = 0;
-  assert.equal(await resolveLegalCmsPage('about', async () => { calls += 1; return page(); }), null);
+  assert.equal(
+    await resolveLegalCmsPage('about', async () => {
+      calls += 1;
+      return page();
+    }),
+    null,
+  );
   assert.equal(calls, 0);
 });
 
 test('returns only currently published legal CMS records', async () => {
   const now = new Date('2026-07-14T00:00:00.000Z');
   assert.equal((await resolveLegalCmsPage('privacy', async () => page(), now))?.slug, 'privacy');
-  for (const unavailable of [page({ status: 'draft' }), page({ publishedAt: '2026-07-15T00:00:00.000Z' }), page({ deletedAt: '2026-07-01T00:00:00.000Z' })]) {
+  for (const unavailable of [
+    page({ status: 'draft' }),
+    page({ publishedAt: '2026-07-15T00:00:00.000Z' }),
+    page({ deletedAt: '2026-07-01T00:00:00.000Z' }),
+  ]) {
     assert.equal(await resolveLegalCmsPage('privacy', async () => unavailable, now), null);
   }
 });
@@ -93,7 +121,11 @@ export function legalCmsPagePath(slug: string): string | null {
   return isLegalCmsPageSlug(slug) ? `/legal/${slug}` : null;
 }
 
-export async function resolveLegalCmsPage(slug: string, load: Loader, now = new Date()): Promise<CmsPage | null> {
+export async function resolveLegalCmsPage(
+  slug: string,
+  load: Loader,
+  now = new Date(),
+): Promise<CmsPage | null> {
   if (!isLegalCmsPageSlug(slug)) return null;
   const page = await load(slug);
   return page && isCmsPagePublic(page, now) ? page : null;
@@ -116,6 +148,7 @@ git commit -m "feat: define legal CMS page policy"
 ### Task 2: Replace hardcoded legal rendering
 
 **Files:**
+
 - Modify: `src/lib/pages/legal.test.ts`
 - Replace: `src/app/(public)/legal/[slug]/page.tsx`
 - Modify: `src/app/(public)/[slug]/page.tsx`
@@ -126,7 +159,12 @@ Add to `legal.test.ts`:
 
 ```ts
 test('identifies every slug that the root CMS route must reject', () => {
-  assert.deepEqual(['privacy', 'terms', 'pdpl', 'trust'].filter(isLegalCmsPageSlug), ['privacy', 'terms', 'pdpl', 'trust']);
+  assert.deepEqual(['privacy', 'terms', 'pdpl', 'trust'].filter(isLegalCmsPageSlug), [
+    'privacy',
+    'terms',
+    'pdpl',
+    'trust',
+  ]);
 });
 ```
 
@@ -144,7 +182,11 @@ Replace `src/app/(public)/legal/[slug]/page.tsx` with:
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { buildCmsPageMetadata, PublicCmsPage, serializeSchema } from '@/components/pages/PublicCmsPage';
+import {
+  buildCmsPageMetadata,
+  PublicCmsPage,
+  serializeSchema,
+} from '@/components/pages/PublicCmsPage';
 import { getPublishedCmsPageBySlug } from '@/lib/data/pages';
 import { resolveLegalCmsPage } from '@/lib/pages/legal';
 
@@ -160,7 +202,17 @@ export default async function LegalCmsPageRoute({ params }: PageProps) {
   const { slug } = await params;
   const page = await resolveLegalCmsPage(slug, getCachedPublishedPage);
   if (!page) notFound();
-  return <><PublicCmsPage page={page} />{page.schemaMarkup ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeSchema(page.schemaMarkup) }} /> : null}</>;
+  return (
+    <>
+      <PublicCmsPage page={page} />
+      {page.schemaMarkup ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeSchema(page.schemaMarkup) }}
+        />
+      ) : null}
+    </>
+  );
 }
 ```
 
@@ -196,6 +248,7 @@ git commit -m "feat: render legal pages from CMS"
 ### Task 3: Canonical sitemap paths
 
 **Files:**
+
 - Modify: `src/app/sitemap.test.ts`
 - Modify: `src/app/sitemap.ts`
 
@@ -205,7 +258,9 @@ git commit -m "feat: render legal pages from CMS"
 test('maps legal CMS slugs to nested canonical URLs without root aliases', () => {
   const sitemap = buildPublicSitemap({
     cmsPages: ['privacy', 'terms', 'pdpl', 'trust'].map((slug) => ({
-      slug, updatedAt: '2026-07-14T00:00:00.000Z', noindex: false,
+      slug,
+      updatedAt: '2026-07-14T00:00:00.000Z',
+      noindex: false,
     })),
   });
   const urls = sitemap.map((entry) => entry.url);
@@ -252,6 +307,7 @@ git commit -m "fix: canonicalize legal CMS sitemap URLs"
 ### Task 4: Seed editable legal pages
 
 **Files:**
+
 - Create: `../supabase/migrations/0046_seed_legal_cms_pages.sql`
 - Create: `src/lib/pages/legal-migration.test.ts`
 
@@ -269,7 +325,12 @@ assert.match(sql, /content_html/);
 assert.match(sql, /status[\s\S]*published/);
 assert.match(sql, /published_at/);
 assert.match(sql, /on conflict \(slug\) where deleted_at is null do update/i);
-for (const preservedText of ['Data we collect', 'Subscriptions and fees', 'Data residency', 'Certifications']) {
+for (const preservedText of [
+  'Data we collect',
+  'Subscriptions and fees',
+  'Data residency',
+  'Certifications',
+]) {
   assert.match(sql, new RegExp(preservedText));
 }
 ```
@@ -371,4 +432,3 @@ Expected: successful Next.js production build.
 Run: `git status --short && git diff --check`
 
 Expected: only intended legal CMS files are changed and `git diff --check` exits 0.
-

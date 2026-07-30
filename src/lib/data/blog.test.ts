@@ -36,7 +36,8 @@ function createBlogSupabaseStub(
   const tables = new Map<string, Row[]>(
     Object.entries(seed).map(([table, rows]) => [table, rows.map((row) => ({ ...row }))]),
   );
-  const uploads: Array<{ bucket: string; path: string; data: Uint8Array; contentType: string }> = [];
+  const uploads: Array<{ bucket: string; path: string; data: Uint8Array; contentType: string }> =
+    [];
   const removals: Array<{ bucket: string; paths: string[] }> = [];
 
   function rows(table: string): Row[] {
@@ -67,11 +68,12 @@ function createBlogSupabaseStub(
   }
 
   function from(table: string) {
-    const state: { filters: Row; payload: unknown; op: 'select' | 'insert' | 'update' | 'delete' } = {
-      filters: {},
-      payload: null,
-      op: 'select',
-    };
+    const state: { filters: Row; payload: unknown; op: 'select' | 'insert' | 'update' | 'delete' } =
+      {
+        filters: {},
+        payload: null,
+        op: 'select',
+      };
     const builder = {
       select: () => builder,
       order: () => builder,
@@ -203,7 +205,10 @@ test('isBlogPostPublic only allows non-deleted published posts at or before now'
     isBlogPostPublic({ ...published, publishedAt: '2026-07-01T10:00:01.000Z' }, now),
     false,
   );
-  assert.equal(isBlogPostPublic({ ...published, deletedAt: '2026-07-01T09:00:00.000Z' }, now), false);
+  assert.equal(
+    isBlogPostPublic({ ...published, deletedAt: '2026-07-01T09:00:00.000Z' }, now),
+    false,
+  );
 });
 
 test('sanitizeBlogHtml strips scripts and unsafe event handlers', () => {
@@ -266,10 +271,7 @@ test('blogPostInputSchema enforces title, status, and gallery count', () => {
   assert.equal(
     blogPostInputSchema.safeParse({
       ...validInput,
-      termIds: [
-        '00000000-0000-4000-8000-000000000010',
-        '00000000-0000-4000-8000-000000000010',
-      ],
+      termIds: ['00000000-0000-4000-8000-000000000010', '00000000-0000-4000-8000-000000000010'],
     }).success,
     false,
   );
@@ -297,12 +299,16 @@ test('blogPostInputSchema enforces title, status, and gallery count', () => {
 
 test('blogTermInputSchema requires a supported term kind', () => {
   assert.equal(
-    blogTermInputSchema.safeParse({ kind: 'category', name: 'Company setup', slug: 'company-setup' })
-      .success,
+    blogTermInputSchema.safeParse({
+      kind: 'category',
+      name: 'Company setup',
+      slug: 'company-setup',
+    }).success,
     true,
   );
   assert.equal(
-    blogTermInputSchema.safeParse({ kind: 'attribute', name: 'Featured', slug: 'featured' }).success,
+    blogTermInputSchema.safeParse({ kind: 'attribute', name: 'Featured', slug: 'featured' })
+      .success,
     true,
   );
   assert.equal(
@@ -475,7 +481,10 @@ test('upsertBlogPost sanitizes content, stores taxonomy/gallery links, and write
   assert.equal(post.contentHtml, '<p>Body</p>');
   assert.equal(supabase.tables.get('blog_posts')?.[0].published_at, '2026-07-01T10:00:00.000Z');
   assert.equal(supabase.tables.get('blog_posts')?.[0].scheduled_for, null);
-  assert.equal(supabase.tables.get('blog_post_terms')?.[0].term_id, '00000000-0000-4000-8000-000000000060');
+  assert.equal(
+    supabase.tables.get('blog_post_terms')?.[0].term_id,
+    '00000000-0000-4000-8000-000000000060',
+  );
   assert.equal(
     supabase.tables.get('blog_post_gallery_items')?.[0].media_id,
     '00000000-0000-4000-8000-000000000070',

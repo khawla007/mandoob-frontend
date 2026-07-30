@@ -63,7 +63,9 @@ export default async function EmployeeDashboardPage({
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-lg font-semibold">{expiryText(summary.visaDaysOut)}</p>
-            <Badge variant={bucketVariant(summary.visaBucket)}>{summary.visaExpiry ?? 'Missing'}</Badge>
+            <Badge variant={bucketVariant(summary.visaBucket)}>
+              {summary.visaExpiry ?? 'Missing'}
+            </Badge>
           </CardContent>
         </Card>
 
@@ -74,7 +76,9 @@ export default async function EmployeeDashboardPage({
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-lg font-semibold">{expiryText(summary.eidDaysOut)}</p>
-            <Badge variant={bucketVariant(summary.eidBucket)}>{summary.eidExpiry ?? 'Missing'}</Badge>
+            <Badge variant={bucketVariant(summary.eidBucket)}>
+              {summary.eidExpiry ?? 'Missing'}
+            </Badge>
           </CardContent>
         </Card>
 

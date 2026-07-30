@@ -36,7 +36,12 @@ export function buildEmployeeNav(slug: string): ShellNavGroup[] {
       labelKey: 'account',
       labelFallback: 'Account',
       items: [
-        { labelKey: 'settings', labelFallback: 'Settings', href: `${base}/settings`, icon: Settings },
+        {
+          labelKey: 'settings',
+          labelFallback: 'Settings',
+          href: `${base}/settings`,
+          icon: Settings,
+        },
       ],
     },
   ];

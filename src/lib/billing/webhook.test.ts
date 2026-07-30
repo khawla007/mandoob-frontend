@@ -47,7 +47,10 @@ test('normalizeStripeSubscription maps Stripe subscription data to database fiel
 
 test('mapStripeSubscriptionStatus only accepts subscription lifecycle statuses', () => {
   assert.equal(mapStripeSubscriptionStatus('past_due'), 'past_due');
-  assert.throws(() => mapStripeSubscriptionStatus('paid'), /Unsupported Stripe subscription status/);
+  assert.throws(
+    () => mapStripeSubscriptionStatus('paid'),
+    /Unsupported Stripe subscription status/,
+  );
 });
 
 test('isMaterialSubscriptionChange dedupes identical replay payloads', () => {

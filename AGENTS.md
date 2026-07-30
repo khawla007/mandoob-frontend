@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 # Codex Token Budget — Caveman Lite
@@ -21,7 +23,6 @@ Codex must default to terse, high-signal communication to reduce token spend.
 - Do not use direct `google-chrome` launches for this project unless the user explicitly asks.
 - Headless `agent-browser` is acceptable for supplemental console, DOM, screenshot, and automation checks, but it must not replace the visible Antigravity browser check when the user asks to see the browser.
 
-
 <claude-mem-context>
 # Memory Context
 
@@ -34,6 +35,7 @@ Fetch details: get_observations([IDs]) | Search: mem-search skill
 Stats: 1 obs (506t read) | 9,958t work | 95% savings
 
 ### Apr 24, 2026
+
 196 1:32p 🔵 Admin Dashboard Full-Stack Code Review — Technical Concerns Identified
 
 Access 10k tokens of past work via get_observations([IDs]) or mem-search skill.

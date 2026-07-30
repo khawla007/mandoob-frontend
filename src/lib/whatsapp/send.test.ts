@@ -38,9 +38,7 @@ function approvalRow(templateId: string, status: 'pending' | 'approved' | 'rejec
     tenant_id: 'tenant-1',
     template_id: templateId,
     meta_template_name:
-      templateId === 'opt-out-confirmation'
-        ? 'mandoob_opt_out_confirmation'
-        : 'renewal_reminder',
+      templateId === 'opt-out-confirmation' ? 'mandoob_opt_out_confirmation' : 'renewal_reminder',
     language: 'en',
     category: 'utility',
     status,
@@ -112,7 +110,10 @@ test('enqueueWhatsApp skips opted-out recipients and writes audit without queue 
   });
 
   assert.deepEqual(result, { ok: false, reason: 'RECIPIENT_OPTED_OUT' });
-  assert.equal(urls.some((url) => url.includes('/rest/v1/outbound_whatsapp')), false);
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/outbound_whatsapp')),
+    false,
+  );
   assert.equal(urls.filter((url) => url.includes('/rest/v1/tenant_audit_log')).length, 1);
 });
 
@@ -165,7 +166,10 @@ test('enqueueWhatsApp queues approved WhatsApp templates', async () => {
   });
 
   assert.deepEqual(result, { ok: true, queueId: 123, status: 'pending' });
-  assert.equal(urls.some((url) => url.includes('/rest/v1/tenant_whatsapp_config')), true);
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/tenant_whatsapp_config')),
+    true,
+  );
   assert.equal(urls.filter((url) => url.includes('/rest/v1/outbound_whatsapp')).length, 1);
 });
 
@@ -209,8 +213,14 @@ test('enqueueWhatsApp blocks unapproved templates and writes audit without queue
     });
 
     assert.deepEqual(result, { ok: false, reason: 'WHATSAPP_TEMPLATE_NOT_APPROVED' });
-    assert.equal(urls.some((url) => url.includes('/rest/v1/outbound_whatsapp')), false);
-    assert.equal(urls.some((url) => url.includes('/rest/v1/tenant_whatsapp_config')), false);
+    assert.equal(
+      urls.some((url) => url.includes('/rest/v1/outbound_whatsapp')),
+      false,
+    );
+    assert.equal(
+      urls.some((url) => url.includes('/rest/v1/tenant_whatsapp_config')),
+      false,
+    );
     assert.equal(auditPayloads.length, 1);
     assert.deepEqual(auditPayloads[0], {
       tenant_id: 'tenant-1',
@@ -252,8 +262,14 @@ test('enqueueWhatsApp approval-guards opt-out confirmation even though it bypass
   });
 
   assert.deepEqual(result, { ok: false, reason: 'WHATSAPP_TEMPLATE_NOT_APPROVED' });
-  assert.equal(urls.some((url) => url.includes('/rest/v1/consent_opt_outs')), false);
-  assert.equal(urls.some((url) => url.includes('/rest/v1/outbound_whatsapp')), false);
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/consent_opt_outs')),
+    false,
+  );
+  assert.equal(
+    urls.some((url) => url.includes('/rest/v1/outbound_whatsapp')),
+    false,
+  );
   assert.equal(auditPayloads.length, 1);
   assert.deepEqual(auditPayloads[0], {
     tenant_id: 'tenant-1',

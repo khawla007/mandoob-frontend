@@ -47,7 +47,8 @@ export async function uploadBulkImportAction(
   try {
     const { session, tenant } = await requireTenantContext(tenantSlug);
     const ok = await consumeRateLimit({ key: `bulk_import:${tenant.id}`, ...IMPORT_LIMIT });
-    if (!ok) return { ok: false, error: 'Import limit reached. Try again later.', code: 'RATE_LIMITED' };
+    if (!ok)
+      return { ok: false, error: 'Import limit reached. Try again later.', code: 'RATE_LIMITED' };
 
     const file = formData.get('file');
     if (!(file instanceof File) || file.size === 0) {
@@ -113,7 +114,8 @@ export async function validateBulkImportAction(
     const admin = createSupabaseServiceRoleClient();
     const job = await readJob(admin, tenant.id, jobId);
     if (!job) return { ok: false, error: 'Import job not found', code: 'NOT_FOUND' };
-    if (job.status === 'cancelled') return { ok: false, error: 'Import cancelled', code: 'CANCELLED' };
+    if (job.status === 'cancelled')
+      return { ok: false, error: 'Import cancelled', code: 'CANCELLED' };
 
     await updateJob(admin, jobId, { status: 'validating', started_at: new Date().toISOString() });
     const csv = await downloadCsv(admin, job.storage_path);
@@ -236,7 +238,11 @@ export async function cancelBulkImportAction(
   }
 }
 
-async function readJob(admin: ReturnType<typeof createSupabaseServiceRoleClient>, tenantId: string, jobId: string) {
+async function readJob(
+  admin: ReturnType<typeof createSupabaseServiceRoleClient>,
+  tenantId: string,
+  jobId: string,
+) {
   const { data, error } = await admin
     .from('bulk_import_jobs')
     .select('*')
@@ -244,16 +250,14 @@ async function readJob(admin: ReturnType<typeof createSupabaseServiceRoleClient>
     .eq('id', jobId)
     .maybeSingle();
   if (error) throw error;
-  return data as
-    | {
-        id: string;
-        kind: BulkImportKind;
-        status: BulkImportJobStatus;
-        parent_client_id: string | null;
-        storage_path: string;
-        errors: BulkImportValidationError[] | null;
-      }
-    | null;
+  return data as {
+    id: string;
+    kind: BulkImportKind;
+    status: BulkImportJobStatus;
+    parent_client_id: string | null;
+    storage_path: string;
+    errors: BulkImportValidationError[] | null;
+  } | null;
 }
 
 async function updateJob(
@@ -268,7 +272,10 @@ async function updateJob(
   if (error) throw error;
 }
 
-async function downloadCsv(admin: ReturnType<typeof createSupabaseServiceRoleClient>, path: string) {
+async function downloadCsv(
+  admin: ReturnType<typeof createSupabaseServiceRoleClient>,
+  path: string,
+) {
   const { data, error } = await admin.storage.from(BUCKET).download(path);
   if (error || !data) throw error ?? new Error('CSV missing');
   return await data.text();

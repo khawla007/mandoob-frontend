@@ -9,9 +9,7 @@ import { readSelfCustomer } from '@/lib/data/account-self';
 import { bookMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 
-export type CustomerMeetingActionResult =
-  | { ok: true }
-  | { ok: false; error: string; code: string };
+export type CustomerMeetingActionResult = { ok: true } | { ok: false; error: string; code: string };
 
 async function resolveCustomerActor(slug: string): Promise<{
   tenantId: string;

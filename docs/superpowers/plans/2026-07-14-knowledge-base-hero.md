@@ -13,6 +13,7 @@
 ### Task 1: Generate and optimize the Knowledge Base hero asset
 
 **Files:**
+
 - Create: `public/hero/knowledge-base-research.webp`
 
 - [ ] **Step 1: Generate the source image**
@@ -50,6 +51,7 @@ git commit -m "feat: add Knowledge Base hero background"
 ### Task 2: Add the scoped hero contract through TDD
 
 **Files:**
+
 - Create: `src/app/(public)/knowledge-base/KnowledgeBaseHero.test.ts`
 - Modify: `src/app/(public)/knowledge-base/page.tsx`
 - Modify: `src/app/(public)/public-theme.css`
@@ -75,7 +77,14 @@ test('Knowledge Base hero uses its own modifier, overlay, and background asset',
 });
 
 test('Knowledge Base hero preserves CTAs and ordered in-hero metrics', () => {
-  const labels = ['Estimate setup cost', 'Browse topics', 'guides', 'topics', 'free zones', 'updates'];
+  const labels = [
+    'Estimate setup cost',
+    'Browse topics',
+    'guides',
+    'topics',
+    'free zones',
+    'updates',
+  ];
   let priorIndex = -1;
   for (const label of labels) {
     const index = page.indexOf(label);
@@ -86,14 +95,26 @@ test('Knowledge Base hero preserves CTAs and ordered in-hero metrics', () => {
 });
 
 test('Knowledge Base hero has scoped natural-height responsive rules', () => {
-  assert.match(css, /\.site-public \.hero--knowledge-base\s*\{(?:(?!})[\s\S])*padding-block:\s*var\(--sp-5\)/);
+  assert.match(
+    css,
+    /\.site-public \.hero--knowledge-base\s*\{(?:(?!})[\s\S])*padding-block:\s*var\(--sp-5\)/,
+  );
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.site-public \.hero--knowledge-base\s*\{/);
-  assert.doesNotMatch(css, /\.site-public \.hero--knowledge-base\s*\{(?:(?!})[\s\S])*(?:height|max-height):/);
+  assert.doesNotMatch(
+    css,
+    /\.site-public \.hero--knowledge-base\s*\{(?:(?!})[\s\S])*(?:height|max-height):/,
+  );
 });
 
 test('Knowledge Base primary CTA has scoped accessible normal and hover colors', () => {
-  assert.match(css, /\.site-public \.hero--knowledge-base \.btn--accent\s*\{[^}]*background:\s*oklch\(0\.57 0\.19 38\)/);
-  assert.match(css, /\.site-public \.hero--knowledge-base \.btn--accent:hover\s*\{[^}]*background:\s*oklch\(0\.52 0\.17 38\)/);
+  assert.match(
+    css,
+    /\.site-public \.hero--knowledge-base \.btn--accent\s*\{[^}]*background:\s*oklch\(0\.57 0\.19 38\)/,
+  );
+  assert.match(
+    css,
+    /\.site-public \.hero--knowledge-base \.btn--accent:hover\s*\{[^}]*background:\s*oklch\(0\.52 0\.17 38\)/,
+  );
 });
 ```
 
@@ -211,6 +232,7 @@ git commit -m "fix: improve Knowledge Base hero"
 ### Task 3: Tune, verify, and document the completed session
 
 **Files:**
+
 - Modify only if measurements require it: `src/app/(public)/public-theme.css`
 - Modify outside the frontend repository after merge: `../Reports/daily-work-report.md`
 

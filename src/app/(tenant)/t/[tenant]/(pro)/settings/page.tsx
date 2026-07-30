@@ -48,7 +48,10 @@ export default async function WorkspaceSettingsPage({
   return (
     <div className="space-y-6">
       <SettingsWhiteLabelChecklist
-        workspaceUrl={buildTenantUrl({ slug: tenant.slug, rootDomain: env.NEXT_PUBLIC_ROOT_DOMAIN })}
+        workspaceUrl={buildTenantUrl({
+          slug: tenant.slug,
+          rootDomain: env.NEXT_PUBLIC_ROOT_DOMAIN,
+        })}
         branding={brandingValue}
         contact={contactValue}
         smtp={smtp}

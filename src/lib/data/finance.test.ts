@@ -22,4 +22,3 @@ test('calculateFinanceKpis computes MRR, ARR, active tenants, and churn', () => 
   assert.equal(kpis.activeTenantCount, 2);
   assert.equal(kpis.churnRate, 5);
 });
-

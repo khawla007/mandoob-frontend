@@ -86,18 +86,27 @@ export async function verifyDailyWebhook(request: Request): Promise<DailyWebhook
   if (!secret) return null;
 
   const body = await request.text();
-  const signature = request.headers.get('x-daily-signature') ?? request.headers.get('daily-signature');
+  const signature =
+    request.headers.get('x-daily-signature') ?? request.headers.get('daily-signature');
   if (!signature) return null;
 
   const expected = createHmac('sha256', secret).update(body).digest('hex');
   const expectedBuffer = Buffer.from(expected);
   const receivedBuffer = Buffer.from(signature);
-  if (expectedBuffer.length !== receivedBuffer.length || !timingSafeEqual(expectedBuffer, receivedBuffer)) {
+  if (
+    expectedBuffer.length !== receivedBuffer.length ||
+    !timingSafeEqual(expectedBuffer, receivedBuffer)
+  ) {
     return null;
   }
 
   const parsed = JSON.parse(body) as DailyWebhookEvent;
-  if (!parsed || typeof parsed.type !== 'string' || typeof parsed.payload !== 'object' || !parsed.payload) {
+  if (
+    !parsed ||
+    typeof parsed.type !== 'string' ||
+    typeof parsed.payload !== 'object' ||
+    !parsed.payload
+  ) {
     return null;
   }
   return parsed;
@@ -118,7 +127,11 @@ export async function downloadDailyRecording(
   }
   const data = (await response.json()) as { download_link?: string };
   if (!data.download_link) {
-    throw new ApiError('DAILY_RECORDING_FAILED', 'Daily.co returned an invalid recording response.', 502);
+    throw new ApiError(
+      'DAILY_RECORDING_FAILED',
+      'Daily.co returned an invalid recording response.',
+      502,
+    );
   }
   return { id: recordingId, downloadUrl: data.download_link, mimeType: 'video/mp4' };
 }

@@ -19,66 +19,74 @@ export const blogSlugSchema = z
   .min(1)
   .max(160)
   .transform(normalizeBlogSlug)
-  .pipe(z.string().min(1).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/));
+  .pipe(
+    z
+      .string()
+      .min(1)
+      .max(120)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  );
 
-export const blogPostInputSchema = z.object({
-  title: z.string().trim().min(1).max(180),
-  slug: blogSlugSchema,
-  excerpt: z.string().trim().max(320).optional().nullable(),
-  contentJson: z.record(z.string(), z.unknown()).default({}),
-  contentHtml: z.string().max(500_000).default(''),
-  status: z.enum(BLOG_STATUSES),
-  publishedAt: z.string().datetime().optional().nullable(),
-  scheduledFor: z.string().datetime().optional().nullable(),
-  featuredMediaId: z.string().uuid().optional().nullable(),
-  metaTitle: z.string().trim().max(70).optional().nullable(),
-  metaDescription: z.string().trim().max(170).optional().nullable(),
-  canonicalUrl: z.string().url().optional().nullable(),
-  noindex: z.boolean().default(false),
-  termIds: z.array(z.string().uuid()).default([]),
-  galleryMediaIds: z.array(z.string().uuid()).max(MAX_GALLERY_IMAGES).default([]),
-}).superRefine((value, ctx) => {
-  if (value.status === 'published') {
-    if (!value.publishedAt) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['publishedAt'],
-        message: 'publishedAt is required when status is published',
-      });
+export const blogPostInputSchema = z
+  .object({
+    title: z.string().trim().min(1).max(180),
+    slug: blogSlugSchema,
+    excerpt: z.string().trim().max(320).optional().nullable(),
+    contentJson: z.record(z.string(), z.unknown()).default({}),
+    contentHtml: z.string().max(500_000).default(''),
+    status: z.enum(BLOG_STATUSES),
+    publishedAt: z.string().datetime().optional().nullable(),
+    scheduledFor: z.string().datetime().optional().nullable(),
+    featuredMediaId: z.string().uuid().optional().nullable(),
+    metaTitle: z.string().trim().max(70).optional().nullable(),
+    metaDescription: z.string().trim().max(170).optional().nullable(),
+    canonicalUrl: z.string().url().optional().nullable(),
+    noindex: z.boolean().default(false),
+    termIds: z.array(z.string().uuid()).default([]),
+    galleryMediaIds: z.array(z.string().uuid()).max(MAX_GALLERY_IMAGES).default([]),
+  })
+  .superRefine((value, ctx) => {
+    if (value.status === 'published') {
+      if (!value.publishedAt) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['publishedAt'],
+          message: 'publishedAt is required when status is published',
+        });
+      }
+      if (value.scheduledFor) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['scheduledFor'],
+          message: 'scheduledFor must be empty when status is published',
+        });
+      }
     }
-    if (value.scheduledFor) {
+
+    if (value.status === 'scheduled' && !value.scheduledFor) {
       ctx.addIssue({
         code: 'custom',
         path: ['scheduledFor'],
-        message: 'scheduledFor must be empty when status is published',
+        message: 'scheduledFor is required when status is scheduled',
       });
     }
-  }
 
-  if (value.status === 'scheduled' && !value.scheduledFor) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['scheduledFor'],
-      message: 'scheduledFor is required when status is scheduled',
-    });
-  }
+    if (new Set(value.termIds).size !== value.termIds.length) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['termIds'],
+        message: 'termIds must be unique',
+      });
+    }
 
-  if (new Set(value.termIds).size !== value.termIds.length) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['termIds'],
-      message: 'termIds must be unique',
-    });
-  }
-
-  if (new Set(value.galleryMediaIds).size !== value.galleryMediaIds.length) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['galleryMediaIds'],
-      message: 'galleryMediaIds must be unique',
-    });
-  }
-});
+    if (new Set(value.galleryMediaIds).size !== value.galleryMediaIds.length) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['galleryMediaIds'],
+        message: 'galleryMediaIds must be unique',
+      });
+    }
+  });
 
 export const blogTermInputSchema = z.object({
   kind: z.enum(BLOG_TERM_KINDS),

@@ -45,8 +45,14 @@ test('buildQuestionnaireSubmission returns field errors for conditional requirem
   );
 
   assert.equal(result.ok, false);
-  assert.equal(result.fieldErrors.shareholderSplitSummary, 'Shareholder split summary is required for multiple shareholders');
-  assert.equal(result.fieldErrors.officeAreaNotes, 'Office area notes are required when office space is requested');
+  assert.equal(
+    result.fieldErrors.shareholderSplitSummary,
+    'Shareholder split summary is required for multiple shareholders',
+  );
+  assert.equal(
+    result.fieldErrors.officeAreaNotes,
+    'Office area notes are required when office space is requested',
+  );
 });
 
 test('buildQuestionnaireSubmission trims preferred names and preserves estimate data', () => {
@@ -66,7 +72,11 @@ test('buildQuestionnaireSubmission trims preferred names and preserves estimate 
   );
 
   assert.equal(result.ok, true);
-  assert.deepEqual(result.submission.answers.preferredNames, ['Aisha Consulting FZE', 'Aisha Advisory', 'Aisha Services']);
+  assert.deepEqual(result.submission.answers.preferredNames, [
+    'Aisha Consulting FZE',
+    'Aisha Advisory',
+    'Aisha Services',
+  ]);
   assert.equal(result.submission.answers.email, null);
   assert.deepEqual(result.submission.estimateData, { reference: 'EST-1234567890' });
 });

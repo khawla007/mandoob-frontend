@@ -2,11 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ApiError } from '@/lib/errors';
-import {
-  parseCmsPageFormData,
-  runDeleteCmsPageAction,
-  runSaveCmsPageAction,
-} from './action-logic';
+import { parseCmsPageFormData, runDeleteCmsPageAction, runSaveCmsPageAction } from './action-logic';
 
 const pageId = '11111111-1111-4111-8111-111111111111';
 
@@ -34,29 +30,45 @@ function validForm(): FormData {
 
 test('parseCmsPageFormData parses every page input, JSON, booleans, timestamps, and script slots', () => {
   assert.deepEqual(parseCmsPageFormData(validForm()), {
-    title: 'About', slug: 'about-us', contentJson: { type: 'doc' }, contentHtml: '<p>About</p>',
+    title: 'About',
+    slug: 'about-us',
+    contentJson: { type: 'doc' },
+    contentHtml: '<p>About</p>',
     heroSettings: {
-      backgroundColor: '#fff', overlayColor: '#000000', overlayOpacity: 0.4,
-      headingAlignment: 'center', textAlignment: 'center', buttonAlignment: 'center',
+      backgroundColor: '#fff',
+      overlayColor: '#000000',
+      overlayOpacity: 0.4,
+      headingAlignment: 'center',
+      textAlignment: 'center',
+      buttonAlignment: 'center',
     },
-    backgroundImageMediaId: 'media-1', status: 'published',
-    publishedAt: '2026-07-10T12:30:00.000Z', scheduledFor: null,
-    metaTitle: 'About meta', metaDescription: 'Description',
-    canonicalUrl: 'https://example.com/about', noindex: true,
+    backgroundImageMediaId: 'media-1',
+    status: 'published',
+    publishedAt: '2026-07-10T12:30:00.000Z',
+    scheduledFor: null,
+    metaTitle: 'About meta',
+    metaDescription: 'Description',
+    canonicalUrl: 'https://example.com/about',
+    noindex: true,
     schemaMarkup: { '@type': 'WebPage' },
-    scriptHead: '<script>head()</script>', scriptBodyStart: '<script>start()</script>',
+    scriptHead: '<script>head()</script>',
+    scriptBodyStart: '<script>start()</script>',
     scriptBodyEnd: '<script>end()</script>',
   });
 });
 
 for (const [field, value] of [
-  ['contentJson', '{'], ['heroSettings', '[]'], ['schemaMarkup', 'null'],
+  ['contentJson', '{'],
+  ['heroSettings', '[]'],
+  ['schemaMarkup', 'null'],
 ] as const) {
   test(`parseCmsPageFormData rejects invalid ${field} JSON objects`, () => {
     const form = validForm();
     form.set(field, value);
-    assert.throws(() => parseCmsPageFormData(form), (error: unknown) =>
-      error instanceof ApiError && error.code === 'INVALID_INPUT');
+    assert.throws(
+      () => parseCmsPageFormData(form),
+      (error: unknown) => error instanceof ApiError && error.code === 'INVALID_INPUT',
+    );
   });
 }
 
@@ -65,11 +77,24 @@ function deps(overrides: Record<string, unknown> = {}) {
   return {
     calls,
     dependencies: {
-      requireActor: async () => { calls.push('auth'); return { id: 'admin-1', role: 'admin' as const }; },
-      getPage: async () => { calls.push('get'); return { slug: 'old-page' }; },
-      upsertPage: async () => { calls.push('upsert'); return { id: pageId, slug: 'about-us' }; },
-      deletePage: async () => { calls.push('delete'); },
-      revalidate: (path: string) => { calls.push(`revalidate:${path}`); },
+      requireActor: async () => {
+        calls.push('auth');
+        return { id: 'admin-1', role: 'admin' as const };
+      },
+      getPage: async () => {
+        calls.push('get');
+        return { slug: 'old-page' };
+      },
+      upsertPage: async () => {
+        calls.push('upsert');
+        return { id: pageId, slug: 'about-us' };
+      },
+      deletePage: async () => {
+        calls.push('delete');
+      },
+      revalidate: (path: string) => {
+        calls.push(`revalidate:${path}`);
+      },
       ...overrides,
     },
   };
@@ -92,9 +117,15 @@ test('invalid JSON never reads or mutates page data', async () => {
 });
 
 test('save maps duplicate slugs to a stable public result', async () => {
-  const context = deps({ upsertPage: async () => { throw new ApiError('DUPLICATE_SLUG', 'database detail', 409); } });
+  const context = deps({
+    upsertPage: async () => {
+      throw new ApiError('DUPLICATE_SLUG', 'database detail', 409);
+    },
+  });
   assert.deepEqual(await runSaveCmsPageAction(null, validForm(), context.dependencies), {
-    ok: false, error: 'A CMS page with this slug already exists', code: 'DUPLICATE_SLUG',
+    ok: false,
+    error: 'A CMS page with this slug already exists',
+    code: 'DUPLICATE_SLUG',
   });
 });
 
@@ -108,11 +139,17 @@ test('save orchestrates auth, prior lookup, mutation, and old/new root revalidat
     },
   });
   assert.deepEqual(await runSaveCmsPageAction(pageId, validForm(), context.dependencies), {
-    ok: true, data: { id: pageId },
+    ok: true,
+    data: { id: pageId },
   });
   assert.deepEqual(context.calls, [
-    'auth', 'get', 'upsert', 'revalidate:/admin/pages', 'revalidate:/sitemap.xml',
-    'revalidate:/old-page', 'revalidate:/about-us',
+    'auth',
+    'get',
+    'upsert',
+    'revalidate:/admin/pages',
+    'revalidate:/sitemap.xml',
+    'revalidate:/old-page',
+    'revalidate:/about-us',
   ]);
   assert.deepEqual(
     persisted && {
@@ -131,14 +168,23 @@ test('save orchestrates auth, prior lookup, mutation, and old/new root revalidat
 test('delete authenticates, validates before reads/mutation, deletes, and revalidates the deleted slug', async () => {
   const invalid = deps();
   assert.deepEqual(await runDeleteCmsPageAction('bad-id', invalid.dependencies), {
-    ok: false, error: 'Invalid page ID', code: 'INVALID_INPUT',
+    ok: false,
+    error: 'Invalid page ID',
+    code: 'INVALID_INPUT',
   });
   assert.deepEqual(invalid.calls, ['auth']);
 
   const context = deps();
-  assert.deepEqual(await runDeleteCmsPageAction(pageId, context.dependencies), { ok: true, data: undefined });
+  assert.deepEqual(await runDeleteCmsPageAction(pageId, context.dependencies), {
+    ok: true,
+    data: undefined,
+  });
   assert.deepEqual(context.calls, [
-    'auth', 'get', 'delete', 'revalidate:/admin/pages', 'revalidate:/sitemap.xml',
+    'auth',
+    'get',
+    'delete',
+    'revalidate:/admin/pages',
+    'revalidate:/sitemap.xml',
     'revalidate:/old-page',
   ]);
 });

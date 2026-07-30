@@ -8,4 +8,3 @@ export function subscriptionSuspension(input: SubscriptionSuspension): Rendered 
     text: `Your Mandoob subscription payment failed and the tenant is suspended. Update billing details: ${input.billingUrl}`,
   };
 }
-

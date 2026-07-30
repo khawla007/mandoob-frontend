@@ -140,7 +140,11 @@ export default async function KnowledgeBaseArticlePage({ params }: { params: Pro
 }
 
 function SectionBody({ section }: { section: ArticleSection }) {
-  const paragraphs = Array.isArray(section.body) ? section.body : section.body ? [section.body] : [];
+  const paragraphs = Array.isArray(section.body)
+    ? section.body
+    : section.body
+      ? [section.body]
+      : [];
 
   return (
     <div className="kb-prose">

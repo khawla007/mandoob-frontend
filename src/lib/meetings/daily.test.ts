@@ -45,14 +45,20 @@ test('createDailyRoom posts a room with deterministic name and recording enabled
     durationMinutes: 45,
     fetchImpl: async (url, init) => {
       calls.push({ url: String(url), init: init ?? {} });
-      return Response.json({ name: 'mandoob-meeting-1', url: 'https://example.daily.co/mandoob-meeting-1' });
+      return Response.json({
+        name: 'mandoob-meeting-1',
+        url: 'https://example.daily.co/mandoob-meeting-1',
+      });
     },
   });
 
   assert.equal(room.name, 'mandoob-meeting-1');
   assert.equal(room.url, 'https://example.daily.co/mandoob-meeting-1');
   assert.equal(calls[0].url, 'https://api.daily.co/v1/rooms');
-  assert.equal((calls[0].init.headers as Record<string, string>).Authorization, 'Bearer daily_test_key');
+  assert.equal(
+    (calls[0].init.headers as Record<string, string>).Authorization,
+    'Bearer daily_test_key',
+  );
 
   const payload = JSON.parse(String(calls[0].init.body));
   assert.equal(payload.name, 'mandoob-meeting-1');
@@ -63,9 +69,15 @@ test('createDailyRoom posts a room with deterministic name and recording enabled
 test('verifyDailyWebhook fails closed on missing or invalid signature', async () => {
   process.env.DAILY_WEBHOOK_SECRET = 'daily_webhook_secret';
   const { verifyDailyWebhook } = await loadDaily();
-  const body = JSON.stringify({ type: 'recording.ready', payload: { room_name: 'mandoob-meeting-1' } });
+  const body = JSON.stringify({
+    type: 'recording.ready',
+    payload: { room_name: 'mandoob-meeting-1' },
+  });
 
-  assert.equal(await verifyDailyWebhook(new Request('https://example.test', { method: 'POST', body })), null);
+  assert.equal(
+    await verifyDailyWebhook(new Request('https://example.test', { method: 'POST', body })),
+    null,
+  );
   assert.equal(
     await verifyDailyWebhook(
       new Request('https://example.test', {
@@ -85,7 +97,9 @@ test('verifyDailyWebhook returns parsed event for valid signature', async () => 
     type: 'recording.ready',
     payload: { room_name: 'mandoob-meeting-1', recording_id: 'rec-1' },
   });
-  const signature = createHmac('sha256', process.env.DAILY_WEBHOOK_SECRET).update(body).digest('hex');
+  const signature = createHmac('sha256', process.env.DAILY_WEBHOOK_SECRET)
+    .update(body)
+    .digest('hex');
 
   const event = await verifyDailyWebhook(
     new Request('https://example.test', {

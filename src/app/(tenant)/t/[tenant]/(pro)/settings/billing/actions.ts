@@ -9,7 +9,11 @@ import { requireRole } from '@/lib/auth/require-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { env } from '@/lib/env';
 import { consumeRateLimit } from '@/lib/rate-limit';
-import { createCheckoutSession, createBillingPortalSession, getStripeClient } from '@/lib/billing/providers/stripe';
+import {
+  createCheckoutSession,
+  createBillingPortalSession,
+  getStripeClient,
+} from '@/lib/billing/providers/stripe';
 import type { SubscriptionPlan } from '@/lib/billing/plans';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
@@ -24,7 +28,8 @@ async function resolveBillingCaller(slug: string) {
   if (!session.tenantId) throw new ApiError('FORBIDDEN', 'Session missing tenant binding', 403);
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (session.tenantId !== tenant.id) throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
+  if (session.tenantId !== tenant.id)
+    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
   await requireActiveTenant(tenant.id);
   const hdr = await headers();
   return {
@@ -114,4 +119,3 @@ export async function cancelSubscriptionAction(formData: FormData): Promise<void
   });
   redirect(`/t/${ctx.tenant.slug}/settings/billing`);
 }
-

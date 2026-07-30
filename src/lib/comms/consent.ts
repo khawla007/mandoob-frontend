@@ -8,7 +8,9 @@ type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
 const OPT_OUT_KEYWORDS = new Set(['STOP', 'UNSUBSCRIBE', 'END', 'CANCEL', 'QUIT']);
 const OPT_IN_KEYWORDS = new Set(['START', 'UNSTOP', 'SUBSCRIBE', 'RESUME']);
 
-export function normalizeConsentKeyword(body: string | null | undefined): ConsentKeywordAction | null {
+export function normalizeConsentKeyword(
+  body: string | null | undefined,
+): ConsentKeywordAction | null {
   const keyword = body?.trim().toUpperCase();
   if (!keyword) return null;
   if (OPT_OUT_KEYWORDS.has(keyword)) return 'opt_out';

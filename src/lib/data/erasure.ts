@@ -131,7 +131,13 @@ export function anonymizeCustomerFields(row: CustomerErasureRows): {
   setDiff(profile, profileUpdate, 'username', row.profile.username, null);
   setDiff(profile, profileUpdate, 'title', row.profile.title, null);
   setDiff(profile, profileUpdate, 'bio', row.profile.bio, null);
-  setDiff(customerProfile, customerProfileUpdate, 'nationality', row.customerProfile.nationality, null);
+  setDiff(
+    customerProfile,
+    customerProfileUpdate,
+    'nationality',
+    row.customerProfile.nationality,
+    null,
+  );
   setDiff(
     customerProfile,
     customerProfileUpdate,
@@ -182,7 +188,8 @@ function toSummary(row: Record<string, unknown>): ErasureRequestSummary {
     reviewedAt: (row.reviewed_at as string | null | undefined) ?? null,
     completedAt: (row.completed_at as string | null | undefined) ?? null,
     rejectionReason: (row.rejection_reason as string | null | undefined) ?? null,
-    anonymizationDiff: (row.anonymization_diff as Record<string, unknown> | null | undefined) ?? null,
+    anonymizationDiff:
+      (row.anonymization_diff as Record<string, unknown> | null | undefined) ?? null,
   };
 }
 
@@ -444,7 +451,10 @@ async function deletePiiDocuments(args: {
   }
 
   if (documentIds.length > 0) {
-    const { error: deleteError } = await args.supabase.from('documents').delete().in('id', documentIds);
+    const { error: deleteError } = await args.supabase
+      .from('documents')
+      .delete()
+      .in('id', documentIds);
     if (deleteError) throw new ApiError('DOCUMENT_DELETE_FAILED', deleteError.message, 500);
   }
   return { documentIds, storagePaths };
@@ -517,7 +527,8 @@ export async function executeErasure(
       ]);
     if (profileError) throw new ApiError('PROFILE_LOOKUP_FAILED', profileError.message, 500);
     if (customerError) throw new ApiError('CUSTOMER_LOOKUP_FAILED', customerError.message, 500);
-    if (!profile || !customer) throw new ApiError('CUSTOMER_NOT_FOUND', 'Customer row missing', 404);
+    if (!profile || !customer)
+      throw new ApiError('CUSTOMER_NOT_FOUND', 'Customer row missing', 404);
     const customerPatch = anonymizeCustomerFields({
       profile: profile as CustomerErasureRows['profile'],
       customerProfile: customer as CustomerErasureRows['customerProfile'],
@@ -526,7 +537,8 @@ export async function executeErasure(
       .from('profiles')
       .update(customerPatch.profileUpdate)
       .eq('id', detail.subjectUserId);
-    if (profileUpdateError) throw new ApiError('PROFILE_ERASURE_FAILED', profileUpdateError.message, 500);
+    if (profileUpdateError)
+      throw new ApiError('PROFILE_ERASURE_FAILED', profileUpdateError.message, 500);
     const { error: customerUpdateError } = await supabase
       .from('customer_profiles')
       .update(customerPatch.customerProfileUpdate)
@@ -574,7 +586,8 @@ export async function executeErasure(
       request_id: requestId,
       subject_kind: detail.subjectKind,
       fields_anonymized: Object.keys(diff),
-      documents_deleted: (diff.documents as { documentIds?: string[] } | undefined)?.documentIds ?? [],
+      documents_deleted:
+        (diff.documents as { documentIds?: string[] } | undefined)?.documentIds ?? [],
     },
   });
 

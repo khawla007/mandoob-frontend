@@ -13,6 +13,7 @@
 ### Task 1: Lock the shared no-hero spacing contract
 
 **Files:**
+
 - Modify: `src/components/pages/PublicCmsPage.test.ts`
 - Modify: `src/components/pages/PublicCmsPage.tsx`
 - Modify: `src/app/(public)/public-theme.css`
@@ -48,7 +49,9 @@ Change the no-hero header in `PublicCmsPage.tsx` to:
 
 ```tsx
 <header className="section cms-page__title-section">
-  <div className="container"><h1 className="h2">{page.title}</h1></div>
+  <div className="container">
+    <h1 className="h2">{page.title}</h1>
+  </div>
 </header>
 ```
 
@@ -73,6 +76,7 @@ Expected: all `PublicCmsPage` tests pass.
 ### Task 2: Verify behavior and repository health
 
 **Files:**
+
 - Verify: `src/components/pages/PublicCmsPage.tsx`
 - Verify: `src/app/(public)/public-theme.css`
 
@@ -108,4 +112,3 @@ git add docs/superpowers/plans/2026-07-14-cms-title-spacing.md src/components/pa
 git commit -m "fix: space CMS page titles"
 git push origin main
 ```
-

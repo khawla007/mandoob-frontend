@@ -231,9 +231,7 @@ export function QuestionnaireForm({
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow">{t('asideEyebrow')}</p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight">
-              {t('asideTitle')}
-            </h1>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight">{t('asideTitle')}</h1>
           </div>
           <div className="bg-primary/10 text-primary rounded-md p-2">
             <ClipboardList className="size-5" aria-hidden />
@@ -285,10 +283,7 @@ export function QuestionnaireForm({
         ) : null}
 
         {currentStep.id === 'contact' ? (
-          <StepSection
-            title={t('sections.contactTitle')}
-            description={t('sections.contactDesc')}
-          >
+          <StepSection title={t('sections.contactTitle')} description={t('sections.contactDesc')}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('fields.fullName')} error={fieldErrors.fullName}>
                 <Input
@@ -324,10 +319,7 @@ export function QuestionnaireForm({
         ) : null}
 
         {currentStep.id === 'business' ? (
-          <StepSection
-            title={t('sections.businessTitle')}
-            description={t('sections.businessDesc')}
-          >
+          <StepSection title={t('sections.businessTitle')} description={t('sections.businessDesc')}>
             <div className="grid gap-4">
               <Field label={t('fields.activity')} error={fieldErrors.activity}>
                 <Input
@@ -362,10 +354,7 @@ export function QuestionnaireForm({
         ) : null}
 
         {currentStep.id === 'setup' ? (
-          <StepSection
-            title={t('sections.setupTitle')}
-            description={t('sections.setupDesc')}
-          >
+          <StepSection title={t('sections.setupTitle')} description={t('sections.setupDesc')}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('fields.jurisdiction')} error={fieldErrors.jurisdiction}>
                 <Select
@@ -430,10 +419,7 @@ export function QuestionnaireForm({
         ) : null}
 
         {currentStep.id === 'details' ? (
-          <StepSection
-            title={t('sections.detailsTitle')}
-            description={t('sections.detailsDesc')}
-          >
+          <StepSection title={t('sections.detailsTitle')} description={t('sections.detailsDesc')}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('fields.shareholderCount')} error={fieldErrors.shareholderCount}>
                 <Input
@@ -524,7 +510,11 @@ export function QuestionnaireForm({
             ) : null}
 
             {answers.officeType !== 'none' ? (
-              <Field label={t('fields.officeNotes')} error={fieldErrors.officeAreaNotes} className="mt-4">
+              <Field
+                label={t('fields.officeNotes')}
+                error={fieldErrors.officeAreaNotes}
+                className="mt-4"
+              >
                 <Textarea
                   value={answers.officeAreaNotes}
                   onChange={(event) => patch({ officeAreaNotes: event.target.value })}
@@ -536,10 +526,7 @@ export function QuestionnaireForm({
         ) : null}
 
         {currentStep.id === 'review' ? (
-          <StepSection
-            title={t('sections.reviewTitle')}
-            description={t('sections.reviewDesc')}
-          >
+          <StepSection title={t('sections.reviewTitle')} description={t('sections.reviewDesc')}>
             <div className="overflow-hidden rounded-md border">
               {reviewRows.map(([label, value]) => (
                 <div

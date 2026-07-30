@@ -136,7 +136,10 @@ test('public sitemap skips unsafe CMS page slugs while keeping valid CMS pages',
   assert.ok(paths(entries).includes('/about-weelp'));
   assert.equal(paths(entries).includes('/pricing'), true);
   assert.equal(paths(entries).includes('/evil'), false);
-  assert.equal(entries.some((entry) => entry.url.includes('?x=1')), false);
+  assert.equal(
+    entries.some((entry) => entry.url.includes('?x=1')),
+    false,
+  );
   assert.equal(paths(entries).includes('/%20whitespace%20'), false);
 });
 
@@ -177,9 +180,7 @@ test('sitemap content loads blog and CMS sources independently and logs sanitize
 
 test('sitemap content preserves blog posts when CMS loading fails', async () => {
   const result = await loadSitemapContent({
-    listBlogPosts: async () => [
-      { slug: 'company-guide', updatedAt: '2026-07-07T08:00:00.000Z' },
-    ],
+    listBlogPosts: async () => [{ slug: 'company-guide', updatedAt: '2026-07-07T08:00:00.000Z' }],
     listCmsPages: async () => {
       throw new Error('secret database details');
     },

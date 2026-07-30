@@ -154,11 +154,7 @@ export function DashboardPreview() {
             {NAV.map((item, i) => {
               const selected = active === item;
               return (
-                <li
-                  key={item}
-                  role="presentation"
-                  className={selected ? 'is-active' : undefined}
-                >
+                <li key={item} role="presentation" className={selected ? 'is-active' : undefined}>
                   <button
                     ref={(el) => {
                       tabRefs.current[i] = el;

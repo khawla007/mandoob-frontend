@@ -69,7 +69,14 @@ test('mapTapChargeToPaymentStatus marks active statuses abandoned after cutoff',
 });
 
 test('mapTapChargeToPaymentStatus no-ops existing terminal statuses', () => {
-  for (const currentStatus of ['succeeded', 'failed', 'refunded', 'partially_refunded', 'abandoned', 'voided']) {
+  for (const currentStatus of [
+    'succeeded',
+    'failed',
+    'refunded',
+    'partially_refunded',
+    'abandoned',
+    'voided',
+  ]) {
     assert.equal(
       mapTapChargeToPaymentStatus({
         currentStatus,

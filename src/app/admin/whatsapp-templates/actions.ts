@@ -57,7 +57,9 @@ export async function updateWhatsAppTemplateApprovalAction(
 ): Promise<ActionResult> {
   try {
     const session = await requireRole('super_admin', 'admin');
-    const templateId = templateIdSchema.parse(formString(formData, 'templateId')) as WhatsAppTemplateId;
+    const templateId = templateIdSchema.parse(
+      formString(formData, 'templateId'),
+    ) as WhatsAppTemplateId;
     const tenantId = optionalTenantIdSchema.parse(formString(formData, 'tenantId'));
     const status = statusSchema.parse(formString(formData, 'status'));
     const notes = optionalTextSchema.parse(formString(formData, 'notes'));

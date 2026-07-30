@@ -46,7 +46,10 @@ export default async function EmployeeDocumentsPage({
           ) : (
             <ul className="divide-border/60 divide-y">
               {documents.map((doc) => (
-                <li key={doc.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <li
+                  key={doc.id}
+                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{doc.label}</p>

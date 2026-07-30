@@ -12,9 +12,8 @@ export function buildTenantUrl({
   rootDomain: string;
   path?: string;
 }): string {
-  const protocol = rootDomain.startsWith('localhost') || rootDomain.startsWith('127.0.0.1')
-    ? 'http'
-    : 'https';
+  const protocol =
+    rootDomain.startsWith('localhost') || rootDomain.startsWith('127.0.0.1') ? 'http' : 'https';
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${protocol}://${slug}.${rootDomain}${cleanPath}`;
 }

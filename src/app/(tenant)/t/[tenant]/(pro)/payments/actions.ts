@@ -351,8 +351,14 @@ export async function issueRefundAction(args: {
       remainingMinor,
     });
     if (ledgerState.settlesImmediately && ledgerState.invoiceStatus && ledgerState.paymentStatus) {
-      await admin.from('invoices').update({ status: ledgerState.invoiceStatus }).eq('id', invoice.id);
-      await admin.from('payments').update({ status: ledgerState.paymentStatus }).eq('id', payment.id);
+      await admin
+        .from('invoices')
+        .update({ status: ledgerState.invoiceStatus })
+        .eq('id', invoice.id);
+      await admin
+        .from('payments')
+        .update({ status: ledgerState.paymentStatus })
+        .eq('id', payment.id);
     }
 
     await admin.from('tenant_audit_log').insert({

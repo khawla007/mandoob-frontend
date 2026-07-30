@@ -13,6 +13,7 @@
 ### Task 1: Remove section-center bias
 
 **Files:**
+
 - Modify: `src/components/FabricBackground.test.ts`
 - Modify: `src/components/FabricBackground.tsx:141-154`
 
@@ -51,10 +52,7 @@ In the mesh update loop, remove `inwardScale` and use the same perspective compe
 
 ```ts
 const height = Math.max(state.heights[i] * 0.95, 0);
-const perspectiveScale = Math.max(
-  0.05,
-  (CAMERA_DISTANCE - height) / CAMERA_DISTANCE,
-);
+const perspectiveScale = Math.max(0.05, (CAMERA_DISTANCE - height) / CAMERA_DISTANCE);
 
 position.setXYZ(
   i,

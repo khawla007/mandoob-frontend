@@ -1,9 +1,6 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
-import {
-  questionnaireSubmissionSchema,
-  type QuestionnaireSubmission,
-} from '@/lib/questionnaire';
+import { questionnaireSubmissionSchema, type QuestionnaireSubmission } from '@/lib/questionnaire';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
@@ -128,9 +125,15 @@ export async function recalculateLeadScores(
 
   let updated = 0;
   for (const row of rows) {
-    const nextScore = scoreLead({ answers: row.form_data ?? {}, estimateData: row.estimate_data ?? {} }).score;
+    const nextScore = scoreLead({
+      answers: row.form_data ?? {},
+      estimateData: row.estimate_data ?? {},
+    }).score;
     if (row.score === nextScore) continue;
-    const { error: updateError } = await supabase.from('leads').update({ score: nextScore }).eq('id', row.id);
+    const { error: updateError } = await supabase
+      .from('leads')
+      .update({ score: nextScore })
+      .eq('id', row.id);
     if (updateError) throw new ApiError('INTERNAL', updateError.message, 500);
     updated += 1;
   }
@@ -185,7 +188,9 @@ async function enqueueAcknowledgements(args: {
         scheduledFor,
         linked: { entityType: 'lead_acknowledgement', entityId: args.leadId },
       })
-      .catch((error) => console.error('lead email acknowledgement failed', { leadId: args.leadId, error }));
+      .catch((error) =>
+        console.error('lead email acknowledgement failed', { leadId: args.leadId, error }),
+      );
   }
 
   if (answers.phone && args.tenantId) {
@@ -211,6 +216,8 @@ async function enqueueAcknowledgements(args: {
           });
         }
       })
-      .catch((error) => console.error('lead whatsapp acknowledgement failed', { leadId: args.leadId, error }));
+      .catch((error) =>
+        console.error('lead whatsapp acknowledgement failed', { leadId: args.leadId, error }),
+      );
   }
 }

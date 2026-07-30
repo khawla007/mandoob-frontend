@@ -13,6 +13,7 @@
 ### Task 1: Lock the hierarchy with configuration tests
 
 **Files:**
+
 - Modify: `src/lib/shell/nav-admin.test.ts`
 
 - [ ] **Step 1: Write failing tests for order and membership**
@@ -56,6 +57,7 @@ git commit -m "test: define admin sidebar hierarchy"
 ### Task 2: Reorganize the navigation configuration
 
 **Files:**
+
 - Modify: `src/lib/shell/nav-admin.ts`
 - Modify: `src/messages/en.json`
 - Modify: `src/messages/ar.json`
@@ -84,6 +86,7 @@ git commit -m "fix: organize admin sidebar sections"
 ### Task 3: Verify application integrity
 
 **Files:**
+
 - Modify only if verification exposes a directly related defect.
 
 - [ ] **Step 1: Run shell configuration tests**
@@ -111,4 +114,3 @@ Run the existing local app and confirm the expanded and collapsed sidebar preser
 - [ ] **Step 5: Commit any directly related verification fix**
 
 If no fix is needed, do not create an empty commit. Otherwise stage only the relevant files and commit with a defect-specific message.
-

@@ -11,14 +11,7 @@ export const questionnaireAnswersSchema = z
   .object({
     source: z.literal('questionnaire').default('questionnaire'),
     fullName: z.string().trim().min(2).max(160),
-    email: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .email()
-      .max(254)
-      .nullable()
-      .optional(),
+    email: z.string().trim().toLowerCase().email().max(254).nullable().optional(),
     phone: z.string().trim().min(7).max(32).nullable().optional(),
     nationality: z.string().trim().min(2).max(80),
     activity: z.string().trim().min(2).max(120),
@@ -63,7 +56,11 @@ export const questionnaireAnswersSchema = z
 
 export const estimateHandoffDataSchema = z
   .object({
-    reference: z.string().trim().regex(/^EST-[A-Z0-9]{10}$/).optional(),
+    reference: z
+      .string()
+      .trim()
+      .regex(/^EST-[A-Z0-9]{10}$/)
+      .optional(),
     jurisdiction: z.enum(['mainland', 'free_zone', 'offshore']).optional(),
     authority: z.string().trim().min(2).max(120).optional(),
     emirate: z.string().trim().min(2).max(80).optional(),
@@ -72,7 +69,10 @@ export const estimateHandoffDataSchema = z
     visaCount: z.number().int().min(0).max(200).optional(),
     legalStructure: z.enum(['llc', 'fz_llc', 'branch', 'offshore_company']).optional(),
     officeType: z.enum(['none', 'flexi', 'physical', 'virtual']).optional(),
-    addOns: z.array(questionnaireAddOnSchema.exclude(['pro_services'])).max(3).optional(),
+    addOns: z
+      .array(questionnaireAddOnSchema.exclude(['pro_services']))
+      .max(3)
+      .optional(),
   })
   .strict();
 
@@ -206,7 +206,11 @@ function numberParam(params: URLSearchParams, key: string): number | undefined {
   return Number.isInteger(value) && value >= 0 ? value : undefined;
 }
 
-function enumParam<T extends string>(params: URLSearchParams, key: string, values: readonly T[]): T | undefined {
+function enumParam<T extends string>(
+  params: URLSearchParams,
+  key: string,
+  values: readonly T[],
+): T | undefined {
   const value = params.get(key);
   return values.includes(value as T) ? (value as T) : undefined;
 }

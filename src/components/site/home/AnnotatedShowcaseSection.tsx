@@ -37,11 +37,7 @@ const CHIPS = [
 
 export function AnnotatedShowcaseSection() {
   return (
-    <section
-      id="annotated-showcase"
-      className="section"
-      aria-labelledby="annotated-h"
-    >
+    <section id="annotated-showcase" className="section" aria-labelledby="annotated-h">
       <div className="container">
         <header className="section__head reveal">
           <span className="eyebrow eyebrow--accent">05 · Inside an estimate</span>

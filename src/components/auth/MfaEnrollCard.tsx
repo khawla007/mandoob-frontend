@@ -29,7 +29,11 @@ export function MfaEnrollCard() {
     const code = new FormData(e.currentTarget).get('code');
     if (!enroll) return;
     start(async () => {
-      const res = await postJson('/api/v1/auth/mfa/verify', { factorId: enroll.factorId, code, context: 'enroll' });
+      const res = await postJson('/api/v1/auth/mfa/verify', {
+        factorId: enroll.factorId,
+        code,
+        context: 'enroll',
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         setError(data?.error ?? 'Verification failed');

@@ -114,7 +114,9 @@ function authorizeTenant(actor: MeetingActor, tenantId: string): void {
 }
 
 function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
 }
 
 function asActionItems(value: unknown): MeetingActionItem[] {
@@ -164,7 +166,10 @@ async function readMeeting(admin: SupabaseClient, meetingId: string): Promise<Me
   return data as MeetingRow;
 }
 
-async function readSummaryByMeeting(admin: SupabaseClient, meetingId: string): Promise<SummaryRow | null> {
+async function readSummaryByMeeting(
+  admin: SupabaseClient,
+  meetingId: string,
+): Promise<SummaryRow | null> {
   const { data, error } = await admin
     .from('meeting_ai_summaries')
     .select(SUMMARY_COLUMNS)
@@ -194,7 +199,8 @@ export async function ensurePendingMeetingAiSummary(
     })
     .select(SUMMARY_COLUMNS)
     .single();
-  if (error || !data) throw new ApiError('INTERNAL', error?.message ?? 'Could not create meeting summary', 500);
+  if (error || !data)
+    throw new ApiError('INTERNAL', error?.message ?? 'Could not create meeting summary', 500);
   return toSummary(data as SummaryRow);
 }
 
@@ -255,7 +261,9 @@ export async function listPendingMeetingAiSummaries(
         .eq('id', row.id),
     ),
   );
-  return rows.map((row) => toPending({ ...row, status: 'processing', attempts: (row.attempts ?? 0) + 1 }));
+  return rows.map((row) =>
+    toPending({ ...row, status: 'processing', attempts: (row.attempts ?? 0) + 1 }),
+  );
 }
 
 export async function completeMeetingAiSummary(
@@ -264,7 +272,8 @@ export async function completeMeetingAiSummary(
   deps: MeetingAiSummaryDeps = {},
 ): Promise<void> {
   const parsed = meetingSummaryOutputSchema.safeParse(output);
-  if (!parsed.success) throw new ApiError('INVALID_PROVIDER_OUTPUT', 'Meeting summary output is invalid', 502);
+  if (!parsed.success)
+    throw new ApiError('INVALID_PROVIDER_OUTPUT', 'Meeting summary output is invalid', 502);
   const value = parsed.data;
   const { error } = await client(deps)
     .from('meeting_ai_summaries')
@@ -325,6 +334,7 @@ export async function retryMeetingAiSummary(
     .eq('id', existing.id)
     .select(SUMMARY_COLUMNS)
     .single();
-  if (error || !data) throw new ApiError('INTERNAL', error?.message ?? 'Could not retry meeting summary', 500);
+  if (error || !data)
+    throw new ApiError('INTERNAL', error?.message ?? 'Could not retry meeting summary', 500);
   return toSummary(data as SummaryRow);
 }

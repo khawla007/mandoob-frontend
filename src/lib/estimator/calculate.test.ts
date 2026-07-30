@@ -188,10 +188,21 @@ test('validateEstimateInput rejects invalid bounds and unsupported choices', () 
     () => validateEstimateInput({ ...input, shareholderCount: 0 }),
     /Shareholder count must be between 1 and 50/,
   );
-  assert.throws(() => validateEstimateInput({ ...input, visaCount: 201 }), /Visa count must be between 0 and 200/);
-  assert.throws(() => validateEstimateInput({ ...input, officeType: 'garage' as never }), /Unsupported office type/);
   assert.throws(
-    () => validateEstimateInput({ ...input, jurisdiction: 'mainland', legalStructure: 'offshore_company' }),
+    () => validateEstimateInput({ ...input, visaCount: 201 }),
+    /Visa count must be between 0 and 200/,
+  );
+  assert.throws(
+    () => validateEstimateInput({ ...input, officeType: 'garage' as never }),
+    /Unsupported office type/,
+  );
+  assert.throws(
+    () =>
+      validateEstimateInput({
+        ...input,
+        jurisdiction: 'mainland',
+        legalStructure: 'offshore_company',
+      }),
     /Legal structure is not supported/,
   );
 });

@@ -7,12 +7,7 @@ import { ApiError } from '@/lib/errors';
 import { requireRole } from '@/lib/auth/require-role';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
-import {
-  addLeadNote,
-  LEAD_STAGES,
-  setLeadStage,
-  type LeadStage,
-} from '@/lib/data/leads-kanban';
+import { addLeadNote, LEAD_STAGES, setLeadStage, type LeadStage } from '@/lib/data/leads-kanban';
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }

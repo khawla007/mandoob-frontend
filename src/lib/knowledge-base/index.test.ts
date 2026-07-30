@@ -20,7 +20,15 @@ test('knowledge base articles have unique slugs and required categories', () => 
   const categoryIds = new Set(KNOWLEDGE_BASE_CATEGORIES.map((category) => category.id));
   assert.deepEqual(
     [...categoryIds].sort(),
-    ['company-setup', 'compliance', 'costs', 'documents', 'jurisdictions', 'timelines', 'visas'].sort(),
+    [
+      'company-setup',
+      'compliance',
+      'costs',
+      'documents',
+      'jurisdictions',
+      'timelines',
+      'visas',
+    ].sort(),
   );
 
   for (const article of knowledgeBaseArticles) {
@@ -34,7 +42,10 @@ test('related article slugs resolve to existing articles', () => {
 
   for (const article of knowledgeBaseArticles) {
     for (const relatedSlug of article.relatedSlugs) {
-      assert.ok(slugs.has(relatedSlug), `${article.slug} references missing related article ${relatedSlug}`);
+      assert.ok(
+        slugs.has(relatedSlug),
+        `${article.slug} references missing related article ${relatedSlug}`,
+      );
       assert.notEqual(relatedSlug, article.slug);
     }
   }
@@ -50,7 +61,10 @@ test('authority pages have unique slugs and cover all estimator authorities', ()
 
   for (const authority of estimatorAuthorities) {
     const slug = authoritySlugFor(authority);
-    assert.ok(authorityPages.some((page) => page.slug === slug), `${authority} is missing authority page data`);
+    assert.ok(
+      authorityPages.some((page) => page.slug === slug),
+      `${authority} is missing authority page data`,
+    );
   }
 });
 

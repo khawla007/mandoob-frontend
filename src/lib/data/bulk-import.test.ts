@@ -45,7 +45,12 @@ function createStore(opts?: {
 
 test('executeBulkImportRows skips existing client trade licenses by default', async () => {
   const rows: BulkImportClientRow[] = [
-    { company_name: 'Existing LLC', trade_license_no: 'TL-1', jurisdiction: '', license_expiry: '' },
+    {
+      company_name: 'Existing LLC',
+      trade_license_no: 'TL-1',
+      jurisdiction: '',
+      license_expiry: '',
+    },
     { company_name: 'Fresh LLC', trade_license_no: 'TL-2', jurisdiction: '', license_expiry: '' },
   ];
 

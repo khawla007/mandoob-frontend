@@ -8,7 +8,11 @@ import { uploadBulkImportAction } from '../../imports/actions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ClientImportPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function ClientImportPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
   const { tenant } = await params;
 
   async function upload(formData: FormData) {

@@ -10,18 +10,29 @@ test('oversized hero files short-circuit before invoking the server action', asy
   const validationError = validateHeroUpload(file);
   assert.ok(validationError);
   assert.match(validationError, /8 MiB/);
-  const result = await runHeroUpload(file, async () => { calls += 1; throw new Error('must not run'); });
+  const result = await runHeroUpload(file, async () => {
+    calls += 1;
+    throw new Error('must not run');
+  });
   assert.equal(calls, 0);
   assert.deepEqual(result, { ok: false, error: 'Hero image must be 8 MiB or smaller.' });
 });
 
 test('missing and unsupported files return clear validation errors', () => {
   assert.equal(validateHeroUpload(null), 'Choose an image to upload.');
-  assert.equal(validateHeroUpload({ name: 'hero.svg', type: 'image/svg+xml', size: 12 }), 'Use a JPEG, PNG, WebP, or AVIF image.');
+  assert.equal(
+    validateHeroUpload({ name: 'hero.svg', type: 'image/svg+xml', size: 12 }),
+    'Use a JPEG, PNG, WebP, or AVIF image.',
+  );
 });
 
 test('server-action transport rejection maps to a stable visible error', async () => {
   const file = { name: 'hero.webp', type: 'image/webp', size: 1024 };
-  const result = await runHeroUpload(file, async () => { throw new Error('413 transport detail'); });
-  assert.deepEqual(result, { ok: false, error: 'Upload failed before the server could process it. Please try again.' });
+  const result = await runHeroUpload(file, async () => {
+    throw new Error('413 transport detail');
+  });
+  assert.deepEqual(result, {
+    ok: false,
+    error: 'Upload failed before the server could process it. Please try again.',
+  });
 });

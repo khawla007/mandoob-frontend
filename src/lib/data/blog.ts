@@ -258,10 +258,9 @@ async function safeRestoreBlogPostMutation(args: {
   }
 }
 
-function mapPostTimestamps(input: ParsedBlogPostInput): Pick<
-  BlogPostRow,
-  'published_at' | 'scheduled_for'
-> {
+function mapPostTimestamps(
+  input: ParsedBlogPostInput,
+): Pick<BlogPostRow, 'published_at' | 'scheduled_for'> {
   if (input.status === 'published') {
     return { published_at: input.publishedAt ?? new Date().toISOString(), scheduled_for: null };
   }
@@ -425,11 +424,7 @@ export async function updateBlogTerm(
   return mapBlogTermRow(data as BlogTermRow);
 }
 
-export async function deleteBlogTerm(
-  id: string,
-  actor: BlogActor,
-  deps: Deps = {},
-): Promise<void> {
+export async function deleteBlogTerm(id: string, actor: BlogActor, deps: Deps = {}): Promise<void> {
   requireBlogWriteActor(actor);
   const supabase = await getSupabase(deps);
   const { error } = await supabase.from('blog_terms').delete().eq('id', id);
@@ -489,11 +484,7 @@ export async function upsertBlogPost(
   const supabase = await getSupabase(deps);
   const [previousPostResult, previousTermsResult, previousGalleryResult] = id
     ? await Promise.all([
-        supabase
-          .from('blog_posts')
-          .select(BLOG_POST_COLUMNS)
-          .eq('id', id)
-          .maybeSingle(),
+        supabase.from('blog_posts').select(BLOG_POST_COLUMNS).eq('id', id).maybeSingle(),
         supabase.from('blog_post_terms').select('post_id, term_id').eq('post_id', id),
         supabase
           .from('blog_post_gallery_items')
@@ -502,7 +493,8 @@ export async function upsertBlogPost(
       ])
     : [null, null, null];
   if (previousPostResult) handleError(previousPostResult.error, 'Could not snapshot blog post');
-  if (previousTermsResult) handleError(previousTermsResult.error, 'Could not snapshot blog post terms');
+  if (previousTermsResult)
+    handleError(previousTermsResult.error, 'Could not snapshot blog post terms');
   if (previousGalleryResult) {
     handleError(previousGalleryResult.error, 'Could not snapshot blog post gallery');
   }
@@ -583,7 +575,8 @@ export async function upsertBlogPost(
       supabase,
       postId: post.id,
       previousPost: previousPostResult?.data ? (previousPostResult.data as BlogPostRow) : null,
-      previousTerms: (previousTermsResult?.data as Array<{ post_id: string; term_id: string }> | null) ?? null,
+      previousTerms:
+        (previousTermsResult?.data as Array<{ post_id: string; term_id: string }> | null) ?? null,
       previousGallery:
         (previousGalleryResult?.data as Array<{
           post_id: string;
@@ -676,8 +669,7 @@ export async function uploadBlogMedia(
     });
   }
 
-  const scanFile =
-    deps.scanFile ?? (await import('@/lib/security/scan-file')).scanFile;
+  const scanFile = deps.scanFile ?? (await import('@/lib/security/scan-file')).scanFile;
   const scan = await scanFile(data, { filename: originalName });
   if (!scan.clean) {
     if (scan.reason === 'scanner_unavailable') {

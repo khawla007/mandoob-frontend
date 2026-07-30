@@ -42,7 +42,11 @@ test('questionnaire validation requires conditional shareholder split when share
 
   assert.equal(parsed.success, false);
   if (!parsed.success) {
-    assert.ok(parsed.error.issues.some((issue) => issue.path.join('.') === 'answers.shareholderSplitSummary'));
+    assert.ok(
+      parsed.error.issues.some(
+        (issue) => issue.path.join('.') === 'answers.shareholderSplitSummary',
+      ),
+    );
   }
 });
 

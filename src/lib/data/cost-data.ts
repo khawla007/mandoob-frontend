@@ -81,7 +81,8 @@ type CostDataQueryResult = {
   count?: number | null;
 };
 
-interface CostDataQuery extends CostDataFilterQuery<CostDataQuery>, PromiseLike<CostDataQueryResult> {
+interface CostDataQuery
+  extends CostDataFilterQuery<CostDataQuery>, PromiseLike<CostDataQueryResult> {
   order(column: string, options?: { ascending?: boolean }): CostDataQuery;
   range(from: number, to: number): CostDataQuery;
 }
@@ -111,11 +112,15 @@ const COST_DATA_SELECT = `
   updated_at
 `;
 
-export async function listCostDataRows(filters: CostDataFilters = {}): Promise<{ rows: CostDataRow[]; count: number }> {
+export async function listCostDataRows(
+  filters: CostDataFilters = {},
+): Promise<{ rows: CostDataRow[]; count: number }> {
   const pageSize = filters.pageSize ?? 50;
   const page = Math.max(filters.page ?? 1, 1);
   let query = applyCostDataFilters(
-    createSupabaseServiceRoleClient().from('cost_data').select(COST_DATA_SELECT, { count: 'exact' }) as unknown as CostDataQuery,
+    createSupabaseServiceRoleClient()
+      .from('cost_data')
+      .select(COST_DATA_SELECT, { count: 'exact' }) as unknown as CostDataQuery,
     filters,
   );
 
@@ -141,7 +146,12 @@ export async function getCostDataSummary(): Promise<CostDataSummary> {
     throw new Error('Could not load cost-data summary');
   }
   const today = new Date().toISOString().slice(0, 10);
-  const rows = (data ?? []) as Array<{ authority: string; active: boolean; estimate_grade: boolean; valid_to: string | null }>;
+  const rows = (data ?? []) as Array<{
+    authority: string;
+    active: boolean;
+    estimate_grade: boolean;
+    valid_to: string | null;
+  }>;
   return {
     totalRows: rows.length,
     activeRows: rows.filter((row) => row.active).length,
@@ -164,7 +174,10 @@ export async function createCostDataRow(input: ParsedCostDataInput): Promise<Cos
   return toCostDataRow(data as DbCostDataRow);
 }
 
-export async function updateCostDataRow(id: string, input: ParsedCostDataInput): Promise<CostDataRow> {
+export async function updateCostDataRow(
+  id: string,
+  input: ParsedCostDataInput,
+): Promise<CostDataRow> {
   const { data, error } = await createSupabaseServiceRoleClient()
     .from('cost_data')
     .update(toDbWrite(input))
@@ -179,16 +192,23 @@ export async function updateCostDataRow(id: string, input: ParsedCostDataInput):
 }
 
 export async function setCostDataActive(id: string, active: boolean): Promise<void> {
-  const { error } = await createSupabaseServiceRoleClient().from('cost_data').update({ active }).eq('id', id);
+  const { error } = await createSupabaseServiceRoleClient()
+    .from('cost_data')
+    .update({ active })
+    .eq('id', id);
   if (error) {
     console.error('setCostDataActive failed', error);
     throw new Error('Could not update cost-data status');
   }
 }
 
-export async function listCostDataRowsForExport(filters: CostDataFilters = {}): Promise<CostDataRow[]> {
+export async function listCostDataRowsForExport(
+  filters: CostDataFilters = {},
+): Promise<CostDataRow[]> {
   const { data, error } = await applyCostDataFilters(
-    createSupabaseServiceRoleClient().from('cost_data').select(COST_DATA_SELECT) as unknown as CostDataQuery,
+    createSupabaseServiceRoleClient()
+      .from('cost_data')
+      .select(COST_DATA_SELECT) as unknown as CostDataQuery,
     filters,
   ).order('authority', { ascending: true });
   if (error) {
@@ -198,9 +218,13 @@ export async function listCostDataRowsForExport(filters: CostDataFilters = {}): 
   return ((data ?? []) as DbCostDataRow[]).map(toCostDataRow);
 }
 
-function applyCostDataFilters<T extends CostDataFilterQuery<T>>(query: T, filters: CostDataFilters): T {
+function applyCostDataFilters<T extends CostDataFilterQuery<T>>(
+  query: T,
+  filters: CostDataFilters,
+): T {
   let next = query;
-  if (filters.jurisdiction && filters.jurisdiction !== 'all') next = next.eq('jurisdiction', filters.jurisdiction);
+  if (filters.jurisdiction && filters.jurisdiction !== 'all')
+    next = next.eq('jurisdiction', filters.jurisdiction);
   if (filters.feeType && filters.feeType !== 'all') next = next.eq('fee_type', filters.feeType);
   if (filters.active === 'active') next = next.eq('active', true);
   if (filters.active === 'inactive') next = next.eq('active', false);

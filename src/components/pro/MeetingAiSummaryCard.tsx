@@ -30,7 +30,9 @@ export function MeetingAiSummaryCard({
           <Badge variant={summary.status === 'completed' ? 'default' : 'secondary'}>
             {statusLabel(summary.status)}
           </Badge>
-          {summary.errorCode ? <span className="text-muted-foreground text-xs">{summary.errorCode}</span> : null}
+          {summary.errorCode ? (
+            <span className="text-muted-foreground text-xs">{summary.errorCode}</span>
+          ) : null}
         </div>
         {canRetry ? (
           <form
@@ -51,7 +53,10 @@ export function MeetingAiSummaryCard({
       {summary.actionItems.length ? (
         <div className="mt-3 space-y-2">
           {summary.actionItems.map((item, index) => (
-            <div key={`${item.title}-${index}`} className="border-border rounded border bg-background p-2">
+            <div
+              key={`${item.title}-${index}`}
+              className="border-border bg-background rounded border p-2"
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{item.title}</span>
                 <Badge variant="outline">{item.priority}</Badge>

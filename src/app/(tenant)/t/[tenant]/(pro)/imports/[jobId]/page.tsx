@@ -6,7 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import {
@@ -48,7 +55,9 @@ export default async function BulkImportJobPage({
   const admin = createSupabaseServiceRoleClient();
   const { data } = await admin
     .from('bulk_import_jobs')
-    .select('id, kind, status, total_rows, processed_rows, error_rows, errors, created_at, completed_at')
+    .select(
+      'id, kind, status, total_rows, processed_rows, error_rows, errors, created_at, completed_at',
+    )
     .eq('tenant_id', tenant.id)
     .eq('id', jobId)
     .maybeSingle();
@@ -96,7 +105,10 @@ export default async function BulkImportJobPage({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            Status <Badge variant={job.status === 'failed' ? 'destructive' : 'secondary'}>{job.status}</Badge>
+            Status{' '}
+            <Badge variant={job.status === 'failed' ? 'destructive' : 'secondary'}>
+              {job.status}
+            </Badge>
           </CardTitle>
           <CardDescription>
             {job.processed_rows ?? 0} processed
@@ -147,11 +159,15 @@ export default async function BulkImportJobPage({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Row errors</CardTitle>
-          <CardDescription>Validation failures, skipped duplicates, and partial insert errors.</CardDescription>
+          <CardDescription>
+            Validation failures, skipped duplicates, and partial insert errors.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {errors.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">No row errors reported.</p>
+            <p className="text-muted-foreground py-6 text-center text-sm">
+              No row errors reported.
+            </p>
           ) : (
             <div className="border-border/60 overflow-hidden rounded-lg border">
               <Table>

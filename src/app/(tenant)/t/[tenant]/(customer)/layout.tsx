@@ -51,7 +51,9 @@ export default async function CustomerLayout({
           </div>
         )}
         <div>
-          <div className="text-muted-foreground text-xs tracking-wide uppercase">Customer portal</div>
+          <div className="text-muted-foreground text-xs tracking-wide uppercase">
+            Customer portal
+          </div>
           <div className="text-sm font-semibold">{branding.name}</div>
         </div>
       </div>

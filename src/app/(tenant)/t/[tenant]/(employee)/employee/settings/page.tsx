@@ -32,10 +32,15 @@ export default async function EmployeeSettingsPage({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Renewal reminders</CardTitle>
-          <CardDescription>Visa and Emirates ID reminders for your own employee file.</CardDescription>
+          <CardDescription>
+            Visa and Emirates ID reminders for your own employee file.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={action} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <form
+            action={action}
+            className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          >
             <div className="flex items-start gap-3">
               <Checkbox
                 id="renewal_reminders_enabled"

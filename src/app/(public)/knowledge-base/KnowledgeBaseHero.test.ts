@@ -40,7 +40,9 @@ test('Knowledge Base hero has scoped natural-height responsive rules', () => {
   assert.doesNotMatch(desktopBlock, /(?:height|max-height):/);
 
   const desktopIndex = css.indexOf(desktopBlock);
-  const mobileCss = css.slice(css.indexOf('@media (max-width: 767px)', desktopIndex + desktopBlock.length));
+  const mobileCss = css.slice(
+    css.indexOf('@media (max-width: 767px)', desktopIndex + desktopBlock.length),
+  );
   const mobileBlock = mobileCss.match(/\.site-public \.hero--knowledge-base\s*\{[^}]*\}/)?.[0];
   assert.ok(mobileBlock, 'mobile Knowledge Base hero block must exist');
   assert.match(mobileBlock, /padding-block:\s*var\(--sp-5\)/);
@@ -48,6 +50,12 @@ test('Knowledge Base hero has scoped natural-height responsive rules', () => {
 });
 
 test('Knowledge Base primary CTA has scoped accessible normal and hover colors', () => {
-  assert.match(css, /\.site-public \.hero--knowledge-base \.btn--accent\s*\{[^}]*background:\s*oklch\(0\.57 0\.19 38\)/);
-  assert.match(css, /\.site-public \.hero--knowledge-base \.btn--accent:hover\s*\{[^}]*background:\s*oklch\(0\.52 0\.17 38\)/);
+  assert.match(
+    css,
+    /\.site-public \.hero--knowledge-base \.btn--accent\s*\{[^}]*background:\s*oklch\(0\.57 0\.19 38\)/,
+  );
+  assert.match(
+    css,
+    /\.site-public \.hero--knowledge-base \.btn--accent:hover\s*\{[^}]*background:\s*oklch\(0\.52 0\.17 38\)/,
+  );
 });

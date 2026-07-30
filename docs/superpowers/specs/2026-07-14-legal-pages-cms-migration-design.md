@@ -14,12 +14,12 @@ This avoids redirects and does not broaden the page system to arbitrary nested s
 
 Add an idempotent Supabase migration that inserts or updates four active CMS records:
 
-| CMS slug | Public URL | Title |
-| --- | --- | --- |
-| `privacy` | `/legal/privacy` | Privacy Policy |
-| `terms` | `/legal/terms` | Terms & Conditions |
-| `pdpl` | `/legal/pdpl` | PDPL Statement |
-| `trust` | `/legal/trust` | Trust Center |
+| CMS slug  | Public URL       | Title              |
+| --------- | ---------------- | ------------------ |
+| `privacy` | `/legal/privacy` | Privacy Policy     |
+| `terms`   | `/legal/terms`   | Terms & Conditions |
+| `pdpl`    | `/legal/pdpl`    | PDPL Statement     |
+| `trust`   | `/legal/trust`   | Trust Center       |
 
 Each record will:
 

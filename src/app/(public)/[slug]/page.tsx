@@ -2,7 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
-import { buildCmsPageMetadata, PublicCmsPage, resolvePublicCmsPage, serializeSchema } from '@/components/pages/PublicCmsPage';
+import {
+  buildCmsPageMetadata,
+  PublicCmsPage,
+  resolvePublicCmsPage,
+  serializeSchema,
+} from '@/components/pages/PublicCmsPage';
 import { getPublishedCmsPageBySlug } from '@/lib/data/pages';
 import { isLegalCmsPageSlug } from '@/lib/pages/legal';
 

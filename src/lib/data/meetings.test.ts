@@ -74,7 +74,12 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
         },
         insert(payload: Row) {
           inserts.push({ table, payload });
-          const row = { id: `${table}-${inserts.length}`, created_at: new Date(0).toISOString(), updated_at: new Date(0).toISOString(), ...payload };
+          const row = {
+            id: `${table}-${inserts.length}`,
+            created_at: new Date(0).toISOString(),
+            updated_at: new Date(0).toISOString(),
+            ...payload,
+          };
           rows(table).push(row);
           return {
             select: () => ({
@@ -84,8 +89,10 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
         },
         collect() {
           let result = filtered(table, state.filters);
-          for (const [key, value] of Object.entries(state.gte)) result = result.filter((row) => String(row[key]) >= value);
-          for (const [key, value] of Object.entries(state.lte)) result = result.filter((row) => String(row[key]) <= value);
+          for (const [key, value] of Object.entries(state.gte))
+            result = result.filter((row) => String(row[key]) >= value);
+          for (const [key, value] of Object.entries(state.lte))
+            result = result.filter((row) => String(row[key]) <= value);
           if (state.updatePayload) {
             result.forEach((row) => Object.assign(row, state.updatePayload));
             updates.push({ table, payload: state.updatePayload, filters: { ...state.filters } });
@@ -105,7 +112,9 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
         },
         async single() {
           const result = await builder.maybeSingle();
-          return result.data ? { data: result.data, error: null } : { data: null, error: { message: 'not found' } };
+          return result.data
+            ? { data: result.data, error: null }
+            : { data: null, error: { message: 'not found' } };
         },
         then(resolve: (value: { data: Row[]; error: null }) => void) {
           resolve(builder.collect());
@@ -182,7 +191,10 @@ test('customer books an open slot once and gets a Daily meeting URL', async () =
     customerActor,
     {
       supabase: supabase as never,
-      createRoom: async ({ meetingId }) => ({ name: `room-${meetingId}`, url: `https://daily.test/${meetingId}` }),
+      createRoom: async ({ meetingId }) => ({
+        name: `room-${meetingId}`,
+        url: `https://daily.test/${meetingId}`,
+      }),
     },
   );
 
@@ -199,10 +211,15 @@ test('booking rejects an already booked slot', async () => {
 
   await assert.rejects(
     () =>
-      bookMeetingSlot('slot-1', { tenantId: 'tenant-1', customerProfileId: 'customer-1' }, customerActor, {
-        supabase: supabase as never,
-        createRoom: async () => ({ name: 'room', url: 'https://daily.test/room' }),
-      }),
+      bookMeetingSlot(
+        'slot-1',
+        { tenantId: 'tenant-1', customerProfileId: 'customer-1' },
+        customerActor,
+        {
+          supabase: supabase as never,
+          createRoom: async () => ({ name: 'room', url: 'https://daily.test/room' }),
+        },
+      ),
     /already booked/,
   );
 });
@@ -211,21 +228,44 @@ test('customer meeting list only returns their own meetings', async () => {
   const { listMeetingsForCustomer } = await loadMeetings();
   const supabase = createSupabaseStub({
     meetings: [
-      { id: 'meeting-1', tenant_id: 'tenant-1', customer_profile_id: 'customer-1', scheduled_at: '2026-05-11T08:00:00.000Z', title: 'Mine', status: 'scheduled' },
-      { id: 'meeting-2', tenant_id: 'tenant-1', customer_profile_id: 'customer-2', scheduled_at: '2026-05-11T09:00:00.000Z', title: 'Other', status: 'scheduled' },
+      {
+        id: 'meeting-1',
+        tenant_id: 'tenant-1',
+        customer_profile_id: 'customer-1',
+        scheduled_at: '2026-05-11T08:00:00.000Z',
+        title: 'Mine',
+        status: 'scheduled',
+      },
+      {
+        id: 'meeting-2',
+        tenant_id: 'tenant-1',
+        customer_profile_id: 'customer-2',
+        scheduled_at: '2026-05-11T09:00:00.000Z',
+        title: 'Other',
+        status: 'scheduled',
+      },
     ],
   });
 
   const meetings = await listMeetingsForCustomer('customer-1', { supabase: supabase as never });
 
-  assert.deepEqual(meetings.map((meeting) => meeting.id), ['meeting-1']);
+  assert.deepEqual(
+    meetings.map((meeting) => meeting.id),
+    ['meeting-1'],
+  );
 });
 
 test('PRO cancels own-tenant meeting and attaches recording metadata', async () => {
   const { cancelMeeting, attachMeetingRecording } = await loadMeetings();
   const supabase = createSupabaseStub({
     meetings: [
-      { id: 'meeting-1', tenant_id: 'tenant-1', status: 'scheduled', scheduled_at: '2026-05-11T08:00:00.000Z', title: 'Consultation' },
+      {
+        id: 'meeting-1',
+        tenant_id: 'tenant-1',
+        status: 'scheduled',
+        scheduled_at: '2026-05-11T08:00:00.000Z',
+        title: 'Consultation',
+      },
     ],
     tenant_audit_log: [],
   });

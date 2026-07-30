@@ -26,21 +26,50 @@ export async function generateEstimatePdf(input: EstimatePdfInput): Promise<Uint
   page.drawRectangle({ x: 0, y: 780, width: 595.28, height: 62, color: accent });
   page.drawText('Mandoob', { x: 42, y: 806, size: 18, font: bold, color: rgb(1, 1, 1) });
   page.drawText('Company setup estimate', { x: 42, y: 742, size: 26, font: bold, color: ink });
-  page.drawText(`Reference ${input.reference}`, { x: 42, y: 716, size: 11, font: regular, color: muted });
+  page.drawText(`Reference ${input.reference}`, {
+    x: 42,
+    y: 716,
+    size: 11,
+    font: regular,
+    color: muted,
+  });
 
   drawField(page, bold, regular, 'Jurisdiction', input.jurisdictionLabel, 42, 666, muted, ink);
   drawField(page, bold, regular, 'Activity', input.activityLabel, 320, 666, muted, ink);
   drawField(page, bold, regular, 'One-time setup', input.oneTimeTotal, 42, 612, muted, ink);
   drawField(page, bold, regular, 'Annual recurring', input.annualTotal, 320, 612, muted, ink);
   drawField(page, bold, regular, 'Estimated timeline', input.timeline, 42, 558, muted, ink);
-  drawField(page, bold, regular, 'Generated', new Date(input.generatedAt).toLocaleString('en-GB'), 320, 558, muted, ink);
+  drawField(
+    page,
+    bold,
+    regular,
+    'Generated',
+    new Date(input.generatedAt).toLocaleString('en-GB'),
+    320,
+    558,
+    muted,
+    ink,
+  );
 
   let y = 492;
   page.drawText('Itemized fees', { x: 42, y, size: 13, font: bold, color: ink });
   y -= 24;
   for (const item of input.lineItems.slice(0, 12)) {
-    page.drawText(`${item.label} x${item.quantity}`, { x: 42, y, size: 10, font: regular, color: ink, maxWidth: 330 });
-    page.drawText(item.recurrence.replace('_', ' '), { x: 385, y, size: 9, font: regular, color: muted });
+    page.drawText(`${item.label} x${item.quantity}`, {
+      x: 42,
+      y,
+      size: 10,
+      font: regular,
+      color: ink,
+      maxWidth: 330,
+    });
+    page.drawText(item.recurrence.replace('_', ' '), {
+      x: 385,
+      y,
+      size: 9,
+      font: regular,
+      color: muted,
+    });
     page.drawText(item.total, { x: 470, y, size: 10, font: bold, color: ink, maxWidth: 80 });
     y -= 18;
   }
@@ -49,7 +78,14 @@ export async function generateEstimatePdf(input: EstimatePdfInput): Promise<Uint
   page.drawText('Required documents', { x: 42, y, size: 12, font: bold, color: ink });
   y -= 20;
   for (const document of input.requiredDocuments.slice(0, 8)) {
-    page.drawText(`- ${document}`, { x: 42, y, size: 10, font: regular, color: muted, maxWidth: 500 });
+    page.drawText(`- ${document}`, {
+      x: 42,
+      y,
+      size: 10,
+      font: regular,
+      color: muted,
+      maxWidth: 500,
+    });
     y -= 16;
   }
 
@@ -57,19 +93,34 @@ export async function generateEstimatePdf(input: EstimatePdfInput): Promise<Uint
   page.drawText('Assumptions', { x: 42, y, size: 12, font: bold, color: ink });
   y -= 20;
   for (const assumption of input.assumptions.slice(0, 5)) {
-    page.drawText(`- ${assumption}`, { x: 42, y, size: 9, font: regular, color: muted, maxWidth: 500 });
+    page.drawText(`- ${assumption}`, {
+      x: 42,
+      y,
+      size: 9,
+      font: regular,
+      color: muted,
+      maxWidth: 500,
+    });
     y -= 15;
   }
 
-  page.drawLine({ start: { x: 42, y: 74 }, end: { x: 553, y: 74 }, thickness: 1, color: rgb(0.86, 0.88, 0.91) });
-  page.drawText('Generated on demand. This quote is not stored and is not a government fee guarantee.', {
-    x: 42,
-    y: 48,
-    size: 9,
-    font: regular,
-    color: muted,
-    maxWidth: 500,
+  page.drawLine({
+    start: { x: 42, y: 74 },
+    end: { x: 553, y: 74 },
+    thickness: 1,
+    color: rgb(0.86, 0.88, 0.91),
   });
+  page.drawText(
+    'Generated on demand. This quote is not stored and is not a government fee guarantee.',
+    {
+      x: 42,
+      y: 48,
+      size: 9,
+      font: regular,
+      color: muted,
+      maxWidth: 500,
+    },
+  );
 
   return doc.save();
 }

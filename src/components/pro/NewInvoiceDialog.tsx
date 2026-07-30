@@ -83,7 +83,9 @@ export function NewInvoiceDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New invoice</DialogTitle>
-          <DialogDescription>Issue an AED invoice and notify the linked customer.</DialogDescription>
+          <DialogDescription>
+            Issue an AED invoice and notify the linked customer.
+          </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={onSubmit}>
           {error && (
@@ -135,7 +137,12 @@ export function NewInvoiceDialog({
 
           <div className="grid gap-2">
             <Label htmlFor="invoice-due">Due date</Label>
-            <Input id="invoice-due" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+            <Input
+              id="invoice-due"
+              type="date"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
+            />
           </div>
 
           <DialogFooter>

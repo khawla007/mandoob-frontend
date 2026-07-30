@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import type { ProInvoiceRow } from '@/lib/data/invoices';
 import { InvoiceActions } from './InvoiceActions';
 
@@ -38,20 +45,29 @@ export function InvoicesTable({ slug, rows }: { slug: string; rows: ProInvoiceRo
                 </Button>
               </TableCell>
               <TableCell>
-                <Badge variant={row.status === 'open' ? 'default' : 'secondary'}>{row.status}</Badge>
+                <Badge variant={row.status === 'open' ? 'default' : 'secondary'}>
+                  {row.status}
+                </Badge>
               </TableCell>
               <TableCell>{row.dueAt ?? '—'}</TableCell>
               <TableCell className="text-right font-medium">{row.amount}</TableCell>
               <TableCell className="text-right">
                 <div className="flex flex-col items-end gap-2">
-                  {(row.status === 'paid' || row.status === 'refunded' || row.status === 'partially_refunded') && (
+                  {(row.status === 'paid' ||
+                    row.status === 'refunded' ||
+                    row.status === 'partially_refunded') && (
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/t/${slug}/payments/${row.id}/receipt`} target="_blank">
                         Receipt
                       </Link>
                     </Button>
                   )}
-                  <InvoiceActions slug={slug} invoiceId={row.id} amountMinor={row.amountMinor} status={row.status} />
+                  <InvoiceActions
+                    slug={slug}
+                    invoiceId={row.id}
+                    amountMinor={row.amountMinor}
+                    status={row.status}
+                  />
                 </div>
               </TableCell>
             </TableRow>

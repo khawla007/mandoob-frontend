@@ -3,11 +3,7 @@
 import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/auth/require-role';
-import {
-  createCostDataRow,
-  setCostDataActive,
-  updateCostDataRow,
-} from '@/lib/data/cost-data';
+import { createCostDataRow, setCostDataActive, updateCostDataRow } from '@/lib/data/cost-data';
 import {
   createCostDataSchema,
   parseCostDataCsv,
@@ -27,7 +23,11 @@ export async function createCostDataAction(raw: unknown): Promise<ActionResult<{
       return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
     }
     const row = await createCostDataRow(parsed.data);
-    console.info('cost_data_created', { id: row.id, authority: row.authority, feeType: row.feeType });
+    console.info('cost_data_created', {
+      id: row.id,
+      authority: row.authority,
+      feeType: row.feeType,
+    });
     revalidatePath('/admin/cost-data');
     return { ok: true, data: { id: row.id } };
   } catch (error) {
@@ -45,7 +45,11 @@ export async function updateCostDataAction(raw: unknown): Promise<ActionResult<{
     }
     const { id, ...input } = parsed.data;
     const row = await updateCostDataRow(id, input);
-    console.info('cost_data_updated', { id: row.id, authority: row.authority, feeType: row.feeType });
+    console.info('cost_data_updated', {
+      id: row.id,
+      authority: row.authority,
+      feeType: row.feeType,
+    });
     revalidatePath('/admin/cost-data');
     return { ok: true, data: { id: row.id } };
   } catch (error) {
@@ -71,7 +75,9 @@ export async function toggleCostDataAction(raw: unknown): Promise<ActionResult> 
   }
 }
 
-export async function importCostDataCsvAction(raw: unknown): Promise<ActionResult<{ inserted: number; errors: string[] }>> {
+export async function importCostDataCsvAction(
+  raw: unknown,
+): Promise<ActionResult<{ inserted: number; errors: string[] }>> {
   try {
     await requireRole('super_admin', 'admin');
     const csv = typeof raw === 'object' && raw !== null && 'csv' in raw ? String(raw.csv) : '';

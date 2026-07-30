@@ -25,7 +25,8 @@ const nullableText = z
 
 export function parseAedToMinor(value: string | number): number {
   if (typeof value === 'number') {
-    if (!Number.isFinite(value) || value < 0) throw new Error('Amount must be a positive AED value');
+    if (!Number.isFinite(value) || value < 0)
+      throw new Error('Amount must be a positive AED value');
     return Math.round(value * 100);
   }
   const trimmed = value.trim();
@@ -88,20 +89,39 @@ export const costDataBaseSchema = z
     estimateGrade: booleanInput.default(true),
     active: booleanInput.default(true),
     validFrom: dateSchema,
-    validTo: z.union([dateSchema, z.literal(''), z.null()]).optional().transform((value) => value || null),
+    validTo: z
+      .union([dateSchema, z.literal(''), z.null()])
+      .optional()
+      .transform((value) => value || null),
   })
   .superRefine((value, ctx) => {
     if (value.minShareholders > value.maxShareholders) {
-      ctx.addIssue({ code: 'custom', path: ['maxShareholders'], message: 'Max shareholders must be greater than min' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['maxShareholders'],
+        message: 'Max shareholders must be greater than min',
+      });
     }
     if (value.minVisas > value.maxVisas) {
-      ctx.addIssue({ code: 'custom', path: ['maxVisas'], message: 'Max visas must be greater than min' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['maxVisas'],
+        message: 'Max visas must be greater than min',
+      });
     }
     if (value.timelineMinDays > value.timelineMaxDays) {
-      ctx.addIssue({ code: 'custom', path: ['timelineMaxDays'], message: 'Max timeline must be greater than min' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['timelineMaxDays'],
+        message: 'Max timeline must be greater than min',
+      });
     }
     if (value.validTo && value.validTo < value.validFrom) {
-      ctx.addIssue({ code: 'custom', path: ['validTo'], message: 'Valid to must be on or after valid from' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['validTo'],
+        message: 'Valid to must be on or after valid from',
+      });
     }
   });
 
@@ -145,7 +165,8 @@ export function parseCostDataCsv(text: string): CostDataCsvParseResult {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  if (lines.length < 2) return { ok: false, errors: ['CSV must include a header and at least one row'] };
+  if (lines.length < 2)
+    return { ok: false, errors: ['CSV must include a header and at least one row'] };
 
   const headers = splitCsvLine(lines[0]).map((header) => header.trim());
   const rows: ParsedCostDataInput[] = [];
@@ -153,7 +174,9 @@ export function parseCostDataCsv(text: string): CostDataCsvParseResult {
 
   for (const [index, line] of lines.slice(1).entries()) {
     const values = splitCsvLine(line);
-    const raw = Object.fromEntries(headers.map((header, valueIndex) => [header, values[valueIndex] ?? '']));
+    const raw = Object.fromEntries(
+      headers.map((header, valueIndex) => [header, values[valueIndex] ?? '']),
+    );
     const parsed = createCostDataSchema.safeParse({
       jurisdiction: raw.jurisdiction,
       authority: raw.authority,
@@ -257,7 +280,9 @@ export function costDataRowsToCsv(rows: CostDataCsvExportRow[]): string {
       row.active,
       row.validFrom,
       row.validTo ?? '',
-    ].map(csvEscape).join(','),
+    ]
+      .map(csvEscape)
+      .join(','),
   );
   return [headers.join(','), ...lines].join('\n');
 }

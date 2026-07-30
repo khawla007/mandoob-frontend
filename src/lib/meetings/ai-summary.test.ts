@@ -53,7 +53,8 @@ test('createOpenAiMeetingSummaryProvider fails safely when unconfigured', async 
       createOpenAiMeetingSummaryProvider().processRecording({
         recordingUrl: 'https://storage.test/recording.mp4',
       }),
-    (error: unknown) => error instanceof MeetingAiProviderError && error.code === 'PROVIDER_NOT_CONFIGURED',
+    (error: unknown) =>
+      error instanceof MeetingAiProviderError && error.code === 'PROVIDER_NOT_CONFIGURED',
   );
 
   process.env.OPENAI_API_KEY = previous;
@@ -73,7 +74,8 @@ test('createOpenAiMeetingSummaryProvider rejects oversized recordings before upl
             headers: { 'content-type': 'video/mp4' },
           }),
       }).processRecording({ recordingUrl: 'https://storage.test/recording.mp4' }),
-    (error: unknown) => error instanceof MeetingAiProviderError && error.code === 'RECORDING_TOO_LARGE',
+    (error: unknown) =>
+      error instanceof MeetingAiProviderError && error.code === 'RECORDING_TOO_LARGE',
   );
 
   process.env.OPENAI_API_KEY = previous;
@@ -99,7 +101,8 @@ test('processPendingMeetingAiSummaries completes provider output and marks safe 
     },
     provider: {
       async processRecording(input) {
-        if (!input.recordingUrl) throw new MeetingAiProviderError('RECORDING_NOT_FOUND', 'Recording missing');
+        if (!input.recordingUrl)
+          throw new MeetingAiProviderError('RECORDING_NOT_FOUND', 'Recording missing');
         return {
           transcriptText: 'Client asked about DMCC licensing.',
           summaryText: 'Client needs DMCC licensing support.',

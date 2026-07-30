@@ -9,9 +9,7 @@ import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { cancelMeeting, createMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
 import { retryMeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 
-export type MeetingActionResult =
-  | { ok: true }
-  | { ok: false; error: string; code: string };
+export type MeetingActionResult = { ok: true } | { ok: false; error: string; code: string };
 
 async function resolveActor(slug: string): Promise<{ tenantId: string; actor: MeetingActor }> {
   const session = await requireRole('pro');

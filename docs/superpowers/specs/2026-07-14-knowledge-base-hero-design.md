@@ -9,10 +9,10 @@ Give `/knowledge-base` a unique premium editorial background and bring its hero 
 Measured against the unchanged local `main` implementation:
 
 | Viewport | Home hero | Knowledge Base hero | Difference |
-| --- | ---: | ---: | ---: |
-| 1280×720 | 758px | 990px | +232px |
-| 768×1024 | 959px | 959px | 0px |
-| 390×844 | 779px | 1109px | +330px |
+| -------- | --------: | ------------------: | ---------: |
+| 1280×720 |     758px |               990px |     +232px |
+| 768×1024 |     959px |               959px |        0px |
+| 390×844  |     779px |              1109px |     +330px |
 
 The desktop and mobile excess comes from the shared hero's large vertical rhythm combined with the Knowledge Base metrics inside the hero. The tablet result already matches because both heroes resolve to the shared viewport-relative minimum height.
 

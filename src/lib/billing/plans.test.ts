@@ -17,4 +17,3 @@ test('mapPriceIdToPlanFromEnv maps configured Stripe price IDs to plans', () => 
 test('mapPriceIdToPlanFromEnv rejects unknown Stripe price IDs', () => {
   assert.throws(() => mapPriceIdToPlanFromEnv('price_unknown', priceEnv), /Unknown Stripe price/);
 });
-

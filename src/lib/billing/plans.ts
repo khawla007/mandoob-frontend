@@ -26,4 +26,3 @@ export function inferPlanFromPriceId(priceId: string): SubscriptionPlan {
   if (normalized.includes('enterprise')) return 'enterprise';
   throw new Error(`Unknown Stripe price: ${priceId}`);
 }
-

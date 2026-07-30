@@ -1,4 +1,7 @@
-import { WhatsAppOptOutConfirmationInput, type WhatsAppOptOutConfirmation } from '@/lib/validation/whatsapp-templates';
+import {
+  WhatsAppOptOutConfirmationInput,
+  type WhatsAppOptOutConfirmation,
+} from '@/lib/validation/whatsapp-templates';
 import type { WhatsAppTemplateDefinition } from './index';
 
 export const optOutConfirmation: WhatsAppTemplateDefinition<WhatsAppOptOutConfirmation> = {
@@ -10,7 +13,9 @@ export const optOutConfirmation: WhatsAppTemplateDefinition<WhatsAppOptOutConfir
   buildComponents: () => [
     {
       type: 'body',
-      parameters: [{ type: 'text', text: 'Your Mandoob communication preference has been updated.' }],
+      parameters: [
+        { type: 'text', text: 'Your Mandoob communication preference has been updated.' },
+      ],
     },
   ],
 };

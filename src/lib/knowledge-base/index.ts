@@ -138,11 +138,13 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     faq: [
       {
         question: 'Can I estimate setup cost before choosing an authority?',
-        answer: 'Yes. Start with jurisdiction and visa assumptions, then refine the estimate after selecting an authority.',
+        answer:
+          'Yes. Start with jurisdiction and visa assumptions, then refine the estimate after selecting an authority.',
       },
       {
         question: 'Does the setup process create a lead automatically?',
-        answer: 'No. Public education and estimates stay anonymous until a later application form is submitted.',
+        answer:
+          'No. Public education and estimates stay anonymous until a later application form is submitted.',
       },
     ],
     relatedSlugs: ['mainland-free-zone-offshore-comparison', 'uae-company-setup-documents'],
@@ -169,11 +171,13 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     faq: [
       {
         question: 'Which jurisdiction is cheapest?',
-        answer: 'Cost depends on authority, activity, office, shareholder count, and visas. Low-cost free zones are not always the best operational fit.',
+        answer:
+          'Cost depends on authority, activity, office, shareholder count, and visas. Low-cost free zones are not always the best operational fit.',
       },
       {
         question: 'Can offshore companies sponsor UAE visas?',
-        answer: 'Offshore structures generally do not provide the same visa path as mainland or free zone operating companies.',
+        answer:
+          'Offshore structures generally do not provide the same visa path as mainland or free zone operating companies.',
       },
     ],
     relatedSlugs: ['uae-company-setup-process', 'uae-company-setup-costs'],
@@ -192,7 +196,8 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
   {
     slug: 'uae-company-setup-documents',
     title: 'Documents needed for UAE company setup',
-    description: 'Common documents requested for shareholders, offices, visas, and add-on services.',
+    description:
+      'Common documents requested for shareholders, offices, visas, and add-on services.',
     category: 'documents',
     updatedAt: '2026-05-08',
     readingTimeMinutes: 5,
@@ -200,11 +205,13 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     faq: [
       {
         question: 'Are passport copies always required?',
-        answer: 'Passport copies are a common baseline requirement for shareholders and visa applicants.',
+        answer:
+          'Passport copies are a common baseline requirement for shareholders and visa applicants.',
       },
       {
         question: 'When are attested documents needed?',
-        answer: 'Attestation is usually relevant for foreign corporate shareholders, powers of attorney, or regulated activities.',
+        answer:
+          'Attestation is usually relevant for foreign corporate shareholders, powers of attorney, or regulated activities.',
       },
     ],
     relatedSlugs: ['uae-company-setup-process', 'uae-compliance-basics'],
@@ -231,11 +238,13 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     faq: [
       {
         question: 'Can a license be issued in one week?',
-        answer: 'Some straightforward free zone setups can be fast, but document readiness and activity approvals can extend timing.',
+        answer:
+          'Some straightforward free zone setups can be fast, but document readiness and activity approvals can extend timing.',
       },
       {
         question: 'Do visas add time after license issue?',
-        answer: 'Yes. Immigration, medical fitness, Emirates ID, and stamping steps usually add a separate timeline.',
+        answer:
+          'Yes. Immigration, medical fitness, Emirates ID, and stamping steps usually add a separate timeline.',
       },
     ],
     relatedSlugs: ['uae-company-setup-process', 'uae-investor-employee-visas'],
@@ -262,11 +271,13 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     faq: [
       {
         question: 'Does every company setup include a visa?',
-        answer: 'No. Visa count is a planning choice and may depend on office type, authority rules, and immigration quota.',
+        answer:
+          'No. Visa count is a planning choice and may depend on office type, authority rules, and immigration quota.',
       },
       {
         question: 'Can visa costs be estimated separately?',
-        answer: 'Yes. The estimator separates license, registration, office, visa, and add-on assumptions where data is available.',
+        answer:
+          'Yes. The estimator separates license, registration, office, visa, and add-on assumptions where data is available.',
       },
     ],
     relatedSlugs: ['uae-company-setup-timelines', 'uae-company-setup-costs'],
@@ -285,7 +296,8 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
   {
     slug: 'uae-company-setup-costs',
     title: 'UAE company setup costs',
-    description: 'Estimate-grade cost components for license, registration, office, shareholders, visas, and add-ons.',
+    description:
+      'Estimate-grade cost components for license, registration, office, shareholders, visas, and add-ons.',
     category: 'costs',
     updatedAt: '2026-05-08',
     readingTimeMinutes: 6,
@@ -293,11 +305,13 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     faq: [
       {
         question: 'Are public estimates final quotes?',
-        answer: 'No. Public estimates are indicative and depend on current authority fees, selected activity, approvals, and documents.',
+        answer:
+          'No. Public estimates are indicative and depend on current authority fees, selected activity, approvals, and documents.',
       },
       {
         question: 'Why do setup costs vary so much?',
-        answer: 'Authority, office type, visa count, shareholder count, and add-on services all change the final setup cost.',
+        answer:
+          'Authority, office type, visa count, shareholder count, and add-on services all change the final setup cost.',
       },
     ],
     relatedSlugs: ['mainland-free-zone-offshore-comparison', 'uae-compliance-basics'],
@@ -316,7 +330,8 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
   {
     slug: 'uae-compliance-basics',
     title: 'UAE company compliance basics',
-    description: 'Core compliance topics after setup, including renewals, tax, UBO, ESR, and document records.',
+    description:
+      'Core compliance topics after setup, including renewals, tax, UBO, ESR, and document records.',
     category: 'compliance',
     updatedAt: '2026-05-08',
     readingTimeMinutes: 5,
@@ -324,11 +339,13 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     faq: [
       {
         question: 'Does setup end after license issue?',
-        answer: 'No. Companies still need renewal tracking, tax registration where applicable, UBO records, and document maintenance.',
+        answer:
+          'No. Companies still need renewal tracking, tax registration where applicable, UBO records, and document maintenance.',
       },
       {
         question: 'Is compliance the same for every jurisdiction?',
-        answer: 'No. Baseline UAE obligations apply, but authority and activity rules can add specific requirements.',
+        answer:
+          'No. Baseline UAE obligations apply, but authority and activity rules can add specific requirements.',
       },
     ],
     relatedSlugs: ['uae-company-setup-documents', 'uae-company-setup-costs'],
@@ -355,7 +372,9 @@ export function getArticleBySlug(slug: string): KnowledgeBaseArticle | undefined
 export function groupArticlesByCategory(): Record<KnowledgeBaseCategoryId, KnowledgeBaseArticle[]> {
   return KNOWLEDGE_BASE_CATEGORIES.reduce(
     (groups, category) => {
-      groups[category.id] = knowledgeBaseArticles.filter((article) => article.category === category.id);
+      groups[category.id] = knowledgeBaseArticles.filter(
+        (article) => article.category === category.id,
+      );
       return groups;
     },
     {} as Record<KnowledgeBaseCategoryId, KnowledgeBaseArticle[]>,
@@ -402,10 +421,19 @@ export function getAuthorityPages(): AuthorityPageData[] {
       const first = rows[0];
       if (!first) throw new Error(`No cost rows found for ${authority}`);
 
-      const baseRows = rows.filter((row) => row.feeType === 'license' || row.feeType === 'registration');
+      const baseRows = rows.filter(
+        (row) => row.feeType === 'license' || row.feeType === 'registration',
+      );
       const minBaseCost = sum(baseRows.map((row) => row.amountMinor));
-      const timelineRows = rows.filter((row) => row.feeType === 'license' || row.feeType === 'registration' || row.feeType === 'office_flexi');
-      const requiredDocumentKeys = [...new Set(rows.flatMap((row) => row.requiredDocumentKeys))].sort();
+      const timelineRows = rows.filter(
+        (row) =>
+          row.feeType === 'license' ||
+          row.feeType === 'registration' ||
+          row.feeType === 'office_flexi',
+      );
+      const requiredDocumentKeys = [
+        ...new Set(rows.flatMap((row) => row.requiredDocumentKeys)),
+      ].sort();
       const page: Omit<AuthorityPageData, 'handoffUrl'> = {
         slug: authoritySlugFor(authority),
         authority,
@@ -457,7 +485,10 @@ export function buildEstimateHandoffUrl(context: {
   return url;
 }
 
-export function buildArticleJsonLd(article: KnowledgeBaseArticle, siteOrigin: string): ArticleJsonLd {
+export function buildArticleJsonLd(
+  article: KnowledgeBaseArticle,
+  siteOrigin: string,
+): ArticleJsonLd {
   const origin = siteOrigin.replace(/\/+$/, '');
   return {
     '@context': 'https://schema.org',

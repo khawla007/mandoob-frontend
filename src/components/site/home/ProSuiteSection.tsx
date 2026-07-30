@@ -12,12 +12,7 @@ export function ProSuiteSection() {
         </header>
       </div>
       <div className="container">
-        <ul
-          className="mosaic"
-          role="list"
-          aria-label="Platform capabilities"
-          data-reveal-cards
-        >
+        <ul className="mosaic" role="list" aria-label="Platform capabilities" data-reveal-cards>
           <li className="cell cell--table reveal">
             <span className="cell__mark--plat" aria-hidden="true">
               P·01

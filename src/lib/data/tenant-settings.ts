@@ -53,9 +53,7 @@ export async function getTenantBranding(tenantId: string): Promise<TenantBrandin
   };
 }
 
-export async function getTenantWhatsAppRedacted(
-  tenantId: string,
-): Promise<TenantWhatsAppRedacted> {
+export async function getTenantWhatsAppRedacted(tenantId: string): Promise<TenantWhatsAppRedacted> {
   const admin = createSupabaseServiceRoleClient();
   const { data } = await admin
     .from('tenant_whatsapp_config')

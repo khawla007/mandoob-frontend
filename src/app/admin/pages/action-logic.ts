@@ -4,7 +4,9 @@ import { ApiError } from '@/lib/errors';
 import { normalizePageSlug } from '@/lib/pages/slug';
 import { pageInputSchema, type ParsedPageInput } from '@/lib/validation/pages';
 
-export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: string; code: string };
+export type ActionResult<T = void> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; code: string };
 export type CmsPageAdminActor = { id: string; role: 'super_admin' | 'admin' };
 export type ParsedCmsPageFormData = ParsedPageInput & {
   backgroundImageMediaId: string | null;
@@ -12,24 +14,34 @@ export type ParsedCmsPageFormData = ParsedPageInput & {
 export type CmsPageActionDependencies = {
   requireActor: () => Promise<CmsPageAdminActor>;
   getPage: (id: string) => Promise<{ slug: string } | null>;
-  upsertPage: (input: ParsedCmsPageFormData & { id?: string }, actor: CmsPageAdminActor) => Promise<{ id: string; slug: string }>;
+  upsertPage: (
+    input: ParsedCmsPageFormData & { id?: string },
+    actor: CmsPageAdminActor,
+  ) => Promise<{ id: string; slug: string }>;
   deletePage: (id: string, actor: CmsPageAdminActor) => Promise<void>;
   revalidate: (path: string) => void;
 };
 
 const idSchema = z.string().uuid();
-const formString = (data: FormData, key: string): string => typeof data.get(key) === 'string' ? data.get(key) as string : '';
-const optionalString = (data: FormData, key: string): string | null => formString(data, key).trim() || null;
+const formString = (data: FormData, key: string): string =>
+  typeof data.get(key) === 'string' ? (data.get(key) as string) : '';
+const optionalString = (data: FormData, key: string): string | null =>
+  formString(data, key).trim() || null;
 
 function optionalIsoTimestamp(data: FormData, key: string): string | null {
   const value = optionalString(data, key);
   if (!value) return null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new ApiError('INVALID_INPUT', `Invalid ${key} timestamp`, 400);
+  if (Number.isNaN(date.getTime()))
+    throw new ApiError('INVALID_INPUT', `Invalid ${key} timestamp`, 400);
   return date.toISOString();
 }
 
-function jsonObject(data: FormData, key: string, empty: Record<string, unknown> | null): Record<string, unknown> | null {
+function jsonObject(
+  data: FormData,
+  key: string,
+  empty: Record<string, unknown> | null,
+): Record<string, unknown> | null {
   const raw = formString(data, key).trim();
   if (!raw) return empty;
   try {
@@ -44,9 +56,10 @@ function jsonObject(data: FormData, key: string, empty: Record<string, unknown> 
 export function parseCmsPageFormData(data: FormData): ParsedCmsPageFormData {
   const title = formString(data, 'title');
   const rawHero = jsonObject(data, 'heroSettings', {}) ?? {};
-  const heroMediaId = typeof rawHero.backgroundImageMediaId === 'string'
-    ? rawHero.backgroundImageMediaId.trim() || null
-    : null;
+  const heroMediaId =
+    typeof rawHero.backgroundImageMediaId === 'string'
+      ? rawHero.backgroundImageMediaId.trim() || null
+      : null;
   const heroSettings = { ...rawHero };
   delete heroSettings.backgroundImageMediaId;
   const parsed = pageInputSchema.parse({
@@ -73,12 +86,23 @@ export function parseCmsPageFormData(data: FormData): ParsedCmsPageFormData {
   };
 }
 
-const invalidId = (): ActionResult<never> => ({ ok: false, error: 'Invalid page ID', code: 'INVALID_INPUT' });
+const invalidId = (): ActionResult<never> => ({
+  ok: false,
+  error: 'Invalid page ID',
+  code: 'INVALID_INPUT',
+});
 function failure(error: unknown, fallback: string): ActionResult<never> {
-  if (error instanceof ZodError) return { ok: false, error: error.issues[0]?.message ?? 'Invalid page input', code: 'INVALID_INPUT' };
+  if (error instanceof ZodError)
+    return {
+      ok: false,
+      error: error.issues[0]?.message ?? 'Invalid page input',
+      code: 'INVALID_INPUT',
+    };
   if (error instanceof ApiError) {
-    if (error.code === 'DUPLICATE_SLUG') return { ok: false, error: 'A CMS page with this slug already exists', code: error.code };
-    if (['INVALID_INPUT', 'INVALID_MEDIA', 'NOT_FOUND'].includes(error.code)) return { ok: false, error: error.message, code: error.code };
+    if (error.code === 'DUPLICATE_SLUG')
+      return { ok: false, error: 'A CMS page with this slug already exists', code: error.code };
+    if (['INVALID_INPUT', 'INVALID_MEDIA', 'NOT_FOUND'].includes(error.code))
+      return { ok: false, error: error.message, code: error.code };
   }
   console.error(fallback, error);
   return { ok: false, error: fallback, code: 'INTERNAL' };
@@ -88,14 +112,21 @@ function indexes(deps: CmsPageActionDependencies): void {
   deps.revalidate('/sitemap.xml');
 }
 
-export async function runSaveCmsPageAction(id: string | null, data: FormData, deps: CmsPageActionDependencies): Promise<ActionResult<{ id: string }>> {
+export async function runSaveCmsPageAction(
+  id: string | null,
+  data: FormData,
+  deps: CmsPageActionDependencies,
+): Promise<ActionResult<{ id: string }>> {
   try {
     const actor = await deps.requireActor();
     const parsedId = id ? idSchema.safeParse(id) : null;
     if (parsedId && !parsedId.success) return invalidId();
     const input = parseCmsPageFormData(data);
     const previous = parsedId?.success ? await deps.getPage(parsedId.data) : null;
-    const page = await deps.upsertPage(parsedId?.success ? { ...input, id: parsedId.data } : input, actor);
+    const page = await deps.upsertPage(
+      parsedId?.success ? { ...input, id: parsedId.data } : input,
+      actor,
+    );
     indexes(deps);
     if (previous?.slug && previous.slug !== page.slug) deps.revalidate(`/${previous.slug}`);
     deps.revalidate(`/${page.slug}`);
@@ -105,7 +136,10 @@ export async function runSaveCmsPageAction(id: string | null, data: FormData, de
   }
 }
 
-export async function runDeleteCmsPageAction(id: string, deps: CmsPageActionDependencies): Promise<ActionResult> {
+export async function runDeleteCmsPageAction(
+  id: string,
+  deps: CmsPageActionDependencies,
+): Promise<ActionResult> {
   try {
     const actor = await deps.requireActor();
     const parsedId = idSchema.safeParse(id);

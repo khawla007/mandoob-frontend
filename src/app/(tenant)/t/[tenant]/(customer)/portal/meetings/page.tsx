@@ -24,7 +24,11 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export default async function CustomerMeetingsPage({ params }: { params: Promise<{ tenant: string }> }) {
+export default async function CustomerMeetingsPage({
+  params,
+}: {
+  params: Promise<{ tenant: string }>;
+}) {
   const session = await requireRole('customer');
   const { tenant: slug } = await params;
   const tenant = await resolveTenantBySlug(slug);
@@ -36,18 +40,19 @@ export default async function CustomerMeetingsPage({ params }: { params: Promise
   const slotWindowEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const [meetings, openSlots] = await Promise.all([
     listMeetingsForCustomer(session.id),
-    listOpenMeetingSlots(
-      tenant.id,
-      now.toISOString(),
-      slotWindowEnd.toISOString(),
-    ),
+    listOpenMeetingSlots(tenant.id, now.toISOString(), slotWindowEnd.toISOString()),
   ]);
   const recordingPairs = await Promise.all(
     meetings
       .filter((meeting) => meeting.recordingStoragePath)
-      .map(async (meeting) => [meeting.id, await getMeetingRecordingSignedUrl(meeting.id, actor)] as const),
+      .map(
+        async (meeting) =>
+          [meeting.id, await getMeetingRecordingSignedUrl(meeting.id, actor)] as const,
+      ),
   );
-  const recordingUrls = new Map(recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])));
+  const recordingUrls = new Map(
+    recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])),
+  );
 
   return (
     <div className="space-y-6">
@@ -87,12 +92,15 @@ export default async function CustomerMeetingsPage({ params }: { params: Promise
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-sm">No consultation slots are open right now.</p>
+                <p className="text-muted-foreground text-sm">
+                  No consultation slots are open right now.
+                </p>
               )}
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              Your account is not linked to a client file yet. Ask your PRO firm to link your profile before booking.
+              Your account is not linked to a client file yet. Ask your PRO firm to link your
+              profile before booking.
             </p>
           )}
         </CardContent>
@@ -108,11 +116,16 @@ export default async function CustomerMeetingsPage({ params }: { params: Promise
               {meetings.map((meeting) => {
                 const recordingUrl = recordingUrls.get(meeting.id);
                 return (
-                  <div key={meeting.id} className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                  <div
+                    key={meeting.id}
+                    className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between"
+                  >
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{meeting.title}</p>
-                        <Badge variant={meeting.status === 'recording_ready' ? 'default' : 'secondary'}>
+                        <Badge
+                          variant={meeting.status === 'recording_ready' ? 'default' : 'secondary'}
+                        >
                           {meeting.status.replace('_', ' ')}
                         </Badge>
                       </div>

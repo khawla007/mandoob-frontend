@@ -12,7 +12,12 @@ test('generateEstimatePdf returns a non-empty PDF document', async () => {
     annualTotal: 'AED 21,500.00',
     timeline: '23-44 business days',
     lineItems: [
-      { label: 'Registration and name reservation', quantity: 1, recurrence: 'one_time', total: 'AED 8,500.00' },
+      {
+        label: 'Registration and name reservation',
+        quantity: 1,
+        recurrence: 'one_time',
+        total: 'AED 8,500.00',
+      },
       { label: 'DMCC service license', quantity: 1, recurrence: 'annual', total: 'AED 12,500.00' },
     ],
     requiredDocuments: ['Passport copy', 'Passport photo'],

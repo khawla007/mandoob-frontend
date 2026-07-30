@@ -30,7 +30,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
   return (
     <>
       <section className="blog-hero" aria-labelledby="blog-h">
-        <div className="container blog-hero__inner">
+        <div className="blog-hero__inner container">
           <div className="blog-hero__copy">
             <span className="eyebrow">Blog</span>
             <h1 id="blog-h" className="display">
@@ -84,7 +84,9 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
                   <BlogPostCell key={post.id} post={post} />
                 ))}
               </div>
-              {totalPages > 1 ? <BlogPagination currentPage={page} totalPages={totalPages} /> : null}
+              {totalPages > 1 ? (
+                <BlogPagination currentPage={page} totalPages={totalPages} />
+              ) : null}
             </>
           ) : (
             <article className="cell">
