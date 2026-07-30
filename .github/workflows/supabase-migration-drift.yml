@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install Supabase CLI
-        uses: supabase/setup-cli@e8d8e2607c6788ad7df3fe66d39c0cdf8ad57bba # v1.1.1
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: latest
 
