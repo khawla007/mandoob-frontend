@@ -137,6 +137,11 @@ The canonical `mandoob.ae` hostname did not resolve from the verification
 environment. Application checks therefore used the active
 `mandoob-app.netlify.app` production deployment.
 
+The first post-reconciliation Netlify build was blocked because secret scanning
+matched the intentionally public `NEXT_PUBLIC_ROOT_DOMAIN` hostname in the new
+tracked migration history. `netlify.toml` omits only that public environment
+key from matching; secret scanning remains enabled for all actual secrets.
+
 ## Rollback
 
 Local filenames can be restored from the mapping above; their SQL content was
