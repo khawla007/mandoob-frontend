@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_ID: etttzmaxrdarkfozhukb
+      EXPECTED_PROJECT_NAME: mandoob
+      EXPECTED_ORGANIZATION_ID: flbxghjzcbnqbgwxzsic
     steps:
-      - name: Mask project id in logs
-        run: echo "::add-mask::${{ secrets.SUPABASE_PROJECT_ID }}"
-
       - name: Checkout repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -27,46 +27,76 @@ jobs:
         with:
           version: latest
 
-      - name: Link to Supabase project
+      - name: Confirm and link production project
         run: |
           set -euo pipefail
-          supabase link --project-ref "$PROJECT_ID" --password "$DB_PASSWORD" >/dev/null
-        env:
-          PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROJECTS=$(supabase projects list --output json)
+          jq -e \
+            --arg ref "$PROJECT_ID" \
+            --arg name "$EXPECTED_PROJECT_NAME" \
+            --arg org "$EXPECTED_ORGANIZATION_ID" \
+            '.[] | select(
+              .id == $ref and
+              .name == $name and
+              .organization_id == $org and
+              .status == "ACTIVE_HEALTHY"
+            )' <<< "$PROJECTS" >/dev/null
+          echo "Confirmed production Supabase project: $EXPECTED_PROJECT_NAME ($PROJECT_ID)"
+          supabase link --project-ref "$PROJECT_ID" >/dev/null
 
       - name: Detect migration drift
         run: |
           set -euo pipefail
+
+          confirm_project() {
+            supabase projects list --output json \
+              | jq -e \
+                --arg ref "$PROJECT_ID" \
+                --arg name "$EXPECTED_PROJECT_NAME" \
+                --arg org "$EXPECTED_ORGANIZATION_ID" \
+                '.[] | select(
+                  .id == $ref and
+                  .name == $name and
+                  .organization_id == $org and
+                  .status == "ACTIVE_HEALTHY"
+                )' >/dev/null
+          }
 
           # Collect local migration versions from supabase/migrations/*.sql.
           # Filename prefix up to first underscore is the version key.
           LOCAL_VERSIONS=$(find supabase/migrations -maxdepth 1 -name '*.sql' -printf '%f\n' \
             | sed -E 's/^([^_]+)_.*\.sql$/\1/' | sort -u)
 
-          # Try JSON output first (newer CLI). Capture stderr separately so we don't leak it.
-          REMOTE_JSON=""
-          JSON_RC=0
-          REMOTE_JSON=$(supabase migration list --linked --output json 2>/dev/null) || JSON_RC=$?
+          # Capture stdout and stderr separately. In non-interactive mode the
+          # CLI emits JSON on stdout and connection diagnostics on stderr.
+          REMOTE_OUTPUT=""
+          REMOTE_RC=0
+          confirm_project
+          REMOTE_OUTPUT=$(supabase migration list --linked 2>"$RUNNER_TEMP/supabase-migration-list.stderr") || REMOTE_RC=$?
+          if [ "$REMOTE_RC" -ne 0 ]; then
+            echo "::error::Could not read remote migration list from Supabase CLI — check the access token and project link."
+            exit 2
+          fi
+
           JSON_OK=0
-          if [ "$JSON_RC" -eq 0 ] && echo "$REMOTE_JSON" | jq -e 'type == "array"' >/dev/null 2>&1; then
-            REMOTE_VERSIONS=$(echo "$REMOTE_JSON" | jq -r '.[] | (.remote // .version // empty)' | grep -v '^$' | sort -u)
+          if echo "$REMOTE_OUTPUT" | jq -e 'type == "array" or (.migrations | type == "array")' >/dev/null 2>&1; then
+            REMOTE_VERSIONS=$(echo "$REMOTE_OUTPUT" \
+              | jq -r 'if type == "array" then . else .migrations end | .[] | (.remote // .version // empty)' \
+              | grep -v '^$' \
+              | sort -u)
             JSON_OK=1
           fi
+
           if [ "$JSON_OK" -eq 0 ]; then
-            if [ "$JSON_RC" -eq 0 ] && [ -n "$REMOTE_JSON" ]; then
-              echo "::warning::Supabase CLI returned unexpected JSON shape; falling back to table parse."
-            fi
-            # parse is version-sensitive — track follow-up to migrate to JSON when CLI supports it
-            TABLE_RC=0
-            REMOTE_TABLE=$(supabase migration list --linked 2>/dev/null) || TABLE_RC=$?
-            if [ "$JSON_RC" -ne 0 ] && { [ "$TABLE_RC" -ne 0 ] || [ -z "$REMOTE_TABLE" ]; }; then
-              echo "::error::Could not read remote migration list from Supabase CLI — check secrets and project link."
-              exit 2
-            fi
-            REMOTE_VERSIONS=$(echo "$REMOTE_TABLE" \
+            echo "::warning::Supabase CLI returned table output; using compatibility parser."
+            REMOTE_VERSIONS=$(echo "$REMOTE_OUTPUT" \
+              | sed 's/`//g' \
               | awk '/^[[:space:]]*[0-9]+[[:space:]]*\|/ {gsub(/[[:space:]]/,"",$0); split($0,a,"|"); if (a[2] != "") print a[2]; else if (a[1] != "") print a[1]}' \
               | sort -u)
+          fi
+          if [ -z "$REMOTE_VERSIONS" ]; then
+            echo "::error::Supabase CLI returned no remote migration versions."
+            exit 2
           fi
 
           LOCAL_ONLY=$(comm -23 <(echo "$LOCAL_VERSIONS") <(echo "$REMOTE_VERSIONS") | grep -v '^$' || true)
