@@ -17,7 +17,7 @@
 - Replace `src/app/(public)/legal/[slug]/page.tsx`: generic CMS metadata and rendering adapter.
 - Modify `src/app/(public)/[slug]/page.tsx`: reject the four legal slugs at root.
 - Modify `src/app/sitemap.ts` and `src/app/sitemap.test.ts`: emit legal CMS records only at nested canonical paths.
-- Create `../supabase/migrations/0046_seed_legal_cms_pages.sql`: idempotent four-page content seed.
+- Create `supabase/migrations/20260730004600_seed_legal_cms_pages.sql`: idempotent four-page content seed.
 - Create `src/lib/pages/legal-migration.test.ts`: migration contract and content parity checks.
 
 ### Task 1: Legal page policy
@@ -308,12 +308,12 @@ git commit -m "fix: canonicalize legal CMS sitemap URLs"
 
 **Files:**
 
-- Create: `../supabase/migrations/0046_seed_legal_cms_pages.sql`
+- Create: `supabase/migrations/20260730004600_seed_legal_cms_pages.sql`
 - Create: `src/lib/pages/legal-migration.test.ts`
 
 - [ ] **Step 1: Write the failing migration contract test**
 
-Read `../../../../supabase/migrations/0046_seed_legal_cms_pages.sql` from the test file and assert:
+Read `supabase/migrations/20260730004600_seed_legal_cms_pages.sql` from the test file and assert:
 
 ```ts
 for (const slug of ['privacy', 'terms', 'pdpl', 'trust']) {

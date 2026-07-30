@@ -1,0 +1,96 @@
+name: Supabase Migration Drift Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['supabase/migrations/**']
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Mask project id in logs
+        run: echo "::add-mask::${{ secrets.SUPABASE_PROJECT_ID }}"
+
+      - name: Checkout repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@e8d8e2607c6788ad7df3fe66d39c0cdf8ad57bba # v1.1.1
+        with:
+          version: latest
+
+      - name: Link to Supabase project
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "$PROJECT_ID" --password "$DB_PASSWORD" >/dev/null
+        env:
+          PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Detect migration drift
+        run: |
+          set -euo pipefail
+
+          # Collect local migration versions from supabase/migrations/*.sql.
+          # Filename prefix up to first underscore is the version key.
+          LOCAL_VERSIONS=$(find supabase/migrations -maxdepth 1 -name '*.sql' -printf '%f\n' \
+            | sed -E 's/^([^_]+)_.*\.sql$/\1/' | sort -u)
+
+          # Try JSON output first (newer CLI). Capture stderr separately so we don't leak it.
+          REMOTE_JSON=""
+          JSON_RC=0
+          REMOTE_JSON=$(supabase migration list --linked --output json 2>/dev/null) || JSON_RC=$?
+          JSON_OK=0
+          if [ "$JSON_RC" -eq 0 ] && echo "$REMOTE_JSON" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            REMOTE_VERSIONS=$(echo "$REMOTE_JSON" | jq -r '.[] | (.remote // .version // empty)' | grep -v '^$' | sort -u)
+            JSON_OK=1
+          fi
+          if [ "$JSON_OK" -eq 0 ]; then
+            if [ "$JSON_RC" -eq 0 ] && [ -n "$REMOTE_JSON" ]; then
+              echo "::warning::Supabase CLI returned unexpected JSON shape; falling back to table parse."
+            fi
+            # parse is version-sensitive — track follow-up to migrate to JSON when CLI supports it
+            TABLE_RC=0
+            REMOTE_TABLE=$(supabase migration list --linked 2>/dev/null) || TABLE_RC=$?
+            if [ "$JSON_RC" -ne 0 ] && { [ "$TABLE_RC" -ne 0 ] || [ -z "$REMOTE_TABLE" ]; }; then
+              echo "::error::Could not read remote migration list from Supabase CLI — check secrets and project link."
+              exit 2
+            fi
+            REMOTE_VERSIONS=$(echo "$REMOTE_TABLE" \
+              | awk '/^[[:space:]]*[0-9]+[[:space:]]*\|/ {gsub(/[[:space:]]/,"",$0); split($0,a,"|"); if (a[2] != "") print a[2]; else if (a[1] != "") print a[1]}' \
+              | sort -u)
+          fi
+
+          LOCAL_ONLY=$(comm -23 <(echo "$LOCAL_VERSIONS") <(echo "$REMOTE_VERSIONS") | grep -v '^$' || true)
+          REMOTE_ONLY=$(comm -13 <(echo "$LOCAL_VERSIONS") <(echo "$REMOTE_VERSIONS") | grep -v '^$' || true)
+
+          FAIL=0
+          if [ -n "$LOCAL_ONLY" ]; then
+            COUNT=$(echo "$LOCAL_ONLY" | wc -l)
+            echo "::error::Forward drift: $COUNT local migration(s) not applied to remote."
+            while IFS= read -r v; do
+              echo "Drift detected: $v (local only — apply to remote)"
+            done <<< "$LOCAL_ONLY"
+            FAIL=1
+          fi
+          if [ -n "$REMOTE_ONLY" ]; then
+            COUNT=$(echo "$REMOTE_ONLY" | wc -l)
+            echo "::error::Reverse drift: $COUNT remote migration(s) absent from repo."
+            while IFS= read -r v; do
+              echo "Drift detected: $v (remote only — pull into repo or revert remote)"
+            done <<< "$REMOTE_ONLY"
+            FAIL=1
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Migrations in sync"

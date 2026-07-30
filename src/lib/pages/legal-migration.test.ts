@@ -5,8 +5,7 @@ import test from 'node:test';
 
 async function readMigration(): Promise<string> {
   const candidates = [
-    path.resolve(process.cwd(), '../supabase/migrations/0046_seed_legal_cms_pages.sql'),
-    path.resolve(process.cwd(), '../../../supabase/migrations/0046_seed_legal_cms_pages.sql'),
+    path.resolve(process.cwd(), 'supabase/migrations/20260730004600_seed_legal_cms_pages.sql'),
   ];
 
   for (const candidate of candidates) {
@@ -17,7 +16,7 @@ async function readMigration(): Promise<string> {
     }
   }
 
-  throw new Error('Could not locate migration 0046_seed_legal_cms_pages.sql');
+  throw new Error('Could not locate migration 20260730004600_seed_legal_cms_pages.sql');
 }
 
 test('legal CMS migration seeds all canonical published pages idempotently', async () => {
