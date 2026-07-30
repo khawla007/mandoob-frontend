@@ -70,7 +70,7 @@ test('admin routes retain server contracts and editor FormData names', async () 
   ]);
   assert.match(index, /searchParams:\s*Promise/);
   assert.match(index, /listAdminCmsPages\(\{ page: requestedPage, pageSize: 8 \}\)/);
-  assert.match(edit, /z\.string\(\)\.uuid\(\)/);
+  assert.match(edit, /z\s*\.string\(\)\s*\.uuid\(\)/);
   assert.match(edit, /notFound\(\)/);
   for (const name of ['title', 'slug', 'contentJson', 'contentHtml', 'heroSettings',
     'status', 'publishedAt', 'scheduledFor', 'metaTitle',
