@@ -6,7 +6,6 @@ deployments for the Mandoob frontend.
 - Netlify site: `mandoob-app`
 - GitHub repository: `khawla007/mandoob-frontend`
 - Production branch: `main`
-- Production URL: <https://mandoob-app.netlify.app>
 - Verification method: a normal push to `main`, with no manual Netlify deploy
   trigger
 
