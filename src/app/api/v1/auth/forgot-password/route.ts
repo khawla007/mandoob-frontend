@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const host = request.headers.get('host') ?? process.env.NEXT_PUBLIC_ROOT_DOMAIN;
   const protocol = request.headers.get('x-forwarded-proto') ?? 'https';
-  const redirectTo = `${protocol}://${host}/auth/callback?next=/reset-password`;
+  const redirectTo = `${protocol}://${host}/callback?next=/reset-password`;
 
   // Supabase returns success regardless of whether the email exists.
   // We mirror that: always return ok to prevent user enumeration.
