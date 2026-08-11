@@ -79,11 +79,26 @@ function extractCheckValues(table: string, column: string): string[] {
   return [...check[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
 }
 
+function assertMutationRejected(
+  sql: string,
+  mutate: (source: string) => string,
+  failure: RegExp,
+): void {
+  const weakened = mutate(sql);
+  assert.notEqual(weakened, sql, 'schema mutation must change only the in-memory SQL');
+  assert.throws(() => assertServiceCasesMigrationContract(weakened), failure);
+}
+
 function assertServiceCasesMigrationContract(sql: string): void {
   const table = extractServiceCasesTable(sql);
 
   assert.match(sql, /create table if not exists public\.service_cases\s*\(/i);
 
+  assert.match(
+    table,
+    /id uuid primary key default gen_random_uuid\(\)/i,
+    'service_cases id must be a generated UUID primary key',
+  );
   assert.match(
     table,
     /tenant_id uuid not null references public\.tenants\(id\) on delete cascade/i,
@@ -101,6 +116,9 @@ function assertServiceCasesMigrationContract(sql: string): void {
     table,
     /blocked_reason text check \(blocked_reason is null or char_length\(trim\(blocked_reason\)\) between 2 and 500\)/i,
   );
+  assert.match(table, /\bdue_at timestamptz\b/i, 'due_at must be a timestamptz column');
+  assert.match(table, /\bsla_due_at timestamptz\b/i, 'sla_due_at must be a timestamptz column');
+  assert.match(table, /\bcompleted_at timestamptz\b/i, 'completed_at must be a timestamptz column');
   assert.match(table, /created_at timestamptz not null default now\(\)/i);
   assert.match(table, /updated_at timestamptz not null default now\(\)/i);
   assert.match(
@@ -148,6 +166,16 @@ function assertServiceCasesMigrationContract(sql: string): void {
   assert.match(
     sql,
     /where\s+sla_due_at\s+is\s+not\s+null\s+and\s+status\s+not\s+in\s*\('completed'\s*,\s*'cancelled'\)/i,
+  );
+  assert.match(
+    sql,
+    /create unique index if not exists clients_tenant_id_id_key\s+on public\.clients\s*\(\s*tenant_id\s*,\s*id\s*\)\s*;/i,
+    'clients replay-safe parent index must be unique on tenant_id,id',
+  );
+  assert.match(
+    sql,
+    /create unique index if not exists profiles_tenant_id_id_key\s+on public\.profiles\s*\(\s*tenant_id\s*,\s*id\s*\)\s*;/i,
+    'profiles replay-safe parent index must be unique on tenant_id,id',
   );
 
   assert.match(sql, /create trigger service_cases_set_updated_at/i);
@@ -204,23 +232,63 @@ test('service cases migration defines the tenant-scoped case contract', () => {
 test('service cases migration contract rejects weakened in-memory variants', () => {
   const sql = readMigration();
 
-  const weakenedPolicy = sql.replace(/create policy service_cases_pro_write[\s\S]*?;/i, (policy) =>
-    policy.replace(/tenant_id\s*=\s*\(\(auth\.jwt\(\)[\s\S]*?\)::uuid/gi, 'true'),
-  );
-  assert.notEqual(weakenedPolicy, sql, 'policy mutation must change only the in-memory SQL');
-  assert.throws(
-    () => assertServiceCasesMigrationContract(weakenedPolicy),
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(/create policy service_cases_pro_write[\s\S]*?;/i, (policy) =>
+        policy.replace(/tenant_id\s*=\s*\(\(auth\.jwt\(\)[\s\S]*?\)::uuid/gi, 'true'),
+      ),
     /PRO USING must require exact JWT tenant equality/,
   );
 
-  const weakenedStatus = sql.replace(
-    /(status text not null default 'draft' check \(status in \([\s\S]*?)'cancelled'/i,
-    '$1',
-  );
-  assert.notEqual(weakenedStatus, sql, 'status mutation must change only the in-memory SQL');
-  assert.throws(
-    () => assertServiceCasesMigrationContract(weakenedStatus),
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(
+        /(status text not null default 'draft' check \(status in \([\s\S]*?)'cancelled'/i,
+        '$1',
+      ),
     /status check values must be exactly the approved eight values/,
+  );
+
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(/id uuid primary key default gen_random_uuid\(\)/i, 'id uuid primary key'),
+    /service_cases id must be a generated UUID primary key/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/\bdue_at timestamptz/i, 'due_at text'),
+    /due_at must be a timestamptz column/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/\bsla_due_at timestamptz/i, 'sla_due_at text'),
+    /sla_due_at must be a timestamptz column/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/\bcompleted_at timestamptz/i, 'completed_at text'),
+    /completed_at must be a timestamptz column/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(
+        /create unique index if not exists clients_tenant_id_id_key[\s\S]*?;/i,
+        'create index if not exists clients_tenant_id_id_key on public.clients(tenant_id);',
+      ),
+    /clients replay-safe parent index must be unique on tenant_id,id/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(
+        /create unique index if not exists profiles_tenant_id_id_key[\s\S]*?;/i,
+        'create index if not exists profiles_tenant_id_id_key on public.profiles(tenant_id);',
+      ),
+    /profiles replay-safe parent index must be unique on tenant_id,id/,
   );
   assert.equal(readMigration(), sql, 'in-memory mutations must not modify the migration on disk');
 });
