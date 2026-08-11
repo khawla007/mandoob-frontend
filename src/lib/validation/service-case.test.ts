@@ -169,6 +169,28 @@ test('update schema requires completed_at when status is completed', () => {
   );
 });
 
+test('update schema requires status and completed_at together for lifecycle patches', () => {
+  assert.equal(updateServiceCaseSchema.safeParse({ status: 'approved' }).success, false);
+  assert.equal(updateServiceCaseSchema.safeParse({ completed_at: timestamp }).success, false);
+  assert.equal(
+    updateServiceCaseSchema.safeParse({ status: 'approved', completed_at: null }).success,
+    true,
+  );
+  assert.equal(
+    updateServiceCaseSchema.safeParse({ status: 'completed', completed_at: timestamp }).success,
+    true,
+  );
+});
+
+test('update schema rejects patches whose supplied fields are all undefined', () => {
+  assert.equal(updateServiceCaseSchema.safeParse({ priority: undefined }).success, false);
+  assert.equal(updateServiceCaseSchema.safeParse({ status: undefined }).success, false);
+  assert.equal(
+    updateServiceCaseSchema.safeParse({ assigned_to: undefined, completed_at: undefined }).success,
+    false,
+  );
+});
+
 test('update schema rejects completed_at for an explicit non-completed status', () => {
   for (const status of serviceCaseStatuses.filter((status) => status !== 'completed')) {
     assert.equal(

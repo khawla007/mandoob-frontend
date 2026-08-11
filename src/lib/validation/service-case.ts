@@ -68,23 +68,33 @@ export const updateServiceCaseSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (Object.keys(value).length === 0) {
+    if (!Object.values(value).some((field) => field !== undefined)) {
       context.addIssue({ code: 'custom', message: 'At least one field must be supplied' });
     }
 
-    if (value.status === 'completed' && value.completed_at == null) {
+    const hasStatus = value.status !== undefined;
+    const hasCompletedAt = value.completed_at !== undefined;
+
+    if (hasStatus !== hasCompletedAt) {
       context.addIssue({
         code: 'custom',
-        path: ['completed_at'],
-        message: 'completed status requires completed_at',
+        path: ['status'],
+        message: 'status and completed_at must be supplied together',
       });
+      return;
     }
 
-    if (value.status !== undefined && value.status !== 'completed' && value.completed_at != null) {
+    if (hasStatus && value.status === 'completed' && value.completed_at === null) {
       context.addIssue({
         code: 'custom',
         path: ['completed_at'],
-        message: 'non-completed status cannot have completed_at',
+        message: 'completed status requires a non-null completed_at',
+      });
+    } else if (hasStatus && value.status !== 'completed' && value.completed_at !== null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['completed_at'],
+        message: 'non-completed status requires a null completed_at',
       });
     }
   });
@@ -103,3 +113,5 @@ export const serviceCaseFilterSchema = z
 
 export type CreateServiceCaseInput = z.infer<typeof createServiceCaseSchema>;
 export type UpdateServiceCaseInput = z.infer<typeof updateServiceCaseSchema>;
+export type CreateServiceCaseRawInput = z.input<typeof createServiceCaseSchema>;
+export type UpdateServiceCaseRawInput = z.input<typeof updateServiceCaseSchema>;
