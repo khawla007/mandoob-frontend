@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import * as helper from '../../../../load-tests/k6/_resolve-base-url.js';
+import * as helper from '../../../load-tests/k6/_resolve-base-url.js';
 
 const { resolveBaseUrl, isProductionHost, isExplicitlyAllowedHost, PROD_HOST_DENY_LIST } =
   helper as unknown as {
