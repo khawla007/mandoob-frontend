@@ -1,0 +1,507 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { test } from 'node:test';
+
+import { ApiError } from '@/lib/errors';
+import {
+  createServiceCase,
+  listServiceCases,
+  rankServiceCases,
+  toServiceCase,
+  updateServiceCase,
+} from './service-cases';
+
+const TENANT_1 = '11111111-1111-4111-8111-111111111111';
+const TENANT_2 = '22222222-2222-4222-8222-222222222222';
+const CLIENT_1 = '33333333-3333-4333-8333-333333333333';
+const CLIENT_2 = '44444444-4444-4444-8444-444444444444';
+const PROFILE_1 = '55555555-5555-4555-8555-555555555555';
+const PROFILE_2 = '66666666-6666-4666-8666-666666666666';
+const CASE_1 = '77777777-7777-4777-8777-777777777777';
+
+type Row = Record<string, unknown>;
+type QueryCall = {
+  table: string;
+  operation: 'select' | 'insert' | 'update';
+  filters: Array<{ kind: 'eq' | 'in'; key: string; value: unknown }>;
+  payload?: Row;
+};
+
+function fakeSupabase(
+  seed: Record<string, Row[]>,
+  failures: Record<string, { message: string }> = {},
+) {
+  const tables = new Map(
+    Object.entries(seed).map(([table, rows]) => [table, structuredClone(rows)]),
+  );
+  const calls: QueryCall[] = [];
+
+  function tableRows(table: string): Row[] {
+    const existing = tables.get(table);
+    if (existing) return existing;
+    const created: Row[] = [];
+    tables.set(table, created);
+    return created;
+  }
+
+  function from(table: string) {
+    const state: {
+      operation: QueryCall['operation'];
+      filters: QueryCall['filters'];
+      payload?: Row;
+      selected?: string;
+    } = { operation: 'select', filters: [] };
+
+    function filteredRows(): Row[] {
+      return tableRows(table).filter((row) =>
+        state.filters.every((filter) =>
+          filter.kind === 'eq'
+            ? row[filter.key] === filter.value
+            : (filter.value as unknown[]).includes(row[filter.key]),
+        ),
+      );
+    }
+
+    function execute() {
+      const failure = failures[`${table}:${state.operation}`];
+      calls.push({
+        table,
+        operation: state.operation,
+        filters: structuredClone(state.filters),
+        ...(state.payload ? { payload: structuredClone(state.payload) } : {}),
+      });
+      if (failure) return { data: null, error: failure };
+
+      if (state.operation === 'insert') {
+        const inserted = {
+          id: state.payload?.id ?? (table === 'service_cases' ? CASE_1 : `audit-${calls.length}`),
+          ...state.payload,
+        };
+        tableRows(table).push(inserted);
+        return { data: state.selected ? inserted : null, error: null };
+      }
+
+      if (state.operation === 'update') {
+        const rows = filteredRows();
+        rows.forEach((row) => Object.assign(row, state.payload));
+        return { data: state.selected ? (rows[0] ?? null) : null, error: null };
+      }
+
+      return { data: filteredRows(), error: null };
+    }
+
+    const builder = {
+      select(columns?: string) {
+        state.selected = columns;
+        return builder;
+      },
+      eq(key: string, value: unknown) {
+        state.filters.push({ kind: 'eq', key, value });
+        return builder;
+      },
+      in(key: string, value: unknown[]) {
+        state.filters.push({ kind: 'in', key, value });
+        return builder;
+      },
+      order() {
+        return builder;
+      },
+      limit() {
+        return builder;
+      },
+      insert(payload: Row) {
+        state.operation = 'insert';
+        state.payload = payload;
+        return builder;
+      },
+      update(payload: Row) {
+        state.operation = 'update';
+        state.payload = payload;
+        return builder;
+      },
+      async maybeSingle() {
+        const result = execute();
+        return {
+          ...result,
+          data: Array.isArray(result.data) ? (result.data[0] ?? null) : result.data,
+        };
+      },
+      async single() {
+        const result = execute();
+        return {
+          ...result,
+          data: Array.isArray(result.data) ? (result.data[0] ?? null) : result.data,
+        };
+      },
+      then(resolve: (result: { data: unknown; error: { message: string } | null }) => void) {
+        resolve(execute());
+      },
+    };
+    return builder;
+  }
+
+  return { calls, from, tables };
+}
+
+function caseRow(overrides: Row = {}): Row {
+  return {
+    id: CASE_1,
+    tenant_id: TENANT_1,
+    client_id: CLIENT_1,
+    title: 'Trade license renewal',
+    service_type: 'License renewal',
+    status: 'documents_pending',
+    priority: 'high',
+    assigned_to: PROFILE_1,
+    due_at: '2026-08-20T09:00:00.000Z',
+    sla_due_at: '2026-08-15T09:00:00.000Z',
+    blocked_reason: 'Waiting for passport copy',
+    completed_at: null,
+    created_at: '2026-08-11T09:00:00.000Z',
+    updated_at: '2026-08-11T09:00:00.000Z',
+    ...overrides,
+  };
+}
+
+test('toServiceCase preserves tenant ownership and camel-cases every database field', () => {
+  assert.deepEqual(toServiceCase(caseRow() as never), {
+    id: CASE_1,
+    tenantId: TENANT_1,
+    clientId: CLIENT_1,
+    title: 'Trade license renewal',
+    serviceType: 'License renewal',
+    status: 'documents_pending',
+    priority: 'high',
+    assignedTo: PROFILE_1,
+    dueAt: '2026-08-20T09:00:00.000Z',
+    slaDueAt: '2026-08-15T09:00:00.000Z',
+    blockedReason: 'Waiting for passport copy',
+    completedAt: null,
+    createdAt: '2026-08-11T09:00:00.000Z',
+    updatedAt: '2026-08-11T09:00:00.000Z',
+  });
+});
+
+test('rankServiceCases orders breached SLA, priority, nearest SLA, null SLA, then ID', () => {
+  const rows = [
+    { id: 'z', priority: 'urgent', slaDueAt: null },
+    { id: 'd', priority: 'urgent', slaDueAt: '2026-08-12T00:00:00.000Z' },
+    { id: 'c', priority: 'normal', slaDueAt: '2026-08-10T00:00:00.000Z' },
+    { id: 'b', priority: 'low', slaDueAt: '2026-08-09T00:00:00.000Z' },
+    { id: 'a', priority: 'low', slaDueAt: '2026-08-09T00:00:00.000Z' },
+  ];
+
+  assert.deepEqual(
+    rankServiceCases(rows, new Date('2026-08-11T00:00:00.000Z')).map((row) => row.id),
+    ['c', 'a', 'b', 'd', 'z'],
+  );
+  assert.deepEqual(
+    rows.map((row) => row.id),
+    ['z', 'd', 'c', 'b', 'a'],
+  );
+});
+
+test('listServiceCases scopes cases and filters, and only hydrates tenant-scoped related rows', async () => {
+  const db = fakeSupabase({
+    service_cases: [
+      caseRow(),
+      caseRow({ id: 'foreign-case', tenant_id: TENANT_2 }),
+      caseRow({ id: 'foreign-client-case', client_id: CLIENT_2, assigned_to: PROFILE_2 }),
+    ],
+    clients: [
+      { id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' },
+      { id: CLIENT_2, tenant_id: TENANT_2, company_name: 'Foreign LLC' },
+    ],
+    profiles: [
+      { id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' },
+      { id: PROFILE_2, tenant_id: TENANT_2, full_name: 'Foreign Owner' },
+    ],
+  });
+
+  const rows = await listServiceCases(
+    TENANT_1,
+    { status: ['documents_pending'], assignedTo: PROFILE_1, clientId: CLIENT_1 },
+    { supabase: db as never },
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].clientName, 'Acme LLC');
+  assert.equal(rows[0].ownerName, 'Aisha Khan');
+  const casesCall = db.calls.find((call) => call.table === 'service_cases');
+  assert.ok(
+    casesCall?.filters.some(
+      (f) => f.kind === 'eq' && f.key === 'tenant_id' && f.value === TENANT_1,
+    ),
+  );
+  assert.ok(casesCall?.filters.some((f) => f.kind === 'in' && f.key === 'status'));
+  assert.ok(casesCall?.filters.some((f) => f.key === 'assigned_to' && f.value === PROFILE_1));
+  assert.ok(casesCall?.filters.some((f) => f.key === 'client_id' && f.value === CLIENT_1));
+  for (const related of db.calls.filter(
+    (call) => call.table === 'clients' || call.table === 'profiles',
+  )) {
+    assert.ok(related.filters.some((f) => f.key === 'tenant_id' && f.value === TENANT_1));
+  }
+});
+
+test('listServiceCases never hydrates cross-tenant client or owner names', async () => {
+  const db = fakeSupabase({
+    service_cases: [caseRow({ client_id: CLIENT_2, assigned_to: PROFILE_2 })],
+    clients: [{ id: CLIENT_2, tenant_id: TENANT_2, company_name: 'Foreign LLC' }],
+    profiles: [{ id: PROFILE_2, tenant_id: TENANT_2, full_name: 'Foreign Owner' }],
+  });
+  const [row] = await listServiceCases(TENANT_1, {}, { supabase: db as never });
+  assert.equal(row.clientName, '');
+  assert.equal(row.ownerName, null);
+});
+
+test('listServiceCases converts database and hydration errors to ApiError', async () => {
+  const casesFailure = fakeSupabase({}, { 'service_cases:select': { message: 'db down' } });
+  await assert.rejects(
+    () => listServiceCases(TENANT_1, {}, { supabase: casesFailure as never }),
+    (error) => error instanceof ApiError && error.code === 'INTERNAL',
+  );
+
+  const hydrationFailure = fakeSupabase(
+    { service_cases: [caseRow()] },
+    { 'clients:select': { message: 'client lookup down' } },
+  );
+  await assert.rejects(
+    () => listServiceCases(TENANT_1, {}, { supabase: hydrationFailure as never }),
+    (error) => error instanceof ApiError && error.code === 'INTERNAL',
+  );
+});
+
+test('createServiceCase rejects wrong roles and cross-tenant clients or assignees', async () => {
+  const db = fakeSupabase({
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_2 }],
+    profiles: [{ id: PROFILE_1, tenant_id: TENANT_2 }],
+  });
+  const input = {
+    client_id: CLIENT_1,
+    title: 'New application',
+    service_type: 'Visa application',
+    assigned_to: PROFILE_1,
+  };
+
+  await assert.rejects(
+    () =>
+      createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'admin' as never }, input, {
+        supabase: db as never,
+      }),
+    (error) => error instanceof ApiError && error.code === 'FORBIDDEN',
+  );
+  await assert.rejects(
+    () =>
+      createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
+        supabase: db as never,
+      }),
+    (error) => error instanceof ApiError && error.code === 'INVALID_CLIENT',
+  );
+
+  db.tables.set('clients', [{ id: CLIENT_1, tenant_id: TENANT_1 }]);
+  await assert.rejects(
+    () =>
+      createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
+        supabase: db as never,
+      }),
+    (error) => error instanceof ApiError && error.code === 'INVALID_ASSIGNEE',
+  );
+});
+
+test('createServiceCase writes a tenant-owned case and required audit details', async () => {
+  const db = fakeSupabase({
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
+    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1 }],
+    service_cases: [],
+    tenant_audit_log: [],
+  });
+
+  assert.deepEqual(
+    await createServiceCase(
+      { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+      {
+        client_id: CLIENT_1,
+        title: ' New application ',
+        service_type: ' Visa application ',
+        priority: 'urgent',
+        assigned_to: PROFILE_1,
+      },
+      { supabase: db as never },
+    ),
+    { id: CASE_1 },
+  );
+
+  const insert = db.calls.find(
+    (call) => call.table === 'service_cases' && call.operation === 'insert',
+  );
+  assert.equal(insert?.payload?.tenant_id, TENANT_1);
+  assert.equal(insert?.payload?.created_by, PROFILE_1);
+  assert.equal(insert?.payload?.title, 'New application');
+  const audit = db.calls.find((call) => call.table === 'tenant_audit_log');
+  assert.equal(audit?.payload?.action, 'service_case_created');
+  assert.deepEqual(audit?.payload?.details, {
+    entity: 'service_case',
+    id: CASE_1,
+    changed_keys: ['client_id', 'title', 'service_type', 'priority', 'assigned_to'],
+  });
+});
+
+test('createServiceCase surfaces database and audit failures as ApiError', async () => {
+  const seed = {
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
+    service_cases: [],
+    tenant_audit_log: [],
+  };
+  const input = { client_id: CLIENT_1, title: 'New case', service_type: 'Visa' };
+  const dbFailure = fakeSupabase(seed, { 'service_cases:insert': { message: 'insert failed' } });
+  await assert.rejects(
+    () =>
+      createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
+        supabase: dbFailure as never,
+      }),
+    (error) => error instanceof ApiError && error.code === 'INTERNAL',
+  );
+  assert.equal(
+    dbFailure.calls.some((call) => call.table === 'tenant_audit_log'),
+    false,
+  );
+
+  const auditFailure = fakeSupabase(seed, {
+    'tenant_audit_log:insert': { message: 'audit failed' },
+  });
+  await assert.rejects(
+    () =>
+      createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
+        supabase: auditFailure as never,
+      }),
+    (error) => error instanceof ApiError && error.code === 'INTERNAL',
+  );
+});
+
+test('updateServiceCase rejects missing or cross-tenant cases and cross-tenant assignees', async () => {
+  const db = fakeSupabase({
+    service_cases: [caseRow({ tenant_id: TENANT_2 })],
+    profiles: [{ id: PROFILE_2, tenant_id: TENANT_2 }],
+  });
+  await assert.rejects(
+    () =>
+      updateServiceCase(
+        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        CASE_1,
+        { priority: 'urgent' },
+        { supabase: db as never },
+      ),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+
+  db.tables.set('service_cases', [caseRow()]);
+  await assert.rejects(
+    () =>
+      updateServiceCase(
+        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        CASE_1,
+        { assigned_to: PROFILE_2 },
+        { supabase: db as never },
+      ),
+    (error) => error instanceof ApiError && error.code === 'INVALID_ASSIGNEE',
+  );
+});
+
+test('updateServiceCase merges current lifecycle and rejects an impossible persisted state', async () => {
+  const db = fakeSupabase({
+    service_cases: [caseRow({ status: 'completed', completed_at: null })],
+  });
+  await assert.rejects(
+    () =>
+      updateServiceCase(
+        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        CASE_1,
+        { priority: 'urgent' },
+        { supabase: db as never },
+      ),
+    (error) => error instanceof ApiError && error.code === 'INVALID_LIFECYCLE',
+  );
+  assert.equal(
+    db.calls.some((call) => call.operation === 'update'),
+    false,
+  );
+});
+
+test('updateServiceCase only persists defined keys and audits changed keys', async () => {
+  const db = fakeSupabase({ service_cases: [caseRow()], tenant_audit_log: [] });
+  await updateServiceCase(
+    { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+    CASE_1,
+    { priority: 'urgent', assigned_to: null },
+    { supabase: db as never },
+  );
+
+  const update = db.calls.find((call) => call.operation === 'update');
+  assert.deepEqual(update?.payload, { priority: 'urgent', assigned_to: null });
+  assert.ok(update?.filters.some((f) => f.key === 'tenant_id' && f.value === TENANT_1));
+  const audit = db.calls.find((call) => call.table === 'tenant_audit_log');
+  assert.equal(audit?.payload?.action, 'service_case_updated');
+  assert.deepEqual(audit?.payload?.details, {
+    entity: 'service_case',
+    id: CASE_1,
+    changed_keys: ['priority', 'assigned_to'],
+  });
+});
+
+test('updateServiceCase surfaces update and audit failures', async () => {
+  const updateFailure = fakeSupabase(
+    { service_cases: [caseRow()] },
+    { 'service_cases:update': { message: 'update failed' } },
+  );
+  await assert.rejects(
+    () =>
+      updateServiceCase(
+        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        CASE_1,
+        { priority: 'urgent' },
+        { supabase: updateFailure as never },
+      ),
+    ApiError,
+  );
+
+  const auditFailure = fakeSupabase(
+    { service_cases: [caseRow()], tenant_audit_log: [] },
+    { 'tenant_audit_log:insert': { message: 'audit failed' } },
+  );
+  await assert.rejects(
+    () =>
+      updateServiceCase(
+        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        CASE_1,
+        { priority: 'urgent' },
+        { supabase: auditFailure as never },
+      ),
+    ApiError,
+  );
+});
+
+function auditActions(sql: string): string[] {
+  const match = sql.match(
+    /tenant_audit_log_action_check[\s\S]*?check\s*\(action\s+in\s*\(([\s\S]*?)\)\s*\)/i,
+  );
+  assert.ok(match, 'tenant audit action constraint is missing');
+  return [...match[1].matchAll(/'([^']+)'/g)].map((item) => item[1]);
+}
+
+test('audit migration adds service-case actions without dropping any prior action', () => {
+  const prior = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260528105942_0042_whatsapp_template_approvals.sql'),
+    'utf8',
+  );
+  const migration = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260811091000_0048_service_case_audit_actions.sql'),
+    'utf8',
+  );
+  const priorActions = auditActions(prior);
+  const nextActions = auditActions(migration);
+  for (const action of priorActions)
+    assert.ok(nextActions.includes(action), `missing prior action ${action}`);
+  assert.ok(nextActions.includes('service_case_created'));
+  assert.ok(nextActions.includes('service_case_updated'));
+});

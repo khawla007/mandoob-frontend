@@ -1,0 +1,45 @@
+alter table public.tenant_audit_log
+  drop constraint if exists tenant_audit_log_action_check;
+
+alter table public.tenant_audit_log
+  add constraint tenant_audit_log_action_check
+  check (action in (
+    'created',
+    'approved',
+    'rejected',
+    'suspended',
+    'reactivated',
+    'updated',
+    'completed',
+    'cancelled',
+    'unlocked',
+    'session_revoked',
+    'invoice_created',
+    'invoice_voided',
+    'invoice_marked_paid',
+    'payment_initiated',
+    'payment_succeeded',
+    'payment_failed',
+    'refund_issued',
+    'infected_blocked',
+    'reconciled',
+    'comms_skipped_opted_out',
+    'lead_created',
+    'lead_assigned',
+    'lead_stage_changed',
+    'lead_note_added',
+    'erasure_requested',
+    'erasure_verified',
+    'erasure_approved',
+    'erasure_rejected',
+    'erasure_completed',
+    'bulk_imported',
+    'meeting_slot_created',
+    'meeting_scheduled',
+    'meeting_cancelled',
+    'meeting_completed',
+    'meeting_recording_attached',
+    'whatsapp_template_status_updated',
+    'service_case_created',
+    'service_case_updated'
+  ));
