@@ -63,6 +63,20 @@ test('resolveBaseUrl refuses subdomains of production hosts', () => {
   );
 });
 
+test('resolveBaseUrl refuses all documented production hosts even with STAGING_HOST', () => {
+  for (const host of ['mandoob.ae', 'mandoob-app.netlify.app']) {
+    for (const target of [host, `preview.${host}`]) {
+      assert.throws(
+        () =>
+          resolveBaseUrl({
+            env: { K6_BASE_URL: `https://${target}`, STAGING_HOST: target },
+          }),
+        /production deny list/,
+      );
+    }
+  }
+});
+
 test('resolveBaseUrl refuses unknown HTTPS hosts unless allow-listed', () => {
   assert.throws(
     () => resolveBaseUrl({ env: { K6_BASE_URL: 'https://random-host.example.com' } }),
@@ -115,6 +129,40 @@ test('resolveBaseUrl rejects malformed URLs', () => {
   );
 });
 
+test('resolveBaseUrl rejects malformed URL authorities', () => {
+  for (const url of [
+    'http://localhost:80:443',
+    'http://user:pass@localhost:3001',
+    'http://.localhost:3001',
+    'http://localhost..test:3001',
+    'http://:3001',
+    'http://localhost:',
+    'http://localhost:not-a-port',
+    'http://localhost:65536',
+  ]) {
+    assert.throws(() => resolveBaseUrl({ env: { K6_BASE_URL: url } }), /not a valid URL/);
+  }
+});
+
+test('resolveBaseUrl canonicalizes scheme, host, ports, and path suffixes', () => {
+  assert.equal(
+    resolveBaseUrl({
+      env: { K6_BASE_URL: 'HTTP://LOCALHOST:80/Some/Path///?q=1#Frag' },
+    }),
+    'http://localhost/Some/Path?q=1#Frag',
+  );
+  assert.equal(
+    resolveBaseUrl({
+      env: { K6_BASE_URL: 'HTTPS://LOCALHOST:3001/Some/Path///?q=1#Frag' },
+    }),
+    'https://localhost:3001/Some/Path?q=1#Frag',
+  );
+  assert.equal(
+    resolveBaseUrl({ env: { K6_BASE_URL: 'HTTPS://LOCALHOST:443/Path/' } }),
+    'https://localhost/Path',
+  );
+});
+
 test('isProductionHost handles port suffixes and case', () => {
   assert.equal(isProductionHost('Mandoob.COM'), true);
   assert.equal(isProductionHost('mandoob.com:443'), true);
@@ -127,6 +175,7 @@ test('isExplicitlyAllowedHost recognizes loopback + dev suffixes', () => {
   assert.equal(isExplicitlyAllowedHost('127.0.0.1'), true);
   assert.equal(isExplicitlyAllowedHost('firm.localhost'), true);
   assert.equal(isExplicitlyAllowedHost('preview.dev.local'), true);
+  assert.equal(isExplicitlyAllowedHost('preview.local'), true);
   assert.equal(isExplicitlyAllowedHost('mandoob-pr-1.vercel.app'), true);
   assert.equal(isExplicitlyAllowedHost('random.example.com'), false);
   // deny-list parent prevents allow-listing; verified via resolveBaseUrl on line 60.

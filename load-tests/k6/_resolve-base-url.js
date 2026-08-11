@@ -1,45 +1,101 @@
-const PROD_HOST_DENY_LIST = ['mandoob.com', 'mandoob.io'];
+const PROD_HOST_DENY_LIST = ['mandoob.com', 'mandoob.io', 'mandoob.ae', 'mandoob-app.netlify.app'];
 
 function normalizeHost(value) {
   if (typeof value !== 'string') return '';
 
-  let host = value.trim().toLowerCase();
-  if (!host) return '';
+  const input = value.trim();
+  if (!input) return '';
 
-  if (/^[a-z][a-z\d+.-]*:\/\//i.test(host)) {
-    const parsed = parseUrl(host);
-    host = parsed ? parsed.host : '';
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(input)) {
+    const parsed = parseUrl(input);
+    return parsed ? parsed.host : '';
   }
 
-  return host.replace(/:\d+$/, '').replace(/\.$/, '');
+  const authority = parseAuthority(input);
+  return authority ? authority.host : '';
 }
 
 function parseUrl(value) {
-  const match = /^(https?):\/\/([^/?#\s]+)(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i.exec(
-    value,
-  );
+  if (/\s/.test(value)) return null;
+
+  const match = /^(https?):\/\/([^/?#]+)(\/[^?#]*)?(?:\?([^#]*))?(?:#(.*))?$/i.exec(value);
   if (!match) return null;
 
-  const authority = match[2];
-  if (authority.includes('@')) return null;
+  const authority = parseAuthority(match[2]);
+  if (!authority) return null;
 
-  let host = authority;
-  const portIndex = authority.lastIndexOf(':');
-  if (portIndex > -1 && authority[0] !== '[') {
-    const port = authority.slice(portIndex + 1);
-    if (!/^\d+$/.test(port) || Number(port) > 65535) return null;
-    host = authority.slice(0, portIndex);
+  const protocol = match[1].toLowerCase();
+  const portNumber = authority.port ? Number(authority.port) : 0;
+  const port =
+    authority.port &&
+    !((protocol === 'http' && portNumber === 80) || (protocol === 'https' && portNumber === 443))
+      ? `:${portNumber}`
+      : '';
+  const path = (match[3] || '').replace(/\/+$/, '');
+  const query = match[4] === undefined ? '' : `?${match[4]}`;
+  const fragment = match[5] === undefined ? '' : `#${match[5]}`;
+  const host = authority.bracketed ? `[${authority.host}]` : authority.host;
+
+  return {
+    protocol,
+    host: authority.host,
+    canonical: `${protocol}://${host}${port}${path}${query}${fragment}`,
+  };
+}
+
+function parseAuthority(value) {
+  if (!value || value.includes('@')) return null;
+
+  let host = value;
+  let port = '';
+  let bracketed = false;
+
+  if (value[0] === '[') {
+    const closingBracket = value.indexOf(']');
+    if (closingBracket < 0) return null;
+    host = value.slice(1, closingBracket);
+    const suffix = value.slice(closingBracket + 1);
+    bracketed = true;
+    if (suffix) {
+      if (!/^:\d+$/.test(suffix)) return null;
+      port = suffix.slice(1);
+    }
+    if (!host || !/^[0-9a-f:.]+$/i.test(host) || !host.includes(':')) return null;
+  } else {
+    const firstColon = value.indexOf(':');
+    if (firstColon >= 0) {
+      if (value.indexOf(':', firstColon + 1) >= 0) return null;
+      host = value.slice(0, firstColon);
+      port = value.slice(firstColon + 1);
+      if (!/^\d+$/.test(port)) return null;
+    }
+    if (!isValidHostname(host)) return null;
   }
 
-  if (!host || /[\s[\]]/.test(host)) return null;
-  return { protocol: `${match[1].toLowerCase()}:`, host: host.toLowerCase() };
+  if (port && Number(port) > 65535) return null;
+  return { host: host.toLowerCase().replace(/\.$/, ''), port, bracketed };
+}
+
+function isValidHostname(host) {
+  const normalizedHost = host.toLowerCase().replace(/\.$/, '');
+  if (!normalizedHost || normalizedHost.length > 253) return false;
+
+  const labels = normalizedHost.split('.');
+  if (!labels.every((label) => /^[a-z\d](?:[a-z\d-]*[a-z\d])?$/i.test(label))) {
+    return false;
+  }
+
+  if (labels.length === 4 && labels.every((label) => /^\d+$/.test(label))) {
+    return labels.every((label) => Number(label) <= 255);
+  }
+
+  return labels.every((label) => label.length <= 63);
 }
 
 function isProductionHost(host) {
   const normalizedHost = normalizeHost(host);
   return PROD_HOST_DENY_LIST.some(
-    (blockedHost) =>
-      normalizedHost === blockedHost || normalizedHost.endsWith(`.${blockedHost}`),
+    (blockedHost) => normalizedHost === blockedHost || normalizedHost.endsWith(`.${blockedHost}`),
   );
 }
 
@@ -55,7 +111,7 @@ function isExplicitlyAllowedHost(host, override) {
     normalizedHost === '127.0.0.1' ||
     normalizedHost === '0.0.0.0' ||
     normalizedHost.endsWith('.localhost') ||
-    normalizedHost.endsWith('.dev.local') ||
+    normalizedHost.endsWith('.local') ||
     normalizedHost.endsWith('.vercel.app')
   );
 }
@@ -82,12 +138,7 @@ function resolveBaseUrl(options) {
     throw new Error(`K6_BASE_URL host is not in the allow list: ${host}`);
   }
 
-  return rawUrl.replace(/\/+$/, '');
+  return parsedUrl.canonical;
 }
 
-export {
-  resolveBaseUrl,
-  isProductionHost,
-  isExplicitlyAllowedHost,
-  PROD_HOST_DENY_LIST,
-};
+export { resolveBaseUrl, isProductionHost, isExplicitlyAllowedHost, PROD_HOST_DENY_LIST };
