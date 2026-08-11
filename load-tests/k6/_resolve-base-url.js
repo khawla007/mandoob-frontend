@@ -23,6 +23,13 @@ function parseUrl(value) {
 
   const authority = parseAuthority(match[2]);
   if (!authority) return null;
+  if (
+    [match[3], match[4], match[5]].some(
+      (part) => part !== undefined && /%(?![\da-f]{2})/i.test(part),
+    )
+  ) {
+    return null;
+  }
 
   const protocol = match[1].toLowerCase();
   const portNumber = authority.port ? Number(authority.port) : 0;
@@ -34,46 +41,33 @@ function parseUrl(value) {
   const path = (match[3] || '').replace(/\/+$/, '');
   const query = match[4] === undefined ? '' : `?${match[4]}`;
   const fragment = match[5] === undefined ? '' : `#${match[5]}`;
-  const host = authority.bracketed ? `[${authority.host}]` : authority.host;
 
   return {
     protocol,
     host: authority.host,
-    canonical: `${protocol}://${host}${port}${path}${query}${fragment}`,
+    canonical: `${protocol}://${authority.host}${port}${path}${query}${fragment}`,
   };
 }
 
 function parseAuthority(value) {
   if (!value || value.includes('@')) return null;
+  if (value[0] === '[') return null;
 
   let host = value;
   let port = '';
-  let bracketed = false;
 
-  if (value[0] === '[') {
-    const closingBracket = value.indexOf(']');
-    if (closingBracket < 0) return null;
-    host = value.slice(1, closingBracket);
-    const suffix = value.slice(closingBracket + 1);
-    bracketed = true;
-    if (suffix) {
-      if (!/^:\d+$/.test(suffix)) return null;
-      port = suffix.slice(1);
-    }
-    if (!host || !/^[0-9a-f:.]+$/i.test(host) || !host.includes(':')) return null;
-  } else {
-    const firstColon = value.indexOf(':');
-    if (firstColon >= 0) {
-      if (value.indexOf(':', firstColon + 1) >= 0) return null;
-      host = value.slice(0, firstColon);
-      port = value.slice(firstColon + 1);
-      if (!/^\d+$/.test(port)) return null;
-    }
-    if (!isValidHostname(host)) return null;
+  const firstColon = value.indexOf(':');
+  if (firstColon >= 0) {
+    if (value.indexOf(':', firstColon + 1) >= 0) return null;
+    host = value.slice(0, firstColon);
+    port = value.slice(firstColon + 1);
+    if (!/^\d+$/.test(port)) return null;
   }
 
+  if (!isValidHostname(host)) return null;
+
   if (port && Number(port) > 65535) return null;
-  return { host: host.toLowerCase().replace(/\.$/, ''), port, bracketed };
+  return { host: host.toLowerCase().replace(/\.$/, ''), port };
 }
 
 function isValidHostname(host) {

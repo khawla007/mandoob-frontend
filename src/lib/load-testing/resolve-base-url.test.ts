@@ -144,6 +144,28 @@ test('resolveBaseUrl rejects malformed URL authorities', () => {
   }
 });
 
+test('resolveBaseUrl rejects invalid percent escapes but preserves valid escapes', () => {
+  for (const url of [
+    'http://localhost/%zz',
+    'http://localhost/path?query=%G1',
+    'http://localhost/path#fragment=%',
+  ]) {
+    assert.throws(() => resolveBaseUrl({ env: { K6_BASE_URL: url } }), /not a valid URL/);
+  }
+
+  assert.equal(
+    resolveBaseUrl({ env: { K6_BASE_URL: 'http://localhost/path%20name?query=%20#fragment%20' } }),
+    'http://localhost/path%20name?query=%20#fragment%20',
+  );
+});
+
+test('resolveBaseUrl rejects bracketed IPv6 authorities', () => {
+  assert.throws(
+    () => resolveBaseUrl({ env: { K6_BASE_URL: 'http://[::1]:3001' } }),
+    /not a valid URL/,
+  );
+});
+
 test('resolveBaseUrl canonicalizes scheme, host, ports, and path suffixes', () => {
   assert.equal(
     resolveBaseUrl({
