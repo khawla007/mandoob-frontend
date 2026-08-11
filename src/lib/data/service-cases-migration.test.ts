@@ -70,13 +70,18 @@ function extractClause(policy: string, clause: string): string {
   assert.fail(`${clause} clause is not balanced`);
 }
 
-function extractCheckValues(table: string, column: string): string[] {
+function extractCheckValues(table: string, column: string, defaultValue: string): string[] {
   const check = new RegExp(
-    `\\b${column}\\s+text\\s+not\\s+null(?:\\s+default\\s+'[^']+')?\\s+check\\s*\\(\\s*${column}\\s+in\\s*\\(([^)]*)\\)\\s*\\)`,
+    `\\b${column}\\s+text\\s+not\\s+null\\s+default\\s+'([^']+)'\\s+check\\s*\\(\\s*${column}\\s+in\\s*\\(([^)]*)\\)\\s*\\)`,
     'i',
   ).exec(table);
-  assert.ok(check, `${column} status check is missing or unbounded`);
-  return [...check[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert.ok(check, `${column} must be NOT NULL DEFAULT '${defaultValue}' with its bounded check`);
+  assert.equal(
+    check[1],
+    defaultValue,
+    `${column} must be NOT NULL DEFAULT '${defaultValue}' exactly`,
+  );
+  return [...check[2].matchAll(/'([^']+)'/g)].map((match) => match[1]);
 }
 
 function assertMutationRejected(
@@ -137,14 +142,14 @@ function assertServiceCasesMigrationContract(sql: string): void {
   );
 
   assert.deepEqual(
-    extractCheckValues(table, 'status'),
+    extractCheckValues(table, 'status', 'draft'),
     APPROVED_STATUS_VALUES,
-    'service_cases status check values must be exactly the approved eight values',
+    'service_cases status default and check values must be exactly approved',
   );
   assert.deepEqual(
-    extractCheckValues(table, 'priority'),
+    extractCheckValues(table, 'priority', 'normal'),
     APPROVED_PRIORITY_VALUES,
-    'service_cases priority check values must be exactly the approved four values',
+    'service_cases priority default and check values must be exactly approved',
   );
 
   assert.match(
@@ -248,7 +253,37 @@ test('service cases migration contract rejects weakened in-memory variants', () 
         /(status text not null default 'draft' check \(status in \([\s\S]*?)'cancelled'/i,
         '$1',
       ),
-    /status check values must be exactly the approved eight values/,
+    /status default and check values must be exactly approved/,
+  );
+
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/status text not null default 'draft'/i, 'status text not null'),
+    /status must be NOT NULL DEFAULT 'draft'/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(
+        /status text not null default 'draft'/i,
+        "status text not null default 'submitted'",
+      ),
+    /status must be NOT NULL DEFAULT 'draft'/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(/priority text not null default 'normal'/i, 'priority text not null'),
+    /priority must be NOT NULL DEFAULT 'normal'/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(
+        /priority text not null default 'normal'/i,
+        "priority text not null default 'high'",
+      ),
+    /priority must be NOT NULL DEFAULT 'normal'/,
   );
 
   assertMutationRejected(
