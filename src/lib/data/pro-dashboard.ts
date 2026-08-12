@@ -61,7 +61,9 @@ export type ProDashboardData = {
     activeCases: number;
     capacityPercent: number;
   }>;
-  errors: Partial<Record<'identity' | 'operations' | 'renewals' | 'documents' | 'finance', string>>;
+  errors: Partial<
+    Record<'identity' | 'links' | 'operations' | 'renewals' | 'documents' | 'finance', string>
+  >;
 };
 
 type ClientInput = {
@@ -296,7 +298,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     completed: completedByDate.get(date) ?? 0,
   }));
 
-  const actions = buildActions({
+  const rankedActions = buildActions({
     openCases,
     activeRenewals,
     documentRequests,
@@ -307,8 +309,9 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     now,
     tenantSlug: input.tenantSlug,
   });
+  const actionDeck = selectActionDeck(rankedActions);
 
-  const deadlineEvents = actions.flatMap((action) => {
+  const deadlineEvents = rankedActions.flatMap((action) => {
     if (!action.deadline) return [];
     const parts = businessDeadlineParts(action.deadline);
     return [{ id: action.id, date: parts.date, period: parts.period, eventType: action.kind }];
@@ -411,7 +414,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
       workloadBalance,
     },
     caseVelocity,
-    actionDeck: actions,
+    actionDeck,
     deadlineIntensity,
     deadlineEvents,
     finance: {
@@ -569,6 +572,17 @@ function compareActions(
     deadlineDate(left.deadline).localeCompare(deadlineDate(right.deadline)) ||
     left.id.localeCompare(right.id)
   );
+}
+
+function selectActionDeck(rankedActions: Action[]): Action[] {
+  // The compact deck favors operational breadth: keep the best-ranked actionable card per
+  // module. All candidates remain in working pages; dated candidates still feed deadline density.
+  const selectedKinds = new Set<Action['kind']>();
+  return rankedActions.filter((action) => {
+    if (selectedKinds.has(action.kind)) return false;
+    selectedKinds.add(action.kind);
+    return true;
+  });
 }
 
 function renewalStreamCounts(
@@ -795,7 +809,7 @@ export function loadProDashboardRows<T>(
 
 type ProDashboardErrorGroup = keyof ProDashboardData['errors'];
 const SOURCE_ERROR_GROUPS: Record<string, ProDashboardErrorGroup> = {
-  tenantSlug: 'identity',
+  tenantSlug: 'links',
   clients: 'identity',
   profiles: 'operations',
   serviceCases: 'operations',

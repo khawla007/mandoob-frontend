@@ -51,7 +51,7 @@ function baseInput(): ProDashboardInput {
         client_id: 'client-2',
         status: 'completed',
         created_at: '2026-08-05T18:00:00.000Z',
-        completed_at: '2026-08-05T20:00:00.000Z',
+        completed_at: '2026-08-05T19:59:59.000Z',
         sla_due_at: '2026-08-06T00:00:00.000Z',
       }),
       caseRow({ id: 'case-x', tenant_id: 'tenant-b', client_id: 'client-x', assigned_to: 'pro-x' }),
@@ -172,11 +172,10 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   assert.equal(dashboard.kpis.renewalsDue30d, 2);
   assert.equal(dashboard.finance.overdueMinor, 7300);
   assert.deepEqual(
-    new Set(dashboard.actionDeck.map((action) => action.kind)),
-    new Set(['case', 'renewal', 'document', 'invoice']),
+    dashboard.actionDeck.map((action) => action.kind),
+    ['case', 'renewal', 'document', 'invoice'],
   );
-  assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 2, completed: 0 });
-  assert.equal(dashboard.caseVelocity[1].completed, 1);
+  assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 2, completed: 1 });
   assert.equal(dashboard.renewalStreams.license.d7, 1);
   assert.ok(Object.values(dashboard.health).every((value) => value >= 0 && value <= 100));
   assert.deepEqual(
@@ -230,15 +229,13 @@ test('uses current-month AED-first finance rules and never sums mixed currencies
   assert.equal(dashboard.kpis.collectionRate, 90);
 });
 
-test('ranks breached and nearest SLA cases before later signal classes', () => {
+test('selects a breached SLA case ahead of nearer unbreached SLA cases', () => {
   const dashboard = calculateProDashboard(baseInput(), NOW);
   assert.deepEqual(
-    dashboard.actionDeck.slice(0, 3).map(({ id, urgency }) => ({ id, urgency })),
-    [
-      { id: 'case-first-open', urgency: 'breached' },
-      { id: 'case-2', urgency: 'urgent' },
-      { id: 'case-3', urgency: 'urgent' },
-    ],
+    dashboard.actionDeck
+      .filter((action) => action.kind === 'case')
+      .map(({ id, urgency }) => ({ id, urgency })),
+    [{ id: 'case-first-open', urgency: 'breached' }],
   );
 });
 
@@ -267,6 +264,28 @@ test('applies Dubai-inclusive date boundaries to velocity, renewals, and invoice
   assert.equal(dashboard.renewalStreams.ejari.d90, 0);
   assert.equal(dashboard.finance.overdueMinor, 300);
   assert.equal(dashboard.finance.dueSoonMinor, 400);
+});
+
+test('moves case velocity timestamps at Dubai midnight into the next business bucket', () => {
+  const input = emptyInput();
+  input.serviceCases = [
+    caseRow({
+      id: 'before-midnight',
+      created_at: '2026-08-05T19:59:59Z',
+      completed_at: '2026-08-05T19:59:59Z',
+    }),
+    caseRow({
+      id: 'at-midnight',
+      created_at: '2026-08-05T20:00:00Z',
+      completed_at: '2026-08-05T20:00:00Z',
+    }),
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.deepEqual(dashboard.caseVelocity.slice(0, 2), [
+    { date: '2026-08-05', opened: 1, completed: 1 },
+    { date: '2026-08-06', opened: 1, completed: 1 },
+  ]);
 });
 
 test('filters every relationship collection before joining tenant data', () => {
@@ -542,7 +561,7 @@ test('uses timestamp order rather than ISO text order for SLA health inputs', ()
   assert.equal(dashboard.health.slaCompletionRate, 100);
 });
 
-test('ranks action signals by SLA, expiry, blocked age, missing documents, then priority with tenant-safe hrefs', () => {
+test('selects the highest-ranked signal per action kind with tenant-safe hrefs', () => {
   const input = emptyInput();
   input.tenantSlug = 'safe-firm';
   input.clients = [
@@ -583,11 +602,11 @@ test('ranks action signals by SLA, expiry, blocked age, missing documents, then 
   const dashboard = calculateProDashboard(input, NOW);
   assert.deepEqual(
     dashboard.actionDeck.map((item) => item.id),
-    ['sla-breached', 'sla-near', 'expiry', 'blocked-old', 'missing', 'manual-urgent'],
+    ['sla-breached', 'expiry', 'missing'],
   );
-  assert.match(
-    dashboard.actionDeck.find((item) => item.id === 'blocked-old')!.detail,
-    /Waiting for authority/,
+  assert.deepEqual(
+    dashboard.deadlineEvents.filter((event) => event.eventType === 'case').map((event) => event.id),
+    ['sla-breached', 'sla-near'],
   );
   assert.equal(dashboard.actionDeck[0].href, '/t/safe-firm/applications?case=sla-breached');
   assert.equal(
@@ -598,6 +617,36 @@ test('ranks action signals by SLA, expiry, blocked age, missing documents, then 
     dashboard.actionDeck.find((item) => item.id === 'missing')!.href,
     '/t/safe-firm/clients/client-1?tab=documents&request=missing',
   );
+});
+
+test('selects the oldest blocked case ahead of newer blocks and manual priority', () => {
+  const input = emptyInput();
+  input.serviceCases = [
+    caseRow({
+      id: 'manual-urgent',
+      priority: 'urgent',
+      sla_due_at: null,
+    }),
+    caseRow({
+      id: 'blocked-newer',
+      blocked_reason: 'New hold',
+      updated_at: '2026-08-10T00:00:00Z',
+      sla_due_at: null,
+    }),
+    caseRow({
+      id: 'blocked-oldest',
+      blocked_reason: 'Old hold',
+      updated_at: '2026-08-01T00:00:00Z',
+      sla_due_at: null,
+    }),
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.deepEqual(
+    dashboard.actionDeck.map((item) => item.id),
+    ['blocked-oldest'],
+  );
+  assert.match(dashboard.actionDeck[0].detail, /Old hold/);
 });
 
 test('uses Dubai current-month ledger rules and excludes draft, void, old, refunded, and mixed-currency amounts', () => {
@@ -754,6 +803,28 @@ test('settles source failures independently for widget-local degradation', async
   assert.deepEqual(settled.data.invoices, []);
   assert.deepEqual(settled.data.payments, []);
   assert.deepEqual(settled.errors, { finance: 'Failed to load PRO dashboard invoices' });
+});
+
+test('keeps fulfilled client metrics when tenant slug loading fails', async () => {
+  const settled = await settleProDashboardSources({
+    tenantSlug: Promise.reject(new ProDashboardQueryError('tenant')),
+    clients: Promise.resolve(['client']),
+    serviceCases: Promise.resolve(['case']),
+  });
+  assert.deepEqual(settled.data.tenantSlug, []);
+  assert.deepEqual(settled.data.clients, ['client']);
+  assert.deepEqual(settled.data.serviceCases, ['case']);
+  assert.deepEqual(settled.errors, { links: 'Failed to load PRO dashboard tenant' });
+
+  const input = emptyInput();
+  delete input.tenantSlug;
+  input.clients = [{ id: 'client-1', tenant_id: TENANT, company_name: 'Acme', status: 'active' }];
+  input.serviceCases = [caseRow({ id: 'safe-action' })];
+  input.errors = settled.errors;
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.kpis.activeClients, 1);
+  assert.equal(dashboard.actionDeck[0].href, '#');
+  assert.deepEqual(dashboard.errors, { links: 'Failed to load PRO dashboard tenant' });
 });
 
 test('uses a safe inert href when a tenant slug is unavailable', () => {
