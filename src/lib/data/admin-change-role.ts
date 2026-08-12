@@ -19,7 +19,7 @@ export async function adminChangeRole(
 
   const { data: existing, error: readErr } = await admin
     .from('profiles')
-    .select('id, role, tenant_id, status')
+    .select('id, role, tenant_id, status, full_name, phone')
     .eq('id', targetId)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
@@ -60,132 +60,101 @@ export async function adminChangeRole(
     remainingSuperAdminsExcludingTarget: remainingSuperAdmins,
   });
 
-  // Validate cross-tenant client_id for employee newRole.
-  if (input.newRole === 'employee') {
-    const { data: client, error: clientErr } = await admin
-      .from('clients')
-      .select('id, tenant_id')
-      .eq('id', input.client_id)
-      .maybeSingle();
-    if (clientErr) throw new ApiError('VALIDATION_FAILED', 'Client lookup failed', 400);
-    if (!client) throw new ApiError('VALIDATION_FAILED', 'client not found', 400);
-    if (client.tenant_id !== newTenantId) {
-      throw new ApiError('FORBIDDEN', 'client does not belong to selected tenant', 403);
-    }
-  }
-  if (input.newRole === 'customer' && input.linked_client_id) {
-    const { data: linked } = await admin
-      .from('clients')
-      .select('id, tenant_id')
-      .eq('id', input.linked_client_id)
-      .maybeSingle();
-    if (linked && linked.tenant_id !== newTenantId) {
-      throw new ApiError('FORBIDDEN', 'linked client does not belong to selected tenant', 403);
-    }
-  }
-
-  // D1 — revoke sessions first; failure aborts before any DB mutation.
-  try {
-    await revokeAllSessions(targetId);
-  } catch (err) {
-    console.error('revokeAllSessions failed', err);
-    throw new ApiError(
-      'SESSION_REVOKE_FAILED',
-      err instanceof Error ? err.message : 'Could not revoke sessions',
-      502,
-    );
-  }
-
-  // Drop the old role's sub-row. Each table is keyed on profile_id and has
-  // ON DELETE CASCADE from profiles, but we delete here explicitly so the
-  // role swap can complete without dropping the profile row.
   const oldRole = existing.role as Role;
-  if (oldRole === 'pro') {
-    await admin.from('pro_profiles').delete().eq('profile_id', targetId);
-  } else if (oldRole === 'customer') {
-    await admin.from('customer_profiles').delete().eq('profile_id', targetId);
-  } else if (oldRole === 'employee') {
-    await admin.from('employees').delete().eq('profile_id', targetId);
-  }
-
-  // Insert the new role's sub-row.
+  let roleData: Record<string, unknown> = {};
   if (input.newRole === 'pro') {
-    const { error } = await admin.from('pro_profiles').insert({
-      profile_id: targetId,
+    roleData = {
       license_no_encrypted: encryptOptional(input.license_no),
       designation: input.designation ?? null,
       department: input.department ?? null,
       service_areas: input.service_areas,
       bio: input.bio ?? null,
-    });
-    if (error)
-      throw new ApiError('VALIDATION_FAILED', `pro_profiles insert: ${error.message}`, 500);
+    };
   } else if (input.newRole === 'customer') {
-    const { error } = await admin.from('customer_profiles').insert({
-      profile_id: targetId,
+    roleData = {
       nationality: input.nationality ?? null,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
       linked_client_id: input.linked_client_id ?? null,
-    });
-    if (error)
-      throw new ApiError('VALIDATION_FAILED', `customer_profiles insert: ${error.message}`, 500);
+    };
   } else if (input.newRole === 'employee') {
-    // Employees row needs name/email/phone replicated from the profile.
-    const { data: prof } = await admin
-      .from('profiles')
-      .select('full_name, phone')
-      .eq('id', targetId)
-      .maybeSingle();
     const { data: authUser } = await admin.auth.admin.getUserById(targetId);
-    const { error } = await admin.from('employees').insert({
-      tenant_id: newTenantId as string,
+    roleData = {
       client_id: input.client_id,
-      profile_id: targetId,
-      name: (prof?.full_name as string | null) ?? authUser?.user?.email ?? 'Unnamed',
+      name: (existing.full_name as string | null) ?? authUser?.user?.email ?? 'Unnamed',
       email: authUser?.user?.email ?? null,
-      phone: (prof?.phone as string | null) ?? null,
+      phone: (existing.phone as string | null) ?? null,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
       visa_no_encrypted: encryptOptional(input.visa_no ?? null),
       visa_expiry: input.visa_expiry ?? null,
       emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
       eid_expiry: input.eid_expiry ?? null,
-      status: 'active',
-    });
-    if (error) throw new ApiError('VALIDATION_FAILED', `employees insert: ${error.message}`, 500);
-  }
-  // newRole === 'admin' — no sub-row.
-
-  // Patch the profile row.
-  const { error: updErr } = await admin
-    .from('profiles')
-    .update({
-      role: input.newRole,
-      tenant_id: newTenantId,
-    })
-    .eq('id', targetId);
-  if (updErr) {
-    throw new ApiError('VALIDATION_FAILED', `profiles update: ${updErr.message}`, 500);
+    };
   }
 
-  // Patch app_metadata so the next JWT carries the new claims.
+  const { error: roleChangeError } = await admin.rpc('admin_change_role_atomic', {
+    p_target_id: targetId,
+    p_actor_id: ctx.caller.id,
+    p_expected_role: oldRole,
+    p_expected_tenant_id: existing.tenant_id as string | null,
+    p_new_role: input.newRole,
+    p_new_tenant_id: newTenantId,
+    p_role_data: roleData,
+    p_reason: input.reason ?? null,
+  });
+  if (roleChangeError) {
+    const changedDuringRequest = roleChangeError.message.includes('PROFILE_CHANGED_RETRY');
+    const forbiddenTenantMove = roleChangeError.message.includes(
+      'PROFILE_TENANT_HAS_SERVICE_CASE_REFERENCES',
+    );
+    const clientTenantMismatch = /(?:EMPLOYEE|CUSTOMER)_CLIENT_TENANT_MISMATCH/.test(
+      roleChangeError.message,
+    );
+    throw new ApiError(
+      forbiddenTenantMove
+        ? 'INVALID_TENANT_ASSIGNMENT'
+        : changedDuringRequest
+          ? 'INVALID_ROLE_TRANSITION'
+          : clientTenantMismatch
+            ? 'FORBIDDEN'
+            : 'VALIDATION_FAILED',
+      forbiddenTenantMove
+        ? 'Profile tenant cannot change while service-case history references it'
+        : changedDuringRequest
+          ? 'Profile changed during role update; retry with fresh data'
+          : clientTenantMismatch
+            ? 'Client does not belong to selected tenant'
+            : `atomic role change: ${roleChangeError.message}`,
+      forbiddenTenantMove || changedDuringRequest ? 409 : clientTenantMismatch ? 403 : 500,
+    );
+  }
+
+  // The database role transition is committed before non-transactional auth operations. Attempt
+  // both metadata synchronization and revocation so one external failure never prevents the other.
   const { error: authUpdErr } = await admin.auth.admin.updateUserById(targetId, {
     app_metadata: {
       mandoob_role: input.newRole,
       tenant_id: newTenantId,
     },
   });
+  let sessionRevokeError: unknown;
+  try {
+    await revokeAllSessions(targetId);
+  } catch (err) {
+    console.error('revokeAllSessions failed after atomic role change', err);
+    sessionRevokeError = err;
+  }
+  if (sessionRevokeError) {
+    throw new ApiError(
+      'SESSION_REVOKE_FAILED',
+      sessionRevokeError instanceof Error
+        ? sessionRevokeError.message
+        : 'Could not revoke sessions',
+      502,
+    );
+  }
   if (authUpdErr) {
     throw new ApiError('INTERNAL', `auth metadata update: ${authUpdErr.message}`, 500);
   }
-
-  // Audit
-  const { error: auditErr } = await admin.from('admin_audit_actions').insert({
-    actor_id: ctx.caller.id,
-    action: 'change_role',
-    target_profile_id: targetId,
-    reason: input.reason ?? null,
-  });
-  if (auditErr) console.error('admin_audit_actions insert failed', auditErr);
 
   await recordAuthEvent({
     kind: 'admin_user_role_changed',
