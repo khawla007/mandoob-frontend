@@ -1,5 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test as base, type Page } from '@playwright/test';
+import {
+  expect,
+  test as base,
+  type BrowserContext,
+  type Page,
+  type TestInfo,
+} from '@playwright/test';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -12,6 +18,68 @@ const missingAuthReason =
 
 type ProFixtures = { proPage: Page };
 
+function sanitizeBrowserDiagnostic(message: string): string {
+  return message
+    .replace(/https?:\/\/\S+/gi, '[URL]')
+    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[EMAIL]')
+    .replace(/\bBearer\s+\S+/gi, 'Bearer [REDACTED]')
+    .replace(
+      /\b(token|password|secret|api[-_ ]?key|cookie|authorization)\s*[:=]\s*\S+/gi,
+      '$1=[REDACTED]',
+    )
+    .slice(0, 500);
+}
+
+function registerBrowserDiagnostics(page: Page) {
+  const unexpected: string[] = [];
+
+  // There is intentionally no allowlist: this dashboard is expected to emit
+  // neither page errors nor console.error entries during any tested journey.
+  page.on('pageerror', (error) => {
+    unexpected.push(`pageerror: ${sanitizeBrowserDiagnostic(error.message)}`);
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      unexpected.push(`console.error: ${sanitizeBrowserDiagnostic(message.text())}`);
+    }
+  });
+
+  return {
+    assertClean: () =>
+      expect(unexpected, 'unexpected sanitized browser errors collected during navigation').toEqual(
+        [],
+      ),
+  };
+}
+
+async function finishManualContext(
+  context: BrowserContext,
+  testInfo: TestInfo,
+  diagnostics: ReturnType<typeof registerBrowserDiagnostics>,
+  scenarioFailure: unknown,
+) {
+  let diagnosticFailure: unknown = null;
+  try {
+    diagnostics.assertClean();
+  } catch (error) {
+    diagnosticFailure = error;
+  }
+
+  const failed =
+    scenarioFailure !== null ||
+    diagnosticFailure !== null ||
+    testInfo.status !== testInfo.expectedStatus;
+  try {
+    await context.tracing.stop(
+      failed ? { path: testInfo.outputPath('manual-context-trace.zip') } : undefined,
+    );
+  } finally {
+    await context.close();
+  }
+
+  if (diagnosticFailure !== null && scenarioFailure === null) throw diagnosticFailure;
+}
+
 const test = base.extend<ProFixtures>({
   proPage: async ({ browser, baseURL }, provide, testInfo) => {
     if (!existsSync(storagePath)) {
@@ -21,7 +89,10 @@ const test = base.extend<ProFixtures>({
     }
 
     const context = await browser.newContext({ baseURL, storageState: storagePath });
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
     const page = await context.newPage();
+    const diagnostics = registerBrowserDiagnostics(page);
+    let scenarioFailure: unknown = null;
     try {
       await page.goto(dashboardPath, { waitUntil: 'networkidle' });
       expect(
@@ -29,16 +100,24 @@ const test = base.extend<ProFixtures>({
         '[a11y] PRO dashboard redirected to /login; tests/.auth/pro.json is stale or invalid',
       ).not.toContain('/login');
       await provide(page);
+    } catch (error) {
+      scenarioFailure = error;
+      throw error;
     } finally {
-      await context.close();
+      await finishManualContext(context, testInfo, diagnostics, scenarioFailure);
     }
   },
 });
 
 test('unauthenticated PRO dashboard navigation redirects to login', async ({ page }) => {
-  await page.goto(dashboardPath, { waitUntil: 'networkidle' });
-  await expect(page).toHaveURL(/\/login(?:\?|$)/);
-  await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
+  const diagnostics = registerBrowserDiagnostics(page);
+  try {
+    await page.goto(dashboardPath, { waitUntil: 'networkidle' });
+    await expect(page).toHaveURL(/\/login(?:\?|$)/);
+    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
+  } finally {
+    diagnostics.assertClean();
+  }
 });
 
 test('Signal Studio exposes its command center, application actions, and chart data', async ({
@@ -127,7 +206,10 @@ for (const { theme, viewport } of [
     await context.addInitScript((selectedTheme) => {
       window.localStorage.setItem('theme', selectedTheme);
     }, theme);
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
     const page = await context.newPage();
+    const diagnostics = registerBrowserDiagnostics(page);
+    let scenarioFailure: unknown = null;
     try {
       await page.goto(dashboardPath, { waitUntil: 'networkidle' });
       expect(page.url()).not.toContain('/login');
@@ -158,8 +240,11 @@ for (const { theme, viewport } of [
         }),
         'the focused primary action must have a visible focus indicator',
       ).toBe(true);
+    } catch (error) {
+      scenarioFailure = error;
+      throw error;
     } finally {
-      await context.close();
+      await finishManualContext(context, testInfo, diagnostics, scenarioFailure);
     }
   });
 }
