@@ -313,6 +313,11 @@ test('listServiceCaseWorkspace loads each tenant dataset once without a silent r
   );
 });
 
+test('exported service-case DAL contains no silent query limit', () => {
+  const source = readFileSync(join(process.cwd(), 'src/lib/data/service-cases.ts'), 'utf8');
+  assert.doesNotMatch(source, /\.limit\s*\(/);
+});
+
 test('createServiceCase rejects wrong roles and cross-tenant clients or assignees', async () => {
   const db = fakeSupabase({
     clients: [{ id: CLIENT_1, tenant_id: TENANT_2 }],

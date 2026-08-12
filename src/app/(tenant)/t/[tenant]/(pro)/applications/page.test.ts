@@ -21,6 +21,8 @@ const logicPath = join(
   process.cwd(),
   'src/app/(tenant)/t/[tenant]/(pro)/applications/page-logic.ts',
 );
+const englishMessagesPath = join(process.cwd(), 'src/messages/en.json');
+const arabicMessagesPath = join(process.cwd(), 'src/messages/ar.json');
 
 test('applications page awaits route inputs, validates stable filters, and uses one workspace read', () => {
   const source = readFileSync(pagePath, 'utf8');
@@ -129,4 +131,19 @@ test('application mutation forms expose pending and accessible result feedback w
   }
   assert.match(table, /ApplicationStatusActions/);
   assert.doesNotMatch([page, table, createForm, statusActions].join('\n'), /as never/);
+});
+
+test('application datetime labels explicitly identify Dubai time and UTC+04 in both locales', () => {
+  const english = JSON.parse(readFileSync(englishMessagesPath, 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  const arabic = JSON.parse(readFileSync(arabicMessagesPath, 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  for (const key of ['applicationDueAt', 'applicationSlaDueAt']) {
+    assert.match(english.pro[key], /Dubai/i);
+    assert.match(english.pro[key], /UTC\+04/);
+    assert.match(arabic.pro[key], /دبي/);
+    assert.match(arabic.pro[key], /UTC\+04/);
+  }
 });

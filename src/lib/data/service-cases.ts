@@ -172,7 +172,7 @@ export async function listServiceCases(
   if (!parsedFilters.success) throw invalidInput(parsedFilters.error.issues[0].message);
 
   const admin = await client(deps);
-  const { data, error } = await serviceCaseQuery(admin, tenantId, parsedFilters.data).limit(250);
+  const { data, error } = await serviceCaseQuery(admin, tenantId, parsedFilters.data);
   queryError(error, 'Could not load applications');
   const rows = ((data ?? []) as ServiceCaseDbRow[]).filter((row) => row.tenant_id === tenantId);
   const clientIds = [...new Set(rows.map((row) => row.client_id))];
@@ -388,8 +388,7 @@ export async function listServiceCaseClients(
     .from('clients')
     .select('id, tenant_id, company_name')
     .eq('tenant_id', tenantId)
-    .order('company_name', { ascending: true })
-    .limit(250);
+    .order('company_name', { ascending: true });
   queryError(error, 'Could not load clients');
   return ((data ?? []) as Array<{ id: string; tenant_id: string; company_name: string }>)
     .filter((row) => row.tenant_id === tenantId)
@@ -404,8 +403,7 @@ export async function listServiceCaseOwners(
     .from('profiles')
     .select('id, tenant_id, full_name')
     .eq('tenant_id', tenantId)
-    .order('full_name', { ascending: true })
-    .limit(250);
+    .order('full_name', { ascending: true });
   queryError(error, 'Could not load owners');
   return ((data ?? []) as Array<{ id: string; tenant_id: string; full_name: string | null }>)
     .filter((row) => row.tenant_id === tenantId)
