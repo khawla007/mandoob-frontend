@@ -337,7 +337,7 @@ export default async function ProDashboard({
         labels={heroLabels}
         {...dataOrError(stateFor(['operations', 'renewals', 'documents', 'finance']), {
           health: dashboard.health,
-          actionCount: dashboard.actionDeck.length,
+          actionCount: dashboard.totalPrioritySignals,
           caseVelocity: dashboard.caseVelocity,
           tenantSlug: tenant.slug,
           filters,

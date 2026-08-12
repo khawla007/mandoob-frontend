@@ -9,16 +9,28 @@ const migration = readFileSync(
   'utf8',
 );
 
-test('admin role changes use one atomic database RPC before external session revocation', () => {
+test('admin role changes require session revocation before the atomic RPC and metadata sync', () => {
   assert.match(source, /\.rpc\('admin_change_role_atomic'/);
   assert.doesNotMatch(source, /\.from\('(pro_profiles|customer_profiles|employees)'\)\.delete/);
   assert.doesNotMatch(source, /\.from\('(pro_profiles|customer_profiles|employees)'\)\.insert/);
   assert.doesNotMatch(source, /\.from\('profiles'\)[\s\S]{0,120}\.update/);
-  const rpc = source.indexOf(".rpc('admin_change_role_atomic'");
+  const revoke = source.indexOf('await revokeAllSessions');
+  const rpc = source.indexOf(".rpc('admin_change_role_atomic'", revoke);
   const metadata = source.indexOf('updateUserById', rpc);
-  const revoke = source.indexOf('revokeAllSessions', metadata);
-  assert.ok(rpc >= 0 && metadata > rpc && revoke > metadata);
-  assert.match(source, /updateUserById[\s\S]*let sessionRevokeError[\s\S]*revokeAllSessions/);
+  assert.ok(revoke >= 0 && rpc > revoke && metadata > rpc);
+  assert.match(
+    source,
+    /try\s*{\s*await revokeAllSessions[\s\S]*catch[\s\S]*throw new ApiError\([\s\S]*SESSION_REVOKE_FAILED[\s\S]*\n\s*}\n\n\s*const \{ error: roleChangeError \}/,
+  );
+});
+
+test('admin role change external failures are explicit without exposing provider details', () => {
+  assert.match(source, /SESSION_REVOKE_FAILED[\s\S]*Could not revoke user sessions/);
+  assert.match(source, /AUTH_METADATA_SYNC_FAILED[\s\S]*Could not synchronize user auth metadata/);
+  assert.doesNotMatch(source, /`auth metadata update: \$\{authUpdErr\.message\}`/);
+  assert.doesNotMatch(source, /sessionRevokeError instanceof Error/);
+  assert.match(source, /Role change could not be completed/);
+  assert.doesNotMatch(source, /`atomic role change: \$\{roleChangeError\.message\}`/);
 });
 
 test('atomic role RPC validates case references before any role mutation', () => {

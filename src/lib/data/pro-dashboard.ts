@@ -4,6 +4,7 @@ import { calculateProFinanceDashboard } from '@/lib/data/pro-finance';
 
 export type ProDashboardData = {
   generatedAt: string;
+  totalPrioritySignals: number;
   kpis: {
     activeClients: number;
     activeClientsChange: number;
@@ -452,6 +453,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
 
   return {
     generatedAt: now.toISOString(),
+    totalPrioritySignals: rankedActions.length,
     kpis: {
       activeClients: activeClients.length,
       activeClientsChange,
@@ -641,14 +643,7 @@ function compareActions(
 }
 
 function selectActionDeck(rankedActions: Action[]): Action[] {
-  // The compact deck favors operational breadth: keep the best-ranked actionable card per
-  // module. All candidates remain in working pages; dated candidates still feed deadline density.
-  const selectedKinds = new Set<Action['kind']>();
-  return rankedActions.filter((action) => {
-    if (selectedKinds.has(action.kind)) return false;
-    selectedKinds.add(action.kind);
-    return true;
-  });
+  return rankedActions.slice(0, 5);
 }
 
 function renewalStreamCounts(

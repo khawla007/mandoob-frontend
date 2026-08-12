@@ -4,9 +4,9 @@
 
 Signal Studio is the signed-in PRO firm's operational command center. It combines urgent applications, renewals, document work, invoices, workload, and service performance without replacing the working module pages.
 
-The dashboard requires an authenticated PRO user. An unknown or cross-PRO firm URL returns not found, while an inactive firm receives the dashboard's suspended-account state. Finance and team widgets are permission-gated in the page contract and are currently available to the PRO role.
+The dashboard requires an authenticated PRO user. The parent tenant layout redirects a signed-in user whose firm does not match the URL to login; an unknown firm returns not found, while an inactive firm receives the dashboard's suspended-account state. Finance and team widgets are permission-gated in the page contract and are currently available to the PRO role.
 
-Applications also requires an authenticated PRO user, but its authorization responses differ: an unknown firm returns not found, while cross-PRO and inactive-firm access return forbidden (HTTP 403). Applications does not use the dashboard's suspended-account state.
+Applications also requires an authenticated PRO user. The parent layout applies the same cross-PRO redirect and unknown-firm behavior before the page runs. The page then rejects an inactive firm through the active-firm guard; it does not use the dashboard's suspended-account state.
 
 ## Dashboard controls
 
@@ -35,7 +35,7 @@ Dates, deadline periods, current-month comparisons, and finance cutoffs use Duba
 | Renewal streams       | Cumulative active renewal backlog at 7, 30, 60, and 90 days for licence, visa, Emirates ID, and Ejari/lease work | Matching active renewal type and window                     |
 | Team signal           | Active application count and capacity percentage per active PRO owner, plus unassigned work                      | Applications filtered by owner or open status               |
 
-The compact Action Deck keeps the best-ranked item from each available module. SLA cases come first and rank breached then nearest deadline; renewals follow by deadline, blocked cases by oldest `updated_at`, documents next, other cases by priority, and invoices last. For blocked cases, `updated_at` is the blocked-since proxy because the schema does not yet have `blocked_at`. Team capacity uses ten active cases as the explicit 100% utilization target and can show values above 100%.
+The compact Action Deck keeps the globally highest-ranked five items. SLA cases come first and rank breached then nearest deadline; renewals follow by deadline, blocked cases by oldest `updated_at`, documents next, other cases by priority, and invoices last. The hero count includes every ranked priority signal, including items beyond the five-card deck. For blocked cases, `updated_at` is the blocked-since proxy because the schema does not yet have `blocked_at`. Team capacity uses ten active cases as the explicit 100% utilization target and can show values above 100%.
 
 ## Operational health formula
 

@@ -44,12 +44,13 @@ test('application signal URLs preserve normalized dashboard owner and service fi
 test('application deadline query maps Dubai morning and afternoon without overlap', () => {
   assert.equal(
     applicationDeadlineQuery('2026-08-12', 'morning'),
-    'and(sla_due_at.gte.2026-08-11T20:00:00.000Z,sla_due_at.lt.2026-08-12T08:00:00.000Z)',
+    'and(sla_due_at.gte.2026-08-11T20:00:00.000Z,sla_due_at.lt.2026-08-12T08:00:00.000Z),and(sla_due_at.is.null,due_at.gte.2026-08-11T20:00:00.000Z,due_at.lt.2026-08-12T08:00:00.000Z)',
   );
   assert.equal(
     applicationDeadlineQuery('2026-08-12', 'afternoon'),
-    'and(sla_due_at.gte.2026-08-12T08:00:00.000Z,sla_due_at.lt.2026-08-12T20:00:00.000Z),and(sla_due_at.is.null,due_at.eq.2026-08-12)',
+    'and(sla_due_at.gte.2026-08-12T08:00:00.000Z,sla_due_at.lt.2026-08-12T20:00:00.000Z),and(sla_due_at.is.null,due_at.gte.2026-08-12T08:00:00.000Z,due_at.lt.2026-08-12T20:00:00.000Z)',
   );
+  assert.doesNotMatch(applicationDeadlineQuery('2026-08-12', 'afternoon'), /due_at\.eq/);
 });
 
 test('renewal signal URLs parse type, day window, target UUID, and active tab together', () => {

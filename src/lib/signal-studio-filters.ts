@@ -132,8 +132,9 @@ export function applicationDeadlineQuery(date: string, period: 'morning' | 'afte
   startDate.setUTCHours(period === 'morning' ? 20 : 8);
   const endDate = new Date(startDate);
   endDate.setUTCHours(endDate.getUTCHours() + 12);
-  const dateOnly = period === 'afternoon' ? `,and(sla_due_at.is.null,due_at.eq.${date})` : '';
-  return `and(sla_due_at.gte.${startDate.toISOString()},sla_due_at.lt.${endDate.toISOString()})${dateOnly}`;
+  const start = startDate.toISOString();
+  const end = endDate.toISOString();
+  return `and(sla_due_at.gte.${start},sla_due_at.lt.${end}),and(sla_due_at.is.null,due_at.gte.${start},due_at.lt.${end})`;
 }
 
 export function renewalSignalHref(slug: string, filter: RenewalSignalFilter): string {

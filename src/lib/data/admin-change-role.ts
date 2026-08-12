@@ -91,6 +91,16 @@ export async function adminChangeRole(
     };
   }
 
+  // Revocation is the fail-closed precondition for changing authorization state. Existing access
+  // tokens can remain valid until their short JWT expiry, but no refresh token may survive the
+  // role transition. If GoTrue cannot revoke the sessions, leave the database and metadata alone.
+  try {
+    await revokeAllSessions(targetId);
+  } catch (err) {
+    console.error('revokeAllSessions failed before atomic role change', err);
+    throw new ApiError('SESSION_REVOKE_FAILED', 'Could not revoke user sessions', 502);
+  }
+
   const { error: roleChangeError } = await admin.rpc('admin_change_role_atomic', {
     p_target_id: targetId,
     p_actor_id: ctx.caller.id,
@@ -102,6 +112,7 @@ export async function adminChangeRole(
     p_reason: input.reason ?? null,
   });
   if (roleChangeError) {
+    console.error('admin_change_role_atomic failed after session revocation', roleChangeError);
     const changedDuringRequest = roleChangeError.message.includes('PROFILE_CHANGED_RETRY');
     const forbiddenTenantMove = roleChangeError.message.includes(
       'PROFILE_TENANT_HAS_SERVICE_CASE_REFERENCES',
@@ -123,37 +134,26 @@ export async function adminChangeRole(
           ? 'Profile changed during role update; retry with fresh data'
           : clientTenantMismatch
             ? 'Client does not belong to selected tenant'
-            : `atomic role change: ${roleChangeError.message}`,
+            : 'Role change could not be completed',
       forbiddenTenantMove || changedDuringRequest ? 409 : clientTenantMismatch ? 403 : 500,
     );
   }
 
-  // The database role transition is committed before non-transactional auth operations. Attempt
-  // both metadata synchronization and revocation so one external failure never prevents the other.
+  // Do not create privileged metadata before the database transition succeeds. Sessions were
+  // already revoked, so a metadata failure leaves a coherent database without a stale old session.
   const { error: authUpdErr } = await admin.auth.admin.updateUserById(targetId, {
     app_metadata: {
       mandoob_role: input.newRole,
       tenant_id: newTenantId,
     },
   });
-  let sessionRevokeError: unknown;
-  try {
-    await revokeAllSessions(targetId);
-  } catch (err) {
-    console.error('revokeAllSessions failed after atomic role change', err);
-    sessionRevokeError = err;
-  }
-  if (sessionRevokeError) {
+  if (authUpdErr) {
+    console.error('auth metadata update failed after atomic role change', authUpdErr);
     throw new ApiError(
-      'SESSION_REVOKE_FAILED',
-      sessionRevokeError instanceof Error
-        ? sessionRevokeError.message
-        : 'Could not revoke sessions',
+      'AUTH_METADATA_SYNC_FAILED',
+      'Could not synchronize user auth metadata',
       502,
     );
-  }
-  if (authUpdErr) {
-    throw new ApiError('INTERNAL', `auth metadata update: ${authUpdErr.message}`, 500);
   }
 
   await recordAuthEvent({

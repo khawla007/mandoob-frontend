@@ -18,6 +18,12 @@ const metricsPath = join(process.cwd(), 'src/lib/data/tenant-metrics.ts');
 const loadingPath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/loading.tsx');
 const errorPath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/error.tsx');
 
+test('hero uses the full priority signal total instead of the capped deck length', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /actionCount:\s*dashboard\.totalPrioritySignals/);
+  assert.doesNotMatch(source, /actionCount:\s*dashboard\.actionDeck\.length/);
+});
+
 test('dashboard read authorization completes before a service-role dashboard read', async () => {
   const calls: string[] = [];
   const tenant = await authorizeProDashboardRead('acme', {

@@ -171,6 +171,7 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   const dashboard = calculateProDashboard(baseInput(), NOW);
 
   assert.equal(dashboard.generatedAt, NOW.toISOString());
+  assert.equal(dashboard.totalPrioritySignals, 9);
   assert.equal(dashboard.kpis.activeClients, 2);
   assert.equal(dashboard.kpis.openCases, 3);
   assert.equal(dashboard.kpis.unassignedCases, 0);
@@ -178,7 +179,7 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   assert.equal(dashboard.finance.overdueMinor, 7300);
   assert.deepEqual(
     dashboard.actionDeck.map((action) => action.kind),
-    ['case', 'renewal', 'document', 'invoice'],
+    ['case', 'case', 'case', 'renewal', 'renewal'],
   );
   assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 2, completed: 1 });
   assert.equal(dashboard.renewalStreams.license.d7, 1);
@@ -216,6 +217,7 @@ test('returns zero-filled chart dates and empty collections for empty input', ()
     { date: '2026-08-11', opened: 0, completed: 0 },
   ]);
   assert.deepEqual(dashboard.actionDeck, []);
+  assert.equal(dashboard.totalPrioritySignals, 0);
   assert.deepEqual(dashboard.team, []);
   assert.equal(dashboard.finance.currency, 'AED');
   assert.equal(dashboard.health.score, 0);
@@ -240,7 +242,11 @@ test('selects a breached SLA case ahead of nearer unbreached SLA cases', () => {
     dashboard.actionDeck
       .filter((action) => action.kind === 'case')
       .map(({ id, urgency }) => ({ id, urgency })),
-    [{ id: 'case-first-open', urgency: 'breached' }],
+    [
+      { id: 'case-first-open', urgency: 'breached' },
+      { id: 'case-2', urgency: 'urgent' },
+      { id: 'case-3', urgency: 'urgent' },
+    ],
   );
 });
 
@@ -565,7 +571,7 @@ test('uses timestamp order rather than ISO text order for SLA health inputs', ()
   assert.equal(dashboard.health.slaCompletionRate, 100);
 });
 
-test('selects the highest-ranked signal per action kind with tenant-safe hrefs', () => {
+test('selects the globally highest-ranked five signals with tenant-safe hrefs', () => {
   const input = emptyInput();
   input.tenantSlug = 'safe-firm';
   input.clients = [
@@ -606,7 +612,7 @@ test('selects the highest-ranked signal per action kind with tenant-safe hrefs',
   const dashboard = calculateProDashboard(input, NOW);
   assert.deepEqual(
     dashboard.actionDeck.map((item) => item.id),
-    ['sla-breached', 'expiry', 'missing'],
+    ['sla-breached', 'sla-near', 'expiry', 'blocked-old', 'missing'],
   );
   assert.deepEqual(
     dashboard.deadlineEvents.filter((event) => event.eventType === 'case').map((event) => event.id),
@@ -648,9 +654,39 @@ test('selects the oldest blocked case ahead of newer blocks and manual priority'
   const dashboard = calculateProDashboard(input, NOW);
   assert.deepEqual(
     dashboard.actionDeck.map((item) => item.id),
-    ['blocked-oldest'],
+    ['blocked-oldest', 'blocked-newer', 'manual-urgent'],
   );
   assert.match(dashboard.actionDeck[0].detail, /Old hold/);
+});
+
+test('keeps the five highest-urgency actions while counting all priority signals', () => {
+  const input = emptyInput();
+  input.serviceCases = Array.from({ length: 6 }, (_, index) =>
+    caseRow({
+      id: `breached-${index + 1}`,
+      sla_due_at: `2026-08-0${index + 1}T00:00:00.000Z`,
+    }),
+  );
+  input.renewals = [renewalRow({ id: 'normal-renewal', due_date: '2026-08-18' })];
+  input.documentRequests = [
+    {
+      id: 'normal-document',
+      tenant_id: TENANT,
+      client_id: 'client-1',
+      label: 'Passport',
+      status: 'pending',
+      due_at: null,
+    },
+  ];
+  input.invoices = [invoiceRow({ id: 'normal-invoice', due_at: '2026-08-20' })];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.deepEqual(
+    dashboard.actionDeck.map((item) => item.id),
+    ['breached-1', 'breached-2', 'breached-3', 'breached-4', 'breached-5'],
+  );
+  assert.equal(dashboard.actionDeck.length, 5);
+  assert.equal(dashboard.totalPrioritySignals, 9);
 });
 
 test('uses Dubai current-month ledger rules and excludes draft, void, old, refunded, and mixed-currency amounts', () => {
@@ -926,6 +962,11 @@ test('dashboard action hrefs use filters and entity routes consumed by destinati
   input.serviceCases[0].id = '77777777-7777-4777-8777-777777777777';
   input.renewals[0].id = '88888888-8888-4888-8888-888888888888';
   input.documentRequests[0].id = '99999999-9999-4999-8999-999999999999';
+  input.serviceCases = [input.serviceCases[0]];
+  input.renewals = [input.renewals[0]];
+  input.documentRequests = [input.documentRequests[0]];
+  input.documents = [];
+  input.invoices = [input.invoices[0]];
   const dashboard = calculateProDashboard(input, NOW);
   const byKind = new Map(dashboard.actionDeck.map((action) => [action.kind, action]));
   const caseUrl = new URL(byKind.get('case')!.href, 'https://mandoob.test');
@@ -1070,6 +1111,7 @@ test('keeps fulfilled client metrics when tenant slug loading fails', async () =
   input.errors = settled.errors;
   const dashboard = calculateProDashboard(input, NOW);
   assert.equal(dashboard.kpis.activeClients, 1);
+  assert.equal(dashboard.totalPrioritySignals, 1);
   assert.equal(dashboard.actionDeck[0].href, '#');
   assert.deepEqual(dashboard.errors, { links: 'Failed to load PRO dashboard tenant' });
 });
