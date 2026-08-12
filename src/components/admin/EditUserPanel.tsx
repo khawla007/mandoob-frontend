@@ -6,6 +6,7 @@ import { EditUserForm } from './EditUserForm';
 import { ChangeRolePanel } from './ChangeRolePanel';
 import { ChangeStatusPanel } from './ChangeStatusPanel';
 import { ResetMfaButton } from './ResetMfaButton';
+import { ResyncRoleMetadataButton } from './ResyncRoleMetadataButton';
 import type { EditableUser } from '@/lib/data/admin-read-user';
 import type { TenantSummary } from '@/lib/data/tenants';
 
@@ -55,6 +56,7 @@ export async function EditUserPanel({ user, callerRole, tenantName, tenants }: E
           />
           <ChangeStatusPanel userId={profile.id} currentStatus={profile.status} />
           <ResetMfaButton userId={profile.id} mfaEnrolled={Boolean(profile.mfaEnrolledAt)} />
+          <ResyncRoleMetadataButton userId={profile.id} />
         </CardContent>
       </Card>
     </div>

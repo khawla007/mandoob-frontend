@@ -1168,7 +1168,10 @@
         "errPickRole": "Pick a target role.",
         "errTypeDemote": "Type DEMOTE to confirm super_admin demotion.",
         "errPickClient": "Pick a client for employee role.",
-        "apply": "Apply"
+        "apply": "Apply",
+        "resync": "Resync login access",
+        "resyncing": "Resyncing login access…",
+        "resyncSuccess": "Login access now matches the current profile. All sessions were revoked."
       },
       "statusChange": {
         "trigger": "Change status",

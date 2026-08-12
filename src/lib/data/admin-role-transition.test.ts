@@ -4,25 +4,40 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { ApiError } from '@/lib/errors';
+import * as roleTransition from './admin-role-transition';
 import {
   AtomicRoleChangeError,
   executeRoleChangeTransition,
+  isRoleMetadataResyncSourceSafe,
   type RoleMetadataClaims,
 } from './admin-role-transition';
+
+type ResyncExecutor = (args: {
+  currentClaims: RoleMetadataClaims;
+  revoke(): Promise<void>;
+  writeMetadata(claims: RoleMetadataClaims): Promise<void>;
+}) => Promise<void>;
+
+const executeRoleMetadataResync = (
+  roleTransition as typeof roleTransition & { executeRoleMetadataResync: ResyncExecutor }
+).executeRoleMetadataResync;
 
 const oldClaims: RoleMetadataClaims = {
   mandoob_role: 'admin',
   tenant_id: null,
+  mandoob_status: 'active',
   mandoob_role_transition: null,
 };
 const newClaims: RoleMetadataClaims = {
   mandoob_role: 'pro',
   tenant_id: 'tenant-1',
+  mandoob_status: 'active',
   mandoob_role_transition: null,
 };
 const neutralClaims: RoleMetadataClaims = {
   mandoob_role: null,
   tenant_id: null,
+  mandoob_status: 'active',
   mandoob_role_transition: 'pending',
 };
 
@@ -151,7 +166,11 @@ test('RPC and restoration failure reports a sanitized compound failure', async (
 
 test('final sync failure leaves neutral claims and never restores old privileges', async () => {
   const flow = harness('metadata-2');
-  await rejectsCode(flow.run, 'AUTH_METADATA_SYNC_FAILED', /login remains disabled.*retry/i);
+  await rejectsCode(
+    flow.run,
+    'AUTH_METADATA_SYNC_FAILED',
+    /login remains disabled.*Resync login access/i,
+  );
   assert.deepEqual(flow.calls, [
     { op: 'revoke-1' },
     { op: 'metadata-1', claims: neutralClaims },
@@ -176,4 +195,109 @@ test('pending transitions are denied by session loading and password login even 
     login,
     /if \(appMeta\.mandoob_role_transition === 'pending' \|\| !appMeta\.mandoob_role\)[\s\S]*auth\.signOut\(\)[\s\S]*AUTHORIZATION_UNAVAILABLE/,
   );
+});
+
+function resyncHarness(failAt?: string) {
+  const calls: Array<{ op: string; claims?: RoleMetadataClaims }> = [];
+  let revokeCount = 0;
+  let metadataCount = 0;
+  return {
+    calls,
+    run: () =>
+      executeRoleMetadataResync({
+        currentClaims: newClaims,
+        revoke: async () => {
+          revokeCount += 1;
+          calls.push({ op: `revoke-${revokeCount}` });
+          if (failAt === `revoke-${revokeCount}`) throw new Error('provider revoke secret');
+        },
+        writeMetadata: async (claims) => {
+          metadataCount += 1;
+          calls.push({ op: `metadata-${metadataCount}`, claims });
+          if (failAt === `metadata-${metadataCount}`) throw new Error('provider metadata secret');
+        },
+      }),
+  };
+}
+
+test('metadata resync is idempotent and uses pending claims between mandatory revokes', async () => {
+  const flow = resyncHarness();
+  await flow.run();
+  assert.deepEqual(flow.calls, [
+    { op: 'revoke-1' },
+    { op: 'metadata-1', claims: neutralClaims },
+    { op: 'revoke-2' },
+    { op: 'metadata-2', claims: newClaims },
+    { op: 'revoke-3' },
+  ]);
+});
+
+test('metadata resync accepts only pending or already-canonical provider metadata', () => {
+  assert.equal(
+    isRoleMetadataResyncSourceSafe(
+      {
+        mandoob_role: 'admin',
+        tenant_id: null,
+        mandoob_status: 'active',
+        mandoob_role_transition: 'pending',
+      },
+      newClaims,
+    ),
+    true,
+  );
+  assert.equal(isRoleMetadataResyncSourceSafe(newClaims, newClaims), true);
+  assert.equal(
+    isRoleMetadataResyncSourceSafe(
+      {
+        mandoob_role: 'admin',
+        tenant_id: null,
+        mandoob_status: 'active',
+      },
+      newClaims,
+    ),
+    false,
+  );
+});
+
+test('metadata resync never writes current claims when neutralization cannot be secured', async () => {
+  for (const failure of ['revoke-1', 'metadata-1', 'revoke-2']) {
+    const flow = resyncHarness(failure);
+    await assert.rejects(flow.run, (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.doesNotMatch(error.message, /provider|secret/i);
+      return true;
+    });
+    assert.equal(
+      flow.calls.some((call) => call.claims === newClaims),
+      false,
+    );
+  }
+});
+
+test('metadata resync final write failure remains pending with a supported recovery instruction', async () => {
+  const flow = resyncHarness('metadata-2');
+  await rejectsCode(
+    flow.run,
+    'AUTH_METADATA_SYNC_FAILED',
+    /login remains disabled.*Resync login access/i,
+  );
+  assert.deepEqual(flow.calls, [
+    { op: 'revoke-1' },
+    { op: 'metadata-1', claims: neutralClaims },
+    { op: 'revoke-2' },
+    { op: 'metadata-2', claims: newClaims },
+  ]);
+});
+
+test('metadata resync final revoke failure returns to pending claims', async () => {
+  const flow = resyncHarness('revoke-3');
+  await rejectsCode(flow.run, 'SESSION_REVOKE_FAILED', /authorization remains disabled/i);
+  assert.deepEqual(flow.calls, [
+    { op: 'revoke-1' },
+    { op: 'metadata-1', claims: neutralClaims },
+    { op: 'revoke-2' },
+    { op: 'metadata-2', claims: newClaims },
+    { op: 'revoke-3' },
+    { op: 'metadata-3', claims: neutralClaims },
+  ]);
 });

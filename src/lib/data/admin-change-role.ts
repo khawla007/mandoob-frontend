@@ -6,6 +6,7 @@ import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { assertRoleChangeAllowed, assertAdminCanModifyTarget } from './admin-edit-helpers';
 import { AtomicRoleChangeError, executeRoleChangeTransition } from './admin-role-transition';
+import type { ProfileStatus } from './admin-edit-helpers';
 import type { ChangeRoleOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
 
@@ -98,11 +99,13 @@ export async function adminChangeRole(
       oldClaims: {
         mandoob_role: oldRole,
         tenant_id: existing.tenant_id as string | null,
+        mandoob_status: existing.status as ProfileStatus,
         mandoob_role_transition: null,
       },
       newClaims: {
         mandoob_role: input.newRole,
         tenant_id: newTenantId,
+        mandoob_status: existing.status as ProfileStatus,
         mandoob_role_transition: null,
       },
       revoke: () => revokeAllSessions(targetId),

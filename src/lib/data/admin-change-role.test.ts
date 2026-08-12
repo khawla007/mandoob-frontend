@@ -21,11 +21,11 @@ test('admin role changes delegate exact old and new claims to the fail-closed tr
   assert.match(source, /await executeRoleChangeTransition\(/);
   assert.match(
     source,
-    /oldClaims: \{[\s\S]*mandoob_role: oldRole,[\s\S]*tenant_id: existing\.tenant_id as string \| null,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
+    /oldClaims: \{[\s\S]*mandoob_role: oldRole,[\s\S]*tenant_id: existing\.tenant_id as string \| null,[\s\S]*mandoob_status: existing\.status as ProfileStatus,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
   );
   assert.match(
     source,
-    /newClaims: \{[\s\S]*mandoob_role: input\.newRole,[\s\S]*tenant_id: newTenantId,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
+    /newClaims: \{[\s\S]*mandoob_role: input\.newRole,[\s\S]*tenant_id: newTenantId,[\s\S]*mandoob_status: existing\.status as ProfileStatus,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
   );
   assert.match(source, /revoke: \(\) => revokeAllSessions\(targetId\)/);
   assert.match(source, /app_metadata: claims/);
