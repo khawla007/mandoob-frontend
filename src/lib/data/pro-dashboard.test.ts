@@ -882,6 +882,45 @@ test('counts open workload assigned to a suspended former owner as unassigned', 
   assert.equal(dashboard.health.workloadBalance, 100);
 });
 
+test('scores workload balance as unhealthy when unassigned work has no active PRO', () => {
+  const input = emptyInput();
+  input.profiles = [
+    {
+      id: 'former-pro',
+      tenant_id: TENANT,
+      full_name: 'Former owner',
+      role: 'pro',
+      status: 'suspended',
+    },
+  ];
+  input.serviceCases = [caseRow({ id: 'unowned-open', assigned_to: 'former-pro' })];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.deepEqual(dashboard.team, []);
+  assert.equal(dashboard.kpis.unassignedCases, 1);
+  assert.equal(dashboard.health.workloadBalance, 0);
+
+  input.serviceCases = [];
+  const neutral = calculateProDashboard(input, NOW);
+  assert.equal(neutral.kpis.unassignedCases, 0);
+  assert.equal(neutral.health.workloadBalance, 0);
+});
+
+test('replacement owner restores a measurable workload signal while unassigned work stays visible', () => {
+  const input = emptyInput();
+  input.profiles = [
+    { id: 'new-pro', tenant_id: TENANT, full_name: 'New owner', role: 'pro', status: 'active' },
+  ];
+  input.serviceCases = [
+    caseRow({ id: 'owned', assigned_to: 'new-pro' }),
+    caseRow({ id: 'unowned', assigned_to: null }),
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.kpis.unassignedCases, 1);
+  assert.equal(dashboard.health.workloadBalance, 100);
+});
+
 test('dashboard action hrefs use filters and entity routes consumed by destination contracts', () => {
   const input = baseInput();
   input.serviceCases[0].id = '77777777-7777-4777-8777-777777777777';
@@ -953,6 +992,23 @@ test('profile transition migration clears only open cases owned by an invalidate
   assert.match(sql, /status not in \('completed', 'cancelled'\)/i);
   assert.match(sql, /not exists \([\s\S]*owner\.role = 'pro'[\s\S]*owner\.status = 'active'/i);
   assert.doesNotMatch(sql, /set assigned_to\s*=\s*\([^n]/i);
+});
+
+test('tenant transition guard rejects referenced profiles before composite foreign keys run', () => {
+  const sql = readFileSync(
+    join(
+      process.cwd(),
+      'supabase/migrations/20260812120000_0054_profile_tenant_transition_guard.sql',
+    ),
+    'utf8',
+  );
+  assert.match(sql, /before update of tenant_id on public\.profiles/i);
+  assert.match(sql, /set search_path = pg_catalog, public/i);
+  assert.match(sql, /new\.tenant_id is not distinct from old\.tenant_id[\s\S]*return new/i);
+  assert.match(sql, /assigned_to = old\.id[\s\S]*or service_case\.created_by = old\.id/i);
+  assert.match(sql, /raise exception using[\s\S]*errcode = '23514'/i);
+  assert.match(sql, /PROFILE_TENANT_HAS_SERVICE_CASE_REFERENCES/i);
+  assert.doesNotMatch(sql, /update public\.service_cases|delete from public\.service_cases/i);
 });
 
 test('finance relationship hardening migration uses tenant-owned chains without deleting legacy data', () => {

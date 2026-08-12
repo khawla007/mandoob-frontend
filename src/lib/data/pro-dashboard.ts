@@ -383,10 +383,13 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     }).length,
     dueForReminder.length,
   );
-  const workloadBalance = calculateWorkloadBalance([
-    ...team.map((member) => member.activeCases),
-    ...(unassignedCases > 0 ? [unassignedCases] : []),
-  ]);
+  const workloadBalance =
+    team.length === 0
+      ? 0
+      : calculateWorkloadBalance([
+          ...team.map((member) => member.activeCases),
+          ...(unassignedCases > 0 ? [unassignedCases] : []),
+        ]);
   const healthSignals = [
     100 - overdueRatio,
     slaCompletionRate,
