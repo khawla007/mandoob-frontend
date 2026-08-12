@@ -9,25 +9,22 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
 import { dashboardHref } from './dashboard-links';
-import {
-  READY_WIDGET_STATUS,
-  WidgetMessage,
-  WidgetSkeleton,
-  type WidgetStatus,
-} from './widget-state';
+import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
 type Kpis = ProDashboardData['kpis'];
 
-export type SignalKpisProps = {
+type SignalKpisDataProps = {
   kpis: Kpis;
   tenantSlug: string;
   locale?: string;
-  status?: WidgetStatus;
 };
+
+export type SignalKpisProps = WidgetStateProps<SignalKpisDataProps>;
 
 type KpiDefinition = {
   label: string;
@@ -38,22 +35,29 @@ type KpiDefinition = {
   tone: string;
 };
 
-export function SignalKpis({
-  kpis,
-  tenantSlug,
-  locale,
-  status = READY_WIDGET_STATUS,
-}: SignalKpisProps) {
-  if (status.kind === 'loading') {
+export function SignalKpis(props: SignalKpisProps) {
+  if (props.kind === 'loading') {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <WidgetLoading
+        testId="signal-kpis-skeleton"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
         {Array.from({ length: 4 }, (_, index) => (
-          <WidgetSkeleton key={index} rows={1} className="rounded-2xl border p-5" />
+          <div key={index} className="space-y-7 rounded-2xl border p-5">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="size-9 rounded-xl" />
+            </div>
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-3 w-36" />
+          </div>
         ))}
-      </div>
+      </WidgetLoading>
     );
   }
-  if (status.kind !== 'ready') return <WidgetMessage status={status} />;
+  if (props.kind === 'empty' || props.kind === 'error') return <WidgetMessage status={props} />;
+
+  const { kpis, tenantSlug, locale } = props;
 
   const integer = new Intl.NumberFormat(locale);
   const money = new Intl.NumberFormat(locale, {

@@ -2,15 +2,11 @@ import { ArrowUpRight, Route } from 'lucide-react';
 import Link from 'next/link';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
 import { dashboardHref } from './dashboard-links';
-import {
-  READY_WIDGET_STATUS,
-  WidgetMessage,
-  WidgetSkeleton,
-  type WidgetStatus,
-} from './widget-state';
+import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
 type Streams = ProDashboardData['renewalStreams'];
 type StreamType = keyof Streams;
@@ -23,25 +19,55 @@ const STREAM_LABELS: Record<StreamType, string> = {
 };
 const WINDOWS = ['d7', 'd30', 'd60', 'd90'] as const;
 
-export type RenewalStreamsProps = {
+type RenewalStreamsDataProps = {
   streams: Streams;
   tenantSlug: string;
-  status?: WidgetStatus;
 };
 
-export function RenewalStreams({
-  streams,
-  tenantSlug,
-  status = READY_WIDGET_STATUS,
-}: RenewalStreamsProps) {
-  if (status.kind === 'loading')
-    return <WidgetSkeleton rows={4} className="min-h-80 rounded-2xl border p-5" />;
-  if (status.kind !== 'ready') return <WidgetMessage status={status} className="min-h-80" />;
+export type RenewalStreamsProps = WidgetStateProps<RenewalStreamsDataProps>;
+
+export function RenewalStreams(props: RenewalStreamsProps) {
+  if (props.kind === 'loading') {
+    return (
+      <WidgetLoading
+        testId="signal-streams-skeleton"
+        className="min-h-80 space-y-5 rounded-2xl border p-5"
+      >
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-3 w-72" />
+        </div>
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="space-y-2">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-3 w-full" />
+            <div className="grid grid-cols-4 gap-2">
+              <Skeleton className="h-6" />
+              <Skeleton className="h-6" />
+              <Skeleton className="h-6" />
+              <Skeleton className="h-6" />
+            </div>
+          </div>
+        ))}
+      </WidgetLoading>
+    );
+  }
+  if (props.kind === 'empty' || props.kind === 'error')
+    return <WidgetMessage status={props} className="min-h-80" />;
+
+  const { streams, tenantSlug } = props;
   const entries = Object.entries(streams) as Array<[StreamType, Streams[StreamType]]>;
   if (entries.every(([, values]) => values.d90 === 0))
     return (
       <WidgetMessage
-        status={{ kind: 'empty', message: 'No renewals due in the next 90 days.' }}
+        status={{
+          kind: 'empty',
+          message: 'No active renewals are due in the next 90 days.',
+          emptyAction: {
+            label: 'Open renewals',
+            href: dashboardHref(tenantSlug, 'renewals', { tab: 'active' }),
+          },
+        }}
         className="min-h-80"
       />
     );
@@ -74,7 +100,7 @@ export function RenewalStreams({
               aria-hidden="true"
             >
               <span
-                className="signal-stream-bar absolute inset-y-0 start-0 block transition-[width] duration-500 motion-reduce:transition-none"
+                className="signal-stream-bar absolute inset-y-0 start-0 block transition-[width] duration-500 motion-reduce:transition-none rtl:scale-x-[-1]"
                 style={
                   {
                     width: `${Math.max(values.d90 ? 8 : 0, (values.d90 / maximum) * 100)}%`,

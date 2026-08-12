@@ -2,23 +2,21 @@ import { ArrowUpRight, CalendarClock, CircleAlert, UserRound } from 'lucide-reac
 import Link from 'next/link';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
-import {
-  READY_WIDGET_STATUS,
-  WidgetMessage,
-  WidgetSkeleton,
-  type WidgetStatus,
-} from './widget-state';
+import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
 type Action = ProDashboardData['actionDeck'][number];
 
-export type ActionDeckProps = {
+type ActionDeckDataProps = {
   actions: Action[];
+  tenantSlug: string;
   locale?: string;
-  status?: WidgetStatus;
 };
+
+export type ActionDeckProps = WidgetStateProps<ActionDeckDataProps>;
 
 const urgencyStyles: Record<Action['urgency'], string> = {
   breached:
@@ -29,14 +27,38 @@ const urgencyStyles: Record<Action['urgency'], string> = {
   normal: 'border-border bg-card',
 };
 
-export function ActionDeck({ actions, locale, status = READY_WIDGET_STATUS }: ActionDeckProps) {
-  if (status.kind === 'loading')
-    return <WidgetSkeleton rows={5} className="min-h-96 rounded-2xl border p-5" />;
-  if (status.kind !== 'ready') return <WidgetMessage status={status} className="min-h-96" />;
+export function ActionDeck(props: ActionDeckProps) {
+  if (props.kind === 'loading') {
+    return (
+      <WidgetLoading
+        testId="signal-action-skeleton"
+        className="min-h-96 space-y-3 rounded-2xl border p-5"
+      >
+        <div className="mb-5 space-y-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-64" />
+        </div>
+        {Array.from({ length: 5 }, (_, index) => (
+          <Skeleton key={index} className="h-24 rounded-xl" />
+        ))}
+      </WidgetLoading>
+    );
+  }
+  if (props.kind === 'empty' || props.kind === 'error')
+    return <WidgetMessage status={props} className="min-h-96" />;
+
+  const { actions, tenantSlug, locale } = props;
   if (actions.length === 0)
     return (
       <WidgetMessage
-        status={{ kind: 'empty', message: 'The action deck is clear.' }}
+        status={{
+          kind: 'empty',
+          message: 'The action deck is clear; no urgent operational work is waiting.',
+          emptyAction: {
+            label: 'Review applications',
+            href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
+          },
+        }}
         className="min-h-96"
       />
     );

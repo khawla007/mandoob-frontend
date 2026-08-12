@@ -12,15 +12,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
-import { dashboardHref } from './dashboard-links';
-import {
-  READY_WIDGET_STATUS,
-  WidgetMessage,
-  WidgetSkeleton,
-  type WidgetStatus,
-} from './widget-state';
+import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
 type Health = ProDashboardData['health'];
 type Velocity = ProDashboardData['caseVelocity'];
@@ -37,31 +32,42 @@ const HEALTH_INPUTS: Array<{
   { key: 'workloadBalance', label: 'Workload balance', positive: true },
 ];
 
-export type SignalHeroProps = {
+type SignalHeroDataProps = {
   health: Health;
   actionCount: number;
   caseVelocity: Velocity;
   tenantSlug: string;
-  status?: WidgetStatus;
 };
 
-export function SignalHero({
-  health,
-  actionCount,
-  caseVelocity,
-  tenantSlug,
-  status = READY_WIDGET_STATUS,
-}: SignalHeroProps) {
-  if (status.kind === 'loading') {
+export type SignalHeroProps = WidgetStateProps<SignalHeroDataProps>;
+
+export function SignalHero(props: SignalHeroProps) {
+  if (props.kind === 'loading') {
     return (
-      <section className="signal-hero min-h-72 rounded-3xl p-6 sm:p-8">
-        <WidgetSkeleton rows={3} className="max-w-xl" />
-      </section>
+      <WidgetLoading
+        testId="signal-hero-skeleton"
+        className="signal-hero grid min-h-72 gap-8 rounded-3xl p-6 sm:p-8 lg:grid-cols-2"
+      >
+        <div className="space-y-5">
+          <Skeleton className="h-4 w-32 bg-white/15" />
+          <Skeleton className="h-20 w-4/5 bg-white/15" />
+          <div className="flex gap-3">
+            <Skeleton className="h-9 w-36 bg-white/15" />
+            <Skeleton className="h-9 w-28 bg-white/15" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-44 bg-white/15" />
+          <Skeleton className="h-44 bg-white/15" />
+        </div>
+      </WidgetLoading>
     );
   }
-  if (status.kind !== 'ready') {
-    return <WidgetMessage status={status} className="min-h-72" />;
+  if (props.kind === 'empty' || props.kind === 'error') {
+    return <WidgetMessage status={props} className="min-h-72" />;
   }
+
+  const { health, actionCount, caseVelocity, tenantSlug } = props;
 
   const opened = caseVelocity.reduce((sum, point) => sum + point.opened, 0);
   const completed = caseVelocity.reduce((sum, point) => sum + point.completed, 0);
@@ -69,8 +75,7 @@ export function SignalHero({
     1,
     ...caseVelocity.flatMap((point) => [point.opened, point.completed]),
   );
-  const urgentHref = dashboardHref(tenantSlug, 'applications', { priority: 'urgent' });
-  const assignHref = dashboardHref(tenantSlug, 'applications', { owner: 'unassigned' });
+  const applicationsHref = `/t/${encodeURIComponent(tenantSlug)}/applications`;
 
   return (
     <section className="signal-hero relative isolate overflow-hidden rounded-3xl p-6 text-white shadow-[0_24px_80px_-36px_oklch(0.35_0.15_30/0.85)] sm:p-8">
@@ -90,7 +95,7 @@ export function SignalHero({
           </div>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button asChild className="bg-white text-slate-950 hover:bg-orange-50">
-              <Link href={urgentHref}>
+              <Link href={applicationsHref}>
                 <ClipboardList aria-hidden="true" /> Open action deck
                 <ArrowUpRight aria-hidden="true" />
               </Link>
@@ -100,7 +105,7 @@ export function SignalHero({
               variant="outline"
               className="border-white/30 bg-white/5 text-white hover:bg-white/12 hover:text-white"
             >
-              <Link href={assignHref}>
+              <Link href={applicationsHref}>
                 <UserRoundPlus aria-hidden="true" /> Assign work
               </Link>
             </Button>

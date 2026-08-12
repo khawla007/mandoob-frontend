@@ -1,8 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, type BarShapeProps } from 'recharts';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -11,63 +9,130 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
-import { dashboardHref } from './dashboard-links';
-import {
-  READY_WIDGET_STATUS,
-  WidgetMessage,
-  WidgetSkeleton,
-  type WidgetStatus,
-} from './widget-state';
+import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
-export type CollectionsWaterfallProps = {
+type CollectionsWaterfallDataProps = {
   finance: ProDashboardData['finance'];
   tenantSlug: string;
-  canViewFinance: boolean;
   locale?: string;
-  status?: WidgetStatus;
 };
 
-export function CollectionsWaterfall({
-  finance,
-  tenantSlug,
-  canViewFinance,
-  locale,
-  status = READY_WIDGET_STATUS,
-}: CollectionsWaterfallProps) {
-  if (!canViewFinance) return null;
-  if (status.kind === 'loading')
-    return <WidgetSkeleton rows={4} className="min-h-96 rounded-2xl border p-5" />;
-  if (status.kind !== 'ready') return <WidgetMessage status={status} className="min-h-96" />;
+export type CollectionsWaterfallProps = {
+  canViewFinance: boolean;
+} & WidgetStateProps<CollectionsWaterfallDataProps>;
 
+type CollectionDatum = {
+  key: string;
+  label: string;
+  valueMinor: number;
+  fill: string;
+  href: string;
+  accessibleLabel: string;
+};
+
+function AccessibleBar(props: BarShapeProps) {
+  const payload = props.payload as CollectionDatum;
+  return (
+    <a
+      href={payload.href}
+      aria-label={payload.accessibleLabel}
+      className="focus-visible:outline-ring focus-visible:outline-2"
+    >
+      <rect
+        x={props.x}
+        y={props.y}
+        width={props.width}
+        height={props.height}
+        rx={8}
+        ry={8}
+        fill={payload.fill}
+        className="cursor-pointer"
+      />
+    </a>
+  );
+}
+
+export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
+  const { canViewFinance } = props;
+  if (!canViewFinance) return null;
+  if (props.kind === 'loading') {
+    return (
+      <WidgetLoading
+        testId="signal-chart-skeleton"
+        className="min-h-96 space-y-5 rounded-2xl border p-5"
+      >
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-44" />
+          <Skeleton className="h-3 w-64" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-12" />
+          ))}
+        </div>
+      </WidgetLoading>
+    );
+  }
+  if (props.kind === 'empty' || props.kind === 'error') {
+    return <WidgetMessage status={props} className="min-h-96" />;
+  }
+
+  const { finance, tenantSlug, locale } = props;
   const formatMoney = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: finance.currency,
     notation: 'compact',
     maximumFractionDigits: 1,
   });
-  const data = [
-    { key: 'billed', label: 'Billed', valueMinor: finance.billedMinor, fill: 'var(--signal-info)' },
-    { key: 'paid', label: 'Paid', valueMinor: finance.paidMinor, fill: 'var(--signal-success)' },
+  const paymentsHref = `/t/${encodeURIComponent(tenantSlug)}/payments`;
+  const analyticsHref = `${paymentsHref}/analytics`;
+  const input = [
+    {
+      key: 'billed',
+      label: 'Billed',
+      valueMinor: finance.billedMinor,
+      fill: 'var(--signal-info)',
+      href: paymentsHref,
+    },
+    {
+      key: 'paid',
+      label: 'Paid',
+      valueMinor: finance.paidMinor,
+      fill: 'var(--signal-success)',
+      href: analyticsHref,
+    },
     {
       key: 'due-soon',
       label: 'Due soon',
       valueMinor: finance.dueSoonMinor,
       fill: 'var(--signal-warning)',
+      href: paymentsHref,
     },
     {
       key: 'overdue',
       label: 'Overdue',
       valueMinor: finance.overdueMinor,
       fill: 'var(--signal-urgent)',
+      href: analyticsHref,
     },
   ];
+  const data: CollectionDatum[] = input.map((item) => ({
+    ...item,
+    accessibleLabel: `${item.label} bar, ${formatMoney.format(item.valueMinor / 100)}. Open ${item.href === analyticsHref ? 'payment analytics' : 'invoices'}.`,
+  }));
   const total = data.reduce((sum, item) => sum + item.valueMinor, 0);
   if (total === 0) {
     return (
       <WidgetMessage
-        status={{ kind: 'empty', message: 'No collection activity for this period.' }}
+        status={{
+          kind: 'empty',
+          message: 'No invoices or collection activity exist for this period.',
+          emptyAction: { label: 'Open payments', href: paymentsHref },
+        }}
         className="min-h-96"
       />
     );
@@ -86,8 +151,8 @@ export function CollectionsWaterfall({
         <ChartContainer
           config={config}
           className="aspect-auto h-64 w-full"
-          role="img"
-          aria-label={`Collections in ${finance.currency}: ${data.map((item) => `${item.label} ${formatMoney.format(item.valueMinor / 100)}`).join(', ')}.`}
+          role="group"
+          aria-label={`Collections in ${finance.currency}: ${data.map((item) => `${item.label} ${formatMoney.format(item.valueMinor / 100)}`).join(', ')}. Each bar is a link to its valid finance view.`}
         >
           <BarChart
             data={data}
@@ -113,28 +178,22 @@ export function CollectionsWaterfall({
                 />
               }
             />
-            <Bar dataKey="valueMinor" radius={[8, 8, 2, 2]} maxBarSize={54}>
-              {data.map((item) => (
-                <Cell key={item.key} fill={item.fill} />
-              ))}
-            </Bar>
+            <Bar dataKey="valueMinor" maxBarSize={54} shape={AccessibleBar} />
           </BarChart>
         </ChartContainer>
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {data.map((item) => (
-            <Link
+            <a
               key={item.key}
-              href={dashboardHref(tenantSlug, 'payments', { status: item.key })}
+              href={item.href}
+              aria-label={item.accessibleLabel}
               className="hover:bg-muted focus-visible:ring-ring rounded-lg border p-2.5 focus-visible:ring-2 focus-visible:outline-none"
             >
-              <span className="text-muted-foreground flex items-center justify-between text-xs">
-                {item.label}
-                <ArrowUpRight aria-hidden="true" className="size-3" />
-              </span>
+              <span className="text-muted-foreground flex items-center text-xs">{item.label}</span>
               <strong className="mt-1 block font-mono text-xs tabular-nums">
                 {formatMoney.format(item.valueMinor / 100)}
               </strong>
-            </Link>
+            </a>
           ))}
         </div>
       </CardContent>

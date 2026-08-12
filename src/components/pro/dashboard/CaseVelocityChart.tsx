@@ -10,41 +10,57 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
-import {
-  READY_WIDGET_STATUS,
-  WidgetMessage,
-  WidgetSkeleton,
-  type WidgetStatus,
-} from './widget-state';
+import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
 const RANGES = [7, 30, 90] as const;
 
-export type CaseVelocityChartProps = {
+type CaseVelocityChartDataProps = {
   data: ProDashboardData['caseVelocity'];
   tenantSlug: string;
   range?: (typeof RANGES)[number];
   locale?: string;
-  status?: WidgetStatus;
 };
 
-export function CaseVelocityChart({
-  data,
-  tenantSlug,
-  range = 30,
-  locale,
-  status = READY_WIDGET_STATUS,
-}: CaseVelocityChartProps) {
-  if (status.kind === 'loading') {
-    return <WidgetSkeleton rows={4} className="min-h-96 rounded-2xl border p-5" />;
+export type CaseVelocityChartProps = WidgetStateProps<CaseVelocityChartDataProps>;
+
+export function CaseVelocityChart(props: CaseVelocityChartProps) {
+  if (props.kind === 'loading') {
+    return (
+      <WidgetLoading
+        testId="signal-chart-skeleton"
+        className="min-h-96 space-y-5 rounded-2xl border p-5"
+      >
+        <div className="flex justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-3 w-56" />
+          </div>
+          <Skeleton className="h-8 w-36" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-3 w-64" />
+      </WidgetLoading>
+    );
   }
-  if (status.kind !== 'ready') return <WidgetMessage status={status} className="min-h-96" />;
+  if (props.kind === 'empty' || props.kind === 'error')
+    return <WidgetMessage status={props} className="min-h-96" />;
+
+  const { data, tenantSlug, range = 30, locale } = props;
   if (data.length === 0) {
     return (
       <WidgetMessage
-        status={{ kind: 'empty', message: 'No case activity in this period.' }}
+        status={{
+          kind: 'empty',
+          message: 'No cases were opened or completed in this period.',
+          emptyAction: {
+            label: 'Open applications',
+            href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
+          },
+        }}
         className="min-h-96"
       />
     );
@@ -71,7 +87,7 @@ export function CaseVelocityChart({
           {RANGES.map((days) => (
             <Link
               key={days}
-              href={`/t/${encodeURIComponent(tenantSlug)}/dashboard?days=${days}`}
+              href={`/t/${encodeURIComponent(tenantSlug)}/dashboard?range=${days}`}
               aria-current={range === days ? 'page' : undefined}
               className={cn(
                 'focus-visible:ring-ring rounded-md px-3 py-1.5 font-mono text-xs tabular-nums focus-visible:ring-2 focus-visible:outline-none',
@@ -92,7 +108,7 @@ export function CaseVelocityChart({
         <ChartContainer
           config={config}
           className="aspect-auto h-72 w-full"
-          data-testid="case-velocity-chart"
+          data-testid="case-velocity"
           role="img"
           aria-label={summary}
           aria-describedby="case-velocity-summary"

@@ -7,4 +7,4 @@ export { SignalHero, type SignalHeroProps } from './SignalHero';
 export { SignalKpis, type SignalKpisProps } from './SignalKpis';
 export { TeamSignal, type TeamSignalProps } from './TeamSignal';
 export { dashboardHref, type DashboardTarget } from './dashboard-links';
-export { type WidgetStatus } from './widget-state';
+export { type EmptyAction, type WidgetStateProps } from './widget-state';

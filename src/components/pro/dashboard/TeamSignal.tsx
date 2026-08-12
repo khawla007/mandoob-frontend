@@ -1,21 +1,19 @@
 import { CircleGauge, UserRoundX, UsersRound } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
-import {
-  READY_WIDGET_STATUS,
-  WidgetMessage,
-  WidgetSkeleton,
-  type WidgetStatus,
-} from './widget-state';
+import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
-export type TeamSignalProps = {
+type TeamSignalDataProps = {
   team: ProDashboardData['team'];
   unassignedCases: number;
-  status?: WidgetStatus;
+  tenantSlug: string;
 };
+
+export type TeamSignalProps = WidgetStateProps<TeamSignalDataProps>;
 
 function capacityTone(capacityPercent: number): string {
   if (capacityPercent > 100) return 'bg-[var(--signal-urgent)]';
@@ -23,18 +21,44 @@ function capacityTone(capacityPercent: number): string {
   return 'bg-[var(--signal-success)]';
 }
 
-export function TeamSignal({
-  team,
-  unassignedCases,
-  status = READY_WIDGET_STATUS,
-}: TeamSignalProps) {
-  if (status.kind === 'loading')
-    return <WidgetSkeleton rows={4} className="min-h-80 rounded-2xl border p-5" />;
-  if (status.kind !== 'ready') return <WidgetMessage status={status} className="min-h-80" />;
+export function TeamSignal(props: TeamSignalProps) {
+  if (props.kind === 'loading') {
+    return (
+      <WidgetLoading
+        testId="signal-team-skeleton"
+        className="min-h-80 space-y-5 rounded-2xl border p-5"
+      >
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-3 w-64" />
+        </div>
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="space-y-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        ))}
+      </WidgetLoading>
+    );
+  }
+  if (props.kind === 'empty' || props.kind === 'error')
+    return <WidgetMessage status={props} className="min-h-80" />;
+
+  const { team, unassignedCases, tenantSlug } = props;
   if (team.length === 0 && unassignedCases === 0)
     return (
       <WidgetMessage
-        status={{ kind: 'empty', message: 'No active workload is assigned.' }}
+        status={{
+          kind: 'empty',
+          message: 'No active cases are assigned and no unassigned work is waiting.',
+          emptyAction: {
+            label: 'Open applications',
+            href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
+          },
+        }}
         className="min-h-80"
       />
     );

@@ -21,13 +21,24 @@ describe('Signal Studio widget contracts', () => {
     assert.match(velocity, /AreaChart/);
     assert.match(velocity, /dataKey="opened"/);
     assert.match(velocity, /dataKey="completed"/);
-    assert.match(velocity, /data-testid="case-velocity-chart"/);
+    assert.match(velocity, /data-testid="case-velocity"/);
+    assert.match(velocity, /dashboard\?range=/);
+    assert.doesNotMatch(velocity, /dashboard\?days=/);
     assert.match(velocity, /aria-label=/);
 
     const finance = source('CollectionsWaterfall');
     assert.match(finance, /BarChart/);
     assert.match(finance, /valueMinor/);
     assert.match(finance, /if \(!canViewFinance\) return null/);
+    assert.match(finance, /<a[\s\S]*href=\{payload\.href\}/);
+    assert.match(finance, /aria-label=\{payload\.accessibleLabel\}/);
+    assert.match(
+      finance,
+      /const paymentsHref = `\/t\/\$\{encodeURIComponent\(tenantSlug\)\}\/payments`/,
+    );
+    assert.match(finance, /const analyticsHref = `\$\{paymentsHref\}\/analytics`/);
+    assert.doesNotMatch(finance, /payments\?/);
+    assert.doesNotMatch(finance, /dashboardHref\([^)]*'payments',[\s\S]*status:/);
   });
 
   it('offers additive event details and responsive semantic deadline views', () => {
@@ -37,6 +48,8 @@ describe('Signal Studio widget contracts', () => {
     assert.match(heatmap, /hidden[^"\n]*md:grid/);
     assert.match(heatmap, /md:hidden/);
     assert.match(heatmap, /<ol/);
+    assert.match(heatmap, /role="gridcell"[\s\S]*?<Link/);
+    assert.doesNotMatch(heatmap, /<Link[\s\S]{0,500}role="gridcell"/);
   });
 
   it('limits actions, preserves direct hrefs, and never ranks team completion', () => {
@@ -56,6 +69,7 @@ describe('Signal Studio widget contracts', () => {
   it('uses four arrow-ended renewal streams and four linked KPI cards', () => {
     const renewals = source('RenewalStreams');
     assert.match(renewals, /clipPath/);
+    assert.match(renewals, /rtl:scale-x-\[-1\]/);
     assert.match(renewals, /d7/);
     assert.match(renewals, /d30/);
     assert.match(renewals, /d60/);
@@ -68,7 +82,7 @@ describe('Signal Studio widget contracts', () => {
     assert.match(kpis, /focus-visible:ring-2/);
   });
 
-  it('exposes a discriminated local status API on every widget', () => {
+  it('exposes a discriminated local state API on every widget', () => {
     for (const name of [
       'SignalHero',
       'SignalKpis',
@@ -79,7 +93,32 @@ describe('Signal Studio widget contracts', () => {
       'RenewalStreams',
       'TeamSignal',
     ]) {
-      assert.match(source(name), /WidgetStatus/);
+      assert.match(source(name), /WidgetStateProps/);
+      assert.doesNotMatch(source(name), /status\?: WidgetStatus/);
     }
+  });
+
+  it('uses family-shaped skeletons instead of a generic row skeleton', () => {
+    const widgets = [
+      ['SignalHero', 'signal-hero-skeleton'],
+      ['SignalKpis', 'signal-kpis-skeleton'],
+      ['CaseVelocityChart', 'signal-chart-skeleton'],
+      ['CollectionsWaterfall', 'signal-chart-skeleton'],
+      ['DeadlineHeatmap', 'signal-heatmap-skeleton'],
+      ['ActionDeck', 'signal-action-skeleton'],
+      ['RenewalStreams', 'signal-streams-skeleton'],
+      ['TeamSignal', 'signal-team-skeleton'],
+    ] as const;
+    for (const [name, testId] of widgets) {
+      assert.match(source(name), new RegExp(`testId="${testId}"`));
+    }
+  });
+
+  it('gives empty states a typed useful action', () => {
+    const state = readFileSync(new URL('./widget-state.tsx', import.meta.url), 'utf8');
+    assert.match(state, /export type EmptyAction/);
+    assert.match(state, /kind: 'empty'; message: string; emptyAction: EmptyAction/);
+    assert.match(state, /status\.emptyAction\.href/);
+    assert.match(state, /status\.emptyAction\.label/);
   });
 });
