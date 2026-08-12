@@ -138,16 +138,20 @@ export function rankServiceCases<
 function serviceCaseQuery(
   admin: SupabaseClient,
   tenantId: string,
-  filters: { status?: ServiceCaseStatus[]; assigned_to?: string; client_id?: string },
+  filters: { id?: string; status?: ServiceCaseStatus[]; assigned_to?: string; client_id?: string },
   source: 'service_cases' | 'service_cases_ranked' = 'service_cases',
 ) {
   let query = admin
     .from(source)
     .select(SERVICE_CASE_COLUMNS, { count: 'exact' })
     .eq('tenant_id', tenantId);
-  if (filters.status?.length) query = query.in('status', filters.status);
-  if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
-  if (filters.client_id) query = query.eq('client_id', filters.client_id);
+  if (filters.id) {
+    query = query.eq('id', filters.id);
+  } else {
+    if (filters.status?.length) query = query.in('status', filters.status);
+    if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
+    if (filters.client_id) query = query.eq('client_id', filters.client_id);
+  }
   if (source === 'service_cases_ranked') {
     return query
       .order('sla_breach_rank', { ascending: true })
@@ -248,6 +252,7 @@ export async function listServiceCases(
 export async function listServiceCaseWorkspace(
   tenantId: string,
   filters: {
+    caseId?: string;
     status?: ServiceCaseStatus[];
     assignedTo?: string;
     clientId?: string;
@@ -263,6 +268,7 @@ export async function listServiceCaseWorkspace(
   pageSize: number;
 }> {
   const parsedFilters = serviceCaseFilterSchema.safeParse({
+    id: filters.caseId,
     status: filters.status,
     assigned_to: filters.assignedTo,
     client_id: filters.clientId,
@@ -270,7 +276,7 @@ export async function listServiceCaseWorkspace(
   if (!parsedFilters.success) throw invalidInput(parsedFilters.error.issues[0].message);
 
   const admin = await client(deps);
-  const page = Math.max(1, Math.trunc(filters.page ?? 1));
+  const page = parsedFilters.data.id ? 1 : Math.max(1, Math.trunc(filters.page ?? 1));
   const from = (page - 1) * SERVICE_CASE_PAGE_SIZE;
   const [caseResult, clientRows, ownerRows] = await Promise.all([
     serviceCaseQuery(admin, tenantId, parsedFilters.data, 'service_cases_ranked').range(

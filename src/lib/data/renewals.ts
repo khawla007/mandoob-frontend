@@ -103,6 +103,7 @@ function assertPro(role: string): asserts role is 'pro' {
 }
 
 export type ListRenewalsForTenantOpts = {
+  id?: string;
   status?: RenewalStatus[];
   bucket?: 30 | 60 | 90 | 'all';
 };
@@ -118,10 +119,12 @@ export async function listRenewalsForTenant(
     .eq('tenant_id', tenantId)
     .order('due_date', { ascending: true });
 
-  if (opts.status && opts.status.length > 0) {
+  if (opts.id) {
+    query = query.eq('id', opts.id);
+  } else if (opts.status && opts.status.length > 0) {
     query = query.in('status', opts.status);
   }
-  if (opts.bucket && opts.bucket !== 'all') {
+  if (!opts.id && opts.bucket && opts.bucket !== 'all') {
     const cutoff = new Date();
     cutoff.setUTCHours(0, 0, 0, 0);
     cutoff.setUTCDate(cutoff.getUTCDate() + opts.bucket);

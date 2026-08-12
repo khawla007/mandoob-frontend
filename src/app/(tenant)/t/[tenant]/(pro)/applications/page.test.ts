@@ -102,6 +102,18 @@ test('repeated status and owner params choose the first value without throwing',
   assert.deepEqual(parseApplicationFilters({ status: ['bad', 'submitted'], owner: [] }), {});
 });
 
+test('application targeting accepts one UUID and resets targeted reads to the first page', () => {
+  const caseId = '77777777-7777-4777-8777-777777777777';
+  assert.deepEqual(parseApplicationFilters({ case: [caseId, 'ignored'], page: '9' }), {
+    id: caseId,
+  });
+  assert.deepEqual(parseApplicationFilters({ case: 'not-a-uuid' }), {});
+
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /caseId:\s*filters\.id/);
+  assert.match(source, /filters\.id\s*\?\s*1\s*:\s*parseApplicationPage/);
+});
+
 test('application pagination normalizes repeated page params and preserves active filters', () => {
   assert.equal(parseApplicationPage(['2', '999']), 2);
   assert.equal(parseApplicationPage('0'), 1);
@@ -167,7 +179,7 @@ test('application datetime labels explicitly identify Dubai time and UTC+04 in b
 
 test('applications page exposes accessible bounded pagination using the DAL count', () => {
   const source = readFileSync(pagePath, 'utf8');
-  assert.match(source, /requestedPage\s*=\s*parseApplicationPage\(search\.page\)/);
+  assert.match(source, /requestedPage\s*=\s*filters\.id\s*\?\s*1\s*:\s*parseApplicationPage/);
   assert.match(source, /page:\s*requestedPage/);
   assert.match(source, /workspace\.total/);
   assert.match(source, /<nav[^>]+aria-label=/);

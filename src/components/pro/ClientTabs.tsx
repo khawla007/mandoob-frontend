@@ -11,6 +11,7 @@ import type { ProInvoiceRow } from '@/lib/data/invoices';
 import type { RenewalRow } from '@/lib/data/renewals';
 import type { CommRow } from '@/lib/data/comms';
 import type { ConsentState } from '@/lib/comms/consent';
+import type { ClientDetailTab } from '@/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/page-logic';
 
 export function ClientTabs({
   client,
@@ -22,6 +23,9 @@ export function ClientTabs({
   comms,
   consentState,
   loadOlderComms,
+  initialTab,
+  focusedRequestId,
+  focusedDocumentId,
 }: {
   client: ClientDetail;
   slug: string;
@@ -32,9 +36,12 @@ export function ClientTabs({
   comms: CommRow[];
   consentState: ConsentState;
   loadOlderComms: (beforeIso: string) => Promise<CommRow[]>;
+  initialTab: ClientDetailTab;
+  focusedRequestId?: string;
+  focusedDocumentId?: string;
 }) {
   return (
-    <Tabs defaultValue="overview">
+    <Tabs defaultValue={initialTab}>
       <TabsList>
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -73,6 +80,8 @@ export function ClientTabs({
           clientId={client.id}
           documents={documents}
           openRequests={openRequests}
+          focusedRequestId={focusedRequestId}
+          focusedDocumentId={focusedDocumentId}
         />
       </TabsContent>
 

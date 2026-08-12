@@ -101,6 +101,7 @@ export const updateServiceCaseSchema = z
 
 export const serviceCaseFilterSchema = z
   .object({
+    id: uuidSchema.optional(),
     status: z
       .array(statusSchema)
       .max(8)

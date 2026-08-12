@@ -43,12 +43,13 @@ export default async function ApplicationsPage({
   if (!tenant) notFound();
 
   const filters = parseApplicationFilters(search);
-  const requestedPage = parseApplicationPage(search.page);
+  const requestedPage = filters.id ? 1 : parseApplicationPage(search.page);
   const [workspace, t, locale] = await Promise.all([
     listServiceCaseWorkspace(tenant.id, {
       status: filters.status,
       assignedTo: filters.assigned_to,
       clientId: filters.client_id,
+      caseId: filters.id,
       page: requestedPage,
     }),
     getTranslations('pro'),

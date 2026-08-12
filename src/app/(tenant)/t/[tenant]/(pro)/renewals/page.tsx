@@ -8,7 +8,7 @@ import { listClientsForTenant } from '@/lib/data/clients';
 import { listRenewalsForTenant, type RenewalRow, type RenewalStatus } from '@/lib/data/renewals';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { parseRenewalTab, type RenewalTab } from './page-logic';
+import { parseRenewalSearch, type RenewalSearchParams, type RenewalTab } from './page-logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,11 +45,11 @@ export default async function RenewalsPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<RenewalSearchParams>;
 }) {
   const { tenant: slug } = await params;
   const sp = await searchParams;
-  const tab = parseRenewalTab(sp.tab);
+  const { tab, renewalId } = parseRenewalSearch(sp);
 
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
@@ -60,7 +60,7 @@ export default async function RenewalsPage({
     tab === 'active' ? ACTIVE_STATUSES : tab === 'completed' ? ['completed'] : ['cancelled'];
 
   const [rows, clientOptions] = await Promise.all([
-    listRenewalsForTenant(tenant.id, { status: statusFilter }),
+    listRenewalsForTenant(tenant.id, renewalId ? { id: renewalId } : { status: statusFilter }),
     listClientsForTenant({ tenantId: tenant.id, limit: 50 }),
   ]);
 

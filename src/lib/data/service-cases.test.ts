@@ -404,6 +404,43 @@ test('listServiceCaseWorkspace loads each tenant dataset once without a silent r
   );
 });
 
+test('targeted service-case workspace uses a tenant-scoped exact id and first page', async () => {
+  const db = fakeSupabase({
+    service_cases_ranked: [
+      caseRow({ id: CASE_1 }),
+      caseRow({ id: '88888888-8888-4888-8888-888888888888' }),
+    ],
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    profiles: [
+      {
+        id: PROFILE_1,
+        tenant_id: TENANT_1,
+        full_name: 'Aisha Khan',
+        role: 'pro',
+        status: 'active',
+      },
+    ],
+  });
+
+  const workspace = await listServiceCaseWorkspace(
+    TENANT_1,
+    { caseId: CASE_1, status: ['cancelled'], page: 99 },
+    { supabase: db as never },
+  );
+  assert.deepEqual(
+    workspace.cases.map((row) => row.id),
+    [CASE_1],
+  );
+  assert.equal(workspace.page, 1);
+  const query = db.calls.find((call) => call.table === 'service_cases_ranked');
+  assert.ok(
+    query?.filters.some((filter) => filter.key === 'tenant_id' && filter.value === TENANT_1),
+  );
+  assert.ok(query?.filters.some((filter) => filter.key === 'id' && filter.value === CASE_1));
+  assert.ok(!query?.filters.some((filter) => filter.key === 'status'));
+  assert.deepEqual(query?.range, [0, SERVICE_CASE_PAGE_SIZE - 1]);
+});
+
 test('exported service-case DAL uses explicit ranges instead of silent query limits', () => {
   const source = readFileSync(join(process.cwd(), 'src/lib/data/service-cases.ts'), 'utf8');
   assert.doesNotMatch(source, /\.limit\s*\(/);

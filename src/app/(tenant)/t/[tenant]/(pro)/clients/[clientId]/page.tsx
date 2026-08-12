@@ -14,15 +14,19 @@ import { listRenewalsForClient } from '@/lib/data/renewals';
 import { getCommsForClient } from '@/lib/data/comms';
 import { getConsentStateForPhone } from '@/lib/comms/consent';
 import { loadOlderCommsAction } from './comms-actions';
+import { parseClientDetailSearch, type ClientDetailSearchParams } from './page-logic';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string; clientId: string }>;
+  searchParams: Promise<ClientDetailSearchParams>;
 }) {
   const { tenant: slug, clientId } = await params;
+  const focus = parseClientDetailSearch(await searchParams);
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
@@ -96,6 +100,9 @@ export default async function ClientDetailPage({
             comms={comms}
             consentState={consentState}
             loadOlderComms={loadOlder}
+            initialTab={focus.tab}
+            focusedRequestId={focus.requestId}
+            focusedDocumentId={focus.documentId}
           />
         </CardContent>
       </Card>

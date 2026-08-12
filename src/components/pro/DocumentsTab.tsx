@@ -41,8 +41,10 @@ export function DocumentsTab(props: {
   clientId: string;
   documents: DocumentListEntry[];
   openRequests: OpenRequestEntry[];
+  focusedRequestId?: string;
+  focusedDocumentId?: string;
 }) {
-  const { slug, clientId, documents, openRequests } = props;
+  const { slug, clientId, documents, openRequests, focusedRequestId, focusedDocumentId } = props;
   const empty = documents.length === 0 && openRequests.length === 0;
 
   return (
@@ -70,7 +72,14 @@ export function DocumentsTab(props: {
               <h3 className="text-muted-foreground text-sm font-semibold">Awaiting upload</h3>
               <ul className="divide-y rounded-lg border">
                 {openRequests.map((req) => (
-                  <li key={req.id} className="flex items-center justify-between gap-4 p-4 text-sm">
+                  <li
+                    key={req.id}
+                    id={`document-request-${req.id}`}
+                    aria-current={focusedRequestId === req.id ? 'true' : undefined}
+                    className={`flex items-center justify-between gap-4 p-4 text-sm ${
+                      focusedRequestId === req.id ? 'ring-primary ring-2 ring-inset' : ''
+                    }`}
+                  >
                     <div>
                       <div className="font-medium">{req.label}</div>
                       <div className="text-muted-foreground text-xs">
@@ -93,7 +102,13 @@ export function DocumentsTab(props: {
               <h3 className="text-muted-foreground text-sm font-semibold">Documents</h3>
               <ul className="divide-y rounded-lg border">
                 {documents.map((doc) => (
-                  <DocumentRow key={doc.documentId} doc={doc} slug={slug} clientId={clientId} />
+                  <DocumentRow
+                    key={doc.documentId}
+                    doc={doc}
+                    slug={slug}
+                    clientId={clientId}
+                    focused={focusedDocumentId === doc.documentId}
+                  />
                 ))}
               </ul>
             </section>
@@ -104,8 +119,13 @@ export function DocumentsTab(props: {
   );
 }
 
-function DocumentRow(props: { doc: DocumentListEntry; slug: string; clientId: string }) {
-  const { doc, slug, clientId } = props;
+function DocumentRow(props: {
+  doc: DocumentListEntry;
+  slug: string;
+  clientId: string;
+  focused: boolean;
+}) {
+  const { doc, slug, clientId, focused } = props;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +171,11 @@ function DocumentRow(props: { doc: DocumentListEntry; slug: string; clientId: st
   }
 
   return (
-    <li className="space-y-2 p-4 text-sm">
+    <li
+      id={`document-${doc.documentId}`}
+      aria-current={focused ? 'true' : undefined}
+      className={`space-y-2 p-4 text-sm ${focused ? 'ring-primary ring-2 ring-inset' : ''}`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="font-medium">{doc.label ?? DOC_TYPE_LABELS[doc.docType]}</div>

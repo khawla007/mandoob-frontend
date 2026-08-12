@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { parseApplicationFilters } from '@/app/(tenant)/t/[tenant]/(pro)/applications/page-logic';
-import { parseRenewalTab } from '@/app/(tenant)/t/[tenant]/(pro)/renewals/page-logic';
+import { parseRenewalSearch } from '@/app/(tenant)/t/[tenant]/(pro)/renewals/page-logic';
+import { parseClientDetailSearch } from '@/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/page-logic';
 import {
   associateCurrentDocumentVersions,
   calculateProDashboard,
@@ -172,6 +173,7 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   assert.equal(dashboard.generatedAt, NOW.toISOString());
   assert.equal(dashboard.kpis.activeClients, 2);
   assert.equal(dashboard.kpis.openCases, 3);
+  assert.equal(dashboard.kpis.unassignedCases, 0);
   assert.equal(dashboard.kpis.renewalsDue30d, 2);
   assert.equal(dashboard.finance.overdueMinor, 7300);
   assert.deepEqual(
@@ -610,14 +612,14 @@ test('selects the highest-ranked signal per action kind with tenant-safe hrefs',
     dashboard.deadlineEvents.filter((event) => event.eventType === 'case').map((event) => event.id),
     ['sla-breached', 'sla-near'],
   );
-  assert.equal(dashboard.actionDeck[0].href, '/t/safe-firm/applications?status=submitted');
+  assert.equal(dashboard.actionDeck[0].href, '/t/safe-firm/applications?case=sla-breached');
   assert.equal(
     dashboard.actionDeck.find((item) => item.id === 'expiry')!.href,
-    '/t/safe-firm/renewals?tab=active',
+    '/t/safe-firm/renewals?tab=active&renewal=expiry',
   );
   assert.equal(
     dashboard.actionDeck.find((item) => item.id === 'missing')!.href,
-    '/t/safe-firm/clients/client-1',
+    '/t/safe-firm/clients/client-1?tab=documents&request=missing',
   );
 });
 
@@ -838,30 +840,85 @@ test('uses the schema-valid sole PRO owner and exposes overload beyond 100 perce
   assert.equal(dashboard.kpis.activeClientsChange, -1);
   assert.equal(dashboard.kpis.movingCases, 30);
   assert.equal(dashboard.kpis.blockedCases, 1);
+  assert.equal(dashboard.kpis.unassignedCases, 1);
   assert.deepEqual(
     dashboard.team.map((member) => member.profileId),
     ['owner'],
   );
   assert.equal(dashboard.team[0].capacityPercent, 300);
+  assert.equal(dashboard.health.workloadBalance, 3.3);
+});
+
+test('counts open workload assigned to a suspended former owner as unassigned', () => {
+  const input = emptyInput();
+  input.profiles = [
+    {
+      id: 'former-pro',
+      tenant_id: TENANT,
+      full_name: 'Former owner',
+      role: 'pro',
+      status: 'suspended',
+    },
+    { id: 'new-pro', tenant_id: TENANT, full_name: 'New owner', role: 'pro', status: 'active' },
+  ];
+  input.serviceCases = [
+    caseRow({ id: 'orphaned-open', assigned_to: 'former-pro' }),
+    caseRow({ id: 'current-open', assigned_to: 'new-pro' }),
+    caseRow({
+      id: 'historical',
+      assigned_to: 'former-pro',
+      status: 'completed',
+      completed_at: NOW.toISOString(),
+    }),
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.kpis.openCases, 2);
+  assert.equal(dashboard.kpis.unassignedCases, 1);
+  assert.deepEqual(
+    dashboard.team.map((member) => member.profileId),
+    ['new-pro'],
+  );
   assert.equal(dashboard.health.workloadBalance, 100);
 });
 
 test('dashboard action hrefs use filters and entity routes consumed by destination contracts', () => {
-  const dashboard = calculateProDashboard(baseInput(), NOW);
+  const input = baseInput();
+  input.serviceCases[0].id = '77777777-7777-4777-8777-777777777777';
+  input.renewals[0].id = '88888888-8888-4888-8888-888888888888';
+  input.documentRequests[0].id = '99999999-9999-4999-8999-999999999999';
+  const dashboard = calculateProDashboard(input, NOW);
   const byKind = new Map(dashboard.actionDeck.map((action) => [action.kind, action]));
   const caseUrl = new URL(byKind.get('case')!.href, 'https://mandoob.test');
   assert.equal(caseUrl.pathname, '/t/acme/applications');
+  assert.equal(caseUrl.searchParams.get('case'), input.serviceCases[0].id);
   const caseFilters = parseApplicationFilters({
-    status: caseUrl.searchParams.get('status') ?? undefined,
+    case: caseUrl.searchParams.get('case') ?? undefined,
   });
-  assert.deepEqual(caseFilters.status, ['submitted']);
+  assert.equal(caseFilters.id, input.serviceCases[0].id);
+  assert.equal(caseFilters.status, undefined);
   assert.equal(caseFilters.assigned_to, undefined);
 
   const renewalUrl = new URL(byKind.get('renewal')!.href, 'https://mandoob.test');
   assert.equal(renewalUrl.pathname, '/t/acme/renewals');
-  assert.equal(parseRenewalTab(renewalUrl.searchParams.get('tab') ?? undefined), 'active');
+  assert.deepEqual(
+    parseRenewalSearch({
+      tab: renewalUrl.searchParams.get('tab') ?? undefined,
+      renewal: renewalUrl.searchParams.get('renewal') ?? undefined,
+    }),
+    { tab: 'active', renewalId: input.renewals[0].id },
+  );
 
-  assert.equal(byKind.get('document')!.href, '/t/acme/clients/client-1');
+  const documentUrl = new URL(byKind.get('document')!.href, 'https://mandoob.test');
+  assert.equal(documentUrl.pathname, '/t/acme/clients/client-1');
+  assert.deepEqual(
+    parseClientDetailSearch({
+      tab: documentUrl.searchParams.get('tab') ?? undefined,
+      request: documentUrl.searchParams.get('request') ?? undefined,
+      document: documentUrl.searchParams.get('document') ?? undefined,
+    }),
+    { tab: 'documents', requestId: input.documentRequests[0].id, documentId: undefined },
+  );
   assert.equal(byKind.get('invoice')!.href, '/t/acme/payments/invoice-overdue');
   assert.match(
     readFileSync(
@@ -877,6 +934,25 @@ test('dashboard action hrefs use filters and entity routes consumed by destinati
     ),
     /invoiceId/,
   );
+});
+
+test('profile transition migration clears only open cases owned by an invalidated PRO', () => {
+  const sql = readFileSync(
+    join(
+      process.cwd(),
+      'supabase/migrations/20260812110000_0053_service_case_owner_transitions.sql',
+    ),
+    'utf8',
+  );
+  assert.match(sql, /after update of role, status, tenant_id on public\.profiles/i);
+  assert.match(sql, /security definer/i);
+  assert.match(sql, /set search_path = pg_catalog, public/i);
+  assert.match(sql, /old\.role = 'pro'[\s\S]*old\.status = 'active'/i);
+  assert.match(sql, /new\.tenant_id is distinct from old\.tenant_id/i);
+  assert.match(sql, /update public\.service_cases[\s\S]*set assigned_to = null/i);
+  assert.match(sql, /status not in \('completed', 'cancelled'\)/i);
+  assert.match(sql, /not exists \([\s\S]*owner\.role = 'pro'[\s\S]*owner\.status = 'active'/i);
+  assert.doesNotMatch(sql, /set assigned_to\s*=\s*\([^n]/i);
 });
 
 test('finance relationship hardening migration uses tenant-owned chains without deleting legacy data', () => {
