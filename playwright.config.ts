@@ -8,6 +8,7 @@ const baseURL = process.env.E2E_BASE_URL ?? process.env.LAUNCH_BASE_URL ?? 'http
 const launchUrl = new URL(baseURL);
 const launchRootDomain = launchUrl.host;
 const launchPort = launchUrl.port || '3001';
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: './tests',
@@ -17,6 +18,7 @@ export default defineConfig({
   },
   use: {
     baseURL,
+    launchOptions: chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : undefined,
     trace: 'retain-on-failure',
   },
   webServer: process.env.LAUNCH_SKIP_WEB_SERVER
@@ -47,7 +49,7 @@ export default defineConfig({
     },
     {
       name: 'authenticated-a11y',
-      testMatch: /a11y\/authenticated-routes\.spec\.ts/,
+      testMatch: /a11y\/(?:authenticated-routes|pro-dashboard)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
     },
