@@ -5,12 +5,13 @@ import { test } from 'node:test';
 
 import en from '@/messages/en.json';
 import ar from '@/messages/ar.json';
-import { ApiError } from '@/lib/errors';
 import { authorizeProDashboardRead } from './page-authorization';
-import { dashboardWidgetState, parseDashboardRange } from './page-logic';
+import { dashboardWidgetState, parseDashboardFilters, parseDashboardRange } from './page-logic';
 
 const pagePath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/page.tsx');
 const metricsPath = join(process.cwd(), 'src/lib/data/tenant-metrics.ts');
+const loadingPath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/loading.tsx');
+const errorPath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/error.tsx');
 
 test('dashboard read authorization completes before a service-role dashboard read', async () => {
   const calls: string[] = [];
@@ -29,31 +30,43 @@ test('dashboard read authorization completes before a service-role dashboard rea
   });
   calls.push('read');
 
-  assert.equal(tenant?.tenant.id, 'tenant-1');
+  assert.equal(tenant.kind, 'authorized');
+  assert.equal(tenant.kind === 'authorized' ? tenant.tenant.id : null, 'tenant-1');
   assert.deepEqual(calls, ['auth', 'tenant', 'active', 'read']);
 });
 
-test('dashboard read authorization rejects an exact tenant mismatch before active/read', async () => {
+test('dashboard read authorization returns not-found for an exact tenant mismatch', async () => {
   const calls: string[] = [];
-  await assert.rejects(
-    () =>
-      authorizeProDashboardRead('acme', {
-        requirePro: async () => {
-          calls.push('auth');
-          return { tenantId: 'tenant-2', role: 'pro' };
-        },
-        resolveTenant: async () => {
-          calls.push('tenant');
-          return { id: 'tenant-1', slug: 'acme', name: 'Acme', status: 'active' };
-        },
-        requireActive: async () => {
-          calls.push('active');
-        },
-      }),
-    (error) => error instanceof ApiError && error.code === 'FORBIDDEN',
-  );
+  const result = await authorizeProDashboardRead('acme', {
+    requirePro: async () => {
+      calls.push('auth');
+      return { tenantId: 'tenant-2', role: 'pro' };
+    },
+    resolveTenant: async () => {
+      calls.push('tenant');
+      return { id: 'tenant-1', slug: 'acme', name: 'Acme', status: 'active' };
+    },
+    requireActive: async () => calls.push('active'),
+  });
 
+  assert.deepEqual(result, { kind: 'not-found' });
   assert.deepEqual(calls, ['auth', 'tenant']);
+});
+
+test('dashboard read authorization returns inactive without active/read checks', async () => {
+  const calls: string[] = [];
+  const result = await authorizeProDashboardRead('acme', {
+    requirePro: async () => ({ tenantId: 'tenant-1', role: 'pro' }),
+    resolveTenant: async () => ({
+      id: 'tenant-1',
+      slug: 'acme',
+      name: 'Acme',
+      status: 'suspended',
+    }),
+    requireActive: async () => calls.push('active'),
+  });
+  assert.equal(result.kind, 'inactive');
+  assert.deepEqual(calls, []);
 });
 
 test('dashboard range parser accepts only one supported value', () => {
@@ -64,6 +77,20 @@ test('dashboard range parser accepts only one supported value', () => {
   assert.equal(parseDashboardRange('bad'), 30);
   assert.equal(parseDashboardRange(['7', '90']), 30);
   assert.equal(parseDashboardRange([]), 30);
+});
+
+test('dashboard filters reject repeated/malformed values and accept schema-backed fields', () => {
+  assert.deepEqual(
+    parseDashboardFilters({
+      owner: '11111111-1111-4111-8111-111111111111',
+      serviceType: 'Golden visa',
+    }),
+    { ownerId: '11111111-1111-4111-8111-111111111111', serviceType: 'Golden visa' },
+  );
+  assert.deepEqual(parseDashboardFilters({ owner: ['a', 'b'], serviceType: ['x', 'y'] }), {});
+  assert.deepEqual(parseDashboardFilters({ owner: 'bad', serviceType: 'xx' }), {
+    serviceType: 'xx',
+  });
 });
 
 test('dashboard widget state sanitizes only relevant loader group failures', () => {
@@ -101,6 +128,8 @@ test('dashboard page uses async inputs, authorizes before read, and has no legac
   assert.ok(source.indexOf('authorizeProDashboardRead(') < source.indexOf('getProDashboardData('));
   assert.doesNotMatch(source, /SignupsChart|RecentLoginsTable|getProDashboardMetrics/);
   assert.doesNotMatch(metrics, /ProDashboardKpiKey|ProDashboardMetric|getProDashboardMetrics/);
+  assert.match(source, /allBranches/);
+  assert.match(source, /disabled/);
 });
 
 test('dashboard has one responsive composition and moves Action Deck before charts below lg', () => {
@@ -119,6 +148,16 @@ test('dashboard has one responsive composition and moves Action Deck before char
   }
   assert.match(source, /order-1[^"']*lg:order-2[\s\S]*<ActionDeck/);
   assert.match(source, /order-2[^"']*lg:order-1[\s\S]*<CaseVelocityChart/);
+});
+
+test('dashboard route exposes shape-matched loading and localized safe error boundaries', () => {
+  const loading = readFileSync(loadingPath, 'utf8');
+  const error = readFileSync(errorPath, 'utf8');
+  assert.match(loading, /rounded-3xl/);
+  assert.match(loading, /Array\.from\(\{ length: 4 \}/);
+  assert.match(error, /'use client'/);
+  assert.match(error, /useTranslations\('pro\.dashboard\.signalStudio'\)/);
+  assert.doesNotMatch(error, /error\.message/);
 });
 
 test('Signal Studio translations have complete English and Arabic route label parity', () => {

@@ -2,7 +2,7 @@ import 'server-only';
 
 import { ApiError } from '@/lib/errors';
 
-type ProDashboardTenant = { id: string; slug: string; name: string };
+type ProDashboardTenant = { id: string; slug: string; name: string; status: string };
 type ProDashboardSession = { tenantId: string | null; role: 'pro' };
 
 export type ProDashboardReadAuthorizationDependencies = {
@@ -14,13 +14,27 @@ export type ProDashboardReadAuthorizationDependencies = {
 export async function authorizeProDashboardRead(
   slug: string,
   dependencies: ProDashboardReadAuthorizationDependencies,
-): Promise<{ tenant: ProDashboardTenant; session: ProDashboardSession } | null> {
+): Promise<
+  | { kind: 'authorized'; tenant: ProDashboardTenant; session: ProDashboardSession }
+  | { kind: 'inactive'; tenant: ProDashboardTenant; session: ProDashboardSession }
+  | { kind: 'not-found' }
+> {
   const session = await dependencies.requirePro();
   const tenant = await dependencies.resolveTenant(slug);
-  if (!tenant) return null;
+  if (!tenant) return { kind: 'not-found' };
   if (!session.tenantId || session.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
+    return { kind: 'not-found' };
   }
-  await dependencies.requireActive(tenant.id);
-  return { tenant, session };
+  if (tenant.status !== 'active') return { kind: 'inactive', tenant, session };
+  try {
+    await dependencies.requireActive(tenant.id);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'TENANT_INACTIVE') {
+      return { kind: 'inactive', tenant, session };
+    }
+    if (error instanceof ApiError && error.code === 'TENANT_NOT_FOUND')
+      return { kind: 'not-found' };
+    throw error;
+  }
+  return { kind: 'authorized', tenant, session };
 }

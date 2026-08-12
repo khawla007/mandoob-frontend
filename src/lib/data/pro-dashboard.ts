@@ -65,6 +65,10 @@ export type ProDashboardData = {
     activeCases: number;
     capacityPercent: number;
   }>;
+  filterOptions: {
+    owners: Array<{ id: string; name: string }>;
+    serviceTypes: string[];
+  };
   errors: Partial<
     Record<'identity' | 'links' | 'operations' | 'renewals' | 'documents' | 'finance', string>
   >;
@@ -192,6 +196,7 @@ export type ProDashboardInput = {
   payments: PaymentInput[];
   refunds: RefundInput[];
   errors?: ProDashboardData['errors'];
+  filters?: { ownerId?: string; serviceType?: string };
 };
 
 type Action = ProDashboardData['actionDeck'][number];
@@ -212,7 +217,12 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const tenantId = input.tenantId;
   const clients = input.clients.filter((row) => row.tenant_id === tenantId);
   const profiles = input.profiles.filter((row) => row.tenant_id === tenantId);
-  const serviceCases = input.serviceCases.filter((row) => row.tenant_id === tenantId);
+  const tenantServiceCases = input.serviceCases.filter((row) => row.tenant_id === tenantId);
+  const serviceCases = tenantServiceCases.filter(
+    (row) =>
+      (!input.filters?.ownerId || row.assigned_to === input.filters.ownerId) &&
+      (!input.filters?.serviceType || row.service_type === input.filters.serviceType),
+  );
   const renewals = input.renewals.filter((row) => row.tenant_id === tenantId);
   const documentRequests = input.documentRequests.filter((row) => row.tenant_id === tenantId);
   const documents = input.documents.filter((row) => row.tenant_id === tenantId);
@@ -463,6 +473,12 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     },
     renewalStreams,
     team,
+    filterOptions: {
+      owners: profiles
+        .filter((row) => row.status === 'active' && row.role === 'pro')
+        .map((row) => ({ id: row.id, name: row.full_name ?? row.id })),
+      serviceTypes: Array.from(new Set(tenantServiceCases.map((row) => row.service_type))).sort(),
+    },
     errors: input.errors ?? {},
   };
 }
@@ -978,6 +994,7 @@ async function loadTenantSlug(
 export async function getProDashboardData(
   tenantId: string,
   days: 7 | 30 | 90 = 30,
+  filters?: { ownerId?: string; serviceType?: string },
 ): Promise<ProDashboardData> {
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
   const admin = createSupabaseServiceRoleClient();
@@ -1057,6 +1074,7 @@ export async function getProDashboardData(
       payments,
       refunds,
       errors: settled.errors,
+      filters,
     },
     new Date(),
   );

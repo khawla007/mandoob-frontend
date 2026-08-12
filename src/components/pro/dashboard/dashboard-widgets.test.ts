@@ -25,8 +25,9 @@ describe('Signal Studio widget contracts', () => {
     assert.match(velocity, /dashboard\?range=/);
     assert.doesNotMatch(velocity, /dashboard\?days=/);
     assert.match(velocity, /role="region"/);
-    assert.match(velocity, /<table className="sr-only">/);
-    assert.match(velocity, /<caption>/);
+    assert.match(velocity, /<details/);
+    assert.match(velocity, /<summary/);
+    assert.match(velocity, /<caption className="sr-only">/);
     assert.match(velocity, /aria-hidden="true"/);
     assert.doesNotMatch(velocity, /role="img"/);
     assert.match(velocity, /isAnimationActive=\{false\}/);
@@ -56,10 +57,12 @@ describe('Signal Studio widget contracts', () => {
     const heatmap = source('DeadlineHeatmap');
     assert.match(heatmap, /eventTypes/);
     assert.match(heatmap, /aria-label/);
-    assert.match(heatmap, /hidden[^"\n]*md:grid/);
+    assert.match(heatmap, /hidden[^"\n]*md:block/);
     assert.match(heatmap, /md:hidden/);
     assert.match(heatmap, /<ol/);
     assert.match(heatmap, /role="gridcell"[\s\S]*?<Link/);
+    assert.match(heatmap, /<button[\s\S]*title=/);
+    assert.doesNotMatch(heatmap, /slice\(0, 14\)/);
     assert.doesNotMatch(heatmap, /<Link[\s\S]{0,500}role="gridcell"/);
     for (const type of ['case', 'renewal', 'document', 'invoice']) {
       assert.match(heatmap, new RegExp(`${type}Event`));
@@ -72,6 +75,8 @@ describe('Signal Studio widget contracts', () => {
     assert.match(actions, /href=\{action\.href\}/);
     assert.match(actions, /action\.ownerName/);
     assert.match(actions, /action\.deadline/);
+    assert.match(actions, /generatedAt/);
+    assert.match(actions, /formatActionCountdown/);
 
     const team = source('TeamSignal');
     assert.match(team, /activeCases/);
@@ -97,6 +102,7 @@ describe('Signal Studio widget contracts', () => {
     assert.match(kpis, /font-mono/);
     assert.match(kpis, /tabular-nums/);
     assert.match(kpis, /focus-visible:ring-2/);
+    assert.match(kpis, /states\?\./);
   });
 
   it('exposes a discriminated local state API on every widget', () => {

@@ -120,7 +120,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
     );
   }
   const maximum = Math.max(...cells.map((cell) => cell.count));
-  const shownDates = intensity.slice(0, 14);
+  const shownDates = intensity;
   const label = (cell: DeadlineCell) => {
     const date = formatSignalDate(cell.date, locale, {
       dateStyle: 'full',
@@ -163,68 +163,77 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
         <CardDescription>{labels.description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div
-          className="hidden grid-cols-[auto_repeat(14,minmax(1.75rem,1fr))] gap-1.5 md:grid"
-          role="grid"
-          aria-label={labels.gridLabel}
-        >
-          <div role="row" className="col-span-full grid grid-cols-subgrid gap-1.5">
-            <span role="columnheader" />
-            {shownDates.map((day) => (
-              <span
-                key={day.date}
-                role="columnheader"
-                className="text-muted-foreground overflow-hidden text-center text-[10px]"
-              >
-                {formatSignalDate(day.date, locale, {
-                  weekday: 'narrow',
-                  day: 'numeric',
+        <div className="hidden overflow-x-auto md:block">
+          <div
+            className="grid min-w-max gap-1.5 pb-2"
+            style={{
+              gridTemplateColumns: `auto repeat(${shownDates.length}, minmax(2.5rem, 1fr))`,
+            }}
+            role="grid"
+            aria-label={labels.gridLabel}
+          >
+            <div role="row" className="col-span-full grid grid-cols-subgrid gap-1.5">
+              <span role="columnheader" />
+              {shownDates.map((day) => (
+                <span
+                  key={day.date}
+                  role="columnheader"
+                  className="text-muted-foreground overflow-hidden text-center text-[10px]"
+                >
+                  {formatSignalDate(day.date, locale, {
+                    weekday: 'narrow',
+                    day: 'numeric',
+                  })}
+                </span>
+              ))}
+            </div>
+            {(['morning', 'afternoon'] as const).map((period) => (
+              <div key={period} role="row" className="col-span-full grid grid-cols-subgrid gap-1.5">
+                <span
+                  role="rowheader"
+                  className="text-muted-foreground self-center pe-2 text-xs capitalize"
+                >
+                  {labels[period]}
+                </span>
+                {shownDates.map((day) => {
+                  const cell = cells.find(
+                    (item) => item.date === day.date && item.period === period,
+                  )!;
+                  return (
+                    <div
+                      key={`${day.date}-${period}`}
+                      role="gridcell"
+                      className={cn(
+                        'grid min-h-12 rounded-md border p-1 text-[11px] font-semibold',
+                        heatLevel(cell.count, maximum),
+                      )}
+                    >
+                      <button
+                        type="button"
+                        title={label(cell)}
+                        aria-label={label(cell)}
+                        className="focus-visible:ring-ring rounded text-center font-mono tabular-nums focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        {number.format(cell.count)}
+                      </button>
+                      <span className="flex max-h-20 flex-wrap justify-center gap-1 overflow-y-auto">
+                        {drilldowns(cell).map((drilldown) => (
+                          <Link
+                            key={drilldown.key}
+                            href={drilldown.href}
+                            aria-label={drilldownLabel(cell, drilldown)}
+                            className="focus-visible:ring-ring bg-background/75 rounded px-1 font-mono tabular-nums focus-visible:ring-2 focus-visible:outline-none"
+                          >
+                            {number.format(drilldown.count)}
+                          </Link>
+                        ))}
+                      </span>
+                    </div>
+                  );
                 })}
-              </span>
+              </div>
             ))}
           </div>
-          {(['morning', 'afternoon'] as const).map((period) => (
-            <div key={period} role="row" className="col-span-full grid grid-cols-subgrid gap-1.5">
-              <span
-                role="rowheader"
-                className="text-muted-foreground self-center pe-2 text-xs capitalize"
-              >
-                {labels[period]}
-              </span>
-              {shownDates.map((day) => {
-                const cell = cells.find(
-                  (item) => item.date === day.date && item.period === period,
-                )!;
-                return (
-                  <span
-                    key={`${day.date}-${period}`}
-                    role="gridcell"
-                    aria-label={label(cell)}
-                    className={cn(
-                      'grid min-h-12 rounded-md border p-1 text-[11px] font-semibold',
-                      heatLevel(cell.count, maximum),
-                    )}
-                  >
-                    <span aria-hidden="true" className="text-center font-mono tabular-nums">
-                      {number.format(cell.count)}
-                    </span>
-                    <span className="flex max-h-20 flex-wrap justify-center gap-1 overflow-y-auto">
-                      {drilldowns(cell).map((drilldown) => (
-                        <Link
-                          key={drilldown.key}
-                          href={drilldown.href}
-                          aria-label={drilldownLabel(cell, drilldown)}
-                          className="focus-visible:ring-ring bg-background/75 rounded px-1 font-mono tabular-nums focus-visible:ring-2 focus-visible:outline-none"
-                        >
-                          {number.format(drilldown.count)}
-                        </Link>
-                      ))}
-                    </span>
-                  </span>
-                );
-              })}
-            </div>
-          ))}
         </div>
         <ol className="divide-border divide-y md:hidden">
           {activeCells.map((cell) => (

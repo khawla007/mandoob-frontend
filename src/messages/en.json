@@ -489,7 +489,8 @@
           "openApplications": "Open applications",
           "summary": "In the last {range} days, {opened} cases opened and {completed} completed.",
           "description": "Applications opened compared with applications completed.",
-          "tableCaption": "Daily opened and completed case totals"
+          "tableCaption": "Daily opened and completed case totals",
+          "showData": "Show accessible data table"
         },
         "collectionsLabels": {
           "billed": "Billed",
@@ -510,6 +511,13 @@
           "actionAria": "Open {title} for {client}. Urgency: {urgency}.",
           "unassigned": "Unassigned",
           "noDeadline": "No deadline",
+          "absoluteDeadline": "Deadline: {deadline}",
+          "countdown": {
+            "breached": "Breached",
+            "today": "Due today",
+            "hours": "{count} hr",
+            "days": "{count} days"
+          },
           "urgency": {
             "breached": "Breached",
             "urgent": "Urgent",
@@ -561,6 +569,24 @@
           "renewals": "Renewal data is temporarily unavailable.",
           "documents": "Document deadline data is temporarily unavailable.",
           "finance": "Finance data is temporarily unavailable."
+        },
+        "filters": {
+          "owner": "Case owner",
+          "allOwners": "All owners",
+          "serviceType": "Service type",
+          "allServices": "All services",
+          "branch": "Branch",
+          "allBranches": "All branches",
+          "branchUnavailable": "Branch filtering is unavailable because this workspace has no branch field.",
+          "apply": "Apply filters"
+        },
+        "suspended": {
+          "title": "Workspace suspended",
+          "description": "Dashboard data is unavailable while this workspace is suspended. Contact support."
+        },
+        "errorBoundary": {
+          "title": "Dashboard unavailable",
+          "description": "We could not load the dashboard safely. Try again."
         }
       }
     },

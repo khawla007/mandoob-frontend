@@ -9,12 +9,14 @@ import { cn } from '@/lib/utils';
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 import type { WidgetBaseLabels } from './widget-state';
 import { formatSignalDeadline, signalLabel } from './widget-format';
+import { formatActionCountdown, type ActionCountdownLabels } from './action-deadline';
 
 type Action = ProDashboardData['actionDeck'][number];
 
 type ActionDeckDataProps = {
   actions: Action[];
   tenantSlug: string;
+  generatedAt: string;
 };
 
 export type ActionDeckLabels = WidgetBaseLabels & {
@@ -26,6 +28,8 @@ export type ActionDeckLabels = WidgetBaseLabels & {
   unassigned: string;
   noDeadline: string;
   urgency: Record<Action['urgency'], string>;
+  countdown: ActionCountdownLabels;
+  absoluteDeadline: string;
 };
 export type ActionDeckProps = WidgetStateProps<ActionDeckDataProps, ActionDeckLabels>;
 
@@ -60,7 +64,7 @@ export function ActionDeck(props: ActionDeckProps) {
   if (props.kind === 'empty' || props.kind === 'error')
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-96" />;
 
-  const { actions, tenantSlug, locale } = props;
+  const { actions, tenantSlug, generatedAt, locale } = props;
   if (actions.length === 0)
     return (
       <WidgetMessage
@@ -125,7 +129,20 @@ export function ActionDeck(props: ActionDeckProps) {
               </span>
               <span className="flex items-center gap-1.5">
                 <CalendarClock aria-hidden="true" className="size-3.5" />
-                {formatSignalDeadline(action.deadline, locale) ?? labels.noDeadline}
+                <span
+                  title={
+                    action.deadline
+                      ? signalLabel(labels.absoluteDeadline, {
+                          deadline:
+                            formatSignalDeadline(action.deadline, locale) ?? action.deadline,
+                        })
+                      : undefined
+                  }
+                >
+                  {action.deadline
+                    ? formatActionCountdown(action.deadline, generatedAt, locale, labels.countdown)
+                    : labels.noDeadline}
+                </span>
               </span>
             </span>
           </Link>

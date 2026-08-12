@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { authorizeProDashboardRead } from './page-authorization';
 import {
   dashboardWidgetState,
+  dashboardQuery,
+  parseDashboardFilters,
   parseDashboardRange,
   type DashboardErrorGroup,
   type DashboardErrorMessages,
@@ -36,7 +38,11 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-type DashboardSearchParams = { range?: string | string[] };
+type DashboardSearchParams = {
+  range?: string | string[];
+  owner?: string | string[];
+  serviceType?: string | string[];
+};
 type WidgetErrorState = { kind: 'error'; message: string; retryHref: string };
 
 function dataOrError<T extends object>(
@@ -62,18 +68,28 @@ export default async function ProDashboard({
     resolveTenant: resolveTenantBySlug,
     requireActive: requireActiveTenant,
   });
-  if (!context) notFound();
+  if (context.kind === 'not-found') notFound();
   const { tenant, session } = context;
+  const [t, locale] = await Promise.all([
+    getTranslations('pro.dashboard.signalStudio'),
+    getLocale(),
+  ]);
+  if (context.kind === 'inactive') {
+    return (
+      <div role="status" className="rounded-2xl border p-8">
+        <h1 className="text-xl font-semibold">{t('suspended.title')}</h1>
+        <p className="text-muted-foreground mt-2">{t('suspended.description')}</p>
+      </div>
+    );
+  }
   const canViewFinance = session.role === 'pro';
   const canViewTeam = session.role === 'pro';
 
   const range = parseDashboardRange(search.range);
-  const [dashboard, t, locale] = await Promise.all([
-    getProDashboardData(tenant.id, range),
-    getTranslations('pro.dashboard.signalStudio'),
-    getLocale(),
-  ]);
-  const retryHref = `/t/${encodeURIComponent(tenant.slug)}/dashboard?range=${range}`;
+  const filters = parseDashboardFilters(search);
+  const dashboard = await getProDashboardData(tenant.id, range, filters);
+  const filterQuery = dashboardQuery(filters);
+  const retryHref = `/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, range)}`;
   const errorMessages = {
     identity: t('errors.identity'),
     links: t('errors.links'),
@@ -135,6 +151,7 @@ export default async function ProDashboard({
     completed: t('completed'),
     date: t('date'),
     tableCaption: t('caseVelocityLabels.tableCaption'),
+    showData: t('caseVelocityLabels.showData'),
   } satisfies CaseVelocityChartLabels;
   const collectionsLabels = {
     ...baseLabels,
@@ -165,6 +182,13 @@ export default async function ProDashboard({
       soon: t('actionLabels.urgency.soon'),
       normal: t('actionLabels.urgency.normal'),
     },
+    countdown: {
+      breached: t('actionLabels.countdown.breached'),
+      today: t('actionLabels.countdown.today'),
+      hours: t('actionLabels.countdown.hours'),
+      days: t('actionLabels.countdown.days'),
+    },
+    absoluteDeadline: t('actionLabels.absoluteDeadline'),
   } satisfies ActionDeckLabels;
   const deadlineLabels = {
     ...baseLabels,
@@ -224,7 +248,7 @@ export default async function ProDashboard({
           {([7, 30, 90] as const).map((days) => (
             <Link
               key={days}
-              href={`/t/${encodeURIComponent(tenant.slug)}/dashboard?range=${days}`}
+              href={`/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, days)}`}
               aria-current={range === days ? 'page' : undefined}
               className={cn(
                 'focus-visible:ring-ring rounded-md px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none',
@@ -239,6 +263,59 @@ export default async function ProDashboard({
         </nav>
       </header>
 
+      <form
+        method="get"
+        className="grid gap-3 rounded-2xl border p-4 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]"
+      >
+        <input type="hidden" name="range" value={range} />
+        <label className="text-sm font-medium">
+          {t('filters.owner')}
+          <select
+            name="owner"
+            defaultValue={filters.ownerId ?? ''}
+            className="border-input bg-background mt-1 block h-9 w-full rounded-md border px-3"
+          >
+            <option value="">{t('filters.allOwners')}</option>
+            {dashboard.filterOptions.owners.map((owner) => (
+              <option key={owner.id} value={owner.id}>
+                {owner.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm font-medium">
+          {t('filters.serviceType')}
+          <select
+            name="serviceType"
+            defaultValue={filters.serviceType ?? ''}
+            className="border-input bg-background mt-1 block h-9 w-full rounded-md border px-3"
+          >
+            <option value="">{t('filters.allServices')}</option>
+            {dashboard.filterOptions.serviceTypes.map((serviceType) => (
+              <option key={serviceType} value={serviceType}>
+                {serviceType}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm font-medium">
+          {t('filters.branch')}
+          <select
+            disabled
+            aria-describedby="branch-unavailable"
+            className="border-input bg-muted mt-1 block h-9 w-full rounded-md border px-3"
+          >
+            <option>{t('filters.allBranches')}</option>
+          </select>
+          <span id="branch-unavailable" className="text-muted-foreground text-xs">
+            {t('filters.branchUnavailable')}
+          </span>
+        </label>
+        <button className="bg-primary text-primary-foreground h-9 self-end rounded-md px-4 text-sm font-medium">
+          {t('filters.apply')}
+        </button>
+      </form>
+
       <SignalHero
         locale={locale}
         labels={heroLabels}
@@ -252,9 +329,15 @@ export default async function ProDashboard({
       <SignalKpis
         locale={locale}
         labels={kpiLabels}
-        {...dataOrError(stateFor(['identity', 'operations', 'renewals', 'finance']), {
+        {...dataOrError(undefined, {
           kpis: dashboard.kpis,
           tenantSlug: tenant.slug,
+          states: {
+            activeClients: stateFor(['identity']),
+            openCases: stateFor(['operations']),
+            renewals: stateFor(['renewals']),
+            finance: stateFor(['finance']),
+          },
         })}
       />
 
@@ -265,7 +348,11 @@ export default async function ProDashboard({
             labels={actionLabels}
             {...dataOrError(
               stateFor(['identity', 'links', 'operations', 'renewals', 'documents', 'finance']),
-              { actions: dashboard.actionDeck, tenantSlug: tenant.slug },
+              {
+                actions: dashboard.actionDeck,
+                tenantSlug: tenant.slug,
+                generatedAt: dashboard.generatedAt,
+              },
             )}
           />
         </div>
@@ -277,6 +364,7 @@ export default async function ProDashboard({
               data: dashboard.caseVelocity,
               tenantSlug: tenant.slug,
               range,
+              filterQuery,
             })}
           />
           <CollectionsWaterfall

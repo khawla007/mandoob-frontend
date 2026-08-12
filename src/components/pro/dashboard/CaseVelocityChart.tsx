@@ -25,6 +25,7 @@ type CaseVelocityChartDataProps = {
   data: ProDashboardData['caseVelocity'];
   tenantSlug: string;
   range?: (typeof RANGES)[number];
+  filterQuery?: string;
 };
 
 export type CaseVelocityChartLabels = WidgetBaseLabels & {
@@ -39,6 +40,7 @@ export type CaseVelocityChartLabels = WidgetBaseLabels & {
   completed: string;
   date: string;
   tableCaption: string;
+  showData: string;
 };
 export type CaseVelocityChartProps = WidgetStateProps<
   CaseVelocityChartDataProps,
@@ -70,7 +72,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
   if (props.kind === 'empty' || props.kind === 'error')
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-96" />;
 
-  const { data, tenantSlug, range = 30, locale } = props;
+  const { data, tenantSlug, range = 30, filterQuery, locale } = props;
   if (data.length === 0) {
     return (
       <WidgetMessage
@@ -112,7 +114,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
           {RANGES.map((days) => (
             <Link
               key={days}
-              href={`/t/${encodeURIComponent(tenantSlug)}/dashboard?range=${days}`}
+              href={`/t/${encodeURIComponent(tenantSlug)}/dashboard?range=${days}${filterQuery ? `&${filterQuery}` : ''}`}
               aria-current={range === days ? 'page' : undefined}
               className={cn(
                 'focus-visible:ring-ring rounded-md px-3 py-1.5 font-mono text-xs tabular-nums focus-visible:ring-2 focus-visible:outline-none',
@@ -196,25 +198,34 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
             />
           </AreaChart>
         </ChartContainer>
-        <table className="sr-only">
-          <caption>{labels.tableCaption}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{labels.date}</th>
-              <th scope="col">{labels.opened}</th>
-              <th scope="col">{labels.completed}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((point) => (
-              <tr key={point.date}>
-                <th scope="row">{formatSignalDate(point.date, locale, { dateStyle: 'full' })}</th>
-                <td>{number.format(point.opened)}</td>
-                <td>{number.format(point.completed)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <details className="mt-4">
+          <summary className="focus-visible:ring-ring cursor-pointer text-sm font-semibold underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none">
+            {labels.showData}
+          </summary>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <caption className="sr-only">{labels.tableCaption}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{labels.date}</th>
+                  <th scope="col">{labels.opened}</th>
+                  <th scope="col">{labels.completed}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((point) => (
+                  <tr key={point.date}>
+                    <th scope="row">
+                      {formatSignalDate(point.date, locale, { dateStyle: 'full' })}
+                    </th>
+                    <td>{number.format(point.opened)}</td>
+                    <td>{number.format(point.completed)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
         <p className="text-muted-foreground mt-2 text-xs">{summary}</p>
       </CardContent>
     </Card>

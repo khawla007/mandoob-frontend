@@ -1165,3 +1165,23 @@ function paymentRow(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+test('operation filters affect cases only and stay tenant isolated', () => {
+  const input = baseInput();
+  input.serviceCases.push(
+    caseRow({
+      id: 'other-tenant-case',
+      tenant_id: 'tenant-b',
+      assigned_to: 'pro-1',
+      service_type: 'Golden visa',
+    }),
+  );
+  const unfiltered = calculateProDashboard(input, NOW);
+  const filtered = calculateProDashboard(
+    { ...input, filters: { ownerId: 'pro-1', serviceType: 'Golden visa' } },
+    NOW,
+  );
+  assert.equal(filtered.kpis.openCases, 0);
+  assert.equal(filtered.kpis.activeClients, unfiltered.kpis.activeClients);
+  assert.equal(filtered.finance.billedMinor, unfiltered.finance.billedMinor);
+});

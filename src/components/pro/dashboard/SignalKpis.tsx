@@ -27,10 +27,13 @@ import {
 } from './widget-state';
 
 type Kpis = ProDashboardData['kpis'];
+export type SignalKpiKey = 'activeClients' | 'openCases' | 'renewals' | 'finance';
+type SignalKpiState = { kind: 'error'; message: string; retryHref?: string };
 
 type SignalKpisDataProps = {
   kpis: Kpis;
   tenantSlug: string;
+  states?: Partial<Record<SignalKpiKey, SignalKpiState>>;
 };
 
 export type SignalKpisLabels = WidgetBaseLabels & {
@@ -46,6 +49,7 @@ export type SignalKpisLabels = WidgetBaseLabels & {
 export type SignalKpisProps = WidgetStateProps<SignalKpisDataProps, SignalKpisLabels>;
 
 type KpiDefinition = {
+  key: SignalKpiKey;
   label: string;
   value: string;
   helper: string;
@@ -89,6 +93,7 @@ export function SignalKpis(props: SignalKpisProps) {
   });
   const definitions: KpiDefinition[] = [
     {
+      key: 'activeClients',
       label: labels.activeClients,
       value: integer.format(kpis.activeClients),
       helper: signalLabel(labels.activeClientsHelper, {
@@ -99,6 +104,7 @@ export function SignalKpis(props: SignalKpisProps) {
       tone: 'signal-kpi--info',
     },
     {
+      key: 'openCases',
       label: labels.openCases,
       value: integer.format(kpis.openCases),
       helper: signalLabel(labels.openCasesHelper, {
@@ -110,6 +116,7 @@ export function SignalKpis(props: SignalKpisProps) {
       tone: 'signal-kpi--orange',
     },
     {
+      key: 'renewals',
       label: labels.renewalsDue,
       value: integer.format(kpis.renewalsDue30d),
       helper: signalLabel(labels.renewalsHelper, { count: integer.format(kpis.renewalsDue7d) }),
@@ -118,6 +125,7 @@ export function SignalKpis(props: SignalKpisProps) {
       tone: 'signal-kpi--warning',
     },
     {
+      key: 'finance',
       label: labels.collections,
       value: money.format(kpis.collectedMinor / 100),
       helper: signalLabel(labels.collectionsHelper, {
@@ -132,6 +140,17 @@ export function SignalKpis(props: SignalKpisProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {definitions.map((item) => {
+        const state = props.states?.[item.key];
+        if (state) {
+          return (
+            <WidgetMessage
+              key={item.key}
+              status={state}
+              retryLabel={labels.retry}
+              className="min-h-40"
+            />
+          );
+        }
         const Icon = item.icon;
         const ChangeIcon = item.helper.startsWith('-') ? ArrowDownRight : ArrowUpRight;
         return (
