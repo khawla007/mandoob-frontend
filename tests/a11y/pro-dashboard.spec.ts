@@ -9,6 +9,8 @@ import {
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { sanitizeBrowserDiagnostic } from './browser-diagnostics';
+
 const tenant = process.env.E2E_TENANT_SLUG ?? process.env.LAUNCH_TENANT_SLUG ?? 'firm';
 const dashboardPath = `/t/${tenant}/dashboard`;
 const storagePath = resolve(process.cwd(), 'tests/.auth/pro.json');
@@ -17,18 +19,6 @@ const missingAuthReason =
   'Set E2E_PRO_EMAIL/PASSWORD and rerun the setup project.';
 
 type ProFixtures = { proPage: Page };
-
-function sanitizeBrowserDiagnostic(message: string): string {
-  return message
-    .replace(/https?:\/\/\S+/gi, '[URL]')
-    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[EMAIL]')
-    .replace(/\bBearer\s+\S+/gi, 'Bearer [REDACTED]')
-    .replace(
-      /\b(token|password|secret|api[-_ ]?key|cookie|authorization)\s*[:=]\s*\S+/gi,
-      '$1=[REDACTED]',
-    )
-    .slice(0, 500);
-}
 
 function registerBrowserDiagnostics(page: Page) {
   const unexpected: string[] = [];
