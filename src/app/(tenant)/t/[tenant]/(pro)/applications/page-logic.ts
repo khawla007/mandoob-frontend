@@ -5,6 +5,7 @@ export type ApplicationSearchParams = {
   case?: string | string[];
   status?: string | string[];
   owner?: string | string[];
+  serviceType?: string | string[];
   page?: string | string[];
   view?: string | string[];
   date?: string | string[];
@@ -16,6 +17,7 @@ type ParsedApplicationFilters = {
   id?: string;
   status?: Array<(typeof serviceCaseStatuses)[number]>;
   assigned_to?: string;
+  service_type?: string;
   client_id?: string;
   deadlineDate?: string;
   deadlinePeriod?: 'morning' | 'afternoon';
@@ -36,6 +38,7 @@ export function applicationPageHref(
     id?: string;
     status?: string[];
     assigned_to?: string;
+    service_type?: string;
     deadlineDate?: string;
     deadlinePeriod?: 'morning' | 'afternoon';
   },
@@ -45,6 +48,7 @@ export function applicationPageHref(
   if (filters.id) params.set('case', filters.id);
   if (filters.status?.length) params.set('status', filters.status.join(','));
   if (filters.assigned_to) params.set('owner', filters.assigned_to);
+  if (filters.service_type) params.set('serviceType', filters.service_type);
   if (filters.deadlineDate && filters.deadlinePeriod) {
     params.set('date', filters.deadlineDate);
     params.set('period', filters.deadlinePeriod);
@@ -61,6 +65,7 @@ export function parseApplicationFilters(search: ApplicationSearchParams): Parsed
     ...(first(search.case) ? { id: first(search.case) } : {}),
     ...(status?.length ? { status } : {}),
     ...(first(search.owner) ? { assigned_to: first(search.owner) } : {}),
+    ...(first(search.serviceType) ? { service_type: first(search.serviceType) } : {}),
   });
   if (!parsed.success) return {};
   if ('view' in signal && signal.view === 'open') {

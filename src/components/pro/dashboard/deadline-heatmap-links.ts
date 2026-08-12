@@ -3,6 +3,7 @@ import {
   applicationSignalHref,
   paymentSignalHref,
   renewalSignalHref,
+  type ApplicationScope,
 } from '@/lib/signal-studio-filters';
 
 type Event = ProDashboardData['deadlineEvents'][number];
@@ -22,6 +23,7 @@ export function buildDeadlineDrilldowns(
   tenantSlug: string,
   date: string,
   period: Period,
+  scope: ApplicationScope = {},
 ): DeadlineDrilldown[] {
   const typed = (type: EventType) => events.filter((event) => event.eventType === type);
   const aggregate = (type: Exclude<EventType, 'document'>, href: string) => {
@@ -29,7 +31,10 @@ export function buildDeadlineDrilldowns(
     return count ? [{ key: type, type, href, count }] : [];
   };
   return [
-    ...aggregate('case', applicationSignalHref(tenantSlug, { date, period, eventTypes: 'case' })),
+    ...aggregate(
+      'case',
+      applicationSignalHref(tenantSlug, { date, period, eventTypes: 'case' }, scope),
+    ),
     ...aggregate('renewal', renewalSignalHref(tenantSlug, { tab: 'active', date, period })),
     ...typed('document').map((event, index) => ({
       key: `document:${event.id}:${index}`,

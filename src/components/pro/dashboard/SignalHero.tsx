@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
+import { applicationSignalHref, type ApplicationScope } from '@/lib/signal-studio-filters';
 
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 import type { WidgetBaseLabels } from './widget-state';
@@ -38,6 +39,7 @@ type SignalHeroDataProps = {
   actionCount: number;
   caseVelocity: Velocity;
   tenantSlug: string;
+  filters: ApplicationScope;
 };
 
 export type SignalHeroLabels = WidgetBaseLabels & {
@@ -94,7 +96,7 @@ export function SignalHero(props: SignalHeroProps) {
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-72" />;
   }
 
-  const { health, actionCount, caseVelocity, tenantSlug } = props;
+  const { health, actionCount, caseVelocity, tenantSlug, filters } = props;
 
   const opened = caseVelocity.reduce((sum, point) => sum + point.opened, 0);
   const completed = caseVelocity.reduce((sum, point) => sum + point.completed, 0);
@@ -102,7 +104,7 @@ export function SignalHero(props: SignalHeroProps) {
     1,
     ...caseVelocity.flatMap((point) => [point.opened, point.completed]),
   );
-  const applicationsHref = `/t/${encodeURIComponent(tenantSlug)}/applications`;
+  const applicationsHref = applicationSignalHref(tenantSlug, { view: 'open' }, filters);
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
   const percent = new Intl.NumberFormat(locale, {

@@ -49,6 +49,7 @@ export default async function ApplicationsPage({
       status: filters.status,
       assignedTo: filters.assigned_to,
       clientId: filters.client_id,
+      serviceType: filters.service_type,
       caseId: filters.id,
       deadlineDate: filters.deadlineDate,
       deadlinePeriod: filters.deadlinePeriod,
@@ -111,7 +112,7 @@ export default async function ApplicationsPage({
         <CardHeader>
           <CardTitle className="text-lg">{t('applicationPipeline')}</CardTitle>
           <CardDescription>{t('applicationFilters')}</CardDescription>
-          <form method="get" className="grid gap-3 pt-2 sm:grid-cols-[1fr_1fr_auto]">
+          <form method="get" className="grid gap-3 pt-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
             <label className="grid gap-1.5 text-sm font-medium">
               {t('applicationStatus')}
               <select
@@ -137,6 +138,14 @@ export default async function ApplicationsPage({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">
+              {t('applicationServiceType')}
+              <input
+                name="serviceType"
+                defaultValue={filters.service_type ?? ''}
+                className={fieldClass}
+              />
             </label>
             <div className="flex items-end">
               <button

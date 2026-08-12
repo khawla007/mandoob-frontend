@@ -144,6 +144,7 @@ function serviceCaseQuery(
     status?: ServiceCaseStatus[];
     assigned_to?: string;
     client_id?: string;
+    service_type?: string;
     deadlineDate?: string;
     deadlinePeriod?: 'morning' | 'afternoon';
   },
@@ -159,6 +160,7 @@ function serviceCaseQuery(
     if (filters.status?.length) query = query.in('status', filters.status);
     if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
     if (filters.client_id) query = query.eq('client_id', filters.client_id);
+    if (filters.service_type) query = query.eq('service_type', filters.service_type);
     if (filters.deadlineDate && filters.deadlinePeriod) {
       query = query.or(applicationDeadlineQuery(filters.deadlineDate, filters.deadlinePeriod));
     }
@@ -267,6 +269,7 @@ export async function listServiceCaseWorkspace(
     status?: ServiceCaseStatus[];
     assignedTo?: string;
     clientId?: string;
+    serviceType?: string;
     page?: number;
     deadlineDate?: string;
     deadlinePeriod?: 'morning' | 'afternoon';
@@ -285,6 +288,7 @@ export async function listServiceCaseWorkspace(
     status: filters.status,
     assigned_to: filters.assignedTo,
     client_id: filters.clientId,
+    service_type: filters.serviceType,
   });
   if (!parsedFilters.success) throw invalidInput(parsedFilters.error.issues[0].message);
 

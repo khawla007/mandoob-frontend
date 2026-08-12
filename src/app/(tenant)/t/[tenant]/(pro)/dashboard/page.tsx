@@ -86,8 +86,10 @@ export default async function ProDashboard({
   const canViewTeam = session.role === 'pro';
 
   const range = parseDashboardRange(search.range);
-  const filters = parseDashboardFilters(search);
-  const dashboard = await getProDashboardData(tenant.id, range, filters);
+  const requestedFilters = parseDashboardFilters(search);
+  const dashboard = await getProDashboardData(tenant.id, range, requestedFilters.filters);
+  const filters = dashboard.appliedFilters;
+  const filtersRejected = requestedFilters.invalid || dashboard.filtersRejected;
   const filterQuery = dashboardQuery(filters);
   const retryHref = `/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, range)}`;
   const errorMessages = {
@@ -186,6 +188,7 @@ export default async function ProDashboard({
       breached: t('actionLabels.countdown.breached'),
       today: t('actionLabels.countdown.today'),
       hours: t('actionLabels.countdown.hours'),
+      minutes: t('actionLabels.countdown.minutes'),
       days: t('actionLabels.countdown.days'),
     },
     absoluteDeadline: t('actionLabels.absoluteDeadline'),
@@ -314,6 +317,11 @@ export default async function ProDashboard({
         <button className="bg-primary text-primary-foreground h-9 self-end rounded-md px-4 text-sm font-medium">
           {t('filters.apply')}
         </button>
+        {filtersRejected ? (
+          <p role="status" className="text-muted-foreground text-sm sm:col-span-3 lg:col-span-4">
+            {t('filters.invalidNotice')}
+          </p>
+        ) : null}
       </form>
 
       <SignalHero
@@ -324,6 +332,7 @@ export default async function ProDashboard({
           actionCount: dashboard.actionDeck.length,
           caseVelocity: dashboard.caseVelocity,
           tenantSlug: tenant.slug,
+          filters,
         })}
       />
       <SignalKpis
@@ -332,6 +341,7 @@ export default async function ProDashboard({
         {...dataOrError(undefined, {
           kpis: dashboard.kpis,
           tenantSlug: tenant.slug,
+          filters,
           states: {
             activeClients: stateFor(['identity']),
             openCases: stateFor(['operations']),
@@ -352,6 +362,7 @@ export default async function ProDashboard({
                 actions: dashboard.actionDeck,
                 tenantSlug: tenant.slug,
                 generatedAt: dashboard.generatedAt,
+                filters,
               },
             )}
           />
@@ -363,6 +374,7 @@ export default async function ProDashboard({
             {...dataOrError(stateFor(['operations']), {
               data: dashboard.caseVelocity,
               tenantSlug: tenant.slug,
+              filters,
               range,
               filterQuery,
             })}
@@ -389,6 +401,7 @@ export default async function ProDashboard({
               intensity: dashboard.deadlineIntensity,
               events: dashboard.deadlineEvents,
               tenantSlug: tenant.slug,
+              filters,
             },
           )}
         />
@@ -410,6 +423,7 @@ export default async function ProDashboard({
             team: dashboard.team,
             unassignedCases: dashboard.kpis.unassignedCases,
             tenantSlug: tenant.slug,
+            filters,
           })}
         />
       ) : null}

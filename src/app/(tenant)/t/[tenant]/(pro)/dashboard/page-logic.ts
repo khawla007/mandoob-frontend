@@ -14,16 +14,25 @@ export function parseDashboardRange(value: string | string[] | undefined): Dashb
 export function parseDashboardFilters(search: {
   owner?: string | string[];
   serviceType?: string | string[];
-}): DashboardFilters {
+}): { filters: DashboardFilters; invalid: boolean } {
   const owner = typeof search.owner === 'string' ? search.owner : undefined;
   const serviceType =
     typeof search.serviceType === 'string' ? search.serviceType.trim() : undefined;
+  const validOwner = Boolean(
+    owner &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(owner),
+  );
+  const validService = Boolean(serviceType && serviceType.length >= 2 && serviceType.length <= 80);
   return {
-    ...(owner &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(owner)
-      ? { ownerId: owner }
-      : {}),
-    ...(serviceType && serviceType.length >= 2 && serviceType.length <= 80 ? { serviceType } : {}),
+    filters: {
+      ...(owner && validOwner ? { ownerId: owner } : {}),
+      ...(validService ? { serviceType } : {}),
+    },
+    invalid:
+      Array.isArray(search.owner) ||
+      Boolean(owner && !validOwner) ||
+      Array.isArray(search.serviceType) ||
+      Boolean(serviceType && !validService),
   };
 }
 

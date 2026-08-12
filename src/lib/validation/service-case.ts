@@ -109,6 +109,7 @@ export const serviceCaseFilterSchema = z
       .optional(),
     assigned_to: uuidSchema.optional(),
     client_id: uuidSchema.optional(),
+    service_type: trimmedString(2, 80).optional(),
   })
   .strict();
 

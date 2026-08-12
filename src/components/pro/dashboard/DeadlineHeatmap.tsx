@@ -1,13 +1,26 @@
+'use client';
+
 import { CalendarClock } from 'lucide-react';
 import Link from 'next/link';
+import { useRef, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
+import type { ApplicationScope } from '@/lib/signal-studio-filters';
+import { applicationSignalHref } from '@/lib/signal-studio-filters';
 import { cn } from '@/lib/utils';
 
 import { formatSignalDate, signalLabel } from './widget-format';
 import { buildDeadlineDrilldowns } from './deadline-heatmap-links';
+import { nextDeadlineCellIndex, type DeadlineGridKey } from './deadline-heatmap-navigation';
 import {
   WidgetLoading,
   WidgetMessage,
@@ -29,6 +42,7 @@ type DeadlineHeatmapDataProps = {
   intensity: ProDashboardData['deadlineIntensity'];
   events: ProDashboardData['deadlineEvents'];
   tenantSlug: string;
+  filters: ApplicationScope;
 };
 
 export type DeadlineHeatmapLabels = WidgetBaseLabels & {
@@ -63,6 +77,9 @@ function heatLevel(count: number, maximum: number): string {
 
 export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
   const { labels } = props;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const cellRefs = useRef<Array<HTMLButtonElement | null>>([]);
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
@@ -85,7 +102,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
   if (props.kind === 'empty' || props.kind === 'error')
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-80" />;
 
-  const { intensity, events, tenantSlug, locale } = props;
+  const { intensity, events, tenantSlug, locale, filters } = props;
 
   const cells: DeadlineCell[] = intensity.flatMap((day) =>
     (['morning', 'afternoon'] as const).map((period) => ({
@@ -111,7 +128,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
           message: labels.empty,
           emptyAction: {
             label: labels.openApplications,
-            href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
+            href: applicationSignalHref(tenantSlug, { view: 'open' }, filters),
           },
         }}
         retryLabel={labels.retry}
@@ -121,6 +138,12 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
   }
   const maximum = Math.max(...cells.map((cell) => cell.count));
   const shownDates = intensity;
+  const gridCells = (['morning', 'afternoon'] as const).flatMap((period) =>
+    shownDates.map(
+      (day) => cells.find((cell) => cell.date === day.date && cell.period === period)!,
+    ),
+  );
+  const rovingIndex = Math.min(activeIndex, gridCells.length - 1);
   const label = (cell: DeadlineCell) => {
     const date = formatSignalDate(cell.date, locale, {
       dateStyle: 'full',
@@ -137,7 +160,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
   };
   const number = new Intl.NumberFormat(locale);
   const drilldowns = (cell: DeadlineCell) =>
-    buildDeadlineDrilldowns(cell.events, tenantSlug, cell.date, cell.period);
+    buildDeadlineDrilldowns(cell.events, tenantSlug, cell.date, cell.period, filters);
   const drilldownLabel = (cell: DeadlineCell, drilldown: ReturnType<typeof drilldowns>[number]) =>
     drilldown.event
       ? signalLabel(labels.documentLink, {
@@ -152,6 +175,19 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
           date: formatSignalDate(cell.date, locale, { dateStyle: 'full' }),
           period: labels[cell.period],
         });
+  const selectedCell = selectedIndex === null ? null : (gridCells[selectedIndex] ?? null);
+  const moveFocus = (cellIndex: number, key: string) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) return;
+    const next = nextDeadlineCellIndex(
+      cellIndex,
+      key as DeadlineGridKey,
+      2,
+      shownDates.length,
+      locale.startsWith('ar') ? 'rtl' : 'ltr',
+    );
+    setActiveIndex(next);
+    cellRefs.current[next]?.focus();
+  };
 
   return (
     <Card className="signal-panel">
@@ -199,6 +235,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                   const cell = cells.find(
                     (item) => item.date === day.date && item.period === period,
                   )!;
+                  const cellIndex = gridCells.indexOf(cell);
                   return (
                     <div
                       key={`${day.date}-${period}`}
@@ -210,24 +247,32 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                     >
                       <button
                         type="button"
-                        title={label(cell)}
                         aria-label={label(cell)}
+                        tabIndex={rovingIndex === cellIndex ? 0 : -1}
+                        ref={(node) => {
+                          cellRefs.current[cellIndex] = node;
+                        }}
+                        onFocus={() => setActiveIndex(cellIndex)}
+                        onKeyDown={(event) => {
+                          moveFocus(cellIndex, event.key);
+                          if (
+                            [
+                              'ArrowLeft',
+                              'ArrowRight',
+                              'ArrowUp',
+                              'ArrowDown',
+                              'Home',
+                              'End',
+                            ].includes(event.key)
+                          ) {
+                            event.preventDefault();
+                          }
+                        }}
+                        onClick={() => setSelectedIndex(cellIndex)}
                         className="focus-visible:ring-ring rounded text-center font-mono tabular-nums focus-visible:ring-2 focus-visible:outline-none"
                       >
                         {number.format(cell.count)}
                       </button>
-                      <span className="flex max-h-20 flex-wrap justify-center gap-1 overflow-y-auto">
-                        {drilldowns(cell).map((drilldown) => (
-                          <Link
-                            key={drilldown.key}
-                            href={drilldown.href}
-                            aria-label={drilldownLabel(cell, drilldown)}
-                            className="focus-visible:ring-ring bg-background/75 rounded px-1 font-mono tabular-nums focus-visible:ring-2 focus-visible:outline-none"
-                          >
-                            {number.format(drilldown.count)}
-                          </Link>
-                        ))}
-                      </span>
                     </div>
                   );
                 })}
@@ -235,6 +280,34 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
             ))}
           </div>
         </div>
+        <Dialog
+          open={selectedCell !== null}
+          onOpenChange={(open) => !open && setSelectedIndex(null)}
+        >
+          <DialogContent>
+            {selectedCell ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>{label(selectedCell)}</DialogTitle>
+                  <DialogDescription>{labels.description}</DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-2">
+                  {drilldowns(selectedCell).map((drilldown) => (
+                    <Link
+                      key={drilldown.key}
+                      href={drilldown.href}
+                      aria-label={drilldownLabel(selectedCell, drilldown)}
+                      className="focus-visible:ring-ring rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      {drilldown.event?.title ?? labels[`${drilldown.type}Event` as const]} ·{' '}
+                      {number.format(drilldown.count)}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </DialogContent>
+        </Dialog>
         <ol className="divide-border divide-y md:hidden">
           {activeCells.map((cell) => (
             <li key={`${cell.date}-${cell.period}`}>

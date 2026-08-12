@@ -3,6 +3,7 @@ import { CircleGauge, UserRoundX, UsersRound } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
+import { applicationSignalHref, type ApplicationScope } from '@/lib/signal-studio-filters';
 import { cn } from '@/lib/utils';
 
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
@@ -13,6 +14,7 @@ type TeamSignalDataProps = {
   team: ProDashboardData['team'];
   unassignedCases: number;
   tenantSlug: string;
+  filters: ApplicationScope;
 };
 
 export type TeamSignalLabels = WidgetBaseLabels & {
@@ -61,7 +63,7 @@ export function TeamSignal(props: TeamSignalProps) {
   if (props.kind === 'empty' || props.kind === 'error')
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-80" />;
 
-  const { team, unassignedCases, tenantSlug } = props;
+  const { team, unassignedCases, tenantSlug, filters } = props;
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
   const percent = new Intl.NumberFormat(locale, {
@@ -76,7 +78,7 @@ export function TeamSignal(props: TeamSignalProps) {
           message: labels.empty,
           emptyAction: {
             label: labels.openApplications,
-            href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
+            href: applicationSignalHref(tenantSlug, { view: 'open' }, filters),
           },
         }}
         retryLabel={labels.retry}

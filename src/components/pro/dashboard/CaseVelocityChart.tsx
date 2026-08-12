@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
+import { applicationSignalHref, type ApplicationScope } from '@/lib/signal-studio-filters';
 import { cn } from '@/lib/utils';
 
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
@@ -26,6 +27,7 @@ type CaseVelocityChartDataProps = {
   tenantSlug: string;
   range?: (typeof RANGES)[number];
   filterQuery?: string;
+  filters: ApplicationScope;
 };
 
 export type CaseVelocityChartLabels = WidgetBaseLabels & {
@@ -72,7 +74,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
   if (props.kind === 'empty' || props.kind === 'error')
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-96" />;
 
-  const { data, tenantSlug, range = 30, filterQuery, locale } = props;
+  const { data, tenantSlug, range = 30, filterQuery, filters, locale } = props;
   if (data.length === 0) {
     return (
       <WidgetMessage
@@ -81,7 +83,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
           message: labels.empty,
           emptyAction: {
             label: labels.openApplications,
-            href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
+            href: applicationSignalHref(tenantSlug, { view: 'open' }, filters),
           },
         }}
         retryLabel={labels.retry}

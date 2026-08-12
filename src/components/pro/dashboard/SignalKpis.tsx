@@ -11,6 +11,7 @@ import Link from 'next/link';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
+import type { ApplicationScope } from '@/lib/signal-studio-filters';
 import { cn } from '@/lib/utils';
 
 import {
@@ -34,6 +35,7 @@ type SignalKpisDataProps = {
   kpis: Kpis;
   tenantSlug: string;
   states?: Partial<Record<SignalKpiKey, SignalKpiState>>;
+  filters: ApplicationScope;
 };
 
 export type SignalKpisLabels = WidgetBaseLabels & {
@@ -83,7 +85,7 @@ export function SignalKpis(props: SignalKpisProps) {
   if (props.kind === 'empty' || props.kind === 'error')
     return <WidgetMessage status={props} retryLabel={labels.retry} />;
 
-  const { kpis, tenantSlug, locale } = props;
+  const { kpis, tenantSlug, locale, filters } = props;
 
   const integer = new Intl.NumberFormat(locale);
   const money = new Intl.NumberFormat(locale, {
@@ -111,7 +113,7 @@ export function SignalKpis(props: SignalKpisProps) {
         moving: integer.format(kpis.movingCases),
         blocked: integer.format(kpis.blockedCases),
       }),
-      href: applicationSignalHref(tenantSlug, { view: 'open' }),
+      href: applicationSignalHref(tenantSlug, { view: 'open' }, filters),
       icon: BriefcaseBusiness,
       tone: 'signal-kpi--orange',
     },

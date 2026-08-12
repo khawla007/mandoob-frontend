@@ -39,3 +39,25 @@ test('case, renewal and invoice deadlines retain aggregate consumed filters', ()
   assert.match(links[1].href, /^\/t\/north%20star\/renewals\?/);
   assert.match(links[2].href, /^\/t\/north%20star\/payments\?/);
 });
+
+test('case deadline drilldowns preserve normalized dashboard application filters', () => {
+  const events = [
+    {
+      id: 'case',
+      date: '2026-08-12',
+      period: 'morning' as const,
+      eventType: 'case' as const,
+      href: '/ignored/case',
+      title: 'Golden visa',
+      clientName: 'Acme',
+    },
+  ];
+  const links = buildDeadlineDrilldowns(events, 'acme', '2026-08-12', 'morning', {
+    ownerId: '11111111-1111-4111-8111-111111111111',
+    serviceType: 'Golden visa',
+  });
+  assert.equal(
+    links[0].href,
+    '/t/acme/applications?date=2026-08-12&period=morning&eventTypes=case&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa',
+  );
+});

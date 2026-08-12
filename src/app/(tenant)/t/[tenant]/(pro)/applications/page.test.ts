@@ -90,29 +90,40 @@ test('applications page invokes fresh authorization before service-role reads', 
   assert.ok(authorization < source.indexOf(read), `${read} must follow authorization`);
 });
 
-test('repeated status and owner params choose the first value without throwing', () => {
+test('repeated status, owner, and service params choose the first value without throwing', () => {
   const parsed = parseApplicationFilters({
     status: ['documents_pending,submitted', 'cancelled'],
     owner: ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'],
+    serviceType: ['Golden visa', 'License'],
   });
   assert.deepEqual(parsed, {
     status: ['documents_pending', 'submitted'],
     assigned_to: '11111111-1111-4111-8111-111111111111',
+    service_type: 'Golden visa',
   });
   assert.deepEqual(parseApplicationFilters({ status: ['bad', 'submitted'], owner: [] }), {});
 });
 
 test('dashboard application filters expand open status and preserve Dubai deadline period', () => {
-  assert.deepEqual(parseApplicationFilters({ view: 'open' }), {
-    status: [
-      'documents_pending',
-      'draft',
-      'ready_to_submit',
-      'submitted',
-      'authority_review',
-      'approved',
-    ],
-  });
+  assert.deepEqual(
+    parseApplicationFilters({
+      view: 'open',
+      owner: '11111111-1111-4111-8111-111111111111',
+      serviceType: 'Golden visa',
+    }),
+    {
+      status: [
+        'documents_pending',
+        'draft',
+        'ready_to_submit',
+        'submitted',
+        'authority_review',
+        'approved',
+      ],
+      assigned_to: '11111111-1111-4111-8111-111111111111',
+      service_type: 'Golden visa',
+    },
+  );
   assert.deepEqual(
     parseApplicationFilters({ date: '2026-08-12', period: 'morning', eventTypes: 'case' }),
     {
@@ -152,10 +163,28 @@ test('application pagination normalizes repeated page params and preserves activ
       {
         status: ['documents_pending', 'submitted'],
         assigned_to: '11111111-1111-4111-8111-111111111111',
+        service_type: 'Golden visa',
       },
       3,
     ),
-    '/t/acme/applications?status=documents_pending%2Csubmitted&owner=11111111-1111-4111-8111-111111111111&page=3',
+    '/t/acme/applications?status=documents_pending%2Csubmitted&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa&page=3',
+  );
+});
+
+test('dashboard application metric round-trips owner and service filters', () => {
+  const filters = parseApplicationFilters({
+    view: 'open',
+    owner: '11111111-1111-4111-8111-111111111111',
+    serviceType: 'Golden visa',
+  });
+  const href = applicationPageHref('acme', filters, 2);
+  assert.equal(
+    href,
+    '/t/acme/applications?status=documents_pending%2Cdraft%2Cready_to_submit%2Csubmitted%2Cauthority_review%2Capproved&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa&page=2',
+  );
+  assert.deepEqual(
+    parseApplicationFilters(Object.fromEntries(new URL(href, 'https://mandoob.test').searchParams)),
+    filters,
   );
 });
 

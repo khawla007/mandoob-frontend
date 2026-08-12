@@ -496,6 +496,37 @@ test('service-case workspace pages cases and batches clients while honoring the 
   );
 });
 
+test('service-case workspace applies service type inside the tenant-scoped case query', async () => {
+  const db = fakeSupabase({
+    service_cases_ranked: [
+      caseRow({ id: 'license-case', service_type: 'License' }),
+      caseRow({ id: 'visa-case', service_type: 'Golden visa' }),
+    ],
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    profiles: [],
+  });
+
+  const workspace = await listServiceCaseWorkspace(
+    TENANT_1,
+    { serviceType: 'Golden visa' },
+    { supabase: db as never },
+  );
+
+  assert.deepEqual(
+    workspace.cases.map((row) => row.id),
+    ['visa-case'],
+  );
+  const query = db.calls.find((call) => call.table === 'service_cases_ranked');
+  assert.ok(
+    query?.filters.some((filter) => filter.key === 'tenant_id' && filter.value === TENANT_1),
+  );
+  assert.ok(
+    query?.filters.some(
+      (filter) => filter.key === 'service_type' && filter.value === 'Golden visa',
+    ),
+  );
+});
+
 test('service-case workspace applies global business ranking before the page boundary', async () => {
   const routine = Array.from({ length: 50 }, (_, index) =>
     caseRow({

@@ -508,13 +508,14 @@
           "empty": "No urgent cases or deadlines need action.",
           "reviewApplications": "Review applications",
           "description": "Highest-priority work ranked by deadline and blockage.",
-          "actionAria": "Open {title} for {client}. Urgency: {urgency}.",
+          "actionAria": "Open {title} for {client}. Owner: {owner}. Urgency: {urgency}. {countdown}. {absoluteDeadline}.",
           "unassigned": "Unassigned",
           "noDeadline": "No deadline",
-          "absoluteDeadline": "Deadline: {deadline}",
+          "absoluteDeadline": "Dubai deadline: {deadline}",
           "countdown": {
             "breached": "Breached",
             "today": "Due today",
+            "minutes": "{count} min",
             "hours": "{count} hr",
             "days": "{count} days"
           },
@@ -578,6 +579,7 @@
           "branch": "Branch",
           "allBranches": "All branches",
           "branchUnavailable": "Branch filtering is unavailable because this workspace has no branch field.",
+          "invalidNotice": "One or more filters were not available in this workspace and were ignored.",
           "apply": "Apply filters"
         },
         "suspended": {

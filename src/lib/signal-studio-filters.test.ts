@@ -9,6 +9,7 @@ import {
   parseRenewalSignalFilter,
   paymentSignalHref,
   renewalSignalHref,
+  withApplicationScope,
 } from './signal-studio-filters';
 
 test('application signal URLs round-trip semantic open and Dubai deadline filters', () => {
@@ -23,6 +24,21 @@ test('application signal URLs round-trip semantic open and Dubai deadline filter
     deadline,
   );
   assert.deepEqual(parseApplicationSignalFilter({ date: 'bad', period: 'night' }), {});
+});
+
+test('application signal URLs preserve normalized dashboard owner and service filters', () => {
+  const scope = {
+    ownerId: '11111111-1111-4111-8111-111111111111',
+    serviceType: 'Golden visa',
+  };
+  assert.equal(
+    applicationSignalHref('acme', { view: 'open' }, scope),
+    '/t/acme/applications?view=open&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa',
+  );
+  assert.equal(
+    withApplicationScope('/t/acme/applications?case=case-1', scope),
+    '/t/acme/applications?case=case-1&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa',
+  );
 });
 
 test('application deadline query maps Dubai morning and afternoon without overlap', () => {

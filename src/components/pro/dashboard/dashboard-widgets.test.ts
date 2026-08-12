@@ -32,6 +32,7 @@ describe('Signal Studio widget contracts', () => {
     assert.doesNotMatch(velocity, /role="img"/);
     assert.match(velocity, /isAnimationActive=\{false\}/);
     assert.match(velocity, /useId\(\)/);
+    assert.match(velocity, /applicationSignalHref\(tenantSlug, \{ view: 'open' \}, filters\)/);
 
     const finance = source('CollectionsWaterfall');
     assert.match(finance, /BarChart/);
@@ -60,8 +61,11 @@ describe('Signal Studio widget contracts', () => {
     assert.match(heatmap, /hidden[^"\n]*md:block/);
     assert.match(heatmap, /md:hidden/);
     assert.match(heatmap, /<ol/);
-    assert.match(heatmap, /role="gridcell"[\s\S]*?<Link/);
-    assert.match(heatmap, /<button[\s\S]*title=/);
+    assert.match(heatmap, /tabIndex=\{rovingIndex === cellIndex \? 0 : -1\}/);
+    assert.match(heatmap, /nextDeadlineCellIndex/);
+    assert.match(heatmap, /DialogContent/);
+    assert.match(heatmap, /onKeyDown/);
+    assert.doesNotMatch(heatmap, /<button[\s\S]{0,300}title=/);
     assert.doesNotMatch(heatmap, /slice\(0, 14\)/);
     assert.doesNotMatch(heatmap, /<Link[\s\S]{0,500}role="gridcell"/);
     for (const type of ['case', 'renewal', 'document', 'invoice']) {
@@ -72,11 +76,14 @@ describe('Signal Studio widget contracts', () => {
   it('limits actions, preserves direct hrefs, and never ranks team completion', () => {
     const actions = source('ActionDeck');
     assert.match(actions, /\.slice\(0, 5\)/);
-    assert.match(actions, /href=\{action\.href\}/);
+    assert.match(actions, /withApplicationScope\(action\.href, filters\)/);
     assert.match(actions, /action\.ownerName/);
     assert.match(actions, /action\.deadline/);
     assert.match(actions, /generatedAt/);
     assert.match(actions, /formatActionCountdown/);
+    assert.match(actions, /owner:\s*action\.ownerName/);
+    assert.match(actions, /countdown/);
+    assert.match(actions, /absoluteDeadline/);
 
     const team = source('TeamSignal');
     assert.match(team, /activeCases/);
@@ -85,6 +92,7 @@ describe('Signal Studio widget contracts', () => {
     assert.doesNotMatch(team, /completion/i);
     assert.match(team, /aria-valuemax=\{100\}/);
     assert.match(team, /aria-valuetext=/);
+    assert.match(team, /applicationSignalHref\(tenantSlug, \{ view: 'open' \}, filters\)/);
   });
 
   it('uses four arrow-ended renewal streams and four linked KPI cards', () => {

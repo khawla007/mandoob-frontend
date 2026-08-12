@@ -69,6 +69,8 @@ export type ProDashboardData = {
     owners: Array<{ id: string; name: string }>;
     serviceTypes: string[];
   };
+  appliedFilters: { ownerId?: string; serviceType?: string };
+  filtersRejected: boolean;
   errors: Partial<
     Record<'identity' | 'links' | 'operations' | 'renewals' | 'documents' | 'finance', string>
   >;
@@ -218,10 +220,27 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const clients = input.clients.filter((row) => row.tenant_id === tenantId);
   const profiles = input.profiles.filter((row) => row.tenant_id === tenantId);
   const tenantServiceCases = input.serviceCases.filter((row) => row.tenant_id === tenantId);
+  const activeOwners = profiles.filter((row) => row.status === 'active' && row.role === 'pro');
+  const ownerIds = new Set(activeOwners.map((row) => row.id));
+  const serviceTypes = Array.from(
+    new Set(tenantServiceCases.map((row) => row.service_type)),
+  ).sort();
+  const appliedFilters = {
+    ...(input.filters?.ownerId && ownerIds.has(input.filters.ownerId)
+      ? { ownerId: input.filters.ownerId }
+      : {}),
+    ...(input.filters?.serviceType && serviceTypes.includes(input.filters.serviceType)
+      ? { serviceType: input.filters.serviceType }
+      : {}),
+  };
+  const filtersRejected = Boolean(
+    (input.filters?.ownerId && !appliedFilters.ownerId) ||
+    (input.filters?.serviceType && !appliedFilters.serviceType),
+  );
   const serviceCases = tenantServiceCases.filter(
     (row) =>
-      (!input.filters?.ownerId || row.assigned_to === input.filters.ownerId) &&
-      (!input.filters?.serviceType || row.service_type === input.filters.serviceType),
+      (!appliedFilters.ownerId || row.assigned_to === appliedFilters.ownerId) &&
+      (!appliedFilters.serviceType || row.service_type === appliedFilters.serviceType),
   );
   const renewals = input.renewals.filter((row) => row.tenant_id === tenantId);
   const documentRequests = input.documentRequests.filter((row) => row.tenant_id === tenantId);
@@ -238,9 +257,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const clientNames = new Map(clients.map((row) => [row.id, row.company_name]));
   const ownerNames = new Map(profiles.map((row) => [row.id, row.full_name]));
   const openCases = serviceCases.filter((row) => !CLOSED_CASE_STATUSES.has(row.status));
-  const activeOwnerIds = new Set(
-    profiles.filter((row) => row.status === 'active' && row.role === 'pro').map((row) => row.id),
-  );
+  const activeOwnerIds = ownerIds;
   const unassignedCases = openCases.filter(
     (row) => row.assigned_to === null || !activeOwnerIds.has(row.assigned_to),
   ).length;
@@ -474,11 +491,11 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     renewalStreams,
     team,
     filterOptions: {
-      owners: profiles
-        .filter((row) => row.status === 'active' && row.role === 'pro')
-        .map((row) => ({ id: row.id, name: row.full_name ?? row.id })),
-      serviceTypes: Array.from(new Set(tenantServiceCases.map((row) => row.service_type))).sort(),
+      owners: activeOwners.map((row) => ({ id: row.id, name: row.full_name ?? row.id })),
+      serviceTypes,
     },
+    appliedFilters,
+    filtersRejected,
     errors: input.errors ?? {},
   };
 }

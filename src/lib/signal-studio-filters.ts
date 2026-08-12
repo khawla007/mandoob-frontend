@@ -22,6 +22,7 @@ export type RenewalSignalFilter = {
   period?: 'morning' | 'afternoon';
 };
 export type PaymentSignalView = (typeof paymentSignalViews)[number];
+export type ApplicationScope = { ownerId?: string; serviceType?: string };
 
 type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
@@ -101,8 +102,28 @@ function href(slug: string, target: string, params: Record<string, string>): str
   return `/t/${encodeURIComponent(slug)}/${target}?${query.toString()}`;
 }
 
-export function applicationSignalHref(slug: string, filter: ApplicationSignalFilter): string {
-  return href(slug, 'applications', filter);
+function applicationScopeParams(scope: ApplicationScope): Record<string, string> {
+  return {
+    ...(scope.ownerId ? { owner: scope.ownerId } : {}),
+    ...(scope.serviceType ? { serviceType: scope.serviceType } : {}),
+  };
+}
+
+export function applicationSignalHref(
+  slug: string,
+  filter: ApplicationSignalFilter,
+  scope: ApplicationScope = {},
+): string {
+  return href(slug, 'applications', { ...filter, ...applicationScopeParams(scope) });
+}
+
+export function withApplicationScope(path: string, scope: ApplicationScope): string {
+  if (!scope.ownerId && !scope.serviceType) return path;
+  const url = new URL(path, 'https://mandoob.invalid');
+  for (const [key, value] of Object.entries(applicationScopeParams(scope))) {
+    url.searchParams.set(key, value);
+  }
+  return `${url.pathname}?${url.searchParams.toString()}`;
 }
 
 export function applicationDeadlineQuery(date: string, period: 'morning' | 'afternoon'): string {

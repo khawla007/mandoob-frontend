@@ -1169,6 +1169,9 @@ function paymentRow(overrides: Record<string, unknown> = {}) {
 test('operation filters affect cases only and stay tenant isolated', () => {
   const input = baseInput();
   input.serviceCases.push(
+    caseRow({ id: 'golden-visa-case', assigned_to: 'pro-1', service_type: 'Golden visa' }),
+  );
+  input.serviceCases.push(
     caseRow({
       id: 'other-tenant-case',
       tenant_id: 'tenant-b',
@@ -1181,7 +1184,39 @@ test('operation filters affect cases only and stay tenant isolated', () => {
     { ...input, filters: { ownerId: 'pro-1', serviceType: 'Golden visa' } },
     NOW,
   );
-  assert.equal(filtered.kpis.openCases, 0);
+  assert.equal(filtered.kpis.openCases, 1);
   assert.equal(filtered.kpis.activeClients, unfiltered.kpis.activeClients);
   assert.equal(filtered.finance.billedMinor, unfiltered.finance.billedMinor);
+});
+
+test('operation filters ignore inactive, external, and unknown tenant options', () => {
+  const input = baseInput();
+  input.profiles.push({
+    id: 'suspended-pro',
+    tenant_id: TENANT,
+    full_name: 'Suspended',
+    role: 'pro',
+    status: 'suspended',
+  });
+  for (const filters of [
+    { ownerId: 'pro-x' },
+    { ownerId: 'suspended-pro' },
+    { ownerId: 'unknown-pro' },
+    { serviceType: 'Unknown service' },
+  ]) {
+    const dashboard = calculateProDashboard({ ...input, filters }, NOW);
+    assert.deepEqual(dashboard.appliedFilters, {});
+    assert.equal(dashboard.filtersRejected, true);
+    assert.equal(dashboard.kpis.openCases, 3);
+  }
+});
+
+test('operation filters apply only active tenant owners and existing tenant services', () => {
+  const dashboard = calculateProDashboard(
+    { ...baseInput(), filters: { ownerId: 'pro-1', serviceType: 'License' } },
+    NOW,
+  );
+  assert.deepEqual(dashboard.appliedFilters, { ownerId: 'pro-1', serviceType: 'License' });
+  assert.equal(dashboard.filtersRejected, false);
+  assert.equal(dashboard.kpis.openCases, 3);
 });

@@ -85,12 +85,30 @@ test('dashboard filters reject repeated/malformed values and accept schema-backe
       owner: '11111111-1111-4111-8111-111111111111',
       serviceType: 'Golden visa',
     }),
-    { ownerId: '11111111-1111-4111-8111-111111111111', serviceType: 'Golden visa' },
+    {
+      filters: {
+        ownerId: '11111111-1111-4111-8111-111111111111',
+        serviceType: 'Golden visa',
+      },
+      invalid: false,
+    },
   );
-  assert.deepEqual(parseDashboardFilters({ owner: ['a', 'b'], serviceType: ['x', 'y'] }), {});
-  assert.deepEqual(parseDashboardFilters({ owner: 'bad', serviceType: 'xx' }), {
-    serviceType: 'xx',
+  assert.deepEqual(parseDashboardFilters({ owner: ['a', 'b'], serviceType: ['x', 'y'] }), {
+    filters: {},
+    invalid: true,
   });
+  assert.deepEqual(parseDashboardFilters({ owner: 'bad', serviceType: 'xx' }), {
+    filters: { serviceType: 'xx' },
+    invalid: true,
+  });
+});
+
+test('dashboard renders only tenant-normalized filters and reports rejected input', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /getProDashboardData\(tenant\.id, range, requestedFilters\.filters\)/);
+  assert.match(source, /const filters = dashboard\.appliedFilters/);
+  assert.match(source, /requestedFilters\.invalid\s*\|\|\s*dashboard\.filtersRejected/);
+  assert.match(source, /filters\.invalidNotice/);
 });
 
 test('dashboard widget state sanitizes only relevant loader group failures', () => {
@@ -150,11 +168,21 @@ test('dashboard has one responsive composition and moves Action Deck before char
   assert.match(source, /order-2[^"']*lg:order-1[\s\S]*<CaseVelocityChart/);
 });
 
+test('dashboard passes normalized filters to application drilldown widgets', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  for (const component of ['SignalHero', 'SignalKpis', 'ActionDeck', 'DeadlineHeatmap']) {
+    assert.match(source, new RegExp(`<${component}[\\s\\S]{0,900}filters,`), component);
+  }
+});
+
 test('dashboard route exposes shape-matched loading and localized safe error boundaries', () => {
   const loading = readFileSync(loadingPath, 'utf8');
   const error = readFileSync(errorPath, 'utf8');
   assert.match(loading, /rounded-3xl/);
   assert.match(loading, /Array\.from\(\{ length: 4 \}/);
+  assert.match(loading, /flex-col/);
+  assert.match(loading, /sm:flex-row/);
+  assert.match(loading, /max-w-full/);
   assert.match(error, /'use client'/);
   assert.match(error, /useTranslations\('pro\.dashboard\.signalStudio'\)/);
   assert.doesNotMatch(error, /error\.message/);

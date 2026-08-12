@@ -508,13 +508,14 @@
           "empty": "لا توجد معاملات عاجلة أو مواعيد نهائية تستدعي إجراءً.",
           "reviewApplications": "مراجعة الطلبات",
           "description": "الأعمال الأعلى أولوية مرتبة حسب الموعد ومدة التوقف.",
-          "actionAria": "فتح {title} للعميل {client}. درجة الاستعجال: {urgency}.",
+          "actionAria": "فتح {title} للعميل {client}. المسؤول: {owner}. درجة الاستعجال: {urgency}. {countdown}. {absoluteDeadline}.",
           "unassigned": "غير معيّنة",
           "noDeadline": "بلا موعد نهائي",
-          "absoluteDeadline": "الموعد النهائي: {deadline}",
+          "absoluteDeadline": "الموعد النهائي بتوقيت دبي: {deadline}",
           "countdown": {
             "breached": "متجاوزة للموعد",
             "today": "مستحقة اليوم",
+            "minutes": "{count} دقيقة",
             "hours": "{count} ساعة",
             "days": "{count} أيام"
           },
@@ -578,6 +579,7 @@
           "branch": "الفرع",
           "allBranches": "جميع الفروع",
           "branchUnavailable": "تصفية الفروع غير متاحة لأن مساحة العمل لا تحتوي على حقل للفرع.",
+          "invalidNotice": "تم تجاهل عامل تصفية واحد أو أكثر لأنه غير متاح في مساحة العمل هذه.",
           "apply": "تطبيق عوامل التصفية"
         },
         "suspended": {

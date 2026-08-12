@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
+import {
+  applicationSignalHref,
+  type ApplicationScope,
+  withApplicationScope,
+} from '@/lib/signal-studio-filters';
 import { cn } from '@/lib/utils';
 
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
@@ -17,6 +22,7 @@ type ActionDeckDataProps = {
   actions: Action[];
   tenantSlug: string;
   generatedAt: string;
+  filters: ApplicationScope;
 };
 
 export type ActionDeckLabels = WidgetBaseLabels & {
@@ -64,7 +70,7 @@ export function ActionDeck(props: ActionDeckProps) {
   if (props.kind === 'empty' || props.kind === 'error')
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-96" />;
 
-  const { actions, tenantSlug, generatedAt, locale } = props;
+  const { actions, tenantSlug, generatedAt, locale, filters } = props;
   if (actions.length === 0)
     return (
       <WidgetMessage
@@ -73,7 +79,7 @@ export function ActionDeck(props: ActionDeckProps) {
           message: labels.empty,
           emptyAction: {
             label: labels.reviewApplications,
-            href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
+            href: applicationSignalHref(tenantSlug, { view: 'open' }, filters),
           },
         }}
         retryLabel={labels.retry}
@@ -91,62 +97,75 @@ export function ActionDeck(props: ActionDeckProps) {
         <CardDescription>{labels.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {actions.slice(0, 5).map((action) => (
-          <Link
-            key={action.id}
-            href={action.href}
-            aria-label={signalLabel(labels.actionAria, {
-              title: action.title,
-              client: action.clientName,
-              urgency: labels.urgency[action.urgency],
-            })}
-            className={cn(
-              'group focus-visible:ring-ring block rounded-xl border p-4 transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:outline-none motion-reduce:transform-none motion-reduce:transition-none',
-              urgencyStyles[action.urgency],
-            )}
-          >
-            <span className="flex items-start justify-between gap-3">
-              <span className="min-w-0">
-                <span className="mb-1 flex flex-wrap items-center gap-2">
-                  <span className="text-foreground truncate font-semibold">{action.title}</span>
-                  <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
-                    {labels.urgency[action.urgency]}
+        {actions.slice(0, 5).map((action) => {
+          const countdown = action.deadline
+            ? formatActionCountdown(action.deadline, generatedAt, locale, labels.countdown)
+            : labels.noDeadline;
+          const absoluteDeadline = action.deadline
+            ? signalLabel(labels.absoluteDeadline, {
+                deadline: formatSignalDeadline(action.deadline, locale) ?? action.deadline,
+              })
+            : labels.noDeadline;
+          return (
+            <Link
+              key={action.id}
+              href={
+                action.kind === 'case' ? withApplicationScope(action.href, filters) : action.href
+              }
+              aria-label={signalLabel(labels.actionAria, {
+                title: action.title,
+                client: action.clientName,
+                owner: action.ownerName ?? labels.unassigned,
+                countdown,
+                absoluteDeadline,
+                urgency: labels.urgency[action.urgency],
+              })}
+              className={cn(
+                'group focus-visible:ring-ring block rounded-xl border p-4 transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:outline-none motion-reduce:transform-none motion-reduce:transition-none',
+                urgencyStyles[action.urgency],
+              )}
+            >
+              <span className="flex items-start justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="mb-1 flex flex-wrap items-center gap-2">
+                    <span className="text-foreground truncate font-semibold">{action.title}</span>
+                    <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+                      {labels.urgency[action.urgency]}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground block truncate text-xs">
+                    {action.clientName} · {action.detail}
                   </span>
                 </span>
-                <span className="text-muted-foreground block truncate text-xs">
-                  {action.clientName} · {action.detail}
+                <ArrowUpRight
+                  aria-hidden="true"
+                  className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transform-none"
+                />
+              </span>
+              <span className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                <span className="flex items-center gap-1.5">
+                  <UserRound aria-hidden="true" className="size-3.5" />
+                  {action.ownerName ?? labels.unassigned}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CalendarClock aria-hidden="true" className="size-3.5" />
+                  <span
+                    title={
+                      action.deadline
+                        ? signalLabel(labels.absoluteDeadline, {
+                            deadline:
+                              formatSignalDeadline(action.deadline, locale) ?? action.deadline,
+                          })
+                        : undefined
+                    }
+                  >
+                    {countdown}
+                  </span>
                 </span>
               </span>
-              <ArrowUpRight
-                aria-hidden="true"
-                className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transform-none"
-              />
-            </span>
-            <span className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-              <span className="flex items-center gap-1.5">
-                <UserRound aria-hidden="true" className="size-3.5" />
-                {action.ownerName ?? labels.unassigned}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CalendarClock aria-hidden="true" className="size-3.5" />
-                <span
-                  title={
-                    action.deadline
-                      ? signalLabel(labels.absoluteDeadline, {
-                          deadline:
-                            formatSignalDeadline(action.deadline, locale) ?? action.deadline,
-                        })
-                      : undefined
-                  }
-                >
-                  {action.deadline
-                    ? formatActionCountdown(action.deadline, generatedAt, locale, labels.countdown)
-                    : labels.noDeadline}
-                </span>
-              </span>
-            </span>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </CardContent>
     </Card>
   );
