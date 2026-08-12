@@ -27,7 +27,11 @@ type FailureStage =
   | 'pre_final_revalidation'
   | 'post_final_revalidation'
   | 'conflict_neutral_metadata'
-  | 'conflict_revoke';
+  | 'conflict_revoke'
+  | 'rollback_revalidation'
+  | 'rollback_neutral_metadata'
+  | 'rollback_revoke'
+  | 'restore_revoke';
 
 export class AtomicRoleChangeError extends Error {
   constructor(readonly databaseError: DatabaseError) {
@@ -63,10 +67,12 @@ function roleMetadataSnapshotMatches(
 
 export async function executeRoleChangeTransition(args: {
   oldClaims: RoleMetadataClaims;
+  oldVersion: string;
   newClaims: RoleMetadataClaims;
   revoke(): Promise<void>;
   writeMetadata(claims: RoleMetadataClaims): Promise<void>;
   changeDatabase(): Promise<DatabaseError | null>;
+  readCurrentSnapshot(): Promise<RoleMetadataSnapshot | null>;
   reportFailure?: (stage: FailureStage, error: unknown) => void;
 }): Promise<void> {
   const report = args.reportFailure ?? (() => {});
@@ -117,6 +123,57 @@ export async function executeRoleChangeTransition(args: {
   }
   if (databaseError) {
     report('database_change', databaseError);
+    let currentSnapshot: RoleMetadataSnapshot | null = null;
+    let revalidationFailed = false;
+    try {
+      currentSnapshot = await args.readCurrentSnapshot();
+    } catch (error) {
+      revalidationFailed = true;
+      report('rollback_revalidation', error);
+    }
+    const statusPermitsRestore =
+      currentSnapshot?.claims.mandoob_status === 'active' ||
+      currentSnapshot?.claims.mandoob_status === 'invited';
+    if (
+      revalidationFailed ||
+      !statusPermitsRestore ||
+      !roleMetadataSnapshotMatches(currentSnapshot, args.oldClaims, args.oldVersion)
+    ) {
+      const rollbackNeutralClaims: RoleMetadataClaims = {
+        mandoob_role: null,
+        tenant_id: null,
+        mandoob_status: currentSnapshot?.claims.mandoob_status ?? args.oldClaims.mandoob_status,
+        mandoob_role_transition: 'pending',
+      };
+      let neutralError: unknown;
+      let revokeError: unknown;
+      try {
+        await args.writeMetadata(rollbackNeutralClaims);
+      } catch (error) {
+        neutralError = error;
+        report('rollback_neutral_metadata', error);
+      }
+      try {
+        await args.revoke();
+      } catch (error) {
+        revokeError = error;
+        report('rollback_revoke', error);
+      }
+      if (neutralError || revokeError) {
+        throw new ApiError(
+          'ROLE_CHANGE_ROLLBACK_LOCK_FAILED',
+          'Database role change failed and fail-closed recovery failed; contact support immediately',
+          502,
+        );
+      }
+      throw new ApiError(
+        revalidationFailed ? 'ROLE_CHANGE_REVALIDATION_FAILED' : 'ROLE_CHANGE_STATE_CONFLICT',
+        revalidationFailed
+          ? 'Could not revalidate the profile after the database role change failed; login remains disabled'
+          : 'Profile changed while the database role change was running; login remains disabled',
+        revalidationFailed ? 502 : 409,
+      );
+    }
     try {
       await args.writeMetadata(args.oldClaims);
     } catch (error) {
@@ -124,6 +181,37 @@ export async function executeRoleChangeTransition(args: {
       throw new ApiError(
         'ROLE_CHANGE_RESTORE_FAILED',
         'The database role change failed and prior authorization metadata could not be restored; the user remains signed out',
+        502,
+      );
+    }
+    try {
+      await args.revoke();
+    } catch (error) {
+      report('restore_revoke', error);
+      let neutralError: unknown;
+      let secondRevokeError: unknown;
+      try {
+        await args.writeMetadata(neutralClaims);
+      } catch (disableError) {
+        neutralError = disableError;
+        report('rollback_neutral_metadata', disableError);
+      }
+      try {
+        await args.revoke();
+      } catch (secondError) {
+        secondRevokeError = secondError;
+        report('rollback_revoke', secondError);
+      }
+      if (neutralError || secondRevokeError) {
+        throw new ApiError(
+          'ROLE_CHANGE_ROLLBACK_LOCK_FAILED',
+          'Prior authorization was restored but fail-closed session recovery failed; contact support immediately',
+          502,
+        );
+      }
+      throw new ApiError(
+        'ROLE_CHANGE_RESTORE_REVOKE_FAILED',
+        'Prior authorization could not be safely restored; login remains disabled',
         502,
       );
     }

@@ -7,10 +7,23 @@ import { ApiError } from '@/lib/errors';
 import * as roleTransition from './admin-role-transition';
 import {
   AtomicRoleChangeError,
-  executeRoleChangeTransition,
   isRoleMetadataResyncSourceSafe,
   type RoleMetadataClaims,
 } from './admin-role-transition';
+
+type ChangeExecutor = (args: {
+  oldClaims: RoleMetadataClaims;
+  oldVersion: string;
+  newClaims: RoleMetadataClaims;
+  revoke(): Promise<void>;
+  writeMetadata(claims: RoleMetadataClaims): Promise<void>;
+  changeDatabase(): Promise<{ message: string } | null>;
+  readCurrentSnapshot(): Promise<{ claims: RoleMetadataClaims; version: string } | null>;
+}) => Promise<void>;
+
+const executeRoleChangeTransition = (
+  roleTransition as typeof roleTransition & { executeRoleChangeTransition: ChangeExecutor }
+).executeRoleChangeTransition;
 
 type ResyncExecutor = (args: {
   currentClaims: RoleMetadataClaims;
@@ -43,31 +56,45 @@ const neutralClaims: RoleMetadataClaims = {
   mandoob_role_transition: 'pending',
 };
 
-function harness(failAt?: string) {
+const oldSnapshot = { claims: oldClaims, version: 'version-1' };
+
+function harness(
+  failAt?: string,
+  snapshots: Array<{ claims: RoleMetadataClaims; version: string } | null> = [oldSnapshot],
+) {
   const calls: Array<{ op: string; claims?: RoleMetadataClaims }> = [];
+  const fails = (operation: string) => failAt?.split('+').includes(operation) ?? false;
   let revokeCount = 0;
   let metadataCount = 0;
+  let readCount = 0;
   return {
     calls,
     run: () =>
       executeRoleChangeTransition({
         oldClaims,
+        oldVersion: oldSnapshot.version,
         newClaims,
         revoke: async () => {
           revokeCount += 1;
           calls.push({ op: `revoke-${revokeCount}` });
-          if (failAt === `revoke-${revokeCount}`) throw new Error('provider revoke secret');
+          if (fails(`revoke-${revokeCount}`)) throw new Error('provider revoke secret');
         },
         writeMetadata: async (claims) => {
           metadataCount += 1;
           calls.push({ op: `metadata-${metadataCount}`, claims });
-          if (failAt === `metadata-${metadataCount}`) throw new Error('provider metadata secret');
+          if (fails(`metadata-${metadataCount}`)) throw new Error('provider metadata secret');
         },
         changeDatabase: async () => {
           calls.push({ op: 'rpc' });
-          return failAt === 'rpc' || failAt === 'rpc-and-restore'
+          return fails('rpc') || failAt === 'rpc-and-restore'
             ? { message: 'provider rpc secret' }
             : null;
+        },
+        readCurrentSnapshot: async () => {
+          readCount += 1;
+          calls.push({ op: `read-${readCount}` });
+          if (fails(`read-${readCount}`)) throw new Error('provider database secret');
+          return snapshots[readCount - 1] ?? null;
         },
       }),
   };
@@ -129,7 +156,9 @@ test('RPC failure restores exact old claims and never writes final claims', asyn
     { op: 'metadata-1', claims: neutralClaims },
     { op: 'revoke-2' },
     { op: 'rpc' },
+    { op: 'read-1' },
     { op: 'metadata-2', claims: oldClaims },
+    { op: 'revoke-3' },
   ]);
 });
 
@@ -140,6 +169,7 @@ test('RPC and restoration failure reports a sanitized compound failure', async (
     () =>
       executeRoleChangeTransition({
         oldClaims,
+        oldVersion: oldSnapshot.version,
         newClaims,
         revoke: async () => {
           calls.push({ op: 'revoke' });
@@ -153,6 +183,10 @@ test('RPC and restoration failure reports a sanitized compound failure', async (
           calls.push({ op: 'rpc' });
           return { message: 'provider rpc secret' };
         },
+        readCurrentSnapshot: async () => {
+          calls.push({ op: 'read' });
+          return oldSnapshot;
+        },
       }),
     'ROLE_CHANGE_RESTORE_FAILED',
     /database role change failed.*prior authorization metadata/i,
@@ -162,8 +196,88 @@ test('RPC and restoration failure reports a sanitized compound failure', async (
     { op: 'metadata', claims: neutralClaims },
     { op: 'revoke' },
     { op: 'rpc' },
+    { op: 'read' },
     { op: 'metadata', claims: oldClaims },
   ]);
+});
+
+test('losing concurrent role transition neutralizes winner claims and never restores stale role', async () => {
+  const winnerClaims: RoleMetadataClaims = {
+    mandoob_role: 'customer',
+    tenant_id: 'tenant-2',
+    mandoob_status: 'active',
+    mandoob_role_transition: null,
+  };
+  const flow = harness('rpc', [{ claims: winnerClaims, version: 'version-2' }]);
+  await rejectsCode(
+    flow.run,
+    'ROLE_CHANGE_STATE_CONFLICT',
+    /profile changed.*login remains disabled/i,
+  );
+  assert.deepEqual(flow.calls, [
+    { op: 'revoke-1' },
+    { op: 'metadata-1', claims: neutralClaims },
+    { op: 'revoke-2' },
+    { op: 'rpc' },
+    { op: 'read-1' },
+    {
+      op: 'metadata-2',
+      claims: { ...neutralClaims, mandoob_status: winnerClaims.mandoob_status },
+    },
+    { op: 'revoke-3' },
+  ]);
+  assert.equal(
+    flow.calls.some((call) => call.claims === oldClaims),
+    false,
+  );
+});
+
+test('RPC rollback revalidation fails closed for status, version, missing, and read changes', async () => {
+  const cases: Array<{
+    failAt?: string;
+    snapshot: { claims: RoleMetadataClaims; version: string } | null;
+    code: string;
+  }> = [
+    {
+      snapshot: { claims: { ...oldClaims, mandoob_status: 'suspended' }, version: 'version-2' },
+      code: 'ROLE_CHANGE_STATE_CONFLICT',
+    },
+    { snapshot: { claims: oldClaims, version: 'version-2' }, code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { snapshot: null, code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { failAt: 'rpc+read-1', snapshot: oldSnapshot, code: 'ROLE_CHANGE_REVALIDATION_FAILED' },
+  ];
+  for (const testCase of cases) {
+    const flow = harness(testCase.failAt ?? 'rpc', [testCase.snapshot]);
+    if (testCase.failAt === 'rpc+read-1') {
+      const originalRun = flow.run;
+      await rejectsCode(originalRun, testCase.code, /revalidate.*login remains disabled/i);
+    } else {
+      await rejectsCode(flow.run, testCase.code, /profile changed.*login remains disabled/i);
+    }
+    assert.equal(
+      flow.calls.some((call) => call.claims === oldClaims),
+      false,
+    );
+    assert.equal(flow.calls.at(-2)?.op.startsWith('metadata'), true);
+    assert.equal(flow.calls.at(-1)?.op.startsWith('revoke'), true);
+  }
+});
+
+test('RPC rollback conflict attempts both neutral metadata and revoke when either cleanup fails', async () => {
+  const winnerSnapshot = {
+    claims: { ...oldClaims, mandoob_role: 'customer' as const, tenant_id: 'tenant-2' },
+    version: 'version-2',
+  };
+  for (const failure of ['metadata-2', 'revoke-3']) {
+    const flow = harness(`rpc+${failure}`, [winnerSnapshot]);
+    await rejectsCode(flow.run, 'ROLE_CHANGE_ROLLBACK_LOCK_FAILED', /fail-closed recovery failed/i);
+    assert.equal(flow.calls.at(-2)?.op, 'metadata-2');
+    assert.deepEqual(flow.calls.at(-1), { op: 'revoke-3' });
+    assert.equal(
+      flow.calls.some((call) => call.claims === oldClaims),
+      false,
+    );
+  }
 });
 
 test('final sync failure leaves neutral claims and never restores old privileges', async () => {

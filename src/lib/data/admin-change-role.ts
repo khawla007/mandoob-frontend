@@ -5,7 +5,11 @@ import { encryptOptional } from '@/lib/crypto/pii';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { assertRoleChangeAllowed, assertAdminCanModifyTarget } from './admin-edit-helpers';
-import { AtomicRoleChangeError, executeRoleChangeTransition } from './admin-role-transition';
+import {
+  AtomicRoleChangeError,
+  executeRoleChangeTransition,
+  type RoleMetadataSnapshot,
+} from './admin-role-transition';
 import type { ProfileStatus } from './admin-edit-helpers';
 import type { ChangeRoleOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
@@ -21,7 +25,7 @@ export async function adminChangeRole(
 
   const { data: existing, error: readErr } = await admin
     .from('profiles')
-    .select('id, role, tenant_id, status, full_name, phone')
+    .select('id, role, tenant_id, status, full_name, phone, updated_at')
     .eq('id', targetId)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
@@ -102,6 +106,7 @@ export async function adminChangeRole(
         mandoob_status: existing.status as ProfileStatus,
         mandoob_role_transition: null,
       },
+      oldVersion: existing.updated_at,
       newClaims: {
         mandoob_role: input.newRole,
         tenant_id: newTenantId,
@@ -127,6 +132,24 @@ export async function adminChangeRole(
           p_reason: input.reason ?? null,
         });
         return error;
+      },
+      readCurrentSnapshot: async (): Promise<RoleMetadataSnapshot | null> => {
+        const { data, error } = await admin
+          .from('profiles')
+          .select('role, tenant_id, status, updated_at')
+          .eq('id', targetId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) return null;
+        return {
+          claims: {
+            mandoob_role: data.role as Role,
+            tenant_id: data.tenant_id as string | null,
+            mandoob_status: data.status as ProfileStatus,
+            mandoob_role_transition: null,
+          },
+          version: data.updated_at,
+        };
       },
       reportFailure: (stage, error) => console.error(`admin role transition ${stage}`, error),
     });

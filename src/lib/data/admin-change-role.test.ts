@@ -19,6 +19,9 @@ test('admin role changes delegate exact old and new claims to the fail-closed tr
   assert.doesNotMatch(source, /\.from\('(pro_profiles|customer_profiles|employees)'\)\.insert/);
   assert.doesNotMatch(source, /\.from\('profiles'\)[\s\S]{0,120}\.update/);
   assert.match(source, /await executeRoleChangeTransition\(/);
+  assert.match(source, /\.select\('id, role, tenant_id, status, full_name, phone, updated_at'\)/);
+  assert.match(source, /oldVersion: existing\.updated_at/);
+  assert.match(source, /readCurrentSnapshot/);
   assert.match(
     source,
     /oldClaims: \{[\s\S]*mandoob_role: oldRole,[\s\S]*tenant_id: existing\.tenant_id as string \| null,[\s\S]*mandoob_status: existing\.status as ProfileStatus,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
