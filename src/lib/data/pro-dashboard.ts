@@ -6,7 +6,10 @@ export type ProDashboardData = {
   generatedAt: string;
   kpis: {
     activeClients: number;
+    activeClientsChange: number;
     openCases: number;
+    movingCases: number;
+    blockedCases: number;
     renewalsDue30d: number;
     renewalsDue7d: number;
     collectedMinor: number;
@@ -34,6 +37,12 @@ export type ProDashboardData = {
     href: string;
   }>;
   deadlineIntensity: Array<{ date: string; morning: number; afternoon: number }>;
+  deadlineEvents: Array<{
+    id: string;
+    date: string;
+    period: 'morning' | 'afternoon';
+    eventType: 'case' | 'renewal' | 'document' | 'invoice';
+  }>;
   finance: {
     billedMinor: number;
     paidMinor: number;
@@ -52,6 +61,7 @@ export type ProDashboardData = {
     activeCases: number;
     capacityPercent: number;
   }>;
+  errors: Partial<Record<'identity' | 'operations' | 'renewals' | 'documents' | 'finance', string>>;
 };
 
 type ClientInput = {
@@ -59,6 +69,7 @@ type ClientInput = {
   tenant_id: string;
   company_name: string;
   status: string;
+  created_at?: string;
 };
 
 type ProfileInput = {
@@ -94,6 +105,7 @@ type RenewalInput = {
   label: string;
   due_date: string;
   status: string;
+  notify_at?: string[];
   last_notified_at: string | null;
 };
 
@@ -156,12 +168,13 @@ type RefundInput = {
   payment_id: string;
   amount_minor: number;
   status: string;
-  reason?: string | null;
-  created_at?: string;
+  reason: string | null;
+  created_at: string;
 };
 
 export type ProDashboardInput = {
   tenantId: string;
+  tenantSlug?: string;
   days?: 7 | 30 | 90;
   clients: ClientInput[];
   profiles: ProfileInput[];
@@ -172,20 +185,22 @@ export type ProDashboardInput = {
   invoices: InvoiceInput[];
   payments: PaymentInput[];
   refunds: RefundInput[];
+  errors?: ProDashboardData['errors'];
 };
 
 type Action = ProDashboardData['actionDeck'][number];
+/** Cumulative horizons contain the active overdue backlog plus upcoming work; terminal rows stay out. */
 const ACTIVE_RENEWAL_STATUSES = new Set(['upcoming', 'due_soon', 'overdue']);
 const CLOSED_CASE_STATUSES = new Set(['completed', 'cancelled']);
-const KIND_RANK: Record<Action['kind'], number> = { case: 0, renewal: 1, document: 2, invoice: 3 };
-const URGENCY_RANK: Record<Action['urgency'], number> = {
-  breached: 0,
-  urgent: 1,
-  soon: 2,
-  normal: 3,
-};
 const PAGE_SIZE = 500;
-const TEAM_CASE_CAPACITY = 10;
+const ID_BATCH_SIZE = 100;
+/** Explicit utilization target; overload remains visible above 100%. */
+export const ACTIVE_CASE_UTILIZATION_TARGET = 10;
+/** `updated_at` is the blocked-since proxy because service_cases has no blocked_at. */
+export const BLOCKED_AGE_THRESHOLD_DAYS = 3;
+const REMINDER_ON_TIME_WINDOW_MS = 86_400_000;
+const BUSINESS_TIME_ZONE = 'Asia/Dubai';
+const COLLECTED_PAYMENT_STATUSES = new Set(['succeeded', 'refunded', 'partially_refunded']);
 
 export function calculateProDashboard(input: ProDashboardInput, now: Date): ProDashboardData {
   const tenantId = input.tenantId;
@@ -202,34 +217,67 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const ownerNames = new Map(profiles.map((row) => [row.id, row.full_name]));
   const openCases = serviceCases.filter((row) => !CLOSED_CASE_STATUSES.has(row.status));
   const activeRenewals = renewals.filter((row) => ACTIVE_RENEWAL_STATUSES.has(row.status));
-  const today = utcDate(now);
+  const today = businessDate(now);
+  const currentMonth = today.slice(0, 7);
+  const previousMonth = previousBusinessMonth(currentMonth);
 
   const financeDashboard = calculateProFinanceDashboard({
     tenantId,
     clients,
     invoices,
     payments,
-    refunds: refunds.map((row) => ({
-      ...row,
-      reason: row.reason ?? null,
-      created_at: row.created_at ?? now.toISOString(),
-    })),
+    refunds,
     today,
   });
   const reportingInvoices = invoices.filter((row) => row.currency === financeDashboard.currency);
   const dueSoonDate = addUtcDays(today, 30);
   const openReportingInvoices = reportingInvoices.filter((row) => row.status === 'open');
+  const currentPeriodInvoices = reportingInvoices.filter(
+    (row) =>
+      businessMonth(row.created_at) === currentMonth &&
+      row.status !== 'draft' &&
+      row.status !== 'void',
+  );
+  const paymentById = new Map(payments.map((row) => [row.id, row]));
+  const currentPeriodPayments = payments.filter(
+    (row) =>
+      row.currency === financeDashboard.currency &&
+      COLLECTED_PAYMENT_STATUSES.has(row.status) &&
+      row.received_at !== null &&
+      businessMonth(row.received_at) === currentMonth,
+  );
+  const currentPeriodRefunds = refunds.filter((row) => {
+    const payment = paymentById.get(row.payment_id);
+    return (
+      row.status === 'succeeded' &&
+      payment?.currency === financeDashboard.currency &&
+      businessMonth(row.created_at) === currentMonth
+    );
+  });
+  const collectedMinor =
+    currentPeriodPayments.reduce((sum, row) => sum + row.amount_minor, 0) -
+    currentPeriodRefunds.reduce((sum, row) => sum + row.amount_minor, 0);
+  const billedMinor = currentPeriodInvoices.reduce((sum, row) => sum + row.amount_minor, 0);
+  const blockedCases = openCases.filter((row) => row.blocked_reason !== null);
+  const movingCases = openCases.filter((row) => row.blocked_reason === null);
+
+  const caseCountByAssignee = new Map<string, number>();
+  for (const row of openCases) {
+    if (row.assigned_to) {
+      caseCountByAssignee.set(row.assigned_to, (caseCountByAssignee.get(row.assigned_to) ?? 0) + 1);
+    }
+  }
 
   const team = profiles
     .filter((row) => row.status === 'active' && (row.role === 'pro' || row.role === 'admin'))
     .map((profile) => {
-      const activeCases = openCases.filter((row) => row.assigned_to === profile.id).length;
+      const activeCases = caseCountByAssignee.get(profile.id) ?? 0;
       return {
         profileId: profile.id,
         tenantId,
         name: profile.full_name ?? 'Unnamed team member',
         activeCases,
-        capacityPercent: clamp(Math.round((activeCases / TEAM_CASE_CAPACITY) * 100)),
+        capacityPercent: Math.round((activeCases / ACTIVE_CASE_UTILIZATION_TARGET) * 100),
       };
     })
     .sort(
@@ -238,12 +286,14 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
 
   const days = input.days ?? 30;
   const dateWindow = utcDateWindow(today, days);
+  const openedByDate = countByDate(serviceCases.map((row) => row.created_at));
+  const completedByDate = countByDate(
+    serviceCases.flatMap((row) => (row.completed_at ? [row.completed_at] : [])),
+  );
   const caseVelocity = dateWindow.map((date) => ({
     date,
-    opened: serviceCases.filter((row) => utcDate(new Date(row.created_at)) === date).length,
-    completed: serviceCases.filter(
-      (row) => row.completed_at !== null && utcDate(new Date(row.completed_at)) === date,
-    ).length,
+    opened: openedByDate.get(date) ?? 0,
+    completed: completedByDate.get(date) ?? 0,
   }));
 
   const actions = buildActions({
@@ -255,14 +305,26 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     clientNames,
     ownerNames,
     now,
+    tenantSlug: input.tenantSlug,
   });
 
+  const deadlineEvents = actions.flatMap((action) => {
+    if (!action.deadline) return [];
+    const parts = businessDeadlineParts(action.deadline);
+    return [{ id: action.id, date: parts.date, period: parts.period, eventType: action.kind }];
+  });
+  const eventsByDate = new Map<string, typeof deadlineEvents>();
+  for (const event of deadlineEvents) {
+    const events = eventsByDate.get(event.date) ?? [];
+    events.push(event);
+    eventsByDate.set(event.date, events);
+  }
   const deadlineIntensity = utcFutureDateWindow(today, days).map((date) => {
-    const dated = actions.filter((action) => action.deadline?.slice(0, 10) === date);
+    const dated = eventsByDate.get(date) ?? [];
     return {
       date,
-      morning: dated.filter((action) => deadlineHour(action.deadline) < 12).length,
-      afternoon: dated.filter((action) => deadlineHour(action.deadline) >= 12).length,
+      morning: dated.filter((event) => event.period === 'morning').length,
+      afternoon: dated.filter((event) => event.period === 'afternoon').length,
     };
   });
 
@@ -270,25 +332,39 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const renewalsDue7d = activeRenewals.filter((row) => row.due_date <= addUtcDays(today, 7)).length;
   const renewalsDue30d = activeRenewals.filter((row) => row.due_date <= dueSoonDate).length;
   const overdueRatio = percent(
-    openCases.filter(
-      (row) => deadlineForCase(row) !== null && deadlineForCase(row)! < now.toISOString(),
-    ).length,
+    openCases.filter((row) => {
+      const deadline = deadlineForCase(row);
+      return deadline !== null && businessDeadlineTimestamp(deadline) < now.getTime();
+    }).length,
     openCases.length,
   );
   const completedWithSla = serviceCases.filter(
     (row) => row.status === 'completed' && row.completed_at !== null && row.sla_due_at !== null,
   );
   const slaCompletionRate = percent(
-    completedWithSla.filter((row) => row.completed_at! <= row.sla_due_at!).length,
+    completedWithSla.filter(
+      (row) => Date.parse(row.completed_at!) <= businessDeadlineTimestamp(row.sla_due_at!),
+    ).length,
     completedWithSla.length,
   );
+  const blockedThreshold = now.getTime() - BLOCKED_AGE_THRESHOLD_DAYS * 86_400_000;
   const blockedRatio = percent(
-    openCases.filter((row) => row.blocked_reason !== null).length,
+    blockedCases.filter((row) => Date.parse(row.updated_at) <= blockedThreshold).length,
     openCases.length,
   );
-  const dueForReminder = activeRenewals.filter((row) => row.due_date <= dueSoonDate);
+  const dueForReminder = activeRenewals.flatMap((row) => {
+    // No elapsed schedule means "not yet measurable"; a missing send for an elapsed schedule is late.
+    const schedules = (row.notify_at ?? [])
+      .map((value) => Date.parse(value))
+      .filter((value) => Number.isFinite(value) && value <= now.getTime());
+    return schedules.length ? [{ row, scheduledAt: Math.max(...schedules) }] : [];
+  });
   const reminderRate = percent(
-    dueForReminder.filter((row) => row.last_notified_at !== null).length,
+    dueForReminder.filter(({ row, scheduledAt }) => {
+      if (!row.last_notified_at) return false;
+      const sentAt = Date.parse(row.last_notified_at);
+      return sentAt >= scheduledAt && sentAt <= scheduledAt + REMINDER_ON_TIME_WINDOW_MS;
+    }).length,
     dueForReminder.length,
   );
   const workloadBalance = calculateWorkloadBalance(team.map((member) => member.activeCases));
@@ -305,17 +381,26 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
       : clamp(
           Math.round(healthSignals.reduce((sum, value) => sum + value, 0) / healthSignals.length),
         );
+  const activeClients = clients.filter((row) => row.status === 'active');
+  const activeClientsChange =
+    activeClients.filter((row) => row.created_at && businessMonth(row.created_at) === currentMonth)
+      .length -
+    activeClients.filter((row) => row.created_at && businessMonth(row.created_at) === previousMonth)
+      .length;
 
   return {
     generatedAt: now.toISOString(),
     kpis: {
-      activeClients: clients.filter((row) => row.status === 'active').length,
+      activeClients: activeClients.length,
+      activeClientsChange,
       openCases: openCases.length,
+      movingCases: movingCases.length,
+      blockedCases: blockedCases.length,
       renewalsDue30d,
       renewalsDue7d,
-      collectedMinor: financeDashboard.totalRevenueCollectedMinor,
+      collectedMinor,
       currency: financeDashboard.currency,
-      collectionRate: roundOne(financeDashboard.collectionRate),
+      collectionRate: billedMinor > 0 ? roundOne((collectedMinor / billedMinor) * 100) : 0,
     },
     health: {
       score,
@@ -328,11 +413,10 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     caseVelocity,
     actionDeck: actions,
     deadlineIntensity,
+    deadlineEvents,
     finance: {
-      billedMinor: reportingInvoices
-        .filter((row) => row.status !== 'void')
-        .reduce((sum, row) => sum + row.amount_minor, 0),
-      paidMinor: financeDashboard.totalRevenueCollectedMinor,
+      billedMinor,
+      paidMinor: collectedMinor,
       dueSoonMinor: openReportingInvoices
         .filter((row) => row.due_at !== null && row.due_at >= today && row.due_at <= dueSoonDate)
         .reduce((sum, row) => sum + row.amount_minor, 0),
@@ -343,6 +427,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     },
     renewalStreams,
     team,
+    errors: input.errors ?? {},
   };
 }
 
@@ -355,8 +440,10 @@ function buildActions(args: {
   clientNames: Map<string, string>;
   ownerNames: Map<string, string | null>;
   now: Date;
+  tenantSlug?: string;
 }): Action[] {
   const clientName = (id: string) => args.clientNames.get(id) ?? 'Unknown client';
+  const base = args.tenantSlug ? `/t/${encodeURIComponent(args.tenantSlug)}` : null;
   const actions: Action[] = [
     ...args.openCases.map((row): Action => {
       const deadline = deadlineForCase(row);
@@ -364,12 +451,14 @@ function buildActions(args: {
         id: row.id,
         kind: 'case',
         title: row.title,
-        detail: row.service_type,
+        detail: row.blocked_reason
+          ? `${row.service_type} — ${row.blocked_reason}`
+          : row.service_type,
         clientName: clientName(row.client_id),
         ownerName: row.assigned_to ? (args.ownerNames.get(row.assigned_to) ?? null) : null,
         deadline,
         urgency: urgency(deadline, args.now),
-        href: '/applications',
+        href: base ? `${base}/applications?case=${encodeURIComponent(row.id)}` : '#',
       };
     }),
     ...args.activeRenewals.map(
@@ -382,7 +471,7 @@ function buildActions(args: {
         ownerName: null,
         deadline: row.due_date,
         urgency: urgency(row.due_date, args.now),
-        href: '/renewals',
+        href: base ? `${base}/renewals?renewal=${encodeURIComponent(row.id)}` : '#',
       }),
     ),
     ...args.documentRequests
@@ -397,7 +486,9 @@ function buildActions(args: {
           ownerName: null,
           deadline: row.due_at,
           urgency: urgency(row.due_at, args.now),
-          href: `/clients/${row.client_id}`,
+          href: base
+            ? `${base}/clients/${encodeURIComponent(row.client_id)}?tab=documents&request=${encodeURIComponent(row.id)}`
+            : '#',
         }),
       ),
     ...args.documents
@@ -412,7 +503,9 @@ function buildActions(args: {
           ownerName: null,
           deadline: null,
           urgency: 'normal',
-          href: `/clients/${row.client_id}`,
+          href: base
+            ? `${base}/clients/${encodeURIComponent(row.client_id)}?tab=documents&document=${encodeURIComponent(row.id)}`
+            : '#',
         }),
       ),
     ...args.openInvoices.map(
@@ -425,19 +518,57 @@ function buildActions(args: {
         ownerName: null,
         deadline: row.due_at,
         urgency: urgency(row.due_at, args.now),
-        href: `/payments/${row.id}`,
+        href: base ? `${base}/payments/${encodeURIComponent(row.id)}` : '#',
       }),
     ),
   ];
 
-  return actions.sort((left, right) => {
-    const urgencyOrder = URGENCY_RANK[left.urgency] - URGENCY_RANK[right.urgency];
-    if (urgencyOrder !== 0) return urgencyOrder;
-    const deadlineOrder = deadlineDate(left.deadline).localeCompare(deadlineDate(right.deadline));
-    if (deadlineOrder !== 0) return deadlineOrder;
-    const kindOrder = KIND_RANK[left.kind] - KIND_RANK[right.kind];
-    return kindOrder !== 0 ? kindOrder : left.id.localeCompare(right.id);
-  });
+  const cases = new Map(args.openCases.map((row) => [row.id, row]));
+  return actions.sort((left, right) => compareActions(left, right, cases, args.now));
+}
+
+function compareActions(
+  left: Action,
+  right: Action,
+  cases: Map<string, ServiceCaseInput>,
+  now: Date,
+): number {
+  const signalRank = (action: Action): number => {
+    const row = action.kind === 'case' ? cases.get(action.id) : undefined;
+    if (row?.sla_due_at) return 0;
+    if (action.kind === 'renewal') return 1;
+    if (row?.blocked_reason) return 2;
+    if (action.kind === 'document') return 3;
+    if (action.kind === 'case') return 4;
+    return 5;
+  };
+  const rank = signalRank(left) - signalRank(right);
+  if (rank !== 0) return rank;
+  if (left.kind === 'case' && right.kind === 'case') {
+    const leftCase = cases.get(left.id)!;
+    const rightCase = cases.get(right.id)!;
+    if (leftCase.sla_due_at && rightCase.sla_due_at) {
+      const leftBreached = businessDeadlineTimestamp(leftCase.sla_due_at) < now.getTime() ? 0 : 1;
+      const rightBreached = businessDeadlineTimestamp(rightCase.sla_due_at) < now.getTime() ? 0 : 1;
+      return (
+        leftBreached - rightBreached ||
+        businessDeadlineTimestamp(leftCase.sla_due_at) -
+          businessDeadlineTimestamp(rightCase.sla_due_at) ||
+        left.id.localeCompare(right.id)
+      );
+    }
+    if (leftCase.blocked_reason && rightCase.blocked_reason) {
+      return Date.parse(leftCase.updated_at) - Date.parse(rightCase.updated_at);
+    }
+    const priority: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+    return (
+      priority[leftCase.priority] - priority[rightCase.priority] || left.id.localeCompare(right.id)
+    );
+  }
+  return (
+    deadlineDate(left.deadline).localeCompare(deadlineDate(right.deadline)) ||
+    left.id.localeCompare(right.id)
+  );
 }
 
 function renewalStreamCounts(
@@ -488,7 +619,7 @@ function calculateWorkloadBalance(activeCases: number[]): number {
   if (activeCases.length === 0) return 0;
   const maximum = Math.max(...activeCases);
   if (maximum === 0) return 100;
-  return clamp(Math.round((1 - (maximum - Math.min(...activeCases)) / maximum) * 100));
+  return clamp(roundOne((1 - (maximum - Math.min(...activeCases)) / maximum) * 100));
 }
 
 function percent(numerator: number, denominator: number): number {
@@ -505,6 +636,62 @@ function roundOne(value: number): number {
 
 function utcDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function businessDate(date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+function businessMonth(timestamp: string): string {
+  return businessDate(new Date(timestamp)).slice(0, 7);
+}
+
+function previousBusinessMonth(month: string): string {
+  const value = new Date(`${month}-01T00:00:00.000Z`);
+  value.setUTCMonth(value.getUTCMonth() - 1);
+  return value.toISOString().slice(0, 7);
+}
+
+function businessDeadlineParts(deadline: string): {
+  date: string;
+  period: 'morning' | 'afternoon';
+} {
+  if (deadline.length === 10) return { date: deadline, period: 'afternoon' };
+  const value = new Date(deadline);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((candidate) => candidate.type === type)?.value ?? '';
+  const hour = Number(part('hour'));
+  return {
+    date: `${part('year')}-${part('month')}-${part('day')}`,
+    period: hour < 12 ? 'morning' : 'afternoon',
+  };
+}
+
+function businessDeadlineTimestamp(deadline: string): number {
+  // Date-only deadlines expire at the end of the Dubai business date (UTC+04:00).
+  return Date.parse(deadline.length === 10 ? `${deadline}T19:59:59.999Z` : deadline);
+}
+
+function countByDate(timestamps: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const timestamp of timestamps) {
+    const date = businessDate(new Date(timestamp));
+    counts.set(date, (counts.get(date) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function addUtcDays(date: string, days: number): string {
@@ -527,8 +714,7 @@ function deadlineForCase(row: ServiceCaseInput): string | null {
 
 function urgency(deadline: string | null, now: Date): Action['urgency'] {
   if (!deadline) return 'normal';
-  const timestamp =
-    deadline.length === 10 ? Date.parse(`${deadline}T23:59:59.999Z`) : Date.parse(deadline);
+  const timestamp = businessDeadlineTimestamp(deadline);
   const days = (timestamp - now.getTime()) / 86_400_000;
   if (timestamp < now.getTime()) return 'breached';
   if (days <= 7) return 'urgent';
@@ -538,11 +724,6 @@ function urgency(deadline: string | null, now: Date): Action['urgency'] {
 
 function deadlineDate(deadline: string | null): string {
   return deadline?.slice(0, 10) ?? '9999-12-31';
-}
-
-function deadlineHour(deadline: string | null): number {
-  if (!deadline || deadline.length === 10) return 23;
-  return new Date(deadline).getUTCHours();
 }
 
 export class ProDashboardQueryError extends Error {
@@ -612,6 +793,141 @@ export function loadProDashboardRows<T>(
   });
 }
 
+type ProDashboardErrorGroup = keyof ProDashboardData['errors'];
+const SOURCE_ERROR_GROUPS: Record<string, ProDashboardErrorGroup> = {
+  tenantSlug: 'identity',
+  clients: 'identity',
+  profiles: 'operations',
+  serviceCases: 'operations',
+  renewals: 'renewals',
+  documentRequests: 'documents',
+  documentHeads: 'documents',
+  documentVersions: 'documents',
+  invoices: 'finance',
+  payments: 'finance',
+  refunds: 'finance',
+};
+
+export async function settleProDashboardSources<T extends Record<string, PromiseLike<unknown[]>>>(
+  sources: T,
+): Promise<{
+  data: { [K in keyof T]: T[K] extends PromiseLike<infer Rows> ? Rows : never };
+  errors: ProDashboardData['errors'];
+}> {
+  const entries = Object.entries(sources);
+  const settled = await Promise.allSettled(entries.map(([, source]) => Promise.resolve(source)));
+  const data: Record<string, unknown[]> = {};
+  const errors: ProDashboardData['errors'] = {};
+  const failedGroups = new Set<ProDashboardErrorGroup>();
+
+  settled.forEach((result, index) => {
+    const source = entries[index][0];
+    if (result.status === 'fulfilled') return;
+    const group = SOURCE_ERROR_GROUPS[source] ?? 'operations';
+    failedGroups.add(group);
+    if (!errors[group]) {
+      errors[group] =
+        result.reason instanceof ProDashboardQueryError
+          ? result.reason.message
+          : `Failed to load PRO dashboard ${source}`;
+    }
+  });
+  settled.forEach((result, index) => {
+    const source = entries[index][0];
+    const group = SOURCE_ERROR_GROUPS[source] ?? 'operations';
+    data[source] = result.status === 'fulfilled' && !failedGroups.has(group) ? result.value : [];
+  });
+
+  return {
+    data: data as {
+      [K in keyof T]: T[K] extends PromiseLike<infer Rows> ? Rows : never;
+    },
+    errors,
+  };
+}
+
+type ProDashboardIdQueryClient = {
+  from(source: string): {
+    select(columns: string): {
+      eq(
+        column: string,
+        value: string,
+      ): {
+        in(
+          column: string,
+          values: string[],
+        ): {
+          order(
+            column: string,
+            options: { ascending: boolean },
+          ): {
+            range(from: number, to: number): PromiseLike<ProDashboardQueryResult>;
+          };
+        };
+      };
+    };
+  };
+};
+
+export async function loadReferencedDocumentVersions(
+  client: ProDashboardIdQueryClient,
+  documents: DocumentHeadInput[],
+  tenantId: string,
+): Promise<DocumentVersionInput[]> {
+  const ids = Array.from(
+    new Set(
+      documents
+        .filter((document) => document.tenant_id === tenantId)
+        .flatMap((document) => (document.current_version_id ? [document.current_version_id] : [])),
+    ),
+  );
+  const versions: DocumentVersionInput[] = [];
+  for (let offset = 0; offset < ids.length; offset += ID_BATCH_SIZE) {
+    const batch = ids.slice(offset, offset + ID_BATCH_SIZE);
+    versions.push(
+      ...(await collectProDashboardPages<DocumentVersionInput>(
+        'document_versions',
+        async (from, to) => {
+          const result = await client
+            .from('document_versions')
+            .select('id, tenant_id, review_status')
+            .eq('tenant_id', tenantId)
+            .in('id', batch)
+            .order('id', { ascending: true })
+            .range(from, to);
+          return { data: result.data as DocumentVersionInput[] | null, error: result.error };
+        },
+      )),
+    );
+  }
+  return versions;
+}
+
+type ProDashboardTenantQueryClient = {
+  from(source: 'tenants'): {
+    select(columns: 'slug'): {
+      eq(
+        column: 'id',
+        value: string,
+      ): {
+        maybeSingle(): PromiseLike<{
+          data: { slug: string } | null;
+          error: { message?: string } | null;
+        }>;
+      };
+    };
+  };
+};
+
+async function loadTenantSlug(
+  client: ProDashboardTenantQueryClient,
+  tenantId: string,
+): Promise<string[]> {
+  const result = await client.from('tenants').select('slug').eq('id', tenantId).maybeSingle();
+  if (result.error || !result.data?.slug) throw new ProDashboardQueryError('tenant');
+  return [result.data.slug];
+}
+
 export async function getProDashboardData(
   tenantId: string,
   days: 7 | 30 | 90 = 30,
@@ -621,7 +937,51 @@ export async function getProDashboardData(
   const load = <T>(source: string, select: string) =>
     loadProDashboardRows<T>(admin as unknown as ProDashboardQueryClient, source, select, tenantId);
 
-  const [
+  const documentHeadsPromise = load<DocumentHeadInput>(
+    'documents',
+    'id, tenant_id, client_id, label, current_version_id',
+  );
+  const documentVersionsPromise: Promise<DocumentVersionInput[]> = documentHeadsPromise.then(
+    (documents) =>
+      loadReferencedDocumentVersions(
+        admin as unknown as ProDashboardIdQueryClient,
+        documents,
+        tenantId,
+      ),
+  );
+  const settled = await settleProDashboardSources({
+    tenantSlug: loadTenantSlug(admin as unknown as ProDashboardTenantQueryClient, tenantId),
+    clients: load<ClientInput>('clients', 'id, tenant_id, company_name, status, created_at'),
+    profiles: load<ProfileInput>('profiles', 'id, tenant_id, full_name, role, status'),
+    serviceCases: load<ServiceCaseInput>(
+      'service_cases_ranked',
+      'id, tenant_id, client_id, title, service_type, status, priority, assigned_to, due_at, sla_due_at, blocked_reason, completed_at, created_at, updated_at',
+    ),
+    renewals: load<RenewalInput>(
+      'renewals',
+      'id, tenant_id, client_id, type, label, due_date, status, notify_at, last_notified_at',
+    ),
+    documentRequests: load<DocumentRequestInput>(
+      'document_requests',
+      'id, tenant_id, client_id, label, status, due_at',
+    ),
+    documentHeads: documentHeadsPromise,
+    documentVersions: documentVersionsPromise,
+    invoices: load<InvoiceInput>(
+      'invoices',
+      'id, tenant_id, client_id, label, amount_minor, currency, status, due_at, created_at',
+    ),
+    payments: load<PaymentInput>(
+      'payments',
+      'id, tenant_id, invoice_id, amount_minor, currency, status, method, provider, failure_reason, received_at, created_at',
+    ),
+    refunds: load<RefundInput>(
+      'refunds',
+      'id, tenant_id, payment_id, amount_minor, status, reason, created_at',
+    ),
+  });
+  const {
+    tenantSlug: tenantSlugs,
     clients,
     profiles,
     serviceCases,
@@ -632,41 +992,13 @@ export async function getProDashboardData(
     invoices,
     payments,
     refunds,
-  ] = await Promise.all([
-    load<ClientInput>('clients', 'id, tenant_id, company_name, status'),
-    load<ProfileInput>('profiles', 'id, tenant_id, full_name, role, status'),
-    load<ServiceCaseInput>(
-      'service_cases_ranked',
-      'id, tenant_id, client_id, title, service_type, status, priority, assigned_to, due_at, sla_due_at, blocked_reason, completed_at, created_at, updated_at',
-    ),
-    load<RenewalInput>(
-      'renewals',
-      'id, tenant_id, client_id, type, label, due_date, status, last_notified_at',
-    ),
-    load<DocumentRequestInput>(
-      'document_requests',
-      'id, tenant_id, client_id, label, status, due_at',
-    ),
-    load<DocumentHeadInput>('documents', 'id, tenant_id, client_id, label, current_version_id'),
-    load<DocumentVersionInput>('document_versions', 'id, tenant_id, review_status'),
-    load<InvoiceInput>(
-      'invoices',
-      'id, tenant_id, client_id, label, amount_minor, currency, status, due_at, created_at',
-    ),
-    load<PaymentInput>(
-      'payments',
-      'id, tenant_id, invoice_id, amount_minor, currency, status, method, provider, failure_reason, received_at, created_at',
-    ),
-    load<RefundInput>(
-      'refunds',
-      'id, tenant_id, payment_id, amount_minor, status, reason, created_at',
-    ),
-  ]);
+  } = settled.data;
   const documents = associateCurrentDocumentVersions(documentHeads, documentVersions, tenantId);
 
   return calculateProDashboard(
     {
       tenantId,
+      tenantSlug: tenantSlugs[0],
       days,
       clients,
       profiles,
@@ -677,6 +1009,7 @@ export async function getProDashboardData(
       invoices,
       payments,
       refunds,
+      errors: settled.errors,
     },
     new Date(),
   );

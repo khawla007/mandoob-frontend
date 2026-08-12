@@ -4,8 +4,10 @@ import {
   associateCurrentDocumentVersions,
   calculateProDashboard,
   collectProDashboardPages,
+  loadReferencedDocumentVersions,
   loadProDashboardRows,
   ProDashboardQueryError,
+  settleProDashboardSources,
   type ProDashboardInput,
 } from './pro-dashboard';
 
@@ -15,6 +17,7 @@ const TENANT = 'tenant-a';
 function baseInput(): ProDashboardInput {
   return {
     tenantId: TENANT,
+    tenantSlug: 'acme',
     days: 7,
     clients: [
       { id: 'client-1', tenant_id: TENANT, company_name: 'Acme', status: 'active' },
@@ -144,6 +147,8 @@ function baseInput(): ProDashboardInput {
         payment_id: 'payment-1',
         amount_minor: 1000,
         status: 'succeeded',
+        reason: null,
+        created_at: '2026-08-10T00:00:00.000Z',
       },
       {
         id: 'refund-x',
@@ -151,6 +156,8 @@ function baseInput(): ProDashboardInput {
         payment_id: 'payment-x',
         amount_minor: 888888,
         status: 'succeeded',
+        reason: null,
+        created_at: '2026-08-10T00:00:00.000Z',
       },
     ],
   };
@@ -165,10 +172,11 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   assert.equal(dashboard.kpis.renewalsDue30d, 2);
   assert.equal(dashboard.finance.overdueMinor, 7300);
   assert.deepEqual(
-    dashboard.actionDeck.slice(0, 4).map((action) => action.kind),
-    ['case', 'renewal', 'document', 'invoice'],
+    new Set(dashboard.actionDeck.map((action) => action.kind)),
+    new Set(['case', 'renewal', 'document', 'invoice']),
   );
-  assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 2, completed: 1 });
+  assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 2, completed: 0 });
+  assert.equal(dashboard.caseVelocity[1].completed, 1);
   assert.equal(dashboard.renewalStreams.license.d7, 1);
   assert.ok(Object.values(dashboard.health).every((value) => value >= 0 && value <= 100));
   assert.deepEqual(
@@ -209,7 +217,7 @@ test('returns zero-filled chart dates and empty collections for empty input', ()
   assert.equal(dashboard.health.score, 0);
 });
 
-test('uses the existing AED-first finance rules and never sums mixed currencies', () => {
+test('uses current-month AED-first finance rules and never sums mixed currencies', () => {
   const dashboard = calculateProDashboard(baseInput(), NOW);
   assert.deepEqual(dashboard.finance, {
     billedMinor: 10000,
@@ -219,23 +227,22 @@ test('uses the existing AED-first finance rules and never sums mixed currencies'
     currency: 'AED',
   });
   assert.equal(dashboard.kpis.collectedMinor, 9000);
-  assert.equal(dashboard.kpis.collectionRate, 47.4);
+  assert.equal(dashboard.kpis.collectionRate, 90);
 });
 
-test('ranks actions by urgency, deadline, and stable kind precedence', () => {
+test('ranks breached and nearest SLA cases before later signal classes', () => {
   const dashboard = calculateProDashboard(baseInput(), NOW);
   assert.deepEqual(
-    dashboard.actionDeck.slice(0, 4).map(({ kind, urgency }) => ({ kind, urgency })),
+    dashboard.actionDeck.slice(0, 3).map(({ id, urgency }) => ({ id, urgency })),
     [
-      { kind: 'case', urgency: 'breached' },
-      { kind: 'renewal', urgency: 'breached' },
-      { kind: 'document', urgency: 'breached' },
-      { kind: 'invoice', urgency: 'breached' },
+      { id: 'case-first-open', urgency: 'breached' },
+      { id: 'case-2', urgency: 'urgent' },
+      { id: 'case-3', urgency: 'urgent' },
     ],
   );
 });
 
-test('applies UTC-inclusive date boundaries to velocity, renewals, and invoice aging', () => {
+test('applies Dubai-inclusive date boundaries to velocity, renewals, and invoice aging', () => {
   const input = baseInput();
   input.days = 30;
   input.renewals = [
@@ -344,6 +351,78 @@ test('loads current document versions with an explicit tenant predicate and reje
   assert.equal(documents[1].currentVersion, null);
 });
 
+test('fetches only referenced current document versions with tenant and id predicates', async () => {
+  const calls: Array<[string, ...unknown[]]> = [];
+  const queryClient = {
+    from(source: string) {
+      calls.push(['from', source]);
+      return {
+        select(columns: string) {
+          calls.push(['select', columns]);
+          return {
+            eq(column: string, value: string) {
+              calls.push(['eq', column, value]);
+              return {
+                in(idColumn: string, values: string[]) {
+                  calls.push(['in', idColumn, values]);
+                  return {
+                    order(columnName: string, options: unknown) {
+                      calls.push(['order', columnName, options]);
+                      return {
+                        range(from: number, to: number) {
+                          calls.push(['range', from, to]);
+                          return Promise.resolve({
+                            data: [
+                              { id: 'version-1', tenant_id: TENANT, review_status: 'pending' },
+                            ],
+                            error: null,
+                          });
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const versions = await loadReferencedDocumentVersions(
+    queryClient,
+    [
+      {
+        id: 'document-1',
+        tenant_id: TENANT,
+        client_id: 'client-1',
+        label: 'Passport',
+        current_version_id: 'version-1',
+      },
+      {
+        id: 'document-2',
+        tenant_id: TENANT,
+        client_id: 'client-1',
+        label: 'Duplicate head',
+        current_version_id: 'version-1',
+      },
+    ],
+    TENANT,
+  );
+  assert.deepEqual(
+    versions.map((version) => version.id),
+    ['version-1'],
+  );
+  assert.ok(
+    calls.some((call) => call[0] === 'eq' && call[1] === 'tenant_id' && call[2] === TENANT),
+  );
+  assert.deepEqual(
+    calls.find((call) => call[0] === 'in'),
+    ['in', 'id', ['version-1']],
+  );
+});
+
 test('paginates until a short batch and names query errors without leaking details', async () => {
   const calls: Array<[number, number]> = [];
   const rows = await collectProDashboardPages('clients', async (from, to) => {
@@ -370,6 +449,336 @@ test('paginates until a short batch and names query errors without leaking detai
       error.message === 'Failed to load PRO dashboard payments',
   );
 });
+
+test('keeps active overdue renewals in backlog horizons but excludes inactive lifecycle rows', () => {
+  const input = baseInput();
+  input.renewals = [
+    renewalRow({ id: 'old-overdue', due_date: '2020-01-01', status: 'overdue' }),
+    renewalRow({ id: 'today', due_date: '2026-08-11', status: 'due_soon' }),
+    renewalRow({ id: 'cancelled', due_date: '2026-08-12', status: 'cancelled' }),
+    renewalRow({ id: 'completed', due_date: '2026-08-13', status: 'completed' }),
+  ];
+
+  const dashboard = calculateProDashboard(input, new Date('2026-08-10T20:30:00.000Z'));
+  assert.deepEqual(dashboard.renewalStreams.license, { d7: 2, d30: 2, d60: 2, d90: 2 });
+  assert.equal(dashboard.kpis.renewalsDue7d, 2);
+  assert.equal(dashboard.kpis.renewalsDue30d, 2);
+});
+
+test('calculates all five transparent health inputs from actual timestamps', () => {
+  const input = emptyInput();
+  input.profiles = [
+    { id: 'pro-1', tenant_id: TENANT, full_name: 'Aisha', role: 'pro', status: 'active' },
+    { id: 'pro-2', tenant_id: TENANT, full_name: 'Bilal', role: 'pro', status: 'active' },
+  ];
+  input.serviceCases = [
+    caseRow({ id: 'overdue', assigned_to: 'pro-1', sla_due_at: '2026-08-10T09:00:00Z' }),
+    caseRow({
+      id: 'old-blocked',
+      assigned_to: 'pro-1',
+      blocked_reason: 'Authority hold',
+      sla_due_at: null,
+      updated_at: '2026-08-07T09:59:59Z',
+    }),
+    caseRow({
+      id: 'recent-blocked',
+      assigned_to: 'pro-1',
+      blocked_reason: 'Customer reply',
+      sla_due_at: null,
+      updated_at: '2026-08-10T10:00:01Z',
+    }),
+    caseRow({ id: 'moving', assigned_to: 'pro-2', sla_due_at: null }),
+    caseRow({
+      id: 'completed-on-time',
+      status: 'completed',
+      completed_at: '2026-08-10T09:00:00Z',
+      sla_due_at: '2026-08-10T10:00:00Z',
+    }),
+    caseRow({
+      id: 'completed-late',
+      status: 'completed',
+      completed_at: '2026-08-10T11:00:00Z',
+      sla_due_at: '2026-08-10T10:00:00Z',
+    }),
+  ];
+  input.renewals = [
+    renewalRow({
+      id: 'reminded',
+      notify_at: ['2026-08-10T08:00:00Z'],
+      last_notified_at: '2026-08-10T09:00:00Z',
+    }),
+    renewalRow({ id: 'missed', notify_at: ['2026-08-10T08:00:00Z'], last_notified_at: null }),
+    renewalRow({
+      id: 'future-schedule',
+      notify_at: ['2026-08-12T08:00:00Z'],
+      last_notified_at: null,
+    }),
+    renewalRow({ id: 'no-schedule', notify_at: [], last_notified_at: null }),
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.health.overdueRatio, 25);
+  assert.equal(dashboard.health.slaCompletionRate, 50);
+  assert.equal(dashboard.health.blockedRatio, 25);
+  assert.equal(dashboard.health.reminderRate, 50);
+  assert.equal(dashboard.health.workloadBalance, 33.3);
+  assert.equal(dashboard.health.score, 57);
+});
+
+test('uses timestamp order rather than ISO text order for SLA health inputs', () => {
+  const input = emptyInput();
+  input.serviceCases = [
+    caseRow({ id: 'open-overdue-offset', sla_due_at: '2026-08-11T12:00:00+04:00' }),
+    caseRow({
+      id: 'completed-on-time-offset',
+      status: 'completed',
+      completed_at: '2026-08-11T12:30:00+04:00',
+      sla_due_at: '2026-08-11T09:00:00Z',
+    }),
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.health.overdueRatio, 100);
+  assert.equal(dashboard.health.slaCompletionRate, 100);
+});
+
+test('ranks action signals by SLA, expiry, blocked age, missing documents, then priority with tenant-safe hrefs', () => {
+  const input = emptyInput();
+  input.tenantSlug = 'safe-firm';
+  input.clients = [
+    {
+      id: 'client-1',
+      tenant_id: TENANT,
+      company_name: 'Acme',
+      status: 'active',
+      created_at: '2026-08-01T00:00:00Z',
+    },
+  ];
+  input.profiles = [
+    { id: 'pro-1', tenant_id: TENANT, full_name: 'Aisha', role: 'pro', status: 'active' },
+  ];
+  input.serviceCases = [
+    caseRow({ id: 'manual-urgent', priority: 'urgent', sla_due_at: null }),
+    caseRow({
+      id: 'blocked-old',
+      blocked_reason: 'Waiting for authority',
+      updated_at: '2026-08-01T00:00:00Z',
+      sla_due_at: null,
+    }),
+    caseRow({ id: 'sla-near', sla_due_at: '2026-08-12T00:00:00Z' }),
+    caseRow({ id: 'sla-breached', sla_due_at: '2026-08-10T00:00:00Z' }),
+  ];
+  input.renewals = [renewalRow({ id: 'expiry', due_date: '2026-08-11' })];
+  input.documentRequests = [
+    {
+      id: 'missing',
+      tenant_id: TENANT,
+      client_id: 'client-1',
+      label: 'Passport',
+      status: 'pending',
+      due_at: null,
+    },
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.deepEqual(
+    dashboard.actionDeck.map((item) => item.id),
+    ['sla-breached', 'sla-near', 'expiry', 'blocked-old', 'missing', 'manual-urgent'],
+  );
+  assert.match(
+    dashboard.actionDeck.find((item) => item.id === 'blocked-old')!.detail,
+    /Waiting for authority/,
+  );
+  assert.equal(dashboard.actionDeck[0].href, '/t/safe-firm/applications?case=sla-breached');
+  assert.equal(
+    dashboard.actionDeck.find((item) => item.id === 'expiry')!.href,
+    '/t/safe-firm/renewals?renewal=expiry',
+  );
+  assert.equal(
+    dashboard.actionDeck.find((item) => item.id === 'missing')!.href,
+    '/t/safe-firm/clients/client-1?tab=documents&request=missing',
+  );
+});
+
+test('uses Dubai current-month ledger rules and excludes draft, void, old, refunded, and mixed-currency amounts', () => {
+  const input = emptyInput();
+  input.invoices = [
+    invoiceRow({ id: 'aug-a', amount_minor: 1000, created_at: '2026-08-01T00:00:00Z' }),
+    invoiceRow({
+      id: 'aug-at-dubai-midnight',
+      amount_minor: 2000,
+      created_at: '2026-07-31T20:00:00Z',
+    }),
+    invoiceRow({ id: 'july', amount_minor: 9000, created_at: '2026-07-31T19:59:59Z' }),
+    invoiceRow({
+      id: 'draft',
+      amount_minor: 400,
+      status: 'draft',
+      created_at: '2026-08-02T00:00:00Z',
+    }),
+    invoiceRow({
+      id: 'void',
+      amount_minor: 500,
+      status: 'void',
+      created_at: '2026-08-02T00:00:00Z',
+    }),
+    invoiceRow({
+      id: 'usd',
+      amount_minor: 999999,
+      currency: 'USD',
+      created_at: '2026-08-02T00:00:00Z',
+    }),
+  ];
+  input.payments = [
+    paymentRow({
+      id: 'paid-current',
+      invoice_id: 'aug-a',
+      amount_minor: 1500,
+      received_at: '2026-08-10T00:00:00Z',
+    }),
+    paymentRow({
+      id: 'paid-old',
+      invoice_id: 'july',
+      amount_minor: 500,
+      received_at: '2026-07-31T19:59:59Z',
+    }),
+    paymentRow({ id: 'no-received-at', invoice_id: 'aug-a', amount_minor: 700, received_at: null }),
+  ];
+  input.refunds = [
+    {
+      id: 'refund-current',
+      tenant_id: TENANT,
+      payment_id: 'paid-current',
+      amount_minor: 200,
+      status: 'succeeded',
+      created_at: '2026-08-10T01:00:00Z',
+      reason: null,
+    },
+    {
+      id: 'refund-current-for-old-payment',
+      tenant_id: TENANT,
+      payment_id: 'paid-old',
+      amount_minor: 100,
+      status: 'succeeded',
+      created_at: '2026-08-10T01:00:00Z',
+      reason: null,
+    },
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.finance.billedMinor, 3000);
+  assert.equal(dashboard.finance.paidMinor, 1200);
+  assert.equal(dashboard.kpis.collectedMinor, 1200);
+  assert.equal(dashboard.kpis.collectionRate, 40);
+});
+
+test('uses Dubai date and noon boundaries for deadline intensity event details', () => {
+  const input = emptyInput();
+  input.days = 7;
+  input.serviceCases = [
+    caseRow({ id: 'morning', sla_due_at: '2026-08-11T07:59:59Z' }),
+    caseRow({ id: 'afternoon', sla_due_at: '2026-08-11T08:00:00Z' }),
+  ];
+  const dashboard = calculateProDashboard(input, new Date('2026-08-10T20:30:00Z'));
+  assert.deepEqual(dashboard.deadlineIntensity[0], {
+    date: '2026-08-11',
+    morning: 1,
+    afternoon: 1,
+  });
+  assert.deepEqual(
+    dashboard.deadlineEvents
+      .filter((event) => event.date === '2026-08-11')
+      .map((event) => event.eventType),
+    ['case', 'case'],
+  );
+});
+
+test('adds comparison and case support totals and exposes overload beyond 100 percent', () => {
+  const input = emptyInput();
+  input.clients = [
+    {
+      id: 'current',
+      tenant_id: TENANT,
+      company_name: 'Current',
+      status: 'active',
+      created_at: '2026-08-02T00:00:00Z',
+    },
+    {
+      id: 'previous-a',
+      tenant_id: TENANT,
+      company_name: 'Previous A',
+      status: 'active',
+      created_at: '2026-07-10T00:00:00Z',
+    },
+    {
+      id: 'previous-b',
+      tenant_id: TENANT,
+      company_name: 'Previous B',
+      status: 'active',
+      created_at: '2026-07-20T00:00:00Z',
+    },
+  ];
+  input.profiles = [
+    { id: 'ten', tenant_id: TENANT, full_name: 'Ten', role: 'pro', status: 'active' },
+    { id: 'thirty', tenant_id: TENANT, full_name: 'Thirty', role: 'pro', status: 'active' },
+  ];
+  input.serviceCases = [
+    ...Array.from({ length: 10 }, (_, index) =>
+      caseRow({ id: `ten-${index}`, assigned_to: 'ten' }),
+    ),
+    ...Array.from({ length: 30 }, (_, index) =>
+      caseRow({ id: `thirty-${index}`, assigned_to: 'thirty' }),
+    ),
+    caseRow({ id: 'blocked', assigned_to: null, blocked_reason: 'Hold' }),
+  ];
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.kpis.activeClientsChange, -1);
+  assert.equal(dashboard.kpis.movingCases, 40);
+  assert.equal(dashboard.kpis.blockedCases, 1);
+  assert.equal(dashboard.team.find((member) => member.profileId === 'ten')!.capacityPercent, 100);
+  assert.equal(
+    dashboard.team.find((member) => member.profileId === 'thirty')!.capacityPercent,
+    300,
+  );
+});
+
+test('settles source failures independently for widget-local degradation', async () => {
+  const settled = await settleProDashboardSources({
+    clients: Promise.resolve(['client']),
+    serviceCases: Promise.resolve(['case']),
+    invoices: Promise.reject(new ProDashboardQueryError('invoices')),
+    payments: Promise.resolve(['payment-that-must-not-form-a-partial-finance-widget']),
+  });
+  assert.deepEqual(settled.data.clients, ['client']);
+  assert.deepEqual(settled.data.serviceCases, ['case']);
+  assert.deepEqual(settled.data.invoices, []);
+  assert.deepEqual(settled.data.payments, []);
+  assert.deepEqual(settled.errors, { finance: 'Failed to load PRO dashboard invoices' });
+});
+
+test('uses a safe inert href when a tenant slug is unavailable', () => {
+  const input = emptyInput();
+  delete input.tenantSlug;
+  input.serviceCases = [caseRow({ id: 'case-without-slug' })];
+  assert.equal(calculateProDashboard(input, NOW).actionDeck[0].href, '#');
+});
+
+function emptyInput(): ProDashboardInput {
+  const input = baseInput();
+  for (const key of [
+    'clients',
+    'profiles',
+    'serviceCases',
+    'renewals',
+    'documentRequests',
+    'documents',
+    'invoices',
+    'payments',
+    'refunds',
+  ] as const)
+    input[key] = [] as never;
+  return input;
+}
 
 function caseRow(overrides: Record<string, unknown> = {}) {
   return {
