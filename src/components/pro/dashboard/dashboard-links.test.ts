@@ -27,10 +27,9 @@ describe('dashboardHref', () => {
     );
   });
 
-  it('targets the payments working view', () => {
-    assert.equal(
-      dashboardHref('acme', 'payments', { status: 'overdue' }),
-      '/t/acme/payments?status=overdue',
-    );
+  it('targets every consumed payments collection view', () => {
+    for (const view of ['billed', 'paid', 'due-soon', 'overdue']) {
+      assert.equal(dashboardHref('acme', 'payments', { view }), `/t/acme/payments?view=${view}`);
+    }
   });
 });

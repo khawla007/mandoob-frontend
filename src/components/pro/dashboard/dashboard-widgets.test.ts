@@ -30,15 +30,15 @@ describe('Signal Studio widget contracts', () => {
     assert.match(finance, /BarChart/);
     assert.match(finance, /valueMinor/);
     assert.match(finance, /if \(!canViewFinance\) return null/);
-    assert.match(finance, /<a[\s\S]*href=\{payload\.href\}/);
-    assert.match(finance, /aria-label=\{payload\.accessibleLabel\}/);
+    assert.match(finance, /<Bar[\s\S]*<Cell/);
+    assert.doesNotMatch(finance, /<(?:svg|rect|path)\b/);
+    assert.match(finance, /<a[\s\S]*href=\{item\.href\}/);
+    assert.match(finance, /aria-label=\{item\.accessibleLabel\}/);
     assert.match(
       finance,
       /const paymentsHref = `\/t\/\$\{encodeURIComponent\(tenantSlug\)\}\/payments`/,
     );
-    assert.match(finance, /const analyticsHref = `\$\{paymentsHref\}\/analytics`/);
-    assert.doesNotMatch(finance, /payments\?/);
-    assert.doesNotMatch(finance, /dashboardHref\([^)]*'payments',[\s\S]*status:/);
+    assert.match(finance, /dashboardHref\(tenantSlug, 'payments', \{ view: item\.key \}\)/);
   });
 
   it('offers additive event details and responsive semantic deadline views', () => {

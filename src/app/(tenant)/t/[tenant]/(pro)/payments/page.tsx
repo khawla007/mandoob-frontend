@@ -7,11 +7,34 @@ import { InvoicesTable } from '@/components/pro/InvoicesTable';
 import { listClientsForPro } from '@/lib/data/clients-list';
 import { listInvoicesForTenant } from '@/lib/data/invoices';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
+import {
+  filterInvoicesForPaymentView,
+  parsePaymentView,
+  paymentBusinessDate,
+  paymentViewHref,
+  type PaymentView,
+} from './page-logic';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ProPaymentsPage({ params }: { params: Promise<{ tenant: string }> }) {
+const PAYMENT_VIEWS: Array<{ value: PaymentView; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'billed', label: 'Billed this month' },
+  { value: 'paid', label: 'Paid this month' },
+  { value: 'due-soon', label: 'Due within 30 days' },
+  { value: 'overdue', label: 'Overdue' },
+];
+
+export default async function ProPaymentsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ tenant: string }>;
+  searchParams: Promise<{ view?: string | string[] }>;
+}) {
   const { tenant: slug } = await params;
+  const search = await searchParams;
+  const view = parsePaymentView(search.view);
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
@@ -19,6 +42,9 @@ export default async function ProPaymentsPage({ params }: { params: Promise<{ te
     listClientsForPro({ tenantId: tenant.id }),
     listInvoicesForTenant(tenant.id),
   ]);
+  const today = paymentBusinessDate();
+  const filteredInvoices = filterInvoicesForPaymentView(invoices, view, today);
+  const activeView = PAYMENT_VIEWS.find((item) => item.value === view)!;
 
   return (
     <div className="space-y-6">
@@ -39,10 +65,34 @@ export default async function ProPaymentsPage({ params }: { params: Promise<{ te
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Invoices</CardTitle>
+          <CardTitle className="text-lg">{activeView.label} invoices</CardTitle>
+          <nav
+            aria-label="Filter invoices by collection category"
+            className="flex flex-wrap gap-2 pt-2"
+          >
+            {PAYMENT_VIEWS.map((item) => (
+              <Button
+                key={item.value}
+                asChild
+                size="sm"
+                variant={view === item.value ? 'default' : 'outline'}
+              >
+                <Link
+                  href={paymentViewHref(tenant.slug, item.value)}
+                  aria-current={view === item.value ? 'page' : undefined}
+                >
+                  {item.label}
+                </Link>
+              </Button>
+            ))}
+          </nav>
         </CardHeader>
         <CardContent>
-          <InvoicesTable slug={tenant.slug} rows={invoices} />
+          <InvoicesTable
+            slug={tenant.slug}
+            rows={filteredInvoices}
+            emptyMessage={`No ${activeView.label.toLocaleLowerCase()} invoices match this view.`}
+          />
         </CardContent>
       </Card>
     </div>

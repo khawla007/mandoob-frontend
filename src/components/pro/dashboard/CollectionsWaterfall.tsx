@@ -1,6 +1,6 @@
 'use client';
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, type BarShapeProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -12,6 +12,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
+import { dashboardHref } from './dashboard-links';
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
 
 type CollectionsWaterfallDataProps = {
@@ -32,28 +33,6 @@ type CollectionDatum = {
   href: string;
   accessibleLabel: string;
 };
-
-function AccessibleBar(props: BarShapeProps) {
-  const payload = props.payload as CollectionDatum;
-  return (
-    <a
-      href={payload.href}
-      aria-label={payload.accessibleLabel}
-      className="focus-visible:outline-ring focus-visible:outline-2"
-    >
-      <rect
-        x={props.x}
-        y={props.y}
-        width={props.width}
-        height={props.height}
-        rx={8}
-        ry={8}
-        fill={payload.fill}
-        className="cursor-pointer"
-      />
-    </a>
-  );
-}
 
 export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
   const { canViewFinance } = props;
@@ -89,42 +68,39 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
     maximumFractionDigits: 1,
   });
   const paymentsHref = `/t/${encodeURIComponent(tenantSlug)}/payments`;
-  const analyticsHref = `${paymentsHref}/analytics`;
   const input = [
     {
       key: 'billed',
       label: 'Billed',
       valueMinor: finance.billedMinor,
       fill: 'var(--signal-info)',
-      href: paymentsHref,
     },
     {
       key: 'paid',
       label: 'Paid',
       valueMinor: finance.paidMinor,
       fill: 'var(--signal-success)',
-      href: analyticsHref,
     },
     {
       key: 'due-soon',
       label: 'Due soon',
       valueMinor: finance.dueSoonMinor,
       fill: 'var(--signal-warning)',
-      href: paymentsHref,
     },
     {
       key: 'overdue',
       label: 'Overdue',
       valueMinor: finance.overdueMinor,
       fill: 'var(--signal-urgent)',
-      href: analyticsHref,
     },
   ];
   const data: CollectionDatum[] = input.map((item) => ({
     ...item,
-    accessibleLabel: `${item.label} bar, ${formatMoney.format(item.valueMinor / 100)}. Open ${item.href === analyticsHref ? 'payment analytics' : 'invoices'}.`,
+    href: dashboardHref(tenantSlug, 'payments', { view: item.key }),
+    accessibleLabel: `${item.label} bar, ${formatMoney.format(item.valueMinor / 100)}. Open filtered ${item.label.toLocaleLowerCase()} invoices.`,
   }));
   const total = data.reduce((sum, item) => sum + item.valueMinor, 0);
+  const maximum = Math.max(1, ...data.map((item) => item.valueMinor));
   if (total === 0) {
     return (
       <WidgetMessage
@@ -151,8 +127,8 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
         <ChartContainer
           config={config}
           className="aspect-auto h-64 w-full"
-          role="group"
-          aria-label={`Collections in ${finance.currency}: ${data.map((item) => `${item.label} ${formatMoney.format(item.valueMinor / 100)}`).join(', ')}. Each bar is a link to its valid finance view.`}
+          role="img"
+          aria-label={`Collections in ${finance.currency}: ${data.map((item) => `${item.label} ${formatMoney.format(item.valueMinor / 100)}`).join(', ')}.`}
         >
           <BarChart
             data={data}
@@ -178,7 +154,11 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
                 />
               }
             />
-            <Bar dataKey="valueMinor" maxBarSize={54} shape={AccessibleBar} />
+            <Bar dataKey="valueMinor" maxBarSize={54} radius={[8, 8, 2, 2]}>
+              {data.map((item) => (
+                <Cell key={item.key} fill={item.fill} />
+              ))}
+            </Bar>
           </BarChart>
         </ChartContainer>
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -189,6 +169,15 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
               aria-label={item.accessibleLabel}
               className="hover:bg-muted focus-visible:ring-ring rounded-lg border p-2.5 focus-visible:ring-2 focus-visible:outline-none"
             >
+              <span
+                aria-hidden="true"
+                className="bg-muted mb-2 block h-1.5 overflow-hidden rounded-full"
+              >
+                <span
+                  className="block h-full rounded-full"
+                  style={{ width: `${(item.valueMinor / maximum) * 100}%`, background: item.fill }}
+                />
+              </span>
               <span className="text-muted-foreground flex items-center text-xs">{item.label}</span>
               <strong className="mt-1 block font-mono text-xs tabular-nums">
                 {formatMoney.format(item.valueMinor / 100)}

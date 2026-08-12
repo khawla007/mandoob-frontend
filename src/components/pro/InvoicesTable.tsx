@@ -12,9 +12,17 @@ import {
 import type { ProInvoiceRow } from '@/lib/data/invoices';
 import { InvoiceActions } from './InvoiceActions';
 
-export function InvoicesTable({ slug, rows }: { slug: string; rows: ProInvoiceRow[] }) {
+export function InvoicesTable({
+  slug,
+  rows,
+  emptyMessage = 'No invoices yet.',
+}: {
+  slug: string;
+  rows: ProInvoiceRow[];
+  emptyMessage?: string;
+}) {
   if (rows.length === 0) {
-    return <p className="text-muted-foreground text-sm">No invoices yet.</p>;
+    return <p className="text-muted-foreground text-sm">{emptyMessage}</p>;
   }
 
   return (
