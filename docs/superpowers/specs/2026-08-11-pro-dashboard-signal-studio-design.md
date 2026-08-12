@@ -1,8 +1,10 @@
 # PRO Dashboard — Signal Studio Design
 
-**Status:** Approved  
-**Date:** 2026-08-11  
+**Status:** Implemented
+**Date:** 2026-08-11
 **Audience:** PRO firm owners, operations managers, and case officers
+
+Automated implementation and test coverage are complete. Authenticated browser visual and axe execution still requires a valid PRO storage state; without it, those scenarios skip by design. The available browser preview is verification evidence, not a deployment.
 
 ## Outcome
 
@@ -26,9 +28,9 @@ The dashboard is not a replacement for full module pages. Every summary widget l
 
 ### 1. Application shell
 
-- Keep the existing tenant navigation and permissions model.
+- Keep the existing PRO navigation and permissions model.
 - Make **Command Center** the active overview item.
-- Preserve global search, notifications, tenant identity, user menu, and theme control.
+- Preserve global search, notifications, PRO firm identity, user menu, and theme control.
 - Show navigation counters only for actionable totals such as blocked cases, missing documents, and unread messages.
 
 ### 2. Signal hero
@@ -57,12 +59,12 @@ A tooltip or detail drawer must explain the score calculation.
 
 Show four compact cards:
 
-| Widget | Primary value | Supporting information | Destination |
-|---|---|---|---|
-| Active clients | Tenant-scoped active clients | Month-over-month change | Clients |
-| Open cases | Active registration/service cases | Moving vs. blocked | Applications |
-| Renewals due | Due within 30 days | Due within 7 days | Renewals filtered to 30 days |
-| Collections | Collected amount for current month | Percentage of billed value | Finance |
+| Widget         | Primary value                             | Supporting information     | Destination                  |
+| -------------- | ----------------------------------------- | -------------------------- | ---------------------------- |
+| Active clients | Active clients for the signed-in PRO firm | Month-over-month change    | Clients                      |
+| Open cases     | Active registration/service cases         | Moving vs. blocked         | Applications                 |
+| Renewals due   | Due within 30 days                        | Due within 7 days          | Renewals filtered to 30 days |
+| Collections    | Collected amount for current month        | Percentage of billed value | Finance                      |
 
 Each card uses a different low-saturation tinted surface or subtle gradient. Orange remains the primary accent; blue, amber, green, and red are semantic signals rather than decorative branding.
 
@@ -100,7 +102,7 @@ Show the relationship between:
 - due-soon amount;
 - overdue amount.
 
-Values use the tenant currency, AED by default. Clicking a bar opens the corresponding filtered invoice list. The widget is visible only to roles with finance permission.
+Values use the PRO firm's reporting currency, AED by default. Clicking a bar opens the corresponding filtered invoice list. The widget is visible only to roles with finance permission.
 
 ### 8. Renewal streams
 
@@ -160,7 +162,7 @@ Rules:
 
 ## Data and implementation boundaries
 
-Use tenant-scoped server-side queries and existing authorization helpers. Do not calculate authoritative business metrics solely in the browser.
+Use PRO-scoped server-side queries and existing authorization helpers. Do not calculate authoritative business metrics solely in the browser. Internally, `tenant_id`, tenant isolation, and the `/t/{slug}` route form the PRO data boundary; they are implementation identifiers and are not customer-facing terminology.
 
 Required dashboard data contract:
 
@@ -174,7 +176,7 @@ Required dashboard data contract:
 - team workload summary;
 - operational health inputs and score explanation.
 
-Queries should run in parallel, cache only where tenant isolation and freshness permit, and degrade widget-by-widget when a source is unavailable.
+Queries should run in parallel, cache only where PRO data isolation and freshness permit, and degrade widget-by-widget when a source is unavailable.
 
 ## Delivery sequence
 
@@ -188,7 +190,7 @@ Queries should run in parallel, cache only where tenant isolation and freshness 
 
 ## Acceptance criteria
 
-- Dashboard uses real tenant-scoped data; no mock metrics remain.
+- Dashboard uses real PRO-scoped data; no mock metrics remain.
 - Urgent work and its next action are visible without scrolling at standard desktop size.
 - All summary widgets navigate to useful filtered views.
 - Light and dark themes preserve the homepage color hierarchy.
@@ -200,6 +202,6 @@ Queries should run in parallel, cache only where tenant isolation and freshness 
 ## Out of scope
 
 - Rebuilding every missing PRD module in the dashboard task.
-- Replacing the existing tenant shell or brand identity.
+- Replacing the existing PRO shell or brand identity.
 - Introducing a second design-token system.
 - Creating decorative metrics without a reliable business definition.
