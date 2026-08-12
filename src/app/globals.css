@@ -72,6 +72,19 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: var(--brand-accent);
+
+  /* Authenticated Signal Studio semantic palette. Public pages keep their
+     explicit .site-public surface tokens and do not consume these classes. */
+  --signal-urgent: oklch(0.58 0.19 28);
+  --signal-warning: oklch(0.66 0.14 76);
+  --signal-info: oklch(0.55 0.09 220);
+  --signal-success: oklch(0.53 0.12 155);
+  --signal-orange-soft: color-mix(in oklch, var(--brand-accent) 11%, var(--card));
+  --signal-grid: repeating-linear-gradient(
+    135deg,
+    transparent 0 12px,
+    color-mix(in oklch, var(--brand-accent) 8%, transparent) 12px 13px
+  );
 }
 
 /* Light surface palette — single source for both the default (light) dashboard
@@ -126,6 +139,16 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: var(--brand-accent);
+  --signal-urgent: oklch(0.7 0.17 28);
+  --signal-warning: oklch(0.78 0.13 76);
+  --signal-info: oklch(0.72 0.1 220);
+  --signal-success: oklch(0.7 0.12 155);
+  --signal-orange-soft: color-mix(in oklch, var(--brand-accent) 15%, var(--card));
+  --signal-grid: repeating-linear-gradient(
+    135deg,
+    transparent 0 12px,
+    color-mix(in oklch, var(--brand-accent) 13%, transparent) 12px 13px
+  );
 }
 
 @layer base {
@@ -141,6 +164,128 @@
 }
 
 @layer components {
+  .signal-hero {
+    background-color: oklch(0.2 0.045 252);
+    background-image:
+      var(--signal-grid),
+      radial-gradient(
+        circle at 82% 16%,
+        color-mix(in oklch, var(--brand-accent) 52%, transparent) 0,
+        transparent 34%
+      ),
+      radial-gradient(circle at 42% 120%, oklch(0.62 0.11 190 / 36%) 0, transparent 46%),
+      linear-gradient(118deg, oklch(0.16 0.04 252) 5%, oklch(0.25 0.07 31) 100%);
+  }
+
+  .signal-hero::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    content: '';
+    background-image: linear-gradient(
+      115deg,
+      transparent 58%,
+      oklch(1 0 0 / 7%) 58% 59%,
+      transparent 59%
+    );
+  }
+
+  .signal-hero__orb {
+    position: absolute;
+    inset-block-start: -7rem;
+    inset-inline-end: -5rem;
+    width: 20rem;
+    height: 20rem;
+    border: 1px solid oklch(1 0 0 / 12%);
+    border-radius: 28% 72% 53% 47%;
+    transform: rotate(18deg);
+  }
+
+  .signal-panel {
+    position: relative;
+    overflow: hidden;
+    border-color: color-mix(in oklch, var(--border) 76%, var(--brand-accent));
+    background-image: linear-gradient(
+      145deg,
+      color-mix(in oklch, var(--card) 96%, var(--brand-accent)),
+      var(--card)
+    );
+    box-shadow: 0 18px 45px -38px color-mix(in oklch, var(--foreground) 40%, transparent);
+  }
+
+  .signal-panel::before {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    width: 5rem;
+    height: 5rem;
+    pointer-events: none;
+    content: '';
+    border-inline-start: 1px solid color-mix(in oklch, var(--brand-accent) 16%, transparent);
+    transform: skewX(-28deg) translateX(42%);
+  }
+
+  .signal-kpi {
+    background-color: var(--card);
+    background-image:
+      linear-gradient(135deg, transparent 58%, color-mix(in oklch, currentColor 5%, transparent)),
+      linear-gradient(
+        150deg,
+        color-mix(in oklch, var(--card) 92%, var(--signal-kpi-color)),
+        var(--card) 72%
+      );
+    border-color: color-mix(in oklch, var(--border) 72%, var(--signal-kpi-color));
+  }
+
+  .signal-kpi::after {
+    position: absolute;
+    inset-inline-end: -1.5rem;
+    inset-block-end: -2.4rem;
+    width: 7rem;
+    height: 7rem;
+    pointer-events: none;
+    content: '';
+    border: 1px solid color-mix(in oklch, var(--signal-kpi-color) 22%, transparent);
+    transform: rotate(45deg);
+  }
+
+  .signal-kpi--info {
+    --signal-kpi-color: var(--signal-info);
+  }
+
+  .signal-kpi--orange {
+    --signal-kpi-color: var(--brand-accent);
+  }
+
+  .signal-kpi--warning {
+    --signal-kpi-color: var(--signal-warning);
+  }
+
+  .signal-kpi--success {
+    --signal-kpi-color: var(--signal-success);
+  }
+
+  .signal-streams {
+    background-image:
+      repeating-linear-gradient(
+        145deg,
+        transparent 0 18px,
+        color-mix(in oklch, var(--signal-info) 5%, transparent) 18px 19px
+      ),
+      linear-gradient(145deg, color-mix(in oklch, var(--card) 96%, var(--signal-info)), var(--card));
+  }
+
+  .signal-stream-bar {
+    background-image:
+      repeating-linear-gradient(
+        115deg,
+        transparent 0 7px,
+        color-mix(in oklch, white 22%, transparent) 7px 9px
+      ),
+      linear-gradient(90deg, var(--signal-info), var(--brand-accent));
+    background-position-x: var(--stream-offset, 0);
+  }
+
   .blog-editor-content {
     font-size: 0.875rem;
     line-height: 1.7;
@@ -244,5 +389,17 @@
   .blog-editor-content img {
     border-radius: var(--radius-md);
     max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-hero *,
+  .signal-panel *,
+  .signal-kpi,
+  .signal-stream-bar {
+    scroll-behavior: auto;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
