@@ -1,4 +1,5 @@
-import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireRole } from '@/lib/auth/require-role';
@@ -10,7 +11,12 @@ import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { serviceCaseStatuses } from '@/lib/validation/service-case';
 import { createApplicationFormAction } from './actions';
 import { authorizeApplicationsRead } from './page-authorization';
-import { parseApplicationFilters, type ApplicationSearchParams } from './page-logic';
+import {
+  applicationPageHref,
+  parseApplicationFilters,
+  parseApplicationPage,
+  type ApplicationSearchParams,
+} from './page-logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,15 +43,21 @@ export default async function ApplicationsPage({
   if (!tenant) notFound();
 
   const filters = parseApplicationFilters(search);
+  const requestedPage = parseApplicationPage(search.page);
   const [workspace, t, locale] = await Promise.all([
     listServiceCaseWorkspace(tenant.id, {
       status: filters.status,
       assignedTo: filters.assigned_to,
       clientId: filters.client_id,
+      page: requestedPage,
     }),
     getTranslations('pro'),
     getLocale(),
   ]);
+  const totalPages = Math.max(1, Math.ceil(workspace.total / workspace.pageSize));
+  if (requestedPage > totalPages) {
+    redirect(applicationPageHref(slug, filters, totalPages));
+  }
   const { cases, clients: clientOptions, owners: ownerOptions } = workspace;
   const create = createApplicationFormAction.bind(null, slug);
   const statusLabels = Object.fromEntries(
@@ -57,7 +69,7 @@ export default async function ApplicationsPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('applications')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          {t('applicationsPageSubtitle', { tenant: tenant.name, count: cases.length })}
+          {t('applicationsPageSubtitle', { tenant: tenant.name, count: workspace.total })}
         </p>
       </div>
 
@@ -133,7 +145,7 @@ export default async function ApplicationsPage({
             </div>
           </form>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <ApplicationsTable
             rows={cases}
             slug={slug}
@@ -160,6 +172,46 @@ export default async function ApplicationsPage({
               statuses: statusLabels,
             }}
           />
+          {workspace.total > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-muted-foreground text-sm">
+                {t('applicationPageSummary', {
+                  from: (workspace.page - 1) * workspace.pageSize + 1,
+                  to: Math.min(workspace.page * workspace.pageSize, workspace.total),
+                  total: workspace.total,
+                })}
+              </p>
+              <nav aria-label={t('applicationPaginationLabel')} className="flex items-center gap-3">
+                {workspace.page > 1 ? (
+                  <Link
+                    href={applicationPageHref(slug, filters, workspace.page - 1)}
+                    className="border-input bg-background hover:bg-muted focus-visible:ring-ring rounded-md border px-3 py-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  >
+                    {t('applicationPreviousPage')}
+                  </Link>
+                ) : (
+                  <span aria-disabled="true" className="text-muted-foreground px-3 py-1.5 text-sm">
+                    {t('applicationPreviousPage')}
+                  </span>
+                )}
+                <span className="text-sm tabular-nums">
+                  {workspace.page} / {totalPages}
+                </span>
+                {workspace.page < totalPages ? (
+                  <Link
+                    href={applicationPageHref(slug, filters, workspace.page + 1)}
+                    className="border-input bg-background hover:bg-muted focus-visible:ring-ring rounded-md border px-3 py-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  >
+                    {t('applicationNextPage')}
+                  </Link>
+                ) : (
+                  <span aria-disabled="true" className="text-muted-foreground px-3 py-1.5 text-sm">
+                    {t('applicationNextPage')}
+                  </span>
+                )}
+              </nav>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

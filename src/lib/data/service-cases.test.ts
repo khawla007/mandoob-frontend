@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { ApiError } from '@/lib/errors';
 import {
   createServiceCase,
+  SERVICE_CASE_PAGE_SIZE,
   listServiceCaseWorkspace,
   listServiceCases,
   rankServiceCases,
@@ -28,6 +29,7 @@ type QueryCall = {
   filters: Array<{ kind: 'eq' | 'in'; key: string; value: unknown }>;
   payload?: Row;
   limit?: number;
+  range?: [number, number];
 };
 
 function fakeSupabase(
@@ -56,6 +58,8 @@ function fakeSupabase(
       payload?: Row;
       selected?: string;
       limit?: number;
+      range?: [number, number];
+      exactCount?: boolean;
     } = { operation: 'select', filters: [] };
 
     function filteredRows(): Row[] {
@@ -76,6 +80,7 @@ function fakeSupabase(
         filters: structuredClone(state.filters),
         ...(state.payload ? { payload: structuredClone(state.payload) } : {}),
         ...(state.limit === undefined ? {} : { limit: state.limit }),
+        ...(state.range === undefined ? {} : { range: state.range }),
       });
       if (failure) return { data: null, error: failure };
 
@@ -94,12 +99,15 @@ function fakeSupabase(
         return { data: state.selected ? (rows[0] ?? null) : null, error: null };
       }
 
-      return { data: filteredRows(), error: null };
+      const rows = filteredRows();
+      const data = state.range ? rows.slice(state.range[0], state.range[1] + 1) : rows;
+      return { data, error: null, ...(state.exactCount ? { count: rows.length } : {}) };
     }
 
     const builder = {
-      select(columns?: string) {
+      select(columns?: string, options?: { count?: string }) {
         state.selected = columns;
+        state.exactCount = options?.count === 'exact';
         return builder;
       },
       eq(key: string, value: unknown) {
@@ -115,6 +123,10 @@ function fakeSupabase(
       },
       limit(value: number) {
         state.limit = value;
+        return builder;
+      },
+      range(from: number, to: number) {
+        state.range = [from, to];
         return builder;
       },
       insert(payload: Row) {
@@ -303,19 +315,134 @@ test('listServiceCaseWorkspace loads each tenant dataset once without a silent r
   assert.equal(workspace.cases[0].ownerName, 'Aisha Khan');
   assert.deepEqual(workspace.clients, [{ id: CLIENT_1, name: 'Acme LLC' }]);
   assert.deepEqual(workspace.owners, [{ id: PROFILE_1, name: 'Aisha Khan' }]);
-  assert.deepEqual(
-    db.calls.map((call) => call.table),
-    ['service_cases', 'clients', 'profiles'],
-  );
+  assert.equal(workspace.total, 1);
+  assert.equal(workspace.page, 1);
+  assert.equal(workspace.pageSize, SERVICE_CASE_PAGE_SIZE);
+  assert.equal(db.calls.filter((call) => call.table === 'service_cases').length, 1);
+  assert.equal(db.calls.filter((call) => call.table === 'clients').length, 1);
+  assert.equal(db.calls.filter((call) => call.table === 'profiles').length, 1);
   assert.equal(
     db.calls.some((call) => call.limit !== undefined),
     false,
   );
 });
 
-test('exported service-case DAL contains no silent query limit', () => {
+test('exported service-case DAL uses explicit ranges instead of silent query limits', () => {
   const source = readFileSync(join(process.cwd(), 'src/lib/data/service-cases.ts'), 'utf8');
   assert.doesNotMatch(source, /\.limit\s*\(/);
+  assert.match(source, /\.range\s*\(/);
+});
+
+test('service-case workspace pages cases and deliberately batches every option beyond 1000 rows', async () => {
+  const cases = Array.from({ length: 55 }, (_, index) =>
+    caseRow({ id: `case-${String(index).padStart(3, '0')}` }),
+  );
+  const clients = Array.from({ length: 1005 }, (_, index) => ({
+    id: `client-${index}`,
+    tenant_id: TENANT_1,
+    company_name: `Client ${index}`,
+  }));
+  const profiles = Array.from({ length: 1005 }, (_, index) => ({
+    id: `profile-${index}`,
+    tenant_id: TENANT_1,
+    full_name: `Owner ${index}`,
+  }));
+  const db = fakeSupabase({ service_cases: cases, clients, profiles });
+
+  const workspace = await listServiceCaseWorkspace(
+    TENANT_1,
+    { page: 2 },
+    { supabase: db as never },
+  );
+
+  assert.equal(workspace.cases.length, 5);
+  assert.equal(workspace.total, 55);
+  assert.equal(workspace.page, 2);
+  assert.equal(workspace.pageSize, 50);
+  assert.equal(workspace.clients.length, 1005);
+  assert.equal(workspace.owners.length, 1005);
+  assert.deepEqual(db.calls.find((call) => call.table === 'service_cases')?.range, [50, 99]);
+  assert.deepEqual(
+    db.calls.filter((call) => call.table === 'clients').map((call) => call.range),
+    [
+      [0, 499],
+      [500, 999],
+      [1000, 1499],
+    ],
+  );
+  assert.deepEqual(
+    db.calls.filter((call) => call.table === 'profiles').map((call) => call.range),
+    [
+      [0, 499],
+      [500, 999],
+      [1000, 1499],
+    ],
+  );
+});
+
+test('listServiceCases deliberately batches beyond PostgREST max_rows', async () => {
+  const cases = Array.from({ length: 1005 }, (_, index) =>
+    caseRow({ id: `case-${String(index).padStart(4, '0')}` }),
+  );
+  const db = fakeSupabase({
+    service_cases: cases,
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' }],
+  });
+
+  assert.equal((await listServiceCases(TENANT_1, {}, { supabase: db as never })).length, 1005);
+  assert.deepEqual(
+    db.calls.filter((call) => call.table === 'service_cases').map((call) => call.range),
+    [
+      [0, 499],
+      [500, 999],
+      [1000, 1499],
+    ],
+  );
+});
+
+test('forward service-case security migration removes mutation RLS and guards both RPCs', () => {
+  const sql = readFileSync(
+    join(
+      process.cwd(),
+      'supabase/migrations/20260812090000_0050_service_case_mutation_security.sql',
+    ),
+    'utf8',
+  );
+  assert.match(sql, /drop policy if exists service_cases_pro_write on public\.service_cases/i);
+  assert.match(sql, /create policy service_cases_pro_read[\s\S]*for select/i);
+  assert.doesNotMatch(sql, /create policy[\s\S]*for (?:all|insert|update|delete)/i);
+  assert.match(
+    sql,
+    /revoke insert, update, delete on table public\.service_cases from public, anon, authenticated/i,
+  );
+
+  for (const name of ['create_service_case_with_audit', 'update_service_case_with_audit']) {
+    const start = sql.indexOf(`create or replace function public.${name}`);
+    assert.notEqual(start, -1);
+    const end = sql.indexOf('\n$$;', start);
+    assert.notEqual(end, -1);
+    const definition = sql.slice(start, end);
+    assert.match(definition, /security definer/i);
+    assert.match(definition, /set search_path = pg_catalog, public/i);
+    assert.match(
+      definition,
+      /from public\.tenants[\s\S]*id = p_tenant_id[\s\S]*status = 'active'[\s\S]*for share/i,
+    );
+    assert.match(
+      definition,
+      /from public\.profiles[\s\S]*id = p_actor_id[\s\S]*tenant_id = p_tenant_id[\s\S]*role = 'pro'[\s\S]*status = 'active'[\s\S]*for share/i,
+    );
+    assert.match(definition, /raise exception[\s\S]*FORBIDDEN/i);
+    assert.match(
+      sql,
+      new RegExp(`revoke all on function public\\.${name}[\\s\\S]*from public`, 'i'),
+    );
+    assert.match(
+      sql,
+      new RegExp(`grant execute on function public\\.${name}[\\s\\S]*to service_role`, 'i'),
+    );
+  }
 });
 
 test('createServiceCase rejects wrong roles and cross-tenant clients or assignees', async () => {

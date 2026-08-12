@@ -5,7 +5,7 @@ import { test } from 'node:test';
 
 import { ApiError } from '@/lib/errors';
 import { authorizeApplicationsRead } from './page-authorization';
-import { parseApplicationFilters } from './page-logic';
+import { applicationPageHref, parseApplicationFilters, parseApplicationPage } from './page-logic';
 
 const pagePath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/applications/page.tsx');
 const tablePath = join(process.cwd(), 'src/components/pro/applications/ApplicationsTable.tsx');
@@ -102,6 +102,23 @@ test('repeated status and owner params choose the first value without throwing',
   assert.deepEqual(parseApplicationFilters({ status: ['bad', 'submitted'], owner: [] }), {});
 });
 
+test('application pagination normalizes repeated page params and preserves active filters', () => {
+  assert.equal(parseApplicationPage(['2', '999']), 2);
+  assert.equal(parseApplicationPage('0'), 1);
+  assert.equal(parseApplicationPage('bad'), 1);
+  assert.equal(
+    applicationPageHref(
+      'acme',
+      {
+        status: ['documents_pending', 'submitted'],
+        assigned_to: '11111111-1111-4111-8111-111111111111',
+      },
+      3,
+    ),
+    '/t/acme/applications?status=documents_pending%2Csubmitted&owner=11111111-1111-4111-8111-111111111111&page=3',
+  );
+});
+
 test('applications workspace has the required table contract and Dubai date display', () => {
   const page = readFileSync(pagePath, 'utf8');
   const table = readFileSync(tablePath, 'utf8');
@@ -146,4 +163,15 @@ test('application datetime labels explicitly identify Dubai time and UTC+04 in b
     assert.match(arabic.pro[key], /دبي/);
     assert.match(arabic.pro[key], /UTC\+04/);
   }
+});
+
+test('applications page exposes accessible bounded pagination using the DAL count', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /requestedPage\s*=\s*parseApplicationPage\(search\.page\)/);
+  assert.match(source, /page:\s*requestedPage/);
+  assert.match(source, /workspace\.total/);
+  assert.match(source, /<nav[^>]+aria-label=/);
+  assert.match(source, /applicationPageHref\(/);
+  assert.match(source, /applicationPreviousPage/);
+  assert.match(source, /applicationNextPage/);
 });
