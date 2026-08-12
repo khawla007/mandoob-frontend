@@ -188,34 +188,36 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
             </Bar>
           </BarChart>
         </ChartContainer>
-        <div
-          role="list"
+        <ul
           aria-label={signalLabel(labels.summary, { currency: finance.currency })}
           className="mt-5 space-y-3"
         >
           {data.map((item) => (
-            <a
-              key={item.key}
-              href={item.href}
-              aria-label={item.accessibleLabel}
-              role="listitem"
-              className="signal-collection-bar focus-visible:ring-ring group block rounded-md py-1 focus-visible:ring-2 focus-visible:outline-none"
-            >
-              <span className="mb-1.5 flex items-center justify-between gap-4 text-xs">
-                <span className="font-medium">{item.label}</span>
-                <strong className="font-mono tabular-nums">
-                  {formatMoney.format(item.valueMinor / 100)}
-                </strong>
-              </span>
-              <span aria-hidden="true" className="bg-muted block h-8 overflow-hidden rounded-md">
-                <span
-                  className="block h-full min-w-1 rounded-md transition-[width,filter] group-hover:brightness-110 motion-reduce:transition-none"
-                  style={{ width: `${(item.valueMinor / maximum) * 100}%`, background: item.fill }}
-                />
-              </span>
-            </a>
+            <li key={item.key}>
+              <a
+                href={item.href}
+                aria-label={item.accessibleLabel}
+                className="signal-collection-bar focus-visible:ring-ring group block rounded-md py-1 focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <span className="mb-1.5 flex items-center justify-between gap-4 text-xs">
+                  <span className="font-medium">{item.label}</span>
+                  <strong className="font-mono tabular-nums">
+                    {formatMoney.format(item.valueMinor / 100)}
+                  </strong>
+                </span>
+                <span aria-hidden="true" className="bg-muted block h-8 overflow-hidden rounded-md">
+                  <span
+                    className="block h-full min-w-1 rounded-md transition-[width,filter] group-hover:brightness-110 motion-reduce:transition-none"
+                    style={{
+                      width: `${(item.valueMinor / maximum) * 100}%`,
+                      background: item.fill,
+                    }}
+                  />
+                </span>
+              </a>
+            </li>
           ))}
-        </div>
+        </ul>
       </CardContent>
     </Card>
   );

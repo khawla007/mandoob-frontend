@@ -1539,6 +1539,18 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      list_signal_payment_invoices: {
+        Args: {
+          p_date?: string | null;
+          p_page?: number;
+          p_page_size?: number;
+          p_period?: string | null;
+          p_tenant_id: string;
+          p_today?: string | null;
+          p_view: string;
+        };
+        Returns: Json;
+      };
       mandoob_access_token_hook: { Args: { event: Json }; Returns: Json };
       rate_limit_consume: {
         Args: {

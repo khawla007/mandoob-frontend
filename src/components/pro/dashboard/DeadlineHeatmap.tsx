@@ -6,7 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
-import { applicationSignalHref } from '@/lib/signal-studio-filters';
+import {
+  applicationSignalHref,
+  paymentSignalHref,
+  renewalSignalHref,
+} from '@/lib/signal-studio-filters';
 import { formatSignalDate, signalLabel } from './widget-format';
 import {
   WidgetLoading,
@@ -17,7 +21,13 @@ import {
 
 type Period = 'morning' | 'afternoon';
 type EventType = ProDashboardData['deadlineEvents'][number]['eventType'];
-type DeadlineCell = { date: string; period: Period; count: number; eventTypes: EventType[] };
+type DeadlineCell = {
+  date: string;
+  period: Period;
+  count: number;
+  events: ProDashboardData['deadlineEvents'];
+  eventTypes: EventType[];
+};
 
 type DeadlineHeatmapDataProps = {
   intensity: ProDashboardData['deadlineIntensity'];
@@ -36,6 +46,10 @@ export type DeadlineHeatmapLabels = WidgetBaseLabels & {
   morning: string;
   afternoon: string;
   caseEvent: string;
+  renewalEvent: string;
+  documentEvent: string;
+  invoiceEvent: string;
+  eventLink: string;
 };
 export type DeadlineHeatmapProps = WidgetStateProps<
   DeadlineHeatmapDataProps,
@@ -80,16 +94,12 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
     (['morning', 'afternoon'] as const).map((period) => ({
       date: day.date,
       period,
-      count: events.filter(
-        (event) => event.date === day.date && event.period === period && event.eventType === 'case',
-      ).length,
+      count: events.filter((event) => event.date === day.date && event.period === period).length,
+      events: events.filter((event) => event.date === day.date && event.period === period),
       eventTypes: Array.from(
         new Set(
           events
-            .filter(
-              (event) =>
-                event.date === day.date && event.period === period && event.eventType === 'case',
-            )
+            .filter((event) => event.date === day.date && event.period === period)
             .map((event) => event.eventType),
         ),
       ),
@@ -118,7 +128,9 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
     const date = formatSignalDate(cell.date, locale, {
       dateStyle: 'full',
     });
-    const types = cell.eventTypes.length ? labels.caseEvent : labels.noEventTypes;
+    const types = cell.eventTypes.length
+      ? cell.eventTypes.map((type) => labels[`${type}Event` as const]).join(', ')
+      : labels.noEventTypes;
     return signalLabel(labels.cellLabel, {
       date,
       period: labels[cell.period],
@@ -126,6 +138,30 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
       types,
     });
   };
+  const number = new Intl.NumberFormat(locale);
+  const eventHref = (cell: DeadlineCell, type: EventType) => {
+    if (type === 'case')
+      return applicationSignalHref(tenantSlug, {
+        date: cell.date,
+        period: cell.period,
+        eventTypes: 'case',
+      });
+    if (type === 'renewal')
+      return renewalSignalHref(tenantSlug, {
+        tab: 'active',
+        date: cell.date,
+        period: cell.period,
+      });
+    if (type === 'invoice')
+      return paymentSignalHref(tenantSlug, {
+        view: 'due-date',
+        date: cell.date,
+        period: cell.period,
+      });
+    return cell.events.find((event) => event.eventType === 'document')!.href;
+  };
+  const eventCount = (cell: DeadlineCell, type: EventType) =>
+    cell.events.filter((event) => event.eventType === type).length;
 
   return (
     <Card className="signal-panel">
@@ -170,21 +206,35 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                   (item) => item.date === day.date && item.period === period,
                 )!;
                 return (
-                  <span key={`${day.date}-${period}`} role="gridcell">
-                    <Link
-                      href={applicationSignalHref(tenantSlug, {
-                        date: day.date,
-                        period,
-                        eventTypes: 'case',
-                      })}
-                      aria-label={label(cell)}
-                      className={cn(
-                        'focus-visible:ring-ring grid aspect-square min-h-8 place-items-center rounded-md border text-[11px] font-semibold transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none motion-reduce:transform-none motion-reduce:transition-none',
-                        heatLevel(cell.count, maximum),
-                      )}
-                    >
-                      {cell.count}
-                    </Link>
+                  <span
+                    key={`${day.date}-${period}`}
+                    role="gridcell"
+                    aria-label={label(cell)}
+                    className={cn(
+                      'grid min-h-12 rounded-md border p-1 text-[11px] font-semibold',
+                      heatLevel(cell.count, maximum),
+                    )}
+                  >
+                    <span aria-hidden="true" className="text-center font-mono tabular-nums">
+                      {number.format(cell.count)}
+                    </span>
+                    <span className="flex flex-wrap justify-center gap-1">
+                      {cell.eventTypes.map((type) => (
+                        <Link
+                          key={type}
+                          href={eventHref(cell, type)}
+                          aria-label={signalLabel(labels.eventLink, {
+                            type: labels[`${type}Event` as const],
+                            count: number.format(eventCount(cell, type)),
+                            date: formatSignalDate(cell.date, locale, { dateStyle: 'full' }),
+                            period: labels[cell.period],
+                          })}
+                          className="focus-visible:ring-ring bg-background/75 rounded px-1 font-mono tabular-nums focus-visible:ring-2 focus-visible:outline-none"
+                        >
+                          {number.format(eventCount(cell, type))}
+                        </Link>
+                      ))}
+                    </span>
                   </span>
                 );
               })}
@@ -194,14 +244,9 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
         <ol className="divide-border divide-y md:hidden">
           {activeCells.map((cell) => (
             <li key={`${cell.date}-${cell.period}`}>
-              <Link
-                href={applicationSignalHref(tenantSlug, {
-                  date: cell.date,
-                  period: cell.period,
-                  eventTypes: 'case',
-                })}
+              <div
                 aria-label={label(cell)}
-                className="focus-visible:ring-ring flex items-center justify-between gap-3 rounded-md py-3 focus-visible:ring-2 focus-visible:outline-none"
+                className="flex items-center justify-between gap-3 py-3"
               >
                 <span>
                   <span className="block text-sm font-medium">
@@ -212,11 +257,21 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                     })}
                   </span>
                   <span className="text-muted-foreground text-xs capitalize">
-                    {labels[cell.period]} · {labels.caseEvent}
+                    {labels[cell.period]}
                   </span>
                 </span>
-                <strong className="font-mono text-sm tabular-nums">{cell.count}</strong>
-              </Link>
+                <span className="flex flex-wrap gap-2">
+                  {cell.eventTypes.map((type) => (
+                    <Link
+                      key={type}
+                      href={eventHref(cell, type)}
+                      className="focus-visible:ring-ring rounded-md border px-2 py-1 text-xs focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      {labels[`${type}Event` as const]} · {number.format(eventCount(cell, type))}
+                    </Link>
+                  ))}
+                </span>
+              </div>
             </li>
           ))}
         </ol>

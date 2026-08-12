@@ -6,6 +6,9 @@ export type RenewalSearchParams = {
   target?: string | string[];
   type?: string | string[];
   days?: string | string[];
+  date?: string | string[];
+  period?: string | string[];
+  eventTypes?: string | string[];
 };
 
 import { parseRenewalSignalFilter } from '@/lib/signal-studio-filters';
@@ -30,6 +33,8 @@ export function parseRenewalSearch(search: RenewalSearchParams): {
   renewalId: string | undefined;
   type?: ReturnType<typeof parseRenewalSignalFilter>['type'];
   days?: ReturnType<typeof parseRenewalSignalFilter>['days'];
+  deadlineDate?: string;
+  deadlinePeriod?: 'morning' | 'afternoon';
 } {
   const signal = parseRenewalSignalFilter(search);
   return {
@@ -37,5 +42,6 @@ export function parseRenewalSearch(search: RenewalSearchParams): {
     renewalId: uuid(first(search.target) ?? first(search.renewal)),
     ...(signal.type ? { type: signal.type } : {}),
     ...(signal.days ? { days: signal.days } : {}),
+    ...(signal.date ? { deadlineDate: signal.date, deadlinePeriod: signal.period } : {}),
   };
 }

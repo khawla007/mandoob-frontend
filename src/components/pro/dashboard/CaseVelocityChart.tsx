@@ -37,6 +37,8 @@ export type CaseVelocityChartLabels = WidgetBaseLabels & {
   daySuffix: string;
   opened: string;
   completed: string;
+  date: string;
+  tableCaption: string;
 };
 export type CaseVelocityChartProps = WidgetStateProps<
   CaseVelocityChartDataProps,
@@ -88,17 +90,22 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
 
   const opened = data.reduce((sum, point) => sum + point.opened, 0);
   const completed = data.reduce((sum, point) => sum + point.completed, 0);
-  const summary = signalLabel(labels.summary, { opened, completed, range });
+  const number = new Intl.NumberFormat(locale);
+  const summary = signalLabel(labels.summary, {
+    opened: number.format(opened),
+    completed: number.format(completed),
+    range: number.format(range),
+  });
   const config = {
     opened: { label: labels.opened, color: 'var(--brand-accent)' },
     completed: { label: labels.completed, color: 'var(--signal-success)' },
   } satisfies ChartConfig;
 
   return (
-    <Card className="signal-panel">
+    <Card className="signal-panel" role="region" aria-labelledby="case-velocity-title">
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle>{labels.title}</CardTitle>
+          <CardTitle id="case-velocity-title">{labels.title}</CardTitle>
           <CardDescription className="mt-1">{labels.description}</CardDescription>
         </div>
         <nav aria-label={labels.rangeLabel} className="bg-muted flex w-fit rounded-lg p-1">
@@ -114,7 +121,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {days}
+              {number.format(days)}
               {labels.daySuffix}
             </Link>
           ))}
@@ -128,15 +135,9 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
           config={config}
           className="aspect-auto h-72 w-full"
           data-testid="case-velocity"
-          role="img"
-          aria-label={summary}
-          aria-describedby="case-velocity-summary"
+          aria-hidden="true"
         >
-          <AreaChart
-            data={data}
-            margin={{ left: 0, right: 12, top: 10, bottom: 0 }}
-            accessibilityLayer
-          >
+          <AreaChart data={data} margin={{ left: 0, right: 12, top: 10, bottom: 0 }}>
             <defs>
               <linearGradient id={`${gradientId}-opened`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--color-opened)" stopOpacity={0.36} />
@@ -195,6 +196,25 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
             />
           </AreaChart>
         </ChartContainer>
+        <table className="sr-only">
+          <caption>{labels.tableCaption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{labels.date}</th>
+              <th scope="col">{labels.opened}</th>
+              <th scope="col">{labels.completed}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((point) => (
+              <tr key={point.date}>
+                <th scope="row">{formatSignalDate(point.date, locale, { dateStyle: 'full' })}</th>
+                <td>{number.format(point.opened)}</td>
+                <td>{number.format(point.completed)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         <p className="text-muted-foreground mt-2 text-xs">{summary}</p>
       </CardContent>
     </Card>

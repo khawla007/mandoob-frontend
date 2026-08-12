@@ -24,7 +24,11 @@ describe('Signal Studio widget contracts', () => {
     assert.match(velocity, /data-testid="case-velocity"/);
     assert.match(velocity, /dashboard\?range=/);
     assert.doesNotMatch(velocity, /dashboard\?days=/);
-    assert.match(velocity, /aria-label=/);
+    assert.match(velocity, /role="region"/);
+    assert.match(velocity, /<table className="sr-only">/);
+    assert.match(velocity, /<caption>/);
+    assert.match(velocity, /aria-hidden="true"/);
+    assert.doesNotMatch(velocity, /role="img"/);
     assert.match(velocity, /isAnimationActive=\{false\}/);
     assert.match(velocity, /useId\(\)/);
 
@@ -44,6 +48,8 @@ describe('Signal Studio widget contracts', () => {
     assert.match(finance, /isAnimationActive=\{false\}/);
     assert.match(finance, /aria-hidden="true"/);
     assert.match(finance, /signal-collection-bar/);
+    assert.match(finance, /<ul[\s\S]*<li[\s\S]*<a/);
+    assert.doesNotMatch(finance, /role="listitem"/);
   });
 
   it('offers additive event details and responsive semantic deadline views', () => {
@@ -55,6 +61,9 @@ describe('Signal Studio widget contracts', () => {
     assert.match(heatmap, /<ol/);
     assert.match(heatmap, /role="gridcell"[\s\S]*?<Link/);
     assert.doesNotMatch(heatmap, /<Link[\s\S]{0,500}role="gridcell"/);
+    for (const type of ['case', 'renewal', 'document', 'invoice']) {
+      assert.match(heatmap, new RegExp(`${type}Event`));
+    }
   });
 
   it('limits actions, preserves direct hrefs, and never ranks team completion', () => {

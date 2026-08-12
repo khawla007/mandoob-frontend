@@ -8,7 +8,7 @@ export const applicationOpenStatuses = [
 ] as const;
 export const renewalSignalTypes = ['license', 'visa', 'eid', 'ejari'] as const;
 export const renewalSignalDays = [7, 30, 60, 90] as const;
-export const paymentSignalViews = ['billed', 'paid', 'due-soon', 'overdue'] as const;
+export const paymentSignalViews = ['billed', 'paid', 'due-soon', 'overdue', 'due-date'] as const;
 
 export type ApplicationSignalFilter =
   | { view: 'open' }
@@ -18,6 +18,8 @@ export type RenewalSignalFilter = {
   type?: (typeof renewalSignalTypes)[number];
   days?: (typeof renewalSignalDays)[number];
   renewalId?: string;
+  date?: string;
+  period?: 'morning' | 'afternoon';
 };
 export type PaymentSignalView = (typeof paymentSignalViews)[number];
 
@@ -60,12 +62,38 @@ export function parseRenewalSignalFilter(search: Search): RenewalSignalFilter {
       ? { days: rawDays as RenewalSignalFilter['days'] }
       : {}),
     ...(isUuid(renewalId) ? { renewalId } : {}),
+    ...(isDate(first(search.date)) &&
+    (first(search.period) === 'morning' || first(search.period) === 'afternoon') &&
+    first(search.eventTypes) === 'renewal'
+      ? {
+          date: first(search.date)!,
+          period: first(search.period) as 'morning' | 'afternoon',
+        }
+      : {}),
   };
 }
 
-export function parsePaymentSignalFilter(search: Search): { view: PaymentSignalView | 'all' } {
+export function parsePaymentSignalFilter(search: Search): {
+  view: PaymentSignalView | 'all';
+  date?: string;
+  period?: 'morning' | 'afternoon';
+} {
   const view = first(search.view);
-  return { view: paymentSignalViews.includes(view as never) ? (view as PaymentSignalView) : 'all' };
+  const date = first(search.date);
+  const period = first(search.period);
+  const deadline =
+    view === 'due-date' &&
+    isDate(date) &&
+    (period === 'morning' || period === 'afternoon') &&
+    first(search.eventTypes) === 'invoice';
+  const parsedView =
+    paymentSignalViews.includes(view as never) && (view !== 'due-date' || deadline)
+      ? (view as PaymentSignalView)
+      : 'all';
+  return {
+    view: parsedView,
+    ...(parsedView === 'due-date' && deadline ? { date, period } : {}),
+  };
 }
 
 function href(slug: string, target: string, params: Record<string, string>): string {
@@ -92,9 +120,22 @@ export function renewalSignalHref(slug: string, filter: RenewalSignalFilter): st
   if (filter.type) params.type = filter.type;
   if (filter.days) params.days = String(filter.days);
   if (filter.renewalId) params.target = filter.renewalId;
+  if (filter.date && filter.period) {
+    params.date = filter.date;
+    params.period = filter.period;
+    params.eventTypes = 'renewal';
+  }
   return href(slug, 'renewals', params);
 }
 
-export function paymentSignalHref(slug: string, filter: { view: PaymentSignalView }): string {
-  return href(slug, 'payments', filter);
+export function paymentSignalHref(
+  slug: string,
+  filter: { view: PaymentSignalView; date?: string; period?: 'morning' | 'afternoon' },
+): string {
+  return href(slug, 'payments', {
+    view: filter.view,
+    ...(filter.date && filter.period
+      ? { date: filter.date, period: filter.period, eventTypes: 'invoice' }
+      : {}),
+  });
 }

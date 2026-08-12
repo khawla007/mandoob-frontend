@@ -67,7 +67,12 @@ export function parseApplicationFilters(search: ApplicationSearchParams): Parsed
     return { ...parsed.data, status: [...applicationOpenStatuses] };
   }
   if ('date' in signal && signal.date) {
-    return { ...parsed.data, deadlineDate: signal.date, deadlinePeriod: signal.period };
+    return {
+      ...parsed.data,
+      status: [...applicationOpenStatuses],
+      deadlineDate: signal.date,
+      deadlinePeriod: signal.period,
+    };
   }
   return parsed.data;
 }

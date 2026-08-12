@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewInvoiceDialog } from '@/components/pro/NewInvoiceDialog';
@@ -7,16 +8,21 @@ import { InvoicesTable } from '@/components/pro/InvoicesTable';
 import { listClientsForPro } from '@/lib/data/clients-list';
 import { listInvoicesForPaymentView } from '@/lib/data/invoices';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
-import { parsePaymentView, paymentViewHref, type PaymentView } from './page-logic';
+import {
+  parsePaymentSearch,
+  paymentPageHref,
+  paymentViewHref,
+  type PaymentView,
+} from './page-logic';
 
 export const dynamic = 'force-dynamic';
 
-const PAYMENT_VIEWS: Array<{ value: PaymentView; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'billed', label: 'Billed this month' },
-  { value: 'paid', label: 'Paid this month' },
-  { value: 'due-soon', label: 'Due within 30 days' },
-  { value: 'overdue', label: 'Overdue' },
+const PAYMENT_VIEWS: Array<{ value: PaymentView; labelKey: string }> = [
+  { value: 'all', labelKey: 'paymentViewAll' },
+  { value: 'billed', labelKey: 'paymentViewBilled' },
+  { value: 'paid', labelKey: 'paymentViewPaid' },
+  { value: 'due-soon', labelKey: 'paymentViewDueSoon' },
+  { value: 'overdue', labelKey: 'paymentViewOverdue' },
 ];
 
 export default async function ProPaymentsPage({
@@ -24,34 +30,42 @@ export default async function ProPaymentsPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<{ view?: string | string[]; page?: string | string[] }>;
+  searchParams: Promise<{
+    view?: string | string[];
+    page?: string | string[];
+    date?: string | string[];
+    period?: string | string[];
+    eventTypes?: string | string[];
+  }>;
 }) {
   const { tenant: slug } = await params;
   const search = await searchParams;
-  const view = parsePaymentView(search.view);
+  const { view, date, period } = parsePaymentSearch(search);
   const rawPage = Array.isArray(search.page) ? search.page[0] : search.page;
   const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
+  const [t, locale] = await Promise.all([getTranslations('pro'), getLocale()]);
 
   const [clients, invoicePage] = await Promise.all([
     listClientsForPro({ tenantId: tenant.id }),
-    listInvoicesForPaymentView(tenant.id, { view, page }),
+    listInvoicesForPaymentView(tenant.id, { view, page, date, period }),
   ]);
-  const activeView = PAYMENT_VIEWS.find((item) => item.value === view)!;
+  const activeView =
+    view === 'due-date'
+      ? { value: view, labelKey: 'paymentViewDueDate' }
+      : PAYMENT_VIEWS.find((item) => item.value === view)!;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Payments</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Issue invoices, track pending payments, and manage receipts.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('payments')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('paymentsPageSubtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Button asChild variant="outline">
-            <Link href={`/t/${tenant.slug}/payments/analytics`}>Analytics</Link>
+            <Link href={`/t/${tenant.slug}/payments/analytics`}>{t('paymentAnalytics')}</Link>
           </Button>
           <NewInvoiceDialog slug={tenant.slug} clients={clients} />
         </div>
@@ -59,11 +73,10 @@ export default async function ProPaymentsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">{activeView.label} invoices</CardTitle>
-          <nav
-            aria-label="Filter invoices by collection category"
-            className="flex flex-wrap gap-2 pt-2"
-          >
+          <CardTitle className="text-lg">
+            {t('paymentInvoicesTitle', { view: t(activeView.labelKey) })}
+          </CardTitle>
+          <nav aria-label={t('paymentFilterLabel')} className="flex flex-wrap gap-2 pt-2">
             {PAYMENT_VIEWS.map((item) => (
               <Button
                 key={item.value}
@@ -75,7 +88,7 @@ export default async function ProPaymentsPage({
                   href={paymentViewHref(tenant.slug, item.value)}
                   aria-current={view === item.value ? 'page' : undefined}
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               </Button>
             ))}
@@ -85,40 +98,53 @@ export default async function ProPaymentsPage({
           <InvoicesTable
             slug={tenant.slug}
             rows={invoicePage.rows}
-            emptyMessage={`No ${activeView.label.toLocaleLowerCase('en-US')} invoices match this view.`}
+            emptyMessage={t('paymentEmpty', { view: t(activeView.labelKey) })}
           />
           {invoicePage.total > invoicePage.pageSize ? (
             <nav
-              aria-label="Invoice pages"
+              aria-label={t('paymentPagesLabel')}
               className="mt-4 flex items-center justify-between text-sm"
             >
-              {page > 1 ? (
+              {invoicePage.page > 1 ? (
                 <Button asChild size="sm" variant="outline">
                   <Link
-                    href={`${paymentViewHref(tenant.slug, view)}${view === 'all' ? '?' : '&'}page=${page - 1}`}
+                    href={paymentPageHref(
+                      tenant.slug,
+                      { view, date, period },
+                      invoicePage.page - 1,
+                    )}
                   >
-                    Previous
+                    {t('paymentPrevious')}
                   </Link>
                 </Button>
               ) : (
                 <Button size="sm" variant="outline" disabled>
-                  Previous
+                  {t('paymentPrevious')}
                 </Button>
               )}
               <span>
-                {page} / {Math.ceil(invoicePage.total / invoicePage.pageSize)}
+                {t('paymentPageSummary', {
+                  page: new Intl.NumberFormat(locale).format(invoicePage.page),
+                  pages: new Intl.NumberFormat(locale).format(
+                    Math.ceil(invoicePage.total / invoicePage.pageSize),
+                  ),
+                })}
               </span>
-              {page * invoicePage.pageSize < invoicePage.total ? (
+              {invoicePage.page * invoicePage.pageSize < invoicePage.total ? (
                 <Button asChild size="sm" variant="outline">
                   <Link
-                    href={`${paymentViewHref(tenant.slug, view)}${view === 'all' ? '?' : '&'}page=${page + 1}`}
+                    href={paymentPageHref(
+                      tenant.slug,
+                      { view, date, period },
+                      invoicePage.page + 1,
+                    )}
                   >
-                    Next
+                    {t('paymentNext')}
                   </Link>
                 </Button>
               ) : (
                 <Button size="sm" variant="outline" disabled>
-                  Next
+                  {t('paymentNext')}
                 </Button>
               )}
             </nav>

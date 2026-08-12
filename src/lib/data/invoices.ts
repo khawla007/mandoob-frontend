@@ -3,7 +3,7 @@ import { enqueueEmail } from '@/lib/mail/send';
 import { formatMoney } from '@/lib/format/money';
 import { isReceiptEligible } from '@/lib/pdf/receipt';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { classifyCollectionInvoiceIds, signalBusinessDate } from './signal-finance';
+import { signalBusinessDate } from './signal-finance';
 import type { PaymentSignalView } from '@/lib/signal-studio-filters';
 
 export type LinkedEntity = {
@@ -50,7 +50,6 @@ export type PaymentInvoicePage = {
   currency: string;
 };
 
-const PAYMENT_QUERY_BATCH_SIZE = 500;
 const PAYMENT_INVOICE_PAGE_SIZE = 50;
 type PaymentFilterInvoice = {
   id: string;
@@ -65,91 +64,66 @@ type PaymentFilterInvoice = {
   paid_at: string | null;
   created_at: string;
 };
-type PaymentFilterPayment = {
-  id: string;
-  tenant_id: string;
-  invoice_id: string;
-  amount_minor: number;
+type PaymentRpcResult = {
+  rows: PaymentFilterInvoice[];
+  total: number;
+  page: number;
+  pageSize: number;
   currency: string;
-  status: string;
-  received_at: string | null;
 };
-type PaymentFilterRefund = {
-  id: string;
-  tenant_id: string;
-  payment_id: string;
-  amount_minor: number;
-  status: string;
-  created_at: string;
-};
-
-async function collectPaymentQueryPages<T>(
-  load: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{ data: T[] | null; error: { message?: string } | null }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAYMENT_QUERY_BATCH_SIZE) {
-    const result = await load(from, from + PAYMENT_QUERY_BATCH_SIZE - 1);
-    if (result.error) throw new Error(result.error.message ?? 'Could not load payment filter data');
-    const batch = result.data ?? [];
-    rows.push(...batch);
-    if (batch.length < PAYMENT_QUERY_BATCH_SIZE) return rows;
-  }
-}
 
 export async function listInvoicesForPaymentView(
   tenantId: string,
-  options: { view: PaymentSignalView | 'all'; page?: number; today?: string } = { view: 'all' },
+  options: {
+    view: PaymentSignalView | 'all';
+    page?: number;
+    today?: string;
+    date?: string;
+    period?: 'morning' | 'afternoon';
+  } = { view: 'all' },
 ): Promise<PaymentInvoicePage> {
   const admin = createSupabaseServiceRoleClient();
-  const [invoices, payments, refunds] = await Promise.all([
-    collectPaymentQueryPages<PaymentFilterInvoice>((from, to) =>
+  const requestedPage = Math.max(1, Math.trunc(options.page ?? 1));
+  let result: PaymentRpcResult;
+  if (options.view === 'all') {
+    const load = (page: number) =>
       admin
         .from('invoices')
         .select(
           'id, tenant_id, client_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
+          { count: 'exact' },
         )
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
-        .range(from, to),
-    ),
-    collectPaymentQueryPages<PaymentFilterPayment>((from, to) =>
-      admin
-        .from('payments')
-        .select('id, tenant_id, invoice_id, amount_minor, currency, status, received_at')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
-        .range(from, to),
-    ),
-    collectPaymentQueryPages<PaymentFilterRefund>((from, to) =>
-      admin
-        .from('refunds')
-        .select('id, tenant_id, payment_id, amount_minor, status, created_at')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
-        .range(from, to),
-    ),
-  ]);
-  const classification = classifyCollectionInvoiceIds({
-    tenantId,
-    invoices,
-    payments,
-    refunds,
-    today: options.today ?? signalBusinessDate(),
-  });
-  const ids =
-    options.view === 'all'
-      ? null
-      : classification[options.view === 'due-soon' ? 'dueSoon' : options.view];
-  const filtered =
-    options.view === 'all'
-      ? invoices
-      : invoices.filter((row) => row.currency === classification.currency && ids?.has(row.id));
-  const page = Math.max(1, Math.trunc(options.page ?? 1));
-  const start = (page - 1) * PAYMENT_INVOICE_PAGE_SIZE;
-  const selected = filtered.slice(start, start + PAYMENT_INVOICE_PAGE_SIZE);
+        .range((page - 1) * PAYMENT_INVOICE_PAGE_SIZE, page * PAYMENT_INVOICE_PAGE_SIZE - 1);
+    let query = await load(requestedPage);
+    if (query.error) throw new Error(query.error.message);
+    const total = query.count ?? 0;
+    const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / PAYMENT_INVOICE_PAGE_SIZE)));
+    if (page !== requestedPage) query = await load(page);
+    if (query.error) throw new Error(query.error.message);
+    const rows = (query.data ?? []) as PaymentFilterInvoice[];
+    result = {
+      rows,
+      total,
+      page,
+      pageSize: PAYMENT_INVOICE_PAGE_SIZE,
+      currency: rows.find((row) => row.currency === 'AED')?.currency ?? rows[0]?.currency ?? 'AED',
+    };
+  } else {
+    const { data, error } = await admin.rpc('list_signal_payment_invoices', {
+      p_tenant_id: tenantId,
+      p_view: options.view,
+      p_page: requestedPage,
+      p_page_size: PAYMENT_INVOICE_PAGE_SIZE,
+      p_today: options.today ?? signalBusinessDate(),
+      p_date: options.date ?? null,
+      p_period: options.period ?? null,
+    });
+    if (error) throw new Error(error.message);
+    result = data as unknown as PaymentRpcResult;
+  }
+  const selected = result.rows;
   const clientNames = await getClientNames(
     admin,
     Array.from(new Set(selected.map((row) => row.client_id))),
@@ -169,10 +143,10 @@ export async function listInvoicesForPaymentView(
       paidAt: row.paid_at ?? null,
       createdAt: row.created_at,
     })),
-    total: filtered.length,
-    page,
-    pageSize: PAYMENT_INVOICE_PAGE_SIZE,
-    currency: classification.currency,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    currency: result.currency,
   };
 }
 

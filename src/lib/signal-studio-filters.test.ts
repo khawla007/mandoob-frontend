@@ -55,6 +55,27 @@ test('renewal signal URLs parse type, day window, target UUID, and active tab to
   assert.deepEqual(parseRenewalSignalFilter({ type: 'passport', days: '45' }), { tab: 'active' });
 });
 
+test('deadline event URLs round-trip renewal and invoice date filters', () => {
+  const renewal = renewalSignalHref('acme', {
+    tab: 'active',
+    date: '2026-08-12',
+    period: 'afternoon',
+  });
+  assert.deepEqual(
+    parseRenewalSignalFilter(Object.fromEntries(new URL(renewal, 'https://x').searchParams)),
+    { tab: 'active', date: '2026-08-12', period: 'afternoon' },
+  );
+  const invoice = paymentSignalHref('acme', {
+    view: 'due-date',
+    date: '2026-08-12',
+    period: 'afternoon',
+  });
+  assert.deepEqual(
+    parsePaymentSignalFilter(Object.fromEntries(new URL(invoice, 'https://x').searchParams)),
+    { view: 'due-date', date: '2026-08-12', period: 'afternoon' },
+  );
+});
+
 test('payment signal URLs emit and consume only supported collection views', () => {
   for (const view of ['billed', 'paid', 'due-soon', 'overdue'] as const) {
     const href = paymentSignalHref('acme', { view });

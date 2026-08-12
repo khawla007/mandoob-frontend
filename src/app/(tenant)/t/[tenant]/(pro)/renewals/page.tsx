@@ -49,7 +49,7 @@ export default async function RenewalsPage({
 }) {
   const { tenant: slug } = await params;
   const sp = await searchParams;
-  const { tab, renewalId, type, days } = parseRenewalSearch(sp);
+  const { tab, renewalId, type, days, deadlineDate, deadlinePeriod } = parseRenewalSearch(sp);
 
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
@@ -62,7 +62,15 @@ export default async function RenewalsPage({
   const [rows, clientOptions] = await Promise.all([
     listRenewalsForTenant(
       tenant.id,
-      renewalId ? { id: renewalId } : { status: statusFilter, type, bucket: days ?? undefined },
+      renewalId
+        ? { id: renewalId }
+        : {
+            status: statusFilter,
+            type,
+            bucket: days ?? undefined,
+            deadlineDate,
+            deadlinePeriod,
+          },
     ),
     listClientsForTenant({ tenantId: tenant.id, limit: 50 }),
   ]);

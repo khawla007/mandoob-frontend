@@ -115,7 +115,18 @@ test('dashboard application filters expand open status and preserve Dubai deadli
   });
   assert.deepEqual(
     parseApplicationFilters({ date: '2026-08-12', period: 'morning', eventTypes: 'case' }),
-    { deadlineDate: '2026-08-12', deadlinePeriod: 'morning' },
+    {
+      status: [
+        'documents_pending',
+        'draft',
+        'ready_to_submit',
+        'submitted',
+        'authority_review',
+        'approved',
+      ],
+      deadlineDate: '2026-08-12',
+      deadlinePeriod: 'morning',
+    },
   );
 });
 

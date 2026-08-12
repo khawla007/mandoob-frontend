@@ -2,6 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { scheduleRenewalReminders } from '@/lib/data/renewal-reminders';
+import { addSignalDays, signalBusinessDate, signalDaysBetween } from '@/lib/data/signal-finance';
 import {
   createRenewalSchema,
   updateRenewalSchema,
@@ -47,14 +48,7 @@ const RENEWAL_COLUMNS =
 
 const ACTIVE_STATUSES: RenewalStatus[] = ['upcoming', 'due_soon', 'overdue'];
 
-function computeDaysOut(dueDate: string): number {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const due = new Date(`${dueDate}T00:00:00Z`);
-  return Math.round((due.getTime() - today.getTime()) / 86_400_000);
-}
-
-function toRenewalRow(r: RenewalDbRow): RenewalRow {
+function toRenewalRow(r: RenewalDbRow, today = signalBusinessDate()): RenewalRow {
   return {
     id: r.id,
     tenantId: r.tenant_id,
@@ -62,7 +56,7 @@ function toRenewalRow(r: RenewalDbRow): RenewalRow {
     type: r.type,
     label: r.label,
     dueDate: r.due_date,
-    daysOut: computeDaysOut(r.due_date),
+    daysOut: signalDaysBetween(today, r.due_date),
     status: r.status,
     source: r.source,
     completedAt: r.completed_at,
@@ -107,6 +101,9 @@ export type ListRenewalsForTenantOpts = {
   status?: RenewalStatus[];
   bucket?: 7 | 30 | 60 | 90 | 'all';
   type?: RenewalType;
+  deadlineDate?: string;
+  deadlinePeriod?: 'morning' | 'afternoon';
+  today?: string;
 };
 
 export async function listRenewalsForTenant(
@@ -126,16 +123,20 @@ export async function listRenewalsForTenant(
     query = query.in('status', opts.status);
   }
   if (!opts.id && opts.bucket && opts.bucket !== 'all') {
-    const cutoff = new Date();
-    cutoff.setUTCHours(0, 0, 0, 0);
-    cutoff.setUTCDate(cutoff.getUTCDate() + opts.bucket);
-    query = query.lte('due_date', cutoff.toISOString().slice(0, 10));
+    query = query.lte('due_date', addSignalDays(opts.today ?? signalBusinessDate(), opts.bucket));
   }
   if (!opts.id && opts.type) query = query.eq('type', opts.type);
+  if (!opts.id && opts.deadlineDate) {
+    query =
+      opts.deadlinePeriod === 'afternoon'
+        ? query.eq('due_date', opts.deadlineDate)
+        : query.eq('due_date', '__date_only_deadlines_are_afternoon__');
+  }
 
   const { data, error } = await query;
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  return ((data as RenewalDbRow[] | null) ?? []).map(toRenewalRow);
+  const today = opts.today ?? signalBusinessDate();
+  return ((data as RenewalDbRow[] | null) ?? []).map((row) => toRenewalRow(row, today));
 }
 
 export type ListRenewalsForClientOpts = { includeCancelled?: boolean };
@@ -159,15 +160,13 @@ export async function listRenewalsForClient(
 
   const { data, error } = await query;
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  return ((data as RenewalDbRow[] | null) ?? []).map(toRenewalRow);
+  const today = signalBusinessDate();
+  return ((data as RenewalDbRow[] | null) ?? []).map((row) => toRenewalRow(row, today));
 }
 
 export async function countRenewalsDueWithin(tenantId: string, days = 30): Promise<number> {
   const admin = createSupabaseServiceRoleClient();
-  const cutoff = new Date();
-  cutoff.setUTCHours(0, 0, 0, 0);
-  cutoff.setUTCDate(cutoff.getUTCDate() + days);
-  const cutoffDate = cutoff.toISOString().slice(0, 10);
+  const cutoffDate = addSignalDays(signalBusinessDate(), days);
 
   const { count, error } = await admin
     .from('renewals')
@@ -206,7 +205,9 @@ export async function createRenewal(
   if (notifyErr) throw new ApiError('INTERNAL', notifyErr.message, 500);
   const notifyAt = (notifyRow as string[] | null) ?? [];
 
-  const initialStatus = computeStatusFromDays(computeDaysOut(input.due_date));
+  const initialStatus = computeStatusFromDays(
+    signalDaysBetween(signalBusinessDate(), input.due_date),
+  );
 
   const { data: row, error: insertErr } = await admin
     .from('renewals')

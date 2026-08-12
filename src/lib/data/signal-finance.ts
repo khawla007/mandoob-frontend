@@ -52,10 +52,16 @@ export function signalReportingCurrency(invoices: Invoice[], payments: Payment[]
   );
 }
 
-function addDays(date: string, days: number): string {
+export function addSignalDays(date: string, days: number): string {
   const value = new Date(`${date}T00:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
+}
+
+export function signalDaysBetween(from: string, to: string): number {
+  return Math.round(
+    (new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / 86_400_000,
+  );
 }
 
 export function classifyCollectionInvoiceIds(args: {
@@ -85,7 +91,7 @@ export function classifyCollectionInvoiceIds(args: {
       )
       .map((row) => row.id),
   );
-  const dueSoonDate = addDays(args.today, 30);
+  const dueSoonDate = addSignalDays(args.today, 30);
   const dueSoon = new Set(
     reporting
       .filter(

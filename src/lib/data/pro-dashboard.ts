@@ -43,6 +43,7 @@ export type ProDashboardData = {
     date: string;
     period: 'morning' | 'afternoon';
     eventType: 'case' | 'renewal' | 'document' | 'invoice';
+    href: string;
   }>;
   finance: {
     billedMinor: number;
@@ -327,7 +328,15 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const deadlineEvents = rankedActions.flatMap((action) => {
     if (!action.deadline) return [];
     const parts = businessDeadlineParts(action.deadline);
-    return [{ id: action.id, date: parts.date, period: parts.period, eventType: action.kind }];
+    return [
+      {
+        id: action.id,
+        date: parts.date,
+        period: parts.period,
+        eventType: action.kind,
+        href: action.href,
+      },
+    ];
   });
   const eventsByDate = new Map<string, typeof deadlineEvents>();
   for (const event of deadlineEvents) {

@@ -37,6 +37,23 @@ test('renewal dashboard filters consume type and supported day windows', () => {
   });
 });
 
+test('renewal deadline drilldown consumes exact date and Dubai period', () => {
+  assert.deepEqual(
+    parseRenewalSearch({
+      tab: 'active',
+      date: '2026-08-12',
+      period: 'afternoon',
+      eventTypes: 'renewal',
+    }),
+    {
+      tab: 'active',
+      renewalId: undefined,
+      deadlineDate: '2026-08-12',
+      deadlinePeriod: 'afternoon',
+    },
+  );
+});
+
 test('renewals page consumes the target in a tenant-scoped exact DAL read', () => {
   const page = readFileSync(
     join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/renewals/page.tsx'),
