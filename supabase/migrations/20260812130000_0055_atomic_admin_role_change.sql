@@ -10,13 +10,14 @@ create or replace function public.admin_change_role_atomic(
   p_role_data jsonb,
   p_reason text default null
 )
-returns void
+returns jsonb
 language plpgsql
 security definer
 set search_path = pg_catalog, public
 as $$
 declare
   current_profile public.profiles%rowtype;
+  committed_profile public.profiles%rowtype;
   employee_client_id uuid;
 begin
   select *
@@ -81,7 +82,10 @@ begin
   update public.profiles
   set role = p_new_role::public.app_role,
       tenant_id = p_new_tenant_id
-  where id = p_target_id;
+  where id = p_target_id
+  returning role, tenant_id, status, updated_at
+  into committed_profile.role, committed_profile.tenant_id,
+    committed_profile.status, committed_profile.updated_at;
 
   if p_new_role = 'pro' then
     insert into public.pro_profiles (
@@ -126,6 +130,13 @@ begin
 
   insert into public.admin_audit_actions (actor_id, action, target_profile_id, reason)
   values (p_actor_id, 'change_role', p_target_id, p_reason);
+
+  return jsonb_build_object(
+    'role', committed_profile.role::text,
+    'tenant_id', committed_profile.tenant_id,
+    'status', committed_profile.status::text,
+    'updated_at', committed_profile.updated_at
+  );
 end;
 $$;
 

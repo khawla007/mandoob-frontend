@@ -17,7 +17,10 @@ type ChangeExecutor = (args: {
   newClaims: RoleMetadataClaims;
   revoke(): Promise<void>;
   writeMetadata(claims: RoleMetadataClaims): Promise<void>;
-  changeDatabase(): Promise<{ message: string } | null>;
+  changeDatabase(): Promise<{
+    error: { message: string } | null;
+    committedSnapshot: { claims: RoleMetadataClaims; version: string } | null;
+  }>;
   readCurrentSnapshot(): Promise<{ claims: RoleMetadataClaims; version: string } | null>;
 }) => Promise<void>;
 
@@ -57,10 +60,11 @@ const neutralClaims: RoleMetadataClaims = {
 };
 
 const oldSnapshot = { claims: oldClaims, version: 'version-1' };
+const newSnapshot = { claims: newClaims, version: 'version-2' };
 
 function harness(
   failAt?: string,
-  snapshots: Array<{ claims: RoleMetadataClaims; version: string } | null> = [oldSnapshot],
+  snapshots?: Array<{ claims: RoleMetadataClaims; version: string } | null>,
 ) {
   const calls: Array<{ op: string; claims?: RoleMetadataClaims }> = [];
   const fails = (operation: string) => failAt?.split('+').includes(operation) ?? false;
@@ -86,15 +90,18 @@ function harness(
         },
         changeDatabase: async () => {
           calls.push({ op: 'rpc' });
-          return fails('rpc') || failAt === 'rpc-and-restore'
-            ? { message: 'provider rpc secret' }
-            : null;
+          const error =
+            fails('rpc') || failAt === 'rpc-and-restore'
+              ? { message: 'provider rpc secret' }
+              : null;
+          return { error, committedSnapshot: error ? null : newSnapshot };
         },
         readCurrentSnapshot: async () => {
           readCount += 1;
           calls.push({ op: `read-${readCount}` });
           if (fails(`read-${readCount}`)) throw new Error('provider database secret');
-          return snapshots[readCount - 1] ?? null;
+          const defaults = fails('rpc') ? [oldSnapshot, oldSnapshot] : [newSnapshot, newSnapshot];
+          return (snapshots ?? defaults)[readCount - 1] ?? null;
         },
       }),
   };
@@ -130,7 +137,9 @@ test('neutral claims and a second mandatory revoke precede the RPC', async () =>
     { op: 'metadata-1', claims: neutralClaims },
     { op: 'revoke-2' },
     { op: 'rpc' },
+    { op: 'read-1' },
     { op: 'metadata-2', claims: newClaims },
+    { op: 'read-2' },
   ]);
 });
 
@@ -158,6 +167,7 @@ test('RPC failure restores exact old claims and never writes final claims', asyn
     { op: 'rpc' },
     { op: 'read-1' },
     { op: 'metadata-2', claims: oldClaims },
+    { op: 'read-2' },
     { op: 'revoke-3' },
   ]);
 });
@@ -181,7 +191,10 @@ test('RPC and restoration failure reports a sanitized compound failure', async (
         },
         changeDatabase: async () => {
           calls.push({ op: 'rpc' });
-          return { message: 'provider rpc secret' };
+          return {
+            error: { message: 'provider rpc secret' },
+            committedSnapshot: null,
+          };
         },
         readCurrentSnapshot: async () => {
           calls.push({ op: 'read' });
@@ -292,12 +305,179 @@ test('final sync failure leaves neutral claims and never restores old privileges
     { op: 'metadata-1', claims: neutralClaims },
     { op: 'revoke-2' },
     { op: 'rpc' },
+    { op: 'read-1' },
     { op: 'metadata-2', claims: newClaims },
   ]);
   assert.equal(
     flow.calls.some((call, index) => index > 1 && call.claims === oldClaims),
     false,
   );
+});
+
+test('post-restore drift neutralizes stale restored claims and revokes sessions', async () => {
+  const winnerClaims: RoleMetadataClaims = {
+    ...newClaims,
+    mandoob_role: 'customer',
+    tenant_id: 'tenant-2',
+  };
+  const flow = harness('rpc', [oldSnapshot, { claims: winnerClaims, version: 'version-3' }]);
+  await rejectsCode(
+    flow.run,
+    'ROLE_CHANGE_STATE_CONFLICT',
+    /profile changed.*login remains disabled/i,
+  );
+  assert.deepEqual(flow.calls, [
+    { op: 'revoke-1' },
+    { op: 'metadata-1', claims: neutralClaims },
+    { op: 'revoke-2' },
+    { op: 'rpc' },
+    { op: 'read-1' },
+    { op: 'metadata-2', claims: oldClaims },
+    { op: 'read-2' },
+    {
+      op: 'metadata-3',
+      claims: { ...neutralClaims, mandoob_status: winnerClaims.mandoob_status },
+    },
+    { op: 'revoke-3' },
+  ]);
+});
+
+test('post-restore revalidation fails closed for status, tenant, version, missing, and read drift', async () => {
+  const cases: Array<{
+    snapshot: { claims: RoleMetadataClaims; version: string } | null;
+    failAt?: string;
+    code: string;
+  }> = [
+    {
+      snapshot: { ...oldSnapshot, claims: { ...oldClaims, mandoob_status: 'suspended' } },
+      code: 'ROLE_CHANGE_STATE_CONFLICT',
+    },
+    {
+      snapshot: { ...oldSnapshot, claims: { ...oldClaims, tenant_id: 'tenant-9' } },
+      code: 'ROLE_CHANGE_STATE_CONFLICT',
+    },
+    { snapshot: { ...oldSnapshot, version: 'version-9' }, code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { snapshot: null, code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { snapshot: oldSnapshot, failAt: 'rpc+read-2', code: 'ROLE_CHANGE_REVALIDATION_FAILED' },
+  ];
+  for (const testCase of cases) {
+    const flow = harness(testCase.failAt ?? 'rpc', [oldSnapshot, testCase.snapshot]);
+    await assert.rejects(flow.run, (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.code, testCase.code);
+      assert.doesNotMatch(error.message, /provider|secret/i);
+      return true;
+    });
+    assert.equal(flow.calls.at(-2)?.op.startsWith('metadata'), true);
+    assert.equal(flow.calls.at(-1)?.op.startsWith('revoke'), true);
+  }
+});
+
+test('successful transition revalidates the committed snapshot before and after final metadata', async () => {
+  const flow = harness();
+  await flow.run();
+  assert.deepEqual(flow.calls.slice(-3), [
+    { op: 'read-1' },
+    { op: 'metadata-2', claims: newClaims },
+    { op: 'read-2' },
+  ]);
+});
+
+test('successful transition fails closed on pre-final or post-final concurrent changes', async () => {
+  const concurrentClaims: RoleMetadataClaims = {
+    ...newClaims,
+    mandoob_role: 'employee',
+    tenant_id: 'tenant-3',
+  };
+  const changed = { claims: concurrentClaims, version: 'version-3' };
+  for (const snapshots of [[changed], [newSnapshot, changed]]) {
+    const flow = harness(undefined, snapshots);
+    await rejectsCode(
+      flow.run,
+      'ROLE_CHANGE_STATE_CONFLICT',
+      /profile changed.*login remains disabled/i,
+    );
+    assert.deepEqual(flow.calls.at(-2), {
+      op: snapshots.length === 1 ? 'metadata-2' : 'metadata-3',
+      claims: { ...neutralClaims, mandoob_status: concurrentClaims.mandoob_status },
+    });
+    assert.match(flow.calls.at(-1)?.op ?? '', /^revoke-/);
+  }
+});
+
+test('successful transition detects status, tenant, version, missing, and read drift', async () => {
+  const cases: Array<{
+    snapshots: Array<{ claims: RoleMetadataClaims; version: string } | null>;
+    failAt?: string;
+    code: string;
+  }> = [
+    {
+      snapshots: [{ ...newSnapshot, claims: { ...newClaims, mandoob_status: 'suspended' } }],
+      code: 'ROLE_CHANGE_STATE_CONFLICT',
+    },
+    {
+      snapshots: [{ ...newSnapshot, claims: { ...newClaims, tenant_id: 'tenant-9' } }],
+      code: 'ROLE_CHANGE_STATE_CONFLICT',
+    },
+    { snapshots: [{ ...newSnapshot, version: 'version-9' }], code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { snapshots: [null], code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { snapshots: [newSnapshot], failAt: 'read-1', code: 'ROLE_CHANGE_REVALIDATION_FAILED' },
+  ];
+  for (const testCase of cases) {
+    const flow = harness(testCase.failAt, testCase.snapshots);
+    await assert.rejects(flow.run, (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.code, testCase.code);
+      assert.doesNotMatch(error.message, /provider|secret/i);
+      return true;
+    });
+    assert.match(flow.calls.at(-1)?.op ?? '', /^revoke-/);
+  }
+});
+
+test('post-final revalidation detects status, tenant, version, missing, and read drift', async () => {
+  const cases: Array<{
+    snapshot: { claims: RoleMetadataClaims; version: string } | null;
+    failAt?: string;
+    code: string;
+  }> = [
+    {
+      snapshot: { ...newSnapshot, claims: { ...newClaims, mandoob_status: 'suspended' } },
+      code: 'ROLE_CHANGE_STATE_CONFLICT',
+    },
+    {
+      snapshot: { ...newSnapshot, claims: { ...newClaims, tenant_id: 'tenant-9' } },
+      code: 'ROLE_CHANGE_STATE_CONFLICT',
+    },
+    { snapshot: { ...newSnapshot, version: 'version-9' }, code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { snapshot: null, code: 'ROLE_CHANGE_STATE_CONFLICT' },
+    { snapshot: newSnapshot, failAt: 'read-2', code: 'ROLE_CHANGE_REVALIDATION_FAILED' },
+  ];
+  for (const testCase of cases) {
+    const flow = harness(testCase.failAt, [newSnapshot, testCase.snapshot]);
+    await assert.rejects(flow.run, (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.code, testCase.code);
+      assert.doesNotMatch(error.message, /provider|secret/i);
+      return true;
+    });
+    assert.equal(flow.calls.at(-2)?.op.startsWith('metadata'), true);
+    assert.equal(flow.calls.at(-1)?.op.startsWith('revoke'), true);
+  }
+});
+
+test('finalization conflict attempts neutral metadata and revoke independently', async () => {
+  const changed = { claims: { ...newClaims, tenant_id: 'tenant-9' }, version: 'version-3' };
+  for (const failure of ['metadata-2', 'revoke-3']) {
+    const flow = harness(failure, [changed]);
+    await rejectsCode(
+      flow.run,
+      'ROLE_CHANGE_FINALIZATION_LOCK_FAILED',
+      /fail-closed recovery failed/i,
+    );
+    assert.equal(flow.calls.at(-2)?.op, 'metadata-2');
+    assert.equal(flow.calls.at(-1)?.op, 'revoke-3');
+  }
 });
 
 test('pending transitions are denied by session loading and password login even with a stale role', () => {

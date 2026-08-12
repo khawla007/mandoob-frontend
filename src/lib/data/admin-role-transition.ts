@@ -31,7 +31,9 @@ type FailureStage =
   | 'rollback_revalidation'
   | 'rollback_neutral_metadata'
   | 'rollback_revoke'
-  | 'restore_revoke';
+  | 'restore_revoke'
+  | 'finalization_neutral_metadata'
+  | 'finalization_revoke';
 
 export class AtomicRoleChangeError extends Error {
   constructor(readonly databaseError: DatabaseError) {
@@ -65,13 +67,97 @@ function roleMetadataSnapshotMatches(
   );
 }
 
+type FailClosedPolicy = {
+  lockCode: string;
+  lockMessage: string;
+  conflictCode: string;
+  conflictMessage: string;
+  operationalCode: string;
+  operationalMessage: string;
+  neutralStage: FailureStage;
+  revokeStage: FailureStage;
+};
+
+async function failClosedAfterSnapshotConflict(args: {
+  latest: RoleMetadataSnapshot | null;
+  fallbackClaims: RoleMetadataClaims;
+  operationalFailure: boolean;
+  writeMetadata(claims: RoleMetadataClaims): Promise<void>;
+  revoke(): Promise<void>;
+  report(stage: FailureStage, error: unknown): void;
+  policy: FailClosedPolicy;
+}): Promise<never> {
+  const neutralClaims: RoleMetadataClaims = {
+    mandoob_role: null,
+    tenant_id: null,
+    mandoob_status: args.latest?.claims.mandoob_status ?? args.fallbackClaims.mandoob_status,
+    mandoob_role_transition: 'pending',
+  };
+  let neutralError: unknown;
+  let revokeError: unknown;
+  try {
+    await args.writeMetadata(neutralClaims);
+  } catch (error) {
+    neutralError = error;
+    args.report(args.policy.neutralStage, error);
+  }
+  try {
+    await args.revoke();
+  } catch (error) {
+    revokeError = error;
+    args.report(args.policy.revokeStage, error);
+  }
+  if (neutralError || revokeError) {
+    throw new ApiError(args.policy.lockCode, args.policy.lockMessage, 502);
+  }
+  throw new ApiError(
+    args.operationalFailure ? args.policy.operationalCode : args.policy.conflictCode,
+    args.operationalFailure ? args.policy.operationalMessage : args.policy.conflictMessage,
+    args.operationalFailure ? 502 : 409,
+  );
+}
+
+async function revalidateSnapshot(args: {
+  expected: RoleMetadataSnapshot;
+  fallbackClaims: RoleMetadataClaims;
+  stage: FailureStage;
+  readCurrentSnapshot(): Promise<RoleMetadataSnapshot | null>;
+  writeMetadata(claims: RoleMetadataClaims): Promise<void>;
+  revoke(): Promise<void>;
+  report(stage: FailureStage, error: unknown): void;
+  policy: FailClosedPolicy;
+}): Promise<void> {
+  let current: RoleMetadataSnapshot | null;
+  try {
+    current = await args.readCurrentSnapshot();
+  } catch (error) {
+    args.report(args.stage, error);
+    return failClosedAfterSnapshotConflict({
+      ...args,
+      latest: null,
+      operationalFailure: true,
+    });
+  }
+  if (!roleMetadataSnapshotMatches(current, args.expected.claims, args.expected.version)) {
+    args.report(args.stage, new Error('Profile authorization snapshot changed'));
+    return failClosedAfterSnapshotConflict({
+      ...args,
+      latest: current,
+      operationalFailure: false,
+    });
+  }
+}
+
 export async function executeRoleChangeTransition(args: {
   oldClaims: RoleMetadataClaims;
   oldVersion: string;
   newClaims: RoleMetadataClaims;
   revoke(): Promise<void>;
   writeMetadata(claims: RoleMetadataClaims): Promise<void>;
-  changeDatabase(): Promise<DatabaseError | null>;
+  changeDatabase(): Promise<{
+    error: DatabaseError | null;
+    committedSnapshot: RoleMetadataSnapshot | null;
+  }>;
   readCurrentSnapshot(): Promise<RoleMetadataSnapshot | null>;
   reportFailure?: (stage: FailureStage, error: unknown) => void;
 }): Promise<void> {
@@ -112,67 +198,56 @@ export async function executeRoleChangeTransition(args: {
     );
   }
 
-  let databaseError: DatabaseError | null;
+  let databaseResult: {
+    error: DatabaseError | null;
+    committedSnapshot: RoleMetadataSnapshot | null;
+  };
   try {
-    databaseError = await args.changeDatabase();
+    databaseResult = await args.changeDatabase();
   } catch (error) {
     report('database_change', error);
-    databaseError = {
-      message: error instanceof Error ? error.message : 'Unexpected database failure',
+    databaseResult = {
+      error: { message: error instanceof Error ? error.message : 'Unexpected database failure' },
+      committedSnapshot: null,
     };
   }
+  const databaseError = databaseResult.error;
   if (databaseError) {
     report('database_change', databaseError);
-    let currentSnapshot: RoleMetadataSnapshot | null = null;
-    let revalidationFailed = false;
-    try {
-      currentSnapshot = await args.readCurrentSnapshot();
-    } catch (error) {
-      revalidationFailed = true;
-      report('rollback_revalidation', error);
-    }
-    const statusPermitsRestore =
-      currentSnapshot?.claims.mandoob_status === 'active' ||
-      currentSnapshot?.claims.mandoob_status === 'invited';
-    if (
-      revalidationFailed ||
-      !statusPermitsRestore ||
-      !roleMetadataSnapshotMatches(currentSnapshot, args.oldClaims, args.oldVersion)
-    ) {
-      const rollbackNeutralClaims: RoleMetadataClaims = {
-        mandoob_role: null,
-        tenant_id: null,
-        mandoob_status: currentSnapshot?.claims.mandoob_status ?? args.oldClaims.mandoob_status,
-        mandoob_role_transition: 'pending',
-      };
-      let neutralError: unknown;
-      let revokeError: unknown;
-      try {
-        await args.writeMetadata(rollbackNeutralClaims);
-      } catch (error) {
-        neutralError = error;
-        report('rollback_neutral_metadata', error);
-      }
-      try {
-        await args.revoke();
-      } catch (error) {
-        revokeError = error;
-        report('rollback_revoke', error);
-      }
-      if (neutralError || revokeError) {
-        throw new ApiError(
-          'ROLE_CHANGE_ROLLBACK_LOCK_FAILED',
-          'Database role change failed and fail-closed recovery failed; contact support immediately',
-          502,
-        );
-      }
-      throw new ApiError(
-        revalidationFailed ? 'ROLE_CHANGE_REVALIDATION_FAILED' : 'ROLE_CHANGE_STATE_CONFLICT',
-        revalidationFailed
-          ? 'Could not revalidate the profile after the database role change failed; login remains disabled'
-          : 'Profile changed while the database role change was running; login remains disabled',
-        revalidationFailed ? 502 : 409,
-      );
+    const oldSnapshot = { claims: args.oldClaims, version: args.oldVersion };
+    const rollbackPolicy: FailClosedPolicy = {
+      lockCode: 'ROLE_CHANGE_ROLLBACK_LOCK_FAILED',
+      lockMessage:
+        'Database role change failed and fail-closed recovery failed; contact support immediately',
+      conflictCode: 'ROLE_CHANGE_STATE_CONFLICT',
+      conflictMessage:
+        'Profile changed while the database role change was running; login remains disabled',
+      operationalCode: 'ROLE_CHANGE_REVALIDATION_FAILED',
+      operationalMessage:
+        'Could not revalidate the profile after the database role change failed; login remains disabled',
+      neutralStage: 'rollback_neutral_metadata',
+      revokeStage: 'rollback_revoke',
+    };
+    await revalidateSnapshot({
+      expected: oldSnapshot,
+      fallbackClaims: args.oldClaims,
+      stage: 'rollback_revalidation',
+      readCurrentSnapshot: args.readCurrentSnapshot,
+      writeMetadata: args.writeMetadata,
+      revoke: args.revoke,
+      report,
+      policy: rollbackPolicy,
+    });
+    if (args.oldClaims.mandoob_status !== 'active' && args.oldClaims.mandoob_status !== 'invited') {
+      return failClosedAfterSnapshotConflict({
+        latest: oldSnapshot,
+        fallbackClaims: args.oldClaims,
+        operationalFailure: false,
+        writeMetadata: args.writeMetadata,
+        revoke: args.revoke,
+        report,
+        policy: rollbackPolicy,
+      });
     }
     try {
       await args.writeMetadata(args.oldClaims);
@@ -184,6 +259,16 @@ export async function executeRoleChangeTransition(args: {
         502,
       );
     }
+    await revalidateSnapshot({
+      expected: oldSnapshot,
+      fallbackClaims: args.oldClaims,
+      stage: 'rollback_revalidation',
+      readCurrentSnapshot: args.readCurrentSnapshot,
+      writeMetadata: args.writeMetadata,
+      revoke: args.revoke,
+      report,
+      policy: rollbackPolicy,
+    });
     try {
       await args.revoke();
     } catch (error) {
@@ -218,8 +303,49 @@ export async function executeRoleChangeTransition(args: {
     throw new AtomicRoleChangeError(databaseError);
   }
 
+  const committedSnapshot = databaseResult.committedSnapshot;
+  const finalizationPolicy: FailClosedPolicy = {
+    lockCode: 'ROLE_CHANGE_FINALIZATION_LOCK_FAILED',
+    lockMessage:
+      'Role finalization failed and fail-closed recovery failed; contact support immediately',
+    conflictCode: 'ROLE_CHANGE_STATE_CONFLICT',
+    conflictMessage:
+      'Profile changed while role metadata was being finalized; login remains disabled',
+    operationalCode: 'ROLE_CHANGE_REVALIDATION_FAILED',
+    operationalMessage: 'Could not revalidate the committed profile; login remains disabled',
+    neutralStage: 'finalization_neutral_metadata',
+    revokeStage: 'finalization_revoke',
+  };
+  if (
+    !committedSnapshot ||
+    committedSnapshot.claims.mandoob_role !== args.newClaims.mandoob_role ||
+    committedSnapshot.claims.tenant_id !== args.newClaims.tenant_id ||
+    committedSnapshot.claims.mandoob_status !== args.newClaims.mandoob_status
+  ) {
+    report('pre_final_revalidation', new Error('RPC returned an invalid committed snapshot'));
+    return failClosedAfterSnapshotConflict({
+      latest: committedSnapshot,
+      fallbackClaims: args.newClaims,
+      operationalFailure: committedSnapshot === null,
+      writeMetadata: args.writeMetadata,
+      revoke: args.revoke,
+      report,
+      policy: finalizationPolicy,
+    });
+  }
+  await revalidateSnapshot({
+    expected: committedSnapshot,
+    fallbackClaims: args.newClaims,
+    stage: 'pre_final_revalidation',
+    readCurrentSnapshot: args.readCurrentSnapshot,
+    writeMetadata: args.writeMetadata,
+    revoke: args.revoke,
+    report,
+    policy: finalizationPolicy,
+  });
+
   try {
-    await args.writeMetadata(args.newClaims);
+    await args.writeMetadata(committedSnapshot.claims);
   } catch (error) {
     report('final_metadata', error);
     throw new ApiError(
@@ -228,6 +354,16 @@ export async function executeRoleChangeTransition(args: {
       502,
     );
   }
+  await revalidateSnapshot({
+    expected: committedSnapshot,
+    fallbackClaims: args.newClaims,
+    stage: 'post_final_revalidation',
+    readCurrentSnapshot: args.readCurrentSnapshot,
+    writeMetadata: args.writeMetadata,
+    revoke: args.revoke,
+    report,
+    policy: finalizationPolicy,
+  });
 }
 
 export async function executeRoleMetadataResync(args: {
@@ -245,60 +381,18 @@ export async function executeRoleMetadataResync(args: {
     mandoob_status: args.currentClaims.mandoob_status,
     mandoob_role_transition: 'pending',
   };
-
-  async function failClosedAfterRevalidation(
-    latest: RoleMetadataSnapshot | null,
-    operationalFailure: boolean,
-  ): Promise<never> {
-    const latestNeutralClaims: RoleMetadataClaims = {
-      mandoob_role: null,
-      tenant_id: null,
-      mandoob_status: latest?.claims.mandoob_status ?? args.currentClaims.mandoob_status,
-      mandoob_role_transition: 'pending',
-    };
-    let neutralError: unknown;
-    let revokeError: unknown;
-    try {
-      await args.writeMetadata(latestNeutralClaims);
-    } catch (error) {
-      neutralError = error;
-      report('conflict_neutral_metadata', error);
-    }
-    try {
-      await args.revoke();
-    } catch (error) {
-      revokeError = error;
-      report('conflict_revoke', error);
-    }
-    if (neutralError || revokeError) {
-      throw new ApiError(
-        'ROLE_METADATA_RESYNC_LOCK_FAILED',
-        'Profile revalidation failed and fail-closed recovery failed; contact support immediately',
-        502,
-      );
-    }
-    throw new ApiError(
-      operationalFailure ? 'ROLE_METADATA_REVALIDATION_FAILED' : 'ROLE_METADATA_STATE_CONFLICT',
-      operationalFailure
-        ? 'Could not revalidate the current profile; login remains disabled'
-        : 'Profile changed during metadata resynchronization; login remains disabled',
-      operationalFailure ? 502 : 409,
-    );
-  }
-
-  async function revalidate(stage: 'pre_final_revalidation' | 'post_final_revalidation') {
-    let snapshot: RoleMetadataSnapshot | null;
-    try {
-      snapshot = await args.readCurrentSnapshot();
-    } catch (error) {
-      report(stage, error);
-      return failClosedAfterRevalidation(null, true);
-    }
-    if (!roleMetadataSnapshotMatches(snapshot, args.currentClaims, args.currentVersion)) {
-      report(stage, new Error('Profile authorization snapshot changed'));
-      return failClosedAfterRevalidation(snapshot, false);
-    }
-  }
+  const resyncPolicy: FailClosedPolicy = {
+    lockCode: 'ROLE_METADATA_RESYNC_LOCK_FAILED',
+    lockMessage:
+      'Profile revalidation failed and fail-closed recovery failed; contact support immediately',
+    conflictCode: 'ROLE_METADATA_STATE_CONFLICT',
+    conflictMessage: 'Profile changed during metadata resynchronization; login remains disabled',
+    operationalCode: 'ROLE_METADATA_REVALIDATION_FAILED',
+    operationalMessage: 'Could not revalidate the current profile; login remains disabled',
+    neutralStage: 'conflict_neutral_metadata',
+    revokeStage: 'conflict_revoke',
+  };
+  const currentSnapshot = { claims: args.currentClaims, version: args.currentVersion };
 
   try {
     await args.revoke();
@@ -328,7 +422,16 @@ export async function executeRoleMetadataResync(args: {
     );
   }
 
-  await revalidate('pre_final_revalidation');
+  await revalidateSnapshot({
+    expected: currentSnapshot,
+    fallbackClaims: args.currentClaims,
+    stage: 'pre_final_revalidation',
+    readCurrentSnapshot: args.readCurrentSnapshot,
+    writeMetadata: args.writeMetadata,
+    revoke: args.revoke,
+    report,
+    policy: resyncPolicy,
+  });
 
   try {
     await args.writeMetadata(args.currentClaims);
@@ -341,7 +444,16 @@ export async function executeRoleMetadataResync(args: {
     );
   }
 
-  await revalidate('post_final_revalidation');
+  await revalidateSnapshot({
+    expected: currentSnapshot,
+    fallbackClaims: args.currentClaims,
+    stage: 'post_final_revalidation',
+    readCurrentSnapshot: args.readCurrentSnapshot,
+    writeMetadata: args.writeMetadata,
+    revoke: args.revoke,
+    report,
+    policy: resyncPolicy,
+  });
 
   try {
     await args.revoke();

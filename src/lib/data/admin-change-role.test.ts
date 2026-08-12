@@ -22,6 +22,7 @@ test('admin role changes delegate exact old and new claims to the fail-closed tr
   assert.match(source, /\.select\('id, role, tenant_id, status, full_name, phone, updated_at'\)/);
   assert.match(source, /oldVersion: existing\.updated_at/);
   assert.match(source, /readCurrentSnapshot/);
+  assert.match(source, /committedSnapshot/);
   assert.match(
     source,
     /oldClaims: \{[\s\S]*mandoob_role: oldRole,[\s\S]*tenant_id: existing\.tenant_id as string \| null,[\s\S]*mandoob_status: existing\.status as ProfileStatus,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
@@ -75,6 +76,15 @@ test('atomic role RPC covers every role subtable, profile patch, and audit in on
     /update public\.profiles[\s\S]*role = p_new_role::public\.app_role[\s\S]*tenant_id = p_new_tenant_id/i,
   );
   assert.match(migration, /insert into public\.admin_audit_actions/i);
+  assert.match(migration, /returns jsonb/i);
+  assert.match(
+    migration,
+    /returning[\s\S]*role[\s\S]*tenant_id[\s\S]*status[\s\S]*updated_at[\s\S]*into committed_profile/i,
+  );
+  assert.match(
+    migration,
+    /jsonb_build_object\([\s\S]*'role'[\s\S]*'tenant_id'[\s\S]*'status'[\s\S]*'updated_at'/i,
+  );
   assert.doesNotMatch(migration, /exception[\s\S]*when others/i);
 });
 

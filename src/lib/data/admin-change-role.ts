@@ -121,7 +121,7 @@ export async function adminChangeRole(
         if (error) throw error;
       },
       changeDatabase: async () => {
-        const { error } = await admin.rpc('admin_change_role_atomic', {
+        const { data, error } = await admin.rpc('admin_change_role_atomic', {
           p_target_id: targetId,
           p_actor_id: ctx.caller.id,
           p_expected_role: oldRole,
@@ -131,7 +131,30 @@ export async function adminChangeRole(
           p_role_data: roleData,
           p_reason: input.reason ?? null,
         });
-        return error;
+        if (error) return { error, committedSnapshot: null };
+        const committed = data as {
+          role?: unknown;
+          tenant_id?: unknown;
+          status?: unknown;
+          updated_at?: unknown;
+        } | null;
+        const committedSnapshot: RoleMetadataSnapshot | null =
+          committed &&
+          typeof committed.role === 'string' &&
+          (typeof committed.tenant_id === 'string' || committed.tenant_id === null) &&
+          typeof committed.status === 'string' &&
+          typeof committed.updated_at === 'string'
+            ? {
+                claims: {
+                  mandoob_role: committed.role as Role,
+                  tenant_id: committed.tenant_id,
+                  mandoob_status: committed.status as ProfileStatus,
+                  mandoob_role_transition: null,
+                },
+                version: committed.updated_at,
+              }
+            : null;
+        return { error: null, committedSnapshot };
       },
       readCurrentSnapshot: async (): Promise<RoleMetadataSnapshot | null> => {
         const { data, error } = await admin
