@@ -10,6 +10,7 @@ import {
   type CreateServiceCaseRawInput,
   type UpdateServiceCaseRawInput,
 } from '@/lib/validation/service-case';
+import { applicationDeadlineQuery } from '@/lib/signal-studio-filters';
 
 export type ServiceCaseDeps = { supabase?: SupabaseClient };
 
@@ -138,7 +139,14 @@ export function rankServiceCases<
 function serviceCaseQuery(
   admin: SupabaseClient,
   tenantId: string,
-  filters: { id?: string; status?: ServiceCaseStatus[]; assigned_to?: string; client_id?: string },
+  filters: {
+    id?: string;
+    status?: ServiceCaseStatus[];
+    assigned_to?: string;
+    client_id?: string;
+    deadlineDate?: string;
+    deadlinePeriod?: 'morning' | 'afternoon';
+  },
   source: 'service_cases' | 'service_cases_ranked' = 'service_cases',
 ) {
   let query = admin
@@ -151,6 +159,9 @@ function serviceCaseQuery(
     if (filters.status?.length) query = query.in('status', filters.status);
     if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
     if (filters.client_id) query = query.eq('client_id', filters.client_id);
+    if (filters.deadlineDate && filters.deadlinePeriod) {
+      query = query.or(applicationDeadlineQuery(filters.deadlineDate, filters.deadlinePeriod));
+    }
   }
   if (source === 'service_cases_ranked') {
     return query
@@ -257,6 +268,8 @@ export async function listServiceCaseWorkspace(
     assignedTo?: string;
     clientId?: string;
     page?: number;
+    deadlineDate?: string;
+    deadlinePeriod?: 'morning' | 'afternoon';
   } = {},
   deps: ServiceCaseDeps = {},
 ): Promise<{
@@ -279,10 +292,16 @@ export async function listServiceCaseWorkspace(
   const page = parsedFilters.data.id ? 1 : Math.max(1, Math.trunc(filters.page ?? 1));
   const from = (page - 1) * SERVICE_CASE_PAGE_SIZE;
   const [caseResult, clientRows, ownerRows] = await Promise.all([
-    serviceCaseQuery(admin, tenantId, parsedFilters.data, 'service_cases_ranked').range(
-      from,
-      from + SERVICE_CASE_PAGE_SIZE - 1,
-    ),
+    serviceCaseQuery(
+      admin,
+      tenantId,
+      {
+        ...parsedFilters.data,
+        deadlineDate: filters.deadlineDate,
+        deadlinePeriod: filters.deadlinePeriod,
+      },
+      'service_cases_ranked',
+    ).range(from, from + SERVICE_CASE_PAGE_SIZE - 1),
     listAllOptionRows<ServiceCaseClientRow>(
       (batchFrom, batchTo) =>
         admin

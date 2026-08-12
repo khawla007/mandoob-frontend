@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useId } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, XAxis, YAxis } from 'recharts';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,8 @@ import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
+import type { WidgetBaseLabels } from './widget-state';
+import { formatSignalDate, signalLabel } from './widget-format';
 
 const RANGES = [7, 30, 90] as const;
 
@@ -22,16 +25,32 @@ type CaseVelocityChartDataProps = {
   data: ProDashboardData['caseVelocity'];
   tenantSlug: string;
   range?: (typeof RANGES)[number];
-  locale?: string;
 };
 
-export type CaseVelocityChartProps = WidgetStateProps<CaseVelocityChartDataProps>;
+export type CaseVelocityChartLabels = WidgetBaseLabels & {
+  empty: string;
+  openApplications: string;
+  summary: string;
+  title: string;
+  description: string;
+  rangeLabel: string;
+  daySuffix: string;
+  opened: string;
+  completed: string;
+};
+export type CaseVelocityChartProps = WidgetStateProps<
+  CaseVelocityChartDataProps,
+  CaseVelocityChartLabels
+>;
 
 export function CaseVelocityChart(props: CaseVelocityChartProps) {
+  const { labels } = props;
+  const gradientId = useId().replaceAll(':', '');
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
         testId="signal-chart-skeleton"
+        label={labels.loading}
         className="min-h-96 space-y-5 rounded-2xl border p-5"
       >
         <div className="flex justify-between">
@@ -47,7 +66,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
     );
   }
   if (props.kind === 'empty' || props.kind === 'error')
-    return <WidgetMessage status={props} className="min-h-96" />;
+    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-96" />;
 
   const { data, tenantSlug, range = 30, locale } = props;
   if (data.length === 0) {
@@ -55,12 +74,13 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
       <WidgetMessage
         status={{
           kind: 'empty',
-          message: 'No cases were opened or completed in this period.',
+          message: labels.empty,
           emptyAction: {
-            label: 'Open applications',
+            label: labels.openApplications,
             href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
           },
         }}
+        retryLabel={labels.retry}
         className="min-h-96"
       />
     );
@@ -68,22 +88,20 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
 
   const opened = data.reduce((sum, point) => sum + point.opened, 0);
   const completed = data.reduce((sum, point) => sum + point.completed, 0);
-  const summary = `${opened} cases opened and ${completed} completed during the last ${range} days.`;
+  const summary = signalLabel(labels.summary, { opened, completed, range });
   const config = {
-    opened: { label: 'Opened', color: 'var(--brand-accent)' },
-    completed: { label: 'Completed', color: 'var(--signal-success)' },
+    opened: { label: labels.opened, color: 'var(--brand-accent)' },
+    completed: { label: labels.completed, color: 'var(--signal-success)' },
   } satisfies ChartConfig;
 
   return (
     <Card className="signal-panel">
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
-          <CardTitle>Case velocity</CardTitle>
-          <CardDescription className="mt-1">
-            Opened and completed applications over time
-          </CardDescription>
+          <CardTitle>{labels.title}</CardTitle>
+          <CardDescription className="mt-1">{labels.description}</CardDescription>
         </div>
-        <nav aria-label="Case velocity date range" className="bg-muted flex w-fit rounded-lg p-1">
+        <nav aria-label={labels.rangeLabel} className="bg-muted flex w-fit rounded-lg p-1">
           {RANGES.map((days) => (
             <Link
               key={days}
@@ -96,7 +114,8 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {days}d
+              {days}
+              {labels.daySuffix}
             </Link>
           ))}
         </nav>
@@ -119,11 +138,11 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
             accessibilityLayer
           >
             <defs>
-              <linearGradient id="signalOpened" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`${gradientId}-opened`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--color-opened)" stopOpacity={0.36} />
                 <stop offset="100%" stopColor="var(--color-opened)" stopOpacity={0.02} />
               </linearGradient>
-              <linearGradient id="signalCompleted" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`${gradientId}-completed`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--color-completed)" stopOpacity={0.24} />
                 <stop offset="100%" stopColor="var(--color-completed)" stopOpacity={0} />
               </linearGradient>
@@ -136,7 +155,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
               tickMargin={10}
               minTickGap={28}
               tickFormatter={(value: string) =>
-                new Date(`${value}T00:00:00`).toLocaleDateString(locale, {
+                formatSignalDate(value, locale, {
                   month: 'short',
                   day: 'numeric',
                 })
@@ -148,7 +167,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) =>
-                    new Date(`${String(value)}T00:00:00`).toLocaleDateString(locale, {
+                    formatSignalDate(String(value), locale, {
                       dateStyle: 'medium',
                     })
                   }
@@ -161,16 +180,18 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
               dataKey="opened"
               stroke="var(--color-opened)"
               strokeWidth={2.5}
-              fill="url(#signalOpened)"
+              fill={`url(#${gradientId}-opened)`}
               activeDot={{ r: 5 }}
+              isAnimationActive={false}
             />
             <Area
               type="monotone"
               dataKey="completed"
               stroke="var(--color-completed)"
               strokeWidth={2.5}
-              fill="url(#signalCompleted)"
+              fill={`url(#${gradientId}-completed)`}
               activeDot={{ r: 5 }}
+              isAnimationActive={false}
             />
           </AreaChart>
         </ChartContainer>

@@ -102,6 +102,23 @@ test('repeated status and owner params choose the first value without throwing',
   assert.deepEqual(parseApplicationFilters({ status: ['bad', 'submitted'], owner: [] }), {});
 });
 
+test('dashboard application filters expand open status and preserve Dubai deadline period', () => {
+  assert.deepEqual(parseApplicationFilters({ view: 'open' }), {
+    status: [
+      'documents_pending',
+      'draft',
+      'ready_to_submit',
+      'submitted',
+      'authority_review',
+      'approved',
+    ],
+  });
+  assert.deepEqual(
+    parseApplicationFilters({ date: '2026-08-12', period: 'morning', eventTypes: 'case' }),
+    { deadlineDate: '2026-08-12', deadlinePeriod: 'morning' },
+  );
+});
+
 test('application targeting accepts one UUID and resets targeted reads to the first page', () => {
   const caseId = '77777777-7777-4777-8777-777777777777';
   assert.deepEqual(parseApplicationFilters({ case: [caseId, 'ignored'], page: '9' }), {

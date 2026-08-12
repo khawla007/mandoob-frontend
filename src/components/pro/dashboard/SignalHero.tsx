@@ -16,20 +16,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
 import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
+import type { WidgetBaseLabels } from './widget-state';
+import { signalLabel } from './widget-format';
 
 type Health = ProDashboardData['health'];
 type Velocity = ProDashboardData['caseVelocity'];
 
 const HEALTH_INPUTS: Array<{
   key: keyof Omit<Health, 'score'>;
-  label: string;
   positive: boolean;
 }> = [
-  { key: 'overdueRatio', label: 'Overdue case ratio', positive: false },
-  { key: 'slaCompletionRate', label: 'Completed within SLA', positive: true },
-  { key: 'blockedRatio', label: 'Long-blocked case ratio', positive: false },
-  { key: 'reminderRate', label: 'Renewal reminders sent on time', positive: true },
-  { key: 'workloadBalance', label: 'Workload balance', positive: true },
+  { key: 'overdueRatio', positive: false },
+  { key: 'slaCompletionRate', positive: true },
+  { key: 'blockedRatio', positive: false },
+  { key: 'reminderRate', positive: true },
+  { key: 'workloadBalance', positive: true },
 ];
 
 type SignalHeroDataProps = {
@@ -39,13 +40,39 @@ type SignalHeroDataProps = {
   tenantSlug: string;
 };
 
-export type SignalHeroProps = WidgetStateProps<SignalHeroDataProps>;
+export type SignalHeroLabels = WidgetBaseLabels & {
+  prioritySignals: string;
+  actionSummary: string;
+  openActionDeck: string;
+  assignWork: string;
+  score: string;
+  scoreAria: string;
+  scoreDetails: string;
+  openScoreDetails: string;
+  dialogTitle: string;
+  dialogDescription: string;
+  higherHealthier: string;
+  lowerHealthier: string;
+  velocity: string;
+  velocityAria: string;
+  daySuffix: string;
+  opened: string;
+  completed: string;
+  overdueRatio: string;
+  slaCompletionRate: string;
+  blockedRatio: string;
+  reminderRate: string;
+  workloadBalance: string;
+};
+export type SignalHeroProps = WidgetStateProps<SignalHeroDataProps, SignalHeroLabels>;
 
 export function SignalHero(props: SignalHeroProps) {
+  const { labels, locale } = props;
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
         testId="signal-hero-skeleton"
+        label={labels.loading}
         className="signal-hero grid min-h-72 gap-8 rounded-3xl p-6 sm:p-8 lg:grid-cols-2"
       >
         <div className="space-y-5">
@@ -64,7 +91,7 @@ export function SignalHero(props: SignalHeroProps) {
     );
   }
   if (props.kind === 'empty' || props.kind === 'error') {
-    return <WidgetMessage status={props} className="min-h-72" />;
+    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-72" />;
   }
 
   const { health, actionCount, caseVelocity, tenantSlug } = props;
@@ -83,20 +110,20 @@ export function SignalHero(props: SignalHeroProps) {
       <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
         <div className="max-w-2xl">
           <p className="mb-4 flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-orange-100 uppercase">
-            <Activity aria-hidden="true" className="size-4" /> Priority signals
+            <Activity aria-hidden="true" className="size-4" /> {labels.prioritySignals}
           </p>
           <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
             <strong className="font-mono text-6xl leading-none font-semibold tracking-[-0.08em] tabular-nums sm:text-7xl">
               {actionCount}
             </strong>
             <p className="max-w-xs pb-1 text-lg leading-snug text-white/78">
-              operational actions are waiting for attention.
+              {labels.actionSummary}
             </p>
           </div>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button asChild className="bg-white text-slate-950 hover:bg-orange-50">
               <Link href={applicationsHref}>
-                <ClipboardList aria-hidden="true" /> Open action deck
+                <ClipboardList aria-hidden="true" /> {labels.openActionDeck}
                 <ArrowUpRight aria-hidden="true" />
               </Link>
             </Button>
@@ -106,7 +133,7 @@ export function SignalHero(props: SignalHeroProps) {
               className="border-white/30 bg-white/5 text-white hover:bg-white/12 hover:text-white"
             >
               <Link href={applicationsHref}>
-                <UserRoundPlus aria-hidden="true" /> Assign work
+                <UserRoundPlus aria-hidden="true" /> {labels.assignWork}
               </Link>
             </Button>
           </div>
@@ -117,35 +144,34 @@ export function SignalHero(props: SignalHeroProps) {
             <DialogTrigger asChild>
               <button
                 type="button"
-                aria-label={`Operations score ${health.score} out of 100. Show calculation details.`}
+                aria-label={signalLabel(labels.scoreAria, { score: health.score })}
                 className="focus-visible:ring-ring/80 rounded-2xl border border-white/16 bg-black/18 p-5 text-start backdrop-blur-sm transition-colors hover:bg-black/25 focus-visible:ring-2 focus-visible:outline-none"
               >
                 <span className="flex items-center gap-2 text-xs font-semibold tracking-wide text-white/70 uppercase">
-                  <Gauge aria-hidden="true" className="size-4 text-orange-300" /> Operations score
+                  <Gauge aria-hidden="true" className="size-4 text-orange-300" /> {labels.score}
                 </span>
                 <span className="mt-3 block font-mono text-4xl font-semibold tabular-nums">
                   {health.score}
                   <span className="text-base font-normal text-white/55">/100</span>
                 </span>
-                <span className="mt-2 block text-xs text-white/60">Open score details</span>
+                <span className="mt-2 block text-xs text-white/60">{labels.openScoreDetails}</span>
               </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Operations score: {health.score}/100</DialogTitle>
-                <DialogDescription>
-                  A transparent blend of five service-health inputs. Lower ratios are better where
-                  noted.
-                </DialogDescription>
+                <DialogTitle>
+                  {signalLabel(labels.dialogTitle, { score: health.score })}
+                </DialogTitle>
+                <DialogDescription>{labels.dialogDescription}</DialogDescription>
               </DialogHeader>
               <dl className="divide-border divide-y">
-                {HEALTH_INPUTS.map(({ key, label, positive }) => (
+                {HEALTH_INPUTS.map(({ key, positive }) => (
                   <div key={key} className="flex items-center justify-between gap-4 py-3">
-                    <dt className="text-muted-foreground text-sm">{label}</dt>
+                    <dt className="text-muted-foreground text-sm">{labels[key]}</dt>
                     <dd className="font-mono text-sm font-semibold tabular-nums">
-                      {health[key].toLocaleString(undefined, { maximumFractionDigits: 1 })}%
+                      {health[key].toLocaleString(locale, { maximumFractionDigits: 1 })}%
                       <span className="sr-only">
-                        ; {positive ? 'higher is healthier' : 'lower is healthier'}
+                        ; {positive ? labels.higherHealthier : labels.lowerHealthier}
                       </span>
                     </dd>
                   </div>
@@ -156,15 +182,20 @@ export function SignalHero(props: SignalHeroProps) {
 
           <div
             role="img"
-            aria-label={`Case velocity summary: ${opened} opened and ${completed} completed across ${caseVelocity.length} days.`}
+            aria-label={signalLabel(labels.velocityAria, {
+              opened,
+              completed,
+              days: caseVelocity.length,
+            })}
             className="rounded-2xl border border-white/16 bg-white/7 p-5 backdrop-blur-sm"
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className="text-xs font-semibold tracking-wide text-white/70 uppercase">
-                Case velocity
+                {labels.velocity}
               </span>
               <span className="font-mono text-xs text-white/60 tabular-nums">
-                {caseVelocity.length}d
+                {caseVelocity.length}
+                {labels.daySuffix}
               </span>
             </div>
             <div aria-hidden="true" className="flex h-16 items-end gap-1">
@@ -183,10 +214,10 @@ export function SignalHero(props: SignalHeroProps) {
             </div>
             <div className="mt-3 flex gap-4 text-xs text-white/72">
               <span className="before:me-1.5 before:inline-block before:size-2 before:rounded-full before:bg-orange-400">
-                {opened} opened
+                {opened} {labels.opened}
               </span>
               <span className="before:me-1.5 before:inline-block before:size-2 before:rounded-full before:bg-teal-300">
-                {completed} completed
+                {completed} {labels.completed}
               </span>
             </div>
           </div>

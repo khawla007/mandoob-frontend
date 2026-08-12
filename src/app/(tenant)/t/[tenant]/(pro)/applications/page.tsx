@@ -50,6 +50,8 @@ export default async function ApplicationsPage({
       assignedTo: filters.assigned_to,
       clientId: filters.client_id,
       caseId: filters.id,
+      deadlineDate: filters.deadlineDate,
+      deadlinePeriod: filters.deadlinePeriod,
       page: requestedPage,
     }),
     getTranslations('pro'),

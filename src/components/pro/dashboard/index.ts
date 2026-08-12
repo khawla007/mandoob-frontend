@@ -1,10 +1,26 @@
-export { ActionDeck, type ActionDeckProps } from './ActionDeck';
-export { CaseVelocityChart, type CaseVelocityChartProps } from './CaseVelocityChart';
-export { CollectionsWaterfall, type CollectionsWaterfallProps } from './CollectionsWaterfall';
-export { DeadlineHeatmap, type DeadlineHeatmapProps } from './DeadlineHeatmap';
-export { RenewalStreams, type RenewalStreamsProps } from './RenewalStreams';
-export { SignalHero, type SignalHeroProps } from './SignalHero';
-export { SignalKpis, type SignalKpisProps } from './SignalKpis';
-export { TeamSignal, type TeamSignalProps } from './TeamSignal';
+export { ActionDeck, type ActionDeckLabels, type ActionDeckProps } from './ActionDeck';
+export {
+  CaseVelocityChart,
+  type CaseVelocityChartLabels,
+  type CaseVelocityChartProps,
+} from './CaseVelocityChart';
+export {
+  CollectionsWaterfall,
+  type CollectionsWaterfallLabels,
+  type CollectionsWaterfallProps,
+} from './CollectionsWaterfall';
+export {
+  DeadlineHeatmap,
+  type DeadlineHeatmapLabels,
+  type DeadlineHeatmapProps,
+} from './DeadlineHeatmap';
+export {
+  RenewalStreams,
+  type RenewalStreamsLabels,
+  type RenewalStreamsProps,
+} from './RenewalStreams';
+export { SignalHero, type SignalHeroLabels, type SignalHeroProps } from './SignalHero';
+export { SignalKpis, type SignalKpisLabels, type SignalKpisProps } from './SignalKpis';
+export { TeamSignal, type TeamSignalLabels, type TeamSignalProps } from './TeamSignal';
 export { dashboardHref, type DashboardTarget } from './dashboard-links';
-export { type EmptyAction, type WidgetStateProps } from './widget-state';
+export { type EmptyAction, type WidgetBaseLabels, type WidgetStateProps } from './widget-state';

@@ -5,15 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewInvoiceDialog } from '@/components/pro/NewInvoiceDialog';
 import { InvoicesTable } from '@/components/pro/InvoicesTable';
 import { listClientsForPro } from '@/lib/data/clients-list';
-import { listInvoicesForTenant } from '@/lib/data/invoices';
+import { listInvoicesForPaymentView } from '@/lib/data/invoices';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
-import {
-  filterInvoicesForPaymentView,
-  parsePaymentView,
-  paymentBusinessDate,
-  paymentViewHref,
-  type PaymentView,
-} from './page-logic';
+import { parsePaymentView, paymentViewHref, type PaymentView } from './page-logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,20 +24,20 @@ export default async function ProPaymentsPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<{ view?: string | string[]; page?: string | string[] }>;
 }) {
   const { tenant: slug } = await params;
   const search = await searchParams;
   const view = parsePaymentView(search.view);
+  const rawPage = Array.isArray(search.page) ? search.page[0] : search.page;
+  const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
 
-  const [clients, invoices] = await Promise.all([
+  const [clients, invoicePage] = await Promise.all([
     listClientsForPro({ tenantId: tenant.id }),
-    listInvoicesForTenant(tenant.id),
+    listInvoicesForPaymentView(tenant.id, { view, page }),
   ]);
-  const today = paymentBusinessDate();
-  const filteredInvoices = filterInvoicesForPaymentView(invoices, view, today);
   const activeView = PAYMENT_VIEWS.find((item) => item.value === view)!;
 
   return (
@@ -90,9 +84,45 @@ export default async function ProPaymentsPage({
         <CardContent>
           <InvoicesTable
             slug={tenant.slug}
-            rows={filteredInvoices}
-            emptyMessage={`No ${activeView.label.toLocaleLowerCase()} invoices match this view.`}
+            rows={invoicePage.rows}
+            emptyMessage={`No ${activeView.label.toLocaleLowerCase('en-US')} invoices match this view.`}
           />
+          {invoicePage.total > invoicePage.pageSize ? (
+            <nav
+              aria-label="Invoice pages"
+              className="mt-4 flex items-center justify-between text-sm"
+            >
+              {page > 1 ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link
+                    href={`${paymentViewHref(tenant.slug, view)}${view === 'all' ? '?' : '&'}page=${page - 1}`}
+                  >
+                    Previous
+                  </Link>
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled>
+                  Previous
+                </Button>
+              )}
+              <span>
+                {page} / {Math.ceil(invoicePage.total / invoicePage.pageSize)}
+              </span>
+              {page * invoicePage.pageSize < invoicePage.total ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link
+                    href={`${paymentViewHref(tenant.slug, view)}${view === 'all' ? '?' : '&'}page=${page + 1}`}
+                  >
+                    Next
+                  </Link>
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled>
+                  Next
+                </Button>
+              )}
+            </nav>
+          ) : null}
         </CardContent>
       </Card>
     </div>

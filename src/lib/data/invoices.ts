@@ -3,6 +3,8 @@ import { enqueueEmail } from '@/lib/mail/send';
 import { formatMoney } from '@/lib/format/money';
 import { isReceiptEligible } from '@/lib/pdf/receipt';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { classifyCollectionInvoiceIds, signalBusinessDate } from './signal-finance';
+import type { PaymentSignalView } from '@/lib/signal-studio-filters';
 
 export type LinkedEntity = {
   type: 'renewal' | 'document_request' | 'manual';
@@ -39,6 +41,140 @@ export type ProInvoiceRow = {
   paidAt: string | null;
   createdAt: string;
 };
+
+export type PaymentInvoicePage = {
+  rows: ProInvoiceRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  currency: string;
+};
+
+const PAYMENT_QUERY_BATCH_SIZE = 500;
+const PAYMENT_INVOICE_PAGE_SIZE = 50;
+type PaymentFilterInvoice = {
+  id: string;
+  tenant_id: string;
+  client_id: string;
+  customer_profile_id: string | null;
+  label: string;
+  amount_minor: number;
+  currency: string;
+  status: string;
+  due_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+};
+type PaymentFilterPayment = {
+  id: string;
+  tenant_id: string;
+  invoice_id: string;
+  amount_minor: number;
+  currency: string;
+  status: string;
+  received_at: string | null;
+};
+type PaymentFilterRefund = {
+  id: string;
+  tenant_id: string;
+  payment_id: string;
+  amount_minor: number;
+  status: string;
+  created_at: string;
+};
+
+async function collectPaymentQueryPages<T>(
+  load: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message?: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAYMENT_QUERY_BATCH_SIZE) {
+    const result = await load(from, from + PAYMENT_QUERY_BATCH_SIZE - 1);
+    if (result.error) throw new Error(result.error.message ?? 'Could not load payment filter data');
+    const batch = result.data ?? [];
+    rows.push(...batch);
+    if (batch.length < PAYMENT_QUERY_BATCH_SIZE) return rows;
+  }
+}
+
+export async function listInvoicesForPaymentView(
+  tenantId: string,
+  options: { view: PaymentSignalView | 'all'; page?: number; today?: string } = { view: 'all' },
+): Promise<PaymentInvoicePage> {
+  const admin = createSupabaseServiceRoleClient();
+  const [invoices, payments, refunds] = await Promise.all([
+    collectPaymentQueryPages<PaymentFilterInvoice>((from, to) =>
+      admin
+        .from('invoices')
+        .select(
+          'id, tenant_id, client_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
+        )
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .range(from, to),
+    ),
+    collectPaymentQueryPages<PaymentFilterPayment>((from, to) =>
+      admin
+        .from('payments')
+        .select('id, tenant_id, invoice_id, amount_minor, currency, status, received_at')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .range(from, to),
+    ),
+    collectPaymentQueryPages<PaymentFilterRefund>((from, to) =>
+      admin
+        .from('refunds')
+        .select('id, tenant_id, payment_id, amount_minor, status, created_at')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .range(from, to),
+    ),
+  ]);
+  const classification = classifyCollectionInvoiceIds({
+    tenantId,
+    invoices,
+    payments,
+    refunds,
+    today: options.today ?? signalBusinessDate(),
+  });
+  const ids =
+    options.view === 'all'
+      ? null
+      : classification[options.view === 'due-soon' ? 'dueSoon' : options.view];
+  const filtered =
+    options.view === 'all'
+      ? invoices
+      : invoices.filter((row) => row.currency === classification.currency && ids?.has(row.id));
+  const page = Math.max(1, Math.trunc(options.page ?? 1));
+  const start = (page - 1) * PAYMENT_INVOICE_PAGE_SIZE;
+  const selected = filtered.slice(start, start + PAYMENT_INVOICE_PAGE_SIZE);
+  const clientNames = await getClientNames(
+    admin,
+    Array.from(new Set(selected.map((row) => row.client_id))),
+  );
+  return {
+    rows: selected.map((row) => ({
+      id: row.id,
+      clientId: row.client_id,
+      clientName: clientNames.get(row.client_id) ?? 'Unknown client',
+      customerProfileId: row.customer_profile_id ?? null,
+      label: row.label,
+      amount: formatMoney(row.amount_minor, row.currency),
+      amountMinor: row.amount_minor,
+      currency: row.currency,
+      status: row.status,
+      dueAt: row.due_at ?? null,
+      paidAt: row.paid_at ?? null,
+      createdAt: row.created_at,
+    })),
+    total: filtered.length,
+    page,
+    pageSize: PAYMENT_INVOICE_PAGE_SIZE,
+    currency: classification.currency,
+  };
+}
 
 export type ReceiptPayload = {
   tenantName: string;

@@ -1,10 +1,24 @@
-import { serviceCaseFilterSchema } from '@/lib/validation/service-case';
+import { serviceCaseFilterSchema, serviceCaseStatuses } from '@/lib/validation/service-case';
+import { applicationOpenStatuses, parseApplicationSignalFilter } from '@/lib/signal-studio-filters';
 
 export type ApplicationSearchParams = {
   case?: string | string[];
   status?: string | string[];
   owner?: string | string[];
   page?: string | string[];
+  view?: string | string[];
+  date?: string | string[];
+  period?: string | string[];
+  eventTypes?: string | string[];
+};
+
+type ParsedApplicationFilters = {
+  id?: string;
+  status?: Array<(typeof serviceCaseStatuses)[number]>;
+  assigned_to?: string;
+  client_id?: string;
+  deadlineDate?: string;
+  deadlinePeriod?: 'morning' | 'afternoon';
 };
 
 function first(value: string | string[] | undefined): string | undefined {
@@ -18,23 +32,42 @@ export function parseApplicationPage(value: string | string[] | undefined): numb
 
 export function applicationPageHref(
   slug: string,
-  filters: { id?: string; status?: string[]; assigned_to?: string },
+  filters: {
+    id?: string;
+    status?: string[];
+    assigned_to?: string;
+    deadlineDate?: string;
+    deadlinePeriod?: 'morning' | 'afternoon';
+  },
   page: number,
 ): string {
   const params = new URLSearchParams();
   if (filters.id) params.set('case', filters.id);
   if (filters.status?.length) params.set('status', filters.status.join(','));
   if (filters.assigned_to) params.set('owner', filters.assigned_to);
+  if (filters.deadlineDate && filters.deadlinePeriod) {
+    params.set('date', filters.deadlineDate);
+    params.set('period', filters.deadlinePeriod);
+    params.set('eventTypes', 'case');
+  }
   params.set('page', String(page));
-  return `/t/${slug}/applications?${params.toString()}`;
+  return `/t/${encodeURIComponent(slug)}/applications?${params.toString()}`;
 }
 
-export function parseApplicationFilters(search: ApplicationSearchParams) {
+export function parseApplicationFilters(search: ApplicationSearchParams): ParsedApplicationFilters {
+  const signal = parseApplicationSignalFilter(search);
   const status = first(search.status)?.split(',').filter(Boolean);
   const parsed = serviceCaseFilterSchema.safeParse({
     ...(first(search.case) ? { id: first(search.case) } : {}),
     ...(status?.length ? { status } : {}),
     ...(first(search.owner) ? { assigned_to: first(search.owner) } : {}),
   });
-  return parsed.success ? parsed.data : {};
+  if (!parsed.success) return {};
+  if ('view' in signal && signal.view === 'open') {
+    return { ...parsed.data, status: [...applicationOpenStatuses] };
+  }
+  if ('date' in signal && signal.date) {
+    return { ...parsed.data, deadlineDate: signal.date, deadlinePeriod: signal.period };
+  }
+  return parsed.data;
 }

@@ -13,18 +13,37 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
-import { dashboardHref } from './dashboard-links';
-import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
+import {
+  paymentSignalHref,
+  applicationSignalHref,
+  renewalSignalHref,
+} from '@/lib/signal-studio-filters';
+import { signalLabel } from './widget-format';
+import {
+  WidgetLoading,
+  WidgetMessage,
+  type WidgetBaseLabels,
+  type WidgetStateProps,
+} from './widget-state';
 
 type Kpis = ProDashboardData['kpis'];
 
 type SignalKpisDataProps = {
   kpis: Kpis;
   tenantSlug: string;
-  locale?: string;
 };
 
-export type SignalKpisProps = WidgetStateProps<SignalKpisDataProps>;
+export type SignalKpisLabels = WidgetBaseLabels & {
+  activeClients: string;
+  activeClientsHelper: string;
+  openCases: string;
+  openCasesHelper: string;
+  renewalsDue: string;
+  renewalsHelper: string;
+  collections: string;
+  collectionsHelper: string;
+};
+export type SignalKpisProps = WidgetStateProps<SignalKpisDataProps, SignalKpisLabels>;
 
 type KpiDefinition = {
   label: string;
@@ -36,10 +55,12 @@ type KpiDefinition = {
 };
 
 export function SignalKpis(props: SignalKpisProps) {
+  const { labels } = props;
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
         testId="signal-kpis-skeleton"
+        label={labels.loading}
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
         {Array.from({ length: 4 }, (_, index) => (
@@ -55,7 +76,8 @@ export function SignalKpis(props: SignalKpisProps) {
       </WidgetLoading>
     );
   }
-  if (props.kind === 'empty' || props.kind === 'error') return <WidgetMessage status={props} />;
+  if (props.kind === 'empty' || props.kind === 'error')
+    return <WidgetMessage status={props} retryLabel={labels.retry} />;
 
   const { kpis, tenantSlug, locale } = props;
 
@@ -67,34 +89,41 @@ export function SignalKpis(props: SignalKpisProps) {
   });
   const definitions: KpiDefinition[] = [
     {
-      label: 'Active clients',
+      label: labels.activeClients,
       value: integer.format(kpis.activeClients),
-      helper: `${kpis.activeClientsChange >= 0 ? '+' : ''}${integer.format(kpis.activeClientsChange)} this month`,
+      helper: signalLabel(labels.activeClientsHelper, {
+        change: `${kpis.activeClientsChange >= 0 ? '+' : ''}${integer.format(kpis.activeClientsChange)}`,
+      }),
       href: `/t/${encodeURIComponent(tenantSlug)}/clients?status=active`,
       icon: UsersRound,
       tone: 'signal-kpi--info',
     },
     {
-      label: 'Open cases',
+      label: labels.openCases,
       value: integer.format(kpis.openCases),
-      helper: `${integer.format(kpis.movingCases)} moving · ${integer.format(kpis.blockedCases)} blocked`,
-      href: dashboardHref(tenantSlug, 'applications', { status: 'open' }),
+      helper: signalLabel(labels.openCasesHelper, {
+        moving: integer.format(kpis.movingCases),
+        blocked: integer.format(kpis.blockedCases),
+      }),
+      href: applicationSignalHref(tenantSlug, { view: 'open' }),
       icon: BriefcaseBusiness,
       tone: 'signal-kpi--orange',
     },
     {
-      label: 'Renewals due',
+      label: labels.renewalsDue,
       value: integer.format(kpis.renewalsDue30d),
-      helper: `${integer.format(kpis.renewalsDue7d)} due within 7 days`,
-      href: dashboardHref(tenantSlug, 'renewals', { days: '30' }),
+      helper: signalLabel(labels.renewalsHelper, { count: integer.format(kpis.renewalsDue7d) }),
+      href: renewalSignalHref(tenantSlug, { tab: 'active', days: 30 }),
       icon: Clock3,
       tone: 'signal-kpi--warning',
     },
     {
-      label: 'Collections',
+      label: labels.collections,
       value: money.format(kpis.collectedMinor / 100),
-      helper: `${kpis.collectionRate.toLocaleString(locale, { maximumFractionDigits: 1 })}% of billed value`,
-      href: dashboardHref(tenantSlug, 'payments', { period: 'month', status: 'collected' }),
+      helper: signalLabel(labels.collectionsHelper, {
+        rate: kpis.collectionRate.toLocaleString(locale, { maximumFractionDigits: 1 }),
+      }),
+      href: paymentSignalHref(tenantSlug, { view: 'paid' }),
       icon: CircleDollarSign,
       tone: 'signal-kpi--success',
     },

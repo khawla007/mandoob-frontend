@@ -5,20 +5,26 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export type EmptyAction = { label: string; href: string };
+export type WidgetBaseLabels = { loading: string; retry: string };
 
 type WidgetNonDataState =
   | { kind: 'loading' }
   | { kind: 'empty'; message: string; emptyAction: EmptyAction }
   | { kind: 'error'; message: string; retryHref?: string };
 
-export type WidgetStateProps<DataProps> = ({ kind?: 'data' } & DataProps) | WidgetNonDataState;
+export type WidgetStateProps<DataProps, Labels extends WidgetBaseLabels> = {
+  locale: string;
+  labels: Labels;
+} & (({ kind?: 'data' } & DataProps) | WidgetNonDataState);
 
 export function WidgetMessage({
   status,
   className,
+  retryLabel,
 }: {
   status: Exclude<WidgetNonDataState, { kind: 'loading' }>;
   className?: string;
+  retryLabel: string;
 }) {
   const isError = status.kind === 'error';
   const Icon = isError ? AlertTriangle : Inbox;
@@ -44,7 +50,7 @@ export function WidgetMessage({
           href={status.retryHref}
           className="text-foreground focus-visible:ring-ring rounded-sm text-sm font-semibold underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none"
         >
-          Retry
+          {retryLabel}
         </Link>
       ) : null}
     </div>
@@ -55,18 +61,22 @@ export function WidgetLoading({
   children,
   className,
   testId,
+  label,
 }: {
   children: ReactNode;
   className?: string;
   testId: string;
+  label: string;
 }) {
   return (
     <div
-      aria-label="Loading"
+      role="status"
+      aria-label={label}
       aria-busy="true"
       data-testid={testId}
       className={cn('animate-pulse motion-reduce:animate-none', className)}
     >
+      <span className="sr-only">{label}</span>
       {children}
     </div>
   );

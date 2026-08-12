@@ -6,8 +6,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
-import { dashboardHref } from './dashboard-links';
-import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
+import { applicationSignalHref } from '@/lib/signal-studio-filters';
+import { formatSignalDate, signalLabel } from './widget-format';
+import {
+  WidgetLoading,
+  WidgetMessage,
+  type WidgetBaseLabels,
+  type WidgetStateProps,
+} from './widget-state';
 
 type Period = 'morning' | 'afternoon';
 type EventType = ProDashboardData['deadlineEvents'][number]['eventType'];
@@ -17,10 +23,24 @@ type DeadlineHeatmapDataProps = {
   intensity: ProDashboardData['deadlineIntensity'];
   events: ProDashboardData['deadlineEvents'];
   tenantSlug: string;
-  locale?: string;
 };
 
-export type DeadlineHeatmapProps = WidgetStateProps<DeadlineHeatmapDataProps>;
+export type DeadlineHeatmapLabels = WidgetBaseLabels & {
+  empty: string;
+  openApplications: string;
+  title: string;
+  description: string;
+  gridLabel: string;
+  cellLabel: string;
+  noEventTypes: string;
+  morning: string;
+  afternoon: string;
+  caseEvent: string;
+};
+export type DeadlineHeatmapProps = WidgetStateProps<
+  DeadlineHeatmapDataProps,
+  DeadlineHeatmapLabels
+>;
 
 function heatLevel(count: number, maximum: number): string {
   if (count === 0) return 'bg-muted/35';
@@ -31,10 +51,12 @@ function heatLevel(count: number, maximum: number): string {
 }
 
 export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
+  const { labels } = props;
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
         testId="signal-heatmap-skeleton"
+        label={labels.loading}
         className="min-h-80 space-y-5 rounded-2xl border p-5"
       >
         <div className="space-y-2">
@@ -50,7 +72,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
     );
   }
   if (props.kind === 'empty' || props.kind === 'error')
-    return <WidgetMessage status={props} className="min-h-80" />;
+    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-80" />;
 
   const { intensity, events, tenantSlug, locale } = props;
 
@@ -58,11 +80,16 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
     (['morning', 'afternoon'] as const).map((period) => ({
       date: day.date,
       period,
-      count: day[period],
+      count: events.filter(
+        (event) => event.date === day.date && event.period === period && event.eventType === 'case',
+      ).length,
       eventTypes: Array.from(
         new Set(
           events
-            .filter((event) => event.date === day.date && event.period === period)
+            .filter(
+              (event) =>
+                event.date === day.date && event.period === period && event.eventType === 'case',
+            )
             .map((event) => event.eventType),
         ),
       ),
@@ -74,12 +101,13 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
       <WidgetMessage
         status={{
           kind: 'empty',
-          message: 'No submission, appointment, or renewal deadlines fall in this range.',
+          message: labels.empty,
           emptyAction: {
-            label: 'Open applications',
+            label: labels.openApplications,
             href: `/t/${encodeURIComponent(tenantSlug)}/applications`,
           },
         }}
+        retryLabel={labels.retry}
         className="min-h-80"
       />
     );
@@ -87,11 +115,16 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
   const maximum = Math.max(...cells.map((cell) => cell.count));
   const shownDates = intensity.slice(0, 14);
   const label = (cell: DeadlineCell) => {
-    const date = new Date(`${cell.date}T00:00:00`).toLocaleDateString(locale, {
+    const date = formatSignalDate(cell.date, locale, {
       dateStyle: 'full',
     });
-    const types = cell.eventTypes.length ? cell.eventTypes.join(', ') : 'no event types';
-    return `${date}, ${cell.period}, ${cell.count} deadline${cell.count === 1 ? '' : 's'}, ${types}`;
+    const types = cell.eventTypes.length ? labels.caseEvent : labels.noEventTypes;
+    return signalLabel(labels.cellLabel, {
+      date,
+      period: labels[cell.period],
+      count: cell.count,
+      types,
+    });
   };
 
   return (
@@ -99,17 +132,15 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CalendarClock aria-hidden="true" className="size-4 text-[var(--signal-warning)]" />
-          Deadline intensity
+          {labels.title}
         </CardTitle>
-        <CardDescription>
-          Submission, appointment, renewal, document, and invoice pressure
-        </CardDescription>
+        <CardDescription>{labels.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div
           className="hidden grid-cols-[auto_repeat(14,minmax(1.75rem,1fr))] gap-1.5 md:grid"
           role="grid"
-          aria-label="Deadline intensity by date and period"
+          aria-label={labels.gridLabel}
         >
           <div role="row" className="col-span-full grid grid-cols-subgrid gap-1.5">
             <span role="columnheader" />
@@ -119,7 +150,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                 role="columnheader"
                 className="text-muted-foreground overflow-hidden text-center text-[10px]"
               >
-                {new Date(`${day.date}T00:00:00`).toLocaleDateString(locale, {
+                {formatSignalDate(day.date, locale, {
                   weekday: 'narrow',
                   day: 'numeric',
                 })}
@@ -132,7 +163,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                 role="rowheader"
                 className="text-muted-foreground self-center pe-2 text-xs capitalize"
               >
-                {period}
+                {labels[period]}
               </span>
               {shownDates.map((day) => {
                 const cell = cells.find(
@@ -141,10 +172,10 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                 return (
                   <span key={`${day.date}-${period}`} role="gridcell">
                     <Link
-                      href={dashboardHref(tenantSlug, 'applications', {
+                      href={applicationSignalHref(tenantSlug, {
                         date: day.date,
                         period,
-                        eventTypes: cell.eventTypes.join(','),
+                        eventTypes: 'case',
                       })}
                       aria-label={label(cell)}
                       className={cn(
@@ -164,24 +195,24 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
           {activeCells.map((cell) => (
             <li key={`${cell.date}-${cell.period}`}>
               <Link
-                href={dashboardHref(tenantSlug, 'applications', {
+                href={applicationSignalHref(tenantSlug, {
                   date: cell.date,
                   period: cell.period,
-                  eventTypes: cell.eventTypes.join(','),
+                  eventTypes: 'case',
                 })}
                 aria-label={label(cell)}
                 className="focus-visible:ring-ring flex items-center justify-between gap-3 rounded-md py-3 focus-visible:ring-2 focus-visible:outline-none"
               >
                 <span>
                   <span className="block text-sm font-medium">
-                    {new Date(`${cell.date}T00:00:00`).toLocaleDateString(locale, {
+                    {formatSignalDate(cell.date, locale, {
                       weekday: 'short',
                       month: 'short',
                       day: 'numeric',
                     })}
                   </span>
                   <span className="text-muted-foreground text-xs capitalize">
-                    {cell.period} · {cell.eventTypes.join(', ')}
+                    {labels[cell.period]} · {labels.caseEvent}
                   </span>
                 </span>
                 <strong className="font-mono text-sm tabular-nums">{cell.count}</strong>

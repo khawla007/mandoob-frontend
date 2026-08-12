@@ -12,18 +12,37 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
-import { dashboardHref } from './dashboard-links';
-import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
+import { paymentSignalHref } from '@/lib/signal-studio-filters';
+import { signalLabel } from './widget-format';
+import {
+  WidgetLoading,
+  WidgetMessage,
+  type WidgetBaseLabels,
+  type WidgetStateProps,
+} from './widget-state';
 
 type CollectionsWaterfallDataProps = {
   finance: ProDashboardData['finance'];
   tenantSlug: string;
-  locale?: string;
+};
+
+export type CollectionsWaterfallLabels = WidgetBaseLabels & {
+  billed: string;
+  paid: string;
+  dueSoon: string;
+  overdue: string;
+  barLabel: string;
+  empty: string;
+  openPayments: string;
+  amount: string;
+  title: string;
+  description: string;
+  summary: string;
 };
 
 export type CollectionsWaterfallProps = {
   canViewFinance: boolean;
-} & WidgetStateProps<CollectionsWaterfallDataProps>;
+} & WidgetStateProps<CollectionsWaterfallDataProps, CollectionsWaterfallLabels>;
 
 type CollectionDatum = {
   key: string;
@@ -35,12 +54,14 @@ type CollectionDatum = {
 };
 
 export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
+  const { labels } = props;
   const { canViewFinance } = props;
   if (!canViewFinance) return null;
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
         testId="signal-chart-skeleton"
+        label={labels.loading}
         className="min-h-96 space-y-5 rounded-2xl border p-5"
       >
         <div className="space-y-2">
@@ -57,7 +78,7 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
     );
   }
   if (props.kind === 'empty' || props.kind === 'error') {
-    return <WidgetMessage status={props} className="min-h-96" />;
+    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-96" />;
   }
 
   const { finance, tenantSlug, locale } = props;
@@ -71,33 +92,38 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
   const input = [
     {
       key: 'billed',
-      label: 'Billed',
+      label: labels.billed,
       valueMinor: finance.billedMinor,
       fill: 'var(--signal-info)',
     },
     {
       key: 'paid',
-      label: 'Paid',
+      label: labels.paid,
       valueMinor: finance.paidMinor,
       fill: 'var(--signal-success)',
     },
     {
       key: 'due-soon',
-      label: 'Due soon',
+      label: labels.dueSoon,
       valueMinor: finance.dueSoonMinor,
       fill: 'var(--signal-warning)',
     },
     {
       key: 'overdue',
-      label: 'Overdue',
+      label: labels.overdue,
       valueMinor: finance.overdueMinor,
       fill: 'var(--signal-urgent)',
     },
   ];
   const data: CollectionDatum[] = input.map((item) => ({
     ...item,
-    href: dashboardHref(tenantSlug, 'payments', { view: item.key }),
-    accessibleLabel: `${item.label} bar, ${formatMoney.format(item.valueMinor / 100)}. Open filtered ${item.label.toLocaleLowerCase()} invoices.`,
+    href: paymentSignalHref(tenantSlug, {
+      view: item.key as 'billed' | 'paid' | 'due-soon' | 'overdue',
+    }),
+    accessibleLabel: signalLabel(labels.barLabel, {
+      category: item.label,
+      amount: formatMoney.format(item.valueMinor / 100),
+    }),
   }));
   const total = data.reduce((sum, item) => sum + item.valueMinor, 0);
   const maximum = Math.max(1, ...data.map((item) => item.valueMinor));
@@ -106,30 +132,26 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
       <WidgetMessage
         status={{
           kind: 'empty',
-          message: 'No invoices or collection activity exist for this period.',
-          emptyAction: { label: 'Open payments', href: paymentsHref },
+          message: labels.empty,
+          emptyAction: { label: labels.openPayments, href: paymentsHref },
         }}
+        retryLabel={labels.retry}
         className="min-h-96"
       />
     );
   }
   const config = {
-    valueMinor: { label: 'Amount', color: 'var(--brand-accent)' },
+    valueMinor: { label: labels.amount, color: 'var(--brand-accent)' },
   } satisfies ChartConfig;
 
   return (
     <Card className="signal-panel">
       <CardHeader>
-        <CardTitle>Collections waterfall</CardTitle>
-        <CardDescription>Billed, collected, approaching, and overdue value</CardDescription>
+        <CardTitle>{labels.title}</CardTitle>
+        <CardDescription>{labels.description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer
-          config={config}
-          className="aspect-auto h-64 w-full"
-          role="img"
-          aria-label={`Collections in ${finance.currency}: ${data.map((item) => `${item.label} ${formatMoney.format(item.valueMinor / 100)}`).join(', ')}.`}
-        >
+        <ChartContainer config={config} className="aspect-auto h-64 w-full" aria-hidden="true">
           <BarChart
             data={data}
             margin={{ left: 2, right: 8, top: 8, bottom: 0 }}
@@ -154,34 +176,43 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
                 />
               }
             />
-            <Bar dataKey="valueMinor" maxBarSize={54} radius={[8, 8, 2, 2]}>
+            <Bar
+              dataKey="valueMinor"
+              maxBarSize={54}
+              radius={[8, 8, 2, 2]}
+              isAnimationActive={false}
+            >
               {data.map((item) => (
                 <Cell key={item.key} fill={item.fill} />
               ))}
             </Bar>
           </BarChart>
         </ChartContainer>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div
+          role="list"
+          aria-label={signalLabel(labels.summary, { currency: finance.currency })}
+          className="mt-5 space-y-3"
+        >
           {data.map((item) => (
             <a
               key={item.key}
               href={item.href}
               aria-label={item.accessibleLabel}
-              className="hover:bg-muted focus-visible:ring-ring rounded-lg border p-2.5 focus-visible:ring-2 focus-visible:outline-none"
+              role="listitem"
+              className="signal-collection-bar focus-visible:ring-ring group block rounded-md py-1 focus-visible:ring-2 focus-visible:outline-none"
             >
-              <span
-                aria-hidden="true"
-                className="bg-muted mb-2 block h-1.5 overflow-hidden rounded-full"
-              >
+              <span className="mb-1.5 flex items-center justify-between gap-4 text-xs">
+                <span className="font-medium">{item.label}</span>
+                <strong className="font-mono tabular-nums">
+                  {formatMoney.format(item.valueMinor / 100)}
+                </strong>
+              </span>
+              <span aria-hidden="true" className="bg-muted block h-8 overflow-hidden rounded-md">
                 <span
-                  className="block h-full rounded-full"
+                  className="block h-full min-w-1 rounded-md transition-[width,filter] group-hover:brightness-110 motion-reduce:transition-none"
                   style={{ width: `${(item.valueMinor / maximum) * 100}%`, background: item.fill }}
                 />
               </span>
-              <span className="text-muted-foreground flex items-center text-xs">{item.label}</span>
-              <strong className="mt-1 block font-mono text-xs tabular-nums">
-                {formatMoney.format(item.valueMinor / 100)}
-              </strong>
             </a>
           ))}
         </div>

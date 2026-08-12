@@ -3,7 +3,12 @@ export type RenewalTab = 'active' | 'completed' | 'cancelled';
 export type RenewalSearchParams = {
   tab?: string | string[];
   renewal?: string | string[];
+  target?: string | string[];
+  type?: string | string[];
+  days?: string | string[];
 };
+
+import { parseRenewalSignalFilter } from '@/lib/signal-studio-filters';
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -23,9 +28,14 @@ export function parseRenewalTab(raw: string | undefined): RenewalTab {
 export function parseRenewalSearch(search: RenewalSearchParams): {
   tab: RenewalTab;
   renewalId: string | undefined;
+  type?: ReturnType<typeof parseRenewalSignalFilter>['type'];
+  days?: ReturnType<typeof parseRenewalSignalFilter>['days'];
 } {
+  const signal = parseRenewalSignalFilter(search);
   return {
     tab: parseRenewalTab(first(search.tab)),
-    renewalId: uuid(first(search.renewal)),
+    renewalId: uuid(first(search.target) ?? first(search.renewal)),
+    ...(signal.type ? { type: signal.type } : {}),
+    ...(signal.days ? { days: signal.days } : {}),
   };
 }

@@ -1,5 +1,6 @@
 import 'server-only';
 import { formatMoney } from '@/lib/format/money';
+import { signalBusinessDate, signalReportingCurrency } from './signal-finance';
 
 export type ProFinanceInvoiceInput = {
   id: string;
@@ -94,8 +95,6 @@ export type ProFinanceDashboard = {
 
 const COLLECTED_PAYMENT_STATUSES = new Set(['succeeded', 'refunded', 'partially_refunded']);
 const FAILED_PAYMENT_STATUSES = new Set(['failed', 'abandoned']);
-const DEFAULT_CURRENCY = 'AED';
-const BUSINESS_TIME_ZONE = 'Asia/Dubai';
 
 export function calculateProFinanceDashboard(args: {
   tenantId: string;
@@ -333,26 +332,12 @@ function latestIso(current: string | null, candidate: string): string {
 }
 
 function businessDate(date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: BUSINESS_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
+  return signalBusinessDate(date);
 }
 
 function reportingCurrency(
   invoices: ProFinanceInvoiceInput[],
   payments: ProFinancePaymentInput[],
 ): string {
-  const counts = new Map<string, number>();
-  for (const row of invoices) counts.set(row.currency, (counts.get(row.currency) ?? 0) + 1);
-  for (const row of payments) counts.set(row.currency, (counts.get(row.currency) ?? 0) + 1);
-  if (counts.has(DEFAULT_CURRENCY)) return DEFAULT_CURRENCY;
-  return (
-    Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ??
-    DEFAULT_CURRENCY
-  );
+  return signalReportingCurrency(invoices, payments);
 }

@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  applicationSignalHref,
+  applicationDeadlineQuery,
+  parseApplicationSignalFilter,
+  parsePaymentSignalFilter,
+  parseRenewalSignalFilter,
+  paymentSignalHref,
+  renewalSignalHref,
+} from './signal-studio-filters';
+
+test('application signal URLs round-trip semantic open and Dubai deadline filters', () => {
+  assert.deepEqual(parseApplicationSignalFilter({ view: 'open' }), { view: 'open' });
+  const deadline = { date: '2026-08-12', period: 'morning' as const, eventTypes: 'case' as const };
+  const href = applicationSignalHref('north star', deadline);
+  assert.equal(href, '/t/north%20star/applications?date=2026-08-12&period=morning&eventTypes=case');
+  assert.deepEqual(
+    parseApplicationSignalFilter(
+      Object.fromEntries(new URL(href, 'https://mandoob.test').searchParams),
+    ),
+    deadline,
+  );
+  assert.deepEqual(parseApplicationSignalFilter({ date: 'bad', period: 'night' }), {});
+});
+
+test('application deadline query maps Dubai morning and afternoon without overlap', () => {
+  assert.equal(
+    applicationDeadlineQuery('2026-08-12', 'morning'),
+    'and(sla_due_at.gte.2026-08-11T20:00:00.000Z,sla_due_at.lt.2026-08-12T08:00:00.000Z)',
+  );
+  assert.equal(
+    applicationDeadlineQuery('2026-08-12', 'afternoon'),
+    'and(sla_due_at.gte.2026-08-12T08:00:00.000Z,sla_due_at.lt.2026-08-12T20:00:00.000Z),and(sla_due_at.is.null,due_at.eq.2026-08-12)',
+  );
+});
+
+test('renewal signal URLs parse type, day window, target UUID, and active tab together', () => {
+  const target = '88888888-8888-4888-8888-888888888888';
+  assert.deepEqual(parseRenewalSignalFilter({ tab: 'active', type: 'visa', days: '30', target }), {
+    tab: 'active',
+    type: 'visa',
+    days: 30,
+    renewalId: target,
+  });
+  assert.equal(
+    renewalSignalHref('acme', { tab: 'active', renewalId: target }),
+    `/t/acme/renewals?tab=active&target=${target}`,
+  );
+  assert.equal(
+    renewalSignalHref('acme', { tab: 'active', type: 'eid', days: 90 }),
+    '/t/acme/renewals?tab=active&type=eid&days=90',
+  );
+  assert.deepEqual(parseRenewalSignalFilter({ type: 'passport', days: '45' }), { tab: 'active' });
+});
+
+test('payment signal URLs emit and consume only supported collection views', () => {
+  for (const view of ['billed', 'paid', 'due-soon', 'overdue'] as const) {
+    const href = paymentSignalHref('acme', { view });
+    assert.equal(href, `/t/acme/payments?view=${view}`);
+    assert.deepEqual(
+      parsePaymentSignalFilter(
+        Object.fromEntries(new URL(href, 'https://mandoob.test').searchParams),
+      ),
+      { view },
+    );
+  }
+  assert.deepEqual(parsePaymentSignalFilter({ view: 'collected', period: 'month' }), {
+    view: 'all',
+  });
+});

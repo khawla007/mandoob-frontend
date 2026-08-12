@@ -105,7 +105,8 @@ function assertPro(role: string): asserts role is 'pro' {
 export type ListRenewalsForTenantOpts = {
   id?: string;
   status?: RenewalStatus[];
-  bucket?: 30 | 60 | 90 | 'all';
+  bucket?: 7 | 30 | 60 | 90 | 'all';
+  type?: RenewalType;
 };
 
 export async function listRenewalsForTenant(
@@ -130,6 +131,7 @@ export async function listRenewalsForTenant(
     cutoff.setUTCDate(cutoff.getUTCDate() + opts.bucket);
     query = query.lte('due_date', cutoff.toISOString().slice(0, 10));
   }
+  if (!opts.id && opts.type) query = query.eq('type', opts.type);
 
   const { data, error } = await query;
   if (error) throw new ApiError('INTERNAL', error.message, 500);

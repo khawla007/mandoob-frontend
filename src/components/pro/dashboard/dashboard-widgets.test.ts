@@ -25,6 +25,8 @@ describe('Signal Studio widget contracts', () => {
     assert.match(velocity, /dashboard\?range=/);
     assert.doesNotMatch(velocity, /dashboard\?days=/);
     assert.match(velocity, /aria-label=/);
+    assert.match(velocity, /isAnimationActive=\{false\}/);
+    assert.match(velocity, /useId\(\)/);
 
     const finance = source('CollectionsWaterfall');
     assert.match(finance, /BarChart/);
@@ -38,7 +40,10 @@ describe('Signal Studio widget contracts', () => {
       finance,
       /const paymentsHref = `\/t\/\$\{encodeURIComponent\(tenantSlug\)\}\/payments`/,
     );
-    assert.match(finance, /dashboardHref\(tenantSlug, 'payments', \{ view: item\.key \}\)/);
+    assert.match(finance, /paymentSignalHref\(tenantSlug/);
+    assert.match(finance, /isAnimationActive=\{false\}/);
+    assert.match(finance, /aria-hidden="true"/);
+    assert.match(finance, /signal-collection-bar/);
   });
 
   it('offers additive event details and responsive semantic deadline views', () => {
@@ -64,6 +69,8 @@ describe('Signal Studio widget contracts', () => {
     assert.match(team, /capacityPercent/);
     assert.match(team, /unassignedCases/);
     assert.doesNotMatch(team, /completion/i);
+    assert.match(team, /aria-valuemax=\{100\}/);
+    assert.match(team, /aria-valuetext=/);
   });
 
   it('uses four arrow-ended renewal streams and four linked KPI cards', () => {
@@ -76,7 +83,8 @@ describe('Signal Studio widget contracts', () => {
     assert.match(renewals, /d90/);
 
     const kpis = source('SignalKpis');
-    assert.match(kpis, /dashboardHref/);
+    assert.match(kpis, /applicationSignalHref/);
+    assert.match(kpis, /paymentSignalHref/);
     assert.match(kpis, /font-mono/);
     assert.match(kpis, /tabular-nums/);
     assert.match(kpis, /focus-visible:ring-2/);
@@ -120,5 +128,27 @@ describe('Signal Studio widget contracts', () => {
     assert.match(state, /kind: 'empty'; message: string; emptyAction: EmptyAction/);
     assert.match(state, /status\.emptyAction\.href/);
     assert.match(state, /status\.emptyAction\.label/);
+  });
+
+  it('requires deterministic locale and typed labels for every widget state', () => {
+    const state = readFileSync(new URL('./widget-state.tsx', import.meta.url), 'utf8');
+    assert.match(state, /locale: string/);
+    assert.match(state, /labels: Labels/);
+    assert.match(state, /role="status"/);
+    assert.match(state, /className="sr-only"/);
+    for (const name of [
+      'SignalHero',
+      'SignalKpis',
+      'CaseVelocityChart',
+      'CollectionsWaterfall',
+      'DeadlineHeatmap',
+      'ActionDeck',
+      'RenewalStreams',
+      'TeamSignal',
+    ]) {
+      assert.match(source(name), /export type \w+Labels/);
+      assert.doesNotMatch(source(name), /locale\?: string/);
+      assert.doesNotMatch(source(name), /toLocale(?:String|DateString)\(undefined/);
+    }
   });
 });

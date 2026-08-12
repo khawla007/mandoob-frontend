@@ -5,18 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
-import { dashboardHref } from './dashboard-links';
-import { WidgetLoading, WidgetMessage, type WidgetStateProps } from './widget-state';
+import { renewalSignalHref } from '@/lib/signal-studio-filters';
+import {
+  WidgetLoading,
+  WidgetMessage,
+  type WidgetBaseLabels,
+  type WidgetStateProps,
+} from './widget-state';
 
 type Streams = ProDashboardData['renewalStreams'];
 type StreamType = keyof Streams;
 
-const STREAM_LABELS: Record<StreamType, string> = {
-  license: 'Trade licences',
-  visa: 'Visas',
-  eid: 'Emirates IDs',
-  ejari: 'Tenancy & lease',
-};
 const WINDOWS = ['d7', 'd30', 'd60', 'd90'] as const;
 
 type RenewalStreamsDataProps = {
@@ -24,13 +23,23 @@ type RenewalStreamsDataProps = {
   tenantSlug: string;
 };
 
-export type RenewalStreamsProps = WidgetStateProps<RenewalStreamsDataProps>;
+export type RenewalStreamsLabels = WidgetBaseLabels & {
+  empty: string;
+  openRenewals: string;
+  title: string;
+  description: string;
+  days: string;
+  types: Record<StreamType, string>;
+};
+export type RenewalStreamsProps = WidgetStateProps<RenewalStreamsDataProps, RenewalStreamsLabels>;
 
 export function RenewalStreams(props: RenewalStreamsProps) {
+  const { labels } = props;
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
         testId="signal-streams-skeleton"
+        label={labels.loading}
         className="min-h-80 space-y-5 rounded-2xl border p-5"
       >
         <div className="space-y-2">
@@ -53,7 +62,7 @@ export function RenewalStreams(props: RenewalStreamsProps) {
     );
   }
   if (props.kind === 'empty' || props.kind === 'error')
-    return <WidgetMessage status={props} className="min-h-80" />;
+    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-80" />;
 
   const { streams, tenantSlug } = props;
   const entries = Object.entries(streams) as Array<[StreamType, Streams[StreamType]]>;
@@ -62,12 +71,13 @@ export function RenewalStreams(props: RenewalStreamsProps) {
       <WidgetMessage
         status={{
           kind: 'empty',
-          message: 'No active renewals are due in the next 90 days.',
+          message: labels.empty,
           emptyAction: {
-            label: 'Open renewals',
-            href: dashboardHref(tenantSlug, 'renewals', { tab: 'active' }),
+            label: labels.openRenewals,
+            href: `/t/${encodeURIComponent(tenantSlug)}/renewals`,
           },
         }}
+        retryLabel={labels.retry}
         className="min-h-80"
       />
     );
@@ -78,21 +88,19 @@ export function RenewalStreams(props: RenewalStreamsProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Route aria-hidden="true" className="size-4 text-[var(--signal-info)]" />
-          Renewal streams
+          {labels.title}
         </CardTitle>
-        <CardDescription>
-          Cumulative obligations entering 7, 30, 60, and 90-day windows
-        </CardDescription>
+        <CardDescription>{labels.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {entries.map(([type, values], streamIndex) => (
           <Link
             key={type}
-            href={dashboardHref(tenantSlug, 'renewals', { type, days: '90' })}
+            href={renewalSignalHref(tenantSlug, { tab: 'active', type, days: 90 })}
             className="group focus-visible:ring-ring block rounded-lg focus-visible:ring-2 focus-visible:outline-none"
           >
             <span className="mb-2 flex items-center justify-between gap-3">
-              <span className="text-sm font-semibold">{STREAM_LABELS[type]}</span>
+              <span className="text-sm font-semibold">{labels.types[type]}</span>
               <ArrowUpRight aria-hidden="true" className="text-muted-foreground size-3.5" />
             </span>
             <span
@@ -117,7 +125,7 @@ export function RenewalStreams(props: RenewalStreamsProps) {
                   <strong className="text-foreground block font-mono text-xs tabular-nums">
                     {values[window]}
                   </strong>
-                  {window.slice(1)} days
+                  {window.slice(1)} {labels.days}
                 </span>
               ))}
             </span>

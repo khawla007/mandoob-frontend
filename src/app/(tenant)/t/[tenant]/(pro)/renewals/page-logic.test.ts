@@ -24,6 +24,19 @@ test('renewal targeting validates a single UUID while preserving its tab', () =>
   });
 });
 
+test('renewal dashboard filters consume type and supported day windows', () => {
+  assert.deepEqual(parseRenewalSearch({ tab: 'active', type: 'license', days: '90' }), {
+    tab: 'active',
+    renewalId: undefined,
+    type: 'license',
+    days: 90,
+  });
+  assert.deepEqual(parseRenewalSearch({ type: 'passport', days: '45' }), {
+    tab: 'active',
+    renewalId: undefined,
+  });
+});
+
 test('renewals page consumes the target in a tenant-scoped exact DAL read', () => {
   const page = readFileSync(
     join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/renewals/page.tsx'),
