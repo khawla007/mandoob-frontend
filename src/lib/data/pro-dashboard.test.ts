@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  associateCurrentDocumentVersions,
   calculateProDashboard,
   collectProDashboardPages,
+  loadProDashboardRows,
   ProDashboardQueryError,
   type ProDashboardInput,
 } from './pro-dashboard';
@@ -277,6 +279,69 @@ test('filters every relationship collection before joining tenant data', () => {
   );
   assert.equal(dashboard.kpis.openCases, 3);
   assert.equal(dashboard.finance.billedMinor, 10000);
+});
+
+test('loads current document versions with an explicit tenant predicate and rejects mismatched rows', async () => {
+  const calls: Array<[string, ...unknown[]]> = [];
+  const queryClient = {
+    from(source: string) {
+      calls.push(['from', source]);
+      return {
+        select(columns: string) {
+          calls.push(['select', columns]);
+          return {
+            eq(column: string, value: string) {
+              calls.push(['eq', column, value]);
+              return {
+                order(columnName: string, options: unknown) {
+                  calls.push(['order', columnName, options]);
+                  return {
+                    range(from: number, to: number) {
+                      calls.push(['range', from, to]);
+                      return Promise.resolve({ data: [], error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+
+  await loadProDashboardRows(queryClient, 'document_versions', 'id, tenant_id', TENANT);
+  assert.deepEqual(calls.slice(0, 3), [
+    ['from', 'document_versions'],
+    ['select', 'id, tenant_id'],
+    ['eq', 'tenant_id', TENANT],
+  ]);
+
+  const documents = associateCurrentDocumentVersions(
+    [
+      {
+        id: 'document-safe',
+        tenant_id: TENANT,
+        client_id: 'client-1',
+        label: 'Safe',
+        current_version_id: 'version-safe',
+      },
+      {
+        id: 'document-mismatch',
+        tenant_id: TENANT,
+        client_id: 'client-1',
+        label: 'Mismatch',
+        current_version_id: 'version-other',
+      },
+    ],
+    [
+      { id: 'version-safe', tenant_id: TENANT, review_status: 'pending' },
+      { id: 'version-other', tenant_id: 'tenant-b', review_status: 'pending' },
+    ],
+    TENANT,
+  );
+  assert.equal(documents[0].currentVersion?.review_status, 'pending');
+  assert.equal(documents[1].currentVersion, null);
 });
 
 test('paginates until a short batch and names query errors without leaking details', async () => {

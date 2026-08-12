@@ -111,10 +111,17 @@ type DocumentInput = {
   tenant_id: string;
   client_id: string;
   label: string | null;
-  currentVersion:
-    | { tenant_id: string; review_status: string }
-    | Array<{ tenant_id: string; review_status: string }>
-    | null;
+  currentVersion: { tenant_id: string; review_status: string } | null;
+};
+
+type DocumentHeadInput = Omit<DocumentInput, 'currentVersion'> & {
+  current_version_id: string | null;
+};
+
+type DocumentVersionInput = {
+  id: string;
+  tenant_id: string;
+  review_status: string;
 };
 
 type InvoiceInput = {
@@ -456,10 +463,25 @@ function currentReviewStatus(
   value: DocumentInput['currentVersion'],
   tenantId: string,
 ): string | null {
-  if (Array.isArray(value)) {
-    return value.find((version) => version.tenant_id === tenantId)?.review_status ?? null;
-  }
   return value?.tenant_id === tenantId ? value.review_status : null;
+}
+
+export function associateCurrentDocumentVersions(
+  documents: DocumentHeadInput[],
+  versions: DocumentVersionInput[],
+  tenantId: string,
+): DocumentInput[] {
+  const tenantVersions = new Map(
+    versions
+      .filter((version) => version.tenant_id === tenantId)
+      .map((version) => [version.id, version]),
+  );
+  return documents
+    .filter((document) => document.tenant_id === tenantId)
+    .map(({ current_version_id: currentVersionId, ...document }) => ({
+      ...document,
+      currentVersion: currentVersionId ? (tenantVersions.get(currentVersionId) ?? null) : null,
+    }));
 }
 
 function calculateWorkloadBalance(activeCases: number[]): number {
@@ -547,6 +569,49 @@ export async function collectProDashboardPages<T>(
   }
 }
 
+type ProDashboardQueryResult = {
+  data: unknown[] | null;
+  error: { message?: string } | null;
+};
+
+export type ProDashboardQueryClient = {
+  from(source: string): {
+    select(columns: string): {
+      eq(
+        column: string,
+        value: string,
+      ): {
+        order(
+          column: string,
+          options: { ascending: boolean },
+        ): {
+          range(from: number, to: number): PromiseLike<ProDashboardQueryResult>;
+        };
+      };
+    };
+  };
+};
+
+export function loadProDashboardRows<T>(
+  client: ProDashboardQueryClient,
+  source: string,
+  select: string,
+  tenantId: string,
+): Promise<T[]> {
+  return collectProDashboardPages<T>(source, async (from, to) => {
+    const result = await client
+      .from(source)
+      .select(select)
+      .eq('tenant_id', tenantId)
+      .order('id', { ascending: true })
+      .range(from, to);
+    return {
+      data: result.data as T[] | null,
+      error: result.error,
+    };
+  });
+}
+
 export async function getProDashboardData(
   tenantId: string,
   days: 7 | 30 | 90 = 30,
@@ -554,18 +619,7 @@ export async function getProDashboardData(
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
   const admin = createSupabaseServiceRoleClient();
   const load = <T>(source: string, select: string) =>
-    collectProDashboardPages<T>(source, async (from, to) => {
-      const result = await admin
-        .from(source)
-        .select(select)
-        .eq('tenant_id', tenantId)
-        .order('id', { ascending: true })
-        .range(from, to);
-      return {
-        data: result.data as unknown as T[] | null,
-        error: result.error,
-      };
-    });
+    loadProDashboardRows<T>(admin as unknown as ProDashboardQueryClient, source, select, tenantId);
 
   const [
     clients,
@@ -573,7 +627,8 @@ export async function getProDashboardData(
     serviceCases,
     renewals,
     documentRequests,
-    documents,
+    documentHeads,
+    documentVersions,
     invoices,
     payments,
     refunds,
@@ -592,10 +647,8 @@ export async function getProDashboardData(
       'document_requests',
       'id, tenant_id, client_id, label, status, due_at',
     ),
-    load<DocumentInput>(
-      'documents',
-      'id, tenant_id, client_id, label, currentVersion:document_versions!documents_current_version_fk(tenant_id, review_status)',
-    ),
+    load<DocumentHeadInput>('documents', 'id, tenant_id, client_id, label, current_version_id'),
+    load<DocumentVersionInput>('document_versions', 'id, tenant_id, review_status'),
     load<InvoiceInput>(
       'invoices',
       'id, tenant_id, client_id, label, amount_minor, currency, status, due_at, created_at',
@@ -609,6 +662,7 @@ export async function getProDashboardData(
       'id, tenant_id, payment_id, amount_minor, status, reason, created_at',
     ),
   ]);
+  const documents = associateCurrentDocumentVersions(documentHeads, documentVersions, tenantId);
 
   return calculateProDashboard(
     {
