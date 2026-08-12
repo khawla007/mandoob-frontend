@@ -4,7 +4,9 @@
 
 Signal Studio is the signed-in PRO firm's operational command center. It combines urgent applications, renewals, document work, invoices, workload, and service performance without replacing the working module pages.
 
-Only an authenticated PRO user for an active firm can open the dashboard or Applications workspace. An unknown firm or a cross-firm URL returns not found; a suspended firm receives a suspended-account state. Finance and team widgets are permission-gated in the page contract and are currently available to the PRO role.
+The dashboard requires an authenticated PRO user. An unknown or cross-PRO firm URL returns not found, while an inactive firm receives the dashboard's suspended-account state. Finance and team widgets are permission-gated in the page contract and are currently available to the PRO role.
+
+Applications also requires an authenticated PRO user, but its authorization responses differ: an unknown firm returns not found, while cross-PRO and inactive-firm access return forbidden (HTTP 403). Applications does not use the dashboard's suspended-account state.
 
 ## Dashboard controls
 
@@ -42,7 +44,7 @@ The score is the rounded, equally weighted mean of five 0–100 signals. Each in
 1. `100 − overdue case ratio`: open cases whose SLA deadline, or due date when no SLA exists, has passed.
 2. `SLA completion rate`: completed cases with an SLA that finished on or before that SLA.
 3. `100 − aged blocked ratio`: open cases blocked for at least three days, using `updated_at` as the blocked-age proxy.
-4. `Reminder rate`: elapsed renewal reminder schedules sent from the scheduled time through the next 24 hours; future schedules are not measurable.
+4. `Reminder rate`: for each active renewal with an elapsed reminder schedule, only its latest elapsed schedule is measured. Its last notification is on time when sent from that schedule through the next 24 hours; renewals with only future schedules are not measurable.
 5. `Workload balance`: balance across active PRO owners, including unassigned open work as a workload bucket.
 
 The score is zero when there are no clients, cases, or renewals. The score dialog exposes every input and indicates whether higher or lower is healthier; it is an operational signal, not an employee ranking.
