@@ -19,7 +19,7 @@ test('metadata resync is platform-admin scoped and sources canonical claims from
   assert.match(dal, /export async function resyncUserRoleMetadata/);
   assert.match(dal, /caller\.role !== 'super_admin' && caller\.role !== 'admin'/);
   assert.match(dal, /caller\.id === targetUserId/);
-  assert.match(dal, /\.select\('id, role, tenant_id, status'\)/);
+  assert.match(dal, /\.select\('id, role, tenant_id, status, updated_at'\)/);
   assert.match(dal, /assertAdminCanModifyTarget/);
   assert.match(dal, /auth\.admin\.getUserById\(targetUserId\)/);
   assert.match(
@@ -38,6 +38,10 @@ test('metadata resync uses the fail-closed executor and an existing audit action
   assert.match(dal, /await executeRoleMetadataResync\(/);
   assert.match(dal, /revoke: \(\) => revokeAllSessions\(targetUserId\)/);
   assert.match(dal, /app_metadata: claims/);
+  assert.match(dal, /currentVersion: profile\.updated_at/);
+  assert.match(dal, /readCurrentSnapshot/);
+  assert.match(dal, /readRoleMetadataSnapshot/);
+  assert.ok(dal.indexOf('await executeRoleMetadataResync(') < dal.indexOf("action: 'change_role'"));
   assert.match(dal, /action: 'change_role'/);
   assert.doesNotMatch(dal, /role_metadata_resync['"]/);
 });

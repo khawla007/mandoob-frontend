@@ -14,8 +14,10 @@ import {
 
 type ResyncExecutor = (args: {
   currentClaims: RoleMetadataClaims;
+  currentVersion: string;
   revoke(): Promise<void>;
   writeMetadata(claims: RoleMetadataClaims): Promise<void>;
+  readCurrentSnapshot(): Promise<{ claims: RoleMetadataClaims; version: string } | null>;
 }) => Promise<void>;
 
 const executeRoleMetadataResync = (
@@ -197,15 +199,25 @@ test('pending transitions are denied by session loading and password login even 
   );
 });
 
-function resyncHarness(failAt?: string) {
+const currentSnapshot = { claims: newClaims, version: 'version-1' };
+
+function resyncHarness(
+  failAt?: string,
+  snapshots: Array<{ claims: RoleMetadataClaims; version: string } | null> = [
+    currentSnapshot,
+    currentSnapshot,
+  ],
+) {
   const calls: Array<{ op: string; claims?: RoleMetadataClaims }> = [];
   let revokeCount = 0;
   let metadataCount = 0;
+  let readCount = 0;
   return {
     calls,
     run: () =>
       executeRoleMetadataResync({
         currentClaims: newClaims,
+        currentVersion: currentSnapshot.version,
         revoke: async () => {
           revokeCount += 1;
           calls.push({ op: `revoke-${revokeCount}` });
@@ -215,6 +227,12 @@ function resyncHarness(failAt?: string) {
           metadataCount += 1;
           calls.push({ op: `metadata-${metadataCount}`, claims });
           if (failAt === `metadata-${metadataCount}`) throw new Error('provider metadata secret');
+        },
+        readCurrentSnapshot: async () => {
+          readCount += 1;
+          calls.push({ op: `read-${readCount}` });
+          if (failAt === `read-${readCount}`) throw new Error('provider database secret');
+          return snapshots[readCount - 1] ?? null;
         },
       }),
   };
@@ -227,7 +245,9 @@ test('metadata resync is idempotent and uses pending claims between mandatory re
     { op: 'revoke-1' },
     { op: 'metadata-1', claims: neutralClaims },
     { op: 'revoke-2' },
+    { op: 'read-1' },
     { op: 'metadata-2', claims: newClaims },
+    { op: 'read-2' },
     { op: 'revoke-3' },
   ]);
 });
@@ -285,6 +305,7 @@ test('metadata resync final write failure remains pending with a supported recov
     { op: 'revoke-1' },
     { op: 'metadata-1', claims: neutralClaims },
     { op: 'revoke-2' },
+    { op: 'read-1' },
     { op: 'metadata-2', claims: newClaims },
   ]);
 });
@@ -296,8 +317,90 @@ test('metadata resync final revoke failure returns to pending claims', async () 
     { op: 'revoke-1' },
     { op: 'metadata-1', claims: neutralClaims },
     { op: 'revoke-2' },
+    { op: 'read-1' },
     { op: 'metadata-2', claims: newClaims },
+    { op: 'read-2' },
     { op: 'revoke-3' },
     { op: 'metadata-3', claims: neutralClaims },
   ]);
+});
+
+test('post-write concurrent role and tenant change neutralizes old snapshot before failing', async () => {
+  const concurrentClaims: RoleMetadataClaims = {
+    mandoob_role: 'customer',
+    tenant_id: 'tenant-2',
+    mandoob_status: 'active',
+    mandoob_role_transition: null,
+  };
+  const concurrentNeutral: RoleMetadataClaims = {
+    ...concurrentClaims,
+    mandoob_role: null,
+    tenant_id: null,
+    mandoob_role_transition: 'pending',
+  };
+  const flow = resyncHarness(undefined, [
+    currentSnapshot,
+    { claims: concurrentClaims, version: 'version-2' },
+  ]);
+  await rejectsCode(
+    flow.run,
+    'ROLE_METADATA_STATE_CONFLICT',
+    /profile changed.*login remains disabled/i,
+  );
+  assert.deepEqual(flow.calls, [
+    { op: 'revoke-1' },
+    { op: 'metadata-1', claims: neutralClaims },
+    { op: 'revoke-2' },
+    { op: 'read-1' },
+    { op: 'metadata-2', claims: newClaims },
+    { op: 'read-2' },
+    { op: 'metadata-3', claims: concurrentNeutral },
+    { op: 'revoke-3' },
+  ]);
+});
+
+test('pre-write status change prevents stale final claims and remains pending', async () => {
+  const concurrentClaims: RoleMetadataClaims = {
+    ...newClaims,
+    mandoob_status: 'suspended',
+  };
+  const flow = resyncHarness(undefined, [{ claims: concurrentClaims, version: 'version-2' }]);
+  await rejectsCode(
+    flow.run,
+    'ROLE_METADATA_STATE_CONFLICT',
+    /profile changed.*login remains disabled/i,
+  );
+  assert.equal(
+    flow.calls.some((call) => call.claims === newClaims),
+    false,
+  );
+  assert.deepEqual(flow.calls.at(-2), {
+    op: 'metadata-2',
+    claims: { ...neutralClaims, mandoob_status: 'suspended' },
+  });
+  assert.deepEqual(flow.calls.at(-1), { op: 'revoke-3' });
+});
+
+test('conflict cleanup attempts both neutral metadata and mandatory revoke when either fails', async () => {
+  const concurrentClaims: RoleMetadataClaims = { ...newClaims, tenant_id: 'tenant-2' };
+  for (const failure of ['metadata-3', 'revoke-3']) {
+    const flow = resyncHarness(failure, [
+      currentSnapshot,
+      { claims: concurrentClaims, version: 'version-2' },
+    ]);
+    await rejectsCode(flow.run, 'ROLE_METADATA_RESYNC_LOCK_FAILED', /fail-closed recovery failed/i);
+    assert.equal(flow.calls.at(-2)?.op, 'metadata-3');
+    assert.deepEqual(flow.calls.at(-1), { op: 'revoke-3' });
+  }
+});
+
+test('missing profile during mandatory post-write revalidation also returns to pending', async () => {
+  const flow = resyncHarness(undefined, [currentSnapshot, null]);
+  await rejectsCode(
+    flow.run,
+    'ROLE_METADATA_STATE_CONFLICT',
+    /profile changed.*login remains disabled/i,
+  );
+  assert.deepEqual(flow.calls.at(-2), { op: 'metadata-3', claims: neutralClaims });
+  assert.deepEqual(flow.calls.at(-1), { op: 'revoke-3' });
 });

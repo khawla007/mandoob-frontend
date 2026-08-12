@@ -7,6 +7,7 @@ import {
   executeRoleMetadataResync,
   isRoleMetadataResyncSourceSafe,
   type RoleMetadataClaims,
+  type RoleMetadataSnapshot,
 } from './admin-role-transition';
 import type { Role } from '@/lib/auth/roles';
 
@@ -21,16 +22,39 @@ export async function resyncUserRoleMetadata(caller: Caller, targetUserId: strin
   }
 
   const admin = createSupabaseServiceRoleClient();
-  const { data: profile, error: profileError } = await admin
-    .from('profiles')
-    .select('id, role, tenant_id, status')
-    .eq('id', targetUserId)
-    .maybeSingle();
-  if (profileError) {
-    console.error('role metadata resync profile read failed', profileError);
+  async function readRoleMetadataSnapshot(): Promise<RoleMetadataSnapshot | null> {
+    const { data, error } = await admin
+      .from('profiles')
+      .select('id, role, tenant_id, status, updated_at')
+      .eq('id', targetUserId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      claims: {
+        mandoob_role: data.role as Role,
+        tenant_id: data.tenant_id as string | null,
+        mandoob_status: data.status as ProfileStatus,
+        mandoob_role_transition: null,
+      },
+      version: data.updated_at,
+    };
+  }
+
+  let profileSnapshot: RoleMetadataSnapshot | null;
+  try {
+    profileSnapshot = await readRoleMetadataSnapshot();
+  } catch (error) {
+    console.error('role metadata resync profile read failed', error);
     throw new ApiError('ROLE_METADATA_RESYNC_FAILED', 'Could not load current authorization', 502);
   }
-  if (!profile) throw new ApiError('NOT_FOUND', 'User not found', 404);
+  if (!profileSnapshot) throw new ApiError('NOT_FOUND', 'User not found', 404);
+  const profile = {
+    role: profileSnapshot.claims.mandoob_role!,
+    tenant_id: profileSnapshot.claims.tenant_id,
+    status: profileSnapshot.claims.mandoob_status,
+    updated_at: profileSnapshot.version,
+  };
 
   assertAdminCanModifyTarget(
     { role: caller.role, tenantId: caller.tenantId },
@@ -59,6 +83,8 @@ export async function resyncUserRoleMetadata(caller: Caller, targetUserId: strin
 
   await executeRoleMetadataResync({
     currentClaims,
+    currentVersion: profile.updated_at,
+    readCurrentSnapshot: readRoleMetadataSnapshot,
     revoke: () => revokeAllSessions(targetUserId),
     writeMetadata: async (claims) => {
       const { error } = await admin.auth.admin.updateUserById(targetUserId, {

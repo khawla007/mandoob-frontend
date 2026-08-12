@@ -9,6 +9,11 @@ export type RoleMetadataClaims = {
   mandoob_role_transition: 'pending' | null;
 };
 
+export type RoleMetadataSnapshot = {
+  claims: RoleMetadataClaims;
+  version: string;
+};
+
 type DatabaseError = { message: string };
 type FailureStage =
   | 'initial_revoke'
@@ -18,7 +23,11 @@ type FailureStage =
   | 'restore_metadata'
   | 'final_metadata'
   | 'final_revoke'
-  | 'resync_disable';
+  | 'resync_disable'
+  | 'pre_final_revalidation'
+  | 'post_final_revalidation'
+  | 'conflict_neutral_metadata'
+  | 'conflict_revoke';
 
 export class AtomicRoleChangeError extends Error {
   constructor(readonly databaseError: DatabaseError) {
@@ -35,6 +44,20 @@ export function isRoleMetadataResyncSourceSafe(
     appMetadata.mandoob_role === currentClaims.mandoob_role &&
     (appMetadata.tenant_id ?? null) === currentClaims.tenant_id &&
     appMetadata.mandoob_status === currentClaims.mandoob_status
+  );
+}
+
+function roleMetadataSnapshotMatches(
+  snapshot: RoleMetadataSnapshot | null,
+  claims: RoleMetadataClaims,
+  version: string,
+): boolean {
+  return (
+    snapshot !== null &&
+    snapshot.version === version &&
+    snapshot.claims.mandoob_role === claims.mandoob_role &&
+    snapshot.claims.tenant_id === claims.tenant_id &&
+    snapshot.claims.mandoob_status === claims.mandoob_status
   );
 }
 
@@ -121,8 +144,10 @@ export async function executeRoleChangeTransition(args: {
 
 export async function executeRoleMetadataResync(args: {
   currentClaims: RoleMetadataClaims;
+  currentVersion: string;
   revoke(): Promise<void>;
   writeMetadata(claims: RoleMetadataClaims): Promise<void>;
+  readCurrentSnapshot(): Promise<RoleMetadataSnapshot | null>;
   reportFailure?: (stage: FailureStage, error: unknown) => void;
 }): Promise<void> {
   const report = args.reportFailure ?? (() => {});
@@ -132,6 +157,60 @@ export async function executeRoleMetadataResync(args: {
     mandoob_status: args.currentClaims.mandoob_status,
     mandoob_role_transition: 'pending',
   };
+
+  async function failClosedAfterRevalidation(
+    latest: RoleMetadataSnapshot | null,
+    operationalFailure: boolean,
+  ): Promise<never> {
+    const latestNeutralClaims: RoleMetadataClaims = {
+      mandoob_role: null,
+      tenant_id: null,
+      mandoob_status: latest?.claims.mandoob_status ?? args.currentClaims.mandoob_status,
+      mandoob_role_transition: 'pending',
+    };
+    let neutralError: unknown;
+    let revokeError: unknown;
+    try {
+      await args.writeMetadata(latestNeutralClaims);
+    } catch (error) {
+      neutralError = error;
+      report('conflict_neutral_metadata', error);
+    }
+    try {
+      await args.revoke();
+    } catch (error) {
+      revokeError = error;
+      report('conflict_revoke', error);
+    }
+    if (neutralError || revokeError) {
+      throw new ApiError(
+        'ROLE_METADATA_RESYNC_LOCK_FAILED',
+        'Profile revalidation failed and fail-closed recovery failed; contact support immediately',
+        502,
+      );
+    }
+    throw new ApiError(
+      operationalFailure ? 'ROLE_METADATA_REVALIDATION_FAILED' : 'ROLE_METADATA_STATE_CONFLICT',
+      operationalFailure
+        ? 'Could not revalidate the current profile; login remains disabled'
+        : 'Profile changed during metadata resynchronization; login remains disabled',
+      operationalFailure ? 502 : 409,
+    );
+  }
+
+  async function revalidate(stage: 'pre_final_revalidation' | 'post_final_revalidation') {
+    let snapshot: RoleMetadataSnapshot | null;
+    try {
+      snapshot = await args.readCurrentSnapshot();
+    } catch (error) {
+      report(stage, error);
+      return failClosedAfterRevalidation(null, true);
+    }
+    if (!roleMetadataSnapshotMatches(snapshot, args.currentClaims, args.currentVersion)) {
+      report(stage, new Error('Profile authorization snapshot changed'));
+      return failClosedAfterRevalidation(snapshot, false);
+    }
+  }
 
   try {
     await args.revoke();
@@ -150,7 +229,6 @@ export async function executeRoleMetadataResync(args: {
       502,
     );
   }
-
   try {
     await args.revoke();
   } catch (error) {
@@ -162,6 +240,8 @@ export async function executeRoleMetadataResync(args: {
     );
   }
 
+  await revalidate('pre_final_revalidation');
+
   try {
     await args.writeMetadata(args.currentClaims);
   } catch (error) {
@@ -172,6 +252,8 @@ export async function executeRoleMetadataResync(args: {
       502,
     );
   }
+
+  await revalidate('post_final_revalidation');
 
   try {
     await args.revoke();
