@@ -540,7 +540,8 @@
           "documentEvent": "Documents",
           "invoiceEvent": "Invoices",
           "eventLink": "Open {count} {type} for {date}, {period}",
-          "documentLink": "Open document {title} for {client}, due {date}, {period}"
+          "documentLink": "Open document {title} for {client}, due {date}, {period}",
+          "close": "Close deadline details"
         },
         "renewalLabels": {
           "empty": "No active renewals are due in the next 90 days.",
@@ -580,6 +581,7 @@
           "allBranches": "All branches",
           "branchUnavailable": "Branch filtering is unavailable because this workspace has no branch field.",
           "invalidNotice": "One or more filters were not available in this workspace and were ignored.",
+          "pendingNotice": "Filters are preserved, but could not be verified while application data is unavailable.",
           "apply": "Apply filters"
         },
         "suspended": {

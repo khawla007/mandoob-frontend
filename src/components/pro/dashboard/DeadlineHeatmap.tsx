@@ -61,6 +61,7 @@ export type DeadlineHeatmapLabels = WidgetBaseLabels & {
   invoiceEvent: string;
   eventLink: string;
   documentLink: string;
+  close: string;
 };
 export type DeadlineHeatmapProps = WidgetStateProps<
   DeadlineHeatmapDataProps,
@@ -284,7 +285,13 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
           open={selectedCell !== null}
           onOpenChange={(open) => !open && setSelectedIndex(null)}
         >
-          <DialogContent>
+          <DialogContent
+            closeLabel={labels.close}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              cellRefs.current[activeIndex]?.focus();
+            }}
+          >
             {selectedCell ? (
               <>
                 <DialogHeader>

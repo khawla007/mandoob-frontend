@@ -105,7 +105,7 @@ export function ActionDeck(props: ActionDeckProps) {
             ? signalLabel(labels.absoluteDeadline, {
                 deadline: formatSignalDeadline(action.deadline, locale) ?? action.deadline,
               })
-            : labels.noDeadline;
+            : '';
           return (
             <Link
               key={action.id}

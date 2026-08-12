@@ -32,6 +32,7 @@ import {
   dashboardQuery,
   parseDashboardFilters,
   parseDashboardRange,
+  resolveDashboardFilterState,
   type DashboardErrorGroup,
   type DashboardErrorMessages,
 } from './page-logic';
@@ -88,8 +89,12 @@ export default async function ProDashboard({
   const range = parseDashboardRange(search.range);
   const requestedFilters = parseDashboardFilters(search);
   const dashboard = await getProDashboardData(tenant.id, range, requestedFilters.filters);
-  const filters = dashboard.appliedFilters;
-  const filtersRejected = requestedFilters.invalid || dashboard.filtersRejected;
+  const filterState = resolveDashboardFilterState(
+    requestedFilters,
+    dashboard.appliedFilters,
+    dashboard.errors.operations !== undefined,
+  );
+  const filters = filterState.filters;
   const filterQuery = dashboardQuery(filters);
   const retryHref = `/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, range)}`;
   const errorMessages = {
@@ -210,6 +215,7 @@ export default async function ProDashboard({
     invoiceEvent: t('deadlineLabels.invoiceEvent'),
     eventLink: t('deadlineLabels.eventLink'),
     documentLink: t('deadlineLabels.documentLink'),
+    close: t('deadlineLabels.close'),
   } satisfies DeadlineHeatmapLabels;
   const renewalLabels = {
     ...baseLabels,
@@ -317,9 +323,11 @@ export default async function ProDashboard({
         <button className="bg-primary text-primary-foreground h-9 self-end rounded-md px-4 text-sm font-medium">
           {t('filters.apply')}
         </button>
-        {filtersRejected ? (
+        {filterState.notice ? (
           <p role="status" className="text-muted-foreground text-sm sm:col-span-3 lg:col-span-4">
-            {t('filters.invalidNotice')}
+            {t(
+              filterState.notice === 'pending' ? 'filters.pendingNotice' : 'filters.invalidNotice',
+            )}
           </p>
         ) : null}
       </form>

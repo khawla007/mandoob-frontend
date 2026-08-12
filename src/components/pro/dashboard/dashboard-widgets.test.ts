@@ -64,6 +64,9 @@ describe('Signal Studio widget contracts', () => {
     assert.match(heatmap, /tabIndex=\{rovingIndex === cellIndex \? 0 : -1\}/);
     assert.match(heatmap, /nextDeadlineCellIndex/);
     assert.match(heatmap, /DialogContent/);
+    assert.match(heatmap, /onCloseAutoFocus/);
+    assert.match(heatmap, /cellRefs\.current\[activeIndex\]\?\.focus\(\)/);
+    assert.match(heatmap, /closeLabel=\{labels\.close\}/);
     assert.match(heatmap, /onKeyDown/);
     assert.doesNotMatch(heatmap, /<button[\s\S]{0,300}title=/);
     assert.doesNotMatch(heatmap, /slice\(0, 14\)/);
@@ -84,6 +87,7 @@ describe('Signal Studio widget contracts', () => {
     assert.match(actions, /owner:\s*action\.ownerName/);
     assert.match(actions, /countdown/);
     assert.match(actions, /absoluteDeadline/);
+    assert.match(actions, /:\s*'';/);
 
     const team = source('TeamSignal');
     assert.match(team, /activeCases/);

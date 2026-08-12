@@ -4,6 +4,7 @@ export type DashboardRange = 7 | 30 | 90;
 export type DashboardFilters = { ownerId?: string; serviceType?: string };
 export type DashboardErrorGroup = keyof ProDashboardData['errors'];
 export type DashboardErrorMessages = Record<DashboardErrorGroup, string>;
+export type ParsedDashboardFilters = { filters: DashboardFilters; invalid: boolean };
 
 export function parseDashboardRange(value: string | string[] | undefined): DashboardRange {
   if (typeof value !== 'string') return 30;
@@ -14,7 +15,7 @@ export function parseDashboardRange(value: string | string[] | undefined): Dashb
 export function parseDashboardFilters(search: {
   owner?: string | string[];
   serviceType?: string | string[];
-}): { filters: DashboardFilters; invalid: boolean } {
+}): ParsedDashboardFilters {
   const owner = typeof search.owner === 'string' ? search.owner : undefined;
   const serviceType =
     typeof search.serviceType === 'string' ? search.serviceType.trim() : undefined;
@@ -33,6 +34,31 @@ export function parseDashboardFilters(search: {
       Boolean(owner && !validOwner) ||
       Array.isArray(search.serviceType) ||
       Boolean(serviceType && !validService),
+  };
+}
+
+export function resolveDashboardFilterState(
+  requested: ParsedDashboardFilters,
+  applied: DashboardFilters,
+  operationsUnavailable: boolean,
+): { filters: DashboardFilters; notice?: 'invalid' | 'pending' } {
+  if (operationsUnavailable) {
+    const hasRequestedFilter = Boolean(requested.filters.ownerId || requested.filters.serviceType);
+    return {
+      filters: requested.filters,
+      ...(requested.invalid
+        ? { notice: 'invalid' as const }
+        : hasRequestedFilter
+          ? { notice: 'pending' as const }
+          : {}),
+    };
+  }
+  const membershipRejected =
+    requested.filters.ownerId !== applied.ownerId ||
+    requested.filters.serviceType !== applied.serviceType;
+  return {
+    filters: applied,
+    ...(requested.invalid || membershipRejected ? { notice: 'invalid' as const } : {}),
   };
 }
 

@@ -6,7 +6,12 @@ import { test } from 'node:test';
 import en from '@/messages/en.json';
 import ar from '@/messages/ar.json';
 import { authorizeProDashboardRead } from './page-authorization';
-import { dashboardWidgetState, parseDashboardFilters, parseDashboardRange } from './page-logic';
+import {
+  dashboardWidgetState,
+  parseDashboardFilters,
+  parseDashboardRange,
+  resolveDashboardFilterState,
+} from './page-logic';
 
 const pagePath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/page.tsx');
 const metricsPath = join(process.cwd(), 'src/lib/data/tenant-metrics.ts');
@@ -106,9 +111,34 @@ test('dashboard filters reject repeated/malformed values and accept schema-backe
 test('dashboard renders only tenant-normalized filters and reports rejected input', () => {
   const source = readFileSync(pagePath, 'utf8');
   assert.match(source, /getProDashboardData\(tenant\.id, range, requestedFilters\.filters\)/);
-  assert.match(source, /const filters = dashboard\.appliedFilters/);
-  assert.match(source, /requestedFilters\.invalid\s*\|\|\s*dashboard\.filtersRejected/);
+  assert.match(source, /resolveDashboardFilterState/);
+  assert.match(source, /dashboard\.errors\.operations !== undefined/);
   assert.match(source, /filters\.invalidNotice/);
+  assert.match(source, /filters\.pendingNotice/);
+});
+
+test('dashboard preserves syntactically valid filter intent while operations validation is unavailable', () => {
+  const requested = {
+    filters: {
+      ownerId: '11111111-1111-4111-8111-111111111111',
+      serviceType: 'Golden visa',
+    },
+    invalid: false,
+  };
+  assert.deepEqual(resolveDashboardFilterState(requested, {}, true), {
+    filters: requested.filters,
+    notice: 'pending',
+  });
+  assert.deepEqual(resolveDashboardFilterState(requested, {}, false), {
+    filters: {},
+    notice: 'invalid',
+  });
+  assert.deepEqual(resolveDashboardFilterState(requested, requested.filters, false), {
+    filters: requested.filters,
+  });
+  assert.deepEqual(resolveDashboardFilterState({ filters: {}, invalid: false }, {}, true), {
+    filters: {},
+  });
 });
 
 test('dashboard widget state sanitizes only relevant loader group failures', () => {
