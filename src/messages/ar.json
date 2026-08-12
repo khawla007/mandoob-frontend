@@ -39,6 +39,7 @@
   },
   "shell": {
     "overview": "نظرة عامة",
+    "commandCenter": "مركز القيادة",
     "workspace": "مساحة العمل",
     "account": "الحساب",
     "clients": "العملاء",
@@ -430,6 +431,136 @@
         "pendingPayments": {
           "label": "المدفوعات المعلقة",
           "delta": "فواتير مفتوحة"
+        }
+      },
+      "signalStudio": {
+        "title": "مركز القيادة",
+        "subtitle": "{tenant} · مؤشرات تشغيلية مباشرة وخطوات العمل التالية.",
+        "prioritySignals": "إشارات ذات أولوية",
+        "operationsScore": "مؤشر كفاءة العمليات",
+        "openActionDeck": "فتح قائمة الإجراءات",
+        "assignWork": "تعيين العمل",
+        "activeClients": "العملاء النشطون",
+        "openCases": "المعاملات المفتوحة",
+        "renewalsDue": "التجديدات المستحقة",
+        "collections": "التحصيلات",
+        "caseVelocity": "وتيرة المعاملات",
+        "opened": "المفتوحة",
+        "completed": "المكتملة",
+        "deadlineIntensity": "كثافة المواعيد النهائية",
+        "collectionsWaterfall": "تدفق التحصيلات",
+        "renewalStreams": "مسارات التجديد",
+        "teamSignal": "مؤشر الفريق",
+        "actionDeck": "قائمة الإجراءات",
+        "empty": "لا توجد مؤشرات تستدعي المتابعة حاليًا.",
+        "loading": "جارٍ تحميل مؤشر لوحة التحكم…",
+        "retry": "إعادة المحاولة",
+        "range7": "7 أيام",
+        "range30": "30 يومًا",
+        "range90": "90 يومًا",
+        "rangeLabel": "النطاق الزمني للوحة التحكم",
+        "daySuffix": "ي",
+        "date": "التاريخ",
+        "hero": {
+          "actionSummary": "إشارات تشغيلية تستدعي المتابعة الآن.",
+          "scoreAria": "مؤشر كفاءة العمليات {score} من 100. افتح تفاصيل المؤشر.",
+          "scoreDetails": "مدخلات المؤشر",
+          "openScoreDetails": "عرض مدخلات المؤشر",
+          "dialogTitle": "مؤشر كفاءة العمليات: {score}",
+          "dialogDescription": "عرض واضح للمدخلات الخمسة المستخدمة في حساب كفاءة العمليات.",
+          "higherHealthier": "القيمة الأعلى أفضل",
+          "lowerHealthier": "القيمة الأقل أفضل",
+          "velocity": "الوتيرة المباشرة",
+          "velocityAria": "خلال {days} يومًا، فُتحت {opened} معاملات واكتملت {completed} معاملات.",
+          "overdueRatio": "نسبة المعاملات المتأخرة",
+          "slaCompletionRate": "المنجزة ضمن اتفاقية مستوى الخدمة",
+          "blockedRatio": "المعاملات المتوقفة بعد الحد الزمني",
+          "reminderRate": "تذكيرات التجديد المرسلة في موعدها",
+          "workloadBalance": "توازن أعباء العمل"
+        },
+        "kpis": {
+          "activeClientsHelper": "{change} هذا الشهر",
+          "openCasesHelper": "{moving} قيد التنفيذ · {blocked} متوقفة",
+          "renewalsHelper": "{count} مستحقة خلال 7 أيام",
+          "collectionsHelper": "تم تحصيل {rate}% من القيمة المفوترة"
+        },
+        "caseVelocityLabels": {
+          "empty": "لا يوجد نشاط للمعاملات خلال هذه الفترة حتى الآن.",
+          "openApplications": "فتح الطلبات",
+          "summary": "خلال آخر {range} يومًا، فُتحت {opened} معاملات واكتملت {completed} معاملات.",
+          "description": "مقارنة المعاملات المفتوحة بالمعاملات المكتملة.",
+          "tableCaption": "الإجمالي اليومي للمعاملات المفتوحة والمكتملة"
+        },
+        "collectionsLabels": {
+          "billed": "المفوتر",
+          "paid": "المدفوع",
+          "dueSoon": "مستحق قريبًا",
+          "overdue": "متأخر",
+          "barLabel": "فتح فواتير {category} بإجمالي {amount}",
+          "empty": "لا يوجد نشاط للفواتير خلال هذه الفترة.",
+          "openPayments": "فتح المدفوعات",
+          "amount": "المبلغ",
+          "description": "القيمة المفوترة والمدفوعة والقريبة الاستحقاق والمتأخرة.",
+          "summary": "فئات تحصيل الفواتير بعملة {currency}"
+        },
+        "actionLabels": {
+          "empty": "لا توجد معاملات عاجلة أو مواعيد نهائية تستدعي إجراءً.",
+          "reviewApplications": "مراجعة الطلبات",
+          "description": "الأعمال الأعلى أولوية مرتبة حسب الموعد ومدة التوقف.",
+          "actionAria": "فتح {title} للعميل {client}. درجة الاستعجال: {urgency}.",
+          "unassigned": "غير معيّنة",
+          "noDeadline": "بلا موعد نهائي",
+          "urgency": {
+            "breached": "متجاوزة للموعد",
+            "urgent": "عاجلة",
+            "soon": "مستحقة قريبًا",
+            "normal": "عادية"
+          }
+        },
+        "deadlineLabels": {
+          "empty": "لا توجد مواعيد نهائية مجدولة للطلبات أو التجديدات أو المستندات أو الفواتير.",
+          "openApplications": "فتح الطلبات",
+          "description": "تركيز أعباء العمل القادمة حسب التاريخ وفترة اليوم.",
+          "gridLabel": "كثافة المواعيد النهائية حسب التاريخ وفترة اليوم",
+          "cellLabel": "{date}، {period}: {count} أحداث. الأنواع: {types}.",
+          "noEventTypes": "لا توجد أنواع أحداث",
+          "morning": "صباحًا",
+          "afternoon": "بعد الظهر",
+          "caseEvent": "المعاملات",
+          "renewalEvent": "التجديدات",
+          "documentEvent": "المستندات",
+          "invoiceEvent": "الفواتير",
+          "eventLink": "فتح {count} من {type} في {date}، {period}",
+          "documentLink": "فتح المستند {title} للعميل {client}، المستحق في {date}، {period}"
+        },
+        "renewalLabels": {
+          "empty": "لا توجد تجديدات نشطة مستحقة خلال التسعين يومًا القادمة.",
+          "openRenewals": "فتح التجديدات",
+          "description": "الالتزامات القادمة ضمن نوافذ التجديد التراكمية.",
+          "days": "يومًا",
+          "types": {
+            "license": "الرخص التجارية",
+            "visa": "التأشيرات",
+            "eid": "بطاقات الهوية الإماراتية",
+            "ejari": "مستندات الإيجار وعقود الإيجار"
+          }
+        },
+        "teamLabels": {
+          "empty": "لا تتوفر أعباء عمل نشطة للفريق.",
+          "openApplications": "فتح الطلبات",
+          "description": "العمل المفتوح والطاقة الاستيعابية لكل عضو نشط في الفريق.",
+          "unassignedCases": "معاملات غير معيّنة",
+          "activeCases": "{count} معاملات نشطة",
+          "capacity": "الطاقة الاستيعابية لـ {name}",
+          "capacityValue": "الطاقة الاستيعابية {percent}%"
+        },
+        "errors": {
+          "identity": "معلومات العملاء غير متاحة مؤقتًا.",
+          "links": "روابط لوحة التحكم غير متاحة مؤقتًا.",
+          "operations": "بيانات المعاملات التشغيلية غير متاحة مؤقتًا.",
+          "renewals": "بيانات التجديدات غير متاحة مؤقتًا.",
+          "documents": "بيانات مواعيد المستندات غير متاحة مؤقتًا.",
+          "finance": "البيانات المالية غير متاحة مؤقتًا."
         }
       }
     },

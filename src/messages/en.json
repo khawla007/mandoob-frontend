@@ -39,6 +39,7 @@
   },
   "shell": {
     "overview": "Overview",
+    "commandCenter": "Command Center",
     "workspace": "Workspace",
     "account": "Account",
     "clients": "Clients",
@@ -430,6 +431,136 @@
         "pendingPayments": {
           "label": "Pending payments",
           "delta": "open invoices"
+        }
+      },
+      "signalStudio": {
+        "title": "Command Center",
+        "subtitle": "{tenant} · live operational signals and next actions.",
+        "prioritySignals": "Priority signals",
+        "operationsScore": "Operations score",
+        "openActionDeck": "Open action deck",
+        "assignWork": "Assign work",
+        "activeClients": "Active clients",
+        "openCases": "Open cases",
+        "renewalsDue": "Renewals due",
+        "collections": "Collections",
+        "caseVelocity": "Case velocity",
+        "opened": "Opened",
+        "completed": "Completed",
+        "deadlineIntensity": "Deadline intensity",
+        "collectionsWaterfall": "Collections waterfall",
+        "renewalStreams": "Renewal streams",
+        "teamSignal": "Team signal",
+        "actionDeck": "Action deck",
+        "empty": "No signals need attention right now.",
+        "loading": "Loading dashboard signal…",
+        "retry": "Retry",
+        "range7": "7 days",
+        "range30": "30 days",
+        "range90": "90 days",
+        "rangeLabel": "Dashboard date range",
+        "daySuffix": "d",
+        "date": "Date",
+        "hero": {
+          "actionSummary": "operational signals need attention now.",
+          "scoreAria": "Operations score {score} out of 100. Open score details.",
+          "scoreDetails": "Score inputs",
+          "openScoreDetails": "View score inputs",
+          "dialogTitle": "Operations score: {score}",
+          "dialogDescription": "A transparent view of the five inputs used to calculate operational health.",
+          "higherHealthier": "Higher is healthier",
+          "lowerHealthier": "Lower is healthier",
+          "velocity": "Live velocity",
+          "velocityAria": "Over {days} days, {opened} cases opened and {completed} completed.",
+          "overdueRatio": "Overdue case ratio",
+          "slaCompletionRate": "Completed within SLA",
+          "blockedRatio": "Cases blocked past threshold",
+          "reminderRate": "Renewal reminders sent on time",
+          "workloadBalance": "Workload balance"
+        },
+        "kpis": {
+          "activeClientsHelper": "{change} this month",
+          "openCasesHelper": "{moving} moving · {blocked} blocked",
+          "renewalsHelper": "{count} due within 7 days",
+          "collectionsHelper": "{rate}% of billed value collected"
+        },
+        "caseVelocityLabels": {
+          "empty": "No case activity in this period yet.",
+          "openApplications": "Open applications",
+          "summary": "In the last {range} days, {opened} cases opened and {completed} completed.",
+          "description": "Applications opened compared with applications completed.",
+          "tableCaption": "Daily opened and completed case totals"
+        },
+        "collectionsLabels": {
+          "billed": "Billed",
+          "paid": "Paid",
+          "dueSoon": "Due soon",
+          "overdue": "Overdue",
+          "barLabel": "Open {category} invoices totaling {amount}",
+          "empty": "No invoice activity is available for this period.",
+          "openPayments": "Open payments",
+          "amount": "Amount",
+          "description": "Billed, paid, upcoming, and overdue value.",
+          "summary": "Invoice collection categories in {currency}"
+        },
+        "actionLabels": {
+          "empty": "No urgent cases or deadlines need action.",
+          "reviewApplications": "Review applications",
+          "description": "Highest-priority work ranked by deadline and blockage.",
+          "actionAria": "Open {title} for {client}. Urgency: {urgency}.",
+          "unassigned": "Unassigned",
+          "noDeadline": "No deadline",
+          "urgency": {
+            "breached": "Breached",
+            "urgent": "Urgent",
+            "soon": "Due soon",
+            "normal": "Normal"
+          }
+        },
+        "deadlineLabels": {
+          "empty": "No application, renewal, document, or invoice deadlines are scheduled.",
+          "openApplications": "Open applications",
+          "description": "Upcoming workload concentration by date and time of day.",
+          "gridLabel": "Deadline intensity by date and time period",
+          "cellLabel": "{date}, {period}: {count} events. Types: {types}.",
+          "noEventTypes": "No event types",
+          "morning": "Morning",
+          "afternoon": "Afternoon",
+          "caseEvent": "Cases",
+          "renewalEvent": "Renewals",
+          "documentEvent": "Documents",
+          "invoiceEvent": "Invoices",
+          "eventLink": "Open {count} {type} for {date}, {period}",
+          "documentLink": "Open document {title} for {client}, due {date}, {period}"
+        },
+        "renewalLabels": {
+          "empty": "No active renewals are due in the next 90 days.",
+          "openRenewals": "Open renewals",
+          "description": "Expiry exposure across cumulative renewal windows.",
+          "days": "days",
+          "types": {
+            "license": "Trade licences",
+            "visa": "Visas",
+            "eid": "Emirates IDs",
+            "ejari": "Tenancy and lease documents"
+          }
+        },
+        "teamLabels": {
+          "empty": "No active team workload is available.",
+          "openApplications": "Open applications",
+          "description": "Open workload and capacity by active team member.",
+          "unassignedCases": "Unassigned cases",
+          "activeCases": "{count} active cases",
+          "capacity": "Capacity for {name}",
+          "capacityValue": "{percent}% capacity"
+        },
+        "errors": {
+          "identity": "Client information is temporarily unavailable.",
+          "links": "Dashboard links are temporarily unavailable.",
+          "operations": "Operational case data is temporarily unavailable.",
+          "renewals": "Renewal data is temporarily unavailable.",
+          "documents": "Document deadline data is temporarily unavailable.",
+          "finance": "Finance data is temporarily unavailable."
         }
       }
     },

@@ -2,9 +2,6 @@ import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import type { Kpi, SignupPoint, RecentLoginRow } from '@/lib/data/admin-metrics';
 import type { Role } from '@/lib/data/users';
-import { countDocsAwaitingReview } from '@/lib/data/documents';
-import { countOpenInvoicesForTenant } from '@/lib/data/invoices';
-import { countRenewalsDueWithin } from '@/lib/data/renewals';
 
 function fmt(n: number): string {
   return n.toLocaleString('en-US');
@@ -163,37 +160,4 @@ export async function getTenantRecentLogins(
     }),
     status: e.kind === 'login_success' ? 'success' : 'failed',
   }));
-}
-export type ProDashboardKpiKey =
-  | 'activeClients'
-  | 'renewalsDue'
-  | 'docsAwaitingReview'
-  | 'pendingPayments';
-
-export type ProDashboardMetric = {
-  key: ProDashboardKpiKey;
-  value: string;
-  delta: number;
-};
-
-export async function getProDashboardMetrics(tenantId: string): Promise<ProDashboardMetric[]> {
-  const admin = createSupabaseServiceRoleClient();
-  const [{ count: activeClients }, awaitingReview, renewalsDue30d, pendingPayments] =
-    await Promise.all([
-      admin
-        .from('clients')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .eq('status', 'active'),
-      countDocsAwaitingReview(tenantId),
-      countRenewalsDueWithin(tenantId, 30),
-      countOpenInvoicesForTenant(tenantId),
-    ]);
-
-  return [
-    { key: 'activeClients', value: fmt(activeClients ?? 0), delta: 0 },
-    { key: 'renewalsDue', value: fmt(renewalsDue30d), delta: 0 },
-    { key: 'docsAwaitingReview', value: fmt(awaitingReview), delta: 0 },
-    { key: 'pendingPayments', value: fmt(pendingPayments), delta: 0 },
-  ];
 }

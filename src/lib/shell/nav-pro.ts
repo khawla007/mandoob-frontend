@@ -17,8 +17,8 @@ export function buildProNav(slug: string): ShellNavGroup[] {
     {
       items: [
         {
-          labelKey: 'overview',
-          labelFallback: 'Overview',
+          labelKey: 'commandCenter',
+          labelFallback: 'Command Center',
           href: `${base}/dashboard`,
           icon: LayoutDashboard,
         },

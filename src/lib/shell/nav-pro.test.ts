@@ -33,3 +33,8 @@ test('PRO navigation retains every pre-existing route', () => {
     ],
   );
 });
+
+test('PRO dashboard navigation is localized as Command Center', () => {
+  assert.match(source, /labelKey: 'commandCenter'/);
+  assert.match(source, /labelFallback: 'Command Center'/);
+});
