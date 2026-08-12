@@ -8,6 +8,7 @@ import { checkLockout, clearFailures, recordFailure } from '@/lib/auth/lockout';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveRoleHome } from '@/lib/auth/role-home';
+import type { Role } from '@/lib/auth/roles';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -78,9 +79,25 @@ export async function POST(request: NextRequest) {
   await clearFailures(email);
 
   const appMeta = (data.user.app_metadata ?? {}) as {
-    mandoob_role?: 'super_admin' | 'pro' | 'customer' | 'employee';
+    mandoob_role?: Role | null;
     tenant_id?: string | null;
+    mandoob_role_transition?: 'pending' | null;
   };
+  if (appMeta.mandoob_role_transition === 'pending' || !appMeta.mandoob_role) {
+    await supabase.auth.signOut();
+    await recordAuthEvent({
+      kind: 'login_failure',
+      actorUserId: data.user.id,
+      ip,
+      userAgent,
+      details: { email, reason: 'authorization_unavailable' },
+    });
+    return errorResponse(
+      'AUTHORIZATION_UNAVAILABLE',
+      'Account authorization is temporarily unavailable',
+      403,
+    );
+  }
   const redirectTo = await resolveRoleHome({
     role: appMeta.mandoob_role ?? null,
     tenantId: appMeta.tenant_id ?? null,

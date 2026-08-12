@@ -15,6 +15,7 @@ type AppMetadata = {
   mandoob_role?: Role | null;
   tenant_id?: string | null;
   mandoob_status?: string;
+  mandoob_role_transition?: 'pending' | null;
 };
 
 export async function getSessionProfile(): Promise<SessionProfile | null> {
@@ -23,6 +24,7 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
   if (!data.user) return null;
 
   const appMeta = (data.user.app_metadata ?? {}) as AppMetadata;
+  if (appMeta.mandoob_role_transition === 'pending' || !appMeta.mandoob_role) return null;
 
   const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   const aal: SessionProfile['aal'] = aalData?.currentLevel === 'aal2' ? 'aal2' : 'aal1';

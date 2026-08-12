@@ -4,31 +4,38 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 const source = readFileSync(join(process.cwd(), 'src/lib/data/admin-change-role.ts'), 'utf8');
+const transition = readFileSync(
+  join(process.cwd(), 'src/lib/data/admin-role-transition.ts'),
+  'utf8',
+);
 const migration = readFileSync(
   join(process.cwd(), 'supabase/migrations/20260812130000_0055_atomic_admin_role_change.sql'),
   'utf8',
 );
 
-test('admin role changes require session revocation before the atomic RPC and metadata sync', () => {
+test('admin role changes delegate exact old and new claims to the fail-closed transition', () => {
   assert.match(source, /\.rpc\('admin_change_role_atomic'/);
   assert.doesNotMatch(source, /\.from\('(pro_profiles|customer_profiles|employees)'\)\.delete/);
   assert.doesNotMatch(source, /\.from\('(pro_profiles|customer_profiles|employees)'\)\.insert/);
   assert.doesNotMatch(source, /\.from\('profiles'\)[\s\S]{0,120}\.update/);
-  const revoke = source.indexOf('await revokeAllSessions');
-  const rpc = source.indexOf(".rpc('admin_change_role_atomic'", revoke);
-  const metadata = source.indexOf('updateUserById', rpc);
-  assert.ok(revoke >= 0 && rpc > revoke && metadata > rpc);
+  assert.match(source, /await executeRoleChangeTransition\(/);
   assert.match(
     source,
-    /try\s*{\s*await revokeAllSessions[\s\S]*catch[\s\S]*throw new ApiError\([\s\S]*SESSION_REVOKE_FAILED[\s\S]*\n\s*}\n\n\s*const \{ error: roleChangeError \}/,
+    /oldClaims: \{[\s\S]*mandoob_role: oldRole,[\s\S]*tenant_id: existing\.tenant_id as string \| null,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
   );
+  assert.match(
+    source,
+    /newClaims: \{[\s\S]*mandoob_role: input\.newRole,[\s\S]*tenant_id: newTenantId,[\s\S]*mandoob_role_transition: null,[\s\S]*\}/,
+  );
+  assert.match(source, /revoke: \(\) => revokeAllSessions\(targetId\)/);
+  assert.match(source, /app_metadata: claims/);
 });
 
 test('admin role change external failures are explicit without exposing provider details', () => {
-  assert.match(source, /SESSION_REVOKE_FAILED[\s\S]*Could not revoke user sessions/);
-  assert.match(source, /AUTH_METADATA_SYNC_FAILED[\s\S]*Could not synchronize user auth metadata/);
-  assert.doesNotMatch(source, /`auth metadata update: \$\{authUpdErr\.message\}`/);
-  assert.doesNotMatch(source, /sessionRevokeError instanceof Error/);
+  assert.match(transition, /SESSION_REVOKE_FAILED[\s\S]*Could not revoke user sessions/);
+  assert.match(transition, /AUTH_METADATA_NEUTRALIZE_FAILED[\s\S]*disable user authorization/);
+  assert.match(transition, /ROLE_CHANGE_RESTORE_FAILED[\s\S]*user remains signed out/);
+  assert.match(transition, /AUTH_METADATA_SYNC_FAILED[\s\S]*login remains disabled/);
   assert.match(source, /Role change could not be completed/);
   assert.doesNotMatch(source, /`atomic role change: \$\{roleChangeError\.message\}`/);
 });

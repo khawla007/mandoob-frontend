@@ -5,6 +5,7 @@ import { encryptOptional } from '@/lib/crypto/pii';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { assertRoleChangeAllowed, assertAdminCanModifyTarget } from './admin-edit-helpers';
+import { AtomicRoleChangeError, executeRoleChangeTransition } from './admin-role-transition';
 import type { ChangeRoleOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
 
@@ -91,28 +92,46 @@ export async function adminChangeRole(
     };
   }
 
-  // Revocation is the fail-closed precondition for changing authorization state. Existing access
-  // tokens can remain valid until their short JWT expiry, but no refresh token may survive the
-  // role transition. If GoTrue cannot revoke the sessions, leave the database and metadata alone.
+  let roleChangeError: { message: string } | null = null;
   try {
-    await revokeAllSessions(targetId);
-  } catch (err) {
-    console.error('revokeAllSessions failed before atomic role change', err);
-    throw new ApiError('SESSION_REVOKE_FAILED', 'Could not revoke user sessions', 502);
+    await executeRoleChangeTransition({
+      oldClaims: {
+        mandoob_role: oldRole,
+        tenant_id: existing.tenant_id as string | null,
+        mandoob_role_transition: null,
+      },
+      newClaims: {
+        mandoob_role: input.newRole,
+        tenant_id: newTenantId,
+        mandoob_role_transition: null,
+      },
+      revoke: () => revokeAllSessions(targetId),
+      writeMetadata: async (claims) => {
+        const { error } = await admin.auth.admin.updateUserById(targetId, {
+          app_metadata: claims,
+        });
+        if (error) throw error;
+      },
+      changeDatabase: async () => {
+        const { error } = await admin.rpc('admin_change_role_atomic', {
+          p_target_id: targetId,
+          p_actor_id: ctx.caller.id,
+          p_expected_role: oldRole,
+          p_expected_tenant_id: existing.tenant_id as string | null,
+          p_new_role: input.newRole,
+          p_new_tenant_id: newTenantId,
+          p_role_data: roleData,
+          p_reason: input.reason ?? null,
+        });
+        return error;
+      },
+      reportFailure: (stage, error) => console.error(`admin role transition ${stage}`, error),
+    });
+  } catch (error) {
+    if (!(error instanceof AtomicRoleChangeError)) throw error;
+    roleChangeError = error.databaseError;
   }
-
-  const { error: roleChangeError } = await admin.rpc('admin_change_role_atomic', {
-    p_target_id: targetId,
-    p_actor_id: ctx.caller.id,
-    p_expected_role: oldRole,
-    p_expected_tenant_id: existing.tenant_id as string | null,
-    p_new_role: input.newRole,
-    p_new_tenant_id: newTenantId,
-    p_role_data: roleData,
-    p_reason: input.reason ?? null,
-  });
   if (roleChangeError) {
-    console.error('admin_change_role_atomic failed after session revocation', roleChangeError);
     const changedDuringRequest = roleChangeError.message.includes('PROFILE_CHANGED_RETRY');
     const forbiddenTenantMove = roleChangeError.message.includes(
       'PROFILE_TENANT_HAS_SERVICE_CASE_REFERENCES',
@@ -136,23 +155,6 @@ export async function adminChangeRole(
             ? 'Client does not belong to selected tenant'
             : 'Role change could not be completed',
       forbiddenTenantMove || changedDuringRequest ? 409 : clientTenantMismatch ? 403 : 500,
-    );
-  }
-
-  // Do not create privileged metadata before the database transition succeeds. Sessions were
-  // already revoked, so a metadata failure leaves a coherent database without a stale old session.
-  const { error: authUpdErr } = await admin.auth.admin.updateUserById(targetId, {
-    app_metadata: {
-      mandoob_role: input.newRole,
-      tenant_id: newTenantId,
-    },
-  });
-  if (authUpdErr) {
-    console.error('auth metadata update failed after atomic role change', authUpdErr);
-    throw new ApiError(
-      'AUTH_METADATA_SYNC_FAILED',
-      'Could not synchronize user auth metadata',
-      502,
     );
   }
 
