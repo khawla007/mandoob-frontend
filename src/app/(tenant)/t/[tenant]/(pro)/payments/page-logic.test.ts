@@ -5,10 +5,19 @@ import { test } from 'node:test';
 
 import {
   parsePaymentSearch,
+  parsePaymentPage,
   parsePaymentView,
   paymentPageHref,
   paymentViewHref,
 } from './page-logic';
+
+test('payment page parser accepts safe positive integers only', () => {
+  assert.equal(parsePaymentPage('2'), 2);
+  for (const value of ['0', '-1', '1.5', '1e999', '9007199254740992', 'nope']) {
+    assert.equal(parsePaymentPage(value), 1, value);
+  }
+  assert.equal(parsePaymentPage(['3', '999']), 3);
+});
 
 test('payment view parser consumes the four collection categories and rejects unsupported input', () => {
   for (const view of ['billed', 'paid', 'due-soon', 'overdue'] as const) {

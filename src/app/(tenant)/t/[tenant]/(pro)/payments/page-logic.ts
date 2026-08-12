@@ -21,6 +21,13 @@ export function parsePaymentView(value: string | string[] | undefined): PaymentV
   return parsePaymentSignalFilter({ view: value }).view;
 }
 
+export function parsePaymentPage(value: string | string[] | undefined): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || !/^\d+$/.test(raw)) return 1;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
 export function paymentViewHref(slug: string, view: PaymentView): string {
   const base = `/t/${encodeURIComponent(slug)}/payments`;
   return view === 'all' ? base : paymentSignalHref(slug, { view });

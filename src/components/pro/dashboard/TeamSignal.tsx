@@ -34,7 +34,7 @@ function capacityTone(capacityPercent: number): string {
 }
 
 export function TeamSignal(props: TeamSignalProps) {
-  const { labels } = props;
+  const { labels, locale } = props;
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
@@ -62,6 +62,12 @@ export function TeamSignal(props: TeamSignalProps) {
     return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-80" />;
 
   const { team, unassignedCases, tenantSlug } = props;
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const percent = new Intl.NumberFormat(locale, {
+    style: 'percent',
+    maximumFractionDigits: 1,
+  });
   if (team.length === 0 && unassignedCases === 0)
     return (
       <WidgetMessage
@@ -94,7 +100,9 @@ export function TeamSignal(props: TeamSignalProps) {
               <UserRoundX aria-hidden="true" className="size-4" />
               {labels.unassignedCases}
             </span>
-            <strong className="font-mono text-sm tabular-nums">{unassignedCases}</strong>
+            <strong className="font-mono text-sm tabular-nums">
+              {integer.format(unassignedCases)}
+            </strong>
           </div>
         ) : null}
         <ul className="space-y-4">
@@ -104,12 +112,14 @@ export function TeamSignal(props: TeamSignalProps) {
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{member.name}</span>
                   <span className="text-muted-foreground text-xs">
-                    {signalLabel(labels.activeCases, { count: member.activeCases })}
+                    {signalLabel(labels.activeCases, {
+                      count: integer.format(member.activeCases),
+                    })}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5 font-mono text-xs font-semibold tabular-nums">
                   <CircleGauge aria-hidden="true" className="text-muted-foreground size-3.5" />
-                  {member.capacityPercent}%
+                  {percent.format(member.capacityPercent / 100)}
                 </span>
               </div>
               <div
@@ -120,7 +130,7 @@ export function TeamSignal(props: TeamSignalProps) {
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuetext={signalLabel(labels.capacityValue, {
-                  percent: member.capacityPercent,
+                  percent: number.format(member.capacityPercent),
                 })}
               >
                 <div

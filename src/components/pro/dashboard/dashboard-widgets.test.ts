@@ -160,4 +160,14 @@ describe('Signal Studio widget contracts', () => {
       assert.doesNotMatch(source(name), /toLocale(?:String|DateString)\(undefined/);
     }
   });
+
+  it('locale-formats visible hero, renewal, and team metrics while preserving meter values', () => {
+    for (const name of ['SignalHero', 'RenewalStreams', 'TeamSignal']) {
+      assert.match(source(name), /new Intl\.NumberFormat\(locale/);
+    }
+    const team = source('TeamSignal');
+    assert.match(team, /aria-valuenow=\{Math\.min\(100, member\.capacityPercent\)\}/);
+    assert.match(team, /percent\.format\(member\.capacityPercent \/ 100\)/);
+    assert.doesNotMatch(team, />\{member\.capacityPercent\}%</);
+  });
 });

@@ -44,6 +44,8 @@ export type ProDashboardData = {
     period: 'morning' | 'afternoon';
     eventType: 'case' | 'renewal' | 'document' | 'invoice';
     href: string;
+    title: string;
+    clientName: string;
   }>;
   finance: {
     billedMinor: number;
@@ -335,6 +337,8 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
         period: parts.period,
         eventType: action.kind,
         href: action.href,
+        title: action.title,
+        clientName: action.clientName,
       },
     ];
   });

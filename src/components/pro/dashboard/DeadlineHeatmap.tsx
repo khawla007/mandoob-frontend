@@ -6,12 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 
-import {
-  applicationSignalHref,
-  paymentSignalHref,
-  renewalSignalHref,
-} from '@/lib/signal-studio-filters';
 import { formatSignalDate, signalLabel } from './widget-format';
+import { buildDeadlineDrilldowns } from './deadline-heatmap-links';
 import {
   WidgetLoading,
   WidgetMessage,
@@ -50,6 +46,7 @@ export type DeadlineHeatmapLabels = WidgetBaseLabels & {
   documentEvent: string;
   invoiceEvent: string;
   eventLink: string;
+  documentLink: string;
 };
 export type DeadlineHeatmapProps = WidgetStateProps<
   DeadlineHeatmapDataProps,
@@ -139,29 +136,22 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
     });
   };
   const number = new Intl.NumberFormat(locale);
-  const eventHref = (cell: DeadlineCell, type: EventType) => {
-    if (type === 'case')
-      return applicationSignalHref(tenantSlug, {
-        date: cell.date,
-        period: cell.period,
-        eventTypes: 'case',
-      });
-    if (type === 'renewal')
-      return renewalSignalHref(tenantSlug, {
-        tab: 'active',
-        date: cell.date,
-        period: cell.period,
-      });
-    if (type === 'invoice')
-      return paymentSignalHref(tenantSlug, {
-        view: 'due-date',
-        date: cell.date,
-        period: cell.period,
-      });
-    return cell.events.find((event) => event.eventType === 'document')!.href;
-  };
-  const eventCount = (cell: DeadlineCell, type: EventType) =>
-    cell.events.filter((event) => event.eventType === type).length;
+  const drilldowns = (cell: DeadlineCell) =>
+    buildDeadlineDrilldowns(cell.events, tenantSlug, cell.date, cell.period);
+  const drilldownLabel = (cell: DeadlineCell, drilldown: ReturnType<typeof drilldowns>[number]) =>
+    drilldown.event
+      ? signalLabel(labels.documentLink, {
+          title: drilldown.event.title,
+          client: drilldown.event.clientName,
+          date: formatSignalDate(cell.date, locale, { dateStyle: 'full' }),
+          period: labels[cell.period],
+        })
+      : signalLabel(labels.eventLink, {
+          type: labels[`${drilldown.type}Event` as const],
+          count: number.format(drilldown.count),
+          date: formatSignalDate(cell.date, locale, { dateStyle: 'full' }),
+          period: labels[cell.period],
+        });
 
   return (
     <Card className="signal-panel">
@@ -218,20 +208,15 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                     <span aria-hidden="true" className="text-center font-mono tabular-nums">
                       {number.format(cell.count)}
                     </span>
-                    <span className="flex flex-wrap justify-center gap-1">
-                      {cell.eventTypes.map((type) => (
+                    <span className="flex max-h-20 flex-wrap justify-center gap-1 overflow-y-auto">
+                      {drilldowns(cell).map((drilldown) => (
                         <Link
-                          key={type}
-                          href={eventHref(cell, type)}
-                          aria-label={signalLabel(labels.eventLink, {
-                            type: labels[`${type}Event` as const],
-                            count: number.format(eventCount(cell, type)),
-                            date: formatSignalDate(cell.date, locale, { dateStyle: 'full' }),
-                            period: labels[cell.period],
-                          })}
+                          key={drilldown.key}
+                          href={drilldown.href}
+                          aria-label={drilldownLabel(cell, drilldown)}
                           className="focus-visible:ring-ring bg-background/75 rounded px-1 font-mono tabular-nums focus-visible:ring-2 focus-visible:outline-none"
                         >
-                          {number.format(eventCount(cell, type))}
+                          {number.format(drilldown.count)}
                         </Link>
                       ))}
                     </span>
@@ -260,14 +245,16 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
                     {labels[cell.period]}
                   </span>
                 </span>
-                <span className="flex flex-wrap gap-2">
-                  {cell.eventTypes.map((type) => (
+                <span className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
+                  {drilldowns(cell).map((drilldown) => (
                     <Link
-                      key={type}
-                      href={eventHref(cell, type)}
+                      key={drilldown.key}
+                      href={drilldown.href}
+                      aria-label={drilldownLabel(cell, drilldown)}
                       className="focus-visible:ring-ring rounded-md border px-2 py-1 text-xs focus-visible:ring-2 focus-visible:outline-none"
                     >
-                      {labels[`${type}Event` as const]} · {number.format(eventCount(cell, type))}
+                      {drilldown.event?.title ?? labels[`${drilldown.type}Event` as const]} ·{' '}
+                      {number.format(drilldown.count)}
                     </Link>
                   ))}
                 </span>

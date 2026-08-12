@@ -103,6 +103,12 @@ export function SignalHero(props: SignalHeroProps) {
     ...caseVelocity.flatMap((point) => [point.opened, point.completed]),
   );
   const applicationsHref = `/t/${encodeURIComponent(tenantSlug)}/applications`;
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const percent = new Intl.NumberFormat(locale, {
+    style: 'percent',
+    maximumFractionDigits: 1,
+  });
 
   return (
     <section className="signal-hero relative isolate overflow-hidden rounded-3xl p-6 text-white shadow-[0_24px_80px_-36px_oklch(0.35_0.15_30/0.85)] sm:p-8">
@@ -114,7 +120,7 @@ export function SignalHero(props: SignalHeroProps) {
           </p>
           <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
             <strong className="font-mono text-6xl leading-none font-semibold tracking-[-0.08em] tabular-nums sm:text-7xl">
-              {actionCount}
+              {integer.format(actionCount)}
             </strong>
             <p className="max-w-xs pb-1 text-lg leading-snug text-white/78">
               {labels.actionSummary}
@@ -144,15 +150,17 @@ export function SignalHero(props: SignalHeroProps) {
             <DialogTrigger asChild>
               <button
                 type="button"
-                aria-label={signalLabel(labels.scoreAria, { score: health.score })}
+                aria-label={signalLabel(labels.scoreAria, { score: number.format(health.score) })}
                 className="focus-visible:ring-ring/80 rounded-2xl border border-white/16 bg-black/18 p-5 text-start backdrop-blur-sm transition-colors hover:bg-black/25 focus-visible:ring-2 focus-visible:outline-none"
               >
                 <span className="flex items-center gap-2 text-xs font-semibold tracking-wide text-white/70 uppercase">
                   <Gauge aria-hidden="true" className="size-4 text-orange-300" /> {labels.score}
                 </span>
                 <span className="mt-3 block font-mono text-4xl font-semibold tabular-nums">
-                  {health.score}
-                  <span className="text-base font-normal text-white/55">/100</span>
+                  {number.format(health.score)}
+                  <span className="text-base font-normal text-white/55">
+                    /{integer.format(100)}
+                  </span>
                 </span>
                 <span className="mt-2 block text-xs text-white/60">{labels.openScoreDetails}</span>
               </button>
@@ -160,7 +168,7 @@ export function SignalHero(props: SignalHeroProps) {
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
-                  {signalLabel(labels.dialogTitle, { score: health.score })}
+                  {signalLabel(labels.dialogTitle, { score: number.format(health.score) })}
                 </DialogTitle>
                 <DialogDescription>{labels.dialogDescription}</DialogDescription>
               </DialogHeader>
@@ -169,7 +177,7 @@ export function SignalHero(props: SignalHeroProps) {
                   <div key={key} className="flex items-center justify-between gap-4 py-3">
                     <dt className="text-muted-foreground text-sm">{labels[key]}</dt>
                     <dd className="font-mono text-sm font-semibold tabular-nums">
-                      {health[key].toLocaleString(locale, { maximumFractionDigits: 1 })}%
+                      {percent.format(health[key] / 100)}
                       <span className="sr-only">
                         ; {positive ? labels.higherHealthier : labels.lowerHealthier}
                       </span>
@@ -183,9 +191,9 @@ export function SignalHero(props: SignalHeroProps) {
           <div
             role="img"
             aria-label={signalLabel(labels.velocityAria, {
-              opened,
-              completed,
-              days: caseVelocity.length,
+              opened: integer.format(opened),
+              completed: integer.format(completed),
+              days: integer.format(caseVelocity.length),
             })}
             className="rounded-2xl border border-white/16 bg-white/7 p-5 backdrop-blur-sm"
           >
@@ -194,7 +202,7 @@ export function SignalHero(props: SignalHeroProps) {
                 {labels.velocity}
               </span>
               <span className="font-mono text-xs text-white/60 tabular-nums">
-                {caseVelocity.length}
+                {integer.format(caseVelocity.length)}
                 {labels.daySuffix}
               </span>
             </div>
@@ -214,10 +222,10 @@ export function SignalHero(props: SignalHeroProps) {
             </div>
             <div className="mt-3 flex gap-4 text-xs text-white/72">
               <span className="before:me-1.5 before:inline-block before:size-2 before:rounded-full before:bg-orange-400">
-                {opened} {labels.opened}
+                {integer.format(opened)} {labels.opened}
               </span>
               <span className="before:me-1.5 before:inline-block before:size-2 before:rounded-full before:bg-teal-300">
-                {completed} {labels.completed}
+                {integer.format(completed)} {labels.completed}
               </span>
             </div>
           </div>

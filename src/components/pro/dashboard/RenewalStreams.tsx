@@ -34,7 +34,7 @@ export type RenewalStreamsLabels = WidgetBaseLabels & {
 export type RenewalStreamsProps = WidgetStateProps<RenewalStreamsDataProps, RenewalStreamsLabels>;
 
 export function RenewalStreams(props: RenewalStreamsProps) {
-  const { labels } = props;
+  const { labels, locale } = props;
   if (props.kind === 'loading') {
     return (
       <WidgetLoading
@@ -82,6 +82,7 @@ export function RenewalStreams(props: RenewalStreamsProps) {
       />
     );
   const maximum = Math.max(1, ...entries.map(([, values]) => values.d90));
+  const number = new Intl.NumberFormat(locale);
 
   return (
     <Card className="signal-panel signal-streams">
@@ -123,9 +124,9 @@ export function RenewalStreams(props: RenewalStreamsProps) {
               {WINDOWS.map((window) => (
                 <span key={window} className="text-muted-foreground text-[10px]">
                   <strong className="text-foreground block font-mono text-xs tabular-nums">
-                    {values[window]}
+                    {number.format(values[window])}
                   </strong>
-                  {window.slice(1)} {labels.days}
+                  {number.format(Number(window.slice(1)))} {labels.days}
                 </span>
               ))}
             </span>

@@ -10,6 +10,7 @@ import { listInvoicesForPaymentView } from '@/lib/data/invoices';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
   parsePaymentSearch,
+  parsePaymentPage,
   paymentPageHref,
   paymentViewHref,
   type PaymentView,
@@ -41,8 +42,7 @@ export default async function ProPaymentsPage({
   const { tenant: slug } = await params;
   const search = await searchParams;
   const { view, date, period } = parsePaymentSearch(search);
-  const rawPage = Array.isArray(search.page) ? search.page[0] : search.page;
-  const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
+  const page = parsePaymentPage(search.page);
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
   const [t, locale] = await Promise.all([getTranslations('pro'), getLocale()]);
