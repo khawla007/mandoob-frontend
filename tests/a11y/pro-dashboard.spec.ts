@@ -9,7 +9,7 @@ import {
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { sanitizeBrowserDiagnostic } from './browser-diagnostics';
+import { sanitizeBrowserDiagnostic } from '@/lib/testing/browser-diagnostics';
 
 const tenant = process.env.E2E_TENANT_SLUG ?? process.env.LAUNCH_TENANT_SLUG ?? 'firm';
 const dashboardPath = `/t/${tenant}/dashboard`;
