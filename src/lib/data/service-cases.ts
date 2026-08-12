@@ -68,6 +68,9 @@ async function client(deps: ServiceCaseDeps): Promise<SupabaseClient> {
 
 function queryError(error: { message: string; code?: string } | null, fallback: string): void {
   if (!error) return;
+  if (error.code === '42501' || error.message === 'FORBIDDEN') {
+    throw new ApiError('FORBIDDEN', 'Application mutation is not authorized', 403);
+  }
   if (error.code === 'P0002' || error.message === 'NOT_FOUND') {
     throw new ApiError('NOT_FOUND', 'Application not found', 404);
   }
@@ -130,14 +133,22 @@ function serviceCaseQuery(
   admin: SupabaseClient,
   tenantId: string,
   filters: { status?: ServiceCaseStatus[]; assigned_to?: string; client_id?: string },
+  source: 'service_cases' | 'service_cases_ranked' = 'service_cases',
 ) {
   let query = admin
-    .from('service_cases')
+    .from(source)
     .select(SERVICE_CASE_COLUMNS, { count: 'exact' })
     .eq('tenant_id', tenantId);
   if (filters.status?.length) query = query.in('status', filters.status);
   if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
   if (filters.client_id) query = query.eq('client_id', filters.client_id);
+  if (source === 'service_cases_ranked') {
+    return query
+      .order('sla_breach_rank', { ascending: true })
+      .order('priority_rank', { ascending: true })
+      .order('sla_due_at', { ascending: true, nullsFirst: false })
+      .order('id', { ascending: true });
+  }
   return query.order('created_at', { ascending: false }).order('id', { ascending: true });
 }
 
@@ -254,7 +265,7 @@ export async function listServiceCaseWorkspace(
   const page = Math.max(1, Math.trunc(filters.page ?? 1));
   const from = (page - 1) * SERVICE_CASE_PAGE_SIZE;
   const [caseResult, clientRows, ownerRows] = await Promise.all([
-    serviceCaseQuery(admin, tenantId, parsedFilters.data).range(
+    serviceCaseQuery(admin, tenantId, parsedFilters.data, 'service_cases_ranked').range(
       from,
       from + SERVICE_CASE_PAGE_SIZE - 1,
     ),

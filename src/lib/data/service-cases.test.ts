@@ -30,6 +30,7 @@ type QueryCall = {
   payload?: Row;
   limit?: number;
   range?: [number, number];
+  orders?: Array<{ key: string; ascending: boolean; nullsFirst?: boolean }>;
 };
 
 function fakeSupabase(
@@ -60,7 +61,8 @@ function fakeSupabase(
       limit?: number;
       range?: [number, number];
       exactCount?: boolean;
-    } = { operation: 'select', filters: [] };
+      orders: Array<{ key: string; ascending: boolean; nullsFirst?: boolean }>;
+    } = { operation: 'select', filters: [], orders: [] };
 
     function filteredRows(): Row[] {
       return tableRows(table).filter((row) =>
@@ -81,6 +83,7 @@ function fakeSupabase(
         ...(state.payload ? { payload: structuredClone(state.payload) } : {}),
         ...(state.limit === undefined ? {} : { limit: state.limit }),
         ...(state.range === undefined ? {} : { range: state.range }),
+        ...(state.orders.length === 0 ? {} : { orders: structuredClone(state.orders) }),
       });
       if (failure) return { data: null, error: failure };
 
@@ -99,7 +102,18 @@ function fakeSupabase(
         return { data: state.selected ? (rows[0] ?? null) : null, error: null };
       }
 
-      const rows = filteredRows();
+      const rows = filteredRows().sort((left, right) => {
+        for (const order of state.orders) {
+          const leftValue = left[order.key];
+          const rightValue = right[order.key];
+          if (leftValue === rightValue) continue;
+          if (leftValue == null) return order.nullsFirst ? -1 : 1;
+          if (rightValue == null) return order.nullsFirst ? 1 : -1;
+          const comparison = leftValue < rightValue ? -1 : 1;
+          return order.ascending ? comparison : -comparison;
+        }
+        return 0;
+      });
       const data = state.range ? rows.slice(state.range[0], state.range[1] + 1) : rows;
       return { data, error: null, ...(state.exactCount ? { count: rows.length } : {}) };
     }
@@ -118,7 +132,12 @@ function fakeSupabase(
         state.filters.push({ kind: 'in', key, value });
         return builder;
       },
-      order() {
+      order(key: string, options: { ascending?: boolean; nullsFirst?: boolean } = {}) {
+        state.orders.push({
+          key,
+          ascending: options.ascending ?? true,
+          ...(options.nullsFirst === undefined ? {} : { nullsFirst: options.nullsFirst }),
+        });
         return builder;
       },
       limit(value: number) {
@@ -300,7 +319,7 @@ test('listServiceCases converts database and hydration errors to ApiError', asyn
 
 test('listServiceCaseWorkspace loads each tenant dataset once without a silent row cap', async () => {
   const db = fakeSupabase({
-    service_cases: [caseRow()],
+    service_cases_ranked: [caseRow({ sla_breach_rank: 0, priority_rank: 1 })],
     clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
     profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' }],
   });
@@ -318,7 +337,7 @@ test('listServiceCaseWorkspace loads each tenant dataset once without a silent r
   assert.equal(workspace.total, 1);
   assert.equal(workspace.page, 1);
   assert.equal(workspace.pageSize, SERVICE_CASE_PAGE_SIZE);
-  assert.equal(db.calls.filter((call) => call.table === 'service_cases').length, 1);
+  assert.equal(db.calls.filter((call) => call.table === 'service_cases_ranked').length, 1);
   assert.equal(db.calls.filter((call) => call.table === 'clients').length, 1);
   assert.equal(db.calls.filter((call) => call.table === 'profiles').length, 1);
   assert.equal(
@@ -335,7 +354,11 @@ test('exported service-case DAL uses explicit ranges instead of silent query lim
 
 test('service-case workspace pages cases and deliberately batches every option beyond 1000 rows', async () => {
   const cases = Array.from({ length: 55 }, (_, index) =>
-    caseRow({ id: `case-${String(index).padStart(3, '0')}` }),
+    caseRow({
+      id: `case-${String(index).padStart(3, '0')}`,
+      sla_breach_rank: 0,
+      priority_rank: 1,
+    }),
   );
   const clients = Array.from({ length: 1005 }, (_, index) => ({
     id: `client-${index}`,
@@ -347,7 +370,7 @@ test('service-case workspace pages cases and deliberately batches every option b
     tenant_id: TENANT_1,
     full_name: `Owner ${index}`,
   }));
-  const db = fakeSupabase({ service_cases: cases, clients, profiles });
+  const db = fakeSupabase({ service_cases_ranked: cases, clients, profiles });
 
   const workspace = await listServiceCaseWorkspace(
     TENANT_1,
@@ -361,7 +384,7 @@ test('service-case workspace pages cases and deliberately batches every option b
   assert.equal(workspace.pageSize, 50);
   assert.equal(workspace.clients.length, 1005);
   assert.equal(workspace.owners.length, 1005);
-  assert.deepEqual(db.calls.find((call) => call.table === 'service_cases')?.range, [50, 99]);
+  assert.deepEqual(db.calls.find((call) => call.table === 'service_cases_ranked')?.range, [50, 99]);
   assert.deepEqual(
     db.calls.filter((call) => call.table === 'clients').map((call) => call.range),
     [
@@ -378,6 +401,75 @@ test('service-case workspace pages cases and deliberately batches every option b
       [1000, 1499],
     ],
   );
+});
+
+test('service-case workspace applies global business ranking before the page boundary', async () => {
+  const routine = Array.from({ length: 50 }, (_, index) =>
+    caseRow({
+      id: `routine-${String(index).padStart(2, '0')}`,
+      priority: 'urgent',
+      sla_due_at: '2099-01-01T00:00:00.000Z',
+      sla_breach_rank: 1,
+      priority_rank: 0,
+      created_at: `2026-08-12T${String(index % 24).padStart(2, '0')}:00:00.000Z`,
+    }),
+  );
+  const breached = caseRow({
+    id: 'breached-old-case',
+    priority: 'low',
+    sla_due_at: '2020-01-01T00:00:00.000Z',
+    sla_breach_rank: 0,
+    priority_rank: 3,
+    created_at: '2020-01-01T00:00:00.000Z',
+  });
+  const db = fakeSupabase({
+    service_cases_ranked: [...routine, breached],
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' }],
+  });
+
+  const firstPage = await listServiceCaseWorkspace(TENANT_1, {}, { supabase: db as never });
+  const secondPage = await listServiceCaseWorkspace(
+    TENANT_1,
+    { page: 2 },
+    { supabase: db as never },
+  );
+  assert.equal(firstPage.total, 51);
+  assert.equal(firstPage.cases[0].id, 'breached-old-case');
+  assert.equal(firstPage.cases.length, 50);
+  assert.deepEqual(
+    secondPage.cases.map((row) => row.id),
+    ['routine-49'],
+  );
+  const rankedCall = db.calls.find((call) => call.table === 'service_cases_ranked');
+  assert.deepEqual(rankedCall?.range, [0, 49]);
+  assert.ok(
+    rankedCall?.filters.some((filter) => filter.key === 'tenant_id' && filter.value === TENANT_1),
+  );
+  assert.deepEqual(rankedCall?.orders, [
+    { key: 'sla_breach_rank', ascending: true },
+    { key: 'priority_rank', ascending: true },
+    { key: 'sla_due_at', ascending: true, nullsFirst: false },
+    { key: 'id', ascending: true },
+  ]);
+});
+
+test('service-case ranked read migration fixes global order and restricts the view', () => {
+  const sql = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260812091000_0051_service_case_ranked_read.sql'),
+    'utf8',
+  );
+  assert.match(
+    sql,
+    /create or replace view public\.service_cases_ranked[\s\S]*security_invoker\s*=\s*true/i,
+  );
+  assert.match(sql, /case[\s\S]*sla_due_at < now\(\)[\s\S]*then 0[\s\S]*else 1/i);
+  assert.match(
+    sql,
+    /case priority[\s\S]*when 'urgent' then 0[\s\S]*when 'high' then 1[\s\S]*when 'normal' then 2[\s\S]*when 'low' then 3/i,
+  );
+  assert.match(sql, /revoke all on public\.service_cases_ranked from public, anon, authenticated/i);
+  assert.match(sql, /grant select on public\.service_cases_ranked to service_role/i);
 });
 
 test('listServiceCases deliberately batches beyond PostgREST max_rows', async () => {
@@ -679,6 +771,23 @@ test('updateServiceCase preserves the atomic RPC not-found result', async () => 
       ),
     (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
   );
+});
+
+test('service-case mutations preserve RPC authorization failures as forbidden', async () => {
+  const input = { client_id: CLIENT_1, title: 'New case', service_type: 'Visa' };
+  for (const failure of [{ message: 'FORBIDDEN', code: '42501' }, { message: 'FORBIDDEN' }]) {
+    const db = fakeSupabase(
+      { clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }] },
+      { 'rpc:create_service_case_with_audit': failure },
+    );
+    await assert.rejects(
+      () =>
+        createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
+          supabase: db as never,
+        }),
+      (error) => error instanceof ApiError && error.code === 'FORBIDDEN' && error.status === 403,
+    );
+  }
 });
 
 function auditActions(sql: string): string[] {
