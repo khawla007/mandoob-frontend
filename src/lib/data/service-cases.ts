@@ -52,7 +52,13 @@ export type ServiceCaseDbRow = {
 
 export type ServiceCaseOption = { id: string; name: string };
 type ServiceCaseClientRow = { id: string; tenant_id: string; company_name: string };
-type ServiceCaseOwnerRow = { id: string; tenant_id: string; full_name: string | null };
+type ServiceCaseOwnerRow = {
+  id: string;
+  tenant_id: string;
+  full_name: string | null;
+  role: string;
+  status: string;
+};
 
 const SERVICE_CASE_COLUMNS =
   'id, tenant_id, client_id, title, service_type, status, priority, assigned_to, due_at, sla_due_at, blocked_reason, completed_at, created_at, updated_at';
@@ -225,8 +231,10 @@ export async function listServiceCases(
       (from, to) =>
         admin
           .from('profiles')
-          .select('id, tenant_id, full_name')
+          .select('id, tenant_id, full_name, role, status')
           .eq('tenant_id', tenantId)
+          .eq('role', 'pro')
+          .eq('status', 'active')
           .order('full_name', { ascending: true })
           .order('id', { ascending: true })
           .range(from, to),
@@ -284,8 +292,10 @@ export async function listServiceCaseWorkspace(
       (batchFrom, batchTo) =>
         admin
           .from('profiles')
-          .select('id, tenant_id, full_name')
+          .select('id, tenant_id, full_name, role, status')
           .eq('tenant_id', tenantId)
+          .eq('role', 'pro')
+          .eq('status', 'active')
           .order('full_name', { ascending: true })
           .order('id', { ascending: true })
           .range(batchFrom, batchTo),
@@ -315,12 +325,9 @@ async function belongsToTenant(
   id: string,
   tenantId: string,
 ): Promise<boolean> {
-  const { data, error } = await admin
-    .from(table)
-    .select('id')
-    .eq('id', id)
-    .eq('tenant_id', tenantId)
-    .maybeSingle();
+  let query = admin.from(table).select('id').eq('id', id).eq('tenant_id', tenantId);
+  if (table === 'profiles') query = query.eq('role', 'pro').eq('status', 'active');
+  const { data, error } = await query.maybeSingle();
   queryError(error, `Could not validate ${table === 'clients' ? 'client' : 'assignee'}`);
   return Boolean(data);
 }
@@ -470,8 +477,10 @@ export async function listServiceCaseOwners(
     (from, to) =>
       admin
         .from('profiles')
-        .select('id, tenant_id, full_name')
+        .select('id, tenant_id, full_name, role, status')
         .eq('tenant_id', tenantId)
+        .eq('role', 'pro')
+        .eq('status', 'active')
         .order('full_name', { ascending: true })
         .order('id', { ascending: true })
         .range(from, to),

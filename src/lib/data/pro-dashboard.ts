@@ -213,8 +213,14 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const documentRequests = input.documentRequests.filter((row) => row.tenant_id === tenantId);
   const documents = input.documents.filter((row) => row.tenant_id === tenantId);
   const invoices = input.invoices.filter((row) => row.tenant_id === tenantId);
-  const payments = input.payments.filter((row) => row.tenant_id === tenantId);
-  const refunds = input.refunds.filter((row) => row.tenant_id === tenantId);
+  const invoiceIds = new Set(invoices.map((row) => row.id));
+  const payments = input.payments.filter(
+    (row) => row.tenant_id === tenantId && invoiceIds.has(row.invoice_id),
+  );
+  const paymentIds = new Set(payments.map((row) => row.id));
+  const refunds = input.refunds.filter(
+    (row) => row.tenant_id === tenantId && paymentIds.has(row.payment_id),
+  );
   const clientNames = new Map(clients.map((row) => [row.id, row.company_name]));
   const ownerNames = new Map(profiles.map((row) => [row.id, row.full_name]));
   const openCases = serviceCases.filter((row) => !CLOSED_CASE_STATUSES.has(row.status));
@@ -271,7 +277,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   }
 
   const team = profiles
-    .filter((row) => row.status === 'active' && (row.role === 'pro' || row.role === 'admin'))
+    .filter((row) => row.status === 'active' && row.role === 'pro')
     .map((profile) => {
       const activeCases = caseCountByAssignee.get(profile.id) ?? 0;
       return {
@@ -461,7 +467,7 @@ function buildActions(args: {
         ownerName: row.assigned_to ? (args.ownerNames.get(row.assigned_to) ?? null) : null,
         deadline,
         urgency: urgency(deadline, args.now),
-        href: base ? `${base}/applications?case=${encodeURIComponent(row.id)}` : '#',
+        href: base ? `${base}/applications?status=${encodeURIComponent(row.status)}` : '#',
       };
     }),
     ...args.activeRenewals.map(
@@ -474,7 +480,7 @@ function buildActions(args: {
         ownerName: null,
         deadline: row.due_date,
         urgency: urgency(row.due_date, args.now),
-        href: base ? `${base}/renewals?renewal=${encodeURIComponent(row.id)}` : '#',
+        href: base ? `${base}/renewals?tab=active` : '#',
       }),
     ),
     ...args.documentRequests
@@ -489,9 +495,7 @@ function buildActions(args: {
           ownerName: null,
           deadline: row.due_at,
           urgency: urgency(row.due_at, args.now),
-          href: base
-            ? `${base}/clients/${encodeURIComponent(row.client_id)}?tab=documents&request=${encodeURIComponent(row.id)}`
-            : '#',
+          href: base ? `${base}/clients/${encodeURIComponent(row.client_id)}` : '#',
         }),
       ),
     ...args.documents
@@ -506,9 +510,7 @@ function buildActions(args: {
           ownerName: null,
           deadline: null,
           urgency: 'normal',
-          href: base
-            ? `${base}/clients/${encodeURIComponent(row.client_id)}?tab=documents&document=${encodeURIComponent(row.id)}`
-            : '#',
+          href: base ? `${base}/clients/${encodeURIComponent(row.client_id)}` : '#',
         }),
       ),
     ...args.openInvoices.map(

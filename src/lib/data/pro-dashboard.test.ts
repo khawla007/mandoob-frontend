@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
+import { parseApplicationFilters } from '@/app/(tenant)/t/[tenant]/(pro)/applications/page-logic';
+import { parseRenewalTab } from '@/app/(tenant)/t/[tenant]/(pro)/renewals/page-logic';
 import {
   associateCurrentDocumentVersions,
   calculateProDashboard,
@@ -27,7 +31,6 @@ function baseInput(): ProDashboardInput {
     ],
     profiles: [
       { id: 'pro-1', tenant_id: TENANT, full_name: 'Aisha', role: 'pro', status: 'active' },
-      { id: 'pro-2', tenant_id: TENANT, full_name: 'Bilal', role: 'pro', status: 'active' },
       {
         id: 'pro-x',
         tenant_id: 'tenant-b',
@@ -45,7 +48,7 @@ function baseInput(): ProDashboardInput {
         sla_due_at: '2026-08-10T10:00:00.000Z',
       }),
       caseRow({ id: 'case-2', client_id: 'client-1', assigned_to: 'pro-1' }),
-      caseRow({ id: 'case-3', client_id: 'client-2', assigned_to: 'pro-2' }),
+      caseRow({ id: 'case-3', client_id: 'client-2', assigned_to: 'pro-1' }),
       caseRow({
         id: 'case-first-complete',
         client_id: 'client-2',
@@ -180,7 +183,7 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   assert.ok(Object.values(dashboard.health).every((value) => value >= 0 && value <= 100));
   assert.deepEqual(
     dashboard.team.map((member) => member.profileId),
-    ['pro-1', 'pro-2'],
+    ['pro-1'],
   );
 });
 
@@ -488,7 +491,6 @@ test('calculates all five transparent health inputs from actual timestamps', () 
   const input = emptyInput();
   input.profiles = [
     { id: 'pro-1', tenant_id: TENANT, full_name: 'Aisha', role: 'pro', status: 'active' },
-    { id: 'pro-2', tenant_id: TENANT, full_name: 'Bilal', role: 'pro', status: 'active' },
   ];
   input.serviceCases = [
     caseRow({ id: 'overdue', assigned_to: 'pro-1', sla_due_at: '2026-08-10T09:00:00Z' }),
@@ -506,7 +508,7 @@ test('calculates all five transparent health inputs from actual timestamps', () 
       sla_due_at: null,
       updated_at: '2026-08-10T10:00:01Z',
     }),
-    caseRow({ id: 'moving', assigned_to: 'pro-2', sla_due_at: null }),
+    caseRow({ id: 'moving', assigned_to: 'pro-1', sla_due_at: null }),
     caseRow({
       id: 'completed-on-time',
       status: 'completed',
@@ -540,8 +542,8 @@ test('calculates all five transparent health inputs from actual timestamps', () 
   assert.equal(dashboard.health.slaCompletionRate, 50);
   assert.equal(dashboard.health.blockedRatio, 25);
   assert.equal(dashboard.health.reminderRate, 50);
-  assert.equal(dashboard.health.workloadBalance, 33.3);
-  assert.equal(dashboard.health.score, 57);
+  assert.equal(dashboard.health.workloadBalance, 100);
+  assert.equal(dashboard.health.score, 70);
 });
 
 test('uses timestamp order rather than ISO text order for SLA health inputs', () => {
@@ -608,14 +610,14 @@ test('selects the highest-ranked signal per action kind with tenant-safe hrefs',
     dashboard.deadlineEvents.filter((event) => event.eventType === 'case').map((event) => event.id),
     ['sla-breached', 'sla-near'],
   );
-  assert.equal(dashboard.actionDeck[0].href, '/t/safe-firm/applications?case=sla-breached');
+  assert.equal(dashboard.actionDeck[0].href, '/t/safe-firm/applications?status=submitted');
   assert.equal(
     dashboard.actionDeck.find((item) => item.id === 'expiry')!.href,
-    '/t/safe-firm/renewals?renewal=expiry',
+    '/t/safe-firm/renewals?tab=active',
   );
   assert.equal(
     dashboard.actionDeck.find((item) => item.id === 'missing')!.href,
-    '/t/safe-firm/clients/client-1?tab=documents&request=missing',
+    '/t/safe-firm/clients/client-1',
   );
 });
 
@@ -721,6 +723,47 @@ test('uses Dubai current-month ledger rules and excludes draft, void, old, refun
   assert.equal(dashboard.kpis.collectionRate, 40);
 });
 
+test('excludes orphan and cross-tenant payment/refund chains from finance metrics and currency', () => {
+  const input = emptyInput();
+  input.invoices = [invoiceRow({ id: 'owned-invoice', amount_minor: 1000 })];
+  input.payments = [
+    paymentRow({ id: 'owned-payment', invoice_id: 'owned-invoice', amount_minor: 800 }),
+    paymentRow({ id: 'orphan-payment', invoice_id: 'foreign-invoice', amount_minor: 999999 }),
+    paymentRow({
+      id: 'orphan-usd',
+      invoice_id: 'foreign-usd-invoice',
+      amount_minor: 999999,
+      currency: 'USD',
+    }),
+  ];
+  input.refunds = [
+    {
+      id: 'owned-refund',
+      tenant_id: TENANT,
+      payment_id: 'owned-payment',
+      amount_minor: 100,
+      status: 'succeeded',
+      reason: null,
+      created_at: '2026-08-10T00:00:00Z',
+    },
+    {
+      id: 'orphan-refund',
+      tenant_id: TENANT,
+      payment_id: 'orphan-payment',
+      amount_minor: 500000,
+      status: 'succeeded',
+      reason: null,
+      created_at: '2026-08-10T00:00:00Z',
+    },
+  ];
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.equal(dashboard.finance.currency, 'AED');
+  assert.equal(dashboard.finance.paidMinor, 700);
+  assert.equal(dashboard.kpis.collectedMinor, 700);
+  assert.equal(dashboard.kpis.collectionRate, 70);
+});
+
 test('uses Dubai date and noon boundaries for deadline intensity event details', () => {
   const input = emptyInput();
   input.days = 7;
@@ -742,7 +785,7 @@ test('uses Dubai date and noon boundaries for deadline intensity event details',
   );
 });
 
-test('adds comparison and case support totals and exposes overload beyond 100 percent', () => {
+test('uses the schema-valid sole PRO owner and exposes overload beyond 100 percent', () => {
   const input = emptyInput();
   input.clients = [
     {
@@ -768,27 +811,99 @@ test('adds comparison and case support totals and exposes overload beyond 100 pe
     },
   ];
   input.profiles = [
-    { id: 'ten', tenant_id: TENANT, full_name: 'Ten', role: 'pro', status: 'active' },
-    { id: 'thirty', tenant_id: TENANT, full_name: 'Thirty', role: 'pro', status: 'active' },
+    { id: 'owner', tenant_id: TENANT, full_name: 'Owner', role: 'pro', status: 'active' },
+    {
+      id: 'employee',
+      tenant_id: TENANT,
+      full_name: 'Client employee',
+      role: 'employee',
+      status: 'active',
+    },
+    {
+      id: 'customer',
+      tenant_id: TENANT,
+      full_name: 'Customer',
+      role: 'customer',
+      status: 'active',
+    },
+    { id: 'admin', tenant_id: null, full_name: 'Platform admin', role: 'admin', status: 'active' },
   ];
   input.serviceCases = [
-    ...Array.from({ length: 10 }, (_, index) =>
-      caseRow({ id: `ten-${index}`, assigned_to: 'ten' }),
-    ),
     ...Array.from({ length: 30 }, (_, index) =>
-      caseRow({ id: `thirty-${index}`, assigned_to: 'thirty' }),
+      caseRow({ id: `owner-${index}`, assigned_to: 'owner' }),
     ),
     caseRow({ id: 'blocked', assigned_to: null, blocked_reason: 'Hold' }),
   ];
   const dashboard = calculateProDashboard(input, NOW);
   assert.equal(dashboard.kpis.activeClientsChange, -1);
-  assert.equal(dashboard.kpis.movingCases, 40);
+  assert.equal(dashboard.kpis.movingCases, 30);
   assert.equal(dashboard.kpis.blockedCases, 1);
-  assert.equal(dashboard.team.find((member) => member.profileId === 'ten')!.capacityPercent, 100);
-  assert.equal(
-    dashboard.team.find((member) => member.profileId === 'thirty')!.capacityPercent,
-    300,
+  assert.deepEqual(
+    dashboard.team.map((member) => member.profileId),
+    ['owner'],
   );
+  assert.equal(dashboard.team[0].capacityPercent, 300);
+  assert.equal(dashboard.health.workloadBalance, 100);
+});
+
+test('dashboard action hrefs use filters and entity routes consumed by destination contracts', () => {
+  const dashboard = calculateProDashboard(baseInput(), NOW);
+  const byKind = new Map(dashboard.actionDeck.map((action) => [action.kind, action]));
+  const caseUrl = new URL(byKind.get('case')!.href, 'https://mandoob.test');
+  assert.equal(caseUrl.pathname, '/t/acme/applications');
+  const caseFilters = parseApplicationFilters({
+    status: caseUrl.searchParams.get('status') ?? undefined,
+  });
+  assert.deepEqual(caseFilters.status, ['submitted']);
+  assert.equal(caseFilters.assigned_to, undefined);
+
+  const renewalUrl = new URL(byKind.get('renewal')!.href, 'https://mandoob.test');
+  assert.equal(renewalUrl.pathname, '/t/acme/renewals');
+  assert.equal(parseRenewalTab(renewalUrl.searchParams.get('tab') ?? undefined), 'active');
+
+  assert.equal(byKind.get('document')!.href, '/t/acme/clients/client-1');
+  assert.equal(byKind.get('invoice')!.href, '/t/acme/payments/invoice-overdue');
+  assert.match(
+    readFileSync(
+      join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/page.tsx'),
+      'utf8',
+    ),
+    /params:\s*Promise<\{ tenant: string; clientId: string \}>/,
+  );
+  assert.match(
+    readFileSync(
+      join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/payments/[invoiceId]/page.tsx'),
+      'utf8',
+    ),
+    /invoiceId/,
+  );
+});
+
+test('finance relationship hardening migration uses tenant-owned chains without deleting legacy data', () => {
+  const sql = readFileSync(
+    join(
+      process.cwd(),
+      'supabase/migrations/20260812100000_0052_dashboard_relationship_hardening.sql',
+    ),
+    'utf8',
+  );
+  assert.match(sql, /unique index[\s\S]*invoices\s*\(tenant_id, id\)/i);
+  assert.match(sql, /unique index[\s\S]*payments\s*\(tenant_id, id\)/i);
+  assert.match(
+    sql,
+    /foreign key \(tenant_id, invoice_id\)[\s\S]*invoices \(tenant_id, id\)[\s\S]*not valid/i,
+  );
+  assert.match(
+    sql,
+    /foreign key \(tenant_id, payment_id\)[\s\S]*payments \(tenant_id, id\)[\s\S]*not valid/i,
+  );
+  assert.match(sql, /invoices[\s\S]*tenant_id, currency, status, created_at/i);
+  assert.match(sql, /payments[\s\S]*tenant_id, currency, status, received_at/i);
+  assert.match(
+    sql,
+    /enforce_service_case_pro_assignee[\s\S]*role = 'pro'[\s\S]*status = 'active'/i,
+  );
+  assert.doesNotMatch(sql, /\b(?:delete|truncate)\b/i);
 });
 
 test('settles source failures independently for widget-local degradation', async () => {

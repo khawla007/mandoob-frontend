@@ -8,6 +8,7 @@ import {
   createServiceCase,
   SERVICE_CASE_PAGE_SIZE,
   listServiceCaseWorkspace,
+  listServiceCaseOwners,
   listServiceCases,
   rankServiceCases,
   toServiceCase,
@@ -259,8 +260,20 @@ test('listServiceCases scopes cases and filters, and only hydrates tenant-scoped
       { id: CLIENT_2, tenant_id: TENANT_2, company_name: 'Foreign LLC' },
     ],
     profiles: [
-      { id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' },
-      { id: PROFILE_2, tenant_id: TENANT_2, full_name: 'Foreign Owner' },
+      {
+        id: PROFILE_1,
+        tenant_id: TENANT_1,
+        full_name: 'Aisha Khan',
+        role: 'pro',
+        status: 'active',
+      },
+      {
+        id: PROFILE_2,
+        tenant_id: TENANT_2,
+        full_name: 'Foreign Owner',
+        role: 'pro',
+        status: 'active',
+      },
     ],
   });
 
@@ -293,11 +306,48 @@ test('listServiceCases never hydrates cross-tenant client or owner names', async
   const db = fakeSupabase({
     service_cases: [caseRow({ client_id: CLIENT_2, assigned_to: PROFILE_2 })],
     clients: [{ id: CLIENT_2, tenant_id: TENANT_2, company_name: 'Foreign LLC' }],
-    profiles: [{ id: PROFILE_2, tenant_id: TENANT_2, full_name: 'Foreign Owner' }],
+    profiles: [
+      {
+        id: PROFILE_2,
+        tenant_id: TENANT_2,
+        full_name: 'Foreign Owner',
+        role: 'pro',
+        status: 'active',
+      },
+    ],
   });
   const [row] = await listServiceCases(TENANT_1, {}, { supabase: db as never });
   assert.equal(row.clientName, '');
   assert.equal(row.ownerName, null);
+});
+
+test('owner options include only active PRO firm owners', async () => {
+  const db = fakeSupabase({
+    profiles: [
+      { id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Owner', role: 'pro', status: 'active' },
+      {
+        id: PROFILE_2,
+        tenant_id: TENANT_1,
+        full_name: 'Employee',
+        role: 'employee',
+        status: 'active',
+      },
+      {
+        id: 'inactive-pro',
+        tenant_id: TENANT_1,
+        full_name: 'Inactive',
+        role: 'pro',
+        status: 'suspended',
+      },
+    ],
+  });
+
+  assert.deepEqual(await listServiceCaseOwners(TENANT_1, { supabase: db as never }), [
+    { id: PROFILE_1, name: 'Owner' },
+  ]);
+  const call = db.calls.find((candidate) => candidate.table === 'profiles');
+  assert.ok(call?.filters.some((filter) => filter.key === 'role' && filter.value === 'pro'));
+  assert.ok(call?.filters.some((filter) => filter.key === 'status' && filter.value === 'active'));
 });
 
 test('listServiceCases converts database and hydration errors to ApiError', async () => {
@@ -321,7 +371,15 @@ test('listServiceCaseWorkspace loads each tenant dataset once without a silent r
   const db = fakeSupabase({
     service_cases_ranked: [caseRow({ sla_breach_rank: 0, priority_rank: 1 })],
     clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
-    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' }],
+    profiles: [
+      {
+        id: PROFILE_1,
+        tenant_id: TENANT_1,
+        full_name: 'Aisha Khan',
+        role: 'pro',
+        status: 'active',
+      },
+    ],
   });
 
   const workspace = await listServiceCaseWorkspace(
@@ -352,7 +410,7 @@ test('exported service-case DAL uses explicit ranges instead of silent query lim
   assert.match(source, /\.range\s*\(/);
 });
 
-test('service-case workspace pages cases and deliberately batches every option beyond 1000 rows', async () => {
+test('service-case workspace pages cases and batches clients while honoring the sole active owner', async () => {
   const cases = Array.from({ length: 55 }, (_, index) =>
     caseRow({
       id: `case-${String(index).padStart(3, '0')}`,
@@ -369,6 +427,8 @@ test('service-case workspace pages cases and deliberately batches every option b
     id: `profile-${index}`,
     tenant_id: TENANT_1,
     full_name: `Owner ${index}`,
+    role: 'pro',
+    status: index === 0 ? 'active' : 'suspended',
   }));
   const db = fakeSupabase({ service_cases_ranked: cases, clients, profiles });
 
@@ -383,7 +443,7 @@ test('service-case workspace pages cases and deliberately batches every option b
   assert.equal(workspace.page, 2);
   assert.equal(workspace.pageSize, 50);
   assert.equal(workspace.clients.length, 1005);
-  assert.equal(workspace.owners.length, 1005);
+  assert.equal(workspace.owners.length, 1);
   assert.deepEqual(db.calls.find((call) => call.table === 'service_cases_ranked')?.range, [50, 99]);
   assert.deepEqual(
     db.calls.filter((call) => call.table === 'clients').map((call) => call.range),
@@ -395,11 +455,7 @@ test('service-case workspace pages cases and deliberately batches every option b
   );
   assert.deepEqual(
     db.calls.filter((call) => call.table === 'profiles').map((call) => call.range),
-    [
-      [0, 499],
-      [500, 999],
-      [1000, 1499],
-    ],
+    [[0, 499]],
   );
 });
 
@@ -425,7 +481,15 @@ test('service-case workspace applies global business ranking before the page bou
   const db = fakeSupabase({
     service_cases_ranked: [...routine, breached],
     clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
-    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' }],
+    profiles: [
+      {
+        id: PROFILE_1,
+        tenant_id: TENANT_1,
+        full_name: 'Aisha Khan',
+        role: 'pro',
+        status: 'active',
+      },
+    ],
   });
 
   const firstPage = await listServiceCaseWorkspace(TENANT_1, {}, { supabase: db as never });
@@ -479,7 +543,15 @@ test('listServiceCases deliberately batches beyond PostgREST max_rows', async ()
   const db = fakeSupabase({
     service_cases: cases,
     clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
-    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' }],
+    profiles: [
+      {
+        id: PROFILE_1,
+        tenant_id: TENANT_1,
+        full_name: 'Aisha Khan',
+        role: 'pro',
+        status: 'active',
+      },
+    ],
   });
 
   assert.equal((await listServiceCases(TENANT_1, {}, { supabase: db as never })).length, 1005);
@@ -540,7 +612,7 @@ test('forward service-case security migration removes mutation RLS and guards bo
 test('createServiceCase rejects wrong roles and cross-tenant clients or assignees', async () => {
   const db = fakeSupabase({
     clients: [{ id: CLIENT_1, tenant_id: TENANT_2 }],
-    profiles: [{ id: PROFILE_1, tenant_id: TENANT_2 }],
+    profiles: [{ id: PROFILE_1, tenant_id: TENANT_2, role: 'pro', status: 'active' }],
   });
   const input = {
     client_id: CLIENT_1,
@@ -572,12 +644,23 @@ test('createServiceCase rejects wrong roles and cross-tenant clients or assignee
       }),
     (error) => error instanceof ApiError && error.code === 'INVALID_ASSIGNEE',
   );
+
+  db.tables.set('profiles', [
+    { id: PROFILE_1, tenant_id: TENANT_1, role: 'employee', status: 'active' },
+  ]);
+  await assert.rejects(
+    () =>
+      createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
+        supabase: db as never,
+      }),
+    (error) => error instanceof ApiError && error.code === 'INVALID_ASSIGNEE',
+  );
 });
 
 test('createServiceCase uses the atomic RPC with trusted ownership and audit details', async () => {
   const db = fakeSupabase({
     clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
-    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1 }],
+    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, role: 'pro', status: 'active' }],
     service_cases: [],
     tenant_audit_log: [],
   });
@@ -653,7 +736,7 @@ test('createServiceCase treats an RPC error atomically and verifies the returned
 test('updateServiceCase rejects missing or cross-tenant cases and cross-tenant assignees', async () => {
   const db = fakeSupabase({
     service_cases: [caseRow({ tenant_id: TENANT_2 })],
-    profiles: [{ id: PROFILE_2, tenant_id: TENANT_2 }],
+    profiles: [{ id: PROFILE_2, tenant_id: TENANT_2, role: 'pro', status: 'active' }],
   });
   await assert.rejects(
     () =>

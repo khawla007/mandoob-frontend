@@ -8,22 +8,17 @@ import { listClientsForTenant } from '@/lib/data/clients';
 import { listRenewalsForTenant, type RenewalRow, type RenewalStatus } from '@/lib/data/renewals';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { parseRenewalTab, type RenewalTab } from './page-logic';
 
 export const dynamic = 'force-dynamic';
 
-type Tab = 'active' | 'completed' | 'cancelled';
-const TABS: { value: Tab; labelKey: string }[] = [
+const TABS: { value: RenewalTab; labelKey: string }[] = [
   { value: 'active', labelKey: 'active' },
   { value: 'completed', labelKey: 'completed' },
   { value: 'cancelled', labelKey: 'cancelled' },
 ];
 
 const ACTIVE_STATUSES: RenewalStatus[] = ['upcoming', 'due_soon', 'overdue'];
-
-function parseTab(raw: string | undefined): Tab {
-  if (raw === 'completed' || raw === 'cancelled') return raw;
-  return 'active';
-}
 
 async function fetchClientsByIds(
   tenantId: string,
@@ -54,7 +49,7 @@ export default async function RenewalsPage({
 }) {
   const { tenant: slug } = await params;
   const sp = await searchParams;
-  const tab = parseTab(sp.tab);
+  const tab = parseRenewalTab(sp.tab);
 
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
@@ -130,8 +125,8 @@ function TabLink({
   label,
 }: {
   slug: string;
-  current: Tab;
-  value: Tab;
+  current: RenewalTab;
+  value: RenewalTab;
   label: string;
 }) {
   const href = value === 'active' ? `/t/${slug}/renewals` : `/t/${slug}/renewals?tab=${value}`;
