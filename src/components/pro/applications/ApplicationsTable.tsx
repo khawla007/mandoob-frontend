@@ -1,5 +1,6 @@
-import { updateApplicationAction } from '@/app/(tenant)/t/[tenant]/(pro)/applications/actions';
+import { updateApplicationFormAction } from '@/app/(tenant)/t/[tenant]/(pro)/applications/actions';
 import type { ServiceCase } from '@/lib/data/service-cases';
+import { ApplicationStatusActions } from './ApplicationStatusActions';
 
 export type ApplicationsTableLabels = {
   client: string;
@@ -15,17 +16,20 @@ export type ApplicationsTableLabels = {
   slaBreached: string;
   complete: string;
   cancel: string;
+  updating: string;
+  updated: string;
   noAction: string;
   empty: string;
   emptyHint: string;
   statuses: Record<ServiceCase['status'], string>;
 };
 
-function formatTimestamp(value: string | null): string | null {
+function formatTimestamp(value: string | null, locale: string): string | null {
   if (!value) return null;
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: 'Asia/Dubai',
   }).format(new Date(value));
 }
 
@@ -42,10 +46,12 @@ export function ApplicationsTable({
   rows,
   slug,
   labels,
+  locale,
 }: {
   rows: ServiceCase[];
   slug: string;
   labels: ApplicationsTableLabels;
+  locale: string;
 }) {
   if (rows.length === 0) {
     return (
@@ -84,7 +90,7 @@ export function ApplicationsTable({
         <tbody className="divide-y">
           {rows.map((row) => {
             const breached = isSlaBreached(row);
-            const update = updateApplicationAction.bind(null, slug, row.id);
+            const update = updateApplicationFormAction.bind(null, slug, row.id);
             return (
               <tr key={row.id} className="hover:bg-muted/30 align-top transition-colors">
                 <td className="px-3 py-3 font-medium">{row.clientName || labels.unknownClient}</td>
@@ -101,13 +107,13 @@ export function ApplicationsTable({
                 <td className="px-3 py-3 whitespace-nowrap">
                   {row.slaDueAt ? (
                     <div className={breached ? 'text-destructive font-medium' : undefined}>
-                      {labels.slaPrefix}: {formatTimestamp(row.slaDueAt)}
+                      {labels.slaPrefix}: {formatTimestamp(row.slaDueAt, locale)}
                       {breached ? ` · ${labels.slaBreached}` : null}
                     </div>
                   ) : null}
                   {row.dueAt ? (
                     <div className="text-muted-foreground mt-0.5 text-xs">
-                      {labels.duePrefix}: {formatTimestamp(row.dueAt)}
+                      {labels.duePrefix}: {formatTimestamp(row.dueAt, locale)}
                     </div>
                   ) : row.slaDueAt ? null : (
                     <span aria-hidden="true">—</span>
@@ -119,28 +125,15 @@ export function ApplicationsTable({
                       {labels.noAction}
                     </span>
                   ) : (
-                    <div className="flex justify-end gap-2">
-                      <form action={update as never}>
-                        <input type="hidden" name="status" value="completed" />
-                        <input type="hidden" name="completed_at" value={new Date().toISOString()} />
-                        <button
-                          type="submit"
-                          className="border-input bg-background hover:bg-muted focus-visible:ring-ring rounded-md border px-2.5 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                        >
-                          {labels.complete}
-                        </button>
-                      </form>
-                      <form action={update as never}>
-                        <input type="hidden" name="status" value="cancelled" />
-                        <input type="hidden" name="completed_at" value="" />
-                        <button
-                          type="submit"
-                          className="text-destructive hover:bg-destructive/10 focus-visible:ring-destructive rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                        >
-                          {labels.cancel}
-                        </button>
-                      </form>
-                    </div>
+                    <ApplicationStatusActions
+                      action={update}
+                      labels={{
+                        complete: labels.complete,
+                        cancel: labels.cancel,
+                        pending: labels.updating,
+                        success: labels.updated,
+                      }}
+                    />
                   )}
                 </td>
               </tr>

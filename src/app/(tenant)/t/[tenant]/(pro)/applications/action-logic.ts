@@ -21,6 +21,7 @@ export type ApplicationActionDependencies = {
   createCase: typeof createServiceCase;
   updateCase: typeof updateServiceCase;
   revalidate(path: string): void;
+  now(): Date;
 };
 
 function optionalFormValue(form: FormData, key: string): string | null | undefined {
@@ -30,11 +31,34 @@ function optionalFormValue(form: FormData, key: string): string | null | undefin
   return value.trim();
 }
 
+export function parseDubaiDateTimeLocal(value: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, yearText, monthText, dayText, hourText, minuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth[month - 1] ||
+    hour > 23 ||
+    minute > 59
+  ) {
+    return null;
+  }
+  return `${yearText}-${monthText}-${dayText}T${hourText}:${minuteText}:00+04:00`;
+}
+
 function timestampFormValue(form: FormData, key: string): string | null | undefined {
   const value = optionalFormValue(form, key);
   if (!value) return value;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  return parseDubaiDateTimeLocal(value) ?? value;
 }
 
 function normalizeCreateRaw(raw: unknown): unknown {
@@ -51,17 +75,25 @@ function normalizeCreateRaw(raw: unknown): unknown {
   };
 }
 
-function normalizeUpdateRaw(raw: unknown): unknown {
-  if (!(raw instanceof FormData)) return raw;
-  return {
-    status: optionalFormValue(raw, 'status') ?? undefined,
-    priority: optionalFormValue(raw, 'priority') ?? undefined,
-    assigned_to: optionalFormValue(raw, 'assigned_to'),
-    due_at: timestampFormValue(raw, 'due_at'),
-    sla_due_at: timestampFormValue(raw, 'sla_due_at'),
-    blocked_reason: optionalFormValue(raw, 'blocked_reason'),
-    completed_at: timestampFormValue(raw, 'completed_at'),
-  };
+function normalizeUpdateRaw(raw: unknown, now: Date): unknown {
+  const candidate: Record<string, unknown> =
+    raw instanceof FormData
+      ? {
+          status: optionalFormValue(raw, 'status') ?? undefined,
+          priority: optionalFormValue(raw, 'priority') ?? undefined,
+          assigned_to: optionalFormValue(raw, 'assigned_to'),
+          due_at: timestampFormValue(raw, 'due_at'),
+          sla_due_at: timestampFormValue(raw, 'sla_due_at'),
+          blocked_reason: optionalFormValue(raw, 'blocked_reason'),
+        }
+      : raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? { ...(raw as Record<string, unknown>) }
+        : {};
+  delete candidate.completed_at;
+  if (candidate.status !== undefined) {
+    candidate.completed_at = candidate.status === 'completed' ? now.toISOString() : null;
+  }
+  return candidate;
 }
 
 function errorResult(error: unknown, fallback: string): ApplicationActionResult<never> {
@@ -121,7 +153,7 @@ export async function runUpdateApplicationAction(
   const session = await dependencies.requirePro();
   try {
     const { tenant } = await authorize(slug, session, dependencies);
-    const parsed = updateServiceCaseSchema.safeParse(normalizeUpdateRaw(raw));
+    const parsed = updateServiceCaseSchema.safeParse(normalizeUpdateRaw(raw, dependencies.now()));
     if (!parsed.success) {
       return {
         ok: false,

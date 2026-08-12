@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { ApiError } from '@/lib/errors';
 import {
+  parseDubaiDateTimeLocal,
   runCreateApplicationAction,
   runUpdateApplicationAction,
   type ApplicationActionDependencies,
@@ -38,6 +39,7 @@ function setup(overrides: Partial<ApplicationActionDependencies> = {}) {
     revalidate: (path) => {
       calls.push(`revalidate:${path}`);
     },
+    now: () => new Date('2026-08-11T12:00:00.000Z'),
     ...overrides,
   };
   return { calls, dependencies };
@@ -98,7 +100,7 @@ test('update action returns validation errors without calling the data mutation'
   const result = await runUpdateApplicationAction(
     'acme',
     CASE_ID,
-    { status: 'completed', completed_at: null },
+    { status: 'unknown' },
     context.dependencies,
   );
 
@@ -108,6 +110,79 @@ test('update action returns validation errors without calling the data mutation'
     context.calls.some((call) => call.startsWith('update:')),
     false,
   );
+});
+
+test('Dubai datetime-local parser applies UTC+04:00 and rejects impossible dates', () => {
+  assert.equal(parseDubaiDateTimeLocal('2026-08-11T09:30'), '2026-08-11T09:30:00+04:00');
+  assert.equal(parseDubaiDateTimeLocal('2026-02-29T09:30'), null);
+  assert.equal(parseDubaiDateTimeLocal('2026-08-11T24:00'), null);
+  assert.equal(parseDubaiDateTimeLocal('not-a-date'), null);
+});
+
+test('create action converts datetime-local values as Dubai business time', async () => {
+  let input: Record<string, unknown> | undefined;
+  const context = setup({
+    createCase: async (_ctx, raw) => {
+      input = raw as Record<string, unknown>;
+      return { id: CASE_ID };
+    },
+  });
+  const form = new FormData();
+  form.set('client_id', CLIENT_ID);
+  form.set('title', 'Investor visa application');
+  form.set('service_type', 'Investor visa');
+  form.set('due_at', '2026-08-11T09:30');
+  form.set('sla_due_at', '2026-08-12T17:45');
+
+  const result = await runCreateApplicationAction('acme', form, context.dependencies);
+  assert.equal(result.ok, true);
+  assert.equal(input?.due_at, '2026-08-11T09:30:00+04:00');
+  assert.equal(input?.sla_due_at, '2026-08-12T17:45:00+04:00');
+});
+
+test('create action rejects an invalid datetime-local value before mutation', async () => {
+  const context = setup();
+  const form = new FormData();
+  form.set('client_id', CLIENT_ID);
+  form.set('title', 'Investor visa application');
+  form.set('service_type', 'Investor visa');
+  form.set('due_at', '2026-02-29T09:30');
+
+  const result = await runCreateApplicationAction('acme', form, context.dependencies);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, 'VALIDATION_FAILED');
+  assert.equal(
+    context.calls.some((call) => call.startsWith('create:')),
+    false,
+  );
+});
+
+test('status update ignores spoofed completion time and generates it on the server', async () => {
+  let input: Record<string, unknown> | undefined;
+  const context = setup({
+    now: () => new Date('2026-08-11T12:34:56.000Z'),
+    updateCase: async (_ctx, _id, raw) => {
+      input = raw as Record<string, unknown>;
+    },
+  });
+
+  await runUpdateApplicationAction(
+    'acme',
+    CASE_ID,
+    { status: 'completed', completed_at: '2000-01-01T00:00:00.000Z' },
+    context.dependencies,
+  );
+  assert.equal(input?.status, 'completed');
+  assert.equal(input?.completed_at, '2026-08-11T12:34:56.000Z');
+
+  await runUpdateApplicationAction(
+    'acme',
+    CASE_ID,
+    { status: 'cancelled', completed_at: '2000-01-01T00:00:00.000Z' },
+    context.dependencies,
+  );
+  assert.equal(input?.status, 'cancelled');
+  assert.equal(input?.completed_at, null);
 });
 
 test('create action authorizes, mutates, and revalidates applications plus dashboard', async () => {

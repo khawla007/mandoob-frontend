@@ -51,6 +51,8 @@ export type ServiceCaseDbRow = {
 };
 
 export type ServiceCaseOption = { id: string; name: string };
+type ServiceCaseClientRow = { id: string; tenant_id: string; company_name: string };
+type ServiceCaseOwnerRow = { id: string; tenant_id: string; full_name: string | null };
 
 const SERVICE_CASE_COLUMNS =
   'id, tenant_id, client_id, title, service_type, status, priority, assigned_to, due_at, sla_due_at, blocked_reason, completed_at, created_at, updated_at';
@@ -62,8 +64,12 @@ async function client(deps: ServiceCaseDeps): Promise<SupabaseClient> {
   return createSupabaseServiceRoleClient();
 }
 
-function queryError(error: { message: string } | null, fallback: string): void {
-  if (error) throw new ApiError('INTERNAL', fallback, 500, { cause: error.message });
+function queryError(error: { message: string; code?: string } | null, fallback: string): void {
+  if (!error) return;
+  if (error.code === 'P0002' || error.message === 'NOT_FOUND') {
+    throw new ApiError('NOT_FOUND', 'Application not found', 404);
+  }
+  throw new ApiError('INTERNAL', fallback, 500, { cause: error.message });
 }
 
 function invalidInput(message: string): ApiError {
@@ -118,6 +124,41 @@ export function rankServiceCases<
   });
 }
 
+function serviceCaseQuery(
+  admin: SupabaseClient,
+  tenantId: string,
+  filters: { status?: ServiceCaseStatus[]; assigned_to?: string; client_id?: string },
+) {
+  let query = admin.from('service_cases').select(SERVICE_CASE_COLUMNS).eq('tenant_id', tenantId);
+  if (filters.status?.length) query = query.in('status', filters.status);
+  if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
+  if (filters.client_id) query = query.eq('client_id', filters.client_id);
+  return query.order('created_at', { ascending: false });
+}
+
+function hydrateServiceCases(
+  rows: ServiceCaseDbRow[],
+  clients: ServiceCaseClientRow[],
+  owners: ServiceCaseOwnerRow[],
+  tenantId: string,
+): ServiceCase[] {
+  const clientNames = new Map(
+    clients.filter((row) => row.tenant_id === tenantId).map((row) => [row.id, row.company_name]),
+  );
+  const ownerNames = new Map(
+    owners.filter((row) => row.tenant_id === tenantId).map((row) => [row.id, row.full_name]),
+  );
+  return rankServiceCases(
+    rows
+      .filter((row) => row.tenant_id === tenantId)
+      .map((row) => ({
+        ...toServiceCase(row),
+        clientName: clientNames.get(row.client_id) ?? '',
+        ownerName: row.assigned_to ? (ownerNames.get(row.assigned_to) ?? null) : null,
+      })),
+  );
+}
+
 export async function listServiceCases(
   tenantId: string,
   filters: { status?: ServiceCaseStatus[]; assignedTo?: string; clientId?: string } = {},
@@ -131,14 +172,7 @@ export async function listServiceCases(
   if (!parsedFilters.success) throw invalidInput(parsedFilters.error.issues[0].message);
 
   const admin = await client(deps);
-  let query = admin.from('service_cases').select(SERVICE_CASE_COLUMNS).eq('tenant_id', tenantId);
-  if (parsedFilters.data.status?.length) query = query.in('status', parsedFilters.data.status);
-  if (parsedFilters.data.assigned_to) {
-    query = query.eq('assigned_to', parsedFilters.data.assigned_to);
-  }
-  if (parsedFilters.data.client_id) query = query.eq('client_id', parsedFilters.data.client_id);
-
-  const { data, error } = await query.order('created_at', { ascending: false }).limit(250);
+  const { data, error } = await serviceCaseQuery(admin, tenantId, parsedFilters.data).limit(250);
   queryError(error, 'Could not load applications');
   const rows = ((data ?? []) as ServiceCaseDbRow[]).filter((row) => row.tenant_id === tenantId);
   const clientIds = [...new Set(rows.map((row) => row.client_id))];
@@ -163,24 +197,56 @@ export async function listServiceCases(
   queryError(clientResult.error, 'Could not load application clients');
   queryError(ownerResult.error, 'Could not load application owners');
 
-  const clientNames = new Map(
-    ((clientResult.data ?? []) as Array<{ id: string; tenant_id: string; company_name: string }>)
-      .filter((row) => row.tenant_id === tenantId)
-      .map((row) => [row.id, row.company_name]),
+  return hydrateServiceCases(
+    rows,
+    (clientResult.data ?? []) as ServiceCaseClientRow[],
+    (ownerResult.data ?? []) as ServiceCaseOwnerRow[],
+    tenantId,
   );
-  const ownerNames = new Map(
-    ((ownerResult.data ?? []) as Array<{ id: string; tenant_id: string; full_name: string | null }>)
-      .filter((row) => row.tenant_id === tenantId)
-      .map((row) => [row.id, row.full_name]),
-  );
+}
 
-  return rankServiceCases(
-    rows.map((row) => ({
-      ...toServiceCase(row),
-      clientName: clientNames.get(row.client_id) ?? '',
-      ownerName: row.assigned_to ? (ownerNames.get(row.assigned_to) ?? null) : null,
-    })),
-  );
+export async function listServiceCaseWorkspace(
+  tenantId: string,
+  filters: { status?: ServiceCaseStatus[]; assignedTo?: string; clientId?: string } = {},
+  deps: ServiceCaseDeps = {},
+): Promise<{ cases: ServiceCase[]; clients: ServiceCaseOption[]; owners: ServiceCaseOption[] }> {
+  const parsedFilters = serviceCaseFilterSchema.safeParse({
+    status: filters.status,
+    assigned_to: filters.assignedTo,
+    client_id: filters.clientId,
+  });
+  if (!parsedFilters.success) throw invalidInput(parsedFilters.error.issues[0].message);
+
+  const admin = await client(deps);
+  const [caseResult, clientResult, ownerResult] = await Promise.all([
+    serviceCaseQuery(admin, tenantId, parsedFilters.data),
+    admin
+      .from('clients')
+      .select('id, tenant_id, company_name')
+      .eq('tenant_id', tenantId)
+      .order('company_name', { ascending: true }),
+    admin
+      .from('profiles')
+      .select('id, tenant_id, full_name')
+      .eq('tenant_id', tenantId)
+      .order('full_name', { ascending: true }),
+  ]);
+  queryError(caseResult.error, 'Could not load applications');
+  queryError(clientResult.error, 'Could not load application clients');
+  queryError(ownerResult.error, 'Could not load application owners');
+
+  const rows = (caseResult.data ?? []) as ServiceCaseDbRow[];
+  const clientRows = (clientResult.data ?? []) as ServiceCaseClientRow[];
+  const ownerRows = (ownerResult.data ?? []) as ServiceCaseOwnerRow[];
+  return {
+    cases: hydrateServiceCases(rows, clientRows, ownerRows, tenantId),
+    clients: clientRows
+      .filter((row) => row.tenant_id === tenantId)
+      .map((row) => ({ id: row.id, name: row.company_name })),
+    owners: ownerRows
+      .filter((row) => row.tenant_id === tenantId)
+      .map((row) => ({ id: row.id, name: row.full_name?.trim() || row.id })),
+  };
 }
 
 async function belongsToTenant(
@@ -197,26 +263,6 @@ async function belongsToTenant(
     .maybeSingle();
   queryError(error, `Could not validate ${table === 'clients' ? 'client' : 'assignee'}`);
   return Boolean(data);
-}
-
-async function recordAudit(
-  admin: SupabaseClient,
-  input: {
-    tenantId: string;
-    actorId: string;
-    action: 'service_case_created' | 'service_case_updated';
-    id: string;
-    changedKeys: string[];
-  },
-): Promise<void> {
-  const { error } = await admin.from('tenant_audit_log').insert({
-    tenant_id: input.tenantId,
-    actor_id: input.actorId,
-    action: input.action,
-    source: 'self_serve',
-    details: { entity: 'service_case', id: input.id, changed_keys: input.changedKeys },
-  });
-  queryError(error, 'Could not record application audit');
 }
 
 export async function createServiceCase(
@@ -251,22 +297,25 @@ export async function createServiceCase(
     sla_due_at: parsed.data.sla_due_at,
     blocked_reason: parsed.data.blocked_reason,
   });
-  const { data, error } = await admin
-    .from('service_cases')
-    .insert({ tenant_id: ctx.tenantId, created_by: ctx.actorId, ...values })
-    .select('id')
-    .single();
-  queryError(error, 'Could not create application');
-  if (!data?.id) throw new ApiError('INTERNAL', 'Could not create application', 500);
-  const id = data.id as string;
-  await recordAudit(admin, {
-    tenantId: ctx.tenantId,
-    actorId: ctx.actorId,
-    action: 'service_case_created',
-    id,
-    changedKeys: Object.keys(values),
+  const changedKeys = Object.keys(values);
+  const { data, error } = await admin.rpc('create_service_case_with_audit', {
+    p_tenant_id: ctx.tenantId,
+    p_actor_id: ctx.actorId,
+    p_client_id: values.client_id,
+    p_title: values.title,
+    p_service_type: values.service_type,
+    p_priority: values.priority,
+    p_assigned_to: values.assigned_to ?? null,
+    p_due_at: values.due_at ?? null,
+    p_sla_due_at: values.sla_due_at ?? null,
+    p_blocked_reason: values.blocked_reason ?? null,
+    p_changed_keys: changedKeys,
   });
-  return { id };
+  queryError(error, 'Could not create application');
+  if (typeof data !== 'string' || !data) {
+    throw new ApiError('INTERNAL', 'Could not verify created application', 500);
+  }
+  return { id: data };
 }
 
 export async function updateServiceCase(
@@ -319,19 +368,16 @@ export async function updateServiceCase(
     blocked_reason: parsed.data.blocked_reason,
     completed_at: parsed.data.completed_at,
   });
-  const { error } = await admin
-    .from('service_cases')
-    .update(patch)
-    .eq('id', id)
-    .eq('tenant_id', ctx.tenantId);
-  queryError(error, 'Could not update application');
-  await recordAudit(admin, {
-    tenantId: ctx.tenantId,
-    actorId: ctx.actorId,
-    action: 'service_case_updated',
-    id,
-    changedKeys: Object.keys(patch),
+  const changedKeys = Object.keys(patch);
+  const { data, error } = await admin.rpc('update_service_case_with_audit', {
+    p_tenant_id: ctx.tenantId,
+    p_actor_id: ctx.actorId,
+    p_case_id: id,
+    p_patch: patch,
+    p_changed_keys: changedKeys,
   });
+  queryError(error, 'Could not update application');
+  if (data !== id) throw new ApiError('INTERNAL', 'Could not verify updated application', 500);
 }
 
 export async function listServiceCaseClients(

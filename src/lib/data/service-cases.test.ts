@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { ApiError } from '@/lib/errors';
 import {
   createServiceCase,
+  listServiceCaseWorkspace,
   listServiceCases,
   rankServiceCases,
   toServiceCase,
@@ -26,16 +27,19 @@ type QueryCall = {
   operation: 'select' | 'insert' | 'update';
   filters: Array<{ kind: 'eq' | 'in'; key: string; value: unknown }>;
   payload?: Row;
+  limit?: number;
 };
 
 function fakeSupabase(
   seed: Record<string, Row[]>,
-  failures: Record<string, { message: string }> = {},
+  failures: Record<string, { message: string; code?: string }> = {},
+  rpcResults: Record<string, unknown> = {},
 ) {
   const tables = new Map(
     Object.entries(seed).map(([table, rows]) => [table, structuredClone(rows)]),
   );
   const calls: QueryCall[] = [];
+  const rpcCalls: Array<{ name: string; args: Row }> = [];
 
   function tableRows(table: string): Row[] {
     const existing = tables.get(table);
@@ -51,6 +55,7 @@ function fakeSupabase(
       filters: QueryCall['filters'];
       payload?: Row;
       selected?: string;
+      limit?: number;
     } = { operation: 'select', filters: [] };
 
     function filteredRows(): Row[] {
@@ -70,6 +75,7 @@ function fakeSupabase(
         operation: state.operation,
         filters: structuredClone(state.filters),
         ...(state.payload ? { payload: structuredClone(state.payload) } : {}),
+        ...(state.limit === undefined ? {} : { limit: state.limit }),
       });
       if (failure) return { data: null, error: failure };
 
@@ -107,7 +113,8 @@ function fakeSupabase(
       order() {
         return builder;
       },
-      limit() {
+      limit(value: number) {
+        state.limit = value;
         return builder;
       },
       insert(payload: Row) {
@@ -141,7 +148,14 @@ function fakeSupabase(
     return builder;
   }
 
-  return { calls, from, tables };
+  async function rpc(name: string, args: Row) {
+    rpcCalls.push({ name, args: structuredClone(args) });
+    const error = failures[`rpc:${name}`] ?? null;
+    const data = Object.hasOwn(rpcResults, name) ? rpcResults[name] : CASE_1;
+    return { data: error ? null : data, error };
+  }
+
+  return { calls, from, rpc, rpcCalls, tables };
 }
 
 function caseRow(overrides: Row = {}): Row {
@@ -272,6 +286,33 @@ test('listServiceCases converts database and hydration errors to ApiError', asyn
   );
 });
 
+test('listServiceCaseWorkspace loads each tenant dataset once without a silent row cap', async () => {
+  const db = fakeSupabase({
+    service_cases: [caseRow()],
+    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, full_name: 'Aisha Khan' }],
+  });
+
+  const workspace = await listServiceCaseWorkspace(
+    TENANT_1,
+    { status: ['documents_pending'] },
+    { supabase: db as never },
+  );
+
+  assert.equal(workspace.cases[0].clientName, 'Acme LLC');
+  assert.equal(workspace.cases[0].ownerName, 'Aisha Khan');
+  assert.deepEqual(workspace.clients, [{ id: CLIENT_1, name: 'Acme LLC' }]);
+  assert.deepEqual(workspace.owners, [{ id: PROFILE_1, name: 'Aisha Khan' }]);
+  assert.deepEqual(
+    db.calls.map((call) => call.table),
+    ['service_cases', 'clients', 'profiles'],
+  );
+  assert.equal(
+    db.calls.some((call) => call.limit !== undefined),
+    false,
+  );
+});
+
 test('createServiceCase rejects wrong roles and cross-tenant clients or assignees', async () => {
   const db = fakeSupabase({
     clients: [{ id: CLIENT_1, tenant_id: TENANT_2 }],
@@ -309,7 +350,7 @@ test('createServiceCase rejects wrong roles and cross-tenant clients or assignee
   );
 });
 
-test('createServiceCase writes a tenant-owned case and required audit details', async () => {
+test('createServiceCase uses the atomic RPC with trusted ownership and audit details', async () => {
   const db = fakeSupabase({
     clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
     profiles: [{ id: PROFILE_1, tenant_id: TENANT_1 }],
@@ -332,29 +373,37 @@ test('createServiceCase writes a tenant-owned case and required audit details', 
     { id: CASE_1 },
   );
 
-  const insert = db.calls.find(
-    (call) => call.table === 'service_cases' && call.operation === 'insert',
-  );
-  assert.equal(insert?.payload?.tenant_id, TENANT_1);
-  assert.equal(insert?.payload?.created_by, PROFILE_1);
-  assert.equal(insert?.payload?.title, 'New application');
-  const audit = db.calls.find((call) => call.table === 'tenant_audit_log');
-  assert.equal(audit?.payload?.action, 'service_case_created');
-  assert.deepEqual(audit?.payload?.details, {
-    entity: 'service_case',
-    id: CASE_1,
-    changed_keys: ['client_id', 'title', 'service_type', 'priority', 'assigned_to'],
+  assert.equal(db.rpcCalls.length, 1);
+  assert.equal(db.rpcCalls[0].name, 'create_service_case_with_audit');
+  assert.deepEqual(db.rpcCalls[0].args, {
+    p_tenant_id: TENANT_1,
+    p_actor_id: PROFILE_1,
+    p_client_id: CLIENT_1,
+    p_title: 'New application',
+    p_service_type: 'Visa application',
+    p_priority: 'urgent',
+    p_assigned_to: PROFILE_1,
+    p_due_at: null,
+    p_sla_due_at: null,
+    p_blocked_reason: null,
+    p_changed_keys: ['client_id', 'title', 'service_type', 'priority', 'assigned_to'],
   });
+  assert.equal(
+    db.calls.some((call) => call.operation === 'insert'),
+    false,
+  );
 });
 
-test('createServiceCase surfaces database and audit failures as ApiError', async () => {
+test('createServiceCase treats an RPC error atomically and verifies the returned case ID', async () => {
   const seed = {
     clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
     service_cases: [],
     tenant_audit_log: [],
   };
   const input = { client_id: CLIENT_1, title: 'New case', service_type: 'Visa' };
-  const dbFailure = fakeSupabase(seed, { 'service_cases:insert': { message: 'insert failed' } });
+  const dbFailure = fakeSupabase(seed, {
+    'rpc:create_service_case_with_audit': { message: 'transaction rolled back' },
+  });
   await assert.rejects(
     () =>
       createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
@@ -363,17 +412,15 @@ test('createServiceCase surfaces database and audit failures as ApiError', async
     (error) => error instanceof ApiError && error.code === 'INTERNAL',
   );
   assert.equal(
-    dbFailure.calls.some((call) => call.table === 'tenant_audit_log'),
+    dbFailure.calls.some((call) => call.operation === 'insert'),
     false,
   );
 
-  const auditFailure = fakeSupabase(seed, {
-    'tenant_audit_log:insert': { message: 'audit failed' },
-  });
+  const missingResult = fakeSupabase(seed, {}, { create_service_case_with_audit: null });
   await assert.rejects(
     () =>
       createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
-        supabase: auditFailure as never,
+        supabase: missingResult as never,
       }),
     (error) => error instanceof ApiError && error.code === 'INTERNAL',
   );
@@ -428,7 +475,7 @@ test('updateServiceCase merges current lifecycle and rejects an impossible persi
   );
 });
 
-test('updateServiceCase only persists defined keys and audits changed keys', async () => {
+test('updateServiceCase uses the atomic tenant-scoped RPC with only defined changed keys', async () => {
   const db = fakeSupabase({ service_cases: [caseRow()], tenant_audit_log: [] });
   await updateServiceCase(
     { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
@@ -437,22 +484,25 @@ test('updateServiceCase only persists defined keys and audits changed keys', asy
     { supabase: db as never },
   );
 
-  const update = db.calls.find((call) => call.operation === 'update');
-  assert.deepEqual(update?.payload, { priority: 'urgent', assigned_to: null });
-  assert.ok(update?.filters.some((f) => f.key === 'tenant_id' && f.value === TENANT_1));
-  const audit = db.calls.find((call) => call.table === 'tenant_audit_log');
-  assert.equal(audit?.payload?.action, 'service_case_updated');
-  assert.deepEqual(audit?.payload?.details, {
-    entity: 'service_case',
-    id: CASE_1,
-    changed_keys: ['priority', 'assigned_to'],
+  assert.equal(db.rpcCalls.length, 1);
+  assert.equal(db.rpcCalls[0].name, 'update_service_case_with_audit');
+  assert.deepEqual(db.rpcCalls[0].args, {
+    p_tenant_id: TENANT_1,
+    p_actor_id: PROFILE_1,
+    p_case_id: CASE_1,
+    p_patch: { priority: 'urgent', assigned_to: null },
+    p_changed_keys: ['priority', 'assigned_to'],
   });
+  assert.equal(
+    db.calls.some((call) => call.operation === 'update'),
+    false,
+  );
 });
 
-test('updateServiceCase surfaces update and audit failures', async () => {
+test('updateServiceCase treats RPC errors atomically and verifies affected row ID', async () => {
   const updateFailure = fakeSupabase(
     { service_cases: [caseRow()] },
-    { 'service_cases:update': { message: 'update failed' } },
+    { 'rpc:update_service_case_with_audit': { message: 'transaction rolled back' } },
   );
   await assert.rejects(
     () =>
@@ -465,9 +515,10 @@ test('updateServiceCase surfaces update and audit failures', async () => {
     ApiError,
   );
 
-  const auditFailure = fakeSupabase(
+  const missingResult = fakeSupabase(
     { service_cases: [caseRow()], tenant_audit_log: [] },
-    { 'tenant_audit_log:insert': { message: 'audit failed' } },
+    {},
+    { update_service_case_with_audit: null },
   );
   await assert.rejects(
     () =>
@@ -475,9 +526,26 @@ test('updateServiceCase surfaces update and audit failures', async () => {
         { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
         CASE_1,
         { priority: 'urgent' },
-        { supabase: auditFailure as never },
+        { supabase: missingResult as never },
       ),
     ApiError,
+  );
+});
+
+test('updateServiceCase preserves the atomic RPC not-found result', async () => {
+  const db = fakeSupabase(
+    { service_cases: [caseRow()] },
+    { 'rpc:update_service_case_with_audit': { message: 'NOT_FOUND', code: 'P0002' } },
+  );
+  await assert.rejects(
+    () =>
+      updateServiceCase(
+        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        CASE_1,
+        { priority: 'urgent' },
+        { supabase: db as never },
+      ),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
   );
 });
 
@@ -504,4 +572,53 @@ test('audit migration adds service-case actions without dropping any prior actio
     assert.ok(nextActions.includes(action), `missing prior action ${action}`);
   assert.ok(nextActions.includes('service_case_created'));
   assert.ok(nextActions.includes('service_case_updated'));
+});
+
+function assertMutationRpcContract(sql: string): void {
+  for (const name of ['create_service_case_with_audit', 'update_service_case_with_audit']) {
+    assert.match(sql, new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${name}`, 'i'));
+    assert.match(sql, new RegExp(`${name}[\\s\\S]*security definer`, 'i'));
+    assert.match(sql, new RegExp(`${name}[\\s\\S]*set search_path = pg_catalog, public`, 'i'));
+    assert.match(
+      sql,
+      new RegExp(`revoke all on function public\\.${name}[\\s\\S]*from public`, 'i'),
+    );
+    assert.match(
+      sql,
+      new RegExp(`grant execute on function public\\.${name}[\\s\\S]*to service_role`, 'i'),
+    );
+  }
+  assert.match(
+    sql,
+    /update public\.service_cases[\s\S]*where id = p_case_id[\s\S]*and tenant_id = p_tenant_id[\s\S]*returning id into v_case_id/i,
+  );
+  assert.match(sql, /if v_case_id is null then[\s\S]*raise exception[\s\S]*NOT_FOUND/i);
+  assert.match(sql, /'service_case_created'/);
+  assert.match(sql, /'service_case_updated'/);
+  assert.match(
+    sql,
+    /jsonb_build_object\([\s\S]*'entity', 'service_case'[\s\S]*'id', v_case_id[\s\S]*'changed_keys'/i,
+  );
+}
+
+test('service-case mutation RPC migration is transactional, restricted, and tenant-scoped', () => {
+  const sql = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260811092000_0049_service_case_mutation_rpcs.sql'),
+    'utf8',
+  );
+  assertMutationRpcContract(sql);
+});
+
+test('service-case mutation RPC contract rejects weakened in-memory variants', () => {
+  const sql = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260811092000_0049_service_case_mutation_rpcs.sql'),
+    'utf8',
+  );
+  assert.throws(() => assertMutationRpcContract(sql.replace(/and tenant_id = p_tenant_id/i, '')));
+  assert.throws(() =>
+    assertMutationRpcContract(sql.replace(/security definer/gi, 'security invoker')),
+  );
+  assert.throws(() =>
+    assertMutationRpcContract(sql.replace(/to service_role/gi, 'to authenticated')),
+  );
 });

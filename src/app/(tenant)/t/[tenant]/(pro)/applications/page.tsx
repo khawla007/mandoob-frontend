@@ -1,29 +1,18 @@
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
+import { requireRole } from '@/lib/auth/require-role';
+import { ApplicationCreateForm } from '@/components/pro/applications/ApplicationCreateForm';
 import { ApplicationsTable } from '@/components/pro/applications/ApplicationsTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  listServiceCaseClients,
-  listServiceCaseOwners,
-  listServiceCases,
-  type ServiceCaseStatus,
-} from '@/lib/data/service-cases';
+import { listServiceCaseWorkspace, type ServiceCaseStatus } from '@/lib/data/service-cases';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
-import { serviceCaseFilterSchema, serviceCaseStatuses } from '@/lib/validation/service-case';
-import { createApplicationAction } from './actions';
+import { serviceCaseStatuses } from '@/lib/validation/service-case';
+import { createApplicationFormAction } from './actions';
+import { authorizeApplicationsRead } from './page-authorization';
+import { parseApplicationFilters, type ApplicationSearchParams } from './page-logic';
 
 export const dynamic = 'force-dynamic';
-
-type SearchParams = { status?: string; owner?: string };
-
-function parseFilters(search: SearchParams) {
-  const status = search.status?.split(',').filter(Boolean);
-  const parsed = serviceCaseFilterSchema.safeParse({
-    status: status?.length ? status : undefined,
-    assigned_to: search.owner || undefined,
-  });
-  return parsed.success ? parsed.data : {};
-}
 
 const fieldClass =
   'border-input bg-background focus-visible:border-ring focus-visible:ring-ring/40 h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2';
@@ -33,25 +22,32 @@ export default async function ApplicationsPage({
   searchParams,
 }: {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<ApplicationSearchParams>;
 }) {
   const { tenant: slug } = await params;
   const search = await searchParams;
-  const tenant = await resolveTenantBySlug(slug);
+  const tenant = await authorizeApplicationsRead(slug, {
+    requirePro: async () => {
+      const session = await requireRole('pro');
+      return { tenantId: session.tenantId };
+    },
+    resolveTenant: resolveTenantBySlug,
+    requireActive: requireActiveTenant,
+  });
   if (!tenant) notFound();
 
-  const filters = parseFilters(search);
-  const [cases, clientOptions, ownerOptions, t] = await Promise.all([
-    listServiceCases(tenant.id, {
+  const filters = parseApplicationFilters(search);
+  const [workspace, t, locale] = await Promise.all([
+    listServiceCaseWorkspace(tenant.id, {
       status: filters.status,
       assignedTo: filters.assigned_to,
       clientId: filters.client_id,
     }),
-    listServiceCaseClients(tenant.id),
-    listServiceCaseOwners(tenant.id),
     getTranslations('pro'),
+    getLocale(),
   ]);
-  const create = createApplicationAction.bind(null, slug);
+  const { cases, clients: clientOptions, owners: ownerOptions } = workspace;
+  const create = createApplicationFormAction.bind(null, slug);
   const statusLabels = Object.fromEntries(
     serviceCaseStatuses.map((status) => [status, t(`applicationStatuses.${status}`)]),
   ) as Record<ServiceCaseStatus, string>;
@@ -69,70 +65,31 @@ export default async function ApplicationsPage({
         <summary className="hover:bg-muted/40 focus-visible:ring-ring cursor-pointer list-none rounded-xl px-5 py-4 font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset">
           {t('createApplication')}
         </summary>
-        <form action={create as never} className="grid gap-4 border-t p-5 md:grid-cols-2">
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t('applicationClient')}
-            <select name="client_id" required className={fieldClass}>
-              <option value="">{t('selectApplicationClient')}</option>
-              {clientOptions.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t('applicationTitle')}
-            <input name="title" required minLength={2} maxLength={160} className={fieldClass} />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t('applicationServiceType')}
-            <input
-              name="service_type"
-              required
-              minLength={2}
-              maxLength={80}
-              className={fieldClass}
-            />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t('applicationPriority')}
-            <select name="priority" defaultValue="normal" className={fieldClass}>
-              {(['low', 'normal', 'high', 'urgent'] as const).map((priority) => (
-                <option key={priority} value={priority}>
-                  {t(`applicationPriorities.${priority}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t('applicationOwner')}
-            <select name="assigned_to" className={fieldClass}>
-              <option value="">{t('applicationUnassigned')}</option>
-              {ownerOptions.map((owner) => (
-                <option key={owner.id} value={owner.id}>
-                  {owner.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t('applicationDueAt')}
-            <input type="datetime-local" name="due_at" className={fieldClass} />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t('applicationSlaDueAt')}
-            <input type="datetime-local" name="sla_due_at" className={fieldClass} />
-          </label>
-          <div className="flex items-end md:justify-end">
-            <button
-              type="submit"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring h-9 rounded-md px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-            >
-              {t('createApplication')}
-            </button>
-          </div>
-        </form>
+        <ApplicationCreateForm
+          action={create}
+          clients={clientOptions}
+          owners={ownerOptions}
+          labels={{
+            client: t('applicationClient'),
+            selectClient: t('selectApplicationClient'),
+            title: t('applicationTitle'),
+            serviceType: t('applicationServiceType'),
+            priority: t('applicationPriority'),
+            priorities: {
+              low: t('applicationPriorities.low'),
+              normal: t('applicationPriorities.normal'),
+              high: t('applicationPriorities.high'),
+              urgent: t('applicationPriorities.urgent'),
+            },
+            owner: t('applicationOwner'),
+            unassigned: t('applicationUnassigned'),
+            dueAt: t('applicationDueAt'),
+            slaDueAt: t('applicationSlaDueAt'),
+            submit: t('createApplication'),
+            pending: t('applicationCreating'),
+            success: t('applicationCreated'),
+          }}
+        />
       </details>
 
       <Card>
@@ -180,6 +137,7 @@ export default async function ApplicationsPage({
           <ApplicationsTable
             rows={cases}
             slug={slug}
+            locale={locale}
             labels={{
               client: t('applicationClient'),
               service: t('applicationService'),
@@ -194,6 +152,8 @@ export default async function ApplicationsPage({
               slaBreached: t('applicationSlaBreached'),
               complete: t('completeApplication'),
               cancel: t('cancelApplication'),
+              updating: t('applicationUpdating'),
+              updated: t('applicationUpdated'),
               noAction: t('noApplicationAction'),
               empty: t('applicationsEmpty'),
               emptyHint: t('applicationsEmptyHint'),

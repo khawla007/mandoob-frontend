@@ -25,6 +25,7 @@ function dependencies(): ApplicationActionDependencies {
     createCase: createServiceCase,
     updateCase: updateServiceCase,
     revalidate: revalidatePath,
+    now: () => new Date(),
   };
 }
 
@@ -41,4 +42,21 @@ export async function updateApplicationAction(
   raw: unknown,
 ): Promise<ApplicationActionResult<void>> {
   return runUpdateApplicationAction(slug, caseId, raw, dependencies());
+}
+
+export async function createApplicationFormAction(
+  slug: string,
+  _previous: ApplicationActionResult<{ id: string }> | null,
+  formData: FormData,
+): Promise<ApplicationActionResult<{ id: string }>> {
+  return createApplicationAction(slug, formData);
+}
+
+export async function updateApplicationFormAction(
+  slug: string,
+  caseId: string,
+  _previous: ApplicationActionResult<void> | null,
+  formData: FormData,
+): Promise<ApplicationActionResult<void>> {
+  return updateApplicationAction(slug, caseId, formData);
 }
