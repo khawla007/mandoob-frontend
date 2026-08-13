@@ -257,3 +257,35 @@ test('Signal Studio translations have complete English and Arabic route label pa
     assert.ok(key in arabic, `Missing ar.pro.dashboard.signalStudio.${key}`);
   }
 });
+
+test('dashboard reads parameterized widget labels as raw templates', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  const templateKeys = [
+    'hero.scoreAria',
+    'hero.dialogTitle',
+    'hero.velocityAria',
+    'kpis.activeClientsHelper',
+    'kpis.openCasesHelper',
+    'kpis.renewalsHelper',
+    'kpis.collectionsHelper',
+    'caseVelocityLabels.summary',
+    'collectionsLabels.barLabel',
+    'collectionsLabels.summary',
+    'actionLabels.actionAria',
+    'actionLabels.absoluteDeadline',
+    'actionLabels.countdown.minutes',
+    'actionLabels.countdown.hours',
+    'actionLabels.countdown.days',
+    'deadlineLabels.cellLabel',
+    'deadlineLabels.eventLink',
+    'deadlineLabels.documentLink',
+    'teamLabels.activeCases',
+    'teamLabels.capacity',
+    'teamLabels.capacityValue',
+  ];
+
+  for (const key of templateKeys) {
+    assert.ok(source.includes(`t.raw('${key}')`), key);
+    assert.ok(!source.includes(`t('${key}')`), key);
+  }
+});
