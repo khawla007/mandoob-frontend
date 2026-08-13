@@ -14,6 +14,13 @@ const DOC_TYPE_KEYS: Record<DocType, string> = {
   moa: 'moa',
   shareholder_id: 'shareholderId',
   other: 'other',
+  aoa: 'aoa',
+  bank_reference_letter: 'bankReferenceLetter',
+  noc: 'noc',
+  cv_resume: 'cvResume',
+  office_lease: 'officeLease',
+  medical_certificate: 'medicalCertificate',
+  insurance_policy: 'insurancePolicy',
 };
 
 type RenewalsTranslator = Awaited<ReturnType<typeof getTranslations<'renewals'>>>;

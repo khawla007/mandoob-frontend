@@ -299,7 +299,14 @@
       "ejari": "عقد Ejari",
       "moa": "عقد التأسيس (MoA)",
       "shareholderId": "هوية المساهم",
-      "other": "أخرى"
+      "other": "أخرى",
+      "aoa": "عقد التأسيس",
+      "bankReferenceLetter": "خطاب مرجعي من البنك",
+      "noc": "شهادة عدم ممانعة",
+      "cvResume": "السيرة الذاتية",
+      "officeLease": "عقد إيجار المكتب",
+      "medicalCertificate": "الشهادة الطبية",
+      "insurancePolicy": "وثيقة التأمين"
     },
     "longCopy": {
       "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",

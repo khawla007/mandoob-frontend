@@ -35,6 +35,13 @@ const DOC_TYPE_LABELS: Record<DocType, string> = {
   moa: 'MoA',
   shareholder_id: 'Shareholder ID',
   other: 'Other',
+  aoa: 'Articles of Association',
+  bank_reference_letter: 'Bank reference letter',
+  noc: 'No objection certificate',
+  cv_resume: 'CV / résumé',
+  office_lease: 'Office lease',
+  medical_certificate: 'Medical certificate',
+  insurance_policy: 'Insurance policy',
 };
 
 export function RequestDocumentDialog({ slug, clientId }: { slug: string; clientId: string }) {

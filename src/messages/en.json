@@ -299,7 +299,14 @@
       "ejari": "Ejari",
       "moa": "MoA",
       "shareholderId": "Shareholder ID",
-      "other": "Other"
+      "other": "Other",
+      "aoa": "Articles of Association",
+      "bankReferenceLetter": "Bank reference letter",
+      "noc": "No objection certificate",
+      "cvResume": "CV / résumé",
+      "officeLease": "Office lease",
+      "medicalCertificate": "Medical certificate",
+      "insurancePolicy": "Insurance policy"
     },
     "longCopy": {
       "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",

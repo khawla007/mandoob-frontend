@@ -113,6 +113,24 @@ test('document center parser bounds normalized search, ISO date filters, and pag
   assert.equal(parseDocumentCenterSearch({ to: '2026-02-30' }).to, undefined);
 });
 
+test('document center parser drops inverted valid date bounds without discarding other filters', () => {
+  assert.deepEqual(
+    parseDocumentCenterSearch({
+      view: 'submitted',
+      client: CLIENT_ID,
+      from: '2026-08-31',
+      to: '2026-08-01',
+    }),
+    {
+      view: 'submitted',
+      sort: 'urgency',
+      window: 'all',
+      page: 1,
+      clientId: CLIENT_ID,
+    },
+  );
+});
+
 test('document center focus validates UUIDs, prefers exact document focus, and resets page one', () => {
   assert.deepEqual(parseDocumentCenterSearch({ request: REQUEST_ID, page: '8' }).focus, {
     kind: 'request',
@@ -144,6 +162,18 @@ test('document center href emits only validated non-default filters and preserve
     `/t/north%20star%2Fuae/documents?view=rejected&sort=due_date&window=30&client=${CLIENT_ID}&type=insurance_policy&q=annual+renewal&from=2026-08-01&to=2026-08-31&document=${DOCUMENT_ID}`,
   );
   assert.equal(documentCenterHref('acme', parseDocumentCenterSearch({})), '/t/acme/documents');
+  const pagedFilters = parseDocumentCenterSearch({
+    view: 'submitted',
+    client: CLIENT_ID,
+    page: '2',
+  });
+  for (const invalidPage of [0, Number.NaN, 10_001]) {
+    assert.equal(
+      documentCenterHref('acme', pagedFilters, invalidPage),
+      `/t/acme/documents?view=submitted&client=${CLIENT_ID}&page=2`,
+      String(invalidPage),
+    );
+  }
   assert.equal(
     documentCenterHref('acme', { view: 'unsupported', sort: 'bad', page: Number.NaN } as never, 0),
     '/t/acme/documents',

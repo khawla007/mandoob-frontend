@@ -57,6 +57,7 @@ export function parseDocumentCenterSearch(
     normalizeDocumentCenterSearch(firstDocumentCenterValue(search.search));
   const from = isoDateValue(firstDocumentCenterValue(search.from));
   const to = isoDateValue(firstDocumentCenterValue(search.to));
+  const validDateRange = !(from && to && from > to);
   const documentId = uuidValue(firstDocumentCenterValue(search.document));
   const requestId = uuidValue(firstDocumentCenterValue(search.request));
   const focus = documentId
@@ -80,8 +81,8 @@ export function parseDocumentCenterSearch(
     ...(clientId ? { clientId } : {}),
     ...(docType.success ? { docType: docType.data } : {}),
     ...(searchTerm ? { search: searchTerm } : {}),
-    ...(from ? { from } : {}),
-    ...(to ? { to } : {}),
+    ...(validDateRange && from ? { from } : {}),
+    ...(validDateRange && to ? { to } : {}),
     ...(focus ? { focus } : {}),
     page: focus ? 1 : pageValue(firstDocumentCenterValue(search.page)),
   });
@@ -92,10 +93,11 @@ export function documentCenterHref(
   filters: DocumentCenterSearch,
   page?: number,
 ): string {
-  const parsed = documentCenterSearchSchema.safeParse({ ...filters, page: page ?? filters.page });
+  const parsed = documentCenterSearchSchema.safeParse(filters);
   if (!parsed.success) return `/t/${encodeURIComponent(slug)}/documents`;
 
   const value = parsed.data;
+  const requestedPage = page === undefined ? value.page : pageValue(String(page));
   const params = new URLSearchParams();
   if (value.view !== 'all') params.set('view', value.view);
   if (value.sort !== 'urgency') params.set('sort', value.sort);
@@ -107,7 +109,7 @@ export function documentCenterHref(
   if (value.to) params.set('to', value.to);
   if (value.focus) params.set(value.focus.kind, value.focus.id);
 
-  const targetPage = value.focus ? 1 : value.page;
+  const targetPage = value.focus ? 1 : (requestedPage ?? value.page);
   if (targetPage !== 1) params.set('page', String(targetPage));
 
   const query = params.toString();
