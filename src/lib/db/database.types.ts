@@ -235,6 +235,70 @@ export type Database = {
           },
         ];
       };
+      documents: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          current_version_id: string | null;
+          doc_type: string;
+          employee_id: string | null;
+          expires_on: string | null;
+          id: string;
+          label: string | null;
+          request_id: string | null;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          current_version_id?: string | null;
+          doc_type: string;
+          employee_id?: string | null;
+          expires_on?: string | null;
+          id?: string;
+          label?: string | null;
+          request_id?: string | null;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          current_version_id?: string | null;
+          doc_type?: string;
+          employee_id?: string | null;
+          expires_on?: string | null;
+          id?: string;
+          label?: string | null;
+          request_id?: string | null;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'documents_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'documents_employee_id_fkey';
+            columns: ['employee_id'];
+            isOneToOne: false;
+            referencedRelation: 'employees';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'documents_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       customer_profiles: {
         Row: {
           created_at: string;
@@ -1539,6 +1603,55 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      list_pro_document_center: {
+        Args: {
+          p_client_id?: string | null;
+          p_doc_type?: string | null;
+          p_due_from?: string | null;
+          p_due_to?: string | null;
+          p_expiry_from?: string | null;
+          p_expiry_to?: string | null;
+          p_focus_id?: string | null;
+          p_focus_kind?: string | null;
+          p_page?: number;
+          p_page_size?: number;
+          p_search?: string | null;
+          p_sort?: string | null;
+          p_tenant_id: string;
+          p_view?: string | null;
+        };
+        Returns: {
+          client_id: string;
+          client_name: string;
+          client_status: string;
+          created_at: string;
+          current_version_created_at: string | null;
+          current_version_id: string | null;
+          current_version_mime_type: string | null;
+          current_version_size_bytes: number | null;
+          doc_type: string;
+          document_id: string | null;
+          due_at: string | null;
+          effective_expires_on: string | null;
+          employee_id: string | null;
+          employee_name: string | null;
+          entity_id: string;
+          entity_kind: string;
+          expiry_source: string | null;
+          label: string;
+          request_id: string | null;
+          request_status: string | null;
+          requested_by: string | null;
+          requested_by_name: string | null;
+          review_note: string | null;
+          review_status: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          reviewed_by_name: string | null;
+          tenant_id: string;
+          total_count: number;
+        }[];
+      };
       list_signal_payment_invoices: {
         Args: {
           p_date?: string | null;
