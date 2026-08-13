@@ -2,8 +2,8 @@
  * Server-only locale resolution.
  *
  * Resolution order (per Step 29a plan):
- *   1. profiles.locale (signed-in user)
- *   2. NEXT_LOCALE cookie
+ *   1. NEXT_LOCALE cookie (current viewer's explicit selection)
+ *   2. profiles.locale (signed-in user's cross-device default)
  *   3. Accept-Language header
  *   4. defaultLocale
  *
@@ -62,8 +62,8 @@ export type ResolveLocaleInputs = {
 };
 
 export function resolveLocaleFromInputs(inputs: ResolveLocaleInputs): Locale {
-  if (isSupportedLocale(inputs.profileLocale)) return inputs.profileLocale;
   if (isSupportedLocale(inputs.cookieLocale)) return inputs.cookieLocale;
+  if (isSupportedLocale(inputs.profileLocale)) return inputs.profileLocale;
   const fromHeader = parseAcceptLanguage(inputs.acceptLanguage);
   if (fromHeader) return fromHeader;
   return defaultLocale;
@@ -72,9 +72,10 @@ export function resolveLocaleFromInputs(inputs: ResolveLocaleInputs): Locale {
 /**
  * Read the locale for the current request.
  *
- * Signed-in users get `profiles.locale` when present; everyone else falls back
- * to cookie → header → default. Failures to read the profile (no session,
- * Supabase down, etc.) silently degrade — locale is never blocking.
+ * An explicit cookie wins so a locale switch takes effect even when the
+ * best-effort profile write is unavailable. The signed-in profile remains the
+ * cross-device default, followed by header → default. Profile-read failures
+ * silently degrade — locale is never blocking.
  */
 export const getRequestLocale = cache(async function getRequestLocale(): Promise<Locale> {
   const { cookies, headers } = await import('next/headers');

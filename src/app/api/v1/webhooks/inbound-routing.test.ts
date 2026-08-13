@@ -104,7 +104,7 @@ function leadRow(): Row {
 }
 
 test('Twilio inbound logging survives lead routing failure', async () => {
-  const { recordTwilioInbound } = await import('./twilio/route');
+  const { recordTwilioInbound } = await import('./inbound-recording');
   const supabase = createWebhookSupabaseStub('twilio');
 
   await recordTwilioInbound(supabase as never, '+971501234567', 'I need help', 'twilio-message-1');
@@ -114,7 +114,7 @@ test('Twilio inbound logging survives lead routing failure', async () => {
 });
 
 test('Unifonic inbound logging survives lead routing failure', async () => {
-  const { recordUnifonicInbound } = await import('./unifonic/route');
+  const { recordUnifonicInbound } = await import('./inbound-recording');
   const supabase = createWebhookSupabaseStub('unifonic');
 
   await recordUnifonicInbound(
@@ -129,7 +129,7 @@ test('Unifonic inbound logging survives lead routing failure', async () => {
 });
 
 test('WhatsApp inbound logging survives lead routing failure', async () => {
-  const { recordWhatsAppInboundMessage } = await import('./whatsapp/route');
+  const { recordWhatsAppInboundMessage } = await import('./inbound-recording');
   const supabase = createWebhookSupabaseStub('whatsapp');
 
   await recordWhatsAppInboundMessage(supabase as never, 'tenant-1', {

@@ -40,6 +40,9 @@
   "shell": {
     "overview": "Overview",
     "commandCenter": "Command Center",
+    "signalCommand": "Command",
+    "signalCases": "Cases",
+    "signalFinance": "Finance",
     "workspace": "Workspace",
     "account": "Account",
     "clients": "Clients",
@@ -436,6 +439,10 @@
       "signalStudio": {
         "title": "Command Center",
         "subtitle": "{tenant} · live operational signals and next actions.",
+        "masthead": "DXB / OPERATIONS SIGNAL",
+        "live": "LIVE",
+        "eyebrow": "TODAY’S OPERATING PICTURE",
+        "headline": "Everything moving, at a glance.",
         "prioritySignals": "Priority signals",
         "operationsScore": "Operations score",
         "openActionDeck": "Open action deck",
@@ -573,6 +580,7 @@
           "finance": "Finance data is temporarily unavailable."
         },
         "filters": {
+          "toggle": "Filters",
           "owner": "Case owner",
           "allOwners": "All owners",
           "serviceType": "Service type",

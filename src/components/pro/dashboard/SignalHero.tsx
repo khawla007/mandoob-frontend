@@ -1,9 +1,7 @@
 'use client';
 
-import { Activity, ArrowUpRight, ClipboardList, Gauge, UserRoundPlus } from 'lucide-react';
 import Link from 'next/link';
 
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +40,13 @@ type SignalHeroDataProps = {
   filters: ApplicationScope;
 };
 
+function velocityPoints(data: Velocity, key: 'opened' | 'completed', maximum: number) {
+  const denominator = Math.max(1, data.length - 1);
+  return data
+    .map((point, index) => `${(index / denominator) * 100},${40 - (point[key] / maximum) * 34}`)
+    .join(' ');
+}
+
 export type SignalHeroLabels = WidgetBaseLabels & {
   prioritySignals: string;
   actionSummary: string;
@@ -75,7 +80,7 @@ export function SignalHero(props: SignalHeroProps) {
       <WidgetLoading
         testId="signal-hero-skeleton"
         label={labels.loading}
-        className="signal-hero grid min-h-72 gap-8 rounded-3xl p-6 sm:p-8 lg:grid-cols-2"
+        className="signal-hero rounded-[12px] p-[13px]"
       >
         <div className="space-y-5">
           <Skeleton className="h-4 w-32 bg-white/15" />
@@ -93,7 +98,7 @@ export function SignalHero(props: SignalHeroProps) {
     );
   }
   if (props.kind === 'empty' || props.kind === 'error') {
-    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-72" />;
+    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-[126px]" />;
   }
 
   const { health, actionCount, caseVelocity, tenantSlug, filters } = props;
@@ -104,6 +109,9 @@ export function SignalHero(props: SignalHeroProps) {
     1,
     ...caseVelocity.flatMap((point) => [point.opened, point.completed]),
   );
+  const graphData = caseVelocity.slice(-14);
+  const openedPoints = velocityPoints(graphData, 'opened', maxVelocity);
+  const completedPoints = velocityPoints(graphData, 'completed', maxVelocity);
   const applicationsHref = applicationSignalHref(tenantSlug, { view: 'open' }, filters);
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
@@ -113,125 +121,97 @@ export function SignalHero(props: SignalHeroProps) {
   });
 
   return (
-    <section className="signal-hero relative isolate overflow-hidden rounded-3xl p-6 text-white shadow-[0_24px_80px_-36px_oklch(0.35_0.15_30/0.85)] sm:p-8">
+    <section className="signal-hero relative isolate overflow-hidden rounded-[12px] p-[13px] text-white">
       <div aria-hidden="true" className="signal-hero__orb" />
-      <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
-        <div className="max-w-2xl">
-          <p className="mb-4 flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-orange-100 uppercase">
-            <Activity aria-hidden="true" className="size-4" /> {labels.prioritySignals}
-          </p>
-          <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
-            <strong className="font-mono text-6xl leading-none font-semibold tracking-[-0.08em] tabular-nums sm:text-7xl">
-              {integer.format(actionCount)}
-            </strong>
-            <p className="max-w-xs pb-1 text-lg leading-snug text-white/78">
-              {labels.actionSummary}
-            </p>
-          </div>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button asChild className="bg-white text-slate-950 hover:bg-orange-50">
-              <Link href={applicationsHref}>
-                <ClipboardList aria-hidden="true" /> {labels.openActionDeck}
-                <ArrowUpRight aria-hidden="true" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="border-white/30 bg-white/5 text-white hover:bg-white/12 hover:text-white"
-            >
-              <Link href={applicationsHref}>
-                <UserRoundPlus aria-hidden="true" /> {labels.assignWork}
-              </Link>
-            </Button>
-          </div>
+      <div className="signal-hero__content">
+        <p className="signal-hero__tag">
+          <span aria-hidden="true">●</span> {integer.format(actionCount)} {labels.prioritySignals}
+        </p>
+        <h3>
+          {integer.format(actionCount)} {labels.actionSummary}
+        </h3>
+        <p>
+          {integer.format(opened)} {labels.opened} · {integer.format(completed)} {labels.completed}
+        </p>
+        <div className="signal-hero__actions">
+          <Link href={applicationsHref} className="signal-hero__action-hot">
+            {labels.openActionDeck}
+          </Link>
+          <Link href={applicationsHref} className="signal-hero__action-glass">
+            {labels.assignWork}
+          </Link>
         </div>
+      </div>
 
-        <div className="grid gap-4 sm:grid-cols-[0.72fr_1.28fr] lg:grid-cols-1 xl:grid-cols-[0.72fr_1.28fr]">
-          <Dialog>
-            <DialogTrigger asChild>
-              <button
-                type="button"
-                aria-label={signalLabel(labels.scoreAria, { score: number.format(health.score) })}
-                className="focus-visible:ring-ring/80 rounded-2xl border border-white/16 bg-black/18 p-5 text-start backdrop-blur-sm transition-colors hover:bg-black/25 focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <span className="flex items-center gap-2 text-xs font-semibold tracking-wide text-white/70 uppercase">
-                  <Gauge aria-hidden="true" className="size-4 text-orange-300" /> {labels.score}
-                </span>
-                <span className="mt-3 block font-mono text-4xl font-semibold tabular-nums">
-                  {number.format(health.score)}
-                  <span className="text-base font-normal text-white/55">
-                    /{integer.format(100)}
-                  </span>
-                </span>
-                <span className="mt-2 block text-xs text-white/60">{labels.openScoreDetails}</span>
-              </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {signalLabel(labels.dialogTitle, { score: number.format(health.score) })}
-                </DialogTitle>
-                <DialogDescription>{labels.dialogDescription}</DialogDescription>
-              </DialogHeader>
-              <dl className="divide-border divide-y">
-                {HEALTH_INPUTS.map(({ key, positive }) => (
-                  <div key={key} className="flex items-center justify-between gap-4 py-3">
-                    <dt className="text-muted-foreground text-sm">{labels[key]}</dt>
-                    <dd className="font-mono text-sm font-semibold tabular-nums">
-                      {percent.format(health[key] / 100)}
-                      <span className="sr-only">
-                        ; {positive ? labels.higherHealthier : labels.lowerHealthier}
-                      </span>
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </DialogContent>
-          </Dialog>
-
-          <div
-            role="img"
-            aria-label={signalLabel(labels.velocityAria, {
-              opened: integer.format(opened),
-              completed: integer.format(completed),
-              days: integer.format(caseVelocity.length),
-            })}
-            className="rounded-2xl border border-white/16 bg-white/7 p-5 backdrop-blur-sm"
+      <Dialog>
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            aria-label={signalLabel(labels.scoreAria, { score: number.format(health.score) })}
+            className="signal-hero__score focus-visible:ring-ring/80 focus-visible:ring-2 focus-visible:outline-none"
           >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold tracking-wide text-white/70 uppercase">
-                {labels.velocity}
-              </span>
-              <span className="font-mono text-xs text-white/60 tabular-nums">
-                {integer.format(caseVelocity.length)}
-                {labels.daySuffix}
-              </span>
-            </div>
-            <div aria-hidden="true" className="flex h-16 items-end gap-1">
-              {caseVelocity.slice(-14).map((point) => (
-                <span key={point.date} className="flex min-w-0 flex-1 items-end gap-px">
-                  <i
-                    className="block min-h-1 flex-1 rounded-t-sm bg-orange-400"
-                    style={{ height: `${Math.max(6, (point.opened / maxVelocity) * 100)}%` }}
-                  />
-                  <i
-                    className="block min-h-1 flex-1 rounded-t-sm bg-teal-300"
-                    style={{ height: `${Math.max(6, (point.completed / maxVelocity) * 100)}%` }}
-                  />
-                </span>
-              ))}
-            </div>
-            <div className="mt-3 flex gap-4 text-xs text-white/72">
-              <span className="before:me-1.5 before:inline-block before:size-2 before:rounded-full before:bg-orange-400">
-                {integer.format(opened)} {labels.opened}
-              </span>
-              <span className="before:me-1.5 before:inline-block before:size-2 before:rounded-full before:bg-teal-300">
-                {integer.format(completed)} {labels.completed}
-              </span>
-            </div>
-          </div>
-        </div>
+            <strong>{number.format(health.score)}</strong>
+            <span>{labels.score}</span>
+          </button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {signalLabel(labels.dialogTitle, { score: number.format(health.score) })}
+            </DialogTitle>
+            <DialogDescription>{labels.dialogDescription}</DialogDescription>
+          </DialogHeader>
+          <dl className="divide-border divide-y">
+            {HEALTH_INPUTS.map(({ key, positive }) => (
+              <div key={key} className="flex items-center justify-between gap-4 py-3">
+                <dt className="text-muted-foreground text-sm">{labels[key]}</dt>
+                <dd className="font-mono text-sm font-semibold tabular-nums">
+                  {percent.format(health[key] / 100)}
+                  <span className="sr-only">
+                    ; {positive ? labels.higherHealthier : labels.lowerHealthier}
+                  </span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </DialogContent>
+      </Dialog>
+
+      <div
+        role="img"
+        aria-label={signalLabel(labels.velocityAria, {
+          opened: integer.format(opened),
+          completed: integer.format(completed),
+          days: integer.format(caseVelocity.length),
+        })}
+        className="signal-hero__chart"
+      >
+        <svg aria-hidden="true" viewBox="0 0 100 44" preserveAspectRatio="none">
+          <path
+            d="M0 10H100M0 25H100M0 40H100"
+            stroke="currentColor"
+            strokeOpacity="0.1"
+            strokeWidth="0.4"
+          />
+          {openedPoints ? (
+            <polygon points={`${openedPoints} 100,44 0,44`} fill="white" fillOpacity="0.22" />
+          ) : null}
+          <polyline
+            points={openedPoints}
+            fill="none"
+            stroke="white"
+            strokeWidth="1.2"
+            vectorEffect="non-scaling-stroke"
+          />
+          <polyline
+            points={completedPoints}
+            fill="none"
+            stroke="#ffb176"
+            strokeWidth="1.2"
+            strokeDasharray="3 2"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
       </div>
     </section>
   );

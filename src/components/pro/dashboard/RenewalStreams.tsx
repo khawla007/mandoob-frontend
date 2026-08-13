@@ -85,7 +85,7 @@ export function RenewalStreams(props: RenewalStreamsProps) {
   const number = new Intl.NumberFormat(locale);
 
   return (
-    <Card className="signal-panel signal-streams">
+    <Card className="signal-panel signal-streams signal-renewals">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Route aria-hidden="true" className="size-4 text-[var(--signal-info)]" />

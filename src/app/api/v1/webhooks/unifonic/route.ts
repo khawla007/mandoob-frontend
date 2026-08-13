@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyUnifonicSignature } from '@/lib/sms/signature';
-import { recordInboundConsentKeyword } from '@/lib/comms/consent';
-import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
-import { enqueueSms } from '@/lib/sms/send';
+import { recordUnifonicInbound } from '../inbound-recording';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -82,62 +80,6 @@ async function applyDeliveryStatus(
   if (mapped === 'delivered') update.delivered_at = nowIso;
 
   await supabase.from('outbound_sms').update(update).eq('id', row.id);
-}
-
-export async function recordUnifonicInbound(
-  supabase: Supa,
-  fromPhone: string,
-  body: string,
-  providerMessageId: string,
-): Promise<void> {
-  const { data: tenant } = await supabase
-    .from('tenant_sms_config')
-    .select('tenant_id')
-    .eq('provider', 'unifonic')
-    .eq('enabled', true)
-    .limit(1)
-    .maybeSingle();
-  if (!tenant) return;
-
-  const { data: inboxRow, error: inboxError } = await supabase
-    .from('sms_inbox')
-    .insert({
-      tenant_id: tenant.tenant_id,
-      from_phone: fromPhone,
-      body,
-      provider_message_id: providerMessageId,
-    })
-    .select('id, received_at')
-    .single();
-  if (inboxError) return;
-
-  const action = await recordInboundConsentKeyword({
-    supabase,
-    phoneE164: fromPhone,
-    channel: 'sms',
-    body,
-    inboundMessageId: providerMessageId,
-  });
-  if (action) {
-    await enqueueSms({
-      tenantId: tenant.tenant_id,
-      templateId: 'opt-out-confirmation',
-      toPhone: fromPhone,
-      input: {},
-    });
-  }
-  await routeInboundReplyToLeadSafely(
-    {
-      tenantId: tenant.tenant_id,
-      channel: 'sms',
-      inboxId: inboxRow.id,
-      fromPhone,
-      body,
-      providerMessageId,
-      receivedAt: inboxRow.received_at,
-    },
-    { supabase },
-  );
 }
 
 type UnifonicPayload = {

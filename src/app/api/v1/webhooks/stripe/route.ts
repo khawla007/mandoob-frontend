@@ -29,7 +29,7 @@ export async function POST(req: Request): Promise<Response> {
   return NextResponse.json({ ok: true, outcome });
 }
 
-export async function handleStripeEvent(supabase: Supa, event: Stripe.Event): Promise<string> {
+async function handleStripeEvent(supabase: Supa, event: Stripe.Event): Promise<string> {
   switch (event.type) {
     case 'checkout.session.completed':
       return handleCheckoutCompleted(supabase, event.data.object as Stripe.Checkout.Session);

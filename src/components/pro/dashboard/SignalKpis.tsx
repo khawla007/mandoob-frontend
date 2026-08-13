@@ -1,12 +1,3 @@
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  BriefcaseBusiness,
-  CircleDollarSign,
-  Clock3,
-  UsersRound,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,8 +47,8 @@ type KpiDefinition = {
   value: string;
   helper: string;
   href: string;
-  icon: LucideIcon;
   tone: string;
+  trend: number[];
 };
 
 export function SignalKpis(props: SignalKpisProps) {
@@ -102,8 +93,12 @@ export function SignalKpis(props: SignalKpisProps) {
         change: `${kpis.activeClientsChange >= 0 ? '+' : ''}${integer.format(kpis.activeClientsChange)}`,
       }),
       href: `/t/${encodeURIComponent(tenantSlug)}/clients?status=active`,
-      icon: UsersRound,
-      tone: 'signal-kpi--info',
+      tone: 'signal-kpi--orange',
+      trend: [
+        kpis.activeClients - kpis.activeClientsChange,
+        kpis.activeClients,
+        kpis.activeClients + kpis.activeClientsChange,
+      ],
     },
     {
       key: 'openCases',
@@ -114,8 +109,8 @@ export function SignalKpis(props: SignalKpisProps) {
         blocked: integer.format(kpis.blockedCases),
       }),
       href: applicationSignalHref(tenantSlug, { view: 'open' }, filters),
-      icon: BriefcaseBusiness,
-      tone: 'signal-kpi--orange',
+      tone: 'signal-kpi--info',
+      trend: [kpis.blockedCases, kpis.movingCases, kpis.openCases],
     },
     {
       key: 'renewals',
@@ -123,8 +118,8 @@ export function SignalKpis(props: SignalKpisProps) {
       value: integer.format(kpis.renewalsDue30d),
       helper: signalLabel(labels.renewalsHelper, { count: integer.format(kpis.renewalsDue7d) }),
       href: renewalSignalHref(tenantSlug, { tab: 'active', days: 30 }),
-      icon: Clock3,
       tone: 'signal-kpi--warning',
+      trend: [kpis.renewalsDue7d, kpis.renewalsDue30d],
     },
     {
       key: 'finance',
@@ -134,13 +129,13 @@ export function SignalKpis(props: SignalKpisProps) {
         rate: kpis.collectionRate.toLocaleString(locale, { maximumFractionDigits: 1 }),
       }),
       href: paymentSignalHref(tenantSlug, { view: 'paid' }),
-      icon: CircleDollarSign,
       tone: 'signal-kpi--success',
+      trend: [kpis.collectedMinor, kpis.collectionRate],
     },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
       {definitions.map((item) => {
         const state = props.states?.[item.key];
         if (state) {
@@ -153,28 +148,36 @@ export function SignalKpis(props: SignalKpisProps) {
             />
           );
         }
-        const Icon = item.icon;
-        const ChangeIcon = item.helper.startsWith('-') ? ArrowDownRight : ArrowUpRight;
+        const trendMaximum = Math.max(1, ...item.trend.map((value) => Math.max(0, value)));
         return (
           <Link
             key={item.label}
             href={item.href}
             className={cn(
-              'signal-kpi group relative min-h-40 overflow-hidden rounded-2xl border p-5 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none motion-reduce:transform-none motion-reduce:transition-none',
+              'signal-kpi group relative min-h-[77px] overflow-hidden rounded-[9px] border p-[9px] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
               item.tone,
             )}
           >
-            <span className="mb-7 flex items-center justify-between gap-3">
-              <span className="text-muted-foreground text-sm font-medium">{item.label}</span>
-              <span className="bg-background/65 grid size-9 place-items-center rounded-xl border shadow-sm">
-                <Icon aria-hidden="true" className="size-4" />
+            <span className="signal-kpi__content">
+              <span className="block">
+                <span className="text-muted-foreground font-semibold tracking-[0.08em] uppercase">
+                  {item.label}
+                </span>
+              </span>
+              <strong className="block font-mono leading-none font-semibold tracking-tight tabular-nums">
+                {item.value}
+              </strong>
+              <span className="signal-kpi__helper block max-w-[80%] truncate font-semibold">
+                {item.helper}
               </span>
             </span>
-            <strong className="block font-mono text-2xl leading-none font-semibold tracking-tight tabular-nums">
-              {item.value}
-            </strong>
-            <span className="text-muted-foreground mt-3 flex items-center gap-1.5 text-xs">
-              <ChangeIcon aria-hidden="true" className="size-3.5 shrink-0" /> {item.helper}
+            <span aria-hidden="true" className="signal-kpi__bars">
+              {item.trend.map((value, index) => (
+                <i
+                  key={index}
+                  style={{ height: `${Math.max(16, (Math.max(0, value) / trendMaximum) * 100)}%` }}
+                />
+              ))}
             </span>
           </Link>
         );

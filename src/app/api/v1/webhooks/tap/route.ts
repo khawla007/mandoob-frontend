@@ -182,7 +182,7 @@ function extractFailureReason(payload: TapWebhookPayload): string | null {
   return status.toLowerCase();
 }
 
-export function extractHashstringFields(payload: TapWebhookPayload): TapHashstringFields | null {
+function extractHashstringFields(payload: TapWebhookPayload): TapHashstringFields | null {
   const id = payload.id;
   const amountRaw = payload.amount;
   const currency = payload.currency;

@@ -87,7 +87,7 @@ export function TeamSignal(props: TeamSignalProps) {
     );
 
   return (
-    <Card className="signal-panel">
+    <Card className="signal-panel signal-team">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UsersRound aria-hidden="true" className="size-4 text-[var(--signal-info)]" />

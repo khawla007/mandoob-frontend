@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyHubSignature } from '@/lib/whatsapp/signature';
-import { recordInboundConsentKeyword } from '@/lib/comms/consent';
-import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
-import { enqueueWhatsApp } from '@/lib/whatsapp/send';
+import { recordWhatsAppInboundMessage, type WhatsAppInboundMessage } from '../inbound-recording';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -118,54 +116,6 @@ async function applyStatusUpdate(supabase: Supa, status: WhatsAppStatus): Promis
   await supabase.from('outbound_whatsapp').update(update).eq('id', row.id);
 }
 
-export async function recordWhatsAppInboundMessage(
-  supabase: Supa,
-  tenantId: string,
-  message: WhatsAppInboundMessage,
-): Promise<void> {
-  if (!message.from || !message.id) return;
-  const { data: inboxRow, error: inboxError } = await supabase
-    .from('whatsapp_inbox')
-    .insert({
-      tenant_id: tenantId,
-      from_phone: message.from,
-      body: message.text?.body ?? null,
-      wamid: message.id,
-    })
-    .select('id, received_at')
-    .single();
-  if (inboxError) return;
-
-  const body = message.text?.body ?? null;
-  const action = await recordInboundConsentKeyword({
-    supabase,
-    phoneE164: message.from,
-    channel: 'whatsapp',
-    body,
-    inboundMessageId: message.id,
-  });
-  if (action) {
-    await enqueueWhatsApp({
-      tenantId,
-      templateId: 'opt-out-confirmation',
-      toPhone: message.from,
-      input: {},
-    });
-  }
-  await routeInboundReplyToLeadSafely(
-    {
-      tenantId,
-      channel: 'whatsapp',
-      inboxId: inboxRow.id,
-      fromPhone: message.from,
-      body,
-      providerMessageId: message.id,
-      receivedAt: inboxRow.received_at,
-    },
-    { supabase },
-  );
-}
-
 type WhatsAppWebhookPayload = {
   object?: string;
   entry?: Array<{
@@ -188,12 +138,4 @@ type WhatsAppStatus = {
   timestamp?: string;
   recipient_id?: string;
   errors?: Array<{ code?: number; title?: string; message?: string }>;
-};
-
-type WhatsAppInboundMessage = {
-  id?: string;
-  from?: string;
-  timestamp?: string;
-  type?: string;
-  text?: { body?: string };
 };

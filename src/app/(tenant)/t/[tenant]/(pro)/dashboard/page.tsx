@@ -77,7 +77,7 @@ export default async function ProDashboard({
   ]);
   if (context.kind === 'inactive') {
     return (
-      <div role="status" className="rounded-2xl border p-8">
+      <div role="status" className="signal-dashboard__state rounded-2xl border p-8">
         <h1 className="text-xl font-semibold">{t('suspended.title')}</h1>
         <p className="text-muted-foreground mt-2">{t('suspended.description')}</p>
       </div>
@@ -96,6 +96,14 @@ export default async function ProDashboard({
   );
   const filters = filterState.filters;
   const filterQuery = dashboardQuery(filters);
+  const generatedAt = new Intl.DateTimeFormat(locale, {
+    timeZone: 'Asia/Dubai',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(dashboard.generatedAt));
   const retryHref = `/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, range)}`;
   const errorMessages = {
     identity: t('errors.identity'),
@@ -245,92 +253,108 @@ export default async function ProDashboard({
   const rangeLabels = { 7: t('range7'), 30: t('range30'), 90: t('range90') } as const;
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+    <div className="signal-dashboard">
+      <div className="signal-dashboard__masthead">
+        <strong>{t('masthead')}</strong>
+        <span className="signal-dashboard__live">{t('live')}</span>
+        <time dateTime={dashboard.generatedAt}>{generatedAt} GST</time>
+      </div>
+
+      <header className="signal-dashboard__heading relative flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="min-w-0">
+          <p className="signal-dashboard__eyebrow">{t('eyebrow')}</p>
+          <h1>{t('headline')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {t('subtitle', { tenant: tenant.name })}
           </p>
         </div>
-        <nav aria-label={t('rangeLabel')} className="bg-muted flex w-fit rounded-lg p-1">
-          {([7, 30, 90] as const).map((days) => (
-            <Link
-              key={days}
-              href={`/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, days)}`}
-              aria-current={range === days ? 'page' : undefined}
-              className={cn(
-                'focus-visible:ring-ring rounded-md px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none',
-                range === days
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-foreground/70 hover:text-foreground',
-              )}
+        <div className="signal-dashboard__heading-tools">
+          <nav aria-label={t('rangeLabel')} className="bg-muted flex w-fit rounded-lg p-1">
+            {([7, 30, 90] as const).map((days) => (
+              <Link
+                key={days}
+                href={`/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, days)}`}
+                aria-current={range === days ? 'page' : undefined}
+                className={cn(
+                  'focus-visible:ring-ring rounded-md px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none',
+                  range === days
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-foreground/70 hover:text-foreground',
+                )}
+              >
+                {rangeLabels[days]}
+              </Link>
+            ))}
+          </nav>
+          <details className="signal-dashboard__filter-drawer">
+            <summary>{t('filters.toggle')}</summary>
+            <form
+              method="get"
+              className="signal-dashboard__filters grid gap-3 rounded-2xl border p-4 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]"
             >
-              {rangeLabels[days]}
-            </Link>
-          ))}
-        </nav>
+              <input type="hidden" name="range" value={range} />
+              <label className="text-sm font-medium">
+                {t('filters.owner')}
+                <select
+                  name="owner"
+                  defaultValue={filters.ownerId ?? ''}
+                  className="border-input bg-background mt-1 block h-9 w-full rounded-md border px-3"
+                >
+                  <option value="">{t('filters.allOwners')}</option>
+                  {dashboard.filterOptions.owners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>
+                      {owner.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium">
+                {t('filters.serviceType')}
+                <select
+                  name="serviceType"
+                  defaultValue={filters.serviceType ?? ''}
+                  className="border-input bg-background mt-1 block h-9 w-full rounded-md border px-3"
+                >
+                  <option value="">{t('filters.allServices')}</option>
+                  {dashboard.filterOptions.serviceTypes.map((serviceType) => (
+                    <option key={serviceType} value={serviceType}>
+                      {serviceType}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium">
+                {t('filters.branch')}
+                <select
+                  disabled
+                  aria-describedby="branch-unavailable"
+                  className="border-input bg-muted mt-1 block h-9 w-full rounded-md border px-3"
+                >
+                  <option>{t('filters.allBranches')}</option>
+                </select>
+                <span id="branch-unavailable" className="text-muted-foreground text-xs">
+                  {t('filters.branchUnavailable')}
+                </span>
+              </label>
+              <button className="bg-primary text-primary-foreground h-9 self-end rounded-md px-4 text-sm font-medium">
+                {t('filters.apply')}
+              </button>
+              {filterState.notice ? (
+                <p
+                  role="status"
+                  className="text-muted-foreground text-sm sm:col-span-3 lg:col-span-4"
+                >
+                  {t(
+                    filterState.notice === 'pending'
+                      ? 'filters.pendingNotice'
+                      : 'filters.invalidNotice',
+                  )}
+                </p>
+              ) : null}
+            </form>
+          </details>
+        </div>
       </header>
-
-      <form
-        method="get"
-        className="grid gap-3 rounded-2xl border p-4 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]"
-      >
-        <input type="hidden" name="range" value={range} />
-        <label className="text-sm font-medium">
-          {t('filters.owner')}
-          <select
-            name="owner"
-            defaultValue={filters.ownerId ?? ''}
-            className="border-input bg-background mt-1 block h-9 w-full rounded-md border px-3"
-          >
-            <option value="">{t('filters.allOwners')}</option>
-            {dashboard.filterOptions.owners.map((owner) => (
-              <option key={owner.id} value={owner.id}>
-                {owner.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm font-medium">
-          {t('filters.serviceType')}
-          <select
-            name="serviceType"
-            defaultValue={filters.serviceType ?? ''}
-            className="border-input bg-background mt-1 block h-9 w-full rounded-md border px-3"
-          >
-            <option value="">{t('filters.allServices')}</option>
-            {dashboard.filterOptions.serviceTypes.map((serviceType) => (
-              <option key={serviceType} value={serviceType}>
-                {serviceType}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm font-medium">
-          {t('filters.branch')}
-          <select
-            disabled
-            aria-describedby="branch-unavailable"
-            className="border-input bg-muted mt-1 block h-9 w-full rounded-md border px-3"
-          >
-            <option>{t('filters.allBranches')}</option>
-          </select>
-          <span id="branch-unavailable" className="text-muted-foreground text-xs">
-            {t('filters.branchUnavailable')}
-          </span>
-        </label>
-        <button className="bg-primary text-primary-foreground h-9 self-end rounded-md px-4 text-sm font-medium">
-          {t('filters.apply')}
-        </button>
-        {filterState.notice ? (
-          <p role="status" className="text-muted-foreground text-sm sm:col-span-3 lg:col-span-4">
-            {t(
-              filterState.notice === 'pending' ? 'filters.pendingNotice' : 'filters.invalidNotice',
-            )}
-          </p>
-        ) : null}
-      </form>
 
       <SignalHero
         locale={locale}
@@ -343,50 +367,72 @@ export default async function ProDashboard({
           filters,
         })}
       />
-      <SignalKpis
-        locale={locale}
-        labels={kpiLabels}
-        {...dataOrError(undefined, {
-          kpis: dashboard.kpis,
-          tenantSlug: tenant.slug,
-          filters,
-          states: {
-            activeClients: stateFor(['identity']),
-            openCases: stateFor(['operations']),
-            renewals: stateFor(['renewals']),
-            finance: stateFor(['finance']),
-          },
-        })}
-      />
+      <div className="signal-dashboard__kpis">
+        <SignalKpis
+          locale={locale}
+          labels={kpiLabels}
+          {...dataOrError(undefined, {
+            kpis: dashboard.kpis,
+            tenantSlug: tenant.slug,
+            filters,
+            states: {
+              activeClients: stateFor(['identity']),
+              openCases: stateFor(['operations']),
+              renewals: stateFor(['renewals']),
+              finance: stateFor(['finance']),
+            },
+          })}
+        />
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.85fr)]">
-        <div className="order-1 lg:order-2">
-          <ActionDeck
-            locale={locale}
-            labels={actionLabels}
-            {...dataOrError(
-              stateFor(['identity', 'links', 'operations', 'renewals', 'documents', 'finance']),
-              {
-                actions: dashboard.actionDeck,
+      <div className="signal-dashboard__layout">
+        <div className="signal-dashboard__operations">
+          <div className="signal-dashboard__action order-1 lg:order-2">
+            <ActionDeck
+              locale={locale}
+              labels={actionLabels}
+              {...dataOrError(
+                stateFor(['identity', 'links', 'operations', 'renewals', 'documents', 'finance']),
+                {
+                  actions: dashboard.actionDeck,
+                  tenantSlug: tenant.slug,
+                  generatedAt: dashboard.generatedAt,
+                  filters,
+                },
+              )}
+            />
+          </div>
+          <div className="order-2 lg:order-1">
+            <CaseVelocityChart
+              locale={locale}
+              labels={velocityLabels}
+              {...dataOrError(stateFor(['operations']), {
+                data: dashboard.caseVelocity,
                 tenantSlug: tenant.slug,
-                generatedAt: dashboard.generatedAt,
                 filters,
-              },
-            )}
-          />
+                range,
+                filterQuery,
+              })}
+            />
+          </div>
+          <div className="order-3">
+            <DeadlineHeatmap
+              locale={locale}
+              labels={deadlineLabels}
+              {...dataOrError(
+                stateFor(['identity', 'links', 'operations', 'renewals', 'documents', 'finance']),
+                {
+                  intensity: dashboard.deadlineIntensity,
+                  events: dashboard.deadlineEvents,
+                  tenantSlug: tenant.slug,
+                  filters,
+                },
+              )}
+            />
+          </div>
         </div>
-        <div className="order-2 grid gap-6 lg:order-1 xl:grid-cols-2">
-          <CaseVelocityChart
-            locale={locale}
-            labels={velocityLabels}
-            {...dataOrError(stateFor(['operations']), {
-              data: dashboard.caseVelocity,
-              tenantSlug: tenant.slug,
-              filters,
-              range,
-              filterQuery,
-            })}
-          />
+
+        <aside className="signal-dashboard__rail">
           <CollectionsWaterfall
             locale={locale}
             labels={collectionsLabels}
@@ -396,45 +442,28 @@ export default async function ProDashboard({
               tenantSlug: tenant.slug,
             })}
           />
-        </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-        <DeadlineHeatmap
-          locale={locale}
-          labels={deadlineLabels}
-          {...dataOrError(
-            stateFor(['identity', 'links', 'operations', 'renewals', 'documents', 'finance']),
-            {
-              intensity: dashboard.deadlineIntensity,
-              events: dashboard.deadlineEvents,
+          <RenewalStreams
+            locale={locale}
+            labels={renewalLabels}
+            {...dataOrError(stateFor(['renewals']), {
+              streams: dashboard.renewalStreams,
               tenantSlug: tenant.slug,
-              filters,
-            },
-          )}
-        />
-        <RenewalStreams
-          locale={locale}
-          labels={renewalLabels}
-          {...dataOrError(stateFor(['renewals']), {
-            streams: dashboard.renewalStreams,
-            tenantSlug: tenant.slug,
-          })}
-        />
+            })}
+          />
+          {canViewTeam ? (
+            <TeamSignal
+              locale={locale}
+              labels={teamLabels}
+              {...dataOrError(stateFor(['operations']), {
+                team: dashboard.team,
+                unassignedCases: dashboard.kpis.unassignedCases,
+                tenantSlug: tenant.slug,
+                filters,
+              })}
+            />
+          ) : null}
+        </aside>
       </div>
-
-      {canViewTeam ? (
-        <TeamSignal
-          locale={locale}
-          labels={teamLabels}
-          {...dataOrError(stateFor(['operations']), {
-            team: dashboard.team,
-            unassignedCases: dashboard.kpis.unassignedCases,
-            tenantSlug: tenant.slug,
-            filters,
-          })}
-        />
-      ) : null}
     </div>
   );
 }

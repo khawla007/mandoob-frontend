@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import {
@@ -7,6 +7,11 @@ import {
   type DashboardNavKind,
 } from './DashboardSidebar';
 import { DashboardTopbar } from './DashboardTopbar';
+
+const SIGNAL_STUDIO_SIDEBAR_STYLE = {
+  '--sidebar-width': '12.25rem',
+  '--sidebar-width-icon': '5.125rem',
+} as CSSProperties;
 
 export type DashboardLayoutProps = {
   navKind: DashboardNavKind;
@@ -36,7 +41,10 @@ export function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      data-nav-kind={navKind}
+      style={navKind === 'pro' ? SIGNAL_STUDIO_SIDEBAR_STYLE : undefined}
+    >
       <DashboardSidebar
         brand={brand}
         brandSubtitle={brandSubtitle}
@@ -49,7 +57,7 @@ export function DashboardLayout({
       />
       <SidebarInset>
         <DashboardTopbar breadcrumbs={breadcrumbs} search={search} />
-        <div id="main-content" className="flex-1 p-6 md:p-8">
+        <div id="main-content" className="dashboard-main flex-1 p-6 md:p-8">
           {children}
         </div>
       </SidebarInset>

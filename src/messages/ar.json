@@ -40,6 +40,9 @@
   "shell": {
     "overview": "نظرة عامة",
     "commandCenter": "مركز القيادة",
+    "signalCommand": "القيادة",
+    "signalCases": "المعاملات",
+    "signalFinance": "المالية",
     "workspace": "مساحة العمل",
     "account": "الحساب",
     "clients": "العملاء",
@@ -436,6 +439,10 @@
       "signalStudio": {
         "title": "مركز القيادة",
         "subtitle": "{tenant} · مؤشرات تشغيلية مباشرة وخطوات العمل التالية.",
+        "masthead": "دبي / مؤشر العمليات",
+        "live": "مباشر",
+        "eyebrow": "صورة العمليات اليوم",
+        "headline": "كل شيء يتحرك، في لمحة واحدة.",
         "prioritySignals": "إشارات ذات أولوية",
         "operationsScore": "مؤشر كفاءة العمليات",
         "openActionDeck": "فتح قائمة الإجراءات",
@@ -573,6 +580,7 @@
           "finance": "البيانات المالية غير متاحة مؤقتًا."
         },
         "filters": {
+          "toggle": "عوامل التصفية",
           "owner": "مسؤول المعاملة",
           "allOwners": "جميع المسؤولين",
           "serviceType": "نوع الخدمة",

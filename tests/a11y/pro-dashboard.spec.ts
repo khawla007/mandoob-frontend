@@ -113,7 +113,9 @@ test('unauthenticated PRO dashboard navigation redirects to login', async ({ pag
 test('Signal Studio exposes its command center, application actions, and chart data', async ({
   proPage,
 }) => {
-  await expect(proPage.getByRole('heading', { level: 1, name: 'Command Center' })).toBeVisible();
+  await expect(
+    proPage.getByRole('heading', { level: 1, name: 'Everything moving, at a glance.' }),
+  ).toBeVisible();
   await expect(proPage.getByText(/\btenant\b/i)).toHaveCount(0);
 
   const openActionDeck = proPage.getByRole('link', { name: 'Open Action Deck' });
@@ -143,11 +145,18 @@ test('Signal Studio exposes its command center, application actions, and chart d
   await expect(proPage).toHaveURL(/(?:\?|&)range=7(?:&|$)/);
 });
 
-test('desktop heatmap supports roving arrows, dialog keyboard control, and focus restore', async ({
+test('desktop deadline widget supports its real-data empty or interactive state', async ({
   proPage,
 }) => {
   await proPage.setViewportSize({ width: 768, height: 1024 });
   const grid = proPage.getByRole('grid', { name: 'Deadline intensity by date and time period' });
+  if ((await grid.count()) === 0) {
+    await expect(
+      proPage.getByText('No application, renewal, document, or invoice deadlines are scheduled.'),
+    ).toBeVisible();
+    await expect(proPage.getByRole('link', { name: 'Open applications' })).toBeVisible();
+    return;
+  }
   await expect(grid).toBeVisible();
 
   const cells = grid.getByRole('button');
@@ -203,7 +212,9 @@ for (const { theme, viewport } of [
     try {
       await page.goto(dashboardPath, { waitUntil: 'networkidle' });
       expect(page.url()).not.toContain('/login');
-      await expect(page.getByRole('heading', { level: 1, name: 'Command Center' })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'Everything moving, at a glance.' }),
+      ).toBeVisible();
       await expect(page.locator('html')).toHaveClass(new RegExp(`(?:^|\\s)${theme}(?:\\s|$)`));
 
       expect(

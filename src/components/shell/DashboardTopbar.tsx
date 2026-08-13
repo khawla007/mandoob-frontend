@@ -55,11 +55,11 @@ export function DashboardTopbar({
       <Separator orientation="vertical" className="h-5" />
       <nav
         aria-label={t('breadcrumb')}
-        className="text-muted-foreground flex items-center gap-1 text-sm"
+        className="text-muted-foreground flex min-w-0 items-center gap-1 overflow-hidden text-sm"
       >
         {breadcrumbs ?? fallbackCrumbs}
       </nav>
-      <div className="ms-auto flex items-center gap-2">
+      <div className="ms-auto flex shrink-0 items-center gap-2">
         {search}
         <LanguageSwitcher pathToRevalidate={pathname} />
         <ThemeToggle />

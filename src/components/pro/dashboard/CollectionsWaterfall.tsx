@@ -1,14 +1,4 @@
-'use client';
-
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
@@ -49,6 +39,8 @@ type CollectionDatum = {
   label: string;
   valueMinor: number;
   fill: string;
+  top: string;
+  bottom: string;
   href: string;
   accessibleLabel: string;
 };
@@ -62,23 +54,22 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
       <WidgetLoading
         testId="signal-chart-skeleton"
         label={labels.loading}
-        className="min-h-96 space-y-5 rounded-2xl border p-5"
+        className="min-h-36 space-y-3 rounded-xl border p-3"
       >
         <div className="space-y-2">
           <Skeleton className="h-5 w-44" />
           <Skeleton className="h-3 w-64" />
         </div>
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid h-24 grid-cols-4 items-end gap-2">
           {Array.from({ length: 4 }, (_, index) => (
-            <Skeleton key={index} className="h-12" />
+            <Skeleton key={index} className="h-16" />
           ))}
         </div>
       </WidgetLoading>
     );
   }
   if (props.kind === 'empty' || props.kind === 'error') {
-    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-96" />;
+    return <WidgetMessage status={props} retryLabel={labels.retry} className="min-h-36" />;
   }
 
   const { finance, tenantSlug, locale } = props;
@@ -94,25 +85,33 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
       key: 'billed',
       label: labels.billed,
       valueMinor: finance.billedMinor,
-      fill: 'var(--signal-info)',
+      fill: 'var(--signal-success)',
+      top: '#67b995',
+      bottom: '#277a57',
     },
     {
       key: 'paid',
       label: labels.paid,
       valueMinor: finance.paidMinor,
-      fill: 'var(--signal-success)',
+      fill: 'var(--signal-coral)',
+      top: '#ff9a75',
+      bottom: '#ff5722',
     },
     {
       key: 'due-soon',
       label: labels.dueSoon,
       valueMinor: finance.dueSoonMinor,
       fill: 'var(--signal-warning)',
+      top: '#f4cc75',
+      bottom: '#b97913',
     },
     {
       key: 'overdue',
       label: labels.overdue,
       valueMinor: finance.overdueMinor,
       fill: 'var(--signal-urgent)',
+      top: '#ef8e86',
+      bottom: '#ca4d43',
     },
   ];
   const data: CollectionDatum[] = input.map((item) => ({
@@ -136,84 +135,41 @@ export function CollectionsWaterfall(props: CollectionsWaterfallProps) {
           emptyAction: { label: labels.openPayments, href: paymentsHref },
         }}
         retryLabel={labels.retry}
-        className="min-h-96"
+        className="min-h-36"
       />
     );
   }
-  const config = {
-    valueMinor: { label: labels.amount, color: 'var(--brand-accent)' },
-  } satisfies ChartConfig;
-
   return (
-    <Card className="signal-panel">
+    <Card className="signal-panel signal-waterfall">
       <CardHeader>
         <CardTitle>{labels.title}</CardTitle>
         <CardDescription>{labels.description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={config} className="aspect-auto h-64 w-full" aria-hidden="true">
-          <BarChart
-            data={data}
-            margin={{ left: 2, right: 8, top: 8, bottom: 0 }}
-            accessibilityLayer
-          >
-            <CartesianGrid vertical={false} strokeDasharray="4 5" />
-            <XAxis dataKey="label" axisLine={false} tickLine={false} tickMargin={10} />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              width={52}
-              tickFormatter={(value: number) => formatMoney.format(value / 100)}
-            />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  formatter={(value) => (
-                    <span className="font-mono font-semibold tabular-nums">
-                      {formatMoney.format(Number(value) / 100)}
-                    </span>
-                  )}
-                />
-              }
-            />
-            <Bar
-              dataKey="valueMinor"
-              maxBarSize={54}
-              radius={[8, 8, 2, 2]}
-              isAnimationActive={false}
-            >
-              {data.map((item) => (
-                <Cell key={item.key} fill={item.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
         <ul
           aria-label={signalLabel(labels.summary, { currency: finance.currency })}
-          className="mt-5 space-y-3"
+          className="signal-waterfall__columns"
         >
           {data.map((item) => (
             <li key={item.key}>
               <a
                 href={item.href}
                 aria-label={item.accessibleLabel}
-                className="signal-collection-bar focus-visible:ring-ring group block rounded-md py-1 focus-visible:ring-2 focus-visible:outline-none"
+                className="signal-waterfall__column focus-visible:ring-ring group focus-visible:ring-2 focus-visible:outline-none"
               >
-                <span className="mb-1.5 flex items-center justify-between gap-4 text-xs">
-                  <span className="font-medium">{item.label}</span>
+                <span
+                  aria-hidden="true"
+                  className="signal-waterfall__bar"
+                  style={{
+                    height: `${Math.max(14, (item.valueMinor / maximum) * 82)}%`,
+                    background: `linear-gradient(180deg, ${item.top}, ${item.bottom})`,
+                  }}
+                >
                   <strong className="font-mono tabular-nums">
                     {formatMoney.format(item.valueMinor / 100)}
                   </strong>
                 </span>
-                <span aria-hidden="true" className="bg-muted block h-8 overflow-hidden rounded-md">
-                  <span
-                    className="block h-full min-w-1 rounded-md transition-[width,filter] group-hover:brightness-110 motion-reduce:transition-none"
-                    style={{
-                      width: `${(item.valueMinor / maximum) * 100}%`,
-                      background: item.fill,
-                    }}
-                  />
-                </span>
+                <small>{item.label}</small>
               </a>
             </li>
           ))}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown } from 'lucide-react';
 
 import {
@@ -36,6 +36,12 @@ export type DashboardSidebarUser = {
 
 export type DashboardNavKind = 'admin' | 'pro' | 'employee';
 
+const PRO_SIGNAL_LABEL_KEYS: Record<string, string> = {
+  commandCenter: 'signalCommand',
+  applications: 'signalCases',
+  payments: 'signalFinance',
+};
+
 function resolveNav(kind: DashboardNavKind, slug?: string): ShellNavGroup[] {
   switch (kind) {
     case 'admin':
@@ -51,16 +57,22 @@ function DashboardSidebarNavItem({
   item,
   activeHref,
   translate,
+  navKind,
 }: {
   item: ShellNavGroup['items'][number];
   activeHref: string | null;
   translate: (key: string | undefined, fallback: string | undefined) => string;
+  navKind: DashboardNavKind;
 }) {
   const Icon = item.icon;
   const hasChildren = Boolean(item.children?.length);
   const childActive = item.children?.some((child) => child.href === activeHref) ?? false;
   const active = activeHref === item.href || childActive;
-  const label = translate(item.labelKey, item.labelFallback);
+  const signalLabelKey =
+    navKind === 'pro' && item.labelKey ? PRO_SIGNAL_LABEL_KEYS[item.labelKey] : undefined;
+  const label = signalLabelKey
+    ? translate(signalLabelKey, item.labelFallback)
+    : translate(item.labelKey, item.labelFallback);
   const [open, setOpen] = useState(childActive);
 
   return (
@@ -154,6 +166,7 @@ export function DashboardSidebar({
   const nav = resolveNav(navKind, navSlug);
   const activeHref = resolveActiveShellHref(nav, pathname);
   const t = useTranslations('shell');
+  const locale = useLocale();
 
   const translate = (key: string | undefined, fallback: string | undefined) => {
     if (!key) return fallback ?? '';
@@ -161,10 +174,15 @@ export function DashboardSidebar({
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar
+      collapsible="icon"
+      data-nav-kind={navKind}
+      side={locale === 'ar' ? 'right' : 'left'}
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+    >
       <nav aria-label={brand} className="contents">
         <SidebarHeader>
-          <Link href={brandHref} className="flex items-center gap-2 px-2 py-1.5">
+          <Link href={brandHref} className="dashboard-brand flex items-center gap-2 px-2 py-1.5">
             {brandLogoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- Tenant logos can come from arbitrary configured hosts.
               <img
@@ -177,7 +195,7 @@ export function DashboardSidebar({
                 {brandInitial}
               </div>
             )}
-            <div className="group-data-[collapsible=icon]:hidden">
+            <div className="dashboard-brand__copy group-data-[collapsible=icon]:hidden">
               <div className="truncate text-sm font-semibold tracking-tight">{brand}</div>
               {brandSubtitle && (
                 <div className="text-muted-foreground text-xs">{brandSubtitle}</div>
@@ -200,6 +218,7 @@ export function DashboardSidebar({
                         item={item}
                         activeHref={activeHref}
                         translate={translate}
+                        navKind={navKind}
                       />
                     ))}
                   </SidebarMenu>
@@ -214,7 +233,7 @@ export function DashboardSidebar({
             <Avatar className="size-8">
               <AvatarFallback>{user.initials}</AvatarFallback>
             </Avatar>
-            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <div className="dashboard-user__copy min-w-0 group-data-[collapsible=icon]:hidden">
               <div className="truncate text-sm font-medium">{user.email ?? '—'}</div>
               <div className="text-muted-foreground text-xs">{user.role}</div>
             </div>

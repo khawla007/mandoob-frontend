@@ -27,14 +27,14 @@ describe('i18n/server: parseAcceptLanguage', () => {
 });
 
 describe('i18n/server: resolveLocaleFromInputs', () => {
-  it('prefers profile when supported', () => {
+  it('prefers an explicit locale cookie over a stale supported profile value', () => {
     assert.equal(
       resolveLocaleFromInputs({
         profileLocale: 'ar',
         cookieLocale: 'en',
         acceptLanguage: 'en',
       }),
-      'ar',
+      'en',
     );
   });
 

@@ -191,7 +191,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
   };
 
   return (
-    <Card className="signal-panel">
+    <Card className="signal-panel signal-deadlines">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CalendarClock aria-hidden="true" className="size-4 text-[var(--signal-warning)]" />

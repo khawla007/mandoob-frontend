@@ -100,13 +100,21 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
     completed: number.format(completed),
     range: number.format(range),
   });
+  const chartData = data.map((point) => ({
+    ...point,
+    capacity: Math.max(point.opened, point.completed),
+  }));
   const config = {
     opened: { label: labels.opened, color: 'var(--brand-accent)' },
     completed: { label: labels.completed, color: 'var(--signal-success)' },
   } satisfies ChartConfig;
 
   return (
-    <Card className="signal-panel" role="region" aria-labelledby="case-velocity-title">
+    <Card
+      className="signal-panel signal-velocity"
+      role="region"
+      aria-labelledby="case-velocity-title"
+    >
       <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
         <div>
           <CardTitle id="case-velocity-title">{labels.title}</CardTitle>
@@ -140,16 +148,20 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
         </p>
         <ChartContainer
           config={config}
-          className="aspect-auto h-72 w-full"
+          className="aspect-auto h-[105px] w-full"
           data-testid="case-velocity"
           aria-hidden="true"
         >
           <AreaChart
             accessibilityLayer={false}
-            data={data}
+            data={chartData}
             margin={{ left: 0, right: 12, top: 10, bottom: 0 }}
           >
             <defs>
+              <linearGradient id={`${gradientId}-capacity`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--signal-capacity)" stopOpacity={0.92} />
+                <stop offset="100%" stopColor="var(--signal-capacity)" stopOpacity={0.08} />
+              </linearGradient>
               <linearGradient id={`${gradientId}-opened`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--color-opened)" stopOpacity={0.36} />
                 <stop offset="100%" stopColor="var(--color-opened)" stopOpacity={0.02} />
@@ -187,6 +199,16 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
               }
             />
             <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
+            <Area
+              type="linear"
+              dataKey="capacity"
+              stroke="var(--signal-capacity)"
+              strokeWidth={1}
+              fill={`url(#${gradientId}-capacity)`}
+              legendType="none"
+              tooltipType="none"
+              isAnimationActive={false}
+            />
             <Area
               type="monotone"
               dataKey="opened"

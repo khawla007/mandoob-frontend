@@ -204,6 +204,25 @@ test('dashboard has one responsive composition and moves Action Deck before char
   assert.match(source, /order-2[^"']*lg:order-1[\s\S]*<CaseVelocityChart/);
 });
 
+test('dashboard uses the compact asymmetric Signal Studio composition', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /className="signal-dashboard/);
+  assert.match(source, /className="signal-dashboard__masthead/);
+  assert.match(source, /className="signal-dashboard__heading/);
+  assert.match(source, /className="signal-dashboard__filters/);
+  assert.match(source, /className="signal-dashboard__kpis/);
+  assert.match(source, /className="signal-dashboard__layout/);
+  assert.match(source, /className="signal-dashboard__operations/);
+  assert.match(source, /className="signal-dashboard__rail/);
+});
+
+test('dashboard keeps functional filters in a compact disclosure instead of a large permanent card', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /<details className="signal-dashboard__filter-drawer/);
+  assert.match(source, /<summary[^>]*>\{t\('filters\.toggle'\)\}<\/summary>/);
+  assert.match(source, /<form[\s\S]*className="signal-dashboard__filters/);
+});
+
 test('dashboard passes normalized filters to application drilldown widgets', () => {
   const source = readFileSync(pagePath, 'utf8');
   for (const component of ['SignalHero', 'SignalKpis', 'ActionDeck', 'DeadlineHeatmap']) {
@@ -214,13 +233,17 @@ test('dashboard passes normalized filters to application drilldown widgets', () 
 test('dashboard route exposes shape-matched loading and localized safe error boundaries', () => {
   const loading = readFileSync(loadingPath, 'utf8');
   const error = readFileSync(errorPath, 'utf8');
-  assert.match(loading, /rounded-3xl/);
+  assert.match(loading, /signal-dashboard/);
+  assert.match(loading, /signal-dashboard__masthead/);
+  assert.match(loading, /signal-dashboard__layout/);
+  assert.match(loading, /rounded-2xl/);
   assert.match(loading, /Array\.from\(\{ length: 4 \}/);
   assert.match(loading, /flex-col/);
   assert.match(loading, /sm:flex-row/);
   assert.match(loading, /max-w-full/);
   assert.match(error, /'use client'/);
   assert.match(error, /useTranslations\('pro\.dashboard\.signalStudio'\)/);
+  assert.match(error, /signal-dashboard__state/);
   assert.doesNotMatch(error, /error\.message/);
 });
 

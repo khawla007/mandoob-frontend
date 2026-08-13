@@ -32,7 +32,7 @@ export function WidgetMessage({
     <div
       role={isError ? 'alert' : 'status'}
       className={cn(
-        'border-border/70 bg-muted/35 flex min-h-36 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center',
+        'signal-widget-state border-border/70 bg-muted/35 flex min-h-36 flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center',
         className,
       )}
     >
