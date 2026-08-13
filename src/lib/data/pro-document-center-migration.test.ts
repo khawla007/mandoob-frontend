@@ -64,6 +64,14 @@ function extractFunction(sql: string): string {
   return match[0];
 }
 
+function extractExpiryFunction(sql: string): string {
+  const match = executableSql(sql).match(
+    /create or replace function public\.set_pro_document_expiry\([\s\S]*?\) returns table \([\s\S]*?\) language plpgsql volatile security invoker set search_path = '' as \$function\$[\s\S]*?\$function\$;/i,
+  );
+  assert.ok(match, 'set_pro_document_expiry transactional function is missing');
+  return match[0];
+}
+
 function extractAllowedValues(fn: string, parameter: string, fallback: string): string[] {
   const allowed = new RegExp(`coalesce\\(${parameter},'${fallback}'\\) in \\(([^)]*)\\)`, 'i').exec(
     fn,
@@ -80,6 +88,75 @@ function extractFunctionRoles(sql: string, verb: 'grant execute' | 'revoke all')
   ).exec(normalized);
   assert.ok(statement, `${verb} role statement is missing`);
   return statement[1].split(',');
+}
+
+function extractExpiryFunctionRoles(sql: string, verb: 'grant execute' | 'revoke all'): string[] {
+  const statement = new RegExp(
+    `${verb} on function public\\.set_pro_document_expiry\\([\\s\\S]*?\\) (?:to|from) ([a-z_,]+);`,
+    'i',
+  ).exec(executableSql(sql));
+  assert.ok(statement, `expiry ${verb} role statement is missing`);
+  return statement[1].split(',');
+}
+
+function assertExpiryMutationContract(sql: string): void {
+  const normalized = executableSql(sql);
+  const fn = extractExpiryFunction(sql);
+
+  assert.match(
+    fn,
+    /\(p_tenant_id uuid,p_document_id uuid,p_actor_id uuid,p_expires_on date\)/i,
+    'expiry RPC must accept only scoped identifiers and the nullable date',
+  );
+  assert.match(fn, /returns table \(document_id uuid,expires_on date\)/i);
+  assert.match(fn, /language plpgsql volatile security invoker set search_path = ''/i);
+  assert.doesNotMatch(fn, /security definer/i);
+  assert.match(
+    fn,
+    /select d,c into v_document,v_client from public\.documents d join public\.clients c on c\.id = d\.client_id where d\.id = p_document_id for update of d/i,
+    'expiry RPC must lock the document while resolving its client ownership chain',
+  );
+  assert.match(fn, /v_document\.tenant_id <> p_tenant_id/i);
+  assert.match(fn, /v_client\.tenant_id <> p_tenant_id/i);
+  assert.match(
+    fn,
+    /select e into v_employee from public\.employees e where e\.id = v_document\.employee_id for share of e/i,
+    'employee-linked ownership must be rechecked under a row lock',
+  );
+  assert.match(fn, /v_employee\.tenant_id <> p_tenant_id/i);
+  assert.match(fn, /v_employee\.client_id <> v_document\.client_id/i);
+  assert.match(
+    fn,
+    /v_document\.doc_type = 'trade_license' or \(v_document\.employee_id is not null and v_document\.doc_type in \('visa','emirates_id'\)\)/i,
+    'externally-owned expiry types must be rejected inside the transaction',
+  );
+  assert.match(
+    fn,
+    /update public\.documents d set expires_on = p_expires_on where d\.id = v_document\.id and d\.tenant_id = p_tenant_id returning d\.id,d\.expires_on into v_updated_id,v_updated_expires_on/i,
+    'expiry update must remain tenant scoped and capture the updated row',
+  );
+  assert.match(fn, /if not found then raise exception/i, 'zero-row updates must fail closed');
+  assert.match(
+    fn,
+    /insert into public\.tenant_audit_log \(tenant_id,actor_id,action,source,details\) values \(p_tenant_id,p_actor_id,'updated','self_serve',jsonb_build_object\('entity','document','op','set_expiry','document_id',v_updated_id,'expires_on',v_updated_expires_on\)\)/i,
+    'required tenant audit must be in the same transaction as the update',
+  );
+  assert.match(fn, /return query select v_updated_id,v_updated_expires_on/i);
+
+  assert.equal(
+    normalized.match(/revoke all on function public\.set_pro_document_expiry\(/gi)?.length,
+    1,
+  );
+  assert.equal(
+    normalized.match(/grant execute on function public\.set_pro_document_expiry\(/gi)?.length,
+    1,
+  );
+  assert.deepEqual(extractExpiryFunctionRoles(sql, 'revoke all'), [
+    'public',
+    'anon',
+    'authenticated',
+  ]);
+  assert.deepEqual(extractExpiryFunctionRoles(sql, 'grant execute'), ['service_role']);
 }
 
 function assertMigrationContract(sql: string): void {
@@ -256,6 +333,7 @@ function assertMigrationContract(sql: string): void {
     ['service_role'],
     'only the page-authorized service-role DAL may execute the RPC',
   );
+  assertExpiryMutationContract(sql);
 }
 
 function expectedClampedOffset(
@@ -360,6 +438,28 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
     (source) => source.replace(/to service_role;/i, 'to authenticated, service_role;'),
     /only the page-authorized service-role DAL may execute the RPC/,
   );
+
+  for (const [mutate, failure] of [
+    [
+      (source: string) => source.replace(/for update of d/i, ''),
+      /lock the document while resolving its client ownership chain/,
+    ],
+    [
+      (source: string) =>
+        source.replace(/insert into public\.tenant_audit_log/i, 'insert into public.auth_events'),
+      /required tenant audit must be in the same transaction/,
+    ],
+    [
+      (source: string) =>
+        source.replace(
+          /grant execute on function public\.set_pro_document_expiry\(\s*uuid, uuid, uuid, date\s*\) to service_role;/i,
+          'grant execute on function public.set_pro_document_expiry(uuid, uuid, uuid, date) to authenticated, service_role;',
+        ),
+      /deepStrictEqual|service_role/,
+    ],
+  ] as const) {
+    assertMutationRejected(sql, mutate, failure);
+  }
 
   assert.equal(readMigration(), sql, 'in-memory mutations must not alter the migration on disk');
 });

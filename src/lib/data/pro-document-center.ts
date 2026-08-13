@@ -14,6 +14,7 @@ import {
 import type { DocType } from '@/lib/validation/document';
 
 const PAGE_SIZE = 50;
+const VERSION_HISTORY_BATCH_SIZE = 500;
 
 export type DocumentCenterQuery = Partial<DocumentCenterSearch>;
 
@@ -323,21 +324,39 @@ export async function listDocumentVersionHistory(
     throw new ApiError('FORBIDDEN', 'Document is outside the firm scope', 403);
   }
 
-  const { data, error } = await admin
-    .from('document_versions')
-    .select(
-      'id, document_id, tenant_id, mime_type, size_bytes, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, created_at, uploader:profiles!document_versions_uploaded_by_fkey(full_name), reviewer:profiles!document_versions_reviewed_by_fkey(full_name)',
-    )
-    .eq('document_id', validDocumentId)
-    .eq('tenant_id', validTenantId)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false });
-  if (error) throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+  const loadBatch = (from: number, withCount: boolean) =>
+    admin
+      .from('document_versions')
+      .select(
+        'id, document_id, tenant_id, mime_type, size_bytes, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, created_at, uploader:profiles!document_versions_uploaded_by_fkey(full_name), reviewer:profiles!document_versions_reviewed_by_fkey(full_name)',
+        withCount ? { count: 'exact' } : undefined,
+      )
+      .eq('document_id', validDocumentId)
+      .eq('tenant_id', validTenantId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + VERSION_HISTORY_BATCH_SIZE - 1);
 
-  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const firstBatch = await loadBatch(0, true);
+  if (firstBatch.error) {
+    throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+  }
+  const rows = [...((firstBatch.data ?? []) as Array<Record<string, unknown>>)] as Array<
+    Record<string, unknown>
+  >;
+  const total = firstBatch.count ?? rows.length;
+
+  while (rows.length < total) {
+    const batch = await loadBatch(rows.length, false);
+    if (batch.error || !batch.data?.length) {
+      throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+    }
+    rows.push(...(batch.data as Array<Record<string, unknown>>));
+  }
+
   return rows.map((row, index) => ({
     versionId: row.id as string,
-    versionNumber: rows.length - index,
+    versionNumber: total - index,
     current: row.id === ownership.current_version_id,
     uploadedAt: row.created_at as string,
     uploadedBy: asNullableString(row.uploaded_by),
@@ -370,55 +389,19 @@ export async function setDocumentExpiry(
     expires_on: input.expires_on === null ? '' : input.expires_on,
   });
   const admin = createSupabaseServiceRoleClient();
-  const { data: document, error: documentError } = await admin
-    .from('documents')
-    .select(
-      'id, tenant_id, client_id, doc_type, employee_id, expires_on, clients!inner(id, tenant_id), employees(id, tenant_id, client_id)',
-    )
-    .eq('id', validInput.document_id)
-    .maybeSingle();
-  if (documentError) throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
-  if (!document) throw new ApiError('NOT_FOUND', 'Document not found', 404);
-
-  const row = document as Record<string, unknown>;
-  const client = relatedOne(row.clients);
-  if (
-    row.tenant_id !== validContext.tenantId ||
-    row.client_id !== client?.id ||
-    client?.tenant_id !== validContext.tenantId
-  ) {
-    throw new ApiError('FORBIDDEN', 'Document is outside the firm scope', 403);
+  const { data, error } = await admin.rpc(
+    'set_pro_document_expiry' as never,
+    {
+      p_tenant_id: validContext.tenantId,
+      p_document_id: validInput.document_id,
+      p_actor_id: validContext.actorId,
+      p_expires_on: validInput.expires_on,
+    } as never,
+  );
+  const updated = (data as Array<Record<string, unknown>> | null)?.[0];
+  if (error || updated?.document_id !== validInput.document_id) {
+    throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
   }
-
-  const employeeId = asNullableString(row.employee_id);
-  const employee = relatedOne(row.employees);
-  if (
-    employeeId &&
-    (employee?.id !== employeeId ||
-      employee.tenant_id !== validContext.tenantId ||
-      employee.client_id !== row.client_id)
-  ) {
-    throw new ApiError('FORBIDDEN', 'Document employee is outside the firm scope', 403);
-  }
-
-  const docType = row.doc_type as DocType;
-  if (
-    docType === 'trade_license' ||
-    (employeeId !== null && (docType === 'visa' || docType === 'emirates_id'))
-  ) {
-    throw new ApiError(
-      'EXPIRY_EXTERNALLY_MANAGED',
-      'Expiry is managed by the linked client or employee',
-      409,
-    );
-  }
-
-  const { error: updateError } = await admin
-    .from('documents')
-    .update({ expires_on: validInput.expires_on })
-    .eq('id', validInput.document_id)
-    .eq('tenant_id', validContext.tenantId);
-  if (updateError) throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
 
   const auditDetails = {
     entity: 'document',
@@ -426,15 +409,8 @@ export async function setDocumentExpiry(
     document_id: validInput.document_id,
     expires_on: validInput.expires_on,
   };
-  const { error: auditError } = await admin.from('tenant_audit_log').insert({
-    tenant_id: validContext.tenantId,
-    actor_id: validContext.actorId,
-    action: 'updated',
-    source: 'self_serve',
-    details: auditDetails,
-  });
-  if (auditError) console.error('tenant_audit_log insert failed', auditError);
-
+  // The expiry update and required tenant audit are atomic inside the RPC.
+  // Auth events are intentionally best-effort telemetry after that transaction commits.
   await recordAuthEvent({
     kind: 'tenant_self_updated',
     actorUserId: validContext.actorId,

@@ -1652,6 +1652,18 @@ export type Database = {
           total_count: number;
         }[];
       };
+      set_pro_document_expiry: {
+        Args: {
+          p_actor_id: string;
+          p_document_id: string;
+          p_expires_on: string | null;
+          p_tenant_id: string;
+        };
+        Returns: {
+          document_id: string;
+          expires_on: string | null;
+        }[];
+      };
       list_signal_payment_invoices: {
         Args: {
           p_date?: string | null;

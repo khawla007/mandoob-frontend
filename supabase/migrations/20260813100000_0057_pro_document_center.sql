@@ -352,3 +352,99 @@ revoke all on function public.list_pro_document_center(
 grant execute on function public.list_pro_document_center(
   uuid, text, text, uuid, text, date, date, date, date, text, text, uuid, integer, integer
 ) to service_role;
+
+create or replace function public.set_pro_document_expiry(
+  p_tenant_id uuid,
+  p_document_id uuid,
+  p_actor_id uuid,
+  p_expires_on date
+) returns table (
+  document_id uuid,
+  expires_on date
+)
+language plpgsql
+volatile
+security invoker
+set search_path = ''
+as $function$
+declare
+  v_document public.documents%rowtype;
+  v_client public.clients%rowtype;
+  v_employee public.employees%rowtype;
+  v_updated_id uuid;
+  v_updated_expires_on date;
+begin
+  select d, c
+  into v_document, v_client
+  from public.documents d
+  join public.clients c on c.id = d.client_id
+  where d.id = p_document_id
+  for update of d;
+
+  if not found then
+    raise exception using errcode = 'P0002', message = 'document_not_found';
+  end if;
+
+  if v_document.tenant_id <> p_tenant_id
+    or v_client.tenant_id <> p_tenant_id
+    or v_document.client_id <> v_client.id then
+    raise exception using errcode = 'P0001', message = 'document_scope_violation';
+  end if;
+
+  if v_document.employee_id is not null then
+    select e
+    into v_employee
+    from public.employees e
+    where e.id = v_document.employee_id
+    for share of e;
+
+    if not found
+      or v_employee.tenant_id <> p_tenant_id
+      or v_employee.client_id <> v_document.client_id then
+      raise exception using errcode = 'P0001', message = 'employee_scope_violation';
+    end if;
+  end if;
+
+  if v_document.doc_type = 'trade_license'
+    or (
+      v_document.employee_id is not null
+      and v_document.doc_type in ('visa', 'emirates_id')
+    ) then
+    raise exception using errcode = 'P0001', message = 'expiry_externally_managed';
+  end if;
+
+  update public.documents d
+  set expires_on = p_expires_on
+  where d.id = v_document.id
+    and d.tenant_id = p_tenant_id
+  returning d.id, d.expires_on into v_updated_id, v_updated_expires_on;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'document_update_failed';
+  end if;
+
+  insert into public.tenant_audit_log (
+    tenant_id, actor_id, action, source, details
+  ) values (
+    p_tenant_id,
+    p_actor_id,
+    'updated',
+    'self_serve',
+    jsonb_build_object(
+      'entity', 'document',
+      'op', 'set_expiry',
+      'document_id', v_updated_id,
+      'expires_on', v_updated_expires_on
+    )
+  );
+
+  return query select v_updated_id, v_updated_expires_on;
+end;
+$function$;
+
+revoke all on function public.set_pro_document_expiry(
+  uuid, uuid, uuid, date
+) from public, anon, authenticated;
+grant execute on function public.set_pro_document_expiry(
+  uuid, uuid, uuid, date
+) to service_role;

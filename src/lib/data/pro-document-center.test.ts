@@ -15,12 +15,11 @@ const TENANT = '11111111-1111-4111-8111-111111111111';
 const FOREIGN_TENANT = '22222222-2222-4222-8222-222222222222';
 const CLIENT = '33333333-3333-4333-8333-333333333333';
 const DOCUMENT = '44444444-4444-4444-8444-444444444444';
-const EMPLOYEE = '55555555-5555-4555-8555-555555555555';
 const ACTOR = '66666666-6666-4666-8666-666666666666';
 const VERSION_1 = '77777777-7777-4777-8777-777777777777';
 const VERSION_2 = '88888888-8888-4888-8888-888888888888';
 
-type FetchCall = { url: string; method: string; body: unknown };
+type FetchCall = { url: string; method: string; body: unknown; headers: Headers };
 const originalFetch = globalThis.fetch;
 
 function json(data: unknown, status = 200): Response {
@@ -35,6 +34,7 @@ function captureFetch(handler: (call: FetchCall) => Response | Promise<Response>
       url: String(input),
       method: init?.method ?? 'GET',
       body: text ? JSON.parse(text) : undefined,
+      headers: new Headers(init?.headers),
     };
     calls.push(call);
     return handler(call);
@@ -303,6 +303,65 @@ test('listDocumentVersionHistory proves ownership first and returns stable newes
   assert.equal('storagePath' in result[0], false);
 });
 
+test('listDocumentVersionHistory batches beyond the provider cap with exact global numbering', async () => {
+  const total = 1001;
+  const currentId = '00000000-0000-4000-8000-000000000750';
+  const versions = Array.from({ length: total }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    document_id: DOCUMENT,
+    tenant_id: TENANT,
+    mime_type: 'application/pdf',
+    size_bytes: index + 1,
+    uploaded_by: ACTOR,
+    review_status: 'approved',
+    review_note: null,
+    reviewed_by: ACTOR,
+    reviewed_at: '2026-08-12T11:00:00Z',
+    created_at: new Date(Date.UTC(2026, 7, 12, 10, 0, 0) - index * 1000).toISOString(),
+    uploader: { full_name: 'Aisha' },
+    reviewer: { full_name: 'Omar' },
+  }));
+  const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/documents?')) {
+      return json([
+        {
+          id: DOCUMENT,
+          tenant_id: TENANT,
+          client_id: CLIENT,
+          current_version_id: currentId,
+          clients: { id: CLIENT, tenant_id: TENANT },
+          employees: null,
+        },
+      ]);
+    }
+    const url = new URL(call.url);
+    const from = Number(url.searchParams.get('offset'));
+    const limit = Number(url.searchParams.get('limit'));
+    assert.equal(Number.isInteger(from), true);
+    assert.equal(limit, 500);
+    const to = from + limit - 1;
+    return Response.json(versions.slice(from, to + 1), {
+      status: 206,
+      headers: { 'content-range': `${from}-${Math.min(to, total - 1)}/${total}` },
+    });
+  });
+  const { listDocumentVersionHistory } = await load();
+
+  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+
+  const versionCalls = calls.filter((call) => call.url.includes('/rest/v1/document_versions?'));
+  assert.ok(versionCalls.length >= 2);
+  assert.equal(result.length, total);
+  assert.equal(result[0].versionNumber, total);
+  assert.equal(result.at(-1)?.versionNumber, 1);
+  assert.equal(result.find((entry) => entry.versionId === currentId)?.current, true);
+  assert.equal(new URL(versionCalls[0].url).searchParams.get('order'), 'created_at.desc,id.desc');
+  assert.deepEqual(
+    versionCalls.map((call) => new URL(call.url).searchParams.get('offset')),
+    ['0', '500', '1000'],
+  );
+});
+
 test('listDocumentVersionHistory stops after a missing or foreign ownership chain', async () => {
   const { listDocumentVersionHistory } = await load();
   let calls = captureFetch(() => json([]));
@@ -341,47 +400,6 @@ function expiryContext() {
   };
 }
 
-function ownedDocument(docType = 'passport', employeeId: string | null = null) {
-  return {
-    id: DOCUMENT,
-    tenant_id: TENANT,
-    client_id: CLIENT,
-    doc_type: docType,
-    employee_id: employeeId,
-    expires_on: null,
-    clients: { id: CLIENT, tenant_id: TENANT },
-    employees: employeeId ? { id: employeeId, tenant_id: TENANT, client_id: CLIENT } : null,
-  };
-}
-
-test('setDocumentExpiry rejects missing, foreign, and externally owned expiry without mutation', async () => {
-  const { setDocumentExpiry } = await load();
-  for (const row of [
-    null,
-    { ...ownedDocument(), tenant_id: FOREIGN_TENANT },
-    ownedDocument('trade_license'),
-    ownedDocument('visa', EMPLOYEE),
-    ownedDocument('emirates_id', EMPLOYEE),
-  ]) {
-    const calls = captureFetch(() => json(row ? [row] : []));
-    await assert.rejects(
-      () =>
-        setDocumentExpiry(expiryContext(), {
-          document_id: DOCUMENT,
-          expires_on: '2027-08-13',
-        }),
-      (error) =>
-        error instanceof ApiError &&
-        (row === null
-          ? error.code === 'NOT_FOUND'
-          : row.tenant_id === FOREIGN_TENANT
-            ? error.code === 'FORBIDDEN'
-            : error.code === 'EXPIRY_EXTERNALLY_MANAGED'),
-    );
-    assert.equal(calls.length, 1);
-  }
-});
-
 test('setDocumentExpiry rejects an omitted expiry before any read or mutation', async () => {
   const calls = captureFetch(() => json([]));
   const { setDocumentExpiry } = await load();
@@ -392,12 +410,12 @@ test('setDocumentExpiry rejects an omitted expiry before any read or mutation', 
   assert.equal(calls.length, 0);
 });
 
-test('setDocumentExpiry updates or clears only a tenant-owned document and writes audit/auth events', async () => {
+test('setDocumentExpiry uses one transactional RPC for update and tenant audit, then records auth telemetry', async () => {
   const { setDocumentExpiry } = await load();
   for (const expiresOn of ['2027-08-13', null]) {
     const calls = captureFetch((call) => {
-      if (call.url.includes('/rest/v1/documents?') && call.method === 'GET') {
-        return json([ownedDocument()]);
+      if (call.url.includes('/rest/v1/rpc/set_pro_document_expiry')) {
+        return json([{ document_id: DOCUMENT, expires_on: expiresOn }]);
       }
       return json([]);
     });
@@ -407,30 +425,53 @@ test('setDocumentExpiry updates or clears only a tenant-owned document and write
       expires_on: expiresOn,
     });
 
-    const update = calls.find(
-      (call) => call.url.includes('/rest/v1/documents?') && call.method === 'PATCH',
-    )!;
-    const updateUrl = new URL(update.url);
-    assert.equal(updateUrl.searchParams.get('id'), `eq.${DOCUMENT}`);
-    assert.equal(updateUrl.searchParams.get('tenant_id'), `eq.${TENANT}`);
-    assert.deepEqual(update.body, { expires_on: expiresOn });
-
-    const audit = calls.find((call) => call.url.includes('/rest/v1/tenant_audit_log'))!;
-    assert.deepEqual(audit.body, {
-      tenant_id: TENANT,
-      actor_id: ACTOR,
-      action: 'updated',
-      source: 'self_serve',
-      details: {
-        entity: 'document',
-        op: 'set_expiry',
-        document_id: DOCUMENT,
-        expires_on: expiresOn,
-      },
+    const rpc = calls.find((call) => call.url.includes('/rest/v1/rpc/set_pro_document_expiry'))!;
+    assert.deepEqual(rpc.body, {
+      p_tenant_id: TENANT,
+      p_document_id: DOCUMENT,
+      p_actor_id: ACTOR,
+      p_expires_on: expiresOn,
     });
+    assert.equal(
+      calls.some((call) => call.url.includes('/rest/v1/documents?')),
+      false,
+    );
+    assert.equal(
+      calls.some((call) => call.url.includes('/rest/v1/tenant_audit_log')),
+      false,
+    );
     const auth = calls.find((call) => call.url.includes('/rest/v1/auth_events'))!;
     assert.equal((auth.body as Record<string, unknown>).kind, 'tenant_self_updated');
     assert.equal((auth.body as Record<string, unknown>).tenant_id, TENANT);
+  }
+});
+
+test('setDocumentExpiry rejects empty and failed transactional RPCs without success telemetry', async () => {
+  const { setDocumentExpiry } = await load();
+  for (const response of [
+    json([]),
+    json({ message: 'private audit constraint detail', code: '23514' }, 500),
+  ]) {
+    const calls = captureFetch((call) =>
+      call.url.includes('/rest/v1/rpc/set_pro_document_expiry') ? response : json([]),
+    );
+
+    await assert.rejects(
+      () =>
+        setDocumentExpiry(expiryContext(), {
+          document_id: DOCUMENT,
+          expires_on: '2027-08-13',
+        }),
+      (error) =>
+        error instanceof ApiError &&
+        error.code === 'INTERNAL' &&
+        error.message === 'Unable to update document expiry',
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(
+      calls.some((call) => call.url.includes('/rest/v1/auth_events')),
+      false,
+    );
   }
 });
 
