@@ -367,7 +367,7 @@ export async function setDocumentExpiry(
   const validContext = expiryContextSchema.parse(ctx);
   const validInput = documentExpirySchema.parse({
     ...input,
-    expires_on: input.expires_on ?? '',
+    expires_on: input.expires_on === null ? '' : input.expires_on,
   });
   const admin = createSupabaseServiceRoleClient();
   const { data: document, error: documentError } = await admin

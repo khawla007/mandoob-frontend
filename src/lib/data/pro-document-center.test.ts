@@ -382,6 +382,16 @@ test('setDocumentExpiry rejects missing, foreign, and externally owned expiry wi
   }
 });
 
+test('setDocumentExpiry rejects an omitted expiry before any read or mutation', async () => {
+  const calls = captureFetch(() => json([]));
+  const { setDocumentExpiry } = await load();
+
+  await assert.rejects(() =>
+    setDocumentExpiry(expiryContext(), { document_id: DOCUMENT } as never),
+  );
+  assert.equal(calls.length, 0);
+});
+
 test('setDocumentExpiry updates or clears only a tenant-owned document and writes audit/auth events', async () => {
   const { setDocumentExpiry } = await load();
   for (const expiresOn of ['2027-08-13', null]) {
