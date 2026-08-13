@@ -29,6 +29,7 @@ describe('Signal Studio widget contracts', () => {
     assert.match(velocity, /<summary/);
     assert.match(velocity, /<caption className="sr-only">/);
     assert.match(velocity, /aria-hidden="true"/);
+    assert.match(velocity, /<AreaChart[^>]*accessibilityLayer=\{false\}/);
     assert.doesNotMatch(velocity, /role="img"/);
     assert.match(velocity, /isAnimationActive=\{false\}/);
     assert.match(velocity, /useId\(\)/);
@@ -88,6 +89,8 @@ describe('Signal Studio widget contracts', () => {
     assert.match(actions, /countdown/);
     assert.match(actions, /absoluteDeadline/);
     assert.match(actions, /:\s*'';/);
+    assert.match(actions, /text-foreground\/70 block truncate text-xs/);
+    assert.match(actions, /text-foreground\/70 mt-3 flex flex-wrap/);
 
     const team = source('TeamSignal');
     assert.match(team, /activeCases/);
@@ -97,6 +100,13 @@ describe('Signal Studio widget contracts', () => {
     assert.match(team, /aria-valuemax=\{100\}/);
     assert.match(team, /aria-valuetext=/);
     assert.match(team, /applicationSignalHref\(tenantSlug, \{ view: 'open' \}, filters\)/);
+  });
+
+  it('keeps inactive velocity range controls above minimum contrast', () => {
+    const velocity = source('CaseVelocityChart');
+    assert.match(velocity, /'text-foreground\/70 hover:text-foreground'/);
+    assert.doesNotMatch(velocity, /'text-muted-foreground hover:text-foreground'/);
+    assert.match(velocity, /aria-label=\{`\$\{labels\.title\}: \$\{labels\.rangeLabel\}`\}/);
   });
 
   it('uses four arrow-ended renewal streams and four linked KPI cards', () => {

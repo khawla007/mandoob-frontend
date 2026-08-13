@@ -49,7 +49,9 @@ export function DashboardLayout({
       />
       <SidebarInset>
         <DashboardTopbar breadcrumbs={breadcrumbs} search={search} />
-        <main className="flex-1 p-6 md:p-8">{children}</main>
+        <div id="main-content" className="flex-1 p-6 md:p-8">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

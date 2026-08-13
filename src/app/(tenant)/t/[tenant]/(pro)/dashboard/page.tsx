@@ -263,7 +263,7 @@ export default async function ProDashboard({
                 'focus-visible:ring-ring rounded-md px-3 py-1.5 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none',
                 range === days
                   ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
+                  : 'text-foreground/70 hover:text-foreground',
               )}
             >
               {rangeLabels[days]}

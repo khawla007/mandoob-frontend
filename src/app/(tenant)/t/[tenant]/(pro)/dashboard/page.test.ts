@@ -289,3 +289,9 @@ test('dashboard reads parameterized widget labels as raw templates', () => {
     assert.ok(!source.includes(`t('${key}')`), key);
   }
 });
+
+test('dashboard range controls keep inactive labels above minimum contrast', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /'text-foreground\/70 hover:text-foreground'/);
+  assert.doesNotMatch(source, /'text-muted-foreground hover:text-foreground'/);
+});

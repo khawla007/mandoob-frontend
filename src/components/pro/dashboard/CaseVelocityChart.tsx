@@ -112,7 +112,10 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
           <CardTitle id="case-velocity-title">{labels.title}</CardTitle>
           <CardDescription className="mt-1">{labels.description}</CardDescription>
         </div>
-        <nav aria-label={labels.rangeLabel} className="bg-muted flex w-fit rounded-lg p-1">
+        <nav
+          aria-label={`${labels.title}: ${labels.rangeLabel}`}
+          className="bg-muted flex w-fit rounded-lg p-1"
+        >
           {RANGES.map((days) => (
             <Link
               key={days}
@@ -122,7 +125,7 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
                 'focus-visible:ring-ring rounded-md px-3 py-1.5 font-mono text-xs tabular-nums focus-visible:ring-2 focus-visible:outline-none',
                 range === days
                   ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
+                  : 'text-foreground/70 hover:text-foreground',
               )}
             >
               {number.format(days)}
@@ -141,7 +144,11 @@ export function CaseVelocityChart(props: CaseVelocityChartProps) {
           data-testid="case-velocity"
           aria-hidden="true"
         >
-          <AreaChart data={data} margin={{ left: 0, right: 12, top: 10, bottom: 0 }}>
+          <AreaChart
+            accessibilityLayer={false}
+            data={data}
+            margin={{ left: 0, right: 12, top: 10, bottom: 0 }}
+          >
             <defs>
               <linearGradient id={`${gradientId}-opened`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--color-opened)" stopOpacity={0.36} />

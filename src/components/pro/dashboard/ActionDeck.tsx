@@ -133,7 +133,7 @@ export function ActionDeck(props: ActionDeckProps) {
                       {labels.urgency[action.urgency]}
                     </span>
                   </span>
-                  <span className="text-muted-foreground block truncate text-xs">
+                  <span className="text-foreground/70 block truncate text-xs">
                     {action.clientName} · {action.detail}
                   </span>
                 </span>
@@ -142,7 +142,7 @@ export function ActionDeck(props: ActionDeckProps) {
                   className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transform-none"
                 />
               </span>
-              <span className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              <span className="text-foreground/70 mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                 <span className="flex items-center gap-1.5">
                   <UserRound aria-hidden="true" className="size-3.5" />
                   {action.ownerName ?? labels.unassigned}

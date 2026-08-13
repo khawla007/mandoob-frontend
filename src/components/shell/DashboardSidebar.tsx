@@ -162,61 +162,65 @@ export function DashboardSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <Link href={brandHref} className="flex items-center gap-2 px-2 py-1.5">
-          {brandLogoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- Tenant logos can come from arbitrary configured hosts.
-            <img
-              src={brandLogoUrl}
-              alt=""
-              className="bg-background size-8 rounded-md border object-contain"
-            />
-          ) : (
-            <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md font-semibold">
-              {brandInitial}
+      <nav aria-label={brand} className="contents">
+        <SidebarHeader>
+          <Link href={brandHref} className="flex items-center gap-2 px-2 py-1.5">
+            {brandLogoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Tenant logos can come from arbitrary configured hosts.
+              <img
+                src={brandLogoUrl}
+                alt=""
+                className="bg-background size-8 rounded-md border object-contain"
+              />
+            ) : (
+              <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md font-semibold">
+                {brandInitial}
+              </div>
+            )}
+            <div className="group-data-[collapsible=icon]:hidden">
+              <div className="truncate text-sm font-semibold tracking-tight">{brand}</div>
+              {brandSubtitle && (
+                <div className="text-muted-foreground text-xs">{brandSubtitle}</div>
+              )}
             </div>
-          )}
-          <div className="group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-semibold tracking-tight">{brand}</div>
-            {brandSubtitle && <div className="text-muted-foreground text-xs">{brandSubtitle}</div>}
-          </div>
-        </Link>
-      </SidebarHeader>
+          </Link>
+        </SidebarHeader>
 
-      <SidebarContent>
-        {nav.map((group, idx) => {
-          const groupLabel = translate(group.labelKey, group.labelFallback);
-          return (
-            <SidebarGroup key={group.labelKey ?? `group-${idx}`}>
-              {groupLabel && <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>}
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => (
-                    <DashboardSidebarNavItem
-                      key={item.href}
-                      item={item}
-                      activeHref={activeHref}
-                      translate={translate}
-                    />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          );
-        })}
-      </SidebarContent>
+        <SidebarContent>
+          {nav.map((group, idx) => {
+            const groupLabel = translate(group.labelKey, group.labelFallback);
+            return (
+              <SidebarGroup key={group.labelKey ?? `group-${idx}`}>
+                {groupLabel && <SidebarGroupLabel>{groupLabel}</SidebarGroupLabel>}
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => (
+                      <DashboardSidebarNavItem
+                        key={item.href}
+                        item={item}
+                        activeHref={activeHref}
+                        translate={translate}
+                      />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            );
+          })}
+        </SidebarContent>
 
-      <SidebarFooter>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <Avatar className="size-8">
-            <AvatarFallback>{user.initials}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-medium">{user.email ?? '—'}</div>
-            <div className="text-muted-foreground text-xs">{user.role}</div>
+        <SidebarFooter>
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            <Avatar className="size-8">
+              <AvatarFallback>{user.initials}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <div className="truncate text-sm font-medium">{user.email ?? '—'}</div>
+              <div className="text-muted-foreground text-xs">{user.role}</div>
+            </div>
           </div>
-        </div>
-      </SidebarFooter>
+        </SidebarFooter>
+      </nav>
     </Sidebar>
   );
 }
