@@ -25,6 +25,16 @@ const DOC_TYPES = [
   'medical_certificate',
   'insurance_policy',
 ];
+const APPROVED_VIEWS = [
+  'all',
+  'requested',
+  'submitted',
+  'approved',
+  'rejected',
+  'expiring',
+  'overdue',
+];
+const APPROVED_SORTS = ['urgency', 'newest', 'oldest', 'due_date', 'expiry_date'];
 
 function executableSql(sql: string): string {
   return sql
@@ -52,6 +62,14 @@ function extractFunction(sql: string): string {
   );
   assert.ok(match, 'list_pro_document_center SQL function is missing');
   return match[0];
+}
+
+function extractAllowedValues(fn: string, parameter: string, fallback: string): string[] {
+  const allowed = new RegExp(`coalesce\\(${parameter},'${fallback}'\\) in \\(([^)]*)\\)`, 'i').exec(
+    fn,
+  );
+  assert.ok(allowed, `${parameter} must validate an explicit token list`);
+  return [...allowed[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
 }
 
 function assertMigrationContract(sql: string): void {
@@ -94,6 +112,8 @@ function assertMigrationContract(sql: string): void {
 
   const fn = extractFunction(sql);
   assert.match(fn, /\(p_tenant_id uuid,/i, 'p_tenant_id uuid must be the first argument');
+  assert.match(fn, /p_view text default 'all'/i);
+  assert.match(fn, /p_sort text default 'urgency'/i, 'urgency must be the default sort');
   for (const parameter of [
     'p_view text',
     'p_search text',
@@ -113,10 +133,48 @@ function assertMigrationContract(sql: string): void {
   }
   assert.match(fn, /language sql stable security invoker/i, 'RPC must be stable security invoker');
   assert.doesNotMatch(fn, /security definer/i);
+  assert.deepEqual(
+    extractAllowedValues(fn, 'p_view', 'all'),
+    APPROVED_VIEWS,
+    'view tokens must exactly match the locked contract',
+  );
+  assert.deepEqual(
+    extractAllowedValues(fn, 'p_sort', 'urgency'),
+    APPROVED_SORTS,
+    'sort tokens must exactly match the locked contract',
+  );
+  assert.equal(
+    fn.match(/\(now\(\) at time zone 'Asia\/Dubai'\)::date/gi)?.length,
+    1,
+    'Dubai today must be computed exactly once',
+  );
+  assert.doesNotMatch(
+    fn,
+    /\bcurrent_date\b/i,
+    'session current_date must not drive business dates',
+  );
+  assert.match(fn, /\(now\(\) at time zone 'Asia\/Dubai'\)::date as dubai_today/i);
+  assert.match(fn, /when 'requested' then unified\.entity_kind = 'request'/i);
+  assert.match(
+    fn,
+    /when 'submitted' then unified\.entity_kind = 'document' and unified\.review_status = 'pending'/i,
+  );
+  assert.match(fn, /when 'approved' then unified\.review_status = 'approved'/i);
+  assert.match(fn, /when 'rejected' then unified\.review_status = 'rejected'/i);
+  assert.match(
+    fn,
+    /when 'expiring' then unified\.effective_expires_on between params\.dubai_today and params\.dubai_today \+ 30/i,
+    'expiring must include Dubai today through day 30 only',
+  );
+  assert.match(
+    fn,
+    /when 'overdue' then unified\.entity_kind = 'request' and \(unified\.due_at at time zone 'Asia\/Dubai'\)::date < params\.dubai_today/i,
+    'overdue must mean a pending request due before Dubai today',
+  );
   assert.match(fn, /count\(\*\) over\(\)/i, 'RPC must return an exact pre-pagination count');
   assert.match(
     fn,
-    /order by[\s\S]*entity_kind[\s\S]*entity_id[\s\S]*limit least\(greatest\(p_page_size,1\),50\)[\s\S]*offset \(\(greatest\(p_page,1\)\s*-\s*1\)\s*\*\s*least\(greatest\(p_page_size,1\),50\)\)/i,
+    /order by[\s\S]*params\.sort_name = 'urgency'[\s\S]*params\.dubai_today[\s\S]*entity_kind[\s\S]*entity_id[\s\S]*limit least\(greatest\(p_page_size,1\),50\)[\s\S]*offset \(\(greatest\(p_page,1\)\s*-\s*1\)\s*\*\s*least\(greatest\(p_page_size,1\),50\)\)/i,
     'RPC must use deterministic entity tie-breakers and validated server pagination',
   );
 
@@ -133,7 +191,11 @@ function assertMigrationContract(sql: string): void {
     /not exists \(select 1 from public\.documents existing where existing\.request_id = r\.id and existing\.tenant_id = c\.tenant_id and existing\.client_id = c\.id\)/i,
     'pending requests must exclude tenant-owned document heads',
   );
-  assert.match(fn, /r\.status = 'pending'/i);
+  assert.match(
+    fn,
+    /r\.status = 'pending'/i,
+    'requested and overdue rows must originate from pending requests',
+  );
   assert.match(
     fn,
     /left join public\.employees e on e\.id = d\.employee_id and e\.tenant_id = c\.tenant_id and e\.client_id = c\.id/i,
@@ -193,6 +255,30 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
     sql,
     (source) => source.replace(/security invoker/i, 'security definer'),
     /stable security invoker/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/, 'overdue'/i, ''),
+    /view tokens must exactly match the locked contract/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/\(now\(\) at time zone 'Asia\/Dubai'\)::date/i, 'current_date'),
+    /Dubai today must be computed exactly once/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(
+        /when 'overdue' then unified\.entity_kind = 'request'\s+and/i,
+        "when 'overdue' then",
+      ),
+    /overdue must mean a pending request due before Dubai today/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/and r\.status = 'pending'/i, 'and true'),
+    /requested and overdue rows must originate from pending requests/,
   );
 
   assert.equal(readMigration(), sql, 'in-memory mutations must not alter the migration on disk');

@@ -46,7 +46,7 @@ create or replace function public.list_pro_document_center(
   p_due_to date default null,
   p_expiry_from date default null,
   p_expiry_to date default null,
-  p_sort text default 'due_asc',
+  p_sort text default 'urgency',
   p_focus_kind text default null,
   p_focus_id uuid default null,
   p_page integer default 1,
@@ -96,12 +96,12 @@ with params as materialized (
     p_due_to as due_to,
     p_expiry_from as expiry_from,
     p_expiry_to as expiry_to,
-    coalesce(p_sort, 'due_asc') as sort_name,
+    coalesce(p_sort, 'urgency') as sort_name,
     p_focus_kind as focus_kind,
-    p_focus_id as focus_id
+    p_focus_id as focus_id,
+    (now() at time zone 'Asia/Dubai')::date as dubai_today
   where coalesce(p_view, 'all') in (
-      'all', 'requests', 'documents', 'pending_review', 'approved', 'rejected',
-      'expiring', 'expired'
+      'all', 'requested', 'submitted', 'approved', 'rejected', 'expiring', 'overdue'
     )
     and (
       p_doc_type is null
@@ -111,9 +111,8 @@ with params as materialized (
         'cv_resume', 'office_lease', 'medical_certificate', 'insurance_policy'
       )
     )
-    and coalesce(p_sort, 'due_asc') in (
-      'due_asc', 'due_desc', 'expiry_asc', 'expiry_desc', 'newest', 'oldest',
-      'client_asc', 'doc_type_asc'
+    and coalesce(p_sort, 'urgency') in (
+      'urgency', 'newest', 'oldest', 'due_date', 'expiry_date'
     )
     and (p_due_from is null or p_due_to is null or p_due_from <= p_due_to)
     and (p_expiry_from is null or p_expiry_to is null or p_expiry_from <= p_expiry_to)
@@ -270,13 +269,13 @@ with params as materialized (
     )
     and case params.view_name
       when 'all' then true
-      when 'requests' then unified.entity_kind = 'request'
-      when 'documents' then unified.entity_kind = 'document'
-      when 'pending_review' then unified.review_status = 'pending'
+      when 'requested' then unified.entity_kind = 'request'
+      when 'submitted' then unified.entity_kind = 'document' and unified.review_status = 'pending'
       when 'approved' then unified.review_status = 'approved'
       when 'rejected' then unified.review_status = 'rejected'
-      when 'expiring' then unified.effective_expires_on between current_date and current_date + 30
-      when 'expired' then unified.effective_expires_on < current_date
+      when 'expiring' then unified.effective_expires_on between params.dubai_today and params.dubai_today + 30
+      when 'overdue' then unified.entity_kind = 'request'
+        and (unified.due_at at time zone 'Asia/Dubai')::date < params.dubai_today
       else false
     end
 ), counted as (
@@ -316,14 +315,23 @@ select
 from counted
 cross join params
 order by
-  case when params.sort_name = 'due_asc' then counted.due_at end asc nulls last,
-  case when params.sort_name = 'due_desc' then counted.due_at end desc nulls last,
-  case when params.sort_name = 'expiry_asc' then counted.effective_expires_on end asc nulls last,
-  case when params.sort_name = 'expiry_desc' then counted.effective_expires_on end desc nulls last,
+  case when params.sort_name = 'urgency' then case
+    when counted.entity_kind = 'request'
+      and (counted.due_at at time zone 'Asia/Dubai')::date < params.dubai_today then 0
+    when counted.entity_kind = 'document'
+      and counted.effective_expires_on < params.dubai_today then 1
+    when counted.entity_kind = 'request' and counted.due_at is not null then 2
+    when counted.entity_kind = 'document' and counted.effective_expires_on is not null then 3
+    else 4
+  end end asc,
+  case when params.sort_name = 'urgency' and counted.entity_kind = 'request'
+    then counted.due_at end asc nulls last,
+  case when params.sort_name = 'urgency' and counted.entity_kind = 'document'
+    then counted.effective_expires_on end asc nulls last,
   case when params.sort_name = 'newest' then counted.created_at end desc,
   case when params.sort_name = 'oldest' then counted.created_at end asc,
-  case when params.sort_name = 'client_asc' then lower(counted.client_name) end asc,
-  case when params.sort_name = 'doc_type_asc' then counted.doc_type end asc,
+  case when params.sort_name = 'due_date' then counted.due_at end asc nulls last,
+  case when params.sort_name = 'expiry_date' then counted.effective_expires_on end asc nulls last,
   counted.entity_kind asc, counted.entity_id asc
 limit least(greatest(p_page_size, 1), 50)
 offset ((greatest(p_page, 1) - 1) * least(greatest(p_page_size, 1), 50));
