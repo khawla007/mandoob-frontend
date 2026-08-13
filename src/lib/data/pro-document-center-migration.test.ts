@@ -72,6 +72,16 @@ function extractAllowedValues(fn: string, parameter: string, fallback: string): 
   return [...allowed[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
 }
 
+function extractFunctionRoles(sql: string, verb: 'grant execute' | 'revoke all'): string[] {
+  const normalized = executableSql(sql);
+  const statement = new RegExp(
+    `${verb} on function public\\.list_pro_document_center\\([\\s\\S]*?\\) (?:to|from) ([a-z_,]+);`,
+    'i',
+  ).exec(normalized);
+  assert.ok(statement, `${verb} role statement is missing`);
+  return statement[1].split(',');
+}
+
 function assertMigrationContract(sql: string): void {
   const normalized = executableSql(sql);
 
@@ -174,8 +184,18 @@ function assertMigrationContract(sql: string): void {
   assert.match(fn, /count\(\*\) over\(\)/i, 'RPC must return an exact pre-pagination count');
   assert.match(
     fn,
-    /order by[\s\S]*params\.sort_name = 'urgency'[\s\S]*params\.dubai_today[\s\S]*entity_kind[\s\S]*entity_id[\s\S]*limit least\(greatest\(p_page_size,1\),50\)[\s\S]*offset \(\(greatest\(p_page,1\)\s*-\s*1\)\s*\*\s*least\(greatest\(p_page_size,1\),50\)\)/i,
-    'RPC must use deterministic entity tie-breakers and validated server pagination',
+    /page_bounds as materialized \(select coalesce\(least\(greatest\(p_page,1\),ceil\(max\(counted\.total_count\)::numeric \/ least\(greatest\(p_page_size,1\),50\)\)::integer\),1\) as effective_page from counted\)/i,
+    'RPC must derive and clamp the effective page from the exact count',
+  );
+  assert.match(
+    fn,
+    /order by[\s\S]*params\.sort_name = 'urgency'[\s\S]*params\.dubai_today[\s\S]*entity_kind[\s\S]*entity_id[\s\S]*limit least\(greatest\(p_page_size,1\),50\)[\s\S]*offset \(\(\(select effective_page from page_bounds\)\s*-\s*1\)\s*\*\s*least\(greatest\(p_page_size,1\),50\)\)/i,
+    'RPC must paginate from the clamped page with deterministic entity tie-breakers',
+  );
+  assert.doesNotMatch(
+    fn,
+    /offset \(\(greatest\(p_page,1\)/i,
+    'raw requested-page offset can erase total_count rows',
   );
 
   const ownedClientBranches = fn.match(
@@ -211,12 +231,41 @@ function assertMigrationContract(sql: string): void {
   assert.match(fn, /requester\.full_name as requested_by_name/i);
   assert.match(fn, /reviewer\.full_name as reviewed_by_name/i);
 
-  assert.match(normalized, /revoke all on function public\.list_pro_document_center\(/i);
-  assert.match(normalized, /from public,anon;/i);
-  assert.match(
+  assert.doesNotMatch(
     normalized,
-    /grant execute on function public\.list_pro_document_center\([\s\S]*?to authenticated,service_role;/i,
+    /drop function if exists public\.list_pro_document_center/i,
+    'new RPC must not be dropped before CREATE OR REPLACE',
   );
+  assert.equal(
+    normalized.match(/revoke all on function public\.list_pro_document_center\(/gi)?.length,
+    1,
+    'RPC must have exactly one execution revoke statement',
+  );
+  assert.equal(
+    normalized.match(/grant execute on function public\.list_pro_document_center\(/gi)?.length,
+    1,
+    'RPC must have exactly one execution grant statement',
+  );
+  assert.deepEqual(
+    extractFunctionRoles(sql, 'revoke all'),
+    ['public', 'anon', 'authenticated'],
+    'RPC execution must be explicitly revoked from all client roles',
+  );
+  assert.deepEqual(
+    extractFunctionRoles(sql, 'grant execute'),
+    ['service_role'],
+    'only the page-authorized service-role DAL may execute the RPC',
+  );
+}
+
+function expectedClampedOffset(
+  total: number,
+  requestedPage: number,
+  requestedSize: number,
+): number {
+  const pageSize = Math.min(Math.max(requestedSize, 1), 50);
+  const lastPage = Math.max(Math.ceil(total / pageSize), 1);
+  return (Math.min(Math.max(requestedPage, 1), lastPage) - 1) * pageSize;
 }
 
 function readMigration(): string {
@@ -236,6 +285,23 @@ function assertMutationRejected(
 
 test('PRO document center migration defines the tenant-scoped schema and RPC contract', () => {
   assertMigrationContract(readMigration());
+});
+
+test('PRO document center pagination clamps out-of-range pages while preserving large counts', () => {
+  const fn = extractFunction(readMigration());
+  assert.match(fn, /count\(\*\) over\(\)/i);
+  assert.match(fn, /max\(counted\.total_count\)/i);
+  assert.match(fn, /select effective_page from page_bounds/i);
+
+  assert.deepEqual(
+    [
+      expectedClampedOffset(0, 999, 50),
+      expectedClampedOffset(51, 999, 50),
+      expectedClampedOffset(1_001, 999, 500),
+    ],
+    [0, 50, 1_000],
+    'empty, out-of-range, capped, and provider-row-cap-sized datasets must clamp deterministically',
+  );
 });
 
 test('PRO document center contract rejects weakened in-memory mutations', () => {
@@ -279,6 +345,20 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
     sql,
     (source) => source.replace(/and r\.status = 'pending'/i, 'and true'),
     /requested and overdue rows must originate from pending requests/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) =>
+      source.replace(
+        /offset \(\(\(select effective_page from page_bounds\) - 1\)\s+\* least\(greatest\(p_page_size, 1\), 50\)\)/i,
+        'offset ((greatest(p_page, 1) - 1) * least(greatest(p_page_size, 1), 50))',
+      ),
+    /clamped page|raw requested-page offset/,
+  );
+  assertMutationRejected(
+    sql,
+    (source) => source.replace(/to service_role;/i, 'to authenticated, service_role;'),
+    /only the page-authorized service-role DAL may execute the RPC/,
   );
 
   assert.equal(readMigration(), sql, 'in-memory mutations must not alter the migration on disk');

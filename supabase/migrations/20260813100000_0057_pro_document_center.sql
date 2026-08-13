@@ -32,10 +32,6 @@ create index if not exists document_requests_tenant_status_due_idx
 create index if not exists document_versions_document_created_id_idx
   on public.document_versions (document_id, created_at desc, id desc);
 
-drop function if exists public.list_pro_document_center(
-  uuid, text, text, uuid, text, date, date, date, date, text, text, uuid, integer, integer
-);
-
 create or replace function public.list_pro_document_center(
   p_tenant_id uuid,
   p_view text default 'all',
@@ -278,9 +274,21 @@ with params as materialized (
         and (unified.due_at at time zone 'Asia/Dubai')::date < params.dubai_today
       else false
     end
-), counted as (
+), counted as materialized (
   select filtered.*, count(*) over() as total_count
   from filtered
+), page_bounds as materialized (
+  select coalesce(
+    least(
+      greatest(p_page, 1),
+      ceil(
+        max(counted.total_count)::numeric
+        / least(greatest(p_page_size, 1), 50)
+      )::integer
+    ),
+    1
+  ) as effective_page
+  from counted
 )
 select
   counted.entity_kind,
@@ -334,12 +342,13 @@ order by
   case when params.sort_name = 'expiry_date' then counted.effective_expires_on end asc nulls last,
   counted.entity_kind asc, counted.entity_id asc
 limit least(greatest(p_page_size, 1), 50)
-offset ((greatest(p_page, 1) - 1) * least(greatest(p_page_size, 1), 50));
+offset (((select effective_page from page_bounds) - 1)
+  * least(greatest(p_page_size, 1), 50));
 $function$;
 
 revoke all on function public.list_pro_document_center(
   uuid, text, text, uuid, text, date, date, date, date, text, text, uuid, integer, integer
-) from public, anon;
+) from public, anon, authenticated;
 grant execute on function public.list_pro_document_center(
   uuid, text, text, uuid, text, date, date, date, date, text, text, uuid, integer, integer
-) to authenticated, service_role;
+) to service_role;
