@@ -368,54 +368,75 @@ security invoker
 set search_path = ''
 as $function$
 declare
-  v_document public.documents%rowtype;
-  v_client public.clients%rowtype;
-  v_employee public.employees%rowtype;
+  v_document_id uuid;
+  v_document_tenant_id uuid;
+  v_document_client_id uuid;
+  v_document_doc_type text;
+  v_document_employee_id uuid;
+  v_client_id uuid;
+  v_client_tenant_id uuid;
+  v_employee_id uuid;
+  v_employee_tenant_id uuid;
+  v_employee_client_id uuid;
   v_updated_id uuid;
   v_updated_expires_on date;
 begin
-  select d, c
-  into v_document, v_client
+  select
+    d.id,
+    d.tenant_id,
+    d.client_id,
+    d.doc_type,
+    d.employee_id,
+    c.id,
+    c.tenant_id
+  into
+    v_document_id,
+    v_document_tenant_id,
+    v_document_client_id,
+    v_document_doc_type,
+    v_document_employee_id,
+    v_client_id,
+    v_client_tenant_id
   from public.documents d
   join public.clients c on c.id = d.client_id
   where d.id = p_document_id
-  for update of d;
+  for update of d, c;
 
   if not found then
-    raise exception using errcode = 'P0002', message = 'document_not_found';
+    raise exception using errcode = 'MD404', message = 'document_not_found';
   end if;
 
-  if v_document.tenant_id <> p_tenant_id
-    or v_client.tenant_id <> p_tenant_id
-    or v_document.client_id <> v_client.id then
-    raise exception using errcode = 'P0001', message = 'document_scope_violation';
+  if v_document_tenant_id <> p_tenant_id
+    or v_client_tenant_id <> p_tenant_id
+    or v_document_client_id <> v_client_id then
+    raise exception using errcode = 'MD404', message = 'document_not_found';
   end if;
 
-  if v_document.employee_id is not null then
-    select e
-    into v_employee
+  if v_document_employee_id is not null then
+    select e.id, e.tenant_id, e.client_id
+    into v_employee_id, v_employee_tenant_id, v_employee_client_id
     from public.employees e
-    where e.id = v_document.employee_id
+    where e.id = v_document_employee_id
     for share of e;
 
     if not found
-      or v_employee.tenant_id <> p_tenant_id
-      or v_employee.client_id <> v_document.client_id then
-      raise exception using errcode = 'P0001', message = 'employee_scope_violation';
+      or v_employee_tenant_id <> p_tenant_id
+      or v_employee_client_id <> v_document_client_id then
+      raise exception using errcode = 'MD404', message = 'document_not_found';
     end if;
   end if;
 
-  if v_document.doc_type = 'trade_license'
+  if v_document_doc_type = 'trade_license'
     or (
-      v_document.employee_id is not null
-      and v_document.doc_type in ('visa', 'emirates_id')
+      v_document_employee_id is not null
+      and v_document_doc_type in ('visa', 'emirates_id')
     ) then
-    raise exception using errcode = 'P0001', message = 'expiry_externally_managed';
+    raise exception using errcode = 'MD409', message = 'expiry_externally_managed';
   end if;
 
   update public.documents d
   set expires_on = p_expires_on
-  where d.id = v_document.id
+  where d.id = v_document_id
     and d.tenant_id = p_tenant_id
   returning d.id, d.expires_on into v_updated_id, v_updated_expires_on;
 

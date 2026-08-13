@@ -111,28 +111,35 @@ function assertExpiryMutationContract(sql: string): void {
   assert.match(fn, /returns table \(document_id uuid,expires_on date\)/i);
   assert.match(fn, /language plpgsql volatile security invoker set search_path = ''/i);
   assert.doesNotMatch(fn, /security definer/i);
-  assert.match(
+  assert.doesNotMatch(
     fn,
-    /select d,c into v_document,v_client from public\.documents d join public\.clients c on c\.id = d\.client_id where d\.id = p_document_id for update of d/i,
-    'expiry RPC must lock the document while resolving its client ownership chain',
+    /select d,c into/i,
+    'PL/pgSQL must not assign multiple composite records through one INTO list',
   );
-  assert.match(fn, /v_document\.tenant_id <> p_tenant_id/i);
-  assert.match(fn, /v_client\.tenant_id <> p_tenant_id/i);
   assert.match(
     fn,
-    /select e into v_employee from public\.employees e where e\.id = v_document\.employee_id for share of e/i,
+    /select d\.id,d\.tenant_id,d\.client_id,d\.doc_type,d\.employee_id,c\.id,c\.tenant_id into v_document_id,v_document_tenant_id,v_document_client_id,v_document_doc_type,v_document_employee_id,v_client_id,v_client_tenant_id from public\.documents d join public\.clients c on c\.id = d\.client_id where d\.id = p_document_id for update of d,c/i,
+    'expiry RPC must use compile-safe scalar assignment and lock both ownership rows',
+  );
+  assert.match(fn, /v_document_tenant_id <> p_tenant_id/i);
+  assert.match(fn, /v_client_tenant_id <> p_tenant_id/i);
+  assert.match(fn, /errcode = 'MD404'/i, 'missing and foreign resources need one stable code');
+  assert.match(
+    fn,
+    /select e\.id,e\.tenant_id,e\.client_id into v_employee_id,v_employee_tenant_id,v_employee_client_id from public\.employees e where e\.id = v_document_employee_id for share of e/i,
     'employee-linked ownership must be rechecked under a row lock',
   );
-  assert.match(fn, /v_employee\.tenant_id <> p_tenant_id/i);
-  assert.match(fn, /v_employee\.client_id <> v_document\.client_id/i);
+  assert.match(fn, /v_employee_tenant_id <> p_tenant_id/i);
+  assert.match(fn, /v_employee_client_id <> v_document_client_id/i);
   assert.match(
     fn,
-    /v_document\.doc_type = 'trade_license' or \(v_document\.employee_id is not null and v_document\.doc_type in \('visa','emirates_id'\)\)/i,
+    /v_document_doc_type = 'trade_license' or \(v_document_employee_id is not null and v_document_doc_type in \('visa','emirates_id'\)\)/i,
     'externally-owned expiry types must be rejected inside the transaction',
   );
+  assert.match(fn, /errcode = 'MD409'/i, 'externally-owned expiry needs a stable code');
   assert.match(
     fn,
-    /update public\.documents d set expires_on = p_expires_on where d\.id = v_document\.id and d\.tenant_id = p_tenant_id returning d\.id,d\.expires_on into v_updated_id,v_updated_expires_on/i,
+    /update public\.documents d set expires_on = p_expires_on where d\.id = v_document_id and d\.tenant_id = p_tenant_id returning d\.id,d\.expires_on into v_updated_id,v_updated_expires_on/i,
     'expiry update must remain tenant scoped and capture the updated row',
   );
   assert.match(fn, /if not found then raise exception/i, 'zero-row updates must fail closed');
@@ -441,8 +448,8 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
 
   for (const [mutate, failure] of [
     [
-      (source: string) => source.replace(/for update of d/i, ''),
-      /lock the document while resolving its client ownership chain/,
+      (source: string) => source.replace(/for update of d, c/i, 'for update of d'),
+      /lock both ownership rows/,
     ],
     [
       (source: string) =>

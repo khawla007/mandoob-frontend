@@ -324,34 +324,67 @@ export async function listDocumentVersionHistory(
     throw new ApiError('FORBIDDEN', 'Document is outside the firm scope', 403);
   }
 
-  const loadBatch = (from: number, withCount: boolean) =>
-    admin
-      .from('document_versions')
-      .select(
-        'id, document_id, tenant_id, mime_type, size_bytes, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, created_at, uploader:profiles!document_versions_uploaded_by_fkey(full_name), reviewer:profiles!document_versions_reviewed_by_fkey(full_name)',
-        withCount ? { count: 'exact' } : undefined,
-      )
-      .eq('document_id', validDocumentId)
-      .eq('tenant_id', validTenantId)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .range(from, from + VERSION_HISTORY_BATCH_SIZE - 1);
-
-  const firstBatch = await loadBatch(0, true);
-  if (firstBatch.error) {
+  const versionColumns =
+    'id, document_id, tenant_id, mime_type, size_bytes, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, created_at, uploader:profiles!document_versions_uploaded_by_fkey(full_name), reviewer:profiles!document_versions_reviewed_by_fkey(full_name)';
+  const firstBatch = await admin
+    .from('document_versions')
+    .select(versionColumns, { count: 'exact' })
+    .eq('document_id', validDocumentId)
+    .eq('tenant_id', validTenantId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, VERSION_HISTORY_BATCH_SIZE - 1);
+  if (firstBatch.error || typeof firstBatch.count !== 'number') {
     throw new ApiError('INTERNAL', 'Unable to load document history', 500);
   }
   const rows = [...((firstBatch.data ?? []) as Array<Record<string, unknown>>)] as Array<
     Record<string, unknown>
   >;
-  const total = firstBatch.count ?? rows.length;
+  const total = firstBatch.count;
+  const snapshotUpperCreatedAt = asNullableString(rows[0]?.created_at);
+  const seen = new Set(rows.map((row) => row.id as string));
 
   while (rows.length < total) {
-    const batch = await loadBatch(rows.length, false);
+    const cursor = rows.at(-1);
+    const cursorCreatedAt = asNullableString(cursor?.created_at);
+    const cursorId = asNullableString(cursor?.id);
+    if (!snapshotUpperCreatedAt || !cursorCreatedAt || !cursorId) {
+      throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+    }
+    const batch = await admin
+      .from('document_versions')
+      .select(versionColumns)
+      .eq('document_id', validDocumentId)
+      .eq('tenant_id', validTenantId)
+      .lte('created_at', snapshotUpperCreatedAt)
+      .or(
+        `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`,
+      )
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(VERSION_HISTORY_BATCH_SIZE);
     if (batch.error || !batch.data?.length) {
       throw new ApiError('INTERNAL', 'Unable to load document history', 500);
     }
-    rows.push(...(batch.data as Array<Record<string, unknown>>));
+    const batchRows = batch.data as Array<Record<string, unknown>>;
+    const last = batchRows.at(-1);
+    const lastCreatedAt = asNullableString(last?.created_at);
+    const lastId = asNullableString(last?.id);
+    if (
+      !lastCreatedAt ||
+      !lastId ||
+      lastCreatedAt > cursorCreatedAt ||
+      (lastCreatedAt === cursorCreatedAt && lastId >= cursorId)
+    ) {
+      throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+    }
+    for (const row of batchRows) {
+      const id = row.id as string;
+      if (!seen.has(id) && rows.length < total) {
+        seen.add(id);
+        rows.push(row);
+      }
+    }
   }
 
   return rows.map((row, index) => ({
@@ -399,6 +432,16 @@ export async function setDocumentExpiry(
     } as never,
   );
   const updated = (data as Array<Record<string, unknown>> | null)?.[0];
+  if (error?.code === 'MD404') {
+    throw new ApiError('NOT_FOUND', 'Document not found', 404);
+  }
+  if (error?.code === 'MD409') {
+    throw new ApiError(
+      'EXPIRY_EXTERNALLY_MANAGED',
+      'Expiry is managed by the linked client or employee',
+      409,
+    );
+  }
   if (error || updated?.document_id !== validInput.document_id) {
     throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
   }

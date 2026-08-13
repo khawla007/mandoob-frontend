@@ -246,40 +246,43 @@ test('listDocumentVersionHistory proves ownership first and returns stable newes
       ]);
     }
     if (call.url.includes('/rest/v1/document_versions?')) {
-      return json([
-        {
-          id: VERSION_2,
-          document_id: DOCUMENT,
-          tenant_id: TENANT,
-          mime_type: 'application/pdf',
-          size_bytes: 200,
-          uploaded_by: ACTOR,
-          review_status: 'approved',
-          review_note: 'Clear',
-          reviewed_by: ACTOR,
-          reviewed_at: '2026-08-12T11:00:00Z',
-          created_at: '2026-08-12T10:00:00Z',
-          uploader: { full_name: 'Aisha' },
-          reviewer: { full_name: 'Aisha' },
-          storage_path: 'private/latest.pdf',
-        },
-        {
-          id: VERSION_1,
-          document_id: DOCUMENT,
-          tenant_id: TENANT,
-          mime_type: 'application/pdf',
-          size_bytes: 100,
-          uploaded_by: ACTOR,
-          review_status: 'rejected',
-          review_note: 'Blurred',
-          reviewed_by: ACTOR,
-          reviewed_at: '2026-08-11T11:00:00Z',
-          created_at: '2026-08-11T10:00:00Z',
-          uploader: { full_name: 'Aisha' },
-          reviewer: { full_name: 'Omar' },
-          storage_path: 'private/old.pdf',
-        },
-      ]);
+      return Response.json(
+        [
+          {
+            id: VERSION_2,
+            document_id: DOCUMENT,
+            tenant_id: TENANT,
+            mime_type: 'application/pdf',
+            size_bytes: 200,
+            uploaded_by: ACTOR,
+            review_status: 'approved',
+            review_note: 'Clear',
+            reviewed_by: ACTOR,
+            reviewed_at: '2026-08-12T11:00:00Z',
+            created_at: '2026-08-12T10:00:00Z',
+            uploader: { full_name: 'Aisha' },
+            reviewer: { full_name: 'Aisha' },
+            storage_path: 'private/latest.pdf',
+          },
+          {
+            id: VERSION_1,
+            document_id: DOCUMENT,
+            tenant_id: TENANT,
+            mime_type: 'application/pdf',
+            size_bytes: 100,
+            uploaded_by: ACTOR,
+            review_status: 'rejected',
+            review_note: 'Blurred',
+            reviewed_by: ACTOR,
+            reviewed_at: '2026-08-11T11:00:00Z',
+            created_at: '2026-08-11T10:00:00Z',
+            uploader: { full_name: 'Aisha' },
+            reviewer: { full_name: 'Omar' },
+            storage_path: 'private/old.pdf',
+          },
+        ],
+        { headers: { 'content-range': '0-1/2' } },
+      );
     }
     return json({ message: 'unexpected request' }, 500);
   });
@@ -303,7 +306,42 @@ test('listDocumentVersionHistory proves ownership first and returns stable newes
   assert.equal('storagePath' in result[0], false);
 });
 
-test('listDocumentVersionHistory batches beyond the provider cap with exact global numbering', async () => {
+test('listDocumentVersionHistory fails closed without an exact snapshot count', async () => {
+  const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/documents?')) {
+      return json([
+        {
+          id: DOCUMENT,
+          tenant_id: TENANT,
+          client_id: CLIENT,
+          current_version_id: VERSION_1,
+          clients: { id: CLIENT, tenant_id: TENANT },
+          employees: null,
+        },
+      ]);
+    }
+    return json([
+      {
+        id: VERSION_1,
+        document_id: DOCUMENT,
+        tenant_id: TENANT,
+        mime_type: 'application/pdf',
+        size_bytes: 100,
+        review_status: 'pending',
+        created_at: '2026-08-11T10:00:00Z',
+      },
+    ]);
+  });
+  const { listDocumentVersionHistory } = await load();
+
+  await assert.rejects(
+    () => listDocumentVersionHistory(TENANT, DOCUMENT),
+    (error) => error instanceof ApiError && error.code === 'INTERNAL',
+  );
+  assert.equal(calls.length, 2);
+});
+
+test('listDocumentVersionHistory keyset-batches an anchored snapshot without duplicates or shifts', async () => {
   const total = 1001;
   const currentId = '00000000-0000-4000-8000-000000000750';
   const versions = Array.from({ length: total }, (_, index) => ({
@@ -317,10 +355,21 @@ test('listDocumentVersionHistory batches beyond the provider cap with exact glob
     review_note: null,
     reviewed_by: ACTOR,
     reviewed_at: '2026-08-12T11:00:00Z',
-    created_at: new Date(Date.UTC(2026, 7, 12, 10, 0, 0) - index * 1000).toISOString(),
+    created_at: new Date(
+      Date.UTC(2026, 7, 12, 10, 0, 0) - Math.floor(index / 2) * 1000,
+    ).toISOString(),
     uploader: { full_name: 'Aisha' },
     reviewer: { full_name: 'Omar' },
-  }));
+  })).sort(
+    (left, right) =>
+      right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id),
+  );
+  const inserted = {
+    ...versions[0],
+    id: '99999999-9999-4999-8999-999999999999',
+    created_at: new Date(Date.parse(versions[0].created_at) + 1000).toISOString(),
+  };
+  let versionRequest = 0;
   const calls = captureFetch((call) => {
     if (call.url.includes('/rest/v1/documents?')) {
       return json([
@@ -335,15 +384,34 @@ test('listDocumentVersionHistory batches beyond the provider cap with exact glob
       ]);
     }
     const url = new URL(call.url);
-    const from = Number(url.searchParams.get('offset'));
     const limit = Number(url.searchParams.get('limit'));
-    assert.equal(Number.isInteger(from), true);
     assert.equal(limit, 500);
-    const to = from + limit - 1;
-    return Response.json(versions.slice(from, to + 1), {
-      status: 206,
-      headers: { 'content-range': `${from}-${Math.min(to, total - 1)}/${total}` },
-    });
+    versionRequest += 1;
+    if (versionRequest === 1) {
+      return Response.json(versions.slice(0, limit), {
+        status: 206,
+        headers: { 'content-range': `0-${limit - 1}/${total}` },
+      });
+    }
+
+    assert.equal(url.searchParams.get('offset'), null);
+    assert.equal(url.searchParams.get('created_at'), `lte.${versions[0].created_at}`);
+    const keyset = url.searchParams.get('or');
+    assert.ok(keyset);
+    const match =
+      /^\(created_at\.lt\.([^,]+),and\(created_at\.eq\.([^,]+),id\.lt\.([^)]+)\)\)$/u.exec(keyset);
+    assert.ok(match);
+    assert.equal(match[1], match[2]);
+    const cursorTime = match[1];
+    const cursorId = match[3];
+    const eligible = [inserted, ...versions].filter(
+      (row) => row.created_at < cursorTime || (row.created_at === cursorTime && row.id < cursorId),
+    );
+    const duplicateBoundary = versions.find(
+      (row) => row.created_at === cursorTime && row.id === cursorId,
+    );
+    const page = eligible.slice(0, duplicateBoundary ? limit - 1 : limit);
+    return json(duplicateBoundary ? [duplicateBoundary, ...page] : page);
   });
   const { listDocumentVersionHistory } = await load();
 
@@ -355,11 +423,13 @@ test('listDocumentVersionHistory batches beyond the provider cap with exact glob
   assert.equal(result[0].versionNumber, total);
   assert.equal(result.at(-1)?.versionNumber, 1);
   assert.equal(result.find((entry) => entry.versionId === currentId)?.current, true);
-  assert.equal(new URL(versionCalls[0].url).searchParams.get('order'), 'created_at.desc,id.desc');
-  assert.deepEqual(
-    versionCalls.map((call) => new URL(call.url).searchParams.get('offset')),
-    ['0', '500', '1000'],
+  assert.equal(
+    result.some((entry) => entry.versionId === inserted.id),
+    false,
   );
+  assert.equal(new Set(result.map((entry) => entry.versionId)).size, total);
+  assert.equal(new URL(versionCalls[0].url).searchParams.get('order'), 'created_at.desc,id.desc');
+  assert.ok(versionCalls.slice(1).every((call) => new URL(call.url).searchParams.has('or')));
 });
 
 test('listDocumentVersionHistory stops after a missing or foreign ownership chain', async () => {
@@ -466,6 +536,51 @@ test('setDocumentExpiry rejects empty and failed transactional RPCs without succ
         error instanceof ApiError &&
         error.code === 'INTERNAL' &&
         error.message === 'Unable to update document expiry',
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(
+      calls.some((call) => call.url.includes('/rest/v1/auth_events')),
+      false,
+    );
+  }
+});
+
+test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes database messages', async () => {
+  const { setDocumentExpiry } = await load();
+  for (const expected of [
+    {
+      dbCode: 'MD404',
+      dbMessage: 'private document_scope_violation details',
+      code: 'NOT_FOUND',
+      message: 'Document not found',
+      status: 404,
+    },
+    {
+      dbCode: 'MD409',
+      dbMessage: 'private expiry_externally_managed details',
+      code: 'EXPIRY_EXTERNALLY_MANAGED',
+      message: 'Expiry is managed by the linked client or employee',
+      status: 409,
+    },
+  ]) {
+    const calls = captureFetch((call) =>
+      call.url.includes('/rest/v1/rpc/set_pro_document_expiry')
+        ? json({ message: expected.dbMessage, code: expected.dbCode }, 400)
+        : json([]),
+    );
+
+    await assert.rejects(
+      () =>
+        setDocumentExpiry(expiryContext(), {
+          document_id: DOCUMENT,
+          expires_on: '2027-08-13',
+        }),
+      (error) =>
+        error instanceof ApiError &&
+        error.code === expected.code &&
+        error.message === expected.message &&
+        error.status === expected.status &&
+        !error.message.includes(expected.dbMessage),
     );
     assert.equal(calls.length, 1);
     assert.equal(
