@@ -9,6 +9,13 @@ export const DOC_TYPES = [
   'moa',
   'shareholder_id',
   'other',
+  'aoa',
+  'bank_reference_letter',
+  'noc',
+  'cv_resume',
+  'office_lease',
+  'medical_certificate',
+  'insurance_policy',
 ] as const;
 
 export type DocType = (typeof DOC_TYPES)[number];
@@ -24,10 +31,16 @@ export const uploadDocumentMetadataSchema = z.object({
 
 export type UploadDocumentMetadataInput = z.infer<typeof uploadDocumentMetadataSchema>;
 
-export const documentReviewSchema = z.object({
-  status: z.enum(['approved', 'rejected']),
-  note: z.string().max(280).optional(),
-});
+export const documentReviewSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('approved'),
+    note: z.string().trim().max(280).optional(),
+  }),
+  z.object({
+    status: z.literal('rejected'),
+    note: z.string().trim().min(1).max(280),
+  }),
+]);
 
 export type DocumentReviewInput = z.infer<typeof documentReviewSchema>;
 
