@@ -110,6 +110,15 @@ test('canonicalization preserves validated filters and targets a focused item on
   assert.match(page, /redirect\(documentCenterHref\(slug, query, workspace\.page\)\)/u);
 });
 
+test('filter controls remount from canonical URL state after summary navigation', () => {
+  assert.match(page, /<DocumentFilters\s+key=\{documentCenterHref\(slug, query\)\}/u);
+});
+
+test('header support copy keeps WCAG AA contrast on the warm light canvas', () => {
+  assert.match(page, /className="text-foreground\/70 font-mono text-xs/u);
+  assert.match(page, /className="text-foreground\/70 mt-1 max-w-3xl text-sm"/u);
+});
+
 test('client action islands keep React 19 and server-action boundaries explicit', () => {
   for (const client of [actions, history]) {
     assert.match(client, /^'use client';/u);
@@ -140,6 +149,11 @@ test('queue hoists locale formatters outside per-row formatting helpers', () => 
   assert.match(queue, /const dateFormatter = new Intl\.DateTimeFormat\(locale/u);
   assert.match(queue, /const timestampFormatter = new Intl\.DateTimeFormat\(locale/u);
   assert.doesNotMatch(queue, /function formatDate[\s\S]{0,300}new Intl\.DateTimeFormat/u);
+});
+
+test('unavailable queue statuses use hidden text instead of prohibited generic aria labels', () => {
+  assert.doesNotMatch(queue, /<span[^>]+aria-label=\{labels\.unavailable\}/u);
+  assert.equal((queue.match(/className="sr-only">\{labels\.unavailable\}/gu) ?? []).length, 2);
 });
 
 test('route loading and error recovery are localized, semantic, and sanitized', () => {

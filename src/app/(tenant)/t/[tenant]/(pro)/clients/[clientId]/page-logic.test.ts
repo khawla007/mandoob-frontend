@@ -37,3 +37,13 @@ test('client page consumes document focus only after tenant/client-scoped data l
   assert.match(documents, /focusedRequestId === req\.id/);
   assert.match(documents, /focusedDocumentId === doc\.documentId/);
 });
+
+test('client page passes a bound server action across the client component boundary', () => {
+  const page = readFileSync(
+    join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/page.tsx'),
+    'utf8',
+  );
+
+  assert.match(page, /loadOlderCommsAction\.bind\(null, tenant\.id, clientId\)/u);
+  assert.doesNotMatch(page, /const loadOlder = async/u);
+});

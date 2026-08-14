@@ -42,8 +42,7 @@ export default async function ClientDetailPage({
     getConsentStateForPhone(client.contact_phone),
   ]);
 
-  const loadOlder = async (beforeIso: string) =>
-    loadOlderCommsAction(tenant.id, clientId, beforeIso);
+  const loadOlder = loadOlderCommsAction.bind(null, tenant.id, clientId);
 
   return (
     <div className="space-y-6">

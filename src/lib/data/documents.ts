@@ -23,7 +23,12 @@ import {
 
 const STORAGE_BUCKET = 'tenant-documents';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
-const uuidSchema = z.string().uuid();
+// PostgreSQL accepts canonical UUID text regardless of RFC version bits.
+// DAL identifiers can come from trusted database/auth rows, while form and
+// route schemas continue to enforce Zod's stricter RFC UUID contract.
+const uuidSchema = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
 const DOC_TYPE_SET = new Set<string>(DOC_TYPES);
 const GENERATED_STORAGE_FILENAME =
   /^(\d{4}-\d{2}-\d{2})_(?:[a-z0-9]+_)?[0-9a-f]{12}_([A-Za-z0-9._-]{1,100})\.(pdf|jpg|png|docx|xlsx)$/;

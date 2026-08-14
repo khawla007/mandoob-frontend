@@ -241,8 +241,9 @@ export function DocumentWorkQueue({
                         label={labels.requestStatuses[row.requestStatus]}
                       />
                     ) : (
-                      <span className="text-muted-foreground" aria-label={labels.unavailable}>
+                      <span className="text-muted-foreground">
                         <ScanLine aria-hidden="true" className="inline size-3.5" />
+                        <span className="sr-only">{labels.unavailable}</span>
                       </span>
                     )}
                   </td>
@@ -253,8 +254,9 @@ export function DocumentWorkQueue({
                         label={labels.reviewStatuses[row.reviewStatus]}
                       />
                     ) : (
-                      <span className="text-muted-foreground" aria-label={labels.unavailable}>
+                      <span className="text-muted-foreground">
                         <ScanLine aria-hidden="true" className="inline size-3.5" />
+                        <span className="sr-only">{labels.unavailable}</span>
                       </span>
                     )}
                   </td>

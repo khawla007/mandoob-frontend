@@ -20,6 +20,7 @@ async function load(): Promise<DocumentsModule> {
 const originalFetch = globalThis.fetch;
 
 const TENANT = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const POSTGRES_TENANT = '00000000-0000-0000-0000-000000000001';
 const CLIENT = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const DOCUMENT = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const VERSION = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -571,6 +572,28 @@ test('createDocumentRequest canonicalizes ownership UUIDs and returns authoritat
   assert.equal((insert.body as Record<string, unknown>).tenant_id, TENANT);
   assert.equal((insert.body as Record<string, unknown>).client_id, CLIENT);
   assert.equal((insert.body as Record<string, unknown>).requested_by, ACTOR);
+});
+
+test('createDocumentRequest accepts canonical PostgreSQL UUIDs from trusted tenant context', async () => {
+  const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/clients?')) {
+      return json({ id: CLIENT, tenant_id: POSTGRES_TENANT });
+    }
+    if (call.url.includes('/rest/v1/document_requests')) return json({ id: REQUEST });
+    if (call.url.includes('/rest/v1/customer_profiles')) return json(null);
+    if (call.url.includes('/rest/v1/tenants')) return json({ name: 'Acme' });
+    return json(null, 201);
+  });
+  const { createDocumentRequest } = await load();
+
+  const result = await createDocumentRequest(
+    { ...reviewCtx(), tenantId: POSTGRES_TENANT },
+    { client_id: CLIENT, doc_type: 'insurance_policy', label: 'Insurance policy' },
+  );
+
+  assert.deepEqual(result, { id: REQUEST, clientId: CLIENT });
+  const insert = calls.find((call) => call.url.includes('/rest/v1/document_requests'))!;
+  assert.equal((insert.body as Record<string, unknown>).tenant_id, POSTGRES_TENANT);
 });
 
 test('createDocumentRequest hides whether a client exists outside the tenant', async () => {

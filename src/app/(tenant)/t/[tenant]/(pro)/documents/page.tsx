@@ -289,11 +289,11 @@ export default async function ProDocumentsPage({
     <div className="document-center grid min-w-0 gap-6">
       <header className="document-center__heading flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
+          <p className="text-foreground/70 font-mono text-xs font-medium tracking-wider uppercase">
             {t('heading.eyebrow')}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('heading.title')}</h1>
-          <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
+          <p className="text-foreground/70 mt-1 max-w-3xl text-sm">
             {t('heading.subtitle', { tenant: tenant.name, count: workspace.total })}
           </p>
         </div>
@@ -310,6 +310,7 @@ export default async function ProDocumentsPage({
 
       <section className="signal-panel document-center__workspace grid min-w-0 gap-5 rounded-2xl border p-4 sm:p-5">
         <DocumentFilters
+          key={documentCenterHref(slug, query)}
           query={query}
           labels={filterLabels}
           resetHref={resetHref}
