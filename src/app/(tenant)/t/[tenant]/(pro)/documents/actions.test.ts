@@ -271,6 +271,17 @@ test('firm actions module exports only the five public Server Actions', () => {
   assert.doesNotMatch(source, /export (?:type )?\{?[^\n]*(?:Dependencies|run[A-Z])/u);
 });
 
+test('firm and legacy action logic modules are server-only without becoming Server Functions', () => {
+  for (const path of [
+    join(import.meta.dirname, 'action-logic.ts'),
+    join(import.meta.dirname, '../clients/[clientId]/documents/action-logic.ts'),
+  ]) {
+    const source = readFileSync(path, 'utf8');
+    assert.match(source, /^import 'server-only';/u);
+    assert.doesNotMatch(source, /^['"]use server['"];/mu);
+  }
+});
+
 test('firm production actions wire navigation rethrow, trusted metadata, and safe logging', () => {
   const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
   assert.match(source, /import \{ unstable_rethrow \} from 'next\/navigation'/u);

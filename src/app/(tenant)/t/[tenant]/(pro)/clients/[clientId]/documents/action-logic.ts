@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { z } from 'zod';
 
 import type { CreateDocumentRequestCtx, SetDocumentReviewCtx } from '@/lib/data/documents';
