@@ -573,6 +573,28 @@ test('createDocumentRequest canonicalizes ownership UUIDs and returns authoritat
   assert.equal((insert.body as Record<string, unknown>).requested_by, ACTOR);
 });
 
+test('createDocumentRequest hides whether a client exists outside the tenant', async () => {
+  const { createDocumentRequest } = await load();
+  const input = { client_id: CLIENT, doc_type: 'passport' as const, label: 'Passport copy' };
+
+  for (const clientRow of [null, { id: CLIENT, tenant_id: DOCUMENT }]) {
+    const calls = captureFetch((call) => {
+      if (call.url.includes('/rest/v1/clients?')) return json(clientRow);
+      return json({ message: 'unexpected write' }, 500);
+    });
+
+    await assert.rejects(
+      () => createDocumentRequest(reviewCtx(), input),
+      (error) =>
+        error instanceof ApiError &&
+        error.code === 'NOT_FOUND' &&
+        error.status === 404 &&
+        error.message === 'client not found',
+    );
+    assert.equal(calls.length, 1);
+  }
+});
+
 test('setDocumentReview maps controlled and zero-row RPC failures without telemetry or raw details', async () => {
   const scenarios = [
     { response: json(null), code: 'NOT_FOUND' },

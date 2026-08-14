@@ -639,9 +639,12 @@ export async function createDocumentRequest(
     .eq('id', normalizedClientId)
     .maybeSingle();
   if (clientErr) throw new ApiError('INTERNAL', clientErr.message, 500);
-  if (!clientRow) throw new ApiError('NOT_FOUND', 'client not found', 404);
-  if (clientRow.tenant_id !== normalizedTenantId || clientRow.id !== normalizedClientId) {
-    throw new ApiError('FORBIDDEN', 'client belongs to a different tenant', 403);
+  if (
+    !clientRow ||
+    clientRow.tenant_id !== normalizedTenantId ||
+    clientRow.id !== normalizedClientId
+  ) {
+    throw new ApiError('NOT_FOUND', 'client not found', 404);
   }
 
   const dueAt = request.due_at ? new Date(`${request.due_at}T00:00:00Z`).toISOString() : null;
