@@ -31,6 +31,273 @@
     "file": "File",
     "getStarted": "Get started"
   },
+  "proDocumentCenter": {
+    "heading": {
+      "eyebrow": "PRO document operations",
+      "title": "Document Center",
+      "subtitle": "Manage {tenant} documents, requests, reviews, and deadlines across {count} records."
+    },
+    "summary": {
+      "awaitingUpload": {
+        "title": "Awaiting upload",
+        "helper": "Requested from customers",
+        "failed": "Count unavailable",
+        "retry": "Open the queue to retry",
+        "aria": "Awaiting upload: {count}. {helper}"
+      },
+      "awaitingReview": {
+        "title": "Awaiting PRO review",
+        "helper": "Submitted and ready to review",
+        "failed": "Count unavailable",
+        "retry": "Open the queue to retry",
+        "aria": "Awaiting PRO review: {count}. {helper}"
+      },
+      "approved": {
+        "title": "Approved",
+        "helper": "Verified current versions",
+        "failed": "Count unavailable",
+        "retry": "Open the queue to retry",
+        "aria": "Approved documents: {count}. {helper}"
+      },
+      "rejected": {
+        "title": "Rejected",
+        "helper": "Resubmission required",
+        "failed": "Count unavailable",
+        "retry": "Open the queue to retry",
+        "aria": "Rejected documents: {count}. {helper}"
+      },
+      "expiring": {
+        "title": "Expiring soon",
+        "helper": "Due within 30 days",
+        "failed": "Count unavailable",
+        "retry": "Open the queue to retry",
+        "aria": "Documents expiring soon: {count}. {helper}"
+      },
+      "overdue": {
+        "title": "Overdue requests",
+        "helper": "Customer action is late",
+        "failed": "Count unavailable",
+        "retry": "Open the queue to retry",
+        "aria": "Overdue requests: {count}. {helper}"
+      }
+    },
+    "filters": {
+      "search": "Search documents",
+      "searchPlaceholder": "Client, document, or employee",
+      "view": "Queue view",
+      "client": "Client",
+      "type": "Document type",
+      "window": "Deadline window",
+      "from": "From date",
+      "to": "To date",
+      "sort": "Sort by",
+      "all": "All types",
+      "more": "More filters",
+      "apply": "Apply filters",
+      "reset": "Reset filters",
+      "applied": "Applied filters",
+      "customDates": "Custom date range"
+    },
+    "views": {
+      "all": "All records",
+      "requested": "Awaiting upload",
+      "submitted": "Awaiting review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "expiring": "Expiring soon",
+      "overdue": "Overdue"
+    },
+    "sorts": {
+      "urgency": "Most urgent",
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "due_date": "Due date",
+      "expiry_date": "Expiry date"
+    },
+    "windows": {
+      "all": "Any deadline",
+      "overdue": "Overdue",
+      "7": "Next 7 days",
+      "30": "Next 30 days",
+      "90": "Next 90 days"
+    },
+    "docTypes": {
+      "passport": "Passport",
+      "visa": "Visa",
+      "emirates_id": "Emirates ID",
+      "trade_license": "Trade license",
+      "ejari": "Ejari certificate",
+      "moa": "Memorandum of association",
+      "shareholder_id": "Shareholder ID",
+      "other": "Other document",
+      "aoa": "Articles of association",
+      "bank_reference_letter": "Bank reference letter",
+      "noc": "No-objection certificate",
+      "cv_resume": "CV or résumé",
+      "office_lease": "Office lease",
+      "medical_certificate": "Medical certificate",
+      "insurance_policy": "Insurance policy"
+    },
+    "actions": {
+      "close": "Close",
+      "cancel": "Cancel",
+      "clientProfile": "Open client profile",
+      "open": "Open file",
+      "opening": "Opening file…",
+      "popupBlocked": "Allow pop-ups for Mandoob, then try opening the file again.",
+      "success": "Document Center updated successfully.",
+      "history": "Version history"
+    },
+    "request": {
+      "trigger": "Request document",
+      "title": "Request a document",
+      "description": "Choose the client and document details. Mandoob will send the request through the configured channels.",
+      "client": "Client company",
+      "selectClient": "Select a client company",
+      "type": "Document type",
+      "label": "Document label",
+      "due": "Due date",
+      "notes": "Instructions for the customer",
+      "help": "Include only the information the customer needs to supply the correct document.",
+      "submit": "Send request",
+      "pending": "Sending request…",
+      "success": "The document request was sent.",
+      "error": "The request could not be sent. Review the fields and try again."
+    },
+    "review": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejecting": "Reject version",
+      "rejectTitle": "Reject this document version?",
+      "rejectDescription": "Explain what the customer must correct before uploading a new version.",
+      "note": "Rejection note",
+      "noteRequired": "A rejection note is required.",
+      "approvePending": "Approving…",
+      "rejectPending": "Rejecting…",
+      "approveSuccess": "The document version was approved.",
+      "rejectSuccess": "The document version was rejected."
+    },
+    "expiry": {
+      "trigger": "Set expiry",
+      "title": "Update document expiry",
+      "description": "Set the date shown in the operational queue, or clear it when the document has no fixed expiry.",
+      "date": "Expiry date",
+      "save": "Save expiry",
+      "clear": "Clear expiry",
+      "pending": "Saving expiry…",
+      "success": "The expiry date was updated.",
+      "externallyManaged": "This expiry is managed by its source record and cannot be changed here.",
+      "sources": {
+        "clientLicense": "Managed from the client trade license",
+        "employeeVisa": "Managed from the employee visa",
+        "employeeEmiratesId": "Managed from the employee Emirates ID"
+      }
+    },
+    "queue": {
+      "region": "Document work queue",
+      "client": "Client",
+      "documentType": "Document",
+      "requestStatus": "Request",
+      "reviewStatus": "Review",
+      "due": "Due",
+      "expiry": "Expiry",
+      "upload": "Uploaded",
+      "file": "File metadata",
+      "actors": "Owners",
+      "action": "Next action",
+      "employee": "Employee",
+      "requester": "Requested by",
+      "reviewer": "Reviewed by",
+      "unavailable": "Not available",
+      "unknownActor": "Unknown user",
+      "dubaiTime": "UAE time",
+      "emptyFirmTitle": "No document records yet",
+      "emptyFirmDescription": "Request the first document to start the firm-wide queue.",
+      "emptyFilteredTitle": "No records match these filters",
+      "emptyFilteredDescription": "Adjust or reset the filters to see more document records.",
+      "partialError": "Some document information is temporarily unavailable. The remaining queue is still current.",
+      "pagination": "Document queue pagination",
+      "previous": "Previous page",
+      "next": "Next page",
+      "result": "Showing {from}–{to} of {total} results",
+      "pageCount": "Page {current} of {total}"
+    },
+    "requestStatuses": {
+      "pending": "Awaiting upload",
+      "fulfilled": "Uploaded",
+      "cancelled": "Cancelled"
+    },
+    "reviewStatuses": {
+      "pending": "Awaiting review",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "pagination": {
+      "previous": "Previous page",
+      "next": "Next page",
+      "pageCount": "Page {page} of {totalPages}",
+      "results": "Showing {from}–{to} of {total} results"
+    },
+    "history": {
+      "trigger": "History",
+      "title": "Version history",
+      "description": "Review every append-only version and its audit details.",
+      "loading": "Loading version history…",
+      "empty": "No versions are available for this document.",
+      "error": "Version history could not be loaded. Close the dialog and try again.",
+      "current": "Current",
+      "version": "Version",
+      "versionTemplate": "Version {version}",
+      "uploaded": "Uploaded",
+      "uploadedBy": "Uploaded by",
+      "review": "Review date",
+      "reviewedBy": "Reviewed by",
+      "note": "Review note",
+      "file": "MIME type and size",
+      "open": "Open this version"
+    },
+    "clientSearch": {
+      "placeholder": "Search client companies",
+      "search": "Search clients",
+      "searching": "Searching…",
+      "loading": "Loading client matches…",
+      "results": "Client search results",
+      "noResults": "No client companies match this search.",
+      "error": "Client search is temporarily unavailable. Try again.",
+      "select": "Select {client}",
+      "clear": "Clear selected client"
+    },
+    "loading": {
+      "label": "Loading the Document Center workspace…"
+    },
+    "states": {
+      "noData": "No document data is available yet.",
+      "filteredEmpty": "No document data matches the current filters.",
+      "partialSummaryError": "One or more summary counts could not be refreshed.",
+      "partialQueueError": "Part of the queue could not be refreshed."
+    },
+    "pageError": {
+      "title": "Document Center is temporarily unavailable",
+      "description": "We could not load this workspace safely. Try again to refresh its current data.",
+      "retry": "Try again"
+    },
+    "errors": {
+      "validation": "Check the supplied details and try again.",
+      "unauthorized": "Sign in again to continue.",
+      "forbidden": "You do not have permission to manage this document.",
+      "notFound": "The requested document record was not found.",
+      "tenantInactive": "This firm is inactive. Contact an administrator before continuing.",
+      "expiryExternallyManaged": "Update this expiry from its source record.",
+      "openFailed": "The secure file link could not be created. Try again.",
+      "unexpected": "The action could not be completed safely. Try again."
+    },
+    "units": {
+      "bytes": "bytes",
+      "kb": "KB",
+      "mb": "MB",
+      "gb": "GB"
+    }
+  },
   "site": {
     "primaryNav": "Primary navigation",
     "estimate": "Estimate",

@@ -100,7 +100,9 @@ function StatusIcon({ status }: { status: string | null }) {
 
 function Status({ value, label }: { value: string | null; label: string }) {
   return (
-    <span className="bg-muted inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium">
+    <span
+      className={`document-center__status document-center__status--${value ?? 'unknown'} inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium`}
+    >
       <StatusIcon status={value} />
       {label}
     </span>

@@ -7,11 +7,21 @@ import { authorizeDocumentCenterRead } from './page-authorization';
 import { documentCenterHref, parseDocumentCenterSearch } from './page-logic';
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+const readOptional = (path: string) => {
+  try {
+    return read(path);
+  } catch {
+    return '';
+  }
+};
 const page = read('./page.tsx');
 const actions = read('../../../../../../components/pro/documents/DocumentActions.tsx');
 const history = read('../../../../../../components/pro/documents/VersionHistoryDialog.tsx');
 const summary = read('../../../../../../components/pro/documents/DocumentSummaryGrid.tsx');
 const queue = read('../../../../../../components/pro/documents/DocumentWorkQueue.tsx');
+const loading = readOptional('./loading.tsx');
+const errorBoundary = readOptional('./error.tsx');
+const styles = read('../../../../../../app/globals.css');
 
 test('page awaits Next 16 route inputs, parses once, and forces dynamic rendering', () => {
   assert.match(page, /export const dynamic = 'force-dynamic'/u);
@@ -123,4 +133,59 @@ test('queue hoists locale formatters outside per-row formatting helpers', () => 
   assert.match(queue, /const dateFormatter = new Intl\.DateTimeFormat\(locale/u);
   assert.match(queue, /const timestampFormatter = new Intl\.DateTimeFormat\(locale/u);
   assert.doesNotMatch(queue, /function formatDate[\s\S]{0,300}new Intl\.DateTimeFormat/u);
+});
+
+test('route loading and error recovery are localized, semantic, and sanitized', () => {
+  assert.doesNotMatch(loading, /'use client'/u);
+  assert.match(loading, /useTranslations\('proDocumentCenter'\)/u);
+  assert.match(loading, /aria-busy="true"/u);
+  assert.match(loading, /role="status"/u);
+  assert.match(loading, /t\('loading\.label'\)/u);
+  assert.match(loading, /Array\.from\(\{ length: 6 \}/u);
+  assert.match(loading, /document-center__skeleton-filter/u);
+  assert.match(loading, /document-center__skeleton-table/u);
+  assert.doesNotMatch(loading, />\s*[A-Za-z][^<{]*</u);
+
+  assert.match(errorBoundary, /^'use client';/u);
+  assert.match(errorBoundary, /useTranslations\('proDocumentCenter'\)/u);
+  assert.match(errorBoundary, /role="alert"/u);
+  assert.match(errorBoundary, /t\('pageError\.title'\)/u);
+  assert.match(errorBoundary, /t\('pageError\.description'\)/u);
+  assert.match(errorBoundary, /t\('pageError\.retry'\)/u);
+  assert.match(errorBoundary, /onClick=\{reset\}/u);
+  assert.doesNotMatch(errorBoundary, /error\.(?:message|digest)|console\./u);
+  assert.doesNotMatch(errorBoundary, />\s*[A-Za-z][^<{]*</u);
+});
+
+test('Document Center Signal Studio CSS stays scoped and encodes every summary signal', () => {
+  const scopedStart = styles.indexOf('/* PRO Document Center');
+  assert.notEqual(scopedStart, -1);
+  const scoped = styles.slice(scopedStart);
+  for (const variant of ['info', 'review', 'success', 'urgent', 'expiry', 'overdue']) {
+    assert.match(scoped, new RegExp(`\\.document-center__summary--${variant}\\s*\\{`, 'u'));
+    assert.match(
+      scoped,
+      new RegExp(
+        `\\.document-center__summary--${variant} \\.document-center__summary-pattern\\s*\\{`,
+        'u',
+      ),
+    );
+  }
+  assert.match(scoped, /\.document-center\s*\{/u);
+  assert.match(scoped, /\.dark \.document-center/u);
+  assert.match(scoped, /\.document-center__summary-pattern/u);
+  assert.match(scoped, /pointer-events:\s*none/u);
+  assert.match(scoped, /\.document-center__summary::after/u);
+  assert.match(scoped, /:focus-visible/u);
+  assert.match(
+    scoped,
+    /\.document-center__queue-scroll\s*\{[\s\S]*max-width:\s*100%[\s\S]*overflow-x:\s*auto/u,
+  );
+  assert.match(scoped, /inset-inline|margin-inline|padding-inline/u);
+  assert.match(scoped, /\[dir=['"]rtl['"]\][^{]*\.document-center/u);
+  assert.match(scoped, /@media \(max-width:\s*390px\)/u);
+  assert.match(scoped, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.document-center/u);
+  assert.match(scoped, /\.document-center__client-listbox/u);
+  assert.match(scoped, /\.document-center__skeleton-table/u);
+  assert.doesNotMatch(scoped, /background-clip:\s*text|border-inline-start/u);
 });

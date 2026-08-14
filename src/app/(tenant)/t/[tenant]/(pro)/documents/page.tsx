@@ -117,6 +117,7 @@ export default async function ProDocumentsPage({
     results: t('clientSearch.results'),
     noResults: t('clientSearch.noResults'),
     error: t('clientSearch.error'),
+    selectTemplate: t.raw('clientSearch.select') as string,
     clear: t('clientSearch.clear'),
   };
   const actionLabels: DocumentActionLabels = {
@@ -203,6 +204,7 @@ export default async function ProDocumentsPage({
         helper: t(`summary.${key}.helper`),
         failed: t(`summary.${key}.failed`),
         retry: t(`summary.${key}.retry`),
+        ariaTemplate: t.raw(`summary.${key}.aria`) as string,
       },
     ]),
   ) as DocumentSummaryLabels;

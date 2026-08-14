@@ -26,7 +26,13 @@ if (reactServer) {
 const summaryLabels = Object.fromEntries(
   ['awaitingUpload', 'awaitingReview', 'approved', 'rejected', 'expiring', 'overdue'].map((key) => [
     key,
-    { title: `${key} title`, helper: `${key} helper`, failed: 'failed', retry: 'retry' },
+    {
+      title: `${key} title`,
+      helper: `${key} helper`,
+      failed: 'failed',
+      retry: 'retry',
+      ariaTemplate: `${key}: {count}. {helper}`,
+    },
   ]),
 ) as DocumentSummaryLabels;
 
@@ -81,6 +87,13 @@ renderTest(
       );
     }
     assert.match(html, new RegExp(Intl.NumberFormat('ar-AE').format(1234), 'u'));
+    assert.match(
+      html,
+      new RegExp(
+        `aria-label="awaitingUpload: ${Intl.NumberFormat('ar-AE').format(1234)}\\. awaitingUpload helper"`,
+        'u',
+      ),
+    );
   },
 );
 
@@ -100,6 +113,7 @@ renderTest(
         helper: 'review helper',
         failed: 'review failed',
         retry: 'review retry',
+        ariaTemplate: 'review: {count}. {helper}',
       },
     };
     const html = renderToStaticMarkup(

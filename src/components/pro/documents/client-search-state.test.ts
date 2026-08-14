@@ -68,3 +68,18 @@ test('client search reconciles a later route selection and clears a stale canoni
     clientSearchPropsRevision(null, [first, second]),
   );
 });
+
+test('client search ignores results returned for text that has since changed', async () => {
+  const { changeClientSearchText, createClientSearchState, receiveClientSearchResults } =
+    await import('./client-search-state');
+  const searching = changeClientSearchText(createClientSearchState(null, []), 'Acme');
+  const edited = changeClientSearchText(searching, 'Acme Holdings');
+  const stale = receiveClientSearchResults(edited, 'Acme', [
+    {
+      id: '11111111-1111-4111-8111-111111111111',
+      companyName: 'Acme LLC',
+    },
+  ]);
+
+  assert.deepEqual(stale, edited);
+});

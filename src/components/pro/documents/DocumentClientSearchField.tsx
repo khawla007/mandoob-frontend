@@ -23,8 +23,16 @@ export type DocumentClientSearchLabels = {
   results: string;
   noResults: string;
   error: string;
+  selectTemplate: string;
   clear: string;
 };
+
+function interpolate(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replaceAll(`{${key}}`, value),
+    template,
+  );
+}
 
 type DocumentClientSearchFieldProps = {
   slug: string;
@@ -69,12 +77,13 @@ function DocumentClientSearchControl({
   }
 
   function search() {
+    const requestText = state.text;
     setError(false);
     startSearch(async () => {
       try {
-        const result = await searchDocumentClientsAction(slug, state.text);
+        const result = await searchDocumentClientsAction(slug, requestText);
         if (result.ok) {
-          setState((current) => receiveClientSearchResults(current, result.data));
+          setState((current) => receiveClientSearchResults(current, requestText, result.data));
           setActiveIndex(result.data.length > 0 ? 0 : -1);
         } else {
           setError(true);
@@ -86,7 +95,7 @@ function DocumentClientSearchControl({
   }
 
   return (
-    <div className="grid min-w-0 gap-1.5 text-sm font-medium">
+    <div className="document-center__client-search grid min-w-0 gap-1.5 text-sm font-medium">
       <label htmlFor={inputId}>{label}</label>
       <div className="flex min-w-0 gap-2">
         <input
@@ -149,7 +158,7 @@ function DocumentClientSearchControl({
           id={listboxId}
           role="listbox"
           aria-label={labels.results}
-          className="bg-popover max-h-48 overflow-y-auto rounded-lg border p-1 shadow-sm"
+          className="document-center__client-listbox bg-popover max-h-48 overflow-y-auto rounded-lg border p-1 shadow-sm"
         >
           {state.results.length > 0 ? (
             state.results.map((option, index) => (
@@ -159,8 +168,9 @@ function DocumentClientSearchControl({
                 type="button"
                 role="option"
                 aria-selected={state.selected?.id === option.id}
+                aria-label={interpolate(labels.selectTemplate, { client: option.companyName })}
                 onClick={() => select(option)}
-                className="hover:bg-muted focus-visible:bg-muted block w-full rounded-md px-3 py-2 text-start text-sm outline-none"
+                className="document-center__client-option hover:bg-muted focus-visible:bg-muted block w-full rounded-md px-3 py-2 text-start text-sm outline-none"
               >
                 {option.companyName}
               </button>

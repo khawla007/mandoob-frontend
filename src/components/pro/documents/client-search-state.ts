@@ -50,7 +50,21 @@ export function changeClientSearchText(state: ClientSearchState, text: string): 
 export function receiveClientSearchResults(
   state: ClientSearchState,
   results: DocumentCenterClientOption[],
+): ClientSearchState;
+export function receiveClientSearchResults(
+  state: ClientSearchState,
+  requestText: string,
+  results: DocumentCenterClientOption[],
+): ClientSearchState;
+export function receiveClientSearchResults(
+  state: ClientSearchState,
+  requestTextOrResults: string | DocumentCenterClientOption[],
+  requestedResults?: DocumentCenterClientOption[],
 ): ClientSearchState {
+  const requestText = typeof requestTextOrResults === 'string' ? requestTextOrResults : state.text;
+  if (state.text !== requestText) return state;
+  const results =
+    typeof requestTextOrResults === 'string' ? (requestedResults ?? []) : requestTextOrResults;
   return { ...state, results: results.slice(0, 50), open: true };
 }
 
