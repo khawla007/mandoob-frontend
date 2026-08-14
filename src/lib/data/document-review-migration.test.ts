@@ -90,6 +90,21 @@ function assertReviewContract(sql: string): void {
   );
   assert.match(
     fn,
+    /select v\.id,v\.tenant_id,v\.document_id,v\.review_status,d\.id,d\.tenant_id,d\.client_id,d\.request_id,d\.current_version_id,c\.id,c\.tenant_id into v_version_id,v_version_tenant_id,v_version_document_id,v_version_review_status,v_document_id,v_document_tenant_id,v_document_client_id,v_request_id,v_document_current_version_id,v_client_id,v_client_tenant_id/i,
+    'the locked review snapshot must capture both version status and document head',
+  );
+  assert.match(
+    fn,
+    /if v_version_review_status <> 'pending' or v_document_current_version_id is distinct from p_version_id then raise exception using errcode = 'MD409',message = 'document_review_conflict'; end if/i,
+    'only the locked pending current head may be reviewed',
+  );
+  assert.ok(
+    fn.indexOf('v_version_tenant_id <> p_tenant_id') <
+      fn.indexOf("v_version_review_status <> 'pending'"),
+    'tenant ownership must be validated before reporting a review-state conflict',
+  );
+  assert.match(
+    fn,
     /from public\.document_requests r where r\.id = v_request_id for update of r/i,
     'the optional linked request must be locked before mutation',
   );
@@ -111,7 +126,7 @@ function assertReviewContract(sql: string): void {
 
   assert.match(
     fn,
-    /update public\.document_versions v set review_status = p_status,review_note = v_trimmed_note,reviewed_by = p_actor_id,reviewed_at = p_reviewed_at where v\.id = p_version_id and v\.tenant_id = p_tenant_id and v\.document_id = v_document_id returning v\.id into v_updated_version_id/i,
+    /update public\.document_versions v set review_status = p_status,review_note = v_trimmed_note,reviewed_by = p_actor_id,reviewed_at = p_reviewed_at where v\.id = p_version_id and v\.tenant_id = p_tenant_id and v\.document_id = v_document_id and v\.review_status = 'pending' returning v\.id into v_updated_version_id/i,
     'review update must repeat the authorized version scope and require a returned row',
   );
   assert.match(fn, /if v_updated_version_id is null then raise exception/i);
@@ -119,7 +134,7 @@ function assertReviewContract(sql: string): void {
 
   assert.match(
     fn,
-    /update public\.documents d set current_version_id = p_version_id,updated_at = p_reviewed_at where d\.id = v_document_id and d\.tenant_id = p_tenant_id and d\.client_id = v_document_client_id returning d\.id into v_updated_document_id/i,
+    /update public\.documents d set current_version_id = p_version_id,updated_at = p_reviewed_at where d\.id = v_document_id and d\.tenant_id = p_tenant_id and d\.client_id = v_document_client_id and d\.current_version_id = p_version_id returning d\.id into v_updated_document_id/i,
     'approval must update only the locked document head and require a returned row',
   );
   assert.match(
@@ -175,6 +190,10 @@ test('review contract rejects mutations that weaken chain, locks, grants, or app
     sql.replace('v_client_tenant_id <> p_tenant_id', 'false'),
     sql.replace('for update of v, d, c', ''),
     sql.replace('v_request_client_id <> v_document_client_id', 'false'),
+    sql.replace("v_version_review_status <> 'pending'", 'false'),
+    sql.replace('v_document_current_version_id is distinct from p_version_id', 'false'),
+    sql.replace("and v.review_status = 'pending'", ''),
+    sql.replace('and d.current_version_id = p_version_id', ''),
     sql.replace('p_status is null\n    or ', ''),
     sql.replace('\\00A0', ''),
     sql.replace('\\2000', ''),

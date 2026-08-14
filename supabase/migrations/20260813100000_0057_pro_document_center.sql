@@ -327,16 +327,25 @@ cross join params
 order by
   case when params.sort_name = 'urgency' then case
     when counted.entity_kind = 'request'
+      and counted.request_status = 'pending'
       and (counted.due_at at time zone 'Asia/Dubai')::date < params.dubai_today then 0
     when counted.entity_kind = 'document'
-      and counted.effective_expires_on < params.dubai_today then 1
-    when counted.entity_kind = 'request' and counted.due_at is not null then 2
-    when counted.entity_kind = 'document' and counted.effective_expires_on is not null then 3
-    else 4
+      and counted.review_status = 'rejected' then 1
+    when counted.entity_kind = 'document'
+      and counted.review_status = 'pending' then 2
+    when counted.entity_kind = 'request'
+      and counted.request_status = 'pending' then 3
+    when counted.entity_kind = 'document'
+      and counted.effective_expires_on is not null then 4
+    else 5
   end end asc,
   case when params.sort_name = 'urgency' and counted.entity_kind = 'request'
     then counted.due_at end asc nulls last,
   case when params.sort_name = 'urgency' and counted.entity_kind = 'document'
+      and counted.review_status in ('rejected', 'pending')
+    then counted.current_version_created_at end asc nulls last,
+  case when params.sort_name = 'urgency' and counted.entity_kind = 'document'
+      and counted.effective_expires_on is not null
     then counted.effective_expires_on end asc nulls last,
   case when params.sort_name = 'newest' then counted.created_at end desc,
   case when params.sort_name = 'oldest' then counted.created_at end asc,

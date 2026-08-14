@@ -389,6 +389,33 @@ function assertMigrationContract(sql: string): void {
     /order by[\s\S]*params\.sort_name = 'urgency'[\s\S]*params\.dubai_today[\s\S]*entity_kind[\s\S]*entity_id[\s\S]*limit least\(greatest\(p_page_size,1\),50\)[\s\S]*offset \(\(\(select effective_page from page_bounds\)\s*-\s*1\)\s*\*\s*least\(greatest\(p_page_size,1\),50\)\)/i,
     'RPC must paginate from the clamped page with deterministic entity tie-breakers',
   );
+  const urgencyBranches = [
+    [
+      "counted.entity_kind = 'request' and counted.request_status = 'pending' and (counted.due_at at time zone 'Asia/Dubai')::date < params.dubai_today",
+      '0',
+    ],
+    ["counted.entity_kind = 'document' and counted.review_status = 'rejected'", '1'],
+    ["counted.entity_kind = 'document' and counted.review_status = 'pending'", '2'],
+    ["counted.entity_kind = 'request' and counted.request_status = 'pending'", '3'],
+    ["counted.entity_kind = 'document' and counted.effective_expires_on is not null", '4'],
+  ];
+  const urgencyCase = fn.match(
+    /case when params\.sort_name = 'urgency' then case([\s\S]*?)else 5\s+end end asc/i,
+  );
+  assert.ok(urgencyCase, 'urgency sort must define the complete actionable priority CASE');
+  const parsedUrgencyBranches = [...urgencyCase[1].matchAll(/when (.*?) then (\d+)/gi)].map(
+    ([, predicate, rank]) => [predicate.trim(), rank],
+  );
+  assert.deepEqual(
+    parsedUrgencyBranches,
+    urgencyBranches,
+    'urgency must rank overdue, rejected/resubmission, pending review, awaiting upload, then expiry work',
+  );
+  assert.match(
+    fn,
+    /case when params\.sort_name = 'urgency' and counted\.entity_kind = 'request' then counted\.due_at end asc nulls last,case when params\.sort_name = 'urgency' and counted\.entity_kind = 'document' and counted\.review_status in \('rejected','pending'\) then counted\.current_version_created_at end asc nulls last,case when params\.sort_name = 'urgency' and counted\.entity_kind = 'document' and counted\.effective_expires_on is not null then counted\.effective_expires_on end asc nulls last/i,
+    'each urgency class must retain its actionable date before entity and id tie-breakers',
+  );
   assert.doesNotMatch(
     fn,
     /offset \(\(greatest\(p_page,1\)/i,
@@ -511,6 +538,30 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
     (source) => source.replace(/where c\.tenant_id = p_tenant_id/gi, 'where true'),
     /both request and document branches must start from tenant-owned clients/,
   );
+  for (const mutation of [
+    (source: string) => source.replace("and counted.request_status = 'pending'", ''),
+    (source: string) =>
+      source.replace("counted.review_status = 'rejected'", 'counted.review_status is not null'),
+    (source: string) =>
+      source.replace("counted.review_status = 'pending'", "counted.review_status = 'approved'"),
+    (source: string) =>
+      source.replace(
+        "then 3\n    when counted.entity_kind = 'document'",
+        "then 4\n    when counted.entity_kind = 'document'",
+      ),
+    (source: string) =>
+      source.replace(
+        'counted.effective_expires_on is not null then 4',
+        'counted.effective_expires_on is null then 4',
+      ),
+    (source: string) =>
+      source.replace(
+        "counted.review_status in ('rejected', 'pending')",
+        "counted.review_status = 'pending'",
+      ),
+  ]) {
+    assertMutationRejected(sql, mutation, /urgency|actionable date/i);
+  }
   assertMutationRejected(
     sql,
     (source) => source.replace(/, counted\.entity_id asc\nlimit/i, '\nlimit'),

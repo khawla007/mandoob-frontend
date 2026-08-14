@@ -576,6 +576,9 @@ export async function setDocumentReview(
     if (reviewErr.code === 'MD422') {
       throw new ApiError('VALIDATION_FAILED', 'Invalid document review', 400);
     }
+    if (reviewErr.code === 'MD409') {
+      throw new ApiError('VALIDATION_FAILED', 'Document version is no longer pending', 409);
+    }
     throw new ApiError('INTERNAL', 'Could not save document review', 500);
   }
   if (!result) throw new ApiError('NOT_FOUND', 'document version not found', 404);

@@ -597,22 +597,31 @@ test('createDocumentRequest hides whether a client exists outside the tenant', a
 
 test('setDocumentReview maps controlled and zero-row RPC failures without telemetry or raw details', async () => {
   const scenarios = [
-    { response: json(null), code: 'NOT_FOUND' },
+    { response: json(null), code: 'NOT_FOUND', status: 404 },
     {
       response: json({ code: 'MD404', message: 'foreign chain internal detail' }, 400),
       code: 'NOT_FOUND',
+      status: 404,
     },
     {
       response: json({ code: '42501', message: 'actor internal detail' }, 400),
       code: 'FORBIDDEN',
+      status: 403,
     },
     {
       response: json({ code: 'MD422', message: 'note internal detail' }, 400),
       code: 'VALIDATION_FAILED',
+      status: 400,
+    },
+    {
+      response: json({ code: 'MD409', message: 'document_review_conflict' }, 400),
+      code: 'VALIDATION_FAILED',
+      status: 409,
     },
     {
       response: json({ code: 'P0001', message: 'zero-row internal detail' }, 500),
       code: 'INTERNAL',
+      status: 500,
     },
   ];
   const { setDocumentReview } = await load();
@@ -624,6 +633,7 @@ test('setDocumentReview maps controlled and zero-row RPC failures without teleme
       (err) =>
         err instanceof ApiError &&
         err.code === scenario.code &&
+        err.status === scenario.status &&
         !err.message.includes('internal detail'),
     );
     assert.equal(calls.length, 1);

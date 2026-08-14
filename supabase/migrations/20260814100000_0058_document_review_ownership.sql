@@ -27,10 +27,12 @@ declare
   v_version_id uuid;
   v_version_tenant_id uuid;
   v_version_document_id uuid;
+  v_version_review_status text;
   v_document_id uuid;
   v_document_tenant_id uuid;
   v_document_client_id uuid;
   v_request_id uuid;
+  v_document_current_version_id uuid;
   v_client_id uuid;
   v_client_tenant_id uuid;
   v_request_tenant_id uuid;
@@ -64,20 +66,24 @@ begin
     v.id,
     v.tenant_id,
     v.document_id,
+    v.review_status,
     d.id,
     d.tenant_id,
     d.client_id,
     d.request_id,
+    d.current_version_id,
     c.id,
     c.tenant_id
   into
     v_version_id,
     v_version_tenant_id,
     v_version_document_id,
+    v_version_review_status,
     v_document_id,
     v_document_tenant_id,
     v_document_client_id,
     v_request_id,
+    v_document_current_version_id,
     v_client_id,
     v_client_tenant_id
   from public.document_versions v
@@ -96,6 +102,11 @@ begin
     or v_version_document_id <> v_document_id
     or v_document_client_id <> v_client_id then
     raise exception using errcode = 'MD404', message = 'document_version_not_found';
+  end if;
+
+  if v_version_review_status <> 'pending'
+    or v_document_current_version_id is distinct from p_version_id then
+    raise exception using errcode = 'MD409', message = 'document_review_conflict';
   end if;
 
   if v_request_id is not null then
@@ -137,6 +148,7 @@ begin
   where v.id = p_version_id
     and v.tenant_id = p_tenant_id
     and v.document_id = v_document_id
+    and v.review_status = 'pending'
   returning v.id into v_updated_version_id;
 
   if v_updated_version_id is null then
@@ -151,6 +163,7 @@ begin
     where d.id = v_document_id
       and d.tenant_id = p_tenant_id
       and d.client_id = v_document_client_id
+      and d.current_version_id = p_version_id
     returning d.id into v_updated_document_id;
 
     if v_updated_document_id is null then
