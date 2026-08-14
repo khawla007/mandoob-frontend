@@ -25,6 +25,7 @@ const VERSION = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const ACTOR = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const REQUEST = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const GENERATED_FILENAME = '2026-08-14_m0abc123_0123456789ab_server-held.pdf';
+const LEGACY_GENERATED_FILENAME = '2026-08-14_0123456789ab_server-held.pdf';
 
 type FetchCall = { url: string; method: string; body: unknown };
 
@@ -193,6 +194,35 @@ test('getDocumentSignedUrl rejects invalid UUIDs and a missing version before si
   );
 });
 
+test('getDocumentSignedUrl pins the unambiguous version-to-document FK and inner client relation', async () => {
+  const calls = captureFetch(() => json(null));
+  const { getDocumentSignedUrl } = await load();
+
+  await assert.rejects(
+    () => getDocumentSignedUrl(TENANT, VERSION),
+    (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
+  );
+
+  const select = new URL(calls[0].url).searchParams.get('select');
+  assert.ok(select);
+  assert.match(select, /document:documents!document_versions_document_id_fkey!inner\(/u);
+  assert.match(select, /client:clients!inner\(/u);
+});
+
+test('getDocumentSignedUrl validates TTL before any database or storage I/O', async () => {
+  const calls = captureFetch(() => json(null));
+  const { getDocumentSignedUrl } = await load();
+
+  for (const ttl of [-1, 0, 301, Number.POSITIVE_INFINITY, Number.NaN, 1.5]) {
+    await assert.rejects(
+      () => getDocumentSignedUrl(TENANT, VERSION, ttl),
+      (err) => err instanceof ApiError && err.code === 'VALIDATION_FAILED',
+    );
+  }
+
+  assert.equal(calls.length, 0);
+});
+
 test('getDocumentSignedUrl requires the full version-document-client ownership chain', async () => {
   const foreignTenant = '99999999-9999-4999-8999-999999999999';
   const mismatches = [
@@ -278,6 +308,10 @@ test('getDocumentSignedUrl rejects traversal, encoded separators, and malformed 
     `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_bad name.pdf`,
     `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_bad\0name.pdf`,
     `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_${'a'.repeat(101)}.pdf`,
+    `${TENANT}/${CLIENT}/passport/2026-08-14_0123456789a_server-held.pdf`,
+    `${TENANT}/${CLIENT}/passport/2026-08-14_0123456789aB_server-held.pdf`,
+    `${TENANT}/${CLIENT}/passport/2026-08-14_M0abc123_0123456789ab_server-held.pdf`,
+    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123__0123456789ab_server-held.pdf`,
   ];
   let index = 0;
   const calls = captureFetch(() => json(ownedVersion({ storage_path: badPaths[index++] })));
@@ -296,6 +330,25 @@ test('getDocumentSignedUrl rejects traversal, encoded separators, and malformed 
     calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
     false,
   );
+});
+
+test('getDocumentSignedUrl signs a contained legacy generated storage key', async () => {
+  const legacyPath = `${TENANT}/${CLIENT}/passport/${LEGACY_GENERATED_FILENAME}`;
+  const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/document_versions')) {
+      return json(ownedVersion({ storage_path: legacyPath }));
+    }
+    return json({ signedURL: '/object/sign/private?token=legacy' });
+  });
+  const { getDocumentSignedUrl } = await load();
+
+  const result = await getDocumentSignedUrl(TENANT, VERSION);
+
+  assert.match(result.url, /token=legacy/u);
+  const signCall = calls.find((call) => call.url.includes('/storage/v1/object/sign/'));
+  assert.ok(signCall);
+  assert.match(decodeURIComponent(signCall.url), new RegExp(legacyPath.replaceAll('/', '\\/')));
+  assert.deepEqual(signCall.body, { expiresIn: 300 });
 });
 
 test('getDocumentSignedUrl normalizes uppercase UUIDs before query, ownership checks, and signing', async () => {

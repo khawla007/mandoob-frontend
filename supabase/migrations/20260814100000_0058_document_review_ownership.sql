@@ -110,10 +110,12 @@ begin
     end if;
   end if;
 
-  if p_status not in ('approved', 'rejected') then
+  if p_status is null
+    or p_status not in ('approved', 'rejected') then
     raise exception using errcode = 'MD422', message = 'invalid_review';
   end if;
-  if p_status = 'rejected' and btrim(coalesce(p_note, '')) = '' then
+  if p_status = 'rejected'
+    and regexp_replace(coalesce(p_note, ''), '[[:space:]]', '', 'g') = '' then
     raise exception using errcode = 'MD422', message = 'invalid_review';
   end if;
   if char_length(btrim(coalesce(p_note, ''))) > 280 then

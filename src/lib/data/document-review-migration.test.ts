@@ -71,8 +71,11 @@ function assertReviewContract(sql: string): void {
     'linked request ownership must match the locked document chain',
   );
 
-  assert.match(fn, /p_status not in \('approved','rejected'\)/i);
-  assert.match(fn, /p_status = 'rejected'[\s\S]*?btrim\(coalesce\(p_note,''\)\) = ''/i);
+  assert.match(fn, /p_status is null or p_status not in \('approved','rejected'\)/i);
+  assert.match(
+    fn,
+    /p_status = 'rejected'[\s\S]*?regexp_replace\(coalesce\(p_note,''\),'\[\[:space:\]\]','','g'\) = ''/i,
+  );
   assert.match(fn, /char_length\(btrim\(coalesce\(p_note,''\)\)\) > 280/i);
   assert.match(fn, /errcode = 'MD422'/i);
 
@@ -132,6 +135,11 @@ test('review contract rejects mutations that weaken chain, locks, grants, or app
     sql.replace('v_client_tenant_id <> p_tenant_id', 'false'),
     sql.replace('for update of v, d, c', ''),
     sql.replace('v_request_client_id <> v_document_client_id', 'false'),
+    sql.replace('p_status is null\n    or ', ''),
+    sql.replace(
+      "regexp_replace(coalesce(p_note, ''), '[[:space:]]', '', 'g')",
+      "btrim(coalesce(p_note, ''))",
+    ),
     sql.replace("and r.status = 'pending'", "and r.status <> 'fulfilled'"),
     sql.replace('to service_role;', 'to authenticated;'),
     sql.replace(

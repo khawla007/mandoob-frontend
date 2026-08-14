@@ -25,7 +25,7 @@ const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const uuidSchema = z.string().uuid();
 const DOC_TYPE_SET = new Set<string>(DOC_TYPES);
 const GENERATED_STORAGE_FILENAME =
-  /^(\d{4}-\d{2}-\d{2})_[a-z0-9]+_[0-9a-f]{12}_([A-Za-z0-9._-]{1,100})\.(pdf|jpg|png|docx|xlsx)$/;
+  /^(\d{4}-\d{2}-\d{2})_(?:[a-z0-9]+_)?[0-9a-f]{12}_([A-Za-z0-9._-]{1,100})\.(pdf|jpg|png|docx|xlsx)$/;
 
 const ALLOWED_MIMES = new Set<string>([
   'application/pdf',
@@ -463,12 +463,15 @@ export async function getDocumentSignedUrl(
   if (!normalizedTenantId || !normalizedVersionId) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
   }
+  if (!Number.isInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 300) {
+    throw new ApiError('VALIDATION_FAILED', 'Invalid signed URL lifetime', 400);
+  }
 
   const admin = createSupabaseServiceRoleClient();
   const { data: version, error: readErr } = await admin
     .from('document_versions')
     .select(
-      'id, tenant_id, storage_path, document:documents!inner(id, tenant_id, client_id, request_id, current_version_id, client:clients!inner(id, tenant_id))',
+      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, client_id, request_id, current_version_id, client:clients!inner(id, tenant_id))',
     )
     .eq('id', normalizedVersionId)
     .maybeSingle();
