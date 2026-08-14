@@ -76,7 +76,12 @@ export type DocumentCenterClientOption = {
 
 type RpcRow = Record<string, unknown>;
 
-const uuidSchema = z.string().uuid();
+// PostgreSQL accepts the canonical 8-4-4-4-12 UUID text form without
+// requiring RFC version/variant bits. Trusted database identifiers can
+// therefore be valid `uuid` values that Zod's RFC-focused `.uuid()` rejects.
+const uuidSchema = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
 const clientOptionRowSchema = z.object({
   id: uuidSchema,
   company_name: z.string().min(1),

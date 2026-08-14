@@ -13,6 +13,7 @@ let modulePromise: Promise<Module> | undefined;
 const load = () => (modulePromise ??= import('./pro-document-center'));
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
+const POSTGRES_TENANT = '00000000-0000-0000-0000-000000000001';
 const CLIENT = '33333333-3333-4333-8333-333333333333';
 const DOCUMENT = '44444444-4444-4444-8444-444444444444';
 const ACTOR = '66666666-6666-4666-8666-666666666666';
@@ -216,6 +217,16 @@ test('listProDocumentCenter sends exact validated filters to only the RPC and ma
     effectivePage: 21,
   });
   assert.equal('storagePath' in result.rows[0], false);
+});
+
+test('document center accepts canonical PostgreSQL UUIDs used by trusted tenant rows', async () => {
+  const calls = captureFetch(() => json([]));
+  const { listProDocumentCenter } = await load();
+
+  await listProDocumentCenter(POSTGRES_TENANT, {});
+
+  assert.equal(calls.length, 1);
+  assert.equal((calls[0].body as Record<string, unknown>).p_tenant_id, POSTGRES_TENANT);
 });
 
 test('listProDocumentCenter uses the RPC effective page with the exact total', async () => {
