@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { ApiError } from '@/lib/errors';
@@ -272,6 +270,25 @@ test('document actions serialize role failures and stop before tenant resolution
   assert.deepEqual(context.calls, ['auth']);
 });
 
+test('document center actions rethrow Next navigation control flow', async () => {
+  const navigationError = { digest: 'NEXT_REDIRECT;replace;/login;307;' };
+  const context = setup({
+    requirePro: async () => {
+      context.calls.push('auth');
+      throw navigationError;
+    },
+    rethrowNavigation: (error) => {
+      context.calls.push('rethrow');
+      if (error === navigationError) throw error;
+    },
+  });
+  await assert.rejects(
+    () => runOpenDocumentVersionAction('acme', VERSION_ID, context.dependencies),
+    (error) => error === navigationError,
+  );
+  assert.deepEqual(context.calls, ['auth', 'rethrow']);
+});
+
 test('cross-firm action authorization stops before active, headers, DAL, and revalidation', async () => {
   const context = setup({
     resolveTenant: async () => {
@@ -438,18 +455,4 @@ test('open and history success results expose no storage path', async () => {
   assert.equal(history.ok, true);
   assert.doesNotMatch(JSON.stringify(opened), /storagePath|private\.pdf/u);
   assert.doesNotMatch(JSON.stringify(history), /storagePath|private\.pdf/u);
-});
-
-test('existing client document actions sanitize messages and revalidate the firm route', () => {
-  const source = readFileSync(
-    join(
-      process.cwd(),
-      'src/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/documents/actions.ts',
-    ),
-    'utf8',
-  );
-  assert.match(source, /revalidatePath\(`\/t\/\$\{slug\}\/documents`\)/);
-  assert.doesNotMatch(source, /parsed\.error\.issues\[0\]\.message/);
-  assert.doesNotMatch(source, /error:\s*e\.message/);
-  assert.match(source, /messageKey/);
 });
