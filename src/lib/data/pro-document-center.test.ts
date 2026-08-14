@@ -35,12 +35,13 @@ function json(data: unknown, status = 200): Response {
 function captureFetch(handler: (call: FetchCall) => Response | Promise<Response>): FetchCall[] {
   const calls: FetchCall[] = [];
   globalThis.fetch = (async (input, init) => {
+    const requestLike = input as Request;
     const text = typeof init?.body === 'string' ? init.body : undefined;
     const call = {
       url: String(input),
-      method: init?.method ?? 'GET',
+      method: init?.method ?? requestLike.method ?? 'GET',
       body: text ? JSON.parse(text) : undefined,
-      headers: new Headers(init?.headers),
+      headers: new Headers(init?.headers ?? requestLike.headers),
     };
     calls.push(call);
     return handler(call);
@@ -87,6 +88,55 @@ function rpcRow(overrides: Record<string, unknown> = {}) {
 
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
+});
+
+test('listDocumentCenterClientOptions reads every tenant client in stable bounded batches', async () => {
+  const rows = Array.from({ length: 1002 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    company_name: `Client ${String(index).padStart(4, '0')}`,
+  }));
+  let batchIndex = 0;
+  const calls = captureFetch(() => {
+    const from = batchIndex * 500;
+    batchIndex += 1;
+    return json(rows.slice(from, from + 500));
+  });
+  const loaded = await load();
+  assert.equal(typeof loaded.listDocumentCenterClientOptions, 'function');
+  if (!loaded.listDocumentCenterClientOptions) return;
+
+  const options = await loaded.listDocumentCenterClientOptions(TENANT);
+
+  assert.equal(options.length, 1002);
+  assert.equal(new Set(options.map((option) => option.id)).size, 1002);
+  assert.deepEqual(
+    options,
+    rows.map((row) => ({ id: row.id, companyName: row.company_name })),
+  );
+  assert.deepEqual(options[0], { id: rows[0].id, companyName: rows[0].company_name });
+  assert.deepEqual(options.at(-1), {
+    id: rows.at(-1)?.id,
+    companyName: rows.at(-1)?.company_name,
+  });
+  assert.equal(calls.length, 3);
+  const dataSource = readFileSync(new URL('./pro-document-center.ts', import.meta.url), 'utf8');
+  assert.match(dataSource, /\.range\(from, from \+ CLIENT_OPTION_BATCH_SIZE - 1\)/u);
+  for (const call of calls) {
+    assert.match(call.url, /\/rest\/v1\/clients\?/u);
+    assert.match(call.url, /select=id%2Ccompany_name/u);
+    assert.match(call.url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
+    assert.match(call.url, /order=company_name\.asc%2Cid\.asc/u);
+  }
+});
+
+test('listDocumentCenterClientOptions validates tenant scope before reading', async () => {
+  const calls = captureFetch(() => json([]));
+  const loaded = await load();
+  assert.equal(typeof loaded.listDocumentCenterClientOptions, 'function');
+  if (!loaded.listDocumentCenterClientOptions) return;
+
+  await assert.rejects(() => loaded.listDocumentCenterClientOptions('not-a-tenant'));
+  assert.equal(calls.length, 0);
 });
 
 test('listProDocumentCenter sends exact validated filters to only the RPC and maps without storage paths', async () => {

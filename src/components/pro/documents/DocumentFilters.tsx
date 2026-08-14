@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Filter, Search } from 'lucide-react';
 
-import type { ClientLookupRow } from '@/lib/data/clients';
+import type { DocumentCenterClientOption } from '@/lib/data/pro-document-center';
 import type { DocumentCenterSearch } from '@/lib/validation/pro-document-center';
 import { DOC_TYPES, type DocType } from '@/lib/validation/document';
 
@@ -34,22 +34,31 @@ export function DocumentFilters({
   clients,
   labels,
   resetHref,
+  locale,
 }: {
   query: DocumentCenterSearch;
-  clients: ClientLookupRow[];
+  clients: DocumentCenterClientOption[];
   labels: DocumentFilterLabels;
   resetHref: string;
+  locale: string;
 }) {
+  const dateFormatter = new Intl.DateTimeFormat(locale, {
+    timeZone: 'Asia/Dubai',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+  const formatIsoDate = (value: string) => dateFormatter.format(new Date(`${value}T12:00:00.000Z`));
   const applied = [
     query.search ? `${labels.search}: ${query.search}` : null,
     query.view !== 'all' ? labels.views[query.view] : null,
     query.clientId
-      ? `${labels.client}: ${clients.find((client) => client.id === query.clientId)?.company_name ?? query.clientId}`
+      ? `${labels.client}: ${clients.find((client) => client.id === query.clientId)?.companyName ?? query.clientId}`
       : null,
     query.docType ? labels.docTypes[query.docType] : null,
     query.window !== 'all' ? labels.windows[query.window] : null,
-    query.from ? `${labels.from}: ${query.from}` : null,
-    query.to ? `${labels.to}: ${query.to}` : null,
+    query.from ? `${labels.from}: ${formatIsoDate(query.from)}` : null,
+    query.to ? `${labels.to}: ${formatIsoDate(query.to)}` : null,
     query.sort !== 'urgency' ? labels.sorts[query.sort] : null,
   ].filter((value): value is string => Boolean(value));
 
@@ -105,7 +114,7 @@ export function DocumentFilters({
               <option value="">{labels.all}</option>
               {clients.map((client) => (
                 <option key={client.id} value={client.id}>
-                  {client.company_name}
+                  {client.companyName}
                 </option>
               ))}
             </select>

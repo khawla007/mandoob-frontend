@@ -67,11 +67,13 @@ export function VersionHistoryDialog({
   documentId,
   locale,
   labels,
+  primary = false,
 }: {
   slug: string;
   documentId: string;
   locale: string;
   labels: VersionHistoryLabels;
+  primary?: boolean;
 }) {
   const [versions, setVersions] = useState<DocumentVersionHistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +111,13 @@ export function VersionHistoryDialog({
   return (
     <Dialog onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button" size="sm" variant="ghost">
+        <Button
+          type="button"
+          size="sm"
+          variant={primary ? 'default' : 'ghost'}
+          data-document-action="history"
+          data-primary={primary ? 'true' : undefined}
+        >
           <Clock3 aria-hidden="true" />
           {labels.trigger}
         </Button>
@@ -145,7 +153,8 @@ export function VersionHistoryDialog({
                   <div className="min-w-0 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">
-                        {labels.version} {version.versionNumber}
+                        {labels.version}{' '}
+                        {new Intl.NumberFormat(locale).format(version.versionNumber)}
                       </span>
                       {version.current ? (
                         <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">

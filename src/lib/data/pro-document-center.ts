@@ -15,6 +15,7 @@ import {
 import type { DocType } from '@/lib/validation/document';
 
 const PAGE_SIZE = 50;
+const CLIENT_OPTION_BATCH_SIZE = 500;
 
 export type DocumentCenterQuery = Partial<DocumentCenterSearch>;
 
@@ -69,9 +70,18 @@ export type DocumentCenterSummary = {
   overdue: DocumentCenterSummaryResult;
 };
 
+export type DocumentCenterClientOption = {
+  id: string;
+  companyName: string;
+};
+
 type RpcRow = Record<string, unknown>;
 
 const uuidSchema = z.string().uuid();
+const clientOptionRowSchema = z.object({
+  id: uuidSchema,
+  company_name: z.string().min(1),
+});
 const expiryContextSchema = z.object({
   tenantId: uuidSchema,
   actorId: uuidSchema,
@@ -213,6 +223,40 @@ export async function listProDocumentCenter(
     page: rows[0]?.effectivePage ?? 1,
     pageSize: PAGE_SIZE,
   };
+}
+
+export async function listDocumentCenterClientOptions(
+  tenantId: string,
+): Promise<DocumentCenterClientOption[]> {
+  const validTenantId = uuidSchema.parse(tenantId);
+  const admin = createSupabaseServiceRoleClient();
+  const options: DocumentCenterClientOption[] = [];
+  const seen = new Set<string>();
+
+  for (let from = 0; ; from += CLIENT_OPTION_BATCH_SIZE) {
+    const { data, error } = await admin
+      .from('clients')
+      .select('id, company_name')
+      .eq('tenant_id', validTenantId)
+      .order('company_name', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + CLIENT_OPTION_BATCH_SIZE - 1);
+    if (error) {
+      throw new ApiError('INTERNAL', 'Unable to load document center clients', 500);
+    }
+
+    const batch = z.array(clientOptionRowSchema).parse(data ?? []);
+    for (const row of batch) {
+      if (seen.has(row.id)) {
+        throw new ApiError('INTERNAL', 'Unable to load document center clients', 500);
+      }
+      seen.add(row.id);
+      options.push({ id: row.id, companyName: row.company_name });
+    }
+    if (batch.length < CLIENT_OPTION_BATCH_SIZE) break;
+  }
+
+  return options;
 }
 
 function summaryRpcArguments(

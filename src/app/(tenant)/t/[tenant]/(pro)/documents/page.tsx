@@ -19,10 +19,10 @@ import {
   DocumentWorkQueue,
   type DocumentQueueLabels,
 } from '@/components/pro/documents/DocumentWorkQueue';
-import { listClientsForTenant } from '@/lib/data/clients';
 import {
   dubaiToday,
   getDocumentCenterSummary,
+  listDocumentCenterClientOptions,
   listProDocumentCenter,
 } from '@/lib/data/pro-document-center';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
@@ -75,7 +75,7 @@ export default async function ProDocumentsPage({
   const [workspace, summary, clients, t, locale] = await Promise.all([
     listProDocumentCenter(tenant.id, query),
     getDocumentCenterSummary(tenant.id, dubaiToday()),
-    listClientsForTenant({ tenantId: tenant.id, limit: 50 }),
+    listDocumentCenterClientOptions(tenant.id),
     getTranslations('proDocumentCenter'),
     getLocale(),
   ]);
@@ -83,6 +83,7 @@ export default async function ProDocumentsPage({
   if (requestedPage !== workspace.page) {
     redirect(documentCenterHref(slug, query, workspace.page));
   }
+  const formattedWorkspaceTotal = new Intl.NumberFormat(locale).format(workspace.total);
 
   const docTypes = Object.fromEntries(
     DOC_TYPES.map((type) => [type, t(`docTypes.${type}`)]),
@@ -240,8 +241,8 @@ export default async function ProDocumentsPage({
     pagination: t('queue.pagination'),
     previous: t('queue.previous'),
     next: t('queue.next'),
-    page: t('queue.page'),
     resultTemplate: t.raw('queue.result') as string,
+    pageCountTemplate: t.raw('queue.pageCount') as string,
     requestStatuses: Object.fromEntries(
       requestStatuses.map((status) => [status, t(`requestStatuses.${status}`)]),
     ) as DocumentQueueLabels['requestStatuses'],
@@ -262,13 +263,19 @@ export default async function ProDocumentsPage({
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('heading.title')}</h1>
           <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
-            {t('heading.subtitle', { tenant: tenant.name, count: workspace.total })}
+            {t('heading.subtitle', { tenant: tenant.name, count: formattedWorkspaceTotal })}
           </p>
         </div>
         <DocumentActions kind="request" slug={slug} clients={clients} labels={actionLabels} />
       </header>
 
-      <DocumentSummaryGrid slug={slug} query={query} summary={summary} labels={summaryLabels} />
+      <DocumentSummaryGrid
+        slug={slug}
+        query={query}
+        summary={summary}
+        labels={summaryLabels}
+        locale={locale}
+      />
 
       <section className="signal-panel document-center__workspace grid min-w-0 gap-5 rounded-2xl border p-4 sm:p-5">
         <DocumentFilters
@@ -276,6 +283,7 @@ export default async function ProDocumentsPage({
           clients={clients}
           labels={filterLabels}
           resetHref={resetHref}
+          locale={locale}
         />
         <DocumentWorkQueue
           rows={workspace.rows}

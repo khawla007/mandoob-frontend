@@ -9,7 +9,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import { documentCenterHref } from '@/app/(tenant)/t/[tenant]/(pro)/documents/page-logic';
+import {
+  documentCenterHref,
+  parseDocumentCenterSearch,
+} from '@/app/(tenant)/t/[tenant]/(pro)/documents/page-logic';
 import type {
   DocumentCenterSummary,
   DocumentCenterSummaryResult,
@@ -27,7 +30,7 @@ export type DocumentSummaryLabels = Record<
 type SummaryItem = {
   key: keyof DocumentCenterSummary;
   view: DocumentCenterView;
-  variant: 'info' | 'orange' | 'success' | 'urgent' | 'warning';
+  variant: 'info' | 'review' | 'success' | 'urgent' | 'expiry' | 'overdue';
   icon: LucideIcon;
   result: DocumentCenterSummaryResult;
   labels: DocumentSummaryLabels[keyof DocumentSummaryLabels];
@@ -38,11 +41,13 @@ export function DocumentSummaryGrid({
   query,
   summary,
   labels,
+  locale,
 }: {
   slug: string;
   query: DocumentCenterSearch;
   summary: DocumentCenterSummary;
   labels: DocumentSummaryLabels;
+  locale: string;
 }) {
   const items: SummaryItem[] = [
     {
@@ -56,7 +61,7 @@ export function DocumentSummaryGrid({
     {
       key: 'awaitingReview',
       view: 'submitted',
-      variant: 'orange',
+      variant: 'review',
       icon: ScanLine,
       result: summary.awaitingReview,
       labels: labels.awaitingReview,
@@ -80,7 +85,7 @@ export function DocumentSummaryGrid({
     {
       key: 'expiring',
       view: 'expiring',
-      variant: 'warning',
+      variant: 'expiry',
       icon: Clock3,
       result: summary.expiring,
       labels: labels.expiring,
@@ -88,28 +93,24 @@ export function DocumentSummaryGrid({
     {
       key: 'overdue',
       view: 'overdue',
-      variant: 'urgent',
+      variant: 'overdue',
       icon: CircleAlert,
       result: summary.overdue,
       labels: labels.overdue,
     },
   ];
+  const currentHref = documentCenterHref(slug, query);
 
   return (
     <section className="document-center__summary-grid grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => {
         const Icon = item.icon;
-        const href = documentCenterHref(slug, {
-          ...query,
-          view: item.view,
-          page: 1,
-          focus: undefined,
-        });
+        const href = documentCenterHref(slug, parseDocumentCenterSearch({ view: item.view }));
         return (
           <Link
             key={item.key}
             href={href}
-            aria-current={query.view === item.view ? 'page' : undefined}
+            aria-current={currentHref === href ? 'page' : undefined}
             className={`document-center__summary document-center__summary--${item.variant} group focus-visible:ring-ring bg-card hover:bg-muted/40 relative min-w-0 overflow-hidden rounded-xl border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
             data-variant={item.variant}
           >
@@ -124,7 +125,7 @@ export function DocumentSummaryGrid({
                 </span>
                 {item.result.ok ? (
                   <span className="mt-1 block text-2xl font-semibold tabular-nums">
-                    {item.result.value}
+                    {new Intl.NumberFormat(locale).format(item.result.value)}
                   </span>
                 ) : (
                   <span className="text-destructive mt-1 block text-sm font-semibold">

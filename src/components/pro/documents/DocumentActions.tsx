@@ -22,10 +22,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import type { ClientLookupRow } from '@/lib/data/clients';
-import type { DocumentCenterRow } from '@/lib/data/pro-document-center';
+import type { DocumentCenterClientOption, DocumentCenterRow } from '@/lib/data/pro-document-center';
 import { DOC_TYPES, type DocType } from '@/lib/validation/document';
 import { VersionHistoryDialog, type VersionHistoryLabels } from './VersionHistoryDialog';
+import { resolvePrimaryDocumentAction } from './document-action-state';
 
 type RequestState = DocumentCenterActionResult<{ requestId: string }> | null;
 type MutationState = DocumentCenterActionResult | null;
@@ -131,7 +131,7 @@ function RequestDocumentDialog({
   labels,
 }: {
   slug: string;
-  clients: ClientLookupRow[];
+  clients: DocumentCenterClientOption[];
   labels: DocumentActionLabels;
 }) {
   const requestAction = requestDocumentCenterAction.bind(null, slug);
@@ -157,7 +157,7 @@ function RequestDocumentDialog({
               <option value="">{labels.request.selectClient}</option>
               {clients.map((client) => (
                 <option key={client.id} value={client.id}>
-                  {client.company_name}
+                  {client.companyName}
                 </option>
               ))}
             </select>
@@ -243,6 +243,7 @@ function RowDocumentActions({
     row.expirySource && row.expirySource !== 'document'
       ? labels.expiry.sources[row.expirySource]
       : labels.expiry.externallyManaged;
+  const primaryAction = resolvePrimaryDocumentAction(row);
 
   function openCurrentVersion() {
     if (!versionId) return;
@@ -266,7 +267,14 @@ function RowDocumentActions({
             <input type="hidden" name="client_id" value={row.clientId} />
             <input type="hidden" name="status" value="approved" />
             <input type="hidden" name="note" value="" />
-            <PendingButton pending={reviewPending} type="submit" size="sm" variant="outline">
+            <PendingButton
+              pending={reviewPending}
+              type="submit"
+              size="sm"
+              variant={primaryAction === 'approve' ? 'default' : 'outline'}
+              data-document-action="approve"
+              data-primary={primaryAction === 'approve' ? 'true' : undefined}
+            >
               <Check aria-hidden="true" />
               {reviewPending ? labels.review.approvePending : labels.review.approve}
             </PendingButton>
@@ -276,7 +284,7 @@ function RowDocumentActions({
         {row.reviewStatus === 'pending' && versionId ? (
           <Dialog>
             <DialogTrigger asChild>
-              <Button type="button" size="sm" variant="destructive">
+              <Button type="button" size="sm" variant="destructive" data-document-action="reject">
                 <X aria-hidden="true" />
                 {labels.review.reject}
               </Button>
@@ -321,9 +329,11 @@ function RowDocumentActions({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant={primaryAction === 'open' ? 'default' : 'outline'}
             disabled={opening}
             onClick={openCurrentVersion}
+            data-document-action="open"
+            data-primary={primaryAction === 'open' ? 'true' : undefined}
           >
             <ExternalLink aria-hidden="true" />
             {opening ? labels.opening : labels.open}
@@ -336,6 +346,7 @@ function RowDocumentActions({
             documentId={documentId}
             locale={locale}
             labels={labels.history}
+            primary={primaryAction === 'history'}
           />
         ) : null}
 
@@ -348,6 +359,7 @@ function RowDocumentActions({
                 variant="ghost"
                 disabled={!canManageExpiry}
                 title={!canManageExpiry ? externalExpiryLabel : undefined}
+                data-document-action="expiry"
               >
                 <CalendarClock aria-hidden="true" />
                 {labels.expiry.trigger}
@@ -390,7 +402,14 @@ function RowDocumentActions({
           </Dialog>
         ) : null}
 
-        <Button asChild type="button" size="sm" variant="ghost">
+        <Button
+          asChild
+          type="button"
+          size="sm"
+          variant={primaryAction === 'client' ? 'default' : 'ghost'}
+          data-document-action="client"
+          data-primary={primaryAction === 'client' ? 'true' : undefined}
+        >
           <Link href={clientHref}>
             <UserRound aria-hidden="true" />
             {labels.profile}
@@ -417,7 +436,7 @@ export function DocumentActions(
     | {
         kind: 'request';
         slug: string;
-        clients: ClientLookupRow[];
+        clients: DocumentCenterClientOption[];
         labels: DocumentActionLabels;
       }
     | {
