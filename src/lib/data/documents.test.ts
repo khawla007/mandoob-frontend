@@ -18,12 +18,13 @@ async function load(): Promise<DocumentsModule> {
 
 const originalFetch = globalThis.fetch;
 
-const TENANT = '11111111-1111-4111-8111-111111111111';
-const CLIENT = '22222222-2222-4222-8222-222222222222';
-const DOCUMENT = '55555555-5555-4555-8555-555555555555';
-const VERSION = '66666666-6666-4666-8666-666666666666';
-const ACTOR = '77777777-7777-4777-8777-777777777777';
-const REQUEST = '88888888-8888-4888-8888-888888888888';
+const TENANT = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const CLIENT = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const DOCUMENT = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const VERSION = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const ACTOR = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+const REQUEST = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+const GENERATED_FILENAME = '2026-08-14_m0abc123_0123456789ab_server-held.pdf';
 
 type FetchCall = { url: string; method: string; body: unknown };
 
@@ -50,7 +51,7 @@ function ownedVersion(overrides: Record<string, unknown> = {}) {
   return {
     id: VERSION,
     tenant_id: TENANT,
-    storage_path: `${TENANT}/${CLIENT}/passport/file.pdf`,
+    storage_path: `${TENANT}/${CLIENT}/passport/${GENERATED_FILENAME}`,
     document: {
       id: DOCUMENT,
       tenant_id: TENANT,
@@ -242,7 +243,7 @@ test('getDocumentSignedUrl rejects a tampered storage prefix and signs only the 
   );
   assert.equal(tamperedCalls.length, 1);
 
-  const storedPath = `${TENANT}/${CLIENT}/passport/server-held.pdf`;
+  const storedPath = `${TENANT}/${CLIENT}/passport/${GENERATED_FILENAME}`;
   const calls = captureFetch((call) => {
     if (call.url.includes('/rest/v1/document_versions')) {
       return json(ownedVersion({ storage_path: storedPath }));
@@ -262,6 +263,56 @@ test('getDocumentSignedUrl rejects a tampered storage prefix and signs only the 
   assert.ok(signCall);
   assert.match(decodeURIComponent(signCall.url), new RegExp(storedPath.replaceAll('/', '\\/')));
   assert.deepEqual(signCall.body, { expiresIn: 91 });
+});
+
+test('getDocumentSignedUrl rejects traversal, encoded separators, and malformed generated keys', async () => {
+  const badPaths = [
+    `${TENANT}/${CLIENT}/../../foreign/file.pdf`,
+    `${TENANT}/${CLIENT}/passport\\${GENERATED_FILENAME}`,
+    `${TENANT}/${CLIENT}/passport/..%2fforeign.pdf`,
+    `${TENANT}/${CLIENT}/passport/file%5cforeign.pdf`,
+    `${TENANT}/${CLIENT}/passport/%2e%2e.pdf`,
+    `${TENANT}/${CLIENT}//passport/${GENERATED_FILENAME}`,
+    `${TENANT}/${CLIENT}/unknown/${GENERATED_FILENAME}`,
+    `${TENANT}/${CLIENT}/passport/server-held.pdf`,
+    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_bad name.pdf`,
+    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_bad\0name.pdf`,
+    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_${'a'.repeat(101)}.pdf`,
+  ];
+  let index = 0;
+  const calls = captureFetch(() => json(ownedVersion({ storage_path: badPaths[index++] })));
+  const { getDocumentSignedUrl } = await load();
+
+  for (const badPath of badPaths) {
+    void badPath;
+    await assert.rejects(
+      () => getDocumentSignedUrl(TENANT, VERSION),
+      (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
+    );
+  }
+
+  assert.equal(calls.length, badPaths.length);
+  assert.equal(
+    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
+    false,
+  );
+});
+
+test('getDocumentSignedUrl normalizes uppercase UUIDs before query, ownership checks, and signing', async () => {
+  const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/document_versions')) return json(ownedVersion());
+    return json({ signedURL: '/object/sign/private?token=normalized' });
+  });
+  const { getDocumentSignedUrl } = await load();
+
+  const result = await getDocumentSignedUrl(TENANT.toUpperCase(), VERSION.toUpperCase(), 45);
+
+  assert.match(result.url, /token=normalized/u);
+  assert.equal(new URL(calls[0].url).searchParams.get('id'), `eq.${VERSION}`);
+  assert.equal(
+    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
+    true,
+  );
 });
 
 test('getDocumentSignedUrl sanitizes database and storage failures', async () => {
@@ -381,6 +432,49 @@ test('setDocumentReview supports rejection through the RPC without fulfilling a 
     calls.some((call) => call.url.includes('/document_requests')),
     false,
   );
+});
+
+test('setDocumentReview normalizes uppercase UUIDs in the RPC and success telemetry', async () => {
+  const calls = captureFetch((call) => {
+    if (call.url.endsWith('/rest/v1/rpc/review_document_version')) {
+      return json({
+        document_id: DOCUMENT,
+        client_id: CLIENT,
+        fulfilled_request_id: null,
+        review_status: 'approved',
+      });
+    }
+    return json(null, 201);
+  });
+  const { setDocumentReview } = await load();
+
+  await setDocumentReview(
+    VERSION.toUpperCase(),
+    {
+      ...reviewCtx(),
+      tenantId: TENANT.toUpperCase(),
+      actorId: ACTOR.toUpperCase(),
+    },
+    { status: 'approved' },
+  );
+
+  assert.deepEqual(
+    {
+      p_tenant_id: (calls[0].body as Record<string, unknown>).p_tenant_id,
+      p_actor_id: (calls[0].body as Record<string, unknown>).p_actor_id,
+      p_version_id: (calls[0].body as Record<string, unknown>).p_version_id,
+    },
+    { p_tenant_id: TENANT, p_actor_id: ACTOR, p_version_id: VERSION },
+  );
+  assert.equal((calls[1].body as Record<string, unknown>).actor_user_id, ACTOR);
+  assert.equal((calls[1].body as Record<string, unknown>).tenant_id, TENANT);
+  assert.deepEqual((calls[1].body as Record<string, unknown>).details, {
+    entity: 'document',
+    op: 'review',
+    version_id: VERSION,
+    document_id: DOCUMENT,
+    review_status: 'approved',
+  });
 });
 
 test('setDocumentReview maps controlled and zero-row RPC failures without telemetry or raw details', async () => {

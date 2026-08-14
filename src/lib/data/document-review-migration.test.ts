@@ -82,7 +82,7 @@ function assertReviewContract(sql: string): void {
     'review update must repeat the authorized version scope and require a returned row',
   );
   assert.match(fn, /if v_updated_version_id is null then raise exception/i);
-  assert.doesNotMatch(fn, /delete\s+from\s+public\.document_versions/i);
+  assert.doesNotMatch(fn, /\bdelete\s+from\b/i, 'review RPC must preserve all append-only parents');
 
   assert.match(
     fn,
@@ -137,6 +137,18 @@ test('review contract rejects mutations that weaken chain, locks, grants, or app
     sql.replace(
       'return query select',
       'delete from public.document_versions where id = p_version_id; return query select',
+    ),
+    sql.replace(
+      'return query select',
+      'delete from public.documents where id = v_document_id; return query select',
+    ),
+    sql.replace(
+      'return query select',
+      'delete from public.document_requests where id = v_request_id; return query select',
+    ),
+    sql.replace(
+      'return query select',
+      'delete from public.clients where id = v_document_client_id; return query select',
     ),
   ];
 

@@ -10,6 +10,7 @@ import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import { enqueueSms } from '@/lib/sms/send';
 import { z } from 'zod';
 import {
+  DOC_TYPES,
   createDocumentRequestSchema,
   documentReviewSchema,
   sanitizeFilename,
@@ -22,6 +23,9 @@ import {
 const STORAGE_BUCKET = 'tenant-documents';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const uuidSchema = z.string().uuid();
+const DOC_TYPE_SET = new Set<string>(DOC_TYPES);
+const GENERATED_STORAGE_FILENAME =
+  /^(\d{4}-\d{2}-\d{2})_[a-z0-9]+_[0-9a-f]{12}_([A-Za-z0-9._-]{1,100})\.(pdf|jpg|png|docx|xlsx)$/;
 
 const ALLOWED_MIMES = new Set<string>([
   'application/pdf',
@@ -30,6 +34,44 @@ const ALLOWED_MIMES = new Set<string>([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
+
+function normalizeUuid(value: string): string | null {
+  const parsed = uuidSchema.safeParse(value);
+  return parsed.success ? parsed.data.toLowerCase() : null;
+}
+
+function isGeneratedStoragePath(path: string, tenantId: string, clientId: string): boolean {
+  if (
+    path.includes('\\') ||
+    path.includes('%') ||
+    /[\u0000-\u001f\u007f]/.test(path) ||
+    normalizeUuid(tenantId) !== tenantId ||
+    normalizeUuid(clientId) !== clientId
+  ) {
+    return false;
+  }
+
+  const segments = path.split('/');
+  if (
+    segments.length !== 4 ||
+    segments.some((segment) => segment === '' || segment === '.' || segment === '..')
+  ) {
+    return false;
+  }
+
+  const [pathTenantId, pathClientId, docType, filename] = segments;
+  if (pathTenantId !== tenantId || pathClientId !== clientId || !DOC_TYPE_SET.has(docType)) {
+    return false;
+  }
+
+  const filenameMatch = GENERATED_STORAGE_FILENAME.exec(filename);
+  if (!filenameMatch) return false;
+  const generatedDate = new Date(`${filenameMatch[1]}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(generatedDate.getTime()) &&
+    generatedDate.toISOString().slice(0, 10) === filenameMatch[1]
+  );
+}
 
 export type UploadDocumentInput = {
   tenantId: string;
@@ -416,7 +458,9 @@ export async function getDocumentSignedUrl(
   versionId: string,
   ttlSeconds = 60 * 5,
 ): Promise<{ url: string; expiresAt: string }> {
-  if (!uuidSchema.safeParse(tenantId).success || !uuidSchema.safeParse(versionId).success) {
+  const normalizedTenantId = normalizeUuid(tenantId);
+  const normalizedVersionId = normalizeUuid(versionId);
+  if (!normalizedTenantId || !normalizedVersionId) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
   }
 
@@ -426,7 +470,7 @@ export async function getDocumentSignedUrl(
     .select(
       'id, tenant_id, storage_path, document:documents!inner(id, tenant_id, client_id, request_id, current_version_id, client:clients!inner(id, tenant_id))',
     )
-    .eq('id', versionId)
+    .eq('id', normalizedVersionId)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', 'Could not load document version', 500);
   if (!version) throw new ApiError('NOT_FOUND', 'document version not found', 404);
@@ -447,16 +491,19 @@ export async function getDocumentSignedUrl(
   const owned = version as unknown as OwnedVersionRow;
   const document = owned.document;
   const client = document?.client;
+  const normalizedClientId = client ? normalizeUuid(client.id) : null;
   if (
-    owned.id !== versionId ||
-    owned.tenant_id !== tenantId ||
+    owned.id !== normalizedVersionId ||
+    owned.tenant_id !== normalizedTenantId ||
     !document ||
-    document.tenant_id !== tenantId ||
+    document.tenant_id !== normalizedTenantId ||
     !client ||
-    document.client_id !== client.id ||
-    client.tenant_id !== tenantId ||
+    !normalizedClientId ||
+    client.id !== normalizedClientId ||
+    document.client_id !== normalizedClientId ||
+    client.tenant_id !== normalizedTenantId ||
     typeof owned.storage_path !== 'string' ||
-    !owned.storage_path.startsWith(`${tenantId}/${client.id}/`)
+    !isGeneratedStoragePath(owned.storage_path, normalizedTenantId, normalizedClientId)
   ) {
     throw new ApiError('NOT_FOUND', 'document version not found', 404);
   }
@@ -495,11 +542,10 @@ export async function setDocumentReview(
   if (ctx.role !== 'pro') {
     throw new ApiError('FORBIDDEN', 'only pro can review documents', 403);
   }
-  if (
-    !uuidSchema.safeParse(versionId).success ||
-    !uuidSchema.safeParse(ctx.tenantId).success ||
-    !uuidSchema.safeParse(ctx.actorId).success
-  ) {
+  const normalizedVersionId = normalizeUuid(versionId);
+  const normalizedTenantId = normalizeUuid(ctx.tenantId);
+  const normalizedActorId = normalizeUuid(ctx.actorId);
+  if (!normalizedVersionId || !normalizedTenantId || !normalizedActorId) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
   }
   const review = documentReviewSchema.parse(input);
@@ -508,9 +554,9 @@ export async function setDocumentReview(
   const reviewedAt = new Date().toISOString();
   const { data: result, error: reviewErr } = await admin
     .rpc('review_document_version', {
-      p_tenant_id: ctx.tenantId,
-      p_actor_id: ctx.actorId,
-      p_version_id: versionId,
+      p_tenant_id: normalizedTenantId,
+      p_actor_id: normalizedActorId,
+      p_version_id: normalizedVersionId,
       p_status: review.status,
       p_note: review.note ?? null,
       p_reviewed_at: reviewedAt,
@@ -536,14 +582,14 @@ export async function setDocumentReview(
 
   await recordAuthEvent({
     kind: 'tenant_self_updated',
-    actorUserId: ctx.actorId,
-    tenantId: ctx.tenantId,
+    actorUserId: normalizedActorId,
+    tenantId: normalizedTenantId,
     ip: ctx.ip,
     userAgent: ctx.userAgent,
     details: {
       entity: 'document',
       op: 'review',
-      version_id: versionId,
+      version_id: normalizedVersionId,
       document_id: reviewed.document_id,
       review_status: review.status,
     },
