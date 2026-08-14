@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { calendarDateSchema } from './calendar-date';
+
 export const DOC_TYPES = [
   'passport',
   'visa',
@@ -51,11 +53,7 @@ export const createDocumentRequestSchema = z.object({
   client_id: z.string().uuid(),
   doc_type: docTypeSchema,
   label: z.string().min(1).max(120),
-  due_at: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'due_at must be YYYY-MM-DD')
-    .optional()
-    .or(z.literal('').transform(() => undefined)),
+  due_at: calendarDateSchema.optional().or(z.literal('').transform(() => undefined)),
   notes: z
     .string()
     .max(500)
