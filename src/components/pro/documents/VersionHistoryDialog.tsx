@@ -166,7 +166,7 @@ export function VersionHistoryDialog({
       </DialogTrigger>
       <DialogContent
         closeLabel={labels.close}
-        className="max-h-[min(46rem,calc(100dvh-2rem))] overflow-y-auto sm:max-w-2xl"
+        className="document-center-dialog max-h-[min(46rem,calc(100dvh-2rem))] overflow-y-auto sm:max-w-2xl"
       >
         <DialogHeader>
           <DialogTitle>{labels.title}</DialogTitle>

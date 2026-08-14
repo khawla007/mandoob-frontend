@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState, useTransition } from 'react';
+import { useId, useRef, useState, useTransition } from 'react';
 import { Search, X } from 'lucide-react';
 
 import { searchDocumentClientsAction } from '@/app/(tenant)/t/[tenant]/(pro)/documents/actions';
@@ -10,7 +10,11 @@ import {
   changeClientSearchText,
   clientSearchPropsRevision,
   clientSearchSubmissionValue,
+  beginClientSearchRequest,
+  createClientSearchRequestGate,
   createClientSearchState,
+  invalidateClientSearchRequest,
+  isCurrentClientSearchResponse,
   reconcileClientSearchProps,
   receiveClientSearchResults,
   selectClientSearchOption,
@@ -70,25 +74,39 @@ function DocumentClientSearchControl({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [error, setError] = useState(false);
   const [pending, startSearch] = useTransition();
+  const requestGate = useRef(createClientSearchRequestGate(state.text));
 
   function select(option: DocumentCenterClientOption) {
+    requestGate.current = invalidateClientSearchRequest(requestGate.current, option.companyName);
     setState((current) => selectClientSearchOption(current, option));
     setActiveIndex(-1);
+    setError(false);
   }
 
   function search() {
     const requestText = state.text;
+    const started = beginClientSearchRequest(requestGate.current, requestText);
+    requestGate.current = started.gate;
     setError(false);
     startSearch(async () => {
       try {
         const result = await searchDocumentClientsAction(slug, requestText);
         if (result.ok) {
+          if (!isCurrentClientSearchResponse(requestGate.current, started.request, 'success')) {
+            return;
+          }
           setState((current) => receiveClientSearchResults(current, requestText, result.data));
           setActiveIndex(result.data.length > 0 ? 0 : -1);
         } else {
+          if (!isCurrentClientSearchResponse(requestGate.current, started.request, 'failure')) {
+            return;
+          }
           setError(true);
         }
       } catch {
+        if (!isCurrentClientSearchResponse(requestGate.current, started.request, 'failure')) {
+          return;
+        }
         setError(true);
       }
     });
@@ -115,8 +133,11 @@ function DocumentClientSearchControl({
           value={state.text}
           placeholder={labels.placeholder}
           onChange={(event) => {
-            setState((current) => changeClientSearchText(current, event.target.value));
+            const nextText = event.target.value;
+            requestGate.current = invalidateClientSearchRequest(requestGate.current, nextText);
+            setState((current) => changeClientSearchText(current, nextText));
             setActiveIndex(-1);
+            setError(false);
           }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown' && state.results.length > 0) {
@@ -143,7 +164,12 @@ function DocumentClientSearchControl({
             size="icon"
             variant="ghost"
             aria-label={labels.clear}
-            onClick={() => setState(createClientSearchState(null, initialOptions))}
+            onClick={() => {
+              requestGate.current = invalidateClientSearchRequest(requestGate.current, '');
+              setState(createClientSearchState(null, initialOptions));
+              setActiveIndex(-1);
+              setError(false);
+            }}
           >
             <X aria-hidden="true" />
           </Button>

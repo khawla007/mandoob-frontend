@@ -48,17 +48,17 @@ export function RequestDocumentDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" size="lg">
+        <Button type="button" size="lg" className="document-center-control">
           <FilePlus2 aria-hidden="true" />
           {labels.request.trigger}
         </Button>
       </DialogTrigger>
-      <DialogContent closeLabel={labels.close} className="sm:max-w-lg">
+      <DialogContent closeLabel={labels.close} className="document-center-dialog sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{labels.request.title}</DialogTitle>
           <DialogDescription>{labels.request.description}</DialogDescription>
         </DialogHeader>
-        <form action={formAction} className="grid gap-4">
+        <form action={formAction} className="document-center-control grid gap-4">
           <DocumentClientSearchField
             slug={slug}
             name="client_id"

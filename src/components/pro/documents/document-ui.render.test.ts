@@ -23,6 +23,70 @@ if (reactServer) {
   });
 }
 
+renderTest('loading skeleton renders localized busy semantics and stable geometry', async () => {
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  let loaded: typeof import('./DocumentCenterLoadingView') | undefined;
+  try {
+    loaded = await import('./DocumentCenterLoadingView');
+  } catch {}
+  assert.ok(loaded);
+  if (!loaded) return;
+
+  const html = renderToStaticMarkup(
+    React.createElement(loaded.DocumentCenterLoadingView, { label: 'جارٍ تحميل المستندات' }),
+  );
+  assert.match(html, /aria-busy="true"/u);
+  assert.match(html, /role="status"/u);
+  assert.match(html, /جارٍ تحميل المستندات/u);
+  assert.equal((html.match(/document-center__skeleton-summary/gu) ?? []).length, 6);
+  assert.equal((html.match(/document-center__skeleton-table-row/gu) ?? []).length, 5);
+  assert.match(html, /document-center__skeleton-filter/u);
+  assert.match(html, /document-center__skeleton-table-head/u);
+});
+
+renderTest(
+  'error view is semantic, localized, and invokes the supplied reset callback',
+  async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    let loaded: typeof import('./DocumentCenterErrorView') | undefined;
+    try {
+      loaded = await import('./DocumentCenterErrorView');
+    } catch {}
+    assert.ok(loaded);
+    if (!loaded) return;
+
+    let resets = 0;
+    const props = {
+      title: 'تعذّر تحميل مركز المستندات',
+      description: 'يرجى المحاولة مرة أخرى.',
+      retry: 'إعادة المحاولة',
+      reset: () => {
+        resets += 1;
+      },
+    };
+    const view = loaded.DocumentCenterErrorView(props);
+    const html = renderToStaticMarkup(view);
+    assert.match(html, /role="alert"/u);
+    assert.match(html, /aria-labelledby="document-center-error-title"/u);
+    assert.match(html, /تعذّر تحميل مركز المستندات/u);
+    assert.match(html, /إعادة المحاولة/u);
+
+    function invokeRetry(node: React.ReactNode): boolean {
+      if (!React.isValidElement<{ children?: React.ReactNode; onClick?: () => void }>(node)) {
+        return false;
+      }
+      if (typeof node.props.onClick === 'function') {
+        node.props.onClick();
+        return true;
+      }
+      return React.Children.toArray(node.props.children).some(invokeRetry);
+    }
+
+    assert.equal(invokeRetry(view), true);
+    assert.equal(resets, 1);
+  },
+);
+
 const summaryLabels = Object.fromEntries(
   ['awaitingUpload', 'awaitingReview', 'approved', 'rejected', 'expiring', 'overdue'].map((key) => [
     key,

@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser';
 
 import en from '@/messages/en.json';
 import ar from '@/messages/ar.json';
@@ -41,7 +42,30 @@ function valueAt(root: unknown, path: string): unknown {
 }
 
 function icuVariables(value: string): string[] {
-  return [...value.matchAll(/\{\s*([A-Za-z][A-Za-z0-9_]*)\b/gu)].map((match) => match[1]).sort();
+  const variables = new Set<string>();
+
+  function visit(elements: MessageFormatElement[]) {
+    for (const element of elements) {
+      if (
+        element.type === TYPE.argument ||
+        element.type === TYPE.number ||
+        element.type === TYPE.date ||
+        element.type === TYPE.time ||
+        element.type === TYPE.select ||
+        element.type === TYPE.plural
+      ) {
+        variables.add(element.value);
+      }
+      if (element.type === TYPE.select || element.type === TYPE.plural) {
+        for (const option of Object.values(element.options)) visit(option.value);
+      } else if (element.type === TYPE.tag) {
+        visit(element.children);
+      }
+    }
+  }
+
+  visit(parse(value));
+  return [...variables].sort();
 }
 
 function documentCenterLiteralKeys(): string[] {
@@ -92,6 +116,14 @@ describe('i18n/messages', () => {
         `Expected string at en.proDocumentCenter.${path}`,
       );
       assert.equal(typeof arabicValue, 'string', `Expected string at ar.proDocumentCenter.${path}`);
+      assert.doesNotThrow(
+        () => parse(englishValue as string),
+        `Invalid ICU at en.proDocumentCenter.${path}`,
+      );
+      assert.doesNotThrow(
+        () => parse(arabicValue as string),
+        `Invalid ICU at ar.proDocumentCenter.${path}`,
+      );
       assert.deepEqual(
         icuVariables(arabicValue as string),
         icuVariables(englishValue as string),

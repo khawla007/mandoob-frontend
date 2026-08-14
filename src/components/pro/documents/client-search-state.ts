@@ -7,6 +7,41 @@ export type ClientSearchState = {
   open: boolean;
 };
 
+export type ClientSearchRequestGate = {
+  generation: number;
+  query: string;
+};
+
+export type ClientSearchRequest = ClientSearchRequestGate;
+
+export function createClientSearchRequestGate(query: string): ClientSearchRequestGate {
+  return { generation: 0, query };
+}
+
+export function invalidateClientSearchRequest(
+  gate: ClientSearchRequestGate,
+  query: string,
+): ClientSearchRequestGate {
+  return { generation: gate.generation + 1, query };
+}
+
+export function beginClientSearchRequest(
+  gate: ClientSearchRequestGate,
+  query: string,
+): { gate: ClientSearchRequestGate; request: ClientSearchRequest } {
+  const request = invalidateClientSearchRequest(gate, query);
+  return { gate: request, request };
+}
+
+export function isCurrentClientSearchResponse(
+  gate: ClientSearchRequestGate,
+  request: ClientSearchRequest,
+  outcome: 'success' | 'failure',
+): boolean {
+  void outcome;
+  return gate.generation === request.generation && gate.query === request.query;
+}
+
 export function createClientSearchState(
   selected: DocumentCenterClientOption | null,
   initialResults: DocumentCenterClientOption[],

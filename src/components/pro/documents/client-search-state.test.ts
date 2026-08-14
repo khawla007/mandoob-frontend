@@ -83,3 +83,25 @@ test('client search ignores results returned for text that has since changed', a
 
   assert.deepEqual(stale, edited);
 });
+
+test('request generation rejects stale success and stale failure but accepts the current response', async () => {
+  const {
+    beginClientSearchRequest,
+    createClientSearchRequestGate,
+    invalidateClientSearchRequest,
+    isCurrentClientSearchResponse,
+  } = await import('./client-search-state');
+
+  let gate = createClientSearchRequestGate('Acme');
+  const first = beginClientSearchRequest(gate, 'Acme');
+  gate = first.gate;
+  gate = invalidateClientSearchRequest(gate, 'Acme Holdings');
+
+  assert.equal(isCurrentClientSearchResponse(gate, first.request, 'success'), false);
+  assert.equal(isCurrentClientSearchResponse(gate, first.request, 'failure'), false);
+
+  const current = beginClientSearchRequest(gate, 'Acme Holdings');
+  gate = current.gate;
+  assert.equal(isCurrentClientSearchResponse(gate, current.request, 'success'), true);
+  assert.equal(isCurrentClientSearchResponse(gate, current.request, 'failure'), true);
+});

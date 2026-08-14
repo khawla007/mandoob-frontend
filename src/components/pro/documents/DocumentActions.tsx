@@ -261,12 +261,12 @@ function RowDocumentActions({
                 {labels.review.reject}
               </Button>
             </DialogTrigger>
-            <DialogContent closeLabel={labels.close}>
+            <DialogContent closeLabel={labels.close} className="document-center-dialog">
               <DialogHeader>
                 <DialogTitle>{labels.review.rejectTitle}</DialogTitle>
                 <DialogDescription>{labels.review.rejectDescription}</DialogDescription>
               </DialogHeader>
-              <form action={reviewFormAction} className="grid gap-4">
+              <form action={reviewFormAction} className="document-center-control grid gap-4">
                 <input type="hidden" name="version_id" value={versionId} />
                 <input type="hidden" name="client_id" value={row.clientId} />
                 <input type="hidden" name="status" value="rejected" />
@@ -339,7 +339,7 @@ function RowDocumentActions({
                 {labels.expiry.trigger}
               </Button>
             </DialogTrigger>
-            <DialogContent closeLabel={labels.close}>
+            <DialogContent closeLabel={labels.close} className="document-center-dialog">
               <DialogHeader>
                 <DialogTitle>{labels.expiry.title}</DialogTitle>
                 <DialogDescription>{labels.expiry.description}</DialogDescription>
@@ -348,7 +348,7 @@ function RowDocumentActions({
                 id={expiryFormId}
                 action={expiryFormAction}
                 onSubmit={preventCompetingExpirySubmit}
-                className="grid gap-4"
+                className="document-center-control grid gap-4"
               >
                 <input type="hidden" name="document_id" value={documentId} />
                 <input type="hidden" name="client_id" value={row.clientId} />

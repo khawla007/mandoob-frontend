@@ -21,6 +21,10 @@ const summary = read('../../../../../../components/pro/documents/DocumentSummary
 const queue = read('../../../../../../components/pro/documents/DocumentWorkQueue.tsx');
 const loading = readOptional('./loading.tsx');
 const errorBoundary = readOptional('./error.tsx');
+const loadingView = read(
+  '../../../../../../components/pro/documents/DocumentCenterLoadingView.tsx',
+);
+const errorView = read('../../../../../../components/pro/documents/DocumentCenterErrorView.tsx');
 const styles = read('../../../../../../app/globals.css');
 
 test('page awaits Next 16 route inputs, parses once, and forces dynamic rendering', () => {
@@ -138,21 +142,23 @@ test('queue hoists locale formatters outside per-row formatting helpers', () => 
 test('route loading and error recovery are localized, semantic, and sanitized', () => {
   assert.doesNotMatch(loading, /'use client'/u);
   assert.match(loading, /useTranslations\('proDocumentCenter'\)/u);
-  assert.match(loading, /aria-busy="true"/u);
-  assert.match(loading, /role="status"/u);
   assert.match(loading, /t\('loading\.label'\)/u);
-  assert.match(loading, /Array\.from\(\{ length: 6 \}/u);
-  assert.match(loading, /document-center__skeleton-filter/u);
-  assert.match(loading, /document-center__skeleton-table/u);
+  assert.match(loading, /DocumentCenterLoadingView/u);
   assert.doesNotMatch(loading, />\s*[A-Za-z][^<{]*</u);
+  assert.match(loadingView, /aria-busy="true"/u);
+  assert.match(loadingView, /role="status"/u);
+  assert.match(loadingView, /Array\.from\(\{ length: 6 \}/u);
+  assert.match(loadingView, /document-center__skeleton-filter/u);
+  assert.match(loadingView, /document-center__skeleton-table/u);
 
   assert.match(errorBoundary, /^'use client';/u);
   assert.match(errorBoundary, /useTranslations\('proDocumentCenter'\)/u);
-  assert.match(errorBoundary, /role="alert"/u);
   assert.match(errorBoundary, /t\('pageError\.title'\)/u);
   assert.match(errorBoundary, /t\('pageError\.description'\)/u);
   assert.match(errorBoundary, /t\('pageError\.retry'\)/u);
-  assert.match(errorBoundary, /onClick=\{reset\}/u);
+  assert.match(errorBoundary, /DocumentCenterErrorView/u);
+  assert.match(errorView, /role="alert"/u);
+  assert.match(errorView, /onClick=\{reset\}/u);
   assert.doesNotMatch(errorBoundary, /error\.(?:message|digest)|console\./u);
   assert.doesNotMatch(errorBoundary, />\s*[A-Za-z][^<{]*</u);
 });
