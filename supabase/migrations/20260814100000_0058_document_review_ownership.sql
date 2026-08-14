@@ -22,6 +22,8 @@ security invoker
 set search_path = ''
 as $function$
 declare
+  v_trim_characters constant text := U&'\0009\000A\000B\000C\000D\0020\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000\FEFF';
+  v_trimmed_note text;
   v_version_id uuid;
   v_version_tenant_id uuid;
   v_version_document_id uuid;
@@ -114,18 +116,22 @@ begin
     or p_status not in ('approved', 'rejected') then
     raise exception using errcode = 'MD422', message = 'invalid_review';
   end if;
+  v_trimmed_note := case
+    when p_note is null then null
+    else btrim(p_note, v_trim_characters)
+  end;
   if p_status = 'rejected'
-    and regexp_replace(coalesce(p_note, ''), '[[:space:]]', '', 'g') = '' then
+    and coalesce(v_trimmed_note, '') = '' then
     raise exception using errcode = 'MD422', message = 'invalid_review';
   end if;
-  if char_length(btrim(coalesce(p_note, ''))) > 280 then
+  if char_length(coalesce(v_trimmed_note, '')) > 280 then
     raise exception using errcode = 'MD422', message = 'invalid_review';
   end if;
 
   update public.document_versions v
   set
     review_status = p_status,
-    review_note = case when p_note is null then null else btrim(p_note) end,
+    review_note = v_trimmed_note,
     reviewed_by = p_actor_id,
     reviewed_at = p_reviewed_at
   where v.id = p_version_id

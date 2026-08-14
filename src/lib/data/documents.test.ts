@@ -407,9 +407,11 @@ test('setDocumentReview validates role, UUID, and required rejection note before
     (err) => err instanceof ApiError && err.code === 'FORBIDDEN',
   );
   await assert.rejects(() => setDocumentReview('bad-id', reviewCtx(), { status: 'approved' }));
-  await assert.rejects(() =>
-    setDocumentReview(VERSION, reviewCtx(), { status: 'rejected', note: '   ' }),
-  );
+  for (const note of ['   ', '\u00a0', '\ufeff', '\u00a0\ufeff']) {
+    await assert.rejects(() =>
+      setDocumentReview(VERSION, reviewCtx(), { status: 'rejected', note }),
+    );
+  }
   assert.equal(calls.length, 0);
 });
 

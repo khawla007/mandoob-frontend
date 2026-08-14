@@ -8,6 +8,12 @@ const migrationPath = resolve(
   'supabase/migrations/20260814100000_0058_document_review_ownership.sql',
 );
 
+const ECMASCRIPT_TRIM_CODE_POINTS = [
+  0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x0020, 0x00a0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003,
+  0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000,
+  0xfeff,
+];
+
 function executableSql(sql: string): string {
   return sql
     .replace(/--.*$/gm, '')
@@ -27,6 +33,24 @@ function extractFunction(sql: string): string {
   return match[0];
 }
 
+function extractTrimCharacters(sql: string): string {
+  const match = extractFunction(sql).match(
+    /v_trim_characters constant text := U&'((?:\\[0-9a-f]{4})+)'/i,
+  );
+  assert.ok(match, 'deterministic ECMAScript whitespace trim set is missing');
+  return match[1].replace(/\\([0-9a-f]{4})/gi, (_, hex: string) =>
+    String.fromCodePoint(Number.parseInt(hex, 16)),
+  );
+}
+
+function trimWithSqlCharacterSet(value: string, trimCharacters: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && trimCharacters.includes(value[start])) start += 1;
+  while (end > start && trimCharacters.includes(value[end - 1])) end -= 1;
+  return value.slice(start, end);
+}
+
 function assertReviewContract(sql: string): void {
   const normalized = executableSql(sql);
   const fn = extractFunction(sql);
@@ -41,6 +65,10 @@ function assertReviewContract(sql: string): void {
   );
   assert.match(fn, /language plpgsql volatile security invoker set search_path = ''/i);
   assert.doesNotMatch(fn, /security definer/i);
+  assert.deepEqual(
+    [...extractTrimCharacters(sql)].map((character) => character.codePointAt(0)),
+    ECMASCRIPT_TRIM_CODE_POINTS,
+  );
 
   assert.match(fn, /from public\.tenants where id = p_tenant_id and status = 'active' for share/i);
   assert.match(
@@ -74,14 +102,16 @@ function assertReviewContract(sql: string): void {
   assert.match(fn, /p_status is null or p_status not in \('approved','rejected'\)/i);
   assert.match(
     fn,
-    /p_status = 'rejected'[\s\S]*?regexp_replace\(coalesce\(p_note,''\),'\[\[:space:\]\]','','g'\) = ''/i,
+    /v_trimmed_note := case when p_note is null then null else btrim\(p_note,v_trim_characters\) end/i,
   );
-  assert.match(fn, /char_length\(btrim\(coalesce\(p_note,''\)\)\) > 280/i);
+  assert.match(fn, /p_status = 'rejected'[\s\S]*?coalesce\(v_trimmed_note,''\) = ''/i);
+  assert.match(fn, /char_length\(coalesce\(v_trimmed_note,''\)\) > 280/i);
+  assert.doesNotMatch(fn, /\[\[:space:\]\]/i, 'locale-dependent whitespace classes are forbidden');
   assert.match(fn, /errcode = 'MD422'/i);
 
   assert.match(
     fn,
-    /update public\.document_versions v set review_status = p_status,review_note = case when p_note is null then null else btrim\(p_note\) end,reviewed_by = p_actor_id,reviewed_at = p_reviewed_at where v\.id = p_version_id and v\.tenant_id = p_tenant_id and v\.document_id = v_document_id returning v\.id into v_updated_version_id/i,
+    /update public\.document_versions v set review_status = p_status,review_note = v_trimmed_note,reviewed_by = p_actor_id,reviewed_at = p_reviewed_at where v\.id = p_version_id and v\.tenant_id = p_tenant_id and v\.document_id = v_document_id returning v\.id into v_updated_version_id/i,
     'review update must repeat the authorized version scope and require a returned row',
   );
   assert.match(fn, /if v_updated_version_id is null then raise exception/i);
@@ -129,6 +159,16 @@ test('review migration exists and enforces the atomic ownership contract', () =>
   assertReviewContract(readFileSync(migrationPath, 'utf8'));
 });
 
+test('review SQL trim set rejects NBSP and BOM-only notes deterministically', () => {
+  const sql = readFileSync(migrationPath, 'utf8');
+  const trimCharacters = extractTrimCharacters(sql);
+
+  assert.equal(trimWithSqlCharacterSet('\u00a0', trimCharacters), '');
+  assert.equal(trimWithSqlCharacterSet('\ufeff', trimCharacters), '');
+  assert.equal(trimWithSqlCharacterSet('\u00a0\ufeff\u2029', trimCharacters), '');
+  assert.equal(trimWithSqlCharacterSet('\u00a0Readable\ufeff', trimCharacters), 'Readable');
+});
+
 test('review contract rejects mutations that weaken chain, locks, grants, or append-only history', () => {
   const sql = readFileSync(migrationPath, 'utf8');
   const mutations = [
@@ -136,10 +176,10 @@ test('review contract rejects mutations that weaken chain, locks, grants, or app
     sql.replace('for update of v, d, c', ''),
     sql.replace('v_request_client_id <> v_document_client_id', 'false'),
     sql.replace('p_status is null\n    or ', ''),
-    sql.replace(
-      "regexp_replace(coalesce(p_note, ''), '[[:space:]]', '', 'g')",
-      "btrim(coalesce(p_note, ''))",
-    ),
+    sql.replace('\\00A0', ''),
+    sql.replace('\\2000', ''),
+    sql.replace('\\FEFF', ''),
+    sql.replace('review_note = v_trimmed_note', 'review_note = p_note'),
     sql.replace("and r.status = 'pending'", "and r.status <> 'fulfilled'"),
     sql.replace('to service_role;', 'to authenticated;'),
     sql.replace(
