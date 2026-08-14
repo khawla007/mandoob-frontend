@@ -1672,6 +1672,22 @@ export type Database = {
           expires_on: string | null;
         }[];
       };
+      review_document_version: {
+        Args: {
+          p_actor_id: string;
+          p_note: string | null;
+          p_reviewed_at: string;
+          p_status: string;
+          p_tenant_id: string;
+          p_version_id: string;
+        };
+        Returns: {
+          client_id: string;
+          document_id: string;
+          fulfilled_request_id: string | null;
+          review_status: string;
+        }[];
+      };
       list_signal_payment_invoices: {
         Args: {
           p_date?: string | null;

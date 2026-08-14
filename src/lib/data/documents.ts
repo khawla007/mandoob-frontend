@@ -8,6 +8,7 @@ import { scanFile } from '@/lib/security/scan-file';
 import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import { enqueueSms } from '@/lib/sms/send';
+import { z } from 'zod';
 import {
   createDocumentRequestSchema,
   documentReviewSchema,
@@ -20,6 +21,7 @@ import {
 
 const STORAGE_BUCKET = 'tenant-documents';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const uuidSchema = z.string().uuid();
 
 const ALLOWED_MIMES = new Set<string>([
   'application/pdf',
@@ -414,23 +416,56 @@ export async function getDocumentSignedUrl(
   versionId: string,
   ttlSeconds = 60 * 5,
 ): Promise<{ url: string; expiresAt: string }> {
+  if (!uuidSchema.safeParse(tenantId).success || !uuidSchema.safeParse(versionId).success) {
+    throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
+  }
+
   const admin = createSupabaseServiceRoleClient();
   const { data: version, error: readErr } = await admin
     .from('document_versions')
-    .select('id, tenant_id, storage_path')
+    .select(
+      'id, tenant_id, storage_path, document:documents!inner(id, tenant_id, client_id, request_id, current_version_id, client:clients!inner(id, tenant_id))',
+    )
     .eq('id', versionId)
     .maybeSingle();
-  if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
+  if (readErr) throw new ApiError('INTERNAL', 'Could not load document version', 500);
   if (!version) throw new ApiError('NOT_FOUND', 'document version not found', 404);
-  if (version.tenant_id !== tenantId) {
-    throw new ApiError('FORBIDDEN', 'version belongs to a different tenant', 403);
+
+  type OwnedVersionRow = {
+    id: string;
+    tenant_id: string;
+    storage_path: string;
+    document: {
+      id: string;
+      tenant_id: string;
+      client_id: string;
+      request_id: string | null;
+      current_version_id: string | null;
+      client: { id: string; tenant_id: string } | null;
+    } | null;
+  };
+  const owned = version as unknown as OwnedVersionRow;
+  const document = owned.document;
+  const client = document?.client;
+  if (
+    owned.id !== versionId ||
+    owned.tenant_id !== tenantId ||
+    !document ||
+    document.tenant_id !== tenantId ||
+    !client ||
+    document.client_id !== client.id ||
+    client.tenant_id !== tenantId ||
+    typeof owned.storage_path !== 'string' ||
+    !owned.storage_path.startsWith(`${tenantId}/${client.id}/`)
+  ) {
+    throw new ApiError('NOT_FOUND', 'document version not found', 404);
   }
 
   const { data: signed, error: signErr } = await admin.storage
     .from(STORAGE_BUCKET)
-    .createSignedUrl(version.storage_path as string, ttlSeconds);
+    .createSignedUrl(owned.storage_path, ttlSeconds);
   if (signErr || !signed?.signedUrl) {
-    throw new ApiError('STORAGE_SIGN_FAILED', signErr?.message ?? 'signed URL failed', 502);
+    throw new ApiError('STORAGE_SIGN_FAILED', 'Could not create signed URL', 502);
   }
 
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
@@ -445,6 +480,13 @@ export type SetDocumentReviewCtx = {
   userAgent: string | null;
 };
 
+type DocumentReviewRpcResult = {
+  document_id: string;
+  client_id: string;
+  fulfilled_request_id: string | null;
+  review_status: string;
+};
+
 export async function setDocumentReview(
   versionId: string,
   ctx: SetDocumentReviewCtx,
@@ -453,67 +495,45 @@ export async function setDocumentReview(
   if (ctx.role !== 'pro') {
     throw new ApiError('FORBIDDEN', 'only pro can review documents', 403);
   }
-  documentReviewSchema.parse(input);
+  if (
+    !uuidSchema.safeParse(versionId).success ||
+    !uuidSchema.safeParse(ctx.tenantId).success ||
+    !uuidSchema.safeParse(ctx.actorId).success
+  ) {
+    throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
+  }
+  const review = documentReviewSchema.parse(input);
 
   const admin = createSupabaseServiceRoleClient();
-  const { data: version, error: readErr } = await admin
-    .from('document_versions')
-    .select('id, tenant_id, document_id')
-    .eq('id', versionId)
-    .maybeSingle();
-  if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
-  if (!version) throw new ApiError('NOT_FOUND', 'document version not found', 404);
-  if (version.tenant_id !== ctx.tenantId) {
-    throw new ApiError('FORBIDDEN', 'version belongs to a different tenant', 403);
-  }
-
   const reviewedAt = new Date().toISOString();
-  const { error: updErr } = await admin
-    .from('document_versions')
-    .update({
-      review_status: input.status,
-      review_note: input.note ?? null,
-      reviewed_by: ctx.actorId,
-      reviewed_at: reviewedAt,
+  const { data: result, error: reviewErr } = await admin
+    .rpc('review_document_version', {
+      p_tenant_id: ctx.tenantId,
+      p_actor_id: ctx.actorId,
+      p_version_id: versionId,
+      p_status: review.status,
+      p_note: review.note ?? null,
+      p_reviewed_at: reviewedAt,
     })
-    .eq('id', versionId);
-  if (updErr) throw new ApiError('INTERNAL', updErr.message, 500);
-
-  let fulfilledRequestId: string | null = null;
-  if (input.status === 'approved') {
-    const { data: docHead, error: docReadErr } = await admin
-      .from('documents')
-      .select('id, request_id')
-      .eq('id', version.document_id as string)
-      .maybeSingle();
-    if (docReadErr) throw new ApiError('INTERNAL', docReadErr.message, 500);
-
-    const { error: linkErr } = await admin
-      .from('documents')
-      .update({ current_version_id: versionId, updated_at: reviewedAt })
-      .eq('id', version.document_id as string);
-    if (linkErr) throw new ApiError('INTERNAL', linkErr.message, 500);
-
-    const requestId = (docHead?.request_id as string | null | undefined) ?? null;
-    if (requestId) {
-      const { error: reqErr } = await admin
-        .from('document_requests')
-        .update({ status: 'fulfilled', updated_at: reviewedAt })
-        .eq('id', requestId)
-        .neq('status', 'fulfilled');
-      if (reqErr) throw new ApiError('INTERNAL', reqErr.message, 500);
-      fulfilledRequestId = requestId;
+    .maybeSingle();
+  if (reviewErr) {
+    if (reviewErr.code === 'MD404') {
+      throw new ApiError('NOT_FOUND', 'document version not found', 404);
     }
+    if (reviewErr.code === '42501') {
+      throw new ApiError('FORBIDDEN', 'Not authorized to review document', 403);
+    }
+    if (reviewErr.code === 'MD422') {
+      throw new ApiError('VALIDATION_FAILED', 'Invalid document review', 400);
+    }
+    throw new ApiError('INTERNAL', 'Could not save document review', 500);
+  }
+  if (!result) throw new ApiError('NOT_FOUND', 'document version not found', 404);
+  const reviewed = result as DocumentReviewRpcResult;
+  if (reviewed.review_status !== review.status || !reviewed.document_id || !reviewed.client_id) {
+    throw new ApiError('INTERNAL', 'Could not save document review', 500);
   }
 
-  await logDocumentAudit(ctx.tenantId, ctx.actorId, {
-    entity: 'document',
-    op: 'review',
-    version_id: versionId,
-    document_id: version.document_id,
-    review_status: input.status,
-    fulfilled_request_id: fulfilledRequestId,
-  });
   await recordAuthEvent({
     kind: 'tenant_self_updated',
     actorUserId: ctx.actorId,
@@ -524,7 +544,8 @@ export async function setDocumentReview(
       entity: 'document',
       op: 'review',
       version_id: versionId,
-      review_status: input.status,
+      document_id: reviewed.document_id,
+      review_status: review.status,
     },
   }).catch((err) => console.error('recordAuthEvent failed', err));
 }
