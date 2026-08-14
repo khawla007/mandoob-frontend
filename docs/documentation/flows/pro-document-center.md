@@ -5,7 +5,7 @@
 1. A signed-in PRO opens `/t/{pro-slug}/documents`. The server freshly verifies the PRO role, slug-to-firm match, and active firm before any service-role read.
 2. The PRO selects a client from the bounded firm-scoped search, chooses one of the 15 supported document types, supplies a label, and may add a Dubai-calendar due date and notes.
 3. The server action repeats authorization, validates the form, proves that the client belongs to the firm, creates a pending `document_requests` row, and writes audit/auth telemetry.
-4. Notification delivery is attempted after creation: email for a linked customer email and WhatsApp/SMS when a phone is present. Delivery is not part of the request transaction and failures do not expose internals to the user.
+4. Notification delivery is attempted after creation. Current behavior requires a linked customer profile and auth-user email, awaits Email first, and only after a successful email enqueue attempts WhatsApp and then SMS when a phone exists. The latter two attempts are best-effort. This email-first dependency is a known sequencing limitation, not independent channel fan-out; notification failure does not roll back the request or expose internals to the user.
 5. The customer follows the focused portal link and uploads a permitted, scanned file. Upload creates a new `document_versions` row and points the document head at that version; earlier versions remain in history.
 6. The queue now shows the document as submitted/pending review. The PRO can open its short-lived signed URL only after the server proves `version -> document -> client -> firm` and validates the generated storage key.
 7. The PRO approves or rejects the version. Rejection requires a trimmed note. The atomic review RPC rechecks the active firm/actor, locks and proves the complete ownership chain, updates the selected version, and writes audit data.
@@ -18,7 +18,7 @@ The queue is a firm-wide union of outstanding requests without a document head a
 
 - Views: all, requested, submitted, approved, rejected, expiring, and overdue.
 - Sorts: urgency, newest, oldest, due date, and expiry date.
-- Filters: client, document type, search, inclusive date range, and preset window.
+- Filters: client, document type, search, inclusive date range, and preset window. Presets are `all`, `overdue`, `7`, `30`, and `90`; any non-`all` preset replaces custom dates. `overdue` maps through Dubai yesterday, while numeric presets map from Dubai today through the selected day count. Bounds apply to due dates for `requested`/`overdue` and expiry dates for every other view.
 - Focus: exact request or document UUID; focused navigation always begins on page 1.
 - Pagination: 50 rows maximum, exact filtered total, stable entity tie-breakers, and a database-clamped `effective_page`.
 

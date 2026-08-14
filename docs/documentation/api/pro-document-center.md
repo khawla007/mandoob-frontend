@@ -4,7 +4,7 @@
 
 The Document Center is a server-rendered PRO workspace at `/t/{pro-slug}/documents`. Before any service-role read, the page obtains a fresh PRO session, resolves the URL slug, requires the session's `tenantId` to equal the resolved firm ID, and requires that firm to be active. An unknown slug returns not found; a cross-firm session is forbidden.
 
-Every server action repeats that authorization sequence. A previous page render is not treated as authorization for a request, review, open, history, expiry, or client-search action. Service-role calls are private server implementation details: the three Document Center RPCs revoke execution from `public`, `anon`, and `authenticated` and grant it only to `service_role`.
+Every server action repeats that authorization sequence. A previous page render is not treated as authorization for a request, review, open, history, expiry, or client-search action. Service-role calls are private server implementation details: the four RPCs used by Document Center revoke execution from `public`, `anon`, and `authenticated` and grant it only to `service_role`.
 
 Ownership is proven through linked records, not by trusting a caller-supplied firm or client ID:
 
@@ -67,7 +67,9 @@ The six summary counts use independent calls to the same RPC. A failed count is 
 
 ## Effective dates and expiry ownership
 
-All operational date boundaries use `Asia/Dubai`. `expiring` includes today through today + 30 days, inclusive. `overdue` includes request due dates strictly before today. User windows map to inclusive Dubai dates.
+All operational date boundaries use `Asia/Dubai`. `expiring` includes today through today + 30 days, inclusive. `overdue` includes request due dates strictly before today.
+
+Preset window values are `all`, `overdue`, `7`, `30`, and `90`. `all` preserves an optional custom `from`/`to` range. Every non-`all` preset replaces—not combines with—the custom range: `overdue` becomes no lower bound through Dubai today - 1 day, while `7`, `30`, and `90` become Dubai today through today + the selected number of days, inclusive. The resulting bounds are sent as due-date filters for `requested` and `overdue` views; every other view sends them as expiry-date filters.
 
 The effective expiry and its owner are:
 
@@ -131,4 +133,4 @@ Document Center actions return a discriminated result: success is `{ ok: true, c
 
 Successful request, review, and expiry actions revalidate both `/t/{pro-slug}/documents` and `/t/{pro-slug}/clients/{authoritative client UUID}`. The client ID used for cache invalidation comes from the verified data operation, not from form input. Open and history are read actions and do not revalidate.
 
-Creating a request writes tenant audit/auth-event records, then fans out the `document-requested` notification through Email, WhatsApp, and SMS when the corresponding linked customer contact details exist. Delivery failures do not fail the request. When an email recipient is resolved but no phone exists, the WhatsApp and SMS skips are recorded in the tenant audit log. The notification links focus the exact request in the customer portal.
+Creating a request writes tenant audit/auth-event records before notification delivery. Current notification sequencing first requires a linked customer profile and auth-user email; without both, no notification channel is attempted. The Email enqueue is awaited first. Only after it succeeds does the server attempt WhatsApp and then SMS when a profile phone exists; those two attempts are individually best-effort. If the resolved profile has no phone, WhatsApp and SMS skips are recorded in the tenant audit log. Any notification-stage failure is caught by request creation, so it does not undo or report failure for the already-created request. This email-first dependency is a current implementation limitation, not independent channel fan-out. Notification links focus the exact request in the customer portal.
