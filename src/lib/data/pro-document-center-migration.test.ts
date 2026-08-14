@@ -154,7 +154,11 @@ function assertHistorySnapshotContract(sql: string): void {
     'one JSON aggregate must materialize the complete deterministic snapshot',
   );
   assert.match(fn, /'versionNumber',ranked\.total - ranked\.newest_rank \+ 1/i);
-  assert.match(fn, /'current',ranked\.version_id = ranked\.current_version_id/i);
+  assert.match(
+    fn,
+    /'current',coalesce\(ranked\.version_id = ranked\.current_version_id,false\)/i,
+    'history current flags must remain boolean when the document has no current head',
+  );
   assert.match(fn, /'documentId',owned\.document_id/i);
   assert.match(fn, /'currentVersionId',owned\.current_version_id/i);
   assert.match(fn, /'total',coalesce\(versions\.total,0\)/i);
@@ -596,6 +600,14 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
   }
 
   for (const [mutate, failure] of [
+    [
+      (source: string) =>
+        source.replace(
+          /coalesce\(ranked\.version_id = ranked\.current_version_id, false\)/i,
+          'ranked.version_id = ranked.current_version_id',
+        ),
+      /current flags must remain boolean/,
+    ],
     [
       (source: string) => source.replace(/and v\.tenant_id = owned\.tenant_id/i, ''),
       /every version must follow the owned document and tenant chain/,

@@ -409,7 +409,7 @@ with owned as materialized (
       jsonb_build_object(
         'versionId', ranked.version_id,
         'versionNumber', ranked.total - ranked.newest_rank + 1,
-        'current', ranked.version_id = ranked.current_version_id,
+        'current', coalesce(ranked.version_id = ranked.current_version_id, false),
         'uploadedAt', ranked.created_at,
         'uploadedBy', ranked.uploaded_by,
         'uploaderName', ranked.uploader_name,

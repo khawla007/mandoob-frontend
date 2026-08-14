@@ -315,6 +315,35 @@ test('listDocumentVersionHistory rejects malformed snapshot envelopes', async ()
   assert.equal(calls.length, 1);
 });
 
+test('listDocumentVersionHistory accepts retained versions when the document has no current head', async () => {
+  const calls = captureFetch(() =>
+    json({
+      documentId: DOCUMENT,
+      currentVersionId: null,
+      total: 1,
+      versions: [
+        historyVersion({
+          versionId: VERSION_1,
+          versionNumber: 1,
+          current: false,
+        }),
+      ],
+    }),
+  );
+  const { listDocumentVersionHistory } = await load();
+
+  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+
+  assert.equal(calls.length, 1);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].versionId, VERSION_1);
+  assert.equal(result[0].current, false);
+  assert.equal(
+    result.some((version) => version.current),
+    false,
+  );
+});
+
 test('listDocumentVersionHistory returns every 1001+ version from one immutable response snapshot', async () => {
   const total = 1001;
   const currentId = '00000000-0000-4000-8000-000000000750';
