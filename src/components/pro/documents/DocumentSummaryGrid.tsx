@@ -100,6 +100,7 @@ export function DocumentSummaryGrid({
     },
   ];
   const currentHref = documentCenterHref(slug, query);
+  const numberFormatter = new Intl.NumberFormat(locale);
 
   return (
     <section className="document-center__summary-grid grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -125,7 +126,7 @@ export function DocumentSummaryGrid({
                 </span>
                 {item.result.ok ? (
                   <span className="mt-1 block text-2xl font-semibold tabular-nums">
-                    {new Intl.NumberFormat(locale).format(item.result.value)}
+                    {numberFormatter.format(item.result.value)}
                   </span>
                 ) : (
                   <span className="text-destructive mt-1 block text-sm font-semibold">

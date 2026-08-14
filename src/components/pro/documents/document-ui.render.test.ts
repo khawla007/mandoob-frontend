@@ -118,6 +118,64 @@ renderTest(
   },
 );
 
+renderTest('history feedback uses one announcement mechanism for each state', async () => {
+  let loaded: typeof import('./VersionHistoryFeedback') | undefined;
+  try {
+    loaded = await import('./VersionHistoryFeedback');
+  } catch {}
+  assert.ok(loaded);
+  if (!loaded) return;
+  const { renderToStaticMarkup } = await import('react-dom/server');
+
+  const loading = renderToStaticMarkup(
+    React.createElement(
+      loaded.VersionHistoryFeedback,
+      {
+        loading: true,
+        error: null,
+        empty: false,
+        loadingLabel: 'Loading',
+        emptyLabel: 'Empty',
+      },
+      React.createElement('ol', null, React.createElement('li', null, 'Version')),
+    ),
+  );
+  assert.equal((loading.match(/role="status"/gu) ?? []).length, 1);
+  assert.doesNotMatch(loading, /aria-live=/u);
+
+  const failed = renderToStaticMarkup(
+    React.createElement(
+      loaded.VersionHistoryFeedback,
+      {
+        loading: false,
+        error: 'Failed',
+        empty: false,
+        loadingLabel: 'Loading',
+        emptyLabel: 'Empty',
+      },
+      React.createElement('ol', null),
+    ),
+  );
+  assert.equal((failed.match(/role="alert"/gu) ?? []).length, 1);
+  assert.doesNotMatch(failed, /aria-live=/u);
+
+  const success = renderToStaticMarkup(
+    React.createElement(
+      loaded.VersionHistoryFeedback,
+      {
+        loading: false,
+        error: null,
+        empty: false,
+        loadingLabel: 'Loading',
+        emptyLabel: 'Empty',
+      },
+      React.createElement('ol', null, React.createElement('li', null, 'Version')),
+    ),
+  );
+  assert.doesNotMatch(success, /aria-live=|role="(?:status|alert)"/u);
+  assert.match(success, /<ol><li>Version<\/li><\/ol>/u);
+});
+
 const filterLabels: DocumentFilterLabels = {
   search: 'Search',
   searchPlaceholder: 'Find',

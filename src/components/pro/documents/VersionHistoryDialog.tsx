@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { Clock3, ExternalLink, LoaderCircle } from 'lucide-react';
+import { Clock3, ExternalLink } from 'lucide-react';
 
 import {
   loadVersionHistoryAction,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import type { DocumentVersionHistoryEntry } from '@/lib/data/pro-document-center';
 import { openDocumentVersionWithPopup } from './document-open-controller';
+import { VersionHistoryFeedback } from './VersionHistoryFeedback';
 import {
   createVersionHistoryController,
   createVersionHistoryFormatters,
@@ -172,99 +173,89 @@ export function VersionHistoryDialog({
           <DialogDescription>{labels.description}</DialogDescription>
         </DialogHeader>
 
-        <div aria-live="polite" className="min-h-12">
-          {loading ? (
-            <div
-              role="status"
-              className="text-muted-foreground flex items-center gap-2 py-6 text-sm"
-            >
-              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-              {labels.loading}
-            </div>
-          ) : error ? (
-            <p role="alert" className="text-destructive py-3 text-sm">
-              {error}
-            </p>
-          ) : versions?.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-sm">{labels.empty}</p>
-          ) : (
-            <ol className="divide-y">
-              {versions?.map((version) => (
-                <li key={version.versionId} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto]">
-                  <div className="min-w-0 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">
-                        {labels.version} {formatters.integer.format(version.versionNumber)}
+        <VersionHistoryFeedback
+          loading={loading}
+          error={error}
+          empty={versions?.length === 0}
+          loadingLabel={labels.loading}
+          emptyLabel={labels.empty}
+        >
+          <ol className="divide-y">
+            {versions?.map((version) => (
+              <li key={version.versionId} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto]">
+                <div className="min-w-0 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">
+                      {labels.version} {formatters.integer.format(version.versionNumber)}
+                    </span>
+                    {version.current ? (
+                      <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
+                        {labels.current}
                       </span>
-                      {version.current ? (
-                        <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
-                          {labels.current}
-                        </span>
-                      ) : null}
-                      <span className="bg-muted rounded-full px-2 py-0.5 text-xs">
-                        {labels.statuses[version.reviewStatus]}
-                      </span>
-                    </div>
-                    <dl className="text-muted-foreground grid gap-1 text-xs sm:grid-cols-2">
-                      <div>
-                        <dt className="text-foreground font-medium">{labels.uploaded}</dt>
-                        <dd>
-                          {formatTimestamp(version.uploadedAt, formatters.timestamp)}{' '}
-                          {labels.dubaiTime}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-foreground font-medium">{labels.uploadedBy}</dt>
-                        <dd>{version.uploaderName ?? labels.unknownActor}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-foreground font-medium">{labels.review}</dt>
-                        <dd>
-                          {version.reviewedAt
-                            ? `${formatTimestamp(version.reviewedAt, formatters.timestamp)} ${labels.dubaiTime}`
-                            : labels.statuses[version.reviewStatus]}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-foreground font-medium">{labels.reviewedBy}</dt>
-                        <dd>{version.reviewerName ?? labels.unknownActor}</dd>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <dt className="text-foreground font-medium">{labels.file}</dt>
-                        <dd>
-                          {version.mimeType} ·{' '}
-                          {formatSize(
-                            version.sizeBytes,
-                            formatters.integer,
-                            formatters.decimal,
-                            labels.units,
-                          )}
-                        </dd>
-                      </div>
-                      {version.reviewNote ? (
-                        <div className="sm:col-span-2">
-                          <dt className="text-foreground font-medium">{labels.note}</dt>
-                          <dd className="break-words">{version.reviewNote}</dd>
-                        </div>
-                      ) : null}
-                    </dl>
+                    ) : null}
+                    <span className="bg-muted rounded-full px-2 py-0.5 text-xs">
+                      {labels.statuses[version.reviewStatus]}
+                    </span>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={opening}
-                    onClick={() => openVersion(version)}
-                    className="self-start"
-                  >
-                    <ExternalLink aria-hidden="true" />
-                    {openingId === version.versionId ? labels.opening : labels.open}
-                  </Button>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
+                  <dl className="text-muted-foreground grid gap-1 text-xs sm:grid-cols-2">
+                    <div>
+                      <dt className="text-foreground font-medium">{labels.uploaded}</dt>
+                      <dd>
+                        {formatTimestamp(version.uploadedAt, formatters.timestamp)}{' '}
+                        {labels.dubaiTime}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-foreground font-medium">{labels.uploadedBy}</dt>
+                      <dd>{version.uploaderName ?? labels.unknownActor}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-foreground font-medium">{labels.review}</dt>
+                      <dd>
+                        {version.reviewedAt
+                          ? `${formatTimestamp(version.reviewedAt, formatters.timestamp)} ${labels.dubaiTime}`
+                          : labels.statuses[version.reviewStatus]}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-foreground font-medium">{labels.reviewedBy}</dt>
+                      <dd>{version.reviewerName ?? labels.unknownActor}</dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-foreground font-medium">{labels.file}</dt>
+                      <dd>
+                        {version.mimeType} ·{' '}
+                        {formatSize(
+                          version.sizeBytes,
+                          formatters.integer,
+                          formatters.decimal,
+                          labels.units,
+                        )}
+                      </dd>
+                    </div>
+                    {version.reviewNote ? (
+                      <div className="sm:col-span-2">
+                        <dt className="text-foreground font-medium">{labels.note}</dt>
+                        <dd className="break-words">{version.reviewNote}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={opening}
+                  onClick={() => openVersion(version)}
+                  className="self-start"
+                >
+                  <ExternalLink aria-hidden="true" />
+                  {openingId === version.versionId ? labels.opening : labels.open}
+                </Button>
+              </li>
+            ))}
+          </ol>
+        </VersionHistoryFeedback>
       </DialogContent>
     </Dialog>
   );

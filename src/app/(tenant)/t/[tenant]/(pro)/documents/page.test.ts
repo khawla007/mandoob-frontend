@@ -10,6 +10,7 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf
 const page = read('./page.tsx');
 const actions = read('../../../../../../components/pro/documents/DocumentActions.tsx');
 const history = read('../../../../../../components/pro/documents/VersionHistoryDialog.tsx');
+const summary = read('../../../../../../components/pro/documents/DocumentSummaryGrid.tsx');
 const queue = read('../../../../../../components/pro/documents/DocumentWorkQueue.tsx');
 
 test('page awaits Next 16 route inputs, parses once, and forces dynamic rendering', () => {
@@ -95,9 +96,10 @@ test('canonicalization preserves validated filters and targets a focused item on
 test('client action islands keep React 19 and server-action boundaries explicit', () => {
   for (const client of [actions, history]) {
     assert.match(client, /^'use client';/u);
-    assert.match(client, /aria-live="polite"/u);
     assert.doesNotMatch(client, /as never/u);
   }
+  assert.match(actions, /aria-live="polite"/u);
+  assert.doesNotMatch(history, /aria-live=/u);
   assert.match(actions, /useActionState/u);
   assert.match(actions, /resolvePrimaryDocumentAction\(row\)/u);
   assert.match(actions, /data-primary=/u);
@@ -106,6 +108,15 @@ test('client action islands keep React 19 and server-action boundaries explicit'
   assert.match(history, /loadVersionHistoryAction\(slug, documentId\)/u);
   assert.doesNotMatch(history, /versions !== null/u);
   assert.doesNotMatch(queue, /row=\{row\}/u);
+});
+
+test('summary constructs one locale number formatter before mapping widgets', () => {
+  assert.equal((summary.match(/new Intl\.NumberFormat\(locale\)/gu) ?? []).length, 1);
+  assert.match(
+    summary,
+    /const numberFormatter = new Intl\.NumberFormat\(locale\)[\s\S]*items\.map/u,
+  );
+  assert.match(summary, /numberFormatter\.format\(item\.result\.value\)/u);
 });
 
 test('queue hoists locale formatters outside per-row formatting helpers', () => {
