@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, FileText, MessageSquareWarning, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -12,25 +13,6 @@ import {
   reviewDocumentVersionAction,
 } from '@/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/documents/actions';
 import type { DocumentListEntry, OpenRequestEntry } from '@/lib/data/documents';
-import type { DocType } from '@/lib/validation/document';
-
-const DOC_TYPE_LABELS: Record<DocType, string> = {
-  passport: 'Passport',
-  visa: 'Visa',
-  emirates_id: 'Emirates ID',
-  trade_license: 'Trade license',
-  ejari: 'Ejari',
-  moa: 'MoA',
-  shareholder_id: 'Shareholder ID',
-  other: 'Other',
-  aoa: 'Articles of Association',
-  bank_reference_letter: 'Bank reference letter',
-  noc: 'No objection certificate',
-  cv_resume: 'CV / résumé',
-  office_lease: 'Office lease',
-  medical_certificate: 'Medical certificate',
-  insurance_policy: 'Insurance policy',
-};
 
 type ReviewStatus = NonNullable<DocumentListEntry['currentVersion']>['reviewStatus'];
 
@@ -51,6 +33,7 @@ export function DocumentsTab(props: {
   focusedRequestId?: string;
   focusedDocumentId?: string;
 }) {
+  const tDocTypes = useTranslations('proDocumentCenter.docTypes');
   const { slug, clientId, documents, openRequests, focusedRequestId, focusedDocumentId } = props;
   const empty = documents.length === 0 && openRequests.length === 0;
 
@@ -90,7 +73,7 @@ export function DocumentsTab(props: {
                     <div>
                       <div className="font-medium">{req.label}</div>
                       <div className="text-muted-foreground text-xs">
-                        {DOC_TYPE_LABELS[req.docType]}
+                        {tDocTypes(req.docType)}
                         {req.dueAt && <> · due {new Date(req.dueAt).toLocaleDateString()}</>}
                       </div>
                       {req.notes && (
@@ -132,6 +115,7 @@ function DocumentRow(props: {
   clientId: string;
   focused: boolean;
 }) {
+  const tDocTypes = useTranslations('proDocumentCenter.docTypes');
   const { doc, slug, clientId, focused } = props;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -185,9 +169,9 @@ function DocumentRow(props: {
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="font-medium">{doc.label ?? DOC_TYPE_LABELS[doc.docType]}</div>
+          <div className="font-medium">{doc.label ?? tDocTypes(doc.docType)}</div>
           <div className="text-muted-foreground text-xs">
-            {DOC_TYPE_LABELS[doc.docType]}
+            {tDocTypes(doc.docType)}
             {version && <> · uploaded {new Date(version.createdAt).toLocaleDateString()}</>}
             {version?.reviewNote && version.reviewStatus === 'rejected' && (
               <> · note: {version.reviewNote}</>

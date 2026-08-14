@@ -3,25 +3,6 @@ import { getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { OpenRequestEntry } from '@/lib/data/documents';
-import type { DocType } from '@/lib/validation/document';
-
-const DOC_TYPE_KEYS: Record<DocType, string> = {
-  passport: 'passport',
-  visa: 'visa',
-  emirates_id: 'emiratesId',
-  trade_license: 'tradeLicense',
-  ejari: 'ejari',
-  moa: 'moa',
-  shareholder_id: 'shareholderId',
-  other: 'other',
-  aoa: 'aoa',
-  bank_reference_letter: 'bankReferenceLetter',
-  noc: 'noc',
-  cv_resume: 'cvResume',
-  office_lease: 'officeLease',
-  medical_certificate: 'medicalCertificate',
-  insurance_policy: 'insurancePolicy',
-};
 
 type RenewalsTranslator = Awaited<ReturnType<typeof getTranslations<'renewals'>>>;
 
@@ -70,7 +51,7 @@ export async function ActiveDocRequestsCard({
                   <div>
                     <div className="text-sm font-medium">{r.label}</div>
                     <div className="text-muted-foreground mt-0.5 text-xs">
-                      {tDocTypes(DOC_TYPE_KEYS[r.docType])}
+                      {tDocTypes(r.docType)}
                       {due && <> · {due}</>}
                     </div>
                   </div>

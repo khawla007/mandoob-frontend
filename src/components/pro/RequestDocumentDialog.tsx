@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,25 +27,8 @@ import {
 import { requestDocumentAction } from '@/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/documents/actions';
 import { DOC_TYPES, type DocType } from '@/lib/validation/document';
 
-const DOC_TYPE_LABELS: Record<DocType, string> = {
-  passport: 'Passport',
-  visa: 'Visa',
-  emirates_id: 'Emirates ID',
-  trade_license: 'Trade license',
-  ejari: 'Ejari',
-  moa: 'MoA',
-  shareholder_id: 'Shareholder ID',
-  other: 'Other',
-  aoa: 'Articles of Association',
-  bank_reference_letter: 'Bank reference letter',
-  noc: 'No objection certificate',
-  cv_resume: 'CV / résumé',
-  office_lease: 'Office lease',
-  medical_certificate: 'Medical certificate',
-  insurance_policy: 'Insurance policy',
-};
-
 export function RequestDocumentDialog({ slug, clientId }: { slug: string; clientId: string }) {
+  const tDocTypes = useTranslations('proDocumentCenter.docTypes');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -120,7 +104,7 @@ export function RequestDocumentDialog({ slug, clientId }: { slug: string; client
               <SelectContent>
                 {DOC_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
-                    {DOC_TYPE_LABELS[t]}
+                    {tDocTypes(t)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -562,19 +562,19 @@
     "docTypeLabels": {
       "passport": "Passport",
       "visa": "Visa",
-      "emiratesId": "Emirates ID",
-      "tradeLicense": "Trade license",
+      "emirates_id": "Emirates ID",
+      "trade_license": "Trade license",
       "ejari": "Ejari",
       "moa": "MoA",
-      "shareholderId": "Shareholder ID",
+      "shareholder_id": "Shareholder ID",
       "other": "Other",
       "aoa": "Articles of Association",
-      "bankReferenceLetter": "Bank reference letter",
+      "bank_reference_letter": "Bank reference letter",
       "noc": "No objection certificate",
-      "cvResume": "CV / résumé",
-      "officeLease": "Office lease",
-      "medicalCertificate": "Medical certificate",
-      "insurancePolicy": "Insurance policy"
+      "cv_resume": "CV / résumé",
+      "office_lease": "Office lease",
+      "medical_certificate": "Medical certificate",
+      "insurance_policy": "Insurance policy"
     },
     "longCopy": {
       "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",
