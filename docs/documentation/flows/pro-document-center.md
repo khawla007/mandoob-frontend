@@ -4,9 +4,9 @@
 
 1. A signed-in PRO opens `/t/{pro-slug}/documents`. The server freshly verifies the PRO role, slug-to-firm match, and active firm before any service-role read.
 2. The PRO selects a client from the bounded firm-scoped search, chooses one of the 15 supported document types, supplies a label, and may add a Dubai-calendar due date and notes.
-3. The server action repeats authorization, validates the form, proves that the client belongs to the firm, creates a pending `document_requests` row, and writes audit/auth telemetry.
+3. The server action repeats authorization, validates the form, proves that the client belongs to the firm, and creates a pending `document_requests` row. It then attempts tenant audit and auth-event telemetry; telemetry failures are safely logged without rolling back the request.
 4. Notification delivery is attempted after creation. Current behavior requires a linked customer profile and auth-user email, awaits Email first, and only after a successful email enqueue attempts WhatsApp and then SMS when a phone exists. The latter two attempts are best-effort. This email-first dependency is a known sequencing limitation, not independent channel fan-out; notification failure does not roll back the request or expose internals to the user.
-5. The customer follows the focused portal link and uploads a permitted, scanned file. Upload creates a new `document_versions` row and points the document head at that version; earlier versions remain in history.
+5. The customer opens the document portal and uploads a permitted, scanned file. Upload creates a new `document_versions` row and points the document head at that version; earlier versions remain in history.
 6. The queue now shows the document as submitted/pending review. The PRO can open its short-lived signed URL only after the server proves `version -> document -> client -> firm` and validates the generated storage key.
 7. The PRO approves or rejects the version. Rejection requires a trimmed note. The atomic review RPC rechecks the active firm/actor, locks and proves the complete ownership chain, updates the selected version, and writes audit data.
 8. Approval points the document head at the reviewed version and fulfills a linked pending request in the same transaction. Rejection leaves the request unfulfilled so a corrected upload can be added as another version.
@@ -14,7 +14,7 @@
 
 ## Queue and focused navigation
 
-The queue is a firm-wide union of outstanding requests without a document head and document heads with their current version. Filters and focus values are URL state, enabling widgets and notifications to link to an exact operational view.
+The queue is a firm-wide union of outstanding requests without a document head and document heads with their current version. Filters and focus values are URL state, enabling Document Center widgets and internal drill-downs to link to an exact operational view.
 
 - Views: all, requested, submitted, approved, rejected, expiring, and overdue.
 - Sorts: urgency, newest, oldest, due date, and expiry date.

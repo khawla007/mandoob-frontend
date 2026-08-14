@@ -78,7 +78,15 @@ Migration 0057 preserves the original eight values and adds `aoa`, `bank_referen
 | `set_pro_document_expiry`          | `document_id`, `client_id`, `expires_on`                            | Atomic document-owned expiry update and audit.                                  |
 | `review_document_version`          | `document_id`, `client_id`, `fulfilled_request_id`, `review_status` | Atomic ownership-safe review, head/request transition, and audit.               |
 
-All four functions are invoked by the server with service-role access. The Document Center migrations revoke them from browser-facing database roles. Because the service role bypasses row-level policies, every RPC and its calling data layer explicitly validates the full ownership chain.
+All four functions are invoked by the server with service-role access, and the Document Center migrations revoke them from browser-facing database roles. Authorization is layered rather than identical in every RPC:
+
+- the page and every action freshly require an active PRO session whose firm membership matches the resolved route slug;
+- the data layer validates identifiers and filter inputs, then supplies the already-authorized firm ID to service-role reads;
+- `list_pro_document_center` is service-role-only and scopes every request/document join to `p_tenant_id`, but it does not authenticate an actor itself;
+- history validates the document/client/firm chain inside its RPC;
+- review and expiry additionally enforce the active firm, active PRO actor, and their applicable locked ownership chains inside the mutation RPCs.
+
+Signed URL access is not one of these RPCs; its data-layer query separately proves the version/document/client/firm chain before storage signing.
 
 ## Review invariants
 
