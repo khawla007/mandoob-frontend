@@ -76,7 +76,8 @@ create or replace function public.list_pro_document_center(
   effective_expires_on date,
   expiry_source text,
   created_at timestamptz,
-  total_count bigint
+  total_count bigint,
+  effective_page integer
 )
 language sql
 stable
@@ -319,7 +320,8 @@ select
   counted.effective_expires_on,
   counted.expiry_source,
   counted.created_at,
-  counted.total_count
+  counted.total_count,
+  (select effective_page from page_bounds) as effective_page
 from counted
 cross join params
 order by
@@ -353,6 +355,93 @@ grant execute on function public.list_pro_document_center(
   uuid, text, text, uuid, text, date, date, date, date, text, text, uuid, integer, integer
 ) to service_role;
 
+create or replace function public.get_pro_document_version_history(
+  p_tenant_id uuid,
+  p_document_id uuid
+) returns jsonb
+language sql
+stable
+security invoker
+set search_path = ''
+as $function$
+with owned as materialized (
+  select
+    d.id as document_id,
+    d.tenant_id,
+    d.current_version_id
+  from public.documents d
+  join public.clients c
+    on c.id = d.client_id
+    and c.tenant_id = d.tenant_id
+  where d.id = p_document_id
+    and d.tenant_id = p_tenant_id
+    and c.tenant_id = p_tenant_id
+), ranked as materialized (
+  select
+    v.id as version_id,
+    owned.current_version_id,
+    v.created_at,
+    v.uploaded_by,
+    uploader.full_name as uploader_name,
+    v.review_status,
+    v.reviewed_by,
+    reviewer.full_name as reviewer_name,
+    v.reviewed_at,
+    v.review_note,
+    v.size_bytes,
+    v.mime_type,
+    count(*) over() as total,
+    row_number() over (order by v.created_at desc, v.id desc) as newest_rank
+  from owned
+  join public.document_versions v
+    on v.document_id = owned.document_id
+    and v.tenant_id = owned.tenant_id
+  left join public.profiles uploader
+    on uploader.id = v.uploaded_by
+    and uploader.tenant_id = owned.tenant_id
+  left join public.profiles reviewer
+    on reviewer.id = v.reviewed_by
+    and reviewer.tenant_id = owned.tenant_id
+), versions as (
+  select
+    max(ranked.total) as total,
+    jsonb_agg(
+      jsonb_build_object(
+        'versionId', ranked.version_id,
+        'versionNumber', ranked.total - ranked.newest_rank + 1,
+        'current', ranked.version_id = ranked.current_version_id,
+        'uploadedAt', ranked.created_at,
+        'uploadedBy', ranked.uploaded_by,
+        'uploaderName', ranked.uploader_name,
+        'reviewStatus', ranked.review_status,
+        'reviewedBy', ranked.reviewed_by,
+        'reviewerName', ranked.reviewer_name,
+        'reviewedAt', ranked.reviewed_at,
+        'reviewNote', ranked.review_note,
+        'sizeBytes', ranked.size_bytes,
+        'mimeType', ranked.mime_type
+      )
+      order by ranked.created_at desc, ranked.version_id desc
+    ) as items
+  from ranked
+)
+select jsonb_build_object(
+  'documentId', owned.document_id,
+  'currentVersionId', owned.current_version_id,
+  'total', coalesce(versions.total, 0),
+  'versions', coalesce(versions.items, '[]'::jsonb)
+)
+from owned
+cross join versions;
+$function$;
+
+revoke all on function public.get_pro_document_version_history(
+  uuid, uuid
+) from public, anon, authenticated;
+grant execute on function public.get_pro_document_version_history(
+  uuid, uuid
+) to service_role;
+
 create or replace function public.set_pro_document_expiry(
   p_tenant_id uuid,
   p_document_id uuid,
@@ -381,6 +470,26 @@ declare
   v_updated_id uuid;
   v_updated_expires_on date;
 begin
+  perform 1
+  from public.tenants
+  where id = p_tenant_id
+    and status = 'active'
+  for share;
+  if not found then
+    raise exception using errcode = '42501', message = 'FORBIDDEN';
+  end if;
+
+  perform 1
+  from public.profiles
+  where id = p_actor_id
+    and tenant_id = p_tenant_id
+    and role = 'pro'
+    and status = 'active'
+  for share;
+  if not found then
+    raise exception using errcode = '42501', message = 'FORBIDDEN';
+  end if;
+
   select
     d.id,
     d.tenant_id,

@@ -14,7 +14,6 @@ import {
 import type { DocType } from '@/lib/validation/document';
 
 const PAGE_SIZE = 50;
-const VERSION_HISTORY_BATCH_SIZE = 500;
 
 export type DocumentCenterQuery = Partial<DocumentCenterSearch>;
 
@@ -48,6 +47,7 @@ export type DocumentCenterRow = {
   expirySource: 'client_license' | 'employee_visa' | 'employee_emirates_id' | 'document' | null;
   createdAt: string;
   totalCount: number;
+  effectivePage: number;
 };
 
 export type DocumentCenterWorkspace = {
@@ -121,6 +121,7 @@ function mapRpcRow(row: RpcRow): DocumentCenterRow {
     expirySource: asNullableString(row.expiry_source) as DocumentCenterRow['expirySource'],
     createdAt: row.created_at as string,
     totalCount: asNumber(row.total_count),
+    effectivePage: asNumber(row.effective_page),
   };
 }
 
@@ -208,7 +209,7 @@ export async function listProDocumentCenter(
   return {
     rows,
     total: rows[0]?.totalCount ?? 0,
-    page: validInput.page,
+    page: rows[0]?.effectivePage ?? 1,
     pageSize: PAGE_SIZE,
   };
 }
@@ -291,9 +292,59 @@ export type DocumentVersionHistoryEntry = {
   mimeType: string;
 };
 
-function relatedOne(value: unknown): Record<string, unknown> | null {
-  if (Array.isArray(value)) return (value[0] as Record<string, unknown> | undefined) ?? null;
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+const documentVersionHistoryEntrySchema = z.object({
+  versionId: uuidSchema,
+  versionNumber: z.number().int().positive(),
+  current: z.boolean(),
+  uploadedAt: z.string().datetime({ offset: true }),
+  uploadedBy: uuidSchema.nullable(),
+  uploaderName: z.string().nullable(),
+  reviewStatus: z.enum(['pending', 'approved', 'rejected']),
+  reviewedBy: uuidSchema.nullable(),
+  reviewerName: z.string().nullable(),
+  reviewedAt: z.string().datetime({ offset: true }).nullable(),
+  reviewNote: z.string().nullable(),
+  sizeBytes: z.number().int().nonnegative(),
+  mimeType: z.string().min(1),
+});
+
+const documentVersionHistoryEnvelopeSchema = z.object({
+  documentId: uuidSchema,
+  currentVersionId: uuidSchema.nullable(),
+  total: z.number().int().nonnegative(),
+  versions: z.array(documentVersionHistoryEntrySchema),
+});
+
+function isValidVersionSnapshot(
+  payload: z.infer<typeof documentVersionHistoryEnvelopeSchema>,
+  documentId: string,
+): boolean {
+  if (payload.documentId !== documentId || payload.total !== payload.versions.length) return false;
+
+  const ids = new Set<string>();
+  let currentCount = 0;
+  for (const [index, version] of payload.versions.entries()) {
+    if (version.versionNumber !== payload.total - index || ids.has(version.versionId)) return false;
+    ids.add(version.versionId);
+
+    const expectedCurrent = version.versionId === payload.currentVersionId;
+    if (version.current !== expectedCurrent) return false;
+    if (version.current) currentCount += 1;
+
+    const previous = payload.versions[index - 1];
+    if (previous) {
+      const previousTime = Date.parse(previous.uploadedAt);
+      const currentTime = Date.parse(version.uploadedAt);
+      if (
+        currentTime > previousTime ||
+        (currentTime === previousTime && version.versionId >= previous.versionId)
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return currentCount === (payload.currentVersionId === null ? 0 : 1);
 }
 
 export async function listDocumentVersionHistory(
@@ -303,105 +354,19 @@ export async function listDocumentVersionHistory(
   const validTenantId = uuidSchema.parse(tenantId);
   const validDocumentId = uuidSchema.parse(documentId);
   const admin = createSupabaseServiceRoleClient();
+  const { data, error } = await admin.rpc(
+    'get_pro_document_version_history' as never,
+    { p_tenant_id: validTenantId, p_document_id: validDocumentId } as never,
+  );
+  if (error) throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+  if (data === null) throw new ApiError('NOT_FOUND', 'Document not found', 404);
 
-  const { data: document, error: documentError } = await admin
-    .from('documents')
-    .select(
-      'id, tenant_id, client_id, current_version_id, clients!inner(id, tenant_id), employees(id, tenant_id, client_id)',
-    )
-    .eq('id', validDocumentId)
-    .maybeSingle();
-  if (documentError) throw new ApiError('INTERNAL', 'Unable to load document history', 500);
-  if (!document) throw new ApiError('NOT_FOUND', 'Document not found', 404);
-
-  const ownership = document as Record<string, unknown>;
-  const client = relatedOne(ownership.clients);
-  if (
-    ownership.tenant_id !== validTenantId ||
-    ownership.client_id !== client?.id ||
-    client?.tenant_id !== validTenantId
-  ) {
-    throw new ApiError('FORBIDDEN', 'Document is outside the firm scope', 403);
-  }
-
-  const versionColumns =
-    'id, document_id, tenant_id, mime_type, size_bytes, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, created_at, uploader:profiles!document_versions_uploaded_by_fkey(full_name), reviewer:profiles!document_versions_reviewed_by_fkey(full_name)';
-  const firstBatch = await admin
-    .from('document_versions')
-    .select(versionColumns, { count: 'exact' })
-    .eq('document_id', validDocumentId)
-    .eq('tenant_id', validTenantId)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range(0, VERSION_HISTORY_BATCH_SIZE - 1);
-  if (firstBatch.error || typeof firstBatch.count !== 'number') {
+  const parsed = documentVersionHistoryEnvelopeSchema.safeParse(data);
+  if (!parsed.success || !isValidVersionSnapshot(parsed.data, validDocumentId)) {
     throw new ApiError('INTERNAL', 'Unable to load document history', 500);
   }
-  const rows = [...((firstBatch.data ?? []) as Array<Record<string, unknown>>)] as Array<
-    Record<string, unknown>
-  >;
-  const total = firstBatch.count;
-  const snapshotUpperCreatedAt = asNullableString(rows[0]?.created_at);
-  const seen = new Set(rows.map((row) => row.id as string));
 
-  while (rows.length < total) {
-    const cursor = rows.at(-1);
-    const cursorCreatedAt = asNullableString(cursor?.created_at);
-    const cursorId = asNullableString(cursor?.id);
-    if (!snapshotUpperCreatedAt || !cursorCreatedAt || !cursorId) {
-      throw new ApiError('INTERNAL', 'Unable to load document history', 500);
-    }
-    const batch = await admin
-      .from('document_versions')
-      .select(versionColumns)
-      .eq('document_id', validDocumentId)
-      .eq('tenant_id', validTenantId)
-      .lte('created_at', snapshotUpperCreatedAt)
-      .or(
-        `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`,
-      )
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(VERSION_HISTORY_BATCH_SIZE);
-    if (batch.error || !batch.data?.length) {
-      throw new ApiError('INTERNAL', 'Unable to load document history', 500);
-    }
-    const batchRows = batch.data as Array<Record<string, unknown>>;
-    const last = batchRows.at(-1);
-    const lastCreatedAt = asNullableString(last?.created_at);
-    const lastId = asNullableString(last?.id);
-    if (
-      !lastCreatedAt ||
-      !lastId ||
-      lastCreatedAt > cursorCreatedAt ||
-      (lastCreatedAt === cursorCreatedAt && lastId >= cursorId)
-    ) {
-      throw new ApiError('INTERNAL', 'Unable to load document history', 500);
-    }
-    for (const row of batchRows) {
-      const id = row.id as string;
-      if (!seen.has(id) && rows.length < total) {
-        seen.add(id);
-        rows.push(row);
-      }
-    }
-  }
-
-  return rows.map((row, index) => ({
-    versionId: row.id as string,
-    versionNumber: total - index,
-    current: row.id === ownership.current_version_id,
-    uploadedAt: row.created_at as string,
-    uploadedBy: asNullableString(row.uploaded_by),
-    uploaderName: asNullableString(relatedOne(row.uploader)?.full_name),
-    reviewStatus: row.review_status as DocumentVersionHistoryEntry['reviewStatus'],
-    reviewedBy: asNullableString(row.reviewed_by),
-    reviewerName: asNullableString(relatedOne(row.reviewer)?.full_name),
-    reviewedAt: asNullableString(row.reviewed_at),
-    reviewNote: asNullableString(row.review_note),
-    sizeBytes: asNumber(row.size_bytes),
-    mimeType: row.mime_type as string,
-  }));
+  return parsed.data.versions;
 }
 
 export type SetDocumentExpiryContext = {
@@ -432,6 +397,9 @@ export async function setDocumentExpiry(
     } as never,
   );
   const updated = (data as Array<Record<string, unknown>> | null)?.[0];
+  if (error?.code === '42501') {
+    throw new ApiError('FORBIDDEN', 'Document expiry update is not authorized', 403);
+  }
   if (error?.code === 'MD404') {
     throw new ApiError('NOT_FOUND', 'Document not found', 404);
   }

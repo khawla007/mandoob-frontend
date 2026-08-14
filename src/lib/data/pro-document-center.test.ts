@@ -12,7 +12,6 @@ let modulePromise: Promise<Module> | undefined;
 const load = () => (modulePromise ??= import('./pro-document-center'));
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
-const FOREIGN_TENANT = '22222222-2222-4222-8222-222222222222';
 const CLIENT = '33333333-3333-4333-8333-333333333333';
 const DOCUMENT = '44444444-4444-4444-8444-444444444444';
 const ACTOR = '66666666-6666-4666-8666-666666666666';
@@ -73,6 +72,7 @@ function rpcRow(overrides: Record<string, unknown> = {}) {
     expiry_source: 'document',
     created_at: '2026-08-12T09:00:00.000Z',
     total_count: 1234,
+    effective_page: 21,
     storage_path: 'must/not/leak.pdf',
     ...overrides,
   };
@@ -151,13 +151,17 @@ test('listProDocumentCenter sends exact validated filters to only the RPC and ma
     expirySource: 'document',
     createdAt: '2026-08-12T09:00:00.000Z',
     totalCount: 1234,
+    effectivePage: 21,
   });
   assert.equal('storagePath' in result.rows[0], false);
 });
 
-test('listProDocumentCenter preserves page 1001, exact total, and all server-returned rows', async () => {
+test('listProDocumentCenter uses the RPC effective page with the exact total', async () => {
   const serverPage = Array.from({ length: 50 }, (_, index) =>
-    rpcRow({ entity_id: `${String(index).padStart(8, '0')}-1111-4111-8111-111111111111` }),
+    rpcRow({
+      entity_id: `${String(index).padStart(8, '0')}-1111-4111-8111-111111111111`,
+      effective_page: 25,
+    }),
   );
   const calls = captureFetch(() => json(serverPage));
   const { listProDocumentCenter } = await load();
@@ -168,6 +172,8 @@ test('listProDocumentCenter preserves page 1001, exact total, and all server-ret
   assert.equal((calls[0].body as Record<string, unknown>).p_page_size, 50);
   assert.equal(result.rows.length, 50, 'DAL must not slice an already paginated RPC response');
   assert.equal(result.total, 1234);
+  assert.equal(result.page, 25);
+  assert.ok(result.rows.every((row) => row.effectivePage === 25));
 });
 
 test('listProDocumentCenter returns total zero for an empty RPC result and sanitizes DB failures', async () => {
@@ -231,69 +237,54 @@ test('getDocumentCenterSummary isolates each RPC result when one source fails', 
   assert.equal((expiring.body as Record<string, unknown>).p_expiry_to, '2026-09-12');
 });
 
-test('listDocumentVersionHistory proves ownership first and returns stable newest-first history', async () => {
-  const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/documents?')) {
-      return json([
-        {
-          id: DOCUMENT,
-          tenant_id: TENANT,
-          client_id: CLIENT,
-          current_version_id: VERSION_2,
-          clients: { id: CLIENT, tenant_id: TENANT },
-          employees: null,
-        },
-      ]);
-    }
-    if (call.url.includes('/rest/v1/document_versions?')) {
-      return Response.json(
-        [
-          {
-            id: VERSION_2,
-            document_id: DOCUMENT,
-            tenant_id: TENANT,
-            mime_type: 'application/pdf',
-            size_bytes: 200,
-            uploaded_by: ACTOR,
-            review_status: 'approved',
-            review_note: 'Clear',
-            reviewed_by: ACTOR,
-            reviewed_at: '2026-08-12T11:00:00Z',
-            created_at: '2026-08-12T10:00:00Z',
-            uploader: { full_name: 'Aisha' },
-            reviewer: { full_name: 'Aisha' },
-            storage_path: 'private/latest.pdf',
-          },
-          {
-            id: VERSION_1,
-            document_id: DOCUMENT,
-            tenant_id: TENANT,
-            mime_type: 'application/pdf',
-            size_bytes: 100,
-            uploaded_by: ACTOR,
-            review_status: 'rejected',
-            review_note: 'Blurred',
-            reviewed_by: ACTOR,
-            reviewed_at: '2026-08-11T11:00:00Z',
-            created_at: '2026-08-11T10:00:00Z',
-            uploader: { full_name: 'Aisha' },
-            reviewer: { full_name: 'Omar' },
-            storage_path: 'private/old.pdf',
-          },
-        ],
-        { headers: { 'content-range': '0-1/2' } },
-      );
-    }
-    return json({ message: 'unexpected request' }, 500);
-  });
+function historyVersion(overrides: Record<string, unknown> = {}) {
+  return {
+    versionId: VERSION_2,
+    versionNumber: 2,
+    current: true,
+    uploadedAt: '2026-08-12T10:00:00.000Z',
+    uploadedBy: ACTOR,
+    uploaderName: 'Aisha',
+    reviewStatus: 'approved',
+    reviewedBy: ACTOR,
+    reviewerName: 'Aisha',
+    reviewedAt: '2026-08-12T11:00:00.000Z',
+    reviewNote: 'Clear',
+    sizeBytes: 200,
+    mimeType: 'application/pdf',
+    storagePath: 'must/not/leak.pdf',
+    ...overrides,
+  };
+}
+
+test('listDocumentVersionHistory makes one snapshot RPC and maps stable newest-first history', async () => {
+  const calls = captureFetch(() =>
+    json({
+      documentId: DOCUMENT,
+      currentVersionId: VERSION_2,
+      total: 2,
+      versions: [
+        historyVersion(),
+        historyVersion({
+          versionId: VERSION_1,
+          versionNumber: 1,
+          current: false,
+          uploadedAt: '2026-08-11T10:00:00.000Z',
+          reviewStatus: 'rejected',
+          reviewerName: 'Omar',
+          reviewNote: 'Blurred',
+          sizeBytes: 100,
+        }),
+      ],
+    }),
+  );
   const { listDocumentVersionHistory } = await load();
 
   const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
 
-  assert.match(calls[0].url, /\/rest\/v1\/documents\?/u);
-  assert.match(calls[1].url, /\/rest\/v1\/document_versions\?/u);
-  const order = new URL(calls[1].url).searchParams.get('order');
-  assert.equal(order, 'created_at.desc,id.desc');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /\/rest\/v1\/rpc\/get_pro_document_version_history$/u);
+  assert.deepEqual(calls[0].body, { p_tenant_id: TENANT, p_document_id: DOCUMENT });
   assert.deepEqual(
     result.map((row) => ({ id: row.versionId, version: row.versionNumber, current: row.current })),
     [
@@ -306,156 +297,87 @@ test('listDocumentVersionHistory proves ownership first and returns stable newes
   assert.equal('storagePath' in result[0], false);
 });
 
-test('listDocumentVersionHistory fails closed without an exact snapshot count', async () => {
-  const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/documents?')) {
-      return json([
-        {
-          id: DOCUMENT,
-          tenant_id: TENANT,
-          client_id: CLIENT,
-          current_version_id: VERSION_1,
-          clients: { id: CLIENT, tenant_id: TENANT },
-          employees: null,
-        },
-      ]);
-    }
-    return json([
-      {
-        id: VERSION_1,
-        document_id: DOCUMENT,
-        tenant_id: TENANT,
-        mime_type: 'application/pdf',
-        size_bytes: 100,
-        review_status: 'pending',
-        created_at: '2026-08-11T10:00:00Z',
-      },
-    ]);
-  });
+test('listDocumentVersionHistory rejects malformed snapshot envelopes', async () => {
+  const calls = captureFetch(() =>
+    json({
+      documentId: DOCUMENT,
+      currentVersionId: VERSION_1,
+      total: 2,
+      versions: [historyVersion({ versionId: VERSION_1, versionNumber: 1 })],
+    }),
+  );
   const { listDocumentVersionHistory } = await load();
 
   await assert.rejects(
     () => listDocumentVersionHistory(TENANT, DOCUMENT),
     (error) => error instanceof ApiError && error.code === 'INTERNAL',
   );
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
 });
 
-test('listDocumentVersionHistory keyset-batches an anchored snapshot without duplicates or shifts', async () => {
+test('listDocumentVersionHistory returns every 1001+ version from one immutable response snapshot', async () => {
   const total = 1001;
   const currentId = '00000000-0000-4000-8000-000000000750';
-  const versions = Array.from({ length: total }, (_, index) => ({
-    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-    document_id: DOCUMENT,
-    tenant_id: TENANT,
-    mime_type: 'application/pdf',
-    size_bytes: index + 1,
-    uploaded_by: ACTOR,
-    review_status: 'approved',
-    review_note: null,
-    reviewed_by: ACTOR,
-    reviewed_at: '2026-08-12T11:00:00Z',
-    created_at: new Date(
-      Date.UTC(2026, 7, 12, 10, 0, 0) - Math.floor(index / 2) * 1000,
-    ).toISOString(),
-    uploader: { full_name: 'Aisha' },
-    reviewer: { full_name: 'Omar' },
-  })).sort(
-    (left, right) =>
-      right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id),
-  );
-  const inserted = {
-    ...versions[0],
-    id: '99999999-9999-4999-8999-999999999999',
-    created_at: new Date(Date.parse(versions[0].created_at) + 1000).toISOString(),
-  };
-  let versionRequest = 0;
-  const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/documents?')) {
-      return json([
-        {
-          id: DOCUMENT,
-          tenant_id: TENANT,
-          client_id: CLIENT,
-          current_version_id: currentId,
-          clients: { id: CLIENT, tenant_id: TENANT },
-          employees: null,
-        },
-      ]);
-    }
-    const url = new URL(call.url);
-    const limit = Number(url.searchParams.get('limit'));
-    assert.equal(limit, 500);
-    versionRequest += 1;
-    if (versionRequest === 1) {
-      return Response.json(versions.slice(0, limit), {
-        status: 206,
-        headers: { 'content-range': `0-${limit - 1}/${total}` },
-      });
-    }
-
-    assert.equal(url.searchParams.get('offset'), null);
-    assert.equal(url.searchParams.get('created_at'), `lte.${versions[0].created_at}`);
-    const keyset = url.searchParams.get('or');
-    assert.ok(keyset);
-    const match =
-      /^\(created_at\.lt\.([^,]+),and\(created_at\.eq\.([^,]+),id\.lt\.([^)]+)\)\)$/u.exec(keyset);
-    assert.ok(match);
-    assert.equal(match[1], match[2]);
-    const cursorTime = match[1];
-    const cursorId = match[3];
-    const eligible = [inserted, ...versions].filter(
-      (row) => row.created_at < cursorTime || (row.created_at === cursorTime && row.id < cursorId),
-    );
-    const duplicateBoundary = versions.find(
-      (row) => row.created_at === cursorTime && row.id === cursorId,
-    );
-    const page = eligible.slice(0, duplicateBoundary ? limit - 1 : limit);
-    return json(duplicateBoundary ? [duplicateBoundary, ...page] : page);
+  const versions = Array.from({ length: total }, (_, index) => {
+    const versionId = `00000000-0000-4000-8000-${String(total - index).padStart(12, '0')}`;
+    return historyVersion({
+      versionId,
+      versionNumber: total - index,
+      current: versionId === currentId,
+      uploadedAt: new Date(Date.UTC(2026, 7, 12, 10, 0, 0) - index * 1000).toISOString(),
+      reviewedAt: null,
+      reviewedBy: null,
+      reviewerName: null,
+      reviewNote: null,
+      sizeBytes: index + 1,
+    });
   });
+  const lateBelowCursor = historyVersion({
+    versionId: '99999999-9999-4999-8999-999999999999',
+    uploadedAt: versions[500].uploadedAt,
+  });
+  const calls = captureFetch(() =>
+    json({ documentId: DOCUMENT, currentVersionId: currentId, total, versions }),
+  );
   const { listDocumentVersionHistory } = await load();
 
   const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
 
-  const versionCalls = calls.filter((call) => call.url.includes('/rest/v1/document_versions?'));
-  assert.ok(versionCalls.length >= 2);
+  assert.equal(calls.length, 1, 'a late below-cursor insert cannot enter a second read snapshot');
   assert.equal(result.length, total);
   assert.equal(result[0].versionNumber, total);
   assert.equal(result.at(-1)?.versionNumber, 1);
   assert.equal(result.find((entry) => entry.versionId === currentId)?.current, true);
   assert.equal(
-    result.some((entry) => entry.versionId === inserted.id),
+    result.some((entry) => entry.versionId === lateBelowCursor.versionId),
     false,
   );
   assert.equal(new Set(result.map((entry) => entry.versionId)).size, total);
-  assert.equal(new URL(versionCalls[0].url).searchParams.get('order'), 'created_at.desc,id.desc');
-  assert.ok(versionCalls.slice(1).every((call) => new URL(call.url).searchParams.has('or')));
 });
 
-test('listDocumentVersionHistory stops after a missing or foreign ownership chain', async () => {
+test('listDocumentVersionHistory collapses missing and foreign ownership and sanitizes DB errors', async () => {
   const { listDocumentVersionHistory } = await load();
-  let calls = captureFetch(() => json([]));
-  await assert.rejects(
-    () => listDocumentVersionHistory(TENANT, DOCUMENT),
-    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
-  );
-  assert.equal(calls.length, 1);
+  for (const response of [json(null), json(null)]) {
+    const calls = captureFetch(() => response);
+    await assert.rejects(
+      () => listDocumentVersionHistory(TENANT, DOCUMENT),
+      (error) =>
+        error instanceof ApiError &&
+        error.code === 'NOT_FOUND' &&
+        error.message === 'Document not found',
+    );
+    assert.equal(calls.length, 1);
+  }
 
-  calls = captureFetch(() =>
-    json([
-      {
-        id: DOCUMENT,
-        tenant_id: FOREIGN_TENANT,
-        client_id: CLIENT,
-        current_version_id: VERSION_1,
-        clients: { id: CLIENT, tenant_id: FOREIGN_TENANT },
-        employees: null,
-      },
-    ]),
+  const calls = captureFetch(() =>
+    json({ message: 'secret storage_path and ownership detail' }, 500),
   );
   await assert.rejects(
     () => listDocumentVersionHistory(TENANT, DOCUMENT),
-    (error) => error instanceof ApiError && error.code === 'FORBIDDEN',
+    (error) =>
+      error instanceof ApiError &&
+      error.code === 'INTERNAL' &&
+      error.message === 'Unable to load document history',
   );
   assert.equal(calls.length, 1);
 });
@@ -548,6 +470,13 @@ test('setDocumentExpiry rejects empty and failed transactional RPCs without succ
 test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes database messages', async () => {
   const { setDocumentExpiry } = await load();
   for (const expected of [
+    {
+      dbCode: '42501',
+      dbMessage: 'private actor tenant role status details',
+      code: 'FORBIDDEN',
+      message: 'Document expiry update is not authorized',
+      status: 403,
+    },
     {
       dbCode: 'MD404',
       dbMessage: 'private document_scope_violation details',

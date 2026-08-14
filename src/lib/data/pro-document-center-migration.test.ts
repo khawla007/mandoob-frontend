@@ -72,6 +72,14 @@ function extractExpiryFunction(sql: string): string {
   return match[0];
 }
 
+function extractHistoryFunction(sql: string): string {
+  const match = executableSql(sql).match(
+    /create or replace function public\.get_pro_document_version_history\([\s\S]*?\) returns jsonb language sql stable security invoker set search_path = '' as \$function\$[\s\S]*?\$function\$;/i,
+  );
+  assert.ok(match, 'get_pro_document_version_history snapshot function is missing');
+  return match[0];
+}
+
 function extractAllowedValues(fn: string, parameter: string, fallback: string): string[] {
   const allowed = new RegExp(`coalesce\\(${parameter},'${fallback}'\\) in \\(([^)]*)\\)`, 'i').exec(
     fn,
@@ -99,6 +107,78 @@ function extractExpiryFunctionRoles(sql: string, verb: 'grant execute' | 'revoke
   return statement[1].split(',');
 }
 
+function extractHistoryFunctionRoles(sql: string, verb: 'grant execute' | 'revoke all'): string[] {
+  const statement = new RegExp(
+    `${verb} on function public\\.get_pro_document_version_history\\([\\s\\S]*?\\) (?:to|from) ([a-z_,]+);`,
+    'i',
+  ).exec(executableSql(sql));
+  assert.ok(statement, `history ${verb} role statement is missing`);
+  return statement[1].split(',');
+}
+
+function assertHistorySnapshotContract(sql: string): void {
+  const normalized = executableSql(sql);
+  const fn = extractHistoryFunction(sql);
+
+  assert.match(fn, /\(p_tenant_id uuid,p_document_id uuid\) returns jsonb/i);
+  assert.match(fn, /language sql stable security invoker set search_path = ''/i);
+  assert.doesNotMatch(fn, /security definer/i);
+  assert.match(
+    fn,
+    /from public\.documents d join public\.clients c on c\.id = d\.client_id and c\.tenant_id = d\.tenant_id where d\.id = p_document_id and d\.tenant_id = p_tenant_id and c\.tenant_id = p_tenant_id/i,
+    'history ownership must validate document through its tenant-owned client in the snapshot',
+  );
+  assert.match(
+    fn,
+    /join public\.document_versions v on v\.document_id = owned\.document_id and v\.tenant_id = owned\.tenant_id/i,
+    'every version must follow the owned document and tenant chain',
+  );
+  assert.match(
+    fn,
+    /left join public\.profiles uploader on uploader\.id = v\.uploaded_by and uploader\.tenant_id = owned\.tenant_id/i,
+    'uploader names must be joined tenant-safely',
+  );
+  assert.match(
+    fn,
+    /left join public\.profiles reviewer on reviewer\.id = v\.reviewed_by and reviewer\.tenant_id = owned\.tenant_id/i,
+    'reviewer names must be joined tenant-safely',
+  );
+  assert.match(fn, /count\(\*\) over\(\) as total/i);
+  assert.match(
+    fn,
+    /row_number\(\) over \(order by v\.created_at desc,v\.id desc\) as newest_rank/i,
+  );
+  assert.match(
+    fn,
+    /jsonb_agg\([\s\S]*?order by ranked\.created_at desc,ranked\.version_id desc\)/i,
+    'one JSON aggregate must materialize the complete deterministic snapshot',
+  );
+  assert.match(fn, /'versionNumber',ranked\.total - ranked\.newest_rank \+ 1/i);
+  assert.match(fn, /'current',ranked\.version_id = ranked\.current_version_id/i);
+  assert.match(fn, /'documentId',owned\.document_id/i);
+  assert.match(fn, /'currentVersionId',owned\.current_version_id/i);
+  assert.match(fn, /'total',coalesce\(versions\.total,0\)/i);
+  assert.match(fn, /'versions',coalesce\(versions\.items,'\[\]'::jsonb\)/i);
+  assert.doesNotMatch(fn, /storage_path/i, 'history payload must never contain storage paths');
+  assert.doesNotMatch(fn, /\blimit\b|\boffset\b/i, 'snapshot aggregation must not paginate');
+
+  assert.equal(
+    normalized.match(/revoke all on function public\.get_pro_document_version_history\(/gi)?.length,
+    1,
+  );
+  assert.equal(
+    normalized.match(/grant execute on function public\.get_pro_document_version_history\(/gi)
+      ?.length,
+    1,
+  );
+  assert.deepEqual(extractHistoryFunctionRoles(sql, 'revoke all'), [
+    'public',
+    'anon',
+    'authenticated',
+  ]);
+  assert.deepEqual(extractHistoryFunctionRoles(sql, 'grant execute'), ['service_role']);
+}
+
 function assertExpiryMutationContract(sql: string): void {
   const normalized = executableSql(sql);
   const fn = extractExpiryFunction(sql);
@@ -115,6 +195,29 @@ function assertExpiryMutationContract(sql: string): void {
     fn,
     /select d,c into/i,
     'PL/pgSQL must not assign multiple composite records through one INTO list',
+  );
+  assert.match(
+    fn,
+    /perform 1 from public\.tenants where id = p_tenant_id and status = 'active' for share/i,
+    'expiry RPC must lock and require the active tenant first',
+  );
+  assert.match(
+    fn,
+    /perform 1 from public\.profiles where id = p_actor_id and tenant_id = p_tenant_id and role = 'pro' and status = 'active' for share/i,
+    'expiry RPC must lock and require an active same-tenant PRO actor',
+  );
+  assert.match(
+    fn,
+    /raise exception using errcode = '42501',message = 'FORBIDDEN'/i,
+    'invalid tenant or actor must use the stable forbidden outcome',
+  );
+  const tenantLock = fn.indexOf('from public.tenants');
+  const actorLock = fn.indexOf('from public.profiles');
+  const documentLock = fn.indexOf('from public.documents');
+  const employeeLock = fn.indexOf('from public.employees');
+  assert.ok(
+    tenantLock < actorLock && actorLock < documentLock && documentLock < employeeLock,
+    'row locks must follow tenant, actor, document/client, employee order',
   );
   assert.match(
     fn,
@@ -266,10 +369,16 @@ function assertMigrationContract(sql: string): void {
     'overdue must mean a pending request due before Dubai today',
   );
   assert.match(fn, /count\(\*\) over\(\)/i, 'RPC must return an exact pre-pagination count');
+  assert.match(fn, /total_count bigint,effective_page integer\)/i);
   assert.match(
     fn,
     /page_bounds as materialized \(select coalesce\(least\(greatest\(p_page,1\),ceil\(max\(counted\.total_count\)::numeric \/ least\(greatest\(p_page_size,1\),50\)\)::integer\),1\) as effective_page from counted\)/i,
     'RPC must derive and clamp the effective page from the exact count',
+  );
+  assert.match(
+    fn,
+    /counted\.total_count,\(select effective_page from page_bounds\) as effective_page from counted/i,
+    'every returned queue row must expose the clamped effective page',
   );
   assert.match(
     fn,
@@ -340,6 +449,7 @@ function assertMigrationContract(sql: string): void {
     ['service_role'],
     'only the page-authorized service-role DAL may execute the RPC',
   );
+  assertHistorySnapshotContract(sql);
   assertExpiryMutationContract(sql);
 }
 
@@ -442,11 +552,28 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
   );
   assertMutationRejected(
     sql,
+    (source) =>
+      source.replace(
+        /\(select effective_page from page_bounds\) as effective_page/i,
+        'p_page as effective_page',
+      ),
+    /expose the clamped effective page/,
+  );
+  assertMutationRejected(
+    sql,
     (source) => source.replace(/to service_role;/i, 'to authenticated, service_role;'),
     /only the page-authorized service-role DAL may execute the RPC/,
   );
 
   for (const [mutate, failure] of [
+    [
+      (source: string) => source.replace(/and status = 'active'\s+for share;/i, 'for share;'),
+      /active tenant first/,
+    ],
+    [
+      (source: string) => source.replace(/and role = 'pro'/i, "and role = 'customer'"),
+      /active same-tenant PRO actor/,
+    ],
     [
       (source: string) => source.replace(/for update of d, c/i, 'for update of d'),
       /lock both ownership rows/,
@@ -461,6 +588,28 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
         source.replace(
           /grant execute on function public\.set_pro_document_expiry\(\s*uuid, uuid, uuid, date\s*\) to service_role;/i,
           'grant execute on function public.set_pro_document_expiry(uuid, uuid, uuid, date) to authenticated, service_role;',
+        ),
+      /deepStrictEqual|service_role/,
+    ],
+  ] as const) {
+    assertMutationRejected(sql, mutate, failure);
+  }
+
+  for (const [mutate, failure] of [
+    [
+      (source: string) => source.replace(/and v\.tenant_id = owned\.tenant_id/i, ''),
+      /every version must follow the owned document and tenant chain/,
+    ],
+    [
+      (source: string) =>
+        source.replace(/order by ranked\.created_at desc, ranked\.version_id desc/i, ''),
+      /complete deterministic snapshot/,
+    ],
+    [
+      (source: string) =>
+        source.replace(
+          /grant execute on function public\.get_pro_document_version_history\(\s*uuid, uuid\s*\) to service_role;/i,
+          'grant execute on function public.get_pro_document_version_history(uuid, uuid) to authenticated, service_role;',
         ),
       /deepStrictEqual|service_role/,
     ],

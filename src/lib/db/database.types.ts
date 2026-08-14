@@ -1632,6 +1632,7 @@ export type Database = {
           doc_type: string;
           document_id: string | null;
           due_at: string | null;
+          effective_page: number;
           effective_expires_on: string | null;
           employee_id: string | null;
           employee_name: string | null;
@@ -1651,6 +1652,13 @@ export type Database = {
           tenant_id: string;
           total_count: number;
         }[];
+      };
+      get_pro_document_version_history: {
+        Args: {
+          p_document_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
       };
       set_pro_document_expiry: {
         Args: {
