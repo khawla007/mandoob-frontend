@@ -61,7 +61,7 @@ effective_expires_on, expiry_source, created_at, total_count, effective_page
 
 `total_count` is an exact `count(*) over()` after all filters and before pagination. `effective_page` clamps the requested page to the last available page (or 1 for an empty result), so the SQL offset and the page displayed by the server agree. The data layer returns `{ rows, total, page, pageSize: 50 }`; an empty response becomes total 0, page 1.
 
-Ordering is deterministic. The selected sort is followed by `entity_kind` and `entity_id` tie-breakers. Urgency places overdue requests first, expired documents second, dated requests third, dated documents fourth, and undated work last. Other sorts use creation, due, or expiry dates as named.
+Ordering is deterministic. Urgency ranks work in this order: overdue pending requests; rejected documents needing resubmission; pending-review documents; remaining pending requests awaiting upload; documents with a dated expiry; and passive remainder rows. Requests are ordered by earliest due date within their urgency tier, rejected/pending-review documents by oldest current upload, and dated-expiry documents by earliest expiry. `entity_kind` and `entity_id` are the final stable tie-breakers. Other sorts use creation, due, or expiry dates as named and retain the same stable tie-breakers.
 
 The six summary counts use independent calls to the same RPC. A failed count is represented separately as `{ ok: false }` and does not hide successful metrics.
 
@@ -102,11 +102,14 @@ Versions are ordered by `created_at desc, id desc`, numbered oldest-to-newest wh
 `public.review_document_version(p_tenant_id, p_actor_id, p_version_id, p_status, p_note, p_reviewed_at)` performs the ownership checks, row locks, review update, related head/request changes, and tenant audit insert in one transaction.
 
 - The actor must be an active PRO in the active firm.
+- Only a version whose review state is still `pending` and whose ID is still `documents.current_version_id` may be reviewed.
 - Status is `approved` or `rejected`.
 - A rejection requires a non-whitespace note; notes are Unicode-trimmed and limited to 280 characters.
 - Approval points the document head at the reviewed version and changes a linked pending request to `fulfilled`.
 - Rejection does not fulfill the request.
 - The version collection is preserved; review updates the selected version's review fields rather than deleting prior versions.
+
+The RPC locks the version, document, client, and linked request before applying the transition. After the lock, it checks both the pending state and current-head identity; the version update repeats the `review_status = 'pending'` predicate, and approval repeats the current-head predicate on the document update. A stale, already-reviewed, or superseded version raises database conflict `MD409` (`document_review_conflict`). The data layer maps that to a conflict-status `VALIDATION_FAILED`, and the server action returns only its sanitized localized validation result rather than the raw database message.
 
 ### Document-owned expiry
 

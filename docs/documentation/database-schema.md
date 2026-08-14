@@ -26,7 +26,7 @@ Migration 0057 adds `expires_on date` and the partial index `documents_tenant_ex
 
 Each upload inserts a version row containing `document_id`, `tenant_id`, private `storage_path`, MIME type, size, SHA-256, uploader, review state/note/reviewer/time, and creation time. Prior version rows remain available when a new upload becomes current. History is stably ordered by `created_at desc, id desc`, supported by `document_versions_document_created_id_idx`.
 
-Review updates the targeted version's review fields. Approval also moves `documents.current_version_id` and may fulfill the linked request, but it does not delete older versions.
+Review updates the targeted version's review fields only while that version is pending and remains `documents.current_version_id`. Approval may fulfill the linked request, but it does not delete older versions.
 
 ### `document_requests`
 
@@ -90,7 +90,9 @@ Signed URL access is not one of these RPCs; its data-layer query separately prov
 
 ## Review invariants
 
-Migration 0058 locks the version, document, client, and linked request while reviewing. It requires an active PRO actor in the active firm, validates all tenant/client relationships, accepts only approved/rejected states, requires a Unicode-trimmed rejection note, and limits notes to 280 characters. Approval updates the document head and changes a pending linked request to fulfilled in the same transaction. Each successful review inserts one `tenant_audit_log` entry before returning.
+Migration 0058 locks the version, document, client, and linked request while reviewing. It requires an active PRO actor in the active firm, validates all tenant/client relationships, and permits review only when the selected version is both `pending` and still the document's current head. The version update repeats the pending predicate; the approval update repeats the current-head predicate, keeping the check and mutation atomic under the row locks. A stale, already-reviewed, or superseded version raises `MD409` (`document_review_conflict`), which the data layer/server action expose only as a sanitized localized validation conflict.
+
+Approved/rejected are the only accepted outcomes. A rejection requires a Unicode-trimmed note of at most 280 characters. Approval keeps the reviewed version as the document head and changes a pending linked request to fulfilled in the same transaction. Each successful review inserts one `tenant_audit_log` entry before returning.
 
 ## Dubai date semantics
 
