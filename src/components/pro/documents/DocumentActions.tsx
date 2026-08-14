@@ -1,12 +1,19 @@
 'use client';
 
-import { useActionState, useState, useTransition, type ReactNode } from 'react';
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
-import { CalendarClock, Check, ExternalLink, FilePlus2, UserRound, X } from 'lucide-react';
+import { CalendarClock, Check, ExternalLink, UserRound, X } from 'lucide-react';
 
 import {
   openDocumentVersionAction,
-  requestDocumentCenterAction,
   reviewDocumentCenterAction,
   setDocumentExpiryAction,
   type DocumentCenterActionResult,
@@ -23,11 +30,19 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import type { DocumentCenterClientOption, DocumentCenterRow } from '@/lib/data/pro-document-center';
-import { DOC_TYPES, type DocType } from '@/lib/validation/document';
+import type { DocType } from '@/lib/validation/document';
 import { VersionHistoryDialog, type VersionHistoryLabels } from './VersionHistoryDialog';
-import { resolvePrimaryDocumentAction } from './document-action-state';
+import type { DocumentClientSearchLabels } from './DocumentClientSearchField';
+import { resolvePrimaryDocumentAction, resolveReviewFeedbackTarget } from './document-action-state';
+import { openDocumentVersionWithPopup } from './document-open-controller';
+import {
+  beginExpirySubmission,
+  createExpiryState,
+  settleExpirySubmission,
+  syncExpiryProp,
+} from './expiry-state';
+import { RequestDocumentDialog } from './RequestDocumentDialog';
 
-type RequestState = DocumentCenterActionResult<{ requestId: string }> | null;
 type MutationState = DocumentCenterActionResult | null;
 type DocumentActionRow = Pick<
   DocumentCenterRow,
@@ -46,7 +61,9 @@ export type DocumentActionLabels = {
   profile: string;
   open: string;
   opening: string;
+  popupBlocked: string;
   success: string;
+  clientSearch: DocumentClientSearchLabels;
   request: {
     trigger: string;
     title: string;
@@ -89,18 +106,12 @@ export type DocumentActionLabels = {
 const fieldClass =
   'border-input bg-background focus-visible:border-ring focus-visible:ring-ring/40 h-9 w-full rounded-lg border px-3 text-sm outline-none focus-visible:ring-2';
 
-function messageFor(state: MutationState | RequestState, labels: DocumentActionLabels) {
+function messageFor(state: MutationState, labels: DocumentActionLabels) {
   if (!state) return null;
   return state.ok ? labels.success : (labels.errors[state.messageKey] ?? labels.errors.unexpected);
 }
 
-function ActionFeedback({
-  state,
-  labels,
-}: {
-  state: MutationState | RequestState;
-  labels: DocumentActionLabels;
-}) {
+function ActionFeedback({ state, labels }: { state: MutationState; labels: DocumentActionLabels }) {
   const message = messageFor(state, labels);
   return message ? (
     <p
@@ -125,87 +136,6 @@ function PendingButton({
   );
 }
 
-function RequestDocumentDialog({
-  slug,
-  clients,
-  labels,
-}: {
-  slug: string;
-  clients: DocumentCenterClientOption[];
-  labels: DocumentActionLabels;
-}) {
-  const requestAction = requestDocumentCenterAction.bind(null, slug);
-  const [state, formAction, pending] = useActionState<RequestState, FormData>(requestAction, null);
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button type="button" size="lg">
-          <FilePlus2 aria-hidden="true" />
-          {labels.request.trigger}
-        </Button>
-      </DialogTrigger>
-      <DialogContent closeLabel={labels.close} className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{labels.request.title}</DialogTitle>
-          <DialogDescription>{labels.request.description}</DialogDescription>
-        </DialogHeader>
-        <form action={formAction} className="grid gap-4">
-          <label className="grid gap-1.5 text-sm font-medium">
-            {labels.request.client}
-            <select name="client_id" required className={fieldClass}>
-              <option value="">{labels.request.selectClient}</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.companyName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {labels.request.type}
-            <select name="doc_type" required className={fieldClass}>
-              {DOC_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {labels.docTypes[type]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {labels.request.label}
-            <input name="label" required minLength={1} maxLength={120} className={fieldClass} />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {labels.request.due}
-            <input name="due_at" type="date" className={fieldClass} />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {labels.request.notes}
-            <textarea
-              name="notes"
-              maxLength={500}
-              rows={4}
-              className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/40 min-h-24 w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-2"
-            />
-          </label>
-          <ActionFeedback state={state} labels={labels} />
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                {labels.cancel}
-              </Button>
-            </DialogClose>
-            <PendingButton pending={pending} type="submit">
-              {pending ? labels.request.pending : labels.request.submit}
-            </PendingButton>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function RowDocumentActions({
   slug,
   row,
@@ -219,20 +149,41 @@ function RowDocumentActions({
 }) {
   const reviewAction = reviewDocumentCenterAction.bind(null, slug);
   const expiryAction = setDocumentExpiryAction.bind(null, slug);
-  const clearExpiryAction = setDocumentExpiryAction.bind(null, slug);
   const [reviewState, reviewFormAction, reviewPending] = useActionState<MutationState, FormData>(
     reviewAction,
     null,
   );
+  const expiryControl = useRef(createExpiryState(row.expiresOn ?? ''));
+  const expirySubmitGuard = useRef(false);
+  const [expiryValue, setExpiryValue] = useState(row.expiresOn ?? '');
   const [expiryState, expiryFormAction, expiryPending] = useActionState<MutationState, FormData>(
-    expiryAction,
-    null,
-  );
-  const [clearState, clearFormAction, clearPending] = useActionState<MutationState, FormData>(
-    clearExpiryAction,
+    async (previousState, formData) => {
+      const value = formData.get('expires_on');
+      const next = beginExpirySubmission(
+        expiryControl.current,
+        typeof value === 'string' ? value : '',
+      );
+      if (!next.accepted) {
+        expirySubmitGuard.current = false;
+        return previousState;
+      }
+      expiryControl.current = next.state;
+      try {
+        const result = await expiryAction(previousState, formData);
+        expiryControl.current = settleExpirySubmission(expiryControl.current, result.ok);
+        setExpiryValue(expiryControl.current.value);
+        expirySubmitGuard.current = false;
+        return result;
+      } catch (error) {
+        expiryControl.current = settleExpirySubmission(expiryControl.current, false);
+        expirySubmitGuard.current = false;
+        throw error;
+      }
+    },
     null,
   );
   const [openError, setOpenError] = useState<string | null>(null);
+  const [rejectOpen, setRejectOpen] = useState(false);
   const [opening, startOpening] = useTransition();
   const versionId = row.versionId;
   const documentId = row.documentId;
@@ -244,18 +195,39 @@ function RowDocumentActions({
       ? labels.expiry.sources[row.expirySource]
       : labels.expiry.externallyManaged;
   const primaryAction = resolvePrimaryDocumentAction(row);
+  const reviewFeedbackTarget = resolveReviewFeedbackTarget(rejectOpen);
+
+  useEffect(() => {
+    expiryControl.current = syncExpiryProp(expiryControl.current, row.expiresOn ?? '');
+    setExpiryValue(expiryControl.current.value);
+  }, [row.expiresOn]);
 
   function openCurrentVersion() {
     if (!versionId) return;
     setOpenError(null);
-    startOpening(async () => {
-      const result = await openDocumentVersionAction(slug, versionId);
-      if (result.ok) {
-        window.open(result.data.url, '_blank', 'noopener,noreferrer');
-      } else {
-        setOpenError(labels.errors[result.messageKey] ?? labels.errors.unexpected);
-      }
+    const request = openDocumentVersionWithPopup({
+      openPopup: () => window.open('', '_blank'),
+      loadUrl: async () => {
+        const result = await openDocumentVersionAction(slug, versionId);
+        return result.ok
+          ? { ok: true, url: result.data.url }
+          : { ok: false, messageKey: result.messageKey };
+      },
+      onBlocked: () => setOpenError(labels.popupBlocked),
+      onFailure: (messageKey) =>
+        setOpenError(labels.errors[messageKey] ?? labels.errors.unexpected),
     });
+    startOpening(async () => {
+      await request;
+    });
+  }
+
+  function preventCompetingExpirySubmit(event: FormEvent<HTMLFormElement>) {
+    if (expirySubmitGuard.current || expiryPending || expiryControl.current.pending) {
+      event.preventDefault();
+      return;
+    }
+    expirySubmitGuard.current = true;
   }
 
   return (
@@ -282,7 +254,7 @@ function RowDocumentActions({
         ) : null}
 
         {row.reviewStatus === 'pending' && versionId ? (
-          <Dialog>
+          <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
             <DialogTrigger asChild>
               <Button type="button" size="sm" variant="destructive" data-document-action="reject">
                 <X aria-hidden="true" />
@@ -309,7 +281,9 @@ function RowDocumentActions({
                     className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/40 min-h-24 w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-2"
                   />
                 </label>
-                <ActionFeedback state={reviewState} labels={labels} />
+                {reviewFeedbackTarget === 'dialog' ? (
+                  <ActionFeedback state={reviewState} labels={labels} />
+                ) : null}
                 <DialogFooter>
                   <DialogClose asChild>
                     <Button type="button" variant="outline">
@@ -370,7 +344,12 @@ function RowDocumentActions({
                 <DialogTitle>{labels.expiry.title}</DialogTitle>
                 <DialogDescription>{labels.expiry.description}</DialogDescription>
               </DialogHeader>
-              <form id={expiryFormId} action={expiryFormAction} className="grid gap-4">
+              <form
+                id={expiryFormId}
+                action={expiryFormAction}
+                onSubmit={preventCompetingExpirySubmit}
+                className="grid gap-4"
+              >
                 <input type="hidden" name="document_id" value={documentId} />
                 <input type="hidden" name="client_id" value={row.clientId} />
                 <label className="grid gap-1.5 text-sm font-medium">
@@ -378,20 +357,21 @@ function RowDocumentActions({
                   <input
                     name="expires_on"
                     type="date"
-                    defaultValue={row.expiresOn ?? ''}
+                    value={expiryValue}
+                    onChange={(event) => setExpiryValue(event.target.value)}
+                    disabled={expiryPending}
                     className={fieldClass}
                   />
                 </label>
                 <ActionFeedback state={expiryState} labels={labels} />
               </form>
-              <ActionFeedback state={clearState} labels={labels} />
               <DialogFooter>
-                <form action={clearFormAction}>
+                <form action={expiryFormAction} onSubmit={preventCompetingExpirySubmit}>
                   <input type="hidden" name="document_id" value={documentId} />
                   <input type="hidden" name="client_id" value={row.clientId} />
                   <input type="hidden" name="expires_on" value="" />
-                  <PendingButton pending={clearPending} type="submit" variant="ghost">
-                    {clearPending ? labels.expiry.pending : labels.expiry.clear}
+                  <PendingButton pending={expiryPending} type="submit" variant="ghost">
+                    {expiryPending ? labels.expiry.pending : labels.expiry.clear}
                   </PendingButton>
                 </form>
                 <PendingButton pending={expiryPending} type="submit" form={expiryFormId}>
@@ -416,8 +396,10 @@ function RowDocumentActions({
           </Link>
         </Button>
       </div>
-      <div aria-live="polite">
-        <ActionFeedback state={reviewState} labels={labels} />
+      <div>
+        {reviewFeedbackTarget === 'row' ? (
+          <ActionFeedback state={reviewState} labels={labels} />
+        ) : null}
         {openError ? (
           <p role="alert" className="text-destructive text-xs">
             {openError}

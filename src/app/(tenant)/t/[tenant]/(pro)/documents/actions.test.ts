@@ -9,6 +9,7 @@ import {
   runOpenDocumentVersionAction,
   runRequestDocumentCenterAction,
   runReviewDocumentCenterAction,
+  runSearchDocumentClientsAction,
   runSetDocumentExpiryAction,
   type DocumentCenterActionDependencies,
 } from './action-logic';
@@ -81,6 +82,10 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
     setExpiry: async (ctx, input) => {
       calls.push(`expiry:${ctx.tenantId}:${input.document_id}:${input.expires_on}`);
       return { clientId: CLIENT_ID };
+    },
+    searchClients: async (tenantId, query, limit) => {
+      calls.push(`client-search:${tenantId}:${query}:${limit}`);
+      return [{ id: CLIENT_ID, companyName: 'Acme Client' }];
     },
     revalidate: (path) => calls.push(`revalidate:${path}`),
     rethrowNavigation: () => undefined,
@@ -210,6 +215,12 @@ test('document center page propagates inactive state after exact firm match', as
 
 const actionOrderCases = [
   {
+    name: 'client search',
+    operation: 'client-search:',
+    invoke: (deps: DocumentCenterActionDependencies) =>
+      runSearchDocumentClientsAction('acme', 'Acme', deps),
+  },
+  {
     name: 'request',
     operation: 'request:',
     invoke: (deps: DocumentCenterActionDependencies) =>
@@ -256,7 +267,7 @@ for (const action of actionOrderCases) {
   });
 }
 
-test('firm actions module exports only the five public Server Actions', () => {
+test('firm actions module exports only the six public Server Actions', () => {
   const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
   const exportedFunctions = [...source.matchAll(/export async function (\w+)/gu)].map(
     (match) => match[1],
@@ -267,8 +278,41 @@ test('firm actions module exports only the five public Server Actions', () => {
     'openDocumentVersionAction',
     'loadVersionHistoryAction',
     'setDocumentExpiryAction',
+    'searchDocumentClientsAction',
   ]);
   assert.doesNotMatch(source, /export (?:type )?\{?[^\n]*(?:Dependencies|run[A-Z])/u);
+});
+
+test('client search action authenticates every request and returns at most 50 sanitized options', async () => {
+  const context = setup({
+    searchClients: async (tenantId, query, limit) => {
+      context.calls.push(`client-search:${tenantId}:${query}:${limit}`);
+      return Array.from({ length: 60 }, (_, index) => ({
+        id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        companyName: `Client ${index}`,
+        privateField: 'must not serialize',
+      }));
+    },
+  });
+
+  const result = await runSearchDocumentClientsAction('acme', '  Client  ', context.dependencies);
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.data.length, 50);
+    assert.deepEqual(result.data[0], {
+      id: '00000000-0000-4000-8000-000000000000',
+      companyName: 'Client 0',
+    });
+    assert.equal('privateField' in result.data[0], false);
+  }
+  assert.deepEqual(context.calls.slice(0, 5), [
+    'auth',
+    'tenant:acme',
+    `active:${TENANT_ID}`,
+    'headers',
+    `client-search:${TENANT_ID}:Client:50`,
+  ]);
 });
 
 test('firm and legacy action logic modules are server-only without becoming Server Functions', () => {

@@ -47,33 +47,31 @@ export type DocumentQueueLabels = {
   units: { bytes: string; kb: string; mb: string; gb: string };
 } & Pick<DocumentQueuePaginationLabels, 'pagination' | 'previous' | 'next'>;
 
-function formatDate(value: string | null, locale: string, unavailable: string): string {
+function formatDate(
+  value: string | null,
+  formatter: Intl.DateTimeFormat,
+  unavailable: string,
+): string {
   if (!value) return unavailable;
   const timestamp = /^\d{4}-\d{2}-\d{2}$/u.test(value) ? `${value}T12:00:00.000Z` : value;
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeZone: 'Asia/Dubai',
-  }).format(new Date(timestamp));
+  return formatter.format(new Date(timestamp));
 }
 
 function formatTimestamp(
   value: string | null,
-  locale: string,
+  formatter: Intl.DateTimeFormat,
   unavailable: string,
   dubaiTime: string,
 ): string {
   if (!value) return unavailable;
-  const formatted = new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dubai',
-  }).format(new Date(value));
+  const formatted = formatter.format(new Date(value));
   return `${formatted} ${dubaiTime}`;
 }
 
 function formatSize(
   bytes: number | null,
-  locale: string,
+  integerFormatter: Intl.NumberFormat,
+  decimalFormatter: Intl.NumberFormat,
   units: DocumentQueueLabels['units'],
   unavailable: string,
 ): string {
@@ -85,7 +83,7 @@ function formatSize(
     value /= 1024;
     level += 1;
   }
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: level === 0 ? 0 : 1 }).format(value)} ${levels[level]}`;
+  return `${(level === 0 ? integerFormatter : decimalFormatter).format(value)} ${levels[level]}`;
 }
 
 function StatusIcon({ status }: { status: string | null }) {
@@ -170,6 +168,18 @@ export function DocumentWorkQueue({
     );
   }
 
+  const dateFormatter = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeZone: 'Asia/Dubai',
+  });
+  const timestampFormatter = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Dubai',
+  });
+  const integerFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const decimalFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+
   return (
     <div className="document-center__queue grid min-w-0 gap-4">
       <div
@@ -251,18 +261,29 @@ export function DocumentWorkQueue({
                     )}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
-                    {formatDate(row.dueAt, locale, labels.unavailable)}
+                    {formatDate(row.dueAt, dateFormatter, labels.unavailable)}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
-                    {formatDate(row.expiresOn, locale, labels.unavailable)}
+                    {formatDate(row.expiresOn, dateFormatter, labels.unavailable)}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
-                    {formatTimestamp(row.uploadedAt, locale, labels.unavailable, labels.dubaiTime)}
+                    {formatTimestamp(
+                      row.uploadedAt,
+                      timestampFormatter,
+                      labels.unavailable,
+                      labels.dubaiTime,
+                    )}
                   </td>
                   <td className="max-w-44 px-3 py-3 text-xs">
                     <span className="block break-all">{row.mimeType ?? labels.unavailable}</span>
                     <span className="text-muted-foreground mt-1 block">
-                      {formatSize(row.sizeBytes, locale, labels.units, labels.unavailable)}
+                      {formatSize(
+                        row.sizeBytes,
+                        integerFormatter,
+                        decimalFormatter,
+                        labels.units,
+                        labels.unavailable,
+                      )}
                     </span>
                   </td>
                   <td className="max-w-48 px-3 py-3 text-xs">

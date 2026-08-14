@@ -19,6 +19,7 @@ import {
 } from '@/lib/data/documents';
 import {
   listDocumentVersionHistory,
+  searchDocumentCenterClientOptions,
   setDocumentExpiry,
   type DocumentVersionHistoryEntry,
 } from '@/lib/data/pro-document-center';
@@ -28,6 +29,7 @@ import {
   runOpenDocumentVersionAction,
   runRequestDocumentCenterAction,
   runReviewDocumentCenterAction,
+  runSearchDocumentClientsAction,
   runSetDocumentExpiryAction,
   type DocumentCenterActionDependencies,
   type DocumentCenterActionResult,
@@ -52,6 +54,7 @@ function dependencies(): DocumentCenterActionDependencies {
     openVersion: getDocumentSignedUrl,
     loadHistory: listDocumentVersionHistory,
     setExpiry: setDocumentExpiry,
+    searchClients: searchDocumentCenterClientOptions,
     revalidate: revalidatePath,
     rethrowNavigation: (error) => unstable_rethrow(error),
     logUnexpected: (operation, error) => logSafeActionError(operation, error),
@@ -94,4 +97,8 @@ export async function setDocumentExpiryAction(
   formData: FormData,
 ): Promise<DocumentCenterActionResult> {
   return runSetDocumentExpiryAction(slug, previousState, formData, dependencies());
+}
+
+export async function searchDocumentClientsAction(slug: string, query: string) {
+  return runSearchDocumentClientsAction(slug, query, dependencies());
 }

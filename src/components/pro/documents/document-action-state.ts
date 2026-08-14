@@ -1,6 +1,7 @@
 import type { DocumentCenterRow } from '@/lib/data/pro-document-center';
 
 export type PrimaryDocumentAction = 'approve' | 'open' | 'client' | 'history';
+export type ReviewFeedbackTarget = 'row' | 'dialog';
 
 export type PrimaryDocumentActionRow = Pick<
   DocumentCenterRow,
@@ -14,4 +15,8 @@ export function resolvePrimaryDocumentAction(row: PrimaryDocumentActionRow): Pri
   if (row.versionId) return 'open';
   if (row.documentId) return 'history';
   return 'client';
+}
+
+export function resolveReviewFeedbackTarget(rejectDialogOpen: boolean): ReviewFeedbackTarget {
+  return rejectDialogOpen ? 'dialog' : 'row';
 }

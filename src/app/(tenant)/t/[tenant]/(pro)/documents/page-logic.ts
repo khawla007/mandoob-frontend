@@ -50,6 +50,7 @@ export function parseDocumentCenterSearch(
   const view = firstDocumentCenterValue(search.view);
   const sort = firstDocumentCenterValue(search.sort);
   const window = firstDocumentCenterValue(search.window);
+  const parsedWindow = enumValue(window, ['all', 'overdue', '7', '30', '90']);
   const clientId = uuidValue(firstDocumentCenterValue(search.client));
   const docType = docTypeSchema.safeParse(firstDocumentCenterValue(search.type));
   const searchTerm =
@@ -77,12 +78,15 @@ export function parseDocumentCenterSearch(
       'overdue',
     ]),
     sort: enumValue(sort, ['urgency', 'newest', 'oldest', 'due_date', 'expiry_date']),
-    window: enumValue(window, ['all', 'overdue', '7', '30', '90']),
+    window: parsedWindow,
     ...(clientId ? { clientId } : {}),
     ...(docType.success ? { docType: docType.data } : {}),
     ...(searchTerm ? { search: searchTerm } : {}),
-    ...(validDateRange && from ? { from } : {}),
-    ...(validDateRange && to ? { to } : {}),
+    ...(parsedWindow !== undefined && parsedWindow !== 'all'
+      ? {}
+      : validDateRange
+        ? { ...(from ? { from } : {}), ...(to ? { to } : {}) }
+        : {}),
     ...(focus ? { focus } : {}),
     page: focus ? 1 : pageValue(firstDocumentCenterValue(search.page)),
   });

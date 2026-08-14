@@ -90,53 +90,58 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test('listDocumentCenterClientOptions reads every tenant client in stable bounded batches', async () => {
-  const rows = Array.from({ length: 1002 }, (_, index) => ({
+test('searchDocumentCenterClientOptions bounds a 1001-client firm to stable tenant-scoped matches', async () => {
+  const rows = Array.from({ length: 1001 }, (_, index) => ({
     id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
     company_name: `Client ${String(index).padStart(4, '0')}`,
   }));
-  let batchIndex = 0;
-  const calls = captureFetch(() => {
-    const from = batchIndex * 500;
-    batchIndex += 1;
-    return json(rows.slice(from, from + 500));
-  });
+  const calls = captureFetch(() => json(rows.slice(100, 150)));
   const loaded = await load();
-  assert.equal(typeof loaded.listDocumentCenterClientOptions, 'function');
-  if (!loaded.listDocumentCenterClientOptions) return;
+  assert.equal(typeof loaded.searchDocumentCenterClientOptions, 'function');
 
-  const options = await loaded.listDocumentCenterClientOptions(TENANT);
+  const options = await loaded.searchDocumentCenterClientOptions(TENANT, ' Client 1 ', 50);
 
-  assert.equal(options.length, 1002);
-  assert.equal(new Set(options.map((option) => option.id)).size, 1002);
-  assert.deepEqual(
-    options,
-    rows.map((row) => ({ id: row.id, companyName: row.company_name })),
+  assert.equal(options.length, 50);
+  assert.deepEqual(options[0], { id: rows[100].id, companyName: rows[100].company_name });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /select=id%2Ccompany_name/u);
+  assert.match(calls[0].url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
+  assert.match(calls[0].url, /company_name=ilike\.%25Client\+1%25/u);
+  assert.match(calls[0].url, /order=company_name\.asc%2Cid\.asc/u);
+  assert.match(calls[0].url, /limit=50/u);
+  assert.doesNotMatch(
+    readFileSync(new URL('./pro-document-center.ts', import.meta.url), 'utf8'),
+    /CLIENT_OPTION_BATCH_SIZE|\.range\(/u,
   );
-  assert.deepEqual(options[0], { id: rows[0].id, companyName: rows[0].company_name });
-  assert.deepEqual(options.at(-1), {
-    id: rows.at(-1)?.id,
-    companyName: rows.at(-1)?.company_name,
-  });
-  assert.equal(calls.length, 3);
-  const dataSource = readFileSync(new URL('./pro-document-center.ts', import.meta.url), 'utf8');
-  assert.match(dataSource, /\.range\(from, from \+ CLIENT_OPTION_BATCH_SIZE - 1\)/u);
-  for (const call of calls) {
-    assert.match(call.url, /\/rest\/v1\/clients\?/u);
-    assert.match(call.url, /select=id%2Ccompany_name/u);
-    assert.match(call.url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
-    assert.match(call.url, /order=company_name\.asc%2Cid\.asc/u);
-  }
 });
 
-test('listDocumentCenterClientOptions validates tenant scope before reading', async () => {
+test('document client search validates query and limit before reading', async () => {
   const calls = captureFetch(() => json([]));
   const loaded = await load();
-  assert.equal(typeof loaded.listDocumentCenterClientOptions, 'function');
-  if (!loaded.listDocumentCenterClientOptions) return;
+  assert.equal(typeof loaded.searchDocumentCenterClientOptions, 'function');
 
-  await assert.rejects(() => loaded.listDocumentCenterClientOptions('not-a-tenant'));
+  await assert.rejects(() => loaded.searchDocumentCenterClientOptions('not-a-tenant', '', 50));
+  await assert.rejects(() => loaded.searchDocumentCenterClientOptions(TENANT, 'x'.repeat(101), 50));
+  await assert.rejects(() => loaded.searchDocumentCenterClientOptions(TENANT, '', 51));
   assert.equal(calls.length, 0);
+});
+
+test('getDocumentCenterClientOption resolves one exact tenant-owned selected client', async () => {
+  const selected = {
+    id: '00000000-0000-4000-8000-000000000777',
+    company_name: 'Selected Client',
+  };
+  const calls = captureFetch(() => json(selected));
+  const loaded = await load();
+  assert.equal(typeof loaded.getDocumentCenterClientOption, 'function');
+
+  assert.deepEqual(await loaded.getDocumentCenterClientOption(TENANT, selected.id), {
+    id: selected.id,
+    companyName: selected.company_name,
+  });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
+  assert.match(calls[0].url, /id=eq\.00000000-0000-4000-8000-000000000777/u);
 });
 
 test('listProDocumentCenter sends exact validated filters to only the RPC and maps without storage paths', async () => {

@@ -37,3 +37,9 @@ test('resolvePrimaryDocumentAction chooses exactly one next action for every que
     'client',
   );
 });
+
+test('review feedback has one accessible target and moves inside an open reject dialog', async () => {
+  const { resolveReviewFeedbackTarget } = await import('./document-action-state');
+  assert.equal(resolveReviewFeedbackTarget(false), 'row');
+  assert.equal(resolveReviewFeedbackTarget(true), 'dialog');
+});

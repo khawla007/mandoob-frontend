@@ -11,6 +11,7 @@ import {
   DocumentFilters,
   type DocumentFilterLabels,
 } from '@/components/pro/documents/DocumentFilters';
+import { DocumentClientSearchField } from '@/components/pro/documents/DocumentClientSearchField';
 import {
   DocumentSummaryGrid,
   type DocumentSummaryLabels,
@@ -21,9 +22,10 @@ import {
 } from '@/components/pro/documents/DocumentWorkQueue';
 import {
   dubaiToday,
+  getDocumentCenterClientOption,
   getDocumentCenterSummary,
-  listDocumentCenterClientOptions,
   listProDocumentCenter,
+  searchDocumentCenterClientOptions,
 } from '@/lib/data/pro-document-center';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { DOC_TYPES, type DocType } from '@/lib/validation/document';
@@ -72,10 +74,13 @@ export default async function ProDocumentsPage({
 
   const query = parseDocumentCenterSearch(search);
   const requestedPage = query.page;
-  const [workspace, summary, clients, t, locale] = await Promise.all([
+  const [workspace, summary, clients, selectedClient, t, locale] = await Promise.all([
     listProDocumentCenter(tenant.id, query),
     getDocumentCenterSummary(tenant.id, dubaiToday()),
-    listDocumentCenterClientOptions(tenant.id),
+    searchDocumentCenterClientOptions(tenant.id, '', 50),
+    query.clientId
+      ? getDocumentCenterClientOption(tenant.id, query.clientId)
+      : Promise.resolve(null),
     getTranslations('proDocumentCenter'),
     getLocale(),
   ]);
@@ -105,13 +110,24 @@ export default async function ProDocumentsPage({
     mb: t('units.mb'),
     gb: t('units.gb'),
   };
+  const clientSearchLabels = {
+    placeholder: t('clientSearch.placeholder'),
+    search: t('clientSearch.search'),
+    searching: t('clientSearch.searching'),
+    results: t('clientSearch.results'),
+    noResults: t('clientSearch.noResults'),
+    error: t('clientSearch.error'),
+    clear: t('clientSearch.clear'),
+  };
   const actionLabels: DocumentActionLabels = {
     close: t('actions.close'),
     cancel: t('actions.cancel'),
     profile: t('actions.clientProfile'),
     open: t('actions.open'),
     opening: t('actions.opening'),
+    popupBlocked: t('actions.popupBlocked'),
     success: t('actions.success'),
+    clientSearch: clientSearchLabels,
     request: {
       trigger: t('request.trigger'),
       title: t('request.title'),
@@ -169,6 +185,7 @@ export default async function ProDocumentsPage({
       file: t('history.file'),
       open: t('actions.open'),
       opening: t('actions.opening'),
+      popupBlocked: t('actions.popupBlocked'),
       unknownActor: t('queue.unknownActor'),
       dubaiTime: t('queue.dubaiTime'),
       units: unitLabels,
@@ -280,10 +297,20 @@ export default async function ProDocumentsPage({
       <section className="signal-panel document-center__workspace grid min-w-0 gap-5 rounded-2xl border p-4 sm:p-5">
         <DocumentFilters
           query={query}
-          clients={clients}
           labels={filterLabels}
           resetHref={resetHref}
           locale={locale}
+          selectedClient={selectedClient}
+          clientField={
+            <DocumentClientSearchField
+              slug={slug}
+              name="client"
+              label={filterLabels.client}
+              labels={clientSearchLabels}
+              initialOptions={clients}
+              selectedOption={selectedClient}
+            />
+          }
         />
         <DocumentWorkQueue
           rows={workspace.rows}

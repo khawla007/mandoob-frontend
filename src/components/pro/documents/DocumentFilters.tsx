@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Filter, Search } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import type { DocumentCenterClientOption } from '@/lib/data/pro-document-center';
 import type { DocumentCenterSearch } from '@/lib/validation/pro-document-center';
@@ -31,16 +32,18 @@ const fieldClass =
 
 export function DocumentFilters({
   query,
-  clients,
   labels,
   resetHref,
   locale,
+  selectedClient,
+  clientField,
 }: {
   query: DocumentCenterSearch;
-  clients: DocumentCenterClientOption[];
   labels: DocumentFilterLabels;
   resetHref: string;
   locale: string;
+  selectedClient: DocumentCenterClientOption | null;
+  clientField: ReactNode;
 }) {
   const dateFormatter = new Intl.DateTimeFormat(locale, {
     timeZone: 'Asia/Dubai',
@@ -52,9 +55,7 @@ export function DocumentFilters({
   const applied = [
     query.search ? `${labels.search}: ${query.search}` : null,
     query.view !== 'all' ? labels.views[query.view] : null,
-    query.clientId
-      ? `${labels.client}: ${clients.find((client) => client.id === query.clientId)?.companyName ?? query.clientId}`
-      : null,
+    query.clientId ? `${labels.client}: ${selectedClient?.companyName ?? query.clientId}` : null,
     query.docType ? labels.docTypes[query.docType] : null,
     query.window !== 'all' ? labels.windows[query.window] : null,
     query.from ? `${labels.from}: ${formatIsoDate(query.from)}` : null,
@@ -108,17 +109,7 @@ export function DocumentFilters({
           {labels.moreFilters}
         </summary>
         <div className="grid min-w-0 gap-3 pt-3 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
-          <label className="grid min-w-0 gap-1.5 text-sm font-medium">
-            {labels.client}
-            <select name="client" defaultValue={query.clientId ?? ''} className={fieldClass}>
-              <option value="">{labels.all}</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.companyName}
-                </option>
-              ))}
-            </select>
-          </label>
+          {clientField}
           <label className="grid min-w-0 gap-1.5 text-sm font-medium">
             {labels.type}
             <select name="type" defaultValue={query.docType ?? ''} className={fieldClass}>
@@ -142,11 +133,23 @@ export function DocumentFilters({
           </label>
           <label className="grid min-w-0 gap-1.5 text-sm font-medium">
             {labels.from}
-            <input name="from" type="date" defaultValue={query.from ?? ''} className={fieldClass} />
+            <input
+              name="from"
+              type="date"
+              defaultValue={query.from ?? ''}
+              disabled={query.window !== 'all'}
+              className={fieldClass}
+            />
           </label>
           <label className="grid min-w-0 gap-1.5 text-sm font-medium">
             {labels.to}
-            <input name="to" type="date" defaultValue={query.to ?? ''} className={fieldClass} />
+            <input
+              name="to"
+              type="date"
+              defaultValue={query.to ?? ''}
+              disabled={query.window !== 'all'}
+              className={fieldClass}
+            />
           </label>
           <label className="grid min-w-0 gap-1.5 text-sm font-medium sm:col-span-2 md:col-span-1 xl:col-span-2">
             {labels.sort}

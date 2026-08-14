@@ -15,7 +15,6 @@ import {
 import type { DocType } from '@/lib/validation/document';
 
 const PAGE_SIZE = 50;
-const CLIENT_OPTION_BATCH_SIZE = 500;
 
 export type DocumentCenterQuery = Partial<DocumentCenterSearch>;
 
@@ -82,6 +81,8 @@ const clientOptionRowSchema = z.object({
   id: uuidSchema,
   company_name: z.string().min(1),
 });
+const clientOptionSearchSchema = z.string().trim().max(100);
+const clientOptionLimitSchema = z.number().int().min(1).max(50);
 const expiryContextSchema = z.object({
   tenantId: uuidSchema,
   actorId: uuidSchema,
@@ -225,38 +226,51 @@ export async function listProDocumentCenter(
   };
 }
 
-export async function listDocumentCenterClientOptions(
+export async function searchDocumentCenterClientOptions(
   tenantId: string,
+  query: string,
+  limit = 50,
 ): Promise<DocumentCenterClientOption[]> {
   const validTenantId = uuidSchema.parse(tenantId);
+  const validQuery = clientOptionSearchSchema.parse(query);
+  const validLimit = clientOptionLimitSchema.parse(limit);
   const admin = createSupabaseServiceRoleClient();
-  const options: DocumentCenterClientOption[] = [];
-  const seen = new Set<string>();
-
-  for (let from = 0; ; from += CLIENT_OPTION_BATCH_SIZE) {
-    const { data, error } = await admin
-      .from('clients')
-      .select('id, company_name')
-      .eq('tenant_id', validTenantId)
-      .order('company_name', { ascending: true })
-      .order('id', { ascending: true })
-      .range(from, from + CLIENT_OPTION_BATCH_SIZE - 1);
-    if (error) {
-      throw new ApiError('INTERNAL', 'Unable to load document center clients', 500);
-    }
-
-    const batch = z.array(clientOptionRowSchema).parse(data ?? []);
-    for (const row of batch) {
-      if (seen.has(row.id)) {
-        throw new ApiError('INTERNAL', 'Unable to load document center clients', 500);
-      }
-      seen.add(row.id);
-      options.push({ id: row.id, companyName: row.company_name });
-    }
-    if (batch.length < CLIENT_OPTION_BATCH_SIZE) break;
+  let request = admin
+    .from('clients')
+    .select('id, company_name')
+    .eq('tenant_id', validTenantId)
+    .order('company_name', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(validLimit);
+  if (validQuery) {
+    request = request.ilike('company_name', `%${validQuery}%`);
   }
+  const { data, error } = await request;
+  if (error) throw new ApiError('INTERNAL', 'Unable to search document center clients', 500);
+  const parsed = z.array(clientOptionRowSchema).safeParse(data ?? []);
+  if (!parsed.success)
+    throw new ApiError('INTERNAL', 'Unable to search document center clients', 500);
+  return parsed.data.map((row) => ({ id: row.id, companyName: row.company_name }));
+}
 
-  return options;
+export async function getDocumentCenterClientOption(
+  tenantId: string,
+  clientId: string,
+): Promise<DocumentCenterClientOption | null> {
+  const validTenantId = uuidSchema.parse(tenantId);
+  const validClientId = uuidSchema.parse(clientId);
+  const admin = createSupabaseServiceRoleClient();
+  const { data, error } = await admin
+    .from('clients')
+    .select('id, company_name')
+    .eq('tenant_id', validTenantId)
+    .eq('id', validClientId)
+    .maybeSingle();
+  if (error) throw new ApiError('INTERNAL', 'Unable to load document center client', 500);
+  if (!data) return null;
+  const parsed = clientOptionRowSchema.safeParse(data);
+  if (!parsed.success) throw new ApiError('INTERNAL', 'Unable to load document center client', 500);
+  return { id: parsed.data.id, companyName: parsed.data.company_name };
 }
 
 function summaryRpcArguments(

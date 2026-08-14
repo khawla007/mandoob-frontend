@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import type { CreateDocumentRequestCtx, SetDocumentReviewCtx } from '@/lib/data/documents';
 import type {
+  DocumentCenterClientOption,
   DocumentVersionHistoryEntry,
   SetDocumentExpiryContext,
 } from '@/lib/data/pro-document-center';
@@ -57,6 +58,11 @@ export type DocumentCenterActionDependencies = {
     ctx: SetDocumentExpiryContext,
     input: DocumentExpiryInput,
   ): Promise<{ clientId: string }>;
+  searchClients(
+    tenantId: string,
+    query: string,
+    limit: number,
+  ): Promise<DocumentCenterClientOption[]>;
   revalidate(path: string): void;
   rethrowNavigation(error: unknown): void;
   logUnexpected(label: string, error: unknown): void;
@@ -77,6 +83,7 @@ const actionEntityIdsSchema = z.object({
   entity_id: normalizedUuidSchema,
 });
 const expiryActionSchema = documentExpirySchema.extend({ document_id: normalizedUuidSchema });
+const clientSearchSchema = z.string().trim().max(100);
 
 async function resolveAndAuthorize(
   slug: string,
@@ -305,5 +312,33 @@ export async function runSetDocumentExpiryAction(
     return { ok: true, code: 'SUCCESS', data: undefined };
   } catch (error) {
     return errorResult(error, 'document_center.expiry', actionDependencies);
+  }
+}
+
+export async function runSearchDocumentClientsAction(
+  slug: string,
+  query: string,
+  actionDependencies: DocumentCenterActionDependencies,
+): Promise<DocumentCenterActionResult<DocumentCenterClientOption[]>> {
+  try {
+    const session = await actionDependencies.requirePro();
+    const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
+    const parsed = clientSearchSchema.safeParse(query);
+    if (!parsed.success) return validationFailure();
+    const options = await actionDependencies.searchClients(
+      authorization.tenant.id,
+      parsed.data,
+      50,
+    );
+    return {
+      ok: true,
+      code: 'SUCCESS',
+      data: options.slice(0, 50).map((option) => ({
+        id: option.id,
+        companyName: option.companyName,
+      })),
+    };
+  } catch (error) {
+    return errorResult(error, 'document_center.client_search', actionDependencies);
   }
 }

@@ -59,7 +59,8 @@ test('page completes exact PRO authorization before every service-role workspace
   for (const serviceRead of [
     'listProDocumentCenter(',
     'getDocumentCenterSummary(',
-    'listDocumentCenterClientOptions(',
+    'searchDocumentCenterClientOptions(',
+    'getDocumentCenterClientOption(',
   ]) {
     assert.ok(authorization < page.indexOf(serviceRead), `${serviceRead} must follow auth`);
   }
@@ -69,9 +70,9 @@ test('page completes exact PRO authorization before every service-role workspace
 test('independent server reads launch in one parallel boundary with no client initial waterfall', () => {
   assert.match(
     page,
-    /Promise\.all\(\[[\s\S]*listProDocumentCenter\([\s\S]*getDocumentCenterSummary\([\s\S]*listDocumentCenterClientOptions\([\s\S]*getTranslations\('proDocumentCenter'\)[\s\S]*getLocale\(\)[\s\S]*\]\)/u,
+    /Promise\.all\(\[[\s\S]*listProDocumentCenter\([\s\S]*getDocumentCenterSummary\([\s\S]*searchDocumentCenterClientOptions\([\s\S]*getDocumentCenterClientOption\([\s\S]*getTranslations\('proDocumentCenter'\)[\s\S]*getLocale\(\)[\s\S]*\]\)/u,
   );
-  assert.doesNotMatch([actions, history, queue].join('\n'), /useEffect|fetch\(/u);
+  assert.doesNotMatch([actions, history, queue].join('\n'), /fetch\(/u);
 });
 
 test('canonicalization preserves validated filters and targets a focused item on page one', () => {
@@ -100,7 +101,15 @@ test('client action islands keep React 19 and server-action boundaries explicit'
   assert.match(actions, /useActionState/u);
   assert.match(actions, /resolvePrimaryDocumentAction\(row\)/u);
   assert.match(actions, /data-primary=/u);
-  assert.match(actions, /window\.open\(result\.data\.url, '_blank', 'noopener,noreferrer'\)/u);
+  assert.match(actions, /openDocumentVersionWithPopup/u);
+  assert.doesNotMatch(actions, /await openDocumentVersionAction[\s\S]*window\.open/u);
   assert.match(history, /loadVersionHistoryAction\(slug, documentId\)/u);
+  assert.doesNotMatch(history, /versions !== null/u);
   assert.doesNotMatch(queue, /row=\{row\}/u);
+});
+
+test('queue hoists locale formatters outside per-row formatting helpers', () => {
+  assert.match(queue, /const dateFormatter = new Intl\.DateTimeFormat\(locale/u);
+  assert.match(queue, /const timestampFormatter = new Intl\.DateTimeFormat\(locale/u);
+  assert.doesNotMatch(queue, /function formatDate[\s\S]{0,300}new Intl\.DateTimeFormat/u);
 });

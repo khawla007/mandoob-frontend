@@ -177,13 +177,14 @@ renderTest(
     const props: Parameters<typeof DocumentFilters>[0] & { locale: string } = {
       locale: 'ar-AE',
       query: parseDocumentCenterSearch({
-        window: '30',
+        window: 'all',
         from: '2026-08-13',
         to: '2026-08-14',
       }),
-      clients: [],
       labels: filterLabels,
       resetHref: '/t/acme/documents',
+      selectedClient: null,
+      clientField: React.createElement('input', { type: 'hidden', name: 'client' }),
     };
     const html = renderToStaticMarkup(React.createElement(DocumentFilters, props));
     const formatter = new Intl.DateTimeFormat('ar-AE', {
@@ -240,3 +241,25 @@ renderTest(
     assert.match(html, new RegExp(number.format(1234), 'u'));
   },
 );
+
+renderTest('preset windows disable and omit inactive custom date state', async () => {
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const { DocumentFilters } = await import('./DocumentFilters');
+  const html = renderToStaticMarkup(
+    React.createElement(DocumentFilters, {
+      locale: 'en-AE',
+      query: parseDocumentCenterSearch({
+        window: '30',
+        from: '2026-08-13',
+        to: '2026-08-14',
+      }),
+      labels: filterLabels,
+      resetHref: '/t/acme/documents',
+      selectedClient: null,
+      clientField: React.createElement('input', { type: 'hidden', name: 'client' }),
+    }),
+  );
+  assert.match(html, /<input(?=[^>]*name="from")(?=[^>]*disabled="")[^>]*>/u);
+  assert.match(html, /<input(?=[^>]*name="to")(?=[^>]*disabled="")[^>]*>/u);
+  assert.doesNotMatch(html, /2026-08-13|2026-08-14/u);
+});

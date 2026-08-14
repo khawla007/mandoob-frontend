@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Clock3, ExternalLink, LoaderCircle } from 'lucide-react';
 
 import {
@@ -17,6 +17,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import type { DocumentVersionHistoryEntry } from '@/lib/data/pro-document-center';
+import { openDocumentVersionWithPopup } from './document-open-controller';
+import {
+  createVersionHistoryController,
+  createVersionHistoryFormatters,
+} from './version-history-controller';
 
 export type VersionHistoryLabels = {
   trigger: string;
@@ -35,6 +40,7 @@ export type VersionHistoryLabels = {
   file: string;
   open: string;
   opening: string;
+  popupBlocked: string;
   unknownActor: string;
   dubaiTime: string;
   units: { bytes: string; kb: string; mb: string; gb: string };
@@ -42,16 +48,17 @@ export type VersionHistoryLabels = {
   errors: Record<string, string>;
 };
 
-function formatTimestamp(value: string | null, locale: string): string | null {
+function formatTimestamp(value: string | null, formatter: Intl.DateTimeFormat): string | null {
   if (!value) return null;
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dubai',
-  }).format(new Date(value));
+  return formatter.format(new Date(value));
 }
 
-function formatSize(bytes: number, locale: string, units: VersionHistoryLabels['units']): string {
+function formatSize(
+  bytes: number,
+  integerFormatter: Intl.NumberFormat,
+  decimalFormatter: Intl.NumberFormat,
+  units: VersionHistoryLabels['units'],
+): string {
   const levels = [units.bytes, units.kb, units.mb, units.gb];
   let value = bytes;
   let level = 0;
@@ -59,7 +66,7 @@ function formatSize(bytes: number, locale: string, units: VersionHistoryLabels['
     value /= 1024;
     level += 1;
   }
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: level === 0 ? 0 : 1 }).format(value)} ${levels[level]}`;
+  return `${(level === 0 ? integerFormatter : decimalFormatter).format(value)} ${levels[level]}`;
 }
 
 export function VersionHistoryDialog({
@@ -78,32 +85,66 @@ export function VersionHistoryDialog({
   const [versions, setVersions] = useState<DocumentVersionHistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
-  const [loading, startLoading] = useTransition();
+  const [loading, setLoading] = useState(false);
   const [opening, startOpening] = useTransition();
+  const formatters = useMemo(() => createVersionHistoryFormatters(locale), [locale]);
+
+  const historyController = useMemo(
+    () =>
+      createVersionHistoryController({
+        load: async () => {
+          try {
+            return await loadVersionHistoryAction(slug, documentId);
+          } catch {
+            return {
+              ok: false as const,
+              code: 'INTERNAL',
+              messageKey: 'documents.errors.unexpected' as const,
+            };
+          }
+        },
+        apply: (result) => {
+          if (result.ok) {
+            setVersions(result.data);
+            setError(null);
+          } else {
+            setVersions(null);
+            setError(labels.errors[result.messageKey] ?? labels.errors.unexpected);
+          }
+        },
+        setPending: setLoading,
+      }),
+    [documentId, labels, slug],
+  );
+
+  useEffect(() => () => historyController.close(), [historyController]);
 
   function onOpenChange(open: boolean) {
-    if (!open || versions !== null || loading) return;
+    if (!open) {
+      historyController.close();
+      return;
+    }
+    setVersions(null);
     setError(null);
-    startLoading(async () => {
-      const result = await loadVersionHistoryAction(slug, documentId);
-      if (result.ok) {
-        setVersions(result.data);
-      } else {
-        setError(labels.errors[result.messageKey] ?? labels.errors.unexpected);
-      }
-    });
+    void historyController.open();
   }
 
   function openVersion(version: DocumentVersionHistoryEntry) {
     setOpeningId(version.versionId);
     setError(null);
+    const request = openDocumentVersionWithPopup({
+      openPopup: () => window.open('', '_blank'),
+      loadUrl: async () => {
+        const result = await openDocumentVersionAction(slug, version.versionId);
+        return result.ok
+          ? { ok: true, url: result.data.url }
+          : { ok: false, messageKey: result.messageKey };
+      },
+      onBlocked: () => setError(labels.popupBlocked),
+      onFailure: (messageKey) => setError(labels.errors[messageKey] ?? labels.errors.unexpected),
+    });
     startOpening(async () => {
-      const result = await openDocumentVersionAction(slug, version.versionId);
-      if (result.ok) {
-        window.open(result.data.url, '_blank', 'noopener,noreferrer');
-      } else {
-        setError(labels.errors[result.messageKey] ?? labels.errors.unexpected);
-      }
+      await request;
       setOpeningId(null);
     });
   }
@@ -153,8 +194,7 @@ export function VersionHistoryDialog({
                   <div className="min-w-0 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">
-                        {labels.version}{' '}
-                        {new Intl.NumberFormat(locale).format(version.versionNumber)}
+                        {labels.version} {formatters.integer.format(version.versionNumber)}
                       </span>
                       {version.current ? (
                         <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
@@ -169,7 +209,8 @@ export function VersionHistoryDialog({
                       <div>
                         <dt className="text-foreground font-medium">{labels.uploaded}</dt>
                         <dd>
-                          {formatTimestamp(version.uploadedAt, locale)} {labels.dubaiTime}
+                          {formatTimestamp(version.uploadedAt, formatters.timestamp)}{' '}
+                          {labels.dubaiTime}
                         </dd>
                       </div>
                       <div>
@@ -180,7 +221,7 @@ export function VersionHistoryDialog({
                         <dt className="text-foreground font-medium">{labels.review}</dt>
                         <dd>
                           {version.reviewedAt
-                            ? `${formatTimestamp(version.reviewedAt, locale)} ${labels.dubaiTime}`
+                            ? `${formatTimestamp(version.reviewedAt, formatters.timestamp)} ${labels.dubaiTime}`
                             : labels.statuses[version.reviewStatus]}
                         </dd>
                       </div>
@@ -191,7 +232,13 @@ export function VersionHistoryDialog({
                       <div className="sm:col-span-2">
                         <dt className="text-foreground font-medium">{labels.file}</dt>
                         <dd>
-                          {version.mimeType} · {formatSize(version.sizeBytes, locale, labels.units)}
+                          {version.mimeType} ·{' '}
+                          {formatSize(
+                            version.sizeBytes,
+                            formatters.integer,
+                            formatters.decimal,
+                            labels.units,
+                          )}
                         </dd>
                       </div>
                       {version.reviewNote ? (

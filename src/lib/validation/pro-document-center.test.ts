@@ -131,6 +131,16 @@ test('document center parser drops inverted valid date bounds without discarding
   );
 });
 
+test('document center parser makes preset windows canonical by dropping custom dates', () => {
+  const parsed = parseDocumentCenterSearch({
+    window: '30',
+    from: '2026-08-01',
+    to: '2026-08-31',
+  });
+  assert.deepEqual(parsed, { view: 'all', sort: 'urgency', window: '30', page: 1 });
+  assert.equal(documentCenterHref('acme', parsed), '/t/acme/documents?window=30');
+});
+
 test('document center focus validates UUIDs, prefers exact document focus, and resets page one', () => {
   assert.deepEqual(parseDocumentCenterSearch({ request: REQUEST_ID, page: '8' }).focus, {
     kind: 'request',
@@ -159,7 +169,7 @@ test('document center href emits only validated non-default filters and preserve
   });
   assert.equal(
     documentCenterHref('north star/uae', filters, 3),
-    `/t/north%20star%2Fuae/documents?view=rejected&sort=due_date&window=30&client=${CLIENT_ID}&type=insurance_policy&q=annual+renewal&from=2026-08-01&to=2026-08-31&document=${DOCUMENT_ID}`,
+    `/t/north%20star%2Fuae/documents?view=rejected&sort=due_date&window=30&client=${CLIENT_ID}&type=insurance_policy&q=annual+renewal&document=${DOCUMENT_ID}`,
   );
   assert.equal(documentCenterHref('acme', parseDocumentCenterSearch({})), '/t/acme/documents');
   const pagedFilters = parseDocumentCenterSearch({
