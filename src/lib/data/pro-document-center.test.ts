@@ -4,6 +4,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
 process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { ApiError } from '@/lib/errors';
 
@@ -17,6 +18,12 @@ const DOCUMENT = '44444444-4444-4444-8444-444444444444';
 const ACTOR = '66666666-6666-4666-8666-666666666666';
 const VERSION_1 = '77777777-7777-4777-8777-777777777777';
 const VERSION_2 = '88888888-8888-4888-8888-888888888888';
+
+test('document center data operations route failures through redacted structured logging', () => {
+  const source = readFileSync(new URL('./pro-document-center.ts', import.meta.url), 'utf8');
+  assert.match(source, /logSafeActionError/u);
+  assert.doesNotMatch(source, /console\.error/u);
+});
 
 type FetchCall = { url: string; method: string; body: unknown; headers: Headers };
 const originalFetch = globalThis.fetch;
@@ -436,15 +443,17 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
   for (const expiresOn of ['2027-08-13', null]) {
     const calls = captureFetch((call) => {
       if (call.url.includes('/rest/v1/rpc/set_pro_document_expiry')) {
-        return json([{ document_id: DOCUMENT, expires_on: expiresOn }]);
+        return json([{ document_id: DOCUMENT, client_id: CLIENT, expires_on: expiresOn }]);
       }
       return json([]);
     });
 
-    await setDocumentExpiry(expiryContext(), {
+    const result = await setDocumentExpiry(expiryContext(), {
       document_id: DOCUMENT,
       expires_on: expiresOn,
     });
+
+    assert.deepEqual(result, { clientId: CLIENT });
 
     const rpc = calls.find((call) => call.url.includes('/rest/v1/rpc/set_pro_document_expiry'))!;
     assert.deepEqual(rpc.body, {

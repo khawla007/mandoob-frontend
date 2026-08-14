@@ -449,6 +449,7 @@ create or replace function public.set_pro_document_expiry(
   p_expires_on date
 ) returns table (
   document_id uuid,
+  client_id uuid,
   expires_on date
 )
 language plpgsql
@@ -568,7 +569,7 @@ begin
     )
   );
 
-  return query select v_updated_id, v_updated_expires_on;
+  return query select v_updated_id, v_document_client_id, v_updated_expires_on;
 end;
 $function$;
 

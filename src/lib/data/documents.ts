@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { fileTypeFromBuffer } from 'file-type';
+import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
@@ -111,7 +112,7 @@ async function logDocumentAudit(
     source: 'self_serve',
     details,
   });
-  if (error) console.error('tenant_audit_log insert failed', error);
+  if (error) logSafeActionError('document.audit.write', error);
 }
 
 async function logBlockedScanAudit(args: {
@@ -141,7 +142,7 @@ async function logBlockedScanAudit(args: {
       scanner_provider: args.provider,
     },
   });
-  if (error) console.error('tenant_audit_log infected_blocked insert failed', error);
+  if (error) logSafeActionError('document.audit.scan_blocked', error);
 }
 
 function buildStoragePath(args: {
@@ -339,7 +340,7 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
       document_id: documentId,
       version_id: versionId,
     },
-  }).catch((err) => console.error('recordAuthEvent failed', err));
+  }).catch((error) => logSafeActionError('document.upload.auth_event', error));
 
   return { documentId, versionId, storagePath };
 }
@@ -541,7 +542,7 @@ export async function setDocumentReview(
   versionId: string,
   ctx: SetDocumentReviewCtx,
   input: DocumentReviewInput,
-): Promise<void> {
+): Promise<{ clientId: string }> {
   if (ctx.role !== 'pro') {
     throw new ApiError('FORBIDDEN', 'only pro can review documents', 403);
   }
@@ -579,7 +580,8 @@ export async function setDocumentReview(
   }
   if (!result) throw new ApiError('NOT_FOUND', 'document version not found', 404);
   const reviewed = result as DocumentReviewRpcResult;
-  if (reviewed.review_status !== review.status || !reviewed.document_id || !reviewed.client_id) {
+  const reviewedClientId = normalizeUuid(reviewed.client_id);
+  if (reviewed.review_status !== review.status || !reviewed.document_id || !reviewedClientId) {
     throw new ApiError('INTERNAL', 'Could not save document review', 500);
   }
 
@@ -596,7 +598,9 @@ export async function setDocumentReview(
       document_id: reviewed.document_id,
       review_status: review.status,
     },
-  }).catch((err) => console.error('recordAuthEvent failed', err));
+  }).catch((error) => logSafeActionError('document.review.auth_event', error));
+
+  return { clientId: reviewedClientId };
 }
 
 // ============================================================
@@ -614,11 +618,17 @@ export type CreateDocumentRequestCtx = {
 export async function createDocumentRequest(
   ctx: CreateDocumentRequestCtx,
   input: CreateDocumentRequestInput,
-): Promise<{ id: string }> {
+): Promise<{ id: string; clientId: string }> {
   if (ctx.role !== 'pro') {
     throw new ApiError('FORBIDDEN', 'only pro can request documents', 403);
   }
-  createDocumentRequestSchema.parse(input);
+  const request = createDocumentRequestSchema.parse(input);
+  const normalizedTenantId = normalizeUuid(ctx.tenantId);
+  const normalizedActorId = normalizeUuid(ctx.actorId);
+  const normalizedClientId = normalizeUuid(request.client_id);
+  if (!normalizedTenantId || !normalizedActorId || !normalizedClientId) {
+    throw new ApiError('VALIDATION_FAILED', 'Invalid document request identifier', 400);
+  }
 
   const admin = createSupabaseServiceRoleClient();
 
@@ -626,25 +636,25 @@ export async function createDocumentRequest(
   const { data: clientRow, error: clientErr } = await admin
     .from('clients')
     .select('id, tenant_id')
-    .eq('id', input.client_id)
+    .eq('id', normalizedClientId)
     .maybeSingle();
   if (clientErr) throw new ApiError('INTERNAL', clientErr.message, 500);
   if (!clientRow) throw new ApiError('NOT_FOUND', 'client not found', 404);
-  if (clientRow.tenant_id !== ctx.tenantId) {
+  if (clientRow.tenant_id !== normalizedTenantId || clientRow.id !== normalizedClientId) {
     throw new ApiError('FORBIDDEN', 'client belongs to a different tenant', 403);
   }
 
-  const dueAt = input.due_at ? new Date(`${input.due_at}T00:00:00Z`).toISOString() : null;
+  const dueAt = request.due_at ? new Date(`${request.due_at}T00:00:00Z`).toISOString() : null;
 
   const { data: row, error: insertErr } = await admin
     .from('document_requests')
     .insert({
-      tenant_id: ctx.tenantId,
-      client_id: input.client_id,
-      requested_by: ctx.actorId,
-      doc_type: input.doc_type,
-      label: input.label,
-      notes: input.notes ?? null,
+      tenant_id: normalizedTenantId,
+      client_id: normalizedClientId,
+      requested_by: normalizedActorId,
+      doc_type: request.doc_type,
+      label: request.label,
+      notes: request.notes ?? null,
       due_at: dueAt,
     })
     .select('id')
@@ -654,17 +664,17 @@ export async function createDocumentRequest(
   }
   const id = row.id as string;
 
-  await logDocumentAudit(ctx.tenantId, ctx.actorId, {
+  await logDocumentAudit(normalizedTenantId, normalizedActorId, {
     entity: 'document_request',
     op: 'create',
     request_id: id,
-    client_id: input.client_id,
-    doc_type: input.doc_type,
+    client_id: normalizedClientId,
+    doc_type: request.doc_type,
   });
   await recordAuthEvent({
     kind: 'tenant_self_updated',
-    actorUserId: ctx.actorId,
-    tenantId: ctx.tenantId,
+    actorUserId: normalizedActorId,
+    tenantId: normalizedTenantId,
     ip: ctx.ip,
     userAgent: ctx.userAgent,
     details: {
@@ -672,17 +682,17 @@ export async function createDocumentRequest(
       op: 'create',
       request_id: id,
     },
-  }).catch((err) => console.error('recordAuthEvent failed', err));
+  }).catch((error) => logSafeActionError('document.request.auth_event', error));
 
   await notifyDocumentRequested({
-    tenantId: ctx.tenantId,
-    clientId: input.client_id,
+    tenantId: normalizedTenantId,
+    clientId: normalizedClientId,
     requestId: id,
-    documentLabel: input.label,
+    documentLabel: request.label,
     dueAtIso: dueAt,
-  }).catch((err) => console.error('notifyDocumentRequested failed', err));
+  }).catch((error) => logSafeActionError('document.request.notify', error));
 
-  return { id };
+  return { id, clientId: normalizedClientId };
 }
 
 async function notifyDocumentRequested(args: {

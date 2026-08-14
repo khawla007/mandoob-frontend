@@ -17,6 +17,7 @@ const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
 const CLIENT_ID = '44444444-4444-4444-8444-444444444444';
 const VERSION_ID = '55555555-5555-4555-8555-555555555555';
 const REQUEST_ID = '66666666-6666-4666-8666-666666666666';
+const AUTHORITATIVE_CLIENT_ID = '77777777-7777-4777-8777-777777777777';
 
 const validRequest = {
   client_id: CLIENT_ID,
@@ -44,10 +45,11 @@ function setup(overrides: Partial<LegacyDocumentActionDependencies> = {}) {
     },
     createRequest: async (ctx) => {
       calls.push(`request:${ctx.tenantId}:${ctx.actorId}:${ctx.role}`);
-      return { id: REQUEST_ID };
+      return { id: REQUEST_ID, clientId: CLIENT_ID };
     },
     reviewVersion: async (versionId, ctx, review) => {
       calls.push(`review:${versionId}:${ctx.tenantId}:${review.status}`);
+      return { clientId: CLIENT_ID };
     },
     openVersion: async (tenantId, versionId) => {
       calls.push(`open:${tenantId}:${versionId}`);
@@ -143,6 +145,9 @@ test('legacy production actions wire Next unstable_rethrow into the sanitizer se
   const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
   assert.match(source, /import \{ unstable_rethrow \} from 'next\/navigation'/u);
   assert.match(source, /unstable_rethrow\(error\)/u);
+  assert.match(source, /normalizeActionRequestMetadata\(requestHeaders\)/u);
+  assert.match(source, /logSafeActionError\(operation, error\)/u);
+  assert.doesNotMatch(source, /console\.error/u);
 });
 
 test('ordinary auth, DAL, and unexpected errors are stable and never expose raw messages', async () => {
@@ -219,6 +224,46 @@ test('legacy mutation failures never revalidate', async () => {
   assert.equal(
     context.calls.some((call) => call.startsWith('revalidate:')),
     false,
+  );
+});
+
+test('legacy review revalidates the authoritative DAL client instead of the supplied client', async () => {
+  const context = setup({
+    reviewVersion: async () => ({ clientId: AUTHORITATIVE_CLIENT_ID }),
+  });
+  await runReviewDocumentVersionAction(
+    'acme',
+    CLIENT_ID,
+    VERSION_ID,
+    { status: 'approved' },
+    context.dependencies,
+  );
+  assert.deepEqual(
+    context.calls.filter((call) => call.startsWith('revalidate:')),
+    ['revalidate:/t/acme/documents', `revalidate:/t/acme/clients/${AUTHORITATIVE_CLIENT_ID}`],
+  );
+});
+
+test('legacy request canonicalizes an uppercase client UUID before DAL and cache invalidation', async () => {
+  const canonicalClientId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  let receivedClientId: string | undefined;
+  const context = setup({
+    createRequest: async (_ctx, input) => {
+      receivedClientId = input.client_id;
+      return { id: REQUEST_ID, clientId: canonicalClientId };
+    },
+  });
+
+  await runRequestDocumentAction(
+    'acme',
+    { ...validRequest, client_id: canonicalClientId.toUpperCase() },
+    context.dependencies,
+  );
+
+  assert.equal(receivedClientId, canonicalClientId);
+  assert.deepEqual(
+    context.calls.filter((call) => call.startsWith('revalidate:')),
+    ['revalidate:/t/acme/documents', `revalidate:/t/acme/clients/${canonicalClientId}`],
   );
 });
 

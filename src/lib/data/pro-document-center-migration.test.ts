@@ -192,7 +192,7 @@ function assertExpiryMutationContract(sql: string): void {
     /\(p_tenant_id uuid,p_document_id uuid,p_actor_id uuid,p_expires_on date\)/i,
     'expiry RPC must accept only scoped identifiers and the nullable date',
   );
-  assert.match(fn, /returns table \(document_id uuid,expires_on date\)/i);
+  assert.match(fn, /returns table \(document_id uuid,client_id uuid,expires_on date\)/i);
   assert.match(fn, /language plpgsql volatile security invoker set search_path = ''/i);
   assert.doesNotMatch(fn, /security definer/i);
   assert.doesNotMatch(
@@ -255,7 +255,7 @@ function assertExpiryMutationContract(sql: string): void {
     /insert into public\.tenant_audit_log \(tenant_id,actor_id,action,source,details\) values \(p_tenant_id,p_actor_id,'updated','self_serve',jsonb_build_object\('entity','document','op','set_expiry','document_id',v_updated_id,'expires_on',v_updated_expires_on\)\)/i,
     'required tenant audit must be in the same transaction as the update',
   );
-  assert.match(fn, /return query select v_updated_id,v_updated_expires_on/i);
+  assert.match(fn, /return query select v_updated_id,v_document_client_id,v_updated_expires_on/i);
 
   assert.equal(
     normalized.match(/revoke all on function public\.set_pro_document_expiry\(/gi)?.length,
@@ -586,6 +586,14 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
       (source: string) =>
         source.replace(/insert into public\.tenant_audit_log/i, 'insert into public.auth_events'),
       /required tenant audit must be in the same transaction/,
+    ],
+    [
+      (source: string) =>
+        source.replace(
+          /return query select v_updated_id, v_document_client_id, v_updated_expires_on/i,
+          'return query select v_updated_id, null::uuid, v_updated_expires_on',
+        ),
+      /authoritative client|return query/,
     ],
     [
       (source: string) =>

@@ -1,51 +1,18 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { ApiError } from '@/lib/errors';
+import {
+  runLoadVersionHistoryAction,
+  runOpenDocumentVersionAction,
+  runRequestDocumentCenterAction,
+  runReviewDocumentCenterAction,
+  runSetDocumentExpiryAction,
+  type DocumentCenterActionDependencies,
+} from './action-logic';
 import { authorizeDocumentCenterRead } from './page-authorization';
-import type { DocumentCenterActionDependencies } from './actions';
-
-process.env.NEXT_PUBLIC_SUPABASE_URL ??= 'https://example.supabase.co';
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??= 'test-anon-key-at-least-twenty-characters';
-process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'test-service-key-at-least-twenty-characters';
-process.env.NEXT_PUBLIC_ROOT_DOMAIN ??= 'example.test';
-
-type ActionsModule = typeof import('./actions');
-let actionsPromise: Promise<ActionsModule> | null = null;
-function loadActions(): Promise<ActionsModule> {
-  actionsPromise ??= import('./actions');
-  return actionsPromise;
-}
-
-async function runRequestDocumentCenterAction(
-  ...args: Parameters<ActionsModule['runRequestDocumentCenterAction']>
-) {
-  return (await loadActions()).runRequestDocumentCenterAction(...args);
-}
-
-async function runReviewDocumentCenterAction(
-  ...args: Parameters<ActionsModule['runReviewDocumentCenterAction']>
-) {
-  return (await loadActions()).runReviewDocumentCenterAction(...args);
-}
-
-async function runOpenDocumentVersionAction(
-  ...args: Parameters<ActionsModule['runOpenDocumentVersionAction']>
-) {
-  return (await loadActions()).runOpenDocumentVersionAction(...args);
-}
-
-async function runLoadVersionHistoryAction(
-  ...args: Parameters<ActionsModule['runLoadVersionHistoryAction']>
-) {
-  return (await loadActions()).runLoadVersionHistoryAction(...args);
-}
-
-async function runSetDocumentExpiryAction(
-  ...args: Parameters<ActionsModule['runSetDocumentExpiryAction']>
-) {
-  return (await loadActions()).runSetDocumentExpiryAction(...args);
-}
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_TENANT_ID = '22222222-2222-4222-8222-222222222222';
@@ -54,6 +21,7 @@ const CLIENT_ID = '44444444-4444-4444-8444-444444444444';
 const DOCUMENT_ID = '55555555-5555-4555-8555-555555555555';
 const VERSION_ID = '66666666-6666-4666-8666-666666666666';
 const REQUEST_ID = '77777777-7777-4777-8777-777777777777';
+const AUTHORITATIVE_CLIENT_ID = '88888888-8888-4888-8888-888888888888';
 
 function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
   const calls: string[] = [];
@@ -75,10 +43,11 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
     },
     createRequest: async (ctx) => {
       calls.push(`request:${ctx.tenantId}:${ctx.actorId}:${ctx.role}`);
-      return { id: REQUEST_ID };
+      return { id: REQUEST_ID, clientId: CLIENT_ID };
     },
     reviewVersion: async (versionId, ctx, input) => {
       calls.push(`review:${versionId}:${ctx.tenantId}:${input.status}`);
+      return { clientId: CLIENT_ID };
     },
     openVersion: async (tenantId, versionId) => {
       calls.push(`open:${tenantId}:${versionId}`);
@@ -111,6 +80,7 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
     },
     setExpiry: async (ctx, input) => {
       calls.push(`expiry:${ctx.tenantId}:${input.document_id}:${input.expires_on}`);
+      return { clientId: CLIENT_ID };
     },
     revalidate: (path) => calls.push(`revalidate:${path}`),
     rethrowNavigation: () => undefined,
@@ -238,20 +208,76 @@ test('document center page propagates inactive state after exact firm match', as
   assert.deepEqual(calls, ['auth', 'tenant', 'active']);
 });
 
-test('each document action performs fresh authorization before its DAL call', async () => {
-  const context = setup();
-  await runRequestDocumentCenterAction('acme', null, requestForm(), context.dependencies);
-  await runReviewDocumentCenterAction('acme', null, reviewForm(), context.dependencies);
-  await runOpenDocumentVersionAction('acme', VERSION_ID, context.dependencies);
-  await runLoadVersionHistoryAction('acme', DOCUMENT_ID, context.dependencies);
-  await runSetDocumentExpiryAction('acme', null, expiryForm(), context.dependencies);
+const actionOrderCases = [
+  {
+    name: 'request',
+    operation: 'request:',
+    invoke: (deps: DocumentCenterActionDependencies) =>
+      runRequestDocumentCenterAction('acme', null, requestForm(), deps),
+  },
+  {
+    name: 'review',
+    operation: 'review:',
+    invoke: (deps: DocumentCenterActionDependencies) =>
+      runReviewDocumentCenterAction('acme', null, reviewForm(), deps),
+  },
+  {
+    name: 'open',
+    operation: 'open:',
+    invoke: (deps: DocumentCenterActionDependencies) =>
+      runOpenDocumentVersionAction('acme', VERSION_ID, deps),
+  },
+  {
+    name: 'history',
+    operation: 'history:',
+    invoke: (deps: DocumentCenterActionDependencies) =>
+      runLoadVersionHistoryAction('acme', DOCUMENT_ID, deps),
+  },
+  {
+    name: 'expiry',
+    operation: 'expiry:',
+    invoke: (deps: DocumentCenterActionDependencies) =>
+      runSetDocumentExpiryAction('acme', null, expiryForm(), deps),
+  },
+] as const;
 
-  assert.equal(context.calls.filter((call) => call === 'auth').length, 5);
-  for (const operation of ['request:', 'review:', 'open:', 'history:', 'expiry:']) {
-    const index = context.calls.findIndex((call) => call.startsWith(operation));
-    assert.ok(index > -1, `${operation} missing`);
-    assert.equal(context.calls.slice(0, index).filter((call) => call === 'auth').length > 0, true);
-  }
+for (const action of actionOrderCases) {
+  test(`${action.name} action independently runs auth, tenant, active, headers, then DAL`, async () => {
+    const context = setup();
+    await action.invoke(context.dependencies);
+    const dalIndex = context.calls.findIndex((call) => call.startsWith(action.operation));
+    assert.ok(dalIndex > -1);
+    assert.deepEqual(context.calls.slice(0, dalIndex), [
+      'auth',
+      'tenant:acme',
+      `active:${TENANT_ID}`,
+      'headers',
+    ]);
+  });
+}
+
+test('firm actions module exports only the five public Server Actions', () => {
+  const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
+  const exportedFunctions = [...source.matchAll(/export async function (\w+)/gu)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(exportedFunctions, [
+    'requestDocumentCenterAction',
+    'reviewDocumentCenterAction',
+    'openDocumentVersionAction',
+    'loadVersionHistoryAction',
+    'setDocumentExpiryAction',
+  ]);
+  assert.doesNotMatch(source, /export (?:type )?\{?[^\n]*(?:Dependencies|run[A-Z])/u);
+});
+
+test('firm production actions wire navigation rethrow, trusted metadata, and safe logging', () => {
+  const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
+  assert.match(source, /import \{ unstable_rethrow \} from 'next\/navigation'/u);
+  assert.match(source, /unstable_rethrow\(error\)/u);
+  assert.match(source, /normalizeActionRequestMetadata\(requestHeaders\)/u);
+  assert.match(source, /logSafeActionError\(operation, error\)/u);
+  assert.doesNotMatch(source, /console\.error/u);
 });
 
 test('document actions serialize role failures and stop before tenant resolution or DAL', async () => {
@@ -317,7 +343,7 @@ test('request action uses first string values and rejects Blob values before DAL
     createRequest: async (_ctx, input) => {
       createCalls += 1;
       received = input as Record<string, unknown>;
-      return { id: REQUEST_ID };
+      return { id: REQUEST_ID, clientId: CLIENT_ID };
     },
   });
   const repeated = requestForm();
@@ -432,6 +458,49 @@ test('successful request, review, and expiry revalidate firm and exact client ro
       ['revalidate:/t/acme/documents', `revalidate:/t/acme/clients/${CLIENT_ID}`],
     );
   }
+});
+
+test('review and expiry revalidate only the authoritative DAL client, never the form client', async () => {
+  for (const [invoke, override] of [
+    [
+      (deps: DocumentCenterActionDependencies) =>
+        runReviewDocumentCenterAction('acme', null, reviewForm(), deps),
+      { reviewVersion: async () => ({ clientId: AUTHORITATIVE_CLIENT_ID }) },
+    ],
+    [
+      (deps: DocumentCenterActionDependencies) =>
+        runSetDocumentExpiryAction('acme', null, expiryForm(), deps),
+      { setExpiry: async () => ({ clientId: AUTHORITATIVE_CLIENT_ID }) },
+    ],
+  ] as const) {
+    const context = setup(override);
+    assert.equal((await invoke(context.dependencies)).ok, true);
+    const revalidated = context.calls.filter((call) => call.startsWith('revalidate:'));
+    assert.deepEqual(revalidated, [
+      'revalidate:/t/acme/documents',
+      `revalidate:/t/acme/clients/${AUTHORITATIVE_CLIENT_ID}`,
+    ]);
+    assert.equal(revalidated.includes(`revalidate:/t/acme/clients/${CLIENT_ID}`), false);
+  }
+});
+
+test('request canonicalizes uppercase client UUID before DAL and cache invalidation', async () => {
+  const canonicalClientId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  let receivedClientId: string | undefined;
+  const context = setup({
+    createRequest: async (_ctx, input) => {
+      receivedClientId = input.client_id;
+      return { id: REQUEST_ID, clientId: canonicalClientId };
+    },
+  });
+  const form = requestForm();
+  form.set('client_id', canonicalClientId.toUpperCase());
+  await runRequestDocumentCenterAction('acme', null, form, context.dependencies);
+  assert.equal(receivedClientId, canonicalClientId);
+  assert.deepEqual(
+    context.calls.filter((call) => call.startsWith('revalidate:')),
+    ['revalidate:/t/acme/documents', `revalidate:/t/acme/clients/${canonicalClientId}`],
+  );
 });
 
 test('failed mutations never revalidate', async () => {

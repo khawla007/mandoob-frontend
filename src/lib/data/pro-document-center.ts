@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { ApiError } from '@/lib/errors';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
@@ -380,7 +381,7 @@ export type SetDocumentExpiryContext = {
 export async function setDocumentExpiry(
   ctx: SetDocumentExpiryContext,
   input: DocumentExpiryInput,
-): Promise<void> {
+): Promise<{ clientId: string }> {
   const validContext = expiryContextSchema.parse(ctx);
   const validInput = documentExpirySchema.parse({
     ...input,
@@ -397,6 +398,7 @@ export async function setDocumentExpiry(
     } as never,
   );
   const updated = (data as Array<Record<string, unknown>> | null)?.[0];
+  const updatedClientId = uuidSchema.safeParse(updated?.client_id);
   if (error?.code === '42501') {
     throw new ApiError('FORBIDDEN', 'Document expiry update is not authorized', 403);
   }
@@ -410,7 +412,7 @@ export async function setDocumentExpiry(
       409,
     );
   }
-  if (error || updated?.document_id !== validInput.document_id) {
+  if (error || updated?.document_id !== validInput.document_id || !updatedClientId.success) {
     throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
   }
 
@@ -429,5 +431,7 @@ export async function setDocumentExpiry(
     ip: validContext.ip,
     userAgent: validContext.userAgent,
     details: auditDetails,
-  }).catch((error) => console.error('recordAuthEvent failed', error));
+  }).catch((error) => logSafeActionError('document_center.expiry.auth_event', error));
+
+  return { clientId: updatedClientId.data.toLowerCase() };
 }

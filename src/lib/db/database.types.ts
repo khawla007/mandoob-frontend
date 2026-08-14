@@ -1668,6 +1668,7 @@ export type Database = {
           p_tenant_id: string;
         };
         Returns: {
+          client_id: string;
           document_id: string;
           expires_on: string | null;
         }[];

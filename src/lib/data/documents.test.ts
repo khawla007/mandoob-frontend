@@ -7,6 +7,7 @@ process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { ApiError } from '@/lib/errors';
 
 type DocumentsModule = typeof import('./documents');
@@ -26,6 +27,12 @@ const ACTOR = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const REQUEST = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const GENERATED_FILENAME = '2026-08-14_m0abc123_0123456789ab_server-held.pdf';
 const LEGACY_GENERATED_FILENAME = '2026-08-14_0123456789ab_server-held.pdf';
+
+test('document data operations route failures through redacted structured logging', () => {
+  const source = readFileSync(new URL('./documents.ts', import.meta.url), 'utf8');
+  assert.match(source, /logSafeActionError/u);
+  assert.doesNotMatch(source, /console\.error/u);
+});
 
 type FetchCall = { url: string; method: string; body: unknown };
 
@@ -430,7 +437,12 @@ test('setDocumentReview uses one exact atomic RPC and emits auth telemetry only 
   });
   const { setDocumentReview } = await load();
 
-  await setDocumentReview(VERSION, reviewCtx(), { status: 'approved', note: ' looks good ' });
+  const result = await setDocumentReview(VERSION, reviewCtx(), {
+    status: 'approved',
+    note: ' looks good ',
+  });
+
+  assert.deepEqual(result, { clientId: CLIENT });
 
   assert.equal(calls.length, 2);
   assert.match(calls[0].url, /\/rest\/v1\/rpc\/review_document_version$/u);
@@ -530,6 +542,35 @@ test('setDocumentReview normalizes uppercase UUIDs in the RPC and success teleme
     document_id: DOCUMENT,
     review_status: 'approved',
   });
+});
+
+test('createDocumentRequest canonicalizes ownership UUIDs and returns authoritative client ID', async () => {
+  const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/clients?')) {
+      return json({ id: CLIENT, tenant_id: TENANT });
+    }
+    if (call.url.includes('/rest/v1/document_requests')) return json({ id: REQUEST });
+    if (call.url.includes('/rest/v1/customer_profiles')) return json(null);
+    if (call.url.includes('/rest/v1/tenants')) return json({ name: 'Acme' });
+    return json(null, 201);
+  });
+  const { createDocumentRequest } = await load();
+  const result = await createDocumentRequest(
+    {
+      ...reviewCtx(),
+      tenantId: TENANT.toUpperCase(),
+      actorId: ACTOR.toUpperCase(),
+    },
+    { client_id: CLIENT.toUpperCase(), doc_type: 'passport', label: 'Passport copy' },
+  );
+
+  assert.deepEqual(result, { id: REQUEST, clientId: CLIENT });
+  const clientRead = calls.find((call) => call.url.includes('/rest/v1/clients?'))!;
+  assert.match(clientRead.url, new RegExp(`id=eq\\.${CLIENT}`, 'u'));
+  const insert = calls.find((call) => call.url.includes('/rest/v1/document_requests'))!;
+  assert.equal((insert.body as Record<string, unknown>).tenant_id, TENANT);
+  assert.equal((insert.body as Record<string, unknown>).client_id, CLIENT);
+  assert.equal((insert.body as Record<string, unknown>).requested_by, ACTOR);
 });
 
 test('setDocumentReview maps controlled and zero-row RPC failures without telemetry or raw details', async () => {

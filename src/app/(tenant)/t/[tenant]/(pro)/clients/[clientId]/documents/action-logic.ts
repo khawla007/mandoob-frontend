@@ -24,12 +24,12 @@ export type LegacyDocumentActionDependencies = {
   createRequest(
     ctx: CreateDocumentRequestCtx,
     input: CreateDocumentRequestInput,
-  ): Promise<{ id: string }>;
+  ): Promise<{ id: string; clientId: string }>;
   reviewVersion(
     versionId: string,
     ctx: SetDocumentReviewCtx,
     input: DocumentReviewInput,
-  ): Promise<void>;
+  ): Promise<{ clientId: string }>;
   openVersion(tenantId: string, versionId: string): Promise<{ url: string; expiresAt: string }>;
   revalidate(path: string): void;
   rethrowNavigation(error: unknown): void;
@@ -40,6 +40,7 @@ const uuidSchema = z
   .string()
   .uuid()
   .transform((value) => value.toLowerCase());
+const requestSchema = createDocumentRequestSchema.extend({ client_id: uuidSchema });
 
 const FAILURE_COPY = {
   UNAUTHORIZED: {
@@ -126,14 +127,14 @@ export async function runRequestDocumentAction(
 ): Promise<ActionResult<{ requestId: string }>> {
   try {
     const authorization = await resolveAndAuthorize(slug, dependencies);
-    const parsed = createDocumentRequestSchema.safeParse(raw);
+    const parsed = requestSchema.safeParse(raw);
     if (!parsed.success) return actionFailure('VALIDATION_FAILED');
 
     const request = await dependencies.createRequest(authorization.actor, parsed.data);
-    revalidateDocumentRoutes(slug, parsed.data.client_id, dependencies);
+    revalidateDocumentRoutes(slug, request.clientId, dependencies);
     return { ok: true, data: { requestId: request.id } };
   } catch (error) {
-    return sanitizeError(error, 'requestDocumentAction unexpected error', dependencies);
+    return sanitizeError(error, 'document_client.request', dependencies);
   }
 }
 
@@ -150,11 +151,11 @@ export async function runReviewDocumentVersionAction(
     const parsedClientId = uuidSchema.safeParse(clientId);
     if (!parsed.success || !parsedClientId.success) return actionFailure('VALIDATION_FAILED');
 
-    await dependencies.reviewVersion(versionId, authorization.actor, parsed.data);
-    revalidateDocumentRoutes(slug, parsedClientId.data, dependencies);
+    const reviewed = await dependencies.reviewVersion(versionId, authorization.actor, parsed.data);
+    revalidateDocumentRoutes(slug, reviewed.clientId, dependencies);
     return { ok: true, data: undefined };
   } catch (error) {
-    return sanitizeError(error, 'reviewDocumentVersionAction unexpected error', dependencies);
+    return sanitizeError(error, 'document_client.review', dependencies);
   }
 }
 
@@ -168,6 +169,6 @@ export async function runGetDocumentSignedUrlAction(
     const result = await dependencies.openVersion(authorization.tenant.id, versionId);
     return { ok: true, data: { url: result.url, expiresAt: result.expiresAt } };
   } catch (error) {
-    return sanitizeError(error, 'getDocumentSignedUrlAction unexpected error', dependencies);
+    return sanitizeError(error, 'document_client.open', dependencies);
   }
 }
