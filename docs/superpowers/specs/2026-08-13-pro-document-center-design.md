@@ -1,7 +1,7 @@
 # PRO Document Center Design
 
-**Date:** 2026-08-13  
-**Status:** Approved for implementation  
+**Date:** 2026-08-13
+**Status:** Approved for implementation
 **Route:** `/t/[tenant]/documents`
 
 ## Goal
