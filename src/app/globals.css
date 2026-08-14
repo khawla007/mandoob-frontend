@@ -1325,6 +1325,9 @@
 .document-center {
   --document-summary-muted-light: #514943;
   --document-summary-muted-dark: #d8d0c8;
+  --document-focus-light: #6f2f18;
+  --document-focus-dark: #ffad85;
+  --document-focus: var(--document-focus-light);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -1377,6 +1380,8 @@
 }
 
 .document-center__summary:focus-visible {
+  outline: 3px solid var(--document-focus);
+  outline-offset: 2px;
   border-color: var(--document-summary-accent);
   box-shadow:
     0 0 0 3px color-mix(in oklch, var(--document-summary-accent) 22%, transparent),
@@ -1385,7 +1390,7 @@
 
 .document-center__summary::after {
   position: absolute;
-  z-index: 2;
+  z-index: 0;
   inset-block: -45%;
   inset-inline-start: -34%;
   width: 18%;
@@ -1407,6 +1412,10 @@
 
 .document-center__summary-pattern {
   pointer-events: none;
+}
+
+.document-center__summary > .relative {
+  z-index: 1;
 }
 
 .document-center__summary--info .document-center__summary-pattern {
@@ -1532,7 +1541,12 @@
 .document-center__client-search input:focus-visible,
 .document-center__client-search button:focus-visible,
 .document-center__client-option:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 3px solid var(--document-focus);
+  outline-offset: 2px;
+}
+
+.document-center :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--document-focus);
   outline-offset: 2px;
 }
 
@@ -1565,13 +1579,23 @@
   --signal-panel-surface: #fffdfa;
   --signal-info: #4d86a0;
   --signal-blue-soft: #e7f1f4;
+  --document-focus: #6f2f18;
+  max-block-size: calc(100dvh - 2rem);
+  overflow-y: auto;
   border-color: color-mix(in oklch, var(--border) 84%, var(--brand-accent));
   background: var(--signal-panel-surface);
 }
 
 .document-center-dialog :is(button, input, select, textarea):focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 3px solid var(--document-focus);
   outline-offset: 2px;
+}
+
+.document-center-dialog > [data-slot='dialog-close'] {
+  inset-block-start: 0.5rem;
+  inset-inline-end: 0.5rem;
+  top: auto;
+  right: auto;
 }
 
 .document-center__queue-scroll {
@@ -1701,6 +1725,7 @@
 }
 
 .dark .document-center {
+  --document-focus: var(--document-focus-dark);
   color: #f5f1ea;
 }
 
@@ -1740,6 +1765,7 @@
   --signal-panel-surface: #201e1c;
   --signal-info: #4d86a0;
   --signal-blue-soft: #1a2a2e;
+  --document-focus: #ffad85;
   border-color: rgb(255 255 255 / 14%);
   background: var(--signal-panel-surface);
 }
@@ -1844,3 +1870,5 @@
     display: none;
   }
 }
+
+/* END PRO Document Center */

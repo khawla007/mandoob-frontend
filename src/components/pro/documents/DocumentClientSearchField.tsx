@@ -2,11 +2,13 @@
 
 import { useId, useRef, useState, useTransition } from 'react';
 import { Search, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { searchDocumentClientsAction } from '@/app/(tenant)/t/[tenant]/(pro)/documents/actions';
 import { Button } from '@/components/ui/button';
 import type { DocumentCenterClientOption } from '@/lib/data/pro-document-center';
 import {
+  type ClientSearchRequest,
   changeClientSearchText,
   clientSearchPropsRevision,
   clientSearchSubmissionValue,
@@ -14,9 +16,11 @@ import {
   createClientSearchRequestGate,
   createClientSearchState,
   invalidateClientSearchRequest,
+  isClientSearchRequestPending,
   isCurrentClientSearchResponse,
   reconcileClientSearchProps,
   receiveClientSearchResults,
+  resolveClientSearchActionError,
   selectClientSearchOption,
 } from './client-search-state';
 
@@ -27,16 +31,9 @@ export type DocumentClientSearchLabels = {
   results: string;
   noResults: string;
   error: string;
-  selectTemplate: string;
   clear: string;
+  errors: Record<string, string>;
 };
-
-function interpolate(template: string, values: Record<string, string>) {
-  return Object.entries(values).reduce(
-    (result, [key, value]) => result.replaceAll(`{${key}}`, value),
-    template,
-  );
-}
 
 type DocumentClientSearchFieldProps = {
   slug: string;
@@ -68,26 +65,37 @@ function DocumentClientSearchControl({
 }: DocumentClientSearchFieldProps) {
   const inputId = useId();
   const listboxId = useId();
+  const t = useTranslations('proDocumentCenter.clientSearch');
   const [state, setState] = useState(() =>
     reconcileClientSearchProps(createClientSearchState(null, []), selectedOption, initialOptions),
   );
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingRequest, setPendingRequest] = useState<ClientSearchRequest | null>(null);
   const [pending, startSearch] = useTransition();
   const requestGate = useRef(createClientSearchRequestGate(state.text));
+  const [renderGate, setRenderGate] = useState(() => createClientSearchRequestGate(state.text));
+  const currentPending = pending && isClientSearchRequestPending(renderGate, pendingRequest);
+
+  function commitRequestGate(nextGate: ClientSearchRequest) {
+    requestGate.current = nextGate;
+    setRenderGate(nextGate);
+  }
 
   function select(option: DocumentCenterClientOption) {
-    requestGate.current = invalidateClientSearchRequest(requestGate.current, option.companyName);
+    commitRequestGate(invalidateClientSearchRequest(requestGate.current, option.companyName));
     setState((current) => selectClientSearchOption(current, option));
     setActiveIndex(-1);
-    setError(false);
+    setPendingRequest(null);
+    setError(null);
   }
 
   function search() {
     const requestText = state.text;
     const started = beginClientSearchRequest(requestGate.current, requestText);
-    requestGate.current = started.gate;
-    setError(false);
+    commitRequestGate(started.gate);
+    setPendingRequest(started.request);
+    setError(null);
     startSearch(async () => {
       try {
         const result = await searchDocumentClientsAction(slug, requestText);
@@ -101,13 +109,17 @@ function DocumentClientSearchControl({
           if (!isCurrentClientSearchResponse(requestGate.current, started.request, 'failure')) {
             return;
           }
-          setError(true);
+          setError(resolveClientSearchActionError(result.messageKey, labels.errors));
         }
       } catch {
         if (!isCurrentClientSearchResponse(requestGate.current, started.request, 'failure')) {
           return;
         }
-        setError(true);
+        setError(labels.error);
+      } finally {
+        if (isClientSearchRequestPending(requestGate.current, started.request)) {
+          setPendingRequest(null);
+        }
       }
     });
   }
@@ -131,13 +143,15 @@ function DocumentClientSearchControl({
           required={required}
           pattern={required && !state.selected ? '(?!)' : undefined}
           value={state.text}
+          maxLength={100}
           placeholder={labels.placeholder}
           onChange={(event) => {
             const nextText = event.target.value;
-            requestGate.current = invalidateClientSearchRequest(requestGate.current, nextText);
+            commitRequestGate(invalidateClientSearchRequest(requestGate.current, nextText));
             setState((current) => changeClientSearchText(current, nextText));
             setActiveIndex(-1);
-            setError(false);
+            setPendingRequest(null);
+            setError(null);
           }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown' && state.results.length > 0) {
@@ -165,50 +179,56 @@ function DocumentClientSearchControl({
             variant="ghost"
             aria-label={labels.clear}
             onClick={() => {
-              requestGate.current = invalidateClientSearchRequest(requestGate.current, '');
+              commitRequestGate(invalidateClientSearchRequest(requestGate.current, ''));
               setState(createClientSearchState(null, initialOptions));
               setActiveIndex(-1);
-              setError(false);
+              setPendingRequest(null);
+              setError(null);
             }}
           >
             <X aria-hidden="true" />
           </Button>
         ) : null}
-        <Button type="button" variant="outline" disabled={pending} onClick={search}>
+        <Button type="button" variant="outline" disabled={currentPending} onClick={search}>
           <Search aria-hidden="true" />
-          {pending ? labels.searching : labels.search}
+          {currentPending ? labels.searching : labels.search}
         </Button>
       </div>
       {state.open ? (
-        <div
-          id={listboxId}
-          role="listbox"
-          aria-label={labels.results}
-          className="document-center__client-listbox bg-popover max-h-48 overflow-y-auto rounded-lg border p-1 shadow-sm"
-        >
-          {state.results.length > 0 ? (
-            state.results.map((option, index) => (
-              <button
-                key={option.id}
-                id={`${listboxId}-option-${index}`}
-                type="button"
-                role="option"
-                aria-selected={state.selected?.id === option.id}
-                aria-label={interpolate(labels.selectTemplate, { client: option.companyName })}
-                onClick={() => select(option)}
-                className="document-center__client-option hover:bg-muted focus-visible:bg-muted block w-full rounded-md px-3 py-2 text-start text-sm outline-none"
-              >
-                {option.companyName}
-              </button>
-            ))
-          ) : (
-            <p className="text-muted-foreground px-3 py-2 text-sm">{labels.noResults}</p>
-          )}
-        </div>
+        <>
+          <p role="status" className="text-muted-foreground text-xs font-normal">
+            {t('count', { count: state.results.length })}
+          </p>
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={labels.results}
+            className="document-center__client-listbox bg-popover max-h-48 overflow-y-auto rounded-lg border p-1 shadow-sm"
+          >
+            {state.results.length > 0 ? (
+              state.results.map((option, index) => (
+                <button
+                  key={option.id}
+                  id={`${listboxId}-option-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={state.selected?.id === option.id}
+                  aria-label={t('select', { client: option.companyName })}
+                  onClick={() => select(option)}
+                  className="document-center__client-option hover:bg-muted focus-visible:bg-muted block w-full rounded-md px-3 py-2 text-start text-sm outline-none"
+                >
+                  {option.companyName}
+                </button>
+              ))
+            ) : (
+              <p className="text-muted-foreground px-3 py-2 text-sm">{labels.noResults}</p>
+            )}
+          </div>
+        </>
       ) : null}
       {error ? (
         <p role="alert" className="text-destructive text-xs">
-          {labels.error}
+          {error}
         </p>
       ) : null}
     </div>

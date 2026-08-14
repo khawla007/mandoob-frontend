@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser';
+import { createTranslator } from 'use-intl/core';
 
 import en from '@/messages/en.json';
 import ar from '@/messages/ar.json';
@@ -68,6 +69,22 @@ function icuVariables(value: string): string[] {
   return [...variables].sort();
 }
 
+function icuLiteralText(value: string): string {
+  const literals: string[] = [];
+  function visit(elements: MessageFormatElement[]) {
+    for (const element of elements) {
+      if (element.type === TYPE.literal) literals.push(element.value);
+      if (element.type === TYPE.select || element.type === TYPE.plural) {
+        for (const option of Object.values(element.options)) visit(option.value);
+      } else if (element.type === TYPE.tag) {
+        visit(element.children);
+      }
+    }
+  }
+  visit(parse(value));
+  return literals.join(' ');
+}
+
 function documentCenterLiteralKeys(): string[] {
   const route = readFileSync(
     join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/documents/page.tsx'),
@@ -130,8 +147,7 @@ describe('i18n/messages', () => {
         `ICU variables differ at proDocumentCenter.${path}`,
       );
 
-      const arabicWithoutTechnicalTokens = (arabicValue as string)
-        .replace(/\{[^}]+\}/gu, '')
+      const arabicWithoutTechnicalTokens = icuLiteralText(arabicValue as string)
         .replace(/\b(?:UAE|MIME|PRO|UTC|KB|MB|GB)\b/gu, '')
         .trim();
       assert.ok(
@@ -176,6 +192,7 @@ describe('i18n/messages', () => {
       'queue.partialError',
       'history.error',
       'clientSearch.select',
+      'clientSearch.count',
       'clientSearch.loading',
     ];
 
@@ -220,21 +237,23 @@ describe('i18n/messages', () => {
       'openFailed',
       'unexpected',
     ];
-    const stableCodes = [
-      'VALIDATION_FAILED',
-      'UNAUTHORIZED',
-      'FORBIDDEN',
-      'NOT_FOUND',
-      'TENANT_NOT_FOUND',
-      'TENANT_INACTIVE',
-      'EXPIRY_EXTERNALLY_MANAGED',
-      'STORAGE_SIGN_FAILED',
-      'INTERNAL',
-      'SUCCESS',
-    ];
-    for (const code of stableCodes) {
-      assert.match(actionLogic, new RegExp(`(?:${code}:|'${code}')`, 'u'));
+    const exactPairs = {
+      UNAUTHORIZED: 'documents.errors.unauthorized',
+      FORBIDDEN: 'documents.errors.forbidden',
+      NOT_FOUND: 'documents.errors.notFound',
+      TENANT_NOT_FOUND: 'documents.errors.notFound',
+      TENANT_INACTIVE: 'documents.errors.tenantInactive',
+      EXPIRY_EXTERNALLY_MANAGED: 'documents.errors.expiryExternallyManaged',
+      STORAGE_SIGN_FAILED: 'documents.errors.openFailed',
+      VALIDATION_FAILED: 'documents.errors.validation',
+    } as const;
+    for (const [code, key] of Object.entries(exactPairs)) {
+      assert.match(actionLogic, new RegExp(`${code}:\\s*'${key.replaceAll('.', '\\.')}'`, 'u'));
     }
+    assert.match(
+      actionLogic,
+      /code:\s*'INTERNAL',\s*messageKey:\s*'documents\.errors\.unexpected'/u,
+    );
     for (const messages of [en, ar]) {
       const errors = ((messages as Messages).proDocumentCenter as Messages).errors;
       for (const key of expectedErrorKeys) {
@@ -244,6 +263,45 @@ describe('i18n/messages', () => {
           `Missing localized action error ${key}`,
         );
       }
+    }
+  });
+
+  it('formats visible English and Arabic counts through complete ICU plural branches', () => {
+    const english = createTranslator({
+      locale: 'en',
+      messages: en,
+      namespace: 'proDocumentCenter',
+    });
+    const arabic = createTranslator({
+      locale: 'ar',
+      messages: ar,
+      namespace: 'proDocumentCenter',
+    });
+
+    assert.match(english('heading.subtitle', { tenant: 'Acme', count: 1 }), /1 record/u);
+    assert.match(english('heading.subtitle', { tenant: 'Acme', count: 2 }), /2 records/u);
+    assert.match(english('queue.result', { from: 1, to: 1, total: 1 }), /1 result/u);
+    assert.match(english('queue.result', { from: 1, to: 2, total: 2 }), /2 results/u);
+    assert.match(english('clientSearch.count', { count: 1 }), /1 matching client/u);
+    assert.match(english('clientSearch.count', { count: 2 }), /2 matching clients/u);
+
+    const cases = [
+      [0, /لا سجلات/u, /لا توجد نتائج/u, /لا يوجد عملاء/u],
+      [1, /سجل واحد/u, /نتيجة واحدة/u, /عميل واحد/u],
+      [2, /سجلين/u, /نتيجتين/u, /عميلان/u],
+      [3, /(?:٣|3) سجلات/u, /(?:٣|3) نتائج/u, /(?:٣|3) عملاء/u],
+      [11, /(?:١١|11) سجلًا/u, /(?:١١|11) نتيجة/u, /(?:١١|11) عميلًا/u],
+    ] as const;
+    for (const [count, headingExpected, queueExpected, clientExpected] of cases) {
+      assert.match(arabic('heading.subtitle', { tenant: 'أكمي', count }), headingExpected);
+      const queueResult = arabic('queue.result', {
+        from: 1,
+        to: Math.max(1, count),
+        total: count,
+      });
+      const clientCount = arabic('clientSearch.count', { count });
+      assert.match(queueResult, queueExpected);
+      assert.match(clientCount, clientExpected);
     }
   });
 

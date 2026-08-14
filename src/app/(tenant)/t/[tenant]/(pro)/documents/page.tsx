@@ -88,8 +88,6 @@ export default async function ProDocumentsPage({
   if (requestedPage !== workspace.page) {
     redirect(documentCenterHref(slug, query, workspace.page));
   }
-  const formattedWorkspaceTotal = new Intl.NumberFormat(locale).format(workspace.total);
-
   const docTypes = Object.fromEntries(
     DOC_TYPES.map((type) => [type, t(`docTypes.${type}`)]),
   ) as Record<DocType, string>;
@@ -117,8 +115,8 @@ export default async function ProDocumentsPage({
     results: t('clientSearch.results'),
     noResults: t('clientSearch.noResults'),
     error: t('clientSearch.error'),
-    selectTemplate: t.raw('clientSearch.select') as string,
     clear: t('clientSearch.clear'),
+    errors: errorLabels,
   };
   const actionLabels: DocumentActionLabels = {
     close: t('actions.close'),
@@ -197,16 +195,24 @@ export default async function ProDocumentsPage({
     },
   };
   const summaryLabels = Object.fromEntries(
-    summaryKeys.map((key) => [
-      key,
-      {
-        title: t(`summary.${key}.title`),
-        helper: t(`summary.${key}.helper`),
-        failed: t(`summary.${key}.failed`),
-        retry: t(`summary.${key}.retry`),
-        ariaTemplate: t.raw(`summary.${key}.aria`) as string,
-      },
-    ]),
+    summaryKeys.map((key) => {
+      const result = summary[key];
+      const failed = t(`summary.${key}.failed`);
+      const retry = t(`summary.${key}.retry`);
+      return [
+        key,
+        {
+          title: t(`summary.${key}.title`),
+          helper: t(`summary.${key}.helper`),
+          failed,
+          retry,
+          aria: t(`summary.${key}.aria`, {
+            count: result.ok ? result.value : failed,
+            helper: result.ok ? t(`summary.${key}.helper`) : retry,
+          }),
+        },
+      ];
+    }),
   ) as DocumentSummaryLabels;
   const filterLabels: DocumentFilterLabels = {
     search: t('filters.search'),
@@ -234,6 +240,8 @@ export default async function ProDocumentsPage({
     ) as DocumentFilterLabels['sorts'],
     docTypes,
   };
+  const visibleFrom = (workspace.page - 1) * workspace.pageSize + 1;
+  const visibleTo = Math.min(workspace.page * workspace.pageSize, workspace.total);
   const queueLabels: DocumentQueueLabels = {
     region: t('queue.region'),
     client: t('queue.client'),
@@ -260,8 +268,12 @@ export default async function ProDocumentsPage({
     pagination: t('queue.pagination'),
     previous: t('queue.previous'),
     next: t('queue.next'),
-    resultTemplate: t.raw('queue.result') as string,
-    pageCountTemplate: t.raw('queue.pageCount') as string,
+    result: t('queue.result', {
+      from: visibleFrom,
+      to: visibleTo,
+      total: workspace.total,
+    }),
+    pageCount: t('queue.pageCount', { current: workspace.page, total: totalPages }),
     requestStatuses: Object.fromEntries(
       requestStatuses.map((status) => [status, t(`requestStatuses.${status}`)]),
     ) as DocumentQueueLabels['requestStatuses'],
@@ -282,7 +294,7 @@ export default async function ProDocumentsPage({
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('heading.title')}</h1>
           <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
-            {t('heading.subtitle', { tenant: tenant.name, count: formattedWorkspaceTotal })}
+            {t('heading.subtitle', { tenant: tenant.name, count: workspace.total })}
           </p>
         </div>
         <DocumentActions kind="request" slug={slug} clients={clients} labels={actionLabels} />
@@ -316,9 +328,7 @@ export default async function ProDocumentsPage({
         />
         <DocumentWorkQueue
           rows={workspace.rows}
-          total={workspace.total}
           page={workspace.page}
-          pageSize={workspace.pageSize}
           totalPages={totalPages}
           slug={slug}
           query={query}

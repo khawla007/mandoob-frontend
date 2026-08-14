@@ -9,8 +9,13 @@ const css = postcss.parse(source);
 const marker = css.nodes.findIndex(
   (node) => node.type === 'comment' && node.text.includes('PRO Document Center'),
 );
+const endMarker = css.nodes.findIndex(
+  (node, index) =>
+    index > marker && node.type === 'comment' && node.text === 'END PRO Document Center',
+);
 assert.notEqual(marker, -1, 'Missing Document Center CSS marker');
-const scoped = postcss.root({ nodes: css.nodes.slice(marker + 1) });
+assert.notEqual(endMarker, -1, 'Missing Document Center CSS end marker');
+const scoped = postcss.root({ nodes: css.nodes.slice(marker + 1, endMarker) });
 
 function declarations(rule: Rule): Map<string, string> {
   return new Map(
@@ -75,6 +80,25 @@ test('all summary variants expose testable light and dark surfaces with AA helpe
   assert.equal(declarations(darkHelper).get('color'), 'var(--document-summary-muted-dark)');
 });
 
+test('opaque focus tokens keep at least 3:1 contrast across every summary surface', () => {
+  const root = declarations(exactRule('.document-center'));
+  const focus = {
+    light: root.get('--document-focus-light') ?? '',
+    dark: root.get('--document-focus-dark') ?? '',
+  };
+  assert.match(focus.light, /^#[0-9a-f]{6}$/iu);
+  assert.match(focus.dark, /^#[0-9a-f]{6}$/iu);
+  for (const variant of ['info', 'review', 'success', 'urgent', 'expiry', 'overdue']) {
+    const values = declarations(exactRule(`.document-center__summary--${variant}`));
+    for (const mode of ['light', 'dark'] as const) {
+      const surface = values.get(`--document-summary-surface-${mode}`) ?? '';
+      assert.ok(contrast(focus[mode], surface) >= 3, `${variant} ${mode} focus contrast`);
+    }
+  }
+  const summaryFocus = declarations(exactRule('.document-center__summary:focus-visible'));
+  assert.equal(summaryFocus.get('outline'), '3px solid var(--document-focus)');
+});
+
 test('Document Center containment leaves horizontal scrolling only to the queue', () => {
   const root = declarations(exactRule('.document-center'));
   assert.equal(root.has('overflow-x'), false);
@@ -111,7 +135,12 @@ test('scoped focus, mobile targets, variants, and reduced motion are concrete AS
   const portalFocus = exactRule(
     '.document-center-dialog :is(button, input, select, textarea):focus-visible',
   );
-  assert.equal(declarations(portalFocus).get('outline'), '2px solid var(--ring)');
+  assert.equal(declarations(portalFocus).get('outline'), '3px solid var(--document-focus)');
+
+  const shine = declarations(exactRule('.document-center__summary::after'));
+  assert.equal(shine.get('z-index'), '0');
+  const content = declarations(exactRule('.document-center__summary > .relative'));
+  assert.equal(content.get('z-index'), '1');
 
   let mobile: AtRule | undefined;
   scoped.walkAtRules('media', (rule) => {
@@ -146,6 +175,19 @@ test('scoped focus, mobile targets, variants, and reduced motion are concrete AS
     }
   });
   assert.equal(shineDisabled, true);
+});
+
+test('all portaled dialogs are viewport-bounded, scrollable, and logically closed', () => {
+  const dialog = declarations(exactRule('.document-center-dialog'));
+  assert.equal(dialog.get('max-block-size'), 'calc(100dvh - 2rem)');
+  assert.equal(dialog.get('overflow-y'), 'auto');
+  const close = declarations(exactRule(".document-center-dialog > [data-slot='dialog-close']"));
+  assert.equal(close.get('inset-inline-end'), '0.5rem');
+  assert.equal(close.get('right'), 'auto');
+});
+
+test('the scoped AST is bounded by an explicit Document Center end marker', () => {
+  assert.match(source, /\/\* END PRO Document Center \*\//u);
 });
 
 test('every rule after the marker remains scoped to the Document Center or its portal', () => {

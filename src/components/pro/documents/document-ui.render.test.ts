@@ -45,7 +45,7 @@ renderTest('loading skeleton renders localized busy semantics and stable geometr
 });
 
 renderTest(
-  'error view is semantic, localized, and invokes the supplied reset callback',
+  'error view is semantic, localized, and invokes the supplied retry callback',
   async () => {
     const { renderToStaticMarkup } = await import('react-dom/server');
     let loaded: typeof import('./DocumentCenterErrorView') | undefined;
@@ -60,7 +60,7 @@ renderTest(
       title: 'تعذّر تحميل مركز المستندات',
       description: 'يرجى المحاولة مرة أخرى.',
       retry: 'إعادة المحاولة',
-      reset: () => {
+      onRetry: () => {
         resets += 1;
       },
     };
@@ -87,19 +87,6 @@ renderTest(
   },
 );
 
-const summaryLabels = Object.fromEntries(
-  ['awaitingUpload', 'awaitingReview', 'approved', 'rejected', 'expiring', 'overdue'].map((key) => [
-    key,
-    {
-      title: `${key} title`,
-      helper: `${key} helper`,
-      failed: 'failed',
-      retry: 'retry',
-      ariaTemplate: `${key}: {count}. {helper}`,
-    },
-  ]),
-) as DocumentSummaryLabels;
-
 const summary: DocumentCenterSummary = {
   awaitingUpload: { ok: true, value: 1234 },
   awaitingReview: { ok: true, value: 2345 },
@@ -108,6 +95,22 @@ const summary: DocumentCenterSummary = {
   expiring: { ok: true, value: 5678 },
   overdue: { ok: true, value: 6789 },
 };
+
+const summaryLabels = Object.fromEntries(
+  ['awaitingUpload', 'awaitingReview', 'approved', 'rejected', 'expiring', 'overdue'].map((key) => {
+    const result = summary[key as keyof typeof summary];
+    return [
+      key,
+      {
+        title: `${key} title`,
+        helper: `${key} helper`,
+        failed: 'failed',
+        retry: 'retry',
+        aria: `${key}: ${Intl.NumberFormat('ar-AE').format(result.ok ? result.value : 0)}. ${key} helper`,
+      },
+    ];
+  }),
+) as DocumentSummaryLabels;
 
 renderTest(
   'summary widgets reset stale filters, expose six distinct variants, and localize counts',
@@ -177,7 +180,7 @@ renderTest(
         helper: 'review helper',
         failed: 'review failed',
         retry: 'review retry',
-        ariaTemplate: 'review: {count}. {helper}',
+        aria: 'review: failed. review retry',
       },
     };
     const html = renderToStaticMarkup(
@@ -358,23 +361,19 @@ renderTest(
         query: parseDocumentCenterSearch({ page: '2' }),
         page: 2,
         totalPages: 25,
-        total: 1234,
-        pageSize: 50,
-        locale: 'ar-AE',
         labels: {
-          result: '{from}–{to} / {total}',
-          pageCount: '{current} / {total}',
+          result: '٥١–١٠٠ / ١٬٢٣٤',
+          pageCount: '٢ / ٢٥',
           pagination: 'Pages',
           previous: 'Previous',
           next: 'Next',
         },
       }),
     );
-    const number = new Intl.NumberFormat('ar-AE');
-    assert.match(html, new RegExp(`${number.format(2)} / ${number.format(25)}`, 'u'));
+    assert.match(html, /٢ \/ ٢٥/u);
     assert.match(html, /aria-current="page"/u);
     assert.doesNotMatch(html, /aria-label="Page"/u);
-    assert.match(html, new RegExp(number.format(1234), 'u'));
+    assert.match(html, /١٬٢٣٤/u);
   },
 );
 

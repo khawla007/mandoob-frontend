@@ -19,6 +19,9 @@ const actions = read('../../../../../../components/pro/documents/DocumentActions
 const history = read('../../../../../../components/pro/documents/VersionHistoryDialog.tsx');
 const summary = read('../../../../../../components/pro/documents/DocumentSummaryGrid.tsx');
 const queue = read('../../../../../../components/pro/documents/DocumentWorkQueue.tsx');
+const clientSearch = read(
+  '../../../../../../components/pro/documents/DocumentClientSearchField.tsx',
+);
 const loading = readOptional('./loading.tsx');
 const errorBoundary = readOptional('./error.tsx');
 const loadingView = read(
@@ -157,10 +160,33 @@ test('route loading and error recovery are localized, semantic, and sanitized', 
   assert.match(errorBoundary, /t\('pageError\.description'\)/u);
   assert.match(errorBoundary, /t\('pageError\.retry'\)/u);
   assert.match(errorBoundary, /DocumentCenterErrorView/u);
+  assert.match(errorBoundary, /\{ unstable_retry \}/u);
+  assert.match(errorBoundary, /onRetry=\{unstable_retry\}/u);
+  assert.doesNotMatch(errorBoundary, /\breset\b/u);
   assert.match(errorView, /role="alert"/u);
-  assert.match(errorView, /onClick=\{reset\}/u);
+  assert.match(errorView, /onClick=\{onRetry\}/u);
   assert.doesNotMatch(errorBoundary, /error\.(?:message|digest)|console\./u);
   assert.doesNotMatch(errorBoundary, />\s*[A-Za-z][^<{]*</u);
+});
+
+test('client search preserves localized action errors, bounds queries, and scopes pending copy', () => {
+  assert.match(clientSearch, /maxLength=\{100\}/u);
+  assert.match(
+    clientSearch,
+    /resolveClientSearchActionError\(result\.messageKey, labels\.errors\)/u,
+  );
+  assert.match(clientSearch, /setError\(labels\.error\)/u);
+  assert.match(
+    clientSearch,
+    /currentPending\s*=\s*pending\s*&&\s*isClientSearchRequestPending\(renderGate, pendingRequest\)/u,
+  );
+  assert.doesNotMatch(clientSearch, /disabled=\{pending\}/u);
+});
+
+test('route sends numeric counts through ICU instead of raw templates or preformatted values', () => {
+  assert.doesNotMatch(page, /formattedWorkspaceTotal|t\.raw\('queue\./u);
+  assert.match(page, /t\('heading\.subtitle',[\s\S]{0,160}count: workspace\.total/u);
+  assert.match(page, /t\('queue\.result',[\s\S]{0,220}total: workspace\.total/u);
 });
 
 test('Document Center Signal Studio CSS stays scoped and encodes every summary signal', () => {

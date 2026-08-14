@@ -24,7 +24,7 @@ import type {
 
 export type DocumentSummaryLabels = Record<
   'awaitingUpload' | 'awaitingReview' | 'approved' | 'rejected' | 'expiring' | 'overdue',
-  { title: string; helper: string; failed: string; retry: string; ariaTemplate: string }
+  { title: string; helper: string; failed: string; retry: string; aria: string }
 >;
 
 type SummaryItem = {
@@ -101,11 +101,6 @@ export function DocumentSummaryGrid({
   ];
   const currentHref = documentCenterHref(slug, query);
   const numberFormatter = new Intl.NumberFormat(locale);
-  const interpolate = (template: string, values: Record<string, string>) =>
-    Object.entries(values).reduce(
-      (result, [key, value]) => result.replaceAll(`{${key}}`, value),
-      template,
-    );
 
   return (
     <section className="document-center__summary-grid grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -116,12 +111,7 @@ export function DocumentSummaryGrid({
           <Link
             key={item.key}
             href={href}
-            aria-label={interpolate(item.labels.ariaTemplate, {
-              count: item.result.ok
-                ? numberFormatter.format(item.result.value)
-                : item.labels.failed,
-              helper: item.result.ok ? item.labels.helper : item.labels.retry,
-            })}
+            aria-label={item.labels.aria}
             aria-current={currentHref === href ? 'page' : undefined}
             className={`document-center__summary document-center__summary--${item.variant} group focus-visible:ring-ring bg-card hover:bg-muted/40 relative min-w-0 overflow-hidden rounded-xl border p-4 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
             data-variant={item.variant}

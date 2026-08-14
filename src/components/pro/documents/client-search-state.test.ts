@@ -105,3 +105,67 @@ test('request generation rejects stale success and stale failure but accepts the
   assert.equal(isCurrentClientSearchResponse(gate, current.request, 'success'), true);
   assert.equal(isCurrentClientSearchResponse(gate, current.request, 'failure'), true);
 });
+
+test('editing A to B immediately releases A pending state while deferred requests overlap', async () => {
+  const {
+    beginClientSearchRequest,
+    createClientSearchRequestGate,
+    invalidateClientSearchRequest,
+    isClientSearchRequestPending,
+    isCurrentClientSearchResponse,
+  } = await import('./client-search-state');
+  let releaseA!: (value: 'failure') => void;
+  let releaseB!: (value: 'success') => void;
+  const deferredA = new Promise<'failure'>((resolve) => {
+    releaseA = resolve;
+  });
+  const deferredB = new Promise<'success'>((resolve) => {
+    releaseB = resolve;
+  });
+
+  let gate = createClientSearchRequestGate('A');
+  const first = beginClientSearchRequest(gate, 'A');
+  gate = first.gate;
+  assert.equal(isClientSearchRequestPending(gate, first.request), true);
+
+  gate = invalidateClientSearchRequest(gate, 'B');
+  assert.equal(isClientSearchRequestPending(gate, first.request), false);
+
+  const second = beginClientSearchRequest(gate, 'B');
+  gate = second.gate;
+  assert.equal(isClientSearchRequestPending(gate, second.request), true);
+
+  const staleFailure = deferredA.then((outcome) =>
+    isCurrentClientSearchResponse(gate, first.request, outcome),
+  );
+  const currentSuccess = deferredB.then((outcome) =>
+    isCurrentClientSearchResponse(gate, second.request, outcome),
+  );
+  releaseA('failure');
+  assert.equal(await staleFailure, false);
+  assert.equal(isClientSearchRequestPending(gate, second.request), true);
+  releaseB('success');
+  assert.equal(await currentSuccess, true);
+});
+
+test('client search action failures retain their shared localized message keys', async () => {
+  const { resolveClientSearchActionError } = await import('./client-search-state');
+  const errors = {
+    'documents.errors.validation': 'تحقق من عبارة البحث.',
+    'documents.errors.forbidden': 'ليست لديك صلاحية البحث.',
+    'documents.errors.unexpected': 'تعذر إكمال البحث.',
+  };
+
+  assert.equal(
+    resolveClientSearchActionError('documents.errors.validation', errors),
+    errors['documents.errors.validation'],
+  );
+  assert.equal(
+    resolveClientSearchActionError('documents.errors.forbidden', errors),
+    errors['documents.errors.forbidden'],
+  );
+  assert.equal(
+    resolveClientSearchActionError('unknown.key', errors),
+    errors['documents.errors.unexpected'],
+  );
+});

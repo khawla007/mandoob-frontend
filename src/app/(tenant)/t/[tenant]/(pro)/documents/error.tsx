@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 
 import { DocumentCenterErrorView } from '@/components/pro/documents/DocumentCenterErrorView';
 
-export default function DocumentCenterError({ reset }: { reset(): void }) {
+export default function DocumentCenterError({ unstable_retry }: { unstable_retry(): void }) {
   const t = useTranslations('proDocumentCenter');
 
   return (
@@ -12,7 +12,7 @@ export default function DocumentCenterError({ reset }: { reset(): void }) {
       title={t('pageError.title')}
       description={t('pageError.description')}
       retry={t('pageError.retry')}
-      reset={reset}
+      onRetry={unstable_retry}
     />
   );
 }

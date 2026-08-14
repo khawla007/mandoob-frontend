@@ -42,6 +42,20 @@ export function isCurrentClientSearchResponse(
   return gate.generation === request.generation && gate.query === request.query;
 }
 
+export function isClientSearchRequestPending(
+  gate: ClientSearchRequestGate,
+  request: ClientSearchRequest | null,
+): boolean {
+  return request !== null && gate.generation === request.generation && gate.query === request.query;
+}
+
+export function resolveClientSearchActionError(
+  messageKey: string,
+  errors: Record<string, string>,
+): string {
+  return errors[messageKey] ?? errors['documents.errors.unexpected'];
+}
+
 export function createClientSearchState(
   selected: DocumentCenterClientOption | null,
   initialResults: DocumentCenterClientOption[],

@@ -8,12 +8,12 @@ export function DocumentCenterErrorView({
   title,
   description,
   retry,
-  reset,
+  onRetry,
 }: {
   title: string;
   description: string;
   retry: string;
-  reset(): void;
+  onRetry(): void;
 }) {
   return (
     <main className="document-center min-w-0">
@@ -29,7 +29,7 @@ export function DocumentCenterErrorView({
           {title}
         </h1>
         <p className="text-muted-foreground mx-auto mt-2 max-w-xl text-sm">{description}</p>
-        <Button className="document-center-control mt-5" onClick={reset}>
+        <Button className="document-center-control mt-5" onClick={onRetry}>
           {retry}
         </Button>
       </section>

@@ -39,8 +39,8 @@ export type DocumentQueueLabels = {
   emptyFilteredTitle: string;
   emptyFilteredDescription: string;
   reset: string;
-  resultTemplate: string;
-  pageCountTemplate: string;
+  result: string;
+  pageCount: string;
   requestStatuses: Record<RequestStatus, string>;
   reviewStatuses: Record<ReviewStatus, string>;
   docTypes: Record<DocType, string>;
@@ -111,9 +111,7 @@ function Status({ value, label }: { value: string | null; label: string }) {
 
 export function DocumentWorkQueue({
   rows,
-  total,
   page,
-  pageSize,
   totalPages,
   slug,
   query,
@@ -124,9 +122,7 @@ export function DocumentWorkQueue({
   resetHref,
 }: {
   rows: DocumentCenterRow[];
-  total: number;
   page: number;
-  pageSize: number;
   totalPages: number;
   slug: string;
   query: DocumentCenterSearch;
@@ -325,12 +321,9 @@ export function DocumentWorkQueue({
         query={query}
         page={page}
         totalPages={totalPages}
-        total={total}
-        pageSize={pageSize}
-        locale={locale}
         labels={{
-          result: labels.resultTemplate,
-          pageCount: labels.pageCountTemplate,
+          result: labels.result,
+          pageCount: labels.pageCount,
           pagination: labels.pagination,
           previous: labels.previous,
           next: labels.next,

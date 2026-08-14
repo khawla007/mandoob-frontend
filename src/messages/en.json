@@ -35,7 +35,7 @@
     "heading": {
       "eyebrow": "PRO document operations",
       "title": "Document Center",
-      "subtitle": "Manage {tenant} documents, requests, reviews, and deadlines across {count} records."
+      "subtitle": "Manage {tenant} documents, requests, reviews, and deadlines across {count, plural, one {# record} other {# records}}."
     },
     "summary": {
       "awaitingUpload": {
@@ -219,7 +219,7 @@
       "pagination": "Document queue pagination",
       "previous": "Previous page",
       "next": "Next page",
-      "result": "Showing {from}–{to} of {total} results",
+      "result": "{total, plural, =0 {No results} one {Showing {from}–{to} of # result} other {Showing {from}–{to} of # results}}",
       "pageCount": "Page {current} of {total}"
     },
     "requestStatuses": {
@@ -236,7 +236,7 @@
       "previous": "Previous page",
       "next": "Next page",
       "pageCount": "Page {page} of {totalPages}",
-      "results": "Showing {from}–{to} of {total} results"
+      "results": "{total, plural, =0 {No results} one {Showing {from}–{to} of # result} other {Showing {from}–{to} of # results}}"
     },
     "history": {
       "trigger": "History",
@@ -262,6 +262,7 @@
       "searching": "Searching…",
       "loading": "Loading client matches…",
       "results": "Client search results",
+      "count": "{count, plural, =0 {No matching clients} one {# matching client} other {# matching clients}}",
       "noResults": "No client companies match this search.",
       "error": "Client search is temporarily unavailable. Try again.",
       "select": "Select {client}",

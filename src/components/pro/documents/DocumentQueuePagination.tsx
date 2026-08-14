@@ -11,46 +11,22 @@ export type DocumentQueuePaginationLabels = {
   next: string;
 };
 
-function interpolate(template: string, values: Record<string, string>) {
-  return Object.entries(values).reduce(
-    (result, [key, value]) => result.replaceAll(`{${key}}`, value),
-    template,
-  );
-}
-
 export function DocumentQueuePagination({
   slug,
   query,
   page,
   totalPages,
-  total,
-  pageSize,
-  locale,
   labels,
 }: {
   slug: string;
   query: DocumentCenterSearch;
   page: number;
   totalPages: number;
-  total: number;
-  pageSize: number;
-  locale: string;
   labels: DocumentQueuePaginationLabels;
 }) {
-  const number = new Intl.NumberFormat(locale);
-  const formatted = (value: number) => number.format(value);
-  const from = (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-muted-foreground text-sm tabular-nums">
-        {interpolate(labels.result, {
-          from: formatted(from),
-          to: formatted(to),
-          total: formatted(total),
-        })}
-      </p>
+      <p className="text-muted-foreground text-sm tabular-nums">{labels.result}</p>
       <nav aria-label={labels.pagination} className="flex items-center gap-2">
         {page > 1 ? (
           <Link
@@ -66,10 +42,7 @@ export function DocumentQueuePagination({
           </span>
         )}
         <span className="text-sm tabular-nums" aria-current="page">
-          {interpolate(labels.pageCount, {
-            current: formatted(page),
-            total: formatted(totalPages),
-          })}
+          {labels.pageCount}
         </span>
         {page < totalPages ? (
           <Link
