@@ -46,6 +46,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   } catch (e) {
     if (e instanceof ApiError) return e.toResponse();
     console.error('admin-change-status unexpected', e);
-    return errorResponse('INTERNAL', e instanceof Error ? e.message : 'Unexpected error', 500);
+    return errorResponse('INTERNAL', 'Could not change user status', 500);
   }
 }

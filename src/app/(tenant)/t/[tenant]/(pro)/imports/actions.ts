@@ -4,15 +4,20 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireRole } from '@/lib/auth/require-role';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { runAuthorizedMutation } from '@/lib/auth/authorized-mutation';
 import {
   createSupabaseBulkImportStore,
   executeBulkImportRows,
   type BulkImportJobStatus,
 } from '@/lib/data/bulk-import';
 import { getClientForTenant } from '@/lib/data/client-detail';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import {
+  assertImportJobTransitionMatched,
+  isImportJobCancellable,
+  scopeImportJobMutation,
+  shouldCompensateImportFailure,
+} from '@/lib/data/import-job-scope';
 import { consumeRateLimit } from '@/lib/rate-limit';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import {
@@ -30,12 +35,7 @@ const IMPORT_LIMIT = { capacity: 5, refillPerSec: 5 / 3600 };
 const BUCKET = 'tenant-imports';
 
 async function requireTenantContext(tenantSlug: string) {
-  const session = await requireRole('pro');
-  const tenant = await resolveTenantBySlug(tenantSlug);
-  if (!tenant) throw new Error('TENANT_NOT_FOUND');
-  if (session.tenantId !== tenant.id) throw new Error('FORBIDDEN');
-  await requireActiveTenant(tenant.id);
-  return { session, tenant };
+  return await requireProTenantRouteAccess(tenantSlug);
 }
 
 export async function uploadBulkImportAction(
@@ -43,9 +43,9 @@ export async function uploadBulkImportAction(
   kind: BulkImportKind,
   formData: FormData,
 ): Promise<ActionResult<{ id: string }> | never> {
+  const { session, tenant } = await requireTenantContext(tenantSlug);
   let redirectTo: string | null = null;
   try {
-    const { session, tenant } = await requireTenantContext(tenantSlug);
     const ok = await consumeRateLimit({ key: `bulk_import:${tenant.id}`, ...IMPORT_LIMIT });
     if (!ok)
       return { ok: false, error: 'Import limit reached. Try again later.', code: 'RATE_LIMITED' };
@@ -109,37 +109,65 @@ export async function validateBulkImportAction(
   tenantSlug: string,
   jobId: string,
 ): Promise<ActionResult<{ totalRows: number; errorRows: number }>> {
-  try {
-    const { tenant } = await requireTenantContext(tenantSlug);
-    const admin = createSupabaseServiceRoleClient();
-    const job = await readJob(admin, tenant.id, jobId);
-    if (!job) return { ok: false, error: 'Import job not found', code: 'NOT_FOUND' };
-    if (job.status === 'cancelled')
-      return { ok: false, error: 'Import cancelled', code: 'CANCELLED' };
+  const context = await requireTenantContext(tenantSlug);
+  return runAuthorizedMutation({
+    authorize: async () => context,
+    run: async ({ tenant }) => {
+      const admin = createSupabaseServiceRoleClient();
+      const job = await readJob(admin, tenant.id, jobId);
+      if (!job) return { ok: false, error: 'Import job not found', code: 'NOT_FOUND' };
+      if (job.status !== 'uploaded') {
+        return {
+          ok: false,
+          error: 'Import cannot be validated in its current state',
+          code: 'INVALID_STATUS',
+        };
+      }
 
-    await updateJob(admin, jobId, { status: 'validating', started_at: new Date().toISOString() });
-    const csv = await downloadCsv(admin, job.storage_path);
-    const rows = parseCsvRows(csv);
-    const result =
-      job.kind === 'clients'
-        ? validateBulkImportRows('clients', rows)
-        : validateBulkImportRows('employees', rows);
+      await updateJob(
+        admin,
+        tenant.id,
+        jobId,
+        {
+          status: 'validating',
+          started_at: new Date().toISOString(),
+        },
+        'uploaded',
+      );
+      const csv = await downloadCsv(admin, job.storage_path);
+      const rows = parseCsvRows(csv);
+      const result =
+        job.kind === 'clients'
+          ? validateBulkImportRows('clients', rows)
+          : validateBulkImportRows('employees', rows);
 
-    await updateJob(admin, jobId, {
-      status: 'validated',
-      total_rows: result.totalRows,
-      processed_rows: 0,
-      error_rows: result.errors.length,
-      errors: result.errors,
-    });
+      await updateJob(
+        admin,
+        tenant.id,
+        jobId,
+        {
+          status: 'validated',
+          total_rows: result.totalRows,
+          processed_rows: 0,
+          error_rows: result.errors.length,
+          errors: result.errors,
+        },
+        'validating',
+      );
 
-    revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
-    return { ok: true, data: { totalRows: result.totalRows, errorRows: result.errors.length } };
-  } catch (error) {
-    console.error('validateBulkImportAction unexpected error', error);
-    await markFailed(jobId, error);
-    return { ok: false, error: 'Could not validate import', code: 'INTERNAL' };
-  }
+      revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
+      return { ok: true, data: { totalRows: result.totalRows, errorRows: result.errors.length } };
+    },
+    compensate: async ({ tenant }, error) => {
+      if (shouldCompensateImportFailure(error)) {
+        await markFailed(tenant.id, jobId, 'validating');
+      }
+    },
+    recover: (error) => {
+      console.error('validateBulkImportAction unexpected error', error);
+      return { ok: false, error: 'Could not validate import', code: 'INTERNAL' };
+    },
+  });
 }
 
 export async function executeBulkImportAction(
@@ -147,89 +175,121 @@ export async function executeBulkImportAction(
   jobId: string,
   raw?: { skipExisting?: boolean },
 ): Promise<ActionResult<{ processedRows: number; errorRows: number }>> {
-  try {
-    const { session, tenant } = await requireTenantContext(tenantSlug);
-    const admin = createSupabaseServiceRoleClient();
-    const job = await readJob(admin, tenant.id, jobId);
-    if (!job) return { ok: false, error: 'Import job not found', code: 'NOT_FOUND' };
-    if (job.status !== 'validated') {
-      return { ok: false, error: 'Validate the CSV before importing', code: 'INVALID_STATUS' };
-    }
+  const context = await requireTenantContext(tenantSlug);
+  return runAuthorizedMutation({
+    authorize: async () => context,
+    run: async ({ session, tenant }) => {
+      const admin = createSupabaseServiceRoleClient();
+      const job = await readJob(admin, tenant.id, jobId);
+      if (!job) return { ok: false, error: 'Import job not found', code: 'NOT_FOUND' };
+      if (job.status !== 'validated') {
+        return { ok: false, error: 'Validate the CSV before importing', code: 'INVALID_STATUS' };
+      }
 
-    await updateJob(admin, jobId, { status: 'importing', processed_rows: 0 });
-    const csv = await downloadCsv(admin, job.storage_path);
-    const rows = parseCsvRows(csv);
-    const validation =
-      job.kind === 'clients'
-        ? validateBulkImportRows('clients', rows)
-        : validateBulkImportRows('employees', rows);
+      await updateJob(
+        admin,
+        tenant.id,
+        jobId,
+        { status: 'importing', processed_rows: 0 },
+        'validated',
+      );
+      const csv = await downloadCsv(admin, job.storage_path);
+      const rows = parseCsvRows(csv);
+      const validation =
+        job.kind === 'clients'
+          ? validateBulkImportRows('clients', rows)
+          : validateBulkImportRows('employees', rows);
 
-    const store = createSupabaseBulkImportStore();
-    const result =
-      validation.kind === 'clients'
-        ? await executeBulkImportRows({
-            jobId,
-            kind: 'clients',
-            tenantId: tenant.id,
-            rows: validation.validRows,
-            skipExisting: raw?.skipExisting ?? true,
-            store,
-          })
-        : await executeBulkImportRows({
-            jobId,
-            kind: 'employees',
-            tenantId: tenant.id,
-            parentClientId: job.parent_client_id!,
-            rows: validation.validRows,
-            skipExisting: raw?.skipExisting ?? true,
-            store,
-          });
+      const store = createSupabaseBulkImportStore();
+      const result =
+        validation.kind === 'clients'
+          ? await executeBulkImportRows({
+              jobId,
+              kind: 'clients',
+              tenantId: tenant.id,
+              rows: validation.validRows,
+              skipExisting: raw?.skipExisting ?? true,
+              store,
+            })
+          : await executeBulkImportRows({
+              jobId,
+              kind: 'employees',
+              tenantId: tenant.id,
+              parentClientId: job.parent_client_id!,
+              rows: validation.validRows,
+              skipExisting: raw?.skipExisting ?? true,
+              store,
+            });
 
-    const allErrors: BulkImportValidationError[] = [...validation.errors, ...result.errors];
-    await updateJob(admin, jobId, {
-      status: result.status,
-      processed_rows: result.processedRows,
-      error_rows: allErrors.length,
-      errors: allErrors,
-      completed_at: new Date().toISOString(),
-    });
-    await admin.from('tenant_audit_log').insert({
-      tenant_id: tenant.id,
-      actor_id: session.id,
-      action: 'bulk_imported',
-      source: 'self_serve',
-      details: {
-        kind: job.kind,
-        total: validation.totalRows,
-        succeeded: result.insertedRows,
-        skipped: result.skippedRows,
-        failed: allErrors.length - result.skippedRows,
-      },
-    });
+      const allErrors: BulkImportValidationError[] = [...validation.errors, ...result.errors];
+      await updateJob(
+        admin,
+        tenant.id,
+        jobId,
+        {
+          status: result.status,
+          processed_rows: result.processedRows,
+          error_rows: allErrors.length,
+          errors: allErrors,
+          completed_at: new Date().toISOString(),
+        },
+        'importing',
+      );
+      await admin.from('tenant_audit_log').insert({
+        tenant_id: tenant.id,
+        actor_id: session.id,
+        action: 'bulk_imported',
+        source: 'self_serve',
+        details: {
+          kind: job.kind,
+          total: validation.totalRows,
+          succeeded: result.insertedRows,
+          skipped: result.skippedRows,
+          failed: allErrors.length - result.skippedRows,
+        },
+      });
 
-    revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
-    revalidatePath(`/t/${tenantSlug}/clients`);
-    return { ok: true, data: { processedRows: result.processedRows, errorRows: allErrors.length } };
-  } catch (error) {
-    console.error('executeBulkImportAction unexpected error', error);
-    await markFailed(jobId, error);
-    return { ok: false, error: 'Could not execute import', code: 'INTERNAL' };
-  }
+      revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
+      revalidatePath(`/t/${tenantSlug}/clients`);
+      return {
+        ok: true,
+        data: { processedRows: result.processedRows, errorRows: allErrors.length },
+      };
+    },
+    compensate: async ({ tenant }, error) => {
+      if (shouldCompensateImportFailure(error)) {
+        await markFailed(tenant.id, jobId, 'importing');
+      }
+    },
+    recover: (error) => {
+      console.error('executeBulkImportAction unexpected error', error);
+      return { ok: false, error: 'Could not execute import', code: 'INTERNAL' };
+    },
+  });
 }
 
 export async function cancelBulkImportAction(
   tenantSlug: string,
   jobId: string,
 ): Promise<ActionResult<{ status: BulkImportJobStatus }>> {
+  const { tenant } = await requireTenantContext(tenantSlug);
   try {
-    const { tenant } = await requireTenantContext(tenantSlug);
     const admin = createSupabaseServiceRoleClient();
     const job = await readJob(admin, tenant.id, jobId);
     if (!job) return { ok: false, error: 'Import job not found', code: 'NOT_FOUND' };
-    if (!['validating', 'importing', 'uploaded', 'validated'].includes(job.status)) {
+    if (!isImportJobCancellable(job.status)) {
       return { ok: false, error: 'Import can no longer be cancelled', code: 'INVALID_STATUS' };
     }
-    await updateJob(admin, jobId, { status: 'cancelled', completed_at: new Date().toISOString() });
+    await updateJob(
+      admin,
+      tenant.id,
+      jobId,
+      {
+        status: 'cancelled',
+        completed_at: new Date().toISOString(),
+      },
+      job.status,
+    );
     revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
     return { ok: true, data: { status: 'cancelled' } };
   } catch (error) {
@@ -262,14 +322,19 @@ async function readJob(
 
 async function updateJob(
   admin: ReturnType<typeof createSupabaseServiceRoleClient>,
+  tenantId: string,
   jobId: string,
   patch: Record<string, unknown>,
+  expectedStatus: BulkImportJobStatus,
 ) {
-  const { error } = await admin
+  const query = admin
     .from('bulk_import_jobs')
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq('id', jobId);
+    .update({ ...patch, updated_at: new Date().toISOString() });
+  const { data, error } = await scopeImportJobMutation(query, tenantId, jobId, expectedStatus)
+    .select('id')
+    .maybeSingle();
   if (error) throw error;
+  assertImportJobTransitionMatched(data);
 }
 
 async function downloadCsv(
@@ -281,20 +346,30 @@ async function downloadCsv(
   return await data.text();
 }
 
-async function markFailed(jobId: string, error: unknown) {
+async function markFailed(
+  tenantId: string,
+  jobId: string,
+  expectedStatus: 'validating' | 'importing',
+) {
   try {
     const admin = createSupabaseServiceRoleClient();
-    await updateJob(admin, jobId, {
-      status: 'failed',
-      completed_at: new Date().toISOString(),
-      errors: [
-        {
-          row_number: 0,
-          field: 'job',
-          message: error instanceof Error ? error.message : 'Import failed',
-        },
-      ],
-    });
+    await updateJob(
+      admin,
+      tenantId,
+      jobId,
+      {
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+        errors: [
+          {
+            row_number: 0,
+            field: 'job',
+            message: 'Import failed',
+          },
+        ],
+      },
+      expectedStatus,
+    );
   } catch (markError) {
     console.error('bulk import mark failed failed', markError);
   }

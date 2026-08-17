@@ -1,9 +1,8 @@
-import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { formatMoney } from '@/lib/format/money';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { cancelSubscriptionAction, openBillingPortalAction, startCheckoutAction } from './actions';
 
@@ -36,8 +35,7 @@ export default async function BillingSettingsPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const admin = createSupabaseServiceRoleClient();
   const { data: subscription } = await admin

@@ -16,7 +16,7 @@ export type ActionResult<T = void> =
   | { ok: false; error: string; code: string };
 
 async function getCallerContext() {
-  const session = await requireRole('pro', 'super_admin');
+  const session = await requireRole('pro');
   const hdr = await headers();
   const ip = hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const userAgent = hdr.get('user-agent') ?? null;
@@ -47,7 +47,7 @@ export async function createClientAction(
     const tenant = await resolveTenantBySlug(tenantSlug);
     if (!tenant) return { ok: false, error: 'Tenant not found', code: 'TENANT_NOT_FOUND' };
 
-    if (ctx.caller.role !== 'super_admin' && ctx.caller.tenantId !== tenant.id) {
+    if (ctx.caller.tenantId !== tenant.id) {
       return { ok: false, error: 'Cross-tenant access denied', code: 'FORBIDDEN' };
     }
 
@@ -113,7 +113,7 @@ export async function updateClientAction(
     const tenant = await resolveTenantBySlug(tenantSlug);
     if (!tenant) return { ok: false, error: 'Tenant not found', code: 'TENANT_NOT_FOUND' };
 
-    if (ctx.caller.role !== 'super_admin' && ctx.caller.tenantId !== tenant.id) {
+    if (ctx.caller.tenantId !== tenant.id) {
       return { ok: false, error: 'Cross-tenant access denied', code: 'FORBIDDEN' };
     }
 

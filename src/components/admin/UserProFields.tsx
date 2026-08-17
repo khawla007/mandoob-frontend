@@ -21,6 +21,7 @@ export function UserProFields() {
 
   return (
     <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">{t('user.proAssignmentNotice')}</p>
       <FormField
         control={form.control}
         name="license_no"

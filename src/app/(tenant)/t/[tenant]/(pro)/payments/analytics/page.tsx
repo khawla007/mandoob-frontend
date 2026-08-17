@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   Table,
   TableBody,
@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/table';
 import { getProFinanceDashboard } from '@/lib/data/pro-finance';
 import type { ProFinanceDashboard } from '@/lib/data/pro-finance';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,8 +37,7 @@ export default async function ProPaymentAnalyticsPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const dashboard = await getProFinanceDashboard(tenant.id);
   const clientRows = dashboard.revenuePerClient;

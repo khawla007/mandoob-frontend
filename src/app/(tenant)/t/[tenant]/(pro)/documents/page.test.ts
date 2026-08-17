@@ -72,7 +72,7 @@ test('page completes exact PRO authorization before every service-role workspace
     (error) => error instanceof ApiError && error.code === 'FORBIDDEN',
   );
 
-  const authorization = page.indexOf('authorizeDocumentCenterRead(');
+  const authorization = page.indexOf('requireProTenantRouteAccess(');
   assert.notEqual(authorization, -1);
   for (const serviceRead of [
     'listProDocumentCenter(',
@@ -82,7 +82,6 @@ test('page completes exact PRO authorization before every service-role workspace
   ]) {
     assert.ok(authorization < page.indexOf(serviceRead), `${serviceRead} must follow auth`);
   }
-  assert.match(page, /if \(!tenant\) notFound\(\)/u);
 });
 
 test('independent server reads launch in one parallel boundary with no client initial waterfall', () => {

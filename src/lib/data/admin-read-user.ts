@@ -25,6 +25,10 @@ export type EditablePro = {
   department: string | null;
   serviceAreas: string[];
   bio: string | null;
+  credentialsVerified: boolean;
+  verifiedAt: string | null;
+  verifiedByProfileId: string | null;
+  updatedAt: string;
 };
 
 export type EditableCustomer = {
@@ -57,7 +61,10 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
     .select('id, full_name, phone, role, tenant_id, status, suspension_reason, mfa_enrolled_at')
     .eq('id', targetId)
     .maybeSingle();
-  if (profileErr) throw new ApiError('INTERNAL', profileErr.message, 500);
+  if (profileErr) {
+    console.error('admin user profile read failed', profileErr);
+    throw new ApiError('INTERNAL', 'Could not load user', 500);
+  }
   if (!profile) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
   assertAdminCanModifyTarget(
@@ -80,11 +87,22 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
   };
 
   if (baseProfile.role === 'pro') {
-    const { data: pro } = await admin
+    const { data: pro, error: proError } = await admin
       .from('pro_profiles')
-      .select('license_no_encrypted, designation, department, service_areas, bio')
+      .select(
+        'license_no_encrypted, designation, department, service_areas, bio, credentials_verified, verified_at, verified_by_profile_id, updated_at',
+      )
       .eq('profile_id', targetId)
       .maybeSingle();
+    if (
+      proError ||
+      !pro ||
+      typeof pro.updated_at !== 'string' ||
+      Number.isNaN(Date.parse(pro.updated_at))
+    ) {
+      console.error('admin PRO profile read failed', proError ?? { kind: 'invalid_version' });
+      throw new ApiError('INTERNAL', 'Could not load user', 500);
+    }
     return {
       profile: baseProfile,
       role: 'pro',
@@ -94,6 +112,10 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
         department: (pro?.department as string | null) ?? null,
         serviceAreas: ((pro?.service_areas as string[] | null) ?? []) as string[],
         bio: (pro?.bio as string | null) ?? null,
+        credentialsVerified: Boolean(pro?.credentials_verified),
+        verifiedAt: (pro?.verified_at as string | null) ?? null,
+        verifiedByProfileId: (pro?.verified_by_profile_id as string | null) ?? null,
+        updatedAt: pro?.updated_at as string,
       },
     };
   }
@@ -101,7 +123,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
   if (baseProfile.role === 'customer') {
     const { data: customer } = await admin
       .from('customer_profiles')
-      .select('nationality, passport_no_encrypted, linked_client_id')
+      .select('nationality, passport_no_encrypted, linked_company_id')
       .eq('profile_id', targetId)
       .maybeSingle();
     return {
@@ -110,7 +132,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
       customer: {
         nationality: (customer?.nationality as string | null) ?? null,
         passportNo: decryptOptional(customer?.passport_no_encrypted as string | null),
-        linkedClientId: (customer?.linked_client_id as string | null) ?? null,
+        linkedClientId: (customer?.linked_company_id as string | null) ?? null,
       },
     };
   }
@@ -119,7 +141,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
     const { data: employee } = await admin
       .from('employees')
       .select(
-        'client_id, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry',
+        'company_id, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry',
       )
       .eq('profile_id', targetId)
       .maybeSingle();
@@ -128,7 +150,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
       profile: baseProfile,
       role: 'employee',
       employee: {
-        clientId: employee.client_id as string,
+        clientId: employee.company_id as string,
         passportNo: decryptOptional(employee.passport_no_encrypted as string | null),
         visaNo: decryptOptional(employee.visa_no_encrypted as string | null),
         visaExpiry: (employee.visa_expiry as string | null) ?? null,

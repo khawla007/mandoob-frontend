@@ -61,14 +61,19 @@ export async function requireCompanyAccess(
   }
 
   if (role === 'pro') {
-    const { data: assignment, error } = await admin
-      .from('pro_company_assignments')
-      .select('id')
-      .eq('pro_profile_id', session.id)
-      .eq('tenant_id', tenantId)
+    const { data: access, error } = await admin
+      .from('profiles')
+      .select(
+        'id, role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(id)',
+      )
+      .eq('id', session.id)
+      .eq('role', 'pro')
       .eq('status', 'active')
+      .eq('pro_profiles.credentials_verified', true)
+      .eq('active_assignments.tenant_id', tenantId)
+      .eq('active_assignments.status', 'active')
       .maybeSingle();
-    if (error || !assignment) return denyAccess(deps);
+    if (error || !access) return denyAccess(deps);
     return { ...session, role: 'pro', tenantId };
   }
 

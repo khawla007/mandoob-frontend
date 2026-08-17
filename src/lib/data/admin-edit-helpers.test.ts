@@ -176,35 +176,31 @@ describe('assertRoleChangeAllowed — super_admin promotion blocked', () => {
 });
 
 describe('assertRoleChangeAllowed — admin caller boundaries', () => {
-  it('rejects admin caller promoting to admin', () => {
-    assert.throws(
-      () =>
-        assertRoleChangeAllowed({
-          callerId: SELF,
-          callerRole: 'admin',
-          targetId: TARGET,
-          targetRole: 'pro',
-          newRole: 'admin',
-          newTenantId: null,
-          remainingSuperAdminsExcludingTarget: 5,
-        }),
-      (err: unknown) => err instanceof ApiError && err.code === 'FORBIDDEN',
+  it('allows admin caller promoting to admin', () => {
+    assert.doesNotThrow(() =>
+      assertRoleChangeAllowed({
+        callerId: SELF,
+        callerRole: 'admin',
+        targetId: TARGET,
+        targetRole: 'pro',
+        newRole: 'admin',
+        newTenantId: null,
+        remainingSuperAdminsExcludingTarget: 5,
+      }),
     );
   });
 
-  it('rejects admin caller editing another admin', () => {
-    assert.throws(
-      () =>
-        assertRoleChangeAllowed({
-          callerId: SELF,
-          callerRole: 'admin',
-          targetId: TARGET,
-          targetRole: 'admin',
-          newRole: 'pro',
-          newTenantId: TENANT_A,
-          remainingSuperAdminsExcludingTarget: 5,
-        }),
-      (err: unknown) => err instanceof ApiError && err.code === 'FORBIDDEN',
+  it('allows admin caller changing another admin to an unassigned PRO', () => {
+    assert.doesNotThrow(() =>
+      assertRoleChangeAllowed({
+        callerId: SELF,
+        callerRole: 'admin',
+        targetId: TARGET,
+        targetRole: 'admin',
+        newRole: 'pro',
+        newTenantId: null,
+        remainingSuperAdminsExcludingTarget: 5,
+      }),
     );
   });
 
@@ -242,19 +238,17 @@ describe('assertRoleChangeAllowed — no-op rejected', () => {
 });
 
 describe('assertRoleChangeAllowed — tenant coupling (post role-rebase)', () => {
-  it('rejects newRole=pro with newTenantId=null', () => {
-    assert.throws(
-      () =>
-        assertRoleChangeAllowed({
-          callerId: SELF,
-          callerRole: 'super_admin',
-          targetId: TARGET,
-          targetRole: 'admin',
-          newRole: 'pro',
-          newTenantId: null,
-          remainingSuperAdminsExcludingTarget: 5,
-        }),
-      (err: unknown) => err instanceof ApiError && err.code === 'INVALID_TENANT_ASSIGNMENT',
+  it('allows newRole=pro only with newTenantId=null', () => {
+    assert.doesNotThrow(() =>
+      assertRoleChangeAllowed({
+        callerId: SELF,
+        callerRole: 'super_admin',
+        targetId: TARGET,
+        targetRole: 'admin',
+        newRole: 'pro',
+        newTenantId: null,
+        remainingSuperAdminsExcludingTarget: 5,
+      }),
     );
   });
 
@@ -306,17 +300,19 @@ describe('assertRoleChangeAllowed — tenant coupling (post role-rebase)', () =>
     );
   });
 
-  it('allows newRole=pro with a valid tenant', () => {
-    assert.doesNotThrow(() =>
-      assertRoleChangeAllowed({
-        callerId: SELF,
-        callerRole: 'super_admin',
-        targetId: TARGET,
-        targetRole: 'customer',
-        newRole: 'pro',
-        newTenantId: TENANT_B,
-        remainingSuperAdminsExcludingTarget: 5,
-      }),
+  it('rejects newRole=pro with a tenant assignment', () => {
+    assert.throws(
+      () =>
+        assertRoleChangeAllowed({
+          callerId: SELF,
+          callerRole: 'super_admin',
+          targetId: TARGET,
+          targetRole: 'customer',
+          newRole: 'pro',
+          newTenantId: TENANT_B,
+          remainingSuperAdminsExcludingTarget: 5,
+        }),
+      (err: unknown) => err instanceof ApiError && err.code === 'INVALID_TENANT_ASSIGNMENT',
     );
   });
 

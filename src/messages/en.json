@@ -329,7 +329,7 @@
     "mfaAndSecurity": "MFA & Security",
     "auditLogs": "Audit logs",
     "tenants": "Tenants",
-    "proFirms": "PRO firms",
+    "companies": "Companies",
     "meetings": "Meetings",
     "erasure": "Erasure",
     "erasureRequests": "Erasure requests",
@@ -408,14 +408,7 @@
     "pwRuleSpecial": "A special character",
     "passwordRequirements": "Password requirements",
     "dismissPasswordRequirements": "Dismiss password requirements",
-    "firmSection": "Firm",
-    "firmName": "Firm name",
     "plan": "Plan",
-    "phoneE164": "Phone (E.164)",
-    "yourAccount": "Your account",
-    "submittingReview": "Submitting…",
-    "submitForReview": "Submit for review",
-    "proSubmittedTitle": "Submitted",
     "longCopy": {
       "mfaInstructions": "Open your authenticator app and enter the 6-digit code shown for Mandoob.",
       "recoveryCodesIntro": "Save these one-time recovery codes somewhere safe. Each works exactly once if you lose your authenticator.",
@@ -424,8 +417,7 @@
       "checkInbox": "Check your inbox (and spam). The code expires in 10 minutes.",
       "ifAccountExists": "If an account exists for that email, we sent a reset link. Check your inbox.",
       "scanQrIntro": "Scan the QR with an authenticator app, then enter the 6-digit code.",
-      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL.",
-      "proSignupPending": "Your PRO firm signup is awaiting approval. We'll email {email} when an admin reviews it. Until then, your tenant is in pending status."
+      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL."
     }
   },
   "account": {
@@ -1345,6 +1337,7 @@
       "editIntro": "Profile, role, status, and MFA actions. Lifecycle changes revoke active sessions.",
       "profileDetailsTitle": "Profile details",
       "cardTitle": "Create user",
+      "proAssignmentNotice": "This PRO starts unassigned. Verify credentials, then assign exactly one company from Companies.",
       "unnamedUser": "Unnamed user",
       "suspensionReason": "Suspension reason: {reason}",
       "lifecycleActionsTitle": "Lifecycle actions",
@@ -1360,6 +1353,17 @@
       "back": "Back",
       "requestFailed": "Request failed ({status})",
       "emailTaken": "Email is already registered",
+      "credentials": {
+        "title": "PRO credential verification",
+        "statusVerified": "Verified",
+        "statusUnverified": "Not verified",
+        "verifiedAt": "Verified {value}",
+        "verify": "Verify credentials",
+        "verifying": "Verifying…",
+        "verified": "Credentials verified",
+        "error": "Credential verification could not be completed. Review the PRO status and licence, then try again.",
+        "staleError": "The PRO credentials changed. The latest details have been loaded; review them before verifying."
+      },
       "fields": {
         "fullName": "Full name",
         "email": "Email",
@@ -1641,95 +1645,164 @@
         "filterInactive": "Inactive"
       }
     },
-    "proFirms": {
+    "companies": {
       "page": {
-        "title": "PRO firms",
-        "intro": "Tenants on the platform. Showing {count}.",
-        "createButton": "Create PRO firm",
-        "createdTitle": "PRO firm created",
-        "createdDescription": "Tenant provisioned and invite email sent to the PRO admin.",
-        "directory": "Directory",
-        "statusFilterLabel": "Status filter:",
-        "filterAll": "All",
-        "empty": "No PRO firms match the current filter."
+        "eyebrow": "Company operations",
+        "title": "Companies",
+        "intro": "Manage legal company workspaces and their one-to-one PRO assignments. Showing {count}.",
+        "createButton": "Create company"
+      },
+      "directory": {
+        "title": "Company directory",
+        "description": "Assignment state is live and each company can have only one active PRO.",
+        "searchLabel": "Search companies",
+        "searchPlaceholder": "Search by company name",
+        "searchSubmit": "Search",
+        "statusFilterLabel": "Filter companies by status",
+        "appliedFilters": "Applied filters",
+        "searchFilter": "Search: {value}",
+        "statusFilter": "Status: {value}",
+        "tenantFilter": "Workspace: {value}",
+        "resetFilters": "Reset filters",
+        "emptyTitle": "No companies found",
+        "emptyDescription": "Create a company or adjust the current filters.",
+        "tableLabel": "Company directory",
+        "paginationLabel": "Company directory pages",
+        "paginationSummary": "Page {page} of {totalPages} · {total} companies",
+        "previous": "Previous",
+        "next": "Next"
       },
       "table": {
-        "name": "Name",
-        "slug": "Slug",
-        "plan": "Plan",
+        "company": "Legal company",
+        "workspace": "Workspace",
         "status": "Status",
+        "pro": "Assigned PRO",
         "created": "Created",
-        "actions": "Actions",
-        "suspend": "Suspend",
-        "reactivate": "Reactivate",
-        "approve": "Approve",
-        "reject": "Reject"
+        "noLicense": "License not provided",
+        "unassigned": "Unassigned"
       },
-      "actions": {
-        "confirmSuspend": "Suspend this PRO firm? Members will lose access until reactivated.",
-        "confirmReject": "Reject this PRO firm? The tenant and admin user will be deleted.",
-        "suspendFailed": "Suspend failed: {error}",
-        "reactivateFailed": "Reactivate failed: {error}",
-        "approveFailed": "Approve failed: {error}",
-        "rejectFailed": "Reject failed: {error}",
-        "actionFailed": "{action} failed ({code}): {error}"
+      "status": {
+        "all": "All",
+        "onboarding": "Onboarding",
+        "active": "Active",
+        "renewal_due": "Renewal due",
+        "renewal_overdue": "Renewal overdue",
+        "suspended": "Suspended",
+        "churned": "Closed"
       },
-      "detail": {
-        "slug": "slug",
-        "created": "created",
-        "suspend": "Suspend",
-        "suspending": "Suspending…",
-        "reactivate": "Reactivate",
-        "reactivating": "Reactivating…",
-        "approve": "Approve",
-        "approving": "Approving…",
-        "reject": "Reject",
-        "rejecting": "Rejecting…"
+      "plan": {
+        "starter": "Starter",
+        "professional": "Professional",
+        "enterprise": "Enterprise"
+      },
+      "new": {
+        "back": "Back to companies",
+        "title": "Create company",
+        "intro": "Create the legal company workspace first. Add and verify its PRO separately in Users, then assign them here.",
+        "cardTitle": "Workspace identity",
+        "cardDescription": "The workspace starts pending and the company begins onboarding. No PRO account is created automatically."
       },
       "create": {
-        "couldNotCreate": "Could not create PRO firm",
-        "firmSection": "Firm",
-        "firmName": "Firm name",
-        "slug": "Slug",
-        "slugHint": "Lowercase letters, digits, hyphens. Reserved labels like admin, api, app, dashboard, and www are blocked.",
+        "companyName": "Legal company name",
+        "companyNameDescription": "Use the name shown on the company trade licence.",
+        "slug": "Workspace slug",
+        "slugDescription": "Lowercase letters, numbers, and hyphens; 3–40 characters.",
         "plan": "Plan",
-        "adminSection": "Initial PRO admin",
-        "adminIntro": "A Supabase invite email will be sent. The admin updates license info via /account/role after first login.",
-        "fullName": "Full name",
-        "email": "Email",
-        "phone": "Phone (E.164)",
+        "planDescription": "Billing configuration can be changed later.",
         "creating": "Creating…",
-        "submit": "Create PRO firm"
+        "submit": "Create company",
+        "cancel": "Cancel"
       },
-      "newPage": {
-        "title": "Create PRO firm",
-        "intro": "Provisions a tenant and creates the initial PRO admin user. Tenant goes live (status = active) immediately."
+      "detail": {
+        "back": "Back to companies",
+        "eyebrow": "Company workspace",
+        "openWorkspace": "Open workspace",
+        "profileTitle": "Company profile",
+        "profileDescription": "Legal identity and technical workspace scope.",
+        "workspace": "Workspace name",
+        "slug": "Workspace slug",
+        "tradeLicense": "Trade licence",
+        "jurisdiction": "Jurisdiction",
+        "notProvided": "Not provided"
       },
-      "detailPage": {
-        "members": "Members",
-        "membersDescription": "{count} profile(s) in this tenant.",
-        "memberName": "Name",
-        "memberRole": "Role",
-        "memberLastLogin": "Last login",
-        "noMembers": "No members.",
-        "clients": "Clients",
-        "clientsDescription": "Total {total}. Showing {recent} most recent.",
-        "clientCompany": "Company",
-        "clientStatus": "Status",
-        "clientCreated": "Created",
-        "noClients": "No clients yet.",
-        "recentAudit": "Recent audit (last 10)",
-        "recentAuditDescription": "Tenant-scoped events.",
-        "seeAll": "See all →",
-        "auditWhen": "When",
-        "auditAction": "Action",
-        "auditSource": "Source",
-        "auditActor": "Actor",
-        "auditDetails": "Details",
-        "noAudit": "No audit entries yet.",
-        "billing": "Billing",
-        "billingPending": "Pending — Step 23.",
-        "billingDescription": "Subscription plan, invoices, and payment history will land with the Payment & Financial module."
+      "assignment": {
+        "assignTitle": "Assign a PRO",
+        "reassignTitle": "Reassign the PRO",
+        "sectionDescription": "Only active, credential-verified, unassigned PRO users are available.",
+        "currentProLabel": "CURRENT PRO",
+        "unnamedPro": "Unnamed PRO",
+        "reassignDescription": "Select the replacement below. The current assignment is released atomically.",
+        "replacementProLabel": "Replacement PRO",
+        "proLabel": "PRO user",
+        "selectPro": "Select an available PRO",
+        "proDescription": "A PRO can hold only one active company assignment.",
+        "reasonLabel": "Reason for reassignment",
+        "reasonDescription": "Record why the current PRO is being replaced (3–500 characters).",
+        "saving": "Saving…",
+        "assignSubmit": "Assign PRO",
+        "reassignSubmit": "Reassign PRO",
+        "noProsTitle": "No eligible PRO users",
+        "noProsDescription": "Create an active PRO user and complete credential verification before assigning them.",
+        "managePros": "Manage PRO users"
+      },
+      "release": {
+        "title": "Release PRO",
+        "description": "End this assignment without selecting a replacement.",
+        "currentPro": "Current PRO: {name}",
+        "warning": "The company will immediately lose PRO workspace access until another verified PRO is assigned.",
+        "confirmationLabel": "Confirm legal company name",
+        "confirmationDescription": "Enter “{companyName}” exactly to confirm.",
+        "reasonLabel": "Release reason",
+        "reasonDescription": "This reason is retained in assignment history (3–500 characters).",
+        "releasing": "Releasing…",
+        "submit": "Release PRO"
+      },
+      "history": {
+        "title": "Assignment history",
+        "description": "Current and released PRO relationships.",
+        "empty": "No assignment has been recorded.",
+        "tableLabel": "Company PRO assignment history",
+        "pro": "PRO",
+        "state": "State",
+        "when": "Assigned",
+        "status": {
+          "active": "Active",
+          "released": "Released"
+        }
+      },
+      "feedback": {
+        "errorTitle": "Action not completed",
+        "createdTitle": "Company created",
+        "createdDescription": "The draft workspace is ready for company onboarding and PRO assignment.",
+        "redirecting": "Opening the company workspace…",
+        "assignmentSavedTitle": "Assignment updated",
+        "assignmentSavedDescription": "The active company and PRO access scope is now current.",
+        "releasedTitle": "PRO released",
+        "releasedDescription": "The assignment ended and the company is now unassigned."
+      },
+      "errors": {
+        "VALIDATION_FAILED": "Review the form fields and try again.",
+        "CONFIRMATION_MISMATCH": "The company name does not match exactly.",
+        "PRO_ALREADY_ASSIGNED": "That PRO is already assigned to another company.",
+        "COMPANY_ALREADY_ASSIGNED": "This company already has an active PRO.",
+        "PRO_NOT_VERIFIED": "The selected PRO has not completed credential verification.",
+        "PRO_INACTIVE": "The selected PRO is not active.",
+        "COMPANY_NOT_READY": "The company is not ready for assignment.",
+        "COMPANY_INACTIVE": "The company is not active for assignment.",
+        "ASSIGNMENT_NOT_FOUND": "The current assignment could not be found.",
+        "STALE_ASSIGNMENT": "The assignment changed. Refresh the page and try again.",
+        "ASSIGNMENT_CONFLICT": "The assignment conflicts with another recent change.",
+        "NOT_FOUND": "The company could not be found.",
+        "INTERNAL": "The action could not be completed. Try again."
+      },
+      "fieldErrors": {
+        "companyName": "Enter a legal company name between 3 and 200 characters.",
+        "slug": "Enter a valid 3–40 character workspace slug.",
+        "plan": "Select a valid plan.",
+        "proProfileId": "Select an eligible PRO user.",
+        "replacementProProfileId": "Select an eligible replacement PRO user.",
+        "reason": "Enter a reason between 3 and 500 characters.",
+        "companyNameConfirmation": "Enter the legal company name exactly as shown."
       }
     },
     "audit": {

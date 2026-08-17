@@ -4,9 +4,7 @@ import 'server-only';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { requireRole } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { env } from '@/lib/env';
 import { consumeRateLimit } from '@/lib/rate-limit';
 import {
@@ -24,13 +22,7 @@ const PRICE_BY_PLAN: Record<SubscriptionPlan, string | undefined> = {
 };
 
 async function resolveBillingCaller(slug: string) {
-  const session = await requireRole('pro', 'admin');
-  if (!session.tenantId) throw new ApiError('FORBIDDEN', 'Session missing tenant binding', 403);
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (session.tenantId !== tenant.id)
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  await requireActiveTenant(tenant.id);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
   const hdr = await headers();
   return {
     userId: session.id,

@@ -19,6 +19,7 @@ type PlatformOperatorDeps = {
   supabase?: PlatformClient;
   deny?: () => never;
 };
+type RoleGuardDeps = PlatformOperatorDeps;
 
 async function redirectTo(path: string): Promise<never> {
   // Keep Next's client runtime out of Node unit tests; production behavior is
@@ -39,36 +40,71 @@ export async function requireSession(): Promise<SessionProfile> {
   return session;
 }
 
-export async function requireRole(...roles: Role[]): Promise<SessionProfile> {
-  const session = await requireSession();
-  if (!session.role || !roles.includes(session.role)) {
-    return redirectTo('/login');
-  }
-  return session;
-}
-
-export async function requirePlatformOperator(
-  deps: PlatformOperatorDeps = {},
+export async function resolveAuthoritativeRole(
+  roles: Role[],
+  deps: RoleGuardDeps = {},
 ): Promise<SessionProfile> {
   const session = await (deps.requireSession ?? requireSession)();
   if (!z.string().uuid().safeParse(session.id).success) return denyPlatformAccess(deps);
-
   const admin = deps.supabase ?? (createSupabaseServiceRoleClient() as unknown as PlatformClient);
   const { data: profile, error } = await admin
     .from('profiles')
     .select('role, status, tenant_id')
     .eq('id', session.id)
     .maybeSingle();
-  if (
-    error ||
-    !profile ||
-    (profile.role !== 'admin' && profile.role !== 'super_admin') ||
-    profile.status !== 'active' ||
-    profile.tenant_id !== null
-  ) {
+  if (error || !profile || profile.status !== 'active' || typeof profile.role !== 'string') {
     return denyPlatformAccess(deps);
   }
-  return { ...session, role: profile.role, tenantId: null };
+
+  const allowed = new Set<string>(roles);
+  if (allowed.has('admin') || allowed.has('super_admin')) {
+    allowed.add('admin');
+    allowed.add('super_admin');
+  }
+  if (!allowed.has(profile.role)) return denyPlatformAccess(deps);
+
+  if (profile.role === 'admin' || profile.role === 'super_admin') {
+    if (profile.tenant_id !== null) return denyPlatformAccess(deps);
+    return { ...session, role: profile.role, tenantId: null };
+  }
+  if (profile.role === 'customer' || profile.role === 'employee') {
+    if (!z.string().uuid().safeParse(profile.tenant_id).success) return denyPlatformAccess(deps);
+    return { ...session, role: profile.role, tenantId: profile.tenant_id as string };
+  }
+  if (profile.role === 'pro') {
+    const { data: livePro, error: liveProError } = await admin
+      .from('profiles')
+      .select(
+        'role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(tenant_id)',
+      )
+      .eq('id', session.id)
+      .eq('role', 'pro')
+      .eq('status', 'active')
+      .eq('pro_profiles.credentials_verified', true)
+      .eq('active_assignments.status', 'active')
+      .maybeSingle();
+    const assignments = livePro?.active_assignments;
+    const assignment = Array.isArray(assignments) ? assignments[0] : assignments;
+    const tenantId =
+      assignment && typeof assignment === 'object'
+        ? (assignment as Record<string, unknown>).tenant_id
+        : null;
+    if (liveProError || !z.string().uuid().safeParse(tenantId).success) {
+      return denyPlatformAccess(deps);
+    }
+    return { ...session, role: 'pro', tenantId: tenantId as string };
+  }
+  return denyPlatformAccess(deps);
+}
+
+export async function requireRole(...roles: Role[]): Promise<SessionProfile> {
+  return resolveAuthoritativeRole(roles);
+}
+
+export async function requirePlatformOperator(
+  deps: PlatformOperatorDeps = {},
+): Promise<SessionProfile> {
+  return resolveAuthoritativeRole(['admin', 'super_admin'], deps);
 }
 
 export async function requireAal2(session: SessionProfile): Promise<void> {

@@ -36,7 +36,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   } catch (e) {
     if (e instanceof ApiError) return e.toResponse();
     console.error('admin-read-user unexpected', e);
-    return errorResponse('INTERNAL', e instanceof Error ? e.message : 'Unexpected error', 500);
+    return errorResponse('INTERNAL', 'Could not read user', 500);
   }
 }
 
@@ -72,6 +72,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   } catch (e) {
     if (e instanceof ApiError) return e.toResponse();
     console.error('admin-edit-user unexpected', e);
-    return errorResponse('INTERNAL', e instanceof Error ? e.message : 'Unexpected error', 500);
+    return errorResponse('INTERNAL', 'Could not update user', 500);
   }
 }

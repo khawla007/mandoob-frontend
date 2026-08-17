@@ -14,9 +14,9 @@ export function ProFinalCtaSection() {
         <p className="micro mono">Three tiers. AED-billed. No setup fee.</p>
         <div className="cta-divider" aria-hidden="true" />
         <p className="cta-secondary">
-          Already decided?{' '}
-          <Link className="cell__link" href="/register/pro">
-            Register your firm <span aria-hidden="true">↗</span>
+          Want to discuss access?{' '}
+          <Link className="cell__link" href="/contact">
+            Contact sales <span aria-hidden="true">↗</span>
           </Link>
         </p>
       </div>

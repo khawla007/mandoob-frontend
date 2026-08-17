@@ -70,7 +70,7 @@ export type RenewalAuditAction = 'created' | 'updated' | 'completed' | 'cancelle
 export type RenewalActorCtx = {
   tenantId: string;
   actorId: string;
-  role: 'pro';
+  role: 'pro' | 'admin' | 'super_admin';
 };
 
 async function logRenewalAudit(

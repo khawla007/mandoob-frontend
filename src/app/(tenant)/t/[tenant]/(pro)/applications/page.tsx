@@ -1,16 +1,13 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { ApplicationCreateForm } from '@/components/pro/applications/ApplicationCreateForm';
 import { ApplicationsTable } from '@/components/pro/applications/ApplicationsTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { listServiceCaseWorkspace, type ServiceCaseStatus } from '@/lib/data/service-cases';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { serviceCaseStatuses } from '@/lib/validation/service-case';
 import { createApplicationFormAction } from './actions';
-import { authorizeApplicationsRead } from './page-authorization';
 import {
   applicationPageHref,
   parseApplicationFilters,
@@ -32,15 +29,7 @@ export default async function ApplicationsPage({
 }) {
   const { tenant: slug } = await params;
   const search = await searchParams;
-  const tenant = await authorizeApplicationsRead(slug, {
-    requirePro: async () => {
-      const session = await requireRole('pro');
-      return { tenantId: session.tenantId };
-    },
-    resolveTenant: resolveTenantBySlug,
-    requireActive: requireActiveTenant,
-  });
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const filters = parseApplicationFilters(search);
   const requestedPage = filters.id ? 1 : parseApplicationPage(search.page);

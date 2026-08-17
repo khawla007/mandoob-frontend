@@ -8,7 +8,7 @@ import {
   logSafeActionError,
   normalizeActionRequestMetadata,
 } from '@/lib/actions/server-action-security';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
@@ -28,9 +28,9 @@ export type { ActionResult } from './action-logic';
 
 function dependencies(): LegacyDocumentActionDependencies {
   return {
-    requirePro: async () => {
-      const session = await requireRole('pro');
-      return { id: session.id, tenantId: session.tenantId };
+    requirePro: async (slug) => {
+      const { session, tenant } = await requireProTenantRouteAccess(slug);
+      return { id: session.id, role: session.role, tenantId: tenant.id };
     },
     resolveTenant: resolveTenantBySlug,
     requireActive: requireActiveTenant,

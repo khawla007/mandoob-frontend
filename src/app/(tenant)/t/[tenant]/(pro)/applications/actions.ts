@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { createServiceCase, updateServiceCase } from '@/lib/data/service-cases';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
@@ -16,9 +16,9 @@ export type { ApplicationActionResult } from './action-logic';
 
 function dependencies(): ApplicationActionDependencies {
   return {
-    requirePro: async () => {
-      const session = await requireRole('pro');
-      return { id: session.id, tenantId: session.tenantId };
+    requirePro: async (slug) => {
+      const { session, tenant } = await requireProTenantRouteAccess(slug);
+      return { id: session.id, role: session.role, tenantId: tenant.id };
     },
     resolveTenant: resolveTenantBySlug,
     requireActive: requireActiveTenant,

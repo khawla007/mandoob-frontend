@@ -1,17 +1,14 @@
 import { notFound } from 'next/navigation';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getReceiptPayloadForCustomer } from '@/lib/data/invoices';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { generateReceiptPdf, receiptFilename } from '@/lib/pdf/receipt';
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ tenant: string; invoiceId: string }> },
 ) {
-  const session = await requireRole('customer');
   const { tenant: slug, invoiceId } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant || session.tenantId !== tenant.id) notFound();
+  const { tenant, session } = await requireTenantRouteAccess(slug, ['customer']);
 
   const receipt = await getReceiptPayloadForCustomer(tenant.id, invoiceId, session.id);
   if (!receipt) notFound();

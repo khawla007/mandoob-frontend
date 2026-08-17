@@ -1,8 +1,7 @@
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   DocumentActions,
   type DocumentActionLabels,
@@ -27,14 +26,12 @@ import {
   listProDocumentCenter,
   searchDocumentCenterClientOptions,
 } from '@/lib/data/pro-document-center';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { DOC_TYPES, type DocType } from '@/lib/validation/document';
 import {
   documentCenterSorts,
   documentCenterViews,
   documentCenterWindows,
 } from '@/lib/validation/pro-document-center';
-import { authorizeDocumentCenterRead } from './page-authorization';
 import {
   documentCenterHref,
   parseDocumentCenterSearch,
@@ -62,15 +59,7 @@ export default async function ProDocumentsPage({
   searchParams: Promise<DocumentCenterSearchParams>;
 }) {
   const [{ tenant: slug }, search] = await Promise.all([params, searchParams]);
-  const tenant = await authorizeDocumentCenterRead(slug, {
-    requirePro: async () => {
-      const session = await requireRole('pro');
-      return { tenantId: session.tenantId };
-    },
-    resolveTenant: resolveTenantBySlug,
-    requireActive: requireActiveTenant,
-  });
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const query = parseDocumentCenterSearch(search);
   const requestedPage = query.page;

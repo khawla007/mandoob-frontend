@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import {
@@ -20,13 +19,10 @@ import {
   type SignalKpisLabels,
   type TeamSignalLabels,
 } from '@/components/pro/dashboard';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getProDashboardData } from '@/lib/data/pro-dashboard';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { cn } from '@/lib/utils';
 
-import { authorizeProDashboardRead } from './page-authorization';
 import {
   dashboardWidgetState,
   dashboardQuery,
@@ -61,30 +57,13 @@ export default async function ProDashboard({
   searchParams: Promise<DashboardSearchParams>;
 }) {
   const [{ tenant: slug }, search] = await Promise.all([params, searchParams]);
-  const context = await authorizeProDashboardRead(slug, {
-    requirePro: async () => {
-      const session = await requireRole('pro');
-      return { tenantId: session.tenantId, role: 'pro' };
-    },
-    resolveTenant: resolveTenantBySlug,
-    requireActive: requireActiveTenant,
-  });
-  if (context.kind === 'not-found') notFound();
-  const { tenant, session } = context;
+  const { tenant } = await requireProTenantRouteAccess(slug);
   const [t, locale] = await Promise.all([
     getTranslations('pro.dashboard.signalStudio'),
     getLocale(),
   ]);
-  if (context.kind === 'inactive') {
-    return (
-      <div role="status" className="signal-dashboard__state rounded-2xl border p-8">
-        <h1 className="text-xl font-semibold">{t('suspended.title')}</h1>
-        <p className="text-muted-foreground mt-2">{t('suspended.description')}</p>
-      </div>
-    );
-  }
-  const canViewFinance = session.role === 'pro';
-  const canViewTeam = session.role === 'pro';
+  const canViewFinance = true;
+  const canViewTeam = true;
 
   const range = parseDashboardRange(search.range);
   const requestedFilters = parseDashboardFilters(search);

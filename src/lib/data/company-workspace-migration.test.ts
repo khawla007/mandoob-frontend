@@ -31,19 +31,14 @@ function extractFunction(sql: string, name: string): string {
 function extractPolicies(sql: string, table: string, schema = 'public'): string[] {
   return [
     ...sql.matchAll(
-      new RegExp(
-        `create\\s+policy\\s+\\S+\\s+on\\s+${schema}\\.${table}\\b[\\s\\S]*?;`,
-        'gi',
-      ),
+      new RegExp(`create\\s+policy\\s+\\S+\\s+on\\s+${schema}\\.${table}\\b[\\s\\S]*?;`, 'gi'),
     ),
   ].map((match) => match[0]);
 }
 
 function extractAlterTableStatements(sql: string, table: string): string[] {
   return [
-    ...sql.matchAll(
-      new RegExp(`alter\\s+table\\s+public\\.${table}\\b[\\s\\S]*?;`, 'gi'),
-    ),
+    ...sql.matchAll(new RegExp(`alter\\s+table\\s+public\\.${table}\\b[\\s\\S]*?;`, 'gi')),
   ].map((match) => match[0]);
 }
 
@@ -541,16 +536,10 @@ test('adjacent profile policies retain self ownership behind live company access
   );
   assert.ok(operatorRead, 'customer profile operator policy is missing');
   assert.match(operatorRead, /has_company_access\s*\(/);
-  assert.match(
-    operatorRead,
-    /role\s+in\s*\(\s*'pro'\s*,\s*'admin'\s*,\s*'super_admin'\s*\)/,
-  );
+  assert.match(operatorRead, /role\s+in\s*\(\s*'pro'\s*,\s*'admin'\s*,\s*'super_admin'\s*\)/);
   assert.match(operatorRead, /status\s*=\s*'active'/);
 
-  const preferencePolicies = extractPolicies(
-    assignmentRpcSql,
-    'employee_notification_preferences',
-  );
+  const preferencePolicies = extractPolicies(assignmentRpcSql, 'employee_notification_preferences');
   for (const [name, command] of [
     ['employee_notification_preferences_self_read', 'select'],
     ['employee_notification_preferences_self_update', 'update'],
@@ -578,7 +567,8 @@ test('company ownership foreign keys reject cross-company relational chains', ()
     'meetings',
     'bulk_import_jobs',
   ]) {
-    const ownership = /foreign\s+key\s*\(\s*tenant_id\s*,\s*company_id\s*\)[\s\S]*?references\s+public\.company_profiles\s*\(\s*tenant_id\s*,\s*id\s*\)/;
+    const ownership =
+      /foreign\s+key\s*\(\s*tenant_id\s*,\s*company_id\s*\)[\s\S]*?references\s+public\.company_profiles\s*\(\s*tenant_id\s*,\s*id\s*\)/;
     assert.ok(
       extractAlterTableStatements(sql, table).some((statement) => ownership.test(statement)),
       `${table} lacks composite company ownership`,
@@ -630,10 +620,7 @@ test('company ownership foreign keys reject cross-company relational chains', ()
     /create\s+policy\s+meeting_ai_summaries_customer_read\b/.test(policy),
   );
   assert.ok(summaryCustomer);
-  assert.match(
-    summaryCustomer,
-    /m\.tenant_id\s*=\s*meeting_ai_summaries\.tenant_id/,
-  );
+  assert.match(summaryCustomer, /m\.tenant_id\s*=\s*meeting_ai_summaries\.tenant_id/);
 });
 
 test('assignment lifecycle uses one lock protocol and validates release reasons at the boundary', () => {
@@ -642,10 +629,7 @@ test('assignment lifecycle uses one lock protocol and validates release reasons 
   assert.match(lockHelper, /pg_advisory_xact_lock\s*\(/);
   assert.match(lockHelper, /pg_advisory_xact_lock\s*\(\s*v_lock_namespace\s*,\s*v_lock_key\s*\)/);
   assert.match(lockHelper, /hashtext\s*\(/);
-  assert.match(
-    lockHelper,
-    /order\s+by\s+requested\.lock_namespace\s*,\s*requested\.lock_key/,
-  );
+  assert.match(lockHelper, /order\s+by\s+requested\.lock_namespace\s*,\s*requested\.lock_key/);
 
   for (const name of ['assign_pro_to_company', 'release_company_pro', 'reassign_company_pro']) {
     assert.match(extractFunction(sql, name), /lock_company_assignment_resources\s*\(/);
@@ -671,13 +655,19 @@ test('assignment lifecycle uses one lock protocol and validates release reasons 
     );
   }
   assert.ok(
-    (extractFunction(sql, 'release_company_pro').match(/lock_company_assignment_resources\s*\(/g) ?? [])
-      .length >= 2,
+    (
+      extractFunction(sql, 'release_company_pro').match(
+        /lock_company_assignment_resources\s*\(/g,
+      ) ?? []
+    ).length >= 2,
     'release must lock the company before discovering and locking the current PRO',
   );
   assert.ok(
-    (extractFunction(sql, 'reassign_company_pro').match(/lock_company_assignment_resources\s*\(/g) ?? [])
-      .length >= 2,
+    (
+      extractFunction(sql, 'reassign_company_pro').match(
+        /lock_company_assignment_resources\s*\(/g,
+      ) ?? []
+    ).length >= 2,
     'reassignment must lock the company before locking both PRO resources',
   );
   for (const name of ['release_company_pro', 'reassign_company_pro']) {
@@ -728,9 +718,10 @@ test('legacy permissive policies are explicitly removed and verification fields 
     sql,
     /revoke\s+update\s+on\s+table\s+public\.pro_profiles\s+from\s+public\s*,\s*anon\s*,\s*authenticated/,
   );
-  const safeGrant = /grant\s+update\s*\(([^)]+)\)\s+on\s+table\s+public\.pro_profiles\s+to\s+authenticated/.exec(
-    sql,
-  );
+  const safeGrant =
+    /grant\s+update\s*\(([^)]+)\)\s+on\s+table\s+public\.pro_profiles\s+to\s+authenticated/.exec(
+      sql,
+    );
   assert.ok(safeGrant, 'safe PRO self-update column grant is missing');
   assert.doesNotMatch(
     safeGrant[1],
@@ -810,14 +801,10 @@ test('effective policies contain no cached JWT authorization and retain public r
   const policies = effectivePolicies();
   const staleJwtPolicies = policies.filter((policy) => /auth\.jwt\s*\(/.test(policy.sql));
   assert.deepEqual(
-    staleJwtPolicies.map(
-      (policy) => `${policy.relation}.${policy.name} (${policy.migration})`,
-    ),
+    staleJwtPolicies.map((policy) => `${policy.relation}.${policy.name} (${policy.migration})`),
     [],
   );
-  const finalPolicyKeys = new Set(
-    policies.map((policy) => `${policy.relation}.${policy.name}`),
-  );
+  const finalPolicyKeys = new Set(policies.map((policy) => `${policy.relation}.${policy.name}`));
   for (const publicRead of [
     'public.blog_posts.blog_posts_public_read_published',
     'public.blog_terms.blog_terms_public_read',
@@ -842,8 +829,18 @@ test('nullable customer and employee links retain composite workspace ownership'
     /create\s+unique\s+index(?:\s+if\s+not\s+exists)?\s+profiles_tenant_id_id_key\s+on\s+public\.profiles\s*\(\s*tenant_id\s*,\s*id\s*\)/,
   );
   for (const [table, columns, parent, parentColumns] of [
-    ['invoices', 'company_id, customer_profile_id', 'customer_profiles', 'linked_company_id, profile_id'],
-    ['meetings', 'company_id, customer_profile_id', 'customer_profiles', 'linked_company_id, profile_id'],
+    [
+      'invoices',
+      'company_id, customer_profile_id',
+      'customer_profiles',
+      'linked_company_id, profile_id',
+    ],
+    [
+      'meetings',
+      'company_id, customer_profile_id',
+      'customer_profiles',
+      'linked_company_id, profile_id',
+    ],
     ['employees', 'tenant_id, profile_id', 'profiles', 'tenant_id, id'],
   ] as const) {
     const childPattern = columns.replace(/, /g, '\\s*,\\s*');
@@ -898,10 +895,7 @@ test('SQL fixtures cover credential denial and coordinated lifecycle races', () 
     );
   }
   const combined = fixtures.map(([, sql]) => sql).join(' ');
-  assert.match(
-    combined,
-    /actor_a_profile_id'::uuid\s*<>\s*:'actor_b_profile_id'::uuid/,
-  );
+  assert.match(combined, /actor_a_profile_id'::uuid\s*<>\s*:'actor_b_profile_id'::uuid/);
   assert.match(combined, /assign_pro_to_company/);
   assert.match(combined, /release_company_pro/);
   assert.match(combined, /reassign_company_pro/);

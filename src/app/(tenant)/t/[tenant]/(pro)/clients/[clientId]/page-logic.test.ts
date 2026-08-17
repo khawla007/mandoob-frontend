@@ -44,6 +44,21 @@ test('client page passes a bound server action across the client component bound
     'utf8',
   );
 
-  assert.match(page, /loadOlderCommsAction\.bind\(null, tenant\.id, clientId\)/u);
+  assert.match(page, /loadOlderCommsAction\.bind\(null, slug, clientId\)/u);
+  assert.doesNotMatch(page, /loadOlderCommsAction\.bind\(null, tenant\.id/u);
   assert.doesNotMatch(page, /const loadOlder = async/u);
+});
+
+test('older communications action derives tenant scope from the PRO-only slug boundary', () => {
+  const action = readFileSync(
+    join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/comms-actions.ts'),
+    'utf8',
+  );
+
+  assert.match(action, /loadOlderCommsAction\(\s*slug: string,/u);
+  assert.match(action, /await requireProTenantRouteAccess\(slug\)/u);
+  assert.match(action, /getClientForTenant\(tenant\.id, clientId\)/u);
+  assert.match(action, /getCommsForClient\(tenant\.id, clientId,/u);
+  assert.doesNotMatch(action, /requireRole|isPlatformOperatorRole/u);
+  assert.doesNotMatch(action, /tenantId: string/u);
 });

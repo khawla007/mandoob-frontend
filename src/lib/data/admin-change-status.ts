@@ -30,7 +30,10 @@ export async function adminChangeStatus(
     .select('id, role, status, tenant_id')
     .eq('id', targetId)
     .maybeSingle();
-  if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
+  if (readErr) {
+    console.error('admin status profile read failed', readErr);
+    throw new ApiError('INTERNAL', 'Could not load user', 500);
+  }
   if (!existing) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
   assertAdminCanModifyTarget(
@@ -57,11 +60,7 @@ export async function adminChangeStatus(
       await revokeAllSessions(targetId);
     } catch (err) {
       console.error('revokeAllSessions failed', err);
-      throw new ApiError(
-        'SESSION_REVOKE_FAILED',
-        err instanceof Error ? err.message : 'Could not revoke sessions',
-        502,
-      );
+      throw new ApiError('SESSION_REVOKE_FAILED', 'Could not revoke sessions', 502);
     }
   }
 
@@ -73,7 +72,8 @@ export async function adminChangeStatus(
     })
     .eq('id', targetId);
   if (updErr) {
-    throw new ApiError('VALIDATION_FAILED', `profiles update: ${updErr.message}`, 500);
+    console.error('admin status profile update failed', updErr);
+    throw new ApiError('INTERNAL', 'Could not change user status', 500);
   }
 
   const { error: auditErr } = await admin.from('admin_audit_actions').insert({

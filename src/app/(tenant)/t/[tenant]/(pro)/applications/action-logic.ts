@@ -11,11 +11,11 @@ export type ApplicationActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; code: string };
 
-type ProSession = { id: string; tenantId: string | null };
+type ProSession = { id: string; role: 'pro'; tenantId: string | null };
 type TenantIdentity = { id: string };
 
 export type ApplicationActionDependencies = {
-  requirePro(): Promise<ProSession>;
+  requirePro(slug: string): Promise<ProSession>;
   resolveTenant(slug: string): Promise<TenantIdentity | null>;
   requireActive(tenantId: string): Promise<unknown>;
   createCase: typeof createServiceCase;
@@ -121,7 +121,7 @@ export async function runCreateApplicationAction(
   raw: unknown,
   dependencies: ApplicationActionDependencies,
 ): Promise<ApplicationActionResult<{ id: string }>> {
-  const session = await dependencies.requirePro();
+  const session = await dependencies.requirePro(slug);
   try {
     const { tenant } = await authorize(slug, session, dependencies);
     const parsed = createServiceCaseSchema.safeParse(normalizeCreateRaw(raw));
@@ -133,7 +133,7 @@ export async function runCreateApplicationAction(
       };
     }
     const result = await dependencies.createCase(
-      { tenantId: tenant.id, actorId: session.id, role: 'pro' },
+      { tenantId: tenant.id, actorId: session.id, role: session.role },
       parsed.data as CreateServiceCaseRawInput,
     );
     dependencies.revalidate(`/t/${slug}/applications`);
@@ -150,7 +150,7 @@ export async function runUpdateApplicationAction(
   raw: unknown,
   dependencies: ApplicationActionDependencies,
 ): Promise<ApplicationActionResult<void>> {
-  const session = await dependencies.requirePro();
+  const session = await dependencies.requirePro(slug);
   try {
     const { tenant } = await authorize(slug, session, dependencies);
     const parsed = updateServiceCaseSchema.safeParse(normalizeUpdateRaw(raw, dependencies.now()));
@@ -162,7 +162,7 @@ export async function runUpdateApplicationAction(
       };
     }
     await dependencies.updateCase(
-      { tenantId: tenant.id, actorId: session.id, role: 'pro' },
+      { tenantId: tenant.id, actorId: session.id, role: session.role },
       caseId,
       parsed.data as UpdateServiceCaseRawInput,
     );

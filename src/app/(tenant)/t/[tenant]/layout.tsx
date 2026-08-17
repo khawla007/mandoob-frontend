@@ -1,5 +1,5 @@
-import { notFound, redirect } from 'next/navigation';
-import { requireSession } from '@/lib/auth/require-role';
+import { notFound } from 'next/navigation';
+import { requireCompanyAccess } from '@/lib/auth/require-company-access';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { getTenantBranding } from '@/lib/data/tenant-settings';
 import { buildTenantBrandingView, tenantBrandingStyle } from '@/lib/tenant/branding';
@@ -14,14 +14,9 @@ export default async function TenantLayout({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const session = await requireSession();
-
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) notFound();
-
-  if (session.role !== 'super_admin' && session.tenantId !== tenant.id) {
-    redirect('/login');
-  }
+  await requireCompanyAccess(tenant.id);
 
   const branding = buildTenantBrandingView(
     (await getTenantBranding(tenant.id)) ?? {

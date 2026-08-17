@@ -29,7 +29,10 @@ export async function adminResetMfa(
     .select('id, role, tenant_id')
     .eq('id', targetId)
     .maybeSingle();
-  if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
+  if (readErr) {
+    console.error('admin MFA profile read failed', readErr);
+    throw new ApiError('INTERNAL', 'Could not load user', 500);
+  }
   if (!existing) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
   assertAdminCanModifyTarget(
@@ -43,7 +46,8 @@ export async function adminResetMfa(
     userId: targetId,
   });
   if (factorsErr) {
-    throw new ApiError('MFA_RESET_FAILED', factorsErr.message, 502);
+    console.error('admin MFA factor list failed', factorsErr);
+    throw new ApiError('MFA_RESET_FAILED', 'Could not reset MFA', 502);
   }
   const factors = factorsData?.factors ?? [];
 
@@ -53,7 +57,8 @@ export async function adminResetMfa(
       id: factor.id,
     });
     if (delErr) {
-      throw new ApiError('MFA_RESET_FAILED', `deleteFactor ${factor.id}: ${delErr.message}`, 502);
+      console.error('admin MFA factor deletion failed', { factorId: factor.id, error: delErr });
+      throw new ApiError('MFA_RESET_FAILED', 'Could not reset MFA', 502);
     }
   }
 
@@ -62,18 +67,15 @@ export async function adminResetMfa(
     .update({ mfa_enrolled_at: null })
     .eq('id', targetId);
   if (profileErr) {
-    throw new ApiError('VALIDATION_FAILED', `profiles update: ${profileErr.message}`, 500);
+    console.error('admin MFA profile update failed', profileErr);
+    throw new ApiError('INTERNAL', 'Could not reset MFA', 500);
   }
 
   try {
     await revokeAllSessions(targetId);
   } catch (err) {
     console.error('revokeAllSessions failed', err);
-    throw new ApiError(
-      'SESSION_REVOKE_FAILED',
-      err instanceof Error ? err.message : 'Could not revoke sessions',
-      502,
-    );
+    throw new ApiError('SESSION_REVOKE_FAILED', 'Could not revoke sessions', 502);
   }
 
   const { error: auditErr } = await admin.from('admin_audit_actions').insert({

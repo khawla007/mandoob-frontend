@@ -1,7 +1,5 @@
-import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { requireRole } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getProfileCard } from '@/lib/data/profile';
 import { readSelfCustomer } from '@/lib/data/account-self';
 import { listOpenRequestsForClient } from '@/lib/data/documents';
@@ -24,10 +22,12 @@ import { PaymentHistoryCard } from '@/components/customer/PaymentHistoryCard';
 export const dynamic = 'force-dynamic';
 
 export default async function CustomerPortal({ params }: { params: Promise<{ tenant: string }> }) {
-  const session = await requireRole('customer', 'super_admin');
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant, session } = await requireTenantRouteAccess(slug, [
+    'customer',
+    'admin',
+    'super_admin',
+  ]);
 
   const t = await getTranslations('customer');
 

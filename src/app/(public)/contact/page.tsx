@@ -82,7 +82,7 @@ export default async function ContactPage() {
               <p className="micro mono">{t('officeHours')}</p>
               <p className="cta-secondary">
                 {t('proCtaPrefix')}{' '}
-                <Link className="cell__link" href="/register/pro">
+                <Link className="cell__link" href="mailto:hello@mandoob.ae">
                   {t('proCtaLink')} <span aria-hidden="true">↗</span>
                 </Link>
               </p>

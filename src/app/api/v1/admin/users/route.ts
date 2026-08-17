@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { ApiError, errorResponse, jsonOk } from '@/lib/errors';
 import { guardCsrf } from '@/lib/auth/csrf-guard';
-import { requireRole } from '@/lib/auth/require-role';
+import { requirePlatformOperator } from '@/lib/auth/require-role';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
 import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { createUserSchema } from '@/lib/validation/admin-user';
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const csrfFail = await guardCsrf(request);
   if (csrfFail) return csrfFail;
 
-  const session = await requireRole('super_admin', 'admin');
+  const session = await requirePlatformOperator();
   // Spec §4 step 2 — do not silently swallow AAL2. Layout's swallow is for UX
   // (page renders, MFA prompt floats); direct POST must reject.
   if (session.aal !== 'aal2') {
@@ -48,6 +48,6 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     if (e instanceof ApiError) return e.toResponse();
     console.error('admin-create-user unexpected', e);
-    return errorResponse('INTERNAL', e instanceof Error ? e.message : 'Unexpected error', 500);
+    return errorResponse('INTERNAL', 'Could not create user', 500);
   }
 }

@@ -54,8 +54,8 @@ export function ProHeroSection() {
             <Link className="btn btn--accent" href="/pricing">
               See Pricing
             </Link>
-            <Link className="btn btn--outline" href="/register/pro">
-              Register your firm
+            <Link className="btn btn--outline" href="/contact">
+              Contact sales
             </Link>
           </div>
         </div>

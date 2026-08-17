@@ -6,11 +6,10 @@ import { CreateUserForm } from '@/components/admin/CreateUserForm';
 export const dynamic = 'force-dynamic';
 
 export default async function NewUserPage() {
-  const session = await requireRole('super_admin', 'admin');
-  const callerRole = session.role as 'super_admin' | 'admin';
+  await requireRole('super_admin', 'admin');
   const t = await getTranslations('admin');
-  // Post role-rebase: both platform roles need the tenant list to assign
-  // pro/customer/employee accounts to any tenant.
+  // Customer and employee creation still needs the tenant list. PRO identities
+  // start unassigned and are bound through /admin/companies after verification.
   const tenants = await listTenants();
 
   return (
@@ -19,7 +18,7 @@ export default async function NewUserPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{t('user.createTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('user.createIntro')}</p>
       </div>
-      <CreateUserForm callerRole={callerRole} tenants={tenants} />
+      <CreateUserForm tenants={tenants} />
     </div>
   );
 }

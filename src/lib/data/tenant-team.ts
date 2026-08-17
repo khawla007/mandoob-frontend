@@ -47,7 +47,9 @@ export async function inviteColleague(
   const created = await adminCreateUser(
     {
       role: 'pro',
-      tenant_id: ctx.tenantId,
+      // PRO identities are no longer tenant-bound at creation. This legacy
+      // team surface is removed in the dedicated team-cleanup task.
+      tenant_id: null,
       full_name: input.full_name,
       email: input.email,
       // Phone is required by createUserSchema; the invitee fills it in via

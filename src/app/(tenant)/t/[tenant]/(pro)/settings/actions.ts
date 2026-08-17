@@ -26,7 +26,7 @@ export type ActionResult<T = void> =
   | { ok: false; error: string; code: string };
 
 async function getCallerContext() {
-  const session = await requireRole('pro', 'super_admin');
+  const session = await requireRole('pro');
   const hdr = await headers();
   const ip = hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const userAgent = hdr.get('user-agent') ?? null;
@@ -41,7 +41,7 @@ async function resolveAndAuthorize(slug: string) {
   const ctx = await getCallerContext();
   const tenant = await resolveTenantBySlug(slug);
   if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (ctx.caller.role !== 'super_admin' && ctx.caller.tenantId !== tenant.id) {
+  if (ctx.caller.tenantId !== tenant.id) {
     throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
   }
   await requireActiveTenant(tenant.id);

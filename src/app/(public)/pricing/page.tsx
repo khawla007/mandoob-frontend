@@ -46,8 +46,8 @@ export default function PricingPage() {
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>
-              <Link className="btn btn--accent btn--sm" href="/register/pro">
-                Get started
+              <Link className="btn btn--accent btn--sm" href="/contact">
+                Contact sales
               </Link>
             </article>
           ))}

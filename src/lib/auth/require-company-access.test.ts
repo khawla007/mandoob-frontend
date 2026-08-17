@@ -67,7 +67,7 @@ test('current active PRO assignment grants company access', async () => {
   const { requireCompanyAccess } = await import('./require-company-access');
   const auth = authDeps(session('pro'), [
     { data: { role: 'pro', status: 'active', tenant_id: tenantId }, error: null },
-    { data: { id: 'assignment-1' }, error: null },
+    { data: { id: 'live-access' }, error: null },
   ]);
 
   const result = await requireCompanyAccess(tenantId, auth.deps);
@@ -79,14 +79,29 @@ test('current active PRO assignment grants company access', async () => {
     filters: { id: result.id },
   });
   assert.deepEqual(auth.calls[1], {
-    table: 'pro_company_assignments',
-    select: 'id',
+    table: 'profiles',
+    select:
+      'id, role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(id)',
     filters: {
-      pro_profile_id: result.id,
-      tenant_id: tenantId,
+      id: result.id,
+      role: 'pro',
       status: 'active',
+      'pro_profiles.credentials_verified': true,
+      'active_assignments.tenant_id': tenantId,
+      'active_assignments.status': 'active',
     },
   });
+});
+
+test('credential invalidation immediately denies an actively assigned PRO', async () => {
+  const { requireCompanyAccess } = await import('./require-company-access');
+  const auth = authDeps(session('pro'), [
+    { data: { role: 'pro', status: 'active', tenant_id: null }, error: null },
+    { data: null, error: null },
+  ]);
+
+  await assert.rejects(() => requireCompanyAccess(tenantId, auth.deps), /DENIED/);
+  assert.equal(auth.calls.length, 2);
 });
 
 test('released assignment denies a PRO even when JWT tenant metadata is stale', async () => {

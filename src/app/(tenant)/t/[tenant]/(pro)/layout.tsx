@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation';
-import { requireRole, requireMfaEnrolled } from '@/lib/auth/require-role';
-import { isTenantActive, resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireMfaEnrolled } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { isTenantActive } from '@/lib/data/tenant';
 import { getTenantBranding } from '@/lib/data/tenant-settings';
 import { buildTenantBrandingView } from '@/lib/tenant/branding';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
@@ -16,12 +16,10 @@ export default async function ProLayout({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const session = await requireRole('pro');
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
   // MFA enforcement toggles on in M6 once enrollment UI ships.
   await requireMfaEnrolled(session).catch(() => {});
 
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
   const branding = buildTenantBrandingView(
     (await getTenantBranding(tenant.id)) ?? {
       name: tenant.name,
@@ -44,7 +42,7 @@ export default async function ProLayout({
       brandHref={`/t/${tenant.slug}/dashboard`}
       brandInitial={branding.initial}
       brandLogoUrl={branding.logoUrl}
-      user={{ email: session.email, role: 'pro', initials }}
+      user={{ email: session.email, role: session.role!, initials }}
     >
       {suspended ? <TenantSuspendedBanner status={tenant.status} className="mb-6" /> : null}
       {children}

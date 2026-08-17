@@ -7,6 +7,7 @@ import type { CreateUserOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
 import { isUuid } from '@/lib/util/uuid';
 import { env } from '@/lib/env';
+import { tenantScopeForNewUser } from '@/lib/data/new-user-scope';
 
 export type AdminCreateUserCaller = {
   id: string;
@@ -32,45 +33,20 @@ export async function adminCreateUser(
   const admin = createSupabaseServiceRoleClient();
 
   // ── Cross-checks (§4 step 4) ─────────────────────────────────────────
-  // Post role-rebase: admin is platform-scoped (no tenant); only super_admin
-  // can create another admin. Admin callers can create tenant-scoped users
-  // (pro/customer/employee) in any tenant — they are no longer tenant-bound.
-  if (input.role === 'admin' && ctx.caller.role !== 'super_admin') {
-    throw new ApiError('FORBIDDEN', 'Only super admins can create admins', 403);
-  }
-  if (input.role !== 'admin') {
+  // Post role-rebase: admin and super_admin have identical platform business
+  // permissions. Neither workflow can create a super_admin; that role remains a
+  // development bootstrap concern. PRO users begin unassigned; customer and employee
+  // identities are company-tenant scoped at creation.
+  if (input.role === 'customer' || input.role === 'employee') {
     // Zod already enforces uuid; this is defense-in-depth in case the
     // orchestrator gets called from a non-route caller in the future.
     if (!input.tenant_id || !isUuid(input.tenant_id)) {
       throw new ApiError('VALIDATION_FAILED', 'tenant_id required for non-admin role', 400);
     }
   }
-  // Pre-flight ONE_PRO_PER_TENANT check. The DB unique index
-  // `profiles_one_pro_per_tenant` (migration 0025) is the authoritative guard;
-  // this query produces a clean CONFLICT error before the invite/insert chain
-  // burns auth-side state.
-  if (input.role === 'pro') {
-    const { count, error: proCountErr } = await admin
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', input.tenant_id)
-      .eq('role', 'pro')
-      .eq('status', 'active');
-    if (proCountErr) {
-      console.error('pro pre-check failed', proCountErr);
-      throw new ApiError('VALIDATION_FAILED', 'Could not verify tenant pro slot', 500);
-    }
-    if ((count ?? 0) > 0) {
-      throw new ApiError(
-        'TENANT_ALREADY_HAS_PRO',
-        'This tenant already has an active pro user',
-        409,
-      );
-    }
-  }
   if (input.role === 'employee') {
     const { data: client, error: clientErr } = await admin
-      .from('clients')
+      .from('company_profiles')
       .select('id, tenant_id')
       .eq('id', input.client_id)
       .maybeSingle();
@@ -85,7 +61,7 @@ export async function adminCreateUser(
   }
   if (input.role === 'customer' && input.linked_client_id) {
     const { data: client, error: linkedErr } = await admin
-      .from('clients')
+      .from('company_profiles')
       .select('id, tenant_id')
       .eq('id', input.linked_client_id)
       .maybeSingle();
@@ -141,18 +117,15 @@ export async function adminCreateUser(
       };
     }
   } catch (e) {
-    throw new ApiError(
-      'ENCRYPTION_FAILED',
-      e instanceof Error ? e.message : 'PII encryption failed',
-      500,
-    );
+    console.error('admin create user encryption failed', e);
+    throw new ApiError('ENCRYPTION_FAILED', 'Could not prepare protected user data', 500);
   }
 
   // ── Native Supabase invite (§4 step 8) ───────────────────────────────
   const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN;
   const protocol = rootDomain.startsWith('localhost') ? 'http' : 'https';
   const redirectTo = `${protocol}://${rootDomain}/login`;
-  const tenantIdForMeta = input.role === 'admin' ? null : input.tenant_id;
+  const tenantIdForMeta = tenantScopeForNewUser(input);
   const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
     data: {
       full_name: input.full_name,
@@ -163,11 +136,8 @@ export async function adminCreateUser(
     redirectTo,
   });
   if (inviteErr || !invited?.user) {
-    throw new ApiError(
-      'INVITE_FAILED',
-      inviteErr?.message ?? 'inviteUserByEmail returned no user',
-      502,
-    );
+    console.error('admin create user invite failed', inviteErr ?? { kind: 'missing_user' });
+    throw new ApiError('INVITE_FAILED', 'Could not send user invitation', 502);
   }
   const newUserId = invited.user.id;
 
@@ -234,6 +204,7 @@ export async function adminCreateUser(
     if (input.role === 'pro') {
       const { error } = await admin.from('pro_profiles').insert({
         profile_id: newUserId,
+        credentials_verified: false,
         license_no_encrypted: encryptedPayload.license_no_encrypted,
         designation: input.designation ?? null,
         department: input.department ?? null,
@@ -246,13 +217,13 @@ export async function adminCreateUser(
         profile_id: newUserId,
         nationality: input.nationality ?? null,
         passport_no_encrypted: encryptedPayload.passport_no_encrypted,
-        linked_client_id: input.linked_client_id ?? null,
+        linked_company_id: input.linked_client_id ?? null,
       });
       if (error) throw error;
     } else if (input.role === 'employee') {
       const { error } = await admin.from('employees').insert({
         tenant_id: input.tenant_id,
-        client_id: input.client_id,
+        company_id: input.client_id,
         profile_id: newUserId,
         name: input.full_name,
         email,

@@ -4,9 +4,7 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { ApiError } from '@/lib/errors';
-import { requireRole } from '@/lib/auth/require-role';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { addLeadNote, LEAD_STAGES, setLeadStage, type LeadStage } from '@/lib/data/leads-kanban';
 
 export type ActionResult<T = void> =
@@ -23,13 +21,7 @@ function formString(formData: FormData, key: string): string {
 }
 
 async function resolveAndAuthorize(slug: string) {
-  const session = await requireRole('pro');
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (session.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  }
-  await requireActiveTenant(tenant.id);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
   return { tenant, session };
 }
 
@@ -49,7 +41,7 @@ export async function setProLeadStageAction(
     const stage = stageSchema.parse(formString(formData, 'stage')) as LeadStage;
     await setLeadStage(leadId, stage, {
       id: session.id,
-      role: 'pro',
+      role: session.role,
       tenantId: tenant.id,
     });
     revalidatePath(`/t/${slug}/leads`);
@@ -69,7 +61,7 @@ export async function addProLeadNoteAction(
     const note = noteSchema.parse(formString(formData, 'note'));
     await addLeadNote(leadId, note, {
       id: session.id,
-      role: 'pro',
+      role: session.role,
       tenantId: tenant.id,
     });
     revalidatePath(`/t/${slug}/leads`);

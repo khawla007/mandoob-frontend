@@ -39,12 +39,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
         <h1 className="text-2xl font-semibold tracking-tight">{t('user.editTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('user.editIntro')}</p>
       </div>
-      <EditUserPanel
-        user={user}
-        callerRole={callerRole}
-        tenantName={tenantName}
-        tenants={tenants}
-      />
+      <EditUserPanel user={user} tenantName={tenantName} tenants={tenants} />
     </div>
   );
 }

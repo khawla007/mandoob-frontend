@@ -35,12 +35,6 @@ const ALL_ROLE_OPTIONS: { value: CreateUserRole }[] = [
 
 export type UserCommonFieldsProps = {
   mode: 'create' | 'edit';
-  /**
-   * Role of the signed-in caller. Both values are platform-scoped post role-rebase;
-   * this is used only to gate the `admin` role option (only super_admin can create
-   * other platform admins).
-   */
-  callerRole: 'super_admin' | 'admin';
   tenants: TenantSummary[];
   /** Required in edit mode — rendered as disabled input. */
   email?: string | null;
@@ -48,29 +42,19 @@ export type UserCommonFieldsProps = {
   tenantName?: string | null;
 };
 
-// Roles that live inside a tenant. Selecting any of these requires picking a tenant.
-const TENANT_SCOPED_ROLES: ReadonlyArray<CreateUserRole> = ['pro', 'customer', 'employee'];
+// New PRO identities stay unassigned until the company workflow binds them.
+const TENANT_SCOPED_ROLES: ReadonlyArray<CreateUserRole> = ['customer', 'employee'];
 
-export function UserCommonFields({
-  mode,
-  callerRole,
-  tenants,
-  email,
-  tenantName,
-}: UserCommonFieldsProps) {
+export function UserCommonFields({ mode, tenants, email, tenantName }: UserCommonFieldsProps) {
   const t = useTranslations('admin');
   const form = useFormContext<FormShape>();
   const role = form.watch('role') as CreateUserRole | undefined;
   const isEdit = mode === 'edit';
   const isTenantScoped = role !== undefined && TENANT_SCOPED_ROLES.includes(role);
-  // Tenant picker visibility is driven purely by the selected role: tenant-scoped
-  // roles need a tenant; platform roles (admin, super_admin) do not.
+  // Customer and employee roles need a tenant. PRO and platform-admin identities
+  // are created without tenant scope.
   const showTenantPicker = !isEdit && isTenantScoped;
-  // Only super_admin may create another platform admin.
-  const options =
-    callerRole === 'super_admin'
-      ? ALL_ROLE_OPTIONS
-      : ALL_ROLE_OPTIONS.filter((o) => o.value !== 'admin');
+  const options = ALL_ROLE_OPTIONS;
 
   return (
     <div className="space-y-4">

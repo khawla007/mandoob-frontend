@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientTabs } from '@/components/pro/ClientTabs';
 import { EditClientForm } from '@/components/pro/EditClientForm';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getClientForTenant } from '@/lib/data/client-detail';
 import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
 import { listInvoicesForTenant } from '@/lib/data/invoices';
@@ -27,8 +27,7 @@ export default async function ClientDetailPage({
 }) {
   const { tenant: slug, clientId } = await params;
   const focus = parseClientDetailSearch(await searchParams);
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const client = await getClientForTenant(tenant.id, clientId);
   if (!client) notFound();
@@ -42,7 +41,7 @@ export default async function ClientDetailPage({
     getConsentStateForPhone(client.contact_phone),
   ]);
 
-  const loadOlder = loadOlderCommsAction.bind(null, tenant.id, clientId);
+  const loadOlder = loadOlderCommsAction.bind(null, slug, clientId);
 
   return (
     <div className="space-y-6">

@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewInvoiceDialog } from '@/components/pro/NewInvoiceDialog';
 import { InvoicesTable } from '@/components/pro/InvoicesTable';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { listClientsForPro } from '@/lib/data/clients-list';
 import { listInvoicesForPaymentView } from '@/lib/data/invoices';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
   parsePaymentSearch,
   parsePaymentPage,
@@ -43,8 +42,7 @@ export default async function ProPaymentsPage({
   const search = await searchParams;
   const { view, date, period } = parsePaymentSearch(search);
   const page = parsePaymentPage(search.page);
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
   const [t, locale] = await Promise.all([getTranslations('pro'), getLocale()]);
 
   const [clients, invoicePage] = await Promise.all([

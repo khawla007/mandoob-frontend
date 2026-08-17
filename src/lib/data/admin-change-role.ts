@@ -28,7 +28,10 @@ export async function adminChangeRole(
     .select('id, role, tenant_id, status, full_name, phone, updated_at')
     .eq('id', targetId)
     .maybeSingle();
-  if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
+  if (readErr) {
+    console.error('admin role profile read failed', readErr);
+    throw new ApiError('INTERNAL', 'Could not load user', 500);
+  }
   if (!existing) throw new ApiError('NOT_FOUND', 'User not found', 404);
 
   // Scope against the EXISTING tenant — never the new tenant in the body —
@@ -48,12 +51,15 @@ export async function adminChangeRole(
       .select('id', { count: 'exact', head: true })
       .eq('role', 'super_admin')
       .neq('id', targetId);
-    if (countErr) throw new ApiError('INTERNAL', countErr.message, 500);
+    if (countErr) {
+      console.error('admin role super-admin count failed', countErr);
+      throw new ApiError('INTERNAL', 'Could not validate role change', 500);
+    }
     remainingSuperAdmins = count ?? 0;
   }
 
   // Tenant scope for non-admin newRole. admin caller must keep its own tenant.
-  const newTenantId = input.newRole === 'admin' ? null : input.tenant_id;
+  const newTenantId = input.newRole === 'admin' || input.newRole === 'pro' ? null : input.tenant_id;
 
   assertRoleChangeAllowed({
     callerId: ctx.caller.id,
@@ -80,12 +86,12 @@ export async function adminChangeRole(
     roleData = {
       nationality: input.nationality ?? null,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-      linked_client_id: input.linked_client_id ?? null,
+      linked_company_id: input.linked_client_id ?? null,
     };
   } else if (input.newRole === 'employee') {
     const { data: authUser } = await admin.auth.admin.getUserById(targetId);
     roleData = {
-      client_id: input.client_id,
+      company_id: input.client_id,
       name: (existing.full_name as string | null) ?? authUser?.user?.email ?? 'Unnamed',
       email: authUser?.user?.email ?? null,
       phone: (existing.phone as string | null) ?? null,
@@ -185,7 +191,7 @@ export async function adminChangeRole(
     const forbiddenTenantMove = roleChangeError.message.includes(
       'PROFILE_TENANT_HAS_SERVICE_CASE_REFERENCES',
     );
-    const clientTenantMismatch = /(?:EMPLOYEE|CUSTOMER)_CLIENT_TENANT_MISMATCH/.test(
+    const companyTenantMismatch = /(?:EMPLOYEE|CUSTOMER)_COMPANY_TENANT_MISMATCH/.test(
       roleChangeError.message,
     );
     throw new ApiError(
@@ -193,17 +199,17 @@ export async function adminChangeRole(
         ? 'INVALID_TENANT_ASSIGNMENT'
         : changedDuringRequest
           ? 'INVALID_ROLE_TRANSITION'
-          : clientTenantMismatch
+          : companyTenantMismatch
             ? 'FORBIDDEN'
             : 'VALIDATION_FAILED',
       forbiddenTenantMove
         ? 'Profile tenant cannot change while service-case history references it'
         : changedDuringRequest
           ? 'Profile changed during role update; retry with fresh data'
-          : clientTenantMismatch
+          : companyTenantMismatch
             ? 'Client does not belong to selected tenant'
             : 'Role change could not be completed',
-      forbiddenTenantMove || changedDuringRequest ? 409 : clientTenantMismatch ? 403 : 500,
+      forbiddenTenantMove || changedDuringRequest ? 409 : companyTenantMismatch ? 403 : 500,
     );
   }
 

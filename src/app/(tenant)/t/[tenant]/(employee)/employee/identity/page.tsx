@@ -1,9 +1,7 @@
-import { notFound } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requireRole } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getEmployeeIdentity, type ExpiryBucket } from '@/lib/data/employee-portal';
 
 export const dynamic = 'force-dynamic';
@@ -38,10 +36,8 @@ export default async function EmployeeIdentityPage({
 }: {
   params: Promise<{ tenant: string }>;
 }) {
-  const session = await requireRole('employee');
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant || tenant.id !== session.tenantId) notFound();
+  const { tenant, session } = await requireTenantRouteAccess(slug, ['employee']);
 
   const identity = await getEmployeeIdentity(session.id, tenant.id);
 

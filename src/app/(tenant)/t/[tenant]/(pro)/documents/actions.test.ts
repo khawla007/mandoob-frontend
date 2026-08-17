@@ -29,7 +29,7 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
   const dependencies: DocumentCenterActionDependencies = {
     requirePro: async () => {
       calls.push('auth');
-      return { id: ACTOR_ID, tenantId: TENANT_ID };
+      return { id: ACTOR_ID, role: 'pro', tenantId: TENANT_ID };
     },
     resolveTenant: async (slug) => {
       calls.push(`tenant:${slug}`);

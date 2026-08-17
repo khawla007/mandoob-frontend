@@ -1,5 +1,4 @@
-import { notFound } from 'next/navigation';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   getTenantBranding,
   getTenantContact,
@@ -22,8 +21,7 @@ export default async function WorkspaceSettingsPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const [branding, contact, smtp, whatsapp] = await Promise.all([
     getTenantBranding(tenant.id),

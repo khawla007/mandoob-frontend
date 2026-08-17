@@ -10,6 +10,11 @@ const baseCommon = {
   phone: '+971501234567',
   tenant_id: tenantId,
 };
+const proCommon = {
+  full_name: baseCommon.full_name,
+  email: baseCommon.email,
+  phone: baseCommon.phone,
+};
 const futureDate = (() => {
   const d = new Date();
   d.setDate(d.getDate() + 30);
@@ -19,12 +24,13 @@ const futureDate = (() => {
 describe('createUserSchema — happy paths', () => {
   it('accepts a minimal pro', () => {
     const r = createUserSchema.safeParse({
-      ...baseCommon,
+      ...proCommon,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, true);
+    assert.equal(r.success && r.data.tenant_id, null);
   });
 
   it('accepts a minimal customer', () => {
@@ -58,9 +64,7 @@ describe('createUserSchema — happy paths', () => {
 
   it('accepts an admin with no tenant_id and a reason', () => {
     const r = createUserSchema.safeParse({
-      full_name: baseCommon.full_name,
-      email: baseCommon.email,
-      phone: baseCommon.phone,
+      ...proCommon,
       role: 'admin',
       reason: 'Promoting Aisha to admin per ticket OPS-42',
     });
@@ -105,7 +109,9 @@ describe('createUserSchema — rejects', () => {
 
   it('rejects pro with >8 service_areas', () => {
     const r = createUserSchema.safeParse({
-      ...baseCommon,
+      full_name: baseCommon.full_name,
+      email: baseCommon.email,
+      phone: baseCommon.phone,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: [
@@ -119,6 +125,16 @@ describe('createUserSchema — rejects', () => {
         'ALL_UAE',
         'DUBAI',
       ],
+    });
+    assert.equal(r.success, false);
+  });
+
+  it('rejects a newly created pro bound directly to a tenant', () => {
+    const r = createUserSchema.safeParse({
+      ...baseCommon,
+      role: 'pro',
+      license_no: 'LIC-1',
+      service_areas: ['DUBAI'],
     });
     assert.equal(r.success, false);
   });
@@ -154,7 +170,7 @@ describe('createUserSchema — rejects', () => {
 
   it('rejects bad phone', () => {
     const r = createUserSchema.safeParse({
-      ...baseCommon,
+      ...proCommon,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: ['DUBAI'],
@@ -165,7 +181,7 @@ describe('createUserSchema — rejects', () => {
 
   it('rejects bad email', () => {
     const r = createUserSchema.safeParse({
-      ...baseCommon,
+      ...proCommon,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: ['DUBAI'],
@@ -178,7 +194,7 @@ describe('createUserSchema — rejects', () => {
 describe('createUserSchema — service area enum', () => {
   it('accepts ALL_UAE sentinel alone', () => {
     const r = createUserSchema.safeParse({
-      ...baseCommon,
+      ...proCommon,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: ['ALL_UAE'],
@@ -188,7 +204,7 @@ describe('createUserSchema — service area enum', () => {
 
   it('accepts pro with empty service_areas', () => {
     const r = createUserSchema.safeParse({
-      ...baseCommon,
+      ...proCommon,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: [],
@@ -198,7 +214,7 @@ describe('createUserSchema — service area enum', () => {
 
   it('rejects unknown service_area value', () => {
     const r = createUserSchema.safeParse({
-      ...baseCommon,
+      ...proCommon,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: ['JEDDAH'],

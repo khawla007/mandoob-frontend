@@ -32,10 +32,8 @@ export function statusRequiresSessionRevoke(to: ProfileStatus): boolean {
 }
 
 /**
- * Role scoping for admin callers. After the role-semantics rebase, `admin`
- * is a platform-scoped role (tenant_id IS NULL) — a subordinate of
- * super_admin. Admin callers may act on any non-admin/non-super_admin user
- * in any tenant. They may NOT modify other admins or super_admins.
+ * Admin and super_admin share production business permissions. The
+ * development-only super_admin identity itself remains protected.
  * Throws ApiError; pure logic — no DB calls.
  */
 export function assertAdminCanModifyTarget(
@@ -43,21 +41,21 @@ export function assertAdminCanModifyTarget(
   target: { role: Role; tenantId: string | null },
 ): void {
   if (caller.role !== 'admin') return;
-  if (target.role === 'admin' || target.role === 'super_admin') {
+  if (target.role === 'super_admin') {
     throw new ApiError('FORBIDDEN', 'Admin cannot modify this user', 403);
   }
 }
 
 /**
- * D2a/b/c + Sub-Project 3 D3 (super_admin-only creates admin) + super_admin
- * promotion blocked + role-semantics rebase tenant coupling. Pure logic —
+ * D2a/b/c + protected development super_admin + blocked super_admin promotion
+ * + role-semantics rebase tenant coupling. Pure logic —
  * does not query the DB. The caller is responsible for the count query
  * feeding `remainingSuperAdmins` (D2b).
  *
  * Role/tenantId coupling enforced (post role-rebase):
  *   - super_admin → newTenantId MUST be null
  *   - admin       → newTenantId MUST be null
- *   - pro         → newTenantId required (non-null UUID)
+ *   - pro         → newTenantId MUST be null until company assignment
  *   - customer    → newTenantId required (non-null UUID)
  *   - employee    → newTenantId required (non-null UUID)
  */
@@ -93,27 +91,15 @@ export function assertRoleChangeAllowed(args: RoleChangeGuardArgs): void {
     );
   }
 
-  // Sub-Project 3 D3 — only super_admin can create / become an admin
-  if (args.newRole === 'admin' && args.callerRole !== 'super_admin') {
-    throw new ApiError('FORBIDDEN', 'Only super admins can promote to admin', 403);
+  // The development-only super_admin identity is not business-manageable.
+  if (args.callerRole === 'admin' && args.targetRole === 'super_admin') {
+    throw new ApiError('FORBIDDEN', 'Super admin identities cannot be changed by an admin', 403);
   }
 
-  // admin caller cannot touch other admins or super_admins
-  if (
-    args.callerRole === 'admin' &&
-    (args.targetRole === 'admin' || args.targetRole === 'super_admin')
-  ) {
-    throw new ApiError(
-      'FORBIDDEN',
-      'Admin callers cannot change roles of admins or super admins',
-      403,
-    );
-  }
-
-  // Role/tenant coupling (post role-semantics rebase). Platform-scoped roles
-  // (super_admin, admin) MUST have a NULL tenant; tenant-scoped roles
-  // (pro, customer, employee) MUST have a non-null tenant.
-  const platformScoped = args.newRole === 'super_admin' || args.newRole === 'admin';
+  // Role/tenant coupling (post role-semantics rebase). Platform roles and an
+  // unassigned PRO have no tenant; customer and employee remain tenant-scoped.
+  const platformScoped =
+    args.newRole === 'super_admin' || args.newRole === 'admin' || args.newRole === 'pro';
   if (platformScoped && args.newTenantId !== null) {
     throw new ApiError(
       'INVALID_TENANT_ASSIGNMENT',

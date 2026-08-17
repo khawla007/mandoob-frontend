@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewRenewalDialog } from '@/components/pro/NewRenewalDialog';
 import { RenewalsTable, type ClientLite } from '@/components/pro/RenewalsTable';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { listClientsForTenant } from '@/lib/data/clients';
 import { listRenewalsForTenant, type RenewalRow, type RenewalStatus } from '@/lib/data/renewals';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { parseRenewalSearch, type RenewalSearchParams, type RenewalTab } from './page-logic';
 
@@ -51,8 +50,7 @@ export default async function RenewalsPage({
   const sp = await searchParams;
   const { tab, renewalId, type, days, deadlineDate, deadlinePeriod } = parseRenewalSearch(sp);
 
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const t = await getTranslations('pro');
 

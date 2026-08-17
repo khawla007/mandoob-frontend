@@ -10,7 +10,7 @@ export type Database = {
     Tables: {
       admin_audit_actions: {
         Row: {
-          action: Database['public']['Enums']['admin_audit_action'];
+          action: string;
           actor_id: string;
           created_at: string;
           id: number;
@@ -18,7 +18,7 @@ export type Database = {
           target_profile_id: string;
         };
         Insert: {
-          action: Database['public']['Enums']['admin_audit_action'];
+          action: string;
           actor_id: string;
           created_at?: string;
           id?: number;
@@ -26,7 +26,7 @@ export type Database = {
           target_profile_id: string;
         };
         Update: {
-          action?: Database['public']['Enums']['admin_audit_action'];
+          action?: string;
           actor_id?: string;
           created_at?: string;
           id?: number;
@@ -1681,6 +1681,19 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_change_role_atomic: {
+        Args: {
+          p_actor_id: string;
+          p_expected_role: string;
+          p_expected_tenant_id: string | null;
+          p_new_role: string;
+          p_new_tenant_id: string | null;
+          p_reason?: string | null;
+          p_role_data: Json;
+          p_target_id: string;
+        };
+        Returns: Json;
+      };
       list_pro_document_center: {
         Args: {
           p_company_id?: string | null;
@@ -1780,6 +1793,15 @@ export type Database = {
         Returns: Json;
       };
       mandoob_access_token_hook: { Args: { event: Json }; Returns: Json };
+      provision_company_workspace_atomic: {
+        Args: {
+          p_actor_id: string;
+          p_company_name: string;
+          p_plan: string;
+          p_slug: string;
+        };
+        Returns: Json;
+      };
       rate_limit_consume: {
         Args: {
           p_capacity: number;
@@ -1788,6 +1810,14 @@ export type Database = {
           p_refill_per_sec: number;
         };
         Returns: boolean;
+      };
+      verify_pro_credentials_atomic: {
+        Args: {
+          p_actor_id: string;
+          p_expected_updated_at: string;
+          p_target_id: string;
+        };
+        Returns: Json;
       };
     };
     Enums: {

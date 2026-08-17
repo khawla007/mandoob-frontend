@@ -2,11 +2,8 @@
 
 import 'server-only';
 import { revalidatePath } from 'next/cache';
-import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
-import { requireRole } from '@/lib/auth/require-role';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   cancelRenewal,
   createRenewal,
@@ -21,30 +18,16 @@ export type ActionResult<T = void> =
   | { ok: true; data: T }
   | { ok: false; error: string; code: string };
 
-async function getCallerContext() {
-  const session = await requireRole('pro');
-  const hdr = await headers();
-  const ip = hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const userAgent = hdr.get('user-agent') ?? null;
-  return {
-    caller: { id: session.id, role: session.role as 'pro', tenantId: session.tenantId },
-    ip,
-    userAgent,
-  };
-}
-
 async function resolveAndAuthorize(
   slug: string,
 ): Promise<{ ctx: RenewalActorCtx; tenantId: string }> {
-  const { caller } = await getCallerContext();
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (caller.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  }
-  await requireActiveTenant(tenant.id);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
   return {
-    ctx: { tenantId: tenant.id, actorId: caller.id, role: caller.role },
+    ctx: {
+      tenantId: tenant.id,
+      actorId: session.id,
+      role: session.role,
+    },
     tenantId: tenant.id,
   };
 }

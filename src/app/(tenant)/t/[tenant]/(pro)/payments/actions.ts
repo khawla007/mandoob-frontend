@@ -4,10 +4,8 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
-import { requireRole } from '@/lib/auth/require-role';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { createInvoice } from '@/lib/data/invoices';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
 import { createRefund } from '@/lib/payments/providers/tap';
 import { resolveRefundLedgerState } from '@/lib/payments/refund-state';
@@ -31,16 +29,7 @@ type CallerCtx = {
 };
 
 async function resolveProCaller(slug: string): Promise<CallerCtx> {
-  const session = await requireRole('pro', 'admin');
-  if (!session.tenantId) {
-    throw new ApiError('FORBIDDEN', 'Session missing tenant binding', 403);
-  }
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (session.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  }
-  await requireActiveTenant(tenant.id);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
   const hdr = await headers();
   return {
     callerId: session.id,

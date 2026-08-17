@@ -9,7 +9,7 @@ const transition = readFileSync(
   'utf8',
 );
 const migration = readFileSync(
-  join(process.cwd(), 'supabase/migrations/20260812130000_0055_atomic_admin_role_change.sql'),
+  join(process.cwd(), 'supabase/migrations/20260817092000_0061_admin_company_workflows.sql'),
   'utf8',
 );
 
@@ -42,6 +42,7 @@ test('admin role change external failures are explicit without exposing provider
   assert.match(transition, /AUTH_METADATA_SYNC_FAILED[\s\S]*login remains disabled/);
   assert.match(source, /Role change could not be completed/);
   assert.doesNotMatch(source, /`atomic role change: \$\{roleChangeError\.message\}`/);
+  assert.match(source, /\(\?:EMPLOYEE\|CUSTOMER\)_COMPANY_TENANT_MISMATCH/);
 });
 
 test('atomic role RPC validates case references before any role mutation', () => {
@@ -77,10 +78,7 @@ test('atomic role RPC covers every role subtable, profile patch, and audit in on
   );
   assert.match(migration, /insert into public\.admin_audit_actions/i);
   assert.match(migration, /returns jsonb/i);
-  assert.match(
-    migration,
-    /returning[\s\S]*role[\s\S]*tenant_id[\s\S]*status[\s\S]*updated_at[\s\S]*into committed_profile/i,
-  );
+  assert.match(migration, /returning \* into committed_profile/i);
   assert.match(
     migration,
     /jsonb_build_object\([\s\S]*'role'[\s\S]*'tenant_id'[\s\S]*'status'[\s\S]*'updated_at'/i,

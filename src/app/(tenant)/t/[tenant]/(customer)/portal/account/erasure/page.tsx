@@ -1,7 +1,5 @@
 import { ShieldAlert } from 'lucide-react';
-import { notFound } from 'next/navigation';
-import { requireRole } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getActiveErasureRequestForSubject } from '@/lib/data/erasure';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,11 +17,13 @@ export default async function CustomerErasurePage({
   params: Promise<{ tenant: string }>;
   searchParams: Promise<{ verified?: string }>;
 }) {
-  const session = await requireRole('customer', 'super_admin');
   const { tenant: slug } = await params;
   const sp = await searchParams;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant, session } = await requireTenantRouteAccess(slug, [
+    'customer',
+    'admin',
+    'super_admin',
+  ]);
 
   const active = await getActiveErasureRequestForSubject(session.id);
   const submitted = sp.verified === '1';

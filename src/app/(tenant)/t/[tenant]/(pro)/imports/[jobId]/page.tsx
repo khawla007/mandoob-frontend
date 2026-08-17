@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { isImportJobCancellable } from '@/lib/data/import-job-scope';
 import {
   Table,
   TableBody,
@@ -14,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import {
   cancelBulkImportAction,
@@ -49,8 +50,7 @@ export default async function BulkImportJobPage({
   params: Promise<{ tenant: string; jobId: string }>;
 }) {
   const { tenant: slug, jobId } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const admin = createSupabaseServiceRoleClient();
   const { data } = await admin
@@ -138,7 +138,7 @@ export default async function BulkImportJobPage({
                 </Button>
               </form>
             ) : null}
-            {['uploaded', 'validated', 'validating', 'importing'].includes(job.status) ? (
+            {isImportJobCancellable(job.status) ? (
               <form action={cancel}>
                 <Button type="submit" variant="outline">
                   <Ban className="mr-2 size-4" />
@@ -151,6 +151,11 @@ export default async function BulkImportJobPage({
                 <RotateCw className="size-4 animate-spin" />
                 Refreshing every 3 seconds
               </div>
+            ) : null}
+            {job.status === 'importing' ? (
+              <p className="text-muted-foreground text-sm">
+                Import execution cannot be cancelled after it starts.
+              </p>
             ) : null}
           </div>
         </CardContent>

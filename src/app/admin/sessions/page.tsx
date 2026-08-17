@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { SessionsTable } from '@/components/admin/SessionsTable';
 import { requireRole } from '@/lib/auth/require-role';
 import { listActiveSessions, type SessionsWindow } from '@/lib/data/sessions-overview';
-import { listProFirms } from '@/lib/data/pro-firms';
+import { listTenants } from '@/lib/data/tenants';
 import { sessionsFiltersSchema } from '@/lib/validation/observability';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +39,7 @@ export default async function SessionsPage({
       role: filters.role,
       window: filters.window,
     }),
-    listProFirms({}),
+    listTenants(),
   ]);
 
   return (

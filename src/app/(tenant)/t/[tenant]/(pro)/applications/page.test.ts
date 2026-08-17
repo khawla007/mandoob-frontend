@@ -84,7 +84,7 @@ test('applications read authorization rejects exact tenant mismatch before activ
 
 test('applications page invokes fresh authorization before service-role reads', () => {
   const source = readFileSync(pagePath, 'utf8');
-  const authorization = source.indexOf('authorizeApplicationsRead(');
+  const authorization = source.indexOf('requireProTenantRouteAccess(');
   assert.notEqual(authorization, -1);
   const read = 'listServiceCaseWorkspace(';
   assert.ok(authorization < source.indexOf(read), `${read} must follow authorization`);

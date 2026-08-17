@@ -7,7 +7,7 @@ import { headers } from 'next/headers';
 import { unstable_rethrow } from 'next/navigation';
 
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   logSafeActionError,
   normalizeActionRequestMetadata,
@@ -39,9 +39,9 @@ export type { DocumentCenterActionResult } from './action-logic';
 
 function dependencies(): DocumentCenterActionDependencies {
   return {
-    requirePro: async () => {
-      const session = await requireRole('pro');
-      return { id: session.id, tenantId: session.tenantId };
+    requirePro: async (slug) => {
+      const { session, tenant } = await requireProTenantRouteAccess(slug);
+      return { id: session.id, role: session.role, tenantId: tenant.id };
     },
     resolveTenant: resolveTenantBySlug,
     requireActive: requireActiveTenant,

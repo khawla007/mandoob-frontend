@@ -1,9 +1,7 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requireRole } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readSelfCustomer } from '@/lib/data/account-self';
 import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
 import { DocumentRequestRow } from '@/components/customer/DocumentRequestRow';
@@ -13,10 +11,8 @@ export const dynamic = 'force-dynamic';
 // TODO Step 18: send customer email/in-app notification when a PRO inserts a
 // document_requests row (template lives in the comms engine, not here).
 export default async function DocumentsPage({ params }: { params: Promise<{ tenant: string }> }) {
-  await requireRole('customer', 'super_admin');
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireTenantRouteAccess(slug, ['customer', 'admin', 'super_admin']);
 
   const t = await getTranslations('customer');
 

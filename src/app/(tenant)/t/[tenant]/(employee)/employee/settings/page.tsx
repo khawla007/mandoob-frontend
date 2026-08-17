@@ -1,12 +1,10 @@
-import { notFound } from 'next/navigation';
 import { ProfileTab } from '@/components/account/ProfileTab';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { requireRole } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getEmployeeNotificationPreferences } from '@/lib/data/employee-portal';
 import { updateEmployeeReminderPreferenceAction } from './actions';
 
@@ -17,10 +15,8 @@ export default async function EmployeeSettingsPage({
 }: {
   params: Promise<{ tenant: string }>;
 }) {
-  const session = await requireRole('employee');
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant || tenant.id !== session.tenantId) notFound();
+  const { tenant, session } = await requireTenantRouteAccess(slug, ['employee']);
 
   const prefs = await getEmployeeNotificationPreferences(session.id, tenant.id);
   const action = updateEmployeeReminderPreferenceAction.bind(null, tenant.slug);

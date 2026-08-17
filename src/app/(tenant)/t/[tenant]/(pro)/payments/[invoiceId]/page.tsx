@@ -13,8 +13,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { InvoiceActions } from '@/components/pro/InvoiceActions';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getInvoiceDetailForTenant } from '@/lib/data/invoices';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +24,7 @@ export default async function ProInvoiceDetailPage({
   params: Promise<{ tenant: string; invoiceId: string }>;
 }) {
   const { tenant: slug, invoiceId } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const invoice = await getInvoiceDetailForTenant(tenant.id, invoiceId);
   if (!invoice) notFound();

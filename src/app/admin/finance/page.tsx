@@ -63,7 +63,7 @@ export default async function AdminFinancePage() {
                   <TableCell>
                     <Link
                       className="underline-offset-4 hover:underline"
-                      href={`/admin/pro-firms/${row.tenantId}`}
+                      href={`/admin/companies?tenant=${row.tenantId}`}
                     >
                       {row.tenantName}
                     </Link>

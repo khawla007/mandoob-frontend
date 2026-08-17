@@ -37,7 +37,7 @@ function buildDefaults(user: EditableUser): EditUserInput {
     return {
       full_name: profile.fullName ?? '',
       phone: profile.phone ?? '',
-      tenant_id: profile.tenantId ?? '',
+      tenant_id: null,
       role: 'pro',
       license_no: user.pro.licenseNo ?? '',
       designation: user.pro.designation ?? '',
@@ -81,11 +81,10 @@ function buildDefaults(user: EditableUser): EditUserInput {
 
 export type EditUserFormProps = {
   user: EditableUser;
-  callerRole: 'super_admin' | 'admin';
   tenantName: string | null;
 };
 
-export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps) {
+export function EditUserForm({ user, tenantName }: EditUserFormProps) {
   const router = useRouter();
   const t = useTranslations('admin');
   const [topError, setTopError] = useState<string | null>(null);
@@ -161,7 +160,6 @@ export function EditUserForm({ user, callerRole, tenantName }: EditUserFormProps
               )}
               <UserCommonFields
                 mode="edit"
-                callerRole={callerRole}
                 tenants={[]}
                 email={user.profile.email}
                 tenantName={tenantName}

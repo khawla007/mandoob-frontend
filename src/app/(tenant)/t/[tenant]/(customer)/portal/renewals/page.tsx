@@ -1,9 +1,7 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requireRole } from '@/lib/auth/require-role';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readSelfCustomer } from '@/lib/data/account-self';
 import { listRenewalsForClient } from '@/lib/data/renewals';
 import { RenewalsTimeline } from '@/components/customer/RenewalsTimeline';
@@ -12,10 +10,8 @@ import type { PastRenewal, Renewal } from '@/lib/types/renewals-ui';
 export const dynamic = 'force-dynamic';
 
 export default async function RenewalsPage({ params }: { params: Promise<{ tenant: string }> }) {
-  await requireRole('customer', 'super_admin');
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireTenantRouteAccess(slug, ['customer', 'admin', 'super_admin']);
 
   const t = await getTranslations('customer');
 

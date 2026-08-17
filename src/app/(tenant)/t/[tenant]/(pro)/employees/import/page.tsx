@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   Select,
   SelectContent,
@@ -12,7 +13,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { listClientsForTenant } from '@/lib/data/clients';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { uploadBulkImportAction } from '../../imports/actions';
 
 export const dynamic = 'force-dynamic';
@@ -23,8 +23,8 @@ export default async function EmployeeImportPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  const clients = tenant ? await listClientsForTenant({ tenantId: tenant.id, limit: 50 }) : [];
+  const { tenant } = await requireProTenantRouteAccess(slug);
+  const clients = await listClientsForTenant({ tenantId: tenant.id, limit: 50 });
 
   async function upload(formData: FormData) {
     'use server';

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { AuditLogTable } from '@/components/admin/AuditLogTable';
 import { requireRole } from '@/lib/auth/require-role';
 import { listAuditLog } from '@/lib/data/audit-log';
-import { listProFirms } from '@/lib/data/pro-firms';
+import { listTenants } from '@/lib/data/tenants';
 import {
   AUDIT_KIND,
   TENANT_AUDIT_ACTIONS,
@@ -74,7 +74,7 @@ export default async function AuditLogsPage({
   const sp = await searchParams;
   const filters = parseFilters(sp);
 
-  const [page, tenants] = await Promise.all([listAuditLog(filters), listProFirms({})]);
+  const [page, tenants] = await Promise.all([listAuditLog(filters), listTenants()]);
 
   const actionsForKind: ReadonlyArray<string> =
     filters.kind === 'tenant_audit' ? TENANT_AUDIT_ACTIONS : AUTH_EVENT_KINDS;

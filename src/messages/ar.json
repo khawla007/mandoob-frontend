@@ -329,7 +329,7 @@
     "mfaAndSecurity": "المصادقة الثنائية والأمان",
     "auditLogs": "سجلات التدقيق",
     "tenants": "المستأجرون",
-    "proFirms": "شركات الـ PRO",
+    "companies": "الشركات",
     "meetings": "الاجتماعات",
     "erasure": "حذف البيانات",
     "erasureRequests": "طلبات حذف البيانات",
@@ -408,14 +408,7 @@
     "pwRuleSpecial": "رمز خاص واحد",
     "passwordRequirements": "متطلبات كلمة المرور",
     "dismissPasswordRequirements": "إغلاق متطلبات كلمة المرور",
-    "firmSection": "الشركة",
-    "firmName": "اسم الشركة",
     "plan": "الباقة",
-    "phoneE164": "الهاتف (E.164)",
-    "yourAccount": "حسابك",
-    "submittingReview": "جارٍ الإرسال…",
-    "submitForReview": "إرسال للمراجعة",
-    "proSubmittedTitle": "تم الإرسال",
     "longCopy": {
       "mfaInstructions": "Open your authenticator app and enter the 6-digit code shown for Mandoob.",
       "recoveryCodesIntro": "Save these one-time recovery codes somewhere safe. Each works exactly once if you lose your authenticator.",
@@ -424,8 +417,7 @@
       "checkInbox": "Check your inbox (and spam). The code expires in 10 minutes.",
       "ifAccountExists": "If an account exists for that email, we sent a reset link. Check your inbox.",
       "scanQrIntro": "Scan the QR with an authenticator app, then enter the 6-digit code.",
-      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL.",
-      "proSignupPending": "تسجيل شركتك قيد الموافقة. سنراسلك على {email} عند مراجعة المشرف له. حتى ذلك الحين، يكون حسابك في حالة انتظار."
+      "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL."
     }
   },
   "account": {
@@ -1345,6 +1337,7 @@
       "editIntro": "إجراءات الملف الشخصي والدور والحالة والمصادقة الثنائية. تغييرات دورة الحياة تُلغي الجلسات النشطة.",
       "profileDetailsTitle": "تفاصيل الملف الشخصي",
       "cardTitle": "إنشاء مستخدم",
+      "proAssignmentNotice": "يبدأ مستخدم PRO من دون تعيين. تحقّق من بيانات الاعتماد، ثم عيّن شركة واحدة فقط من صفحة الشركات.",
       "unnamedUser": "مستخدم بدون اسم",
       "suspensionReason": "سبب التعليق: {reason}",
       "lifecycleActionsTitle": "إجراءات دورة الحياة",
@@ -1360,6 +1353,17 @@
       "back": "رجوع",
       "requestFailed": "فشل الطلب ({status})",
       "emailTaken": "البريد الإلكتروني مُسجّل بالفعل",
+      "credentials": {
+        "title": "التحقق من بيانات اعتماد PRO",
+        "statusVerified": "تم التحقق",
+        "statusUnverified": "لم يتم التحقق",
+        "verifiedAt": "تم التحقق في {value}",
+        "verify": "التحقق من بيانات الاعتماد",
+        "verifying": "جارٍ التحقق…",
+        "verified": "تم التحقق من بيانات الاعتماد",
+        "error": "تعذر إكمال التحقق من بيانات الاعتماد. راجع حالة PRO والرخصة ثم حاول مرة أخرى.",
+        "staleError": "تغيرت بيانات اعتماد PRO. تم تحميل أحدث التفاصيل؛ راجعها قبل التحقق."
+      },
       "fields": {
         "fullName": "الاسم الكامل",
         "email": "البريد الإلكتروني",
@@ -1641,95 +1645,164 @@
         "filterInactive": "غير نشط"
       }
     },
-    "proFirms": {
+    "companies": {
       "page": {
-        "title": "شركات PRO",
-        "intro": "المستأجرون على المنصة. عرض {count}.",
-        "createButton": "إنشاء شركة PRO",
-        "createdTitle": "تم إنشاء شركة PRO",
-        "createdDescription": "تم تجهيز المستأجر وإرسال بريد دعوة إلى مدير PRO.",
-        "directory": "الدليل",
-        "statusFilterLabel": "مرشّح الحالة:",
-        "filterAll": "الكل",
-        "empty": "لا توجد شركات PRO مطابقة للمرشّح الحالي."
+        "eyebrow": "عمليات الشركات",
+        "title": "الشركات",
+        "intro": "إدارة مساحات عمل الشركات القانونية وتعيين PRO واحد لكل شركة. يتم عرض {count}.",
+        "createButton": "إنشاء شركة"
+      },
+      "directory": {
+        "title": "دليل الشركات",
+        "description": "حالة التعيين مباشرة، ويمكن لكل شركة أن يكون لديها PRO نشط واحد فقط.",
+        "searchLabel": "البحث عن الشركات",
+        "searchPlaceholder": "البحث باسم الشركة",
+        "searchSubmit": "بحث",
+        "statusFilterLabel": "تصفية الشركات حسب الحالة",
+        "appliedFilters": "عوامل التصفية المطبقة",
+        "searchFilter": "البحث: {value}",
+        "statusFilter": "الحالة: {value}",
+        "tenantFilter": "مساحة العمل: {value}",
+        "resetFilters": "إعادة تعيين عوامل التصفية",
+        "emptyTitle": "لا توجد شركات",
+        "emptyDescription": "أنشئ شركة أو عدّل عوامل التصفية الحالية.",
+        "tableLabel": "دليل الشركات",
+        "paginationLabel": "صفحات دليل الشركات",
+        "paginationSummary": "الصفحة {page} من {totalPages} · {total} شركة",
+        "previous": "السابق",
+        "next": "التالي"
       },
       "table": {
-        "name": "الاسم",
-        "slug": "المعرّف",
-        "plan": "الخطة",
+        "company": "الشركة القانونية",
+        "workspace": "مساحة العمل",
         "status": "الحالة",
-        "created": "أُنشئ في",
-        "actions": "إجراءات",
-        "suspend": "تعليق",
-        "reactivate": "إعادة التفعيل",
-        "approve": "اعتماد",
-        "reject": "رفض"
+        "pro": "PRO المعيّن",
+        "created": "تاريخ الإنشاء",
+        "noLicense": "لم يتم تقديم الرخصة",
+        "unassigned": "غير معيّن"
       },
-      "actions": {
-        "confirmSuspend": "تعليق شركة PRO هذه؟ سيفقد الأعضاء الوصول حتى إعادة التفعيل.",
-        "confirmReject": "رفض شركة PRO هذه؟ سيتم حذف المستأجر ومستخدم المدير.",
-        "suspendFailed": "فشل التعليق: {error}",
-        "reactivateFailed": "فشلت إعادة التفعيل: {error}",
-        "approveFailed": "فشل الاعتماد: {error}",
-        "rejectFailed": "فشل الرفض: {error}",
-        "actionFailed": "فشل {action} ({code}): {error}"
+      "status": {
+        "all": "الكل",
+        "onboarding": "قيد الإعداد",
+        "active": "نشطة",
+        "renewal_due": "التجديد مستحق",
+        "renewal_overdue": "التجديد متأخر",
+        "suspended": "معلّقة",
+        "churned": "مغلقة"
       },
-      "detail": {
-        "slug": "المعرّف",
-        "created": "أُنشئ في",
-        "suspend": "تعليق",
-        "suspending": "جارٍ التعليق…",
-        "reactivate": "إعادة التفعيل",
-        "reactivating": "جارٍ إعادة التفعيل…",
-        "approve": "اعتماد",
-        "approving": "جارٍ الاعتماد…",
-        "reject": "رفض",
-        "rejecting": "جارٍ الرفض…"
+      "plan": {
+        "starter": "المبتدئة",
+        "professional": "الاحترافية",
+        "enterprise": "المؤسسات"
+      },
+      "new": {
+        "back": "العودة إلى الشركات",
+        "title": "إنشاء شركة",
+        "intro": "أنشئ مساحة عمل الشركة القانونية أولاً. أضف مستخدم PRO وتحقق منه بشكل منفصل في المستخدمين، ثم عيّنه هنا.",
+        "cardTitle": "هوية مساحة العمل",
+        "cardDescription": "تبدأ مساحة العمل بحالة معلّقة وتبدأ الشركة مرحلة الإعداد. لا يتم إنشاء حساب PRO تلقائياً."
       },
       "create": {
-        "couldNotCreate": "تعذّر إنشاء شركة PRO",
-        "firmSection": "الشركة",
-        "firmName": "اسم الشركة",
-        "slug": "المعرّف",
-        "slugHint": "أحرف صغيرة وأرقام وشرطات. التسميات المحجوزة مثل admin وapi وapp وdashboard وwww محظورة.",
+        "companyName": "الاسم القانوني للشركة",
+        "companyNameDescription": "استخدم الاسم الظاهر في الرخصة التجارية للشركة.",
+        "slug": "معرّف مساحة العمل",
+        "slugDescription": "أحرف إنجليزية صغيرة وأرقام وشرطات؛ من 3 إلى 40 حرفاً.",
         "plan": "الخطة",
-        "adminSection": "مدير PRO الأولي",
-        "adminIntro": "سيتم إرسال بريد دعوة من Supabase. يحدّث المدير معلومات الترخيص عبر /account/role بعد أول تسجيل دخول.",
-        "fullName": "الاسم الكامل",
-        "email": "البريد الإلكتروني",
-        "phone": "الهاتف (E.164)",
+        "planDescription": "يمكن تغيير إعدادات الفوترة لاحقاً.",
         "creating": "جارٍ الإنشاء…",
-        "submit": "إنشاء شركة PRO"
+        "submit": "إنشاء الشركة",
+        "cancel": "إلغاء"
       },
-      "newPage": {
-        "title": "إنشاء شركة PRO",
-        "intro": "يجهّز مستأجرًا وينشئ مستخدم مدير PRO الأولي. يصبح المستأجر مفعّلًا (الحالة = نشط) فورًا."
+      "detail": {
+        "back": "العودة إلى الشركات",
+        "eyebrow": "مساحة عمل الشركة",
+        "openWorkspace": "فتح مساحة العمل",
+        "profileTitle": "ملف الشركة",
+        "profileDescription": "الهوية القانونية ونطاق مساحة العمل التقنية.",
+        "workspace": "اسم مساحة العمل",
+        "slug": "معرّف مساحة العمل",
+        "tradeLicense": "الرخصة التجارية",
+        "jurisdiction": "الاختصاص القضائي",
+        "notProvided": "غير متوفر"
       },
-      "detailPage": {
-        "members": "الأعضاء",
-        "membersDescription": "{count} ملف تعريف في هذا المستأجر.",
-        "memberName": "الاسم",
-        "memberRole": "الدور",
-        "memberLastLogin": "آخر تسجيل دخول",
-        "noMembers": "لا يوجد أعضاء.",
-        "clients": "العملاء",
-        "clientsDescription": "الإجمالي {total}. عرض {recent} الأحدث.",
-        "clientCompany": "الشركة",
-        "clientStatus": "الحالة",
-        "clientCreated": "أُنشئ في",
-        "noClients": "لا يوجد عملاء بعد.",
-        "recentAudit": "آخر التدقيقات (آخر 10)",
-        "recentAuditDescription": "أحداث على نطاق المستأجر.",
-        "seeAll": "عرض الكل ←",
-        "auditWhen": "متى",
-        "auditAction": "الإجراء",
-        "auditSource": "المصدر",
-        "auditActor": "الفاعل",
-        "auditDetails": "التفاصيل",
-        "noAudit": "لا توجد إدخالات تدقيق بعد.",
-        "billing": "الفوترة",
-        "billingPending": "قيد الانتظار — الخطوة 23.",
-        "billingDescription": "ستصل خطة الاشتراك والفواتير وسجل الدفع مع وحدة المدفوعات والمالية."
+      "assignment": {
+        "assignTitle": "تعيين PRO",
+        "reassignTitle": "إعادة تعيين PRO",
+        "sectionDescription": "يظهر فقط مستخدمو PRO النشطون الذين تم التحقق من بيانات اعتمادهم وغير المعيّنين.",
+        "currentProLabel": "PRO الحالي",
+        "unnamedPro": "PRO بدون اسم",
+        "reassignDescription": "اختر البديل أدناه. سيتم إنهاء التعيين الحالي وتطبيق البديل كوحدة واحدة.",
+        "replacementProLabel": "PRO البديل",
+        "proLabel": "مستخدم PRO",
+        "selectPro": "اختر PRO متاحاً",
+        "proDescription": "يمكن لـ PRO أن يشغل تعيين شركة نشطاً واحداً فقط.",
+        "reasonLabel": "سبب إعادة التعيين",
+        "reasonDescription": "سجّل سبب استبدال PRO الحالي (من 3 إلى 500 حرف).",
+        "saving": "جارٍ الحفظ…",
+        "assignSubmit": "تعيين PRO",
+        "reassignSubmit": "إعادة تعيين PRO",
+        "noProsTitle": "لا يوجد مستخدمو PRO مؤهلون",
+        "noProsDescription": "أنشئ مستخدم PRO نشطاً وأكمل التحقق من بيانات الاعتماد قبل تعيينه.",
+        "managePros": "إدارة مستخدمي PRO"
+      },
+      "release": {
+        "title": "إعفاء PRO",
+        "description": "إنهاء هذا التعيين من دون اختيار بديل.",
+        "currentPro": "PRO الحالي: {name}",
+        "warning": "ستفقد الشركة فوراً وصول PRO إلى مساحة العمل حتى يتم تعيين PRO آخر تم التحقق منه.",
+        "confirmationLabel": "تأكيد الاسم القانوني للشركة",
+        "confirmationDescription": "أدخل «{companyName}» تماماً للتأكيد.",
+        "reasonLabel": "سبب الإعفاء",
+        "reasonDescription": "يُحفظ هذا السبب في سجل التعيين (من 3 إلى 500 حرف).",
+        "releasing": "جارٍ الإعفاء…",
+        "submit": "إعفاء PRO"
+      },
+      "history": {
+        "title": "سجل التعيين",
+        "description": "علاقات PRO الحالية والمنتهية.",
+        "empty": "لم يتم تسجيل أي تعيين.",
+        "tableLabel": "سجل تعيين PRO للشركة",
+        "pro": "PRO",
+        "state": "الحالة",
+        "when": "تاريخ التعيين",
+        "status": {
+          "active": "نشط",
+          "released": "منتهي"
+        }
+      },
+      "feedback": {
+        "errorTitle": "لم يكتمل الإجراء",
+        "createdTitle": "تم إنشاء الشركة",
+        "createdDescription": "مساحة العمل الأولية جاهزة لإعداد الشركة وتعيين PRO.",
+        "redirecting": "جارٍ فتح مساحة عمل الشركة…",
+        "assignmentSavedTitle": "تم تحديث التعيين",
+        "assignmentSavedDescription": "أصبح نطاق الوصول النشط للشركة وPRO محدثاً.",
+        "releasedTitle": "تم إعفاء PRO",
+        "releasedDescription": "انتهى التعيين وأصبحت الشركة غير معيّنة."
+      },
+      "errors": {
+        "VALIDATION_FAILED": "راجع حقول النموذج وحاول مرة أخرى.",
+        "CONFIRMATION_MISMATCH": "اسم الشركة غير مطابق تماماً.",
+        "PRO_ALREADY_ASSIGNED": "تم تعيين هذا الـ PRO بالفعل لشركة أخرى.",
+        "COMPANY_ALREADY_ASSIGNED": "لدى هذه الشركة PRO نشط بالفعل.",
+        "PRO_NOT_VERIFIED": "لم يكتمل التحقق من بيانات اعتماد PRO المحدد.",
+        "PRO_INACTIVE": "مستخدم PRO المحدد غير نشط.",
+        "COMPANY_NOT_READY": "الشركة غير جاهزة للتعيين.",
+        "COMPANY_INACTIVE": "الشركة غير نشطة للتعيين.",
+        "ASSIGNMENT_NOT_FOUND": "تعذر العثور على التعيين الحالي.",
+        "STALE_ASSIGNMENT": "تغير التعيين. حدّث الصفحة وحاول مرة أخرى.",
+        "ASSIGNMENT_CONFLICT": "يتعارض التعيين مع تغيير حديث آخر.",
+        "NOT_FOUND": "تعذر العثور على الشركة.",
+        "INTERNAL": "تعذر إكمال الإجراء. حاول مرة أخرى."
+      },
+      "fieldErrors": {
+        "companyName": "أدخل اسماً قانونياً للشركة من 3 إلى 200 حرف.",
+        "slug": "أدخل معرّف مساحة عمل صالحاً من 3 إلى 40 حرفاً.",
+        "plan": "اختر خطة صالحة.",
+        "proProfileId": "اختر مستخدم PRO مؤهلاً.",
+        "replacementProProfileId": "اختر مستخدم PRO بديلاً ومؤهلاً.",
+        "reason": "أدخل سبباً من 3 إلى 500 حرف.",
+        "companyNameConfirmation": "أدخل الاسم القانوني للشركة تماماً كما هو ظاهر."
       }
     },
     "audit": {

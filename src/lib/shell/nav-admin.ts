@@ -109,9 +109,9 @@ export const adminNav: ShellNavGroup[] = [
     labelFallback: 'Tenants',
     items: [
       {
-        labelKey: 'proFirms',
-        labelFallback: 'PRO firms',
-        href: '/admin/pro-firms',
+        labelKey: 'companies',
+        labelFallback: 'Companies',
+        href: '/admin/companies',
         icon: Building2,
       },
     ],

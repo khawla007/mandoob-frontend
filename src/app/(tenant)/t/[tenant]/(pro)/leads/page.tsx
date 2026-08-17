@@ -1,7 +1,6 @@
-import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getLeadDetail, listTenantLeadKanban } from '@/lib/data/leads-kanban';
 import { addProLeadNoteAction, setProLeadStageAction } from './actions';
 
@@ -18,8 +17,7 @@ export default async function ProLeadsPage({
 }) {
   const { tenant: slug } = await params;
   const sp = await searchParams;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const [kanban, detail] = await Promise.all([
     listTenantLeadKanban(tenant.id),

@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClientsTable } from '@/components/pro/ClientsTable';
 import { CreateClientForm } from '@/components/pro/CreateClientForm';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { listClientsForPro } from '@/lib/data/clients-list';
 import { CLIENT_STATUSES, type ClientStatus } from '@/lib/validation/client';
 
@@ -40,8 +39,7 @@ export default async function ClientsPage({
   const sp = await searchParams;
   const status = parseStatus(sp.status);
 
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant } = await requireProTenantRouteAccess(slug);
 
   const t = await getTranslations('pro');
 

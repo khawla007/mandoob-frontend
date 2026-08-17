@@ -37,13 +37,10 @@ const ALL_NEW_ROLES: NewRole[] = ['pro', 'customer', 'employee', 'admin'];
 export function ChangeRolePanel({
   userId,
   currentRole,
-  callerRole,
   tenants,
 }: {
   userId: string;
   currentRole: string;
-  /** Caller is always platform-scoped (super_admin or admin) under /admin/*. */
-  callerRole: 'super_admin' | 'admin';
   tenants: TenantSummary[];
 }) {
   const t = useTranslations('admin');
@@ -72,17 +69,13 @@ export function ChangeRolePanel({
   const [eidExpiry, setEidExpiry] = useState('');
 
   const roleOptions = useMemo(
-    () =>
-      (callerRole === 'super_admin'
-        ? ALL_NEW_ROLES
-        : ALL_NEW_ROLES.filter((r) => r !== 'admin')
-      ).filter((r) => r !== currentRole),
-    [callerRole, currentRole],
+    () => ALL_NEW_ROLES.filter((role) => role !== currentRole),
+    [currentRole],
   );
 
   const isSuperAdminTarget = currentRole === 'super_admin';
-  // Tenant required for tenant-scoped roles only; platform admin has no tenant.
-  const needsTenant = newRole !== '' && newRole !== 'admin';
+  // PRO identities remain tenantless until the verified assignment RPC scopes them.
+  const needsTenant = newRole !== '' && newRole !== 'admin' && newRole !== 'pro';
 
   function toggleArea(area: string) {
     setServiceAreas((s) => (s.includes(area) ? s.filter((x) => x !== area) : [...s, area]));
@@ -100,7 +93,8 @@ export function ChangeRolePanel({
     }
 
     const base: Record<string, unknown> = { newRole };
-    if (newRole !== 'admin') base.tenant_id = tenantId || null;
+    if (newRole === 'pro') base.tenant_id = null;
+    else if (newRole !== 'admin') base.tenant_id = tenantId || null;
     if (isSuperAdminTarget) base.confirmation = 'DEMOTE';
     if (reason.trim()) base.reason = reason.trim();
 
@@ -151,10 +145,6 @@ export function ChangeRolePanel({
       // ignore
     }
     setError(payload.error ?? t('user.requestFailed', { status: res.status }));
-  }
-
-  if (currentRole === 'super_admin' && callerRole !== 'super_admin') {
-    return null;
   }
 
   return (

@@ -3,25 +3,17 @@
 import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { ApiError } from '@/lib/errors';
-import { requireRole } from '@/lib/auth/require-role';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { cancelMeeting, createMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
 import { retryMeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 
 export type MeetingActionResult = { ok: true } | { ok: false; error: string; code: string };
 
 async function resolveActor(slug: string): Promise<{ tenantId: string; actor: MeetingActor }> {
-  const session = await requireRole('pro');
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (session.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  }
-  await requireActiveTenant(tenant.id);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
   return {
     tenantId: tenant.id,
-    actor: { id: session.id, role: 'pro', tenantId: tenant.id },
+    actor: { id: session.id, role: session.role, tenantId: tenant.id },
   };
 }
 

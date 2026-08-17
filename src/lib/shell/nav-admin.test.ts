@@ -58,6 +58,12 @@ describe('adminNav', () => {
     assert.match(editorial, /labelKey: 'blog'[\s\S]+href: '\/admin\/blog'/);
   });
 
+  it('uses Companies as the only editable tenant directory', () => {
+    const tenants = groupSource('tenants');
+    assert.match(tenants, /labelKey: 'companies'[\s\S]+href: '\/admin\/companies'/);
+    assert.equal(tenants.includes('/admin/pro-firms'), false);
+  });
+
   it('puts Pages after Blog under Editorial and nowhere else', () => {
     const auth = groupSource('authSecurity');
     const catalog = groupSource('catalog');

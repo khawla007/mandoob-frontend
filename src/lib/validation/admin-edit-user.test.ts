@@ -18,7 +18,9 @@ const futureDate = (() => {
 describe('editUserSchema — happy paths', () => {
   it('accepts pro edit (no email)', () => {
     const r = editUserSchema.safeParse({
-      ...editCommon,
+      full_name: editCommon.full_name,
+      phone: editCommon.phone,
+      tenant_id: null,
       role: 'pro',
       license_no: 'LIC-1',
       service_areas: ['DUBAI'],
@@ -51,6 +53,30 @@ describe('editUserSchema — happy paths', () => {
 });
 
 describe('editUserSchema — rejects', () => {
+  it('rejects a PRO edit carrying a tenant assignment', () => {
+    assert.equal(
+      editUserSchema.safeParse({
+        ...editCommon,
+        role: 'pro',
+        license_no: 'LIC-1',
+        service_areas: ['DUBAI'],
+      }).success,
+      false,
+    );
+  });
+  it('rejects a whitespace-only PRO licence', () => {
+    assert.equal(
+      editUserSchema.safeParse({
+        full_name: editCommon.full_name,
+        phone: editCommon.phone,
+        tenant_id: null,
+        role: 'pro',
+        license_no: '   ',
+        service_areas: ['DUBAI'],
+      }).success,
+      false,
+    );
+  });
   it('rejects employee missing client_id', () => {
     const r = editUserSchema.safeParse({ ...editCommon, role: 'employee' });
     assert.equal(r.success, false);
@@ -61,7 +87,9 @@ describe('editUserSchema — rejects', () => {
     // by default for object schemas; this assertion just ensures parse still
     // succeeds and that email is not in the parsed output.
     const r = editUserSchema.safeParse({
-      ...editCommon,
+      full_name: editCommon.full_name,
+      phone: editCommon.phone,
+      tenant_id: null,
       email: 'should-be-stripped@example.com',
       role: 'pro',
       license_no: 'LIC-1',
@@ -88,7 +116,7 @@ describe('changeRoleSchema — happy paths', () => {
   it('accepts pro newRole with required fields', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'pro',
-      tenant_id: tenantId,
+      tenant_id: null,
       license_no: 'LIC-2',
       service_areas: ['DUBAI'],
     });
@@ -132,22 +160,35 @@ describe('changeRoleSchema — rejects', () => {
     assert.equal(r.success, false);
   });
 
-  it('rejects pro newRole missing tenant_id', () => {
+  it('accepts pro newRole with omitted tenant_id as unassigned', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'pro',
       license_no: 'LIC-1',
       service_areas: ['DUBAI'],
     });
-    assert.equal(r.success, false);
+    assert.equal(r.success, true);
+    assert.equal(r.success && r.data.tenant_id, null);
   });
 
   it('rejects pro newRole missing license_no', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'pro',
-      tenant_id: tenantId,
+      tenant_id: null,
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, false);
+  });
+
+  it('rejects pro newRole carrying a tenant assignment', () => {
+    assert.equal(
+      changeRoleSchema.safeParse({
+        newRole: 'pro',
+        tenant_id: tenantId,
+        license_no: 'LIC-1',
+        service_areas: ['DUBAI'],
+      }).success,
+      false,
+    );
   });
 
   it('rejects employee newRole missing client_id', () => {

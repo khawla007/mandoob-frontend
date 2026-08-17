@@ -24,11 +24,6 @@ import { UserEmployeeFields } from './UserEmployeeFields';
 import { UserAdminFields } from './UserAdminFields';
 
 export type CreateUserFormProps = {
-  /**
-   * Caller is always a platform user (super_admin or admin) since this lives under
-   * /admin/*. Used only to gate which roles can be selected.
-   */
-  callerRole: 'super_admin' | 'admin';
   tenants: TenantSummary[];
 };
 
@@ -39,7 +34,7 @@ const ROLE_TO_SECTION: Record<CreateUserRole, () => React.ReactElement> = {
   admin: () => <UserAdminFields />,
 };
 
-export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
+export function CreateUserForm({ tenants }: CreateUserFormProps) {
   const router = useRouter();
   const t = useTranslations('admin');
   const [topError, setTopError] = useState<string | null>(null);
@@ -58,7 +53,7 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
   const role = useWatch({ control: form.control, name: 'role' }) as CreateUserRole | undefined;
 
   // Field-bleed guard: when role flips, reset role-specific fields while
-  // preserving common ones. Tenant ID only carries forward for tenant-scoped roles.
+  // preserving common ones. New PRO and platform-admin identities are unassigned.
   const lastRoleRef = useRef<CreateUserRole | null>(null);
   useEffect(() => {
     if (!role) return;
@@ -68,7 +63,7 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
       full_name: form.getValues('full_name'),
       email: form.getValues('email'),
       phone: form.getValues('phone'),
-      tenant_id: form.getValues('tenant_id'),
+      tenant_id: role === 'pro' || role === 'admin' ? null : form.getValues('tenant_id'),
     };
     form.reset({ ...common, role } as CreateUserInput);
   }, [role, form]);
@@ -124,7 +119,7 @@ export function CreateUserForm({ callerRole, tenants }: CreateUserFormProps) {
                   <AlertDescription>{topError}</AlertDescription>
                 </Alert>
               )}
-              <UserCommonFields mode="create" callerRole={callerRole} tenants={tenants} />
+              <UserCommonFields mode="create" tenants={tenants} />
               {role && ROLE_TO_SECTION[role]()}
               <div className="flex gap-2">
                 <Button type="submit" disabled={form.formState.isSubmitting}>

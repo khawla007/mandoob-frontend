@@ -15,11 +15,11 @@ export type ActionResult<T = void> =
   | { ok: true; data: T }
   | { ok: false; error: string; code: string; messageKey: string };
 
-type ProSession = { id: string; tenantId: string | null };
+type ProSession = { id: string; role: 'pro'; tenantId: string | null };
 type TenantIdentity = { id: string };
 
 export type LegacyDocumentActionDependencies = {
-  requirePro(): Promise<ProSession>;
+  requirePro(slug: string): Promise<ProSession>;
   resolveTenant(slug: string): Promise<TenantIdentity | null>;
   requireActive(tenantId: string): Promise<unknown>;
   callerMetadata(): Promise<{ ip: string; userAgent: string | null }>;
@@ -93,7 +93,7 @@ function sanitizeError(
 }
 
 async function resolveAndAuthorize(slug: string, dependencies: LegacyDocumentActionDependencies) {
-  const session = await dependencies.requirePro();
+  const session = await dependencies.requirePro(slug);
   const tenant = await dependencies.resolveTenant(slug);
   if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
   if (!session.tenantId || session.tenantId !== tenant.id) {
@@ -106,7 +106,7 @@ async function resolveAndAuthorize(slug: string, dependencies: LegacyDocumentAct
     actor: {
       tenantId: tenant.id,
       actorId: session.id,
-      role: 'pro' as const,
+      role: session.role,
       ip: metadata.ip,
       userAgent: metadata.userAgent,
     },

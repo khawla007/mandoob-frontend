@@ -34,12 +34,12 @@ export type DocumentCenterActionResult<T = undefined> =
   | { ok: true; code: 'SUCCESS'; data: T }
   | { ok: false; code: string; messageKey: MessageKey };
 
-type ProSession = { id: string; tenantId: string | null };
+type ProSession = { id: string; role: 'pro'; tenantId: string | null };
 type TenantIdentity = { id: string };
 type CallerMetadata = { ip: string; userAgent: string | null };
 
 export type DocumentCenterActionDependencies = {
-  requirePro(): Promise<ProSession>;
+  requirePro(slug: string): Promise<ProSession>;
   resolveTenant(slug: string): Promise<TenantIdentity | null>;
   requireActive(tenantId: string): Promise<unknown>;
   callerMetadata(): Promise<CallerMetadata>;
@@ -102,7 +102,7 @@ async function resolveAndAuthorize(
     actor: {
       tenantId: tenant.id,
       actorId: session.id,
-      role: 'pro',
+      role: session.role,
       ip: metadata.ip,
       userAgent: metadata.userAgent,
     },
@@ -174,7 +174,7 @@ export async function runRequestDocumentCenterAction(
   actionDependencies: DocumentCenterActionDependencies,
 ): Promise<DocumentCenterActionResult<{ requestId: string }>> {
   try {
-    const session = await actionDependencies.requirePro();
+    const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
     const values = readFormStrings(formData, [
       'client_id',
@@ -202,7 +202,7 @@ export async function runReviewDocumentCenterAction(
   actionDependencies: DocumentCenterActionDependencies,
 ): Promise<DocumentCenterActionResult> {
   try {
-    const session = await actionDependencies.requirePro();
+    const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
     const values = readFormStrings(formData, [
       'version_id',
@@ -236,7 +236,7 @@ export async function runOpenDocumentVersionAction(
   actionDependencies: DocumentCenterActionDependencies,
 ): Promise<DocumentCenterActionResult<{ url: string; expiresAt: string }>> {
   try {
-    const session = await actionDependencies.requirePro();
+    const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
     const parsedVersionId = normalizedUuidSchema.safeParse(versionId);
     if (!parsedVersionId.success) return validationFailure();
@@ -260,7 +260,7 @@ export async function runLoadVersionHistoryAction(
   actionDependencies: DocumentCenterActionDependencies,
 ): Promise<DocumentCenterActionResult<DocumentVersionHistoryEntry[]>> {
   try {
-    const session = await actionDependencies.requirePro();
+    const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
     const parsedDocumentId = normalizedUuidSchema.safeParse(documentId);
     if (!parsedDocumentId.success) return validationFailure();
@@ -296,7 +296,7 @@ export async function runSetDocumentExpiryAction(
   actionDependencies: DocumentCenterActionDependencies,
 ): Promise<DocumentCenterActionResult> {
   try {
-    const session = await actionDependencies.requirePro();
+    const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
     const values = readFormStrings(formData, ['document_id', 'client_id', 'expires_on'] as const);
     if (!values) return validationFailure();
@@ -321,7 +321,7 @@ export async function runSearchDocumentClientsAction(
   actionDependencies: DocumentCenterActionDependencies,
 ): Promise<DocumentCenterActionResult<DocumentCenterClientOption[]>> {
   try {
-    const session = await actionDependencies.requirePro();
+    const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
     const parsed = clientSearchSchema.safeParse(query);
     if (!parsed.success) return validationFailure();

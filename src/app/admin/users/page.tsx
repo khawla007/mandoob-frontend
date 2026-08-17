@@ -32,6 +32,7 @@ const SORT_DIRS: SortDir[] = ['asc', 'desc'];
 
 type SearchParams = {
   q?: string;
+  role?: string;
   roles?: string;
   status?: string;
   tenant?: string;
@@ -70,7 +71,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const t = await getTranslations('admin');
   const session = await requireRole('super_admin', 'admin');
   const viewerRole = session.role as Role;
-  const roles = parseRoles(sp.roles);
+  const roles = parseRoles(sp.roles ?? sp.role);
   const status = parseStatus(sp.status);
   const sort = parseSort(sp.sort);
 
@@ -93,7 +94,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   ]);
 
   const filtersActive = Boolean(
-    sp.q || sp.roles || (sp.status && sp.status !== 'all') || sp.tenant,
+    sp.q || sp.roles || sp.role || (sp.status && sp.status !== 'all') || sp.tenant,
   );
 
   return (

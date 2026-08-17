@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MeetingAiSummaryCard } from '@/components/pro/MeetingAiSummaryCard';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   getMeetingRecordingSignedUrl,
   listMeetingsForTenant,
@@ -18,7 +17,6 @@ import {
   listMeetingAiSummariesForMeetings,
   type MeetingAiSummary,
 } from '@/lib/data/meeting-ai-summaries';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { cancelMeetingAction, createMeetingSlotAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -114,12 +112,14 @@ async function MeetingList({
 }
 
 export default async function ProMeetingsPage({ params }: { params: Promise<{ tenant: string }> }) {
-  const session = await requireRole('pro');
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant, session } = await requireProTenantRouteAccess(slug);
 
-  const actor: MeetingActor = { id: session.id, role: 'pro', tenantId: tenant.id };
+  const actor: MeetingActor = {
+    id: session.id,
+    role: session.role,
+    tenantId: tenant.id,
+  };
   const now = new Date();
   const slotWindowEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const [meetings, openSlots] = await Promise.all([

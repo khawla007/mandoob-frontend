@@ -1,9 +1,7 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requireRole } from '@/lib/auth/require-role';
 import { readSelfCustomer } from '@/lib/data/account-self';
 import {
   getMeetingRecordingSignedUrl,
@@ -11,7 +9,7 @@ import {
   listOpenMeetingSlots,
   type MeetingActor,
 } from '@/lib/data/meetings';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { bookMeetingSlotAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -29,10 +27,8 @@ export default async function CustomerMeetingsPage({
 }: {
   params: Promise<{ tenant: string }>;
 }) {
-  const session = await requireRole('customer');
   const { tenant: slug } = await params;
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) notFound();
+  const { tenant, session } = await requireTenantRouteAccess(slug, ['customer']);
 
   const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
   const actor: MeetingActor = { id: session.id, role: 'customer', tenantId: tenant.id };

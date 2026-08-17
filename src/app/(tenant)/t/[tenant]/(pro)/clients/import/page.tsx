@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { uploadBulkImportAction } from '../../imports/actions';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,7 @@ export default async function ClientImportPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant } = await params;
+  await requireProTenantRouteAccess(tenant);
 
   async function upload(formData: FormData) {
     'use server';
