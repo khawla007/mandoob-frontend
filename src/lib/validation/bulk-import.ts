@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { createClientSchema } from './client';
 import { emailSchema, phoneSchema } from './auth';
 
 const optionalCell = (max: number) => z.string().trim().max(max).optional().or(z.literal(''));
@@ -9,8 +8,6 @@ const optionalIsoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
   .optional()
   .or(z.literal(''));
-
-export const clientCsvRowSchema = createClientSchema;
 
 export const employeeCsvRowSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
@@ -29,29 +26,27 @@ export const employeeCsvRowSchema = z.object({
   eid_expiry: optionalIsoDate,
 });
 
-export type BulkImportKind = 'clients' | 'employees';
-export type ClientCsvRow = z.output<typeof clientCsvRowSchema>;
+export type BulkImportKind = 'employees';
 export type EmployeeCsvRow = z.output<typeof employeeCsvRowSchema>;
+export type ValidatedEmployeeCsvRow = { rowNumber: number; value: EmployeeCsvRow };
 
 export type BulkImportValidationError = {
   row_number: number;
   field: string;
   message: string;
+  code: 'VALIDATION_FAILED';
 };
 
-export type BulkImportValidationResult =
-  | {
-      kind: 'clients';
-      totalRows: number;
-      validRows: ClientCsvRow[];
-      errors: BulkImportValidationError[];
-    }
-  | {
-      kind: 'employees';
-      totalRows: number;
-      validRows: EmployeeCsvRow[];
-      errors: BulkImportValidationError[];
-    };
+export type BulkImportValidationResult = {
+  kind: 'employees';
+  totalRows: number;
+  validRows: ValidatedEmployeeCsvRow[];
+  errors: BulkImportValidationError[];
+};
+
+export function countDistinctImportErrorRows(errors: Array<{ row_number: number }>): number {
+  return new Set(errors.map((error) => error.row_number)).size;
+}
 
 export function parseCsvRows(csv: string): Record<string, string>[] {
   const rows = parseCsv(csv.replace(/^\uFEFF/, ''));
@@ -111,25 +106,16 @@ function parseCsv(input: string): string[][] {
 }
 
 export function validateBulkImportRows(
-  kind: 'clients',
-  rows: Record<string, string>[],
-): Extract<BulkImportValidationResult, { kind: 'clients' }>;
-export function validateBulkImportRows(
-  kind: 'employees',
-  rows: Record<string, string>[],
-): Extract<BulkImportValidationResult, { kind: 'employees' }>;
-export function validateBulkImportRows(
   kind: BulkImportKind,
   rows: Record<string, string>[],
 ): BulkImportValidationResult {
-  const schema = kind === 'clients' ? clientCsvRowSchema : employeeCsvRowSchema;
   const errors: BulkImportValidationError[] = [];
-  const validRows: Array<ClientCsvRow | EmployeeCsvRow> = [];
+  const validRows: ValidatedEmployeeCsvRow[] = [];
 
   rows.forEach((row, index) => {
-    const parsed = schema.safeParse(row);
+    const parsed = employeeCsvRowSchema.safeParse(row);
     if (parsed.success) {
-      validRows.push(parsed.data);
+      validRows.push({ rowNumber: index + 2, value: parsed.data });
       return;
     }
 
@@ -138,12 +124,10 @@ export function validateBulkImportRows(
         row_number: index + 2,
         field: issue.path.join('.') || 'row',
         message: issue.message,
+        code: 'VALIDATION_FAILED',
       });
     }
   });
 
-  if (kind === 'clients') {
-    return { kind, totalRows: rows.length, validRows: validRows as ClientCsvRow[], errors };
-  }
-  return { kind, totalRows: rows.length, validRows: validRows as EmployeeCsvRow[], errors };
+  return { kind, totalRows: rows.length, validRows, errors };
 }

@@ -16,13 +16,26 @@ test('cross-tenant import job cannot match a privileged mutation scope', () => {
       return query;
     },
   };
-  scopeImportJobMutation(query, 'tenant-a', 'job-1', 'importing');
+  scopeImportJobMutation(query, 'tenant-a', 'company-a', 'job-1', 'importing');
 
   const matches = (row: Record<string, unknown>) =>
     filters.every(([column, value]) => row[column] === value);
-  assert.equal(matches({ tenant_id: 'tenant-a', id: 'job-1', status: 'importing' }), true);
-  assert.equal(matches({ tenant_id: 'tenant-b', id: 'job-1', status: 'importing' }), false);
-  assert.equal(matches({ tenant_id: 'tenant-a', id: 'job-1', status: 'validated' }), false);
+  assert.equal(
+    matches({ tenant_id: 'tenant-a', company_id: 'company-a', id: 'job-1', status: 'importing' }),
+    true,
+  );
+  assert.equal(
+    matches({ tenant_id: 'tenant-b', company_id: 'company-a', id: 'job-1', status: 'importing' }),
+    false,
+  );
+  assert.equal(
+    matches({ tenant_id: 'tenant-a', company_id: 'company-b', id: 'job-1', status: 'importing' }),
+    false,
+  );
+  assert.equal(
+    matches({ tenant_id: 'tenant-a', company_id: 'company-a', id: 'job-1', status: 'validated' }),
+    false,
+  );
 });
 
 type Status = 'validated' | 'importing' | 'cancelled' | 'completed';

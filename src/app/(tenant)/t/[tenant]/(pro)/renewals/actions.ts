@@ -50,7 +50,7 @@ export async function createRenewalAction(
     const { ctx } = await resolveAndAuthorize(slug);
     const { id } = await createRenewal(ctx, parsed.data);
     revalidatePath(`/t/${slug}/renewals`);
-    revalidatePath(`/t/${slug}/clients/${parsed.data.client_id}`);
+    revalidatePath(`/t/${slug}/company`);
     return { ok: true, data: { id } };
   } catch (e) {
     return toResult(e, 'Could not create renewal');

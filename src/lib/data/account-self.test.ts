@@ -59,9 +59,10 @@ test('buildRoleUpdate for customer encrypts passport_no', async () => {
   assert.equal(u.nationality, 'AE');
 });
 
-test('buildRoleUpdate for employee writes only passport_no_encrypted', async () => {
+test('employee role updates cannot use the browser-RLS patch builder', async () => {
   const { buildRoleUpdate } = await loadMod();
-  const u = buildRoleUpdate('employee', { passport_no: 'B7654321' });
-  assert.equal(typeof u.passport_no_encrypted, 'string');
-  assert.equal('visa_no_encrypted' in u, false);
+  assert.throws(
+    () => buildRoleUpdate('employee', { passport_no: 'B7654321' }),
+    /Employee role details require live authorization/,
+  );
 });

@@ -30,6 +30,7 @@ test('anonymizeEmployeeFields redacts direct PII and records a before-after diff
     email: null,
     phone: null,
     passport_no_encrypted: '[redacted]',
+    passport_no_hash: null,
     visa_no_encrypted: '[redacted]',
     emirates_id_encrypted: '[redacted]',
   });

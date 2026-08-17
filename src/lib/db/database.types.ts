@@ -342,6 +342,7 @@ export type Database = {
           name: string;
           nationality: string | null;
           passport_no_encrypted: string | null;
+          passport_no_hash: string | null;
           phone: string | null;
           profile_id: string | null;
           status: Database['public']['Enums']['employee_status'];
@@ -360,6 +361,7 @@ export type Database = {
           name: string;
           nationality?: string | null;
           passport_no_encrypted?: string | null;
+          passport_no_hash?: string | null;
           phone?: string | null;
           profile_id?: string | null;
           status?: Database['public']['Enums']['employee_status'];
@@ -378,6 +380,7 @@ export type Database = {
           name?: string;
           nationality?: string | null;
           passport_no_encrypted?: string | null;
+          passport_no_hash?: string | null;
           phone?: string | null;
           profile_id?: string | null;
           status?: Database['public']['Enums']['employee_status'];
@@ -1681,6 +1684,29 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      update_employee_self_passport: {
+        Args: {
+          p_actor_profile_id: string;
+          p_expected_company_id: string;
+          p_expected_tenant_id: string;
+          p_passport_no_encrypted: string | null;
+          p_passport_no_hash: string | null;
+        };
+        Returns: string;
+      };
+      update_assigned_company_profile: {
+        Args: {
+          p_actor_profile_id: string;
+          p_company_id: string;
+          p_company_name: string;
+          p_expected_updated_at: string;
+          p_jurisdiction: string;
+          p_license_expiry: string | null;
+          p_tenant_id: string;
+          p_trade_license_no: string;
+        };
+        Returns: Json;
+      };
       admin_change_role_atomic: {
         Args: {
           p_actor_id: string;

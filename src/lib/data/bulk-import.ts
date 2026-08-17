@@ -1,5 +1,6 @@
 import 'server-only';
-import type { ClientCsvRow, EmployeeCsvRow } from '@/lib/validation/bulk-import';
+import { hashPassportForLookup, normalizePassportForLookup } from '@/lib/crypto/passport-lookup';
+import type { EmployeeCsvRow, ValidatedEmployeeCsvRow } from '@/lib/validation/bulk-import';
 
 export type BulkImportJobStatus =
   | 'uploaded'
@@ -10,8 +11,14 @@ export type BulkImportJobStatus =
   | 'failed'
   | 'cancelled';
 
-export type BulkImportClientRow = ClientCsvRow;
-export type BulkImportEmployeeRow = EmployeeCsvRow;
+export type BulkImportEmployeeRow = ValidatedEmployeeCsvRow;
+
+export class EmployeePassportDuplicateError extends Error {
+  constructor() {
+    super('EMPLOYEE_PASSPORT_DUPLICATE');
+    this.name = 'EmployeePassportDuplicateError';
+  }
+}
 
 export type BulkImportExecutionError = {
   row_number: number;
@@ -29,33 +36,28 @@ export type BulkImportExecutionResult = {
   errors: BulkImportExecutionError[];
 };
 
-export type BulkImportStore = {
-  clientExistsByTradeLicense(tenantId: string, tradeLicenseNo: string): Promise<boolean>;
-  employeeExistsByPassport(clientId: string, passportNo: string): Promise<boolean>;
-  insertClient(tenantId: string, row: BulkImportClientRow): Promise<void>;
-  insertEmployee(tenantId: string, clientId: string, row: BulkImportEmployeeRow): Promise<void>;
-  updateProgress(jobId: string, processedRows: number): Promise<void>;
-  isCancelled(jobId: string): Promise<boolean>;
+export type BulkImportJobScope = {
+  jobId: string;
+  tenantId: string;
+  companyId: string;
+  expectedStatus: 'importing';
 };
 
-type ExecuteArgs =
-  | {
-      jobId: string;
-      kind: 'clients';
-      tenantId: string;
-      rows: BulkImportClientRow[];
-      skipExisting?: boolean;
-      store: BulkImportStore;
-    }
-  | {
-      jobId: string;
-      kind: 'employees';
-      tenantId: string;
-      parentClientId: string;
-      rows: BulkImportEmployeeRow[];
-      skipExisting?: boolean;
-      store: BulkImportStore;
-    };
+export type BulkImportStore = {
+  loadExistingPassportHashes(tenantId: string, companyId: string): Promise<ReadonlySet<string>>;
+  insertEmployee(tenantId: string, companyId: string, row: EmployeeCsvRow): Promise<void>;
+  updateProgress(scope: BulkImportJobScope, processedRows: number): Promise<void>;
+  isCancelled(scope: BulkImportJobScope): Promise<boolean>;
+};
+
+type ExecuteArgs = {
+  scope: BulkImportJobScope;
+  kind: 'employees';
+  rows: BulkImportEmployeeRow[];
+  skipExisting?: boolean;
+  store: BulkImportStore;
+  log?: (event: string) => void;
+};
 
 export async function executeBulkImportRows(args: ExecuteArgs): Promise<BulkImportExecutionResult> {
   const skipExisting = args.skipExisting ?? true;
@@ -63,9 +65,14 @@ export async function executeBulkImportRows(args: ExecuteArgs): Promise<BulkImpo
   let processedRows = 0;
   let insertedRows = 0;
   let skippedRows = 0;
+  const preloaded = skipExisting
+    ? await args.store.loadExistingPassportHashes(args.scope.tenantId, args.scope.companyId)
+    : new Set<string>();
+  const knownPassportHashes = new Set(preloaded);
+  const batchPassportHashes = new Set<string>();
 
   for (const row of args.rows) {
-    if (await args.store.isCancelled(args.jobId)) {
+    if (await args.store.isCancelled(args.scope)) {
       return {
         status: 'cancelled',
         processedRows,
@@ -76,58 +83,55 @@ export async function executeBulkImportRows(args: ExecuteArgs): Promise<BulkImpo
       };
     }
 
-    const rowNumber = processedRows + 2;
+    const rowNumber = row.rowNumber;
     try {
-      if (args.kind === 'clients') {
-        const clientRow = row as BulkImportClientRow;
-        const tradeLicenseNo = normalizeOptional(clientRow.trade_license_no);
-        if (
-          skipExisting &&
-          tradeLicenseNo &&
-          (await args.store.clientExistsByTradeLicense(args.tenantId, tradeLicenseNo))
-        ) {
-          skippedRows += 1;
-          errors.push({
-            row_number: rowNumber,
-            field: 'trade_license_no',
-            message: 'Existing client skipped',
-            code: 'DUPLICATE_SKIPPED',
-          });
-        } else {
-          await args.store.insertClient(args.tenantId, clientRow);
-          insertedRows += 1;
-        }
+      const employeeRow = row.value;
+      const passportNo = normalizePassport(employeeRow.passport_no);
+      const passportHash = hashPassportForLookup(args.scope.companyId, passportNo);
+      if (
+        passportHash &&
+        (batchPassportHashes.has(passportHash) || knownPassportHashes.has(passportHash))
+      ) {
+        skippedRows += 1;
+        errors.push({
+          row_number: rowNumber,
+          field: 'passport_no',
+          message: 'Existing employee skipped',
+          code: 'DUPLICATE_SKIPPED',
+        });
       } else {
-        const employeeRow = row as BulkImportEmployeeRow;
-        const passportNo = normalizeOptional(employeeRow.passport_no);
-        if (
-          skipExisting &&
-          passportNo &&
-          (await args.store.employeeExistsByPassport(args.parentClientId, passportNo))
-        ) {
-          skippedRows += 1;
-          errors.push({
-            row_number: rowNumber,
-            field: 'passport_no',
-            message: 'Existing employee skipped',
-            code: 'DUPLICATE_SKIPPED',
-          });
-        } else {
-          await args.store.insertEmployee(args.tenantId, args.parentClientId, employeeRow);
-          insertedRows += 1;
+        await args.store.insertEmployee(args.scope.tenantId, args.scope.companyId, {
+          ...employeeRow,
+          passport_no: passportNo ?? '',
+        });
+        if (passportHash) {
+          batchPassportHashes.add(passportHash);
+          knownPassportHashes.add(passportHash);
         }
+        insertedRows += 1;
       }
     } catch (error) {
-      errors.push({
-        row_number: rowNumber,
-        field: 'row',
-        message: error instanceof Error ? error.message : 'Insert failed',
-        code: 'INSERT_FAILED',
-      });
+      if (error instanceof EmployeePassportDuplicateError) {
+        skippedRows += 1;
+        errors.push({
+          row_number: rowNumber,
+          field: 'passport_no',
+          message: 'Existing employee skipped',
+          code: 'DUPLICATE_SKIPPED',
+        });
+      } else {
+        (args.log ?? ((event) => console.error(event)))('bulk-import.employee-insert failed');
+        errors.push({
+          row_number: rowNumber,
+          field: 'row',
+          message: 'employeeInsertFailed',
+          code: 'INSERT_FAILED',
+        });
+      }
     }
 
     processedRows += 1;
-    await args.store.updateProgress(args.jobId, processedRows);
+    await args.store.updateProgress(args.scope, processedRows);
   }
 
   return {
@@ -145,98 +149,140 @@ export function normalizeOptional(value: string | null | undefined): string | nu
   return trimmed ? trimmed : null;
 }
 
-export function createSupabaseBulkImportStore(): BulkImportStore {
+export function normalizePassport(value: string | null | undefined): string {
+  return normalizePassportForLookup(value);
+}
+
+type PassportHashPage = { id: string; passport_no_hash: string };
+type BulkImportStoreDependencies = {
+  passportHashPageLoader?: (
+    tenantId: string,
+    companyId: string,
+    from: number,
+    to: number,
+  ) => Promise<PassportHashPage[]>;
+  employeeWriter?: (
+    tenantId: string,
+    companyId: string,
+    row: EmployeeCsvRow,
+    passportHash: string | null,
+  ) => Promise<{ code?: string } | null>;
+  log?: (event: string) => void;
+};
+
+const PASSPORT_PAGE_SIZE = 1000;
+
+export function createSupabaseBulkImportStore(
+  dependencies: BulkImportStoreDependencies = {},
+): BulkImportStore {
   return {
-    async clientExistsByTradeLicense(tenantId, tradeLicenseNo) {
-      const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-      const admin = createSupabaseServiceRoleClient();
-      const { data, error } = await admin
-        .from('clients')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('trade_license_no', tradeLicenseNo)
-        .maybeSingle();
-      if (error) throw error;
-      return Boolean(data);
-    },
-
-    async employeeExistsByPassport(clientId, passportNo) {
-      const [{ createSupabaseServiceRoleClient }, { decryptOptional }] = await Promise.all([
-        import('@/lib/supabase/service-role'),
-        import('@/lib/crypto/pii'),
-      ]);
-      const admin = createSupabaseServiceRoleClient();
-      const { data, error } = await admin
-        .from('employees')
-        .select('passport_no_encrypted')
-        .eq('client_id', clientId);
-      if (error) throw error;
-      return (data ?? []).some((row) => {
-        try {
-          return decryptOptional(row.passport_no_encrypted as string | null) === passportNo;
-        } catch {
-          return false;
+    async loadExistingPassportHashes(tenantId, companyId) {
+      const hashes = new Set<string>();
+      for (let from = 0; ; from += PASSPORT_PAGE_SIZE) {
+        const to = from + PASSPORT_PAGE_SIZE - 1;
+        const rows = dependencies.passportHashPageLoader
+          ? await dependencies.passportHashPageLoader(tenantId, companyId, from, to)
+          : await loadPassportHashPage(tenantId, companyId, from, to);
+        for (const row of rows) {
+          if (!/^[a-f0-9]{64}$/u.test(row.passport_no_hash)) {
+            (dependencies.log ?? ((event) => console.error(event)))(
+              'bulk-import.passport-hash invalid',
+            );
+            throw new Error('EMPLOYEE_PASSPORT_PRELOAD_FAILED');
+          }
+          hashes.add(row.passport_no_hash);
         }
-      });
+        if (rows.length < PASSPORT_PAGE_SIZE) break;
+      }
+      return hashes;
     },
 
-    async insertClient(tenantId, row) {
+    async insertEmployee(tenantId, companyId, row) {
+      const passportHash = hashPassportForLookup(companyId, row.passport_no);
+      const error = dependencies.employeeWriter
+        ? await dependencies.employeeWriter(tenantId, companyId, row, passportHash)
+        : await insertEmployeeRow(tenantId, companyId, row, passportHash);
+      if (error?.code === '23505') throw new EmployeePassportDuplicateError();
+      if (error) throw new Error('EMPLOYEE_INSERT_FAILED');
+    },
+
+    async updateProgress(scope, processedRows) {
       const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
       const admin = createSupabaseServiceRoleClient();
-      const { error } = await admin.from('clients').insert({
-        tenant_id: tenantId,
-        company_name: row.company_name,
-        trade_license_no: normalizeOptional(row.trade_license_no),
-        jurisdiction: normalizeOptional(row.jurisdiction),
-        license_expiry: normalizeOptional(row.license_expiry),
-        status: 'onboarding',
-      });
-      if (error) throw error;
-    },
-
-    async insertEmployee(tenantId, clientId, row) {
-      const [{ createSupabaseServiceRoleClient }, { encryptOptional }] = await Promise.all([
-        import('@/lib/supabase/service-role'),
-        import('@/lib/crypto/pii'),
-      ]);
-      const admin = createSupabaseServiceRoleClient();
-      const { error } = await admin.from('employees').insert({
-        tenant_id: tenantId,
-        client_id: clientId,
-        name: row.name,
-        email: normalizeOptional(row.email),
-        phone: normalizeOptional(row.phone),
-        nationality: normalizeOptional(row.nationality),
-        passport_no_encrypted: encryptOptional(normalizeOptional(row.passport_no)),
-        visa_no_encrypted: encryptOptional(normalizeOptional(row.visa_no)),
-        visa_expiry: normalizeOptional(row.visa_expiry),
-        emirates_id_encrypted: encryptOptional(normalizeOptional(row.emirates_id)),
-        eid_expiry: normalizeOptional(row.eid_expiry),
-        status: 'active',
-      });
-      if (error) throw error;
-    },
-
-    async updateProgress(jobId, processedRows) {
-      const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-      const admin = createSupabaseServiceRoleClient();
-      const { error } = await admin
+      const { data, error } = await admin
         .from('bulk_import_jobs')
         .update({ processed_rows: processedRows, updated_at: new Date().toISOString() })
-        .eq('id', jobId);
-      if (error) throw error;
+        .eq('tenant_id', scope.tenantId)
+        .eq('company_id', scope.companyId)
+        .eq('id', scope.jobId)
+        .eq('status', scope.expectedStatus)
+        .select('id')
+        .maybeSingle();
+      if (error || !data) throw new Error('IMPORT_JOB_SCOPE_MISMATCH');
     },
 
-    async isCancelled(jobId) {
+    async isCancelled(scope) {
       const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
       const admin = createSupabaseServiceRoleClient();
       const { data, error } = await admin
         .from('bulk_import_jobs')
         .select('status')
-        .eq('id', jobId)
+        .eq('tenant_id', scope.tenantId)
+        .eq('company_id', scope.companyId)
+        .eq('id', scope.jobId)
+        .in('status', [scope.expectedStatus, 'cancelled'])
         .maybeSingle();
-      if (error) throw error;
-      return data?.status === 'cancelled';
+      if (error || !data) throw new Error('IMPORT_JOB_SCOPE_MISMATCH');
+      return data.status === 'cancelled';
     },
   };
+}
+
+async function insertEmployeeRow(
+  tenantId: string,
+  companyId: string,
+  row: EmployeeCsvRow,
+  passportHash: string | null,
+): Promise<{ code?: string } | null> {
+  const [{ createSupabaseServiceRoleClient }, { encryptOptional }] = await Promise.all([
+    import('@/lib/supabase/service-role'),
+    import('@/lib/crypto/pii'),
+  ]);
+  const admin = createSupabaseServiceRoleClient();
+  const { error } = await admin.from('employees').insert({
+    tenant_id: tenantId,
+    company_id: companyId,
+    name: row.name,
+    email: normalizeOptional(row.email),
+    phone: normalizeOptional(row.phone),
+    nationality: normalizeOptional(row.nationality),
+    passport_no_encrypted: encryptOptional(normalizeOptional(row.passport_no)),
+    passport_no_hash: passportHash,
+    visa_no_encrypted: encryptOptional(normalizeOptional(row.visa_no)),
+    visa_expiry: normalizeOptional(row.visa_expiry),
+    emirates_id_encrypted: encryptOptional(normalizeOptional(row.emirates_id)),
+    eid_expiry: normalizeOptional(row.eid_expiry),
+    status: 'active',
+  });
+  return error;
+}
+
+async function loadPassportHashPage(
+  tenantId: string,
+  companyId: string,
+  from: number,
+  to: number,
+): Promise<PassportHashPage[]> {
+  const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
+  const admin = createSupabaseServiceRoleClient();
+  const { data, error } = await admin
+    .from('employees')
+    .select('id, passport_no_hash')
+    .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
+    .not('passport_no_hash', 'is', null)
+    .order('id', { ascending: true })
+    .range(from, to);
+  if (error) throw new Error('EMPLOYEE_PASSPORT_PRELOAD_FAILED');
+  return (data ?? []) as PassportHashPage[];
 }

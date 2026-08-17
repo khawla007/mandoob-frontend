@@ -8,7 +8,6 @@ const root = join(process.cwd(), 'src/app/(tenant)/t/[tenant]');
 const BEHAVIORALLY_AUDITED_RUNNER_FILES = new Set([
   join(root, '(pro)/applications/actions.ts'),
   join(root, '(pro)/documents/actions.ts'),
-  join(root, '(pro)/clients/[clientId]/documents/actions.ts'),
 ]);
 
 function filesUnder(directory: string): string[] {
@@ -290,7 +289,7 @@ test('a conditional guard does not dominate a later mutation', () => {
 });
 
 test('imported action-runner allowlist is narrow and backed by behavioral tests', () => {
-  assert.equal(BEHAVIORALLY_AUDITED_RUNNER_FILES.size, 3);
+  assert.equal(BEHAVIORALLY_AUDITED_RUNNER_FILES.size, 2);
   for (const file of BEHAVIORALLY_AUDITED_RUNNER_FILES) {
     assert.ok(statSync(file.replace(/actions\.ts$/u, 'actions.test.ts')).isFile(), file);
   }
@@ -308,7 +307,7 @@ test('PRO self-service mutations use the PRO-only boundary and never fabricate a
   for (const relative of [
     'applications/actions.ts',
     'documents/actions.ts',
-    'clients/[clientId]/documents/actions.ts',
+    'company/actions.ts',
     'leads/actions.ts',
     'meetings/actions.ts',
     'payments/actions.ts',
@@ -405,18 +404,22 @@ test('bulk import authorization precedes failure compensation and all updates ar
       body.indexOf('await requireTenantContext(') < body.indexOf('runAuthorizedMutation({'),
       action,
     );
-    assert.match(body, /markFailed\(tenant\.id, jobId,/u, action);
+    assert.match(body, /markFailed\(tenant\.id, company\.id, jobId,/u, action);
   }
   const update = source.slice(source.indexOf('async function updateJob('));
-  assert.match(update, /scopeImportJobMutation\(query, tenantId, jobId, expectedStatus\)/u);
+  assert.match(
+    update,
+    /scopeImportJobMutation\([\s\S]*?query,[\s\S]*?tenantId,[\s\S]*?companyId,[\s\S]*?jobId,[\s\S]*?expectedStatus/u,
+  );
   assert.match(update, /\.select\('id'\)\s*\.maybeSingle\(\)/u);
   assert.match(update, /assertImportJobTransitionMatched\(data\)/u);
   const scope = readFileSync(join(process.cwd(), 'src/lib/data/import-job-scope.ts'), 'utf8');
   assert.ok(scope.indexOf(".eq('tenant_id', tenantId)") < scope.indexOf(".eq('id', jobId)"));
+  assert.ok(scope.indexOf(".eq('company_id', companyId)") < scope.indexOf(".eq('id', jobId)"));
 
   const page = readFileSync(join(root, '(pro)/imports/[jobId]/page.tsx'), 'utf8');
   assert.match(page, /isImportJobCancellable\(job\.status\)/u);
-  assert.match(page, /cannot be cancelled after it starts/u);
+  assert.match(page, /t\('cannotCancel'\)/u);
 });
 
 test('tenant layout resolves the slug then enforces authoritative company access', () => {

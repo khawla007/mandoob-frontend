@@ -164,7 +164,7 @@ function revalidateDocumentRoutes(
   actionDependencies: DocumentCenterActionDependencies,
 ) {
   actionDependencies.revalidate(`/t/${slug}/documents`);
-  actionDependencies.revalidate(`/t/${slug}/clients/${clientId}`);
+  actionDependencies.revalidate(`/t/${slug}/company`);
 }
 
 export async function runRequestDocumentCenterAction(

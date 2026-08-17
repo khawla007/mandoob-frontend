@@ -2,6 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { encryptOptional } from '@/lib/crypto/pii';
+import { hashPassportForLookup } from '@/lib/crypto/passport-lookup';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { assertRoleChangeAllowed, assertAdminCanModifyTarget } from './admin-edit-helpers';
@@ -96,6 +97,7 @@ export async function adminChangeRole(
       email: authUser?.user?.email ?? null,
       phone: (existing.phone as string | null) ?? null,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
+      passport_no_hash: hashPassportForLookup(input.client_id, input.passport_no),
       visa_no_encrypted: encryptOptional(input.visa_no ?? null),
       visa_expiry: input.visa_expiry ?? null,
       emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
@@ -137,7 +139,12 @@ export async function adminChangeRole(
           p_role_data: roleData,
           p_reason: input.reason ?? null,
         });
-        if (error) return { error, committedSnapshot: null };
+        if (error) {
+          return {
+            error: { message: error.code === '23505' ? '23505' : error.message },
+            committedSnapshot: null,
+          };
+        }
         const committed = data as {
           role?: unknown;
           tenant_id?: unknown;
@@ -187,6 +194,9 @@ export async function adminChangeRole(
     roleChangeError = error.databaseError;
   }
   if (roleChangeError) {
+    const duplicatePassport =
+      input.newRole === 'employee' &&
+      /employee_company_passport_hash_unique|23505/.test(roleChangeError.message);
     const changedDuringRequest = roleChangeError.message.includes('PROFILE_CHANGED_RETRY');
     const forbiddenTenantMove = roleChangeError.message.includes(
       'PROFILE_TENANT_HAS_SERVICE_CASE_REFERENCES',
@@ -197,19 +207,27 @@ export async function adminChangeRole(
     throw new ApiError(
       forbiddenTenantMove
         ? 'INVALID_TENANT_ASSIGNMENT'
-        : changedDuringRequest
-          ? 'INVALID_ROLE_TRANSITION'
-          : companyTenantMismatch
-            ? 'FORBIDDEN'
-            : 'VALIDATION_FAILED',
+        : duplicatePassport
+          ? 'PASSPORT_DUPLICATE'
+          : changedDuringRequest
+            ? 'INVALID_ROLE_TRANSITION'
+            : companyTenantMismatch
+              ? 'FORBIDDEN'
+              : 'VALIDATION_FAILED',
       forbiddenTenantMove
         ? 'Profile tenant cannot change while service-case history references it'
-        : changedDuringRequest
-          ? 'Profile changed during role update; retry with fresh data'
-          : companyTenantMismatch
-            ? 'Client does not belong to selected tenant'
-            : 'Role change could not be completed',
-      forbiddenTenantMove || changedDuringRequest ? 409 : companyTenantMismatch ? 403 : 500,
+        : duplicatePassport
+          ? 'Passport already belongs to this company'
+          : changedDuringRequest
+            ? 'Profile changed during role update; retry with fresh data'
+            : companyTenantMismatch
+              ? 'Client does not belong to selected tenant'
+              : 'Role change could not be completed',
+      forbiddenTenantMove || duplicatePassport || changedDuringRequest
+        ? 409
+        : companyTenantMismatch
+          ? 403
+          : 500,
     );
   }
 

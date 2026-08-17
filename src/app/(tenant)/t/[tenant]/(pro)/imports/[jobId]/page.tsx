@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Ban, CheckCircle2, Play, RotateCw } from 'lucide-react';
 import { BulkImportAutoRefresh } from '@/components/pro/BulkImportAutoRefresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { isImportJobCancellable } from '@/lib/data/import-job-scope';
 import {
   Table,
   TableBody,
@@ -16,7 +15,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
+import {
+  safeImportErrorCode,
+  safeImportField,
+  safeImportJobStatus,
+} from '@/lib/data/import-job-display';
+import { isImportJobCancellable } from '@/lib/data/import-job-scope';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { countDistinctImportErrorRows } from '@/lib/validation/bulk-import';
 import {
   cancelBulkImportAction,
   executeBulkImportAction,
@@ -28,13 +36,13 @@ export const dynamic = 'force-dynamic';
 type ImportError = {
   row_number: number;
   field: string;
-  message: string;
+  message?: string;
   code?: string;
 };
 
 type JobRow = {
   id: string;
-  kind: 'clients' | 'employees';
+  kind: 'employees';
   status: string;
   total_rows: number | null;
   processed_rows: number | null;
@@ -50,22 +58,38 @@ export default async function BulkImportJobPage({
   params: Promise<{ tenant: string; jobId: string }>;
 }) {
   const { tenant: slug, jobId } = await params;
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
+  const [t, locale] = await Promise.all([getTranslations('pro.importJob'), getLocale()]);
+  const dateFormatter = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Dubai',
+  });
+  const numberFormatter = new Intl.NumberFormat(locale);
   const admin = createSupabaseServiceRoleClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from('bulk_import_jobs')
     .select(
       'id, kind, status, total_rows, processed_rows, error_rows, errors, created_at, completed_at',
     )
     .eq('tenant_id', tenant.id)
+    .eq('company_id', company.id)
     .eq('id', jobId)
     .maybeSingle();
-  if (!data) notFound();
+  if (error || !data) notFound();
   const job = data as JobRow;
   const errors = Array.isArray(job.errors) ? job.errors : [];
   const busy = job.status === 'validating' || job.status === 'importing';
   const totalImportable = Math.max((job.total_rows ?? 0) - validationErrorCount(errors), 0);
+  const displayErrors = errors.map((error) => ({
+    row: error.row_number > 0 ? numberFormatter.format(error.row_number) : t('emptyValue'),
+    field: t(`fields.${safeImportField(error.field)}`),
+    message: t(`errorCodes.${safeImportErrorCode(error.code)}`),
+    code: t(`errorCodeLabels.${safeImportErrorCode(error.code)}`),
+  }));
 
   async function validate() {
     'use server';
@@ -84,36 +108,40 @@ export default async function BulkImportJobPage({
     await cancelBulkImportAction(slug, jobId);
   }
 
+  const processed = numberFormatter.format(job.processed_rows ?? 0);
+  const errorCount = numberFormatter.format(job.error_rows ?? 0);
+
   return (
     <div className="space-y-6">
       <BulkImportAutoRefresh enabled={busy} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Import job</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {job.kind === 'clients' ? 'Client' : 'Employee'} CSV created{' '}
-            {new Date(job.created_at).toLocaleString()}.
+            {t('created', { date: dateFormatter.format(new Date(job.created_at)) })}
           </p>
         </div>
         <Button variant="outline" asChild>
-          <Link href={job.kind === 'clients' ? `/t/${slug}/clients` : `/t/${slug}/employees`}>
-            Back
-          </Link>
+          <Link href={`/t/${encodeURIComponent(slug)}/employees`}>{t('back')}</Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            Status{' '}
+            {t('statusTitle')}{' '}
             <Badge variant={job.status === 'failed' ? 'destructive' : 'secondary'}>
-              {job.status}
+              {t(`statuses.${safeImportJobStatus(job.status)}`)}
             </Badge>
           </CardTitle>
           <CardDescription>
-            {job.processed_rows ?? 0} processed
-            {job.total_rows ? ` of ${totalImportable} importable rows` : ''}. {job.error_rows ?? 0}{' '}
-            rows need attention.
+            {job.total_rows
+              ? t('progress', {
+                  processed,
+                  total: numberFormatter.format(totalImportable),
+                  errors: errorCount,
+                })
+              : t('progressNoTotal', { processed, errors: errorCount })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -121,8 +149,8 @@ export default async function BulkImportJobPage({
             {job.status === 'uploaded' ? (
               <form action={validate}>
                 <Button type="submit">
-                  <CheckCircle2 className="mr-2 size-4" />
-                  Validate CSV
+                  <CheckCircle2 className="me-2 size-4" aria-hidden />
+                  {t('validate')}
                 </Button>
               </form>
             ) : null}
@@ -130,32 +158,30 @@ export default async function BulkImportJobPage({
               <form action={execute} className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 text-sm">
                   <input name="skip_existing" type="checkbox" defaultChecked className="size-4" />
-                  <span>Skip existing records</span>
+                  <span>{t('skipExisting')}</span>
                 </label>
                 <Button type="submit">
-                  <Play className="mr-2 size-4" />
-                  Confirm import
+                  <Play className="me-2 size-4" aria-hidden />
+                  {t('confirm')}
                 </Button>
               </form>
             ) : null}
             {isImportJobCancellable(job.status) ? (
               <form action={cancel}>
                 <Button type="submit" variant="outline">
-                  <Ban className="mr-2 size-4" />
-                  Cancel
+                  <Ban className="me-2 size-4" aria-hidden />
+                  {t('cancel')}
                 </Button>
               </form>
             ) : null}
             {busy ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <RotateCw className="size-4 animate-spin" />
-                Refreshing every 3 seconds
+                <RotateCw className="size-4 animate-spin" aria-hidden />
+                {t('refreshing')}
               </div>
             ) : null}
             {job.status === 'importing' ? (
-              <p className="text-muted-foreground text-sm">
-                Import execution cannot be cancelled after it starts.
-              </p>
+              <p className="text-muted-foreground text-sm">{t('cannotCancel')}</p>
             ) : null}
           </div>
         </CardContent>
@@ -163,48 +189,45 @@ export default async function BulkImportJobPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Row errors</CardTitle>
-          <CardDescription>
-            Validation failures, skipped duplicates, and partial insert errors.
-          </CardDescription>
+          <CardTitle className="text-lg">{t('errorsTitle')}</CardTitle>
+          <CardDescription>{t('errorsDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          {errors.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">
-              No row errors reported.
-            </p>
+          {displayErrors.length === 0 ? (
+            <p className="text-muted-foreground py-6 text-center text-sm">{t('noErrors')}</p>
           ) : (
             <div className="border-border/60 overflow-hidden rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-24">Row</TableHead>
-                    <TableHead className="w-48">Field</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead className="w-40">Code</TableHead>
+                    <TableHead className="w-24">{t('columns.row')}</TableHead>
+                    <TableHead className="w-48">{t('columns.field')}</TableHead>
+                    <TableHead>{t('columns.message')}</TableHead>
+                    <TableHead className="w-40">{t('columns.code')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {errors.map((error, index) => (
-                    <TableRow key={`${error.row_number}-${error.field}-${index}`}>
-                      <TableCell>{error.row_number || '-'}</TableCell>
-                      <TableCell>{error.field}</TableCell>
-                      <TableCell>{error.message}</TableCell>
-                      <TableCell>{error.code ?? 'VALIDATION_FAILED'}</TableCell>
+                  {displayErrors.map((rowError, index) => (
+                    <TableRow key={`${rowError.row}-${rowError.field}-${index}`}>
+                      <TableCell>{rowError.row}</TableCell>
+                      <TableCell>{rowError.field}</TableCell>
+                      <TableCell>{rowError.message}</TableCell>
+                      <TableCell>{rowError.code}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
           )}
-          {errors.length > 0 ? (
+          {displayErrors.length > 0 ? (
             <div className="mt-4 space-y-2">
-              <Label htmlFor="errors_csv">Errors CSV</Label>
+              <Label htmlFor="errors_csv">{t('errorsCsv')}</Label>
               <textarea
                 id="errors_csv"
+                dir="ltr"
                 readOnly
                 className="border-input bg-background min-h-28 w-full rounded-md border p-3 font-mono text-xs"
-                value={toErrorsCsv(errors)}
+                value={toErrorsCsv(displayErrors, t('csvHeader'))}
               />
             </div>
           ) : null}
@@ -215,14 +238,19 @@ export default async function BulkImportJobPage({
 }
 
 function validationErrorCount(errors: ImportError[]) {
-  return errors.filter((error) => !error.code || error.code === 'VALIDATION_FAILED').length;
+  return countDistinctImportErrorRows(
+    errors.filter((error) => !error.code || error.code === 'VALIDATION_FAILED'),
+  );
 }
 
-function toErrorsCsv(errors: ImportError[]) {
+function toErrorsCsv(
+  errors: Array<{ row: string; field: string; message: string; code: string }>,
+  header: string,
+) {
   return [
-    'row_number,field,message,code',
+    header,
     ...errors.map((error) =>
-      [error.row_number, error.field, error.message, error.code ?? 'VALIDATION_FAILED']
+      [error.row, error.field, error.message, error.code]
         .map((value) => `"${String(value).replace(/"/g, '""')}"`)
         .join(','),
     ),

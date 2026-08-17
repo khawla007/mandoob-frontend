@@ -1,5 +1,6 @@
 import {
   BadgeCheck,
+  Building2,
   CalendarClock,
   ClipboardList,
   Columns3,
@@ -7,7 +8,6 @@ import {
   FileText,
   LayoutDashboard,
   Settings,
-  Users,
 } from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
@@ -28,7 +28,12 @@ export function buildProNav(slug: string): ShellNavGroup[] {
       labelKey: 'workspace',
       labelFallback: 'Workspace',
       items: [
-        { labelKey: 'clients', labelFallback: 'Clients', href: `${base}/clients`, icon: Users },
+        {
+          labelKey: 'assignedCompany',
+          labelFallback: 'Assigned Company',
+          href: `${base}/company`,
+          icon: Building2,
+        },
         {
           labelKey: 'applications',
           labelFallback: 'Applications',

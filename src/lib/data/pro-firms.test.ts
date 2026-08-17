@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getCompanyById, listCompanies, toCompanyRow } from './pro-firms';
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon_key_for_tests_padded_to_min_';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
+process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
+process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 
-test('maps a legal company workspace and its active PRO without tenant/firm ambiguity', () => {
+const proFirms = import('./pro-firms');
+
+test('maps a legal company workspace and its active PRO without tenant/firm ambiguity', async () => {
+  const { toCompanyRow } = await proFirms;
   assert.deepEqual(
     toCompanyRow(
       {
@@ -46,7 +53,8 @@ test('maps a legal company workspace and its active PRO without tenant/firm ambi
   );
 });
 
-test('maps an unassigned company with null PRO fields', () => {
+test('maps an unassigned company with null PRO fields', async () => {
+  const { toCompanyRow } = await proFirms;
   const row = toCompanyRow(
     {
       id: 'company-1',
@@ -110,6 +118,7 @@ function fakeCompanyClient(result: { data: unknown; error: unknown; count?: numb
 }
 
 test('company collection authorization fails before service-role reads', async () => {
+  const { listCompanies } = await proFirms;
   const fake = fakeCompanyClient({ data: [], error: null, count: 0 });
   await assert.rejects(() =>
     listCompanies(
@@ -126,6 +135,7 @@ test('company collection authorization fails before service-role reads', async (
 });
 
 test('company collection rejects an invalid tenant filter before service-role reads', async () => {
+  const { listCompanies } = await proFirms;
   const fake = fakeCompanyClient({ data: [], error: null, count: 0 });
   await assert.rejects(
     () =>
@@ -139,6 +149,7 @@ test('company collection rejects an invalid tenant filter before service-role re
 });
 
 test('company collection uses exact count and deterministic server range', async () => {
+  const { listCompanies } = await proFirms;
   const fake = fakeCompanyClient({ data: [], error: null, count: 61 });
   const page = await listCompanies(
     { status: 'active', q: 'Acme', page: 2, pageSize: 25 },
@@ -158,6 +169,7 @@ test('company collection uses exact count and deterministic server range', async
 });
 
 test('company detail authorization fails before service-role reads', async () => {
+  const { getCompanyById } = await proFirms;
   const fake = fakeCompanyClient({ data: null, error: null });
   await assert.rejects(() =>
     getCompanyById('33333333-3333-4333-8333-333333333333', {
@@ -171,6 +183,7 @@ test('company detail authorization fails before service-role reads', async () =>
 });
 
 test('company detail rejects an invalid identifier before service-role reads', async () => {
+  const { getCompanyById } = await proFirms;
   const fake = fakeCompanyClient({ data: null, error: null });
   await assert.rejects(
     () =>

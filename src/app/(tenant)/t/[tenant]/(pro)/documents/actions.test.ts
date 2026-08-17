@@ -315,15 +315,10 @@ test('client search action authenticates every request and returns at most 50 sa
   ]);
 });
 
-test('firm and legacy action logic modules are server-only without becoming Server Functions', () => {
-  for (const path of [
-    join(import.meta.dirname, 'action-logic.ts'),
-    join(import.meta.dirname, '../clients/[clientId]/documents/action-logic.ts'),
-  ]) {
-    const source = readFileSync(path, 'utf8');
-    assert.match(source, /^import 'server-only';/u);
-    assert.doesNotMatch(source, /^['"]use server['"];/mu);
-  }
+test('firm action logic module is server-only without becoming a Server Function', () => {
+  const source = readFileSync(join(import.meta.dirname, 'action-logic.ts'), 'utf8');
+  assert.match(source, /^import 'server-only';/u);
+  assert.doesNotMatch(source, /^['"]use server['"];/mu);
 });
 
 test('firm production actions wire navigation rethrow, trusted metadata, and safe logging', () => {
@@ -510,7 +505,7 @@ test('successful request, review, and expiry revalidate firm and exact client ro
     assert.equal(result.ok, true);
     assert.deepEqual(
       context.calls.filter((call) => call.startsWith('revalidate:')),
-      ['revalidate:/t/acme/documents', `revalidate:/t/acme/clients/${CLIENT_ID}`],
+      ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company'],
     );
   }
 });
@@ -531,11 +526,8 @@ test('review and expiry revalidate only the authoritative DAL client, never the 
     const context = setup(override);
     assert.equal((await invoke(context.dependencies)).ok, true);
     const revalidated = context.calls.filter((call) => call.startsWith('revalidate:'));
-    assert.deepEqual(revalidated, [
-      'revalidate:/t/acme/documents',
-      `revalidate:/t/acme/clients/${AUTHORITATIVE_CLIENT_ID}`,
-    ]);
-    assert.equal(revalidated.includes(`revalidate:/t/acme/clients/${CLIENT_ID}`), false);
+    assert.deepEqual(revalidated, ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company']);
+    assert.equal(revalidated.includes(`/t/acme/clients/${CLIENT_ID}`), false);
   }
 });
 
@@ -554,7 +546,7 @@ test('request canonicalizes uppercase client UUID before DAL and cache invalidat
   assert.equal(receivedClientId, canonicalClientId);
   assert.deepEqual(
     context.calls.filter((call) => call.startsWith('revalidate:')),
-    ['revalidate:/t/acme/documents', `revalidate:/t/acme/clients/${canonicalClientId}`],
+    ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company'],
   );
 });
 

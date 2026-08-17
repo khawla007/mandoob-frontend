@@ -188,7 +188,7 @@ function RowDocumentActions({
   const versionId = row.versionId;
   const documentId = row.documentId;
   const expiryFormId = documentId ? `document-expiry-form-${documentId}` : undefined;
-  const clientHref = `/t/${encodeURIComponent(slug)}/clients/${row.clientId}`;
+  const clientHref = `/t/${encodeURIComponent(slug)}/company`;
   const canManageExpiry = row.entityKind === 'document' && row.expirySource === 'document';
   const externalExpiryLabel =
     row.expirySource && row.expirySource !== 'document'

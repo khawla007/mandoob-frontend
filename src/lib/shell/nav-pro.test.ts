@@ -9,29 +9,40 @@ function hrefsFor(slug: string): string[] {
   return [...source.matchAll(/href: `\$\{base\}([^`]+)`/g)].map((match) => `/t/${slug}${match[1]}`);
 }
 
-test('PRO navigation adds exactly one Applications item immediately after Clients', () => {
+test('PRO navigation exposes exactly one Assigned Company route before Applications', () => {
   const hrefs = hrefsFor('acme');
 
+  assert.equal(hrefs.filter((href) => href === '/t/acme/company').length, 1);
   assert.equal(hrefs.filter((href) => href === '/t/acme/applications').length, 1);
-  assert.equal(hrefs.indexOf('/t/acme/applications'), hrefs.indexOf('/t/acme/clients') + 1);
+  assert.equal(hrefs.indexOf('/t/acme/applications'), hrefs.indexOf('/t/acme/company') + 1);
 });
 
-test('PRO navigation retains every pre-existing route', () => {
+test('PRO navigation removes client directory, import, and team routes', () => {
   const hrefs = hrefsFor('acme');
-  assert.deepEqual(
-    hrefs.filter((href) => href !== '/t/acme/applications'),
-    [
-      '/t/acme/dashboard',
-      '/t/acme/clients',
-      '/t/acme/leads',
-      '/t/acme/meetings',
-      '/t/acme/renewals',
-      '/t/acme/documents',
-      '/t/acme/payments',
-      '/t/acme/employees',
-      '/t/acme/settings',
-    ],
+  assert.equal(
+    hrefs.some((href) => href === '/t/acme/clients'),
+    false,
   );
+  assert.equal(
+    hrefs.some((href) => href === '/t/acme/clients/import'),
+    false,
+  );
+  assert.equal(
+    hrefs.some((href) => href === '/t/acme/team'),
+    false,
+  );
+  assert.deepEqual(hrefs, [
+    '/t/acme/dashboard',
+    '/t/acme/company',
+    '/t/acme/applications',
+    '/t/acme/leads',
+    '/t/acme/meetings',
+    '/t/acme/renewals',
+    '/t/acme/documents',
+    '/t/acme/payments',
+    '/t/acme/employees',
+    '/t/acme/settings',
+  ]);
 });
 
 test('PRO dashboard navigation is localized as Command Center', () => {

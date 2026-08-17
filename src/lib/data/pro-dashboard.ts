@@ -557,9 +557,7 @@ function buildActions(args: {
           ownerName: null,
           deadline: row.due_at,
           urgency: urgency(row.due_at, args.now),
-          href: base
-            ? `${base}/clients/${encodeURIComponent(row.client_id)}?tab=documents&request=${encodeURIComponent(row.id)}`
-            : '#',
+          href: base ? `${base}/company?tab=documents&request=${encodeURIComponent(row.id)}` : '#',
         }),
       ),
     ...args.documents
@@ -574,9 +572,7 @@ function buildActions(args: {
           ownerName: null,
           deadline: null,
           urgency: 'normal',
-          href: base
-            ? `${base}/clients/${encodeURIComponent(row.client_id)}?tab=documents&document=${encodeURIComponent(row.id)}`
-            : '#',
+          href: base ? `${base}/company?tab=documents&document=${encodeURIComponent(row.id)}` : '#',
         }),
       ),
     ...args.openInvoices.map(

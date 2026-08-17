@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { parseApplicationFilters } from '@/app/(tenant)/t/[tenant]/(pro)/applications/page-logic';
 import { parseRenewalSearch } from '@/app/(tenant)/t/[tenant]/(pro)/renewals/page-logic';
-import { parseClientDetailSearch } from '@/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/page-logic';
+import { parseAssignedCompanySearch } from '@/app/(tenant)/t/[tenant]/(pro)/company/page-logic';
 import {
   associateCurrentDocumentVersions,
   calculateProDashboard,
@@ -625,7 +625,7 @@ test('selects the globally highest-ranked five signals with tenant-safe hrefs', 
   );
   assert.equal(
     dashboard.actionDeck.find((item) => item.id === 'missing')!.href,
-    '/t/safe-firm/clients/client-1?tab=documents&request=missing',
+    '/t/safe-firm/company?tab=documents&request=missing',
   );
 });
 
@@ -990,9 +990,9 @@ test('dashboard action hrefs use filters and entity routes consumed by destinati
   );
 
   const documentUrl = new URL(byKind.get('document')!.href, 'https://mandoob.test');
-  assert.equal(documentUrl.pathname, '/t/acme/clients/client-1');
+  assert.equal(documentUrl.pathname, '/t/acme/company');
   assert.deepEqual(
-    parseClientDetailSearch({
+    parseAssignedCompanySearch({
       tab: documentUrl.searchParams.get('tab') ?? undefined,
       request: documentUrl.searchParams.get('request') ?? undefined,
       document: documentUrl.searchParams.get('document') ?? undefined,
@@ -1001,11 +1001,8 @@ test('dashboard action hrefs use filters and entity routes consumed by destinati
   );
   assert.equal(byKind.get('invoice')!.href, '/t/acme/payments/invoice-overdue');
   assert.match(
-    readFileSync(
-      join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/page.tsx'),
-      'utf8',
-    ),
-    /params:\s*Promise<\{ tenant: string; clientId: string \}>/,
+    readFileSync(join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/company/page.tsx'), 'utf8'),
+    /params:\s*Promise<\{ tenant: string \}>/,
   );
   assert.match(
     readFileSync(

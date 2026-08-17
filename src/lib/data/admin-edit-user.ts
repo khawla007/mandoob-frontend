@@ -2,6 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { decryptOptional, encryptOptional } from '@/lib/crypto/pii';
+import { hashPassportForLookup } from '@/lib/crypto/passport-lookup';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import type { EditUserOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
@@ -123,6 +124,7 @@ export async function adminEditUser(
       name: input.full_name,
       phone: input.phone,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
+      passport_no_hash: hashPassportForLookup(input.client_id, input.passport_no),
       visa_no_encrypted: encryptOptional(input.visa_no ?? null),
       visa_expiry: input.visa_expiry ?? null,
       emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
@@ -130,6 +132,10 @@ export async function adminEditUser(
     };
     const { error } = await admin.from('employees').update(update).eq('profile_id', targetId);
     if (error) {
+      if (error.code === '23505') {
+        console.error('admin-edit-user.employee-passport duplicate');
+        throw new ApiError('PASSPORT_DUPLICATE', 'Passport already belongs to this company', 409);
+      }
       console.error('admin edit employee update failed', error);
       throw new ApiError('INTERNAL', 'Could not update user', 500);
     }

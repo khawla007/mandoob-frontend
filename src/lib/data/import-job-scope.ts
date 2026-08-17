@@ -6,10 +6,15 @@ type EqQuery = {
 export function scopeImportJobMutation<T extends EqQuery>(
   query: T,
   tenantId: string,
+  companyId: string,
   jobId: string,
   expectedStatus: string,
 ): T {
-  return query.eq('tenant_id', tenantId).eq('id', jobId).eq('status', expectedStatus) as T;
+  return query
+    .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
+    .eq('id', jobId)
+    .eq('status', expectedStatus) as T;
 }
 
 export class ImportJobTransitionConflict extends Error {

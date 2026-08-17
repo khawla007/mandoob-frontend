@@ -110,6 +110,7 @@ export function anonymizeEmployeeFields(row: EmployeeErasureRow): {
   setDiff(diff, update, 'email', row.email, null);
   setDiff(diff, update, 'phone', row.phone, null);
   setDiff(diff, update, 'passport_no_encrypted', row.passport_no_encrypted, REDACTED);
+  update.passport_no_hash = null;
   setDiff(diff, update, 'visa_no_encrypted', row.visa_no_encrypted, REDACTED);
   setDiff(diff, update, 'emirates_id_encrypted', row.emirates_id_encrypted, REDACTED);
 

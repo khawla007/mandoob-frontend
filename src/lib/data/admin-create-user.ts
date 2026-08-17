@@ -2,6 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { encryptOptional } from '@/lib/crypto/pii';
+import { hashPassportForLookup } from '@/lib/crypto/passport-lookup';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import type { CreateUserOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
@@ -112,6 +113,7 @@ export async function adminCreateUser(
     } else if (input.role === 'employee') {
       encryptedPayload = {
         passport_no_encrypted: encryptOptional(input.passport_no ?? null),
+        passport_no_hash: hashPassportForLookup(input.client_id, input.passport_no),
         visa_no_encrypted: encryptOptional(input.visa_no ?? null),
         emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
       };
@@ -229,6 +231,7 @@ export async function adminCreateUser(
         email,
         phone: input.phone,
         passport_no_encrypted: encryptedPayload.passport_no_encrypted,
+        passport_no_hash: encryptedPayload.passport_no_hash,
         visa_no_encrypted: encryptedPayload.visa_no_encrypted,
         visa_expiry: input.visa_expiry ?? null,
         emirates_id_encrypted: encryptedPayload.emirates_id_encrypted,
@@ -241,9 +244,15 @@ export async function adminCreateUser(
     // Audit trail asymmetry: admin role logs to `admin_audit_actions` (§4 step 12);
     // every role logs to `auth_events` via `recordAuthEvent` below (§4 step 13).
   } catch (e) {
+    const errorCode = typeof e === 'object' && e !== null ? (e as { code?: string }).code : null;
+    if (input.role === 'employee' && errorCode === '23505') {
+      console.error('admin-create-user.employee-passport duplicate');
+      await compensate('employee passport duplicate');
+      throw new ApiError('PASSPORT_DUPLICATE', 'Passport already belongs to this company', 409);
+    }
     console.error('sub-row insert failed', e);
     await compensate('sub-row insert error');
-    const isRls = typeof e === 'object' && e !== null && (e as { code?: string }).code === '42501';
+    const isRls = errorCode === '42501';
     throw new ApiError(
       isRls ? 'RLS_DENIED' : 'VALIDATION_FAILED',
       isRls ? 'Row-level security denied the insert' : 'Could not create role profile',

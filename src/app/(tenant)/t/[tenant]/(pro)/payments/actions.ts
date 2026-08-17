@@ -72,7 +72,7 @@ export async function createInvoiceAction(
     }
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
-    revalidatePath(`/t/${ctx.tenantSlug}/clients/${input.clientId}`);
+    revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { invoiceId: result.data.id } };
   } catch (err) {

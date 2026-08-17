@@ -49,7 +49,7 @@ export function InvoicesTable({
               </TableCell>
               <TableCell>
                 <Button asChild variant="link" className="h-auto p-0">
-                  <Link href={`/t/${slug}/clients/${row.clientId}`}>{row.clientName}</Link>
+                  <Link href={`/t/${slug}/company`}>{row.clientName}</Link>
                 </Button>
               </TableCell>
               <TableCell>

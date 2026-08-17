@@ -14,8 +14,7 @@ import { DOC_TYPES } from '@/lib/validation/document';
 const COMPONENTS = [
   'src/components/customer/ActiveDocRequestsCard.tsx',
   'src/components/customer/DocumentRequestRow.tsx',
-  'src/components/pro/DocumentsTab.tsx',
-  'src/components/pro/RequestDocumentDialog.tsx',
+  'src/components/pro/documents/RequestDocumentDialog.tsx',
 ] as const;
 
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
@@ -115,10 +114,8 @@ test('live document components resolve type labels through next-intl without loc
     sources['src/components/customer/ActiveDocRequestsCard.tsx'],
     /getTranslations\('customer\.docTypeLabels'\)/u,
   );
-  for (const file of [
-    'src/components/pro/DocumentsTab.tsx',
-    'src/components/pro/RequestDocumentDialog.tsx',
-  ]) {
-    assert.match(sources[file], /useTranslations\('proDocumentCenter\.docTypes'\)/u);
-  }
+  assert.match(
+    sources['src/components/pro/documents/RequestDocumentDialog.tsx'],
+    /labels\.docTypes\[type\]/u,
+  );
 });

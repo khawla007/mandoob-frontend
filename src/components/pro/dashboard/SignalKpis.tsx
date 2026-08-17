@@ -92,7 +92,7 @@ export function SignalKpis(props: SignalKpisProps) {
       helper: signalLabel(labels.activeClientsHelper, {
         change: `${kpis.activeClientsChange >= 0 ? '+' : ''}${integer.format(kpis.activeClientsChange)}`,
       }),
-      href: `/t/${encodeURIComponent(tenantSlug)}/clients?status=active`,
+      href: `/t/${encodeURIComponent(tenantSlug)}/company`,
       tone: 'signal-kpi--orange',
       trend: [
         kpis.activeClients - kpis.activeClientsChange,

@@ -1,6 +1,7 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { decryptOptional, encryptOptional } from '@/lib/crypto/pii';
+import { updateEmployeeSelfPassport } from '@/lib/data/employee-self-passport';
 import type { Role } from '@/lib/auth/roles';
 
 export type ReadSelfProfile = {
@@ -123,14 +124,14 @@ export async function readSelfEmployee(): Promise<ReadSelfEmployee> {
   const { data, error } = await supabase
     .from('employees')
     .select(
-      'client_id, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry',
+      'company_id, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry',
     )
     .eq('profile_id', userRes.user.id)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   if (!data) throw new ApiError('NOT_FOUND', 'Employee row missing', 404);
   return {
-    clientId: data.client_id as string,
+    clientId: data.company_id as string,
     passportNo: decryptOptional(data.passport_no_encrypted as string | null),
     visaNo: decryptOptional(data.visa_no_encrypted as string | null),
     visaExpiry: (data.visa_expiry as string | null) ?? null,
@@ -250,10 +251,7 @@ export function buildRoleUpdate(
       passport_no_encrypted: encryptOptional(i.passport_no ?? null),
     };
   }
-  const i = input as RoleEmployeeUpdate;
-  return {
-    passport_no_encrypted: encryptOptional(i.passport_no ?? null),
-  };
+  throw new ApiError('FORBIDDEN', 'Employee role details require live authorization', 403);
 }
 
 export type UpdateSelfProfileResult = { changedKeys: string[] };
@@ -300,10 +298,26 @@ export async function updateSelfRoleFields(
   const supabase = await createSupabaseServerClient();
   const { data: userRes } = await supabase.auth.getUser();
   if (!userRes.user) throw new ApiError('UNAUTHENTICATED', 'Not signed in', 401);
+  if (role === 'employee') {
+    const result = await updateEmployeeSelfPassport(
+      userRes.user.id,
+      (input as RoleEmployeeUpdate).passport_no,
+    );
+    if (!result.ok) {
+      if (result.code === 'duplicate') {
+        throw new ApiError('PASSPORT_DUPLICATE', 'Passport already belongs to this company', 409);
+      }
+      if (result.code === 'notFound') {
+        throw new ApiError('FORBIDDEN', 'Active employee access could not be verified', 403);
+      }
+      throw new ApiError('INTERNAL', 'Could not update employee passport', 500);
+    }
+    return { changedKeys: ['passport_no_encrypted', 'passport_no_hash'] };
+  }
   const update = buildRoleUpdate(role, input);
   const table =
     role === 'pro' ? 'pro_profiles' : role === 'customer' ? 'customer_profiles' : 'employees';
   const { error } = await supabase.from(table).update(update).eq('profile_id', userRes.user.id);
-  if (error) throw new ApiError('VALIDATION_FAILED', error.message, 400);
+  if (error) throw new ApiError('VALIDATION_FAILED', 'Could not update role details', 400);
   return { changedKeys: Object.keys(update) };
 }
