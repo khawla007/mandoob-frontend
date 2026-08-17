@@ -107,7 +107,7 @@ export type Database = {
           errors: Json;
           id: string;
           kind: Database['public']['Enums']['bulk_import_kind'];
-          parent_client_id: string | null;
+          company_id: string | null;
           processed_rows: number | null;
           started_at: string | null;
           status: Database['public']['Enums']['bulk_import_status'];
@@ -125,7 +125,7 @@ export type Database = {
           errors?: Json;
           id?: string;
           kind: Database['public']['Enums']['bulk_import_kind'];
-          parent_client_id?: string | null;
+          company_id?: string | null;
           processed_rows?: number | null;
           started_at?: string | null;
           status?: Database['public']['Enums']['bulk_import_status'];
@@ -143,7 +143,7 @@ export type Database = {
           errors?: Json;
           id?: string;
           kind?: Database['public']['Enums']['bulk_import_kind'];
-          parent_client_id?: string | null;
+          company_id?: string | null;
           processed_rows?: number | null;
           started_at?: string | null;
           status?: Database['public']['Enums']['bulk_import_status'];
@@ -154,10 +154,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: 'bulk_import_jobs_parent_client_id_fkey';
-            columns: ['parent_client_id'];
+            foreignKeyName: 'bulk_import_jobs_company_id_fkey';
+            columns: ['company_id'];
             isOneToOne: false;
-            referencedRelation: 'clients';
+            referencedRelation: 'company_profiles';
             referencedColumns: ['id'];
           },
           {
@@ -169,9 +169,8 @@ export type Database = {
           },
         ];
       };
-      clients: {
+      company_profiles: {
         Row: {
-          assigned_pro_profile_id: string | null;
           bank_details: Json | null;
           company_name: string;
           created_at: string;
@@ -181,13 +180,12 @@ export type Database = {
           office_address: Json | null;
           registered_activities: Json;
           shareholders: Json;
-          status: Database['public']['Enums']['client_status'];
+          status: Database['public']['Enums']['company_status'];
           tenant_id: string;
           trade_license_no: string | null;
           updated_at: string;
         };
         Insert: {
-          assigned_pro_profile_id?: string | null;
           bank_details?: Json | null;
           company_name: string;
           created_at?: string;
@@ -197,13 +195,12 @@ export type Database = {
           office_address?: Json | null;
           registered_activities?: Json;
           shareholders?: Json;
-          status?: Database['public']['Enums']['client_status'];
+          status?: Database['public']['Enums']['company_status'];
           tenant_id: string;
           trade_license_no?: string | null;
           updated_at?: string;
         };
         Update: {
-          assigned_pro_profile_id?: string | null;
           bank_details?: Json | null;
           company_name?: string;
           created_at?: string;
@@ -213,23 +210,16 @@ export type Database = {
           office_address?: Json | null;
           registered_activities?: Json;
           shareholders?: Json;
-          status?: Database['public']['Enums']['client_status'];
+          status?: Database['public']['Enums']['company_status'];
           tenant_id?: string;
           trade_license_no?: string | null;
           updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: 'clients_assigned_pro_profile_id_fkey';
-            columns: ['assigned_pro_profile_id'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'clients_tenant_id_fkey';
+            foreignKeyName: 'company_profiles_tenant_id_fkey';
             columns: ['tenant_id'];
-            isOneToOne: false;
+            isOneToOne: true;
             referencedRelation: 'tenants';
             referencedColumns: ['id'];
           },
@@ -237,7 +227,7 @@ export type Database = {
       };
       documents: {
         Row: {
-          client_id: string;
+          company_id: string;
           created_at: string;
           current_version_id: string | null;
           doc_type: string;
@@ -250,7 +240,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          client_id: string;
+          company_id: string;
           created_at?: string;
           current_version_id?: string | null;
           doc_type: string;
@@ -263,7 +253,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          client_id?: string;
+          company_id?: string;
           created_at?: string;
           current_version_id?: string | null;
           doc_type?: string;
@@ -277,10 +267,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: 'documents_client_id_fkey';
-            columns: ['client_id'];
+            foreignKeyName: 'documents_company_id_fkey';
+            columns: ['company_id'];
             isOneToOne: false;
-            referencedRelation: 'clients';
+            referencedRelation: 'company_profiles';
             referencedColumns: ['id'];
           },
           {
@@ -302,7 +292,7 @@ export type Database = {
       customer_profiles: {
         Row: {
           created_at: string;
-          linked_client_id: string | null;
+          linked_company_id: string | null;
           nationality: string | null;
           passport_no_encrypted: string | null;
           profile_id: string;
@@ -310,7 +300,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          linked_client_id?: string | null;
+          linked_company_id?: string | null;
           nationality?: string | null;
           passport_no_encrypted?: string | null;
           profile_id: string;
@@ -318,7 +308,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          linked_client_id?: string | null;
+          linked_company_id?: string | null;
           nationality?: string | null;
           passport_no_encrypted?: string | null;
           profile_id?: string;
@@ -326,10 +316,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: 'customer_profiles_linked_client_id_fkey';
-            columns: ['linked_client_id'];
+            foreignKeyName: 'customer_profiles_linked_company_id_fkey';
+            columns: ['linked_company_id'];
             isOneToOne: false;
-            referencedRelation: 'clients';
+            referencedRelation: 'company_profiles';
             referencedColumns: ['id'];
           },
           {
@@ -343,7 +333,7 @@ export type Database = {
       };
       employees: {
         Row: {
-          client_id: string;
+          company_id: string;
           created_at: string;
           eid_expiry: string | null;
           email: string | null;
@@ -361,7 +351,7 @@ export type Database = {
           visa_no_encrypted: string | null;
         };
         Insert: {
-          client_id: string;
+          company_id: string;
           created_at?: string;
           eid_expiry?: string | null;
           email?: string | null;
@@ -379,7 +369,7 @@ export type Database = {
           visa_no_encrypted?: string | null;
         };
         Update: {
-          client_id?: string;
+          company_id?: string;
           created_at?: string;
           eid_expiry?: string | null;
           email?: string | null;
@@ -398,10 +388,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: 'employees_client_id_fkey';
-            columns: ['client_id'];
+            foreignKeyName: 'employees_company_id_fkey';
+            columns: ['company_id'];
             isOneToOne: false;
-            referencedRelation: 'clients';
+            referencedRelation: 'company_profiles';
             referencedColumns: ['id'];
           },
           {
@@ -653,6 +643,94 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'profiles_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pro_company_assignments: {
+        Row: {
+          assigned_at: string;
+          assigned_by: string;
+          company_id: string;
+          created_at: string;
+          id: string;
+          pro_profile_id: string;
+          release_reason: string | null;
+          released_at: string | null;
+          released_by: string | null;
+          status: Database['public']['Enums']['pro_company_assignment_status'];
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_at?: string;
+          assigned_by: string;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          pro_profile_id: string;
+          release_reason?: string | null;
+          released_at?: string | null;
+          released_by?: string | null;
+          status?: Database['public']['Enums']['pro_company_assignment_status'];
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_at?: string;
+          assigned_by?: string;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          pro_profile_id?: string;
+          release_reason?: string | null;
+          released_at?: string | null;
+          released_by?: string | null;
+          status?: Database['public']['Enums']['pro_company_assignment_status'];
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'assignment_company_tenant_fk';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'pro_company_assignments_assigned_by_fkey';
+            columns: ['assigned_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_company_assignments_company_id_fkey';
+            columns: ['company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_company_assignments_pro_profile_id_fkey';
+            columns: ['pro_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_company_assignments_released_by_fkey';
+            columns: ['released_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_company_assignments_tenant_id_fkey';
             columns: ['tenant_id'];
             isOneToOne: false;
             referencedRelation: 'tenants';
@@ -1109,7 +1187,7 @@ export type Database = {
       invoices: {
         Row: {
           amount_minor: number;
-          client_id: string;
+          company_id: string;
           created_at: string;
           created_by: string | null;
           currency: string;
@@ -1127,7 +1205,7 @@ export type Database = {
         };
         Insert: {
           amount_minor: number;
-          client_id: string;
+          company_id: string;
           created_at?: string;
           created_by?: string | null;
           currency?: string;
@@ -1145,7 +1223,7 @@ export type Database = {
         };
         Update: {
           amount_minor?: number;
-          client_id?: string;
+          company_id?: string;
           created_at?: string;
           created_by?: string | null;
           currency?: string;
@@ -1163,10 +1241,10 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: 'invoices_client_id_fkey';
-            columns: ['client_id'];
+            foreignKeyName: 'invoices_company_id_fkey';
+            columns: ['company_id'];
             isOneToOne: false;
-            referencedRelation: 'clients';
+            referencedRelation: 'company_profiles';
             referencedColumns: ['id'];
           },
           {
@@ -1403,7 +1481,7 @@ export type Database = {
       };
       meetings: {
         Row: {
-          client_id: string | null;
+          company_id: string | null;
           consent_notice_shown_at: string | null;
           created_at: string;
           created_by: string | null;
@@ -1427,7 +1505,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          client_id?: string | null;
+          company_id?: string | null;
           consent_notice_shown_at?: string | null;
           created_at?: string;
           created_by?: string | null;
@@ -1451,7 +1529,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          client_id?: string | null;
+          company_id?: string | null;
           consent_notice_shown_at?: string | null;
           created_at?: string;
           created_by?: string | null;
@@ -1605,7 +1683,7 @@ export type Database = {
     Functions: {
       list_pro_document_center: {
         Args: {
-          p_client_id?: string | null;
+          p_company_id?: string | null;
           p_doc_type?: string | null;
           p_due_from?: string | null;
           p_due_to?: string | null;
@@ -1621,9 +1699,9 @@ export type Database = {
           p_view?: string | null;
         };
         Returns: {
-          client_id: string;
-          client_name: string;
-          client_status: string;
+          company_id: string;
+          company_name: string;
+          company_status: string;
           created_at: string;
           current_version_created_at: string | null;
           current_version_id: string | null;
@@ -1668,7 +1746,7 @@ export type Database = {
           p_tenant_id: string;
         };
         Returns: {
-          client_id: string;
+          company_id: string;
           document_id: string;
           expires_on: string | null;
         }[];
@@ -1683,7 +1761,7 @@ export type Database = {
           p_version_id: string;
         };
         Returns: {
-          client_id: string;
+          company_id: string;
           document_id: string;
           fulfilled_request_id: string | null;
           review_status: string;
@@ -1741,7 +1819,7 @@ export type Database = {
         | 'admin_user_edited'
         | 'admin_user_role_changed'
         | 'admin_user_status_changed';
-      bulk_import_kind: 'clients' | 'employees';
+      bulk_import_kind: 'employees';
       bulk_import_status:
         | 'uploaded'
         | 'validating'
@@ -1750,7 +1828,7 @@ export type Database = {
         | 'completed'
         | 'failed'
         | 'cancelled';
-      client_status:
+      company_status:
         | 'onboarding'
         | 'active'
         | 'renewal_due'
@@ -1761,6 +1839,7 @@ export type Database = {
       meeting_slot_status: 'open' | 'booked' | 'cancelled';
       meeting_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show' | 'recording_ready';
       profile_status: 'active' | 'invited' | 'disabled' | 'suspended';
+      pro_company_assignment_status: 'active' | 'released';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1916,7 +1995,7 @@ export const Constants = {
         'admin_user_role_changed',
         'admin_user_status_changed',
       ],
-      client_status: [
+      company_status: [
         'onboarding',
         'active',
         'renewal_due',
@@ -1928,6 +2007,7 @@ export const Constants = {
       meeting_slot_status: ['open', 'booked', 'cancelled'],
       meeting_status: ['scheduled', 'completed', 'cancelled', 'no_show', 'recording_ready'],
       profile_status: ['active', 'invited', 'disabled', 'suspended'],
+      pro_company_assignment_status: ['active', 'released'],
     },
   },
 } as const;
