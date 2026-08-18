@@ -41,7 +41,7 @@ export function FlowSection() {
                 03
               </span>
               <h3>Onboard</h3>
-              <p>A licensed PRO firm picks up your file. Shared dashboard, signed docs.</p>
+              <p>Your assigned licensed PRO handles the file. Shared dashboard, signed docs.</p>
             </li>
             <li>
               <span className="flow__num mono" aria-hidden="true">

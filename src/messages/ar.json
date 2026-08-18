@@ -273,7 +273,7 @@
       "unauthorized": "سجّل الدخول مجددًا للمتابعة.",
       "forbidden": "ليست لديك صلاحية إدارة هذا المستند.",
       "notFound": "لم يتم العثور على سجل المستند المطلوب.",
-      "tenantInactive": "هذه الشركة غير نشطة. تواصل مع مسؤول قبل المتابعة.",
+      "tenantInactive": "مساحة عمل هذه الشركة غير نشطة. تواصل مع مسؤول قبل المتابعة.",
       "expiryExternallyManaged": "عدّل تاريخ الانتهاء في سجل المصدر المرتبط.",
       "openFailed": "تعذر إنشاء رابط الملف الآمن. حاول مجددًا.",
       "unexpected": "تعذر إكمال الإجراء بأمان. حاول مجددًا."
@@ -315,7 +315,7 @@
     "sessions": "الجلسات",
     "mfaAndSecurity": "المصادقة الثنائية والأمان",
     "auditLogs": "سجلات التدقيق",
-    "tenants": "المستأجرون",
+    "tenants": "مساحات عمل الشركات",
     "companies": "الشركات",
     "meetings": "الاجتماعات",
     "erasure": "حذف البيانات",
@@ -425,7 +425,7 @@
     "dateFormat": "صيغة التاريخ",
     "email": "البريد الإلكتروني",
     "role": "الدور",
-    "tenant": "المستأجر",
+    "tenant": "مساحة عمل الشركة",
     "created": "تاريخ الإنشاء",
     "mfaEnrolled": "تم تسجيل المصادقة الثنائية",
     "notEnrolled": "غير مفعّل",
@@ -563,11 +563,11 @@
       "renewalsIntro": "Trade license, visas, Emirates IDs, and Ejari renewals — past and upcoming.",
       "renewalsColorCues": "Color cues: red = within 30 days · amber = within 90 days.",
       "submittedDescription": "Documents already uploaded or under PRO review.",
-      "awaitingDescription": "Items your PRO firm needs from you.",
-      "accountNotLinkedNote": "حسابك غير مرتبط بشركة بعد. اطلب من مكتب PRO ربطه، ثم راجع تفاصيل حسابك.",
+      "awaitingDescription": "المستندات التي يحتاجها منك PRO المعيّن.",
+      "accountNotLinkedNote": "حسابك غير مرتبط بشركة بعد. تواصل مع دعم مندوب لربطه، ثم راجع تفاصيل حسابك.",
       "registrationProgressDescription": "Where your company stands in the UAE registration flow.",
       "paymentsDescription": "Pending invoices and recent receipts.",
-      "recentCommsDescription": "Latest messages between you and your PRO firm.",
+      "recentCommsDescription": "أحدث الرسائل بينك وبين PRO المعيّن.",
       "uploadDialogDescription": "PDF, JPEG, PNG, DOCX, or XLSX up to 25 MB. The file is scanned before storage."
     }
   },
@@ -727,7 +727,7 @@
           "renewal_reminder": "تذكير التجديد",
           "platform": "المنصة",
           "tenant": "مساحة عمل الشركة",
-          "tenant_team": "فريق مساحة العمل",
+          "tenant_team": "القوى العاملة للشركة",
           "inbound_keyword": "كلمة مفتاحية واردة"
         }
       },
@@ -853,7 +853,7 @@
       },
       "smtp": {
         "title": "SMTP",
-        "description": "خادم البريد الصادر الخاص بالمستأجر. كلمة المرور مشفّرة عند التخزين (AES-256-GCM).",
+        "description": "خادم البريد الصادر لمساحة عمل الشركة. كلمة المرور مشفّرة عند التخزين (AES-256-GCM).",
         "savedDescription": "تم تحديث إعدادات SMTP.",
         "host": "المضيف",
         "port": "المنفذ",
@@ -866,7 +866,7 @@
       },
       "whatsapp": {
         "title": "واتساب",
-        "description": "بيانات اعتماد Meta Cloud API للمراسلة الخاصة بالمستأجر.",
+        "description": "بيانات اعتماد Meta Cloud API لمراسلات مساحة عمل الشركة.",
         "savedDescription": "تم تحديث إعدادات واتساب.",
         "statusConnected": "متصل",
         "statusDisabled": "مُعطّل",
@@ -893,16 +893,16 @@
           "brandingIncomplete": "الحرف الافتراضي مُفعّل",
           "contactComplete": "تم ضبط الروابط القانونية",
           "contactIncomplete": "أضف المُرسِل والروابط القانونية",
-          "smtpComplete": "تم تفعيل SMTP الخاص بالمستأجر",
+          "smtpComplete": "تم تفعيل SMTP الخاص بالشركة",
           "smtpIncomplete": "استخدام البريد الاحتياطي للمنصة",
-          "whatsappComplete": "تم تفعيل واتساب الخاص بالمستأجر",
+          "whatsappComplete": "تم تفعيل واتساب الخاص بالشركة",
           "whatsappIncomplete": "غير مُهيّأ أو مُعطّل"
         }
       }
     },
     "dashboard": {
       "title": "لوحة التحكم",
-      "subtitle": "{tenant} · مؤشرات مساحة عمل فريقك.",
+      "subtitle": "{tenant} · مؤشرات مساحة عمل الشركة المعيّنة.",
       "recentActivityDescription": "آخر أحداث المصادقة لـ {tenant}.",
       "kpis": {
         "activeCompany": {
@@ -943,7 +943,7 @@
         "deadlineIntensity": "كثافة المواعيد النهائية",
         "collectionsWaterfall": "تدفق التحصيلات",
         "renewalStreams": "مسارات التجديد",
-        "teamSignal": "مؤشر الفريق",
+        "teamSignal": "مؤشر أعباء العمل",
         "actionDeck": "قائمة الإجراءات",
         "empty": "لا توجد مؤشرات تستدعي المتابعة حاليًا.",
         "loading": "جارٍ تحميل مؤشر لوحة التحكم…",
@@ -1049,9 +1049,9 @@
           }
         },
         "teamLabels": {
-          "empty": "لا تتوفر أعباء عمل نشطة للفريق.",
+          "empty": "لا تتوفر أعباء عمل نشطة للشركة المعيّنة.",
           "openApplications": "فتح الطلبات",
-          "description": "العمل المفتوح والطاقة الاستيعابية لكل عضو نشط في الفريق.",
+          "description": "العمل المفتوح والطاقة الاستيعابية المتبقية في الشركة المعيّنة.",
           "unassignedCases": "معاملات غير معيّنة",
           "activeCases": "{count} معاملات نشطة",
           "capacity": "الطاقة الاستيعابية لـ {name}",
@@ -1088,7 +1088,7 @@
         }
       }
     },
-    "dashboardSignalsSubtitle": "{tenant} · إشارات مساحة العمل لفريقك.",
+    "dashboardSignalsSubtitle": "{tenant} · مؤشرات مساحة عمل الشركة المعيّنة.",
     "dashboardRecentLoginsDescription": "أحدث أحداث المصادقة لـ {tenant}.",
     "renewalsPageSubtitle": "تجديدات الرخصة والتأشيرة والهوية الإماراتية وعقد Ejari عبر {tenant}.",
     "renewalsEmptyActive": "لا توجد تجديدات نشطة. أنشئ تجديدًا أو انتظر حقل license_expiry لإضافة صف تلقائي.",
@@ -1230,7 +1230,7 @@
     "join": "انضمام",
     "schedule": "جدولة",
     "longCopy": {
-      "recordingConsent": "By joining this meeting you consent to it being recorded and stored on your tenant workspace for compliance review.",
+      "recordingConsent": "بانضمامك إلى هذا الاجتماع، فإنك توافق على تسجيله وتخزينه في مساحة عمل شركتك لأغراض مراجعة الامتثال.",
       "aiSummaryNotice": "An AI summary will be generated after the meeting and shared with you and your PRO."
     }
   },
@@ -1369,7 +1369,7 @@
     "officeCity": "وسط مدينة دبي",
     "officeCountry": "الإمارات العربية المتحدة",
     "officeHours": "الأحد–الخميس · 09:00–18:00 بتوقيت الخليج",
-    "proCtaPrefix": "هل أنت شركة PRO؟",
+    "proCtaPrefix": "هل أنت PRO؟",
     "proCtaLink": "احجز عرضًا توضيحيًا"
   },
   "estimator": {
@@ -1488,7 +1488,7 @@
       "score": "النقاط",
       "notSet": "غير محدد",
       "scoreFactors": "عوامل التقييم",
-      "assignPlaceholder": "عيّن شركة PRO نشطة",
+      "assignPlaceholder": "عيّن مساحة عمل شركة نشطة",
       "assignLead": "تعيين العميل المحتمل",
       "save": "حفظ",
       "questionnaire": "الاستبيان",
@@ -1521,7 +1521,7 @@
     },
     "admin": {
       "title": "خط أنابيب العملاء المحتملين",
-      "subtitle": "عملاء محتملون من الاستبيان عبر كل المستأجرين. عرض {total}."
+      "subtitle": "عملاء محتملون من الاستبيان عبر جميع مساحات عمل الشركات. عرض {total}."
     },
     "pro": {
       "title": "العملاء المحتملون",
@@ -1572,9 +1572,9 @@
         "role": "الدور",
         "chooseRole": "اختر دورًا",
         "changeRoleHint": "استخدم إجراء تغيير الدور لتغيير الدور؛ تُلغى الجلسات عند الحفظ.",
-        "tenant": "المستأجر",
-        "chooseTenant": "اختر مستأجرًا",
-        "tenantImmutable": "لا يمكن نقل المستأجر من هذا النموذج.",
+        "tenant": "مساحة عمل الشركة",
+        "chooseTenant": "اختر مساحة عمل شركة",
+        "tenantImmutable": "لا يمكن نقل مساحة عمل الشركة من هذا النموذج.",
         "reason": "السبب (اختياري)",
         "reasonPlaceholder": "يُسجَّل في admin_audit_actions لأغراض التتبّع",
         "nationality": "الجنسية (رمز من حرفين ISO)",
@@ -1604,13 +1604,13 @@
       "listTitle": "المستخدمون",
       "listShowing": "عرض {count} {more, select, true {(يتوفّر المزيد)} other {}}",
       "directoryTitle": "الدليل",
-      "directoryDescription": "جميع هويات مندوب عبر المستأجرين.",
+      "directoryDescription": "جميع هويات مندوب عبر مساحات عمل الشركات.",
       "createdAlertTitle": "تم إنشاء المستخدم",
       "createdAlertDescription": "تم إرسال بريد الدعوة. يظهر المستخدم الجديد أدناه بعد معالجة Supabase للدعوة.",
       "table": {
         "user": "المستخدم",
         "role": "الدور",
-        "tenant": "المستأجر",
+        "tenant": "مساحة عمل الشركة",
         "status": "الحالة",
         "created": "تاريخ الإنشاء",
         "lastSignIn": "آخر تسجيل دخول",
@@ -1630,9 +1630,9 @@
         "filterByRole": "تصفية حسب الدور",
         "allStatuses": "جميع الحالات",
         "filterByStatus": "تصفية حسب الحالة",
-        "allTenants": "جميع المستأجرين",
-        "filterByTenant": "تصفية حسب المستأجر",
-        "searchTenantsPlaceholder": "ابحث عن المستأجرين…",
+        "allTenants": "جميع مساحات عمل الشركات",
+        "filterByTenant": "تصفية حسب مساحة عمل الشركة",
+        "searchTenantsPlaceholder": "ابحث في مساحات عمل الشركات…",
         "noTenantMatches": "لا توجد نتائج."
       },
       "pagination": {
@@ -1647,9 +1647,9 @@
         "errorTitle": "تعذّر تغيير الدور",
         "newRoleLabel": "الدور الجديد",
         "newRolePlaceholder": "اختر دورًا جديدًا",
-        "tenantPlaceholder": "اختر مستأجرًا",
+        "tenantPlaceholder": "اختر مساحة عمل شركة",
         "companyRequiredLabel": "الشركة (مطلوبة)",
-        "pickTenantBeforeCompany": "اختر مستأجرًا أولًا لتفعيل البحث عن الشركة.",
+        "pickTenantBeforeCompany": "اختر مساحة عمل شركة أولًا لتفعيل البحث عن الشركة.",
         "confirmLabel": "اكتب DEMOTE للتأكيد",
         "errPickRole": "اختر دورًا مستهدفًا.",
         "errTypeDemote": "اكتب DEMOTE لتأكيد تخفيض مدير عام.",
@@ -1693,7 +1693,7 @@
       "sessions": {
         "empty": "لا توجد جلسات نشطة مطابقة لعوامل التصفية الحالية.",
         "user": "المستخدم",
-        "tenant": "المستأجر",
+        "tenant": "مساحة عمل الشركة",
         "role": "الدور",
         "ip": "عنوان IP",
         "started": "البدء",
@@ -1723,7 +1723,7 @@
       },
       "recentLogins": {
         "title": "عمليات تسجيل الدخول الأخيرة",
-        "description": "أحدث أحداث المصادقة عبر جميع المستأجرين.",
+        "description": "أحدث أحداث المصادقة عبر جميع مساحات عمل الشركات.",
         "user": "المستخدم",
         "role": "الدور",
         "ip": "عنوان IP",
@@ -1934,7 +1934,7 @@
         "replacementProLabel": "PRO البديل",
         "proLabel": "مستخدم PRO",
         "selectPro": "اختر PRO متاحاً",
-        "proDescription": "يمكن لـ PRO أن يشغل تعيين شركة نشطاً واحداً فقط.",
+        "proDescription": "تسمح سياسة منصة مندوب لكل حساب PRO بتعيين نشط لشركة واحدة فقط.",
         "reasonLabel": "سبب إعادة التعيين",
         "reasonDescription": "سجّل سبب استبدال PRO الحالي (من 3 إلى 500 حرف).",
         "saving": "جارٍ الحفظ…",
@@ -2006,18 +2006,18 @@
     },
     "audit": {
       "kind": {
-        "tenant_audit": "تدقيق المستأجر",
+        "tenant_audit": "تدقيق مساحة عمل الشركة",
         "auth_event": "أحداث المصادقة"
       },
       "kindBadge": {
-        "tenant_audit": "مستأجر",
+        "tenant_audit": "مساحة عمل",
         "auth_event": "مصادقة"
       },
       "table": {
         "empty": "لا توجد إدخالات تدقيق مطابقة للمرشّحات الحالية.",
         "when": "متى",
         "kind": "النوع",
-        "tenant": "المستأجر",
+        "tenant": "مساحة عمل الشركة",
         "actor": "الفاعل",
         "action": "الإجراء",
         "details": "التفاصيل",
@@ -2025,11 +2025,11 @@
       },
       "page": {
         "title": "سجلات التدقيق",
-        "intro": "واجهة تحقيق عبر المستأجرين. أحداث المنتج على جانب المستأجر وأحداث مصادقة المنصة.",
+        "intro": "واجهة تحقيق عبر مساحات العمل. أحداث مساحة عمل الشركة وأحداث مصادقة المنصة.",
         "filters": "المرشّحات",
-        "filtersDescription": "النوع، المستأجر، الفاعل، الإجراء، النطاق الزمني، نص حر.",
-        "tenant": "المستأجر",
-        "allTenants": "كل المستأجرين",
+        "filtersDescription": "النوع، مساحة عمل الشركة، الفاعل، الإجراء، النطاق الزمني، نص حر.",
+        "tenant": "مساحة عمل الشركة",
+        "allTenants": "جميع مساحات عمل الشركات",
         "actor": "الفاعل (uuid)",
         "from": "من",
         "to": "إلى",
@@ -2037,7 +2037,7 @@
         "searchDetails": "البحث في التفاصيل (JSONB)",
         "apply": "تطبيق",
         "reset": "إعادة تعيين",
-        "tenantAuditLog": "سجل تدقيق المستأجر",
+        "tenantAuditLog": "سجل تدقيق مساحة عمل الشركة",
         "authEvents": "أحداث المصادقة",
         "resultsDescription": "عرض حتى 50 إدخالًا، الأحدث أولًا. انقر تفاصيل الصف لتوسيع حمولة JSONB.",
         "nextPage": "الصفحة التالية ←",
@@ -2047,12 +2047,12 @@
     },
     "dashboard": {
       "title": "نظرة عامة",
-      "intro": "إشارات المصادقة والهوية عبر المستأجرين.",
+      "intro": "إشارات المصادقة والهوية عبر مساحات عمل الشركات.",
       "lastDaysLive": "آخر 30 يومًا · مباشر"
     },
     "stats": {
       "totalUsers": "إجمالي المستخدمين",
-      "activeTenants": "المستأجرون النشطون",
+      "activeTenants": "مساحات عمل الشركات النشطة",
       "logins7d": "تسجيلات الدخول (7 أيام)",
       "failedLogins24h": "تسجيلات الدخول الفاشلة (24 ساعة)",
       "allTime": "كل الأوقات",
@@ -2067,9 +2067,9 @@
     "finance": {
       "title": "المالية",
       "intro": "إيرادات اشتراكات Stripe.",
-      "tenantMrr": "الإيراد الشهري المتكرر للمستأجر",
+      "tenantMrr": "الإيراد الشهري المتكرر لمساحة العمل",
       "table": {
-        "tenant": "المستأجر",
+        "tenant": "مساحة عمل الشركة",
         "plan": "الخطة",
         "status": "الحالة",
         "periodEnd": "نهاية الفترة",
@@ -2078,7 +2078,7 @@
       "kpi": {
         "mrr": "الإيراد الشهري المتكرر",
         "arr": "الإيراد السنوي المتكرر",
-        "activeTenants": "المستأجرون النشطون",
+        "activeTenants": "مساحات عمل الشركات النشطة",
         "churn": "معدل التسرب",
         "helperMonthlyValue": "القيمة الشهرية النشطة",
         "helperMrrTimes12": "الإيراد الشهري × 12",
@@ -2101,7 +2101,7 @@
         "title": "طلبات المحو",
         "intro": "طلبات الحق في المحو (PDPL) المُتحقق منها بانتظار المراجعة.",
         "subject": "الموضوع",
-        "tenant": "المستأجر",
+        "tenant": "مساحة عمل الشركة",
         "status": "الحالة",
         "submitted": "تاريخ التقديم",
         "action": "إجراء",
@@ -2111,11 +2111,11 @@
       "detail": {
         "title": "طلب المحو",
         "subjectTitle": "الموضوع",
-        "subjectDescription": "سياق الهوية والمستأجر للمراجعة.",
+        "subjectDescription": "سياق الهوية ومساحة عمل الشركة للمراجعة.",
         "name": "الاسم",
         "email": "البريد الإلكتروني",
         "kind": "النوع",
-        "tenant": "المستأجر",
+        "tenant": "مساحة عمل الشركة",
         "reason": "السبب",
         "unknown": "غير معروف",
         "noReason": "لم يُقدَّم سبب",
@@ -2171,11 +2171,11 @@
     },
     "sessions": {
       "title": "الجلسات",
-      "intro": "الجلسات النشطة عبر جميع المستأجرين. ألغِ جلسة واحدة أو جميع جلسات المستخدم.",
+      "intro": "الجلسات النشطة عبر جميع مساحات عمل الشركات. ألغِ جلسة واحدة أو جميع جلسات المستخدم.",
       "filtersTitle": "عوامل التصفية",
-      "filtersDescription": "المستأجر، الدور، نافذة تسجيل الدخول.",
-      "tenant": "المستأجر",
-      "allTenants": "كل المستأجرين",
+      "filtersDescription": "مساحة عمل الشركة، الدور، نافذة تسجيل الدخول.",
+      "tenant": "مساحة عمل الشركة",
+      "allTenants": "جميع مساحات عمل الشركات",
       "role": "الدور",
       "allRoles": "كل الأدوار",
       "window": "النافذة",
@@ -2193,7 +2193,7 @@
     "whatsapp": {
       "title": "قوالب واتساب",
       "intro": "تتبّع حالة موافقة Meta قبل السماح للقوالب بالدخول إلى قائمة الإرسال.",
-      "tenantPlaceholder": "معرّف UUID للمستأجر للتجاوزات",
+      "tenantPlaceholder": "معرّف UUID لمساحة عمل الشركة للتجاوزات",
       "allStatuses": "كل الحالات",
       "allCategories": "كل الفئات",
       "filter": "تصفية",
@@ -2229,13 +2229,13 @@
       },
       "scopeEnum": {
         "global": "عام",
-        "tenant": "مستأجر"
+        "tenant": "مساحة عمل شركة"
       },
-      "scopeMissingTenant": "تجاوز المستأجر مفقود",
+      "scopeMissingTenant": "تجاوز مساحة عمل الشركة مفقود",
       "scopeMissingGlobal": "الصف العام مفقود"
     },
     "companyTypeahead": {
-      "noTenant": "لم يُحدَّد مستأجر",
+      "noTenant": "لم تُحدَّد مساحة عمل شركة",
       "searchPlaceholder": "البحث عن الشركات…",
       "typeToSearch": "اكتب للبحث…",
       "loading": "جارٍ التحميل…",

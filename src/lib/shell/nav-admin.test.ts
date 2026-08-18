@@ -60,6 +60,7 @@ describe('adminNav', () => {
 
   it('uses Companies as the only editable tenant directory', () => {
     const tenants = groupSource('tenants');
+    assert.match(tenants, /labelFallback: 'Company workspaces'/);
     assert.match(tenants, /labelKey: 'companies'[\s\S]+href: '\/admin\/companies'/);
     assert.equal(tenants.includes('/admin/pro-firms'), false);
   });

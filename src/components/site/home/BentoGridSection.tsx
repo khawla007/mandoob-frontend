@@ -16,7 +16,7 @@ export function BentoGridSection() {
         <header className="section__head reveal">
           <span className="eyebrow">03 · Inside the product</span>
           <h2 id="bento-h" className="h2">
-            Every workflow a PRO firm runs, in one place.
+            Every workflow for your assigned company, in one place.
           </h2>
         </header>
       </div>
@@ -105,7 +105,7 @@ export function BentoGridSection() {
               <li className="bento-toast bento-toast--ok">
                 <span className="bento-toast__mark mono">–90d</span>
                 <div>
-                  <span className="bento-toast__title">Ejari — Quay Holdings</span>
+                  <span className="bento-toast__title">Ejari — Acme Trading</span>
                   <span className="bento-toast__sub mono">Scheduled, on track</span>
                 </div>
               </li>
@@ -136,7 +136,7 @@ export function BentoGridSection() {
               </li>
               <li>
                 <span className="bento-docs__type bento-docs__type--pdf mono">PDF</span>
-                <span className="bento-docs__name">moa_quay_holdings.pdf</span>
+                <span className="bento-docs__name">moa_acme_trading.pdf</span>
                 <span className="bento-docs__ver mono">v2</span>
               </li>
               <li>
@@ -147,32 +147,35 @@ export function BentoGridSection() {
             </ul>
           </li>
 
-          {/* Tile D — Multi-tenant switcher */}
-          <li className="bento-tile bento-tile--tenant reveal" aria-label="Tenant switcher demo">
+          {/* Tile D — Assigned company workspace */}
+          <li
+            className="bento-tile bento-tile--tenant reveal"
+            aria-label="Assigned company workspace demo"
+          >
             <div className="bento-tile__head">
               <span className="bento-tile__icon" aria-hidden="true">
                 <Building2 size={16} strokeWidth={1.75} />
               </span>
-              <span className="eyebrow">Multi-tenant</span>
+              <span className="eyebrow">Assigned company</span>
             </div>
-            <h3 className="bento-tile__title">White-label, one login.</h3>
+            <h3 className="bento-tile__title">One company workspace, one login.</h3>
             <div className="bento-tenant" aria-hidden="true">
               <div className="bento-tenant__active">
                 <span className="bento-tenant__avatar" data-letter="N" />
                 <div>
-                  <span className="bento-tenant__name">Naseej PRO Services</span>
-                  <span className="bento-tenant__sub mono">naseej.mandoob.app</span>
+                  <span className="bento-tenant__name">Acme Trading FZ-LLC</span>
+                  <span className="bento-tenant__sub mono">acme.mandoob.app</span>
                 </div>
                 <span className="bento-tenant__pill mono">live</span>
               </div>
               <ul className="bento-tenant__list" role="list">
                 <li>
                   <span className="bento-tenant__avatar" data-letter="A" />
-                  Acme Business Setup
+                  One active company assignment
                 </li>
                 <li>
                   <span className="bento-tenant__avatar" data-letter="Q" />
-                  Quay Corporate Services
+                  Mandoob platform policy
                 </li>
               </ul>
             </div>

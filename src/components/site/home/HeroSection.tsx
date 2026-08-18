@@ -37,7 +37,7 @@ export function HeroSection() {
             </span>{' '}
             <span className="rise">
               <span className="rise__i" style={{ '--rise-delay': '440ms' } as React.CSSProperties}>
-                Scale.
+                Operate.
               </span>
             </span>
           </h1>

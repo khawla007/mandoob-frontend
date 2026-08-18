@@ -58,6 +58,21 @@ test('tenant-rejected: no reason block when null', async () => {
   assert.ok(!r.html.includes('Reviewer note'));
 });
 
+test('subscription-suspension: identifies the suspended company workspace', async () => {
+  const { renderTemplate } = await load();
+  const r = renderTemplate('subscription-suspension', {
+    tenantName: 'Acme',
+    billingUrl: 'https://app.example.com/billing',
+  });
+
+  assert.ok(r.html);
+  assert.ok(r.text);
+  assert.match(r.html, /company workspace is suspended/i);
+  assert.match(r.text, /company workspace is suspended/i);
+  assert.doesNotMatch(r.html, /\bthe tenant\b/i);
+  assert.doesNotMatch(r.text, /\bthe tenant\b/i);
+});
+
 test('document-requested: includes upload link + label', async () => {
   const { renderTemplate } = await load();
   const r = renderTemplate('document-requested', {

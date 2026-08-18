@@ -40,7 +40,7 @@ async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx
   if (!customer.linkedCompanyId) {
     throw new ApiError(
       'NO_LINKED_COMPANY',
-      'Account is not linked to a company. Ask your PRO firm to link you.',
+      'Account is not linked to a company. Contact Mandoob support to link it.',
       403,
     );
   }

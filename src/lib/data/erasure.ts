@@ -334,7 +334,8 @@ export async function createErasureRequest(args: {
     toAddress: args.subjectEmail ?? args.recoveryEmail,
     input: {
       subjectName: args.subjectName ?? 'there',
-      tenantName: ((tenant as { name?: string } | null)?.name ?? 'your PRO firm') as string,
+      tenantName: ((tenant as { name?: string } | null)?.name ??
+        'your company workspace') as string,
       verificationUrl,
     },
     linked: { entityType: 'erasure_request', entityId: requestId },
@@ -416,7 +417,7 @@ export async function rejectErasureRequest(args: {
     toAddress: detail.recoveryEmail,
     input: {
       subjectName: detail.subjectName ?? 'there',
-      tenantName: detail.tenantName ?? 'your PRO firm',
+      tenantName: detail.tenantName ?? 'your company workspace',
       requestId: detail.id,
       reason: args.reason,
     },
@@ -506,7 +507,7 @@ export async function executeErasure(
           toAddress: detail.recoveryEmail,
           input: {
             subjectName: detail.subjectName ?? 'there',
-            tenantName: detail.tenantName ?? 'your PRO firm',
+            tenantName: detail.tenantName ?? 'your company workspace',
             requestId,
           },
           scheduledFor: new Date(detail.submittedAt),

@@ -8,7 +8,7 @@ export function ProHeroSection() {
         <div className="container">
           <span className="eyebrow reveal reveal--mask">
             <span className="rise">
-              <span className="rise__i">.AE · For PRO Firms</span>
+              <span className="rise__i">.AE · For Dedicated PROs</span>
             </span>
           </span>
           <h1 id="pro-hero-h" className="display reveal reveal--mask">
@@ -24,7 +24,7 @@ export function ProHeroSection() {
             </span>{' '}
             <span className="rise">
               <span className="rise__i" style={{ '--rise-delay': '280ms' } as React.CSSProperties}>
-                PRO
+                assigned
               </span>
             </span>{' '}
             <span className="rise">
@@ -32,7 +32,7 @@ export function ProHeroSection() {
                 className="rise__i u-accent"
                 style={{ '--rise-delay': '360ms' } as React.CSSProperties}
               >
-                firm
+                company
               </span>
             </span>{' '}
             <span className="rise">
@@ -44,9 +44,9 @@ export function ProHeroSection() {
           <p className="lede reveal reveal--mask">
             <span className="rise rise--block">
               <span className="rise__i" style={{ '--rise-delay': '520ms' } as React.CSSProperties}>
-                The dedicated operating system for UAE PRO firms. Company profile, visa workflows,
-                Emirates ID tracking, renewal alerts, document vault, audit log, and white-label
-                portals — one PRO, one company workspace.
+                The dedicated operating system for an assigned company. Company profile, visa
+                workflows, Emirates ID tracking, renewal alerts, document vault, audit log, and
+                white-label portal — one active company assignment under Mandoob platform policy.
               </span>
             </span>
           </p>
@@ -61,24 +61,24 @@ export function ProHeroSection() {
         </div>
       </section>
 
-      <section className="stats-band" aria-label="PRO firm stats">
+      <section className="stats-band" aria-label="Mandoob assignment policy">
         <div className="container">
           <dl className="hero__spec">
             <div className="hero__stat reveal">
-              <dt className="hero__statL">PRO firms</dt>
-              <dd className="mono hero__statV">40+</dd>
+              <dt className="hero__statL">company assignment</dt>
+              <dd className="mono hero__statV">ONE ACTIVE</dd>
             </div>
             <div className="hero__stat reveal">
-              <dt className="hero__statL">companies managed</dt>
-              <dd className="mono hero__statV">40+</dd>
+              <dt className="hero__statL">authorization</dt>
+              <dd className="mono hero__statV">LIVE</dd>
             </div>
             <div className="hero__stat reveal">
-              <dt className="hero__statL">fines avoided</dt>
-              <dd className="mono hero__statV u-accent">AED 2.4M</dd>
+              <dt className="hero__statL">audit trail</dt>
+              <dd className="mono hero__statV u-accent">IMMUTABLE</dd>
             </div>
             <div className="hero__stat reveal">
-              <dt className="hero__statL">on-time renewals</dt>
-              <dd className="mono hero__statV">98%</dd>
+              <dt className="hero__statL">workspace scope</dt>
+              <dd className="mono hero__statV">ISOLATED</dd>
             </div>
           </dl>
         </div>

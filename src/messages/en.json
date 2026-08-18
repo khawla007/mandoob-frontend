@@ -273,7 +273,7 @@
       "unauthorized": "Sign in again to continue.",
       "forbidden": "You do not have permission to manage this document.",
       "notFound": "The requested document record was not found.",
-      "tenantInactive": "This firm is inactive. Contact an administrator before continuing.",
+      "tenantInactive": "This company workspace is inactive. Contact an administrator before continuing.",
       "expiryExternallyManaged": "Update this expiry from its source record.",
       "openFailed": "The secure file link could not be created. Try again.",
       "unexpected": "The action could not be completed safely. Try again."
@@ -315,7 +315,7 @@
     "sessions": "Sessions",
     "mfaAndSecurity": "MFA & Security",
     "auditLogs": "Audit logs",
-    "tenants": "Tenants",
+    "tenants": "Company workspaces",
     "companies": "Companies",
     "meetings": "Meetings",
     "erasure": "Erasure",
@@ -425,7 +425,7 @@
     "dateFormat": "Date format",
     "email": "Email",
     "role": "Role",
-    "tenant": "Tenant",
+    "tenant": "Company workspace",
     "created": "Created",
     "mfaEnrolled": "MFA enrolled",
     "notEnrolled": "Not enrolled",
@@ -563,11 +563,11 @@
       "renewalsIntro": "Trade license, visas, Emirates IDs, and Ejari renewals — past and upcoming.",
       "renewalsColorCues": "Color cues: red = within 30 days · amber = within 90 days.",
       "submittedDescription": "Documents already uploaded or under PRO review.",
-      "awaitingDescription": "Items your PRO firm needs from you.",
-      "accountNotLinkedNote": "Your account is not linked to a company yet. Ask your PRO firm to link you, then review your account details.",
+      "awaitingDescription": "Items your assigned PRO needs from you.",
+      "accountNotLinkedNote": "Your account is not linked to a company yet. Contact Mandoob support to link it, then review your account details.",
       "registrationProgressDescription": "Where your company stands in the UAE registration flow.",
       "paymentsDescription": "Pending invoices and recent receipts.",
-      "recentCommsDescription": "Latest messages between you and your PRO firm.",
+      "recentCommsDescription": "Latest messages between you and your assigned PRO.",
       "uploadDialogDescription": "PDF, JPEG, PNG, DOCX, or XLSX up to 25 MB. The file is scanned before storage."
     }
   },
@@ -727,7 +727,7 @@
           "renewal_reminder": "Renewal reminder",
           "platform": "Platform",
           "tenant": "Company workspace",
-          "tenant_team": "Workspace team",
+          "tenant_team": "Company workforce",
           "inbound_keyword": "Inbound keyword"
         }
       },
@@ -853,7 +853,7 @@
       },
       "smtp": {
         "title": "SMTP",
-        "description": "Per-tenant outbound email server. Password is encrypted at rest (AES-256-GCM).",
+        "description": "Company workspace outbound email server. Password is encrypted at rest (AES-256-GCM).",
         "savedDescription": "SMTP config updated.",
         "host": "Host",
         "port": "Port",
@@ -866,7 +866,7 @@
       },
       "whatsapp": {
         "title": "WhatsApp",
-        "description": "Meta Cloud API credentials for tenant-owned messaging.",
+        "description": "Meta Cloud API credentials for company workspace messaging.",
         "savedDescription": "WhatsApp config updated.",
         "statusConnected": "Connected",
         "statusDisabled": "Disabled",
@@ -893,16 +893,16 @@
           "brandingIncomplete": "Fallback initial is active",
           "contactComplete": "Legal links configured",
           "contactIncomplete": "Add sender and legal links",
-          "smtpComplete": "Tenant SMTP enabled",
+          "smtpComplete": "Company SMTP enabled",
           "smtpIncomplete": "Using platform email fallback",
-          "whatsappComplete": "Tenant WhatsApp enabled",
+          "whatsappComplete": "Company WhatsApp enabled",
           "whatsappIncomplete": "Not configured or disabled"
         }
       }
     },
     "dashboard": {
       "title": "Dashboard",
-      "subtitle": "{tenant} · workspace signals for your team.",
+      "subtitle": "{tenant} · assigned company workspace signals.",
       "recentActivityDescription": "Latest authentication events for {tenant}.",
       "kpis": {
         "activeCompany": {
@@ -943,7 +943,7 @@
         "deadlineIntensity": "Deadline intensity",
         "collectionsWaterfall": "Collections waterfall",
         "renewalStreams": "Renewal streams",
-        "teamSignal": "Team signal",
+        "teamSignal": "Workload signal",
         "actionDeck": "Action deck",
         "empty": "No signals need attention right now.",
         "loading": "Loading dashboard signal…",
@@ -1049,9 +1049,9 @@
           }
         },
         "teamLabels": {
-          "empty": "No active team workload is available.",
+          "empty": "No active assigned-company workload is available.",
           "openApplications": "Open applications",
-          "description": "Open workload and capacity by active team member.",
+          "description": "Open workload and remaining capacity in the assigned company.",
           "unassignedCases": "Unassigned cases",
           "activeCases": "{count} active cases",
           "capacity": "Capacity for {name}",
@@ -1088,7 +1088,7 @@
         }
       }
     },
-    "dashboardSignalsSubtitle": "{tenant} · workspace signals for your team.",
+    "dashboardSignalsSubtitle": "{tenant} · assigned company workspace signals.",
     "dashboardRecentLoginsDescription": "Latest authentication events for {tenant}.",
     "renewalsPageSubtitle": "License, visa, Emirates ID, and Ejari renewals across {tenant}.",
     "renewalsEmptyActive": "No active renewals. Create one or wait for a license_expiry to seed an auto-row.",
@@ -1230,7 +1230,7 @@
     "join": "Join",
     "schedule": "Schedule",
     "longCopy": {
-      "recordingConsent": "By joining this meeting you consent to it being recorded and stored on your tenant workspace for compliance review.",
+      "recordingConsent": "By joining this meeting you consent to it being recorded and stored in your company workspace for compliance review.",
       "aiSummaryNotice": "An AI summary will be generated after the meeting and shared with you and your PRO."
     }
   },
@@ -1369,7 +1369,7 @@
     "officeCity": "Downtown Dubai",
     "officeCountry": "United Arab Emirates",
     "officeHours": "Sun–Thu · 09:00–18:00 GST",
-    "proCtaPrefix": "Are you a PRO firm?",
+    "proCtaPrefix": "Are you a PRO?",
     "proCtaLink": "Book a demo"
   },
   "estimator": {
@@ -1488,7 +1488,7 @@
       "score": "Score",
       "notSet": "Not set",
       "scoreFactors": "Score factors",
-      "assignPlaceholder": "Assign active PRO firm",
+      "assignPlaceholder": "Assign active company workspace",
       "assignLead": "Assign lead",
       "save": "Save",
       "questionnaire": "Questionnaire",
@@ -1521,7 +1521,7 @@
     },
     "admin": {
       "title": "Lead pipeline",
-      "subtitle": "Questionnaire leads across every tenant. Showing {total}."
+      "subtitle": "Questionnaire leads across every company workspace. Showing {total}."
     },
     "pro": {
       "title": "Leads",
@@ -1572,9 +1572,9 @@
         "role": "Role",
         "chooseRole": "Choose a role",
         "changeRoleHint": "Use Change role action to change role; sessions revoke on save.",
-        "tenant": "Tenant",
-        "chooseTenant": "Choose a tenant",
-        "tenantImmutable": "Tenant cannot be moved from this form.",
+        "tenant": "Company workspace",
+        "chooseTenant": "Choose a company workspace",
+        "tenantImmutable": "Company workspace cannot be moved from this form.",
         "reason": "Reason (optional)",
         "reasonPlaceholder": "Recorded in admin_audit_actions for traceability",
         "nationality": "Nationality (ISO 2-letter)",
@@ -1604,13 +1604,13 @@
       "listTitle": "Users",
       "listShowing": "Showing {count} {more, select, true {(more available)} other {}}",
       "directoryTitle": "Directory",
-      "directoryDescription": "All Mandoob identities across tenants.",
+      "directoryDescription": "All Mandoob identities across company workspaces.",
       "createdAlertTitle": "User created",
       "createdAlertDescription": "Invite email sent. The new user appears below once Supabase processes the invite.",
       "table": {
         "user": "User",
         "role": "Role",
-        "tenant": "Tenant",
+        "tenant": "Company workspace",
         "status": "Status",
         "created": "Created",
         "lastSignIn": "Last sign-in",
@@ -1630,9 +1630,9 @@
         "filterByRole": "Filter by role",
         "allStatuses": "All statuses",
         "filterByStatus": "Filter by status",
-        "allTenants": "All tenants",
-        "filterByTenant": "Filter by tenant",
-        "searchTenantsPlaceholder": "Search tenants…",
+        "allTenants": "All company workspaces",
+        "filterByTenant": "Filter by company workspace",
+        "searchTenantsPlaceholder": "Search company workspaces…",
         "noTenantMatches": "No matches."
       },
       "pagination": {
@@ -1647,9 +1647,9 @@
         "errorTitle": "Cannot change role",
         "newRoleLabel": "New role",
         "newRolePlaceholder": "Choose new role",
-        "tenantPlaceholder": "Choose tenant",
+        "tenantPlaceholder": "Choose company workspace",
         "companyRequiredLabel": "Company (required)",
-        "pickTenantBeforeCompany": "Pick a tenant first to enable company lookup.",
+        "pickTenantBeforeCompany": "Pick a company workspace first to enable company lookup.",
         "confirmLabel": "Type DEMOTE to confirm",
         "errPickRole": "Pick a target role.",
         "errTypeDemote": "Type DEMOTE to confirm super_admin demotion.",
@@ -1693,7 +1693,7 @@
       "sessions": {
         "empty": "No active sessions match the current filters.",
         "user": "User",
-        "tenant": "Tenant",
+        "tenant": "Company workspace",
         "role": "Role",
         "ip": "IP",
         "started": "Started",
@@ -1723,7 +1723,7 @@
       },
       "recentLogins": {
         "title": "Recent logins",
-        "description": "Latest authentication events across all tenants.",
+        "description": "Latest authentication events across all company workspaces.",
         "user": "User",
         "role": "Role",
         "ip": "IP",
@@ -1934,7 +1934,7 @@
         "replacementProLabel": "Replacement PRO",
         "proLabel": "PRO user",
         "selectPro": "Select an available PRO",
-        "proDescription": "A PRO can hold only one active company assignment.",
+        "proDescription": "Mandoob platform policy allows each PRO to hold one active company assignment.",
         "reasonLabel": "Reason for reassignment",
         "reasonDescription": "Record why the current PRO is being replaced (3–500 characters).",
         "saving": "Saving…",
@@ -2006,18 +2006,18 @@
     },
     "audit": {
       "kind": {
-        "tenant_audit": "Tenant audit",
+        "tenant_audit": "Company workspace audit",
         "auth_event": "Auth events"
       },
       "kindBadge": {
-        "tenant_audit": "tenant",
+        "tenant_audit": "workspace",
         "auth_event": "auth"
       },
       "table": {
         "empty": "No audit entries match the current filters.",
         "when": "When",
         "kind": "Kind",
-        "tenant": "Tenant",
+        "tenant": "Company workspace",
         "actor": "Actor",
         "action": "Action",
         "details": "Details",
@@ -2025,11 +2025,11 @@
       },
       "page": {
         "title": "Audit Logs",
-        "intro": "Cross-tenant investigation surface. Tenant-side product events and platform auth events.",
+        "intro": "Cross-workspace investigation surface. Company workspace events and platform auth events.",
         "filters": "Filters",
-        "filtersDescription": "Kind, tenant, actor, action, date range, free-text.",
-        "tenant": "Tenant",
-        "allTenants": "All tenants",
+        "filtersDescription": "Kind, company workspace, actor, action, date range, free-text.",
+        "tenant": "Company workspace",
+        "allTenants": "All company workspaces",
         "actor": "Actor (uuid)",
         "from": "From",
         "to": "To",
@@ -2037,7 +2037,7 @@
         "searchDetails": "Search details (JSONB)",
         "apply": "Apply",
         "reset": "Reset",
-        "tenantAuditLog": "Tenant audit log",
+        "tenantAuditLog": "Company workspace audit log",
         "authEvents": "Auth events",
         "resultsDescription": "Showing up to 50 entries, newest first. Click a row's details to expand the JSONB payload.",
         "nextPage": "Next page →",
@@ -2047,12 +2047,12 @@
     },
     "dashboard": {
       "title": "Overview",
-      "intro": "Cross-tenant authentication and identity signals.",
+      "intro": "Cross-workspace authentication and identity signals.",
       "lastDaysLive": "Last 30 days · live"
     },
     "stats": {
       "totalUsers": "Total users",
-      "activeTenants": "Active tenants",
+      "activeTenants": "Active company workspaces",
       "logins7d": "Logins (7d)",
       "failedLogins24h": "Failed logins (24h)",
       "allTime": "all time",
@@ -2067,9 +2067,9 @@
     "finance": {
       "title": "Finance",
       "intro": "Stripe subscription revenue.",
-      "tenantMrr": "Tenant MRR",
+      "tenantMrr": "Workspace MRR",
       "table": {
-        "tenant": "Tenant",
+        "tenant": "Company workspace",
         "plan": "Plan",
         "status": "Status",
         "periodEnd": "Period end",
@@ -2078,7 +2078,7 @@
       "kpi": {
         "mrr": "MRR",
         "arr": "ARR",
-        "activeTenants": "Active tenants",
+        "activeTenants": "Active company workspaces",
         "churn": "Churn",
         "helperMonthlyValue": "active monthly value",
         "helperMrrTimes12": "MRR x 12",
@@ -2101,7 +2101,7 @@
         "title": "Erasure requests",
         "intro": "Verified PDPL right-to-erasure requests awaiting review.",
         "subject": "Subject",
-        "tenant": "Tenant",
+        "tenant": "Company workspace",
         "status": "Status",
         "submitted": "Submitted",
         "action": "Action",
@@ -2111,11 +2111,11 @@
       "detail": {
         "title": "Erasure request",
         "subjectTitle": "Subject",
-        "subjectDescription": "Identity and tenant context for review.",
+        "subjectDescription": "Identity and company workspace context for review.",
         "name": "Name",
         "email": "Email",
         "kind": "Kind",
-        "tenant": "Tenant",
+        "tenant": "Company workspace",
         "reason": "Reason",
         "unknown": "Unknown",
         "noReason": "No reason provided",
@@ -2157,7 +2157,7 @@
       "kpiLockedNetblocks": "Locked netblocks (now)",
       "kpiLockedNetblocksHint": "auth_failed_attempts where key like net:%",
       "lockedAccountsTitle": "Currently locked accounts",
-      "lockedAccountsDescription": "Click Unlock to clear the counter and lockout window. Audited to tenant_audit_log.",
+      "lockedAccountsDescription": "Click Unlock to clear the counter and lockout window. Recorded in the company workspace audit log.",
       "topIpsTitle": "Top failed-login IPs (24h)",
       "topIpsDescription": "Helps spot brute-force from one source.",
       "topIpsEmpty": "No failed logins in the last 24 hours.",
@@ -2171,11 +2171,11 @@
     },
     "sessions": {
       "title": "Sessions",
-      "intro": "Active sessions across all tenants. Revoke a single session or all of a user's sessions.",
+      "intro": "Active sessions across all company workspaces. Revoke a single session or all of a user's sessions.",
       "filtersTitle": "Filters",
-      "filtersDescription": "Tenant, role, signed-in window.",
-      "tenant": "Tenant",
-      "allTenants": "All tenants",
+      "filtersDescription": "Company workspace, role, signed-in window.",
+      "tenant": "Company workspace",
+      "allTenants": "All company workspaces",
       "role": "Role",
       "allRoles": "All roles",
       "window": "Window",
@@ -2193,7 +2193,7 @@
     "whatsapp": {
       "title": "WhatsApp templates",
       "intro": "Track Meta approval state before templates are allowed into the outbound queue.",
-      "tenantPlaceholder": "Tenant UUID for overrides",
+      "tenantPlaceholder": "Company workspace UUID for overrides",
       "allStatuses": "All statuses",
       "allCategories": "All categories",
       "filter": "Filter",
@@ -2229,13 +2229,13 @@
       },
       "scopeEnum": {
         "global": "Global",
-        "tenant": "Tenant"
+        "tenant": "Company workspace"
       },
-      "scopeMissingTenant": "Missing tenant override",
+      "scopeMissingTenant": "Missing company workspace override",
       "scopeMissingGlobal": "Missing global row"
     },
     "companyTypeahead": {
-      "noTenant": "No tenant selected",
+      "noTenant": "No company workspace selected",
       "searchPlaceholder": "Search companies…",
       "typeToSearch": "Type to search…",
       "loading": "Loading…",

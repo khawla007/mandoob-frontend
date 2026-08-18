@@ -6,7 +6,7 @@ export function ProFinalCtaSection() {
       <div className="cta-section__inner reveal container">
         <span className="eyebrow">04 · Get started</span>
         <h2 id="pro-cta-h" className="display display--cta">
-          Ready to operate at scale?
+          Ready to operate your assigned company?
         </h2>
         <Link className="btn btn--accent btn--lg" href="/pricing" id="pro-cta-final">
           See Pricing

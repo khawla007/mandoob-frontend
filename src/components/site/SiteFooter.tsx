@@ -6,7 +6,7 @@ const cols = [
     links: [
       { href: '/estimate', label: 'Estimator' },
       { href: '/apply', label: 'Start Application' },
-      { href: '/pro', label: 'For PRO firms' },
+      { href: '/pro', label: 'For PROs' },
       { href: '/pricing', label: 'Pricing' },
     ],
   },

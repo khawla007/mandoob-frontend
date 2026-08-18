@@ -5,7 +5,7 @@ const plans = [
   {
     name: 'Starter',
     price: 4900,
-    features: ['Company records', 'Document requests', 'Renewal alerts'],
+    features: ['Company workspace', 'Document requests', 'Renewal alerts'],
   },
   {
     name: 'Professional',
@@ -15,7 +15,7 @@ const plans = [
   {
     name: 'Enterprise',
     price: 19900,
-    features: ['Scale limits', 'Advanced controls', 'Priority support'],
+    features: ['Assignment controls', 'Advanced audit', 'Priority support'],
   },
 ];
 
@@ -29,8 +29,9 @@ export default function PricingPage() {
             Mandoob pricing
           </h1>
           <p className="lede">
-            Subscription plans for UAE PRO firms running client onboarding, renewals, documents, and
-            payment operations.
+            Subscription plans for dedicated UAE PRO operations across an assigned company,
+            renewals, documents, and payments. Every plan follows Mandoob&apos;s one-active-company
+            assignment policy.
           </p>
         </header>
       </div>

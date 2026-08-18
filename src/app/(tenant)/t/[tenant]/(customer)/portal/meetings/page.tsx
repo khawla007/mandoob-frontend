@@ -95,7 +95,7 @@ export default async function CustomerMeetingsPage({
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              Your account is not linked to a company file yet. Ask your PRO firm to link your
+              Your account is not linked to a company file yet. Contact Mandoob support to link your
               profile before booking.
             </p>
           )}

@@ -106,7 +106,7 @@ export const adminNav: ShellNavGroup[] = [
   },
   {
     labelKey: 'tenants',
-    labelFallback: 'Tenants',
+    labelFallback: 'Company workspaces',
     items: [
       {
         labelKey: 'companies',

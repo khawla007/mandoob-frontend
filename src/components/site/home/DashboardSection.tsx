@@ -7,7 +7,7 @@ export function DashboardSection() {
         <header className="section__head section__head--inv reveal">
           <span className="eyebrow eyebrow--inv">02 · Dashboard</span>
           <h2 id="show-h" className="h2 h2--inv">
-            One dashboard. Every client.
+            One dashboard. Your assigned company.
           </h2>
         </header>
       </div>
@@ -32,7 +32,7 @@ export function DashboardSection() {
             aria-labelledby="ff-whitelabel"
           >
             <h3 id="ff-whitelabel">White-label</h3>
-            <p>Custom subdomain, logo, sender per tenant.</p>
+            <p>Custom subdomain, logo, and sender for the company workspace.</p>
           </article>
         </div>
       </div>

@@ -25,7 +25,7 @@ const plans = [
     id: 'enterprise',
     label: 'Enterprise',
     amount: 19900,
-    features: ['Priority support', 'Advanced controls', 'Scale limits'],
+    features: ['Priority support', 'Assignment controls', 'Advanced audit'],
   },
 ] as const;
 

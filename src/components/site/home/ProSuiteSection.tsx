@@ -7,7 +7,7 @@ export function ProSuiteSection() {
         <header className="section__head reveal">
           <span className="eyebrow">01 · Platform</span>
           <h2 id="suite-h" className="h2">
-            Built for a dedicated PRO managing one company.
+            Built for a PRO working in one assigned company.
           </h2>
         </header>
       </div>
@@ -21,30 +21,30 @@ export function ProSuiteSection() {
               <span className="cell__icon" aria-hidden="true">
                 <ShieldCheck size={16} strokeWidth={1.75} />
               </span>
-              <span className="eyebrow">Multi-tenant control</span>
+              <span className="eyebrow">Company workspace access</span>
             </div>
-            <h3>Every company record, isolated at the row.</h3>
+            <h3>One active company assignment, isolated at the row.</h3>
             <p>
-              Postgres RLS enforces tenant_id on every table. Switch tenants without leaking a
-              record.
+              Mandoob platform policy links each PRO account to one active company workspace.
+              Postgres RLS keeps every assigned-company record isolated.
             </p>
             <table className="mini-table">
               <caption className="visually-hidden">
-                Sample company renewal register for Acme Trading.
+                Sample assigned company workspace for Acme Trading.
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Company</th>
-                  <th scope="col">Type</th>
-                  <th scope="col">Renewal</th>
+                  <th scope="col">Record</th>
+                  <th scope="col">Detail</th>
+                  <th scope="col">State</th>
                   <th scope="col">Status</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
+                  <td>Legal company</td>
                   <td>Acme Trading FZ-LLC</td>
-                  <td>Free Zone</td>
-                  <td className="mono">14 Jun</td>
+                  <td className="mono">VERIFIED</td>
                   <td>
                     <span className="status-pill status-pill--ok">
                       <span className="visually-hidden">Status: </span>On track
@@ -52,19 +52,19 @@ export function ProSuiteSection() {
                   </td>
                 </tr>
                 <tr>
-                  <td>Naseej Group LLC</td>
-                  <td>Mainland</td>
-                  <td className="mono">02 Jun</td>
+                  <td>Company workspace</td>
+                  <td>acme.mandoob.app</td>
+                  <td className="mono">LIVE</td>
                   <td>
-                    <span className="status-pill status-pill--warn">
-                      <span className="visually-hidden">Status: </span>Due soon
+                    <span className="status-pill status-pill--ok">
+                      <span className="visually-hidden">Status: </span>Ready
                     </span>
                   </td>
                 </tr>
                 <tr>
-                  <td>Quay Holdings Ltd</td>
-                  <td>Offshore</td>
-                  <td className="mono">28 Aug</td>
+                  <td>PRO assignment</td>
+                  <td>Dedicated PRO</td>
+                  <td className="mono">ACTIVE</td>
                   <td>
                     <span className="status-pill status-pill--ok">
                       <span className="visually-hidden">Status: </span>On track
@@ -99,7 +99,7 @@ export function ProSuiteSection() {
                 <li>
                   <time dateTime="2026-05-18T12:42:09Z">12:42:09</time>
                   <span className="logbox__verb">visa.stamp</span>
-                  <span className="logbox__entity">client/9842</span>
+                  <span className="logbox__entity">company/9842</span>
                   <span className="logbox__actor">pro</span>
                 </li>
                 <li>

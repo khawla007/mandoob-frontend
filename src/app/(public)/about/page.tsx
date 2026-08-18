@@ -11,9 +11,9 @@ export default function AboutPage() {
             We make UAE setup <span className="u-accent">simple.</span>
           </h1>
           <p className="lede">
-            Mandoob is the multi-tenant platform that replaces WhatsApp threads, spreadsheets, and
-            scattered email with one workspace for UAE company registration and PRO management.
-            Built by Fanatic Coders in Downtown Dubai.
+            Mandoob replaces WhatsApp threads, spreadsheets, and scattered email with one company
+            workspace for UAE registration and PRO operations. Built by Fanatic Coders in Downtown
+            Dubai.
           </p>
           <div className="cta-row">
             <Link className="btn btn--accent" href="/estimate">
@@ -63,7 +63,7 @@ export default function AboutPage() {
               <h3>The problem</h3>
               <p>
                 UAE businesses lose time and money to manual paperwork, missed renewal dates, and
-                AED 25/day late fines. PRO firms juggle business workflows across disconnected
+                AED 25/day late fines. Assigned PROs juggle business workflows across disconnected
                 tools.
               </p>
             </article>
@@ -78,7 +78,7 @@ export default function AboutPage() {
               <h3>The outcome</h3>
               <p>
                 Faster setups, zero surprise fees, and a complete audit trail that compliance teams
-                trust — for entrepreneurs and the PRO firms that serve them.
+                trust — for entrepreneurs and their assigned PROs.
               </p>
             </article>
           </div>
@@ -102,8 +102,8 @@ export default function AboutPage() {
               <p>Aligned to PDPL, MOHRE, GDRFA, ICP, and DED workflows.</p>
             </article>
             <article className="cell cell--why">
-              <h4>Multi-tenant</h4>
-              <p>Postgres RLS isolates every client at the row.</p>
+              <h4>Company-scoped</h4>
+              <p>Postgres RLS isolates every assigned company at the row.</p>
             </article>
             <article className="cell cell--why">
               <h4>Audit-grade</h4>
@@ -111,7 +111,7 @@ export default function AboutPage() {
             </article>
             <article className="cell cell--why">
               <h4>White-label</h4>
-              <p>Custom subdomain, logo, and sender per firm.</p>
+              <p>Custom subdomain, logo, and sender for each company workspace.</p>
             </article>
           </div>
         </div>

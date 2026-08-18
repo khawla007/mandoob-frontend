@@ -29,9 +29,9 @@ export function FinalCtaSection() {
         <p className="micro mono">No card. No call. 90 seconds.</p>
         <div className="cta-divider" aria-hidden="true" />
         <p className="cta-secondary">
-          Are you a PRO firm?{' '}
+          Are you a PRO?{' '}
           <Link className="cell__link" href="/pro">
-            See the platform for PRO firms <span aria-hidden="true">↗</span>
+            See the assigned-company workspace <span aria-hidden="true">↗</span>
           </Link>
         </p>
       </div>

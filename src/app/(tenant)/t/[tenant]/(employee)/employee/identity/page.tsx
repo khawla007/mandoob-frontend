@@ -46,7 +46,7 @@ export default async function EmployeeIdentityPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Visa & Emirates ID</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Read-only identity records maintained by your PRO firm.
+          Read-only identity records maintained by your assigned PRO.
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default async function EmployeeIdentityPage({
             Identity file
           </CardTitle>
           <CardDescription>
-            Sensitive numbers are masked here. Ask your PRO firm to correct official document
+            Sensitive numbers are masked here. Contact Mandoob support to correct official document
             values.
           </CardDescription>
         </CardHeader>
