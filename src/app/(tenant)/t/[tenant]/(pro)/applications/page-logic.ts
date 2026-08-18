@@ -18,7 +18,7 @@ type ParsedApplicationFilters = {
   status?: Array<(typeof serviceCaseStatuses)[number]>;
   assigned_to?: string;
   service_type?: string;
-  client_id?: string;
+  company_id?: string;
   deadlineDate?: string;
   deadlinePeriod?: 'morning' | 'afternoon';
 };

@@ -1,8 +1,5 @@
 import Link from 'next/link';
 import { Filter, Search } from 'lucide-react';
-import type { ReactNode } from 'react';
-
-import type { DocumentCenterClientOption } from '@/lib/data/pro-document-center';
 import type { DocumentCenterSearch } from '@/lib/validation/pro-document-center';
 import { DOC_TYPES, type DocType } from '@/lib/validation/document';
 
@@ -10,7 +7,7 @@ export type DocumentFilterLabels = {
   search: string;
   searchPlaceholder: string;
   view: string;
-  client: string;
+  company: string;
   type: string;
   window: string;
   from: string;
@@ -35,15 +32,11 @@ export function DocumentFilters({
   labels,
   resetHref,
   locale,
-  selectedClient,
-  clientField,
 }: {
   query: DocumentCenterSearch;
   labels: DocumentFilterLabels;
   resetHref: string;
   locale: string;
-  selectedClient: DocumentCenterClientOption | null;
-  clientField: ReactNode;
 }) {
   const dateFormatter = new Intl.DateTimeFormat(locale, {
     timeZone: 'Asia/Dubai',
@@ -55,7 +48,6 @@ export function DocumentFilters({
   const applied = [
     query.search ? `${labels.search}: ${query.search}` : null,
     query.view !== 'all' ? labels.views[query.view] : null,
-    query.clientId ? `${labels.client}: ${selectedClient?.companyName ?? query.clientId}` : null,
     query.docType ? labels.docTypes[query.docType] : null,
     query.window !== 'all' ? labels.windows[query.window] : null,
     query.from ? `${labels.from}: ${formatIsoDate(query.from)}` : null,
@@ -109,7 +101,6 @@ export function DocumentFilters({
           {labels.moreFilters}
         </summary>
         <div className="grid min-w-0 gap-3 pt-3 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
-          {clientField}
           <label className="grid min-w-0 gap-1.5 text-sm font-medium">
             {labels.type}
             <select name="type" defaultValue={query.docType ?? ''} className={fieldClass}>

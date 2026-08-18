@@ -166,7 +166,7 @@ export function DeadlineHeatmap(props: DeadlineHeatmapProps) {
     drilldown.event
       ? signalLabel(labels.documentLink, {
           title: drilldown.event.title,
-          client: drilldown.event.clientName,
+          company: drilldown.event.companyName,
           date: formatSignalDate(cell.date, locale, { dateStyle: 'full' }),
           period: labels[cell.period],
         })

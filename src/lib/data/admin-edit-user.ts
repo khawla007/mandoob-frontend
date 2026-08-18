@@ -107,7 +107,7 @@ export async function adminEditUser(
     const update = {
       nationality: input.nationality ?? null,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-      linked_company_id: input.linked_client_id ?? null,
+      linked_company_id: input.linked_company_id ?? null,
     };
     const { error } = await admin
       .from('customer_profiles')
@@ -120,11 +120,11 @@ export async function adminEditUser(
     changedKeys.push('customer_profile');
   } else if (input.role === 'employee') {
     const update = {
-      company_id: input.client_id,
+      company_id: input.company_id,
       name: input.full_name,
       phone: input.phone,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-      passport_no_hash: hashPassportForLookup(input.client_id, input.passport_no),
+      passport_no_hash: hashPassportForLookup(input.company_id, input.passport_no),
       visa_no_encrypted: encryptOptional(input.visa_no ?? null),
       visa_expiry: input.visa_expiry ?? null,
       emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),

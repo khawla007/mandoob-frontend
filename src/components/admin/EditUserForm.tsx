@@ -54,7 +54,7 @@ function buildDefaults(user: EditableUser): EditUserInput {
       role: 'customer',
       nationality: user.customer.nationality ?? '',
       passport_no: user.customer.passportNo ?? '',
-      linked_client_id: user.customer.linkedClientId ?? null,
+      linked_company_id: user.customer.linkedCompanyId ?? null,
     };
   }
   if (user.role === 'employee') {
@@ -63,7 +63,7 @@ function buildDefaults(user: EditableUser): EditUserInput {
       phone: profile.phone ?? '',
       tenant_id: profile.tenantId ?? '',
       role: 'employee',
-      client_id: user.employee.clientId,
+      company_id: user.employee.companyId,
       passport_no: user.employee.passportNo ?? '',
       visa_no: user.employee.visaNo ?? '',
       visa_expiry: user.employee.visaExpiry ?? '',

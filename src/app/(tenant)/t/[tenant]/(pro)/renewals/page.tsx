@@ -1,12 +1,12 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewRenewalDialog } from '@/components/pro/NewRenewalDialog';
-import { RenewalsTable, type ClientLite } from '@/components/pro/RenewalsTable';
+import { RenewalsTable, type CompanyLite } from '@/components/pro/RenewalsTable';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { listClientsForTenant } from '@/lib/data/clients';
-import { listRenewalsForTenant, type RenewalRow, type RenewalStatus } from '@/lib/data/renewals';
-import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { listRenewalsForCompany, type RenewalRow, type RenewalStatus } from '@/lib/data/renewals';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { parseRenewalSearch, type RenewalSearchParams, type RenewalTab } from './page-logic';
 
 export const dynamic = 'force-dynamic';
@@ -19,26 +19,6 @@ const TABS: { value: RenewalTab; labelKey: string }[] = [
 
 const ACTIVE_STATUSES: RenewalStatus[] = ['upcoming', 'due_soon', 'overdue'];
 
-async function fetchClientsByIds(
-  tenantId: string,
-  ids: string[],
-): Promise<Map<string, ClientLite>> {
-  const map = new Map<string, ClientLite>();
-  if (ids.length === 0) return map;
-  const admin = createSupabaseServiceRoleClient();
-  const { data, error } = await admin
-    .from('clients')
-    .select('id, company_name')
-    .eq('tenant_id', tenantId)
-    .in('id', ids);
-  if (error) {
-    console.error('fetchClientsByIds failed', error);
-    return map;
-  }
-  for (const c of (data ?? []) as ClientLite[]) map.set(c.id, c);
-  return map;
-}
-
 export default async function RenewalsPage({
   params,
   searchParams,
@@ -50,31 +30,32 @@ export default async function RenewalsPage({
   const sp = await searchParams;
   const { tab, renewalId, type, days, deadlineDate, deadlinePeriod } = parseRenewalSearch(sp);
 
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
   const t = await getTranslations('pro');
 
   const statusFilter: RenewalStatus[] =
     tab === 'active' ? ACTIVE_STATUSES : tab === 'completed' ? ['completed'] : ['cancelled'];
 
-  const [rows, clientOptions] = await Promise.all([
-    listRenewalsForTenant(
-      tenant.id,
-      renewalId
-        ? { id: renewalId }
-        : {
-            status: statusFilter,
-            type,
-            bucket: days ?? undefined,
-            deadlineDate,
-            deadlinePeriod,
-          },
-    ),
-    listClientsForTenant({ tenantId: tenant.id, limit: 50 }),
-  ]);
+  const rows = await listRenewalsForCompany(
+    tenant.id,
+    company.id,
+    renewalId
+      ? { id: renewalId }
+      : {
+          status: statusFilter,
+          type,
+          bucket: days ?? undefined,
+          deadlineDate,
+          deadlinePeriod,
+        },
+  );
 
-  const clientIds = Array.from(new Set(rows.map((r) => r.clientId)));
-  const clientsMap = await fetchClientsByIds(tenant.id, clientIds);
+  const companiesMap = new Map<string, CompanyLite>([
+    [company.id, { id: company.id, company_name: company.companyName }],
+  ]);
 
   return (
     <div className="space-y-6">
@@ -85,10 +66,7 @@ export default async function RenewalsPage({
             {t('renewalsPageSubtitle', { tenant: tenant.name })}
           </p>
         </div>
-        <NewRenewalDialog
-          slug={slug}
-          clients={clientOptions.map((c) => ({ id: c.id, company_name: c.company_name }))}
-        />
+        <NewRenewalDialog slug={slug} />
       </div>
 
       <Card>
@@ -109,8 +87,8 @@ export default async function RenewalsPage({
         <CardContent>
           <RenewalsTable
             rows={rows as RenewalRow[]}
-            clients={clientsMap}
-            showClientColumn
+            companies={companiesMap}
+            showCompanyColumn
             slug={slug}
             mode={tab === 'active' ? 'bucketed' : 'flat'}
             emptyMessage={

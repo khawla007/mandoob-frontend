@@ -16,12 +16,10 @@ const readOptional = (path: string) => {
 };
 const page = read('./page.tsx');
 const actions = read('../../../../../../components/pro/documents/DocumentActions.tsx');
+const requestDialog = read('../../../../../../components/pro/documents/RequestDocumentDialog.tsx');
 const history = read('../../../../../../components/pro/documents/VersionHistoryDialog.tsx');
 const summary = read('../../../../../../components/pro/documents/DocumentSummaryGrid.tsx');
 const queue = read('../../../../../../components/pro/documents/DocumentWorkQueue.tsx');
-const clientSearch = read(
-  '../../../../../../components/pro/documents/DocumentClientSearchField.tsx',
-);
 const loading = readOptional('./loading.tsx');
 const errorBoundary = readOptional('./error.tsx');
 const loadingView = read(
@@ -77,24 +75,23 @@ test('page completes exact PRO authorization before every service-role workspace
   for (const serviceRead of [
     'listProDocumentCenter(',
     'getDocumentCenterSummary(',
-    'searchDocumentCenterClientOptions(',
-    'getDocumentCenterClientOption(',
+    'readAssignedCompanyForPro(',
   ]) {
     assert.ok(authorization < page.indexOf(serviceRead), `${serviceRead} must follow auth`);
   }
 });
 
-test('independent server reads launch in one parallel boundary with no client initial waterfall', () => {
+test('independent server reads launch in one parallel boundary without a company selector waterfall', () => {
   assert.match(
     page,
-    /Promise\.all\(\[[\s\S]*listProDocumentCenter\([\s\S]*getDocumentCenterSummary\([\s\S]*searchDocumentCenterClientOptions\([\s\S]*getDocumentCenterClientOption\([\s\S]*getTranslations\('proDocumentCenter'\)[\s\S]*getLocale\(\)[\s\S]*\]\)/u,
+    /Promise\.all\(\[[\s\S]*listProDocumentCenter\([\s\S]*getDocumentCenterSummary\([\s\S]*getTranslations\('proDocumentCenter'\)[\s\S]*getLocale\(\)[\s\S]*\]\)/u,
   );
   assert.doesNotMatch([actions, history, queue].join('\n'), /fetch\(/u);
 });
 
 test('canonicalization preserves validated filters and targets a focused item on page one', () => {
   const focused = parseDocumentCenterSearch({
-    client: '11111111-1111-4111-8111-111111111111',
+    company: '11111111-1111-4111-8111-111111111111',
     view: 'rejected',
     request: '22222222-2222-4222-8222-222222222222',
     page: '9',
@@ -102,7 +99,7 @@ test('canonicalization preserves validated filters and targets a focused item on
   assert.equal(focused.page, 1);
   assert.equal(
     documentCenterHref('acme', focused),
-    '/t/acme/documents?view=rejected&client=11111111-1111-4111-8111-111111111111&request=22222222-2222-4222-8222-222222222222',
+    '/t/acme/documents?view=rejected&company=11111111-1111-4111-8111-111111111111&request=22222222-2222-4222-8222-222222222222',
   );
   assert.match(page, /Math\.ceil\(workspace\.total \/ workspace\.pageSize\)/u);
   assert.match(page, /requestedPage !== workspace\.page/u);
@@ -182,18 +179,10 @@ test('route loading and error recovery are localized, semantic, and sanitized', 
   assert.doesNotMatch(errorBoundary, />\s*[A-Za-z][^<{]*</u);
 });
 
-test('client search preserves localized action errors, bounds queries, and scopes pending copy', () => {
-  assert.match(clientSearch, /maxLength=\{100\}/u);
-  assert.match(
-    clientSearch,
-    /resolveClientSearchActionError\(result\.messageKey, labels\.errors\)/u,
-  );
-  assert.match(clientSearch, /setError\(labels\.error\)/u);
-  assert.match(
-    clientSearch,
-    /currentPending\s*=\s*pending\s*&&\s*isClientSearchRequestPending\(renderGate, pendingRequest\)/u,
-  );
-  assert.doesNotMatch(clientSearch, /disabled=\{pending\}/u);
+test('request and filter forms cannot choose or spoof another company', () => {
+  assert.doesNotMatch(requestDialog, /DocumentCompanySearchField|name="company_id"/u);
+  assert.doesNotMatch(page, /searchDocumentCenterCompanyOptions|getDocumentCenterCompanyOption/u);
+  assert.match(page, /companyId: company\.id/u);
 });
 
 test('route sends numeric counts through ICU instead of raw templates or preformatted values', () => {

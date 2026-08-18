@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Ban, CheckCircle2, CircleAlert, Clock3, FileClock, ScanLine } from 'lucide-react';
 
-import type { DocumentCenterClientOption, DocumentCenterRow } from '@/lib/data/pro-document-center';
+import type { DocumentCenterRow } from '@/lib/data/pro-document-center';
 import type { DocumentCenterSearch } from '@/lib/validation/pro-document-center';
 import type { DocType } from '@/lib/validation/document';
 import {
@@ -18,7 +18,7 @@ type ReviewStatus = NonNullable<DocumentCenterRow['reviewStatus']>;
 
 export type DocumentQueueLabels = {
   region: string;
-  client: string;
+  company: string;
   documentType: string;
   requestStatus: string;
   reviewStatus: string;
@@ -115,7 +115,6 @@ export function DocumentWorkQueue({
   totalPages,
   slug,
   query,
-  clients,
   locale,
   labels,
   actionLabels,
@@ -126,7 +125,6 @@ export function DocumentWorkQueue({
   totalPages: number;
   slug: string;
   query: DocumentCenterSearch;
-  clients: DocumentCenterClientOption[];
   locale: string;
   labels: DocumentQueueLabels;
   actionLabels: DocumentActionLabels;
@@ -137,7 +135,7 @@ export function DocumentWorkQueue({
     query.sort !== 'urgency' ||
     query.window !== 'all' ||
     Boolean(
-      query.clientId || query.docType || query.search || query.from || query.to || query.focus,
+      query.companyId || query.docType || query.search || query.from || query.to || query.focus,
     );
 
   if (rows.length === 0) {
@@ -160,7 +158,7 @@ export function DocumentWorkQueue({
             {labels.reset}
           </Link>
         ) : (
-          <DocumentActions kind="request" slug={slug} clients={clients} labels={actionLabels} />
+          <DocumentActions kind="request" slug={slug} labels={actionLabels} />
         )}
       </div>
     );
@@ -190,7 +188,7 @@ export function DocumentWorkQueue({
           <thead className="bg-muted/50 border-b">
             <tr>
               {[
-                labels.client,
+                labels.company,
                 labels.documentType,
                 labels.requestStatus,
                 labels.reviewStatus,
@@ -219,8 +217,8 @@ export function DocumentWorkQueue({
                   className="aria-current:bg-primary/5 hover:bg-muted/20 align-top transition-colors"
                 >
                   <td className="max-w-52 px-3 py-3">
-                    <span className="block font-medium break-words" title={row.clientCompany}>
-                      {row.clientCompany}
+                    <span className="block font-medium break-words" title={row.companyName}>
+                      {row.companyName}
                     </span>
                     {row.employeeName ? (
                       <span className="text-muted-foreground mt-1 block text-xs">
@@ -300,7 +298,7 @@ export function DocumentWorkQueue({
                       slug={slug}
                       row={{
                         entityKind: row.entityKind,
-                        clientId: row.clientId,
+                        companyId: row.companyId,
                         documentId: row.documentId,
                         versionId: row.versionId,
                         reviewStatus: row.reviewStatus,

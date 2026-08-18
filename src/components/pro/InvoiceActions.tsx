@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,26 +9,37 @@ import {
   markInvoicePaidAction,
   voidInvoiceAction,
 } from '@/app/(tenant)/t/[tenant]/(pro)/payments/actions';
+import type { RefundOperationState } from '@/lib/data/invoices';
+import { syncRefundOperationId } from './refund-operation-state';
 
 export function InvoiceActions({
   slug,
   invoiceId,
   amountMinor,
   status,
+  refundOperation,
 }: {
   slug: string;
   invoiceId: string;
   amountMinor: number;
   status: string;
+  refundOperation: RefundOperationState | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const refundOperationId = useRef<string | null>(null);
+  const hasPendingRefund = refundOperation?.status === 'pending';
+
+  useEffect(() => {
+    refundOperationId.current = syncRefundOperationId(refundOperationId.current, refundOperation);
+  }, [refundOperation]);
 
   function run(action: 'paid' | 'void' | 'refund') {
     setMessage(null);
     startTransition(async () => {
+      if (action === 'refund') refundOperationId.current ??= crypto.randomUUID();
       const result =
         action === 'paid'
           ? await markInvoicePaidAction({ tenantSlug: slug, invoiceId, method: 'bank_transfer' })
@@ -41,14 +52,27 @@ export function InvoiceActions({
             : await issueRefundAction({
                 tenantSlug: slug,
                 invoiceId,
-                amountMinor,
-                reason: reason || 'Refund requested',
+                amountMinor: hasPendingRefund ? refundOperation.amountMinor : amountMinor,
+                reason: hasPendingRefund
+                  ? (refundOperation.reason ?? 'Refund requested')
+                  : reason || 'Refund requested',
+                operationId: refundOperationId.current!,
               });
       if (!result.ok) {
+        if (action === 'refund' && result.code === 'TAP_TERMINAL') {
+          refundOperationId.current = null;
+        }
         setMessage(`${result.code}: ${result.error}`);
         return;
       }
-      setMessage('Updated');
+      if (action === 'refund' && 'status' in result.data && result.data.status === 'succeeded') {
+        refundOperationId.current = null;
+      }
+      setMessage(
+        action === 'refund' && 'status' in result.data && result.data.status === 'pending'
+          ? 'Refund pending'
+          : 'Updated',
+      );
       router.refresh();
     });
   }
@@ -71,7 +95,7 @@ export function InvoiceActions({
         )}
         {canRefund && (
           <Button size="sm" variant="outline" disabled={pending} onClick={() => run('refund')}>
-            Refund
+            {hasPendingRefund ? 'Retry pending refund' : 'Refund'}
           </Button>
         )}
       </div>
@@ -81,6 +105,7 @@ export function InvoiceActions({
           placeholder={canRefund ? 'Refund reason' : 'Void note'}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
+          disabled={hasPendingRefund}
         />
       )}
       {message ? (

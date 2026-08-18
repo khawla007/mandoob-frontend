@@ -13,11 +13,13 @@ export type ApplicationActionResult<T> =
 
 type ProSession = { id: string; role: 'pro'; tenantId: string | null };
 type TenantIdentity = { id: string };
+type CompanyIdentity = { id: string; tenantId: string };
 
 export type ApplicationActionDependencies = {
   requirePro(slug: string): Promise<ProSession>;
   resolveTenant(slug: string): Promise<TenantIdentity | null>;
   requireActive(tenantId: string): Promise<unknown>;
+  resolveAssignedCompany(profileId: string, slug: string): Promise<CompanyIdentity | null>;
   createCase: typeof createServiceCase;
   updateCase: typeof updateServiceCase;
   revalidate(path: string): void;
@@ -62,9 +64,12 @@ function timestampFormValue(form: FormData, key: string): string | null | undefi
 }
 
 function normalizeCreateRaw(raw: unknown): unknown {
-  if (!(raw instanceof FormData)) return raw;
+  if (!(raw instanceof FormData)) {
+    return raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? { ...(raw as Record<string, unknown>) }
+      : {};
+  }
   return {
-    client_id: optionalFormValue(raw, 'client_id') ?? '',
     title: optionalFormValue(raw, 'title') ?? '',
     service_type: optionalFormValue(raw, 'service_type') ?? '',
     priority: optionalFormValue(raw, 'priority') ?? undefined,
@@ -124,7 +129,14 @@ export async function runCreateApplicationAction(
   const session = await dependencies.requirePro(slug);
   try {
     const { tenant } = await authorize(slug, session, dependencies);
-    const parsed = createServiceCaseSchema.safeParse(normalizeCreateRaw(raw));
+    const company = await dependencies.resolveAssignedCompany(session.id, slug);
+    if (!company || company.tenantId !== tenant.id) {
+      throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
+    }
+    const parsed = createServiceCaseSchema.safeParse({
+      ...(normalizeCreateRaw(raw) as Record<string, unknown>),
+      company_id: company.id,
+    });
     if (!parsed.success) {
       return {
         ok: false,
@@ -153,6 +165,10 @@ export async function runUpdateApplicationAction(
   const session = await dependencies.requirePro(slug);
   try {
     const { tenant } = await authorize(slug, session, dependencies);
+    const company = await dependencies.resolveAssignedCompany(session.id, slug);
+    if (!company || company.tenantId !== tenant.id) {
+      throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
+    }
     const parsed = updateServiceCaseSchema.safeParse(normalizeUpdateRaw(raw, dependencies.now()));
     if (!parsed.success) {
       return {
@@ -162,7 +178,7 @@ export async function runUpdateApplicationAction(
       };
     }
     await dependencies.updateCase(
-      { tenantId: tenant.id, actorId: session.id, role: session.role },
+      { tenantId: tenant.id, companyId: company.id, actorId: session.id, role: session.role },
       caseId,
       parsed.data as UpdateServiceCaseRawInput,
     );

@@ -15,39 +15,24 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { createInvoiceAction } from '@/app/(tenant)/t/[tenant]/(pro)/payments/actions';
-
-export type InvoiceClientOption = { id: string; company_name: string };
 
 export function NewInvoiceDialog({
   slug,
-  clients,
-  fixedClientId,
   triggerLabel = 'New invoice',
 }: {
   slug: string;
-  clients: InvoiceClientOption[];
-  fixedClientId?: string;
   triggerLabel?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [clientId, setClientId] = useState(fixedClientId ?? clients[0]?.id ?? '');
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [dueAt, setDueAt] = useState('');
 
   function reset() {
-    setClientId(fixedClientId ?? clients[0]?.id ?? '');
     setLabel('');
     setAmount('');
     setDueAt('');
@@ -58,7 +43,7 @@ export function NewInvoiceDialog({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await createInvoiceAction(slug, { clientId, label, amount, dueAt });
+      const result = await createInvoiceAction(slug, { label, amount, dueAt });
       if (!result.ok) {
         setError(`${result.code}: ${result.error}`);
         return;
@@ -78,7 +63,7 @@ export function NewInvoiceDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button disabled={clients.length === 0}>{triggerLabel}</Button>
+        <Button>{triggerLabel}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -94,22 +79,6 @@ export function NewInvoiceDialog({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
-          <div className="grid gap-2">
-            <Label htmlFor="invoice-client">Client</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={Boolean(fixedClientId)}>
-              <SelectTrigger id="invoice-client">
-                <SelectValue placeholder="Select a client" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.company_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="invoice-label">Label</Label>
@@ -146,7 +115,7 @@ export function NewInvoiceDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={pending || !clientId}>
+            <Button type="submit" disabled={pending}>
               {pending ? 'Issuing…' : 'Issue invoice'}
             </Button>
           </DialogFooter>

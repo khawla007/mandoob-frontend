@@ -123,7 +123,7 @@ renderTest(
       query: parseDocumentCenterSearch({
         q: 'stale',
         view: 'submitted',
-        client: '11111111-1111-4111-8111-111111111111',
+        company: '11111111-1111-4111-8111-111111111111',
         type: 'passport',
         window: 'custom',
         from: '2026-08-01',
@@ -261,7 +261,7 @@ const filterLabels: DocumentFilterLabels = {
   search: 'Search',
   searchPlaceholder: 'Find',
   view: 'View',
-  client: 'Client',
+  company: 'Company',
   type: 'Type',
   window: 'Window',
   from: 'From',
@@ -322,8 +322,6 @@ renderTest(
       }),
       labels: filterLabels,
       resetHref: '/t/acme/documents',
-      selectedClient: null,
-      clientField: React.createElement('input', { type: 'hidden', name: 'client' }),
     };
     const html = renderToStaticMarkup(React.createElement(DocumentFilters, props));
     const formatter = new Intl.DateTimeFormat('ar-AE', {
@@ -337,7 +335,7 @@ renderTest(
     assert.equal((html.match(/<form\b/gu) ?? []).length, 1);
     assert.match(html, /<form[^>]*method="get"/u);
     assert.match(html, /<details open=""/u);
-    for (const name of ['q', 'view', 'client', 'type', 'window', 'from', 'to', 'sort']) {
+    for (const name of ['q', 'view', 'type', 'window', 'from', 'to', 'sort']) {
       assert.equal((html.match(new RegExp(`name="${name}"`, 'gu')) ?? []).length, 1);
     }
   },
@@ -390,8 +388,6 @@ renderTest('preset windows disable and omit inactive custom date state', async (
       }),
       labels: filterLabels,
       resetHref: '/t/acme/documents',
-      selectedClient: null,
-      clientField: React.createElement('input', { type: 'hidden', name: 'client' }),
     }),
   );
   assert.match(html, /<input(?=[^>]*name="from")(?=[^>]*disabled="")[^>]*>/u);

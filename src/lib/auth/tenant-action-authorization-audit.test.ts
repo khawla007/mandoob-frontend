@@ -371,9 +371,6 @@ test('PRO workspace pages are gated as PRO-only before rendering mutation contro
 
 test('sensitive indirect DAL and inline-action pages declare their own tenant boundary', () => {
   const relativeFiles = [
-    '(pro)/clients/page.tsx',
-    '(pro)/clients/[clientId]/page.tsx',
-    '(pro)/clients/import/page.tsx',
     '(pro)/employees/page.tsx',
     '(pro)/employees/import/page.tsx',
     '(pro)/imports/[jobId]/page.tsx',

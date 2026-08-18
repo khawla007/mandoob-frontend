@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createUserSchema } from './admin-user';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
-const clientId = '22222222-2222-4222-8222-222222222222';
+const companyId = '22222222-2222-4222-8222-222222222222';
 const baseCommon = {
   full_name: 'Khawla Tester',
   email: 'k@example.com',
@@ -41,11 +41,11 @@ describe('createUserSchema — happy paths', () => {
     assert.equal(r.success, true);
   });
 
-  it('accepts a minimal employee with client_id', () => {
+  it('accepts a minimal employee with company_id', () => {
     const r = createUserSchema.safeParse({
       ...baseCommon,
       role: 'employee',
-      client_id: clientId,
+      company_id: companyId,
     });
     assert.equal(r.success, true);
   });
@@ -54,7 +54,7 @@ describe('createUserSchema — happy paths', () => {
     const r = createUserSchema.safeParse({
       ...baseCommon,
       role: 'employee',
-      client_id: clientId,
+      company_id: companyId,
       visa_expiry: futureDate,
       eid_expiry: futureDate,
       emirates_id: '784-1989-1234567-1',
@@ -73,7 +73,7 @@ describe('createUserSchema — happy paths', () => {
 });
 
 describe('createUserSchema — rejects', () => {
-  it('rejects employee missing client_id', () => {
+  it('rejects employee missing company_id', () => {
     const r = createUserSchema.safeParse({ ...baseCommon, role: 'employee' });
     assert.equal(r.success, false);
   });
@@ -143,7 +143,7 @@ describe('createUserSchema — rejects', () => {
     const r = createUserSchema.safeParse({
       ...baseCommon,
       role: 'employee',
-      client_id: clientId,
+      company_id: companyId,
       visa_expiry: '2000-01-01',
     });
     assert.equal(r.success, false);
@@ -153,7 +153,7 @@ describe('createUserSchema — rejects', () => {
     const r = createUserSchema.safeParse({
       ...baseCommon,
       role: 'employee',
-      client_id: clientId,
+      company_id: companyId,
       emirates_id: '784-1234-12-9',
     });
     assert.equal(r.success, false);

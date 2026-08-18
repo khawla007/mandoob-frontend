@@ -7,19 +7,20 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export default async function LegacyClientDetailPage({
+export default async function LegacyCompanyDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ tenant: string; clientId: string }>;
+  params: Promise<{ tenant: string; companyId: string }>;
   searchParams: Promise<AssignedCompanySearchParams>;
 }) {
   const { tenant: slug } = await params;
   await requireProTenantRouteAccess(slug);
+
   const focus = parseAssignedCompanySearch(await searchParams);
   const query = new URLSearchParams({ tab: focus.tab });
   if (focus.documentId) query.set('document', focus.documentId);
-  permanentRedirect(
-    `/t/${slug}/company?tab=${query.get('tab')}${focus.documentId ? `&document=${encodeURIComponent(focus.documentId)}` : focus.requestId ? `&request=${encodeURIComponent(focus.requestId)}` : ''}`,
-  );
+  else if (focus.requestId) query.set('request', focus.requestId);
+
+  permanentRedirect(`/t/${encodeURIComponent(slug)}/company?${query}`);
 }

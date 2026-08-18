@@ -111,7 +111,7 @@ export function ActionDeck(props: ActionDeckProps) {
               }
               aria-label={signalLabel(labels.actionAria, {
                 title: action.title,
-                client: action.clientName,
+                company: action.companyName,
                 owner: action.ownerName ?? labels.unassigned,
                 countdown,
                 absoluteDeadline,
@@ -131,7 +131,7 @@ export function ActionDeck(props: ActionDeckProps) {
                     </span>
                   </span>
                   <span className="signal-action-card__detail text-foreground/70 block truncate text-xs">
-                    {action.clientName} · {action.detail}
+                    {action.companyName} · {action.detail}
                   </span>
                 </span>
                 <ArrowUpRight

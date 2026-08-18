@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readSelfCustomer } from '@/lib/data/account-self';
-import { listRenewalsForClient } from '@/lib/data/renewals';
+import { listRenewalsForCompany } from '@/lib/data/renewals';
 import { RenewalsTimeline } from '@/components/customer/RenewalsTimeline';
 import type { PastRenewal, Renewal } from '@/lib/types/renewals-ui';
 
@@ -15,10 +15,10 @@ export default async function RenewalsPage({ params }: { params: Promise<{ tenan
 
   const t = await getTranslations('customer');
 
-  const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
-  const linkedClientId = customer.linkedClientId;
+  const customer = await readSelfCustomer().catch(() => ({ linkedCompanyId: null }));
+  const linkedCompanyId = customer.linkedCompanyId;
 
-  if (!linkedClientId) {
+  if (!linkedCompanyId) {
     return (
       <div className="space-y-6">
         <div>
@@ -44,7 +44,7 @@ export default async function RenewalsPage({ params }: { params: Promise<{ tenan
     );
   }
 
-  const rows = await listRenewalsForClient(tenant.id, linkedClientId);
+  const rows = await listRenewalsForCompany(tenant.id, linkedCompanyId);
 
   const upcoming: Renewal[] = rows
     .filter((r) => r.status === 'upcoming' || r.status === 'due_soon' || r.status === 'overdue')

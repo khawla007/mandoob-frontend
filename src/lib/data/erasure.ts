@@ -5,6 +5,7 @@ import { env } from '@/lib/env';
 import { enqueueEmail } from '@/lib/mail/send';
 import { consumeRateLimit } from '@/lib/rate-limit';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { runErasureExternalCleanup } from '@/lib/data/erasure-cleanup-workflow';
 
 export const ERASURE_STATUSES = [
   'pending_verification',
@@ -26,7 +27,6 @@ export type FieldDiff = {
 type DiffMap = Record<string, FieldDiff>;
 
 const REDACTED = '[redacted]';
-const PII_DOCUMENT_TYPES = ['passport', 'visa', 'emirates_id', 'shareholder_id'] as const;
 const ACTIVE_ERASURE_STATUSES = new Set<ErasureRequestStatus>([
   'pending_verification',
   'submitted',
@@ -56,7 +56,7 @@ export type CustomerErasureRows = {
   customerProfile: {
     nationality: string | null;
     passport_no_encrypted: string | null;
-    linked_client_id: string | null;
+    linked_company_id: string | null;
   };
 };
 
@@ -424,43 +424,6 @@ export async function rejectErasureRequest(args: {
   });
 }
 
-async function deletePiiDocuments(args: {
-  supabase: SupabaseClient;
-  tenantId: string;
-  clientId: string;
-  uploadedBy?: string;
-}): Promise<{ documentIds: string[]; storagePaths: string[] }> {
-  const query = args.supabase
-    .from('documents')
-    .select('id, doc_type, document_versions(id, storage_path, uploaded_by)')
-    .eq('tenant_id', args.tenantId)
-    .eq('client_id', args.clientId)
-    .in('doc_type', [...PII_DOCUMENT_TYPES]);
-  const { data, error } = await query;
-  if (error) throw new ApiError('DOCUMENT_LOOKUP_FAILED', error.message, 500);
-  const rows = (data as Record<string, unknown>[] | null) ?? [];
-  const documentIds: string[] = [];
-  const storagePaths: string[] = [];
-
-  for (const row of rows) {
-    const versions = ((row.document_versions as Record<string, unknown>[] | null) ?? []).filter(
-      (v) => !args.uploadedBy || v.uploaded_by === args.uploadedBy,
-    );
-    if (versions.length === 0) continue;
-    documentIds.push(row.id as string);
-    versions.forEach((v) => storagePaths.push(v.storage_path as string));
-  }
-
-  if (documentIds.length > 0) {
-    const { error: deleteError } = await args.supabase
-      .from('documents')
-      .delete()
-      .in('id', documentIds);
-    if (deleteError) throw new ApiError('DOCUMENT_DELETE_FAILED', deleteError.message, 500);
-  }
-  return { documentIds, storagePaths };
-}
-
 export async function executeErasure(
   requestId: string,
   actorId: string,
@@ -468,141 +431,97 @@ export async function executeErasure(
   const supabase = client();
   const detail = await getErasureRequestDetail(requestId);
   if (!detail) throw new ApiError('NOT_FOUND', 'Erasure request not found', 404);
-  if (!['submitted', 'under_review', 'approved'].includes(detail.status)) {
+  if (!['submitted', 'under_review', 'approved', 'completed'].includes(detail.status)) {
     throw new ApiError('INVALID_STATUS', 'Request is not ready for execution', 409);
   }
 
-  const now = new Date().toISOString();
-  await supabase
-    .from('erasure_requests')
-    .update({ status: 'approved', reviewed_by: actorId, reviewed_at: now })
-    .eq('id', requestId);
-  await audit({
-    supabase,
-    tenantId: detail.subjectTenantId,
-    actorId,
-    action: 'erasure_approved',
-    source: 'admin',
-    details: { request_id: requestId },
-  });
+  const { data: prepared, error: prepareError } = await supabase.rpc(
+    'prepare_erasure_cleanup' as never,
+    {
+      p_request_id: requestId,
+      p_tenant_id: detail.subjectTenantId,
+      p_subject_user_id: detail.subjectUserId,
+      p_actor_id: actorId,
+    } as never,
+  );
+  if (prepareError) throw new ApiError('ERASURE_PREPARE_FAILED', prepareError.message, 500);
+  const row = ((prepared as unknown as Record<string, unknown>[] | null) ?? [])[0];
+  if (!row) throw new ApiError('ERASURE_PREPARE_FAILED', 'Cleanup job missing', 500);
+  const diff = (row.anonymization_diff as Record<string, unknown> | null) ?? {};
 
-  const diff: Record<string, unknown> = { subject_kind: detail.subjectKind };
-  if (detail.subjectKind === 'employee') {
-    const { data: employee, error } = await supabase
-      .from('employees')
-      .select(
-        'id, client_id, name, email, phone, passport_no_encrypted, visa_no_encrypted, emirates_id_encrypted, nationality, status',
-      )
-      .eq('profile_id', detail.subjectUserId)
-      .eq('tenant_id', detail.subjectTenantId)
-      .maybeSingle();
-    if (error) throw new ApiError('EMPLOYEE_LOOKUP_FAILED', error.message, 500);
-    if (!employee) throw new ApiError('EMPLOYEE_NOT_FOUND', 'Employee row missing', 404);
-    const employeePatch = anonymizeEmployeeFields(employee as EmployeeErasureRow);
-    const { error: updateError } = await supabase
-      .from('employees')
-      .update(employeePatch.update)
-      .eq('id', (employee as { id: string }).id);
-    if (updateError) throw new ApiError('EMPLOYEE_ERASURE_FAILED', updateError.message, 500);
-    const docs = await deletePiiDocuments({
-      supabase,
-      tenantId: detail.subjectTenantId,
-      clientId: (employee as { client_id: string }).client_id,
-      uploadedBy: detail.subjectUserId,
-    });
-    diff.employee = employeePatch.diff;
-    diff.documents = docs;
-  } else {
-    const [{ data: profile, error: profileError }, { data: customer, error: customerError }] =
-      await Promise.all([
-        supabase
-          .from('profiles')
-          .select('full_name, phone, username, title, bio')
-          .eq('id', detail.subjectUserId)
-          .maybeSingle(),
-        supabase
-          .from('customer_profiles')
-          .select('nationality, passport_no_encrypted, linked_client_id')
-          .eq('profile_id', detail.subjectUserId)
-          .maybeSingle(),
-      ]);
-    if (profileError) throw new ApiError('PROFILE_LOOKUP_FAILED', profileError.message, 500);
-    if (customerError) throw new ApiError('CUSTOMER_LOOKUP_FAILED', customerError.message, 500);
-    if (!profile || !customer)
-      throw new ApiError('CUSTOMER_NOT_FOUND', 'Customer row missing', 404);
-    const customerPatch = anonymizeCustomerFields({
-      profile: profile as CustomerErasureRows['profile'],
-      customerProfile: customer as CustomerErasureRows['customerProfile'],
-    });
-    const { error: profileUpdateError } = await supabase
-      .from('profiles')
-      .update(customerPatch.profileUpdate)
-      .eq('id', detail.subjectUserId);
-    if (profileUpdateError)
-      throw new ApiError('PROFILE_ERASURE_FAILED', profileUpdateError.message, 500);
-    const { error: customerUpdateError } = await supabase
-      .from('customer_profiles')
-      .update(customerPatch.customerProfileUpdate)
-      .eq('profile_id', detail.subjectUserId);
-    if (customerUpdateError) {
-      throw new ApiError('CUSTOMER_ERASURE_FAILED', customerUpdateError.message, 500);
-    }
-    const linkedClientId = (customer as { linked_client_id: string | null }).linked_client_id;
-    const docs = linkedClientId
-      ? await deletePiiDocuments({
-          supabase,
-          tenantId: detail.subjectTenantId,
-          clientId: linkedClientId,
-          uploadedBy: detail.subjectUserId,
-        })
-      : { documentIds: [], storagePaths: [] };
-    diff.profile = customerPatch.diff.profile;
-    diff.customerProfile = customerPatch.diff.customerProfile;
-    diff.documents = docs;
-  }
-
-  await supabase.auth.admin.updateUserById(detail.subjectUserId, {
-    email: `erased-${requestId}@erased.local`,
-    user_metadata: { erased: true, erased_request_id: requestId },
-    app_metadata: { erased: true, erased_request_id: requestId },
-  });
-
-  const { error: completeError } = await supabase
-    .from('erasure_requests')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      anonymization_diff: diff,
-    })
-    .eq('id', requestId);
-  if (completeError) throw new ApiError('ERASURE_COMPLETE_FAILED', completeError.message, 500);
-
-  await audit({
-    supabase,
-    tenantId: detail.subjectTenantId,
-    actorId,
-    action: 'erasure_completed',
-    source: 'admin',
-    details: {
-      request_id: requestId,
-      subject_kind: detail.subjectKind,
-      fields_anonymized: Object.keys(diff),
-      documents_deleted:
-        (diff.documents as { documentIds?: string[] } | undefined)?.documentIds ?? [],
-    },
-  });
-
-  await enqueueEmail({
-    tenantId: detail.subjectTenantId,
-    templateId: 'erasure-completed',
-    toAddress: detail.recoveryEmail,
-    input: {
-      subjectName: detail.subjectName ?? 'there',
-      tenantName: detail.tenantName ?? 'your PRO firm',
+  await runErasureExternalCleanup(
+    {
       requestId,
+      tenantId: detail.subjectTenantId,
+      companyId: row.company_id as string,
+      subjectUserId: detail.subjectUserId,
+      storagePaths: (row.storage_paths as string[] | null) ?? [],
+      storageDeleted: Boolean(row.storage_deleted_at),
+      authAnonymized: Boolean(row.auth_anonymized_at),
+      notificationQueued: Boolean(row.completion_notification_queued_at),
     },
-    linked: { entityType: 'erasure_request_completed', entityId: requestId },
-  });
+    {
+      deleteStorage: async (paths) => {
+        if (paths.length === 0) return;
+        const { error } = await supabase.storage.from('tenant-documents').remove(paths);
+        if (error) throw new ApiError('DOCUMENT_STORAGE_DELETE_FAILED', error.message, 500);
+      },
+      anonymizeAuth: async (subjectUserId, erasedRequestId) => {
+        const { error: updateError } = await supabase.auth.admin.updateUserById(subjectUserId, {
+          email: `erased-${erasedRequestId}@erased.local`,
+          phone: '',
+          user_metadata: { erased: true, erased_request_id: erasedRequestId },
+          app_metadata: { erased: true, erased_request_id: erasedRequestId },
+        });
+        if (updateError && !isMissingAuthUser(updateError)) {
+          throw new ApiError('AUTH_ERASURE_FAILED', updateError.message, 500);
+        }
+        const { error: deleteError } = await supabase.auth.admin.deleteUser(subjectUserId, true);
+        if (deleteError && !isMissingAuthUser(deleteError)) {
+          throw new ApiError('AUTH_ERASURE_FAILED', deleteError.message, 500);
+        }
+      },
+      markStep: async (step) => {
+        const { error } = await supabase.rpc(
+          'mark_erasure_cleanup_step' as never,
+          { p_request_id: requestId, p_tenant_id: detail.subjectTenantId, p_step: step } as never,
+        );
+        if (error) throw new ApiError('ERASURE_CHECKPOINT_FAILED', error.message, 500);
+      },
+      complete: async () => {
+        const { error } = await supabase.rpc(
+          'complete_erasure_cleanup' as never,
+          {
+            p_request_id: requestId,
+            p_tenant_id: detail.subjectTenantId,
+            p_actor_id: actorId,
+          } as never,
+        );
+        if (error) throw new ApiError('ERASURE_COMPLETE_FAILED', error.message, 500);
+      },
+      notify: async () => {
+        const emailResult = await enqueueEmail({
+          tenantId: detail.subjectTenantId,
+          templateId: 'erasure-completed',
+          toAddress: detail.recoveryEmail,
+          input: {
+            subjectName: detail.subjectName ?? 'there',
+            tenantName: detail.tenantName ?? 'your PRO firm',
+            requestId,
+          },
+          scheduledFor: new Date(detail.submittedAt),
+          linked: { entityType: 'erasure_request_completed', entityId: requestId },
+        });
+        if (!emailResult.ok) {
+          throw new ApiError('ERASURE_NOTIFICATION_FAILED', emailResult.reason, 500);
+        }
+      },
+    },
+  );
 
   return { ok: true, diff };
+}
+
+function isMissingAuthUser(error: { status?: number; code?: string }): boolean {
+  return error.status === 404 || error.code === 'user_not_found';
 }

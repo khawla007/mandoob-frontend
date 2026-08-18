@@ -26,12 +26,12 @@ type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
 
 async function resolveCustomerScope(
   admin: Supa,
-  clientId: string,
+  companyId: string,
 ): Promise<{ email: string | null; phone: string | null }> {
   const { data: link } = await admin
     .from('customer_profiles')
     .select('profile_id')
-    .eq('linked_client_id', clientId)
+    .eq('linked_company_id', companyId)
     .maybeSingle();
   if (!link) return { email: null, phone: null };
 
@@ -47,23 +47,23 @@ async function resolveCustomerScope(
   return { email, phone: profile?.phone ?? null };
 }
 
-export async function getCommsForClient(
+export async function getCommsForCompany(
   tenantId: string,
-  clientId: string,
+  companyId: string,
   opts: CommQueryOpts = {},
 ): Promise<CommRow[]> {
   const limit = opts.limit ?? DEFAULT_LIMIT;
   const admin = createSupabaseServiceRoleClient();
-  const { email, phone } = await resolveCustomerScope(admin, clientId);
+  const { email, phone } = await resolveCustomerScope(admin, companyId);
 
   // pull modestly more per source so the merged DESC slice is correct
   const fetchLimit = limit * 2;
   const beforeIso = opts.before ?? null;
 
   const [emails, was, smses, waInbox, smsInbox] = await Promise.all([
-    fetchEmails(admin, tenantId, email, clientId, fetchLimit, beforeIso),
-    fetchWhatsApp(admin, tenantId, phone, clientId, fetchLimit, beforeIso),
-    fetchSms(admin, tenantId, phone, clientId, fetchLimit, beforeIso),
+    fetchEmails(admin, tenantId, email, companyId, fetchLimit, beforeIso),
+    fetchWhatsApp(admin, tenantId, phone, companyId, fetchLimit, beforeIso),
+    fetchSms(admin, tenantId, phone, companyId, fetchLimit, beforeIso),
     fetchWhatsAppInbox(admin, tenantId, phone, fetchLimit, beforeIso),
     fetchSmsInbox(admin, tenantId, phone, fetchLimit, beforeIso),
   ]);
@@ -78,19 +78,19 @@ export async function getCommsForCustomer(
   const admin = createSupabaseServiceRoleClient();
   const { data: link } = await admin
     .from('customer_profiles')
-    .select('linked_client_id, profile_id')
+    .select('linked_company_id, profile_id')
     .eq('profile_id', profileId)
     .maybeSingle();
-  if (!link?.linked_client_id) return [];
+  if (!link?.linked_company_id) return [];
 
-  const { data: client } = await admin
-    .from('clients')
+  const { data: company } = await admin
+    .from('company_profiles')
     .select('tenant_id')
-    .eq('id', link.linked_client_id)
+    .eq('id', link.linked_company_id)
     .maybeSingle();
-  if (!client) return [];
+  if (!company) return [];
 
-  return getCommsForClient(client.tenant_id, link.linked_client_id, opts);
+  return getCommsForCompany(company.tenant_id, link.linked_company_id, opts);
 }
 
 function mergeAndSort(rows: CommRow[], limit: number): CommRow[] {
@@ -103,7 +103,7 @@ async function fetchEmails(
   admin: Supa,
   tenantId: string,
   email: string | null,
-  clientId: string,
+  companyId: string,
   limit: number,
   beforeIso: string | null,
 ): Promise<CommRow[]> {
@@ -116,7 +116,7 @@ async function fetchEmails(
     .order('created_at', { ascending: false })
     .limit(limit);
   if (beforeIso) q = q.lt('created_at', beforeIso);
-  const filters: string[] = [`linked_entity_id.eq.${clientId}`];
+  const filters: string[] = [`linked_entity_id.eq.${companyId}`];
   if (email) filters.push(`to_address.eq.${email}`);
   q = q.or(filters.join(','));
 
@@ -137,7 +137,7 @@ async function fetchWhatsApp(
   admin: Supa,
   tenantId: string,
   phone: string | null,
-  clientId: string,
+  companyId: string,
   limit: number,
   beforeIso: string | null,
 ): Promise<CommRow[]> {
@@ -150,7 +150,7 @@ async function fetchWhatsApp(
     .order('created_at', { ascending: false })
     .limit(limit);
   if (beforeIso) q = q.lt('created_at', beforeIso);
-  const filters: string[] = [`linked_entity_id.eq.${clientId}`];
+  const filters: string[] = [`linked_entity_id.eq.${companyId}`];
   if (phone) filters.push(`to_phone.eq.${phone}`);
   q = q.or(filters.join(','));
 
@@ -171,7 +171,7 @@ async function fetchSms(
   admin: Supa,
   tenantId: string,
   phone: string | null,
-  clientId: string,
+  companyId: string,
   limit: number,
   beforeIso: string | null,
 ): Promise<CommRow[]> {
@@ -184,7 +184,7 @@ async function fetchSms(
     .order('created_at', { ascending: false })
     .limit(limit);
   if (beforeIso) q = q.lt('created_at', beforeIso);
-  const filters: string[] = [`linked_entity_id.eq.${clientId}`];
+  const filters: string[] = [`linked_entity_id.eq.${companyId}`];
   if (phone) filters.push(`to_phone.eq.${phone}`);
   q = q.or(filters.join(','));
 

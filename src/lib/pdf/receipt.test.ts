@@ -18,7 +18,7 @@ test('generateReceiptPdf returns a non-empty PDF document', async () => {
   const bytes = await generateReceiptPdf({
     tenantName: 'Atlas PRO Services',
     tenantColor: '#0f766e',
-    clientName: 'Acme FZ-LLC',
+    companyName: 'Acme FZ-LLC',
     customerName: 'Fatima Ali',
     invoiceId: 'INV-001',
     label: 'Trade license renewal',

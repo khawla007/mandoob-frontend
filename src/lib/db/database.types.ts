@@ -1333,12 +1333,35 @@ export type Database = {
           },
         ];
       };
+      refund_reconciliation_state: {
+        Row: {
+          cursor_created_at: string | null;
+          cursor_id: string | null;
+          updated_at: string;
+          worker_name: string;
+        };
+        Insert: {
+          cursor_created_at?: string | null;
+          cursor_id?: string | null;
+          updated_at?: string;
+          worker_name: string;
+        };
+        Update: {
+          cursor_created_at?: string | null;
+          cursor_id?: string | null;
+          updated_at?: string;
+          worker_name?: string;
+        };
+        Relationships: [];
+      };
       refunds: {
         Row: {
           amount_minor: number;
           created_at: string;
           id: string;
+          idempotency_key: string | null;
           payment_id: string;
+          provider_idempotency_key: string | null;
           provider_refund_id: string | null;
           reason: string | null;
           status: string;
@@ -1348,7 +1371,9 @@ export type Database = {
           amount_minor: number;
           created_at?: string;
           id?: string;
+          idempotency_key?: string | null;
           payment_id: string;
+          provider_idempotency_key?: string | null;
           provider_refund_id?: string | null;
           reason?: string | null;
           status?: string;
@@ -1358,7 +1383,9 @@ export type Database = {
           amount_minor?: number;
           created_at?: string;
           id?: string;
+          idempotency_key?: string | null;
           payment_id?: string;
+          provider_idempotency_key?: string | null;
           provider_refund_id?: string | null;
           reason?: string | null;
           status?: string;
@@ -1817,6 +1844,137 @@ export type Database = {
           p_view: string;
         };
         Returns: Json;
+      };
+      execute_employee_erasure_cleanup: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_request_id: string;
+          p_subject_user_id: string;
+          p_tenant_id: string;
+        };
+        Returns: { document_ids: string[]; storage_paths: string[] }[];
+      };
+      prepare_erasure_cleanup: {
+        Args: {
+          p_actor_id: string;
+          p_request_id: string;
+          p_subject_user_id: string;
+          p_tenant_id: string;
+        };
+        Returns: {
+          anonymization_diff: Json;
+          auth_anonymized_at: string | null;
+          company_id: string;
+          completion_notification_queued_at: string | null;
+          document_ids: string[];
+          request_id: string;
+          storage_deleted_at: string | null;
+          storage_paths: string[];
+          subject_kind: string;
+        }[];
+      };
+      mark_erasure_cleanup_step: {
+        Args: { p_request_id: string; p_step: string; p_tenant_id: string };
+        Returns: undefined;
+      };
+      complete_erasure_cleanup: {
+        Args: { p_actor_id: string; p_request_id: string; p_tenant_id: string };
+        Returns: Json;
+      };
+      update_company_service_case_with_audit: {
+        Args: {
+          p_actor_id: string;
+          p_case_id: string;
+          p_changed_keys: string[];
+          p_company_id: string;
+          p_patch: Json;
+          p_tenant_id: string;
+        };
+        Returns: string;
+      };
+      prepare_company_refund: {
+        Args: {
+          p_actor_id: string;
+          p_amount_minor: number;
+          p_company_id: string;
+          p_idempotency_key: string;
+          p_invoice_id: string;
+          p_reason: string;
+          p_tenant_id: string;
+        };
+        Returns: {
+          currency: string;
+          payment_id: string;
+          provider: string;
+          provider_charge_id: string | null;
+          provider_idempotency_key: string;
+          refund_id: string;
+          refund_status: string;
+        }[];
+      };
+      reconcile_company_refund: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_ip: string;
+          p_provider_refund_id: string | null;
+          p_refund_id: string;
+          p_status: string;
+          p_tenant_id: string;
+        };
+        Returns: { partial: boolean; refund_id: string; refund_status: string }[];
+      };
+      list_company_payment_invoices: {
+        Args: {
+          p_company_id: string;
+          p_date?: string | null;
+          p_page?: number;
+          p_page_size?: number;
+          p_period?: string | null;
+          p_tenant_id: string;
+          p_today?: string | null;
+          p_view: string;
+        };
+        Returns: Json;
+      };
+      create_company_invoice: {
+        Args: {
+          p_amount_minor: number;
+          p_company_id: string;
+          p_created_by: string | null;
+          p_currency: string;
+          p_customer_profile_id: string | null;
+          p_due_at: string | null;
+          p_label: string;
+          p_linked_entity_id: string | null;
+          p_linked_entity_type: string;
+          p_tenant_id: string;
+        };
+        Returns: string;
+      };
+      mark_company_invoice_paid: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_invoice_id: string;
+          p_ip: string;
+          p_method: string;
+          p_note: string | null;
+          p_tenant_id: string;
+        };
+        Returns: string;
+      };
+      void_company_invoice: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_invoice_id: string;
+          p_ip: string;
+          p_reason: string;
+          p_tenant_id: string;
+        };
+        Returns: string;
       };
       mandoob_access_token_hook: { Args: { event: Json }; Returns: Json };
       provision_company_workspace_atomic: {

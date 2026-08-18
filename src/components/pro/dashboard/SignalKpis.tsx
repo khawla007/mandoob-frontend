@@ -19,7 +19,7 @@ import {
 } from './widget-state';
 
 type Kpis = ProDashboardData['kpis'];
-export type SignalKpiKey = 'activeClients' | 'openCases' | 'renewals' | 'finance';
+export type SignalKpiKey = 'activeCompany' | 'openCases' | 'renewals' | 'finance';
 type SignalKpiState = { kind: 'error'; message: string; retryHref?: string };
 
 type SignalKpisDataProps = {
@@ -30,8 +30,8 @@ type SignalKpisDataProps = {
 };
 
 export type SignalKpisLabels = WidgetBaseLabels & {
-  activeClients: string;
-  activeClientsHelper: string;
+  activeCompany: string;
+  activeCompanyHelper: string;
   openCases: string;
   openCasesHelper: string;
   renewalsDue: string;
@@ -86,19 +86,13 @@ export function SignalKpis(props: SignalKpisProps) {
   });
   const definitions: KpiDefinition[] = [
     {
-      key: 'activeClients',
-      label: labels.activeClients,
-      value: integer.format(kpis.activeClients),
-      helper: signalLabel(labels.activeClientsHelper, {
-        change: `${kpis.activeClientsChange >= 0 ? '+' : ''}${integer.format(kpis.activeClientsChange)}`,
-      }),
+      key: 'activeCompany',
+      label: labels.activeCompany,
+      value: integer.format(kpis.activeCompany),
+      helper: labels.activeCompanyHelper,
       href: `/t/${encodeURIComponent(tenantSlug)}/company`,
       tone: 'signal-kpi--orange',
-      trend: [
-        kpis.activeClients - kpis.activeClientsChange,
-        kpis.activeClients,
-        kpis.activeClients + kpis.activeClientsChange,
-      ],
+      trend: [kpis.activeCompany, kpis.activeCompany, kpis.activeCompany],
     },
     {
       key: 'openCases',

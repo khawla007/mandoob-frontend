@@ -4,7 +4,7 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ClientTypeahead } from './ClientTypeahead';
+import { CompanyTypeahead } from './CompanyTypeahead';
 import type { CreateUserInput } from '@/lib/validation/admin-user';
 
 export function UserCustomerFields() {
@@ -48,12 +48,12 @@ export function UserCustomerFields() {
       />
       <FormField
         control={form.control}
-        name="linked_client_id"
+        name="linked_company_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{t('user.fields.linkedClient')}</FormLabel>
+            <FormLabel>{t('user.fields.linkedCompany')}</FormLabel>
             <FormControl>
-              <ClientTypeahead
+              <CompanyTypeahead
                 tenantId={tenantId}
                 value={(field.value as string | null) ?? null}
                 onChange={(id) => field.onChange(id)}

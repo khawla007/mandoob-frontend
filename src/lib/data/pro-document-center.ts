@@ -22,9 +22,9 @@ export type DocumentCenterRow = {
   entityKind: 'request' | 'document';
   entityId: string;
   tenantId: string;
-  clientId: string;
-  clientCompany: string;
-  clientStatus: string;
+  companyId: string;
+  companyName: string;
+  companyStatus: string;
   employeeId: string | null;
   employeeName: string | null;
   docType: DocType;
@@ -45,7 +45,7 @@ export type DocumentCenterRow = {
   reviewerName: string | null;
   reviewedAt: string | null;
   expiresOn: string | null;
-  expirySource: 'client_license' | 'employee_visa' | 'employee_emirates_id' | 'document' | null;
+  expirySource: 'company_license' | 'employee_visa' | 'employee_emirates_id' | 'document' | null;
   createdAt: string;
   totalCount: number;
   effectivePage: number;
@@ -69,7 +69,7 @@ export type DocumentCenterSummary = {
   overdue: DocumentCenterSummaryResult;
 };
 
-export type DocumentCenterClientOption = {
+export type DocumentCenterCompanyOption = {
   id: string;
   companyName: string;
 };
@@ -82,12 +82,12 @@ type RpcRow = Record<string, unknown>;
 const uuidSchema = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
-const clientOptionRowSchema = z.object({
+const companyOptionRowSchema = z.object({
   id: uuidSchema,
   company_name: z.string().min(1),
 });
-const clientOptionSearchSchema = z.string().trim().max(100);
-const clientOptionLimitSchema = z.number().int().min(1).max(50);
+const companyOptionSearchSchema = z.string().trim().max(100);
+const companyOptionLimitSchema = z.number().int().min(1).max(50);
 const expiryContextSchema = z.object({
   tenantId: uuidSchema,
   actorId: uuidSchema,
@@ -111,9 +111,9 @@ function mapRpcRow(row: RpcRow): DocumentCenterRow {
     entityKind: row.entity_kind as DocumentCenterRow['entityKind'],
     entityId: row.entity_id as string,
     tenantId: row.tenant_id as string,
-    clientId: row.client_id as string,
-    clientCompany: row.client_name as string,
-    clientStatus: row.client_status as string,
+    companyId: row.company_id as string,
+    companyName: row.company_name as string,
+    companyStatus: row.company_status as string,
     employeeId: asNullableString(row.employee_id),
     employeeName: asNullableString(row.employee_name),
     docType: row.doc_type as DocType,
@@ -196,7 +196,7 @@ function rpcArguments(input: DocumentCenterSearch, tenantId: string) {
     p_tenant_id: tenantId,
     p_view: input.view,
     p_search: input.search ?? null,
-    p_client_id: input.clientId ?? null,
+    p_company_id: input.companyId ?? null,
     p_doc_type: input.docType ?? null,
     ...dateArguments(input),
     p_sort: input.sort,
@@ -231,17 +231,17 @@ export async function listProDocumentCenter(
   };
 }
 
-export async function searchDocumentCenterClientOptions(
+export async function searchDocumentCenterCompanyOptions(
   tenantId: string,
   query: string,
   limit = 50,
-): Promise<DocumentCenterClientOption[]> {
+): Promise<DocumentCenterCompanyOption[]> {
   const validTenantId = uuidSchema.parse(tenantId);
-  const validQuery = clientOptionSearchSchema.parse(query);
-  const validLimit = clientOptionLimitSchema.parse(limit);
+  const validQuery = companyOptionSearchSchema.parse(query);
+  const validLimit = companyOptionLimitSchema.parse(limit);
   const admin = createSupabaseServiceRoleClient();
   let request = admin
-    .from('clients')
+    .from('company_profiles')
     .select('id, company_name')
     .eq('tenant_id', validTenantId)
     .order('company_name', { ascending: true })
@@ -251,30 +251,31 @@ export async function searchDocumentCenterClientOptions(
     request = request.ilike('company_name', `%${validQuery}%`);
   }
   const { data, error } = await request;
-  if (error) throw new ApiError('INTERNAL', 'Unable to search document center clients', 500);
-  const parsed = z.array(clientOptionRowSchema).safeParse(data ?? []);
+  if (error) throw new ApiError('INTERNAL', 'Unable to search document center companies', 500);
+  const parsed = z.array(companyOptionRowSchema).safeParse(data ?? []);
   if (!parsed.success)
-    throw new ApiError('INTERNAL', 'Unable to search document center clients', 500);
+    throw new ApiError('INTERNAL', 'Unable to search document center companies', 500);
   return parsed.data.map((row) => ({ id: row.id, companyName: row.company_name }));
 }
 
-export async function getDocumentCenterClientOption(
+export async function getDocumentCenterCompanyOption(
   tenantId: string,
-  clientId: string,
-): Promise<DocumentCenterClientOption | null> {
+  companyId: string,
+): Promise<DocumentCenterCompanyOption | null> {
   const validTenantId = uuidSchema.parse(tenantId);
-  const validClientId = uuidSchema.parse(clientId);
+  const validCompanyId = uuidSchema.parse(companyId);
   const admin = createSupabaseServiceRoleClient();
   const { data, error } = await admin
-    .from('clients')
+    .from('company_profiles')
     .select('id, company_name')
     .eq('tenant_id', validTenantId)
-    .eq('id', validClientId)
+    .eq('id', validCompanyId)
     .maybeSingle();
-  if (error) throw new ApiError('INTERNAL', 'Unable to load document center client', 500);
+  if (error) throw new ApiError('INTERNAL', 'Unable to load document center company', 500);
   if (!data) return null;
-  const parsed = clientOptionRowSchema.safeParse(data);
-  if (!parsed.success) throw new ApiError('INTERNAL', 'Unable to load document center client', 500);
+  const parsed = companyOptionRowSchema.safeParse(data);
+  if (!parsed.success)
+    throw new ApiError('INTERNAL', 'Unable to load document center company', 500);
   return { id: parsed.data.id, companyName: parsed.data.company_name };
 }
 
@@ -287,7 +288,7 @@ function summaryRpcArguments(
     p_tenant_id: tenantId,
     p_view: view,
     p_search: null,
-    p_client_id: null,
+    p_company_id: null,
     p_doc_type: null,
     p_due_from: null,
     p_due_to: null,
@@ -444,7 +445,7 @@ export type SetDocumentExpiryContext = {
 export async function setDocumentExpiry(
   ctx: SetDocumentExpiryContext,
   input: DocumentExpiryInput,
-): Promise<{ clientId: string }> {
+): Promise<{ companyId: string }> {
   const validContext = expiryContextSchema.parse(ctx);
   const validInput = documentExpirySchema.parse({
     ...input,
@@ -461,7 +462,7 @@ export async function setDocumentExpiry(
     } as never,
   );
   const updated = (data as Array<Record<string, unknown>> | null)?.[0];
-  const updatedClientId = uuidSchema.safeParse(updated?.client_id);
+  const updatedCompanyId = uuidSchema.safeParse(updated?.company_id);
   if (error?.code === '42501') {
     throw new ApiError('FORBIDDEN', 'Document expiry update is not authorized', 403);
   }
@@ -471,11 +472,11 @@ export async function setDocumentExpiry(
   if (error?.code === 'MD409') {
     throw new ApiError(
       'EXPIRY_EXTERNALLY_MANAGED',
-      'Expiry is managed by the linked client or employee',
+      'Expiry is managed by the linked company or employee',
       409,
     );
   }
-  if (error || updated?.document_id !== validInput.document_id || !updatedClientId.success) {
+  if (error || updated?.document_id !== validInput.document_id || !updatedCompanyId.success) {
     throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
   }
 
@@ -496,5 +497,5 @@ export async function setDocumentExpiry(
     details: auditDetails,
   }).catch((error) => logSafeActionError('document_center.expiry.auth_event', error));
 
-  return { clientId: updatedClientId.data.toLowerCase() };
+  return { companyId: updatedCompanyId.data.toLowerCase() };
 }

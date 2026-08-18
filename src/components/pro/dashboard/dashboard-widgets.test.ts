@@ -355,7 +355,7 @@ describe('Signal Studio widget contracts', () => {
 
   it('matches the live Design B KPI and Action Deck color sequence', () => {
     const kpis = source('SignalKpis');
-    assert.match(kpis, /key: 'activeClients'[\s\S]{0,500}tone: 'signal-kpi--orange'/);
+    assert.match(kpis, /key: 'activeCompany'[\s\S]{0,500}tone: 'signal-kpi--orange'/);
     assert.match(kpis, /key: 'openCases'[\s\S]{0,500}tone: 'signal-kpi--info'/);
     assert.match(kpis, /signal-kpi__content/);
     assert.match(styles, /\.signal-kpi__content\s*\{[^}]*justify-content:\s*center/);

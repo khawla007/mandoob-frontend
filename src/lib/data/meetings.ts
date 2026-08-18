@@ -1,5 +1,6 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
+import { isNormalizedOwnedStoragePath } from '@/lib/storage/owned-path';
 import { createDailyRoom } from '@/lib/meetings/daily';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
@@ -29,7 +30,7 @@ export type Meeting = {
   id: string;
   tenantId: string;
   leadId: string | null;
-  clientId: string | null;
+  companyId: string | null;
   customerProfileId: string | null;
   title: string;
   status: MeetingStatus;
@@ -62,7 +63,7 @@ type MeetingRow = {
   id: string;
   tenant_id: string;
   lead_id?: string | null;
-  client_id?: string | null;
+  company_id?: string | null;
   customer_profile_id?: string | null;
   title: string;
   status: MeetingStatus;
@@ -104,7 +105,7 @@ function toMeeting(row: MeetingRow): Meeting {
     id: row.id,
     tenantId: row.tenant_id,
     leadId: row.lead_id ?? null,
-    clientId: row.client_id ?? null,
+    companyId: row.company_id ?? null,
     customerProfileId: row.customer_profile_id ?? null,
     title: row.title,
     status: row.status,
@@ -117,6 +118,20 @@ function toMeeting(row: MeetingRow): Meeting {
     recordingUrl: row.recording_url ?? null,
     recordingReadyAt: row.recording_ready_at ?? null,
   };
+}
+
+export function dailyRecordingStoragePath(
+  meeting: { tenantId: string; companyId: string | null; meetingId: string },
+  recordingId: string,
+): string {
+  const scope = meeting.companyId ?? 'leads';
+  const recording =
+    recordingId
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]+/gu, '-')
+      .replace(/^-+|-+$/gu, '')
+      .slice(0, 128) || 'recording';
+  return `${meeting.tenantId}/${scope}/meetings/${meeting.meetingId}/${recording}.mp4`;
 }
 
 export async function createMeetingSlot(
@@ -182,7 +197,7 @@ export async function bookMeetingSlot(
     tenantId: string;
     customerProfileId?: string | null;
     leadId?: string | null;
-    clientId?: string | null;
+    companyId?: string | null;
     title?: string;
   },
   actor: MeetingActor,
@@ -215,7 +230,7 @@ export async function bookMeetingSlot(
     .insert({
       tenant_id: slotRow.tenant_id,
       lead_id: input.leadId ?? null,
-      client_id: input.clientId ?? null,
+      company_id: input.companyId ?? null,
       customer_profile_id: input.customerProfileId ?? (actor.role === 'customer' ? actor.id : null),
       created_by: actor.id,
       title: input.title ?? 'Consultation',
@@ -227,7 +242,7 @@ export async function bookMeetingSlot(
       consent_notice_shown_at: new Date().toISOString(),
     })
     .select(
-      'id, tenant_id, lead_id, client_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at',
+      'id, tenant_id, lead_id, company_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at',
     )
     .single();
   if (createError || !created)
@@ -284,13 +299,13 @@ export async function listMeetingsForLead(
   return ((data as MeetingRow[] | null) ?? []).map(toMeeting);
 }
 
-export async function listMeetingsForClient(
-  clientId: string,
+export async function listMeetingsForCompany(
+  companyId: string,
   actor: MeetingActor,
   deps: MeetingDeps = {},
 ): Promise<Meeting[]> {
   const admin = client(deps);
-  let query = admin.from('meetings').select(MEETING_COLUMNS).eq('client_id', clientId);
+  let query = admin.from('meetings').select(MEETING_COLUMNS).eq('company_id', companyId);
   if (actor.role === 'pro') query = query.eq('tenant_id', actor.tenantId);
   const { data, error } = await query.order('scheduled_at', { ascending: false });
   if (error) throw new ApiError('INTERNAL', error.message, 500);
@@ -352,6 +367,10 @@ export async function attachMeetingRecording(
 ): Promise<void> {
   const admin = client(deps);
   const meeting = await readMeeting(admin, meetingId);
+  const companyScope = meeting.company_id ?? 'leads';
+  if (!isNormalizedOwnedStoragePath(recording.storagePath, meeting.tenant_id, companyScope)) {
+    throw new ApiError('FORBIDDEN', 'Recording path is not accessible', 403);
+  }
   const { error } = await admin
     .from('meetings')
     .update({
@@ -395,6 +414,12 @@ export async function getMeetingRecordingSignedUrl(
     authorizeTenant(actor, meeting.tenant_id);
   }
   if (!meeting.recording_storage_path) return null;
+  const companyScope = meeting.company_id ?? 'leads';
+  if (
+    !isNormalizedOwnedStoragePath(meeting.recording_storage_path, meeting.tenant_id, companyScope)
+  ) {
+    throw new ApiError('FORBIDDEN', 'Recording path is not accessible', 403);
+  }
 
   const { data, error } = await admin.storage
     .from('tenant-meetings')
@@ -404,7 +429,7 @@ export async function getMeetingRecordingSignedUrl(
 }
 
 const MEETING_COLUMNS =
-  'id, tenant_id, lead_id, client_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at';
+  'id, tenant_id, lead_id, company_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at';
 
 async function readMeeting(admin: SupabaseClient, meetingId: string): Promise<MeetingRow> {
   const { data, error } = await admin

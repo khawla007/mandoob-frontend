@@ -9,9 +9,9 @@ test('every counted document deadline keeps its own reachable href', () => {
     date: '2026-08-12',
     period: 'afternoon' as const,
     eventType: 'document' as const,
-    href: `/t/acme/clients/client-${index}?tab=documents&request=document-${index}`,
+    href: `/t/acme/company?tab=documents&request=document-${index}`,
     title: `Request ${index}`,
-    clientName: `Client ${index}`,
+    companyName: `Client ${index}`,
   }));
   const links = buildDeadlineDrilldowns(documents, 'acme', '2026-08-12', 'afternoon');
   assert.equal(links.length, 3);
@@ -31,7 +31,7 @@ test('case, renewal and invoice deadlines retain aggregate consumed filters', ()
     eventType,
     href: `/ignored/${eventType}`,
     title: eventType,
-    clientName: 'Acme',
+    companyName: 'Acme',
   }));
   const links = buildDeadlineDrilldowns(events, 'north star', '2026-08-12', 'afternoon');
   assert.equal(links.length, 3);
@@ -49,7 +49,7 @@ test('case deadline drilldowns preserve normalized dashboard application filters
       eventType: 'case' as const,
       href: '/ignored/case',
       title: 'Golden visa',
-      clientName: 'Acme',
+      companyName: 'Acme',
     },
   ];
   const links = buildDeadlineDrilldowns(events, 'acme', '2026-08-12', 'morning', {

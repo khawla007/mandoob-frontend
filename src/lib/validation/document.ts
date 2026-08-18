@@ -25,7 +25,7 @@ export type DocType = (typeof DOC_TYPES)[number];
 export const docTypeSchema = z.enum(DOC_TYPES);
 
 export const uploadDocumentMetadataSchema = z.object({
-  client_id: z.string().uuid(),
+  company_id: z.string().uuid(),
   doc_type: docTypeSchema,
   request_id: z.string().uuid().optional(),
   label: z.string().max(200).optional(),
@@ -50,7 +50,7 @@ export type DocumentReviewInput = z.infer<typeof documentReviewSchema>;
 // date (YYYY-MM-DD) entered via <input type="date">; coerced to ISO string
 // on the server before insert.
 export const createDocumentRequestSchema = z.object({
-  client_id: z.string().uuid(),
+  company_id: z.string().uuid(),
   doc_type: docTypeSchema,
   label: z.string().min(1).max(120),
   due_at: calendarDateSchema.optional().or(z.literal('').transform(() => undefined)),
@@ -64,7 +64,7 @@ export const createDocumentRequestSchema = z.object({
 export type CreateDocumentRequestInput = z.infer<typeof createDocumentRequestSchema>;
 
 // Step 14 — customer-side upload action body. Customer never picks the
-// client_id (it is resolved server-side from customer_profiles.linked_client_id),
+// company_id (it is resolved server-side from customer_profiles.linked_company_id),
 // so this schema only covers what comes off the dialog FormData. Empty-string
 // FormData values are coerced to undefined before validation so optional
 // fields stay truly optional.

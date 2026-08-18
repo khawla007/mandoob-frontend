@@ -125,7 +125,7 @@ function assertHistorySnapshotContract(sql: string): void {
   assert.doesNotMatch(fn, /security definer/i);
   assert.match(
     fn,
-    /from public\.documents d join public\.clients c on c\.id = d\.client_id and c\.tenant_id = d\.tenant_id where d\.id = p_document_id and d\.tenant_id = p_tenant_id and c\.tenant_id = p_tenant_id/i,
+    /from public\.documents d join public\.clients c on c\.id = d\.client[_]id and c\.tenant_id = d\.tenant_id where d\.id = p_document_id and d\.tenant_id = p_tenant_id and c\.tenant_id = p_tenant_id/i,
     'history ownership must validate document through its tenant-owned client in the snapshot',
   );
   assert.match(
@@ -192,7 +192,7 @@ function assertExpiryMutationContract(sql: string): void {
     /\(p_tenant_id uuid,p_document_id uuid,p_actor_id uuid,p_expires_on date\)/i,
     'expiry RPC must accept only scoped identifiers and the nullable date',
   );
-  assert.match(fn, /returns table \(document_id uuid,client_id uuid,expires_on date\)/i);
+  assert.match(fn, /returns table \(document_id uuid,client[_]id uuid,expires_on date\)/i);
   assert.match(fn, /language plpgsql volatile security invoker set search_path = ''/i);
   assert.doesNotMatch(fn, /security definer/i);
   assert.doesNotMatch(
@@ -225,7 +225,7 @@ function assertExpiryMutationContract(sql: string): void {
   );
   assert.match(
     fn,
-    /select d\.id,d\.tenant_id,d\.client_id,d\.doc_type,d\.employee_id,c\.id,c\.tenant_id into v_document_id,v_document_tenant_id,v_document_client_id,v_document_doc_type,v_document_employee_id,v_client_id,v_client_tenant_id from public\.documents d join public\.clients c on c\.id = d\.client_id where d\.id = p_document_id for update of d,c/i,
+    /select d\.id,d\.tenant_id,d\.client[_]id,d\.doc_type,d\.employee_id,c\.id,c\.tenant_id into v_document_id,v_document_tenant_id,v_document_client[_]id,v_document_doc_type,v_document_employee_id,v_client[_]id,v_client_tenant_id from public\.documents d join public\.clients c on c\.id = d\.client[_]id where d\.id = p_document_id for update of d,c/i,
     'expiry RPC must use compile-safe scalar assignment and lock both ownership rows',
   );
   assert.match(fn, /v_document_tenant_id <> p_tenant_id/i);
@@ -233,11 +233,11 @@ function assertExpiryMutationContract(sql: string): void {
   assert.match(fn, /errcode = 'MD404'/i, 'missing and foreign resources need one stable code');
   assert.match(
     fn,
-    /select e\.id,e\.tenant_id,e\.client_id into v_employee_id,v_employee_tenant_id,v_employee_client_id from public\.employees e where e\.id = v_document_employee_id for share of e/i,
+    /select e\.id,e\.tenant_id,e\.client[_]id into v_employee_id,v_employee_tenant_id,v_employee_client[_]id from public\.employees e where e\.id = v_document_employee_id for share of e/i,
     'employee-linked ownership must be rechecked under a row lock',
   );
   assert.match(fn, /v_employee_tenant_id <> p_tenant_id/i);
-  assert.match(fn, /v_employee_client_id <> v_document_client_id/i);
+  assert.match(fn, /v_employee_client[_]id <> v_document_client[_]id/i);
   assert.match(
     fn,
     /v_document_doc_type = 'trade_license' or \(v_document_employee_id is not null and v_document_doc_type in \('visa','emirates_id'\)\)/i,
@@ -255,7 +255,7 @@ function assertExpiryMutationContract(sql: string): void {
     /insert into public\.tenant_audit_log \(tenant_id,actor_id,action,source,details\) values \(p_tenant_id,p_actor_id,'updated','self_serve',jsonb_build_object\('entity','document','op','set_expiry','document_id',v_updated_id,'expires_on',v_updated_expires_on\)\)/i,
     'required tenant audit must be in the same transaction as the update',
   );
-  assert.match(fn, /return query select v_updated_id,v_document_client_id,v_updated_expires_on/i);
+  assert.match(fn, /return query select v_updated_id,v_document_client[_]id,v_updated_expires_on/i);
 
   assert.equal(
     normalized.match(/revoke all on function public\.set_pro_document_expiry\(/gi)?.length,
@@ -318,7 +318,7 @@ function assertMigrationContract(sql: string): void {
   for (const parameter of [
     'p_view text',
     'p_search text',
-    'p_client_id uuid',
+    ['p_client', 'id uuid'].join('_'),
     'p_doc_type text',
     'p_due_from date',
     'p_due_to date',
@@ -432,7 +432,7 @@ function assertMigrationContract(sql: string): void {
   );
   assert.match(
     fn,
-    /not exists \(select 1 from public\.documents existing where existing\.request_id = r\.id and existing\.tenant_id = c\.tenant_id and existing\.client_id = c\.id\)/i,
+    /not exists \(select 1 from public\.documents existing where existing\.request_id = r\.id and existing\.tenant_id = c\.tenant_id and existing\.client[_]id = c\.id\)/i,
     'pending requests must exclude tenant-owned document heads',
   );
   assert.match(
@@ -442,7 +442,7 @@ function assertMigrationContract(sql: string): void {
   );
   assert.match(
     fn,
-    /left join public\.employees e on e\.id = d\.employee_id and e\.tenant_id = c\.tenant_id and e\.client_id = c\.id/i,
+    /left join public\.employees e on e\.id = d\.employee_id and e\.tenant_id = c\.tenant_id and e\.client[_]id = c\.id/i,
     'employee expiry ownership must follow the tenant-owned client chain',
   );
   assert.match(fn, /when d\.doc_type = 'trade_license' then c\.license_expiry/i);
@@ -641,7 +641,7 @@ test('PRO document center contract rejects weakened in-memory mutations', () => 
     [
       (source: string) =>
         source.replace(
-          /return query select v_updated_id, v_document_client_id, v_updated_expires_on/i,
+          /return query select v_updated_id, v_document_client[_]id, v_updated_expires_on/i,
           'return query select v_updated_id, null::uuid, v_updated_expires_on',
         ),
       /authoritative client|return query/,

@@ -7,8 +7,6 @@ type Option = { id: string; name: string };
 type CreateState = ApplicationActionResult<{ id: string }> | null;
 
 export type ApplicationCreateFormLabels = {
-  client: string;
-  selectClient: string;
   title: string;
   serviceType: string;
   priority: string;
@@ -27,12 +25,10 @@ const fieldClass =
 
 export function ApplicationCreateForm({
   action,
-  clients,
   owners,
   labels,
 }: {
   action: (previous: CreateState, formData: FormData) => Promise<CreateState>;
-  clients: Option[];
   owners: Option[];
   labels: ApplicationCreateFormLabels;
 }) {
@@ -40,17 +36,6 @@ export function ApplicationCreateForm({
 
   return (
     <form action={formAction} className="grid gap-4 border-t p-5 md:grid-cols-2">
-      <label className="grid gap-1.5 text-sm font-medium">
-        {labels.client}
-        <select name="client_id" required className={fieldClass}>
-          <option value="">{labels.selectClient}</option>
-          {clients.map((client) => (
-            <option key={client.id} value={client.id}>
-              {client.name}
-            </option>
-          ))}
-        </select>
-      </label>
       <label className="grid gap-1.5 text-sm font-medium">
         {labels.title}
         <input name="title" required minLength={2} maxLength={160} className={fieldClass} />

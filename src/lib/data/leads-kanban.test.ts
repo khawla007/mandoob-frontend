@@ -111,7 +111,7 @@ const lead = {
   routing_reason: 'platform_unassigned',
   score: 65,
   assigned_team_member_id: null,
-  converted_client_id: null,
+  converted_company_id: null,
   created_at: '2026-05-01T00:00:00.000Z',
   updated_at: '2026-05-01T00:00:00.000Z',
   tenants: null,

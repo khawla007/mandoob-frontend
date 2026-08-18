@@ -3,14 +3,14 @@ import type { ServiceCase } from '@/lib/data/service-cases';
 import { ApplicationStatusActions } from './ApplicationStatusActions';
 
 export type ApplicationsTableLabels = {
-  client: string;
+  company: string;
   service: string;
   status: string;
   owner: string;
   slaDue: string;
   action: string;
   unassigned: string;
-  unknownClient: string;
+  unknownCompany: string;
   slaPrefix: string;
   duePrefix: string;
   slaBreached: string;
@@ -68,7 +68,7 @@ export function ApplicationsTable({
         <thead className="bg-muted/40 border-b">
           <tr>
             <th scope="col" className="px-3 py-2.5 text-left font-medium">
-              {labels.client}
+              {labels.company}
             </th>
             <th scope="col" className="px-3 py-2.5 text-left font-medium">
               {labels.service}
@@ -93,7 +93,9 @@ export function ApplicationsTable({
             const update = updateApplicationFormAction.bind(null, slug, row.id);
             return (
               <tr key={row.id} className="hover:bg-muted/30 align-top transition-colors">
-                <td className="px-3 py-3 font-medium">{row.clientName || labels.unknownClient}</td>
+                <td className="px-3 py-3 font-medium">
+                  {row.companyName || labels.unknownCompany}
+                </td>
                 <td className="px-3 py-3">
                   <div className="font-medium">{row.title}</div>
                   <div className="text-muted-foreground mt-0.5 text-xs">{row.serviceType}</div>

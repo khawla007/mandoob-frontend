@@ -33,11 +33,11 @@ export type ReadSelfPro = {
 export type ReadSelfCustomer = {
   nationality: string | null;
   passportNo: string | null;
-  linkedClientId: string | null;
+  linkedCompanyId: string | null;
 };
 
 export type ReadSelfEmployee = {
-  clientId: string;
+  companyId: string;
   passportNo: string | null;
   visaNo: string | null;
   visaExpiry: string | null;
@@ -106,13 +106,13 @@ export async function readSelfCustomer(): Promise<ReadSelfCustomer> {
   if (!userRes.user) throw new ApiError('UNAUTHENTICATED', 'Not signed in', 401);
   const { data } = await supabase
     .from('customer_profiles')
-    .select('nationality, passport_no_encrypted, linked_client_id')
+    .select('nationality, passport_no_encrypted, linked_company_id')
     .eq('profile_id', userRes.user.id)
     .maybeSingle();
   return {
     nationality: (data?.nationality as string | null) ?? null,
     passportNo: decryptOptional(data?.passport_no_encrypted as string | null),
-    linkedClientId: (data?.linked_client_id as string | null) ?? null,
+    linkedCompanyId: (data?.linked_company_id as string | null) ?? null,
   };
 }
 
@@ -131,7 +131,7 @@ export async function readSelfEmployee(): Promise<ReadSelfEmployee> {
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   if (!data) throw new ApiError('NOT_FOUND', 'Employee row missing', 404);
   return {
-    clientId: data.company_id as string,
+    companyId: data.company_id as string,
     passportNo: decryptOptional(data.passport_no_encrypted as string | null),
     visaNo: decryptOptional(data.visa_no_encrypted as string | null),
     visaExpiry: (data.visa_expiry as string | null) ?? null,

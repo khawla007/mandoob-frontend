@@ -116,7 +116,10 @@ test('dashboard filters reject repeated/malformed values and accept schema-backe
 
 test('dashboard renders only tenant-normalized filters and reports rejected input', () => {
   const source = readFileSync(pagePath, 'utf8');
-  assert.match(source, /getProDashboardData\(tenant\.id, range, requestedFilters\.filters\)/);
+  assert.match(
+    source,
+    /getProDashboardData\(\s*tenant\.id,\s*company\.id,\s*range,\s*requestedFilters\.filters,?\s*\)/,
+  );
   assert.match(source, /resolveDashboardFilterState/);
   assert.match(source, /dashboard\.errors\.operations !== undefined/);
   assert.match(source, /filters\.invalidNotice/);
@@ -172,14 +175,19 @@ test('dashboard widget state sanitizes only relevant loader group failures', () 
   );
 });
 
-test('dashboard page uses async inputs, authorizes before read, and has no legacy dashboard reads', () => {
+test('dashboard page resolves the assigned company before its scoped read and has no legacy reads', () => {
   const source = readFileSync(pagePath, 'utf8');
   const metrics = readFileSync(metricsPath, 'utf8');
 
   assert.match(source, /params:\s*Promise<\{ tenant: string \}>/);
   assert.match(source, /searchParams:\s*Promise</);
   assert.match(source, /await Promise\.all\(\[params, searchParams\]\)/);
-  assert.ok(source.indexOf('authorizeProDashboardRead(') < source.indexOf('getProDashboardData('));
+  const tenantAccess = source.indexOf('requireProTenantRouteAccess(slug)');
+  const companyAccess = source.indexOf('readAssignedCompanyForPro(session.id, slug)');
+  const dashboardRead = source.indexOf('getProDashboardData(');
+  assert.ok(tenantAccess >= 0);
+  assert.ok(companyAccess > tenantAccess);
+  assert.ok(dashboardRead > companyAccess);
   assert.doesNotMatch(source, /SignupsChart|RecentLoginsTable|getProDashboardMetrics/);
   assert.doesNotMatch(metrics, /ProDashboardKpiKey|ProDashboardMetric|getProDashboardMetrics/);
   assert.match(source, /allBranches/);
@@ -259,7 +267,7 @@ test('Signal Studio translations have complete English and Arabic route label pa
     'operationsScore',
     'openActionDeck',
     'assignWork',
-    'activeClients',
+    'activeCompany',
     'openCases',
     'renewalsDue',
     'collections',
@@ -287,7 +295,7 @@ test('dashboard reads parameterized widget labels as raw templates', () => {
     'hero.scoreAria',
     'hero.dialogTitle',
     'hero.velocityAria',
-    'kpis.activeClientsHelper',
+    'kpis.activeCompanyHelper',
     'kpis.openCasesHelper',
     'kpis.renewalsHelper',
     'kpis.collectionsHelper',

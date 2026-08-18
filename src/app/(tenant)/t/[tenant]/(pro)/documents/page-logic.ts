@@ -12,7 +12,7 @@ export type DocumentCenterSearchParams = {
   view?: string | string[];
   sort?: string | string[];
   window?: string | string[];
-  client?: string | string[];
+  company?: string | string[];
   type?: string | string[];
   q?: string | string[];
   search?: string | string[];
@@ -51,7 +51,7 @@ export function parseDocumentCenterSearch(
   const sort = firstDocumentCenterValue(search.sort);
   const window = firstDocumentCenterValue(search.window);
   const parsedWindow = enumValue(window, ['all', 'overdue', '7', '30', '90']);
-  const clientId = uuidValue(firstDocumentCenterValue(search.client));
+  const companyId = uuidValue(firstDocumentCenterValue(search.company));
   const docType = docTypeSchema.safeParse(firstDocumentCenterValue(search.type));
   const searchTerm =
     normalizeDocumentCenterSearch(firstDocumentCenterValue(search.q)) ??
@@ -79,7 +79,7 @@ export function parseDocumentCenterSearch(
     ]),
     sort: enumValue(sort, ['urgency', 'newest', 'oldest', 'due_date', 'expiry_date']),
     window: parsedWindow,
-    ...(clientId ? { clientId } : {}),
+    ...(companyId ? { companyId } : {}),
     ...(docType.success ? { docType: docType.data } : {}),
     ...(searchTerm ? { search: searchTerm } : {}),
     ...(parsedWindow !== undefined && parsedWindow !== 'all'
@@ -106,7 +106,7 @@ export function documentCenterHref(
   if (value.view !== 'all') params.set('view', value.view);
   if (value.sort !== 'urgency') params.set('sort', value.sort);
   if (value.window !== 'all') params.set('window', value.window);
-  if (value.clientId) params.set('client', value.clientId);
+  if (value.companyId) params.set('company', value.companyId);
   if (value.docType) params.set('type', value.docType);
   if (value.search) params.set('q', value.search);
   if (value.from) params.set('from', value.from);

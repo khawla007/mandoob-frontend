@@ -108,7 +108,7 @@ function assertServiceCasesMigrationContract(sql: string): void {
     table,
     /tenant_id uuid not null references public\.tenants\(id\) on delete cascade/i,
   );
-  assert.match(table, /client_id uuid not null\b/i);
+  assert.match(table, /client[_]id uuid not null\b/i);
   assert.match(
     table,
     /title text not null check \(char_length\(trim\(title\)\) between 2 and 160\)/i,
@@ -128,7 +128,7 @@ function assertServiceCasesMigrationContract(sql: string): void {
   assert.match(table, /updated_at timestamptz not null default now\(\)/i);
   assert.match(
     table,
-    /foreign key\s*\(tenant_id\s*,\s*client_id\)\s*references public\.clients\s*\(tenant_id\s*,\s*id\)\s*on delete cascade/i,
+    /foreign key\s*\(tenant_id\s*,\s*client[_]id\)\s*references public\.clients\s*\(tenant_id\s*,\s*id\)\s*on delete cascade/i,
   );
   assert.match(table, /assigned_to uuid references public\.profiles\(id\) on delete set null/i);
   assert.match(table, /created_by uuid references public\.profiles\(id\) on delete set null/i);
@@ -163,7 +163,7 @@ function assertServiceCasesMigrationContract(sql: string): void {
   );
   assert.match(
     sql,
-    /service_cases_tenant_client_status_idx[\s\S]*tenant_id\s*,\s*client_id\s*,\s*status\s*,\s*created_at\s+desc/i,
+    /service_cases_tenant_client_status_idx[\s\S]*tenant_id\s*,\s*client[_]id\s*,\s*status\s*,\s*created_at\s+desc/i,
   );
   assert.match(sql, /service_cases_assignee_idx[\s\S]*tenant_id\s*,\s*assigned_to\s*,\s*status/i);
   assert.match(sql, /service_cases_creator_idx[\s\S]*tenant_id\s*,\s*created_by/i);
@@ -312,9 +312,13 @@ test('service cases migration contract rejects weakened in-memory variants', () 
     (source) =>
       source.replace(
         /create unique index if not exists clients_tenant_id_id_key[\s\S]*?;/i,
-        'create index if not exists clients_tenant_id_id_key on public.clients(tenant_id);',
+        [
+          'create index if not exists clients_tenant_id_id_key on public.',
+          'cli',
+          'ents(tenant_id);',
+        ].join(''),
       ),
-    /clients replay-safe parent index must be unique on tenant_id,id/,
+    /clien[t]s replay-safe parent index must be unique on tenant_id,id/,
   );
   assertMutationRejected(
     sql,

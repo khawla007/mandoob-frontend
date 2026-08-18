@@ -6,8 +6,7 @@ export type ProDashboardData = {
   generatedAt: string;
   totalPrioritySignals: number;
   kpis: {
-    activeClients: number;
-    activeClientsChange: number;
+    activeCompany: number;
     openCases: number;
     unassignedCases: number;
     movingCases: number;
@@ -32,7 +31,7 @@ export type ProDashboardData = {
     kind: 'case' | 'renewal' | 'document' | 'invoice';
     title: string;
     detail: string;
-    clientName: string;
+    companyName: string;
     ownerName: string | null;
     deadline: string | null;
     urgency: 'breached' | 'urgent' | 'soon' | 'normal';
@@ -46,7 +45,7 @@ export type ProDashboardData = {
     eventType: 'case' | 'renewal' | 'document' | 'invoice';
     href: string;
     title: string;
-    clientName: string;
+    companyName: string;
   }>;
   finance: {
     billedMinor: number;
@@ -77,7 +76,7 @@ export type ProDashboardData = {
   >;
 };
 
-type ClientInput = {
+type CompanyInput = {
   id: string;
   tenant_id: string;
   company_name: string;
@@ -96,7 +95,7 @@ type ProfileInput = {
 type ServiceCaseInput = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   title: string;
   service_type: string;
   status: string;
@@ -113,7 +112,7 @@ type ServiceCaseInput = {
 type RenewalInput = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   type: 'license' | 'visa' | 'eid' | 'ejari';
   label: string;
   due_date: string;
@@ -125,7 +124,7 @@ type RenewalInput = {
 type DocumentRequestInput = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   label: string;
   status: string;
   due_at: string | null;
@@ -134,7 +133,7 @@ type DocumentRequestInput = {
 type DocumentInput = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   label: string | null;
   currentVersion: { tenant_id: string; review_status: string } | null;
 };
@@ -152,7 +151,7 @@ type DocumentVersionInput = {
 type InvoiceInput = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   label: string;
   amount_minor: number;
   currency: string;
@@ -187,9 +186,10 @@ type RefundInput = {
 
 export type ProDashboardInput = {
   tenantId: string;
+  assignedCompanyId: string;
   tenantSlug?: string;
   days?: 7 | 30 | 90;
-  clients: ClientInput[];
+  companies: CompanyInput[];
   profiles: ProfileInput[];
   serviceCases: ServiceCaseInput[];
   renewals: RenewalInput[];
@@ -218,9 +218,15 @@ const COLLECTED_PAYMENT_STATUSES = new Set(['succeeded', 'refunded', 'partially_
 
 export function calculateProDashboard(input: ProDashboardInput, now: Date): ProDashboardData {
   const tenantId = input.tenantId;
-  const clients = input.clients.filter((row) => row.tenant_id === tenantId);
+  const companies = input.companies.filter(
+    (row) => row.tenant_id === tenantId && row.id === input.assignedCompanyId,
+  );
+  const assignedCompany = companies[0];
+  const companyIds = new Set(assignedCompany ? [assignedCompany.id] : []);
   const profiles = input.profiles.filter((row) => row.tenant_id === tenantId);
-  const tenantServiceCases = input.serviceCases.filter((row) => row.tenant_id === tenantId);
+  const tenantServiceCases = input.serviceCases.filter(
+    (row) => row.tenant_id === tenantId && companyIds.has(row.company_id),
+  );
   const activeOwners = profiles.filter((row) => row.status === 'active' && row.role === 'pro');
   const ownerIds = new Set(activeOwners.map((row) => row.id));
   const serviceTypes = Array.from(
@@ -243,10 +249,18 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
       (!appliedFilters.ownerId || row.assigned_to === appliedFilters.ownerId) &&
       (!appliedFilters.serviceType || row.service_type === appliedFilters.serviceType),
   );
-  const renewals = input.renewals.filter((row) => row.tenant_id === tenantId);
-  const documentRequests = input.documentRequests.filter((row) => row.tenant_id === tenantId);
-  const documents = input.documents.filter((row) => row.tenant_id === tenantId);
-  const invoices = input.invoices.filter((row) => row.tenant_id === tenantId);
+  const renewals = input.renewals.filter(
+    (row) => row.tenant_id === tenantId && companyIds.has(row.company_id),
+  );
+  const documentRequests = input.documentRequests.filter(
+    (row) => row.tenant_id === tenantId && companyIds.has(row.company_id),
+  );
+  const documents = input.documents.filter(
+    (row) => row.tenant_id === tenantId && companyIds.has(row.company_id),
+  );
+  const invoices = input.invoices.filter(
+    (row) => row.tenant_id === tenantId && companyIds.has(row.company_id),
+  );
   const invoiceIds = new Set(invoices.map((row) => row.id));
   const payments = input.payments.filter(
     (row) => row.tenant_id === tenantId && invoiceIds.has(row.invoice_id),
@@ -255,7 +269,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const refunds = input.refunds.filter(
     (row) => row.tenant_id === tenantId && paymentIds.has(row.payment_id),
   );
-  const clientNames = new Map(clients.map((row) => [row.id, row.company_name]));
+  const companyNames = new Map(companies.map((row) => [row.id, row.company_name]));
   const ownerNames = new Map(profiles.map((row) => [row.id, row.full_name]));
   const openCases = serviceCases.filter((row) => !CLOSED_CASE_STATUSES.has(row.status));
   const activeOwnerIds = ownerIds;
@@ -265,11 +279,10 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const activeRenewals = renewals.filter((row) => ACTIVE_RENEWAL_STATUSES.has(row.status));
   const today = businessDate(now);
   const currentMonth = today.slice(0, 7);
-  const previousMonth = previousBusinessMonth(currentMonth);
 
   const financeDashboard = calculateProFinanceDashboard({
     tenantId,
-    clients,
+    companies: assignedCompany ? [assignedCompany] : [],
     invoices,
     payments,
     refunds,
@@ -348,7 +361,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     documentRequests,
     documents,
     openInvoices: openReportingInvoices,
-    clientNames,
+    companyNames,
     ownerNames,
     now,
     tenantSlug: input.tenantSlug,
@@ -366,7 +379,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
         eventType: action.kind,
         href: action.href,
         title: action.title,
-        clientName: action.clientName,
+        companyName: action.companyName,
       },
     ];
   });
@@ -439,24 +452,18 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     workloadBalance,
   ];
   const score =
-    clients.length + serviceCases.length + renewals.length === 0
+    companies.length + serviceCases.length + renewals.length === 0
       ? 0
       : clamp(
           Math.round(healthSignals.reduce((sum, value) => sum + value, 0) / healthSignals.length),
         );
-  const activeClients = clients.filter((row) => row.status === 'active');
-  const activeClientsChange =
-    activeClients.filter((row) => row.created_at && businessMonth(row.created_at) === currentMonth)
-      .length -
-    activeClients.filter((row) => row.created_at && businessMonth(row.created_at) === previousMonth)
-      .length;
+  const activeCompany = assignedCompany?.status === 'active' ? 1 : 0;
 
   return {
     generatedAt: now.toISOString(),
     totalPrioritySignals: rankedActions.length,
     kpis: {
-      activeClients: activeClients.length,
-      activeClientsChange,
+      activeCompany,
       openCases: openCases.length,
       unassignedCases,
       movingCases: movingCases.length,
@@ -508,12 +515,12 @@ function buildActions(args: {
   documentRequests: DocumentRequestInput[];
   documents: DocumentInput[];
   openInvoices: InvoiceInput[];
-  clientNames: Map<string, string>;
+  companyNames: Map<string, string>;
   ownerNames: Map<string, string | null>;
   now: Date;
   tenantSlug?: string;
 }): Action[] {
-  const clientName = (id: string) => args.clientNames.get(id) ?? 'Unknown client';
+  const companyName = (id: string) => args.companyNames.get(id) ?? 'Unknown company';
   const base = args.tenantSlug ? `/t/${encodeURIComponent(args.tenantSlug)}` : null;
   const actions: Action[] = [
     ...args.openCases.map((row): Action => {
@@ -525,7 +532,7 @@ function buildActions(args: {
         detail: row.blocked_reason
           ? `${row.service_type} — ${row.blocked_reason}`
           : row.service_type,
-        clientName: clientName(row.client_id),
+        companyName: companyName(row.company_id),
         ownerName: row.assigned_to ? (args.ownerNames.get(row.assigned_to) ?? null) : null,
         deadline,
         urgency: urgency(deadline, args.now),
@@ -538,7 +545,7 @@ function buildActions(args: {
         kind: 'renewal',
         title: row.label,
         detail: `${row.type} renewal`,
-        clientName: clientName(row.client_id),
+        companyName: companyName(row.company_id),
         ownerName: null,
         deadline: row.due_date,
         urgency: urgency(row.due_date, args.now),
@@ -553,7 +560,7 @@ function buildActions(args: {
           kind: 'document',
           title: row.label,
           detail: 'Document request pending',
-          clientName: clientName(row.client_id),
+          companyName: companyName(row.company_id),
           ownerName: null,
           deadline: row.due_at,
           urgency: urgency(row.due_at, args.now),
@@ -568,7 +575,7 @@ function buildActions(args: {
           kind: 'document',
           title: row.label ?? 'Document review',
           detail: 'Awaiting document review',
-          clientName: clientName(row.client_id),
+          companyName: companyName(row.company_id),
           ownerName: null,
           deadline: null,
           urgency: 'normal',
@@ -581,7 +588,7 @@ function buildActions(args: {
         kind: 'invoice',
         title: row.label,
         detail: `${row.currency} ${(row.amount_minor / 100).toFixed(2)}`,
-        clientName: clientName(row.client_id),
+        companyName: companyName(row.company_id),
         ownerName: null,
         deadline: row.due_at,
         urgency: urgency(row.due_at, args.now),
@@ -722,12 +729,6 @@ function businessMonth(timestamp: string): string {
   return businessDate(new Date(timestamp)).slice(0, 7);
 }
 
-function previousBusinessMonth(month: string): string {
-  const value = new Date(`${month}-01T00:00:00.000Z`);
-  value.setUTCMonth(value.getUTCMonth() - 1);
-  return value.toISOString().slice(0, 7);
-}
-
 function businessDeadlineParts(deadline: string): {
   date: string;
   period: 'morning' | 'afternoon';
@@ -829,18 +830,18 @@ type ProDashboardQueryResult = {
 export type ProDashboardQueryClient = {
   from(source: string): {
     select(columns: string): {
-      eq(
-        column: string,
-        value: string,
-      ): {
-        order(
-          column: string,
-          options: { ascending: boolean },
-        ): {
-          range(from: number, to: number): PromiseLike<ProDashboardQueryResult>;
-        };
-      };
+      eq(column: string, value: string): ProDashboardScopedQuery;
     };
+  };
+};
+
+type ProDashboardScopedQuery = {
+  eq?: (column: string, value: string) => ProDashboardScopedQuery;
+  order(
+    column: string,
+    options: { ascending: boolean },
+  ): {
+    range(from: number, to: number): PromiseLike<ProDashboardQueryResult>;
   };
 };
 
@@ -849,14 +850,15 @@ export function loadProDashboardRows<T>(
   source: string,
   select: string,
   tenantId: string,
+  ownership?: { column: string; value: string },
 ): Promise<T[]> {
   return collectProDashboardPages<T>(source, async (from, to) => {
-    const result = await client
-      .from(source)
-      .select(select)
-      .eq('tenant_id', tenantId)
-      .order('id', { ascending: true })
-      .range(from, to);
+    let query = client.from(source).select(select).eq('tenant_id', tenantId);
+    if (ownership) {
+      if (!query.eq) throw new ProDashboardQueryError(source);
+      query = query.eq(ownership.column, ownership.value);
+    }
+    const result = await query.order('id', { ascending: true }).range(from, to);
     return {
       data: result.data as T[] | null,
       error: result.error,
@@ -867,7 +869,7 @@ export function loadProDashboardRows<T>(
 type ProDashboardErrorGroup = keyof ProDashboardData['errors'];
 const SOURCE_ERROR_GROUPS: Record<string, ProDashboardErrorGroup> = {
   tenantSlug: 'links',
-  clients: 'identity',
+  companies: 'identity',
   profiles: 'operations',
   serviceCases: 'operations',
   renewals: 'renewals',
@@ -1001,17 +1003,26 @@ async function loadTenantSlug(
 
 export async function getProDashboardData(
   tenantId: string,
+  assignedCompanyId: string,
   days: 7 | 30 | 90 = 30,
   filters?: { ownerId?: string; serviceType?: string },
 ): Promise<ProDashboardData> {
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
   const admin = createSupabaseServiceRoleClient();
-  const load = <T>(source: string, select: string) =>
-    loadProDashboardRows<T>(admin as unknown as ProDashboardQueryClient, source, select, tenantId);
+  const load = <T>(source: string, select: string, ownership?: { column: string; value: string }) =>
+    loadProDashboardRows<T>(
+      admin as unknown as ProDashboardQueryClient,
+      source,
+      select,
+      tenantId,
+      ownership,
+    );
+  const companyOwnership = { column: 'company_id', value: assignedCompanyId };
 
   const documentHeadsPromise = load<DocumentHeadInput>(
     'documents',
-    'id, tenant_id, client_id, label, current_version_id',
+    'id, tenant_id, company_id, label, current_version_id',
+    companyOwnership,
   );
   const documentVersionsPromise: Promise<DocumentVersionInput[]> = documentHeadsPromise.then(
     (documents) =>
@@ -1023,25 +1034,33 @@ export async function getProDashboardData(
   );
   const settled = await settleProDashboardSources({
     tenantSlug: loadTenantSlug(admin as unknown as ProDashboardTenantQueryClient, tenantId),
-    clients: load<ClientInput>('clients', 'id, tenant_id, company_name, status, created_at'),
+    companies: load<CompanyInput>(
+      'company_profiles',
+      'id, tenant_id, company_name, status, created_at',
+      { column: 'id', value: assignedCompanyId },
+    ),
     profiles: load<ProfileInput>('profiles', 'id, tenant_id, full_name, role, status'),
     serviceCases: load<ServiceCaseInput>(
       'service_cases_ranked',
-      'id, tenant_id, client_id, title, service_type, status, priority, assigned_to, due_at, sla_due_at, blocked_reason, completed_at, created_at, updated_at',
+      'id, tenant_id, company_id, title, service_type, status, priority, assigned_to, due_at, sla_due_at, blocked_reason, completed_at, created_at, updated_at',
+      companyOwnership,
     ),
     renewals: load<RenewalInput>(
       'renewals',
-      'id, tenant_id, client_id, type, label, due_date, status, notify_at, last_notified_at',
+      'id, tenant_id, company_id, type, label, due_date, status, notify_at, last_notified_at',
+      companyOwnership,
     ),
     documentRequests: load<DocumentRequestInput>(
       'document_requests',
-      'id, tenant_id, client_id, label, status, due_at',
+      'id, tenant_id, company_id, label, status, due_at',
+      companyOwnership,
     ),
     documentHeads: documentHeadsPromise,
     documentVersions: documentVersionsPromise,
     invoices: load<InvoiceInput>(
       'invoices',
-      'id, tenant_id, client_id, label, amount_minor, currency, status, due_at, created_at',
+      'id, tenant_id, company_id, label, amount_minor, currency, status, due_at, created_at',
+      companyOwnership,
     ),
     payments: load<PaymentInput>(
       'payments',
@@ -1054,7 +1073,7 @@ export async function getProDashboardData(
   });
   const {
     tenantSlug: tenantSlugs,
-    clients,
+    companies,
     profiles,
     serviceCases,
     renewals,
@@ -1070,9 +1089,10 @@ export async function getProDashboardData(
   return calculateProDashboard(
     {
       tenantId,
+      assignedCompanyId,
       tenantSlug: tenantSlugs[0],
       days,
-      clients,
+      companies,
       profiles,
       serviceCases,
       renewals,

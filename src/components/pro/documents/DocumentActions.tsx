@@ -29,10 +29,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import type { DocumentCenterClientOption, DocumentCenterRow } from '@/lib/data/pro-document-center';
+import type { DocumentCenterRow } from '@/lib/data/pro-document-center';
 import type { DocType } from '@/lib/validation/document';
 import { VersionHistoryDialog, type VersionHistoryLabels } from './VersionHistoryDialog';
-import type { DocumentClientSearchLabels } from './DocumentClientSearchField';
 import { resolvePrimaryDocumentAction, resolveReviewFeedbackTarget } from './document-action-state';
 import { openDocumentVersionWithPopup } from './document-open-controller';
 import {
@@ -47,7 +46,7 @@ type MutationState = DocumentCenterActionResult | null;
 type DocumentActionRow = Pick<
   DocumentCenterRow,
   | 'entityKind'
-  | 'clientId'
+  | 'companyId'
   | 'documentId'
   | 'versionId'
   | 'reviewStatus'
@@ -63,13 +62,10 @@ export type DocumentActionLabels = {
   opening: string;
   popupBlocked: string;
   success: string;
-  clientSearch: DocumentClientSearchLabels;
   request: {
     trigger: string;
     title: string;
     description: string;
-    client: string;
-    selectClient: string;
     type: string;
     label: string;
     due: string;
@@ -188,7 +184,7 @@ function RowDocumentActions({
   const versionId = row.versionId;
   const documentId = row.documentId;
   const expiryFormId = documentId ? `document-expiry-form-${documentId}` : undefined;
-  const clientHref = `/t/${encodeURIComponent(slug)}/company`;
+  const companyHref = `/t/${encodeURIComponent(slug)}/company`;
   const canManageExpiry = row.entityKind === 'document' && row.expirySource === 'document';
   const externalExpiryLabel =
     row.expirySource && row.expirySource !== 'document'
@@ -236,7 +232,7 @@ function RowDocumentActions({
         {row.reviewStatus === 'pending' && versionId ? (
           <form action={reviewFormAction}>
             <input type="hidden" name="version_id" value={versionId} />
-            <input type="hidden" name="client_id" value={row.clientId} />
+            <input type="hidden" name="company_id" value={row.companyId} />
             <input type="hidden" name="status" value="approved" />
             <input type="hidden" name="note" value="" />
             <PendingButton
@@ -268,7 +264,7 @@ function RowDocumentActions({
               </DialogHeader>
               <form action={reviewFormAction} className="document-center-control grid gap-4">
                 <input type="hidden" name="version_id" value={versionId} />
-                <input type="hidden" name="client_id" value={row.clientId} />
+                <input type="hidden" name="company_id" value={row.companyId} />
                 <input type="hidden" name="status" value="rejected" />
                 <label className="grid gap-1.5 text-sm font-medium">
                   {labels.review.note}
@@ -351,7 +347,7 @@ function RowDocumentActions({
                 className="document-center-control grid gap-4"
               >
                 <input type="hidden" name="document_id" value={documentId} />
-                <input type="hidden" name="client_id" value={row.clientId} />
+                <input type="hidden" name="company_id" value={row.companyId} />
                 <label className="grid gap-1.5 text-sm font-medium">
                   {labels.expiry.date}
                   <input
@@ -368,7 +364,7 @@ function RowDocumentActions({
               <DialogFooter>
                 <form action={expiryFormAction} onSubmit={preventCompetingExpirySubmit}>
                   <input type="hidden" name="document_id" value={documentId} />
-                  <input type="hidden" name="client_id" value={row.clientId} />
+                  <input type="hidden" name="company_id" value={row.companyId} />
                   <input type="hidden" name="expires_on" value="" />
                   <PendingButton pending={expiryPending} type="submit" variant="ghost">
                     {expiryPending ? labels.expiry.pending : labels.expiry.clear}
@@ -386,11 +382,11 @@ function RowDocumentActions({
           asChild
           type="button"
           size="sm"
-          variant={primaryAction === 'client' ? 'default' : 'ghost'}
-          data-document-action="client"
-          data-primary={primaryAction === 'client' ? 'true' : undefined}
+          variant={primaryAction === 'company' ? 'default' : 'ghost'}
+          data-document-action="company"
+          data-primary={primaryAction === 'company' ? 'true' : undefined}
         >
-          <Link href={clientHref}>
+          <Link href={companyHref}>
             <UserRound aria-hidden="true" />
             {labels.profile}
           </Link>
@@ -418,7 +414,6 @@ export function DocumentActions(
     | {
         kind: 'request';
         slug: string;
-        clients: DocumentCenterClientOption[];
         labels: DocumentActionLabels;
       }
     | {
@@ -430,7 +425,7 @@ export function DocumentActions(
       },
 ) {
   return props.kind === 'request' ? (
-    <RequestDocumentDialog slug={props.slug} clients={props.clients} labels={props.labels} />
+    <RequestDocumentDialog slug={props.slug} labels={props.labels} />
   ) : (
     <RowDocumentActions
       slug={props.slug}

@@ -13,7 +13,7 @@ export type LinkedEntity = {
 
 export type CreateInvoiceArgs = {
   tenantId: string;
-  clientId: string;
+  companyId: string;
   customerProfileId?: string | null;
   linked?: LinkedEntity;
   label: string;
@@ -29,8 +29,8 @@ export type CreateInvoiceResult =
 
 export type ProInvoiceRow = {
   id: string;
-  clientId: string;
-  clientName: string;
+  companyId: string;
+  companyName: string;
   customerProfileId: string | null;
   label: string;
   amount: string;
@@ -40,6 +40,14 @@ export type ProInvoiceRow = {
   dueAt: string | null;
   paidAt: string | null;
   createdAt: string;
+  refundOperation: RefundOperationState | null;
+};
+
+export type RefundOperationState = {
+  operationId: string;
+  status: 'pending' | 'succeeded' | 'failed';
+  amountMinor: number;
+  reason: string | null;
 };
 
 export type PaymentInvoicePage = {
@@ -54,7 +62,7 @@ const PAYMENT_INVOICE_PAGE_SIZE = 50;
 type PaymentFilterInvoice = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   customer_profile_id: string | null;
   label: string;
   amount_minor: number;
@@ -74,6 +82,7 @@ type PaymentRpcResult = {
 
 export async function listInvoicesForPaymentView(
   tenantId: string,
+  companyId: string,
   options: {
     view: PaymentSignalView | 'all';
     page?: number;
@@ -90,11 +99,13 @@ export async function listInvoicesForPaymentView(
       admin
         .from('invoices')
         .select(
-          'id, tenant_id, client_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
+          'id, tenant_id, company_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
           { count: 'exact' },
         )
         .eq('tenant_id', tenantId)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .range((page - 1) * PAYMENT_INVOICE_PAGE_SIZE, page * PAYMENT_INVOICE_PAGE_SIZE - 1);
     let query = await load(requestedPage);
     if (query.error) throw new Error(query.error.message);
@@ -111,28 +122,37 @@ export async function listInvoicesForPaymentView(
       currency: rows.find((row) => row.currency === 'AED')?.currency ?? rows[0]?.currency ?? 'AED',
     };
   } else {
-    const { data, error } = await admin.rpc('list_signal_payment_invoices', {
-      p_tenant_id: tenantId,
-      p_view: options.view,
-      p_page: requestedPage,
-      p_page_size: PAYMENT_INVOICE_PAGE_SIZE,
-      p_today: options.today ?? signalBusinessDate(),
-      p_date: options.date ?? null,
-      p_period: options.period ?? null,
-    });
+    const { data, error } = await admin.rpc(
+      'list_company_payment_invoices' as never,
+      {
+        p_tenant_id: tenantId,
+        p_company_id: companyId,
+        p_view: options.view,
+        p_page: requestedPage,
+        p_page_size: PAYMENT_INVOICE_PAGE_SIZE,
+        p_today: options.today ?? signalBusinessDate(),
+        p_date: options.date ?? null,
+        p_period: options.period ?? null,
+      } as never,
+    );
     if (error) throw new Error(error.message);
     result = data as unknown as PaymentRpcResult;
   }
   const selected = result.rows;
-  const clientNames = await getClientNames(
+  const companyNames = await getCompanyNames(
     admin,
-    Array.from(new Set(selected.map((row) => row.client_id))),
+    Array.from(new Set(selected.map((row) => row.company_id))),
+  );
+  const refundOperations = await getLatestRefundOperations(
+    admin,
+    tenantId,
+    selected.map((row) => row.id),
   );
   return {
     rows: selected.map((row) => ({
       id: row.id,
-      clientId: row.client_id,
-      clientName: clientNames.get(row.client_id) ?? 'Unknown client',
+      companyId: row.company_id,
+      companyName: companyNames.get(row.company_id) ?? 'Unknown company',
       customerProfileId: row.customer_profile_id ?? null,
       label: row.label,
       amount: formatMoney(row.amount_minor, row.currency),
@@ -142,6 +162,7 @@ export async function listInvoicesForPaymentView(
       dueAt: row.due_at ?? null,
       paidAt: row.paid_at ?? null,
       createdAt: row.created_at,
+      refundOperation: refundOperations.get(row.id) ?? null,
     })),
     total: result.total,
     page: result.page,
@@ -153,7 +174,7 @@ export async function listInvoicesForPaymentView(
 export type ReceiptPayload = {
   tenantName: string;
   tenantColor: string | null;
-  clientName: string;
+  companyName: string;
   customerName: string | null;
   invoiceId: string;
   label: string;
@@ -199,88 +220,72 @@ export async function createInvoice(args: CreateInvoiceArgs): Promise<CreateInvo
   const currency = (args.currency ?? 'AED').toUpperCase();
 
   const customerProfileId =
-    args.customerProfileId ?? (await resolveCustomerProfileId(admin, args.clientId));
+    args.customerProfileId ?? (await resolveCustomerProfileId(admin, args.companyId));
 
   const dueAtIso = normaliseDueAt(args.dueAt);
-  const insertPayload = {
-    tenant_id: args.tenantId,
-    client_id: args.clientId,
-    customer_profile_id: customerProfileId,
-    linked_entity_type: args.linked?.type ?? 'manual',
-    linked_entity_id: args.linked?.id ?? null,
-    label: args.label,
-    amount_minor: Number(args.amountMinor),
-    currency,
-    status: 'open' as const,
-    due_at: dueAtIso,
-    created_by: args.createdBy ?? null,
-  };
+  const linkedEntityType = args.linked?.type ?? 'manual';
+  const linkedEntityId = args.linked?.id ?? null;
+  const { data: insertedId, error } = await admin.rpc('create_company_invoice', {
+    p_tenant_id: args.tenantId,
+    p_company_id: args.companyId,
+    p_customer_profile_id: customerProfileId,
+    p_linked_entity_type: linkedEntityType,
+    p_linked_entity_id: linkedEntityId,
+    p_label: args.label,
+    p_amount_minor: Number(args.amountMinor),
+    p_currency: currency,
+    p_due_at: dueAtIso,
+    p_created_by: args.createdBy ?? null,
+  });
 
-  const { data: inserted, error } = await admin
-    .from('invoices')
-    .insert(insertPayload)
-    .select('id')
-    .single();
-
-  if (error || !inserted) {
+  if (error || !insertedId) {
     return { ok: false, error: error?.message ?? 'insert failed', code: 'DB_INSERT_FAILED' };
   }
 
-  await admin.from('tenant_audit_log').insert({
-    tenant_id: args.tenantId,
-    actor_id: args.createdBy ?? null,
-    action: 'invoice_created',
-    source: args.createdBy ? 'admin' : 'system',
-    details: {
-      entity: 'invoice',
-      invoice_id: inserted.id,
-      client_id: args.clientId,
-      amount_minor: Number(args.amountMinor),
-      currency,
-      linked_entity_type: insertPayload.linked_entity_type,
-      linked_entity_id: insertPayload.linked_entity_id,
-    },
-  });
-
   const emailQueueId = await fanOutInvoiceDueEmail({
     admin,
-    invoiceId: inserted.id,
+    invoiceId: insertedId,
     tenantId: args.tenantId,
-    clientId: args.clientId,
+    companyId: args.companyId,
     customerProfileId,
     label: args.label,
     amountMinor: args.amountMinor,
     currency,
   });
 
-  return { ok: true, data: { id: inserted.id, emailQueueId } };
+  return { ok: true, data: { id: insertedId, emailQueueId } };
 }
 
 export async function listInvoicesForTenant(
   tenantId: string,
-  opts: { clientId?: string; limit?: number } = {},
+  opts: { companyId?: string; limit?: number } = {},
 ): Promise<ProInvoiceRow[]> {
   const admin = createSupabaseServiceRoleClient();
   let query = admin
     .from('invoices')
     .select(
-      'id, client_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
+      'id, company_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
     )
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
     .limit(opts.limit ?? 100);
 
-  if (opts.clientId) query = query.eq('client_id', opts.clientId);
+  if (opts.companyId) query = query.eq('company_id', opts.companyId);
 
   const { data } = await query;
   const rows = data ?? [];
-  const clientIds = Array.from(new Set(rows.map((r) => r.client_id as string)));
-  const clientNames = await getClientNames(admin, clientIds);
+  const companyIds = Array.from(new Set(rows.map((r) => r.company_id as string)));
+  const companyNames = await getCompanyNames(admin, companyIds);
+  const refundOperations = await getLatestRefundOperations(
+    admin,
+    tenantId,
+    rows.map((row) => row.id as string),
+  );
 
   return rows.map((r) => ({
     id: r.id as string,
-    clientId: r.client_id as string,
-    clientName: clientNames.get(r.client_id as string) ?? 'Unknown client',
+    companyId: r.company_id as string,
+    companyName: companyNames.get(r.company_id as string) ?? 'Unknown company',
     customerProfileId: (r.customer_profile_id as string | null) ?? null,
     label: r.label as string,
     amount: formatMoney(r.amount_minor as number, r.currency as string),
@@ -290,6 +295,7 @@ export async function listInvoicesForTenant(
     dueAt: (r.due_at as string | null) ?? null,
     paidAt: (r.paid_at as string | null) ?? null,
     createdAt: r.created_at as string,
+    refundOperation: refundOperations.get(r.id as string) ?? null,
   }));
 }
 
@@ -305,33 +311,37 @@ export async function countOpenInvoicesForTenant(tenantId: string): Promise<numb
 
 export async function getReceiptPayloadForTenant(
   tenantId: string,
+  companyId: string,
   invoiceId: string,
 ): Promise<ReceiptPayload | null> {
   const admin = createSupabaseServiceRoleClient();
-  const payload = await loadReceiptPayload(admin, tenantId, invoiceId);
+  const payload = await loadReceiptPayload(admin, tenantId, invoiceId, companyId);
   return payload;
 }
 
 export async function getInvoiceDetailForTenant(
   tenantId: string,
+  companyId: string,
   invoiceId: string,
 ): Promise<InvoiceDetail | null> {
   const admin = createSupabaseServiceRoleClient();
   const { data: invoice } = await admin
     .from('invoices')
     .select(
-      'id, client_id, customer_profile_id, linked_entity_type, linked_entity_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
+      'id, company_id, customer_profile_id, linked_entity_type, linked_entity_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
     )
     .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
     .eq('id', invoiceId)
     .maybeSingle();
   if (!invoice) return null;
 
-  const [clientNames, paymentsResult, auditResult] = await Promise.all([
-    getClientNames(admin, [invoice.client_id as string]),
+  const [companyNames, paymentsResult, auditResult] = await Promise.all([
+    getCompanyNames(admin, [invoice.company_id as string]),
     admin
       .from('payments')
       .select('id, provider, method, status, amount_minor, currency, received_at, failure_reason')
+      .eq('tenant_id', tenantId)
       .eq('invoice_id', invoiceId)
       .order('created_at', { ascending: false }),
     admin
@@ -347,15 +357,16 @@ export async function getInvoiceDetailForTenant(
   const { data: refunds } = paymentIds.length
     ? await admin
         .from('refunds')
-        .select('id, payment_id, amount_minor, reason, status, created_at')
+        .select('id, payment_id, idempotency_key, status, amount_minor, reason, created_at')
+        .eq('tenant_id', tenantId)
         .in('payment_id', paymentIds)
         .order('created_at', { ascending: false })
     : { data: [] };
 
   return {
     id: invoice.id as string,
-    clientId: invoice.client_id as string,
-    clientName: clientNames.get(invoice.client_id as string) ?? 'Unknown client',
+    companyId: invoice.company_id as string,
+    companyName: companyNames.get(invoice.company_id as string) ?? 'Unknown company',
     customerProfileId: (invoice.customer_profile_id as string | null) ?? null,
     label: invoice.label as string,
     amount: formatMoney(invoice.amount_minor as number, invoice.currency as string),
@@ -365,6 +376,7 @@ export async function getInvoiceDetailForTenant(
     dueAt: (invoice.due_at as string | null) ?? null,
     paidAt: (invoice.paid_at as string | null) ?? null,
     createdAt: invoice.created_at as string,
+    refundOperation: mapRefundOperation((refunds ?? []).find((refund) => refund.idempotency_key)),
     linkedEntityType: (invoice.linked_entity_type as string | null) ?? null,
     linkedEntityId: (invoice.linked_entity_id as string | null) ?? null,
     payments: (paymentsResult.data ?? []).map((p) => ({
@@ -410,18 +422,81 @@ export async function getReceiptPayloadForCustomer(
 
 type Admin = ReturnType<typeof createSupabaseServiceRoleClient>;
 
-async function resolveCustomerProfileId(admin: Admin, clientId: string): Promise<string | null> {
+async function getLatestRefundOperations(
+  admin: Admin,
+  tenantId: string,
+  invoiceIds: string[],
+): Promise<Map<string, RefundOperationState>> {
+  if (invoiceIds.length === 0) return new Map();
+  const { data: payments, error: paymentError } = await admin
+    .from('payments')
+    .select('id, invoice_id')
+    .eq('tenant_id', tenantId)
+    .in('invoice_id', invoiceIds);
+  if (paymentError) throw new Error(paymentError.message);
+  const paymentToInvoice = new Map(
+    (payments ?? []).map((payment) => [payment.id as string, payment.invoice_id as string]),
+  );
+  if (paymentToInvoice.size === 0) return new Map();
+  const { data: refunds, error: refundError } = await admin
+    .from('refunds')
+    .select('id, payment_id, idempotency_key, status, amount_minor, reason, created_at')
+    .eq('tenant_id', tenantId)
+    .in('payment_id', [...paymentToInvoice.keys()])
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
+  if (refundError) throw new Error(refundError.message);
+
+  const result = new Map<string, RefundOperationState>();
+  for (const refund of refunds ?? []) {
+    const invoiceId = paymentToInvoice.get(refund.payment_id as string);
+    if (!invoiceId || result.has(invoiceId)) continue;
+    const operation = mapRefundOperation(refund);
+    if (operation) result.set(invoiceId, operation);
+  }
+  return result;
+}
+
+function mapRefundOperation(
+  refund:
+    | {
+        idempotency_key?: string | null;
+        status?: string | null;
+        amount_minor?: number | null;
+        reason?: string | null;
+      }
+    | undefined,
+): RefundOperationState | null {
+  if (!refund?.idempotency_key || !isRefundOperationStatus(refund.status)) return null;
+  return {
+    operationId: refund.idempotency_key,
+    status: refund.status,
+    amountMinor: refund.amount_minor ?? 0,
+    reason: refund.reason ?? null,
+  };
+}
+
+function isRefundOperationStatus(
+  status: string | null | undefined,
+): status is RefundOperationState['status'] {
+  return status === 'pending' || status === 'succeeded' || status === 'failed';
+}
+
+async function resolveCustomerProfileId(admin: Admin, companyId: string): Promise<string | null> {
   const { data } = await admin
     .from('customer_profiles')
     .select('profile_id')
-    .eq('linked_client_id', clientId)
+    .eq('linked_company_id', companyId)
     .maybeSingle();
   return data?.profile_id ?? null;
 }
 
-async function getClientNames(admin: Admin, clientIds: string[]): Promise<Map<string, string>> {
-  if (clientIds.length === 0) return new Map();
-  const { data } = await admin.from('clients').select('id, company_name').in('id', clientIds);
+async function getCompanyNames(admin: Admin, companyIds: string[]): Promise<Map<string, string>> {
+  if (companyIds.length === 0) return new Map();
+  const { data } = await admin
+    .from('company_profiles')
+    .select('id, company_name')
+    .in('id', companyIds);
   return new Map((data ?? []).map((r) => [r.id as string, r.company_name as string]));
 }
 
@@ -429,26 +504,30 @@ async function loadReceiptPayload(
   admin: Admin,
   tenantId: string,
   invoiceId: string,
+  companyId?: string,
 ): Promise<ReceiptPayload | null> {
-  const { data: invoice } = await admin
+  let invoiceQuery = admin
     .from('invoices')
-    .select('id, client_id, customer_profile_id, label, amount_minor, currency, status, paid_at')
+    .select('id, company_id, customer_profile_id, label, amount_minor, currency, status, paid_at')
     .eq('tenant_id', tenantId)
-    .eq('id', invoiceId)
-    .maybeSingle();
+    .eq('id', invoiceId);
+  if (companyId) invoiceQuery = invoiceQuery.eq('company_id', companyId);
+  const { data: invoice } = await invoiceQuery.maybeSingle();
   if (!invoice) return null;
   if (!isReceiptEligible(invoice.status as string)) return null;
 
-  const [{ data: tenant }, { data: client }, { data: payment }] = await Promise.all([
+  const [{ data: tenant }, { data: company }, { data: payment }] = await Promise.all([
     admin.from('tenants').select('name, primary_color').eq('id', tenantId).maybeSingle(),
     admin
-      .from('clients')
+      .from('company_profiles')
       .select('company_name')
-      .eq('id', invoice.client_id as string)
+      .eq('tenant_id', tenantId)
+      .eq('id', invoice.company_id as string)
       .maybeSingle(),
     admin
       .from('payments')
       .select('id, provider, method, status, received_at')
+      .eq('tenant_id', tenantId)
       .eq('invoice_id', invoiceId)
       .in('status', ['succeeded', 'refunded', 'partially_refunded'])
       .order('created_at', { ascending: false })
@@ -460,6 +539,7 @@ async function loadReceiptPayload(
     ? await admin
         .from('refunds')
         .select('amount_minor, reason, status')
+        .eq('tenant_id', tenantId)
         .eq('payment_id', payment.id as string)
         .order('created_at', { ascending: false })
     : { data: [] };
@@ -477,7 +557,7 @@ async function loadReceiptPayload(
   return {
     tenantName: (tenant?.name as string | null) ?? 'Mandoob',
     tenantColor: (tenant?.primary_color as string | null) ?? null,
-    clientName: (client?.company_name as string | null) ?? 'Unknown client',
+    companyName: (company?.company_name as string | null) ?? 'Unknown company',
     customerName,
     invoiceId: invoice.id as string,
     label: invoice.label as string,
@@ -504,7 +584,7 @@ async function fanOutInvoiceDueEmail(opts: {
   admin: Admin;
   invoiceId: string;
   tenantId: string;
-  clientId: string;
+  companyId: string;
   customerProfileId: string | null;
   label: string;
   amountMinor: bigint | number;

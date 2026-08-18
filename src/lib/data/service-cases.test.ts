@@ -194,7 +194,7 @@ function caseRow(overrides: Row = {}): Row {
   return {
     id: CASE_1,
     tenant_id: TENANT_1,
-    client_id: CLIENT_1,
+    company_id: CLIENT_1,
     title: 'Trade license renewal',
     service_type: 'License renewal',
     status: 'documents_pending',
@@ -214,7 +214,7 @@ test('toServiceCase preserves tenant ownership and camel-cases every database fi
   assert.deepEqual(toServiceCase(caseRow() as never), {
     id: CASE_1,
     tenantId: TENANT_1,
-    clientId: CLIENT_1,
+    companyId: CLIENT_1,
     title: 'Trade license renewal',
     serviceType: 'License renewal',
     status: 'documents_pending',
@@ -253,9 +253,9 @@ test('listServiceCases scopes cases and filters, and only hydrates tenant-scoped
     service_cases: [
       caseRow(),
       caseRow({ id: 'foreign-case', tenant_id: TENANT_2 }),
-      caseRow({ id: 'foreign-client-case', client_id: CLIENT_2, assigned_to: PROFILE_2 }),
+      caseRow({ id: 'foreign-client-case', company_id: CLIENT_2, assigned_to: PROFILE_2 }),
     ],
-    clients: [
+    company_profiles: [
       { id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' },
       { id: CLIENT_2, tenant_id: TENANT_2, company_name: 'Foreign LLC' },
     ],
@@ -279,12 +279,12 @@ test('listServiceCases scopes cases and filters, and only hydrates tenant-scoped
 
   const rows = await listServiceCases(
     TENANT_1,
-    { status: ['documents_pending'], assignedTo: PROFILE_1, clientId: CLIENT_1 },
+    { status: ['documents_pending'], assignedTo: PROFILE_1, companyId: CLIENT_1 },
     { supabase: db as never },
   );
 
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].clientName, 'Acme LLC');
+  assert.equal(rows[0].companyName, 'Acme LLC');
   assert.equal(rows[0].ownerName, 'Aisha Khan');
   const casesCall = db.calls.find((call) => call.table === 'service_cases');
   assert.ok(
@@ -294,9 +294,9 @@ test('listServiceCases scopes cases and filters, and only hydrates tenant-scoped
   );
   assert.ok(casesCall?.filters.some((f) => f.kind === 'in' && f.key === 'status'));
   assert.ok(casesCall?.filters.some((f) => f.key === 'assigned_to' && f.value === PROFILE_1));
-  assert.ok(casesCall?.filters.some((f) => f.key === 'client_id' && f.value === CLIENT_1));
+  assert.ok(casesCall?.filters.some((f) => f.key === 'company_id' && f.value === CLIENT_1));
   for (const related of db.calls.filter(
-    (call) => call.table === 'clients' || call.table === 'profiles',
+    (call) => call.table === 'company_profiles' || call.table === 'profiles',
   )) {
     assert.ok(related.filters.some((f) => f.key === 'tenant_id' && f.value === TENANT_1));
   }
@@ -304,8 +304,8 @@ test('listServiceCases scopes cases and filters, and only hydrates tenant-scoped
 
 test('listServiceCases never hydrates cross-tenant client or owner names', async () => {
   const db = fakeSupabase({
-    service_cases: [caseRow({ client_id: CLIENT_2, assigned_to: PROFILE_2 })],
-    clients: [{ id: CLIENT_2, tenant_id: TENANT_2, company_name: 'Foreign LLC' }],
+    service_cases: [caseRow({ company_id: CLIENT_2, assigned_to: PROFILE_2 })],
+    company_profiles: [{ id: CLIENT_2, tenant_id: TENANT_2, company_name: 'Foreign LLC' }],
     profiles: [
       {
         id: PROFILE_2,
@@ -317,7 +317,7 @@ test('listServiceCases never hydrates cross-tenant client or owner names', async
     ],
   });
   const [row] = await listServiceCases(TENANT_1, {}, { supabase: db as never });
-  assert.equal(row.clientName, '');
+  assert.equal(row.companyName, '');
   assert.equal(row.ownerName, null);
 });
 
@@ -359,7 +359,7 @@ test('listServiceCases converts database and hydration errors to ApiError', asyn
 
   const hydrationFailure = fakeSupabase(
     { service_cases: [caseRow()] },
-    { 'clients:select': { message: 'client lookup down' } },
+    { 'company_profiles:select': { message: 'client lookup down' } },
   );
   await assert.rejects(
     () => listServiceCases(TENANT_1, {}, { supabase: hydrationFailure as never }),
@@ -370,7 +370,7 @@ test('listServiceCases converts database and hydration errors to ApiError', asyn
 test('listServiceCaseWorkspace loads each tenant dataset once without a silent row cap', async () => {
   const db = fakeSupabase({
     service_cases_ranked: [caseRow({ sla_breach_rank: 0, priority_rank: 1 })],
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
     profiles: [
       {
         id: PROFILE_1,
@@ -388,15 +388,15 @@ test('listServiceCaseWorkspace loads each tenant dataset once without a silent r
     { supabase: db as never },
   );
 
-  assert.equal(workspace.cases[0].clientName, 'Acme LLC');
+  assert.equal(workspace.cases[0].companyName, 'Acme LLC');
   assert.equal(workspace.cases[0].ownerName, 'Aisha Khan');
-  assert.deepEqual(workspace.clients, [{ id: CLIENT_1, name: 'Acme LLC' }]);
+  assert.deepEqual(workspace.companies, [{ id: CLIENT_1, name: 'Acme LLC' }]);
   assert.deepEqual(workspace.owners, [{ id: PROFILE_1, name: 'Aisha Khan' }]);
   assert.equal(workspace.total, 1);
   assert.equal(workspace.page, 1);
   assert.equal(workspace.pageSize, SERVICE_CASE_PAGE_SIZE);
   assert.equal(db.calls.filter((call) => call.table === 'service_cases_ranked').length, 1);
-  assert.equal(db.calls.filter((call) => call.table === 'clients').length, 1);
+  assert.equal(db.calls.filter((call) => call.table === 'company_profiles').length, 1);
   assert.equal(db.calls.filter((call) => call.table === 'profiles').length, 1);
   assert.equal(
     db.calls.some((call) => call.limit !== undefined),
@@ -410,7 +410,7 @@ test('targeted service-case workspace uses a tenant-scoped exact id and first pa
       caseRow({ id: CASE_1 }),
       caseRow({ id: '88888888-8888-4888-8888-888888888888' }),
     ],
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
     profiles: [
       {
         id: PROFILE_1,
@@ -447,7 +447,7 @@ test('exported service-case DAL uses explicit ranges instead of silent query lim
   assert.match(source, /\.range\s*\(/);
 });
 
-test('service-case workspace pages cases and batches clients while honoring the sole active owner', async () => {
+test('service-case workspace pages cases and batches companies while honoring the sole active owner', async () => {
   const cases = Array.from({ length: 55 }, (_, index) =>
     caseRow({
       id: `case-${String(index).padStart(3, '0')}`,
@@ -455,7 +455,7 @@ test('service-case workspace pages cases and batches clients while honoring the 
       priority_rank: 1,
     }),
   );
-  const clients = Array.from({ length: 1005 }, (_, index) => ({
+  const companies = Array.from({ length: 1005 }, (_, index) => ({
     id: `client-${index}`,
     tenant_id: TENANT_1,
     company_name: `Client ${index}`,
@@ -467,7 +467,7 @@ test('service-case workspace pages cases and batches clients while honoring the 
     role: 'pro',
     status: index === 0 ? 'active' : 'suspended',
   }));
-  const db = fakeSupabase({ service_cases_ranked: cases, clients, profiles });
+  const db = fakeSupabase({ service_cases_ranked: cases, company_profiles: companies, profiles });
 
   const workspace = await listServiceCaseWorkspace(
     TENANT_1,
@@ -479,11 +479,11 @@ test('service-case workspace pages cases and batches clients while honoring the 
   assert.equal(workspace.total, 55);
   assert.equal(workspace.page, 2);
   assert.equal(workspace.pageSize, 50);
-  assert.equal(workspace.clients.length, 1005);
+  assert.equal(workspace.companies.length, 1005);
   assert.equal(workspace.owners.length, 1);
   assert.deepEqual(db.calls.find((call) => call.table === 'service_cases_ranked')?.range, [50, 99]);
   assert.deepEqual(
-    db.calls.filter((call) => call.table === 'clients').map((call) => call.range),
+    db.calls.filter((call) => call.table === 'company_profiles').map((call) => call.range),
     [
       [0, 499],
       [500, 999],
@@ -502,7 +502,7 @@ test('service-case workspace applies service type inside the tenant-scoped case 
       caseRow({ id: 'license-case', service_type: 'License' }),
       caseRow({ id: 'visa-case', service_type: 'Golden visa' }),
     ],
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
     profiles: [],
   });
 
@@ -548,7 +548,7 @@ test('service-case workspace applies global business ranking before the page bou
   });
   const db = fakeSupabase({
     service_cases_ranked: [...routine, breached],
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
     profiles: [
       {
         id: PROFILE_1,
@@ -610,7 +610,7 @@ test('listServiceCases deliberately batches beyond PostgREST max_rows', async ()
   );
   const db = fakeSupabase({
     service_cases: cases,
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1, company_name: 'Acme LLC' }],
     profiles: [
       {
         id: PROFILE_1,
@@ -677,13 +677,13 @@ test('forward service-case security migration removes mutation RLS and guards bo
   }
 });
 
-test('createServiceCase rejects wrong roles and cross-tenant clients or assignees', async () => {
+test('createServiceCase rejects wrong roles and cross-tenant companies or assignees', async () => {
   const db = fakeSupabase({
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_2 }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_2 }],
     profiles: [{ id: PROFILE_1, tenant_id: TENANT_2, role: 'pro', status: 'active' }],
   });
   const input = {
-    client_id: CLIENT_1,
+    company_id: CLIENT_1,
     title: 'New application',
     service_type: 'Visa application',
     assigned_to: PROFILE_1,
@@ -701,10 +701,10 @@ test('createServiceCase rejects wrong roles and cross-tenant clients or assignee
       createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
         supabase: db as never,
       }),
-    (error) => error instanceof ApiError && error.code === 'INVALID_CLIENT',
+    (error) => error instanceof ApiError && error.code === 'INVALID_COMPANY',
   );
 
-  db.tables.set('clients', [{ id: CLIENT_1, tenant_id: TENANT_1 }]);
+  db.tables.set('company_profiles', [{ id: CLIENT_1, tenant_id: TENANT_1 }]);
   await assert.rejects(
     () =>
       createServiceCase({ tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' }, input, {
@@ -727,7 +727,7 @@ test('createServiceCase rejects wrong roles and cross-tenant clients or assignee
 
 test('createServiceCase uses the atomic RPC with trusted ownership and audit details', async () => {
   const db = fakeSupabase({
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
     profiles: [{ id: PROFILE_1, tenant_id: TENANT_1, role: 'pro', status: 'active' }],
     service_cases: [],
     tenant_audit_log: [],
@@ -737,7 +737,7 @@ test('createServiceCase uses the atomic RPC with trusted ownership and audit det
     await createServiceCase(
       { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
       {
-        client_id: CLIENT_1,
+        company_id: CLIENT_1,
         title: ' New application ',
         service_type: ' Visa application ',
         priority: 'urgent',
@@ -753,7 +753,7 @@ test('createServiceCase uses the atomic RPC with trusted ownership and audit det
   assert.deepEqual(db.rpcCalls[0].args, {
     p_tenant_id: TENANT_1,
     p_actor_id: PROFILE_1,
-    p_client_id: CLIENT_1,
+    p_company_id: CLIENT_1,
     p_title: 'New application',
     p_service_type: 'Visa application',
     p_priority: 'urgent',
@@ -761,7 +761,7 @@ test('createServiceCase uses the atomic RPC with trusted ownership and audit det
     p_due_at: null,
     p_sla_due_at: null,
     p_blocked_reason: null,
-    p_changed_keys: ['client_id', 'title', 'service_type', 'priority', 'assigned_to'],
+    p_changed_keys: ['company_id', 'title', 'service_type', 'priority', 'assigned_to'],
   });
   assert.equal(
     db.calls.some((call) => call.operation === 'insert'),
@@ -771,11 +771,11 @@ test('createServiceCase uses the atomic RPC with trusted ownership and audit det
 
 test('createServiceCase treats an RPC error atomically and verifies the returned case ID', async () => {
   const seed = {
-    clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
+    company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1 }],
     service_cases: [],
     tenant_audit_log: [],
   };
-  const input = { client_id: CLIENT_1, title: 'New case', service_type: 'Visa' };
+  const input = { company_id: CLIENT_1, title: 'New case', service_type: 'Visa' };
   const dbFailure = fakeSupabase(seed, {
     'rpc:create_service_case_with_audit': { message: 'transaction rolled back' },
   });
@@ -809,7 +809,7 @@ test('updateServiceCase rejects missing or cross-tenant cases and cross-tenant a
   await assert.rejects(
     () =>
       updateServiceCase(
-        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
         CASE_1,
         { priority: 'urgent' },
         { supabase: db as never },
@@ -821,13 +821,31 @@ test('updateServiceCase rejects missing or cross-tenant cases and cross-tenant a
   await assert.rejects(
     () =>
       updateServiceCase(
-        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
         CASE_1,
         { assigned_to: PROFILE_2 },
         { supabase: db as never },
       ),
     (error) => error instanceof ApiError && error.code === 'INVALID_ASSIGNEE',
   );
+});
+
+test('updateServiceCase denies a same-tenant case owned by another company', async () => {
+  const db = fakeSupabase({
+    service_cases: [caseRow({ tenant_id: TENANT_1, company_id: CLIENT_2 })],
+  });
+
+  await assert.rejects(
+    () =>
+      updateServiceCase(
+        { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
+        CASE_1,
+        { priority: 'urgent' },
+        { supabase: db as never },
+      ),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(db.rpcCalls.length, 0);
 });
 
 test('updateServiceCase merges current lifecycle and rejects an impossible persisted state', async () => {
@@ -837,7 +855,7 @@ test('updateServiceCase merges current lifecycle and rejects an impossible persi
   await assert.rejects(
     () =>
       updateServiceCase(
-        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
         CASE_1,
         { priority: 'urgent' },
         { supabase: db as never },
@@ -853,16 +871,17 @@ test('updateServiceCase merges current lifecycle and rejects an impossible persi
 test('updateServiceCase uses the atomic tenant-scoped RPC with only defined changed keys', async () => {
   const db = fakeSupabase({ service_cases: [caseRow()], tenant_audit_log: [] });
   await updateServiceCase(
-    { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+    { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
     CASE_1,
     { priority: 'urgent', assigned_to: null },
     { supabase: db as never },
   );
 
   assert.equal(db.rpcCalls.length, 1);
-  assert.equal(db.rpcCalls[0].name, 'update_service_case_with_audit');
+  assert.equal(db.rpcCalls[0].name, 'update_company_service_case_with_audit');
   assert.deepEqual(db.rpcCalls[0].args, {
     p_tenant_id: TENANT_1,
+    p_company_id: CLIENT_1,
     p_actor_id: PROFILE_1,
     p_case_id: CASE_1,
     p_patch: { priority: 'urgent', assigned_to: null },
@@ -877,12 +896,12 @@ test('updateServiceCase uses the atomic tenant-scoped RPC with only defined chan
 test('updateServiceCase treats RPC errors atomically and verifies affected row ID', async () => {
   const updateFailure = fakeSupabase(
     { service_cases: [caseRow()] },
-    { 'rpc:update_service_case_with_audit': { message: 'transaction rolled back' } },
+    { 'rpc:update_company_service_case_with_audit': { message: 'transaction rolled back' } },
   );
   await assert.rejects(
     () =>
       updateServiceCase(
-        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
         CASE_1,
         { priority: 'urgent' },
         { supabase: updateFailure as never },
@@ -893,12 +912,12 @@ test('updateServiceCase treats RPC errors atomically and verifies affected row I
   const missingResult = fakeSupabase(
     { service_cases: [caseRow()], tenant_audit_log: [] },
     {},
-    { update_service_case_with_audit: null },
+    { update_company_service_case_with_audit: null },
   );
   await assert.rejects(
     () =>
       updateServiceCase(
-        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
         CASE_1,
         { priority: 'urgent' },
         { supabase: missingResult as never },
@@ -910,12 +929,12 @@ test('updateServiceCase treats RPC errors atomically and verifies affected row I
 test('updateServiceCase preserves the atomic RPC not-found result', async () => {
   const db = fakeSupabase(
     { service_cases: [caseRow()] },
-    { 'rpc:update_service_case_with_audit': { message: 'NOT_FOUND', code: 'P0002' } },
+    { 'rpc:update_company_service_case_with_audit': { message: 'NOT_FOUND', code: 'P0002' } },
   );
   await assert.rejects(
     () =>
       updateServiceCase(
-        { tenantId: TENANT_1, actorId: PROFILE_1, role: 'pro' },
+        { tenantId: TENANT_1, companyId: CLIENT_1, actorId: PROFILE_1, role: 'pro' },
         CASE_1,
         { priority: 'urgent' },
         { supabase: db as never },
@@ -925,10 +944,10 @@ test('updateServiceCase preserves the atomic RPC not-found result', async () => 
 });
 
 test('service-case mutations preserve RPC authorization failures as forbidden', async () => {
-  const input = { client_id: CLIENT_1, title: 'New case', service_type: 'Visa' };
+  const input = { company_id: CLIENT_1, title: 'New case', service_type: 'Visa' };
   for (const failure of [{ message: 'FORBIDDEN', code: '42501' }, { message: 'FORBIDDEN' }]) {
     const db = fakeSupabase(
-      { clients: [{ id: CLIENT_1, tenant_id: TENANT_1 }] },
+      { company_profiles: [{ id: CLIENT_1, tenant_id: TENANT_1 }] },
       { 'rpc:create_service_case_with_audit': failure },
     );
     await assert.rejects(

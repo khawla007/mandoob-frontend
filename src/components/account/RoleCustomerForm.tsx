@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 type Initial = {
   nationality: string | null;
   passportNo: string | null;
-  linkedClientId: string | null;
+  linkedCompanyId: string | null;
 };
 
 export function RoleCustomerForm({ initial }: { initial: Initial }) {
@@ -65,7 +65,7 @@ export function RoleCustomerForm({ initial }: { initial: Initial }) {
           {t('linkedCompany')}{' '}
           <span className="text-muted-foreground text-xs">({t('readOnly')})</span>
         </Label>
-        <p className="text-muted-foreground text-sm">{initial.linkedClientId ?? '—'}</p>
+        <p className="text-muted-foreground text-sm">{initial.linkedCompanyId ?? '—'}</p>
       </div>
       <Button type="submit" disabled={isPending}>
         {isPending ? tCommon('saving') : tCommon('save')}

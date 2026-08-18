@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { ApplicationCreateForm } from '@/components/pro/applications/ApplicationCreateForm';
 import { ApplicationsTable } from '@/components/pro/applications/ApplicationsTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { listServiceCaseWorkspace, type ServiceCaseStatus } from '@/lib/data/service-cases';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { serviceCaseStatuses } from '@/lib/validation/service-case';
 import { createApplicationFormAction } from './actions';
 import {
@@ -29,7 +30,9 @@ export default async function ApplicationsPage({
 }) {
   const { tenant: slug } = await params;
   const search = await searchParams;
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
   const filters = parseApplicationFilters(search);
   const requestedPage = filters.id ? 1 : parseApplicationPage(search.page);
@@ -37,7 +40,7 @@ export default async function ApplicationsPage({
     listServiceCaseWorkspace(tenant.id, {
       status: filters.status,
       assignedTo: filters.assigned_to,
-      clientId: filters.client_id,
+      companyId: company.id,
       serviceType: filters.service_type,
       caseId: filters.id,
       deadlineDate: filters.deadlineDate,
@@ -51,7 +54,7 @@ export default async function ApplicationsPage({
   if (requestedPage > totalPages) {
     redirect(applicationPageHref(slug, filters, totalPages));
   }
-  const { cases, clients: clientOptions, owners: ownerOptions } = workspace;
+  const { cases, owners: ownerOptions } = workspace;
   const create = createApplicationFormAction.bind(null, slug);
   const statusLabels = Object.fromEntries(
     serviceCaseStatuses.map((status) => [status, t(`applicationStatuses.${status}`)]),
@@ -72,11 +75,8 @@ export default async function ApplicationsPage({
         </summary>
         <ApplicationCreateForm
           action={create}
-          clients={clientOptions}
           owners={ownerOptions}
           labels={{
-            client: t('applicationClient'),
-            selectClient: t('selectApplicationClient'),
             title: t('applicationTitle'),
             serviceType: t('applicationServiceType'),
             priority: t('applicationPriority'),
@@ -152,14 +152,14 @@ export default async function ApplicationsPage({
             slug={slug}
             locale={locale}
             labels={{
-              client: t('applicationClient'),
+              company: t('applicationCompany'),
               service: t('applicationService'),
               status: t('applicationStatus'),
               owner: t('applicationOwner'),
               slaDue: t('applicationSlaAndDue'),
               action: t('applicationAction'),
               unassigned: t('applicationUnassigned'),
-              unknownClient: t('applicationUnknownClient'),
+              unknownCompany: t('applicationUnknownCompany'),
               slaPrefix: t('applicationSla'),
               duePrefix: t('applicationDue'),
               slaBreached: t('applicationSlaBreached'),

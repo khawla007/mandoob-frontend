@@ -34,11 +34,11 @@ export type EditablePro = {
 export type EditableCustomer = {
   nationality: string | null;
   passportNo: string | null;
-  linkedClientId: string | null;
+  linkedCompanyId: string | null;
 };
 
 export type EditableEmployee = {
-  clientId: string;
+  companyId: string;
   passportNo: string | null;
   visaNo: string | null;
   visaExpiry: string | null;
@@ -132,7 +132,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
       customer: {
         nationality: (customer?.nationality as string | null) ?? null,
         passportNo: decryptOptional(customer?.passport_no_encrypted as string | null),
-        linkedClientId: (customer?.linked_company_id as string | null) ?? null,
+        linkedCompanyId: (customer?.linked_company_id as string | null) ?? null,
       },
     };
   }
@@ -150,7 +150,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
       profile: baseProfile,
       role: 'employee',
       employee: {
-        clientId: employee.company_id as string,
+        companyId: employee.company_id as string,
         passportNo: decryptOptional(employee.passport_no_encrypted as string | null),
         visaNo: decryptOptional(employee.visa_no_encrypted as string | null),
         visaExpiry: (employee.visa_expiry as string | null) ?? null,

@@ -90,6 +90,7 @@ export async function createRefund(args: {
   amountMinor: bigint | number;
   currency: string;
   reason: string;
+  idempotencyKey: string;
 }): Promise<TapRefundResult> {
   const amount = minorToMajor(args.amountMinor, args.currency);
   const body = {
@@ -99,7 +100,11 @@ export async function createRefund(args: {
     reason: 'requested_by_customer',
     description: args.reason,
   };
-  const res = await tapFetch(args.config, '/v2/refunds/', { method: 'POST', body });
+  const res = await tapFetch(args.config, '/v2/refunds/', {
+    method: 'POST',
+    body,
+    idempotencyKey: args.idempotencyKey,
+  });
   if (!res.ok) return res;
   const json = res.json as Record<string, unknown>;
   const refundId = typeof json.id === 'string' ? json.id : null;
@@ -107,6 +112,23 @@ export async function createRefund(args: {
   if (!refundId)
     return { ok: false, error: 'malformed Tap refund response', retryable: false, raw: json };
   return { ok: true, refundId, status, raw: json };
+}
+
+export async function getRefund(
+  refundId: string,
+  config: ResolvedTapConfig,
+): Promise<TapRefundResult> {
+  const res = await tapFetch(config, `/v2/refunds/${encodeURIComponent(refundId)}`, {
+    method: 'GET',
+  });
+  if (!res.ok) return res;
+  const json = res.json as Record<string, unknown>;
+  const id = typeof json.id === 'string' ? json.id : null;
+  const status = typeof json.status === 'string' ? json.status : 'PENDING';
+  if (!id) {
+    return { ok: false, error: 'malformed Tap refund response', retryable: false, raw: json };
+  }
+  return { ok: true, refundId: id, status, raw: json };
 }
 
 type TapFetchSuccess = { ok: true; json: unknown };
@@ -121,7 +143,7 @@ type TapFetchFailure = {
 async function tapFetch(
   config: ResolvedTapConfig,
   path: string,
-  init: { method: 'GET' | 'POST'; body?: unknown },
+  init: { method: 'GET' | 'POST'; body?: unknown; idempotencyKey?: string },
 ): Promise<TapFetchSuccess | TapFetchFailure> {
   const url = `${config.apiBase.replace(/\/$/, '')}${path}`;
   let res: Response;
@@ -132,6 +154,7 @@ async function tapFetch(
         Authorization: `Bearer ${config.secretKey}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...(init.idempotencyKey ? { 'Idempotency-Key': init.idempotencyKey } : {}),
       },
       body: init.body ? JSON.stringify(init.body) : undefined,
       cache: 'no-store',

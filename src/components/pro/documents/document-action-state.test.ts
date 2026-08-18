@@ -17,7 +17,7 @@ test('resolvePrimaryDocumentAction chooses exactly one next action for every que
     versionId: '77777777-7777-4777-8777-777777777777',
     reviewStatus: null,
   };
-  assert.equal(loaded.resolvePrimaryDocumentAction({ ...base, entityKind: 'request' }), 'client');
+  assert.equal(loaded.resolvePrimaryDocumentAction({ ...base, entityKind: 'request' }), 'company');
   assert.equal(
     loaded.resolvePrimaryDocumentAction({ ...base, reviewStatus: 'pending' }),
     'approve',
@@ -25,7 +25,7 @@ test('resolvePrimaryDocumentAction chooses exactly one next action for every que
   assert.equal(loaded.resolvePrimaryDocumentAction({ ...base, reviewStatus: 'approved' }), 'open');
   assert.equal(
     loaded.resolvePrimaryDocumentAction({ ...base, reviewStatus: 'rejected' }),
-    'client',
+    'company',
   );
   assert.equal(loaded.resolvePrimaryDocumentAction({ ...base, versionId: null }), 'history');
   assert.equal(
@@ -34,7 +34,7 @@ test('resolvePrimaryDocumentAction chooses exactly one next action for every que
       documentId: null,
       versionId: null,
     }),
-    'client',
+    'company',
   );
 });
 

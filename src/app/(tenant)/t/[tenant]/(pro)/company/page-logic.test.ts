@@ -19,7 +19,7 @@ test('company query accepts the first supported tab and exact document UUID', as
 
 test('company query rejects unsupported and unsafe values', async () => {
   const { parseAssignedCompanySearch } = await import('./page-logic');
-  assert.deepEqual(parseAssignedCompanySearch({ tab: 'clients', document: '../secret' }), {
+  assert.deepEqual(parseAssignedCompanySearch({ tab: 'company_profiles', document: '../secret' }), {
     tab: 'overview',
     documentId: undefined,
     requestId: undefined,

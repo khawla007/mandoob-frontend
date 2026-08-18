@@ -8,7 +8,11 @@ import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-acc
 import { createInvoice } from '@/lib/data/invoices';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
 import { createRefund } from '@/lib/payments/providers/tap';
-import { resolveRefundLedgerState } from '@/lib/payments/refund-state';
+import {
+  executeIdempotentRefund,
+  type RefundIntent,
+  type RefundWorkflowInput,
+} from '@/lib/payments/refund-workflow';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import {
   createInvoiceActionSchema,
@@ -16,6 +20,7 @@ import {
   refundInvoiceActionSchema,
   voidInvoiceActionSchema,
 } from '@/lib/validation/invoice';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -27,6 +32,14 @@ type CallerCtx = {
   tenantSlug: string;
   ip: string;
 };
+
+async function resolveAssignedCompanyForCaller(ctx: CallerCtx) {
+  const company = await readAssignedCompanyForPro(ctx.callerId, ctx.tenantSlug);
+  if (!company || company.tenantId !== ctx.tenantId) {
+    throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
+  }
+  return company;
+}
 
 async function resolveProCaller(slug: string): Promise<CallerCtx> {
   const { session, tenant } = await requireProTenantRouteAccess(slug);
@@ -46,20 +59,11 @@ export async function createInvoiceAction(
   try {
     const ctx = await resolveProCaller(tenantSlug);
     const input = createInvoiceActionSchema.parse(raw);
-    const admin = createSupabaseServiceRoleClient();
-    const { data: client } = await admin
-      .from('clients')
-      .select('id, tenant_id')
-      .eq('id', input.clientId)
-      .maybeSingle();
-
-    if (!client || client.tenant_id !== ctx.tenantId) {
-      return { ok: false, error: 'Client not found', code: 'NOT_FOUND' };
-    }
+    const company = await resolveAssignedCompanyForCaller(ctx);
 
     const result = await createInvoice({
       tenantId: ctx.tenantId,
-      clientId: input.clientId,
+      companyId: company.id,
       label: input.label,
       amountMinor: input.amountMinor,
       currency: input.currency,
@@ -93,69 +97,27 @@ export async function markInvoicePaidAction(args: {
       note: args.note,
     });
     const ctx = await resolveProCaller(args.tenantSlug);
+    const company = await resolveAssignedCompanyForCaller(ctx);
     const admin = createSupabaseServiceRoleClient();
-
-    const { data: invoice } = await admin
-      .from('invoices')
-      .select('id, tenant_id, status, amount_minor, currency')
-      .eq('id', parsed.invoiceId)
-      .maybeSingle();
-
-    if (!invoice || invoice.tenant_id !== ctx.tenantId) {
-      return { ok: false, error: 'Invoice not found', code: 'NOT_FOUND' };
+    const { data: paymentId, error } = await admin.rpc(
+      'mark_company_invoice_paid' as never,
+      {
+        p_tenant_id: ctx.tenantId,
+        p_company_id: company.id,
+        p_invoice_id: parsed.invoiceId,
+        p_actor_id: ctx.callerId,
+        p_method: parsed.method,
+        p_note: parsed.note ?? null,
+        p_ip: ctx.ip,
+      } as never,
+    );
+    if (error || typeof paymentId !== 'string') {
+      return { ok: false, error: 'Could not record manual payment', code: 'PAYMENT_FAILED' };
     }
-    if (invoice.status !== 'open' && invoice.status !== 'draft') {
-      return {
-        ok: false,
-        error: `Cannot mark invoice in state '${invoice.status}' as paid`,
-        code: 'INVALID_STATE',
-      };
-    }
-
-    const nowIso = new Date().toISOString();
-    const { data: paymentRow, error: paymentErr } = await admin
-      .from('payments')
-      .insert({
-        tenant_id: ctx.tenantId,
-        invoice_id: invoice.id,
-        provider: 'manual',
-        amount_minor: invoice.amount_minor,
-        currency: invoice.currency,
-        method: parsed.method,
-        status: 'succeeded',
-        received_at: nowIso,
-      })
-      .select('id')
-      .single();
-
-    if (paymentErr || !paymentRow) {
-      return {
-        ok: false,
-        error: paymentErr?.message ?? 'Could not record manual payment',
-        code: 'DB_INSERT_FAILED',
-      };
-    }
-
-    await admin.from('invoices').update({ status: 'paid', paid_at: nowIso }).eq('id', invoice.id);
-
-    await admin.from('tenant_audit_log').insert({
-      tenant_id: ctx.tenantId,
-      actor_id: ctx.callerId,
-      action: 'invoice_marked_paid',
-      source: 'admin',
-      details: {
-        entity: 'invoice',
-        invoice_id: invoice.id,
-        payment_id: paymentRow.id,
-        method: parsed.method,
-        note: parsed.note ?? null,
-        ip: ctx.ip,
-      },
-    });
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
-    return { ok: true, data: { paymentId: paymentRow.id } };
+    return { ok: true, data: { paymentId } };
   } catch (err) {
     return mapError(err);
   }
@@ -172,46 +134,26 @@ export async function voidInvoiceAction(args: {
       reason: args.reason,
     });
     const ctx = await resolveProCaller(args.tenantSlug);
+    const company = await resolveAssignedCompanyForCaller(ctx);
     const admin = createSupabaseServiceRoleClient();
-
-    const { data: invoice } = await admin
-      .from('invoices')
-      .select('id, tenant_id, status')
-      .eq('id', parsed.invoiceId)
-      .maybeSingle();
-
-    if (!invoice || invoice.tenant_id !== ctx.tenantId) {
-      return { ok: false, error: 'Invoice not found', code: 'NOT_FOUND' };
+    const { data: invoiceId, error } = await admin.rpc(
+      'void_company_invoice' as never,
+      {
+        p_tenant_id: ctx.tenantId,
+        p_company_id: company.id,
+        p_invoice_id: parsed.invoiceId,
+        p_actor_id: ctx.callerId,
+        p_reason: parsed.reason,
+        p_ip: ctx.ip,
+      } as never,
+    );
+    if (error || typeof invoiceId !== 'string') {
+      return { ok: false, error: 'Could not void invoice', code: 'VOID_FAILED' };
     }
-    if (invoice.status !== 'open' && invoice.status !== 'draft') {
-      return {
-        ok: false,
-        error: `Cannot void invoice in state '${invoice.status}'`,
-        code: 'INVALID_STATE',
-      };
-    }
-
-    await admin
-      .from('invoices')
-      .update({ status: 'void', void_reason: parsed.reason })
-      .eq('id', invoice.id);
-
-    await admin.from('tenant_audit_log').insert({
-      tenant_id: ctx.tenantId,
-      actor_id: ctx.callerId,
-      action: 'invoice_voided',
-      source: 'admin',
-      details: {
-        entity: 'invoice',
-        invoice_id: invoice.id,
-        reason: parsed.reason,
-        ip: ctx.ip,
-      },
-    });
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
-    return { ok: true, data: { invoiceId: invoice.id } };
+    return { ok: true, data: { invoiceId } };
   } catch (err) {
     return mapError(err);
   }
@@ -222,160 +164,143 @@ export async function issueRefundAction(args: {
   invoiceId: string;
   amountMinor: number;
   reason: string;
-}): Promise<ActionResult<{ refundId: string; partial: boolean }>> {
+  operationId: string;
+}): Promise<
+  ActionResult<{
+    refundId: string;
+    partial: boolean;
+    status: 'pending' | 'succeeded' | 'failed';
+  }>
+> {
   try {
     const parsed = refundInvoiceActionSchema.parse({
       invoiceId: args.invoiceId,
       amountMinor: args.amountMinor,
       reason: args.reason,
+      operationId: args.operationId,
     });
     const ctx = await resolveProCaller(args.tenantSlug);
-
+    const company = await resolveAssignedCompanyForCaller(ctx);
     const admin = createSupabaseServiceRoleClient();
-
-    const { data: invoice } = await admin
-      .from('invoices')
-      .select('id, tenant_id, status, amount_minor, currency')
-      .eq('id', parsed.invoiceId)
-      .maybeSingle();
-
-    if (!invoice || invoice.tenant_id !== ctx.tenantId) {
-      return { ok: false, error: 'Invoice not found', code: 'NOT_FOUND' };
-    }
-    if (invoice.status !== 'paid' && invoice.status !== 'partially_refunded') {
-      return {
-        ok: false,
-        error: `Cannot refund invoice in state '${invoice.status}'`,
-        code: 'INVALID_STATE',
-      };
-    }
-    if (parsed.amountMinor > invoice.amount_minor) {
-      return {
-        ok: false,
-        error: 'Refund exceeds invoice amount',
-        code: 'INVALID_AMOUNT',
-      };
-    }
-
-    const { data: payment } = await admin
-      .from('payments')
-      .select('id, provider, provider_charge_id, amount_minor')
-      .eq('invoice_id', invoice.id)
-      .in('status', ['succeeded', 'partially_refunded'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!payment) {
-      return { ok: false, error: 'No succeeded payment to refund', code: 'INVALID_STATE' };
-    }
-
-    const { data: existingRefunds } = await admin
-      .from('refunds')
-      .select('amount_minor, status')
-      .eq('payment_id', payment.id)
-      .neq('status', 'failed');
-    const alreadyRefundedMinor = (existingRefunds ?? []).reduce(
-      (sum, row) => sum + (row.amount_minor as number),
-      0,
-    );
-    const remainingMinor = invoice.amount_minor - alreadyRefundedMinor;
-    if (parsed.amountMinor > remainingMinor) {
-      return {
-        ok: false,
-        error: 'Refund exceeds remaining refundable amount',
-        code: 'INVALID_AMOUNT',
-      };
-    }
-
-    let providerRefundId: string | null = null;
-    let refundStatus: 'pending' | 'succeeded' | 'failed' = 'succeeded';
-
-    if (payment.provider === 'tap') {
-      if (!payment.provider_charge_id) {
-        return { ok: false, error: 'Payment missing Tap charge id', code: 'INVALID_STATE' };
-      }
-      const config = await resolveTenantTapConfig(ctx.tenantId);
-      if (!config) {
-        return { ok: false, error: 'Tap not configured', code: 'NOT_CONFIGURED' };
-      }
-      const refundResult = await createRefund({
-        config,
-        chargeId: payment.provider_charge_id,
-        amountMinor: parsed.amountMinor,
-        currency: invoice.currency,
-        reason: parsed.reason,
-      });
-      if (!refundResult.ok) {
-        return { ok: false, error: refundResult.error, code: 'TAP_ERROR' };
-      }
-      providerRefundId = refundResult.refundId;
-      refundStatus = refundResult.status === 'PENDING' ? 'pending' : 'succeeded';
-    }
-
-    const { data: refundRow, error: refundErr } = await admin
-      .from('refunds')
-      .insert({
-        tenant_id: ctx.tenantId,
-        payment_id: payment.id,
-        provider_refund_id: providerRefundId,
-        amount_minor: parsed.amountMinor,
-        reason: parsed.reason,
-        status: refundStatus,
-      })
-      .select('id')
-      .single();
-
-    if (refundErr || !refundRow) {
-      return {
-        ok: false,
-        error: refundErr?.message ?? 'Could not record refund',
-        code: 'DB_INSERT_FAILED',
-      };
-    }
-
-    const ledgerState = resolveRefundLedgerState({
-      refundStatus,
+    const input: RefundWorkflowInput = {
+      tenantId: ctx.tenantId,
+      companyId: company.id,
+      invoiceId: parsed.invoiceId,
+      actorId: ctx.callerId,
       amountMinor: parsed.amountMinor,
-      remainingMinor,
+      reason: parsed.reason,
+      ip: ctx.ip,
+      idempotencyKey: parsed.operationId,
+    };
+    const result = await executeIdempotentRefund(input, {
+      prepare: async (workflowInput) => prepareRefundIntent(admin, workflowInput),
+      callProvider: async (intent, workflowInput) => callRefundProvider(intent, workflowInput),
+      reconcile: async (reconcileInput) => reconcileRefundIntent(admin, reconcileInput),
     });
-    if (ledgerState.settlesImmediately && ledgerState.invoiceStatus && ledgerState.paymentStatus) {
-      await admin
-        .from('invoices')
-        .update({ status: ledgerState.invoiceStatus })
-        .eq('id', invoice.id);
-      await admin
-        .from('payments')
-        .update({ status: ledgerState.paymentStatus })
-        .eq('id', payment.id);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: result.error,
+        code: result.retryable ? 'TAP_ERROR' : 'TAP_TERMINAL',
+      };
     }
-
-    await admin.from('tenant_audit_log').insert({
-      tenant_id: ctx.tenantId,
-      actor_id: ctx.callerId,
-      action: 'refund_issued',
-      source: 'admin',
-      details: {
-        entity: 'refund',
-        refund_id: refundRow.id,
-        payment_id: payment.id,
-        invoice_id: invoice.id,
-        amount_minor: parsed.amountMinor,
-        currency: invoice.currency,
-        provider: payment.provider,
-        partial: !ledgerState.isFull,
-        pending: !ledgerState.settlesImmediately,
-        reason: parsed.reason,
-        ip: ctx.ip,
-      },
-    });
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
-    return { ok: true, data: { refundId: refundRow.id, partial: !ledgerState.isFull } };
+    return {
+      ok: true,
+      data: { refundId: result.refundId, partial: result.partial, status: result.status },
+    };
   } catch (err) {
     return mapError(err);
   }
+}
+
+async function prepareRefundIntent(
+  admin: ReturnType<typeof createSupabaseServiceRoleClient>,
+  input: RefundWorkflowInput,
+): Promise<RefundIntent> {
+  const { data, error } = await admin.rpc(
+    'prepare_company_refund' as never,
+    {
+      p_tenant_id: input.tenantId,
+      p_company_id: input.companyId,
+      p_invoice_id: input.invoiceId,
+      p_actor_id: input.actorId,
+      p_amount_minor: input.amountMinor,
+      p_reason: input.reason,
+      p_idempotency_key: input.idempotencyKey,
+    } as never,
+  );
+  if (error) throw new ApiError('REFUND_PREPARE_FAILED', error.message, 409);
+  const row = ((data as unknown as Record<string, unknown>[] | null) ?? [])[0];
+  if (!row) throw new ApiError('REFUND_PREPARE_FAILED', 'Refund intent missing', 500);
+  return {
+    refundId: row.refund_id as string,
+    paymentId: row.payment_id as string,
+    provider: row.provider as string,
+    providerChargeId: (row.provider_charge_id as string | null) ?? null,
+    providerIdempotencyKey: row.provider_idempotency_key as string,
+    status: row.refund_status as RefundIntent['status'],
+    currency: row.currency as string,
+  };
+}
+
+async function callRefundProvider(intent: RefundIntent, input: RefundWorkflowInput) {
+  if (intent.provider === 'manual') {
+    return { ok: true as const, providerRefundId: null, status: 'succeeded' as const };
+  }
+  if (intent.provider !== 'tap' || !intent.providerChargeId) {
+    return { ok: false as const, error: 'Payment provider reference missing', retryable: false };
+  }
+  const config = await resolveTenantTapConfig(input.tenantId);
+  if (!config) return { ok: false as const, error: 'Tap not configured', retryable: false };
+  const result = await createRefund({
+    config,
+    chargeId: intent.providerChargeId,
+    amountMinor: input.amountMinor,
+    currency: intent.currency,
+    reason: input.reason,
+    idempotencyKey: intent.providerIdempotencyKey,
+  });
+  return result.ok
+    ? {
+        ok: true as const,
+        providerRefundId: result.refundId,
+        status: result.status === 'PENDING' ? ('pending' as const) : ('succeeded' as const),
+      }
+    : { ok: false as const, error: result.error, retryable: result.retryable };
+}
+
+async function reconcileRefundIntent(
+  admin: ReturnType<typeof createSupabaseServiceRoleClient>,
+  args: {
+    intent: RefundIntent;
+    input: RefundWorkflowInput;
+    providerRefundId: string | null;
+    status: 'pending' | 'succeeded' | 'failed';
+  },
+) {
+  const { data, error } = await admin.rpc(
+    'reconcile_company_refund' as never,
+    {
+      p_tenant_id: args.input.tenantId,
+      p_company_id: args.input.companyId,
+      p_refund_id: args.intent.refundId,
+      p_actor_id: args.input.actorId,
+      p_provider_refund_id: args.providerRefundId,
+      p_status: args.status,
+      p_ip: args.input.ip,
+    } as never,
+  );
+  if (error) throw new ApiError('REFUND_RECONCILE_FAILED', error.message, 500);
+  const row = ((data as unknown as Record<string, unknown>[] | null) ?? [])[0];
+  if (!row) throw new ApiError('REFUND_RECONCILE_FAILED', 'Refund result missing', 500);
+  return {
+    refundId: row.refund_id as string,
+    partial: row.partial as boolean,
+    status: row.refund_status as 'pending' | 'succeeded' | 'failed',
+  };
 }
 
 function mapError(err: unknown): { ok: false; error: string; code: string } {

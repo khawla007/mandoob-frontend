@@ -1,11 +1,12 @@
 import 'server-only';
 import { formatMoney } from '@/lib/format/money';
 import { signalBusinessDate, signalReportingCurrency } from './signal-finance';
+import { loadAllRangePages } from './range-pagination';
 
 export type ProFinanceInvoiceInput = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   amount_minor: number;
   currency: string;
   status: string;
@@ -37,7 +38,7 @@ export type ProFinanceRefundInput = {
   created_at: string;
 };
 
-export type ProFinanceClientInput = {
+export type ProFinanceCompanyInput = {
   id: string;
   tenant_id: string;
   company_name: string;
@@ -49,9 +50,9 @@ export type ProFinanceKpi = {
   helper: string;
 };
 
-export type ProFinanceClientRevenueRow = {
-  clientId: string;
-  clientName: string;
+export type ProFinanceCompanyRevenueRow = {
+  companyId: string;
+  companyName: string;
   currency: string;
   collected: string;
   collectedMinor: number;
@@ -64,8 +65,8 @@ export type ProFinanceClientRevenueRow = {
 export type ProFinanceFailedAttemptRow = {
   id: string;
   invoiceId: string;
-  clientId: string | null;
-  clientName: string;
+  companyId: string | null;
+  companyName: string;
   amount: string;
   amountMinor: number;
   currency: string;
@@ -89,7 +90,7 @@ export type ProFinanceDashboard = {
   collectionRate: number;
   collectionRateDisplay: string;
   kpis: ProFinanceKpi[];
-  revenuePerClient: ProFinanceClientRevenueRow[];
+  companyRevenue: ProFinanceCompanyRevenueRow[];
   recentFailedAttempts: ProFinanceFailedAttemptRow[];
 };
 
@@ -101,16 +102,25 @@ export function calculateProFinanceDashboard(args: {
   invoices: ProFinanceInvoiceInput[];
   payments: ProFinancePaymentInput[];
   refunds: ProFinanceRefundInput[];
-  clients: ProFinanceClientInput[];
+  companies: ProFinanceCompanyInput[];
   today?: string;
 }): ProFinanceDashboard {
   const today = args.today ?? businessDate();
-  const clients = args.clients.filter((row) => row.tenant_id === args.tenantId);
-  const invoices = args.invoices.filter((row) => row.tenant_id === args.tenantId);
-  const payments = args.payments.filter((row) => row.tenant_id === args.tenantId);
-  const refunds = args.refunds.filter((row) => row.tenant_id === args.tenantId);
+  const companies = args.companies.filter((row) => row.tenant_id === args.tenantId);
+  const companyId = companies[0]?.id;
+  const invoices = args.invoices.filter(
+    (row) => row.tenant_id === args.tenantId && row.company_id === companyId,
+  );
+  const invoiceIds = new Set(invoices.map((row) => row.id));
+  const payments = args.payments.filter(
+    (row) => row.tenant_id === args.tenantId && invoiceIds.has(row.invoice_id),
+  );
+  const paymentIds = new Set(payments.map((row) => row.id));
+  const refunds = args.refunds.filter(
+    (row) => row.tenant_id === args.tenantId && paymentIds.has(row.payment_id),
+  );
   const invoiceById = new Map(invoices.map((row) => [row.id, row]));
-  const clientNameById = new Map(clients.map((row) => [row.id, row.company_name]));
+  const companyNameById = new Map(companies.map((row) => [row.id, row.company_name]));
   const paymentById = new Map(payments.map((row) => [row.id, row]));
   const currency = reportingCurrency(invoices, payments);
   const currencyCodes = new Set([
@@ -143,11 +153,11 @@ export function calculateProFinanceDashboard(args: {
   const collectionRate = denominator > 0 ? (totalRevenueCollectedMinor / denominator) * 100 : 0;
   const collectionRateDisplay = `${collectionRate.toFixed(1)}%`;
 
-  const perClient = new Map<
+  const byCompany = new Map<
     string,
     {
-      clientId: string;
-      clientName: string;
+      companyId: string;
+      companyName: string;
       collectedMinor: number;
       outstandingMinor: number;
       invoiceCount: number;
@@ -156,24 +166,24 @@ export function calculateProFinanceDashboard(args: {
     }
   >();
 
-  const ensureClient = (clientId: string, rowCurrency: string) => {
-    const existing = perClient.get(clientId);
+  const ensureCompany = (companyId: string, rowCurrency: string) => {
+    const existing = byCompany.get(companyId);
     if (existing) return existing;
     const next = {
-      clientId,
-      clientName: clientNameById.get(clientId) ?? 'Unknown client',
+      companyId,
+      companyName: companyNameById.get(companyId) ?? 'Unknown company',
       collectedMinor: 0,
       outstandingMinor: 0,
       invoiceCount: 0,
       lastPaymentAt: null,
       currency: rowCurrency,
     };
-    perClient.set(clientId, next);
+    byCompany.set(companyId, next);
     return next;
   };
 
   for (const invoice of reportingInvoices) {
-    const row = ensureClient(invoice.client_id, invoice.currency);
+    const row = ensureCompany(invoice.company_id, invoice.currency);
     row.invoiceCount += 1;
     if (invoice.status === 'open') row.outstandingMinor += invoice.amount_minor;
   }
@@ -182,7 +192,7 @@ export function calculateProFinanceDashboard(args: {
     if (!COLLECTED_PAYMENT_STATUSES.has(payment.status)) continue;
     const invoice = invoiceById.get(payment.invoice_id);
     if (!invoice) continue;
-    const row = ensureClient(invoice.client_id, payment.currency);
+    const row = ensureCompany(invoice.company_id, payment.currency);
     row.collectedMinor += payment.amount_minor;
     row.lastPaymentAt = latestIso(row.lastPaymentAt, payment.received_at ?? payment.created_at);
   }
@@ -199,14 +209,14 @@ export function calculateProFinanceDashboard(args: {
     ) {
       continue;
     }
-    ensureClient(invoice.client_id, payment.currency).collectedMinor -= refund.amount_minor;
+    ensureCompany(invoice.company_id, payment.currency).collectedMinor -= refund.amount_minor;
   }
 
-  const revenuePerClient = Array.from(perClient.values())
+  const companyRevenue = Array.from(byCompany.values())
     .filter((row) => row.invoiceCount > 0 || row.collectedMinor !== 0 || row.outstandingMinor !== 0)
     .map((row) => ({
-      clientId: row.clientId,
-      clientName: row.clientName,
+      companyId: row.companyId,
+      companyName: row.companyName,
       currency: row.currency,
       collected: formatMoney(row.collectedMinor, row.currency),
       collectedMinor: row.collectedMinor,
@@ -225,14 +235,14 @@ export function calculateProFinanceDashboard(args: {
     .slice(0, 10)
     .map((payment) => {
       const invoice = invoiceById.get(payment.invoice_id);
-      const clientId = invoice?.client_id ?? null;
+      const companyId = invoice?.company_id ?? null;
       return {
         id: payment.id,
         invoiceId: payment.invoice_id,
-        clientId,
-        clientName: clientId
-          ? (clientNameById.get(clientId) ?? 'Unknown client')
-          : 'Unknown client',
+        companyId,
+        companyName: companyId
+          ? (companyNameById.get(companyId) ?? 'Unknown company')
+          : 'Unknown company',
         amount: formatMoney(payment.amount_minor, payment.currency),
         amountMinor: payment.amount_minor,
         currency: payment.currency,
@@ -278,39 +288,70 @@ export function calculateProFinanceDashboard(args: {
         helper: 'collected vs collectible',
       },
     ],
-    revenuePerClient,
+    companyRevenue,
     recentFailedAttempts,
   };
 }
 
-export async function getProFinanceDashboard(tenantId: string): Promise<ProFinanceDashboard> {
+export async function getProFinanceDashboard(
+  tenantId: string,
+  companyId: string,
+): Promise<ProFinanceDashboard> {
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
   const admin = createSupabaseServiceRoleClient();
 
-  const [invoices, payments, refunds, clients] = await Promise.all([
-    admin
-      .from('invoices')
-      .select('id, tenant_id, client_id, amount_minor, currency, status, due_at, created_at')
-      .eq('tenant_id', tenantId),
-    admin
-      .from('payments')
-      .select(
-        'id, tenant_id, invoice_id, amount_minor, currency, status, method, provider, failure_reason, received_at, created_at',
-      )
-      .eq('tenant_id', tenantId),
-    admin
-      .from('refunds')
-      .select('id, tenant_id, payment_id, amount_minor, status, reason, created_at')
-      .eq('tenant_id', tenantId),
-    admin.from('clients').select('id, tenant_id, company_name').eq('tenant_id', tenantId),
+  const [invoiceRows, paymentRows, refundRows, companyRows] = await Promise.all([
+    loadAllRangePages('PRO finance invoices', (from, to) =>
+      admin
+        .from('invoices')
+        .select('id, tenant_id, company_id, amount_minor, currency, status, due_at, created_at')
+        .eq('tenant_id', tenantId)
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
+    loadAllRangePages('PRO finance payments', (from, to) =>
+      admin
+        .from('payments')
+        .select(
+          'id, tenant_id, invoice_id, amount_minor, currency, status, method, provider, failure_reason, received_at, created_at, invoice:invoices!payments_invoice_tenant_fk!inner(company_id)',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('invoice.company_id', companyId)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
+    loadAllRangePages('PRO finance refunds', (from, to) =>
+      admin
+        .from('refunds')
+        .select(
+          'id, tenant_id, payment_id, amount_minor, status, reason, created_at, payment:payments!refunds_payment_tenant_fk!inner(invoice:invoices!payments_invoice_tenant_fk!inner(company_id))',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('payment.invoice.company_id', companyId)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
+    loadAllRangePages('PRO finance companies', (from, to) =>
+      admin
+        .from('company_profiles')
+        .select('id, tenant_id, company_name')
+        .eq('tenant_id', tenantId)
+        .eq('id', companyId)
+        .order('id', { ascending: true })
+        .range(from, to),
+    ),
   ]);
 
   return calculateProFinanceDashboard({
     tenantId,
-    invoices: readProFinanceQueryData('invoices', invoices) as ProFinanceInvoiceInput[],
-    payments: readProFinanceQueryData('payments', payments) as ProFinancePaymentInput[],
-    refunds: readProFinanceQueryData('refunds', refunds) as ProFinanceRefundInput[],
-    clients: readProFinanceQueryData('clients', clients) as ProFinanceClientInput[],
+    invoices: invoiceRows as ProFinanceInvoiceInput[],
+    payments: paymentRows as ProFinancePaymentInput[],
+    refunds: refundRows as ProFinanceRefundInput[],
+    companies: companyRows as ProFinanceCompanyInput[],
   });
 }
 

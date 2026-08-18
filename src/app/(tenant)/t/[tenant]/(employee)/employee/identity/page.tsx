@@ -64,7 +64,7 @@ export default async function EmployeeIdentityPage({
         <CardContent>
           <dl>
             <Row label="Employee" value={identity.employeeName} />
-            <Row label="Company" value={identity.clientName ?? 'Not linked'} />
+            <Row label="Company" value={identity.companyName ?? 'Not linked'} />
             <Row label="Nationality" value={identity.nationality ?? 'Not recorded'} />
             <Row label="Passport number" value={masked(identity.passportNo)} />
             <Row

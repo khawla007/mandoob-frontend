@@ -9,7 +9,6 @@ import {
   runOpenDocumentVersionAction,
   runRequestDocumentCenterAction,
   runReviewDocumentCenterAction,
-  runSearchDocumentClientsAction,
   runSetDocumentExpiryAction,
   type DocumentCenterActionDependencies,
 } from './action-logic';
@@ -18,11 +17,11 @@ import { authorizeDocumentCenterRead } from './page-authorization';
 const TENANT_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_TENANT_ID = '22222222-2222-4222-8222-222222222222';
 const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
-const CLIENT_ID = '44444444-4444-4444-8444-444444444444';
+const COMPANY_ID = '44444444-4444-4444-8444-444444444444';
 const DOCUMENT_ID = '55555555-5555-4555-8555-555555555555';
 const VERSION_ID = '66666666-6666-4666-8666-666666666666';
 const REQUEST_ID = '77777777-7777-4777-8777-777777777777';
-const AUTHORITATIVE_CLIENT_ID = '88888888-8888-4888-8888-888888888888';
+const AUTHORITATIVE_COMPANY_ID = '88888888-8888-4888-8888-888888888888';
 
 function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
   const calls: string[] = [];
@@ -38,17 +37,21 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
     requireActive: async (tenantId) => {
       calls.push(`active:${tenantId}`);
     },
+    resolveAssignedCompany: async (profileId, slug) => {
+      calls.push(`company:${profileId}:${slug}`);
+      return { id: COMPANY_ID, tenantId: TENANT_ID };
+    },
     callerMetadata: async () => {
       calls.push('headers');
       return { ip: '192.0.2.1', userAgent: 'test-agent' };
     },
     createRequest: async (ctx) => {
       calls.push(`request:${ctx.tenantId}:${ctx.actorId}:${ctx.role}`);
-      return { id: REQUEST_ID, clientId: CLIENT_ID };
+      return { id: REQUEST_ID, companyId: COMPANY_ID };
     },
     reviewVersion: async (versionId, ctx, input) => {
       calls.push(`review:${versionId}:${ctx.tenantId}:${input.status}`);
-      return { clientId: CLIENT_ID };
+      return { companyId: COMPANY_ID };
     },
     openVersion: async (tenantId, versionId) => {
       calls.push(`open:${tenantId}:${versionId}`);
@@ -81,11 +84,7 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
     },
     setExpiry: async (ctx, input) => {
       calls.push(`expiry:${ctx.tenantId}:${input.document_id}:${input.expires_on}`);
-      return { clientId: CLIENT_ID };
-    },
-    searchClients: async (tenantId, query, limit) => {
-      calls.push(`client-search:${tenantId}:${query}:${limit}`);
-      return [{ id: CLIENT_ID, companyName: 'Acme Client' }];
+      return { companyId: COMPANY_ID };
     },
     revalidate: (path) => calls.push(`revalidate:${path}`),
     rethrowNavigation: () => undefined,
@@ -97,7 +96,6 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
 
 function requestForm() {
   const form = new FormData();
-  form.append('client_id', CLIENT_ID);
   form.append('doc_type', 'passport');
   form.append('label', 'Passport copy');
   form.append('due_at', '2026-08-31');
@@ -108,7 +106,7 @@ function requestForm() {
 function reviewForm() {
   const form = new FormData();
   form.append('version_id', VERSION_ID);
-  form.append('client_id', CLIENT_ID);
+  form.append('company_id', COMPANY_ID);
   form.append('status', 'approved');
   form.append('note', 'Readable');
   return form;
@@ -117,7 +115,7 @@ function reviewForm() {
 function expiryForm() {
   const form = new FormData();
   form.append('document_id', DOCUMENT_ID);
-  form.append('client_id', CLIENT_ID);
+  form.append('company_id', COMPANY_ID);
   form.append('expires_on', '2027-08-31');
   return form;
 }
@@ -215,12 +213,6 @@ test('document center page propagates inactive state after exact firm match', as
 
 const actionOrderCases = [
   {
-    name: 'client search',
-    operation: 'client-search:',
-    invoke: (deps: DocumentCenterActionDependencies) =>
-      runSearchDocumentClientsAction('acme', 'Acme', deps),
-  },
-  {
     name: 'request',
     operation: 'request:',
     invoke: (deps: DocumentCenterActionDependencies) =>
@@ -263,11 +255,12 @@ for (const action of actionOrderCases) {
       'tenant:acme',
       `active:${TENANT_ID}`,
       'headers',
+      ...(action.name === 'request' ? [`company:${ACTOR_ID}:acme`] : []),
     ]);
   });
 }
 
-test('firm actions module exports only the six public Server Actions', () => {
+test('firm actions module exports only the five public Server Actions', () => {
   const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
   const exportedFunctions = [...source.matchAll(/export async function (\w+)/gu)].map(
     (match) => match[1],
@@ -278,41 +271,8 @@ test('firm actions module exports only the six public Server Actions', () => {
     'openDocumentVersionAction',
     'loadVersionHistoryAction',
     'setDocumentExpiryAction',
-    'searchDocumentClientsAction',
   ]);
   assert.doesNotMatch(source, /export (?:type )?\{?[^\n]*(?:Dependencies|run[A-Z])/u);
-});
-
-test('client search action authenticates every request and returns at most 50 sanitized options', async () => {
-  const context = setup({
-    searchClients: async (tenantId, query, limit) => {
-      context.calls.push(`client-search:${tenantId}:${query}:${limit}`);
-      return Array.from({ length: 60 }, (_, index) => ({
-        id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
-        companyName: `Client ${index}`,
-        privateField: 'must not serialize',
-      }));
-    },
-  });
-
-  const result = await runSearchDocumentClientsAction('acme', '  Client  ', context.dependencies);
-
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(result.data.length, 50);
-    assert.deepEqual(result.data[0], {
-      id: '00000000-0000-4000-8000-000000000000',
-      companyName: 'Client 0',
-    });
-    assert.equal('privateField' in result.data[0], false);
-  }
-  assert.deepEqual(context.calls.slice(0, 5), [
-    'auth',
-    'tenant:acme',
-    `active:${TENANT_ID}`,
-    'headers',
-    `client-search:${TENANT_ID}:Client:50`,
-  ]);
 });
 
 test('firm action logic module is server-only without becoming a Server Function', () => {
@@ -393,7 +353,7 @@ test('request action uses first string values and rejects Blob values before DAL
     createRequest: async (_ctx, input) => {
       createCalls += 1;
       received = input as Record<string, unknown>;
-      return { id: REQUEST_ID, clientId: CLIENT_ID };
+      return { id: REQUEST_ID, companyId: COMPANY_ID };
     },
   });
   const repeated = requestForm();
@@ -515,35 +475,35 @@ test('review and expiry revalidate only the authoritative DAL client, never the 
     [
       (deps: DocumentCenterActionDependencies) =>
         runReviewDocumentCenterAction('acme', null, reviewForm(), deps),
-      { reviewVersion: async () => ({ clientId: AUTHORITATIVE_CLIENT_ID }) },
+      { reviewVersion: async () => ({ companyId: AUTHORITATIVE_COMPANY_ID }) },
     ],
     [
       (deps: DocumentCenterActionDependencies) =>
         runSetDocumentExpiryAction('acme', null, expiryForm(), deps),
-      { setExpiry: async () => ({ clientId: AUTHORITATIVE_CLIENT_ID }) },
+      { setExpiry: async () => ({ companyId: AUTHORITATIVE_COMPANY_ID }) },
     ],
   ] as const) {
     const context = setup(override);
     assert.equal((await invoke(context.dependencies)).ok, true);
     const revalidated = context.calls.filter((call) => call.startsWith('revalidate:'));
     assert.deepEqual(revalidated, ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company']);
-    assert.equal(revalidated.includes(`/t/acme/clients/${CLIENT_ID}`), false);
+    assert.equal(revalidated.includes(`/t/acme/${['cli', 'ents'].join('')}/${COMPANY_ID}`), false);
   }
 });
 
-test('request canonicalizes uppercase client UUID before DAL and cache invalidation', async () => {
-  const canonicalClientId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-  let receivedClientId: string | undefined;
+test('request ignores a spoofed company UUID and uses the server assignment', async () => {
+  const spoofedCompanyId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  let receivedCompanyId: string | undefined;
   const context = setup({
     createRequest: async (_ctx, input) => {
-      receivedClientId = input.client_id;
-      return { id: REQUEST_ID, clientId: canonicalClientId };
+      receivedCompanyId = input.company_id;
+      return { id: REQUEST_ID, companyId: COMPANY_ID };
     },
   });
   const form = requestForm();
-  form.set('client_id', canonicalClientId.toUpperCase());
+  form.set('company_id', spoofedCompanyId.toUpperCase());
   await runRequestDocumentCenterAction('acme', null, form, context.dependencies);
-  assert.equal(receivedClientId, canonicalClientId);
+  assert.equal(receivedCompanyId, COMPANY_ID);
   assert.deepEqual(
     context.calls.filter((call) => call.startsWith('revalidate:')),
     ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company'],

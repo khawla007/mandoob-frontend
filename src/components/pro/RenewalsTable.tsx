@@ -15,12 +15,12 @@ import {
 import { bucketRenewals } from '@/lib/data/renewal-buckets';
 import type { RenewalRow } from '@/lib/data/renewals';
 
-export type ClientLite = { id: string; company_name: string };
+export type CompanyLite = { id: string; company_name: string };
 
 export type RenewalsTableProps = {
   rows: RenewalRow[];
-  clients: Map<string, ClientLite>;
-  showClientColumn: boolean;
+  companies: Map<string, CompanyLite>;
+  showCompanyColumn: boolean;
   slug: string;
   mode: 'bucketed' | 'flat';
   emptyMessage?: string;
@@ -84,7 +84,7 @@ function FlatTable(props: RenewalsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            {props.showClientColumn && <TableHead>Client</TableHead>}
+            {props.showCompanyColumn && <TableHead>Company</TableHead>}
             <TableHead>Type</TableHead>
             <TableHead>Label</TableHead>
             <TableHead>Due</TableHead>
@@ -95,11 +95,11 @@ function FlatTable(props: RenewalsTableProps) {
         </TableHeader>
         <TableBody>
           {props.rows.map((r) => {
-            const client = props.clients.get(r.clientId);
+            const company = props.companies.get(r.companyId);
             return (
               <TableRow key={r.id}>
-                {props.showClientColumn && (
-                  <TableCell className="font-medium">{client?.company_name ?? '—'}</TableCell>
+                {props.showCompanyColumn && (
+                  <TableCell className="font-medium">{company?.company_name ?? '—'}</TableCell>
                 )}
                 <TableCell>
                   <RenewalTypeBadge type={r.type} />

@@ -19,7 +19,7 @@ export type ActionResult<T = void> =
 type CustomerCallerCtx = {
   caller: { id: string; tenantId: string };
   tenant: { id: string; slug: string };
-  linkedClientId: string;
+  linkedCompanyId: string;
   ip: string;
   userAgent: string | null;
 };
@@ -37,10 +37,10 @@ async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx
   await requireActiveTenant(tenant.id);
 
   const customer = await readSelfCustomer();
-  if (!customer.linkedClientId) {
+  if (!customer.linkedCompanyId) {
     throw new ApiError(
-      'NO_LINKED_CLIENT',
-      'Account is not linked to a client. Ask your PRO firm to link you.',
+      'NO_LINKED_COMPANY',
+      'Account is not linked to a company. Ask your PRO firm to link you.',
       403,
     );
   }
@@ -52,31 +52,31 @@ async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx
   return {
     caller: { id: session.id, tenantId: session.tenantId },
     tenant: { id: tenant.id, slug: tenant.slug },
-    linkedClientId: customer.linkedClientId,
+    linkedCompanyId: customer.linkedCompanyId,
     ip,
     userAgent,
   };
 }
 
-async function assertRequestBelongsToClient(args: {
+async function assertRequestBelongsToCompany(args: {
   tenantId: string;
-  clientId: string;
+  companyId: string;
   requestId: string;
 }): Promise<void> {
-  // RLS on document_requests scopes customer reads to their own client.
+  // RLS on document_requests scopes customer reads to their linked company.
   // A null result = either the request does not exist or it belongs to a
-  // different client/tenant. Either way, deny with FORBIDDEN.
+  // different company/tenant. Either way, deny with FORBIDDEN.
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('document_requests')
     .select('id, status')
     .eq('id', args.requestId)
     .eq('tenant_id', args.tenantId)
-    .eq('client_id', args.clientId)
+    .eq('company_id', args.companyId)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   if (!data) {
-    throw new ApiError('FORBIDDEN', 'Request not found for this client', 403);
+    throw new ApiError('FORBIDDEN', 'Request not found for this company', 403);
   }
   if (data.status === 'cancelled') {
     throw new ApiError('FORBIDDEN', 'Request has been cancelled', 403);
@@ -105,9 +105,9 @@ export async function uploadDocumentAction(
     const ctx = await resolveCustomerCallerCtx(slug);
 
     if (parsed.data.request_id) {
-      await assertRequestBelongsToClient({
+      await assertRequestBelongsToCompany({
         tenantId: ctx.tenant.id,
-        clientId: ctx.linkedClientId,
+        companyId: ctx.linkedCompanyId,
         requestId: parsed.data.request_id,
       });
     }
@@ -116,7 +116,7 @@ export async function uploadDocumentAction(
 
     const result = await uploadDocument({
       tenantId: ctx.tenant.id,
-      clientId: ctx.linkedClientId,
+      companyId: ctx.linkedCompanyId,
       docType: parsed.data.doc_type,
       requestId: parsed.data.request_id,
       label: parsed.data.label,
@@ -155,21 +155,31 @@ export async function getCustomerDocumentSignedUrlAction(
     const ctx = await resolveCustomerCallerCtx(slug);
 
     // RLS check via user-scoped client: customer can only read versions of
-    // documents whose client_id matches their linked_client_id. A null result
+    // documents whose company_id matches their linked_company_id. A null result
     // means either the version does not exist or RLS blocked it — treat both
     // as FORBIDDEN to avoid leaking existence.
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from('document_versions')
-      .select('id, document_id, documents!inner(client_id, tenant_id)')
+      .select(
+        'id, tenant_id, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id)',
+      )
       .eq('id', versionId)
+      .eq('tenant_id', ctx.tenant.id)
       .maybeSingle();
     if (error) throw new ApiError('INTERNAL', error.message, 500);
     if (!data) throw new ApiError('FORBIDDEN', 'Version not accessible', 403);
 
-    const doc = (data as unknown as { documents: { client_id: string; tenant_id: string } })
-      .documents;
-    if (doc.tenant_id !== ctx.tenant.id || doc.client_id !== ctx.linkedClientId) {
+    const owned = data as unknown as {
+      tenant_id: string;
+      document: { id: string; company_id: string; tenant_id: string };
+    };
+    const doc = owned.document;
+    if (
+      owned.tenant_id !== ctx.tenant.id ||
+      doc.tenant_id !== ctx.tenant.id ||
+      doc.company_id !== ctx.linkedCompanyId
+    ) {
       throw new ApiError('FORBIDDEN', 'Version not accessible', 403);
     }
 

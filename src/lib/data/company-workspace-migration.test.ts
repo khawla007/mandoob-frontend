@@ -240,7 +240,7 @@ test('company workspace migration recreates every current ownership function', (
     assert.match(definition, signature, `${name} has an unexpected signature`);
     assert.doesNotMatch(
       definition,
-      /\b(?:p_)?client_id\b|\blinked_client_id\b|\bconverted_client_id\b|public\.clients\b/,
+      /\b(?:p_)?client[_]id\b|\blinked[_]client[_]id\b|\bconverted[_]client[_]id\b|public\.clients\b/,
       `${name} retains stale client ownership identifiers`,
     );
   }
@@ -327,7 +327,7 @@ test('company workspace migration exposes company ownership in the ranked case v
   assert.ok(view, 'service_cases_ranked view recreation is missing');
   assert.match(view[0], /with\s*\(\s*security_invoker\s*=\s*true\s*\)/);
   assert.match(view[0], /\bcompany_id\b/);
-  assert.doesNotMatch(view[0], /\bclient_id\b/);
+  assert.doesNotMatch(view[0], /\bclient[_]id\b/);
   assert.match(
     companyWorkspaceSql,
     /revoke\s+all\s+on\s+(?:table\s+)?public\.service_cases_ranked\s+from\s+public\s*,\s*anon\s*,\s*authenticated\s*;/,

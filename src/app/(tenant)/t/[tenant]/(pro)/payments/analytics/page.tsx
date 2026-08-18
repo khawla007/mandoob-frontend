@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { getProFinanceDashboard } from '@/lib/data/pro-finance';
 import type { ProFinanceDashboard } from '@/lib/data/pro-finance';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,10 +39,12 @@ export default async function ProPaymentAnalyticsPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
-  const dashboard = await getProFinanceDashboard(tenant.id);
-  const clientRows = dashboard.revenuePerClient;
+  const dashboard = await getProFinanceDashboard(tenant.id, company.id);
+  const companyRows = dashboard.companyRevenue;
   const failedAttempts = dashboard.recentFailedAttempts;
 
   return (
@@ -79,16 +83,16 @@ export default async function ProPaymentAnalyticsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Revenue by client</CardTitle>
+          <CardTitle className="text-lg">Revenue by company</CardTitle>
         </CardHeader>
         <CardContent>
-          {clientRows.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No client revenue activity yet.</p>
+          {companyRows.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No company revenue activity yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Client</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead className="text-right">Invoice count</TableHead>
                   <TableHead className="text-right">Collected</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
@@ -96,9 +100,9 @@ export default async function ProPaymentAnalyticsPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientRows.map((row, index) => (
-                  <TableRow key={row.clientId ?? index}>
-                    <TableCell className="font-medium">{row.clientName}</TableCell>
+                {companyRows.map((row, index) => (
+                  <TableRow key={row.companyId ?? index}>
+                    <TableCell className="font-medium">{row.companyName}</TableCell>
                     <TableCell className="text-right">{row.invoiceCount}</TableCell>
                     <TableCell className="text-right">{row.collected}</TableCell>
                     <TableCell className="text-right">{row.outstanding}</TableCell>
@@ -124,7 +128,7 @@ export default async function ProPaymentAnalyticsPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Client</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Invoice</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Attempted</TableHead>
@@ -135,7 +139,7 @@ export default async function ProPaymentAnalyticsPage({
               <TableBody>
                 {failedAttempts.map((attempt, index) => (
                   <TableRow key={attempt.id ?? index}>
-                    <TableCell className="font-medium">{attempt.clientName}</TableCell>
+                    <TableCell className="font-medium">{attempt.companyName}</TableCell>
                     <TableCell>{attempt.invoiceId}</TableCell>
                     <TableCell>{attempt.status}</TableCell>
                     <TableCell>{attempt.createdAt}</TableCell>

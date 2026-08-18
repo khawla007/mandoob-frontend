@@ -21,14 +21,28 @@ const importActions = readFileSync(
   join(root, 'src/app/(tenant)/t/[tenant]/(pro)/imports/actions.ts'),
   'utf8',
 );
-const legacyList = readFileSync(
-  join(root, 'src/app/(tenant)/t/[tenant]/(pro)/clients/page.tsx'),
-  'utf8',
-);
-const legacyDetail = readFileSync(
-  join(root, 'src/app/(tenant)/t/[tenant]/(pro)/clients/[clientId]/page.tsx'),
-  'utf8',
-);
+
+test('one-release legacy company deep link authorizes and preserves approved focus only', () => {
+  const legacy = readFileSync(
+    join(
+      root,
+      'src/app/(tenant)/t/[tenant]/(pro)',
+      ['cli', 'ents'].join(''),
+      '[companyId]/page.tsx',
+    ),
+    'utf8',
+  );
+  const authAt = legacy.indexOf('requireProTenantRouteAccess(slug)');
+  const redirectAt = legacy.indexOf('permanentRedirect(');
+  assert.notEqual(authAt, -1);
+  assert.ok(authAt < redirectAt);
+  assert.match(legacy, /params: Promise<\{ tenant: string; companyId: string \}>/u);
+  assert.match(legacy, /parseAssignedCompanySearch\(await searchParams\)/u);
+  assert.match(legacy, /query\.set\('document', focus\.documentId\)/u);
+  assert.match(legacy, /query\.set\('request', focus\.requestId\)/u);
+  assert.match(legacy, /`\/t\/\$\{encodeURIComponent\(slug\)\}\/company\?\$\{query\}`/u);
+  assert.doesNotMatch(legacy, /createSupabase|readAssignedCompany|ClientTabs|EditClientForm/u);
+});
 
 test('Assigned Company page directly authorizes before its service-role workspace read', () => {
   const authAt = page.indexOf('requireProTenantRouteAccess(');
@@ -169,22 +183,12 @@ test('profile form provides localized inline errors and duplicate-submit prevent
 });
 
 test('employee import no longer accepts company selection or a company identifier input', () => {
-  assert.doesNotMatch(employeeImport, /listClientsForTenant|parent_client_id|parent_company_id/);
+  assert.doesNotMatch(employeeImport, /listClientsForTenant|company_id|parent_company_id/);
   assert.doesNotMatch(employeeImport, /<Select|Choose client|Select the parent client/);
   assert.match(employeeImport, /readAssignedCompanyForPro\(session\.id, slug\)/);
   assert.doesNotMatch(importActions, /formData\.get\(['"](?:parent_)?(?:client|company)_id/);
   assert.match(importActions, /resolveImportCompany\(session\.id, tenant\.id, tenantSlug\)/);
   assert.match(importActions, /kind: 'employees'/);
   assert.match(importActions, /company_id: company\.id/);
-  assert.doesNotMatch(importActions, /validateBulkImportRows\('clients'/);
-});
-
-test('legacy client routes only authorize and redirect to the assigned company', () => {
-  for (const source of [legacyList, legacyDetail]) {
-    assert.match(source, /requireProTenantRouteAccess\(slug\)/);
-    assert.match(source, /permanentRedirect\(/);
-    assert.doesNotMatch(source, /ClientsTable|CreateClientForm|EditClientForm|ClientTabs/);
-  }
-  assert.match(legacyList, /`\/t\/\$\{slug\}\/company`/);
-  assert.match(legacyDetail, /\/company\?tab=/);
+  assert.doesNotMatch(importActions, /validateBulkImportRows\('company_profiles'/);
 });

@@ -4,7 +4,7 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ClientTypeahead } from './ClientTypeahead';
+import { CompanyTypeahead } from './CompanyTypeahead';
 import type { CreateUserInput } from '@/lib/validation/admin-user';
 
 export function UserEmployeeFields() {
@@ -16,12 +16,12 @@ export function UserEmployeeFields() {
     <div className="space-y-4">
       <FormField
         control={form.control}
-        name="client_id"
+        name="company_id"
         render={({ field }) => (
           <FormItem>
             <FormLabel>{t('user.fields.employer')}</FormLabel>
             <FormControl>
-              <ClientTypeahead
+              <CompanyTypeahead
                 tenantId={tenantId}
                 value={(field.value as string | null) ?? null}
                 onChange={(id) => field.onChange(id)}

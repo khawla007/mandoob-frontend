@@ -10,6 +10,7 @@ import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import { enqueueSms } from '@/lib/sms/send';
 import { z } from 'zod';
+import { isNormalizedOwnedStoragePath } from '@/lib/storage/owned-path';
 import {
   DOC_TYPES,
   createDocumentRequestSchema,
@@ -46,13 +47,11 @@ function normalizeUuid(value: string): string | null {
   return parsed.success ? parsed.data.toLowerCase() : null;
 }
 
-function isGeneratedStoragePath(path: string, tenantId: string, clientId: string): boolean {
+function isGeneratedStoragePath(path: string, tenantId: string, companyId: string): boolean {
   if (
-    path.includes('\\') ||
-    path.includes('%') ||
-    /[\u0000-\u001f\u007f]/.test(path) ||
+    !isNormalizedOwnedStoragePath(path, tenantId, companyId) ||
     normalizeUuid(tenantId) !== tenantId ||
-    normalizeUuid(clientId) !== clientId
+    normalizeUuid(companyId) !== companyId
   ) {
     return false;
   }
@@ -65,8 +64,8 @@ function isGeneratedStoragePath(path: string, tenantId: string, clientId: string
     return false;
   }
 
-  const [pathTenantId, pathClientId, docType, filename] = segments;
-  if (pathTenantId !== tenantId || pathClientId !== clientId || !DOC_TYPE_SET.has(docType)) {
+  const [pathTenantId, pathCompanyId, docType, filename] = segments;
+  if (pathTenantId !== tenantId || pathCompanyId !== companyId || !DOC_TYPE_SET.has(docType)) {
     return false;
   }
 
@@ -81,7 +80,7 @@ function isGeneratedStoragePath(path: string, tenantId: string, clientId: string
 
 export type UploadDocumentInput = {
   tenantId: string;
-  clientId: string;
+  companyId: string;
   docType: DocType;
   requestId?: string;
   label?: string;
@@ -152,7 +151,7 @@ async function logBlockedScanAudit(args: {
 
 function buildStoragePath(args: {
   tenantId: string;
-  clientId: string;
+  companyId: string;
   docType: DocType;
   sha256: string;
   originalName: string;
@@ -169,12 +168,12 @@ function buildStoragePath(args: {
   // identical bytes (same sha256). Without this, the second PUT collides
   // because the bucket is configured upsert: false.
   const stamp = Date.now().toString(36);
-  return `${args.tenantId}/${args.clientId}/${args.docType}/${today}_${stamp}_${shortHash}_${safeBase}.${args.ext}`;
+  return `${args.tenantId}/${args.companyId}/${args.docType}/${today}_${stamp}_${shortHash}_${safeBase}.${args.ext}`;
 }
 
 export async function uploadDocument(input: UploadDocumentInput): Promise<UploadDocumentResult> {
   uploadDocumentMetadataSchema.parse({
-    client_id: input.clientId,
+    company_id: input.companyId,
     doc_type: input.docType,
     request_id: input.requestId,
     label: input.label,
@@ -243,7 +242,7 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
 
   const storagePath = buildStoragePath({
     tenantId: input.tenantId,
-    clientId: input.clientId,
+    companyId: input.companyId,
     docType: input.docType,
     sha256,
     originalName,
@@ -264,7 +263,7 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
     .from('documents')
     .select('id')
     .eq('tenant_id', input.tenantId)
-    .eq('client_id', input.clientId)
+    .eq('company_id', input.companyId)
     .eq('doc_type', input.docType);
   const headFilter = input.requestId
     ? headQuery.eq('request_id', input.requestId)
@@ -282,7 +281,7 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
       .from('documents')
       .insert({
         tenant_id: input.tenantId,
-        client_id: input.clientId,
+        company_id: input.companyId,
         request_id: input.requestId ?? null,
         doc_type: input.docType,
         label: input.label ?? null,
@@ -377,9 +376,9 @@ export type DocumentListEntry = {
   } | null;
 };
 
-export async function listDocumentsForClient(
+export async function listDocumentsForCompany(
   tenantId: string,
-  clientId: string,
+  companyId: string,
 ): Promise<DocumentListEntry[]> {
   const admin = createSupabaseServiceRoleClient();
   const { data, error } = await admin
@@ -395,7 +394,7 @@ export async function listDocumentsForClient(
     `,
     )
     .eq('tenant_id', tenantId)
-    .eq('client_id', clientId)
+    .eq('company_id', companyId)
     .order('updated_at', { ascending: false });
   if (error) throw new ApiError('INTERNAL', error.message, 500);
 
@@ -477,7 +476,7 @@ export async function getDocumentSignedUrl(
   const { data: version, error: readErr } = await admin
     .from('document_versions')
     .select(
-      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, client_id, request_id, current_version_id, client:clients!inner(id, tenant_id))',
+      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id))',
     )
     .eq('id', normalizedVersionId)
     .maybeSingle();
@@ -491,28 +490,28 @@ export async function getDocumentSignedUrl(
     document: {
       id: string;
       tenant_id: string;
-      client_id: string;
+      company_id: string;
       request_id: string | null;
       current_version_id: string | null;
-      client: { id: string; tenant_id: string } | null;
+      company: { id: string; tenant_id: string } | null;
     } | null;
   };
   const owned = version as unknown as OwnedVersionRow;
   const document = owned.document;
-  const client = document?.client;
-  const normalizedClientId = client ? normalizeUuid(client.id) : null;
+  const company = document?.company;
+  const normalizedCompanyId = company ? normalizeUuid(company.id) : null;
   if (
     owned.id !== normalizedVersionId ||
     owned.tenant_id !== normalizedTenantId ||
     !document ||
     document.tenant_id !== normalizedTenantId ||
-    !client ||
-    !normalizedClientId ||
-    client.id !== normalizedClientId ||
-    document.client_id !== normalizedClientId ||
-    client.tenant_id !== normalizedTenantId ||
+    !company ||
+    !normalizedCompanyId ||
+    company.id !== normalizedCompanyId ||
+    document.company_id !== normalizedCompanyId ||
+    company.tenant_id !== normalizedTenantId ||
     typeof owned.storage_path !== 'string' ||
-    !isGeneratedStoragePath(owned.storage_path, normalizedTenantId, normalizedClientId)
+    !isGeneratedStoragePath(owned.storage_path, normalizedTenantId, normalizedCompanyId)
   ) {
     throw new ApiError('NOT_FOUND', 'document version not found', 404);
   }
@@ -538,7 +537,7 @@ export type SetDocumentReviewCtx = {
 
 type DocumentReviewRpcResult = {
   document_id: string;
-  client_id: string;
+  company_id: string;
   fulfilled_request_id: string | null;
   review_status: string;
 };
@@ -547,7 +546,7 @@ export async function setDocumentReview(
   versionId: string,
   ctx: SetDocumentReviewCtx,
   input: DocumentReviewInput,
-): Promise<{ clientId: string }> {
+): Promise<{ companyId: string }> {
   if (ctx.role !== 'pro') {
     throw new ApiError('FORBIDDEN', 'only pro can review documents', 403);
   }
@@ -588,8 +587,8 @@ export async function setDocumentReview(
   }
   if (!result) throw new ApiError('NOT_FOUND', 'document version not found', 404);
   const reviewed = result as DocumentReviewRpcResult;
-  const reviewedClientId = normalizeUuid(reviewed.client_id);
-  if (reviewed.review_status !== review.status || !reviewed.document_id || !reviewedClientId) {
+  const reviewedCompanyId = normalizeUuid(reviewed.company_id);
+  if (reviewed.review_status !== review.status || !reviewed.document_id || !reviewedCompanyId) {
     throw new ApiError('INTERNAL', 'Could not save document review', 500);
   }
 
@@ -608,7 +607,7 @@ export async function setDocumentReview(
     },
   }).catch((error) => logSafeActionError('document.review.auth_event', error));
 
-  return { clientId: reviewedClientId };
+  return { companyId: reviewedCompanyId };
 }
 
 // ============================================================
@@ -626,33 +625,33 @@ export type CreateDocumentRequestCtx = {
 export async function createDocumentRequest(
   ctx: CreateDocumentRequestCtx,
   input: CreateDocumentRequestInput,
-): Promise<{ id: string; clientId: string }> {
+): Promise<{ id: string; companyId: string }> {
   if (ctx.role !== 'pro') {
     throw new ApiError('FORBIDDEN', 'only pro can request documents', 403);
   }
   const request = createDocumentRequestSchema.parse(input);
   const normalizedTenantId = normalizeUuid(ctx.tenantId);
   const normalizedActorId = normalizeUuid(ctx.actorId);
-  const normalizedClientId = normalizeUuid(request.client_id);
-  if (!normalizedTenantId || !normalizedActorId || !normalizedClientId) {
+  const normalizedCompanyId = normalizeUuid(request.company_id);
+  if (!normalizedTenantId || !normalizedActorId || !normalizedCompanyId) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document request identifier', 400);
   }
 
   const admin = createSupabaseServiceRoleClient();
 
-  // Cross-tenant guard: client must belong to the caller's tenant.
-  const { data: clientRow, error: clientErr } = await admin
-    .from('clients')
+  // Cross-tenant guard: company must belong to the caller's tenant.
+  const { data: companyRow, error: companyErr } = await admin
+    .from('company_profiles')
     .select('id, tenant_id')
-    .eq('id', normalizedClientId)
+    .eq('id', normalizedCompanyId)
     .maybeSingle();
-  if (clientErr) throw new ApiError('INTERNAL', clientErr.message, 500);
+  if (companyErr) throw new ApiError('INTERNAL', companyErr.message, 500);
   if (
-    !clientRow ||
-    clientRow.tenant_id !== normalizedTenantId ||
-    clientRow.id !== normalizedClientId
+    !companyRow ||
+    companyRow.tenant_id !== normalizedTenantId ||
+    companyRow.id !== normalizedCompanyId
   ) {
-    throw new ApiError('NOT_FOUND', 'client not found', 404);
+    throw new ApiError('NOT_FOUND', 'company not found', 404);
   }
 
   const dueAt = request.due_at ? new Date(`${request.due_at}T00:00:00Z`).toISOString() : null;
@@ -661,7 +660,7 @@ export async function createDocumentRequest(
     .from('document_requests')
     .insert({
       tenant_id: normalizedTenantId,
-      client_id: normalizedClientId,
+      company_id: normalizedCompanyId,
       requested_by: normalizedActorId,
       doc_type: request.doc_type,
       label: request.label,
@@ -679,7 +678,7 @@ export async function createDocumentRequest(
     entity: 'document_request',
     op: 'create',
     request_id: id,
-    client_id: normalizedClientId,
+    company_id: normalizedCompanyId,
     doc_type: request.doc_type,
   });
   await recordAuthEvent({
@@ -697,18 +696,18 @@ export async function createDocumentRequest(
 
   await notifyDocumentRequested({
     tenantId: normalizedTenantId,
-    clientId: normalizedClientId,
+    companyId: normalizedCompanyId,
     requestId: id,
     documentLabel: request.label,
     dueAtIso: dueAt,
   }).catch((error) => logSafeActionError('document.request.notify', error));
 
-  return { id, clientId: normalizedClientId };
+  return { id, companyId: normalizedCompanyId };
 }
 
 async function notifyDocumentRequested(args: {
   tenantId: string;
-  clientId: string;
+  companyId: string;
   requestId: string;
   documentLabel: string;
   dueAtIso: string | null;
@@ -722,7 +721,7 @@ async function notifyDocumentRequested(args: {
   const { data: link } = await admin
     .from('customer_profiles')
     .select('profile_id')
-    .eq('linked_client_id', args.clientId)
+    .eq('linked_company_id', args.companyId)
     .maybeSingle();
   if (!link) return;
   const { data: authUser } = await admin.auth.admin.getUserById(link.profile_id);
@@ -813,20 +812,20 @@ export type OpenRequestEntry = {
   requestedBy: string | null;
 };
 
-// Open (= status 'pending') document requests for a client. Surfaced
-// alongside `listDocumentsForClient` to render an "Awaiting upload"
+// Open (= status 'pending') document requests for a company. Surfaced
+// alongside `listDocumentsForCompany` to render an "Awaiting upload"
 // section in the PRO Documents tab; fulfilled requests are reachable via
 // the document head (`documents.request_id`).
-export async function listOpenRequestsForClient(
+export async function listOpenRequestsForCompany(
   tenantId: string,
-  clientId: string,
+  companyId: string,
 ): Promise<OpenRequestEntry[]> {
   const admin = createSupabaseServiceRoleClient();
   const { data, error } = await admin
     .from('document_requests')
     .select('id, doc_type, label, notes, due_at, created_at, requested_by')
     .eq('tenant_id', tenantId)
-    .eq('client_id', clientId)
+    .eq('company_id', companyId)
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   if (error) throw new ApiError('INTERNAL', error.message, 500);

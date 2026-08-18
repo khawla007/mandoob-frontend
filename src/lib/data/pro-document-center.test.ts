@@ -55,9 +55,9 @@ function rpcRow(overrides: Record<string, unknown> = {}) {
     entity_kind: 'document',
     entity_id: DOCUMENT,
     tenant_id: TENANT,
-    client_id: CLIENT,
-    client_name: 'Acme LLC',
-    client_status: 'active',
+    company_id: CLIENT,
+    company_name: 'Acme LLC',
+    company_status: 'active',
     employee_id: null,
     employee_name: null,
     doc_type: 'passport',
@@ -91,16 +91,16 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test('searchDocumentCenterClientOptions bounds a 1001-client firm to stable tenant-scoped matches', async () => {
+test('searchDocumentCenterCompanyOptions bounds a 1001-client firm to stable tenant-scoped matches', async () => {
   const rows = Array.from({ length: 1001 }, (_, index) => ({
     id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
     company_name: `Client ${String(index).padStart(4, '0')}`,
   }));
   const calls = captureFetch(() => json(rows.slice(100, 150)));
   const loaded = await load();
-  assert.equal(typeof loaded.searchDocumentCenterClientOptions, 'function');
+  assert.equal(typeof loaded.searchDocumentCenterCompanyOptions, 'function');
 
-  const options = await loaded.searchDocumentCenterClientOptions(TENANT, ' Client 1 ', 50);
+  const options = await loaded.searchDocumentCenterCompanyOptions(TENANT, ' Client 1 ', 50);
 
   assert.equal(options.length, 50);
   assert.deepEqual(options[0], { id: rows[100].id, companyName: rows[100].company_name });
@@ -119,24 +119,26 @@ test('searchDocumentCenterClientOptions bounds a 1001-client firm to stable tena
 test('document client search validates query and limit before reading', async () => {
   const calls = captureFetch(() => json([]));
   const loaded = await load();
-  assert.equal(typeof loaded.searchDocumentCenterClientOptions, 'function');
+  assert.equal(typeof loaded.searchDocumentCenterCompanyOptions, 'function');
 
-  await assert.rejects(() => loaded.searchDocumentCenterClientOptions('not-a-tenant', '', 50));
-  await assert.rejects(() => loaded.searchDocumentCenterClientOptions(TENANT, 'x'.repeat(101), 50));
-  await assert.rejects(() => loaded.searchDocumentCenterClientOptions(TENANT, '', 51));
+  await assert.rejects(() => loaded.searchDocumentCenterCompanyOptions('not-a-tenant', '', 50));
+  await assert.rejects(() =>
+    loaded.searchDocumentCenterCompanyOptions(TENANT, 'x'.repeat(101), 50),
+  );
+  await assert.rejects(() => loaded.searchDocumentCenterCompanyOptions(TENANT, '', 51));
   assert.equal(calls.length, 0);
 });
 
-test('getDocumentCenterClientOption resolves one exact tenant-owned selected client', async () => {
+test('getDocumentCenterCompanyOption resolves one exact tenant-owned selected client', async () => {
   const selected = {
     id: '00000000-0000-4000-8000-000000000777',
     company_name: 'Selected Client',
   };
   const calls = captureFetch(() => json(selected));
   const loaded = await load();
-  assert.equal(typeof loaded.getDocumentCenterClientOption, 'function');
+  assert.equal(typeof loaded.getDocumentCenterCompanyOption, 'function');
 
-  assert.deepEqual(await loaded.getDocumentCenterClientOption(TENANT, selected.id), {
+  assert.deepEqual(await loaded.getDocumentCenterCompanyOption(TENANT, selected.id), {
     id: selected.id,
     companyName: selected.company_name,
   });
@@ -154,7 +156,7 @@ test('listProDocumentCenter sends exact validated filters to only the RPC and ma
     sort: 'newest',
     window: 'all',
     search: 'passport',
-    clientId: CLIENT,
+    companyId: CLIENT,
     docType: 'passport',
     from: '2026-08-01',
     to: '2026-08-31',
@@ -168,7 +170,7 @@ test('listProDocumentCenter sends exact validated filters to only the RPC and ma
     p_tenant_id: TENANT,
     p_view: 'submitted',
     p_search: 'passport',
-    p_client_id: CLIENT,
+    p_company_id: CLIENT,
     p_doc_type: 'passport',
     p_due_from: null,
     p_due_to: null,
@@ -188,9 +190,9 @@ test('listProDocumentCenter sends exact validated filters to only the RPC and ma
     entityKind: 'document',
     entityId: DOCUMENT,
     tenantId: TENANT,
-    clientId: CLIENT,
-    clientCompany: 'Acme LLC',
-    clientStatus: 'active',
+    companyId: CLIENT,
+    companyName: 'Acme LLC',
+    companyStatus: 'active',
     employeeId: null,
     employeeName: null,
     docType: 'passport',
@@ -509,7 +511,7 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
   for (const expiresOn of ['2027-08-13', null]) {
     const calls = captureFetch((call) => {
       if (call.url.includes('/rest/v1/rpc/set_pro_document_expiry')) {
-        return json([{ document_id: DOCUMENT, client_id: CLIENT, expires_on: expiresOn }]);
+        return json([{ document_id: DOCUMENT, company_id: CLIENT, expires_on: expiresOn }]);
       }
       return json([]);
     });
@@ -519,7 +521,7 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
       expires_on: expiresOn,
     });
 
-    assert.deepEqual(result, { clientId: CLIENT });
+    assert.deepEqual(result, { companyId: CLIENT });
 
     const rpc = calls.find((call) => call.url.includes('/rest/v1/rpc/set_pro_document_expiry'))!;
     assert.deepEqual(rpc.body, {
@@ -592,7 +594,7 @@ test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes dat
       dbCode: 'MD409',
       dbMessage: 'private expiry_externally_managed details',
       code: 'EXPIRY_EXTERNALLY_MANAGED',
-      message: 'Expiry is managed by the linked client or employee',
+      message: 'Expiry is managed by the linked company or employee',
       status: 409,
     },
   ]) {

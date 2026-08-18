@@ -22,9 +22,10 @@ const TENANT = 'tenant-a';
 function baseInput(): ProDashboardInput {
   return {
     tenantId: TENANT,
+    assignedCompanyId: 'client-1',
     tenantSlug: 'acme',
     days: 7,
-    clients: [
+    companies: [
       { id: 'client-1', tenant_id: TENANT, company_name: 'Acme', status: 'active' },
       { id: 'client-2', tenant_id: TENANT, company_name: 'Beacon', status: 'active' },
       { id: 'client-3', tenant_id: TENANT, company_name: 'Dormant', status: 'suspended' },
@@ -43,44 +44,49 @@ function baseInput(): ProDashboardInput {
     serviceCases: [
       caseRow({
         id: 'case-first-open',
-        client_id: 'client-1',
+        company_id: 'client-1',
         assigned_to: 'pro-1',
         created_at: '2026-08-05T00:00:00.000Z',
         sla_due_at: '2026-08-10T10:00:00.000Z',
       }),
-      caseRow({ id: 'case-2', client_id: 'client-1', assigned_to: 'pro-1' }),
-      caseRow({ id: 'case-3', client_id: 'client-2', assigned_to: 'pro-1' }),
+      caseRow({ id: 'case-2', company_id: 'client-1', assigned_to: 'pro-1' }),
+      caseRow({ id: 'case-3', company_id: 'client-2', assigned_to: 'pro-1' }),
       caseRow({
         id: 'case-first-complete',
-        client_id: 'client-2',
+        company_id: 'client-2',
         status: 'completed',
         created_at: '2026-08-05T18:00:00.000Z',
         completed_at: '2026-08-05T19:59:59.000Z',
         sla_due_at: '2026-08-06T00:00:00.000Z',
       }),
-      caseRow({ id: 'case-x', tenant_id: 'tenant-b', client_id: 'client-x', assigned_to: 'pro-x' }),
+      caseRow({
+        id: 'case-x',
+        tenant_id: 'tenant-b',
+        company_id: 'client-x',
+        assigned_to: 'pro-x',
+      }),
     ],
     renewals: [
       renewalRow({
         id: 'renewal-license',
-        client_id: 'client-1',
+        company_id: 'client-1',
         type: 'license',
         due_date: '2026-08-10',
         status: 'overdue',
       }),
       renewalRow({
         id: 'renewal-visa',
-        client_id: 'client-2',
+        company_id: 'client-2',
         type: 'visa',
         due_date: '2026-08-31',
       }),
-      renewalRow({ id: 'renewal-x', tenant_id: 'tenant-b', client_id: 'client-x' }),
+      renewalRow({ id: 'renewal-x', tenant_id: 'tenant-b', company_id: 'client-x' }),
     ],
     documentRequests: [
       {
         id: 'request-1',
         tenant_id: TENANT,
-        client_id: 'client-1',
+        company_id: 'client-1',
         label: 'Passport copy',
         status: 'pending',
         due_at: '2026-08-10T10:00:00.000Z',
@@ -88,7 +94,7 @@ function baseInput(): ProDashboardInput {
       {
         id: 'request-x',
         tenant_id: 'tenant-b',
-        client_id: 'client-x',
+        company_id: 'client-x',
         label: 'Foreign document',
         status: 'pending',
         due_at: '2026-08-09T10:00:00.000Z',
@@ -98,7 +104,7 @@ function baseInput(): ProDashboardInput {
       {
         id: 'document-1',
         tenant_id: TENANT,
-        client_id: 'client-2',
+        company_id: 'client-2',
         label: 'License scan',
         currentVersion: { tenant_id: TENANT, review_status: 'pending' },
       },
@@ -106,26 +112,26 @@ function baseInput(): ProDashboardInput {
     invoices: [
       invoiceRow({
         id: 'invoice-overdue',
-        client_id: 'client-1',
+        company_id: 'client-1',
         amount_minor: 7300,
         due_at: '2026-08-10',
       }),
       invoiceRow({
         id: 'invoice-soon',
-        client_id: 'client-2',
+        company_id: 'client-2',
         amount_minor: 2700,
         due_at: '2026-08-20',
       }),
       invoiceRow({
         id: 'invoice-usd',
-        client_id: 'client-1',
+        company_id: 'client-1',
         amount_minor: 999999,
         currency: 'USD',
       }),
       invoiceRow({
         id: 'invoice-x',
         tenant_id: 'tenant-b',
-        client_id: 'client-x',
+        company_id: 'client-x',
         amount_minor: 888888,
       }),
     ],
@@ -167,21 +173,31 @@ function baseInput(): ProDashboardInput {
   };
 }
 
+test('excludes another company in the same tenant from every dashboard aggregate', () => {
+  const dashboard = calculateProDashboard(baseInput(), NOW);
+  const serialized = JSON.stringify(dashboard);
+  assert.doesNotMatch(serialized, /Beacon|case-3|renewal-visa|invoice-soon|License scan/u);
+  assert.equal(dashboard.kpis.openCases, 2);
+  assert.equal(dashboard.kpis.renewalsDue30d, 1);
+  assert.equal(dashboard.finance.billedMinor, 7300);
+  assert.equal(dashboard.finance.dueSoonMinor, 0);
+});
+
 test('aggregates the tenant-scoped PRO operations contract', () => {
   const dashboard = calculateProDashboard(baseInput(), NOW);
 
   assert.equal(dashboard.generatedAt, NOW.toISOString());
-  assert.equal(dashboard.totalPrioritySignals, 9);
-  assert.equal(dashboard.kpis.activeClients, 2);
-  assert.equal(dashboard.kpis.openCases, 3);
+  assert.equal(dashboard.totalPrioritySignals, 5);
+  assert.equal(dashboard.kpis.activeCompany, 1);
+  assert.equal(dashboard.kpis.openCases, 2);
   assert.equal(dashboard.kpis.unassignedCases, 0);
-  assert.equal(dashboard.kpis.renewalsDue30d, 2);
+  assert.equal(dashboard.kpis.renewalsDue30d, 1);
   assert.equal(dashboard.finance.overdueMinor, 7300);
   assert.deepEqual(
     dashboard.actionDeck.map((action) => action.kind),
-    ['case', 'case', 'case', 'renewal', 'renewal'],
+    ['case', 'case', 'renewal', 'document', 'invoice'],
   );
-  assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 2, completed: 1 });
+  assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 1, completed: 0 });
   assert.equal(dashboard.renewalStreams.license.d7, 1);
   assert.ok(Object.values(dashboard.health).every((value) => value >= 0 && value <= 100));
   assert.deepEqual(
@@ -193,7 +209,7 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
 test('returns zero-filled chart dates and empty collections for empty input', () => {
   const empty = baseInput();
   for (const key of [
-    'clients',
+    'companies',
     'profiles',
     'serviceCases',
     'renewals',
@@ -226,14 +242,14 @@ test('returns zero-filled chart dates and empty collections for empty input', ()
 test('uses current-month AED-first finance rules and never sums mixed currencies', () => {
   const dashboard = calculateProDashboard(baseInput(), NOW);
   assert.deepEqual(dashboard.finance, {
-    billedMinor: 10000,
+    billedMinor: 7300,
     paidMinor: 9000,
-    dueSoonMinor: 2700,
+    dueSoonMinor: 0,
     overdueMinor: 7300,
     currency: 'AED',
   });
   assert.equal(dashboard.kpis.collectedMinor, 9000);
-  assert.equal(dashboard.kpis.collectionRate, 90);
+  assert.equal(dashboard.kpis.collectionRate, 123.3);
 });
 
 test('selects a breached SLA case ahead of nearer unbreached SLA cases', () => {
@@ -245,7 +261,6 @@ test('selects a breached SLA case ahead of nearer unbreached SLA cases', () => {
     [
       { id: 'case-first-open', urgency: 'breached' },
       { id: 'case-2', urgency: 'urgent' },
-      { id: 'case-3', urgency: 'urgent' },
     ],
   );
 });
@@ -304,7 +319,7 @@ test('filters every relationship collection before joining tenant data', () => {
   input.documents.push({
     id: 'nested-cross-tenant-version',
     tenant_id: TENANT,
-    client_id: 'client-1',
+    company_id: 'client-1',
     label: 'Should not leak',
     currentVersion: { tenant_id: 'tenant-b', review_status: 'pending' },
   });
@@ -314,8 +329,8 @@ test('filters every relationship collection before joining tenant data', () => {
     serialised,
     /Intruder|Other tenant|Foreign document|Should not leak|case-x|invoice-x/,
   );
-  assert.equal(dashboard.kpis.openCases, 3);
-  assert.equal(dashboard.finance.billedMinor, 10000);
+  assert.equal(dashboard.kpis.openCases, 2);
+  assert.equal(dashboard.finance.billedMinor, 7300);
 });
 
 test('loads current document versions with an explicit tenant predicate and rejects mismatched rows', async () => {
@@ -359,14 +374,14 @@ test('loads current document versions with an explicit tenant predicate and reje
       {
         id: 'document-safe',
         tenant_id: TENANT,
-        client_id: 'client-1',
+        company_id: 'client-1',
         label: 'Safe',
         current_version_id: 'version-safe',
       },
       {
         id: 'document-mismatch',
         tenant_id: TENANT,
-        client_id: 'client-1',
+        company_id: 'client-1',
         label: 'Mismatch',
         current_version_id: 'version-other',
       },
@@ -426,14 +441,14 @@ test('fetches only referenced current document versions with tenant and id predi
       {
         id: 'document-1',
         tenant_id: TENANT,
-        client_id: 'client-1',
+        company_id: 'client-1',
         label: 'Passport',
         current_version_id: 'version-1',
       },
       {
         id: 'document-2',
         tenant_id: TENANT,
-        client_id: 'client-1',
+        company_id: 'client-1',
         label: 'Duplicate head',
         current_version_id: 'version-1',
       },
@@ -455,7 +470,7 @@ test('fetches only referenced current document versions with tenant and id predi
 
 test('paginates until a short batch and names query errors without leaking details', async () => {
   const calls: Array<[number, number]> = [];
-  const rows = await collectProDashboardPages('clients', async (from, to) => {
+  const rows = await collectProDashboardPages('companies', async (from, to) => {
     calls.push([from, to]);
     return {
       data: Array.from({ length: from === 0 ? 500 : 1 }, (_, index) => from + index),
@@ -574,7 +589,7 @@ test('uses timestamp order rather than ISO text order for SLA health inputs', ()
 test('selects the globally highest-ranked five signals with tenant-safe hrefs', () => {
   const input = emptyInput();
   input.tenantSlug = 'safe-firm';
-  input.clients = [
+  input.companies = [
     {
       id: 'client-1',
       tenant_id: TENANT,
@@ -602,7 +617,7 @@ test('selects the globally highest-ranked five signals with tenant-safe hrefs', 
     {
       id: 'missing',
       tenant_id: TENANT,
-      client_id: 'client-1',
+      company_id: 'client-1',
       label: 'Passport',
       status: 'pending',
       due_at: null,
@@ -672,7 +687,7 @@ test('keeps the five highest-urgency actions while counting all priority signals
     {
       id: 'normal-document',
       tenant_id: TENANT,
-      client_id: 'client-1',
+      company_id: 'client-1',
       label: 'Passport',
       status: 'pending',
       due_at: null,
@@ -825,27 +840,13 @@ test('uses Dubai date and noon boundaries for deadline intensity event details',
 
 test('uses the schema-valid sole PRO owner and exposes overload beyond 100 percent', () => {
   const input = emptyInput();
-  input.clients = [
+  input.companies = [
     {
-      id: 'current',
+      id: 'client-1',
       tenant_id: TENANT,
       company_name: 'Current',
       status: 'active',
       created_at: '2026-08-02T00:00:00Z',
-    },
-    {
-      id: 'previous-a',
-      tenant_id: TENANT,
-      company_name: 'Previous A',
-      status: 'active',
-      created_at: '2026-07-10T00:00:00Z',
-    },
-    {
-      id: 'previous-b',
-      tenant_id: TENANT,
-      company_name: 'Previous B',
-      status: 'active',
-      created_at: '2026-07-20T00:00:00Z',
     },
   ];
   input.profiles = [
@@ -873,7 +874,7 @@ test('uses the schema-valid sole PRO owner and exposes overload beyond 100 perce
     caseRow({ id: 'blocked', assigned_to: null, blocked_reason: 'Hold' }),
   ];
   const dashboard = calculateProDashboard(input, NOW);
-  assert.equal(dashboard.kpis.activeClientsChange, -1);
+  assert.equal(dashboard.kpis.activeCompany, 1);
   assert.equal(dashboard.kpis.movingCases, 30);
   assert.equal(dashboard.kpis.blockedCases, 1);
   assert.equal(dashboard.kpis.unassignedCases, 1);
@@ -1078,12 +1079,12 @@ test('finance relationship hardening migration uses tenant-owned chains without 
 
 test('settles source failures independently for widget-local degradation', async () => {
   const settled = await settleProDashboardSources({
-    clients: Promise.resolve(['client']),
+    companies: Promise.resolve(['client']),
     serviceCases: Promise.resolve(['case']),
     invoices: Promise.reject(new ProDashboardQueryError('invoices')),
     payments: Promise.resolve(['payment-that-must-not-form-a-partial-finance-widget']),
   });
-  assert.deepEqual(settled.data.clients, ['client']);
+  assert.deepEqual(settled.data.companies, ['client']);
   assert.deepEqual(settled.data.serviceCases, ['case']);
   assert.deepEqual(settled.data.invoices, []);
   assert.deepEqual(settled.data.payments, []);
@@ -1093,21 +1094,21 @@ test('settles source failures independently for widget-local degradation', async
 test('keeps fulfilled client metrics when tenant slug loading fails', async () => {
   const settled = await settleProDashboardSources({
     tenantSlug: Promise.reject(new ProDashboardQueryError('tenant')),
-    clients: Promise.resolve(['client']),
+    companies: Promise.resolve(['client']),
     serviceCases: Promise.resolve(['case']),
   });
   assert.deepEqual(settled.data.tenantSlug, []);
-  assert.deepEqual(settled.data.clients, ['client']);
+  assert.deepEqual(settled.data.companies, ['client']);
   assert.deepEqual(settled.data.serviceCases, ['case']);
   assert.deepEqual(settled.errors, { links: 'Failed to load PRO dashboard tenant' });
 
   const input = emptyInput();
   delete input.tenantSlug;
-  input.clients = [{ id: 'client-1', tenant_id: TENANT, company_name: 'Acme', status: 'active' }];
+  input.companies = [{ id: 'client-1', tenant_id: TENANT, company_name: 'Acme', status: 'active' }];
   input.serviceCases = [caseRow({ id: 'safe-action' })];
   input.errors = settled.errors;
   const dashboard = calculateProDashboard(input, NOW);
-  assert.equal(dashboard.kpis.activeClients, 1);
+  assert.equal(dashboard.kpis.activeCompany, 1);
   assert.equal(dashboard.totalPrioritySignals, 1);
   assert.equal(dashboard.actionDeck[0].href, '#');
   assert.deepEqual(dashboard.errors, { links: 'Failed to load PRO dashboard tenant' });
@@ -1123,7 +1124,6 @@ test('uses a safe inert href when a tenant slug is unavailable', () => {
 function emptyInput(): ProDashboardInput {
   const input = baseInput();
   for (const key of [
-    'clients',
     'profiles',
     'serviceCases',
     'renewals',
@@ -1134,6 +1134,7 @@ function emptyInput(): ProDashboardInput {
     'refunds',
   ] as const)
     input[key] = [] as never;
+  input.companies = [{ id: 'client-1', tenant_id: TENANT, company_name: 'Acme', status: 'active' }];
   return input;
 }
 
@@ -1141,7 +1142,7 @@ function caseRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'case-1',
     tenant_id: TENANT,
-    client_id: 'client-1',
+    company_id: 'client-1',
     title: 'License application',
     service_type: 'License',
     status: 'submitted',
@@ -1163,7 +1164,7 @@ function renewalRow(
   return {
     id: 'renewal-1',
     tenant_id: TENANT,
-    client_id: 'client-1',
+    company_id: 'client-1',
     type: 'license',
     label: 'Trade license',
     due_date: '2026-08-18',
@@ -1177,7 +1178,7 @@ function invoiceRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'invoice-1',
     tenant_id: TENANT,
-    client_id: 'client-1',
+    company_id: 'client-1',
     label: 'Government fee',
     amount_minor: 1000,
     currency: 'AED',
@@ -1224,7 +1225,7 @@ test('operation filters affect cases only and stay tenant isolated', () => {
     NOW,
   );
   assert.equal(filtered.kpis.openCases, 1);
-  assert.equal(filtered.kpis.activeClients, unfiltered.kpis.activeClients);
+  assert.equal(filtered.kpis.activeCompany, unfiltered.kpis.activeCompany);
   assert.equal(filtered.finance.billedMinor, unfiltered.finance.billedMinor);
 });
 
@@ -1246,7 +1247,7 @@ test('operation filters ignore inactive, external, and unknown tenant options', 
     const dashboard = calculateProDashboard({ ...input, filters }, NOW);
     assert.deepEqual(dashboard.appliedFilters, {});
     assert.equal(dashboard.filtersRejected, true);
-    assert.equal(dashboard.kpis.openCases, 3);
+    assert.equal(dashboard.kpis.openCases, 2);
   }
 });
 
@@ -1257,5 +1258,5 @@ test('operation filters apply only active tenant owners and existing tenant serv
   );
   assert.deepEqual(dashboard.appliedFilters, { ownerId: 'pro-1', serviceType: 'License' });
   assert.equal(dashboard.filtersRejected, false);
-  assert.equal(dashboard.kpis.openCases, 3);
+  assert.equal(dashboard.kpis.openCases, 2);
 });

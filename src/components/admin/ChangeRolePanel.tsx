@@ -28,7 +28,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { postJson } from '@/lib/http/post';
 import { SERVICE_AREA_VALUES } from '@/lib/validation/admin-user';
 import type { TenantSummary } from '@/lib/data/tenants';
-import { ClientTypeahead } from './ClientTypeahead';
+import { CompanyTypeahead } from './CompanyTypeahead';
 
 type NewRole = 'pro' | 'customer' | 'employee' | 'admin';
 
@@ -61,8 +61,8 @@ export function ChangeRolePanel({
   const [bio, setBio] = useState('');
   const [nationality, setNationality] = useState('');
   const [passportNo, setPassportNo] = useState('');
-  const [linkedClientId, setLinkedClientId] = useState<string | null>(null);
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [linkedCompanyId, setLinkedCompanyId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [visaNo, setVisaNo] = useState('');
   const [visaExpiry, setVisaExpiry] = useState('');
   const [emiratesId, setEmiratesId] = useState('');
@@ -110,15 +110,15 @@ export function ChangeRolePanel({
       Object.assign(base, {
         nationality: nationality || null,
         passport_no: passportNo || null,
-        linked_client_id: linkedClientId,
+        linked_company_id: linkedCompanyId,
       });
     } else if (newRole === 'employee') {
-      if (!clientId) {
-        setError(t('user.roleChange.errPickClient'));
+      if (!companyId) {
+        setError(t('user.roleChange.errPickCompany'));
         return;
       }
       Object.assign(base, {
-        client_id: clientId,
+        company_id: companyId,
         passport_no: passportNo || null,
         visa_no: visaNo || null,
         visa_expiry: visaExpiry || null,
@@ -255,11 +255,11 @@ export function ChangeRolePanel({
               </div>
               {tenantId && (
                 <div className="space-y-2">
-                  <Label>{t('user.fields.linkedClient')}</Label>
-                  <ClientTypeahead
+                  <Label>{t('user.fields.linkedCompany')}</Label>
+                  <CompanyTypeahead
                     tenantId={tenantId}
-                    value={linkedClientId}
-                    onChange={setLinkedClientId}
+                    value={linkedCompanyId}
+                    onChange={setLinkedCompanyId}
                   />
                 </div>
               )}
@@ -270,17 +270,17 @@ export function ChangeRolePanel({
             <div className="space-y-3">
               {tenantId ? (
                 <div className="space-y-2">
-                  <Label>{t('user.roleChange.clientRequiredLabel')}</Label>
-                  <ClientTypeahead
+                  <Label>{t('user.roleChange.companyRequiredLabel')}</Label>
+                  <CompanyTypeahead
                     tenantId={tenantId}
-                    value={clientId}
-                    onChange={setClientId}
+                    value={companyId}
+                    onChange={setCompanyId}
                     required
                   />
                 </div>
               ) : (
                 <div className="text-muted-foreground text-sm">
-                  {t('user.roleChange.pickTenantFirst')}
+                  {t('user.roleChange.pickTenantBeforeCompany')}
                 </div>
               )}
               <div className="space-y-2">

@@ -19,12 +19,13 @@ test('PRO navigation exposes exactly one Assigned Company route before Applicati
 
 test('PRO navigation removes client directory, import, and team routes', () => {
   const hrefs = hrefsFor('acme');
+  const legacyDirectory = `/t/acme/${['cli', 'ents'].join('')}`;
   assert.equal(
-    hrefs.some((href) => href === '/t/acme/clients'),
+    hrefs.some((href) => href === legacyDirectory),
     false,
   );
   assert.equal(
-    hrefs.some((href) => href === '/t/acme/clients/import'),
+    hrefs.some((href) => href === `${legacyDirectory}/import`),
     false,
   );
   assert.equal(

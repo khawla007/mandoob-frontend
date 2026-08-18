@@ -2,6 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { decryptOptional } from '@/lib/crypto/pii';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { isNormalizedOwnedStoragePath } from '@/lib/storage/owned-path';
 import { employeeNotificationPreferencesSchema } from '@/lib/validation/employee-portal';
 
 const SIGNED_URL_TTL_SECONDS = 300;
@@ -16,7 +17,7 @@ export type EmployeeOwnerRow = {
 };
 
 type EmployeeRow = EmployeeOwnerRow & {
-  client_id: string;
+  company_id: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -26,7 +27,7 @@ type EmployeeRow = EmployeeOwnerRow & {
   visa_expiry: string | null;
   emirates_id_encrypted: string | null;
   eid_expiry: string | null;
-  clients?: { company_name: string | null } | { company_name: string | null }[] | null;
+  company?: { company_name: string | null } | { company_name: string | null }[] | null;
 };
 
 type DocumentRow = {
@@ -63,7 +64,7 @@ type DocumentVersionView = {
 export type EmployeePortalSummary = {
   employeeId: string;
   employeeName: string;
-  clientName: string | null;
+  companyName: string | null;
   visaExpiry: string | null;
   visaDaysOut: number | null;
   visaBucket: ExpiryBucket;
@@ -78,7 +79,7 @@ export type EmployeePortalSummary = {
 export type EmployeeIdentity = {
   employeeId: string;
   employeeName: string;
-  clientName: string | null;
+  companyName: string | null;
   nationality: string | null;
   passportNo: string | null;
   visaNo: string | null;
@@ -103,7 +104,7 @@ export type EmployeeDocument = {
 };
 
 function companyName(row: EmployeeRow): string | null {
-  const joined = Array.isArray(row.clients) ? row.clients[0] : row.clients;
+  const joined = Array.isArray(row.company) ? row.company[0] : row.company;
   return joined?.company_name ?? null;
 }
 
@@ -150,7 +151,7 @@ async function getOwnedEmployee(actorProfileId: string, tenantId: string): Promi
   const { data, error } = await admin
     .from('employees')
     .select(
-      'id, tenant_id, client_id, profile_id, name, email, phone, nationality, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry, status, clients(company_name)',
+      'id, tenant_id, company_id, profile_id, name, email, phone, nationality, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry, status, company:company_profiles!employees_company_tenant_fk(company_name)',
     )
     .eq('profile_id', actorProfileId)
     .eq('tenant_id', tenantId)
@@ -186,6 +187,7 @@ export async function getEmployeePortalSummary(
       .from('documents')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
+      .eq('company_id', employee.company_id)
       .eq('employee_id', employee.id),
     admin
       .from('documents')
@@ -194,6 +196,7 @@ export async function getEmployeePortalSummary(
         head: true,
       })
       .eq('tenant_id', tenantId)
+      .eq('company_id', employee.company_id)
       .eq('employee_id', employee.id)
       .eq('document_versions.review_status', 'approved'),
     getPreference(employee),
@@ -206,7 +209,7 @@ export async function getEmployeePortalSummary(
   return {
     employeeId: employee.id,
     employeeName: employee.name,
-    clientName: companyName(employee),
+    companyName: companyName(employee),
     visaExpiry: employee.visa_expiry,
     visaDaysOut,
     visaBucket: expiryBucket(visaDaysOut),
@@ -229,7 +232,7 @@ export async function getEmployeeIdentity(
   return {
     employeeId: employee.id,
     employeeName: employee.name,
-    clientName: companyName(employee),
+    companyName: companyName(employee),
     nationality: employee.nationality,
     passportNo: decryptOptional(employee.passport_no_encrypted),
     visaNo: decryptOptional(employee.visa_no_encrypted),
@@ -255,6 +258,7 @@ export async function listEmployeeDocuments(
       'id, doc_type, label, created_at, currentVersion:document_versions!documents_current_version_fk(id, review_status, created_at, mime_type, size_bytes)',
     )
     .eq('tenant_id', tenantId)
+    .eq('company_id', employee.company_id)
     .eq('employee_id', employee.id)
     .order('created_at', { ascending: false });
   if (error) throw new ApiError('INTERNAL', error.message, 500);
@@ -282,19 +286,28 @@ export async function getEmployeeDocumentSignedUrl(
   const admin = createSupabaseServiceRoleClient();
   const { data, error } = await admin
     .from('document_versions')
-    .select('id, tenant_id, storage_path, documents!inner(id, tenant_id, employee_id)')
+    .select(
+      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, employee_id)',
+    )
     .eq('id', versionId)
     .eq('tenant_id', tenantId)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   const row = data as {
     storage_path: string;
-    documents:
-      | { tenant_id: string; employee_id: string | null }
-      | { tenant_id: string; employee_id: string | null }[];
+    document:
+      | { tenant_id: string; company_id: string; employee_id: string | null }
+      | { tenant_id: string; company_id: string; employee_id: string | null }[];
   } | null;
-  const doc = Array.isArray(row?.documents) ? row?.documents[0] : row?.documents;
-  if (!row || !doc || doc.tenant_id !== tenantId || doc.employee_id !== employee.id) {
+  const doc = Array.isArray(row?.document) ? row?.document[0] : row?.document;
+  if (
+    !row ||
+    !doc ||
+    doc.tenant_id !== tenantId ||
+    doc.company_id !== employee.company_id ||
+    doc.employee_id !== employee.id ||
+    !isNormalizedOwnedStoragePath(row.storage_path, tenantId, employee.company_id)
+  ) {
     throw new ApiError('FORBIDDEN', 'Document is not accessible', 403);
   }
 

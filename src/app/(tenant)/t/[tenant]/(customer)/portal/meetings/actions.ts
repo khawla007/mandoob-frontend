@@ -13,7 +13,7 @@ export type CustomerMeetingActionResult = { ok: true } | { ok: false; error: str
 
 async function resolveCustomerActor(slug: string): Promise<{
   tenantId: string;
-  clientId: string | null;
+  companyId: string | null;
   actor: MeetingActor;
 }> {
   const session = await requireRole('customer');
@@ -26,7 +26,7 @@ async function resolveCustomerActor(slug: string): Promise<{
   const customer = await readSelfCustomer();
   return {
     tenantId: tenant.id,
-    clientId: customer.linkedClientId,
+    companyId: customer.linkedCompanyId,
     actor: { id: session.id, role: 'customer', tenantId: tenant.id },
   };
 }
@@ -42,13 +42,13 @@ export async function bookMeetingSlotAction(
   slotId: string,
 ): Promise<CustomerMeetingActionResult> {
   try {
-    const { tenantId, clientId, actor } = await resolveCustomerActor(slug);
+    const { tenantId, companyId, actor } = await resolveCustomerActor(slug);
     await bookMeetingSlot(
       slotId,
       {
         tenantId,
         customerProfileId: actor.id,
-        clientId,
+        companyId,
         title: 'Consultation',
       },
       actor,

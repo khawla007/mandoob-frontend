@@ -3,6 +3,7 @@ import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { scheduleRenewalReminders } from '@/lib/data/renewal-reminders';
 import { addSignalDays, signalBusinessDate, signalDaysBetween } from '@/lib/data/signal-finance';
+import { loadAllRangePages } from '@/lib/data/range-pagination';
 import {
   createRenewalSchema,
   updateRenewalSchema,
@@ -17,7 +18,7 @@ export type RenewalSource = 'license_backfill' | 'manual';
 export type RenewalRow = {
   id: string;
   tenantId: string;
-  clientId: string;
+  companyId: string;
   type: RenewalType;
   label: string;
   dueDate: string;
@@ -32,7 +33,7 @@ export type RenewalRow = {
 type RenewalDbRow = {
   id: string;
   tenant_id: string;
-  client_id: string;
+  company_id: string;
   type: RenewalType;
   label: string;
   due_date: string;
@@ -44,7 +45,7 @@ type RenewalDbRow = {
 };
 
 const RENEWAL_COLUMNS =
-  'id, tenant_id, client_id, type, label, due_date, status, source, completed_at, created_at, updated_at';
+  'id, tenant_id, company_id, type, label, due_date, status, source, completed_at, created_at, updated_at';
 
 const ACTIVE_STATUSES: RenewalStatus[] = ['upcoming', 'due_soon', 'overdue'];
 
@@ -52,7 +53,7 @@ function toRenewalRow(r: RenewalDbRow, today = signalBusinessDate()): RenewalRow
   return {
     id: r.id,
     tenantId: r.tenant_id,
-    clientId: r.client_id,
+    companyId: r.company_id,
     type: r.type,
     label: r.label,
     dueDate: r.due_date,
@@ -69,6 +70,7 @@ export type RenewalAuditAction = 'created' | 'updated' | 'completed' | 'cancelle
 
 export type RenewalActorCtx = {
   tenantId: string;
+  companyId: string;
   actorId: string;
   role: 'pro' | 'admin' | 'super_admin';
 };
@@ -139,29 +141,47 @@ export async function listRenewalsForTenant(
   return ((data as RenewalDbRow[] | null) ?? []).map((row) => toRenewalRow(row, today));
 }
 
-export type ListRenewalsForClientOpts = { includeCancelled?: boolean };
+export type ListRenewalsForCompanyOpts = ListRenewalsForTenantOpts & {
+  includeCancelled?: boolean;
+};
 
-export async function listRenewalsForClient(
+export async function listRenewalsForCompany(
   tenantId: string,
-  clientId: string,
-  opts: ListRenewalsForClientOpts = {},
+  companyId: string,
+  opts: ListRenewalsForCompanyOpts = {},
 ): Promise<RenewalRow[]> {
   const admin = createSupabaseServiceRoleClient();
   let query = admin
     .from('renewals')
     .select(RENEWAL_COLUMNS)
     .eq('tenant_id', tenantId)
-    .eq('client_id', clientId)
-    .order('due_date', { ascending: true });
+    .eq('company_id', companyId)
+    .order('due_date', { ascending: true })
+    .order('id', { ascending: true });
 
-  if (!opts.includeCancelled) {
+  if (opts.id) {
+    query = query.eq('id', opts.id);
+  } else if (opts.status && opts.status.length > 0) {
+    query = query.in('status', opts.status);
+  } else if (!opts.includeCancelled) {
     query = query.neq('status', 'cancelled');
   }
+  if (!opts.id && opts.bucket && opts.bucket !== 'all') {
+    query = query.lte('due_date', addSignalDays(opts.today ?? signalBusinessDate(), opts.bucket));
+  }
+  if (!opts.id && opts.type) query = query.eq('type', opts.type);
+  if (!opts.id && opts.deadlineDate) {
+    query =
+      opts.deadlinePeriod === 'afternoon'
+        ? query.eq('due_date', opts.deadlineDate)
+        : query.eq('due_date', '__date_only_deadlines_are_afternoon__');
+  }
 
-  const { data, error } = await query;
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
+  const data = await loadAllRangePages<RenewalDbRow>('company renewals', (from, to) =>
+    query.range(from, to),
+  );
   const today = signalBusinessDate();
-  return ((data as RenewalDbRow[] | null) ?? []).map((row) => toRenewalRow(row, today));
+  return data.map((row) => toRenewalRow(row, today));
 }
 
 export async function countRenewalsDueWithin(tenantId: string, days = 30): Promise<number> {
@@ -184,18 +204,22 @@ export async function createRenewal(
 ): Promise<{ id: string }> {
   assertPro(ctx.role);
   createRenewalSchema.parse(input);
+  if (input.company_id !== ctx.companyId) {
+    throw new ApiError('FORBIDDEN', 'company is outside the assigned workspace', 403);
+  }
 
   const admin = createSupabaseServiceRoleClient();
 
-  const { data: clientRow, error: clientErr } = await admin
-    .from('clients')
+  const { data: companyRow, error: companyErr } = await admin
+    .from('company_profiles')
     .select('id, tenant_id')
-    .eq('id', input.client_id)
+    .eq('tenant_id', ctx.tenantId)
+    .eq('id', input.company_id)
     .maybeSingle();
-  if (clientErr) throw new ApiError('INTERNAL', clientErr.message, 500);
-  if (!clientRow) throw new ApiError('NOT_FOUND', 'client not found', 404);
-  if (clientRow.tenant_id !== ctx.tenantId) {
-    throw new ApiError('FORBIDDEN', 'client belongs to a different tenant', 403);
+  if (companyErr) throw new ApiError('INTERNAL', companyErr.message, 500);
+  if (!companyRow) throw new ApiError('NOT_FOUND', 'company not found', 404);
+  if (companyRow.tenant_id !== ctx.tenantId) {
+    throw new ApiError('FORBIDDEN', 'company belongs to a different tenant', 403);
   }
 
   const { data: notifyRow, error: notifyErr } = await admin.rpc('compute_notify_at', {
@@ -213,7 +237,7 @@ export async function createRenewal(
     .from('renewals')
     .insert({
       tenant_id: ctx.tenantId,
-      client_id: input.client_id,
+      company_id: input.company_id,
       type: input.type,
       label: input.label,
       due_date: input.due_date,
@@ -234,7 +258,7 @@ export async function createRenewal(
   await logRenewalAudit(ctx.tenantId, ctx.actorId, 'created', {
     op: 'create',
     renewal_id: id,
-    client_id: input.client_id,
+    company_id: input.company_id,
     type: input.type,
     due_date: input.due_date,
     source: 'manual',
@@ -265,13 +289,16 @@ export async function updateRenewal(
 
   const { data: existing, error: readErr } = await admin
     .from('renewals')
-    .select('id, tenant_id, source, status, due_date, type')
+    .select('id, tenant_id, company_id, source, status, due_date, type')
     .eq('id', id)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
   if (!existing) throw new ApiError('NOT_FOUND', 'renewal not found', 404);
   if (existing.tenant_id !== ctx.tenantId) {
     throw new ApiError('FORBIDDEN', 'renewal belongs to a different tenant', 403);
+  }
+  if (existing.company_id !== ctx.companyId) {
+    throw new ApiError('FORBIDDEN', 'renewal belongs to a different company', 403);
   }
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -287,7 +314,12 @@ export async function updateRenewal(
     update.notify_at = (notifyRow as string[] | null) ?? [];
   }
 
-  const { error: updErr } = await admin.from('renewals').update(update).eq('id', id);
+  const { error: updErr } = await admin
+    .from('renewals')
+    .update(update)
+    .eq('id', id)
+    .eq('tenant_id', ctx.tenantId)
+    .eq('company_id', ctx.companyId);
   if (updErr) throw new ApiError('INTERNAL', updErr.message, 500);
 
   await logRenewalAudit(ctx.tenantId, ctx.actorId, 'updated', {
@@ -310,7 +342,7 @@ export async function markRenewalCompleted(id: string, ctx: RenewalActorCtx): Pr
 
   const { data: existing, error: readErr } = await admin
     .from('renewals')
-    .select('id, tenant_id, source')
+    .select('id, tenant_id, company_id, source')
     .eq('id', id)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
@@ -318,12 +350,17 @@ export async function markRenewalCompleted(id: string, ctx: RenewalActorCtx): Pr
   if (existing.tenant_id !== ctx.tenantId) {
     throw new ApiError('FORBIDDEN', 'renewal belongs to a different tenant', 403);
   }
+  if (existing.company_id !== ctx.companyId) {
+    throw new ApiError('FORBIDDEN', 'renewal belongs to a different company', 403);
+  }
 
   const completedAt = new Date().toISOString();
   const { error: updErr } = await admin
     .from('renewals')
     .update({ status: 'completed', completed_at: completedAt, updated_at: completedAt })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('tenant_id', ctx.tenantId)
+    .eq('company_id', ctx.companyId);
   if (updErr) throw new ApiError('INTERNAL', updErr.message, 500);
 
   await logRenewalAudit(ctx.tenantId, ctx.actorId, 'completed', {
@@ -339,7 +376,7 @@ export async function cancelRenewal(id: string, ctx: RenewalActorCtx): Promise<v
 
   const { data: existing, error: readErr } = await admin
     .from('renewals')
-    .select('id, tenant_id, source')
+    .select('id, tenant_id, company_id, source')
     .eq('id', id)
     .maybeSingle();
   if (readErr) throw new ApiError('INTERNAL', readErr.message, 500);
@@ -347,11 +384,16 @@ export async function cancelRenewal(id: string, ctx: RenewalActorCtx): Promise<v
   if (existing.tenant_id !== ctx.tenantId) {
     throw new ApiError('FORBIDDEN', 'renewal belongs to a different tenant', 403);
   }
+  if (existing.company_id !== ctx.companyId) {
+    throw new ApiError('FORBIDDEN', 'renewal belongs to a different company', 403);
+  }
 
   const { error: updErr } = await admin
     .from('renewals')
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('tenant_id', ctx.tenantId)
+    .eq('company_id', ctx.companyId);
   if (updErr) throw new ApiError('INTERNAL', updErr.message, 500);
 
   await logRenewalAudit(ctx.tenantId, ctx.actorId, 'cancelled', {

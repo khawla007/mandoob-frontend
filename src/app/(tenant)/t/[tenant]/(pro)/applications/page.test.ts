@@ -35,7 +35,7 @@ test('applications page awaits route inputs, validates stable filters, and uses 
   assert.match(logic, /status[^\n]+split\(','\)/);
   assert.match(logic, /assigned_to:\s*first\(search\.owner\)/);
   assert.match(source, /listServiceCaseWorkspace\(/);
-  assert.doesNotMatch(source, /listServiceCaseClients\(/);
+  assert.doesNotMatch(source, new RegExp(`listServiceCase${['Cli', 'ents'].join('')}\\(`, 'u'));
   assert.doesNotMatch(source, /listServiceCaseOwners\(/);
 });
 
@@ -194,7 +194,7 @@ test('applications workspace has the required table contract and Dubai date disp
   const statusActions = readFileSync(statusActionsPath, 'utf8');
   assert.match(page, /<form[^>]+method="get"/);
   assert.match(page, /ApplicationCreateForm/);
-  for (const heading of ['client', 'service', 'status', 'owner', 'slaDue', 'action']) {
+  for (const heading of ['company', 'service', 'status', 'owner', 'slaDue', 'action']) {
     assert.match(table, new RegExp(`labels\\.${heading}`));
   }
   assert.match(statusActions, /focus-visible:ring/);

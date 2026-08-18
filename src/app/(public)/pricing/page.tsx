@@ -5,7 +5,7 @@ const plans = [
   {
     name: 'Starter',
     price: 4900,
-    features: ['Client records', 'Document requests', 'Renewal alerts'],
+    features: ['Company records', 'Document requests', 'Renewal alerts'],
   },
   {
     name: 'Professional',

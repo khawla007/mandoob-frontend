@@ -2,8 +2,8 @@ import { getTranslations } from 'next-intl/server';
 import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getProfileCard } from '@/lib/data/profile';
 import { readSelfCustomer } from '@/lib/data/account-self';
-import { listOpenRequestsForClient } from '@/lib/data/documents';
-import { listRenewalsForClient } from '@/lib/data/renewals';
+import { listOpenRequestsForCompany } from '@/lib/data/documents';
+import { listRenewalsForCompany } from '@/lib/data/renewals';
 import { getRegistrationProgress } from '@/lib/mocks/customer-portal';
 import { getInvoicesForCustomer } from '@/lib/data/payments';
 import { getCommsForCustomer } from '@/lib/data/comms';
@@ -31,14 +31,14 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
 
   const t = await getTranslations('customer');
 
-  const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
-  const linkedClientId = customer.linkedClientId;
+  const customer = await readSelfCustomer().catch(() => ({ linkedCompanyId: null }));
+  const linkedCompanyId = customer.linkedCompanyId;
 
   const [profile, progress, docs, renewalRows, comms, payments] = await Promise.all([
     getProfileCard(session.id),
     getRegistrationProgress(),
-    linkedClientId ? listOpenRequestsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
-    linkedClientId ? listRenewalsForClient(tenant.id, linkedClientId) : Promise.resolve([]),
+    linkedCompanyId ? listOpenRequestsForCompany(tenant.id, linkedCompanyId) : Promise.resolve([]),
+    linkedCompanyId ? listRenewalsForCompany(tenant.id, linkedCompanyId) : Promise.resolve([]),
     getCommsForCustomer(session.id, { limit: 10 }),
     getInvoicesForCustomer(session.id),
   ]);

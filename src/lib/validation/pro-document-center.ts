@@ -41,7 +41,7 @@ export const documentCenterSearchSchema = z.object({
   view: z.enum(documentCenterViews).default('all'),
   sort: z.enum(documentCenterSorts).default('urgency'),
   window: z.enum(documentCenterWindows).default('all'),
-  clientId: z.string().uuid().optional(),
+  companyId: z.string().uuid().optional(),
   docType: docTypeSchema.optional(),
   search: z.string().trim().min(1).max(MAX_DOCUMENT_CENTER_SEARCH_LENGTH).optional(),
   from: documentCenterIsoDateSchema.optional(),

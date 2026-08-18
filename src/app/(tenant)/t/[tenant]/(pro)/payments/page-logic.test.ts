@@ -43,11 +43,12 @@ test('payments page consumes view through a paginated tenant-scoped finance read
   const invoices = readFileSync(join(process.cwd(), 'src/lib/data/invoices.ts'), 'utf8');
   assert.match(page, /searchParams:\s*Promise/);
   assert.match(page, /parsePaymentSearch\(search\)/);
-  assert.match(page, /listInvoicesForPaymentView\(tenant\.id/);
+  assert.match(page, /listInvoicesForPaymentView\(tenant\.id, company\.id/);
   assert.doesNotMatch(invoices, /collectPaymentQueryPages|PAYMENT_QUERY_BATCH_SIZE/);
-  assert.match(invoices, /rpc\(\s*'list_signal_payment_invoices'/);
+  assert.match(invoices, /rpc\(\s*'list_company_payment_invoices'/);
   assert.match(invoices, /\.range\(\(page - 1\) \* PAYMENT_INVOICE_PAGE_SIZE/);
   assert.match(invoices, /\.eq\('tenant_id', tenantId\)/);
+  assert.match(invoices, /\.eq\('company_id', companyId\)/);
 });
 
 test('payments consume exact invoice deadline filters', () => {

@@ -87,17 +87,17 @@ export async function adminChangeRole(
     roleData = {
       nationality: input.nationality ?? null,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-      linked_company_id: input.linked_client_id ?? null,
+      linked_company_id: input.linked_company_id ?? null,
     };
   } else if (input.newRole === 'employee') {
     const { data: authUser } = await admin.auth.admin.getUserById(targetId);
     roleData = {
-      company_id: input.client_id,
+      company_id: input.company_id,
       name: (existing.full_name as string | null) ?? authUser?.user?.email ?? 'Unnamed',
       email: authUser?.user?.email ?? null,
       phone: (existing.phone as string | null) ?? null,
       passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-      passport_no_hash: hashPassportForLookup(input.client_id, input.passport_no),
+      passport_no_hash: hashPassportForLookup(input.company_id, input.passport_no),
       visa_no_encrypted: encryptOptional(input.visa_no ?? null),
       visa_expiry: input.visa_expiry ?? null,
       emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
@@ -221,7 +221,7 @@ export async function adminChangeRole(
           : changedDuringRequest
             ? 'Profile changed during role update; retry with fresh data'
             : companyTenantMismatch
-              ? 'Client does not belong to selected tenant'
+              ? 'Company does not belong to selected tenant'
               : 'Role change could not be completed',
       forbiddenTenantMove || duplicatePassport || changedDuringRequest
         ? 409

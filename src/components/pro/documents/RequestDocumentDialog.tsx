@@ -18,9 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import type { DocumentCenterClientOption } from '@/lib/data/pro-document-center';
 import { DOC_TYPES } from '@/lib/validation/document';
-import { DocumentClientSearchField } from './DocumentClientSearchField';
 import type { DocumentActionLabels } from './DocumentActions';
 
 type RequestState = DocumentCenterActionResult<{ requestId: string }> | null;
@@ -30,11 +28,9 @@ const fieldClass =
 
 export function RequestDocumentDialog({
   slug,
-  clients,
   labels,
 }: {
   slug: string;
-  clients: DocumentCenterClientOption[];
   labels: DocumentActionLabels;
 }) {
   const requestAction = requestDocumentCenterAction.bind(null, slug);
@@ -59,15 +55,6 @@ export function RequestDocumentDialog({
           <DialogDescription>{labels.request.description}</DialogDescription>
         </DialogHeader>
         <form action={formAction} className="document-center-control grid gap-4">
-          <DocumentClientSearchField
-            slug={slug}
-            name="client_id"
-            label={labels.request.client}
-            labels={labels.clientSearch}
-            initialOptions={clients}
-            selectedOption={null}
-            required
-          />
           <label className="grid gap-1.5 text-sm font-medium">
             {labels.request.type}
             <select name="doc_type" required className={fieldClass}>

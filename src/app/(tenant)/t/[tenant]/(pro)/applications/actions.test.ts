@@ -12,7 +12,7 @@ import {
 const TENANT_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_TENANT_ID = '22222222-2222-4222-8222-222222222222';
 const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
-const CLIENT_ID = '44444444-4444-4444-8444-444444444444';
+const COMPANY_ID = '44444444-4444-4444-8444-444444444444';
 const CASE_ID = '55555555-5555-4555-8555-555555555555';
 
 function setup(overrides: Partial<ApplicationActionDependencies> = {}) {
@@ -29,12 +29,16 @@ function setup(overrides: Partial<ApplicationActionDependencies> = {}) {
     requireActive: async (tenantId) => {
       calls.push(`active:${tenantId}`);
     },
+    resolveAssignedCompany: async (profileId, slug) => {
+      calls.push(`company:${profileId}:${slug}`);
+      return { id: COMPANY_ID, tenantId: TENANT_ID };
+    },
     createCase: async (ctx) => {
       calls.push(`create:${ctx.tenantId}:${ctx.actorId}:${ctx.role}`);
       return { id: CASE_ID };
     },
     updateCase: async (ctx, id) => {
-      calls.push(`update:${ctx.tenantId}:${ctx.actorId}:${ctx.role}:${id}`);
+      calls.push(`update:${ctx.tenantId}:${ctx.companyId}:${ctx.actorId}:${ctx.role}:${id}`);
     },
     revalidate: (path) => {
       calls.push(`revalidate:${path}`);
@@ -46,7 +50,6 @@ function setup(overrides: Partial<ApplicationActionDependencies> = {}) {
 }
 
 const validCreate = {
-  client_id: CLIENT_ID,
   title: 'Investor visa application',
   service_type: 'Investor visa',
 };
@@ -86,13 +89,34 @@ test('create action returns validation errors without calling the data mutation'
   const context = setup();
   const result = await runCreateApplicationAction(
     'acme',
-    { client_id: 'not-a-uuid', title: '', service_type: '' },
+    { company_id: OTHER_TENANT_ID, title: '', service_type: '' },
     context.dependencies,
   );
 
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.code, 'VALIDATION_FAILED');
-  assert.deepEqual(context.calls, ['auth', 'tenant:acme', `active:${TENANT_ID}`]);
+  assert.deepEqual(context.calls, [
+    'auth',
+    'tenant:acme',
+    `active:${TENANT_ID}`,
+    `company:${ACTOR_ID}:acme`,
+  ]);
+});
+
+test('create action rejects a company assignment outside the authorized tenant', async () => {
+  const context = setup({
+    resolveAssignedCompany: async () => ({ id: COMPANY_ID, tenantId: OTHER_TENANT_ID }),
+  });
+
+  assert.deepEqual(await runCreateApplicationAction('acme', validCreate, context.dependencies), {
+    ok: false,
+    error: 'No active company assignment',
+    code: 'FORBIDDEN',
+  });
+  assert.equal(
+    context.calls.some((call) => call.startsWith('create:')),
+    false,
+  );
 });
 
 test('update action returns validation errors without calling the data mutation', async () => {
@@ -106,6 +130,20 @@ test('update action returns validation errors without calling the data mutation'
 
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.code, 'VALIDATION_FAILED');
+  assert.equal(
+    context.calls.some((call) => call.startsWith('update:')),
+    false,
+  );
+});
+
+test('update action denies a stale cross-company assignment before mutation', async () => {
+  const context = setup({
+    resolveAssignedCompany: async () => ({ id: COMPANY_ID, tenantId: OTHER_TENANT_ID }),
+  });
+  assert.deepEqual(
+    await runUpdateApplicationAction('acme', CASE_ID, { priority: 'urgent' }, context.dependencies),
+    { ok: false, error: 'No active company assignment', code: 'FORBIDDEN' },
+  );
   assert.equal(
     context.calls.some((call) => call.startsWith('update:')),
     false,
@@ -128,7 +166,7 @@ test('create action converts datetime-local values as Dubai business time', asyn
     },
   });
   const form = new FormData();
-  form.set('client_id', CLIENT_ID);
+  form.set('company_id', OTHER_TENANT_ID);
   form.set('title', 'Investor visa application');
   form.set('service_type', 'Investor visa');
   form.set('due_at', '2026-08-11T09:30');
@@ -138,12 +176,12 @@ test('create action converts datetime-local values as Dubai business time', asyn
   assert.equal(result.ok, true);
   assert.equal(input?.due_at, '2026-08-11T09:30:00+04:00');
   assert.equal(input?.sla_due_at, '2026-08-12T17:45:00+04:00');
+  assert.equal(input?.company_id, COMPANY_ID);
 });
 
 test('create action rejects an invalid datetime-local value before mutation', async () => {
   const context = setup();
   const form = new FormData();
-  form.set('client_id', CLIENT_ID);
   form.set('title', 'Investor visa application');
   form.set('service_type', 'Investor visa');
   form.set('due_at', '2026-02-29T09:30');
@@ -195,6 +233,7 @@ test('create action authorizes, mutates, and revalidates applications plus dashb
     'auth',
     'tenant:acme',
     `active:${TENANT_ID}`,
+    `company:${ACTOR_ID}:acme`,
     `create:${TENANT_ID}:${ACTOR_ID}:pro`,
     'revalidate:/t/acme/applications',
     'revalidate:/t/acme/dashboard',
@@ -211,7 +250,8 @@ test('update action authorizes, mutates, and revalidates applications plus dashb
     'auth',
     'tenant:acme',
     `active:${TENANT_ID}`,
-    `update:${TENANT_ID}:${ACTOR_ID}:pro:${CASE_ID}`,
+    `company:${ACTOR_ID}:acme`,
+    `update:${TENANT_ID}:${COMPANY_ID}:${ACTOR_ID}:pro:${CASE_ID}`,
     'revalidate:/t/acme/applications',
     'revalidate:/t/acme/dashboard',
   ]);

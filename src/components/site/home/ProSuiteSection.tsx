@@ -7,7 +7,7 @@ export function ProSuiteSection() {
         <header className="section__head reveal">
           <span className="eyebrow">01 · Platform</span>
           <h2 id="suite-h" className="h2">
-            Built for PROs managing 50 to 5,000 clients.
+            Built for a dedicated PRO managing one company.
           </h2>
         </header>
       </div>
@@ -23,18 +23,18 @@ export function ProSuiteSection() {
               </span>
               <span className="eyebrow">Multi-tenant control</span>
             </div>
-            <h3>Every client, isolated at the row.</h3>
+            <h3>Every company record, isolated at the row.</h3>
             <p>
               Postgres RLS enforces tenant_id on every table. Switch tenants without leaking a
               record.
             </p>
             <table className="mini-table">
               <caption className="visually-hidden">
-                Sample tenant client roster: Acme Trading, Naseej Group, Quay Holdings.
+                Sample company renewal register for Acme Trading.
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Client</th>
+                  <th scope="col">Company</th>
                   <th scope="col">Type</th>
                   <th scope="col">Renewal</th>
                   <th scope="col">Status</th>

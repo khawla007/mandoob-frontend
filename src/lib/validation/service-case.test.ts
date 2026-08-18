@@ -9,12 +9,12 @@ import {
   updateServiceCaseSchema,
 } from './service-case';
 
-const clientId = '11111111-1111-4111-8111-111111111111';
+const companyId = '11111111-1111-4111-8111-111111111111';
 const assigneeId = '22222222-2222-4222-8222-222222222222';
 const timestamp = '2026-08-11T10:00:00+05:30';
 
 const validCreate = {
-  client_id: clientId,
+  company_id: companyId,
   title: '  Trade licence renewal  ',
   service_type: '  trade_license  ',
 };
@@ -22,7 +22,7 @@ const validCreate = {
 test('create schema accepts a valid case and applies defaults and trimming', () => {
   const parsed = createServiceCaseSchema.parse(validCreate);
 
-  assert.equal(parsed.client_id, clientId);
+  assert.equal(parsed.company_id, companyId);
   assert.equal(parsed.title, 'Trade licence renewal');
   assert.equal(parsed.service_type, 'trade_license');
   assert.equal(parsed.priority, 'normal');
@@ -50,7 +50,7 @@ test('create schema accepts optional nullable fields and offset datetimes', () =
 });
 
 test('create schema rejects missing required fields and invalid enum values', () => {
-  for (const field of ['client_id', 'title', 'service_type']) {
+  for (const field of ['company_id', 'title', 'service_type']) {
     const input = { ...validCreate };
     delete input[field as keyof typeof input];
     assert.equal(createServiceCaseSchema.safeParse(input).success, false, field);
@@ -97,7 +97,7 @@ test('create schema enforces title, service type, and blocked reason length boun
 
 test('create schema rejects invalid UUIDs and datetimes', () => {
   assert.equal(
-    createServiceCaseSchema.safeParse({ ...validCreate, client_id: 'not-a-uuid' }).success,
+    createServiceCaseSchema.safeParse({ ...validCreate, company_id: 'not-a-uuid' }).success,
     false,
   );
   assert.equal(
@@ -218,12 +218,12 @@ test('filter schema accepts valid filters and deduplicates statuses', () => {
   const parsed = serviceCaseFilterSchema.parse({
     status: ['draft', 'approved', 'draft'],
     assigned_to: assigneeId,
-    client_id: clientId,
+    company_id: companyId,
   });
 
   assert.deepEqual(parsed.status, ['draft', 'approved']);
   assert.equal(parsed.assigned_to, assigneeId);
-  assert.equal(parsed.client_id, clientId);
+  assert.equal(parsed.company_id, companyId);
 });
 
 test('filter schema allows up to eight statuses and rejects invalid values and extra keys', () => {
@@ -235,6 +235,6 @@ test('filter schema allows up to eight statuses and rejects invalid values and e
   );
   assert.equal(serviceCaseFilterSchema.safeParse({ status: ['unknown'] }).success, false);
   assert.equal(serviceCaseFilterSchema.safeParse({ assigned_to: 'not-a-uuid' }).success, false);
-  assert.equal(serviceCaseFilterSchema.safeParse({ client_id: 'not-a-uuid' }).success, false);
+  assert.equal(serviceCaseFilterSchema.safeParse({ company_id: 'not-a-uuid' }).success, false);
   assert.equal(serviceCaseFilterSchema.safeParse({ unknown: true }).success, false);
 });

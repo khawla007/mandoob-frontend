@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
@@ -56,7 +58,7 @@ test('anonymizeCustomerFields redacts profile PII and preserves business linkage
     customerProfile: {
       nationality: 'UAE',
       passport_no_encrypted: 'passport-ciphertext',
-      linked_client_id: 'client-1',
+      linked_company_id: 'client-1',
     },
   });
 
@@ -72,7 +74,7 @@ test('anonymizeCustomerFields redacts profile PII and preserves business linkage
     passport_no_encrypted: '[redacted]',
   });
   assert.equal(result.diff.profile.full_name.before, 'Omar Ali');
-  assert.equal(result.diff.customerProfile.linked_client_id, undefined);
+  assert.equal(result.diff.customerProfile.linked_company_id, undefined);
 });
 
 test('isActiveErasureStatus only allows one unresolved request per subject', async () => {
@@ -85,4 +87,23 @@ test('isActiveErasureStatus only allows one unresolved request per subject', asy
   assert.equal(isActiveErasureStatus('completed'), false);
   assert.equal(isActiveErasureStatus('rejected'), false);
   assert.equal(isActiveErasureStatus('cancelled'), false);
+});
+
+test('both erasure kinds use the durable cleanup job and check auth anonymization errors', () => {
+  const source = readFileSync(join(process.cwd(), 'src/lib/data/erasure.ts'), 'utf8');
+  const execution = source.slice(source.indexOf('export async function executeErasure'));
+  assert.match(execution, /rpc\(\s*'prepare_erasure_cleanup'/u);
+  assert.match(execution, /runErasureExternalCleanup/u);
+  assert.match(execution, /rpc\(\s*'mark_erasure_cleanup_step'/u);
+  assert.match(execution, /rpc\(\s*'complete_erasure_cleanup'/u);
+  assert.match(execution, /phone: ''/u);
+  assert.match(execution, /supabase\.auth\.admin\.deleteUser\(subjectUserId, true\)/u);
+  assert.match(
+    execution,
+    /if \(deleteError && !isMissingAuthUser\(deleteError\)\)[\s\S]*AUTH_ERASURE_FAILED/u,
+  );
+  assert.match(execution, /if \(!emailResult\.ok\)[\s\S]*ERASURE_NOTIFICATION_FAILED/u);
+  assert.match(execution, /'approved', 'completed'/u);
+  assert.doesNotMatch(execution, /deletePiiDocuments/u);
+  assert.doesNotMatch(execution, /execute_employee_erasure_cleanup/u);
 });

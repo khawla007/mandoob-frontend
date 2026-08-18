@@ -23,13 +23,11 @@ const amountSchema = z
 
 export const createInvoiceActionSchema = z
   .object({
-    clientId: z.string().uuid(),
     label: z.string().trim().min(1).max(160),
     amount: amountSchema,
     dueAt: isoDateSchema,
   })
   .transform((v) => ({
-    clientId: v.clientId,
     label: v.label,
     amountMinor: v.amount,
     currency: 'AED' as const,
@@ -52,6 +50,7 @@ export type VoidInvoiceActionInput = z.infer<typeof voidInvoiceActionSchema>;
 
 export const refundInvoiceActionSchema = z.object({
   invoiceId: z.string().uuid(),
+  operationId: z.string().uuid(),
   amountMinor: z.number().int().positive(),
   reason: z.string().trim().min(3).max(500),
 });

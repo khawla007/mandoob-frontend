@@ -6,6 +6,7 @@ process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { ApiError } from '@/lib/errors';
 
 type Mod = typeof import('./employee-portal');
@@ -14,6 +15,29 @@ async function load(): Promise<Mod> {
   if (!mod) mod = await import('./employee-portal');
   return mod;
 }
+
+test('employee portal joins the exact company relation and exposes company-named fields', () => {
+  const source = readFileSync(new URL('./employee-portal.ts', import.meta.url), 'utf8');
+  assert.match(source, /company:company_profiles!employees_company_tenant_fk\(company_name\)/u);
+  assert.doesNotMatch(source, new RegExp(`\\b${['cli', 'ents'].join('')}\\s*\\(`, 'u'));
+  assert.doesNotMatch(source, /row\.clients|clients\?:/u);
+});
+
+test('employee portal binds document reads through tenant, company, employee, and version', () => {
+  const source = readFileSync(new URL('./employee-portal.ts', import.meta.url), 'utf8');
+  assert.match(
+    source,
+    /\.from\('documents'\)[\s\S]*?\.eq\('tenant_id', tenantId\)[\s\S]*?\.eq\('company_id', employee\.company_id\)[\s\S]*?\.eq\('employee_id', employee\.id\)/u,
+  );
+  assert.match(
+    source,
+    /document:documents!document_versions_document_id_fkey!inner\(id, tenant_id, company_id, employee_id\)[\s\S]*?doc\.company_id !== employee\.company_id/u,
+  );
+  assert.match(
+    source,
+    /isNormalizedOwnedStoragePath\(row\.storage_path, tenantId, employee\.company_id\)/u,
+  );
+});
 
 test('daysUntilExpiry is deterministic from an explicit today date', async () => {
   const { daysUntilExpiry } = await load();

@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readSelfCustomer } from '@/lib/data/account-self';
-import { listDocumentsForClient, listOpenRequestsForClient } from '@/lib/data/documents';
+import { listDocumentsForCompany, listOpenRequestsForCompany } from '@/lib/data/documents';
 import { DocumentRequestRow } from '@/components/customer/DocumentRequestRow';
 
 export const dynamic = 'force-dynamic';
@@ -17,9 +17,9 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
   const t = await getTranslations('customer');
 
   const customer = await readSelfCustomer();
-  const linkedClientId = customer.linkedClientId;
+  const linkedCompanyId = customer.linkedCompanyId;
 
-  if (!linkedClientId) {
+  if (!linkedCompanyId) {
     return (
       <div className="space-y-6">
         <div>
@@ -46,8 +46,8 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
   }
 
   const [docs, openRequests] = await Promise.all([
-    listDocumentsForClient(tenant.id, linkedClientId),
-    listOpenRequestsForClient(tenant.id, linkedClientId),
+    listDocumentsForCompany(tenant.id, linkedCompanyId),
+    listOpenRequestsForCompany(tenant.id, linkedCompanyId),
   ]);
 
   // Map the latest rejection note onto each open request so the row can show

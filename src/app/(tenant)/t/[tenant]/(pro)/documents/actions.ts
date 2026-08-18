@@ -19,7 +19,6 @@ import {
 } from '@/lib/data/documents';
 import {
   listDocumentVersionHistory,
-  searchDocumentCenterClientOptions,
   setDocumentExpiry,
   type DocumentVersionHistoryEntry,
 } from '@/lib/data/pro-document-center';
@@ -29,11 +28,11 @@ import {
   runOpenDocumentVersionAction,
   runRequestDocumentCenterAction,
   runReviewDocumentCenterAction,
-  runSearchDocumentClientsAction,
   runSetDocumentExpiryAction,
   type DocumentCenterActionDependencies,
   type DocumentCenterActionResult,
 } from './action-logic';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 
 export type { DocumentCenterActionResult } from './action-logic';
 
@@ -45,6 +44,7 @@ function dependencies(): DocumentCenterActionDependencies {
     },
     resolveTenant: resolveTenantBySlug,
     requireActive: requireActiveTenant,
+    resolveAssignedCompany: readAssignedCompanyForPro,
     callerMetadata: async () => {
       const requestHeaders = await headers();
       return normalizeActionRequestMetadata(requestHeaders);
@@ -54,7 +54,6 @@ function dependencies(): DocumentCenterActionDependencies {
     openVersion: getDocumentSignedUrl,
     loadHistory: listDocumentVersionHistory,
     setExpiry: setDocumentExpiry,
-    searchClients: searchDocumentCenterClientOptions,
     revalidate: revalidatePath,
     rethrowNavigation: (error) => unstable_rethrow(error),
     logUnexpected: (operation, error) => logSafeActionError(operation, error),
@@ -97,8 +96,4 @@ export async function setDocumentExpiryAction(
   formData: FormData,
 ): Promise<DocumentCenterActionResult> {
   return runSetDocumentExpiryAction(slug, previousState, formData, dependencies());
-}
-
-export async function searchDocumentClientsAction(slug: string, query: string) {
-  return runSearchDocumentClientsAction(slug, query, dependencies());
 }

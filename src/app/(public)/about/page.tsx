@@ -63,7 +63,7 @@ export default function AboutPage() {
               <h3>The problem</h3>
               <p>
                 UAE businesses lose time and money to manual paperwork, missed renewal dates, and
-                AED 25/day late fines. PRO firms juggle hundreds of clients across disconnected
+                AED 25/day late fines. PRO firms juggle business workflows across disconnected
                 tools.
               </p>
             </article>
@@ -71,7 +71,7 @@ export default function AboutPage() {
               <h3>Our approach</h3>
               <p>
                 One audited workspace: cost estimator, document collection, visa and Emirates ID
-                tracking, automated renewal alerts, invoicing, and white-label client portals.
+                tracking, automated renewal alerts, invoicing, and a white-label company portal.
               </p>
             </article>
             <article className="cell">

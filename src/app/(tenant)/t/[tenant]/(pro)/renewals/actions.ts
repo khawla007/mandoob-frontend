@@ -11,8 +11,9 @@ import {
   updateRenewal,
   type RenewalActorCtx,
 } from '@/lib/data/renewals';
-import { createRenewalSchema, updateRenewalSchema } from '@/lib/validation/renewal';
+import { createRenewalActionSchema, updateRenewalSchema } from '@/lib/validation/renewal';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -22,9 +23,14 @@ async function resolveAndAuthorize(
   slug: string,
 ): Promise<{ ctx: RenewalActorCtx; tenantId: string }> {
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) {
+    throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
+  }
   return {
     ctx: {
       tenantId: tenant.id,
+      companyId: company.id,
       actorId: session.id,
       role: session.role,
     },
@@ -43,12 +49,12 @@ export async function createRenewalAction(
   raw: unknown,
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const parsed = createRenewalSchema.safeParse(raw);
+    const parsed = createRenewalActionSchema.safeParse(raw);
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0].message, code: 'INVALID_INPUT' };
     }
     const { ctx } = await resolveAndAuthorize(slug);
-    const { id } = await createRenewal(ctx, parsed.data);
+    const { id } = await createRenewal(ctx, { ...parsed.data, company_id: ctx.companyId });
     revalidatePath(`/t/${slug}/renewals`);
     revalidatePath(`/t/${slug}/company`);
     return { ok: true, data: { id } };
@@ -99,19 +105,19 @@ export async function cancelRenewalAction(
     const admin = createSupabaseServiceRoleClient();
     const { data: row, error } = await admin
       .from('renewals')
-      .select('id, tenant_id, source')
+      .select('id, tenant_id, company_id, source')
       .eq('id', renewalId)
       .maybeSingle();
     if (error) throw new ApiError('INTERNAL', error.message, 500);
     if (!row) throw new ApiError('NOT_FOUND', 'renewal not found', 404);
-    if (row.tenant_id !== ctx.tenantId) {
-      throw new ApiError('FORBIDDEN', 'renewal belongs to a different tenant', 403);
+    if (row.tenant_id !== ctx.tenantId || row.company_id !== ctx.companyId) {
+      throw new ApiError('FORBIDDEN', 'renewal belongs to a different company', 403);
     }
     if (row.source === 'license_backfill') {
       return {
         ok: false,
         code: 'RENEWAL_LICENSE_LOCKED',
-        error: "Clear the client's license_expiry instead.",
+        error: "Clear the company's license_expiry instead.",
       };
     }
     await cancelRenewal(renewalId, ctx);

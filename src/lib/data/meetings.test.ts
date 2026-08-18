@@ -17,6 +17,7 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
   const tables = new Map(Object.entries(seed).map(([k, v]) => [k, v.map((r) => ({ ...r }))]));
   const inserts: Array<{ table: string; payload: Row }> = [];
   const updates: Array<{ table: string; payload: Row; filters: Record<string, unknown> }> = [];
+  const signedPaths: string[] = [];
 
   function rows(table: string) {
     if (!tables.has(table)) tables.set(table, []);
@@ -34,7 +35,16 @@ function createSupabaseStub(seed: Record<string, Row[]>) {
   return {
     inserts,
     updates,
+    signedPaths,
     tables,
+    storage: {
+      from: () => ({
+        createSignedUrl: async (path: string) => {
+          signedPaths.push(path);
+          return { data: { signedUrl: `signed:${path}` }, error: null };
+        },
+      }),
+    },
     from(table: string) {
       const state: {
         filters: Record<string, unknown>;
@@ -255,6 +265,39 @@ test('customer meeting list only returns their own meetings', async () => {
   );
 });
 
+test('PRO company meeting list excludes another company in the same tenant', async () => {
+  const { listMeetingsForCompany } = await loadMeetings();
+  const supabase = createSupabaseStub({
+    meetings: [
+      {
+        id: 'assigned-company-meeting',
+        tenant_id: 'tenant-1',
+        company_id: 'company-1',
+        scheduled_at: '2026-05-11T08:00:00.000Z',
+        title: 'Assigned company',
+        status: 'scheduled',
+      },
+      {
+        id: 'foreign-company-meeting',
+        tenant_id: 'tenant-1',
+        company_id: 'company-2',
+        scheduled_at: '2026-05-11T09:00:00.000Z',
+        title: 'Foreign company',
+        status: 'scheduled',
+      },
+    ],
+  });
+
+  const meetings = await listMeetingsForCompany('company-1', proActor, {
+    supabase: supabase as never,
+  });
+
+  assert.deepEqual(
+    meetings.map((meeting) => meeting.id),
+    ['assigned-company-meeting'],
+  );
+});
+
 test('PRO cancels own-tenant meeting and attaches recording metadata', async () => {
   const { cancelMeeting, attachMeetingRecording } = await loadMeetings();
   const supabase = createSupabaseStub({
@@ -262,6 +305,7 @@ test('PRO cancels own-tenant meeting and attaches recording metadata', async () 
       {
         id: 'meeting-1',
         tenant_id: 'tenant-1',
+        company_id: 'company-1',
         status: 'scheduled',
         scheduled_at: '2026-05-11T08:00:00.000Z',
         title: 'Consultation',
@@ -273,15 +317,69 @@ test('PRO cancels own-tenant meeting and attaches recording metadata', async () 
   await cancelMeeting('meeting-1', proActor, { supabase: supabase as never });
   await attachMeetingRecording(
     'meeting-1',
-    { storagePath: 'tenant-1/meetings/meeting-1/recording.mp4', recordingUrl: null },
+    {
+      storagePath: 'tenant-1/company-1/meetings/meeting-1/recording.mp4',
+      recordingUrl: null,
+    },
     { supabase: supabase as never },
   );
 
   const row = supabase.tables.get('meetings')![0];
   assert.equal(row.status, 'recording_ready');
-  assert.equal(row.recording_storage_path, 'tenant-1/meetings/meeting-1/recording.mp4');
+  assert.equal(row.recording_storage_path, 'tenant-1/company-1/meetings/meeting-1/recording.mp4');
   assert.deepEqual(
     supabase.tables.get('tenant_audit_log')!.map((entry) => entry.action),
     ['meeting_cancelled', 'meeting_recording_attached'],
   );
+});
+
+test('Daily recording producer builds normalized tenant-company meeting paths', async () => {
+  const { dailyRecordingStoragePath } = await loadMeetings();
+  assert.equal(
+    dailyRecordingStoragePath(
+      { tenantId: 'tenant-1', companyId: 'company-1', meetingId: 'meeting-1' },
+      'recording-1',
+    ),
+    'tenant-1/company-1/meetings/meeting-1/recording-1.mp4',
+  );
+  assert.equal(
+    dailyRecordingStoragePath(
+      { tenantId: 'tenant-1', companyId: null, meetingId: 'meeting-1' },
+      '',
+    ),
+    'tenant-1/leads/meetings/meeting-1/recording.mp4',
+  );
+  assert.equal(
+    dailyRecordingStoragePath(
+      { tenantId: 'tenant-1', companyId: 'company-1', meetingId: 'meeting-1' },
+      '../company-2/secret',
+    ),
+    'tenant-1/company-1/meetings/meeting-1/company-2-secret.mp4',
+  );
+});
+
+test('meeting signing rejects traversal and cross-company stored paths before storage access', async () => {
+  const { getMeetingRecordingSignedUrl } = await loadMeetings();
+  for (const recording_storage_path of [
+    'tenant-1/company-2/meetings/meeting-1/recording.mp4',
+    'tenant-1/company-1/../company-2/recording.mp4',
+  ]) {
+    const supabase = createSupabaseStub({
+      meetings: [
+        {
+          id: 'meeting-1',
+          tenant_id: 'tenant-1',
+          company_id: 'company-1',
+          customer_profile_id: null,
+          status: 'recording_ready',
+          recording_storage_path,
+        },
+      ],
+    });
+    await assert.rejects(
+      getMeetingRecordingSignedUrl('meeting-1', proActor, { supabase: supabase as never }),
+      /Recording path is not accessible/u,
+    );
+    assert.deepEqual(supabase.signedPaths, []);
+  }
 });

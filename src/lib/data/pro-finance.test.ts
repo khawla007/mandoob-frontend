@@ -4,11 +4,36 @@ import { calculateProFinanceDashboard, readProFinanceQueryData } from './pro-fin
 
 const tenantId = 'tenant-a';
 
+test('finance ignores rows owned by another company in the same tenant', () => {
+  const dashboard = calculateProFinanceDashboard({
+    tenantId,
+    today: '2026-05-21',
+    companies: [{ id: 'assigned', tenant_id: tenantId, company_name: 'Assigned Company' }],
+    invoices: [
+      {
+        id: 'foreign-invoice',
+        tenant_id: tenantId,
+        company_id: 'foreign',
+        amount_minor: 50_000,
+        currency: 'AED',
+        status: 'open',
+        due_at: '2026-05-01',
+        created_at: '2026-05-01T00:00:00.000Z',
+      },
+    ],
+    payments: [],
+    refunds: [],
+  });
+
+  assert.equal(dashboard.openInvoiceCount, 0);
+  assert.deepEqual(dashboard.companyRevenue, []);
+});
+
 test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO finance metrics', () => {
   const dashboard = calculateProFinanceDashboard({
     tenantId,
     today: '2026-05-21',
-    clients: [
+    companies: [
       { id: 'client-1', tenant_id: tenantId, company_name: 'Acme DMCC' },
       { id: 'client-2', tenant_id: tenantId, company_name: 'Beacon FZCO' },
       { id: 'client-other', tenant_id: 'tenant-b', company_name: 'Other Tenant' },
@@ -17,7 +42,7 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
       {
         id: 'invoice-paid',
         tenant_id: tenantId,
-        client_id: 'client-1',
+        company_id: 'client-1',
         amount_minor: 10_000,
         currency: 'AED',
         status: 'paid',
@@ -27,7 +52,7 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
       {
         id: 'invoice-open-overdue',
         tenant_id: tenantId,
-        client_id: 'client-1',
+        company_id: 'client-1',
         amount_minor: 5_000,
         currency: 'AED',
         status: 'open',
@@ -37,7 +62,7 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
       {
         id: 'invoice-open-current',
         tenant_id: tenantId,
-        client_id: 'client-2',
+        company_id: 'client-2',
         amount_minor: 7_000,
         currency: 'AED',
         status: 'open',
@@ -47,7 +72,7 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
       {
         id: 'invoice-void',
         tenant_id: tenantId,
-        client_id: 'client-1',
+        company_id: 'client-1',
         amount_minor: 99_000,
         currency: 'AED',
         status: 'void',
@@ -57,7 +82,7 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
       {
         id: 'invoice-other',
         tenant_id: 'tenant-b',
-        client_id: 'client-other',
+        company_id: 'client-other',
         amount_minor: 200_000,
         currency: 'AED',
         status: 'open',
@@ -202,17 +227,17 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
   assert.equal(dashboard.currency, 'AED');
   assert.equal(dashboard.hasMixedCurrencies, false);
   assert.deepEqual(dashboard.excludedCurrencyCodes, []);
-  assert.equal(dashboard.outstandingReceivablesMinor, 12_000);
-  assert.equal(dashboard.openInvoiceCount, 2);
+  assert.equal(dashboard.outstandingReceivablesMinor, 5_000);
+  assert.equal(dashboard.openInvoiceCount, 1);
   assert.equal(dashboard.overdueInvoiceCount, 1);
-  assert.equal(dashboard.collectionRate, 48.93617021276596);
+  assert.equal(dashboard.collectionRate, 69.6969696969697);
   assert.equal(dashboard.totalRevenueCollected, 'AED\u00a0115.00');
-  assert.equal(dashboard.outstandingReceivables, 'AED\u00a0120.00');
+  assert.equal(dashboard.outstandingReceivables, 'AED\u00a050.00');
 
   assert.deepEqual(
-    dashboard.revenuePerClient.map((row) => ({
-      clientId: row.clientId,
-      clientName: row.clientName,
+    dashboard.companyRevenue.map((row) => ({
+      companyId: row.companyId,
+      companyName: row.companyName,
       currency: row.currency,
       collectedMinor: row.collectedMinor,
       outstandingMinor: row.outstandingMinor,
@@ -221,22 +246,13 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
     })),
     [
       {
-        clientId: 'client-1',
-        clientName: 'Acme DMCC',
+        companyId: 'client-1',
+        companyName: 'Acme DMCC',
         currency: 'AED',
         collectedMinor: 11_500,
         outstandingMinor: 5_000,
         invoiceCount: 3,
         lastPaymentAt: '2026-05-12T10:00:00.000Z',
-      },
-      {
-        clientId: 'client-2',
-        clientName: 'Beacon FZCO',
-        currency: 'AED',
-        collectedMinor: 0,
-        outstandingMinor: 7_000,
-        invoiceCount: 1,
-        lastPaymentAt: null,
       },
     ],
   );
@@ -245,24 +261,16 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
     dashboard.recentFailedAttempts.map((row) => ({
       id: row.id,
       status: row.status,
-      clientName: row.clientName,
+      companyName: row.companyName,
       amountMinor: row.amountMinor,
       failureReason: row.failureReason,
       createdAt: row.createdAt,
     })),
     [
       {
-        id: 'payment-abandoned',
-        status: 'abandoned',
-        clientName: 'Beacon FZCO',
-        amountMinor: 7_000,
-        failureReason: 'Customer abandoned checkout',
-        createdAt: '2026-05-20T10:00:00.000Z',
-      },
-      {
         id: 'payment-failed',
         status: 'failed',
-        clientName: 'Acme DMCC',
+        companyName: 'Acme DMCC',
         amountMinor: 5_000,
         failureReason: 'Insufficient funds',
         createdAt: '2026-05-19T10:00:00.000Z',
@@ -275,15 +283,12 @@ test('calculateProFinanceDashboard reports one currency without summing mixed mi
   const dashboard = calculateProFinanceDashboard({
     tenantId,
     today: '2026-05-21',
-    clients: [
-      { id: 'client-aed', tenant_id: tenantId, company_name: 'AED Client' },
-      { id: 'client-usd', tenant_id: tenantId, company_name: 'USD Client' },
-    ],
+    companies: [{ id: 'client-aed', tenant_id: tenantId, company_name: 'AED Client' }],
     invoices: [
       {
         id: 'invoice-aed',
         tenant_id: tenantId,
-        client_id: 'client-aed',
+        company_id: 'client-aed',
         amount_minor: 10_000,
         currency: 'AED',
         status: 'paid',
@@ -293,7 +298,7 @@ test('calculateProFinanceDashboard reports one currency without summing mixed mi
       {
         id: 'invoice-usd',
         tenant_id: tenantId,
-        client_id: 'client-usd',
+        company_id: 'client-aed',
         amount_minor: 99_000,
         currency: 'USD',
         status: 'open',
@@ -303,7 +308,7 @@ test('calculateProFinanceDashboard reports one currency without summing mixed mi
       {
         id: 'invoice-usd-paid',
         tenant_id: tenantId,
-        client_id: 'client-usd',
+        company_id: 'client-aed',
         amount_minor: 50_000,
         currency: 'USD',
         status: 'refunded',
@@ -358,7 +363,7 @@ test('calculateProFinanceDashboard reports one currency without summing mixed mi
   assert.equal(dashboard.totalRevenueCollectedMinor, 10_000);
   assert.equal(dashboard.outstandingReceivablesMinor, 0);
   assert.deepEqual(
-    dashboard.revenuePerClient.map((row) => row.clientName),
+    dashboard.companyRevenue.map((row) => row.companyName),
     ['AED Client'],
   );
 });
@@ -367,7 +372,7 @@ test('calculateProFinanceDashboard returns zero collection rate when there is no
   const dashboard = calculateProFinanceDashboard({
     tenantId,
     today: '2026-05-21',
-    clients: [],
+    companies: [],
     invoices: [],
     payments: [],
     refunds: [],

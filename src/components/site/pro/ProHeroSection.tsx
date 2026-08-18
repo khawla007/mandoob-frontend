@@ -44,9 +44,9 @@ export function ProHeroSection() {
           <p className="lede reveal reveal--mask">
             <span className="rise rise--block">
               <span className="rise__i" style={{ '--rise-delay': '520ms' } as React.CSSProperties}>
-                The multi-tenant operating system for UAE PRO firms. Client roster, visa workflows,
+                The dedicated operating system for UAE PRO firms. Company profile, visa workflows,
                 Emirates ID tracking, renewal alerts, document vault, audit log, and white-label
-                portals — one workspace, every client isolated at the row.
+                portals — one PRO, one company workspace.
               </span>
             </span>
           </p>
@@ -69,8 +69,8 @@ export function ProHeroSection() {
               <dd className="mono hero__statV">40+</dd>
             </div>
             <div className="hero__stat reveal">
-              <dt className="hero__statL">clients managed</dt>
-              <dd className="mono hero__statV">12,400</dd>
+              <dt className="hero__statL">companies managed</dt>
+              <dd className="mono hero__statV">40+</dd>
             </div>
             <div className="hero__stat reveal">
               <dt className="hero__statL">fines avoided</dt>

@@ -64,7 +64,7 @@ export async function createLeadFromQuestionnaire(
     routing_reason: routing.routingReason,
     score: scoreLead({ answers, estimateData: input.estimateData ?? {} }).score,
     assigned_team_member_id: null,
-    converted_client_id: null,
+    converted_company_id: null,
   };
 
   const { data, error } = await supabase

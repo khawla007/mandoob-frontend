@@ -15,6 +15,7 @@ import {
 import { InvoiceActions } from '@/components/pro/InvoiceActions';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getInvoiceDetailForTenant } from '@/lib/data/invoices';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,9 +25,11 @@ export default async function ProInvoiceDetailPage({
   params: Promise<{ tenant: string; invoiceId: string }>;
 }) {
   const { tenant: slug, invoiceId } = await params;
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
-  const invoice = await getInvoiceDetailForTenant(tenant.id, invoiceId);
+  const invoice = await getInvoiceDetailForTenant(tenant.id, company.id, invoiceId);
   if (!invoice) notFound();
 
   const canShowReceipt =
@@ -51,7 +54,7 @@ export default async function ProInvoiceDetailPage({
               {invoice.status}
             </Badge>
             <span className="text-muted-foreground">{invoice.amount}</span>
-            <span className="text-muted-foreground">· {invoice.clientName}</span>
+            <span className="text-muted-foreground">· {invoice.companyName}</span>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -67,6 +70,7 @@ export default async function ProInvoiceDetailPage({
             invoiceId={invoice.id}
             amountMinor={invoice.amountMinor}
             status={invoice.status}
+            refundOperation={invoice.refundOperation}
           />
         </div>
       </div>
@@ -78,7 +82,7 @@ export default async function ProInvoiceDetailPage({
         <CardContent>
           <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Invoice ID" value={invoice.id} mono />
-            <Field label="Client" value={invoice.clientName} />
+            <Field label="Company" value={invoice.companyName} />
             <Field label="Customer profile" value={invoice.customerProfileId ?? '—'} mono />
             <Field label="Due date" value={invoice.dueAt ?? '—'} />
             <Field label="Paid at" value={invoice.paidAt ?? '—'} />

@@ -83,9 +83,9 @@
     },
     "filters": {
       "search": "Search documents",
-      "searchPlaceholder": "Client, document, or employee",
+      "searchPlaceholder": "Company, document, or employee",
       "view": "Queue view",
-      "client": "Client",
+      "company": "Company",
       "type": "Document type",
       "window": "Deadline window",
       "from": "From date",
@@ -141,7 +141,7 @@
     "actions": {
       "close": "Close",
       "cancel": "Cancel",
-      "clientProfile": "Open client profile",
+      "companyProfile": "Open company profile",
       "open": "Open file",
       "opening": "Opening file…",
       "popupBlocked": "Allow pop-ups for Mandoob, then try opening the file again.",
@@ -151,9 +151,7 @@
     "request": {
       "trigger": "Request document",
       "title": "Request a document",
-      "description": "Choose the client and document details. Mandoob will send the request through the configured channels.",
-      "client": "Client company",
-      "selectClient": "Select a client company",
+      "description": "Choose the document details. Mandoob will send the request for your assigned company through the configured channels.",
       "type": "Document type",
       "label": "Document label",
       "due": "Due date",
@@ -188,14 +186,14 @@
       "success": "The expiry date was updated.",
       "externallyManaged": "This expiry is managed by its source record and cannot be changed here.",
       "sources": {
-        "clientLicense": "Managed from the client trade license",
+        "companyLicense": "Managed from the company trade license",
         "employeeVisa": "Managed from the employee visa",
         "employeeEmiratesId": "Managed from the employee Emirates ID"
       }
     },
     "queue": {
       "region": "Document work queue",
-      "client": "Client",
+      "company": "Company",
       "documentType": "Document",
       "requestStatus": "Request",
       "reviewStatus": "Review",
@@ -256,18 +254,6 @@
       "file": "MIME type and size",
       "open": "Open this version"
     },
-    "clientSearch": {
-      "placeholder": "Search client companies",
-      "search": "Search clients",
-      "searching": "Searching…",
-      "loading": "Loading client matches…",
-      "results": "Client search results",
-      "count": "{count, plural, =0 {No matching clients} one {# matching client} other {# matching clients}}",
-      "noResults": "No client companies match this search.",
-      "error": "Client search is temporarily unavailable. Try again.",
-      "select": "Select {client}",
-      "clear": "Clear selected client"
-    },
     "loading": {
       "label": "Loading the Document Center workspace…"
     },
@@ -313,7 +299,7 @@
     "signalFinance": "Finance",
     "workspace": "Workspace",
     "account": "Account",
-    "clients": "Clients",
+    "companies": "Companies",
     "assignedCompany": "Assigned Company",
     "applications": "Applications",
     "renewals": "Renewals",
@@ -495,7 +481,7 @@
     "mfaQrAlt": "MFA QR code",
     "longCopy": {
       "phoneHelp": "Used for SMS notifications about renewals and approvals.",
-      "bioHelp": "A short description shown to clients you collaborate with.",
+      "bioHelp": "A short description shown to companies you collaborate with.",
       "passwordPolicy": "Use at least 12 characters with a mix of upper-case, lower-case, numbers, and symbols.",
       "sessionsExplanation": "These are the devices currently signed in to your account. Revoke any you do not recognise.",
       "signOutEverywhereConfirm": "Sign out of every session, including this one? You will need to log in again.",
@@ -578,7 +564,7 @@
       "renewalsColorCues": "Color cues: red = within 30 days · amber = within 90 days.",
       "submittedDescription": "Documents already uploaded or under PRO review.",
       "awaitingDescription": "Items your PRO firm needs from you.",
-      "accountNotLinkedNote": "Your account is not linked to a client file yet. Ask your PRO firm to link you, then review your account details.",
+      "accountNotLinkedNote": "Your account is not linked to a company yet. Ask your PRO firm to link you, then review your account details.",
       "registrationProgressDescription": "Where your company stands in the UAE registration flow.",
       "paymentsDescription": "Pending invoices and recent receipts.",
       "recentCommsDescription": "Latest messages between you and your PRO firm.",
@@ -602,7 +588,7 @@
     "overview": "Overview",
     "workspace": "Workspace",
     "account": "Account",
-    "clients": "Clients",
+    "companies": "Companies",
     "applications": "Applications",
     "renewals": "Renewals",
     "documents": "Documents",
@@ -919,8 +905,8 @@
       "subtitle": "{tenant} · workspace signals for your team.",
       "recentActivityDescription": "Latest authentication events for {tenant}.",
       "kpis": {
-        "activeClients": {
-          "label": "Active clients",
+        "activeCompany": {
+          "label": "Assigned company active",
           "delta": "live"
         },
         "renewalsDue": {
@@ -929,7 +915,7 @@
         },
         "docsAwaitingReview": {
           "label": "Docs awaiting review",
-          "delta": "across all clients"
+          "delta": "for the assigned company"
         },
         "pendingPayments": {
           "label": "Pending payments",
@@ -947,7 +933,7 @@
         "operationsScore": "Operations score",
         "openActionDeck": "Open action deck",
         "assignWork": "Assign work",
-        "activeClients": "Active clients",
+        "activeCompany": "Assigned company",
         "openCases": "Open cases",
         "renewalsDue": "Renewals due",
         "collections": "Collections",
@@ -986,7 +972,7 @@
           "workloadBalance": "Workload balance"
         },
         "kpis": {
-          "activeClientsHelper": "{change} this month",
+          "activeCompanyHelper": "Current assignment state",
           "openCasesHelper": "{moving} moving · {blocked} blocked",
           "renewalsHelper": "{count} due within 7 days",
           "collectionsHelper": "{rate}% of billed value collected"
@@ -1015,7 +1001,7 @@
           "empty": "No urgent cases or deadlines need action.",
           "reviewApplications": "Review applications",
           "description": "Highest-priority work ranked by deadline and blockage.",
-          "actionAria": "Open {title} for {client}. Owner: {owner}. Urgency: {urgency}. {countdown}. {absoluteDeadline}.",
+          "actionAria": "Open {title} for {company}. Owner: {owner}. Urgency: {urgency}. {countdown}. {absoluteDeadline}.",
           "unassigned": "Unassigned",
           "noDeadline": "No deadline",
           "absoluteDeadline": "Dubai deadline: {deadline}",
@@ -1047,7 +1033,7 @@
           "documentEvent": "Documents",
           "invoiceEvent": "Invoices",
           "eventLink": "Open {count} {type} for {date}, {period}",
-          "documentLink": "Open document {title} for {client}, due {date}, {period}",
+          "documentLink": "Open document {title} for {company}, due {date}, {period}",
           "close": "Close deadline details"
         },
         "renewalLabels": {
@@ -1072,7 +1058,7 @@
           "capacityValue": "{percent}% capacity"
         },
         "errors": {
-          "identity": "Client information is temporarily unavailable.",
+          "identity": "Company information is temporarily unavailable.",
           "links": "Dashboard links are temporarily unavailable.",
           "operations": "Operational case data is temporarily unavailable.",
           "renewals": "Renewal data is temporarily unavailable.",
@@ -1131,8 +1117,8 @@
     "filterApplications": "Filter",
     "allApplicationStatuses": "All statuses",
     "allApplicationOwners": "All owners",
-    "applicationClient": "Client",
-    "selectApplicationClient": "Select a client",
+    "applicationCompany": "Company",
+    "selectApplicationCompany": "Select a company",
     "applicationTitle": "Application title",
     "applicationService": "Service",
     "applicationServiceType": "Service type",
@@ -1140,7 +1126,7 @@
     "applicationPriority": "Priority",
     "applicationOwner": "Owner",
     "applicationUnassigned": "Unassigned",
-    "applicationUnknownClient": "Unknown client",
+    "applicationUnknownCompany": "Unknown company",
     "applicationDueAt": "Due date and time (Dubai time, UTC+04)",
     "applicationSlaDueAt": "SLA date and time (Dubai time, UTC+04)",
     "applicationCreating": "Creating…",
@@ -1181,11 +1167,10 @@
     "createRenewal": "Create renewal",
     "creating": "Creating…",
     "couldNotCreateRenewal": "Could not create renewal",
-    "client": "Client",
+    "company": "Company",
     "type": "Type",
     "label": "Label",
     "dueDate": "Due date",
-    "selectClient": "Select a client",
     "pipeline": "Pipeline",
     "active": "Active",
     "completed": "Completed",
@@ -1194,7 +1179,7 @@
     "emiratesId": "Emirates ID",
     "ejari": "Ejari",
     "license": "License",
-    "newRenewalIntro": "License renewals are created automatically from a client's license_expiry. Use this form for visas, Emirates IDs, and Ejari.",
+    "newRenewalIntro": "License renewals are created automatically from the assigned company license expiry. Use this form for visas, Emirates IDs, and Ejari.",
     "renewalLabelPlaceholder": "e.g. Investor visa — Mr. Khan"
   },
   "documents": {
@@ -1594,8 +1579,8 @@
         "reasonPlaceholder": "Recorded in admin_audit_actions for traceability",
         "nationality": "Nationality (ISO 2-letter)",
         "passportNo": "Passport number",
-        "linkedClient": "Linked client (optional)",
-        "employer": "Employer (client)",
+        "linkedCompany": "Linked company (optional)",
+        "employer": "Employer company",
         "visaNo": "Visa number",
         "visaExpiry": "Visa expiry",
         "emiratesId": "Emirates ID (784-YYYY-NNNNNNN-N)",
@@ -1663,12 +1648,12 @@
         "newRoleLabel": "New role",
         "newRolePlaceholder": "Choose new role",
         "tenantPlaceholder": "Choose tenant",
-        "clientRequiredLabel": "Client (required)",
-        "pickTenantFirst": "Pick a tenant first to enable client lookup.",
+        "companyRequiredLabel": "Company (required)",
+        "pickTenantBeforeCompany": "Pick a tenant first to enable company lookup.",
         "confirmLabel": "Type DEMOTE to confirm",
         "errPickRole": "Pick a target role.",
         "errTypeDemote": "Type DEMOTE to confirm super_admin demotion.",
-        "errPickClient": "Pick a client for employee role.",
+        "errPickCompany": "Pick a company for employee role.",
         "apply": "Apply",
         "resync": "Resync login access",
         "resyncing": "Resyncing login access…",
@@ -1775,7 +1760,7 @@
         "professional": "Professional",
         "enterprise": "Enterprise"
       },
-      "clientStatus": {
+      "companyStatus": {
         "onboarding": "Onboarding",
         "active": "Active",
         "renewal_due": "Renewal Due",
@@ -2249,9 +2234,9 @@
       "scopeMissingTenant": "Missing tenant override",
       "scopeMissingGlobal": "Missing global row"
     },
-    "clientTypeahead": {
+    "companyTypeahead": {
       "noTenant": "No tenant selected",
-      "searchPlaceholder": "Search clients…",
+      "searchPlaceholder": "Search companies…",
       "typeToSearch": "Type to search…",
       "loading": "Loading…",
       "noMatches": "No matches."

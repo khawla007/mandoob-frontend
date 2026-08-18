@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import {
@@ -21,6 +22,7 @@ import {
 } from '@/components/pro/dashboard';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getProDashboardData } from '@/lib/data/pro-dashboard';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { cn } from '@/lib/utils';
 
 import {
@@ -57,7 +59,9 @@ export default async function ProDashboard({
   searchParams: Promise<DashboardSearchParams>;
 }) {
   const [{ tenant: slug }, search] = await Promise.all([params, searchParams]);
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
   const [t, locale] = await Promise.all([
     getTranslations('pro.dashboard.signalStudio'),
     getLocale(),
@@ -67,7 +71,12 @@ export default async function ProDashboard({
 
   const range = parseDashboardRange(search.range);
   const requestedFilters = parseDashboardFilters(search);
-  const dashboard = await getProDashboardData(tenant.id, range, requestedFilters.filters);
+  const dashboard = await getProDashboardData(
+    tenant.id,
+    company.id,
+    range,
+    requestedFilters.filters,
+  );
   const filterState = resolveDashboardFilterState(
     requestedFilters,
     dashboard.appliedFilters,
@@ -123,8 +132,8 @@ export default async function ProDashboard({
   } satisfies SignalHeroLabels;
   const kpiLabels = {
     ...baseLabels,
-    activeClients: t('activeClients'),
-    activeClientsHelper: t.raw('kpis.activeClientsHelper'),
+    activeCompany: t('activeCompany'),
+    activeCompanyHelper: t.raw('kpis.activeCompanyHelper'),
     openCases: t('openCases'),
     openCasesHelper: t.raw('kpis.openCasesHelper'),
     renewalsDue: t('renewalsDue'),
@@ -355,7 +364,7 @@ export default async function ProDashboard({
             tenantSlug: tenant.slug,
             filters,
             states: {
-              activeClients: stateFor(['identity']),
+              activeCompany: stateFor(['identity']),
               openCases: stateFor(['operations']),
               renewals: stateFor(['renewals']),
               finance: stateFor(['finance']),

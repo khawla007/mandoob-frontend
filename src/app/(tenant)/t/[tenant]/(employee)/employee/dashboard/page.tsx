@@ -36,7 +36,7 @@ export default async function EmployeeDashboardPage({
         <h1 className="text-2xl font-semibold tracking-tight">My dashboard</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           {summary.employeeName}
-          {summary.clientName ? ` at ${summary.clientName}` : ''}
+          {summary.companyName ? ` at ${summary.companyName}` : ''}
         </p>
       </div>
 
@@ -47,7 +47,7 @@ export default async function EmployeeDashboardPage({
             <Building2 className="text-muted-foreground size-4" />
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-semibold">{summary.clientName ?? 'Not linked'}</p>
+            <p className="text-lg font-semibold">{summary.companyName ?? 'Not linked'}</p>
             <p className="text-muted-foreground mt-1 text-xs">Employee self-service record</p>
           </CardContent>
         </Card>

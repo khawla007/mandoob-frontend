@@ -1,12 +1,13 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewInvoiceDialog } from '@/components/pro/NewInvoiceDialog';
 import { InvoicesTable } from '@/components/pro/InvoicesTable';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { listClientsForPro } from '@/lib/data/clients-list';
 import { listInvoicesForPaymentView } from '@/lib/data/invoices';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
   parsePaymentSearch,
   parsePaymentPage,
@@ -42,13 +43,17 @@ export default async function ProPaymentsPage({
   const search = await searchParams;
   const { view, date, period } = parsePaymentSearch(search);
   const page = parsePaymentPage(search.page);
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
   const [t, locale] = await Promise.all([getTranslations('pro'), getLocale()]);
 
-  const [clients, invoicePage] = await Promise.all([
-    listClientsForPro({ tenantId: tenant.id }),
-    listInvoicesForPaymentView(tenant.id, { view, page, date, period }),
-  ]);
+  const invoicePage = await listInvoicesForPaymentView(tenant.id, company.id, {
+    view,
+    page,
+    date,
+    period,
+  });
   const activeView =
     view === 'due-date'
       ? { value: view, labelKey: 'paymentViewDueDate' }
@@ -65,7 +70,7 @@ export default async function ProPaymentsPage({
           <Button asChild variant="outline">
             <Link href={`/t/${tenant.slug}/payments/analytics`}>{t('paymentAnalytics')}</Link>
           </Button>
-          <NewInvoiceDialog slug={tenant.slug} clients={clients} />
+          <NewInvoiceDialog slug={tenant.slug} />
         </div>
       </div>
 

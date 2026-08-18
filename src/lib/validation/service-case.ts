@@ -45,7 +45,7 @@ const nullableBlockedReasonSchema = trimmedString(2, 500).nullable().optional();
 
 export const createServiceCaseSchema = z
   .object({
-    client_id: uuidSchema,
+    company_id: uuidSchema,
     title: trimmedString(2, 160),
     service_type: trimmedString(2, 80),
     priority: prioritySchema.default('normal'),
@@ -108,7 +108,7 @@ export const serviceCaseFilterSchema = z
       .transform((statuses) => [...new Set(statuses)])
       .optional(),
     assigned_to: uuidSchema.optional(),
-    client_id: uuidSchema.optional(),
+    company_id: uuidSchema.optional(),
     service_type: trimmedString(2, 80).optional(),
   })
   .strict();

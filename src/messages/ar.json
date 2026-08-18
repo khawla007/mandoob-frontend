@@ -40,7 +40,7 @@
     "summary": {
       "awaitingUpload": {
         "title": "بانتظار الرفع",
-        "helper": "مطلوبة من العملاء",
+        "helper": "مطلوبة من الشركة",
         "failed": "التعداد غير متاح",
         "retry": "افتح قائمة العمل لإعادة المحاولة",
         "aria": "بانتظار الرفع: {count}. {helper}"
@@ -75,7 +75,7 @@
       },
       "overdue": {
         "title": "طلبات متأخرة",
-        "helper": "إجراء العميل متأخر",
+        "helper": "إجراء الشركة متأخر",
         "failed": "التعداد غير متاح",
         "retry": "افتح قائمة العمل لإعادة المحاولة",
         "aria": "الطلبات المتأخرة: {count}. {helper}"
@@ -83,9 +83,9 @@
     },
     "filters": {
       "search": "البحث في المستندات",
-      "searchPlaceholder": "العميل أو المستند أو الموظف",
+      "searchPlaceholder": "الشركة أو المستند أو الموظف",
       "view": "عرض قائمة العمل",
-      "client": "العميل",
+      "company": "الشركة",
       "type": "نوع المستند",
       "window": "نطاق الموعد",
       "from": "من تاريخ",
@@ -141,7 +141,7 @@
     "actions": {
       "close": "إغلاق",
       "cancel": "إلغاء",
-      "clientProfile": "فتح ملف العميل",
+      "companyProfile": "فتح ملف الشركة",
       "open": "فتح الملف",
       "opening": "جارٍ فتح الملف…",
       "popupBlocked": "اسمح بالنوافذ المنبثقة لمنصة مندوب، ثم حاول فتح الملف مجددًا.",
@@ -151,14 +151,12 @@
     "request": {
       "trigger": "طلب مستند",
       "title": "طلب مستند",
-      "description": "اختر العميل وتفاصيل المستند، وسترسل منصة مندوب الطلب عبر القنوات المهيأة.",
-      "client": "شركة العميل",
-      "selectClient": "اختر شركة العميل",
+      "description": "اختر تفاصيل المستند، وسترسل منصة مندوب الطلب للشركة المسندة إليك عبر القنوات المهيأة.",
       "type": "نوع المستند",
       "label": "اسم المستند",
       "due": "تاريخ الاستحقاق",
-      "notes": "تعليمات للعميل",
-      "help": "أدرج فقط المعلومات التي يحتاجها العميل لتقديم المستند الصحيح.",
+      "notes": "تعليمات للشركة",
+      "help": "أدرج فقط المعلومات التي تحتاجها الشركة لتقديم المستند الصحيح.",
       "submit": "إرسال الطلب",
       "pending": "جارٍ إرسال الطلب…",
       "success": "تم إرسال طلب المستند.",
@@ -169,7 +167,7 @@
       "reject": "رفض",
       "rejecting": "رفض الإصدار",
       "rejectTitle": "هل تريد رفض إصدار المستند؟",
-      "rejectDescription": "وضّح ما يجب على العميل تصحيحه قبل رفع إصدار جديد.",
+      "rejectDescription": "وضّح ما يجب على الشركة تصحيحه قبل رفع إصدار جديد.",
       "note": "ملاحظة الرفض",
       "noteRequired": "ملاحظة الرفض مطلوبة.",
       "approvePending": "جارٍ الاعتماد…",
@@ -188,14 +186,14 @@
       "success": "تم تحديث تاريخ الانتهاء.",
       "externallyManaged": "تتم إدارة هذا التاريخ من سجل المصدر ولا يمكن تغييره هنا.",
       "sources": {
-        "clientLicense": "تتم إدارته من الرخصة التجارية للعميل",
+        "companyLicense": "تتم إدارته من الرخصة التجارية للشركة",
         "employeeVisa": "تتم إدارته من تأشيرة الموظف",
         "employeeEmiratesId": "تتم إدارته من الهوية الإماراتية للموظف"
       }
     },
     "queue": {
       "region": "قائمة عمل المستندات",
-      "client": "العميل",
+      "company": "الشركة",
       "documentType": "المستند",
       "requestStatus": "الطلب",
       "reviewStatus": "المراجعة",
@@ -256,18 +254,6 @@
       "file": "نوع MIME والحجم",
       "open": "فتح هذا الإصدار"
     },
-    "clientSearch": {
-      "placeholder": "ابحث عن شركات العملاء",
-      "search": "بحث عن عميل",
-      "searching": "جارٍ البحث…",
-      "loading": "جارٍ تحميل العملاء المطابقين…",
-      "results": "نتائج البحث عن العملاء",
-      "count": "{count, plural, zero {لا يوجد عملاء مطابقون} one {عميل واحد مطابق} two {عميلان مطابقان} few {# عملاء مطابقين} many {# عميلًا مطابقًا} other {# عميل مطابق}}",
-      "noResults": "لا توجد شركات عملاء مطابقة لهذا البحث.",
-      "error": "البحث عن العملاء غير متاح مؤقتًا. حاول مجددًا.",
-      "select": "اختيار {client}",
-      "clear": "مسح العميل المحدد"
-    },
     "loading": {
       "label": "جارٍ تحميل مساحة عمل مركز المستندات…"
     },
@@ -313,7 +299,7 @@
     "signalFinance": "المالية",
     "workspace": "مساحة العمل",
     "account": "الحساب",
-    "clients": "العملاء",
+    "companies": "الشركات",
     "assignedCompany": "الشركة المعيّنة",
     "applications": "الطلبات",
     "renewals": "التجديدات",
@@ -495,7 +481,7 @@
     "mfaQrAlt": "رمز QR للمصادقة الثنائية",
     "longCopy": {
       "phoneHelp": "Used for SMS notifications about renewals and approvals.",
-      "bioHelp": "A short description shown to clients you collaborate with.",
+      "bioHelp": "وصف قصير يظهر للشركات التي تتعاون معها.",
       "passwordPolicy": "Use at least 12 characters with a mix of upper-case, lower-case, numbers, and symbols.",
       "sessionsExplanation": "These are the devices currently signed in to your account. Revoke any you do not recognise.",
       "signOutEverywhereConfirm": "Sign out of every session, including this one? You will need to log in again.",
@@ -508,7 +494,7 @@
     }
   },
   "customer": {
-    "portalLabel": "بوابة العميل",
+    "portalLabel": "بوابة الشركة",
     "welcome": "مرحبًا",
     "registrationProgress": "تقدم التسجيل",
     "openRequests": "طلبات المستندات المفتوحة",
@@ -578,7 +564,7 @@
       "renewalsColorCues": "Color cues: red = within 30 days · amber = within 90 days.",
       "submittedDescription": "Documents already uploaded or under PRO review.",
       "awaitingDescription": "Items your PRO firm needs from you.",
-      "accountNotLinkedNote": "Your account is not linked to a client file yet. Ask your PRO firm to link you, then review your account details.",
+      "accountNotLinkedNote": "حسابك غير مرتبط بشركة بعد. اطلب من مكتب PRO ربطه، ثم راجع تفاصيل حسابك.",
       "registrationProgressDescription": "Where your company stands in the UAE registration flow.",
       "paymentsDescription": "Pending invoices and recent receipts.",
       "recentCommsDescription": "Latest messages between you and your PRO firm.",
@@ -602,7 +588,7 @@
     "overview": "نظرة عامة",
     "workspace": "مساحة العمل",
     "account": "الحساب",
-    "clients": "العملاء",
+    "companies": "الشركات",
     "applications": "الطلبات",
     "renewals": "التجديدات",
     "documents": "المستندات",
@@ -919,8 +905,8 @@
       "subtitle": "{tenant} · مؤشرات مساحة عمل فريقك.",
       "recentActivityDescription": "آخر أحداث المصادقة لـ {tenant}.",
       "kpis": {
-        "activeClients": {
-          "label": "العملاء النشطون",
+        "activeCompany": {
+          "label": "الشركة المعيّنة نشطة",
           "delta": "مباشر"
         },
         "renewalsDue": {
@@ -929,7 +915,7 @@
         },
         "docsAwaitingReview": {
           "label": "مستندات بانتظار المراجعة",
-          "delta": "عبر جميع العملاء"
+          "delta": "للشركة المسندة"
         },
         "pendingPayments": {
           "label": "المدفوعات المعلقة",
@@ -947,7 +933,7 @@
         "operationsScore": "مؤشر كفاءة العمليات",
         "openActionDeck": "فتح قائمة الإجراءات",
         "assignWork": "تعيين العمل",
-        "activeClients": "العملاء النشطون",
+        "activeCompany": "الشركة المعيّنة",
         "openCases": "المعاملات المفتوحة",
         "renewalsDue": "التجديدات المستحقة",
         "collections": "التحصيلات",
@@ -986,7 +972,7 @@
           "workloadBalance": "توازن أعباء العمل"
         },
         "kpis": {
-          "activeClientsHelper": "{change} هذا الشهر",
+          "activeCompanyHelper": "حالة التعيين الحالية",
           "openCasesHelper": "{moving} قيد التنفيذ · {blocked} متوقفة",
           "renewalsHelper": "{count} مستحقة خلال 7 أيام",
           "collectionsHelper": "تم تحصيل {rate}% من القيمة المفوترة"
@@ -1015,7 +1001,7 @@
           "empty": "لا توجد معاملات عاجلة أو مواعيد نهائية تستدعي إجراءً.",
           "reviewApplications": "مراجعة الطلبات",
           "description": "الأعمال الأعلى أولوية مرتبة حسب الموعد ومدة التوقف.",
-          "actionAria": "فتح {title} للعميل {client}. المسؤول: {owner}. درجة الاستعجال: {urgency}. {countdown}. {absoluteDeadline}.",
+          "actionAria": "فتح {title} للشركة {company}. المسؤول: {owner}. درجة الاستعجال: {urgency}. {countdown}. {absoluteDeadline}.",
           "unassigned": "غير معيّنة",
           "noDeadline": "بلا موعد نهائي",
           "absoluteDeadline": "الموعد النهائي بتوقيت دبي: {deadline}",
@@ -1047,7 +1033,7 @@
           "documentEvent": "المستندات",
           "invoiceEvent": "الفواتير",
           "eventLink": "فتح {count} من {type} في {date}، {period}",
-          "documentLink": "فتح المستند {title} للعميل {client}، المستحق في {date}، {period}",
+          "documentLink": "فتح المستند {title} للشركة {company}، المستحق في {date}، {period}",
           "close": "إغلاق تفاصيل المواعيد النهائية"
         },
         "renewalLabels": {
@@ -1072,7 +1058,7 @@
           "capacityValue": "الطاقة الاستيعابية {percent}%"
         },
         "errors": {
-          "identity": "معلومات العملاء غير متاحة مؤقتًا.",
+          "identity": "معلومات الشركة غير متاحة مؤقتًا.",
           "links": "روابط لوحة التحكم غير متاحة مؤقتًا.",
           "operations": "بيانات المعاملات التشغيلية غير متاحة مؤقتًا.",
           "renewals": "بيانات التجديدات غير متاحة مؤقتًا.",
@@ -1131,8 +1117,8 @@
     "filterApplications": "تصفية",
     "allApplicationStatuses": "كل الحالات",
     "allApplicationOwners": "كل المسؤولين",
-    "applicationClient": "العميل",
-    "selectApplicationClient": "اختر عميلاً",
+    "applicationCompany": "الشركة",
+    "selectApplicationCompany": "اختر شركة",
     "applicationTitle": "عنوان الطلب",
     "applicationService": "الخدمة",
     "applicationServiceType": "نوع الخدمة",
@@ -1140,7 +1126,7 @@
     "applicationPriority": "الأولوية",
     "applicationOwner": "المسؤول",
     "applicationUnassigned": "غير معيّن",
-    "applicationUnknownClient": "عميل غير معروف",
+    "applicationUnknownCompany": "شركة غير معروفة",
     "applicationDueAt": "تاريخ ووقت الاستحقاق (بتوقيت دبي، UTC+04)",
     "applicationSlaDueAt": "تاريخ ووقت اتفاقية الخدمة (بتوقيت دبي، UTC+04)",
     "applicationCreating": "جارٍ الإنشاء…",
@@ -1181,11 +1167,10 @@
     "createRenewal": "إنشاء تجديد",
     "creating": "جارٍ الإنشاء…",
     "couldNotCreateRenewal": "تعذر إنشاء التجديد",
-    "client": "العميل",
+    "company": "الشركة",
     "type": "النوع",
     "label": "التسمية",
     "dueDate": "تاريخ الاستحقاق",
-    "selectClient": "اختر عميلًا",
     "pipeline": "المسار",
     "active": "نشط",
     "completed": "مكتمل",
@@ -1194,7 +1179,7 @@
     "emiratesId": "الهوية الإماراتية",
     "ejari": "إيجاري",
     "license": "رخصة",
-    "newRenewalIntro": "تُنشأ تجديدات الرخصة تلقائيًا من تاريخ انتهاء رخصة العميل. استخدم هذا النموذج للتأشيرات والهويات الإماراتية وإيجاري.",
+    "newRenewalIntro": "تُنشأ تجديدات الرخصة تلقائيًا من تاريخ انتهاء رخصة الشركة المسندة. استخدم هذا النموذج للتأشيرات والهويات الإماراتية وإيجاري.",
     "renewalLabelPlaceholder": "مثال: تأشيرة مستثمر — السيد خان"
   },
   "documents": {
@@ -1594,8 +1579,8 @@
         "reasonPlaceholder": "يُسجَّل في admin_audit_actions لأغراض التتبّع",
         "nationality": "الجنسية (رمز من حرفين ISO)",
         "passportNo": "رقم جواز السفر",
-        "linkedClient": "العميل المرتبط (اختياري)",
-        "employer": "صاحب العمل (العميل)",
+        "linkedCompany": "الشركة المرتبطة (اختياري)",
+        "employer": "الشركة صاحبة العمل",
         "visaNo": "رقم التأشيرة",
         "visaExpiry": "انتهاء التأشيرة",
         "emiratesId": "الهوية الإماراتية (784-YYYY-NNNNNNN-N)",
@@ -1663,12 +1648,12 @@
         "newRoleLabel": "الدور الجديد",
         "newRolePlaceholder": "اختر دورًا جديدًا",
         "tenantPlaceholder": "اختر مستأجرًا",
-        "clientRequiredLabel": "العميل (مطلوب)",
-        "pickTenantFirst": "اختر مستأجرًا أولًا لتفعيل البحث عن العميل.",
+        "companyRequiredLabel": "الشركة (مطلوبة)",
+        "pickTenantBeforeCompany": "اختر مستأجرًا أولًا لتفعيل البحث عن الشركة.",
         "confirmLabel": "اكتب DEMOTE للتأكيد",
         "errPickRole": "اختر دورًا مستهدفًا.",
         "errTypeDemote": "اكتب DEMOTE لتأكيد تخفيض مدير عام.",
-        "errPickClient": "اختر عميلًا لدور الموظف.",
+        "errPickCompany": "اختر شركة لدور الموظف.",
         "apply": "تطبيق",
         "resync": "مزامنة صلاحية تسجيل الدخول",
         "resyncing": "جارٍ مزامنة صلاحية تسجيل الدخول…",
@@ -1775,7 +1760,7 @@
         "professional": "احترافي",
         "enterprise": "مؤسسي"
       },
-      "clientStatus": {
+      "companyStatus": {
         "onboarding": "قيد الإعداد",
         "active": "نشط",
         "renewal_due": "تجديد مستحق",
@@ -2249,9 +2234,9 @@
       "scopeMissingTenant": "تجاوز المستأجر مفقود",
       "scopeMissingGlobal": "الصف العام مفقود"
     },
-    "clientTypeahead": {
+    "companyTypeahead": {
       "noTenant": "لم يُحدَّد مستأجر",
-      "searchPlaceholder": "البحث عن العملاء…",
+      "searchPlaceholder": "البحث عن الشركات…",
       "typeToSearch": "اكتب للبحث…",
       "loading": "جارٍ التحميل…",
       "noMatches": "لا توجد مطابقات."

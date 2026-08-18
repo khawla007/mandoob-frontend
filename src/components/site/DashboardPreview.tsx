@@ -6,7 +6,7 @@ type Kpi = { label: string; value: string; tone?: 'default' | 'alert' };
 type FeedItem = { label: string; meta: string; live?: boolean };
 type Panel = { kpis: Kpi[]; feedTitle: string; feed: FeedItem[] };
 
-const NAV = ['Overview', 'Clients', 'Renewals', 'Documents', 'Invoices', 'Activity'] as const;
+const NAV = ['Overview', 'Company', 'Renewals', 'Documents', 'Invoices', 'Activity'] as const;
 type Nav = (typeof NAV)[number];
 
 const PANEL_ID = 'dash-panel';
@@ -15,7 +15,7 @@ const tabId = (key: Nav) => `dash-tab-${key.toLowerCase()}`;
 const PANELS: Record<Nav, Panel> = {
   Overview: {
     kpis: [
-      { label: 'CLIENTS', value: '128' },
+      { label: 'COMPANY', value: 'ACTIVE' },
       { label: 'RENEWALS 30D', value: '14', tone: 'alert' },
       { label: 'OPEN INV', value: 'AED 42,180' },
       { label: 'ON-TIME', value: '98%' },
@@ -27,18 +27,18 @@ const PANELS: Record<Nav, Panel> = {
       { label: 'Invoice paid · INV-1042', meta: '11:55' },
     ],
   },
-  Clients: {
+  Company: {
     kpis: [
-      { label: 'TOTAL', value: '128' },
-      { label: 'MAINLAND', value: '54' },
-      { label: 'FREE ZONE', value: '61' },
-      { label: 'OFFSHORE', value: '13' },
+      { label: 'STATUS', value: 'ACTIVE' },
+      { label: 'JURISDICTION', value: 'FREE ZONE' },
+      { label: 'EMPLOYEES', value: '13' },
+      { label: 'OPEN CASES', value: '4' },
     ],
-    feedTitle: 'CLIENTS',
+    feedTitle: 'COMPANY',
     feed: [
       { label: 'Acme Trading FZ-LLC', meta: 'Free Zone' },
-      { label: 'Naseej Group LLC', meta: 'Mainland' },
-      { label: 'Quay Holdings Ltd', meta: 'Offshore' },
+      { label: 'Trade licence', meta: 'Active' },
+      { label: 'Establishment card', meta: 'Verified' },
     ],
   },
   Renewals: {
@@ -92,7 +92,7 @@ const PANELS: Record<Nav, Panel> = {
     ],
     feedTitle: 'LOG',
     feed: [
-      { label: 'visa.stamp · client/9842', meta: '12:42', live: true },
+      { label: 'visa.stamp · company/9842', meta: '12:42', live: true },
       { label: 'invoice.paid · inv/1042', meta: '11:55' },
       { label: 'renewal.alert · lic/acme', meta: '09:00' },
     ],

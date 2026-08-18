@@ -3,7 +3,7 @@ import type { PDFFont, PDFPage, RGB } from 'pdf-lib';
 export type ReceiptPdfInput = {
   tenantName: string;
   tenantColor: string | null;
-  clientName: string;
+  companyName: string;
   customerName: string | null;
   invoiceId: string;
   label: string;
@@ -54,7 +54,7 @@ export async function generateReceiptPdf(input: ReceiptPdfInput): Promise<Uint8A
     color: rgb(0.36, 0.39, 0.45),
   });
 
-  drawField(page, bold, regular, 'Client', input.clientName, 42, 650, muted, ink);
+  drawField(page, bold, regular, 'Company', input.companyName, 42, 650, muted, ink);
   drawField(
     page,
     bold,

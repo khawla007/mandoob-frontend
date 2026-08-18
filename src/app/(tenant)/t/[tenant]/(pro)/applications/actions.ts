@@ -5,6 +5,7 @@ import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { createServiceCase, updateServiceCase } from '@/lib/data/service-cases';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
   runCreateApplicationAction,
   runUpdateApplicationAction,
@@ -22,6 +23,7 @@ function dependencies(): ApplicationActionDependencies {
     },
     resolveTenant: resolveTenantBySlug,
     requireActive: requireActiveTenant,
+    resolveAssignedCompany: readAssignedCompanyForPro,
     createCase: createServiceCase,
     updateCase: updateServiceCase,
     revalidate: revalidatePath,

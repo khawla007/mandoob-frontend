@@ -7,7 +7,7 @@ function row(id: string, daysOut: number, status: RenewalRow['status'] = 'upcomi
   return {
     id,
     tenantId: 't',
-    clientId: 'c',
+    companyId: 'c',
     type: 'visa',
     label: `r-${id}`,
     dueDate: '2026-12-31',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { editUserSchema, changeRoleSchema, changeStatusSchema, mfaResetSchema } from './admin-user';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
-const clientId = '22222222-2222-4222-8222-222222222222';
+const companyId = '22222222-2222-4222-8222-222222222222';
 const editCommon = {
   full_name: 'Khawla Tester',
   phone: '+971501234567',
@@ -33,11 +33,11 @@ describe('editUserSchema — happy paths', () => {
     assert.equal(r.success, true);
   });
 
-  it('accepts employee edit with client_id', () => {
+  it('accepts employee edit with company_id', () => {
     const r = editUserSchema.safeParse({
       ...editCommon,
       role: 'employee',
-      client_id: clientId,
+      company_id: companyId,
     });
     assert.equal(r.success, true);
   });
@@ -77,7 +77,7 @@ describe('editUserSchema — rejects', () => {
       false,
     );
   });
-  it('rejects employee missing client_id', () => {
+  it('rejects employee missing company_id', () => {
     const r = editUserSchema.safeParse({ ...editCommon, role: 'employee' });
     assert.equal(r.success, false);
   });
@@ -105,7 +105,7 @@ describe('editUserSchema — rejects', () => {
     const r = editUserSchema.safeParse({
       ...editCommon,
       role: 'employee',
-      client_id: clientId,
+      company_id: companyId,
       visa_expiry: '2000-01-01',
     });
     assert.equal(r.success, false);
@@ -132,11 +132,11 @@ describe('changeRoleSchema — happy paths', () => {
     assert.equal(r.success, true);
   });
 
-  it('accepts employee newRole with client_id and visa_expiry', () => {
+  it('accepts employee newRole with company_id and visa_expiry', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'employee',
       tenant_id: tenantId,
-      client_id: clientId,
+      company_id: companyId,
       visa_expiry: futureDate,
     });
     assert.equal(r.success, true);
@@ -191,7 +191,7 @@ describe('changeRoleSchema — rejects', () => {
     );
   });
 
-  it('rejects employee newRole missing client_id', () => {
+  it('rejects employee newRole missing company_id', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'employee',
       tenant_id: tenantId,

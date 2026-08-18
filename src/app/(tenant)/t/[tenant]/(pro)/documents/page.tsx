@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
@@ -10,7 +10,6 @@ import {
   DocumentFilters,
   type DocumentFilterLabels,
 } from '@/components/pro/documents/DocumentFilters';
-import { DocumentClientSearchField } from '@/components/pro/documents/DocumentClientSearchField';
 import {
   DocumentSummaryGrid,
   type DocumentSummaryLabels,
@@ -21,11 +20,10 @@ import {
 } from '@/components/pro/documents/DocumentWorkQueue';
 import {
   dubaiToday,
-  getDocumentCenterClientOption,
   getDocumentCenterSummary,
   listProDocumentCenter,
-  searchDocumentCenterClientOptions,
 } from '@/lib/data/pro-document-center';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { DOC_TYPES, type DocType } from '@/lib/validation/document';
 import {
   documentCenterSorts,
@@ -59,17 +57,15 @@ export default async function ProDocumentsPage({
   searchParams: Promise<DocumentCenterSearchParams>;
 }) {
   const [{ tenant: slug }, search] = await Promise.all([params, searchParams]);
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
-  const query = parseDocumentCenterSearch(search);
+  const query = { ...parseDocumentCenterSearch(search), companyId: company.id };
   const requestedPage = query.page;
-  const [workspace, summary, clients, selectedClient, t, locale] = await Promise.all([
+  const [workspace, summary, t, locale] = await Promise.all([
     listProDocumentCenter(tenant.id, query),
     getDocumentCenterSummary(tenant.id, dubaiToday()),
-    searchDocumentCenterClientOptions(tenant.id, '', 50),
-    query.clientId
-      ? getDocumentCenterClientOption(tenant.id, query.clientId)
-      : Promise.resolve(null),
     getTranslations('proDocumentCenter'),
     getLocale(),
   ]);
@@ -97,31 +93,18 @@ export default async function ProDocumentsPage({
     mb: t('units.mb'),
     gb: t('units.gb'),
   };
-  const clientSearchLabels = {
-    placeholder: t('clientSearch.placeholder'),
-    search: t('clientSearch.search'),
-    searching: t('clientSearch.searching'),
-    results: t('clientSearch.results'),
-    noResults: t('clientSearch.noResults'),
-    error: t('clientSearch.error'),
-    clear: t('clientSearch.clear'),
-    errors: errorLabels,
-  };
   const actionLabels: DocumentActionLabels = {
     close: t('actions.close'),
     cancel: t('actions.cancel'),
-    profile: t('actions.clientProfile'),
+    profile: t('actions.companyProfile'),
     open: t('actions.open'),
     opening: t('actions.opening'),
     popupBlocked: t('actions.popupBlocked'),
     success: t('actions.success'),
-    clientSearch: clientSearchLabels,
     request: {
       trigger: t('request.trigger'),
       title: t('request.title'),
       description: t('request.description'),
-      client: t('request.client'),
-      selectClient: t('request.selectClient'),
       type: t('request.type'),
       label: t('request.label'),
       due: t('request.due'),
@@ -149,7 +132,7 @@ export default async function ProDocumentsPage({
       pending: t('expiry.pending'),
       externallyManaged: t('expiry.externallyManaged'),
       sources: {
-        client_license: t('expiry.sources.clientLicense'),
+        company_license: t('expiry.sources.companyLicense'),
         employee_visa: t('expiry.sources.employeeVisa'),
         employee_emirates_id: t('expiry.sources.employeeEmiratesId'),
       },
@@ -207,7 +190,7 @@ export default async function ProDocumentsPage({
     search: t('filters.search'),
     searchPlaceholder: t('filters.searchPlaceholder'),
     view: t('filters.view'),
-    client: t('filters.client'),
+    company: t('filters.company'),
     type: t('filters.type'),
     window: t('filters.window'),
     from: t('filters.from'),
@@ -233,7 +216,7 @@ export default async function ProDocumentsPage({
   const visibleTo = Math.min(workspace.page * workspace.pageSize, workspace.total);
   const queueLabels: DocumentQueueLabels = {
     region: t('queue.region'),
-    client: t('queue.client'),
+    company: t('queue.company'),
     documentType: t('queue.documentType'),
     requestStatus: t('queue.requestStatus'),
     reviewStatus: t('queue.reviewStatus'),
@@ -286,7 +269,7 @@ export default async function ProDocumentsPage({
             {t('heading.subtitle', { tenant: tenant.name, count: workspace.total })}
           </p>
         </div>
-        <DocumentActions kind="request" slug={slug} clients={clients} labels={actionLabels} />
+        <DocumentActions kind="request" slug={slug} labels={actionLabels} />
       </header>
 
       <DocumentSummaryGrid
@@ -304,17 +287,6 @@ export default async function ProDocumentsPage({
           labels={filterLabels}
           resetHref={resetHref}
           locale={locale}
-          selectedClient={selectedClient}
-          clientField={
-            <DocumentClientSearchField
-              slug={slug}
-              name="client"
-              label={filterLabels.client}
-              labels={clientSearchLabels}
-              initialOptions={clients}
-              selectedOption={selectedClient}
-            />
-          }
         />
         <DocumentWorkQueue
           rows={workspace.rows}
@@ -322,7 +294,6 @@ export default async function ProDocumentsPage({
           totalPages={totalPages}
           slug={slug}
           query={query}
-          clients={clients}
           locale={locale}
           labels={queueLabels}
           actionLabels={actionLabels}

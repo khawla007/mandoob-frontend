@@ -33,32 +33,18 @@ const TYPE_OPTIONS: { value: ManualType; labelKey: 'visa' | 'emiratesId' | 'ejar
   { value: 'ejari', labelKey: 'ejari' },
 ];
 
-export type NewRenewalClientOption = { id: string; company_name: string };
-
-export function NewRenewalDialog({
-  slug,
-  clients,
-  fixedClientId,
-  triggerLabel,
-}: {
-  slug: string;
-  clients: NewRenewalClientOption[];
-  fixedClientId?: string;
-  triggerLabel?: string;
-}) {
+export function NewRenewalDialog({ slug, triggerLabel }: { slug: string; triggerLabel?: string }) {
   const router = useRouter();
   const t = useTranslations('pro');
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const [clientId, setClientId] = useState<string>(fixedClientId ?? clients[0]?.id ?? '');
   const [type, setType] = useState<ManualType>('visa');
   const [label, setLabel] = useState('');
   const [dueDate, setDueDate] = useState('');
 
   function reset() {
-    setClientId(fixedClientId ?? clients[0]?.id ?? '');
     setType('visa');
     setLabel('');
     setDueDate('');
@@ -68,13 +54,8 @@ export function NewRenewalDialog({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!clientId) {
-      setError('INVALID_INPUT: select a client');
-      return;
-    }
     startTransition(async () => {
       const result = await createRenewalAction(slug, {
-        client_id: clientId,
         type,
         label,
         due_date: dueDate,
@@ -89,8 +70,6 @@ export function NewRenewalDialog({
     });
   }
 
-  const noClients = clients.length === 0;
-
   return (
     <Dialog
       open={open}
@@ -100,7 +79,7 @@ export function NewRenewalDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button disabled={noClients}>{triggerLabel ?? t('newRenewal')}</Button>
+        <Button>{triggerLabel ?? t('newRenewal')}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -115,22 +94,6 @@ export function NewRenewalDialog({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
-          <div className="grid gap-2">
-            <Label htmlFor="new-client">{t('client')}</Label>
-            <Select value={clientId} onValueChange={setClientId} disabled={Boolean(fixedClientId)}>
-              <SelectTrigger id="new-client">
-                <SelectValue placeholder={t('selectClient')} />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.company_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="new-type">{t('type')}</Label>

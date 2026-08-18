@@ -31,7 +31,7 @@ export function InvoicesTable({
         <TableHeader>
           <TableRow>
             <TableHead>Invoice</TableHead>
-            <TableHead>Client</TableHead>
+            <TableHead>Company</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Due</TableHead>
             <TableHead className="text-right">Amount</TableHead>
@@ -49,7 +49,7 @@ export function InvoicesTable({
               </TableCell>
               <TableCell>
                 <Button asChild variant="link" className="h-auto p-0">
-                  <Link href={`/t/${slug}/company`}>{row.clientName}</Link>
+                  <Link href={`/t/${slug}/company`}>{row.companyName}</Link>
                 </Button>
               </TableCell>
               <TableCell>
@@ -75,6 +75,7 @@ export function InvoicesTable({
                     invoiceId={row.id}
                     amountMinor={row.amountMinor}
                     status={row.status}
+                    refundOperation={row.refundOperation}
                   />
                 </div>
               </TableCell>

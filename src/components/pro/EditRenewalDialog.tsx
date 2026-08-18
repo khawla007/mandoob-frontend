@@ -109,7 +109,7 @@ function EditRenewalForm({
         <DialogTitle>Edit renewal</DialogTitle>
         <DialogDescription>
           {row.source === 'license_backfill'
-            ? 'Auto-row from clients.license_expiry. Status edits are allowed but clearing license_expiry on the client side will resurrect this row.'
+            ? 'Auto-row from company_profiles.license_expiry. Status edits are allowed but clearing license_expiry on the company profile will resurrect this row.'
             : 'Update label, due date, or status. Notification schedule recomputes if the due date changes.'}
         </DialogDescription>
       </DialogHeader>
@@ -165,7 +165,7 @@ function EditRenewalForm({
           </Select>
           {isLockedAutoCancelled && (
             <p className="text-muted-foreground text-xs">
-              Re-set the client&apos;s license_expiry to reactivate this renewal.
+              Re-set the company profile&apos;s license_expiry to reactivate this renewal.
             </p>
           )}
         </div>

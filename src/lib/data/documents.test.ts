@@ -64,10 +64,10 @@ function ownedVersion(overrides: Record<string, unknown> = {}) {
     document: {
       id: DOCUMENT,
       tenant_id: TENANT,
-      client_id: CLIENT,
+      company_id: CLIENT,
       request_id: REQUEST,
       current_version_id: VERSION,
-      client: { id: CLIENT, tenant_id: TENANT },
+      company: { id: CLIENT, tenant_id: TENANT },
     },
     ...overrides,
   };
@@ -90,7 +90,7 @@ function pdfWith(body: string): Uint8Array {
 function uploadInput(data: Uint8Array) {
   return {
     tenantId: '11111111-1111-4111-8111-111111111111',
-    clientId: '22222222-2222-4222-8222-222222222222',
+    companyId: '22222222-2222-4222-8222-222222222222',
     docType: 'passport' as const,
     requestId: '33333333-3333-4333-8333-333333333333',
     label: 'Passport',
@@ -202,7 +202,7 @@ test('getDocumentSignedUrl rejects invalid UUIDs and a missing version before si
   );
 });
 
-test('getDocumentSignedUrl pins the unambiguous version-to-document FK and inner client relation', async () => {
+test('getDocumentSignedUrl pins the version FK and exact inner company ownership relation', async () => {
   const calls = captureFetch(() => json(null));
   const { getDocumentSignedUrl } = await load();
 
@@ -214,7 +214,10 @@ test('getDocumentSignedUrl pins the unambiguous version-to-document FK and inner
   const select = new URL(calls[0].url).searchParams.get('select');
   assert.ok(select);
   assert.match(select, /document:documents!document_versions_document_id_fkey!inner\(/u);
-  assert.match(select, /client:clients!inner\(/u);
+  assert.match(
+    select,
+    /company:company_profiles!documents_company_tenant_fk!inner\(id,\s*tenant_id\)/u,
+  );
 });
 
 test('getDocumentSignedUrl validates TTL before any database or storage I/O', async () => {
@@ -231,7 +234,7 @@ test('getDocumentSignedUrl validates TTL before any database or storage I/O', as
   assert.equal(calls.length, 0);
 });
 
-test('getDocumentSignedUrl requires the full version-document-client ownership chain', async () => {
+test('getDocumentSignedUrl requires the full tenant-company-document-version ownership chain', async () => {
   const foreignTenant = '99999999-9999-4999-8999-999999999999';
   const mismatches = [
     ownedVersion({ tenant_id: foreignTenant }),
@@ -239,14 +242,14 @@ test('getDocumentSignedUrl requires the full version-document-client ownership c
     ownedVersion({
       document: {
         ...ownedVersion().document,
-        client_id: foreignTenant,
-        client: { id: CLIENT, tenant_id: TENANT },
+        company_id: foreignTenant,
+        company: { id: CLIENT, tenant_id: TENANT },
       },
     }),
     ownedVersion({
       document: {
         ...ownedVersion().document,
-        client: { id: CLIENT, tenant_id: foreignTenant },
+        company: { id: CLIENT, tenant_id: foreignTenant },
       },
     }),
   ];
@@ -428,7 +431,7 @@ test('setDocumentReview uses one exact atomic RPC and emits auth telemetry only 
     if (call.url.endsWith('/rest/v1/rpc/review_document_version')) {
       return json({
         document_id: DOCUMENT,
-        client_id: CLIENT,
+        company_id: CLIENT,
         fulfilled_request_id: REQUEST,
         review_status: 'approved',
       });
@@ -443,7 +446,7 @@ test('setDocumentReview uses one exact atomic RPC and emits auth telemetry only 
     note: ' looks good ',
   });
 
-  assert.deepEqual(result, { clientId: CLIENT });
+  assert.deepEqual(result, { companyId: CLIENT });
 
   assert.equal(calls.length, 2);
   assert.match(calls[0].url, /\/rest\/v1\/rpc\/review_document_version$/u);
@@ -483,7 +486,7 @@ test('setDocumentReview supports rejection through the RPC without fulfilling a 
     if (call.url.endsWith('/rest/v1/rpc/review_document_version')) {
       return json({
         document_id: DOCUMENT,
-        client_id: CLIENT,
+        company_id: CLIENT,
         fulfilled_request_id: null,
         review_status: 'rejected',
       });
@@ -507,7 +510,7 @@ test('setDocumentReview normalizes uppercase UUIDs in the RPC and success teleme
     if (call.url.endsWith('/rest/v1/rpc/review_document_version')) {
       return json({
         document_id: DOCUMENT,
-        client_id: CLIENT,
+        company_id: CLIENT,
         fulfilled_request_id: null,
         review_status: 'approved',
       });
@@ -545,9 +548,9 @@ test('setDocumentReview normalizes uppercase UUIDs in the RPC and success teleme
   });
 });
 
-test('createDocumentRequest canonicalizes ownership UUIDs and returns authoritative client ID', async () => {
+test('createDocumentRequest canonicalizes ownership UUIDs and returns authoritative company ID', async () => {
   const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/clients?')) {
+    if (call.url.includes('/rest/v1/company_profiles?')) {
       return json({ id: CLIENT, tenant_id: TENANT });
     }
     if (call.url.includes('/rest/v1/document_requests')) return json({ id: REQUEST });
@@ -562,21 +565,21 @@ test('createDocumentRequest canonicalizes ownership UUIDs and returns authoritat
       tenantId: TENANT.toUpperCase(),
       actorId: ACTOR.toUpperCase(),
     },
-    { client_id: CLIENT.toUpperCase(), doc_type: 'passport', label: 'Passport copy' },
+    { company_id: CLIENT.toUpperCase(), doc_type: 'passport', label: 'Passport copy' },
   );
 
-  assert.deepEqual(result, { id: REQUEST, clientId: CLIENT });
-  const clientRead = calls.find((call) => call.url.includes('/rest/v1/clients?'))!;
+  assert.deepEqual(result, { id: REQUEST, companyId: CLIENT });
+  const clientRead = calls.find((call) => call.url.includes('/rest/v1/company_profiles?'))!;
   assert.match(clientRead.url, new RegExp(`id=eq\\.${CLIENT}`, 'u'));
   const insert = calls.find((call) => call.url.includes('/rest/v1/document_requests'))!;
   assert.equal((insert.body as Record<string, unknown>).tenant_id, TENANT);
-  assert.equal((insert.body as Record<string, unknown>).client_id, CLIENT);
+  assert.equal((insert.body as Record<string, unknown>).company_id, CLIENT);
   assert.equal((insert.body as Record<string, unknown>).requested_by, ACTOR);
 });
 
 test('createDocumentRequest accepts canonical PostgreSQL UUIDs from trusted tenant context', async () => {
   const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/clients?')) {
+    if (call.url.includes('/rest/v1/company_profiles?')) {
       return json({ id: CLIENT, tenant_id: POSTGRES_TENANT });
     }
     if (call.url.includes('/rest/v1/document_requests')) return json({ id: REQUEST });
@@ -588,21 +591,21 @@ test('createDocumentRequest accepts canonical PostgreSQL UUIDs from trusted tena
 
   const result = await createDocumentRequest(
     { ...reviewCtx(), tenantId: POSTGRES_TENANT },
-    { client_id: CLIENT, doc_type: 'insurance_policy', label: 'Insurance policy' },
+    { company_id: CLIENT, doc_type: 'insurance_policy', label: 'Insurance policy' },
   );
 
-  assert.deepEqual(result, { id: REQUEST, clientId: CLIENT });
+  assert.deepEqual(result, { id: REQUEST, companyId: CLIENT });
   const insert = calls.find((call) => call.url.includes('/rest/v1/document_requests'))!;
   assert.equal((insert.body as Record<string, unknown>).tenant_id, POSTGRES_TENANT);
 });
 
-test('createDocumentRequest hides whether a client exists outside the tenant', async () => {
+test('createDocumentRequest hides whether a company exists outside the tenant', async () => {
   const { createDocumentRequest } = await load();
-  const input = { client_id: CLIENT, doc_type: 'passport' as const, label: 'Passport copy' };
+  const input = { company_id: CLIENT, doc_type: 'passport' as const, label: 'Passport copy' };
 
-  for (const clientRow of [null, { id: CLIENT, tenant_id: DOCUMENT }]) {
+  for (const companyRow of [null, { id: CLIENT, tenant_id: DOCUMENT }]) {
     const calls = captureFetch((call) => {
-      if (call.url.includes('/rest/v1/clients?')) return json(clientRow);
+      if (call.url.includes('/rest/v1/company_profiles?')) return json(companyRow);
       return json({ message: 'unexpected write' }, 500);
     });
 
@@ -612,7 +615,7 @@ test('createDocumentRequest hides whether a client exists outside the tenant', a
         error instanceof ApiError &&
         error.code === 'NOT_FOUND' &&
         error.status === 404 &&
-        error.message === 'client not found',
+        error.message === 'company not found',
     );
     assert.equal(calls.length, 1);
   }

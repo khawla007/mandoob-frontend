@@ -191,9 +191,6 @@ describe('i18n/messages', () => {
       'pageError.retry',
       'queue.partialError',
       'history.error',
-      'clientSearch.select',
-      'clientSearch.count',
-      'clientSearch.loading',
     ];
 
     for (const [locale, namespace] of namespaces) {
@@ -282,26 +279,21 @@ describe('i18n/messages', () => {
     assert.match(english('heading.subtitle', { tenant: 'Acme', count: 2 }), /2 records/u);
     assert.match(english('queue.result', { from: 1, to: 1, total: 1 }), /1 result/u);
     assert.match(english('queue.result', { from: 1, to: 2, total: 2 }), /2 results/u);
-    assert.match(english('clientSearch.count', { count: 1 }), /1 matching client/u);
-    assert.match(english('clientSearch.count', { count: 2 }), /2 matching clients/u);
-
     const cases = [
-      [0, /لا سجلات/u, /لا توجد نتائج/u, /لا يوجد عملاء/u],
-      [1, /سجل واحد/u, /نتيجة واحدة/u, /عميل واحد/u],
-      [2, /سجلين/u, /نتيجتين/u, /عميلان/u],
-      [3, /(?:٣|3) سجلات/u, /(?:٣|3) نتائج/u, /(?:٣|3) عملاء/u],
-      [11, /(?:١١|11) سجلًا/u, /(?:١١|11) نتيجة/u, /(?:١١|11) عميلًا/u],
+      [0, /لا سجلات/u, /لا توجد نتائج/u],
+      [1, /سجل واحد/u, /نتيجة واحدة/u],
+      [2, /سجلين/u, /نتيجتين/u],
+      [3, /(?:٣|3) سجلات/u, /(?:٣|3) نتائج/u],
+      [11, /(?:١١|11) سجلًا/u, /(?:١١|11) نتيجة/u],
     ] as const;
-    for (const [count, headingExpected, queueExpected, clientExpected] of cases) {
+    for (const [count, headingExpected, queueExpected] of cases) {
       assert.match(arabic('heading.subtitle', { tenant: 'أكمي', count }), headingExpected);
       const queueResult = arabic('queue.result', {
         from: 1,
         to: Math.max(1, count),
         total: count,
       });
-      const clientCount = arabic('clientSearch.count', { count });
       assert.match(queueResult, queueExpected);
-      assert.match(clientCount, clientExpected);
     }
   });
 

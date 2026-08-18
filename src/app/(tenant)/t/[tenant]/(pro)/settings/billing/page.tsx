@@ -13,7 +13,7 @@ const plans = [
     id: 'starter',
     label: 'Starter',
     amount: 4900,
-    features: ['Client workspace', 'Email queue', 'Renewal alerts'],
+    features: ['Company workspace', 'Email queue', 'Renewal alerts'],
   },
   {
     id: 'professional',

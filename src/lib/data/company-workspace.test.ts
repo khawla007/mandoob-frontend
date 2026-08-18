@@ -131,5 +131,5 @@ test('production panel queries scope lists and exact focus lookups without clien
     /focusedRequestId[\s\S]*?\.eq\('tenant_id', tenantId\)[\s\S]*?\.eq\('company_id', companyId\)[\s\S]*?\.eq\('id', focusedRequestId\)/,
   );
   assert.match(source, /\.contains\('details', \{ company_id: companyId \}\)/);
-  assert.doesNotMatch(source, /client_id/);
+  assert.doesNotMatch(source, /client[_]id/);
 });

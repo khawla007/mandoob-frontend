@@ -46,32 +46,32 @@ export async function adminCreateUser(
     }
   }
   if (input.role === 'employee') {
-    const { data: client, error: clientErr } = await admin
+    const { data: company, error: companyErr } = await admin
       .from('company_profiles')
       .select('id, tenant_id')
-      .eq('id', input.client_id)
+      .eq('id', input.company_id)
       .maybeSingle();
-    if (clientErr) {
-      console.error('client lookup failed', clientErr);
-      throw new ApiError('VALIDATION_FAILED', 'Client lookup failed', 400);
+    if (companyErr) {
+      console.error('company lookup failed', companyErr);
+      throw new ApiError('VALIDATION_FAILED', 'Company lookup failed', 400);
     }
-    if (!client) throw new ApiError('VALIDATION_FAILED', 'client not found', 400);
-    if (client.tenant_id !== input.tenant_id) {
-      throw new ApiError('FORBIDDEN', 'client does not belong to selected tenant', 403);
+    if (!company) throw new ApiError('VALIDATION_FAILED', 'company not found', 400);
+    if (company.tenant_id !== input.tenant_id) {
+      throw new ApiError('FORBIDDEN', 'company does not belong to selected tenant', 403);
     }
   }
-  if (input.role === 'customer' && input.linked_client_id) {
-    const { data: client, error: linkedErr } = await admin
+  if (input.role === 'customer' && input.linked_company_id) {
+    const { data: company, error: linkedErr } = await admin
       .from('company_profiles')
       .select('id, tenant_id')
-      .eq('id', input.linked_client_id)
+      .eq('id', input.linked_company_id)
       .maybeSingle();
     if (linkedErr) {
-      console.error('linked client lookup failed', linkedErr);
-      throw new ApiError('VALIDATION_FAILED', 'Linked client lookup failed', 400);
+      console.error('linked company lookup failed', linkedErr);
+      throw new ApiError('VALIDATION_FAILED', 'Linked company lookup failed', 400);
     }
-    if (client && client.tenant_id !== input.tenant_id) {
-      throw new ApiError('FORBIDDEN', 'linked client does not belong to selected tenant', 403);
+    if (company && company.tenant_id !== input.tenant_id) {
+      throw new ApiError('FORBIDDEN', 'linked company does not belong to selected tenant', 403);
     }
   }
 
@@ -113,7 +113,7 @@ export async function adminCreateUser(
     } else if (input.role === 'employee') {
       encryptedPayload = {
         passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-        passport_no_hash: hashPassportForLookup(input.client_id, input.passport_no),
+        passport_no_hash: hashPassportForLookup(input.company_id, input.passport_no),
         visa_no_encrypted: encryptOptional(input.visa_no ?? null),
         emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
       };
@@ -219,13 +219,13 @@ export async function adminCreateUser(
         profile_id: newUserId,
         nationality: input.nationality ?? null,
         passport_no_encrypted: encryptedPayload.passport_no_encrypted,
-        linked_company_id: input.linked_client_id ?? null,
+        linked_company_id: input.linked_company_id ?? null,
       });
       if (error) throw error;
     } else if (input.role === 'employee') {
       const { error } = await admin.from('employees').insert({
         tenant_id: input.tenant_id,
-        company_id: input.client_id,
+        company_id: input.company_id,
         profile_id: newUserId,
         name: input.full_name,
         email,

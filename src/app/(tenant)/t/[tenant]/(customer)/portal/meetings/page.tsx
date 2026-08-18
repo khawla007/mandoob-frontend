@@ -30,7 +30,7 @@ export default async function CustomerMeetingsPage({
   const { tenant: slug } = await params;
   const { tenant, session } = await requireTenantRouteAccess(slug, ['customer']);
 
-  const customer = await readSelfCustomer().catch(() => ({ linkedClientId: null }));
+  const customer = await readSelfCustomer().catch(() => ({ linkedCompanyId: null }));
   const actor: MeetingActor = { id: session.id, role: 'customer', tenantId: tenant.id };
   const now = new Date();
   const slotWindowEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -67,7 +67,7 @@ export default async function CustomerMeetingsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {customer.linkedClientId ? (
+          {customer.linkedCompanyId ? (
             <div className="grid gap-3 md:grid-cols-2">
               {openSlots.length ? (
                 openSlots.map((slot) => (
@@ -95,7 +95,7 @@ export default async function CustomerMeetingsPage({
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              Your account is not linked to a client file yet. Ask your PRO firm to link your
+              Your account is not linked to a company file yet. Ask your PRO firm to link your
               profile before booking.
             </p>
           )}

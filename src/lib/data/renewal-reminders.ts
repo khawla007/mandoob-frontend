@@ -25,19 +25,19 @@ export async function scheduleRenewalReminders(renewalId: string): Promise<{ sch
   const admin = createSupabaseServiceRoleClient();
   const { data: r } = await admin
     .from('renewals')
-    .select('id, tenant_id, client_id, label, due_date, notify_at, status')
+    .select('id, tenant_id, company_id, label, due_date, notify_at, status')
     .eq('id', renewalId)
     .maybeSingle();
   if (!r || !ACTIVE_STATUSES.has(r.status as string) || !r.notify_at?.length) {
     return { scheduled: 0 };
   }
 
-  const { data: client } = await admin
-    .from('clients')
+  const { data: company } = await admin
+    .from('company_profiles')
     .select('id, company_name, tenant_id')
-    .eq('id', r.client_id)
+    .eq('id', r.company_id)
     .maybeSingle();
-  if (!client) return { scheduled: 0 };
+  if (!company) return { scheduled: 0 };
 
   const { data: tenant } = await admin
     .from('tenants')
@@ -48,7 +48,7 @@ export async function scheduleRenewalReminders(renewalId: string): Promise<{ sch
   const { data: customerLink } = await admin
     .from('customer_profiles')
     .select('profile_id')
-    .eq('linked_client_id', client.id)
+    .eq('linked_company_id', company.id)
     .maybeSingle();
 
   if (!customerLink) return { scheduled: 0 };

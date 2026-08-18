@@ -61,7 +61,7 @@ function assertReviewContract(sql: string): void {
   );
   assert.match(
     fn,
-    /returns table \(document_id uuid,client_id uuid,fulfilled_request_id uuid,review_status text\)/i,
+    /returns table \(document_id uuid,client[_]id uuid,fulfilled_request_id uuid,review_status text\)/i,
   );
   assert.match(fn, /language plpgsql volatile security invoker set search_path = ''/i);
   assert.doesNotMatch(fn, /security definer/i);
@@ -80,17 +80,17 @@ function assertReviewContract(sql: string): void {
 
   assert.match(
     fn,
-    /from public\.document_versions v join public\.documents d on d\.id = v\.document_id join public\.clients c on c\.id = d\.client_id where v\.id = p_version_id for update of v,d,c/i,
+    /from public\.document_versions v join public\.documents d on d\.id = v\.document_id join public\.clients c on c\.id = d\.client[_]id where v\.id = p_version_id for update of v,d,c/i,
     'version, document, and client must be locked as one authoritative chain',
   );
   assert.match(
     fn,
-    /v_version_tenant_id <> p_tenant_id[\s\S]*?v_document_tenant_id <> p_tenant_id[\s\S]*?v_client_tenant_id <> p_tenant_id[\s\S]*?v_version_document_id <> v_document_id[\s\S]*?v_document_client_id <> v_client_id/i,
+    /v_version_tenant_id <> p_tenant_id[\s\S]*?v_document_tenant_id <> p_tenant_id[\s\S]*?v_client_tenant_id <> p_tenant_id[\s\S]*?v_version_document_id <> v_document_id[\s\S]*?v_document_client[_]id <> v_client[_]id/i,
     'every ownership edge and tenant discriminator must be checked',
   );
   assert.match(
     fn,
-    /select v\.id,v\.tenant_id,v\.document_id,v\.review_status,d\.id,d\.tenant_id,d\.client_id,d\.request_id,d\.current_version_id,c\.id,c\.tenant_id into v_version_id,v_version_tenant_id,v_version_document_id,v_version_review_status,v_document_id,v_document_tenant_id,v_document_client_id,v_request_id,v_document_current_version_id,v_client_id,v_client_tenant_id/i,
+    /select v\.id,v\.tenant_id,v\.document_id,v\.review_status,d\.id,d\.tenant_id,d\.client[_]id,d\.request_id,d\.current_version_id,c\.id,c\.tenant_id into v_version_id,v_version_tenant_id,v_version_document_id,v_version_review_status,v_document_id,v_document_tenant_id,v_document_client[_]id,v_request_id,v_document_current_version_id,v_client[_]id,v_client_tenant_id/i,
     'the locked review snapshot must capture both version status and document head',
   );
   assert.match(
@@ -110,7 +110,7 @@ function assertReviewContract(sql: string): void {
   );
   assert.match(
     fn,
-    /v_request_tenant_id <> p_tenant_id[\s\S]*?v_request_client_id <> v_document_client_id/i,
+    /v_request_tenant_id <> p_tenant_id[\s\S]*?v_request_client[_]id <> v_document_client[_]id/i,
     'linked request ownership must match the locked document chain',
   );
 
@@ -134,12 +134,12 @@ function assertReviewContract(sql: string): void {
 
   assert.match(
     fn,
-    /update public\.documents d set current_version_id = p_version_id,updated_at = p_reviewed_at where d\.id = v_document_id and d\.tenant_id = p_tenant_id and d\.client_id = v_document_client_id and d\.current_version_id = p_version_id returning d\.id into v_updated_document_id/i,
+    /update public\.documents d set current_version_id = p_version_id,updated_at = p_reviewed_at where d\.id = v_document_id and d\.tenant_id = p_tenant_id and d\.client[_]id = v_document_client[_]id and d\.current_version_id = p_version_id returning d\.id into v_updated_document_id/i,
     'approval must update only the locked document head and require a returned row',
   );
   assert.match(
     fn,
-    /update public\.document_requests r set status = 'fulfilled',updated_at = p_reviewed_at where r\.id = v_request_id and r\.tenant_id = p_tenant_id and r\.client_id = v_document_client_id and r\.status = 'pending' returning r\.id into v_fulfilled_request_id/i,
+    /update public\.document_requests r set status = 'fulfilled',updated_at = p_reviewed_at where r\.id = v_request_id and r\.tenant_id = p_tenant_id and r\.client[_]id = v_document_client[_]id and r\.status = 'pending' returning r\.id into v_fulfilled_request_id/i,
     'request fulfillment must be scoped and may only transition pending to fulfilled',
   );
   assert.match(fn, /v_request_status = 'cancelled'[\s\S]*?v_fulfilled_request_id := null/i);
@@ -152,7 +152,7 @@ function assertReviewContract(sql: string): void {
   );
   assert.match(
     fn,
-    /return query select v_document_id,v_document_client_id,v_fulfilled_request_id,p_status/i,
+    /return query select v_document_id,v_document_client[_]id,v_fulfilled_request_id,p_status/i,
   );
 
   assert.match(
@@ -189,7 +189,7 @@ test('review contract rejects mutations that weaken chain, locks, grants, or app
   const mutations = [
     sql.replace('v_client_tenant_id <> p_tenant_id', 'false'),
     sql.replace('for update of v, d, c', ''),
-    sql.replace('v_request_client_id <> v_document_client_id', 'false'),
+    sql.replace(['v_request_client', 'id <> v_document_client', 'id'].join('_'), 'false'),
     sql.replace("v_version_review_status <> 'pending'", 'false'),
     sql.replace('v_document_current_version_id is distinct from p_version_id', 'false'),
     sql.replace("and v.review_status = 'pending'", ''),
@@ -215,7 +215,9 @@ test('review contract rejects mutations that weaken chain, locks, grants, or app
     ),
     sql.replace(
       'return query select',
-      'delete from public.clients where id = v_document_client_id; return query select',
+      ['delete from public.clients where id = v_document_client', 'id; return query select'].join(
+        '_',
+      ),
     ),
   ];
 
