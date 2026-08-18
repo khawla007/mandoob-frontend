@@ -131,20 +131,30 @@ import { test } from 'node:test';
 import { createServiceCaseSchema, updateServiceCaseSchema } from './service-case';
 
 test('create case requires tenant-owned client data and a useful title', () => {
-  assert.equal(createServiceCaseSchema.safeParse({ client_id: '', title: 'x', service_type: '' }).success, false);
-  assert.equal(createServiceCaseSchema.safeParse({
-    client_id: '3f3123e1-4265-40b0-91c3-f595c1e36e7a',
-    title: 'Mainland trade licence',
-    service_type: 'company_registration',
-    priority: 'high',
-  }).success, true);
+  assert.equal(
+    createServiceCaseSchema.safeParse({ client_id: '', title: 'x', service_type: '' }).success,
+    false,
+  );
+  assert.equal(
+    createServiceCaseSchema.safeParse({
+      client_id: '3f3123e1-4265-40b0-91c3-f595c1e36e7a',
+      title: 'Mainland trade licence',
+      service_type: 'company_registration',
+      priority: 'high',
+    }).success,
+    true,
+  );
 });
 
 test('completed cases require completed_at', () => {
   assert.equal(updateServiceCaseSchema.safeParse({ status: 'completed' }).success, false);
-  assert.equal(updateServiceCaseSchema.safeParse({
-    status: 'completed', completed_at: '2026-08-11T10:00:00.000Z',
-  }).success, true);
+  assert.equal(
+    updateServiceCaseSchema.safeParse({
+      status: 'completed',
+      completed_at: '2026-08-11T10:00:00.000Z',
+    }).success,
+    true,
+  );
 });
 ```
 
@@ -160,33 +170,41 @@ Expected: FAIL because `service-case.ts` does not exist.
 import { z } from 'zod';
 
 export const serviceCaseStatuses = [
-  'draft','documents_pending','ready_to_submit','submitted',
-  'authority_review','approved','completed','cancelled',
+  'draft',
+  'documents_pending',
+  'ready_to_submit',
+  'submitted',
+  'authority_review',
+  'approved',
+  'completed',
+  'cancelled',
 ] as const;
 
 export const createServiceCaseSchema = z.object({
   client_id: z.string().uuid(),
   title: z.string().trim().min(2).max(160),
   service_type: z.string().trim().min(2).max(80),
-  priority: z.enum(['low','normal','high','urgent']).default('normal'),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
   assigned_to: z.string().uuid().nullable().optional(),
   due_at: z.string().datetime().nullable().optional(),
   sla_due_at: z.string().datetime().nullable().optional(),
 });
 
-export const updateServiceCaseSchema = z.object({
-  status: z.enum(serviceCaseStatuses).optional(),
-  priority: z.enum(['low','normal','high','urgent']).optional(),
-  assigned_to: z.string().uuid().nullable().optional(),
-  due_at: z.string().datetime().nullable().optional(),
-  sla_due_at: z.string().datetime().nullable().optional(),
-  blocked_reason: z.string().trim().min(2).max(500).nullable().optional(),
-  completed_at: z.string().datetime().nullable().optional(),
-}).superRefine((value, ctx) => {
-  if (value.status === 'completed' && !value.completed_at) {
-    ctx.addIssue({ code: 'custom', path: ['completed_at'], message: 'Required when completed' });
-  }
-});
+export const updateServiceCaseSchema = z
+  .object({
+    status: z.enum(serviceCaseStatuses).optional(),
+    priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
+    assigned_to: z.string().uuid().nullable().optional(),
+    due_at: z.string().datetime().nullable().optional(),
+    sla_due_at: z.string().datetime().nullable().optional(),
+    blocked_reason: z.string().trim().min(2).max(500).nullable().optional(),
+    completed_at: z.string().datetime().nullable().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.status === 'completed' && !value.completed_at) {
+      ctx.addIssue({ code: 'custom', path: ['completed_at'], message: 'Required when completed' });
+    }
+  });
 ```
 
 - [ ] **Step 4: Run the test to verify green**
@@ -223,10 +241,21 @@ import { rankServiceCases, toServiceCase } from './service-cases';
 
 test('maps database fields without losing tenant ownership', () => {
   const row = toServiceCase({
-    id:'c1', tenant_id:'t1', client_id:'client1', title:'Licence', service_type:'registration',
-    status:'documents_pending', priority:'high', assigned_to:null, due_at:null,
-    sla_due_at:'2026-08-11T12:00:00Z', blocked_reason:'Passport missing', completed_at:null,
-    created_by:null, created_at:'2026-08-10T08:00:00Z', updated_at:'2026-08-10T08:00:00Z',
+    id: 'c1',
+    tenant_id: 't1',
+    client_id: 'client1',
+    title: 'Licence',
+    service_type: 'registration',
+    status: 'documents_pending',
+    priority: 'high',
+    assigned_to: null,
+    due_at: null,
+    sla_due_at: '2026-08-11T12:00:00Z',
+    blocked_reason: 'Passport missing',
+    completed_at: null,
+    created_by: null,
+    created_at: '2026-08-10T08:00:00Z',
+    updated_at: '2026-08-10T08:00:00Z',
   });
   assert.equal(row.tenantId, 't1');
   assert.equal(row.blockedReason, 'Passport missing');
@@ -234,10 +263,13 @@ test('maps database fields without losing tenant ownership', () => {
 
 test('ranks breached SLA before later urgent and high-priority cases', () => {
   const rows = [
-    { id:'later', priority:'urgent', slaDueAt:'2026-08-12T12:00:00Z' },
-    { id:'breached', priority:'normal', slaDueAt:'2026-08-11T08:00:00Z' },
+    { id: 'later', priority: 'urgent', slaDueAt: '2026-08-12T12:00:00Z' },
+    { id: 'breached', priority: 'normal', slaDueAt: '2026-08-11T08:00:00Z' },
   ];
-  assert.deepEqual(rankServiceCases(rows, new Date('2026-08-11T10:00:00Z')).map(x => x.id), ['breached','later']);
+  assert.deepEqual(
+    rankServiceCases(rows, new Date('2026-08-11T10:00:00Z')).map((x) => x.id),
+    ['breached', 'later'],
+  );
 });
 ```
 
@@ -252,21 +284,47 @@ Expected: FAIL because the data module does not exist.
 Define and export these exact signatures:
 
 ```ts
-export type ServiceCaseStatus = typeof serviceCaseStatuses[number];
+export type ServiceCaseStatus = (typeof serviceCaseStatuses)[number];
 export type ServiceCase = {
-  id:string; tenantId:string; clientId:string; clientName:string; title:string;
-  serviceType:string; status:ServiceCaseStatus; priority:'low'|'normal'|'high'|'urgent';
-  assignedTo:string|null; ownerName:string|null; dueAt:string|null; slaDueAt:string|null;
-  blockedReason:string|null; completedAt:string|null; createdAt:string; updatedAt:string;
+  id: string;
+  tenantId: string;
+  clientId: string;
+  clientName: string;
+  title: string;
+  serviceType: string;
+  status: ServiceCaseStatus;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  assignedTo: string | null;
+  ownerName: string | null;
+  dueAt: string | null;
+  slaDueAt: string | null;
+  blockedReason: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
-export function toServiceCase(row: ServiceCaseDbRow): Omit<ServiceCase,'clientName'|'ownerName'>;
-export function rankServiceCases<T extends {id:string;priority:string;slaDueAt:string|null}>(rows:T[], now?:Date): T[];
-export async function listServiceCases(tenantId:string, filters?:{
-  status?:ServiceCaseStatus[]; assignedTo?:string; clientId?:string;
-}): Promise<ServiceCase[]>;
-export async function createServiceCase(ctx:{tenantId:string;actorId:string;role:'pro'}, input:CreateServiceCaseInput): Promise<{id:string}>;
-export async function updateServiceCase(ctx:{tenantId:string;actorId:string;role:'pro'}, id:string, input:UpdateServiceCaseInput): Promise<void>;
+export function toServiceCase(row: ServiceCaseDbRow): Omit<ServiceCase, 'clientName' | 'ownerName'>;
+export function rankServiceCases<
+  T extends { id: string; priority: string; slaDueAt: string | null },
+>(rows: T[], now?: Date): T[];
+export async function listServiceCases(
+  tenantId: string,
+  filters?: {
+    status?: ServiceCaseStatus[];
+    assignedTo?: string;
+    clientId?: string;
+  },
+): Promise<ServiceCase[]>;
+export async function createServiceCase(
+  ctx: { tenantId: string; actorId: string; role: 'pro' },
+  input: CreateServiceCaseInput,
+): Promise<{ id: string }>;
+export async function updateServiceCase(
+  ctx: { tenantId: string; actorId: string; role: 'pro' },
+  id: string,
+  input: UpdateServiceCaseInput,
+): Promise<void>;
 ```
 
 Before insert or update, verify the client and assignee belong to `ctx.tenantId`. Every query must include `.eq('tenant_id', tenantId)`. Write `tenant_audit_log` entries named `service_case_created` and `service_case_updated`.
@@ -326,12 +384,18 @@ assert.equal(result.kpis.activeClients, 2);
 assert.equal(result.kpis.openCases, 3);
 assert.equal(result.kpis.renewalsDue30d, 2);
 assert.equal(result.finance.overdueMinor, 7_300);
-assert.deepEqual(result.actionDeck.map((item) => item.kind), ['case','renewal','document','invoice']);
+assert.deepEqual(
+  result.actionDeck.map((item) => item.kind),
+  ['case', 'renewal', 'document', 'invoice'],
+);
 assert.equal(result.caseVelocity[0].opened, 2);
 assert.equal(result.caseVelocity[0].completed, 1);
 assert.equal(result.renewalStreams.license.d7, 1);
 assert.ok(result.health.score >= 0 && result.health.score <= 100);
-assert.equal(result.team.some((member) => member.tenantId === 'other-tenant'), false);
+assert.equal(
+  result.team.some((member) => member.tenantId === 'other-tenant'),
+  false,
+);
 ```
 
 - [ ] **Step 2: Confirm the tests fail**
@@ -344,15 +408,55 @@ Expected: FAIL because `pro-dashboard.ts` does not exist.
 
 ```ts
 export type ProDashboardData = {
-  generatedAt:string;
-  kpis:{activeClients:number;openCases:number;renewalsDue30d:number;renewalsDue7d:number;collectedMinor:number;currency:string;collectionRate:number};
-  health:{score:number;overdueRatio:number;slaCompletionRate:number;blockedRatio:number;reminderRate:number;workloadBalance:number};
-  caseVelocity:Array<{date:string;opened:number;completed:number}>;
-  actionDeck:Array<{id:string;kind:'case'|'renewal'|'document'|'invoice';title:string;detail:string;clientName:string;ownerName:string|null;deadline:string|null;urgency:'breached'|'urgent'|'soon'|'normal';href:string}>;
-  deadlineIntensity:Array<{date:string;morning:number;afternoon:number}>;
-  finance:{billedMinor:number;paidMinor:number;dueSoonMinor:number;overdueMinor:number;currency:string};
-  renewalStreams:Record<'license'|'visa'|'eid'|'ejari',{d7:number;d30:number;d60:number;d90:number}>;
-  team:Array<{profileId:string;tenantId:string;name:string;activeCases:number;capacityPercent:number}>;
+  generatedAt: string;
+  kpis: {
+    activeClients: number;
+    openCases: number;
+    renewalsDue30d: number;
+    renewalsDue7d: number;
+    collectedMinor: number;
+    currency: string;
+    collectionRate: number;
+  };
+  health: {
+    score: number;
+    overdueRatio: number;
+    slaCompletionRate: number;
+    blockedRatio: number;
+    reminderRate: number;
+    workloadBalance: number;
+  };
+  caseVelocity: Array<{ date: string; opened: number; completed: number }>;
+  actionDeck: Array<{
+    id: string;
+    kind: 'case' | 'renewal' | 'document' | 'invoice';
+    title: string;
+    detail: string;
+    clientName: string;
+    ownerName: string | null;
+    deadline: string | null;
+    urgency: 'breached' | 'urgent' | 'soon' | 'normal';
+    href: string;
+  }>;
+  deadlineIntensity: Array<{ date: string; morning: number; afternoon: number }>;
+  finance: {
+    billedMinor: number;
+    paidMinor: number;
+    dueSoonMinor: number;
+    overdueMinor: number;
+    currency: string;
+  };
+  renewalStreams: Record<
+    'license' | 'visa' | 'eid' | 'ejari',
+    { d7: number; d30: number; d60: number; d90: number }
+  >;
+  team: Array<{
+    profileId: string;
+    tenantId: string;
+    name: string;
+    activeCases: number;
+    capacityPercent: number;
+  }>;
 };
 ```
 
@@ -361,7 +465,10 @@ Implement `calculateProDashboard(input, now)` as a pure exported function. Filte
 - [ ] **Step 4: Implement the server loader**
 
 ```ts
-export async function getProDashboardData(tenantId:string, days:7|30|90 = 30):Promise<ProDashboardData>
+export async function getProDashboardData(
+  tenantId: string,
+  days: 7 | 30 | 90 = 30,
+): Promise<ProDashboardData>;
 ```
 
 Load `clients`, `service_cases`, `profiles`, `renewals`, `document_requests`, `documents/currentVersion`, `invoices`, `payments`, and `refunds` in parallel with explicit `.eq('tenant_id', tenantId)`. Reuse `calculateProFinanceDashboard` for money rules and the renewal helpers for day buckets. Throw named query errors; the page will isolate widget failures with error boundaries in Task 7.
@@ -400,7 +507,11 @@ Add semantic variables to both `:root` and `.dark`, reusing `--brand-accent`:
 --signal-info: oklch(0.55 0.09 220);
 --signal-success: oklch(0.53 0.12 155);
 --signal-orange-soft: color-mix(in oklch, var(--brand-accent) 11%, var(--card));
---signal-grid: repeating-linear-gradient(135deg, transparent 0 12px, color-mix(in oklch, var(--brand-accent) 8%, transparent) 12px 13px);
+--signal-grid: repeating-linear-gradient(
+  135deg,
+  transparent 0 12px,
+  color-mix(in oklch, var(--brand-accent) 8%, transparent) 12px 13px
+);
 ```
 
 Dark mode uses the same semantic hues with higher lightness and mixes soft surfaces into `--card`. Do not change public `.site-public` values.
@@ -408,7 +519,11 @@ Dark mode uses the same semantic hues with higher lightness and mixes soft surfa
 - [ ] **Step 2: Implement canonical drill-down links with tests**
 
 ```ts
-export function dashboardHref(slug:string, target:'applications'|'renewals'|'documents'|'payments', params:Record<string,string>):string {
+export function dashboardHref(
+  slug: string,
+  target: 'applications' | 'renewals' | 'documents' | 'payments',
+  params: Record<string, string>,
+): string {
   const query = new URLSearchParams(params);
   return `/t/${encodeURIComponent(slug)}/${target}?${query.toString()}`;
 }
@@ -470,9 +585,10 @@ git commit -m "feat: build Signal Studio dashboard widgets"
 Resolve the tenant and requested `range`, then call:
 
 ```ts
-const range = searchParams.range === '7' || searchParams.range === '90'
-  ? Number(searchParams.range) as 7 | 90
-  : 30;
+const range =
+  searchParams.range === '7' || searchParams.range === '90'
+    ? (Number(searchParams.range) as 7 | 90)
+    : 30;
 const dashboard = await getProDashboardData(tenant.id, range);
 ```
 
@@ -520,8 +636,13 @@ git commit -m "feat: launch PRO Signal Studio dashboard"
 The test logs in with the existing PRO fixture and asserts:
 
 ```ts
-await expect(page.getByRole('heading', { name: /command center|operational overview/i })).toBeVisible();
-await expect(page.getByRole('link', { name: /open action deck/i })).toHaveAttribute('href', /applications/);
+await expect(
+  page.getByRole('heading', { name: /command center|operational overview/i }),
+).toBeVisible();
+await expect(page.getByRole('link', { name: /open action deck/i })).toHaveAttribute(
+  'href',
+  /applications/,
+);
 await expect(page.locator('[data-testid="case-velocity"]')).toHaveAttribute('aria-label');
 await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll');
 ```

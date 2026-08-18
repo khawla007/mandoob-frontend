@@ -11,8 +11,8 @@ This is a focused reference for the PRO Document Center schema introduced or har
 | Column               | Purpose                                                       |
 | -------------------- | ------------------------------------------------------------- |
 | `id`                 | Document UUID.                                                |
-| `tenant_id`          | Firm boundary.                                                |
-| `client_id`          | Owning client; must share the firm.                           |
+| `tenant_id`          | Company workspace boundary.                                   |
+| `company_id`         | Owning company; must be the tenant's one company profile.     |
 | `employee_id`        | Optional employee owner for employee-derived expiry.          |
 | `request_id`         | Optional originating document request.                        |
 | `doc_type`           | Locked document-type value.                                   |
@@ -30,7 +30,7 @@ Review updates the targeted version's review fields only while that version is p
 
 ### `document_requests`
 
-Requests carry `tenant_id`, `client_id`, optional `employee_id`, requester, type, label, notes, due timestamp, and `pending | fulfilled | cancelled` status. Pending requests without a document head form the queue's awaiting-upload rows. Migration 0057 adds `document_requests_tenant_status_due_idx (tenant_id, status, due_at, id)`.
+Requests carry `tenant_id`, `company_id`, optional `employee_id`, requester, type, label, notes, due timestamp, and `pending | fulfilled | cancelled` status. Pending requests without a document head form the queue's awaiting-upload rows. Migration 0057 adds `document_requests_tenant_status_due_idx (tenant_id, status, due_at, id)`.
 
 ## Supported document types
 
@@ -58,39 +58,39 @@ Migration 0057 preserves the original eight values and adds `aoa`, `bank_referen
 
 ## Expiry source rules
 
-`documents.expires_on` is not a duplicate of existing client/employee dates. Effective expiry is selected as follows:
+`documents.expires_on` is not a duplicate of existing company/employee dates. Effective expiry is selected as follows:
 
-| Relationship                | Authoritative column     |
-| --------------------------- | ------------------------ |
-| Trade licence               | `clients.license_expiry` |
-| Employee-linked visa        | `employees.visa_expiry`  |
-| Employee-linked Emirates ID | `employees.eid_expiry`   |
-| Other document              | `documents.expires_on`   |
+| Relationship                | Authoritative column              |
+| --------------------------- | --------------------------------- |
+| Trade licence               | `company_profiles.license_expiry` |
+| Employee-linked visa        | `employees.visa_expiry`           |
+| Employee-linked Emirates ID | `employees.eid_expiry`            |
+| Other document              | `documents.expires_on`            |
 
-`set_pro_document_expiry` refuses the first three cases with `MD409`. It accepts a date or `null` only for document-owned expiry, after verifying the active firm, active PRO actor, document/client firm chain, and any employee/client chain. The update and `tenant_audit_log` insert are one transaction.
+`set_pro_document_expiry` refuses the first three cases with `MD409`. It accepts a date or `null` only for document-owned expiry, after verifying the active tenant, active PRO actor, document/company chain, and any employee/company chain. The update and `tenant_audit_log` insert are one transaction.
 
 ## Private RPC surface
 
-| Function                           | Shape                                                               | Purpose                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `list_pro_document_center`         | table rows with `total_count` and `effective_page`                  | Firm-scoped filtered, sorted, exact-counted queue with page size clamped to 50. |
-| `get_pro_document_version_history` | JSON envelope                                                       | One ownership-scoped snapshot of every version for a document.                  |
-| `set_pro_document_expiry`          | `document_id`, `client_id`, `expires_on`                            | Atomic document-owned expiry update and audit.                                  |
-| `review_document_version`          | `document_id`, `client_id`, `fulfilled_request_id`, `review_status` | Atomic ownership-safe review, head/request transition, and audit.               |
+| Function                           | Shape                                                                | Purpose                                                                            |
+| ---------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `list_pro_document_center`         | table rows with `total_count` and `effective_page`                   | Company-scoped filtered, sorted, exact-counted queue with page size clamped to 50. |
+| `get_pro_document_version_history` | JSON envelope                                                        | One ownership-scoped snapshot of every version for a document.                     |
+| `set_pro_document_expiry`          | `document_id`, `company_id`, `expires_on`                            | Atomic document-owned expiry update and audit.                                     |
+| `review_document_version`          | `document_id`, `company_id`, `fulfilled_request_id`, `review_status` | Atomic ownership-safe review, head/request transition, and audit.                  |
 
 All four functions are invoked by the server with service-role access, and the Document Center migrations revoke them from browser-facing database roles. Authorization is layered rather than identical in every RPC:
 
-- the page and every action freshly require an active PRO session whose firm membership matches the resolved route slug;
-- the data layer validates identifiers and filter inputs, then supplies the already-authorized firm ID to service-role reads;
+- the page and every action freshly require an active PRO session whose live company assignment matches the resolved route slug;
+- the data layer validates identifiers and filter inputs, then supplies the already-authorized tenant and company IDs to service-role reads;
 - `list_pro_document_center` is service-role-only and scopes every request/document join to `p_tenant_id`, but it does not authenticate an actor itself;
-- history validates the document/client/firm chain inside its RPC;
-- review and expiry additionally enforce the active firm, active PRO actor, and their applicable locked ownership chains inside the mutation RPCs.
+- history validates the document/company/tenant chain inside its RPC;
+- review and expiry additionally enforce the active tenant, active PRO actor, and their applicable locked ownership chains inside the mutation RPCs.
 
-Signed URL access is not one of these RPCs; its data-layer query separately proves the version/document/client/firm chain before storage signing.
+Signed URL access is not one of these RPCs; its data-layer query separately proves the version/document/company/tenant chain before storage signing.
 
 ## Review invariants
 
-Migration 0058 locks the version, document, client, and linked request while reviewing. It requires an active PRO actor in the active firm, validates all tenant/client relationships, and permits review only when the selected version is both `pending` and still the document's current head. The version update repeats the pending predicate; the approval update repeats the current-head predicate, keeping the check and mutation atomic under the row locks. A stale, already-reviewed, or superseded version raises `MD409` (`document_review_conflict`), which the data layer/server action expose only as a sanitized localized validation conflict.
+Migration 0058 locks the version, document, company, and linked request while reviewing. Migration 0059 rebases these ownership checks to company IDs. The RPC requires an active PRO actor in the active tenant, validates all tenant/company relationships, and permits review only when the selected version is both `pending` and still the document's current head. The version update repeats the pending predicate; the approval update repeats the current-head predicate, keeping the check and mutation atomic under the row locks. A stale, already-reviewed, or superseded version raises `MD409` (`document_review_conflict`), which the data layer/server action expose only as a sanitized localized validation conflict.
 
 Approved/rejected are the only accepted outcomes. A rejection requires a Unicode-trimmed note of at most 280 characters. Approval keeps the reviewed version as the document head and changes a pending linked request to fulfilled in the same transaction. Each successful review inserts one `tenant_audit_log` entry before returning.
 

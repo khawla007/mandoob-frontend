@@ -70,6 +70,14 @@ function auditableSourceFiles(directory = 'src'): string[] {
   });
 }
 
+function auditableDocumentationFiles(directory = 'docs/documentation'): string[] {
+  return readdirSync(join(process.cwd(), directory), { withFileTypes: true }).flatMap((entry) => {
+    const path = `${directory}/${entry.name}`;
+    if (entry.isDirectory()) return auditableDocumentationFiles(path);
+    return entry.name.endsWith('.md') ? [path] : [];
+  });
+}
+
 function leafEntries(value: unknown, prefix = ''): Array<[string, string]> {
   if (typeof value === 'string') return [[prefix, value]];
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return [];
@@ -132,6 +140,26 @@ test('public and localized product copy excludes every obsolete multi-client cla
     }
     for (const pattern of VISIBLE_TENANT_SOURCE_PATTERNS) {
       assert.doesNotMatch(copy, pattern, `${path} still renders visible tenant terminology`);
+    }
+  }
+});
+
+test('active documentation excludes stale client ownership contracts', () => {
+  const staleContracts = [
+    /client_id/iu,
+    /linked_client_id/iu,
+    /converted_client_id/iu,
+    /from\('clients'\)/iu,
+    /\/clients/iu,
+    /\bAdd Client\b/iu,
+    /\bInvite Team Member\b/iu,
+    /\b50 to 5,000 clients\b/iu,
+  ];
+
+  for (const path of auditableDocumentationFiles()) {
+    const copy = source(path);
+    for (const contract of staleContracts) {
+      assert.doesNotMatch(copy, contract, `${path} still contains ${contract}`);
     }
   }
 });

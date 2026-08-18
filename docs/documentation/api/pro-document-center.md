@@ -2,20 +2,20 @@
 
 ## Boundary and authorization
 
-The Document Center is a server-rendered PRO workspace at `/t/{pro-slug}/documents`. Before any service-role read, the page obtains a fresh PRO session, resolves the URL slug, requires the session's `tenantId` to equal the resolved firm ID, and requires that firm to be active. An unknown slug returns not found; a cross-firm session is forbidden.
+The Document Center is a server-rendered PRO workspace at `/t/{pro-slug}/documents`. Before any service-role read, the page obtains a fresh PRO session, resolves the URL slug, requires a live assignment to the tenant's company, and requires that tenant to be active. An unknown slug returns not found; a cross-company session is forbidden.
 
-Every server action repeats that authorization sequence. A previous page render is not treated as authorization for a request, review, open, history, expiry, or client-search action. Service-role calls are private server implementation details: the four RPCs used by Document Center revoke execution from `public`, `anon`, and `authenticated` and grant it only to `service_role`.
+Every server action repeats that authorization sequence. A previous page render is not treated as authorization for a request, review, open, history, or expiry action. Service-role calls are private server implementation details: the four RPCs used by Document Center revoke execution from `public`, `anon`, and `authenticated` and grant it only to `service_role`.
 
-Ownership is proven through linked records, not by trusting a caller-supplied firm or client ID:
+Ownership is proven through linked records, not by trusting a caller-supplied tenant or company ID:
 
-- queue rows join request/document records to a client with the same firm ID;
-- version history proves `document -> client -> firm` and reads only versions sharing the document and firm;
-- opening proves the technical `version -> document -> client -> tenant` chain before signing storage;
-- review proves and locks `version -> document -> client -> firm`, and also the linked request when present;
-- expiry proves and locks `document -> client -> firm` and proves the linked employee when present;
-- request creation resolves the authoritative client row and verifies its firm.
+- queue rows join request/document records to the one company in the tenant;
+- version history proves `document -> company -> tenant` and reads only versions sharing that chain;
+- opening proves the technical `version -> document -> company -> tenant` chain before signing storage;
+- review proves and locks `version -> document -> company -> tenant`, and also the linked request when present;
+- expiry proves and locks `document -> company -> tenant` and proves the linked employee when present;
+- request creation derives the company from the live assignment rather than accepting a selector.
 
-Cross-firm or broken ownership chains are returned as not found where applicable so that record existence is not disclosed.
+Cross-company or broken ownership chains are returned as not found where applicable so that record existence is not disclosed.
 
 ## Queue RPC
 
@@ -23,20 +23,20 @@ Cross-firm or broken ownership chains are returned as not found where applicable
 
 ### Arguments
 
-| Argument                       | Type      | Default   | Contract                                                                                        |
-| ------------------------------ | --------- | --------- | ----------------------------------------------------------------------------------------------- |
-| `p_tenant_id`                  | `uuid`    | required  | Authoritative firm scope.                                                                       |
-| `p_view`                       | `text`    | `all`     | `all`, `requested`, `submitted`, `approved`, `rejected`, `expiring`, or `overdue`.              |
-| `p_search`                     | `text`    | `null`    | Case-insensitive substring across client, employee, label, type, requester, and reviewer names. |
-| `p_client_id`                  | `uuid`    | `null`    | Exact client filter.                                                                            |
-| `p_doc_type`                   | `text`    | `null`    | One supported document type.                                                                    |
-| `p_due_from`, `p_due_to`       | `date`    | `null`    | Inclusive request-due bounds using the Dubai calendar date.                                     |
-| `p_expiry_from`, `p_expiry_to` | `date`    | `null`    | Inclusive effective-expiry bounds.                                                              |
-| `p_sort`                       | `text`    | `urgency` | `urgency`, `newest`, `oldest`, `due_date`, or `expiry_date`.                                    |
-| `p_focus_kind`                 | `text`    | `null`    | `request` or `document`; must be paired with `p_focus_id`.                                      |
-| `p_focus_id`                   | `uuid`    | `null`    | Exact focused entity.                                                                           |
-| `p_page`                       | `integer` | `1`       | Requested one-based page.                                                                       |
-| `p_page_size`                  | `integer` | `50`      | Clamped to 1–50 in SQL.                                                                         |
+| Argument                       | Type      | Default   | Contract                                                                                         |
+| ------------------------------ | --------- | --------- | ------------------------------------------------------------------------------------------------ |
+| `p_tenant_id`                  | `uuid`    | required  | Authoritative workspace scope.                                                                   |
+| `p_view`                       | `text`    | `all`     | `all`, `requested`, `submitted`, `approved`, `rejected`, `expiring`, or `overdue`.               |
+| `p_search`                     | `text`    | `null`    | Case-insensitive substring across company, employee, label, type, requester, and reviewer names. |
+| `p_company_id`                 | `uuid`    | `null`    | Exact company filter; the PRO page supplies its assigned company.                                |
+| `p_doc_type`                   | `text`    | `null`    | One supported document type.                                                                     |
+| `p_due_from`, `p_due_to`       | `date`    | `null`    | Inclusive request-due bounds using the Dubai calendar date.                                      |
+| `p_expiry_from`, `p_expiry_to` | `date`    | `null`    | Inclusive effective-expiry bounds.                                                               |
+| `p_sort`                       | `text`    | `urgency` | `urgency`, `newest`, `oldest`, `due_date`, or `expiry_date`.                                     |
+| `p_focus_kind`                 | `text`    | `null`    | `request` or `document`; must be paired with `p_focus_id`.                                       |
+| `p_focus_id`                   | `uuid`    | `null`    | Exact focused entity.                                                                            |
+| `p_page`                       | `integer` | `1`       | Requested one-based page.                                                                        |
+| `p_page_size`                  | `integer` | `50`      | Clamped to 1–50 in SQL.                                                                          |
 
 Invalid enum combinations, reversed date ranges, incomplete focus values, or null page inputs produce no rows. URL inputs are validated before this call, repeated parameters use the first value, malformed values fall back to safe defaults, and an exact request/document focus forces page 1.
 
@@ -50,7 +50,7 @@ The function unions two entity shapes:
 Each row returns:
 
 ```text
-entity_kind, entity_id, tenant_id, client_id, client_name, client_status,
+entity_kind, entity_id, tenant_id, company_id, company_name, company_status,
 employee_id, employee_name, doc_type, label,
 request_id, request_status, due_at, requested_by, requested_by_name,
 document_id, current_version_id, current_version_created_at,
@@ -73,12 +73,12 @@ Preset window values are `all`, `overdue`, `7`, `30`, and `90`. `all` preserves 
 
 The effective expiry and its owner are:
 
-| Document relationship       | Effective field          | `expiry_source`        | Editable here |
-| --------------------------- | ------------------------ | ---------------------- | ------------- |
-| Trade licence               | `clients.license_expiry` | `client_license`       | No            |
-| Employee-linked visa        | `employees.visa_expiry`  | `employee_visa`        | No            |
-| Employee-linked Emirates ID | `employees.eid_expiry`   | `employee_emirates_id` | No            |
-| Any other document          | `documents.expires_on`   | `document`             | Yes           |
+| Document relationship       | Effective field                   | `expiry_source`        | Editable here |
+| --------------------------- | --------------------------------- | ---------------------- | ------------- |
+| Trade licence               | `company_profiles.license_expiry` | `company_license`      | No            |
+| Employee-linked visa        | `employees.visa_expiry`           | `employee_visa`        | No            |
+| Employee-linked Emirates ID | `employees.eid_expiry`            | `employee_emirates_id` | No            |
+| Any other document          | `documents.expires_on`            | `document`             | Yes           |
 
 ## Version history RPC
 
@@ -101,7 +101,7 @@ Versions are ordered by `created_at desc, id desc`, numbered oldest-to-newest wh
 
 `public.review_document_version(p_tenant_id, p_actor_id, p_version_id, p_status, p_note, p_reviewed_at)` performs the ownership checks, row locks, review update, related head/request changes, and tenant audit insert in one transaction.
 
-- The actor must be an active PRO in the active firm.
+- The actor must be an active PRO with a live assignment to the active company workspace.
 - Only a version whose review state is still `pending` and whose ID is still `documents.current_version_id` may be reviewed.
 - Status is `approved` or `rejected`.
 - A rejection requires a non-whitespace note; notes are Unicode-trimmed and limited to 280 characters.
@@ -109,11 +109,11 @@ Versions are ordered by `created_at desc, id desc`, numbered oldest-to-newest wh
 - Rejection does not fulfill the request.
 - The version collection is preserved; review updates the selected version's review fields rather than deleting prior versions.
 
-The RPC locks the version, document, client, and linked request before applying the transition. After the lock, it checks both the pending state and current-head identity; the version update repeats the `review_status = 'pending'` predicate, and approval repeats the current-head predicate on the document update. A stale, already-reviewed, or superseded version raises database conflict `MD409` (`document_review_conflict`). The data layer maps that to a conflict-status `VALIDATION_FAILED`, and the server action returns only its sanitized localized validation result rather than the raw database message.
+The RPC locks the version, document, company, and linked request before applying the transition. After the lock, it checks both the pending state and current-head identity; the version update repeats the `review_status = 'pending'` predicate, and approval repeats the current-head predicate on the document update. A stale, already-reviewed, or superseded version raises database conflict `MD409` (`document_review_conflict`). The data layer maps that to a conflict-status `VALIDATION_FAILED`, and the server action returns only its sanitized localized validation result rather than the raw database message.
 
 ### Document-owned expiry
 
-`public.set_pro_document_expiry(p_tenant_id, p_document_id, p_actor_id, p_expires_on)` accepts a date or `null` and returns `document_id`, authoritative `client_id`, and `expires_on`. It checks an active firm and active PRO, locks and verifies the ownership chain, rejects externally managed expiry with `MD409`, updates `documents.expires_on`, and writes the tenant audit entry atomically.
+`public.set_pro_document_expiry(p_tenant_id, p_document_id, p_actor_id, p_expires_on)` accepts a date or `null` and returns `document_id`, authoritative `company_id`, and `expires_on`. It checks an active tenant and PRO, locks and verifies the ownership chain, rejects externally managed expiry with `MD409`, updates `documents.expires_on`, and writes the tenant audit entry atomically.
 
 Auth-event telemetry is attempted after a successful review or expiry transaction. Telemetry failure is logged safely and does not undo the committed database mutation.
 
@@ -124,16 +124,16 @@ Open actions return `{ url, expiresAt }` only after full ownership validation. S
 The stored key must have exactly this generated shape:
 
 ```text
-{lowercase tenant UUID}/{lowercase client UUID}/{supported doc type}/
+{lowercase tenant UUID}/{lowercase company UUID}/{supported doc type}/
 {YYYY-MM-DD}_{optional lowercase base36 upload stamp_}{12 lowercase hex hash}_{safe filename}.{pdf|jpg|png|docx|xlsx}
 ```
 
-The optional stamp preserves compatibility with legacy generated keys; new uploads include it. Empty, dot, traversal, encoded-percent, backslash, control-character, mismatched-firm/client, unsupported-type, or non-generated keys are never signed.
+The optional stamp preserves compatibility with legacy generated keys; new uploads include it. Empty, dot, traversal, encoded-percent, backslash, control-character, mismatched tenant/company, unsupported-type, or non-generated keys are never signed.
 
 ## Server actions and result codes
 
-Document Center actions return a discriminated result: success is `{ ok: true, code: "SUCCESS", data }`; failures are `{ ok: false, code, messageKey }`. Expected codes are `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `TENANT_NOT_FOUND`, `TENANT_INACTIVE`, `EXPIRY_EXTERNALLY_MANAGED`, `STORAGE_SIGN_FAILED`, and `INTERNAL`. Client-facing failures use localization keys; raw database, storage, exception, request-header, and stack details are not returned. Unexpected details go only through sanitized structured logging.
+Document Center actions return a discriminated result: success is `{ ok: true, code: "SUCCESS", data }`; failures are `{ ok: false, code, messageKey }`. Expected codes are `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `TENANT_NOT_FOUND`, `TENANT_INACTIVE`, `EXPIRY_EXTERNALLY_MANAGED`, `STORAGE_SIGN_FAILED`, and `INTERNAL`. User-facing failures use localization keys; raw database, storage, exception, request-header, and stack details are not returned. Unexpected details go only through sanitized structured logging.
 
-Successful request, review, and expiry actions revalidate both `/t/{pro-slug}/documents` and `/t/{pro-slug}/clients/{authoritative client UUID}`. The client ID used for cache invalidation comes from the verified data operation, not from form input. Open and history are read actions and do not revalidate.
+Successful request, review, and expiry actions revalidate both `/t/{pro-slug}/documents` and `/t/{pro-slug}/company`. The company ID returned by mutations is authoritative and is never accepted as a company selector. Open and history are read actions and do not revalidate.
 
 After creating a request, the server attempts a tenant audit record and auth-event telemetry; failures are safely logged and do not roll back the request. Current notification sequencing then requires a linked customer profile and auth-user email; without both, no notification channel is attempted. The Email enqueue is awaited first. Only after it succeeds does the server attempt WhatsApp and then SMS when a profile phone exists; those two attempts are individually best-effort. If the resolved profile has no phone, the server makes best-effort attempts to record WhatsApp and SMS skips in the tenant audit log. Any notification-stage failure is caught by request creation, so it does not undo or report failure for the already-created request. This email-first dependency is a current implementation limitation, not independent channel fan-out.

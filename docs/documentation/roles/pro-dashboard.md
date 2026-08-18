@@ -2,11 +2,11 @@
 
 ## Purpose and access
 
-Signal Studio is the signed-in PRO firm's operational command center. It combines urgent applications, renewals, document work, invoices, workload, and service performance without replacing the working module pages.
+Signal Studio is the signed-in PRO's command center for the one assigned company. It combines urgent applications, renewals, document work, invoices, workload, and service performance without replacing the working module pages.
 
-The dashboard requires an authenticated PRO user. The parent tenant layout redirects a signed-in user whose firm does not match the URL to login; an unknown firm returns not found, while an inactive firm receives the dashboard's suspended-account state. Finance and team widgets are permission-gated in the page contract and are currently available to the PRO role.
+The dashboard requires an authenticated PRO user and a live company assignment. The parent tenant layout rejects a signed-in user whose authoritative assignment does not match the URL; an unknown tenant returns not found, while an inactive tenant receives the dashboard's suspended-account state. Finance and operational widgets are available only inside the assigned company scope.
 
-Applications also requires an authenticated PRO user. The parent layout applies the same cross-PRO redirect and unknown-firm behavior before the page runs. The page then rejects an inactive firm through the active-firm guard; it does not use the dashboard's suspended-account state.
+Applications also requires an authenticated PRO user. The parent layout applies the same live-assignment and unknown-tenant behavior before the page runs. The page then rejects an inactive tenant through the active guard; it does not use the dashboard's suspended-account state.
 
 ## Dashboard controls
 
@@ -21,21 +21,21 @@ Dates, deadline periods, current-month comparisons, and finance cutoffs use Duba
 
 ## Shipped widgets
 
-| Widget                | Definition                                                                                                       | Main drill-down                                             |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Signal hero           | Priority-action count, explainable operational health score, and compact opened/completed velocity               | Open applications or assign work                            |
-| Active clients        | Active clients and current-month minus previous-month additions                                                  | Active clients                                              |
-| Open cases            | All cases except completed/cancelled, split into moving and blocked                                              | Open Applications view                                      |
-| Renewals due          | Active overdue backlog plus upcoming renewals within 30 days, with a 7-day detail                                | Active Renewals, 30 days                                    |
-| Collections           | Current-month net collections and net collections as a percentage of current-month billed value                  | Paid invoice view                                           |
-| Case velocity         | Daily applications opened and completed for 7, 30, or 90 days; missing dates are zero                            | Open Applications view                                      |
-| Action Deck           | Highest-priority cases, renewals, pending document work, and open invoices                                       | The exact application, renewal, client document, or invoice |
-| Deadline intensity    | Morning/afternoon counts for dated action items across the selected range                                        | Filtered application, renewal, document, or invoice view    |
-| Collections waterfall | Current-month billed and paid totals plus open invoices due within 30 days or overdue                            | Matching invoice view                                       |
-| Renewal streams       | Cumulative active renewal backlog at 7, 30, 60, and 90 days for licence, visa, Emirates ID, and Ejari/lease work | Matching active renewal type and window                     |
-| Team signal           | Active application count and capacity percentage per active PRO owner, plus unassigned work                      | Applications filtered by owner or open status               |
+| Widget                | Definition                                                                                                       | Main drill-down                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Signal hero           | Priority-action count, explainable operational health score, and compact opened/completed velocity               | Open applications or assign work                             |
+| Assigned company      | Current company identity and operational status                                                                  | Assigned Company                                             |
+| Open cases            | All cases except completed/cancelled, split into moving and blocked                                              | Open Applications view                                       |
+| Renewals due          | Active overdue backlog plus upcoming renewals within 30 days, with a 7-day detail                                | Active Renewals, 30 days                                     |
+| Collections           | Current-month net collections and net collections as a percentage of current-month billed value                  | Paid invoice view                                            |
+| Case velocity         | Daily applications opened and completed for 7, 30, or 90 days; missing dates are zero                            | Open Applications view                                       |
+| Action Deck           | Highest-priority cases, renewals, pending document work, and open invoices                                       | The exact application, renewal, company document, or invoice |
+| Deadline intensity    | Morning/afternoon counts for dated action items across the selected range                                        | Filtered application, renewal, document, or invoice view     |
+| Collections waterfall | Current-month billed and paid totals plus open invoices due within 30 days or overdue                            | Matching invoice view                                        |
+| Renewal streams       | Cumulative active renewal backlog at 7, 30, 60, and 90 days for licence, visa, Emirates ID, and Ejari/lease work | Matching active renewal type and window                      |
+| Work signal           | Active application count, capacity percentage, and unassigned work for the assigned company                      | Applications filtered by owner or open status                |
 
-The compact Action Deck keeps the globally highest-ranked five items. SLA cases come first and rank breached then nearest deadline; renewals follow by deadline, blocked cases by oldest `updated_at`, documents next, other cases by priority, and invoices last. The hero count includes every ranked priority signal, including items beyond the five-card deck. For blocked cases, `updated_at` is the blocked-since proxy because the schema does not yet have `blocked_at`. Team capacity uses ten active cases as the explicit 100% utilization target and can show values above 100%.
+The compact Action Deck keeps the highest-ranked five items for the assigned company. SLA cases come first and rank breached then nearest deadline; renewals follow by deadline, blocked cases by oldest `updated_at`, documents next, other cases by priority, and invoices last. The hero count includes every ranked priority signal, including items beyond the five-card deck. For blocked cases, `updated_at` is the blocked-since proxy because the schema does not yet have `blocked_at`. Work capacity uses ten active cases as the explicit 100% utilization target and can show values above 100%.
 
 ## Operational health formula
 
@@ -47,7 +47,7 @@ The score is the rounded, equally weighted mean of five 0–100 signals. Each in
 4. `Reminder rate`: for each active renewal with an elapsed reminder schedule, only its latest elapsed schedule is measured. Its last notification is on time when sent from that schedule through the next 24 hours; renewals with only future schedules are not measurable.
 5. `Workload balance`: balance across active PRO owners, including unassigned open work as a workload bucket.
 
-The score is zero when there are no clients, cases, or renewals. The score dialog exposes every input and indicates whether higher or lower is healthier; it is an operational signal, not an employee ranking.
+The score is zero when the assigned company has no cases or renewals. The score dialog exposes every input and indicates whether higher or lower is healthier; it is an operational signal, not an employee ranking.
 
 ## Finance semantics
 
@@ -61,12 +61,12 @@ All finance values use one reporting currency. AED wins when present; otherwise 
 
 ## Drill-down contracts
 
-All paths below are scoped to the signed-in PRO firm. The technical `/t/{pro-slug}` prefix is the internal routing boundary.
+All paths below are scoped to the signed-in PRO's live company assignment. The technical `/t/{pro-slug}` prefix is the internal routing boundary.
 
-- **Clients:** `/t/{pro-slug}/clients?status=active`.
+- **Assigned Company:** `/t/{pro-slug}/company`.
 - **Applications:** `view=open`, `case={UUID}`, or `date=YYYY-MM-DD` with `period=morning` or `period=afternoon` and `eventTypes=case`. Optional `owner={UUID}` and `serviceType={value}` are preserved.
 - **Renewals:** `tab=active`, optionally with `type` set to `license`, `visa`, `eid`, or `ejari`; `days` set to `7`, `30`, `60`, or `90`; `target={UUID}`; or the `date`, `period`, and `eventTypes=renewal` deadline contract.
-- **Client documents:** `/t/{pro-slug}/clients/{client UUID}?tab=documents&request={UUID}` or `document={UUID}`.
+- **Company documents:** `/t/{pro-slug}/documents?request={UUID}` or `document={UUID}`.
 - **Payments:** `view=billed`, `view=paid`, `view=due-soon`, or `view=overdue`. Deadline cells use `view=due-date` with `date`, `period`, and `eventTypes=invoice`.
 - **Exact invoice:** `/t/{pro-slug}/payments/{invoice UUID}`.
 
@@ -74,13 +74,13 @@ Malformed UUIDs, dates, periods, types, ranges, and views are ignored or fall ba
 
 ## Applications workspace and lifecycle
 
-Applications is a working page, not a dashboard placeholder. A PRO user can create an application, filter by status, owner, or service type, follow exact dashboard targets, page through 50-row results, and complete or cancel eligible work. Rows show client, service, status, owner, SLA/due dates, and the available action.
+Applications is a working page, not a dashboard placeholder. A PRO user can create an application for the assigned company, filter by status, owner, or service type, follow exact dashboard targets, page through 50-row results, and complete or cancel eligible work. Rows show company, service, status, owner, SLA/due dates, and the available action.
 
 The lifecycle is:
 
 `draft → documents_pending → ready_to_submit → submitted → authority_review → approved → completed`
 
-`cancelled` is a terminal alternative. Completion requires `completed_at`; every non-completed status requires it to be null. Priorities are low, normal, high, and urgent. Writes validate client and owner membership, active PRO ownership, status/timestamp invariants, and audit metadata before an atomic mutation.
+`cancelled` is a terminal alternative. Completion requires `completed_at`; every non-completed status requires it to be null. Priorities are low, normal, high, and urgent. Writes validate company ownership, the live PRO assignment, status/timestamp invariants, and audit metadata before an atomic mutation.
 
 ## Loading, empty, and error behavior
 
@@ -89,7 +89,7 @@ The lifecycle is:
 - Data sources fail independently. A local alert and retry link replace only widgets that depend on the failed identity, operations, renewal, document, link, or finance group.
 - Retry URLs retain the selected range and valid filters.
 - An unavailable operations source preserves requested filters as pending rather than silently discarding them.
-- The dashboard-level error boundary offers retry; inactive PRO firms receive a dedicated status instead of partial data.
+- The dashboard-level error boundary offers retry; inactive company workspaces receive a dedicated status instead of partial data.
 
 ## Visual, responsive, localization, and accessibility behavior
 
@@ -104,14 +104,14 @@ The desktop layout is asymmetric; tablet layouts stack secondary panels; mobile 
 
 ## Data boundary and migrations
 
-Internally, `tenant_id`, tenant isolation, and `/t` routes implement the PRO data boundary. Every dashboard input is filtered to the authenticated PRO identifier before aggregation, linked records are rechecked, and server-side authorization rejects cross-PRO access. These internal names must not appear in client-facing copy.
+Internally, `tenant_id`, tenant isolation, and `/t` routes implement the PRO data boundary. Every dashboard input is filtered to the authenticated PRO identifier before aggregation, linked records are rechecked, and server-side authorization rejects cross-company access. These internal names must not appear in user-facing copy.
 
 Migrations 0047–0056 establish and harden the feature:
 
 - **0047–0049:** create service cases, constraints, indexes, row-level policies, audit actions, and atomic create/update RPCs.
 - **0050–0051:** restrict direct writes, re-authorize active PRO mutations inside security-definer functions, and provide a security-invoker ranked read view available only to the service role.
 - **0052–0054:** enforce invoice/payment/refund relationships, active same-PRO case ownership, automatic unassignment after invalid owner transitions, and safe profile-boundary changes.
-- **0055:** make administrative role changes atomic and guard service-case history and linked client membership.
+- **0055:** make administrative role changes atomic and guard service-case history and linked company membership.
 - **0056:** provide authorized, PRO-scoped, paginated Signal Studio invoice drill-downs with Dubai-time and payment-minus-refund semantics.
 
 Legacy relationship constraints introduced as `NOT VALID` protect new writes without claiming historical rows are already reconciled. Operational reads still apply application-level ownership checks.
