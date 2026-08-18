@@ -25,6 +25,7 @@ test('Tap reconciliation poller resumes pending refunds through the company atom
   assert.match(source, /from\('refund_reconciliation_state'\)/u);
   assert.match(source, /initialCursor: persistedCursor/u);
   assert.match(source, /persistRefundCursor\(supabase, result\.nextCursor\)/u);
+  assert.doesNotMatch(source, /nextCursor:\s*_nextCursor/u);
   assert.match(source, /cursor_created_at: cursor\?\.createdAt/u);
   assert.match(source, /cursor_id: cursor\?\.id/u);
 });

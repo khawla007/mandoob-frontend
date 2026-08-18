@@ -172,8 +172,12 @@ async function reconcilePendingRefunds(
     },
   );
   await persistRefundCursor(supabase, result.nextCursor);
-  const { nextCursor: _nextCursor, ...counts } = result;
-  return counts;
+  return {
+    scanned: result.scanned,
+    updated: result.updated,
+    unchanged: result.unchanged,
+    errors: result.errors,
+  };
 }
 
 async function readRefundCursor(
