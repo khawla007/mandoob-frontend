@@ -58,7 +58,7 @@ export default async function CustomerLayout({
         </div>
       </div>
       <CustomerTopNav slug={tenant.slug} />
-      {children}
+      <main id="main-content">{children}</main>
       {branding.termsUrl || branding.privacyUrl ? (
         <footer className="border-border text-muted-foreground mt-10 flex flex-wrap gap-4 border-t pt-4 text-xs">
           {branding.termsUrl ? (

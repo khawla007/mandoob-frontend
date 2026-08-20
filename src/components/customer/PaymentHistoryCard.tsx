@@ -21,9 +21,9 @@ export async function PaymentHistoryCard({
       </CardHeader>
       <CardContent className="space-y-5">
         <section>
-          <h3 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+          <h2 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
             {t('pending')}
-          </h3>
+          </h2>
           {data.pending.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('noPendingInvoices')}</p>
           ) : (
@@ -47,9 +47,9 @@ export async function PaymentHistoryCard({
         </section>
 
         <section>
-          <h3 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+          <h2 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
             {t('recent')}
-          </h3>
+          </h2>
           {data.history.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('noRecentPayments')}</p>
           ) : (

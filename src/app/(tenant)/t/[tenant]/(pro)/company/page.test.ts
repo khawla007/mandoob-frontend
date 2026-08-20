@@ -56,6 +56,7 @@ test('Assigned Company page directly authorizes before its service-role workspac
 
 test('Assigned Company page is compact, localized, and keeps exact document deep links', () => {
   assert.doesNotMatch(page, /hero/i);
+  assert.doesNotMatch(page, /<main/u);
   assert.match(page, /getTranslations\('pro\.assignedCompany'\)/);
   assert.match(page, /CompanyProfileForm/);
   assert.match(page, /AssignedCompanyTabs/);

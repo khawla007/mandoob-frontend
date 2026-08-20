@@ -53,7 +53,7 @@ function resolveNav(kind: DashboardNavKind, slug?: string): ShellNavGroup[] {
   }
 }
 
-function DashboardSidebarNavItem({
+export function DashboardSidebarNavItem({
   item,
   activeHref,
   translate,
@@ -111,6 +111,7 @@ function DashboardSidebarNavItem({
       {hasChildren && (
         <div
           aria-hidden={!open}
+          inert={!open}
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out group-data-[collapsible=icon]:hidden ${
             open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
           }`}

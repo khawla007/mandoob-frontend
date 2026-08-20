@@ -50,7 +50,7 @@
 
 :root {
   /* Single source of truth for the brand accent (UAE-saffron warm red). */
-  --brand-accent: #ff5722;
+  --brand-accent: #c2410c;
 
   --primary: var(--brand-accent);
   --primary-foreground: oklch(1 0 0);
