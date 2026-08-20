@@ -108,6 +108,29 @@ test('refund intent is unique before provider work and reconciliation is one ato
   assert.match(sql, /insert into public\.tenant_audit_log/u);
 });
 
+test('refund RPC joined row locks assign through one record target', () => {
+  const sql = normalizedSql();
+  const prepare = sql.slice(
+    sql.indexOf('create or replace function public.prepare_company_refund'),
+    sql.indexOf('create or replace function public.reconcile_company_refund'),
+  );
+  const reconcile = sql.slice(
+    sql.indexOf('create or replace function public.reconcile_company_refund'),
+    sql.indexOf('create or replace function public.mark_company_invoice_paid'),
+  );
+
+  assert.doesNotMatch(prepare, /into v_invoice, v_payment/u);
+  assert.match(prepare, /select i, p into v_locked_rows[\s\S]*for update of i, p/u);
+  assert.match(prepare, /v_invoice := v_locked_rows\.i/u);
+  assert.match(prepare, /v_payment := v_locked_rows\.p/u);
+
+  assert.doesNotMatch(reconcile, /into v_refund, v_payment, v_invoice/u);
+  assert.match(reconcile, /select r, p, i into v_locked_rows[\s\S]*for update of r, p, i/u);
+  assert.match(reconcile, /v_refund := v_locked_rows\.r/u);
+  assert.match(reconcile, /v_payment := v_locked_rows\.p/u);
+  assert.match(reconcile, /v_invoice := v_locked_rows\.i/u);
+});
+
 test('concurrent refund operation keys reselect and validate one canonical invoice intent', () => {
   const sql = normalizedSql();
   const prepare = sql.slice(

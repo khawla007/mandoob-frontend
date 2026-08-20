@@ -202,6 +202,7 @@ security definer
 set search_path = pg_catalog, public
 as $$
 declare
+  v_locked_rows record;
   v_invoice public.invoices%rowtype;
   v_payment public.payments%rowtype;
   v_refund public.refunds%rowtype;
@@ -212,7 +213,7 @@ begin
     raise exception using errcode = 'MD400', message = 'invalid_refund_intent';
   end if;
 
-  select i, p into v_invoice, v_payment
+  select i, p into v_locked_rows
   from public.invoices i
   join public.payments p on p.invoice_id = i.id and p.tenant_id = i.tenant_id
   where i.id = p_invoice_id
@@ -222,6 +223,8 @@ begin
   order by p.created_at desc, p.id desc
   limit 1
   for update of i, p;
+  v_invoice := v_locked_rows.i;
+  v_payment := v_locked_rows.p;
   if v_invoice.id is null or v_payment.id is null then
     raise exception using errcode = 'MD404', message = 'owned_refundable_invoice_not_found';
   end if;
@@ -299,6 +302,7 @@ security definer
 set search_path = pg_catalog, public
 as $$
 declare
+  v_locked_rows record;
   v_refund public.refunds%rowtype;
   v_payment public.payments%rowtype;
   v_invoice public.invoices%rowtype;
@@ -309,13 +313,16 @@ begin
     raise exception using errcode = 'MD400', message = 'invalid_refund_status';
   end if;
 
-  select r, p, i into v_refund, v_payment, v_invoice
+  select r, p, i into v_locked_rows
   from public.refunds r
   join public.payments p on p.id = r.payment_id and p.tenant_id = r.tenant_id
   join public.invoices i on i.id = p.invoice_id and i.tenant_id = p.tenant_id
   where r.id = p_refund_id and r.tenant_id = p_tenant_id
     and i.tenant_id = p_tenant_id and i.company_id = p_company_id
   for update of r, p, i;
+  v_refund := v_locked_rows.r;
+  v_payment := v_locked_rows.p;
+  v_invoice := v_locked_rows.i;
   if v_refund.id is null then
     raise exception using errcode = 'MD404', message = 'owned_refund_intent_not_found';
   end if;
