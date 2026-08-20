@@ -26,6 +26,7 @@ const layout = readFileSync(
 const paymentHistory = readFileSync(new URL('./PaymentHistoryCard.tsx', import.meta.url), 'utf8');
 
 test('customer portal content is contained by one main landmark', () => {
+  assert.match(layout, /className="dashboard-surface mx-auto max-w-5xl px-6 py-8"/u);
   assert.match(
     layout,
     /<CustomerPortalMain>[\s\S]*className="mb-3 flex items-center gap-3"[\s\S]*<CustomerTopNav[^>]*\/>[\s\S]*\{children\}[\s\S]*<\/CustomerPortalMain>/u,

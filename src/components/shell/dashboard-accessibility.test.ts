@@ -30,6 +30,7 @@ test('dashboard shell exposes one top-level main landmark', () => {
 });
 
 test('dashboard shell exposes nav-kind hooks for PRO-only Signal Studio styling', () => {
+  assert.match(layout, /className="dashboard-surface"/u);
   assert.match(layout, /<SidebarProvider[\s\S]{0,180}data-nav-kind=\{navKind\}/);
   assert.match(sidebar, /<Sidebar[^>]*data-nav-kind=\{navKind\}/);
 });

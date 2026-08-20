@@ -32,7 +32,7 @@ export default async function CustomerLayout({
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className="dashboard-surface mx-auto max-w-5xl px-6 py-8">
       <CustomerPortalMain>
         {!isTenantActive(tenant.status) ? (
           <div className="mb-6">

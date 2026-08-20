@@ -51,8 +51,7 @@
 
 :root {
   /* Single source of truth for the brand accent (UAE-saffron warm red). */
-  --brand-accent: #c2410c;
-  --signal-accent-copy: #c2410c;
+  --brand-accent: #ff5722;
 
   --primary: var(--brand-accent);
   --primary-foreground: oklch(1 0 0);
@@ -117,7 +116,6 @@
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
   --primary: var(--brand-accent);
-  --signal-accent-copy: #ff8a65;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -152,6 +150,17 @@
     transparent 0 12px,
     color-mix(in oklch, var(--brand-accent) 13%, transparent) 12px 13px
   );
+}
+
+/* Authenticated surfaces need a darker control fill for white-label contrast.
+   Keep the public brand primitive, charts, and focus rings on Mandoob orange. */
+.dashboard-surface {
+  --primary: #c2410c;
+  --signal-accent-copy: #c2410c;
+}
+
+.dark .dashboard-surface {
+  --signal-accent-copy: #ff8a65;
 }
 
 @layer base {

@@ -42,6 +42,7 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   return (
     <SidebarProvider
+      className="dashboard-surface"
       data-nav-kind={navKind}
       style={navKind === 'pro' ? SIGNAL_STUDIO_SIDEBAR_STYLE : undefined}
     >

@@ -43,12 +43,11 @@ renderTest('small accent copy meets AA against light and dark dashboard surfaces
     new URL('../../app/(tenant)/t/[tenant]/(pro)/company/page.tsx', import.meta.url),
     'utf8',
   );
-  const lightAccent = styles.match(
-    /:root\s*\{[\s\S]*?--signal-accent-copy:\s*(#[0-9a-f]{6})/iu,
-  )?.[1];
-  const darkAccent = styles.match(
-    /\.dark\s*\{[\s\S]*?--signal-accent-copy:\s*(#[0-9a-f]{6})/iu,
-  )?.[1];
+  const dashboardScope = styles.match(/\.dashboard-surface\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+  const darkDashboardScope =
+    styles.match(/\.dark \.dashboard-surface\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+  const lightAccent = dashboardScope.match(/--signal-accent-copy:\s*(#[0-9a-f]{6})/iu)?.[1];
+  const darkAccent = darkDashboardScope.match(/--signal-accent-copy:\s*(#[0-9a-f]{6})/iu)?.[1];
   assert.ok(lightAccent && darkAccent, 'expected light and dark accent-copy tokens');
   assert.ok(contrastRatio(lightAccent, '#ffffff') >= 4.5);
   assert.ok(contrastRatio(darkAccent, '#141312') >= 4.5);
@@ -78,10 +77,20 @@ renderTest('default dashboard action and status primitives meet AA contrast', as
   assert.match(markup, /text-primary-foreground/u);
 
   const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
-  const accent = styles.match(/--brand-accent:\s*(#[0-9a-f]{6})/iu)?.[1];
-  assert.ok(accent, 'expected a hexadecimal brand accent token');
+  const accent = styles.match(/\.dashboard-surface\s*\{[\s\S]*?--primary:\s*(#[0-9a-f]{6})/iu)?.[1];
+  assert.ok(accent, 'expected a dashboard-scoped primary token');
   assert.ok(
     contrastRatio(accent, '#ffffff') >= 4.5,
     `primary contrast was ${contrastRatio(accent, '#ffffff').toFixed(2)}:1`,
   );
+});
+
+test('public brand, marketing, chart, and focus-ring primitives remain unchanged', () => {
+  const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
+  const rootBlock = styles.match(/:root\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+  assert.match(rootBlock, /--brand-accent:\s*#ff5722/u);
+  assert.match(rootBlock, /--primary:\s*var\(--brand-accent\)/u);
+  assert.match(rootBlock, /--ring:\s*var\(--brand-accent\)/u);
+  assert.match(rootBlock, /--chart-1:\s*var\(--brand-accent\)/u);
+  assert.doesNotMatch(rootBlock, /--signal-accent-copy/u);
 });
