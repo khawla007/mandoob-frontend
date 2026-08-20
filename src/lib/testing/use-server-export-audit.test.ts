@@ -9,16 +9,29 @@ test('accepts type-only exports and async server actions', () => {
       'use server';
       export type State = { ok: boolean };
       export interface Input { id: string }
+      export type { ExternalState } from './state';
+      export { type ExternalInput } from './input';
       export async function submit(): Promise<void> {}
       export const update = async (): Promise<void> => {};
     `),
+    [],
+  );
+  assert.deepEqual(
+    auditUseServerRuntimeExports(`'use server'; export default async function submit() {}`),
+    [],
+  );
+  assert.deepEqual(
+    auditUseServerRuntimeExports(`'use server'; export default async () => {};`),
     [],
   );
 });
 
 test('rejects every non-callable or non-async runtime export form', () => {
   const invalid = [
-    ['export default async function submit() {}', 'default export'],
+    ['export default function submit() {}', 'default non-async function'],
+    ['export default () => {};', 'default non-async function'],
+    ['export default {};', 'default exported value'],
+    ['export default class ActionState {}', 'default exported class'],
     ['const state = {}; export { state };', 'runtime export list'],
     ["export { state } from './state';", 'runtime re-export'],
     ["export * from './actions';", 'runtime re-export'],

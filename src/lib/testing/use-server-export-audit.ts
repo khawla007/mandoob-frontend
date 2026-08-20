@@ -61,14 +61,39 @@ export function auditUseServerRuntimeExports(source: string): string[] {
 
   const violations: string[] = [];
   for (const statement of file.statements) {
-    if (ts.isExportAssignment(statement) || hasModifier(statement, ts.SyntaxKind.DefaultKeyword)) {
-      violations.push('default export is not allowed in a use-server module');
+    if (ts.isExportAssignment(statement)) {
+      if (isAsyncFunction(statement.expression)) continue;
+      if (
+        ts.isArrowFunction(statement.expression) ||
+        ts.isFunctionExpression(statement.expression)
+      ) {
+        violations.push('default non-async function is exported');
+      } else {
+        violations.push('default exported value is not an async function');
+      }
+      continue;
+    }
+    if (hasModifier(statement, ts.SyntaxKind.DefaultKeyword)) {
+      if (ts.isFunctionDeclaration(statement)) {
+        if (!isAsyncFunction(statement)) violations.push('default non-async function is exported');
+      } else if (ts.isClassDeclaration(statement)) {
+        violations.push('default exported class is not an async function');
+      } else {
+        violations.push('default exported value is not an async function');
+      }
       continue;
     }
 
     if (ts.isExportDeclaration(statement)) {
       if (statement.isTypeOnly) continue;
       if (statement.moduleSpecifier) {
+        if (
+          statement.exportClause &&
+          ts.isNamedExports(statement.exportClause) &&
+          statement.exportClause.elements.every((element) => element.isTypeOnly)
+        ) {
+          continue;
+        }
         violations.push('runtime re-export is not allowed in a use-server module');
         continue;
       }
