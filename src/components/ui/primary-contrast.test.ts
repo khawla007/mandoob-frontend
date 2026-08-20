@@ -36,6 +36,32 @@ function contrastRatio(first: string, second: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+renderTest('small accent copy meets AA against light and dark dashboard surfaces', async () => {
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
+  const page = readFileSync(
+    new URL('../../app/(tenant)/t/[tenant]/(pro)/company/page.tsx', import.meta.url),
+    'utf8',
+  );
+  const lightAccent = styles.match(
+    /:root\s*\{[\s\S]*?--signal-accent-copy:\s*(#[0-9a-f]{6})/iu,
+  )?.[1];
+  const darkAccent = styles.match(
+    /\.dark\s*\{[\s\S]*?--signal-accent-copy:\s*(#[0-9a-f]{6})/iu,
+  )?.[1];
+  assert.ok(lightAccent && darkAccent, 'expected light and dark accent-copy tokens');
+  assert.ok(contrastRatio(lightAccent, '#ffffff') >= 4.5);
+  assert.ok(contrastRatio(darkAccent, '#141312') >= 4.5);
+  assert.match(styles, /--color-signal-accent-copy:\s*var\(--signal-accent-copy\)/u);
+  assert.match(page, /className="text-signal-accent-copy font-mono text-xs/u);
+  assert.match(
+    renderToStaticMarkup(
+      React.createElement('p', { className: 'text-signal-accent-copy text-xs' }, 'Eyebrow'),
+    ),
+    /class="text-signal-accent-copy text-xs"/u,
+  );
+});
+
 renderTest('default dashboard action and status primitives meet AA contrast', async () => {
   const { renderToStaticMarkup } = await import('react-dom/server');
   const { Button } = await import('./button');

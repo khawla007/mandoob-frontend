@@ -40,7 +40,7 @@ export default async function AssignedCompanyPage({
     <div className="mx-auto w-full max-w-[96rem] space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-primary font-mono text-xs tracking-[0.14em] uppercase">
+          <p className="text-signal-accent-copy font-mono text-xs tracking-[0.14em] uppercase">
             {t('eyebrow')}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t('title')}</h1>
