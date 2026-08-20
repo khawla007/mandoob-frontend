@@ -206,6 +206,36 @@ test('refund workflow has executable validation, lifecycle, and concurrency SQL 
   }
 });
 
+test('refund concurrency fixtures coordinate bounded phases and fail through SQL assertions', () => {
+  const setupPath = 'supabase/tests/company_refund_concurrency_setup.sql';
+  assert.equal(existsSync(join(process.cwd(), setupPath)), true, `${setupPath} must exist`);
+  const setup = readFileSync(join(process.cwd(), setupPath), 'utf8');
+  assert.match(setup, /begin;[\s\S]*insert into public\.refunds[\s\S]*commit;/u);
+
+  const sessionA = readFileSync(
+    join(process.cwd(), 'supabase/tests/company_refund_concurrency_session_a.sql'),
+    'utf8',
+  );
+  const sessionB = readFileSync(
+    join(process.cwd(), 'supabase/tests/company_refund_concurrency_session_b.sql'),
+    'utf8',
+  );
+  for (const fixture of [sessionA, sessionB]) {
+    assert.doesNotMatch(fixture, /\\quit/u);
+    assert.match(fixture, /ON_ERROR_STOP on/u);
+    assert.match(fixture, /clock_timestamp\(\)[\s\S]*raise exception/u);
+    assert.match(fixture, /refund_sqlstate[\s\S]*raise exception/u);
+  }
+
+  assert.match(sessionA, /pg_advisory_lock/u);
+  assert.match(sessionA, /pg_stat_activity/u);
+  assert.match(sessionA, /pg_stat_clear_snapshot/u);
+  assert.match(sessionA, /wait_event_type = 'Lock'/u);
+  assert.match(sessionB, /pg_try_advisory_lock/u);
+  assert.doesNotMatch(sessionA, /select pg_sleep\(3\)/u);
+  assert.doesNotMatch(sessionB, /select pg_sleep\(1\)/u);
+});
+
 test('concurrent refund operation keys reselect and validate one canonical invoice intent', () => {
   const sql = normalizedSql();
   const prepare = sql.slice(
