@@ -9,6 +9,7 @@ import type { Role } from '@/lib/auth/roles';
 import { isUuid } from '@/lib/util/uuid';
 import { env } from '@/lib/env';
 import { tenantScopeForNewUser } from '@/lib/data/new-user-scope';
+import { persistInvitedProfile } from '@/lib/data/invited-profile';
 
 export type AdminCreateUserCaller = {
   id: string;
@@ -176,28 +177,24 @@ export async function adminCreateUser(
     throw new ApiError('INVITE_FAILED', 'Could not finalize invite', 502);
   }
 
-  // ── Update profile row (§4 step 10) ──────────────────────────────────
+  // ── Persist profile row (§4 step 10) ─────────────────────────────────
+  // Supabase Auth does not create this application's root profile row. An
+  // upsert is authoritative for both that normal case and deployments that
+  // add an auth-user trigger later; the role sub-row FK must only run after it.
   try {
-    const { error: profileErr } = await admin
-      .from('profiles')
-      .update({
-        full_name: input.full_name,
-        phone: input.phone,
-        status: 'invited',
-        tenant_id: tenantIdForMeta,
-        locale: 'en',
-        role: input.role,
-      })
-      .eq('id', newUserId);
-    if (profileErr) {
-      console.error('profiles update failed', profileErr);
-      await compensate('profiles update error');
-      throw new ApiError('VALIDATION_FAILED', 'Could not finalize profile', 500);
-    }
+    await persistInvitedProfile(admin, {
+      id: newUserId,
+      full_name: input.full_name,
+      phone: input.phone,
+      status: 'invited',
+      tenant_id: tenantIdForMeta,
+      locale: 'en',
+      role: input.role,
+    });
   } catch (e) {
     if (e instanceof ApiError) throw e;
-    console.error('profiles update threw', e);
-    await compensate('profiles update threw');
+    console.error('profiles upsert failed', e);
+    await compensate('profiles upsert failed');
     throw new ApiError('VALIDATION_FAILED', 'Could not finalize profile', 500);
   }
 
