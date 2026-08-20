@@ -43,14 +43,25 @@ renderTest('small accent copy meets AA against light and dark dashboard surfaces
     new URL('../../app/(tenant)/t/[tenant]/(pro)/company/page.tsx', import.meta.url),
     'utf8',
   );
-  const dashboardScope = styles.match(/\.dashboard-surface\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+  const dashboardScope =
+    styles.match(/body:has\(\.dashboard-surface\)\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
   const darkDashboardScope =
-    styles.match(/\.dark \.dashboard-surface\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+    styles.match(/\.dark body:has\(\.dashboard-surface\)\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
   const lightAccent = dashboardScope.match(/--signal-accent-copy:\s*(#[0-9a-f]{6})/iu)?.[1];
   const darkAccent = darkDashboardScope.match(/--signal-accent-copy:\s*(#[0-9a-f]{6})/iu)?.[1];
   assert.ok(lightAccent && darkAccent, 'expected light and dark accent-copy tokens');
   assert.ok(contrastRatio(lightAccent, '#ffffff') >= 4.5);
   assert.ok(contrastRatio(darkAccent, '#141312') >= 4.5);
+  const darkPrimary = darkDashboardScope.match(/--primary:\s*(#[0-9a-f]{6})/iu)?.[1];
+  const darkPrimaryForeground = darkDashboardScope.match(
+    /--primary-foreground:\s*(#[0-9a-f]{6})/iu,
+  )?.[1];
+  assert.ok(darkPrimary && darkPrimaryForeground, 'expected a dark dashboard primary pair');
+  assert.ok(contrastRatio(darkPrimary, '#141312') >= 4.5, 'dark text-primary must meet AA');
+  assert.ok(
+    contrastRatio(darkPrimary, darkPrimaryForeground) >= 4.5,
+    'dark default controls must meet AA',
+  );
   assert.match(styles, /--color-signal-accent-copy:\s*var\(--signal-accent-copy\)/u);
   assert.match(page, /className="text-signal-accent-copy font-mono text-xs/u);
   assert.match(
@@ -77,11 +88,15 @@ renderTest('default dashboard action and status primitives meet AA contrast', as
   assert.match(markup, /text-primary-foreground/u);
 
   const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
-  const accent = styles.match(/\.dashboard-surface\s*\{[\s\S]*?--primary:\s*(#[0-9a-f]{6})/iu)?.[1];
+  const dashboardScope =
+    styles.match(/body:has\(\.dashboard-surface\)\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+  const accent = dashboardScope.match(/--primary:\s*(#[0-9a-f]{6})/iu)?.[1];
+  const foreground = dashboardScope.match(/--primary-foreground:\s*(#[0-9a-f]{6})/iu)?.[1];
   assert.ok(accent, 'expected a dashboard-scoped primary token');
+  assert.ok(foreground, 'expected a dashboard-scoped primary foreground');
   assert.ok(
-    contrastRatio(accent, '#ffffff') >= 4.5,
-    `primary contrast was ${contrastRatio(accent, '#ffffff').toFixed(2)}:1`,
+    contrastRatio(accent, foreground) >= 4.5,
+    `primary contrast was ${contrastRatio(accent, foreground).toFixed(2)}:1`,
   );
 });
 
