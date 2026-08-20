@@ -10,6 +10,7 @@ import { isUuid } from '@/lib/util/uuid';
 import { env } from '@/lib/env';
 import { tenantScopeForNewUser } from '@/lib/data/new-user-scope';
 import { persistInvitedProfile } from '@/lib/data/invited-profile';
+import { compensateInvitedUser } from '@/lib/data/invited-user-compensation';
 
 export type AdminCreateUserCaller = {
   id: string;
@@ -149,11 +150,7 @@ export async function adminCreateUser(
   // 0001) and role sub-rows having ON DELETE CASCADE from `profiles`
   // (migrations 0012/0013).
   async function compensate(reason: string): Promise<void> {
-    try {
-      await admin.auth.admin.deleteUser(newUserId);
-    } catch (err) {
-      console.error('compensation deleteUser failed', { reason, newUserId, err });
-    }
+    return compensateInvitedUser(admin, newUserId, reason);
   }
 
   // ── Patch app_metadata (§4 step 9) ───────────────────────────────────

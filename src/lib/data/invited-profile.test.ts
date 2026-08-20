@@ -54,6 +54,15 @@ function fakeDatabase(error: { code: string } | null = null) {
   };
 }
 
+test('replaces a trigger-created profile with the authoritative invite payload', async () => {
+  const db = fakeDatabase();
+  db.profiles.set(userId, { ...profile, full_name: 'Stale trigger metadata' });
+
+  await persistInvitedProfile(db.client as never, profile);
+
+  assert.deepEqual(db.profiles.get(userId), profile);
+});
+
 test('persists the authoritative root profile before a role sub-row can reference it', async () => {
   const db = fakeDatabase();
 
