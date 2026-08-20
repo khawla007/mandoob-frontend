@@ -260,6 +260,7 @@ export function ChangeRolePanel({
                     tenantId={tenantId}
                     value={linkedCompanyId}
                     onChange={setLinkedCompanyId}
+                    accessibleLabel={t('user.fields.linkedCompany')}
                   />
                 </div>
               )}
@@ -275,6 +276,7 @@ export function ChangeRolePanel({
                     tenantId={tenantId}
                     value={companyId}
                     onChange={setCompanyId}
+                    accessibleLabel={t('user.roleChange.companyRequiredLabel')}
                     required
                   />
                 </div>

@@ -57,6 +57,7 @@ export function UserCustomerFields() {
                 tenantId={tenantId}
                 value={(field.value as string | null) ?? null}
                 onChange={(id) => field.onChange(id)}
+                accessibleLabel={t('user.fields.linkedCompany')}
               />
             </FormControl>
             <FormMessage />

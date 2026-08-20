@@ -23,6 +23,7 @@ export type CompanyTypeaheadProps = {
   tenantId: string | null;
   value: string | null;
   onChange: (id: string | null, row?: CompanyLookupRow) => void;
+  accessibleLabel: string;
   required?: boolean;
   placeholder?: string;
 };
@@ -31,6 +32,7 @@ export function CompanyTypeahead({
   tenantId,
   value,
   onChange,
+  accessibleLabel,
   required,
   placeholder,
 }: CompanyTypeaheadProps) {
@@ -102,7 +104,11 @@ export function CompanyTypeahead({
           {selected ? selected.company_name : resolvedPlaceholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent
+        aria-label={accessibleLabel}
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={t('companyTypeahead.typeToSearch')}
@@ -130,7 +136,7 @@ export function CompanyTypeahead({
                   }}
                 >
                   <span className="flex-1 truncate">{row.company_name}</span>
-                  <span className="text-muted-foreground ml-2 text-xs">
+                  <span className="text-foreground/70 ml-2 text-xs">
                     {t.has(`enums.companyStatus.${row.status}`)
                       ? t(`enums.companyStatus.${row.status}`)
                       : row.status}

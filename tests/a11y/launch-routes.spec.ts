@@ -28,3 +28,34 @@ for (const route of routes) {
     expect(results.violations).toEqual([]);
   });
 }
+
+test('company status utility computes AA contrast on selected rows in both dashboard themes', async ({
+  page,
+}) => {
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.evaluate(() => {
+    const surface = document.createElement('div');
+    surface.className = 'dashboard-surface';
+    const row = document.createElement('div');
+    row.dataset.companyStatusRow = 'true';
+    row.className = 'bg-muted';
+    const status = document.createElement('span');
+    status.dataset.companyStatus = 'true';
+    status.className = 'text-foreground/70 text-xs';
+    status.textContent = 'Status';
+    row.append(status);
+    surface.append(row);
+    document.body.append(surface);
+  });
+
+  for (const mode of ['light', 'dark'] as const) {
+    await page.evaluate((nextMode) => {
+      document.documentElement.classList.toggle('dark', nextMode === 'dark');
+    }, mode);
+    const results = await new AxeBuilder({ page })
+      .include('[data-company-status-row]')
+      .withRules(['color-contrast'])
+      .analyze();
+    expect(results.violations).toEqual([]);
+  }
+});

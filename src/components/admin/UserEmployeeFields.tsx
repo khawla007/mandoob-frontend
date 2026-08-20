@@ -25,6 +25,7 @@ export function UserEmployeeFields() {
                 tenantId={tenantId}
                 value={(field.value as string | null) ?? null}
                 onChange={(id) => field.onChange(id)}
+                accessibleLabel={t('user.fields.employer')}
                 required
               />
             </FormControl>
