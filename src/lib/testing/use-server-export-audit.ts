@@ -36,18 +36,41 @@ function createAuditProgram(source: string): { checker: ts.TypeChecker; file: ts
 }
 
 function isCallable(checker: ts.TypeChecker, node: ts.Node): boolean {
-  return checker.getTypeAtLocation(node).getCallSignatures().length > 0;
+  return (
+    checker.getSignaturesOfType(checker.getTypeAtLocation(node), ts.SignatureKind.Call).length > 0
+  );
 }
 
+// Mirrors Next 16.2.12's server-boundary isPromiseType predicate.
+function isNextPromiseType(checker: ts.TypeChecker, type: ts.Type): boolean {
+  const typeReference = type as ts.TypeReference;
+  if (!typeReference.target) return false;
+  return /^Promise(<.+>)?$/.test(checker.typeToString(typeReference.target));
+}
+
+// Mirrors Next 16.2.12's server-boundary isFunctionReturningPromise predicate.
 function isPromiseReturningCallable(checker: ts.TypeChecker, node: ts.Node): boolean {
-  const signatures = checker.getTypeAtLocation(node).getCallSignatures();
-  return (
-    signatures.length > 0 &&
-    signatures.every((signature) => {
+  const type = checker.getTypeAtLocation(node);
+  const signatures = checker.getSignaturesOfType(type, ts.SignatureKind.Call);
+  let isPromise = true;
+  if (signatures.length) {
+    for (const signature of signatures) {
       const returnType = signature.getReturnType();
-      return checker.getAwaitedType(returnType) !== returnType;
-    })
-  );
+      if (returnType.isUnion()) {
+        for (const constituent of returnType.types) {
+          if (!isNextPromiseType(checker, constituent)) {
+            isPromise = false;
+            break;
+          }
+        }
+      } else {
+        isPromise = isNextPromiseType(checker, returnType);
+      }
+    }
+  } else {
+    isPromise = false;
+  }
+  return isPromise;
 }
 
 function exportViolation(

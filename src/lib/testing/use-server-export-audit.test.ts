@@ -18,6 +18,9 @@ test('accepts type-only exports and async server actions', () => {
       async function listed(): Promise<void> {}
       export { listed };
       export function promised(): Promise<void> { return Promise.resolve(); }
+      export function promiseUnion(flag: boolean): Promise<void> | Promise<string> {
+        return flag ? Promise.resolve() : Promise.resolve('ok');
+      }
     `),
     [],
   );
@@ -61,6 +64,18 @@ test('rejects every non-callable or non-async runtime export form', () => {
     ['export function submit() {}', 'non-async function'],
     ['export const submit = () => {};', 'non-async function'],
     ['export async function* submit() {}', 'does not return Promise'],
+    [
+      'export function submit(flag: boolean): Promise<void> | void { if (flag) return Promise.resolve(); }',
+      'does not return Promise',
+    ],
+    [
+      'export function submit(): PromiseLike<void> { return Promise.resolve(); }',
+      'does not return Promise',
+    ],
+    [
+      'interface CustomThenable<T> extends PromiseLike<T> {}; export function submit(): CustomThenable<void> { return Promise.resolve(); }',
+      'does not return Promise',
+    ],
   ] as const;
 
   for (const [runtimeExport, expected] of invalid) {
