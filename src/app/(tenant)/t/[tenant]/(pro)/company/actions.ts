@@ -16,8 +16,6 @@ export type CompanyProfileActionState = {
   updatedAt?: string;
 };
 
-export const initialCompanyProfileActionState: CompanyProfileActionState = { status: 'idle' };
-
 function value(formData: FormData, name: string): string {
   const entry = formData.get(name);
   return typeof entry === 'string' ? entry : '';

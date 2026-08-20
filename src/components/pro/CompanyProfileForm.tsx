@@ -3,10 +3,8 @@
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Building2, CheckCircle2, LoaderCircle, Pencil } from 'lucide-react';
-import {
-  initialCompanyProfileActionState,
-  updateAssignedCompanyProfileAction,
-} from '@/app/(tenant)/t/[tenant]/(pro)/company/actions';
+import { updateAssignedCompanyProfileAction } from '@/app/(tenant)/t/[tenant]/(pro)/company/actions';
+import type { CompanyProfileActionState } from '@/app/(tenant)/t/[tenant]/(pro)/company/actions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +40,8 @@ type CompanyProfileFormProps = {
   };
   labels: Labels;
 };
+
+const initialCompanyProfileActionState: CompanyProfileActionState = { status: 'idle' };
 
 export function CompanyProfileForm({ tenantSlug, company, labels }: CompanyProfileFormProps) {
   const action = updateAssignedCompanyProfileAction.bind(null, tenantSlug, company.id);

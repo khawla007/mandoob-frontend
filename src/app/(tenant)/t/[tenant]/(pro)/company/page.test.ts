@@ -171,6 +171,13 @@ test('profile action delegates the authorized expected-version update to the ato
   assert.doesNotMatch(actions, /error\.message|String\(error\)/);
 });
 
+test('use-server company actions export no non-function runtime values', () => {
+  assert.match(actions, /^'use server';/u);
+  assert.doesNotMatch(actions, /^export\s+(?:const|let|var|class)\s+/mu);
+  assert.doesNotMatch(actions, /export const initialCompanyProfileActionState/u);
+  assert.match(form, /const initialCompanyProfileActionState: CompanyProfileActionState/u);
+});
+
 test('profile form provides localized inline errors and duplicate-submit prevention', () => {
   assert.match(form, /^'use client';/);
   assert.match(form, /useActionState/);
