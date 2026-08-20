@@ -202,30 +202,37 @@ security definer
 set search_path = pg_catalog, public
 as $$
 declare
-  v_locked_rows record;
   v_invoice public.invoices%rowtype;
   v_payment public.payments%rowtype;
   v_refund public.refunds%rowtype;
   v_refunded bigint;
   v_refund_id uuid;
 begin
-  if p_actor_id is null or p_amount_minor <= 0 or pg_catalog.btrim(p_idempotency_key) = '' then
+  if p_actor_id is null
+    or p_amount_minor is null or p_amount_minor <= 0
+    or p_idempotency_key is null or pg_catalog.btrim(p_idempotency_key) = '' then
     raise exception using errcode = 'MD400', message = 'invalid_refund_intent';
   end if;
 
-  select i, p into v_locked_rows
+  select i.* into v_invoice
   from public.invoices i
-  join public.payments p on p.invoice_id = i.id and p.tenant_id = i.tenant_id
   where i.id = p_invoice_id
     and i.tenant_id = p_tenant_id and i.company_id = p_company_id
     and i.status in ('paid', 'partially_refunded')
+  for update;
+  if v_invoice.id is null then
+    raise exception using errcode = 'MD404', message = 'owned_refundable_invoice_not_found';
+  end if;
+
+  select p.* into v_payment
+  from public.payments p
+  where p.invoice_id = v_invoice.id
+    and p.tenant_id = p_tenant_id
     and p.status in ('succeeded', 'partially_refunded')
   order by p.created_at desc, p.id desc
   limit 1
-  for update of i, p;
-  v_invoice := v_locked_rows.i;
-  v_payment := v_locked_rows.p;
-  if v_invoice.id is null or v_payment.id is null then
+  for update;
+  if v_payment.id is null then
     raise exception using errcode = 'MD404', message = 'owned_refundable_invoice_not_found';
   end if;
 
@@ -302,27 +309,51 @@ security definer
 set search_path = pg_catalog, public
 as $$
 declare
-  v_locked_rows record;
   v_refund public.refunds%rowtype;
   v_payment public.payments%rowtype;
   v_invoice public.invoices%rowtype;
+  v_payment_id uuid;
+  v_invoice_id uuid;
   v_succeeded_refunds bigint;
   v_partial boolean;
 begin
-  if p_status not in ('pending', 'succeeded', 'failed') then
+  if p_status is null or p_status not in ('pending', 'succeeded', 'failed') then
     raise exception using errcode = 'MD400', message = 'invalid_refund_status';
   end if;
 
-  select r, p, i into v_locked_rows
+  select r.payment_id, p.invoice_id into v_payment_id, v_invoice_id
   from public.refunds r
   join public.payments p on p.id = r.payment_id and p.tenant_id = r.tenant_id
   join public.invoices i on i.id = p.invoice_id and i.tenant_id = p.tenant_id
   where r.id = p_refund_id and r.tenant_id = p_tenant_id
+    and i.tenant_id = p_tenant_id and i.company_id = p_company_id;
+  if v_invoice_id is null or v_payment_id is null then
+    raise exception using errcode = 'MD404', message = 'owned_refund_intent_not_found';
+  end if;
+
+  select i.* into v_invoice
+  from public.invoices i
+  where i.id = v_invoice_id
     and i.tenant_id = p_tenant_id and i.company_id = p_company_id
-  for update of r, p, i;
-  v_refund := v_locked_rows.r;
-  v_payment := v_locked_rows.p;
-  v_invoice := v_locked_rows.i;
+  for update;
+  if v_invoice.id is null then
+    raise exception using errcode = 'MD404', message = 'owned_refund_intent_not_found';
+  end if;
+
+  select p.* into v_payment
+  from public.payments p
+  where p.id = v_payment_id and p.tenant_id = p_tenant_id
+    and p.invoice_id = v_invoice.id
+  for update;
+  if v_payment.id is null then
+    raise exception using errcode = 'MD404', message = 'owned_refund_intent_not_found';
+  end if;
+
+  select r.* into v_refund
+  from public.refunds r
+  where r.id = p_refund_id and r.tenant_id = p_tenant_id
+    and r.payment_id = v_payment.id
+  for update;
   if v_refund.id is null then
     raise exception using errcode = 'MD404', message = 'owned_refund_intent_not_found';
   end if;

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -98,7 +98,8 @@ test('refund intent is unique before provider work and reconciliation is one ato
   assert.match(sql, /alter table public\.refunds add column if not exists idempotency_key text/u);
   assert.match(sql, /unique index[\s\S]*on public\.refunds \(tenant_id, idempotency_key\)/u);
   assert.match(sql, /create or replace function public\.prepare_company_refund/u);
-  assert.match(sql, /for update of i, p/u);
+  assert.match(sql, /select i\.\* into v_invoice[\s\S]*for update/u);
+  assert.match(sql, /select p\.\* into v_payment[\s\S]*for update/u);
   assert.match(sql, /i\.tenant_id = p_tenant_id and i\.company_id = p_company_id/u);
   assert.match(sql, /on conflict \(tenant_id, idempotency_key\)/u);
   assert.match(sql, /create or replace function public\.reconcile_company_refund/u);
@@ -108,7 +109,7 @@ test('refund intent is unique before provider work and reconciliation is one ato
   assert.match(sql, /insert into public\.tenant_audit_log/u);
 });
 
-test('refund RPC joined row locks assign through one record target', () => {
+test('refund RPC joined row reads avoid typed row variables in multi-item targets', () => {
   const sql = normalizedSql();
   const prepare = sql.slice(
     sql.indexOf('create or replace function public.prepare_company_refund'),
@@ -120,15 +121,89 @@ test('refund RPC joined row locks assign through one record target', () => {
   );
 
   assert.doesNotMatch(prepare, /into v_invoice, v_payment/u);
-  assert.match(prepare, /select i, p into v_locked_rows[\s\S]*for update of i, p/u);
-  assert.match(prepare, /v_invoice := v_locked_rows\.i/u);
-  assert.match(prepare, /v_payment := v_locked_rows\.p/u);
-
   assert.doesNotMatch(reconcile, /into v_refund, v_payment, v_invoice/u);
-  assert.match(reconcile, /select r, p, i into v_locked_rows[\s\S]*for update of r, p, i/u);
-  assert.match(reconcile, /v_refund := v_locked_rows\.r/u);
-  assert.match(reconcile, /v_payment := v_locked_rows\.p/u);
-  assert.match(reconcile, /v_invoice := v_locked_rows\.i/u);
+});
+
+test('refund RPC validation rejects null numeric, key, and status inputs', () => {
+  const sql = normalizedSql();
+  const prepare = sql.slice(
+    sql.indexOf('create or replace function public.prepare_company_refund'),
+    sql.indexOf('create or replace function public.reconcile_company_refund'),
+  );
+  const reconcile = sql.slice(
+    sql.indexOf('create or replace function public.reconcile_company_refund'),
+    sql.indexOf('create or replace function public.mark_company_invoice_paid'),
+  );
+
+  assert.match(prepare, /p_amount_minor is null or p_amount_minor <= 0/u);
+  assert.match(
+    prepare,
+    /p_idempotency_key is null or pg_catalog\.btrim\(p_idempotency_key\) = ''/u,
+  );
+  assert.match(reconcile, /p_status is null or p_status not in \('pending', 'succeeded', 'failed'\)/u);
+});
+
+test('refund RPCs lock invoice, payment, then refund with locked ownership revalidation', () => {
+  const sql = normalizedSql();
+  const prepare = sql.slice(
+    sql.indexOf('create or replace function public.prepare_company_refund'),
+    sql.indexOf('create or replace function public.reconcile_company_refund'),
+  );
+  const reconcile = sql.slice(
+    sql.indexOf('create or replace function public.reconcile_company_refund'),
+    sql.indexOf('create or replace function public.mark_company_invoice_paid'),
+  );
+
+  const prepareInvoiceLock = prepare.indexOf('select i.* into v_invoice');
+  const preparePaymentLock = prepare.indexOf('select p.* into v_payment');
+  const prepareRefundLock = prepare.indexOf('select r.* into v_refund');
+  assert.ok(prepareInvoiceLock >= 0);
+  assert.ok(prepareInvoiceLock < preparePaymentLock);
+  assert.ok(preparePaymentLock < prepareRefundLock);
+  assert.match(prepare, /select i\.\* into v_invoice[\s\S]*for update/u);
+  assert.match(prepare, /select p\.\* into v_payment[\s\S]*for update/u);
+
+  const reconcileInvoiceLock = reconcile.indexOf('select i.* into v_invoice');
+  const reconcilePaymentLock = reconcile.indexOf('select p.* into v_payment');
+  const reconcileRefundLock = reconcile.indexOf('select r.* into v_refund');
+  assert.ok(reconcileInvoiceLock >= 0);
+  assert.ok(reconcileInvoiceLock < reconcilePaymentLock);
+  assert.ok(reconcilePaymentLock < reconcileRefundLock);
+  assert.match(
+    reconcile,
+    /select p\.\* into v_payment[\s\S]*p\.invoice_id = v_invoice\.id[\s\S]*for update/u,
+  );
+  assert.match(
+    reconcile,
+    /select r\.\* into v_refund[\s\S]*r\.payment_id = v_payment\.id[\s\S]*for update/u,
+  );
+});
+
+test('refund workflow has executable validation, lifecycle, and concurrency SQL fixtures', () => {
+  const fixturePaths = [
+    'supabase/tests/company_refund_workflows.sql',
+    'supabase/tests/company_refund_concurrency_session_a.sql',
+    'supabase/tests/company_refund_concurrency_session_b.sql',
+  ];
+  for (const fixturePath of fixturePaths) {
+    assert.equal(existsSync(join(process.cwd(), fixturePath)), true, `${fixturePath} must exist`);
+  }
+
+  const workflow = readFileSync(join(process.cwd(), fixturePaths[0]), 'utf8');
+  assert.match(workflow, /MD400/u);
+  assert.match(workflow, /MD404/u);
+  assert.match(workflow, /prepare_company_refund/u);
+  assert.match(workflow, /reconcile_company_refund/u);
+  assert.match(workflow, /partially_refunded/u);
+
+  for (const fixturePath of fixturePaths.slice(1)) {
+    const fixture = readFileSync(join(process.cwd(), fixturePath), 'utf8');
+    assert.match(fixture, /lock_timeout/u);
+    assert.match(fixture, /statement_timeout/u);
+    assert.match(fixture, /40P01/u);
+    assert.match(fixture, /55P03/u);
+    assert.match(fixture, /57014/u);
+  }
 });
 
 test('concurrent refund operation keys reselect and validate one canonical invoice intent', () => {
