@@ -43,7 +43,8 @@ where company_id = :'company_id'::uuid
   and passport_no_hash = 'a' || repeat('0', 63) \gset
 \if :exactly_one_employee
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 delete from public.employees

@@ -3,7 +3,8 @@
 select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_actors \gset
 \if :distinct_actors
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 begin;
 set local lock_timeout = '12s';
@@ -21,11 +22,13 @@ select :'lifecycle_sqlstate' = '00000' as expected_lifecycle_state,
   :'lifecycle_sqlstate' not in ('40P01', '55P03', '57014') as no_concurrency_failure \gset
 \if :no_concurrency_failure
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 \if :expected_lifecycle_state
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 select count(*) = 1 as one_active_assignment
@@ -33,7 +36,8 @@ from public.pro_company_assignments
 where company_id = :'company_id'::uuid and status = 'active' \gset
 \if :one_active_assignment
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 select count(*) = 1
@@ -47,7 +51,8 @@ join auth.users u on u.id = p.id
 where a.company_id = :'company_id'::uuid and a.status = 'active' \gset
 \if :scope_synchronized
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 select count(*) >= 2 as transitions_audited
@@ -56,5 +61,6 @@ where action in ('company_pro_released', 'company_pro_assigned')
   and details ->> 'company_id' = :'company_id' \gset
 \if :transitions_audited
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif

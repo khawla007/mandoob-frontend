@@ -170,11 +170,13 @@ select :'prepared_refund_status' = 'pending' as prepared_pending,
     as prepared_owned_payment \gset
 \if :prepared_pending
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 \if :prepared_owned_payment
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 select * from public.reconcile_company_refund(
@@ -209,19 +211,23 @@ select :'reconciled_refund_status' = 'succeeded' as reconciled_succeeded,
   ) as refund_audited \gset
 \if :reconciled_succeeded
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 \if :reconciled_partial
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 \if :ledger_partially_refunded
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 \if :refund_audited
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 rollback;

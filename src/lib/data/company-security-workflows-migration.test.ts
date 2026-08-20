@@ -140,7 +140,10 @@ test('refund RPC validation rejects null numeric, key, and status inputs', () =>
     prepare,
     /p_idempotency_key is null or pg_catalog\.btrim\(p_idempotency_key\) = ''/u,
   );
-  assert.match(reconcile, /p_status is null or p_status not in \('pending', 'succeeded', 'failed'\)/u);
+  assert.match(
+    reconcile,
+    /p_status is null or p_status not in \('pending', 'succeeded', 'failed'\)/u,
+  );
 });
 
 test('refund RPCs lock invoice, payment, then refund with locked ownership revalidation', () => {

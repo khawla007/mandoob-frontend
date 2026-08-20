@@ -4,7 +4,8 @@
 select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_actors \gset
 \if :distinct_actors
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 begin;
 set local lock_timeout = '12s';
@@ -24,11 +25,13 @@ select :'lifecycle_sqlstate' = 'P0001' as expected_lifecycle_state,
   :'lifecycle_sqlstate' not in ('40P01', '55P03', '57014') as no_concurrency_failure \gset
 \if :no_concurrency_failure
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 \if :expected_lifecycle_state
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 select count(*) = 2 and bool_and(active_count = 1) as one_active_assignment
@@ -41,7 +44,8 @@ from (
 ) active_companies \gset
 \if :one_active_assignment
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 select count(*) = 2
@@ -56,7 +60,8 @@ where a.company_id in (:'company_a_id'::uuid, :'company_b_id'::uuid)
   and a.status = 'active' \gset
 \if :scope_synchronized
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 
 select count(*) = 0 as failed_swaps_not_audited
@@ -65,5 +70,6 @@ where details ->> 'company_id' in (:'company_a_id', :'company_b_id')
   and details ->> 'reason' in ('swap race fixture a', 'swap race fixture b') \gset
 \if :failed_swaps_not_audited
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif

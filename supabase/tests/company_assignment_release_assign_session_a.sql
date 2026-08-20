@@ -20,9 +20,11 @@ select :'lifecycle_sqlstate' = '00000' as expected_lifecycle_state,
   :'lifecycle_sqlstate' not in ('40P01', '55P03', '57014') as no_concurrency_failure \gset
 \if :no_concurrency_failure
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif
 \if :expected_lifecycle_state
 \else
-  \quit 1
+  \set ON_ERROR_STOP on
+  select 1 / 0;
 \endif

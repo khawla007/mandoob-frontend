@@ -870,14 +870,22 @@ test('SQL fixtures cover credential denial and coordinated lifecycle races', () 
     'company_assignment_swap_reassign_session_b.sql',
   ].map((name) => [name, normalizeSql(readSqlFixture(name))] as const);
   for (const [name, fixture] of fixtures) {
+    assert.doesNotMatch(
+      fixture,
+      /\\quit\s+\d+/,
+      `${name} uses a psql \\quit argument that PostgreSQL 17 ignores`,
+    );
+    assert.match(
+      fixture,
+      /\\set\s+on_error_stop\s+on[\s\S]*?select\s+1\s*\/\s*0/,
+      `${name} lacks a portable nonzero assertion exit`,
+    );
     assert.match(fixture, /lock_timeout/);
     assert.match(fixture, /statement_timeout/);
     assert.match(fixture, /actor_[ab]_profile_id/, `${name} lacks a distinct actor variable`);
     assert.match(fixture, /\\set\s+lifecycle_sqlstate\s+:sqlstate/);
     assert.match(fixture, /lifecycle_sqlstate[\s\S]*?40p01[\s\S]*?55p03[\s\S]*?57014/);
-    if (name.endsWith('_session_b.sql')) {
-      assert.match(fixture, /\\gset[\s\S]*?\\if[\s\S]*?\\quit\s+1/);
-    }
+    if (name.endsWith('_session_b.sql')) assert.match(fixture, /\\gset[\s\S]*?\\if/);
   }
   const expectedSqlStates = new Map<string, string>([
     ['company_assignment_concurrency_session_a.sql', '00000'],
