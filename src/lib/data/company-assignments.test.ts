@@ -512,7 +512,7 @@ test('assignable PRO query is verified, active, role-scoped and excludes active 
   assert.deepEqual(supabase.calls[0], { kind: 'from', name: 'profiles' });
   assert.equal(
     supabase.calls.find((call) => call.kind === 'select')?.name,
-    'id, full_name, pro_profiles!inner(designation, department, verified_at, credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey()',
+    'id, full_name, pro_profiles!pro_profiles_profile_id_fkey!inner(designation, department, verified_at, credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey()',
   );
   for (const [name, value] of [
     ['role', 'pro'],

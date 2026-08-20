@@ -261,7 +261,7 @@ export async function listVerifiedUnassignedPros(
   const { data, error } = await client(deps)
     .from('profiles')
     .select(
-      'id, full_name, pro_profiles!inner(designation, department, verified_at, credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey()',
+      'id, full_name, pro_profiles!pro_profiles_profile_id_fkey!inner(designation, department, verified_at, credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey()',
     )
     .eq('role', 'pro')
     .eq('status', 'active')
