@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
+import { auditUseServerRuntimeExports } from '@/lib/testing/use-server-export-audit';
 
 const root = process.cwd();
 const page = readFileSync(join(root, 'src/app/(tenant)/t/[tenant]/(pro)/company/page.tsx'), 'utf8');
@@ -173,8 +174,7 @@ test('profile action delegates the authorized expected-version update to the ato
 
 test('use-server company actions export no non-function runtime values', () => {
   assert.match(actions, /^'use server';/u);
-  assert.doesNotMatch(actions, /^export\s+(?:const|let|var|class)\s+/mu);
-  assert.doesNotMatch(actions, /export const initialCompanyProfileActionState/u);
+  assert.deepEqual(auditUseServerRuntimeExports(actions), []);
   assert.match(form, /const initialCompanyProfileActionState: CompanyProfileActionState/u);
 });
 

@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { auditUseServerRuntimeExports } from './use-server-export-audit';
+
+test('accepts type-only exports and async server actions', () => {
+  assert.deepEqual(
+    auditUseServerRuntimeExports(`
+      'use server';
+      export type State = { ok: boolean };
+      export interface Input { id: string }
+      export async function submit(): Promise<void> {}
+      export const update = async (): Promise<void> => {};
+    `),
+    [],
+  );
+});
+
+test('rejects every non-callable or non-async runtime export form', () => {
+  const invalid = [
+    ['export default async function submit() {}', 'default export'],
+    ['const state = {}; export { state };', 'runtime export list'],
+    ["export { state } from './state';", 'runtime re-export'],
+    ["export * from './actions';", 'runtime re-export'],
+    ['export enum Status { Idle }', 'enum'],
+    ["export const initialState = { status: 'idle' };", 'initialState'],
+    ['export class ActionState {}', 'class'],
+    ['export function submit() {}', 'non-async function'],
+    ['export const submit = () => {};', 'non-async function'],
+  ] as const;
+
+  for (const [runtimeExport, expected] of invalid) {
+    const violations = auditUseServerRuntimeExports(`'use server';\n${runtimeExport}`);
+    assert.ok(
+      violations.some((violation) => violation.includes(expected)),
+      runtimeExport,
+    );
+  }
+});
+
+test('ignores modules without a use-server directive', () => {
+  assert.deepEqual(auditUseServerRuntimeExports('export const initialState = {};'), []);
+});
