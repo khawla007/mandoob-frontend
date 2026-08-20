@@ -4,40 +4,64 @@ function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
   return ts.canHaveModifiers(node) && Boolean(ts.getModifiers(node)?.some((m) => m.kind === kind));
 }
 
-function unwrapExpression(expression: ts.Expression): ts.Expression {
-  let current = expression;
-  while (ts.isParenthesizedExpression(current)) current = current.expression;
-  return current;
+function createAuditProgram(source: string): { checker: ts.TypeChecker; file: ts.SourceFile } {
+  const fileName = '/__use_server_audit__/actions.ts';
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    target: ts.ScriptTarget.ES2022,
+    strict: true,
+  };
+  const host = ts.createCompilerHost(options);
+  const originalGetSourceFile = host.getSourceFile.bind(host);
+  host.getSourceFile = (requestedName, languageVersion, onError, shouldCreateNewSourceFile) => {
+    if (requestedName === fileName) {
+      return ts.createSourceFile(fileName, source, languageVersion, true, ts.ScriptKind.TS);
+    }
+    return originalGetSourceFile(
+      requestedName,
+      languageVersion,
+      onError,
+      shouldCreateNewSourceFile,
+    );
+  };
+  host.fileExists = (requestedName) =>
+    requestedName === fileName || ts.sys.fileExists(requestedName);
+  host.readFile = (requestedName) =>
+    requestedName === fileName ? source : ts.sys.readFile(requestedName);
+
+  const program = ts.createProgram([fileName], options, host);
+  const file = program.getSourceFile(fileName);
+  if (!file) throw new Error('Failed to create use-server audit source file');
+  return { checker: program.getTypeChecker(), file };
 }
 
-function isAsyncFunction(node: ts.Node): boolean {
-  const candidate = ts.isExpression(node) ? unwrapExpression(node) : node;
+function isCallable(checker: ts.TypeChecker, node: ts.Node): boolean {
+  return checker.getTypeAtLocation(node).getCallSignatures().length > 0;
+}
+
+function isPromiseReturningCallable(checker: ts.TypeChecker, node: ts.Node): boolean {
+  const signatures = checker.getTypeAtLocation(node).getCallSignatures();
   return (
-    (ts.isFunctionDeclaration(candidate) ||
-      ts.isFunctionExpression(candidate) ||
-      ts.isArrowFunction(candidate) ||
-      ts.isMethodDeclaration(candidate)) &&
-    hasModifier(candidate, ts.SyntaxKind.AsyncKeyword)
+    signatures.length > 0 &&
+    signatures.every((signature) => {
+      const returnType = signature.getReturnType();
+      return checker.getAwaitedType(returnType) !== returnType;
+    })
   );
 }
 
-function variableRuntimeKind(declaration: ts.VariableDeclaration): 'async' | 'function' | 'value' {
-  const initializer = declaration.initializer;
-  if (initializer && isAsyncFunction(initializer)) return 'async';
-  if (initializer && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer))) {
-    return 'function';
-  }
-  return 'value';
+function exportViolation(
+  checker: ts.TypeChecker,
+  node: ts.Node,
+  callableMessage: string,
+  valueMessage: string,
+): string | undefined {
+  if (isPromiseReturningCallable(checker, node)) return undefined;
+  return isCallable(checker, node) ? callableMessage : valueMessage;
 }
 
 export function auditUseServerRuntimeExports(source: string): string[] {
-  const file = ts.createSourceFile(
-    'actions.ts',
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  );
+  const { checker, file } = createAuditProgram(source);
   let isUseServer = false;
   for (const statement of file.statements) {
     if (!ts.isExpressionStatement(statement) || !ts.isStringLiteral(statement.expression)) break;
@@ -45,50 +69,30 @@ export function auditUseServerRuntimeExports(source: string): string[] {
   }
   if (!isUseServer) return [];
 
-  const localRuntime = new Map<string, 'async' | 'function' | 'value' | 'type'>();
-  for (const statement of file.statements) {
-    if (ts.isFunctionDeclaration(statement) && statement.name) {
-      localRuntime.set(statement.name.text, isAsyncFunction(statement) ? 'async' : 'function');
-    } else if (ts.isVariableStatement(statement)) {
-      for (const declaration of statement.declarationList.declarations) {
-        if (ts.isIdentifier(declaration.name)) {
-          localRuntime.set(declaration.name.text, variableRuntimeKind(declaration));
-        }
-      }
-    } else if (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) {
-      localRuntime.set(statement.name.text, 'type');
-    } else if (
-      (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) &&
-      statement.name
-    ) {
-      localRuntime.set(statement.name.text, 'value');
-    }
-  }
-
   const violations: string[] = [];
   for (const statement of file.statements) {
     if (ts.isExportAssignment(statement)) {
-      const expression = unwrapExpression(statement.expression);
-      if (isAsyncFunction(expression)) continue;
-      if (ts.isIdentifier(expression)) {
-        const kind = localRuntime.get(expression.text);
-        if (kind === 'async') continue;
-        if (kind === 'function') violations.push('default non-async function is exported');
-        else violations.push('default exported value is not an async function');
-      } else if (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression)) {
-        violations.push('default non-async function is exported');
-      } else {
-        violations.push('default exported value is not an async function');
-      }
+      const violation = exportViolation(
+        checker,
+        statement.expression,
+        'default non-async function does not return Promise',
+        'default exported value is not a Promise-returning callable',
+      );
+      if (violation) violations.push(violation);
       continue;
     }
+
     if (hasModifier(statement, ts.SyntaxKind.DefaultKeyword)) {
-      if (ts.isFunctionDeclaration(statement)) {
-        if (!isAsyncFunction(statement)) violations.push('default non-async function is exported');
-      } else if (ts.isClassDeclaration(statement)) {
-        violations.push('default exported class is not an async function');
+      if (ts.isClassDeclaration(statement)) {
+        violations.push('default exported class is not a Promise-returning callable');
       } else {
-        violations.push('default exported value is not an async function');
+        const violation = exportViolation(
+          checker,
+          statement,
+          'default non-async function does not return Promise',
+          'default exported value is not a Promise-returning callable',
+        );
+        if (violation) violations.push(violation);
       }
       continue;
     }
@@ -113,10 +117,13 @@ export function auditUseServerRuntimeExports(source: string): string[] {
       for (const element of statement.exportClause.elements) {
         if (element.isTypeOnly) continue;
         const localName = (element.propertyName ?? element.name).text;
-        const kind = localRuntime.get(localName);
-        if (kind !== 'async' && kind !== 'type') {
-          violations.push(`runtime export list exposes ${localName}`);
-        }
+        const violation = exportViolation(
+          checker,
+          element.propertyName ?? element.name,
+          `runtime export list exposes ${localName}: callable does not return Promise`,
+          `runtime export list exposes ${localName}: value is not callable`,
+        );
+        if (violation) violations.push(violation);
       }
       continue;
     }
@@ -124,15 +131,25 @@ export function auditUseServerRuntimeExports(source: string): string[] {
     if (!hasModifier(statement, ts.SyntaxKind.ExportKeyword)) continue;
     if (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) continue;
     if (ts.isFunctionDeclaration(statement)) {
-      if (!isAsyncFunction(statement)) violations.push('non-async function is exported');
+      const violation = exportViolation(
+        checker,
+        statement,
+        'non-async function does not return Promise',
+        'exported function is not callable',
+      );
+      if (violation) violations.push(violation);
       continue;
     }
     if (ts.isVariableStatement(statement)) {
       for (const declaration of statement.declarationList.declarations) {
         const name = ts.isIdentifier(declaration.name) ? declaration.name.text : 'binding';
-        const kind = variableRuntimeKind(declaration);
-        if (kind === 'function') violations.push(`non-async function ${name} is exported`);
-        else if (kind === 'value') violations.push(`${name} is an exported value`);
+        const violation = exportViolation(
+          checker,
+          declaration.name,
+          `non-async function ${name} does not return Promise`,
+          `${name} is an exported value, not a Promise-returning callable`,
+        );
+        if (violation) violations.push(violation);
       }
       continue;
     }

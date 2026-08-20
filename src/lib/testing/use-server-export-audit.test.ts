@@ -13,6 +13,11 @@ test('accepts type-only exports and async server actions', () => {
       export { type ExternalInput } from './input';
       export async function submit(): Promise<void> {}
       export const update = async (): Promise<void> => {};
+      const base = async (): Promise<void> => {};
+      export const aliased = base;
+      async function listed(): Promise<void> {}
+      export { listed };
+      export function promised(): Promise<void> { return Promise.resolve(); }
     `),
     [],
   );
@@ -55,6 +60,7 @@ test('rejects every non-callable or non-async runtime export form', () => {
     ['export class ActionState {}', 'class'],
     ['export function submit() {}', 'non-async function'],
     ['export const submit = () => {};', 'non-async function'],
+    ['export async function* submit() {}', 'does not return Promise'],
   ] as const;
 
   for (const [runtimeExport, expected] of invalid) {
