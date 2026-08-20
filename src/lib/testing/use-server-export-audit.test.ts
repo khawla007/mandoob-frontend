@@ -24,6 +24,18 @@ test('accepts type-only exports and async server actions', () => {
     auditUseServerRuntimeExports(`'use server'; export default async () => {};`),
     [],
   );
+  assert.deepEqual(
+    auditUseServerRuntimeExports(`
+      'use server';
+      async function submit() {}
+      export default submit;
+    `),
+    [],
+  );
+  assert.deepEqual(
+    auditUseServerRuntimeExports(`'use server'; export default (async () => {});`),
+    [],
+  );
 });
 
 test('rejects every non-callable or non-async runtime export form', () => {
@@ -32,6 +44,9 @@ test('rejects every non-callable or non-async runtime export form', () => {
     ['export default () => {};', 'default non-async function'],
     ['export default {};', 'default exported value'],
     ['export default class ActionState {}', 'default exported class'],
+    ['function submit() {}; export default submit;', 'default non-async function'],
+    ['const state = {}; export default state;', 'default exported value'],
+    ['class ActionState {}; export default ActionState;', 'default exported value'],
     ['const state = {}; export { state };', 'runtime export list'],
     ["export { state } from './state';", 'runtime re-export'],
     ["export * from './actions';", 'runtime re-export'],
@@ -53,4 +68,12 @@ test('rejects every non-callable or non-async runtime export form', () => {
 
 test('ignores modules without a use-server directive', () => {
   assert.deepEqual(auditUseServerRuntimeExports('export const initialState = {};'), []);
+  assert.deepEqual(
+    auditUseServerRuntimeExports(`
+      const initialState = {};
+      'use server';
+      export const invalidAtRuntime = initialState;
+    `),
+    [],
+  );
 });

@@ -4,13 +4,20 @@ function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
   return ts.canHaveModifiers(node) && Boolean(ts.getModifiers(node)?.some((m) => m.kind === kind));
 }
 
+function unwrapExpression(expression: ts.Expression): ts.Expression {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)) current = current.expression;
+  return current;
+}
+
 function isAsyncFunction(node: ts.Node): boolean {
+  const candidate = ts.isExpression(node) ? unwrapExpression(node) : node;
   return (
-    (ts.isFunctionDeclaration(node) ||
-      ts.isFunctionExpression(node) ||
-      ts.isArrowFunction(node) ||
-      ts.isMethodDeclaration(node)) &&
-    hasModifier(node, ts.SyntaxKind.AsyncKeyword)
+    (ts.isFunctionDeclaration(candidate) ||
+      ts.isFunctionExpression(candidate) ||
+      ts.isArrowFunction(candidate) ||
+      ts.isMethodDeclaration(candidate)) &&
+    hasModifier(candidate, ts.SyntaxKind.AsyncKeyword)
   );
 }
 
@@ -31,12 +38,11 @@ export function auditUseServerRuntimeExports(source: string): string[] {
     true,
     ts.ScriptKind.TS,
   );
-  const isUseServer = file.statements.some(
-    (statement) =>
-      ts.isExpressionStatement(statement) &&
-      ts.isStringLiteral(statement.expression) &&
-      statement.expression.text === 'use server',
-  );
+  let isUseServer = false;
+  for (const statement of file.statements) {
+    if (!ts.isExpressionStatement(statement) || !ts.isStringLiteral(statement.expression)) break;
+    if (statement.expression.text === 'use server') isUseServer = true;
+  }
   if (!isUseServer) return [];
 
   const localRuntime = new Map<string, 'async' | 'function' | 'value' | 'type'>();
@@ -62,11 +68,14 @@ export function auditUseServerRuntimeExports(source: string): string[] {
   const violations: string[] = [];
   for (const statement of file.statements) {
     if (ts.isExportAssignment(statement)) {
-      if (isAsyncFunction(statement.expression)) continue;
-      if (
-        ts.isArrowFunction(statement.expression) ||
-        ts.isFunctionExpression(statement.expression)
-      ) {
+      const expression = unwrapExpression(statement.expression);
+      if (isAsyncFunction(expression)) continue;
+      if (ts.isIdentifier(expression)) {
+        const kind = localRuntime.get(expression.text);
+        if (kind === 'async') continue;
+        if (kind === 'function') violations.push('default non-async function is exported');
+        else violations.push('default exported value is not an async function');
+      } else if (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression)) {
         violations.push('default non-async function is exported');
       } else {
         violations.push('default exported value is not an async function');
