@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { RecentLoginRow } from '@/lib/data/admin-metrics';
+import { cn } from '@/lib/utils';
 import { roleBadgeVariant } from './role-badge';
 
 export async function RecentLoginsTable({
@@ -62,7 +63,14 @@ export async function RecentLoginsTable({
                 </TableCell>
                 <TableCell>
                   {r.role ? (
-                    <Badge variant={roleBadgeVariant[r.role]} className="font-mono text-xs">
+                    <Badge
+                      variant={roleBadgeVariant[r.role]}
+                      className={cn(
+                        'font-mono text-xs',
+                        roleBadgeVariant[r.role] === 'destructive' &&
+                          'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200',
+                      )}
+                    >
                       {t(`enums.role.${r.role}`)}
                     </Badge>
                   ) : (
@@ -72,7 +80,14 @@ export async function RecentLoginsTable({
                 <TableCell className="font-mono text-xs tabular-nums">{r.ip}</TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">{r.time}</TableCell>
                 <TableCell className="text-right">
-                  <Badge variant={r.status === 'success' ? 'outline' : 'destructive'}>
+                  <Badge
+                    variant={r.status === 'success' ? 'outline' : 'destructive'}
+                    className={
+                      r.status === 'success'
+                        ? undefined
+                        : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200'
+                    }
+                  >
                     {t(`user.recentLogins.loginStatus.${r.status}`)}
                   </Badge>
                 </TableCell>

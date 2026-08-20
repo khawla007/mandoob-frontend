@@ -44,9 +44,12 @@ renderTest('small accent copy meets AA against light and dark dashboard surfaces
     'utf8',
   );
   const dashboardScope =
-    styles.match(/body:has\(\.dashboard-surface\)\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+    styles.match(/\.dashboard-surface,\s*body\.dashboard-surface-active\s*\{([\s\S]*?)\}/u)?.[1] ??
+    '';
   const darkDashboardScope =
-    styles.match(/\.dark body:has\(\.dashboard-surface\)\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+    styles.match(
+      /\.dark \.dashboard-surface,\s*\.dark body\.dashboard-surface-active\s*\{([\s\S]*?)\}/u,
+    )?.[1] ?? '';
   const lightAccent = dashboardScope.match(/--signal-accent-copy:\s*(#[0-9a-f]{6})/iu)?.[1];
   const darkAccent = darkDashboardScope.match(/--signal-accent-copy:\s*(#[0-9a-f]{6})/iu)?.[1];
   assert.ok(lightAccent && darkAccent, 'expected light and dark accent-copy tokens');
@@ -89,7 +92,8 @@ renderTest('default dashboard action and status primitives meet AA contrast', as
 
   const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
   const dashboardScope =
-    styles.match(/body:has\(\.dashboard-surface\)\s*\{([\s\S]*?)\}/u)?.[1] ?? '';
+    styles.match(/\.dashboard-surface,\s*body\.dashboard-surface-active\s*\{([\s\S]*?)\}/u)?.[1] ??
+    '';
   const accent = dashboardScope.match(/--primary:\s*(#[0-9a-f]{6})/iu)?.[1];
   const foreground = dashboardScope.match(/--primary-foreground:\s*(#[0-9a-f]{6})/iu)?.[1];
   assert.ok(accent, 'expected a dashboard-scoped primary token');

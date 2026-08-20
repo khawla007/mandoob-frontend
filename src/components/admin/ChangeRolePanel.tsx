@@ -255,8 +255,11 @@ export function ChangeRolePanel({
               </div>
               {tenantId && (
                 <div className="space-y-2">
-                  <Label>{t('user.fields.linkedCompany')}</Label>
+                  <Label htmlFor="change-role-linked-company">
+                    {t('user.fields.linkedCompany')}
+                  </Label>
                   <CompanyTypeahead
+                    id="change-role-linked-company"
                     tenantId={tenantId}
                     value={linkedCompanyId}
                     onChange={setLinkedCompanyId}
@@ -271,8 +274,11 @@ export function ChangeRolePanel({
             <div className="space-y-3">
               {tenantId ? (
                 <div className="space-y-2">
-                  <Label>{t('user.roleChange.companyRequiredLabel')}</Label>
+                  <Label htmlFor="change-role-employer-company">
+                    {t('user.roleChange.companyRequiredLabel')}
+                  </Label>
                   <CompanyTypeahead
+                    id="change-role-employer-company"
                     tenantId={tenantId}
                     value={companyId}
                     onChange={setCompanyId}

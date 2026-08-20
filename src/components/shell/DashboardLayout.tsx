@@ -7,6 +7,7 @@ import {
   type DashboardNavKind,
 } from './DashboardSidebar';
 import { DashboardTopbar } from './DashboardTopbar';
+import { DashboardSurfaceScope } from './DashboardSurfaceScope';
 
 const SIGNAL_STUDIO_SIDEBAR_STYLE = {
   '--sidebar-width': '12.25rem',
@@ -46,6 +47,7 @@ export function DashboardLayout({
       data-nav-kind={navKind}
       style={navKind === 'pro' ? SIGNAL_STUDIO_SIDEBAR_STYLE : undefined}
     >
+      <DashboardSurfaceScope />
       <DashboardSidebar
         brand={brand}
         brandSubtitle={brandSubtitle}

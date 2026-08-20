@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +19,12 @@ export type CompanyLookupRow = {
   status: string;
 };
 
-export type CompanyTypeaheadProps = {
+type CompanyTypeaheadFieldProps = Pick<
+  ComponentProps<typeof Button>,
+  'id' | 'aria-labelledby' | 'aria-describedby' | 'aria-invalid'
+>;
+
+export type CompanyTypeaheadProps = CompanyTypeaheadFieldProps & {
   tenantId: string | null;
   value: string | null;
   onChange: (id: string | null, row?: CompanyLookupRow) => void;
@@ -28,6 +33,17 @@ export type CompanyTypeaheadProps = {
   placeholder?: string;
 };
 
+type CompanyTypeaheadTriggerProps = Omit<ComponentProps<typeof Button>, 'aria-label'> & {
+  accessibleLabel: string;
+};
+
+export function CompanyTypeaheadTrigger({
+  accessibleLabel,
+  ...buttonProps
+}: CompanyTypeaheadTriggerProps) {
+  return <Button type="button" variant="outline" {...buttonProps} aria-label={accessibleLabel} />;
+}
+
 export function CompanyTypeahead({
   tenantId,
   value,
@@ -35,6 +51,10 @@ export function CompanyTypeahead({
   accessibleLabel,
   required,
   placeholder,
+  id,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: CompanyTypeaheadProps) {
   const t = useTranslations('admin');
   const resolvedPlaceholder = placeholder ?? t('companyTypeahead.searchPlaceholder');
@@ -86,23 +106,34 @@ export function CompanyTypeahead({
 
   if (!tenantId) {
     return (
-      <Button type="button" variant="outline" disabled className="w-full justify-start">
+      <CompanyTypeaheadTrigger
+        disabled
+        id={id}
+        accessibleLabel={accessibleLabel}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        className="w-full justify-start"
+      >
         {t('companyTypeahead.noTenant')}
-      </Button>
+      </CompanyTypeaheadTrigger>
     );
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
+        <CompanyTypeaheadTrigger
+          id={id}
+          accessibleLabel={accessibleLabel}
+          aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           aria-required={required}
           className="w-full justify-between"
         >
           {selected ? selected.company_name : resolvedPlaceholder}
-        </Button>
+        </CompanyTypeaheadTrigger>
       </PopoverTrigger>
       <PopoverContent
         aria-label={accessibleLabel}

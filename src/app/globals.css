@@ -154,13 +154,15 @@
 
 /* Authenticated surfaces need a darker control fill for white-label contrast.
    Keep the public brand primitive, charts, and focus rings on Mandoob orange. */
-body:has(.dashboard-surface) {
+.dashboard-surface,
+body.dashboard-surface-active {
   --primary: #c2410c;
   --primary-foreground: #ffffff;
   --signal-accent-copy: #c2410c;
 }
 
-.dark body:has(.dashboard-surface) {
+.dark .dashboard-surface,
+.dark body.dashboard-surface-active {
   --primary: #ff8a65;
   --primary-foreground: #141312;
   --signal-accent-copy: #ff8a65;
