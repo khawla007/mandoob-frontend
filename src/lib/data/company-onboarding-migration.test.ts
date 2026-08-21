@@ -70,6 +70,22 @@ test('0066 defines fixed-path service workflows, receipts, and redacted audit ev
   assert.match(sql, /stale_onboarding_version/u);
   assert.match(sql, /company_activation_attempted/u);
   assert.match(sql, /company_activated/u);
+  assert.match(
+    sql,
+    /coalesce\(excluded\.passport_no_encrypted, company_shareholders\.passport_no_encrypted\)/u,
+  );
+  assert.match(
+    sql,
+    /coalesce\(excluded\.registration_no_encrypted, company_shareholders\.registration_no_encrypted\)/u,
+  );
+  assert.match(
+    sql,
+    /coalesce\(\s*nullif\(p_payload ->> 'card_no_encrypted', ''\), establishment_card_no_encrypted\)/u,
+  );
+  assert.match(
+    sql,
+    /swift_bic = coalesce\(excluded\.swift_bic, company_bank_details\.swift_bic\)/u,
+  );
   const aggregateRead = sql.slice(
     sql.indexOf('function public.read_company_onboarding'),
     sql.indexOf('function public.cleanup_company_onboarding_operations'),

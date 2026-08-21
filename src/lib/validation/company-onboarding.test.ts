@@ -111,6 +111,14 @@ test('shareholders enforce variants, unique ids, and exact decimal totals', asyn
     }).success,
     true,
   );
+  assert.equal(
+    companyShareholdersSectionSchema.safeParse({
+      ...input,
+      shareholders: [individual, { ...company, registrationNumber: '' }],
+    }).success,
+    true,
+    'a blank protected registration preserves the saved value for a stable shareholder id',
+  );
 });
 
 test('activities reject duplicates and require exactly one primary when complete', async () => {
@@ -223,6 +231,16 @@ test('establishment and bank inputs enforce protected identifier boundaries', as
     }).success,
     false,
   );
+  assert.equal(
+    companyEstablishmentSectionSchema.safeParse({
+      ...command,
+      establishmentCardNumber: '',
+      establishmentCardExpiry: '2028-02-29',
+      completeSection: true,
+    }).success,
+    true,
+    'a blank protected card preserves the saved identifier; the RPC checks existing-or-new completion',
+  );
 
   const bank = {
     ...command,
@@ -241,7 +259,12 @@ test('establishment and bank inputs enforce protected identifier boundaries', as
     true,
   );
   assert.equal(
-    companyBankSectionSchema.safeParse({ ...bank, iban: '', accountNumber: '' }).success,
+    companyBankSectionSchema.safeParse({
+      ...bank,
+      swiftBic: '',
+      iban: '',
+      accountNumber: '',
+    }).success,
     true,
     'blank protected fields preserve existing identifiers; the RPC checks existing-or-new completion',
   );

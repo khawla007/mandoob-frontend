@@ -65,7 +65,9 @@ const companyShareholder = shareholderBase.extend({
     .trim()
     .toUpperCase()
     .pipe(z.string().regex(/^[A-Z]{2}$/u)),
-  registrationNumber: normalizedText(2, 64).transform((value) => value.toUpperCase()),
+  registrationNumber: optionalText(64)
+    .refine((value) => value === '' || value.length >= 2)
+    .transform((value) => value.toUpperCase()),
 });
 
 function decimalTenThousandths(value: string): number {
@@ -209,7 +211,9 @@ export const companyOfficeSectionSchema = sectionCommandSchema
   });
 
 export const companyEstablishmentSectionSchema = sectionCommandSchema.extend({
-  establishmentCardNumber: normalizedText(2, 64).transform((value) => value.toUpperCase()),
+  establishmentCardNumber: optionalText(64)
+    .refine((value) => value === '' || value.length >= 2)
+    .transform((value) => value.toUpperCase()),
   establishmentCardExpiry: calendarDate,
 });
 
@@ -222,7 +226,7 @@ export const companyBankSectionSchema = sectionCommandSchema.extend({
     .string()
     .trim()
     .toUpperCase()
-    .pipe(z.string().regex(/^[A-Z0-9]{8}(?:[A-Z0-9]{3})?$/u)),
+    .pipe(z.string().regex(/^(?:[A-Z0-9]{8}(?:[A-Z0-9]{3})?)?$/u)),
   iban: z
     .string()
     .transform((value) => value.replace(/[\s-]+/gu, '').toUpperCase())

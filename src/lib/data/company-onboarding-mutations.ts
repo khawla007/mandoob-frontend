@@ -288,9 +288,11 @@ export async function saveCompanyShareholdersSection(
       country_of_incorporation: shareholder.country_of_incorporation,
       ownership_percent: shareholder.ownership_percent,
       sort_order: shareholder.sort_order,
-      registration_no_encrypted: encryptPii(identifier),
-      registration_no_hash: createBlindIndex('company-shareholder-registration:v1', identifier),
-      registration_no_last4: identifier.slice(-4),
+      registration_no_encrypted: identifier ? encryptPii(identifier) : null,
+      registration_no_hash: identifier
+        ? createBlindIndex('company-shareholder-registration:v1', identifier)
+        : null,
+      registration_no_last4: identifier ? identifier.slice(-4) : null,
     };
   });
   const payload = { complete_section: parsed.data.completeSection, shareholders };
@@ -383,9 +385,9 @@ export async function saveCompanyEstablishmentSection(
   const identifier = parsed.data.establishmentCardNumber;
   const payload = {
     complete_section: parsed.data.completeSection,
-    card_no_encrypted: encryptPii(identifier),
-    card_no_hash: createBlindIndex('company-establishment-card:v1', identifier),
-    card_no_last4: identifier.slice(-4),
+    card_no_encrypted: identifier ? encryptPii(identifier) : null,
+    card_no_hash: identifier ? createBlindIndex('company-establishment-card:v1', identifier) : null,
+    card_no_last4: identifier ? identifier.slice(-4) : null,
     card_expiry: parsed.data.establishmentCardExpiry,
   };
   return invoke({
@@ -419,7 +421,7 @@ export async function saveCompanyBankSection(
     branch_name: parsed.data.branchName,
     account_holder_name: parsed.data.accountHolderName,
     currency_code: parsed.data.currencyCode,
-    swift_bic: parsed.data.swiftBic,
+    swift_bic: parsed.data.swiftBic || null,
     iban,
     account_number: accountNumber,
   };
@@ -429,7 +431,7 @@ export async function saveCompanyBankSection(
     branch_name: parsed.data.branchName,
     account_holder_name: parsed.data.accountHolderName,
     currency_code: parsed.data.currencyCode,
-    swift_bic: parsed.data.swiftBic,
+    swift_bic: parsed.data.swiftBic || null,
     iban_encrypted: iban ? encryptPii(iban) : null,
     iban_hash: iban ? createBlindIndex('company-bank-iban:v1', iban) : null,
     iban_last4: iban ? iban.slice(-4) : null,

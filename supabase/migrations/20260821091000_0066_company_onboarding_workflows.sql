@@ -363,14 +363,20 @@ begin
       ) on conflict (id) do update set
         kind = excluded.kind, full_name = excluded.full_name,
         nationality_code = excluded.nationality_code,
-        passport_no_encrypted = excluded.passport_no_encrypted,
-        passport_no_hash = excluded.passport_no_hash,
-        passport_no_last4 = excluded.passport_no_last4,
+        passport_no_encrypted = case when excluded.kind = 'individual'
+          then coalesce(excluded.passport_no_encrypted, company_shareholders.passport_no_encrypted) else null end,
+        passport_no_hash = case when excluded.kind = 'individual'
+          then coalesce(excluded.passport_no_hash, company_shareholders.passport_no_hash) else null end,
+        passport_no_last4 = case when excluded.kind = 'individual'
+          then coalesce(excluded.passport_no_last4, company_shareholders.passport_no_last4) else null end,
         legal_name = excluded.legal_name,
         country_of_incorporation = excluded.country_of_incorporation,
-        registration_no_encrypted = excluded.registration_no_encrypted,
-        registration_no_hash = excluded.registration_no_hash,
-        registration_no_last4 = excluded.registration_no_last4,
+        registration_no_encrypted = case when excluded.kind = 'company'
+          then coalesce(excluded.registration_no_encrypted, company_shareholders.registration_no_encrypted) else null end,
+        registration_no_hash = case when excluded.kind = 'company'
+          then coalesce(excluded.registration_no_hash, company_shareholders.registration_no_hash) else null end,
+        registration_no_last4 = case when excluded.kind = 'company'
+          then coalesce(excluded.registration_no_last4, company_shareholders.registration_no_last4) else null end,
         ownership_percent = excluded.ownership_percent, sort_order = excluded.sort_order;
     end loop;
     delete from public.company_shareholders
@@ -451,9 +457,12 @@ begin
 
   elsif p_section = 'establishment' then
     update public.company_profiles set
-      establishment_card_no_encrypted = nullif(p_payload ->> 'card_no_encrypted', ''),
-      establishment_card_no_hash = nullif(p_payload ->> 'card_no_hash', ''),
-      establishment_card_no_last4 = nullif(pg_catalog.upper(p_payload ->> 'card_no_last4'), ''),
+      establishment_card_no_encrypted = coalesce(
+        nullif(p_payload ->> 'card_no_encrypted', ''), establishment_card_no_encrypted),
+      establishment_card_no_hash = coalesce(
+        nullif(p_payload ->> 'card_no_hash', ''), establishment_card_no_hash),
+      establishment_card_no_last4 = coalesce(
+        nullif(pg_catalog.upper(p_payload ->> 'card_no_last4'), ''), establishment_card_no_last4),
       establishment_card_expiry = nullif(p_payload ->> 'card_expiry', '')::date
     where id = p_company_id;
     if v_complete and exists (
@@ -482,7 +491,7 @@ begin
     ) on conflict (company_id) do update set
       bank_name = excluded.bank_name, branch_name = excluded.branch_name,
       account_holder_name = excluded.account_holder_name, currency_code = excluded.currency_code,
-      swift_bic = excluded.swift_bic,
+      swift_bic = coalesce(excluded.swift_bic, company_bank_details.swift_bic),
       iban_encrypted = coalesce(excluded.iban_encrypted, company_bank_details.iban_encrypted),
       iban_hash = coalesce(excluded.iban_hash, company_bank_details.iban_hash),
       iban_last4 = coalesce(excluded.iban_last4, company_bank_details.iban_last4),

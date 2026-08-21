@@ -158,7 +158,10 @@ test('shareholder wrapper preserves IDs and encrypts protected variant identifie
   const mutations = await import('./company-onboarding-mutations');
   const { decrypt } = await import('@/lib/crypto/pii');
   const corporateId = '66666666-6666-4666-8666-666666666666';
-  const rpc = fakeClient([{ data: sectionResult('shareholders'), error: null }]);
+  const rpc = fakeClient([
+    { data: sectionResult('shareholders'), error: null },
+    { data: sectionResult('shareholders'), error: null },
+  ]);
 
   const result = await mutations.saveCompanyShareholdersSection(
     {
@@ -199,15 +202,49 @@ test('shareholder wrapper preserves IDs and encrypts protected variant identifie
   assert.equal(decrypt(String(payload.shareholders[1]?.registration_no_encrypted)), 'REG-9988');
   assert.equal(payload.shareholders[1]?.registration_no_last4, '9988');
   assert.doesNotMatch(JSON.stringify(result), /P-1234567|REG-9988|v1:/u);
+
+  await mutations.saveCompanyShareholdersSection(
+    {
+      ...command,
+      completeSection: true,
+      shareholders: [
+        {
+          id: rowId,
+          kind: 'individual',
+          fullName: 'Aisha Noor',
+          nationalityCode: 'AE',
+          passportNumber: '',
+          ownershipPercent: '60.0000',
+          sortOrder: 0,
+        },
+        {
+          id: corporateId,
+          kind: 'company',
+          legalName: 'Parent Holdings',
+          countryOfIncorporation: 'GB',
+          registrationNumber: '',
+          ownershipPercent: '40.0000',
+          sortOrder: 1,
+        },
+      ],
+    },
+    { client: rpc.client as never },
+  );
+  const keep = rpc.calls[1]?.parameters.p_payload as {
+    shareholders: Array<Record<string, unknown>>;
+  };
+  assert.equal(keep.shareholders[0]?.passport_no_encrypted, null);
+  assert.equal(keep.shareholders[1]?.registration_no_encrypted, null);
 });
 
-test('establishment and bank wrappers encrypt replacements while blank bank identifiers mean keep', async () => {
+test('establishment and bank wrappers encrypt replacements while blank identifiers mean keep', async () => {
   const mutations = await import('./company-onboarding-mutations');
   const { decrypt, createBlindIndex } = await import('@/lib/crypto/pii');
   const rpc = fakeClient([
     { data: sectionResult('establishment'), error: null },
     { data: sectionResult('bank'), error: null },
     { data: sectionResult('bank'), error: null },
+    { data: sectionResult('establishment'), error: null },
     { data: sectionResult('bank'), error: null },
   ]);
   const dependencies = { client: rpc.client as never };
@@ -257,9 +294,18 @@ test('establishment and bank wrappers encrypt replacements while blank bank iden
       branchName: '',
       accountHolderName: 'Acme Trading LLC',
       currencyCode: 'AED',
-      swiftBic: 'EBILAEAD',
+      swiftBic: '',
       iban: '',
       accountNumber: '',
+    },
+    dependencies,
+  );
+  await mutations.saveCompanyEstablishmentSection(
+    {
+      ...command,
+      completeSection: true,
+      establishmentCardNumber: '',
+      establishmentCardExpiry: '2028-08-21',
     },
     dependencies,
   );
@@ -288,6 +334,12 @@ test('establishment and bank wrappers encrypt replacements while blank bank iden
   assert.equal(keep.iban_hash, null);
   assert.equal(keep.iban_last4, null);
   assert.equal(keep.account_number_encrypted, null);
+  assert.equal(keep.swift_bic, null);
+
+  const establishmentKeep = rpc.calls[4]?.parameters.p_payload as Record<string, unknown>;
+  assert.equal(establishmentKeep.card_no_encrypted, null);
+  assert.equal(establishmentKeep.card_no_hash, null);
+  assert.equal(establishmentKeep.card_no_last4, null);
 });
 
 test('clear, reopen, submit, and activate wrappers use explicit sanitized payloads', async () => {
