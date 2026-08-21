@@ -160,7 +160,7 @@ create table public.pro_credential_decisions (
   to_state public.pro_credential_state not null,
   reason_code text,
   reason text,
-  actor_profile_id uuid not null references public.profiles(id) on delete restrict,
+  actor_profile_id uuid references public.profiles(id) on delete restrict,
   credential_version bigint not null,
   created_at timestamptz not null default now(),
   constraint pro_credential_decisions_credential_fk
@@ -226,6 +226,9 @@ alter table public.pro_commercial_terms
   ) where (status = 'active');
 create index pro_commercial_terms_history_idx
   on public.pro_commercial_terms(pro_profile_id, term_kind, effective_from desc, id desc);
+create unique index pro_commercial_terms_one_draft
+  on public.pro_commercial_terms(pro_profile_id, term_kind)
+  where status = 'draft';
 
 create table public.pro_commercial_term_events (
   id uuid primary key default gen_random_uuid(),

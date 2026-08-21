@@ -66,3 +66,110 @@ test('0068 defines normalized lifecycle, evidence, decision, receipt, term, and 
   assert.match(sql, /identifier_hash is null/u);
   assert.match(sql, /identifier_last4 is null/u);
 });
+
+test('0069 defines fixed-path service workflows, eligibility, timeline, and expiry job', () => {
+  assert.equal(existsSync(join(process.cwd(), migrationPaths[1])), true, migrationPaths[1]);
+  const sql = migration(1);
+  for (const fn of [
+    'create_pro_credential_draft',
+    'save_pro_credential_draft',
+    'register_pro_credential_evidence',
+    'remove_pro_credential_evidence',
+    'submit_pro_credential',
+    'begin_pro_credential_review',
+    'verify_pro_credential',
+    'reject_pro_credential',
+    'revoke_pro_credential',
+    'create_pro_credential_replacement',
+    'open_pro_credential_evidence_metadata',
+    'create_pro_commercial_term_draft',
+    'activate_pro_commercial_term',
+    'end_pro_commercial_term',
+    'evaluate_pro_assignment_eligibility',
+    'read_pro_lifecycle_timeline',
+    'materialize_expired_pro_credentials',
+  ]) {
+    assert.match(sql, new RegExp(`function public\\.${fn}`, 'u'));
+    assert.match(sql, new RegExp(`${fn}[\\s\\S]*set search_path = ''`, 'u'));
+  }
+  assert.match(sql, /alter function %s owner to postgres/u);
+  assert.match(sql, /revoke all on function %s from public, anon, authenticated, service_role/u);
+  assert.match(sql, /grant execute on function %s to service_role/u);
+  assert.match(sql, /p_expected_version bigint/u);
+  assert.match(sql, /p_operation_id uuid/u);
+  assert.match(sql, /p_payload_hash text/u);
+  assert.match(sql, /operation_reused/u);
+  assert.match(sql, /stale_credential_version/u);
+  assert.match(
+    sql,
+    /verify_pro_credential[\s\S]*where id = p_credential_id and version = p_expected_version and state = 'under_review'/u,
+  );
+  assert.match(
+    sql,
+    /activate_pro_commercial_term[\s\S]*where id = p_term_id and version = p_expected_version and status = 'draft'/u,
+  );
+  assert.match(sql, /timezone\('asia\/dubai', pg_catalog\.now\(\)\)::date/u);
+  assert.match(sql, /for update skip locked/u);
+  assert.match(sql, /45 2 \* \* \*/u);
+  assert.match(sql, /created_at < pg_catalog\.now\(\) - interval '90 days'/u);
+  assert.match(sql, /function public\.authorize_pro_lifecycle_actor/u);
+  assert.match(sql, /function public\.assert_safe_pro_decision_reason/u);
+  assert.match(sql, /function public\.write_pro_lifecycle_audit/u);
+  assert.match(sql, /pro_lifecycle_changed/u);
+  assert.match(sql, /invalid_decision_reason/u);
+  assert.match(
+    sql,
+    /activate_pro_commercial_term[\s\S]*select pro_profile_id into v_pro_profile_id[\s\S]*assert_pro_lifecycle_actor[\s\S]*where id = p_term_id for update/u,
+  );
+  assert.match(
+    sql,
+    /end_pro_commercial_term[\s\S]*select pro_profile_id into v_pro_profile_id[\s\S]*assert_pro_lifecycle_actor[\s\S]*where id = p_term_id for update/u,
+  );
+  assert.match(
+    sql,
+    /read_pro_lifecycle_timeline[\s\S]*authorize_pro_lifecycle_actor\(p_actor_id, p_pro_profile_id, false\)/u,
+  );
+  for (const code of [
+    'pro_account_inactive',
+    'pro_credential_missing',
+    'pro_credential_draft',
+    'pro_credential_submitted',
+    'pro_credential_under_review',
+    'pro_credential_rejected',
+    'pro_credential_expired',
+    'pro_credential_revoked',
+    'pro_already_assigned',
+    'pricing_terms_missing',
+    'compensation_terms_missing',
+    'company_inactive',
+    'company_already_assigned',
+  ]) {
+    assert.match(sql, new RegExp(`'${code}'`, 'u'));
+  }
+  for (const protectedKey of [
+    'identifier_ciphertext',
+    'identifier_hash',
+    'storage_path',
+    'sha256',
+  ]) {
+    assert.doesNotMatch(sql, new RegExp(`jsonb_build_object\\([^;]*'${protectedKey}'`, 'u'));
+  }
+  assert.match(sql, /if v_function_name in \([\s\S]*grant execute on function %s to service_role/u);
+});
+
+test('Step 3 SQL fixtures cover transitions and bounded credential and term races', () => {
+  for (const fixture of [
+    'pro_lifecycle_transitions.sql',
+    'pro_lifecycle_concurrency_setup.sql',
+    'pro_lifecycle_verify_session_a.sql',
+    'pro_lifecycle_verify_session_b.sql',
+    'pro_lifecycle_terms_session_a.sql',
+    'pro_lifecycle_terms_session_b.sql',
+  ]) {
+    const path = join(process.cwd(), 'supabase/tests', fixture);
+    assert.equal(existsSync(path), true, fixture);
+    const source = readFileSync(path, 'utf8');
+    assert.match(source, /ON_ERROR_STOP on/u);
+    assert.match(source, /statement_timeout/u);
+  }
+});
