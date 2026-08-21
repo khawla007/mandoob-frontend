@@ -69,7 +69,7 @@ type CompanyDbRow = {
   company_name: string;
   status: CompanyStatus;
   trade_license_no: string | null;
-  jurisdiction: string | null;
+  licensing_authority: string | null;
   created_at: string;
   tenants:
     | {
@@ -112,7 +112,7 @@ export function toCompanyRow(row: CompanyDbRow, assignment?: AssignmentDbRow | n
     companyName: row.company_name,
     companyStatus: row.status,
     tradeLicenseNo: row.trade_license_no,
-    jurisdiction: row.jurisdiction,
+    jurisdiction: row.licensing_authority,
     createdAt: row.created_at,
     currentAssignmentId: activeAssignment?.id ?? null,
     currentProProfileId: activeAssignment?.pro_profile_id ?? null,
@@ -121,7 +121,7 @@ export function toCompanyRow(row: CompanyDbRow, assignment?: AssignmentDbRow | n
 }
 
 const COMPANY_SELECT = `
-  id, tenant_id, company_name, status, trade_license_no, jurisdiction, created_at,
+  id, tenant_id, company_name, status, trade_license_no, licensing_authority, created_at,
   tenants!inner(slug, name, plan, status),
   active_assignments:pro_company_assignments!pro_company_assignments_company_id_fkey(
     id, pro_profile_id, status,

@@ -19,7 +19,7 @@ test('maps a legal company workspace and its active PRO without tenant/firm ambi
         company_name: 'Acme Trading LLC',
         status: 'onboarding',
         trade_license_no: null,
-        jurisdiction: 'Dubai Mainland',
+        licensing_authority: 'Dubai Mainland',
         created_at: '2026-08-17T08:00:00.000Z',
         tenants: {
           slug: 'acme-trading',
@@ -62,7 +62,7 @@ test('maps an unassigned company with null PRO fields', async () => {
       company_name: 'Acme Trading LLC',
       status: 'active',
       trade_license_no: 'TL-1',
-      jurisdiction: null,
+      licensing_authority: null,
       created_at: '2026-08-17T08:00:00.000Z',
       tenants: {
         slug: 'acme-trading',
