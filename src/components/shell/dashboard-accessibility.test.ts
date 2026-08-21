@@ -97,6 +97,13 @@ test('dashboard topbar collapses nonessential chrome at a 200 percent mobile ref
   assert.match(topbar, /max-\[240px\]:gap-1/u);
 });
 
+test('dashboard surface honors reduced motion across chrome and content', () => {
+  assert.match(
+    styles,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.dashboard-surface \*[\s\S]*?transition-duration:\s*0\.01ms !important/u,
+  );
+});
+
 test('dashboard inset may shrink beside the tablet sidebar without page overflow', () => {
   assert.match(sidebarPrimitive, /relative flex w-full min-w-0 flex-1 flex-col/u);
 });
