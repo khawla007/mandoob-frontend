@@ -99,4 +99,58 @@ begin
 end;
 $$;
 
+insert into public.company_shareholders (
+  id, tenant_id, company_id, kind, full_name, nationality_code, ownership_percent, sort_order
+) values
+  ('92000000-0000-4000-8000-000000000032', '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002', 'individual', 'Second Owner', 'AE', 40, 1),
+  ('92000000-0000-4000-8000-000000000031', '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002', 'individual', 'First Owner', 'AE', 60, 0);
+
+insert into public.company_registered_activities (
+  id, tenant_id, company_id, activity_code, activity_name, authority_name, is_primary, sort_order
+) values
+  ('92000000-0000-4000-8000-000000000042', '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002', 'SECOND', 'Second activity', 'Dubai Economy', false, 1),
+  ('92000000-0000-4000-8000-000000000041', '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002', 'FIRST', 'First activity', 'Dubai Economy', true, 0);
+
+insert into public.company_office_details (
+  tenant_id, company_id, office_type, provider_name, city, emirate
+) values (
+  '92000000-0000-4000-8000-000000000001',
+  '92000000-0000-4000-8000-000000000002',
+  'virtual', 'Fixture Offices', 'Dubai', 'Dubai'
+);
+
+insert into public.company_bank_details (
+  tenant_id, company_id, bank_name, account_holder_name, currency_code, swift_bic,
+  iban_encrypted, iban_hash, iban_last4
+) values (
+  '92000000-0000-4000-8000-000000000001',
+  '92000000-0000-4000-8000-000000000002',
+  'Fixture Bank', 'Readiness Fixture LLC', 'AED', 'ABCDEFGH',
+  'aggregate-iban-ciphertext', repeat('c', 64), '4321'
+);
+
+do $$
+declare v_snapshot jsonb;
+begin
+  v_snapshot := public.read_company_onboarding(
+    '92000000-0000-4000-8000-000000000010',
+    '92000000-0000-4000-8000-000000000001',
+    '92000000-0000-4000-8000-000000000002'
+  );
+  if pg_catalog.jsonb_array_length(v_snapshot -> 'sections') <> 6
+     or v_snapshot #>> '{shareholders,0,full_name}' <> 'First Owner'
+     or v_snapshot #>> '{activities,0,activity_code}' <> 'FIRST'
+     or v_snapshot #>> '{bank,swift_bic_masked}' <> '•••• EFGH'
+     or v_snapshot #>> '{bank,iban_masked}' <> '•••• 4321'
+     or pg_catalog.strpos(v_snapshot::text, 'aggregate-iban-ciphertext') <> 0
+     or pg_catalog.strpos(v_snapshot::text, repeat('c', 64)) <> 0 then
+    raise exception 'unsafe or malformed aggregate snapshot: %', v_snapshot;
+  end if;
+end;
+$$;
+
 rollback;

@@ -780,6 +780,7 @@ begin
   select pg_catalog.jsonb_build_object(
     'company_id', company.id, 'tenant_id', company.tenant_id,
     'company_name', company.company_name, 'display_name', company.display_name,
+    'company_status', company.status,
     'jurisdiction_type', company.jurisdiction_type,
     'licensing_authority', company.licensing_authority,
     'legal_structure', company.legal_structure, 'trade_license_no', company.trade_license_no,
@@ -788,16 +789,80 @@ begin
     'establishment_card_expiry', company.establishment_card_expiry,
     'onboarding_status', company.onboarding_status,
     'onboarding_version', company.onboarding_version,
+    'shareholders', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'id', shareholder.id,
+        'kind', shareholder.kind,
+        'full_name', shareholder.full_name,
+        'nationality_code', shareholder.nationality_code,
+        'passport_masked', case when shareholder.passport_no_last4 is null then null
+          else '•••• ' || shareholder.passport_no_last4 end,
+        'legal_name', shareholder.legal_name,
+        'country_of_incorporation', shareholder.country_of_incorporation,
+        'registration_masked', case when shareholder.registration_no_last4 is null then null
+          else '•••• ' || shareholder.registration_no_last4 end,
+        'ownership_percent', shareholder.ownership_percent::text,
+        'sort_order', shareholder.sort_order
+      ) order by shareholder.sort_order, shareholder.id)
+      from public.company_shareholders shareholder
+      where shareholder.tenant_id = p_tenant_id and shareholder.company_id = p_company_id
+    ), '[]'::jsonb),
+    'activities', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'id', activity.id,
+        'activity_code', activity.activity_code,
+        'activity_name', activity.activity_name,
+        'authority_name', activity.authority_name,
+        'is_primary', activity.is_primary,
+        'sort_order', activity.sort_order
+      ) order by activity.sort_order, activity.id)
+      from public.company_registered_activities activity
+      where activity.tenant_id = p_tenant_id and activity.company_id = p_company_id
+    ), '[]'::jsonb),
+    'office', case when office.company_id is null then null else pg_catalog.jsonb_build_object(
+      'office_type', office.office_type,
+      'address_line_1', office.address_line_1,
+      'address_line_2', office.address_line_2,
+      'area', office.area,
+      'city', office.city,
+      'emirate', office.emirate,
+      'postal_code', office.postal_code,
+      'country_code', office.country_code,
+      'provider_name', office.provider_name,
+      'lease_reference', office.lease_reference,
+      'lease_expiry', office.lease_expiry
+    ) end,
     'bank', case when bank.company_id is null then null else pg_catalog.jsonb_build_object(
       'bank_name', bank.bank_name, 'branch_name', bank.branch_name,
       'account_holder_name', bank.account_holder_name, 'currency_code', bank.currency_code,
-      'swift_bic_last4', pg_catalog.right(bank.swift_bic, 4),
+      'swift_bic_masked', case when bank.swift_bic is null then null
+        else '•••• ' || pg_catalog.right(bank.swift_bic, 4) end,
       'iban_masked', case when bank.iban_last4 is null then null else '•••• ' || bank.iban_last4 end,
       'account_number_masked', case when bank.account_number_last4 is null then null else '•••• ' || bank.account_number_last4 end
-    ) end
+    ) end,
+    'sections', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'section_key', section.section_key,
+        'status', section.status,
+        'completed_at', section.completed_at
+      ) order by pg_catalog.array_position(
+        pg_catalog.enum_range(null::public.company_onboarding_section_key), section.section_key
+      ))
+      from public.company_onboarding_sections section
+      where section.tenant_id = p_tenant_id and section.company_id = p_company_id
+    ), '[]'::jsonb),
+    'requirements', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'code', readiness.code, 'section', readiness.section, 'state', readiness.state
+      ))
+      from public.evaluate_company_activation_readiness(p_company_id) readiness
+    ), '[]'::jsonb)
   ) into v_result
   from public.company_profiles company
-  left join public.company_bank_details bank on bank.company_id = company.id
+  left join public.company_office_details office
+    on office.tenant_id = company.tenant_id and office.company_id = company.id
+  left join public.company_bank_details bank
+    on bank.tenant_id = company.tenant_id and bank.company_id = company.id
   where company.id = p_company_id and company.tenant_id = p_tenant_id;
   if v_result is null then raise exception using errcode = 'P0001', message = 'COMPANY_NOT_FOUND'; end if;
   return v_result;

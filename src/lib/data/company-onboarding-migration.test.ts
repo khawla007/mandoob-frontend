@@ -87,6 +87,29 @@ test('0066 defines fixed-path service workflows, receipts, and redacted audit ev
       new RegExp(`company\\.${protectedColumn}|bank\\.${protectedColumn}`, 'u'),
     );
   }
+  for (const aggregateKey of [
+    'shareholders',
+    'activities',
+    'office',
+    'bank',
+    'sections',
+    'requirements',
+  ]) {
+    assert.match(aggregateRead, new RegExp(`'${aggregateKey}'`, 'u'));
+  }
+  assert.match(
+    aggregateRead,
+    /order by shareholder\.sort_order, shareholder\.id[\s\S]*company_shareholders shareholder/u,
+  );
+  assert.match(
+    aggregateRead,
+    /order by activity\.sort_order, activity\.id[\s\S]*company_registered_activities activity/u,
+  );
+  assert.match(aggregateRead, /evaluate_company_activation_readiness\(p_company_id\)/u);
+  assert.match(
+    aggregateRead,
+    /left join public\.company_bank_details bank on bank\.tenant_id = company\.tenant_id and bank\.company_id = company\.id/u,
+  );
 });
 
 test('0066 mutation signatures carry actor, ownership, version, and operation identity', () => {

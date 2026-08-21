@@ -9,6 +9,7 @@ process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
+const companyId = '33333333-3333-4333-8333-333333333333';
 
 function session(
   role: SessionProfile['role'],
@@ -185,4 +186,54 @@ test('malformed tenant and session IDs deny before service-role queries', async 
   const malformedSession = authDeps(session('pro', { id: 'not-a-profile' }), []);
   await assert.rejects(() => requireCompanyAccess(tenantId, malformedSession.deps), /DENIED/);
   assert.equal(malformedSession.calls.length, 0);
+});
+
+test('exact-company access binds a PRO assignment to both tenant and company', async () => {
+  const { requireExactCompanyAccess } = await import('./require-company-access');
+  const auth = authDeps(session('pro'), [
+    { data: { role: 'pro', status: 'active', tenant_id: null }, error: null },
+    { data: { id: 'live-access' }, error: null },
+  ]);
+
+  const result = await requireExactCompanyAccess(tenantId, companyId, auth.deps);
+  assert.equal(result.role, 'pro');
+  assert.deepEqual(auth.calls[1]?.filters, {
+    id: result.id,
+    role: 'pro',
+    status: 'active',
+    'pro_profiles.credentials_verified': true,
+    'active_assignments.tenant_id': tenantId,
+    'active_assignments.company_id': companyId,
+    'active_assignments.status': 'active',
+  });
+});
+
+test('exact-company access grants authoritative tenantless operators and denies workspace roles', async () => {
+  const { requireExactCompanyAccess } = await import('./require-company-access');
+  for (const role of ['admin', 'super_admin'] as const) {
+    const operator = authDeps(session(role), [
+      { data: { role, status: 'active', tenant_id: null }, error: null },
+    ]);
+    assert.equal((await requireExactCompanyAccess(tenantId, companyId, operator.deps)).role, role);
+  }
+
+  for (const role of ['customer', 'employee'] as const) {
+    const workspace = authDeps(session(role), [
+      { data: { role, status: 'active', tenant_id: tenantId }, error: null },
+    ]);
+    await assert.rejects(
+      () => requireExactCompanyAccess(tenantId, companyId, workspace.deps),
+      /DENIED/u,
+    );
+  }
+});
+
+test('exact-company access rejects malformed company IDs before service-role queries', async () => {
+  const { requireExactCompanyAccess } = await import('./require-company-access');
+  const auth = authDeps(session('pro'), []);
+  await assert.rejects(
+    () => requireExactCompanyAccess(tenantId, 'not-a-company', auth.deps),
+    /DENIED/u,
+  );
+  assert.equal(auth.calls.length, 0);
 });

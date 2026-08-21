@@ -38,6 +38,24 @@ export async function requireCompanyAccess(
   tenantId: string,
   deps: AccessDeps = {},
 ): Promise<SessionProfile> {
+  return requireScopedCompanyAccess(tenantId, null, true, deps);
+}
+
+export async function requireExactCompanyAccess(
+  tenantId: string,
+  companyId: string,
+  deps: AccessDeps = {},
+): Promise<SessionProfile> {
+  if (!recordIdSchema.safeParse(companyId).success) return denyAccess(deps);
+  return requireScopedCompanyAccess(tenantId, companyId, false, deps);
+}
+
+async function requireScopedCompanyAccess(
+  tenantId: string,
+  companyId: string | null,
+  allowWorkspaceRoles: boolean,
+  deps: AccessDeps,
+): Promise<SessionProfile> {
   if (!recordIdSchema.safeParse(tenantId).success) return denyAccess(deps);
   const session = await (deps.requireSession ?? loadSession)();
   if (!recordIdSchema.safeParse(session.id).success) return denyAccess(deps);
@@ -61,7 +79,7 @@ export async function requireCompanyAccess(
   }
 
   if (role === 'pro') {
-    const { data: access, error } = await admin
+    let accessQuery = admin
       .from('profiles')
       .select(
         'id, role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(id)',
@@ -71,13 +89,20 @@ export async function requireCompanyAccess(
       .eq('status', 'active')
       .eq('pro_profiles.credentials_verified', true)
       .eq('active_assignments.tenant_id', tenantId)
-      .eq('active_assignments.status', 'active')
-      .maybeSingle();
+      .eq('active_assignments.status', 'active');
+    if (companyId) {
+      accessQuery = accessQuery.eq('active_assignments.company_id', companyId);
+    }
+    const { data: access, error } = await accessQuery.maybeSingle();
     if (error || !access) return denyAccess(deps);
     return { ...session, role: 'pro', tenantId };
   }
 
-  if ((role === 'customer' || role === 'employee') && authoritativeTenantId === tenantId) {
+  if (
+    allowWorkspaceRoles &&
+    (role === 'customer' || role === 'employee') &&
+    authoritativeTenantId === tenantId
+  ) {
     return { ...session, role, tenantId };
   }
 
