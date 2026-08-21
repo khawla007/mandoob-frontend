@@ -11,7 +11,7 @@ export function TenantSuspendedBanner({
   const label = status === 'pending' ? 'Pending approval' : 'Suspended';
   const message =
     status === 'pending'
-      ? 'This workspace is awaiting admin approval. Editing is disabled until your account is activated.'
+      ? 'This workspace is awaiting activation. Company setup remains available while operational editing is limited.'
       : 'This workspace is suspended. Editing is disabled. Contact support to restore access.';
   return (
     <Alert variant="destructive" className={className}>
