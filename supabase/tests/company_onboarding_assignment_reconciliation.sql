@@ -59,11 +59,11 @@ insert into public.company_profiles (id, tenant_id, company_name, status) values
   ('93000000-0000-4000-8000-000000000031', '93000000-0000-4000-8000-000000000021', 'Onboarding Assignment LLC', 'onboarding'),
   ('93000000-0000-4000-8000-000000000032', '93000000-0000-4000-8000-000000000022', 'Operational Assignment LLC', 'active');
 
-select public.assign_pro_to_company(
+select (public.assign_pro_to_company(
   '93000000-0000-4000-8000-000000000031',
   '93000000-0000-4000-8000-000000000011',
   '93000000-0000-4000-8000-000000000001'
-) as onboarding_assignment_id \gset
+) ->> 'assignmentId')::uuid as onboarding_assignment_id \gset
 
 select public.reassign_company_pro(
   '93000000-0000-4000-8000-000000000031',
@@ -73,11 +73,11 @@ select public.reassign_company_pro(
   '93000000-0000-4000-8000-000000000001'
 );
 
-select public.assign_pro_to_company(
+select (public.assign_pro_to_company(
   '93000000-0000-4000-8000-000000000032',
   '93000000-0000-4000-8000-000000000013',
   '93000000-0000-4000-8000-000000000001'
-) as operational_assignment_id \gset
+) ->> 'assignmentId')::uuid as operational_assignment_id \gset
 
 select public.reassign_company_pro(
   '93000000-0000-4000-8000-000000000032',
@@ -93,6 +93,9 @@ declare
   v_operational_status text;
   v_forbidden_grants integer;
   v_term_link_count integer;
+  v_snapshot jsonb;
+  v_terms jsonb;
+  v_selector jsonb;
 begin
   select status into v_onboarding_status from public.tenants
   where id = '93000000-0000-4000-8000-000000000021';
@@ -111,6 +114,28 @@ begin
   );
   if v_term_link_count <> 4 then
     raise exception 'assignment term link mismatch: %', v_term_link_count;
+  end if;
+
+  v_snapshot := public.read_pro_credential_snapshot(
+    '93000000-0000-4000-8000-000000000001',
+    '93000000-0000-4000-8000-000000000013'
+  );
+  v_terms := public.read_pro_commercial_terms(
+    '93000000-0000-4000-8000-000000000001',
+    '93000000-0000-4000-8000-000000000013'
+  );
+  v_selector := public.list_eligible_pros_for_company(
+    '93000000-0000-4000-8000-000000000001',
+    '93000000-0000-4000-8000-000000000032',
+    null,
+    20
+  );
+  if pg_catalog.jsonb_array_length(v_snapshot -> 'credentials') <> 1
+     or v_snapshot::text ~ 'identifierCiphertext|identifierHash|storagePath'
+     or pg_catalog.jsonb_array_length(v_terms) <> 2
+     or pg_catalog.jsonb_array_length(v_selector) <> 1
+     or v_selector -> 0 ->> 'proProfileId' <> '93000000-0000-4000-8000-000000000013' then
+    raise exception 'masked lifecycle aggregate mismatch';
   end if;
 
   select count(*) into v_forbidden_grants

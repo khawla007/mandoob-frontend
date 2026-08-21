@@ -15,9 +15,9 @@ import { requirePlatformOperator } from '@/lib/auth/require-role';
 import type { CompanyAssignment } from '@/lib/data/company-assignments';
 import {
   listCompanyAssignmentHistory,
-  listVerifiedUnassignedPros,
   readCurrentCompanyAssignment,
 } from '@/lib/data/company-assignments';
+import { listEligibleProsForCompany } from '@/lib/data/pro-eligibility';
 import { getCompanyById } from '@/lib/data/pro-firms';
 import {
   readCompanyOnboarding,
@@ -72,11 +72,17 @@ export default async function CompanyDetailPage({
     companyId: company.id,
   });
   if (!onboarding) notFound();
-  const [currentAssignment, assignmentHistory, availablePros] = await Promise.all([
+  const [currentAssignment, assignmentHistory, eligiblePros] = await Promise.all([
     readCurrentCompanyAssignment(company.id),
     listCompanyAssignmentHistory(company.id),
-    listVerifiedUnassignedPros(),
+    listEligibleProsForCompany(company.id, '', 100, operator.id),
   ]);
+  const availablePros = eligiblePros.map((pro) => ({
+    id: pro.proProfileId,
+    fullName: pro.fullName,
+    designation: pro.designation,
+    department: pro.department,
+  }));
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (

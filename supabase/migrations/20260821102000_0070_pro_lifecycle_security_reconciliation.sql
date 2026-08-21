@@ -89,6 +89,141 @@ as $$
   limit 1;
 $$;
 
+create or replace function public.read_pro_credential_snapshot(
+  p_actor_id uuid,
+  p_pro_profile_id uuid
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform public.authorize_pro_lifecycle_actor(p_actor_id, p_pro_profile_id, false);
+  return pg_catalog.jsonb_build_object(
+    'credentials', coalesce((
+      select pg_catalog.jsonb_agg(
+        public.pro_credential_masked_result(credential.id)
+        order by credential.created_at desc, credential.id desc
+      )
+      from public.pro_credentials credential
+      where credential.pro_profile_id = p_pro_profile_id
+    ), '[]'::jsonb),
+    'evidence', coalesce((
+      select pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'evidenceId', evidence.id,
+          'credentialId', evidence.credential_id,
+          'mimeType', evidence.mime_type,
+          'sizeBytes', evidence.size_bytes,
+          'originalNameSafe', evidence.original_name_safe,
+          'createdAt', evidence.created_at
+        ) order by evidence.created_at desc, evidence.id desc
+      )
+      from public.pro_credential_evidence evidence
+      where evidence.pro_profile_id = p_pro_profile_id
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+create or replace function public.read_pro_commercial_terms(
+  p_actor_id uuid,
+  p_pro_profile_id uuid
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform public.authorize_pro_lifecycle_actor(p_actor_id, p_pro_profile_id, false);
+  return coalesce((
+    select pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'termId', term.id,
+        'termKind', term.term_kind::text,
+        'model', term.model::text,
+        'currency', term.currency,
+        'amountMinor', term.amount_minor,
+        'retainerInterval', term.retainer_interval::text,
+        'scope', term.scope,
+        'effectiveFrom', term.effective_from,
+        'effectiveTo', term.effective_to,
+        'status', term.status::text,
+        'version', term.version
+      ) order by term.term_kind, term.effective_from desc, term.id desc
+    )
+    from public.pro_commercial_terms term
+    where term.pro_profile_id = p_pro_profile_id
+  ), '[]'::jsonb);
+end;
+$$;
+
+create or replace function public.list_eligible_pros_for_company(
+  p_actor_id uuid,
+  p_company_id uuid,
+  p_query text default null,
+  p_limit integer default 50
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_company_ready boolean;
+begin
+  perform 1 from public.profiles
+  where id = p_actor_id and role in ('admin', 'super_admin')
+    and status = 'active' and tenant_id is null;
+  if not found then raise exception using errcode = '42501', message = 'FORBIDDEN'; end if;
+  if p_limit < 1 or p_limit > 100 or pg_catalog.char_length(coalesce(p_query, '')) > 160 then
+    raise exception using errcode = '22023', message = 'INVALID_SELECTOR_INPUT';
+  end if;
+  select company.status not in ('suspended', 'churned')
+      and tenant.status in ('pending', 'unassigned', 'active')
+    into v_company_ready
+  from public.company_profiles company
+  join public.tenants tenant on tenant.id = company.tenant_id
+  where company.id = p_company_id;
+  if coalesce(v_company_ready, false) = false then return '[]'::jsonb; end if;
+
+  return coalesce((
+    select pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'proProfileId', candidate.id,
+        'fullName', candidate.full_name,
+        'designation', candidate.designation,
+        'department', candidate.department,
+        'eligibility', candidate.eligibility
+      ) order by candidate.full_name nulls last, candidate.id
+    )
+    from (
+      select profile.id, profile.full_name, pro.designation, pro.department,
+             eligibility.value as eligibility
+      from public.profiles profile
+      join public.pro_profiles pro on pro.profile_id = profile.id
+      cross join lateral (
+        select public.evaluate_pro_assignment_eligibility(profile.id, null) as value
+      ) eligibility
+      where profile.role = 'pro' and profile.status = 'active'
+        and (p_query is null or pg_catalog.btrim(p_query) = ''
+          or pg_catalog.strpos(
+            pg_catalog.lower(coalesce(profile.full_name, '')),
+            pg_catalog.lower(pg_catalog.btrim(p_query))
+          ) > 0)
+        and (eligibility.value ->> 'eligible')::boolean
+      order by profile.full_name nulls last, profile.id
+      limit p_limit
+    ) candidate
+  ), '[]'::jsonb);
+end;
+$$;
+
 create or replace function public.raise_pro_assignment_eligibility_error(p_result jsonb)
 returns void
 language plpgsql
@@ -119,12 +254,13 @@ begin
 end;
 $$;
 
-create or replace function public.assign_pro_to_company(
+drop function public.assign_pro_to_company(uuid, uuid, uuid);
+create function public.assign_pro_to_company(
   p_company_id uuid,
   p_pro_profile_id uuid,
   p_actor_profile_id uuid
 )
-returns uuid
+returns jsonb
 language plpgsql
 security definer
 set search_path = ''
@@ -200,18 +336,23 @@ begin
   values (v_tenant_id, p_actor_profile_id, 'company_pro_assigned', 'admin',
     pg_catalog.jsonb_build_object('assignment_id', v_assignment_id,
       'company_id', p_company_id, 'pro_profile_id', p_pro_profile_id));
-  return v_assignment_id;
+  return pg_catalog.jsonb_build_object(
+    'assignmentId', v_assignment_id,
+    'pricingTermId', v_pricing_term_id,
+    'compensationTermId', v_compensation_term_id
+  );
 end;
 $$;
 
-create or replace function public.reassign_company_pro(
+drop function public.reassign_company_pro(uuid, uuid, uuid, text, uuid);
+create function public.reassign_company_pro(
   p_company_id uuid,
   p_expected_assignment_id uuid,
   p_replacement_pro_profile_id uuid,
   p_reason text,
   p_actor_profile_id uuid
 )
-returns uuid
+returns jsonb
 language plpgsql
 security definer
 set search_path = ''
@@ -331,7 +472,11 @@ begin
       pg_catalog.jsonb_build_object('assignment_id', v_new_assignment_id,
         'company_id', p_company_id, 'pro_profile_id', p_replacement_pro_profile_id,
         'replaces_assignment_id', v_old_assignment_id));
-  return v_new_assignment_id;
+  return pg_catalog.jsonb_build_object(
+    'assignmentId', v_new_assignment_id,
+    'pricingTermId', v_pricing_term_id,
+    'compensationTermId', v_compensation_term_id
+  );
 end;
 $$;
 
@@ -440,6 +585,9 @@ grant select on table public.pro_assignment_term_links to service_role;
 alter function public.has_current_pro_credential(uuid) owner to postgres;
 alter function public.authorize_pro_company_access(uuid, uuid, uuid) owner to postgres;
 alter function public.read_authoritative_pro_tenant(uuid) owner to postgres;
+alter function public.read_pro_credential_snapshot(uuid, uuid) owner to postgres;
+alter function public.read_pro_commercial_terms(uuid, uuid) owner to postgres;
+alter function public.list_eligible_pros_for_company(uuid, uuid, text, integer) owner to postgres;
 alter function public.has_company_access(uuid) owner to postgres;
 alter function public.raise_pro_assignment_eligibility_error(jsonb) owner to postgres;
 alter function public.assign_pro_to_company(uuid, uuid, uuid) owner to postgres;
@@ -449,6 +597,12 @@ revoke all on function public.has_current_pro_credential(uuid)
 revoke all on function public.authorize_pro_company_access(uuid, uuid, uuid)
   from public, anon, authenticated, service_role;
 revoke all on function public.read_authoritative_pro_tenant(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.read_pro_credential_snapshot(uuid, uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.read_pro_commercial_terms(uuid, uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function public.list_eligible_pros_for_company(uuid, uuid, text, integer)
   from public, anon, authenticated, service_role;
 revoke all on function public.raise_pro_assignment_eligibility_error(jsonb)
   from public, anon, authenticated, service_role;
@@ -461,6 +615,9 @@ revoke all on function public.reassign_company_pro(uuid, uuid, uuid, text, uuid)
 grant execute on function public.has_company_access(uuid) to authenticated, service_role;
 grant execute on function public.authorize_pro_company_access(uuid, uuid, uuid) to service_role;
 grant execute on function public.read_authoritative_pro_tenant(uuid) to service_role;
+grant execute on function public.read_pro_credential_snapshot(uuid, uuid) to service_role;
+grant execute on function public.read_pro_commercial_terms(uuid, uuid) to service_role;
+grant execute on function public.list_eligible_pros_for_company(uuid, uuid, text, integer) to service_role;
 grant execute on function public.assign_pro_to_company(uuid, uuid, uuid) to service_role;
 grant execute on function public.reassign_company_pro(uuid, uuid, uuid, text, uuid) to service_role;
 

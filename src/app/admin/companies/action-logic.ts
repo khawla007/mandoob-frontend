@@ -1,6 +1,7 @@
 import { z, ZodError } from 'zod';
 
 import { ApiError } from '@/lib/errors';
+import type { CompanyAssignmentMutationResult } from '@/lib/data/company-assignments';
 import {
   TENANT_PLANS,
   tenantSlugSchema,
@@ -52,9 +53,12 @@ export type CompanyActionDependencies = {
     actorId: string,
   ): Promise<{ tenantId: string; companyId: string }>;
   getCompany(companyId: string): Promise<CompanyActionRecord | null>;
-  assign(input: AssignCompanyProInput, actorId: string): Promise<string>;
+  assign(input: AssignCompanyProInput, actorId: string): Promise<CompanyAssignmentMutationResult>;
   release(input: ReleaseCompanyProInput, actorId: string): Promise<void>;
-  reassign(input: ReassignCompanyProInput, actorId: string): Promise<string>;
+  reassign(
+    input: ReassignCompanyProInput,
+    actorId: string,
+  ): Promise<CompanyAssignmentMutationResult>;
   revalidate(path: string): void;
   reportError?(context: string, error: unknown): void;
 };
@@ -130,6 +134,8 @@ function failure(
       'COMPANY_ALREADY_ASSIGNED',
       'PRO_NOT_VERIFIED',
       'PRO_INACTIVE',
+      'PRO_PRICING_NOT_CONFIGURED',
+      'PRO_COMPENSATION_NOT_CONFIGURED',
       'COMPANY_NOT_READY',
       'COMPANY_INACTIVE',
       'ASSIGNMENT_NOT_FOUND',
@@ -198,7 +204,7 @@ export async function runAssignCompanyProAction(
     const actor = await deps.requireActor();
     const input = parseAssign(formData);
     const company = await requireCompany(input.companyId, deps);
-    const assignmentId = await deps.assign(input, actor.id);
+    const { assignmentId } = await deps.assign(input, actor.id);
     revalidateCompany(company, deps);
     return { ok: true, data: { assignmentId, outcome: 'assigned' } };
   } catch (error) {
@@ -241,7 +247,7 @@ export async function runReassignCompanyProAction(
     const actor = await deps.requireActor();
     const input = parseReassign(formData);
     const company = await requireCompany(input.companyId, deps);
-    const assignmentId = await deps.reassign(input, actor.id);
+    const { assignmentId } = await deps.reassign(input, actor.id);
     revalidateCompany(company, deps);
     return { ok: true, data: { assignmentId, outcome: 'reassigned' } };
   } catch (error) {

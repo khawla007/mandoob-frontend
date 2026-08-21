@@ -87,6 +87,7 @@ test('review reasons are normalized and required for reject and revoke only', ()
       reasonCode: 'DOCUMENT_INVALID',
       reason: '  Evidence does not match  ',
     });
+    assert.ok(parsed.command === 'reject' || parsed.command === 'revoke');
     assert.equal(parsed.reason, 'Evidence does not match');
     for (const reason of ['no', 'x'.repeat(501)]) {
       assert.equal(

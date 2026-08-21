@@ -181,6 +181,9 @@ test('0070 reconciles live access, term-linked assignments, grants, and legacy c
     'has_current_pro_credential',
     'authorize_pro_company_access',
     'read_authoritative_pro_tenant',
+    'read_pro_credential_snapshot',
+    'read_pro_commercial_terms',
+    'list_eligible_pros_for_company',
     'has_company_access',
     'assign_pro_to_company',
     'reassign_company_pro',
@@ -200,8 +203,14 @@ test('0070 reconciles live access, term-linked assignments, grants, and legacy c
   assert.match(sql, /drop column credentials_verified/u);
   assert.match(sql, /drop column verified_at/u);
   assert.match(sql, /drop column verified_by_profile_id/u);
-  assert.match(sql, /revoke all on table public\.pro_credentials from public, anon, authenticated/u);
+  assert.match(
+    sql,
+    /revoke all on table public\.pro_credentials from public, anon, authenticated/u,
+  );
   assert.match(sql, /revoke all on table public\.pro_credentials from service_role/u);
   assert.match(sql, /grant select on table public\.pro_credentials to service_role/u);
-  assert.match(sql, /grant execute on function public\.has_company_access\(uuid\) to authenticated, service_role/u);
+  assert.match(
+    sql,
+    /grant execute on function public\.has_company_access\(uuid\) to authenticated, service_role/u,
+  );
 });

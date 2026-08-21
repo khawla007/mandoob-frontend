@@ -45,14 +45,22 @@ function setup(role: 'admin' | 'super_admin' = 'admin') {
     },
     assign: async (_input, trustedActorId) => {
       calls.push(`assign:${trustedActorId}`);
-      return assignmentId;
+      return {
+        assignmentId,
+        pricingTermId: '77777777-7777-4777-8777-777777777777',
+        compensationTermId: '88888888-8888-4888-8888-888888888888',
+      };
     },
     release: async (_input, trustedActorId) => {
       calls.push(`release:${trustedActorId}`);
     },
     reassign: async (_input, trustedActorId) => {
       calls.push(`reassign:${trustedActorId}`);
-      return assignmentId;
+      return {
+        assignmentId,
+        pricingTermId: '77777777-7777-4777-8777-777777777777',
+        compensationTermId: '88888888-8888-4888-8888-888888888888',
+      };
     },
     revalidate: (path) => calls.push(`revalidate:${path}`),
   };

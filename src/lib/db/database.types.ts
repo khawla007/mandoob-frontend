@@ -1,6 +1,31 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
   public: {
     Tables: {
       admin_audit_actions: {
@@ -2688,6 +2713,179 @@ export type Database = {
           },
         ];
       };
+      pro_assignment_term_links: {
+        Row: {
+          assignment_id: string;
+          compensation_term_id: string;
+          linked_at: string;
+          linked_by: string;
+          pricing_term_id: string;
+        };
+        Insert: {
+          assignment_id: string;
+          compensation_term_id: string;
+          linked_at?: string;
+          linked_by: string;
+          pricing_term_id: string;
+        };
+        Update: {
+          assignment_id?: string;
+          compensation_term_id?: string;
+          linked_at?: string;
+          linked_by?: string;
+          pricing_term_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_assignment_term_links_assignment_id_fkey';
+            columns: ['assignment_id'];
+            isOneToOne: true;
+            referencedRelation: 'pro_company_assignments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_assignment_term_links_compensation_term_id_fkey';
+            columns: ['compensation_term_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_commercial_terms';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_assignment_term_links_linked_by_fkey';
+            columns: ['linked_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_assignment_term_links_pricing_term_id_fkey';
+            columns: ['pricing_term_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_commercial_terms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pro_commercial_term_events: {
+        Row: {
+          actor_profile_id: string;
+          commercial_term_id: string;
+          created_at: string;
+          event: Database['public']['Enums']['pro_term_event'];
+          from_status: Database['public']['Enums']['pro_term_status'] | null;
+          id: string;
+          pro_profile_id: string;
+          term_version: number;
+          to_status: Database['public']['Enums']['pro_term_status'];
+        };
+        Insert: {
+          actor_profile_id: string;
+          commercial_term_id: string;
+          created_at?: string;
+          event: Database['public']['Enums']['pro_term_event'];
+          from_status?: Database['public']['Enums']['pro_term_status'] | null;
+          id?: string;
+          pro_profile_id: string;
+          term_version: number;
+          to_status: Database['public']['Enums']['pro_term_status'];
+        };
+        Update: {
+          actor_profile_id?: string;
+          commercial_term_id?: string;
+          created_at?: string;
+          event?: Database['public']['Enums']['pro_term_event'];
+          from_status?: Database['public']['Enums']['pro_term_status'] | null;
+          id?: string;
+          pro_profile_id?: string;
+          term_version?: number;
+          to_status?: Database['public']['Enums']['pro_term_status'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_commercial_term_events_actor_profile_id_fkey';
+            columns: ['actor_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_commercial_term_events_term_fk';
+            columns: ['pro_profile_id', 'commercial_term_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_commercial_terms';
+            referencedColumns: ['pro_profile_id', 'id'];
+          },
+        ];
+      };
+      pro_commercial_terms: {
+        Row: {
+          amount_minor: number;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          effective_from: string;
+          effective_to: string | null;
+          id: string;
+          model: Database['public']['Enums']['pro_term_model'];
+          pro_profile_id: string;
+          retainer_interval: Database['public']['Enums']['pro_term_interval'] | null;
+          scope: string;
+          status: Database['public']['Enums']['pro_term_status'];
+          term_kind: Database['public']['Enums']['pro_term_kind'];
+          updated_at: string;
+          version: number;
+        };
+        Insert: {
+          amount_minor: number;
+          created_at?: string;
+          created_by: string;
+          currency?: string;
+          effective_from: string;
+          effective_to?: string | null;
+          id?: string;
+          model: Database['public']['Enums']['pro_term_model'];
+          pro_profile_id: string;
+          retainer_interval?: Database['public']['Enums']['pro_term_interval'] | null;
+          scope?: string;
+          status?: Database['public']['Enums']['pro_term_status'];
+          term_kind: Database['public']['Enums']['pro_term_kind'];
+          updated_at?: string;
+          version: number;
+        };
+        Update: {
+          amount_minor?: number;
+          created_at?: string;
+          created_by?: string;
+          currency?: string;
+          effective_from?: string;
+          effective_to?: string | null;
+          id?: string;
+          model?: Database['public']['Enums']['pro_term_model'];
+          pro_profile_id?: string;
+          retainer_interval?: Database['public']['Enums']['pro_term_interval'] | null;
+          scope?: string;
+          status?: Database['public']['Enums']['pro_term_status'];
+          term_kind?: Database['public']['Enums']['pro_term_kind'];
+          updated_at?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_commercial_terms_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_commercial_terms_pro_profile_id_fkey';
+            columns: ['pro_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_profiles';
+            referencedColumns: ['profile_id'];
+          },
+        ];
+      };
       pro_company_assignments: {
         Row: {
           assigned_at: string;
@@ -2776,58 +2974,268 @@ export type Database = {
           },
         ];
       };
+      pro_credential_decisions: {
+        Row: {
+          actor_profile_id: string | null;
+          created_at: string;
+          credential_id: string;
+          credential_version: number;
+          event: Database['public']['Enums']['pro_credential_event'];
+          from_state: Database['public']['Enums']['pro_credential_state'];
+          id: string;
+          pro_profile_id: string;
+          reason: string | null;
+          reason_code: string | null;
+          to_state: Database['public']['Enums']['pro_credential_state'];
+        };
+        Insert: {
+          actor_profile_id?: string | null;
+          created_at?: string;
+          credential_id: string;
+          credential_version: number;
+          event: Database['public']['Enums']['pro_credential_event'];
+          from_state: Database['public']['Enums']['pro_credential_state'];
+          id?: string;
+          pro_profile_id: string;
+          reason?: string | null;
+          reason_code?: string | null;
+          to_state: Database['public']['Enums']['pro_credential_state'];
+        };
+        Update: {
+          actor_profile_id?: string | null;
+          created_at?: string;
+          credential_id?: string;
+          credential_version?: number;
+          event?: Database['public']['Enums']['pro_credential_event'];
+          from_state?: Database['public']['Enums']['pro_credential_state'];
+          id?: string;
+          pro_profile_id?: string;
+          reason?: string | null;
+          reason_code?: string | null;
+          to_state?: Database['public']['Enums']['pro_credential_state'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_credential_decisions_actor_profile_id_fkey';
+            columns: ['actor_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_credential_decisions_credential_fk';
+            columns: ['pro_profile_id', 'credential_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_credentials';
+            referencedColumns: ['pro_profile_id', 'id'];
+          },
+        ];
+      };
+      pro_credential_evidence: {
+        Row: {
+          created_at: string;
+          credential_id: string;
+          id: string;
+          mime_type: string;
+          original_name_safe: string;
+          pro_profile_id: string;
+          scan_completed_at: string;
+          scan_provider: string;
+          sha256: string;
+          size_bytes: number;
+          storage_path: string;
+          updated_at: string;
+          uploaded_by: string;
+        };
+        Insert: {
+          created_at?: string;
+          credential_id: string;
+          id?: string;
+          mime_type: string;
+          original_name_safe: string;
+          pro_profile_id: string;
+          scan_completed_at: string;
+          scan_provider: string;
+          sha256: string;
+          size_bytes: number;
+          storage_path: string;
+          updated_at?: string;
+          uploaded_by: string;
+        };
+        Update: {
+          created_at?: string;
+          credential_id?: string;
+          id?: string;
+          mime_type?: string;
+          original_name_safe?: string;
+          pro_profile_id?: string;
+          scan_completed_at?: string;
+          scan_provider?: string;
+          sha256?: string;
+          size_bytes?: number;
+          storage_path?: string;
+          updated_at?: string;
+          uploaded_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_credential_evidence_credential_fk';
+            columns: ['pro_profile_id', 'credential_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_credentials';
+            referencedColumns: ['pro_profile_id', 'id'];
+          },
+          {
+            foreignKeyName: 'pro_credential_evidence_uploaded_by_fkey';
+            columns: ['uploaded_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pro_credentials: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          credential_type: Database['public']['Enums']['pro_credential_type'];
+          expiry_date: string | null;
+          id: string;
+          identifier_ciphertext: string | null;
+          identifier_hash: string | null;
+          identifier_last4: string | null;
+          issue_date: string | null;
+          issuing_authority: string | null;
+          legacy_unmasked: boolean;
+          pro_profile_id: string;
+          state: Database['public']['Enums']['pro_credential_state'];
+          submitted_at: string | null;
+          supersedes_credential_id: string | null;
+          updated_at: string;
+          version: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          credential_type?: Database['public']['Enums']['pro_credential_type'];
+          expiry_date?: string | null;
+          id?: string;
+          identifier_ciphertext?: string | null;
+          identifier_hash?: string | null;
+          identifier_last4?: string | null;
+          issue_date?: string | null;
+          issuing_authority?: string | null;
+          legacy_unmasked?: boolean;
+          pro_profile_id: string;
+          state?: Database['public']['Enums']['pro_credential_state'];
+          submitted_at?: string | null;
+          supersedes_credential_id?: string | null;
+          updated_at?: string;
+          version?: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          credential_type?: Database['public']['Enums']['pro_credential_type'];
+          expiry_date?: string | null;
+          id?: string;
+          identifier_ciphertext?: string | null;
+          identifier_hash?: string | null;
+          identifier_last4?: string | null;
+          issue_date?: string | null;
+          issuing_authority?: string | null;
+          legacy_unmasked?: boolean;
+          pro_profile_id?: string;
+          state?: Database['public']['Enums']['pro_credential_state'];
+          submitted_at?: string | null;
+          supersedes_credential_id?: string | null;
+          updated_at?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_credentials_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_credentials_pro_profile_id_fkey';
+            columns: ['pro_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_profiles';
+            referencedColumns: ['profile_id'];
+          },
+          {
+            foreignKeyName: 'pro_credentials_supersedes_credential_id_fkey';
+            columns: ['supersedes_credential_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_credentials';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pro_lifecycle_operation_receipts: {
+        Row: {
+          created_at: string;
+          entity_id: string;
+          entity_kind: Database['public']['Enums']['pro_lifecycle_operation_kind'];
+          operation_id: string;
+          payload_hash: string;
+          sanitized_result: Json;
+        };
+        Insert: {
+          created_at?: string;
+          entity_id: string;
+          entity_kind: Database['public']['Enums']['pro_lifecycle_operation_kind'];
+          operation_id: string;
+          payload_hash: string;
+          sanitized_result: Json;
+        };
+        Update: {
+          created_at?: string;
+          entity_id?: string;
+          entity_kind?: Database['public']['Enums']['pro_lifecycle_operation_kind'];
+          operation_id?: string;
+          payload_hash?: string;
+          sanitized_result?: Json;
+        };
+        Relationships: [];
+      };
       pro_profiles: {
         Row: {
           bio: string | null;
           created_at: string;
-          credentials_verified: boolean;
           department: string | null;
           designation: string | null;
-          license_no_encrypted: string | null;
           profile_id: string;
           service_areas: Json;
           updated_at: string;
-          verified_at: string | null;
-          verified_by_profile_id: string | null;
         };
         Insert: {
           bio?: string | null;
           created_at?: string;
-          credentials_verified?: boolean;
           department?: string | null;
           designation?: string | null;
-          license_no_encrypted?: string | null;
           profile_id: string;
           service_areas?: Json;
           updated_at?: string;
-          verified_at?: string | null;
-          verified_by_profile_id?: string | null;
         };
         Update: {
           bio?: string | null;
           created_at?: string;
-          credentials_verified?: boolean;
           department?: string | null;
           designation?: string | null;
-          license_no_encrypted?: string | null;
           profile_id?: string;
           service_areas?: Json;
           updated_at?: string;
-          verified_at?: string | null;
-          verified_by_profile_id?: string | null;
         };
         Relationships: [
           {
             foreignKeyName: 'pro_profiles_profile_id_fkey';
             columns: ['profile_id'];
             isOneToOne: true;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'pro_profiles_verified_by_profile_id_fkey';
-            columns: ['verified_by_profile_id'];
-            isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
@@ -3845,6 +4253,16 @@ export type Database = {
         };
         Returns: Json;
       };
+      activate_pro_commercial_term: {
+        Args: {
+          p_actor_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+          p_term_id: string;
+        };
+        Returns: Json;
+      };
       admin_change_role_atomic: {
         Args: {
           p_actor_id: string;
@@ -3858,15 +4276,50 @@ export type Database = {
         };
         Returns: Json;
       };
+      assert_pro_lifecycle_actor: {
+        Args: {
+          p_actor_id: string;
+          p_operator_only?: boolean;
+          p_target_pro_profile_id: string;
+        };
+        Returns: string;
+      };
+      assert_safe_pro_decision_reason: {
+        Args: { p_reason: string; p_reason_code: string };
+        Returns: undefined;
+      };
       assign_pro_to_company: {
         Args: {
           p_actor_profile_id: string;
           p_company_id: string;
           p_pro_profile_id: string;
         };
+        Returns: Json;
+      };
+      authorize_pro_company_access: {
+        Args: { p_actor_id: string; p_company_id?: string; p_tenant_id: string };
+        Returns: boolean;
+      };
+      authorize_pro_lifecycle_actor: {
+        Args: {
+          p_actor_id: string;
+          p_operator_only?: boolean;
+          p_target_pro_profile_id: string;
+        };
         Returns: string;
       };
+      begin_pro_credential_review: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+        };
+        Returns: Json;
+      };
       cleanup_company_onboarding_operations: { Args: never; Returns: number };
+      cleanup_pro_lifecycle_operation_receipts: { Args: never; Returns: number };
       clear_company_bank_identifier: {
         Args: {
           p_actor_id: string;
@@ -3902,6 +4355,40 @@ export type Database = {
         };
         Returns: string;
       };
+      create_pro_commercial_term_draft: {
+        Args: {
+          p_actor_id: string;
+          p_amount_minor: number;
+          p_effective_from: string;
+          p_effective_to?: string;
+          p_model: Database['public']['Enums']['pro_term_model'];
+          p_operation_id: string;
+          p_payload_hash: string;
+          p_pro_profile_id: string;
+          p_retainer_interval: Database['public']['Enums']['pro_term_interval'];
+          p_term_kind: Database['public']['Enums']['pro_term_kind'];
+        };
+        Returns: Json;
+      };
+      create_pro_credential_draft: {
+        Args: {
+          p_actor_id: string;
+          p_operation_id: string;
+          p_payload_hash: string;
+          p_pro_profile_id: string;
+        };
+        Returns: Json;
+      };
+      create_pro_credential_replacement: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+        };
+        Returns: Json;
+      };
       create_service_case_with_audit: {
         Args: {
           p_actor_id: string;
@@ -3918,6 +4405,17 @@ export type Database = {
         };
         Returns: string;
       };
+      end_pro_commercial_term: {
+        Args: {
+          p_actor_id: string;
+          p_effective_to: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+          p_term_id: string;
+        };
+        Returns: Json;
+      };
       evaluate_company_activation_readiness: {
         Args: { p_company_id: string };
         Returns: {
@@ -3926,6 +4424,10 @@ export type Database = {
           state: string;
         }[];
       };
+      evaluate_pro_assignment_eligibility: {
+        Args: { p_company_id?: string; p_pro_profile_id: string };
+        Returns: Json;
+      };
       get_pro_document_version_history: {
         Args: { p_document_id: string; p_tenant_id: string };
         Returns: Json;
@@ -3933,6 +4435,10 @@ export type Database = {
       has_company_access: { Args: { p_tenant_id: string }; Returns: boolean };
       has_company_storage_access: {
         Args: { p_object_name: string };
+        Returns: boolean;
+      };
+      has_current_pro_credential: {
+        Args: { p_pro_profile_id: string };
         Returns: boolean;
       };
       list_company_payment_invoices: {
@@ -3945,6 +4451,15 @@ export type Database = {
           p_tenant_id: string;
           p_today?: string;
           p_view: string;
+        };
+        Returns: Json;
+      };
+      list_eligible_pros_for_company: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_limit?: number;
+          p_query?: string;
         };
         Returns: Json;
       };
@@ -4031,6 +4546,19 @@ export type Database = {
         Args: { p_request_id: string; p_step: string; p_tenant_id: string };
         Returns: undefined;
       };
+      materialize_expired_pro_credentials: { Args: never; Returns: number };
+      open_pro_credential_evidence_metadata: {
+        Args: { p_actor_id: string; p_evidence_id: string };
+        Returns: {
+          credential_id: string;
+          evidence_id: string;
+          mime_type: string;
+          original_name_safe: string;
+          pro_profile_id: string;
+          size_bytes: number;
+          storage_path: string;
+        }[];
+      };
       prepare_company_onboarding_operation: {
         Args: {
           p_actor_id: string;
@@ -4081,6 +4609,19 @@ export type Database = {
           subject_kind: string;
         }[];
       };
+      pro_credential_masked_result: {
+        Args: { p_credential_id: string };
+        Returns: Json;
+      };
+      pro_lifecycle_replay_result: {
+        Args: {
+          p_entity_id: string;
+          p_entity_kind: Database['public']['Enums']['pro_lifecycle_operation_kind'];
+          p_operation_id: string;
+          p_payload_hash: string;
+        };
+        Returns: Json;
+      };
       provision_company_workspace_atomic: {
         Args: {
           p_actor_id: string;
@@ -4089,6 +4630,10 @@ export type Database = {
           p_slug: string;
         };
         Returns: Json;
+      };
+      raise_pro_assignment_eligibility_error: {
+        Args: { p_result: Json };
+        Returns: undefined;
       };
       rate_limit_consume: {
         Args: {
@@ -4099,8 +4644,30 @@ export type Database = {
         };
         Returns: boolean;
       };
+      read_authoritative_pro_tenant: {
+        Args: { p_actor_id: string };
+        Returns: string;
+      };
       read_company_onboarding: {
         Args: { p_actor_id: string; p_company_id: string; p_tenant_id: string };
+        Returns: Json;
+      };
+      read_pro_commercial_terms: {
+        Args: { p_actor_id: string; p_pro_profile_id: string };
+        Returns: Json;
+      };
+      read_pro_credential_snapshot: {
+        Args: { p_actor_id: string; p_pro_profile_id: string };
+        Returns: Json;
+      };
+      read_pro_lifecycle_timeline: {
+        Args: {
+          p_actor_id: string;
+          p_cursor_event_at?: string;
+          p_cursor_event_id?: string;
+          p_limit?: number;
+          p_pro_profile_id: string;
+        };
         Returns: Json;
       };
       reassign_company_pro: {
@@ -4111,7 +4678,7 @@ export type Database = {
           p_reason: string;
           p_replacement_pro_profile_id: string;
         };
-        Returns: string;
+        Returns: Json;
       };
       recompute_renewal_status: { Args: never; Returns: undefined };
       reconcile_company_refund: {
@@ -4142,6 +4709,36 @@ export type Database = {
         };
         Returns: undefined;
       };
+      register_pro_credential_evidence: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_original_name_safe: string;
+          p_payload_hash: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+        };
+        Returns: Json;
+      };
+      reject_pro_credential: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+          p_reason: string;
+          p_reason_code: string;
+        };
+        Returns: Json;
+      };
       release_company_pro: {
         Args: {
           p_actor_profile_id: string;
@@ -4150,6 +4747,17 @@ export type Database = {
           p_reason: string;
         };
         Returns: string;
+      };
+      remove_pro_credential_evidence: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+        };
+        Returns: Json;
       };
       reopen_company_onboarding_section: {
         Args: {
@@ -4178,6 +4786,18 @@ export type Database = {
           fulfilled_request_id: string;
           review_status: string;
         }[];
+      };
+      revoke_pro_credential: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+          p_reason: string;
+          p_reason_code: string;
+        };
+        Returns: Json;
       };
       save_company_activities_section: {
         Args: {
@@ -4264,6 +4884,22 @@ export type Database = {
         };
         Returns: Json;
       };
+      save_pro_credential_draft: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_expected_version: number;
+          p_expiry_date: string;
+          p_identifier_ciphertext: string;
+          p_identifier_hash: string;
+          p_identifier_last4: string;
+          p_issue_date: string;
+          p_issuing_authority: string;
+          p_operation_id: string;
+          p_payload_hash: string;
+        };
+        Returns: Json;
+      };
       set_pro_document_expiry: {
         Args: {
           p_actor_id: string;
@@ -4277,6 +4913,16 @@ export type Database = {
           expires_on: string;
         }[];
       };
+      store_pro_lifecycle_receipt: {
+        Args: {
+          p_entity_id: string;
+          p_entity_kind: Database['public']['Enums']['pro_lifecycle_operation_kind'];
+          p_operation_id: string;
+          p_payload_hash: string;
+          p_sanitized_result: Json;
+        };
+        Returns: undefined;
+      };
       submit_company_onboarding_for_activation: {
         Args: {
           p_actor_id: string;
@@ -4286,6 +4932,16 @@ export type Database = {
           p_payload: Json;
           p_payload_hash: string;
           p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      submit_pro_credential: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
         };
         Returns: Json;
       };
@@ -4333,11 +4989,13 @@ export type Database = {
         };
         Returns: string;
       };
-      verify_pro_credentials_atomic: {
+      verify_pro_credential: {
         Args: {
           p_actor_id: string;
-          p_expected_updated_at: string;
-          p_target_id: string;
+          p_credential_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
         };
         Returns: Json;
       };
@@ -4351,6 +5009,16 @@ export type Database = {
           p_tenant_id: string;
         };
         Returns: string;
+      };
+      write_pro_lifecycle_audit: {
+        Args: {
+          p_action: string;
+          p_actor_id: string;
+          p_entity_id: string;
+          p_target_pro_profile_id: string;
+          p_version: number;
+        };
+        Returns: undefined;
       };
     };
     Enums: {
@@ -4388,7 +5056,8 @@ export type Database = {
         | 'tenant_rejected'
         | 'tenant_suspended'
         | 'tenant_reactivated'
-        | 'tenant_self_updated';
+        | 'tenant_self_updated'
+        | 'pro_lifecycle_changed';
       bulk_import_kind: 'employees';
       bulk_import_status:
         | 'uploaded'
@@ -4434,6 +5103,29 @@ export type Database = {
       meeting_slot_status: 'open' | 'booked' | 'cancelled';
       meeting_status: 'scheduled' | 'completed' | 'cancelled' | 'no_show' | 'recording_ready';
       pro_company_assignment_status: 'active' | 'released';
+      pro_credential_event:
+        | 'submitted'
+        | 'review_started'
+        | 'verified'
+        | 'rejected'
+        | 'expired'
+        | 'revoked'
+        | 'superseded';
+      pro_credential_state:
+        | 'draft'
+        | 'submitted'
+        | 'under_review'
+        | 'verified'
+        | 'rejected'
+        | 'expired'
+        | 'revoked';
+      pro_credential_type: 'pro_license';
+      pro_lifecycle_operation_kind: 'credential' | 'commercial_term';
+      pro_term_event: 'created' | 'activated' | 'ended';
+      pro_term_interval: 'monthly' | 'annual';
+      pro_term_kind: 'pricing' | 'compensation';
+      pro_term_model: 'per_registration' | 'retainer';
+      pro_term_status: 'draft' | 'active' | 'ended';
       profile_status: 'active' | 'invited' | 'disabled' | 'suspended';
     };
     CompositeTypes: {
@@ -4558,6 +5250,9 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_audit_action: [
@@ -4596,6 +5291,7 @@ export const Constants = {
         'tenant_suspended',
         'tenant_reactivated',
         'tenant_self_updated',
+        'pro_lifecycle_changed',
       ],
       bulk_import_kind: ['employees'],
       bulk_import_status: [
@@ -4647,6 +5343,31 @@ export const Constants = {
       meeting_slot_status: ['open', 'booked', 'cancelled'],
       meeting_status: ['scheduled', 'completed', 'cancelled', 'no_show', 'recording_ready'],
       pro_company_assignment_status: ['active', 'released'],
+      pro_credential_event: [
+        'submitted',
+        'review_started',
+        'verified',
+        'rejected',
+        'expired',
+        'revoked',
+        'superseded',
+      ],
+      pro_credential_state: [
+        'draft',
+        'submitted',
+        'under_review',
+        'verified',
+        'rejected',
+        'expired',
+        'revoked',
+      ],
+      pro_credential_type: ['pro_license'],
+      pro_lifecycle_operation_kind: ['credential', 'commercial_term'],
+      pro_term_event: ['created', 'activated', 'ended'],
+      pro_term_interval: ['monthly', 'annual'],
+      pro_term_kind: ['pricing', 'compensation'],
+      pro_term_model: ['per_registration', 'retainer'],
+      pro_term_status: ['draft', 'active', 'ended'],
       profile_status: ['active', 'invited', 'disabled', 'suspended'],
     },
   },
