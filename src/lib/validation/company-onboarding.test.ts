@@ -240,11 +240,15 @@ test('establishment and bank inputs enforce protected identifier boundaries', as
     companyBankSectionSchema.safeParse({ ...bank, swiftBic: 'EBILAEAD123' }).success,
     true,
   );
+  assert.equal(
+    companyBankSectionSchema.safeParse({ ...bank, iban: '', accountNumber: '' }).success,
+    true,
+    'blank protected fields preserve existing identifiers; the RPC checks existing-or-new completion',
+  );
   for (const patch of [
     { currencyCode: 'USD' },
     { swiftBic: 'BAD' },
     { iban: 'AE123' },
-    { iban: '', accountNumber: '' },
     { accountNumber: '1' },
     { bankName: 'x'.repeat(121) },
   ]) {

@@ -213,31 +213,25 @@ export const companyEstablishmentSectionSchema = sectionCommandSchema.extend({
   establishmentCardExpiry: calendarDate,
 });
 
-export const companyBankSectionSchema = sectionCommandSchema
-  .extend({
-    bankName: normalizedText(2, 120),
-    branchName: optionalText(120),
-    accountHolderName: normalizedText(2, 200),
-    currencyCode: z.literal('AED'),
-    swiftBic: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .pipe(z.string().regex(/^[A-Z0-9]{8}(?:[A-Z0-9]{3})?$/u)),
-    iban: z
-      .string()
-      .transform((value) => value.replace(/[\s-]+/gu, '').toUpperCase())
-      .pipe(z.string().regex(/^(?:AE\d{21})?$/u)),
-    accountNumber: z
-      .string()
-      .transform((value) => value.replace(/[\s-]+/gu, '').toUpperCase())
-      .pipe(z.string().regex(/^(?:[A-Z0-9]{2,34})?$/u)),
-  })
-  .superRefine((value, context) => {
-    if (value.completeSection && !value.iban && !value.accountNumber) {
-      context.addIssue({ code: 'custom', path: ['iban'], message: 'bankIdentifierRequired' });
-    }
-  });
+export const companyBankSectionSchema = sectionCommandSchema.extend({
+  bankName: normalizedText(2, 120),
+  branchName: optionalText(120),
+  accountHolderName: normalizedText(2, 200),
+  currencyCode: z.literal('AED'),
+  swiftBic: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .pipe(z.string().regex(/^[A-Z0-9]{8}(?:[A-Z0-9]{3})?$/u)),
+  iban: z
+    .string()
+    .transform((value) => value.replace(/[\s-]+/gu, '').toUpperCase())
+    .pipe(z.string().regex(/^(?:AE\d{21})?$/u)),
+  accountNumber: z
+    .string()
+    .transform((value) => value.replace(/[\s-]+/gu, '').toUpperCase())
+    .pipe(z.string().regex(/^(?:[A-Z0-9]{2,34})?$/u)),
+});
 
 export const clearCompanyBankIdentifierSchema = commandSchema
   .extend({
