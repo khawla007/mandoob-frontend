@@ -67,6 +67,25 @@ describe('pii nonce uniqueness', () => {
   });
 });
 
+describe('pii blind indexes', () => {
+  it('matches a known HMAC vector and separates identifier domains', async () => {
+    const { createBlindIndex } = await loadPii();
+    const iban = 'AE070331234567890123456';
+    assert.equal(
+      createBlindIndex('company-bank-iban:v1', iban),
+      '3028e2f117ca04f3d51888fc846acb2337643e3ce054aee98db3e4848551317c',
+    );
+    assert.equal(
+      createBlindIndex('company-bank-iban:v1', iban),
+      createBlindIndex('company-bank-iban:v1', iban),
+    );
+    assert.notEqual(
+      createBlindIndex('company-bank-iban:v1', iban),
+      createBlindIndex('company-bank-account:v1', iban),
+    );
+  });
+});
+
 describe('pii tamper detection', () => {
   it('throws PII_DECRYPT_FAILED when the auth tag is mutated', async () => {
     const { encrypt, decrypt } = await loadPii();

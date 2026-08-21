@@ -43,8 +43,13 @@ test('migrations never grant client roles direct protected table access', () => 
     .join('\n')
     .replace(/\s+/gu, ' ')
     .toLowerCase();
-  assert.doesNotMatch(
-    sql,
-    /grant (?:select|insert|update|delete|all)[\s\S]*company_bank_details[\s\S]*to (?:anon|authenticated|public)/u,
-  );
+  const forbiddenGrants = sql
+    .split(';')
+    .filter(
+      (statement) =>
+        /grant (?:select|insert|update|delete|all)/u.test(statement) &&
+        /company_bank_details/u.test(statement) &&
+        /to (?:anon|authenticated|public)/u.test(statement),
+    );
+  assert.deepEqual(forbiddenGrants, []);
 });

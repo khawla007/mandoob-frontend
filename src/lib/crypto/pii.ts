@@ -1,5 +1,5 @@
 import 'server-only';
-import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import { randomBytes, createCipheriv, createDecipheriv, createHmac } from 'node:crypto';
 
 const ALG = 'aes-256-gcm';
 const NONCE_BYTES = 12;
@@ -61,4 +61,9 @@ export function encryptOptional(s: string | null | undefined): string | null {
 export function decryptOptional(s: string | null | undefined): string | null {
   if (s === null || s === undefined) return null;
   return decrypt(s);
+}
+
+export function createBlindIndex(domain: string, value: string): string {
+  if (!domain || !value) throw new Error('PII_BLIND_INDEX_INPUT_INVALID');
+  return createHmac('sha256', KEY).update(domain).update('\0').update(value).digest('hex');
 }
