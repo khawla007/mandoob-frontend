@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
-set statement_timeout = '10s';
+set statement_timeout = '30s';
 do $$
 declare
   v_attempt integer;
 begin
-  for v_attempt in 1..50 loop
+  for v_attempt in 1..200 loop
     if exists (
       select 1 from pg_catalog.pg_locks
       where locktype = 'advisory' and classid = 69001 and objid = 1 and granted

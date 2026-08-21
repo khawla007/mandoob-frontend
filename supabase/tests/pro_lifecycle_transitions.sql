@@ -79,6 +79,18 @@ begin
      or v_result ? 'storagePath' then
     raise exception 'UNSAFE_OR_INVALID_CREDENTIAL_RESULT';
   end if;
+  if not public.has_current_pro_credential('91000000-0000-4000-8000-000000000002') then
+    raise exception 'VERIFIED_CREDENTIAL_NOT_CURRENT';
+  end if;
+  update public.pro_credentials
+  set issue_date = current_date - 365, expiry_date = current_date - 1
+  where id = v_credential_id;
+  if public.has_current_pro_credential('91000000-0000-4000-8000-000000000002') then
+    raise exception 'DATE_EXPIRED_CREDENTIAL_HAS_ACCESS';
+  end if;
+  update public.pro_credentials
+  set issue_date = current_date, expiry_date = current_date + 365
+  where id = v_credential_id;
   if public.verify_pro_credential(
     '91000000-0000-4000-8000-000000000001', v_credential_id, 4,
     '91000000-0000-4000-8000-000000000017', repeat('6', 64)
@@ -140,6 +152,9 @@ begin
     '91000000-0000-4000-8000-000000000025', repeat('c', 64),
     'OPERATOR_REVOKED', 'Evidence no longer current'
   );
+  if public.has_current_pro_credential('91000000-0000-4000-8000-000000000002') then
+    raise exception 'REVOKED_CREDENTIAL_HAS_ACCESS';
+  end if;
   v_result := public.create_pro_credential_replacement(
     '91000000-0000-4000-8000-000000000002', v_credential_id, 6,
     '91000000-0000-4000-8000-000000000026', repeat('d', 64)

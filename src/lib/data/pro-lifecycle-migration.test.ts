@@ -173,3 +173,35 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
     assert.match(source, /statement_timeout/u);
   }
 });
+
+test('0070 reconciles live access, term-linked assignments, grants, and legacy columns', () => {
+  assert.equal(existsSync(join(process.cwd(), migrationPaths[2])), true, migrationPaths[2]);
+  const sql = migration(2);
+  for (const fn of [
+    'has_current_pro_credential',
+    'authorize_pro_company_access',
+    'read_authoritative_pro_tenant',
+    'has_company_access',
+    'assign_pro_to_company',
+    'reassign_company_pro',
+  ]) {
+    assert.match(sql, new RegExp(`function public\\.${fn}`, 'u'));
+    assert.match(sql, new RegExp(`${fn}[\\s\\S]*set search_path = ''`, 'u'));
+  }
+  assert.match(sql, /state = 'verified'/u);
+  assert.match(sql, /expiry_date >= timezone\('asia\/dubai', pg_catalog\.now\(\)\)::date/u);
+  assert.match(sql, /evaluate_pro_assignment_eligibility/u);
+  assert.match(sql, /pro_pricing_not_configured/u);
+  assert.match(sql, /pro_compensation_not_configured/u);
+  assert.match(sql, /insert into public\.pro_assignment_term_links/u);
+  assert.match(sql, /pricing_term_id/u);
+  assert.match(sql, /compensation_term_id/u);
+  assert.match(sql, /drop column license_no_encrypted/u);
+  assert.match(sql, /drop column credentials_verified/u);
+  assert.match(sql, /drop column verified_at/u);
+  assert.match(sql, /drop column verified_by_profile_id/u);
+  assert.match(sql, /revoke all on table public\.pro_credentials from public, anon, authenticated/u);
+  assert.match(sql, /revoke all on table public\.pro_credentials from service_role/u);
+  assert.match(sql, /grant select on table public\.pro_credentials to service_role/u);
+  assert.match(sql, /grant execute on function public\.has_company_access\(uuid\) to authenticated, service_role/u);
+});
