@@ -18,6 +18,8 @@ import {
   runReleaseCompanyProAction,
   type CompanyActionDependencies,
   type CompanyActionResult,
+  type CompanyAssignmentActionData,
+  type CompanyReleaseActionData,
 } from './action-logic';
 
 const dependencies: CompanyActionDependencies = {
@@ -54,22 +56,22 @@ export async function createCompanyAction(
 }
 
 export async function assignCompanyProAction(
-  _previous: CompanyActionResult<{ assignmentId: string }> | null,
+  _previous: CompanyActionResult<CompanyAssignmentActionData> | null,
   formData: FormData,
-): Promise<CompanyActionResult<{ assignmentId: string }>> {
+): Promise<CompanyActionResult<CompanyAssignmentActionData>> {
   return runAssignCompanyProAction(formData, dependencies);
 }
 
 export async function releaseCompanyProAction(
-  _previous: CompanyActionResult | null,
+  _previous: CompanyActionResult<CompanyReleaseActionData> | null,
   formData: FormData,
-): Promise<CompanyActionResult> {
+): Promise<CompanyActionResult<CompanyReleaseActionData>> {
   return runReleaseCompanyProAction(formData, dependencies);
 }
 
 export async function reassignCompanyProAction(
-  _previous: CompanyActionResult<{ assignmentId: string }> | null,
+  _previous: CompanyActionResult<CompanyAssignmentActionData> | null,
   formData: FormData,
-): Promise<CompanyActionResult<{ assignmentId: string }>> {
+): Promise<CompanyActionResult<CompanyAssignmentActionData>> {
   return runReassignCompanyProAction(formData, dependencies);
 }

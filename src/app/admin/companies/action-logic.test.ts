@@ -87,8 +87,12 @@ for (const role of ['admin', 'super_admin'] as const) {
       'provision',
       'revalidate:/admin/companies',
       `revalidate:/admin/companies/${companyId}`,
+      `revalidate:/admin/companies/${companyId}/onboarding`,
       'revalidate:/admin/users',
       'revalidate:/t/acme-trading',
+      'revalidate:/t/acme-trading/company',
+      'revalidate:/t/acme-trading/company/setup',
+      'revalidate:/t/acme-trading/dashboard',
     ]);
   });
 }
@@ -144,7 +148,7 @@ test('assignment uses the authoritative actor and exact revalidation routes', as
   data.set('actorId', replacementProId);
   assert.deepEqual(await runAssignCompanyProAction(data, context.dependencies), {
     ok: true,
-    data: { assignmentId },
+    data: { assignmentId, outcome: 'assigned' },
   });
   assert.deepEqual(context.calls, [
     'auth:admin',
@@ -152,8 +156,12 @@ test('assignment uses the authoritative actor and exact revalidation routes', as
     `assign:${actorId}`,
     'revalidate:/admin/companies',
     `revalidate:/admin/companies/${companyId}`,
+    `revalidate:/admin/companies/${companyId}/onboarding`,
     'revalidate:/admin/users',
     'revalidate:/t/acme-trading',
+    'revalidate:/t/acme-trading/company',
+    'revalidate:/t/acme-trading/company/setup',
+    'revalidate:/t/acme-trading/dashboard',
   ]);
 });
 
@@ -202,14 +210,18 @@ test('release requires a reason and revalidates only after success', async () =>
   const valid = setup();
   assert.deepEqual(await runReleaseCompanyProAction(releaseData(), valid.dependencies), {
     ok: true,
-    data: undefined,
+    data: { outcome: 'released' },
   });
   assert.deepEqual(valid.calls.slice(0, 3), ['auth:admin', 'company', `release:${actorId}`]);
   assert.deepEqual(valid.calls.slice(3), [
     'revalidate:/admin/companies',
     `revalidate:/admin/companies/${companyId}`,
+    `revalidate:/admin/companies/${companyId}/onboarding`,
     'revalidate:/admin/users',
     'revalidate:/t/acme-trading',
+    'revalidate:/t/acme-trading/company',
+    'revalidate:/t/acme-trading/company/setup',
+    'revalidate:/t/acme-trading/dashboard',
   ]);
 });
 
@@ -217,7 +229,7 @@ test('reassignment uses the replacement PRO and authoritative actor', async () =
   const context = setup();
   assert.deepEqual(await runReassignCompanyProAction(reassignData(), context.dependencies), {
     ok: true,
-    data: { assignmentId },
+    data: { assignmentId, outcome: 'reassigned' },
   });
   assert.deepEqual(context.calls.slice(0, 3), ['auth:admin', 'company', `reassign:${actorId}`]);
 });

@@ -36,6 +36,13 @@ export type CompanyActionRecord = {
   companyName: string;
 };
 
+export type CompanyAssignmentActionData = {
+  assignmentId: string;
+  outcome: 'assigned' | 'reassigned';
+};
+
+export type CompanyReleaseActionData = { outcome: 'released' };
+
 type ProvisionInput = { companyName: string; slug: string; plan: TenantPlan };
 
 export type CompanyActionDependencies = {
@@ -143,8 +150,12 @@ function failure(
 function revalidateCompany(company: CompanyActionRecord, deps: CompanyActionDependencies): void {
   deps.revalidate('/admin/companies');
   deps.revalidate(`/admin/companies/${company.id}`);
+  deps.revalidate(`/admin/companies/${company.id}/onboarding`);
   deps.revalidate('/admin/users');
   deps.revalidate(`/t/${company.tenantSlug}`);
+  deps.revalidate(`/t/${company.tenantSlug}/company`);
+  deps.revalidate(`/t/${company.tenantSlug}/company/setup`);
+  deps.revalidate(`/t/${company.tenantSlug}/dashboard`);
 }
 
 async function requireCompany(
@@ -182,14 +193,14 @@ export async function runCreateCompanyAction(
 export async function runAssignCompanyProAction(
   formData: FormData,
   deps: CompanyActionDependencies,
-): Promise<CompanyActionResult<{ assignmentId: string }>> {
+): Promise<CompanyActionResult<CompanyAssignmentActionData>> {
   try {
     const actor = await deps.requireActor();
     const input = parseAssign(formData);
     const company = await requireCompany(input.companyId, deps);
     const assignmentId = await deps.assign(input, actor.id);
     revalidateCompany(company, deps);
-    return { ok: true, data: { assignmentId } };
+    return { ok: true, data: { assignmentId, outcome: 'assigned' } };
   } catch (error) {
     return failure(error, 'Invalid company assignment input', deps);
   }
@@ -198,7 +209,7 @@ export async function runAssignCompanyProAction(
 export async function runReleaseCompanyProAction(
   formData: FormData,
   deps: CompanyActionDependencies,
-): Promise<CompanyActionResult> {
+): Promise<CompanyActionResult<CompanyReleaseActionData>> {
   try {
     const actor = await deps.requireActor();
     const input = parseRelease(formData);
@@ -216,7 +227,7 @@ export async function runReleaseCompanyProAction(
       actor.id,
     );
     revalidateCompany(company, deps);
-    return { ok: true, data: undefined };
+    return { ok: true, data: { outcome: 'released' } };
   } catch (error) {
     return failure(error, 'Invalid company release input', deps);
   }
@@ -225,14 +236,14 @@ export async function runReleaseCompanyProAction(
 export async function runReassignCompanyProAction(
   formData: FormData,
   deps: CompanyActionDependencies,
-): Promise<CompanyActionResult<{ assignmentId: string }>> {
+): Promise<CompanyActionResult<CompanyAssignmentActionData>> {
   try {
     const actor = await deps.requireActor();
     const input = parseReassign(formData);
     const company = await requireCompany(input.companyId, deps);
     const assignmentId = await deps.reassign(input, actor.id);
     revalidateCompany(company, deps);
-    return { ok: true, data: { assignmentId } };
+    return { ok: true, data: { assignmentId, outcome: 'reassigned' } };
   } catch (error) {
     return failure(error, 'Unable to update company assignment', deps);
   }
