@@ -110,6 +110,12 @@ test('protected values are blank inputs with masked LTR summaries only', () => {
   assert.match(bank, /autoComplete="off"/u);
   assert.match(bank, /clearBankIdentifier/u);
   assert.match(bank, /companyNameConfirmation/u);
+
+  const shareholders = read('ShareholdersForm.tsx');
+  assert.match(shareholders, /passportMasked/u);
+  assert.match(shareholders, /registrationMasked/u);
+  assert.match(shareholders, /protectedMasks\.get\(field\.id\)/u);
+  assert.match(shareholders, /dir="ltr"/u);
 });
 
 test('review links each localized readiness code and explains disabled activation', () => {

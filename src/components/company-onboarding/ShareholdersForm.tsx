@@ -99,6 +99,12 @@ export function ShareholdersForm({
           sortOrder: row.sortOrder,
         },
   );
+  const protectedMasks = new Map(
+    snapshot.shareholders.map((row) => [
+      row.id,
+      row.kind === 'individual' ? row.passportMasked : row.registrationMasked,
+    ]),
+  );
   const setup = useOnboardingForm<Values>({
     schema: companyShareholdersSectionSchema,
     action,
@@ -145,6 +151,7 @@ export function ShareholdersForm({
             index={index}
             labels={labels}
             form={form}
+            protectedMasked={field.id ? (protectedMasks.get(field.id) ?? null) : null}
             onMoveUp={() => move(index, index - 1)}
             onMoveDown={() => move(index, index + 1)}
             onRemove={() => {
@@ -204,6 +211,7 @@ function ShareholderRow({
   index,
   labels,
   form,
+  protectedMasked,
   onMoveUp,
   onMoveDown,
   onRemove,
@@ -213,6 +221,7 @@ function ShareholderRow({
   index: number;
   labels: Labels;
   form: UseFormReturn<Values>;
+  protectedMasked: string | null;
   onMoveUp(): void;
   onMoveDown(): void;
   onRemove(): void;
@@ -260,6 +269,7 @@ function ShareholderRow({
               id={`${prefix}.registrationNumber`}
               label={labels.fields.registrationNumber}
               register={form.register(`${prefix}.registrationNumber`)}
+              masked={protectedMasked}
               ltr
               error={hasError('registrationNumber')}
               errorLabel={labels.errors.INVALID_SECTION_INPUT}
@@ -286,6 +296,7 @@ function ShareholderRow({
               id={`${prefix}.passportNumber`}
               label={labels.fields.passportNumber}
               register={form.register(`${prefix}.passportNumber`)}
+              masked={protectedMasked}
               ltr
               error={hasError('passportNumber')}
               errorLabel={labels.errors.INVALID_SECTION_INPUT}
@@ -341,6 +352,7 @@ function Field({
   id,
   label,
   register,
+  masked = null,
   ltr = false,
   error,
   errorLabel,
@@ -348,6 +360,7 @@ function Field({
   id: string;
   label: string;
   register: UseFormRegisterReturn;
+  masked?: string | null;
   ltr?: boolean;
   error: boolean;
   errorLabel: string;
@@ -363,6 +376,11 @@ function Field({
         aria-describedby={error ? `${id}-error` : undefined}
         {...register}
       />
+      {masked ? (
+        <p className="text-muted-foreground font-mono text-sm" dir="ltr">
+          {masked}
+        </p>
+      ) : null}
       {error ? (
         <p id={`${id}-error`} className="text-destructive text-sm">
           {errorLabel}
