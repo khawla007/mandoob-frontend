@@ -10,7 +10,6 @@ const actions = readFileSync(
   join(root, 'src/app/(tenant)/t/[tenant]/(pro)/company/actions.ts'),
   'utf8',
 );
-const form = readFileSync(join(root, 'src/components/pro/CompanyProfileForm.tsx'), 'utf8');
 const tabs = readFileSync(join(root, 'src/components/pro/AssignedCompanyTabs.tsx'), 'utf8');
 const companyProfile = readFileSync(join(root, 'src/lib/data/company-profile.ts'), 'utf8');
 const english = JSON.parse(readFileSync(join(root, 'src/messages/en.json'), 'utf8'));
@@ -59,7 +58,7 @@ test('Assigned Company page is compact, localized, and keeps exact document deep
   assert.doesNotMatch(page, /hero/i);
   assert.doesNotMatch(page, /<main/u);
   assert.match(page, /getTranslations\('pro\.assignedCompany'\)/);
-  assert.match(page, /CompanyProfileForm/);
+  assert.match(page, /CompanyOnboardingSummary/);
   assert.match(page, /AssignedCompanyTabs/);
   assert.match(tabs, /tab=documents&document=/);
   assert.doesNotMatch(page, /switch|createClient|ClientTabs|EditClientForm/);
@@ -173,33 +172,16 @@ test('Assigned Company operational labels have exact English and Arabic parity',
   }
 });
 
-test('profile action delegates the authorized expected-version update to the atomic data layer', () => {
-  assert.match(actions, /requireProTenantRouteAccess\(tenantSlug\)/);
-  assert.match(actions, /updateAssignedCompanyProfile\(\{/);
-  assert.match(actions, /actorId: session\.id/);
-  assert.match(actions, /tenantId: tenant\.id/);
-  assert.match(actions, /expectedUpdatedAt/);
-  assert.match(actions, /updatedAt: result\.updatedAt/);
-  assert.doesNotMatch(actions, /\.from\('company_profiles'\)|\.from\('tenant_audit_log'\)/);
-  assert.match(actions, /revalidatePath\(`\/t\/\$\{tenantSlug\}\/company`\)/);
-  assert.doesNotMatch(actions, /error\.message|String\(error\)/);
-});
-
-test('use-server company actions export no non-function runtime values', () => {
-  assert.match(actions, /^'use server';/u);
+test('overview replaces the legacy editor with lifecycle, progress, blockers, and one canonical CTA', () => {
+  assert.match(page, /onboardingStatus/u);
+  assert.match(page, /sectionProgress/u);
+  assert.match(page, /readinessCodes/u);
+  assert.match(page, /canonicalCompanyOnboardingSection/u);
+  assert.match(page, /companyOnboardingSectionHref/u);
+  assert.doesNotMatch(page, /CompanyProfileForm|updateAssignedCompanyProfile/u);
+  assert.equal((page.match(/href=\{onboardingHref\}/gu) ?? []).length, 1);
+  assert.equal(actions.trim(), "'use server';");
   assert.deepEqual(auditUseServerRuntimeExports(actions), []);
-  assert.match(form, /const initialCompanyProfileActionState: CompanyProfileActionState/u);
-});
-
-test('profile form provides localized inline errors and duplicate-submit prevention', () => {
-  assert.match(form, /^'use client';/);
-  assert.match(form, /useActionState/);
-  assert.match(form, /useFormStatus/);
-  assert.match(form, /aria-live="polite"/);
-  assert.match(form, /aria-invalid=/);
-  assert.match(form, /disabled=\{pending\}/);
-  assert.match(form, /value=\{state\.updatedAt \?\? company\.updatedAt\}/);
-  assert.doesNotMatch(form, />\s*(Edit|Save|Cancel|Company name|Trade license|Jurisdiction)/);
 });
 
 test('employee import no longer accepts company selection or a company identifier input', () => {

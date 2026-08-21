@@ -390,3 +390,39 @@ test('success revalidates exact PRO routes and redirects final actions after rev
     );
   }
 });
+
+test('Save and Continue redirects to the next fixed section without query state', async () => {
+  const context = setup();
+  const data = validForm('legal');
+  data.set('intent', 'continue');
+  await runProCompanyOnboardingAction(
+    {
+      kind: 'legal',
+      tenantSlug: 'acme',
+      companyId,
+      previousState: createOnboardingActionState(7, () => operationId),
+      formData: data,
+    },
+    context.dependencies,
+  );
+  assert.deepEqual(
+    context.calls.filter((call) => call.startsWith('redirect:')),
+    ['redirect:/t/acme/company/setup/shareholders'],
+  );
+
+  const saveContext = setup();
+  await runProCompanyOnboardingAction(
+    {
+      kind: 'legal',
+      tenantSlug: 'acme',
+      companyId,
+      previousState: createOnboardingActionState(7, () => operationId),
+      formData: validForm('legal'),
+    },
+    saveContext.dependencies,
+  );
+  assert.equal(
+    saveContext.calls.some((call) => call.startsWith('redirect:')),
+    false,
+  );
+});

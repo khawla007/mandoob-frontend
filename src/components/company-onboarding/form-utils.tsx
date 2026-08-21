@@ -36,6 +36,7 @@ export type OnboardingFormLabels = {
   saved: string;
   saving: string;
   save: string;
+  saveContinue: string;
   errorTitle: string;
   errors: Record<string, string>;
   errorSummary: string;
@@ -95,6 +96,10 @@ export function useOnboardingForm<T extends FieldValues>({
       (values) => {
         if (!claimFormSubmission(submissionLatch)) return;
         const data = new FormData(formRef.current ?? event.currentTarget);
+        const submitter = (event.nativeEvent as SubmitEvent).submitter;
+        if (submitter instanceof HTMLButtonElement && submitter.name) {
+          data.set(submitter.name, submitter.value);
+        }
         prepare?.(data, values);
         startTransition(() => dispatch(data));
       },
@@ -163,14 +168,32 @@ export function OnboardingSubmitButton({
   labels: OnboardingFormLabels;
 }) {
   return (
-    <Button type="submit" disabled={pending} className="min-h-11 w-full md:min-h-9 md:w-auto">
-      {pending ? (
-        <LoaderCircle
-          className="size-4 animate-spin motion-reduce:animate-none"
-          aria-hidden="true"
-        />
-      ) : null}
-      {pending ? labels.saving : labels.save}
-    </Button>
+    <div className="flex w-full flex-col-reverse gap-2 md:w-auto md:flex-row">
+      <Button
+        type="submit"
+        name="intent"
+        value="save"
+        variant="outline"
+        disabled={pending}
+        className="min-h-11 md:min-h-9"
+      >
+        {labels.save}
+      </Button>
+      <Button
+        type="submit"
+        name="intent"
+        value="continue"
+        disabled={pending}
+        className="min-h-11 md:min-h-9"
+      >
+        {pending ? (
+          <LoaderCircle
+            className="size-4 animate-spin motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+        ) : null}
+        {pending ? labels.saving : labels.saveContinue}
+      </Button>
+    </div>
   );
 }

@@ -1,13 +1,18 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { Building2, CalendarDays, MapPin } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, CheckCircle2, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AssignedCompanyTabs } from '@/components/pro/AssignedCompanyTabs';
-import { CompanyProfileForm } from '@/components/pro/CompanyProfileForm';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { loadAssignedCompanyWorkspace } from '@/lib/data/company-workspace';
 import { DOC_TYPES } from '@/lib/validation/document';
+import type { AssignedCompanyProfile } from '@/lib/data/company-profile';
+import {
+  canonicalCompanyOnboardingSection,
+  companyOnboardingSectionHref,
+} from './setup/route-logic';
 import { parseAssignedCompanySearch, type AssignedCompanySearchParams } from './page-logic';
 
 export const dynamic = 'force-dynamic';
@@ -24,9 +29,10 @@ export default async function AssignedCompanyPage({
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company) notFound();
 
-  const [focus, t, tDocumentTypes, locale] = await Promise.all([
+  const [focus, t, tOnboarding, tDocumentTypes, locale] = await Promise.all([
     searchParams.then(parseAssignedCompanySearch),
     getTranslations('pro.assignedCompany'),
+    getTranslations('companyOnboarding'),
     getTranslations('proDocumentCenter.docTypes'),
     getLocale(),
   ]);
@@ -84,6 +90,33 @@ export default async function AssignedCompanyPage({
         </div>
         <Badge variant="secondary">{t(`status.${company.status}`)}</Badge>
       </section>
+
+      <CompanyOnboardingSummary
+        company={company}
+        onboardingHref={companyOnboardingSectionHref(
+          slug,
+          canonicalCompanyOnboardingSection(company),
+        )}
+        labels={{
+          title: tOnboarding('overview.title'),
+          description: tOnboarding('overview.description'),
+          lifecycle: tOnboarding('overview.lifecycle'),
+          progress: tOnboarding('overview.progress', {
+            complete: Object.values(company.sectionProgress).filter(
+              (status) => status === 'complete',
+            ).length,
+            total: Object.keys(company.sectionProgress).length,
+          }),
+          blockers: tOnboarding('overview.blockers', { count: company.readinessCodes.length }),
+          status: tOnboarding(`status.${company.onboardingStatus}`),
+          cta:
+            company.onboardingStatus === 'not_started'
+              ? tOnboarding('overview.setup')
+              : canonicalCompanyOnboardingSection(company) === 'review'
+                ? tOnboarding('overview.review')
+                : tOnboarding('overview.resume'),
+        }}
+      />
 
       <AssignedCompanyTabs
         slug={slug}
@@ -230,34 +263,72 @@ export default async function AssignedCompanyPage({
           },
         }}
       />
-
-      <CompanyProfileForm
-        tenantSlug={slug}
-        company={company}
-        labels={{
-          title: t('form.title'),
-          description: t('form.description'),
-          companyName: t('fields.companyName'),
-          tradeLicense: t('fields.tradeLicense'),
-          jurisdiction: t('fields.jurisdiction'),
-          licenseExpiry: t('fields.licenseExpiry'),
-          save: t('form.save'),
-          saving: t('form.saving'),
-          saved: t('form.saved'),
-          validation: t('form.validation'),
-          notFound: t('form.notFound'),
-          conflict: t('form.conflict'),
-          unexpected: t('form.unexpected'),
-          errors: {
-            companyNameRequired: t('form.errors.companyNameRequired'),
-            companyNameTooLong: t('form.errors.companyNameTooLong'),
-            tradeLicenseTooLong: t('form.errors.tradeLicenseTooLong'),
-            jurisdictionTooLong: t('form.errors.jurisdictionTooLong'),
-            licenseExpiryInvalid: t('form.errors.licenseExpiryInvalid'),
-            validation: t('form.validation'),
-          },
-        }}
-      />
     </div>
+  );
+}
+
+function CompanyOnboardingSummary({
+  company,
+  onboardingHref,
+  labels,
+}: {
+  company: AssignedCompanyProfile;
+  onboardingHref: string;
+  labels: {
+    title: string;
+    description: string;
+    lifecycle: string;
+    progress: string;
+    blockers: string;
+    status: string;
+    cta: string;
+  };
+}) {
+  const complete = Object.values(company.sectionProgress).filter(
+    (status) => status === 'complete',
+  ).length;
+  const percent = Math.round((complete / Object.keys(company.sectionProgress).length) * 100);
+  return (
+    <section className="signal-panel rounded-xl border p-5" aria-labelledby="onboarding-title">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-3">
+          <div>
+            <h2 id="onboarding-title" className="text-lg font-semibold">
+              {labels.title}
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">{labels.description}</p>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <span className="inline-flex items-center gap-2">
+              <CheckCircle2 className="text-signal-success size-4" aria-hidden="true" />
+              {labels.progress}
+            </span>
+            <span>{labels.blockers}</span>
+            <span>
+              {labels.lifecycle}: {labels.status}
+            </span>
+          </div>
+          <div
+            className="bg-muted h-2 max-w-xl overflow-hidden rounded-full"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+          >
+            <span
+              className="bg-primary block h-full rounded-full"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+        <Link
+          href={onboardingHref}
+          className="bg-primary text-primary-foreground focus-visible:ring-ring inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium outline-none focus-visible:ring-2"
+        >
+          {labels.cta}
+          <ArrowRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+        </Link>
+      </div>
+    </section>
   );
 }

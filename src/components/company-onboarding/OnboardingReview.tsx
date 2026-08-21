@@ -23,25 +23,29 @@ type Labels = OnboardingFormLabels & {
   ready: string;
   blocked: string;
   activate: string;
+  submit: string;
   requirements: Record<CompanyReadinessCode, string>;
 };
 
 export function OnboardingReview({
   snapshot,
-  action,
+  submitAction,
+  activateAction,
   initialState,
   labels,
   sectionHrefs,
 }: {
   snapshot: CompanyOnboardingSnapshot;
-  action: OnboardingFormAction;
+  submitAction: OnboardingFormAction;
+  activateAction: OnboardingFormAction;
   initialState: OnboardingActionState;
   labels: Labels;
   sectionHrefs: Record<CompanyReadinessSection, string>;
 }) {
+  const activationPhase = snapshot.onboardingStatus === 'ready_for_activation';
   const setup = useOnboardingForm({
     schema: activateCompanyOnboardingSchema,
-    action,
+    action: activationPhase ? activateAction : submitAction,
     initialState,
     labels,
     defaultValues: {
@@ -94,7 +98,7 @@ export function OnboardingReview({
         aria-describedby={blocked ? blockerId : undefined}
         className="bg-primary text-primary-foreground min-h-11 rounded-md px-4 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {labels.activate}
+        {activationPhase ? labels.activate : labels.submit}
       </button>
       <span className="sr-only" aria-live="polite">
         {pending ? labels.saving : ''}

@@ -41,12 +41,14 @@ export function BankDetailsForm({
   action,
   clearBankIdentifier,
   initialState,
+  clearInitialState,
   labels,
 }: {
   snapshot: CompanyOnboardingSnapshot;
   action: OnboardingFormAction;
   clearBankIdentifier: OnboardingFormAction;
   initialState: OnboardingActionState;
+  clearInitialState: OnboardingActionState;
   labels: Labels;
 }) {
   const bank = snapshot.bank;
@@ -133,7 +135,7 @@ export function BankDetailsForm({
       <ClearBankIdentifierForm
         snapshot={snapshot}
         action={clearBankIdentifier}
-        initialState={initialState}
+        initialState={clearInitialState}
         labels={labels}
       />
     </div>
