@@ -307,7 +307,7 @@ test('PRO self-service mutations use the PRO-only boundary and never fabricate a
   for (const relative of [
     'applications/actions.ts',
     'documents/actions.ts',
-    'company/actions.ts',
+    'company/setup/actions.ts',
     'leads/actions.ts',
     'meetings/actions.ts',
     'payments/actions.ts',

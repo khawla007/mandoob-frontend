@@ -1,15 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { auditUseServerRuntimeExports } from '@/lib/testing/use-server-export-audit';
 
 const root = process.cwd();
 const page = readFileSync(join(root, 'src/app/(tenant)/t/[tenant]/(pro)/company/page.tsx'), 'utf8');
-const actions = readFileSync(
-  join(root, 'src/app/(tenant)/t/[tenant]/(pro)/company/actions.ts'),
-  'utf8',
-);
+const legacyActionsPath = join(root, 'src/app/(tenant)/t/[tenant]/(pro)/company/actions.ts');
 const tabs = readFileSync(join(root, 'src/components/pro/AssignedCompanyTabs.tsx'), 'utf8');
 const companyProfile = readFileSync(join(root, 'src/lib/data/company-profile.ts'), 'utf8');
 const english = JSON.parse(readFileSync(join(root, 'src/messages/en.json'), 'utf8'));
@@ -180,8 +176,7 @@ test('overview replaces the legacy editor with lifecycle, progress, blockers, an
   assert.match(page, /companyOnboardingSectionHref/u);
   assert.doesNotMatch(page, /CompanyProfileForm|updateAssignedCompanyProfile/u);
   assert.equal((page.match(/href=\{onboardingHref\}/gu) ?? []).length, 1);
-  assert.equal(actions.trim(), "'use server';");
-  assert.deepEqual(auditUseServerRuntimeExports(actions), []);
+  assert.equal(existsSync(legacyActionsPath), false);
 });
 
 test('employee import no longer accepts company selection or a company identifier input', () => {
