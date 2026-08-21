@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -70,8 +70,109 @@ test('0066 defines fixed-path service workflows, receipts, and redacted audit ev
   assert.match(sql, /stale_onboarding_version/u);
   assert.match(sql, /company_activation_attempted/u);
   assert.match(sql, /company_activated/u);
-  assert.doesNotMatch(sql, /establishment_card_no_encrypted[\s\S]*return/u);
-  assert.doesNotMatch(sql, /iban_encrypted[\s\S]*return/u);
+  const aggregateRead = sql.slice(
+    sql.indexOf('function public.read_company_onboarding'),
+    sql.indexOf('function public.cleanup_company_onboarding_operations'),
+  );
+  for (const protectedColumn of [
+    'establishment_card_no_encrypted',
+    'establishment_card_no_hash',
+    'iban_encrypted',
+    'iban_hash',
+    'account_number_encrypted',
+    'account_number_hash',
+  ]) {
+    assert.doesNotMatch(
+      aggregateRead,
+      new RegExp(`company\\.${protectedColumn}|bank\\.${protectedColumn}`, 'u'),
+    );
+  }
+});
+
+test('0066 mutation signatures carry actor, ownership, version, and operation identity', () => {
+  const sql = migration(1);
+  for (const fn of [
+    'save_company_legal_section',
+    'save_company_shareholders_section',
+    'save_company_activities_section',
+    'save_company_office_section',
+    'save_company_establishment_section',
+    'save_company_bank_section',
+    'clear_company_bank_identifier',
+    'reopen_company_onboarding_section',
+    'submit_company_onboarding_for_activation',
+    'activate_company_onboarding',
+  ]) {
+    const signature = new RegExp(`function public\\.${fn}\\s*\\(([^)]*)\\)`, 'u').exec(sql)?.[1];
+    assert.ok(signature, `${fn} signature must exist`);
+    for (const parameter of [
+      'p_actor_id uuid',
+      'p_tenant_id uuid',
+      'p_company_id uuid',
+      'p_expected_onboarding_version bigint',
+      'p_operation_id uuid',
+    ]) {
+      assert.match(signature, new RegExp(parameter, 'u'), `${fn} requires ${parameter}`);
+    }
+  }
+  const activation = /function public\.activate_company_onboarding\s*\(([^)]*)\)/u.exec(sql)?.[1];
+  assert.doesNotMatch(activation ?? '', /ready|is_ready|requirements/u);
+});
+
+test('0066 covers every readiness code and bounded operation receipt retention', () => {
+  const sql = migration(1);
+  for (const code of [
+    'legal_section_incomplete',
+    'legal_name_missing',
+    'jurisdiction_type_missing',
+    'licensing_authority_missing',
+    'legal_structure_missing',
+    'trade_license_missing',
+    'license_expiry_missing',
+    'license_expired',
+    'shareholders_section_incomplete',
+    'shareholder_missing',
+    'ownership_total_not_100',
+    'activities_section_incomplete',
+    'activity_missing',
+    'primary_activity_missing',
+    'office_section_incomplete',
+    'office_type_missing',
+    'office_address_missing',
+    'office_lease_reference_missing',
+    'office_lease_expiry_missing',
+    'office_lease_expired',
+    'establishment_section_incomplete',
+    'establishment_card_missing',
+    'establishment_card_expiry_missing',
+    'establishment_card_expired',
+    'bank_section_incomplete',
+    'bank_account_missing',
+    'active_verified_pro_assignment_missing',
+    'tenant_not_activatable',
+  ]) {
+    assert.match(sql, new RegExp(`'${code}'`, 'u'));
+  }
+  assert.match(sql, /created_at < pg_catalog\.now\(\) - interval '90 days'/u);
+  assert.match(sql, /30 2 \* \* \*/u);
+});
+
+test('company onboarding SQL fixtures cover readiness and bounded concurrency races', () => {
+  const fixtures = [
+    'company_onboarding_readiness.sql',
+    'company_onboarding_concurrency_setup.sql',
+    'company_onboarding_activation_session_a.sql',
+    'company_onboarding_activation_session_b.sql',
+    'company_onboarding_save_session_a.sql',
+    'company_onboarding_save_session_b.sql',
+  ];
+  for (const fixture of fixtures) {
+    const path = join(process.cwd(), 'supabase/tests', fixture);
+    assert.equal(existsSync(path), true, `${fixture} must exist`);
+    const source = readFileSync(path, 'utf8');
+    assert.match(source, /ON_ERROR_STOP on/u);
+    assert.match(source, /statement_timeout/u);
+  }
 });
 
 test('0067 applies least privilege RLS and forward-fixes Step 1 activation semantics', () => {
