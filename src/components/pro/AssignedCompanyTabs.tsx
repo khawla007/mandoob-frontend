@@ -126,12 +126,12 @@ export function AssignedCompanyTabs({
             />
             <Field
               label={labels.fields.shareholders}
-              value={String(company.shareholders.length)}
+              value={String(company.shareholderCount)}
               mono
             />
             <Field
               label={labels.fields.activities}
-              value={String(company.registeredActivities.length)}
+              value={String(company.registeredActivityCount)}
               mono
             />
           </dl>

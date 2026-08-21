@@ -7,13 +7,20 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
 process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 
-type Result = { data: Record<string, unknown> | null; error: { message?: string } | null };
+type Result = {
+  data: Record<string, unknown> | Record<string, unknown>[] | null;
+  error: { message?: string } | null;
+};
 
 function fakeSupabase(results: Result[]) {
   const calls: Array<{ kind: string; name: string; value?: unknown }> = [];
   let resultIndex = 0;
   return {
     calls,
+    async rpc(name: string, value: unknown) {
+      calls.push({ kind: 'rpc', name, value });
+      return results[resultIndex++];
+    },
     from(table: string) {
       calls.push({ kind: 'from', name: table });
       const chain = {
@@ -42,11 +49,21 @@ const company = {
   tenant_id: tenantId,
   company_name: 'Acme Trading LLC',
   status: 'active',
-  jurisdiction: 'Dubai Mainland',
+  licensing_authority: 'Dubai Mainland',
   trade_license_no: 'DED-123456',
   license_expiry: '2027-08-17',
-  shareholders: [],
-  registered_activities: [],
+  onboarding_status: 'in_progress',
+  onboarding_version: 4,
+  company_shareholders: [{ count: 2 }],
+  company_registered_activities: [{ count: 3 }],
+  company_onboarding_sections: [
+    { section_key: 'legal', status: 'complete' },
+    { section_key: 'shareholders', status: 'complete' },
+    { section_key: 'activities', status: 'complete' },
+    { section_key: 'office', status: 'incomplete' },
+    { section_key: 'establishment', status: 'incomplete' },
+    { section_key: 'bank', status: 'incomplete' },
+  ],
   created_at: '2026-08-17T10:00:00.000Z',
   updated_at: '2026-08-17T10:00:00.000Z',
 };
@@ -60,6 +77,13 @@ test('assigned company loader resolves tenant then verifies the live PRO assignm
     },
     { data: { company_id: companyId }, error: null },
     { data: company, error: null },
+    {
+      data: [
+        { code: 'BANK_SECTION_INCOMPLETE', section: 'bank', state: 'blocked' },
+        { code: 'OFFICE_SECTION_INCOMPLETE', section: 'office', state: 'blocked' },
+      ],
+      error: null,
+    },
   ]);
 
   const result = await readAssignedCompanyForPro(profileId, 'acme', {
@@ -74,8 +98,19 @@ test('assigned company loader resolves tenant then verifies the live PRO assignm
     jurisdiction: 'Dubai Mainland',
     tradeLicenseNo: 'DED-123456',
     licenseExpiry: '2027-08-17',
-    shareholders: [],
-    registeredActivities: [],
+    shareholderCount: 2,
+    registeredActivityCount: 3,
+    onboardingStatus: 'in_progress',
+    onboardingVersion: 4,
+    sectionProgress: {
+      legal: 'complete',
+      shareholders: 'complete',
+      activities: 'complete',
+      office: 'incomplete',
+      establishment: 'incomplete',
+      bank: 'incomplete',
+    },
+    readinessCodes: ['OFFICE_SECTION_INCOMPLETE', 'BANK_SECTION_INCOMPLETE'],
     createdAt: '2026-08-17T10:00:00.000Z',
     updatedAt: '2026-08-17T10:00:00.000Z',
   });
@@ -97,6 +132,32 @@ test('assigned company loader resolves tenant then verifies the live PRO assignm
     supabase.calls.some(
       (call) => call.kind === 'eq' && call.name === 'status' && call.value === 'active',
     ),
+  );
+  const companySelect = supabase.calls.find(
+    (call) => call.kind === 'select' && call.name.includes('company_onboarding_sections'),
+  );
+  assert.ok(companySelect);
+  for (const relationship of [
+    'company_shareholders!company_shareholders_company_tenant_fk(count)',
+    'company_registered_activities!company_registered_activities_company_tenant_fk(count)',
+    'company_onboarding_sections!company_onboarding_sections_company_tenant_fk(section_key, status)',
+  ]) {
+    assert.match(companySelect.name, new RegExp(relationship.replace(/[()]/gu, '\\$&'), 'u'));
+  }
+  assert.doesNotMatch(
+    companySelect.name,
+    /(?:^|,\s*)(?:shareholders|registered_activities|office_address|bank_details)(?:\s*,|$)/u,
+  );
+  assert.doesNotMatch(companySelect.name, /encrypted|_hash/u);
+  assert.deepEqual(
+    supabase.calls.filter((call) => call.kind === 'rpc'),
+    [
+      {
+        kind: 'rpc',
+        name: 'evaluate_company_activation_readiness',
+        value: { p_company_id: companyId },
+      },
+    ],
   );
 });
 

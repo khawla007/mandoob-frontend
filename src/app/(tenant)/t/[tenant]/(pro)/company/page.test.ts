@@ -12,6 +12,7 @@ const actions = readFileSync(
 );
 const form = readFileSync(join(root, 'src/components/pro/CompanyProfileForm.tsx'), 'utf8');
 const tabs = readFileSync(join(root, 'src/components/pro/AssignedCompanyTabs.tsx'), 'utf8');
+const companyProfile = readFileSync(join(root, 'src/lib/data/company-profile.ts'), 'utf8');
 const english = JSON.parse(readFileSync(join(root, 'src/messages/en.json'), 'utf8'));
 const arabic = JSON.parse(readFileSync(join(root, 'src/messages/ar.json'), 'utf8'));
 const employeeImport = readFileSync(
@@ -86,6 +87,17 @@ test('Assigned Company page composes real isolated company workspace panels', ()
   assert.match(tabs, /formatCompanyMoney\(invoice\.amountMinor, invoice\.currency, locale\)/);
   assert.match(tabs, /if \(state\.status === 'unrequested'\) return null/);
   assert.match(tabs, /state\.status === 'error'/);
+});
+
+test('Assigned Company overview uses normalized onboarding summary fields only', () => {
+  assert.match(tabs, /company\.shareholderCount/u);
+  assert.match(tabs, /company\.registeredActivityCount/u);
+  assert.doesNotMatch(tabs, /company\.(?:shareholders|registeredActivities)/u);
+  assert.doesNotMatch(
+    companyProfile,
+    /(?:^|,\s*)(?:shareholders|registered_activities|office_address|bank_details)(?:\s*,|$)/mu,
+  );
+  assert.doesNotMatch(companyProfile, /encrypted|_hash/u);
 });
 
 test('Assigned Company operational labels have exact English and Arabic parity', () => {
