@@ -165,6 +165,7 @@ test('company onboarding SQL fixtures cover readiness and bounded concurrency ra
     'company_onboarding_activation_session_b.sql',
     'company_onboarding_save_session_a.sql',
     'company_onboarding_save_session_b.sql',
+    'company_onboarding_assignment_reconciliation.sql',
   ];
   for (const fixture of fixtures) {
     const path = join(process.cwd(), 'supabase/tests', fixture);
@@ -183,6 +184,42 @@ test('0067 applies least privilege RLS and forward-fixes Step 1 activation seman
   assert.match(sql, /grant execute on function[\s\S]*to service_role/u);
   assert.match(sql, /create or replace function public\.assign_pro_to_company/u);
   assert.match(sql, /create or replace function public\.reassign_company_pro/u);
-  assert.match(sql, /company\.status = 'onboarding'[\s\S]*tenant[\s\S]*status = 'pending'/u);
-  assert.match(sql, /company\.status in \('active', 'renewal_due', 'renewal_overdue'\)/u);
+  assert.match(sql, /v_company_status = 'onboarding'[\s\S]*'pending'/u);
+  assert.match(sql, /v_company_status in \('active', 'renewal_due', 'renewal_overdue'\)/u);
+});
+
+test('0067 assignment and reassignment derive tenant state from operational company state', () => {
+  const sql = migration(2);
+  const assign = sql.slice(
+    sql.indexOf('function public.assign_pro_to_company'),
+    sql.indexOf('function public.reassign_company_pro'),
+  );
+  const reassign = sql.slice(sql.indexOf('function public.reassign_company_pro'));
+  for (const workflow of [assign, reassign]) {
+    assert.match(
+      workflow,
+      /v_company_status in \('active', 'renewal_due', 'renewal_overdue'\)[\s\S]*'active'[\s\S]*'pending'/u,
+    );
+    assert.doesNotMatch(workflow, /set status = 'active'/u);
+  }
+});
+
+test('0067 exposes only sanitized onboarding reads and keeps protected tables service-only', () => {
+  const sql = migration(2);
+  for (const table of [
+    'company_shareholders',
+    'company_registered_activities',
+    'company_office_details',
+    'company_onboarding_sections',
+  ]) {
+    assert.match(sql, new RegExp(`policy ${table}_workspace_read`, 'u'));
+    assert.match(sql, new RegExp(`has_company_access\\(${table}\\.tenant_id\\)`, 'u'));
+  }
+  for (const table of ['company_bank_details', 'company_onboarding_operations']) {
+    assert.match(sql, new RegExp(`revoke all on table public\\.${table}`, 'u'));
+    assert.doesNotMatch(
+      sql,
+      new RegExp(`grant select on table public\\.${table} to authenticated`, 'u'),
+    );
+  }
 });
