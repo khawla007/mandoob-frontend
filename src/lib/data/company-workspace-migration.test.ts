@@ -903,6 +903,14 @@ test('SQL fixtures cover credential denial and coordinated lifecycle races', () 
     );
   }
   const combined = fixtures.map(([, sql]) => sql).join(' ');
+  const assignmentRaceB = fixtures.find(
+    ([name]) => name === 'company_assignment_concurrency_session_b.sql',
+  )?.[1];
+  assert.match(
+    assignmentRaceB ?? '',
+    /company_id\s*=\s*:'company_id'::uuid\s+or\s+pro_profile_id\s*=\s*:'pro_profile_id'::uuid/,
+    'assignment race B must verify the winner for company and PRO contention modes',
+  );
   assert.match(combined, /actor_a_profile_id'::uuid\s*<>\s*:'actor_b_profile_id'::uuid/);
   assert.match(combined, /assign_pro_to_company/);
   assert.match(combined, /release_company_pro/);

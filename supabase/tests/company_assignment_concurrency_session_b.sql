@@ -41,7 +41,11 @@ select :'lifecycle_sqlstate' = 'P0001' as expected_lifecycle_state,
 
 select count(*) = 1 as one_active_assignment
 from public.pro_company_assignments
-where company_id = :'company_id'::uuid and status = 'active' \gset
+where status = 'active'
+  and (
+    company_id = :'company_id'::uuid
+    or pro_profile_id = :'pro_profile_id'::uuid
+  ) \gset
 \if :one_active_assignment
 \else
   \set ON_ERROR_STOP on
@@ -56,7 +60,11 @@ select count(*) = 1
 from public.pro_company_assignments a
 join public.profiles p on p.id = a.pro_profile_id
 join auth.users u on u.id = p.id
-where a.company_id = :'company_id'::uuid and a.status = 'active' \gset
+where a.status = 'active'
+  and (
+    a.company_id = :'company_id'::uuid
+    or a.pro_profile_id = :'pro_profile_id'::uuid
+  ) \gset
 \if :scope_synchronized
 \else
   \set ON_ERROR_STOP on
@@ -66,7 +74,10 @@ where a.company_id = :'company_id'::uuid and a.status = 'active' \gset
 select count(*) >= 1 as assignment_audited
 from public.tenant_audit_log
 where action = 'company_pro_assigned'
-  and details ->> 'company_id' = :'company_id' \gset
+  and (
+    details ->> 'company_id' = :'company_id'
+    or details ->> 'pro_profile_id' = :'pro_profile_id'
+  ) \gset
 \if :assignment_audited
 \else
   \set ON_ERROR_STOP on
