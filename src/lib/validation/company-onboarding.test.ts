@@ -279,6 +279,8 @@ test('commands require UUID operation ids, nonnegative versions, and confirmed c
     ...command,
     section: 'legal',
     reason: 'The licensing authority changed.',
+    companyNameConfirmation: 'Acme Trading LLC',
+    expectedCompanyName: 'Acme Trading LLC',
   };
   assert.equal(reopenCompanyOnboardingSectionSchema.safeParse(reopen).success, true);
   assert.equal(
@@ -287,6 +289,13 @@ test('commands require UUID operation ids, nonnegative versions, and confirmed c
   );
   assert.equal(
     reopenCompanyOnboardingSectionSchema.safeParse({ ...reopen, reason: 'x'.repeat(501) }).success,
+    false,
+  );
+  assert.equal(
+    reopenCompanyOnboardingSectionSchema.safeParse({
+      ...reopen,
+      companyNameConfirmation: 'Wrong company',
+    }).success,
     false,
   );
 });

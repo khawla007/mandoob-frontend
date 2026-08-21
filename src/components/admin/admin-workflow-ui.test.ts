@@ -41,3 +41,11 @@ test('assignment form remounts when the authoritative assignment identity change
   const page = read('src/app/admin/companies/[id]/page.tsx');
   assert.match(page, /key=\{companyAssignmentFormIdentity\(currentAssignment\?\.id\)\}/u);
 });
+
+test('admin company detail keeps assignment operations beside one onboarding review surface', () => {
+  const page = read('src/app/admin/companies/[id]/page.tsx');
+  assert.match(page, /CompanyOnboardingAdminSummary/u);
+  assert.match(page, /CompanyAssignmentForm/u);
+  assert.match(page, /ReleaseCompanyProForm/u);
+  assert.match(page, /assignmentHistory\.map/u);
+});

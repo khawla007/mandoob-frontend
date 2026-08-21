@@ -324,7 +324,13 @@ test('clear, reopen, submit, and activate wrappers use explicit sanitized payloa
     dependencies,
   );
   await mutations.reopenCompanyOnboardingSection(
-    { ...command, section: 'bank', reason: ' Missing   evidence ' },
+    {
+      ...command,
+      section: 'bank',
+      reason: ' Missing   evidence ',
+      companyNameConfirmation: 'Acme Trading LLC',
+      expectedCompanyName: 'Acme Trading LLC',
+    },
     dependencies,
   );
   await mutations.submitCompanyOnboarding(command, dependencies);

@@ -1,15 +1,28 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { ArrowLeft, Building2, History, Link2, Unlink } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  History,
+  Link2,
+  Unlink,
+} from 'lucide-react';
 import { z } from 'zod';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
+import type { CompanyAssignment } from '@/lib/data/company-assignments';
 import {
   listCompanyAssignmentHistory,
   listVerifiedUnassignedPros,
   readCurrentCompanyAssignment,
 } from '@/lib/data/company-assignments';
 import { getCompanyById } from '@/lib/data/pro-firms';
+import {
+  readCompanyOnboarding,
+  type CompanyOnboardingSnapshot,
+} from '@/lib/data/company-onboarding';
 import { CompanyAssignmentForm } from '@/components/admin/CompanyAssignmentForm';
 import { companyAssignmentFormIdentity } from '@/components/admin/company-assignment-form-identity';
 import { ReleaseCompanyProForm } from '@/components/admin/ReleaseCompanyProForm';
@@ -25,6 +38,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  adminCompanyOnboardingSectionHref,
+  canonicalAdminCompanyOnboardingSection,
+} from './onboarding/route-logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,17 +54,24 @@ export default async function CompanyDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ created?: string }>;
 }) {
-  await requirePlatformOperator();
-  const [{ id }, sp, t, locale] = await Promise.all([
+  const operator = await requirePlatformOperator();
+  const [{ id }, sp, t, tOnboarding, locale] = await Promise.all([
     params,
     searchParams,
     getTranslations('admin.companies'),
+    getTranslations('companyOnboarding'),
     getLocale(),
   ]);
   if (!idSchema.safeParse(id).success) notFound();
   const company = await getCompanyById(id);
   if (!company) notFound();
 
+  const onboarding = await readCompanyOnboarding({
+    actorProfileId: operator.id,
+    tenantId: company.tenantId,
+    companyId: company.id,
+  });
+  if (!onboarding) notFound();
   const [currentAssignment, assignmentHistory, availablePros] = await Promise.all([
     readCurrentCompanyAssignment(company.id),
     listCompanyAssignmentHistory(company.id),
@@ -129,6 +153,39 @@ export default async function CompanyDetailPage({
               </dl>
             </CardContent>
           </Card>
+
+          <CompanyOnboardingAdminSummary
+            onboarding={onboarding}
+            currentAssignment={currentAssignment}
+            onboardingHref={adminCompanyOnboardingSectionHref(
+              company.id,
+              canonicalAdminCompanyOnboardingSection(onboarding),
+            )}
+            labels={{
+              title: tOnboarding('adminSummary.title'),
+              description: tOnboarding('adminSummary.description'),
+              lifecycle: tOnboarding('overview.lifecycle'),
+              status: tOnboarding(`status.${onboarding.onboardingStatus}`),
+              progress: tOnboarding('overview.progress', {
+                complete: Object.values(onboarding.sectionProgress).filter(
+                  ({ status }) => status === 'complete',
+                ).length,
+                total: Object.keys(onboarding.sectionProgress).length,
+              }),
+              blockers: tOnboarding('overview.blockers', {
+                count: onboarding.requirements.length,
+              }),
+              assignment: currentAssignment
+                ? tOnboarding('adminSummary.assigned', {
+                    name: currentAssignment.proFullName ?? t('assignment.unnamedPro'),
+                  })
+                : tOnboarding('adminSummary.unassigned'),
+              cta:
+                canonicalAdminCompanyOnboardingSection(onboarding) === 'review'
+                  ? tOnboarding('overview.review')
+                  : tOnboarding('overview.resume'),
+            }}
+          />
 
           <Card>
             <CardHeader>
@@ -229,5 +286,59 @@ export default async function CompanyDetailPage({
         </aside>
       </div>
     </div>
+  );
+}
+
+function CompanyOnboardingAdminSummary({
+  onboarding,
+  currentAssignment,
+  onboardingHref,
+  labels,
+}: {
+  onboarding: CompanyOnboardingSnapshot;
+  currentAssignment: CompanyAssignment | null;
+  onboardingHref: string;
+  labels: {
+    title: string;
+    description: string;
+    lifecycle: string;
+    status: string;
+    progress: string;
+    blockers: string;
+    assignment: string;
+    cta: string;
+  };
+}) {
+  const complete = Object.values(onboarding.sectionProgress).filter(
+    ({ status }) => status === 'complete',
+  ).length;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{labels.title}</CardTitle>
+        <CardDescription>{labels.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 text-sm sm:grid-cols-2">
+          <p>
+            {labels.lifecycle}: <span className="font-medium">{labels.status}</span>
+          </p>
+          <p className="inline-flex items-center gap-2">
+            <CheckCircle2 className="text-signal-success size-4" aria-hidden="true" />
+            {labels.progress}
+          </p>
+          <p>{labels.blockers}</p>
+          <p data-assigned={currentAssignment ? 'true' : 'false'}>{labels.assignment}</p>
+        </div>
+        <Link
+          href={onboardingHref}
+          className="bg-primary text-primary-foreground focus-visible:ring-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium outline-none focus-visible:ring-2"
+        >
+          {labels.cta}
+          <ArrowRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+        </Link>
+        <span className="sr-only">{complete}</span>
+      </CardContent>
+    </Card>
   );
 }

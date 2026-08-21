@@ -236,6 +236,8 @@ function parseInput(
         ...base,
         section: value(formData, 'section'),
         reason: value(formData, 'reason'),
+        companyNameConfirmation: value(formData, 'companyNameConfirmation'),
+        expectedCompanyName: snapshot.companyName,
       };
       break;
     case 'submit':

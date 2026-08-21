@@ -109,7 +109,11 @@ function validForm(kind: AdminOnboardingActionKind): FormData {
     case 'clearBankIdentifier':
       return form({ identifier: 'iban', companyNameConfirmation: 'Acme Trading LLC' });
     case 'reopen':
-      return form({ section: 'legal', reason: 'Correct the legal record' });
+      return form({
+        section: 'legal',
+        reason: 'Correct the legal record',
+        companyNameConfirmation: 'Acme Trading LLC',
+      });
     case 'submit':
     case 'activate':
       return form();
@@ -339,4 +343,23 @@ test('successful operator mutations revalidate exact routes before final redirec
       kind === 'submit' || kind === 'activate' ? [`redirect:/admin/companies/${companyId}`] : [],
     );
   }
+});
+
+test('operator Save and Continue advances to the next fixed route without query state', async () => {
+  const context = setup();
+  const data = validForm('office');
+  data.set('intent', 'continue');
+  await runAdminCompanyOnboardingAction(
+    {
+      kind: 'office',
+      companyId,
+      previousState: createAdminOnboardingActionState(7, () => operationId),
+      formData: data,
+    },
+    context.dependencies,
+  );
+  assert.deepEqual(
+    context.calls.filter((call) => call.startsWith('redirect:')),
+    [`redirect:/admin/companies/${companyId}/onboarding/establishment`],
+  );
 });

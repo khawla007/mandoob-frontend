@@ -5,6 +5,11 @@ import {
   type OnboardingActionState,
   type OnboardingCoreDependencies,
 } from '@/lib/company-onboarding/action-orchestration';
+import type { CompanyOnboardingSectionKey } from '@/lib/company-onboarding/contracts';
+import {
+  adminCompanyOnboardingSectionHref,
+  nextAdminCompanyOnboardingSection,
+} from './route-logic';
 
 export type AdminOnboardingActionKind = OnboardingActionKind;
 export type { OnboardingActionState };
@@ -49,6 +54,20 @@ export async function runAdminCompanyOnboardingAction(
     };
   }
 
+  const sectionKinds: CompanyOnboardingSectionKey[] = [
+    'legal',
+    'shareholders',
+    'activities',
+    'office',
+    'establishment',
+    'bank',
+  ];
+  const continueSection =
+    options.formData.get('intent') === 'continue' &&
+    sectionKinds.includes(options.kind as CompanyOnboardingSectionKey)
+      ? (options.kind as CompanyOnboardingSectionKey)
+      : null;
+
   return runOnboardingAction(
     {
       kind: options.kind,
@@ -67,7 +86,14 @@ export async function runAdminCompanyOnboardingAction(
       ],
       ...(options.kind === 'submit' || options.kind === 'activate'
         ? { successRedirect: `/admin/companies/${company.companyId}` }
-        : {}),
+        : continueSection
+          ? {
+              successRedirect: adminCompanyOnboardingSectionHref(
+                company.companyId,
+                nextAdminCompanyOnboardingSection(continueSection),
+              ),
+            }
+          : {}),
     },
     dependencies,
   );

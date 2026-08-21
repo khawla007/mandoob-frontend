@@ -107,7 +107,11 @@ function validForm(kind: OnboardingActionKind): FormData {
       identifier: 'iban',
       companyNameConfirmation: 'Acme Trading LLC',
     },
-    reopen: { section: 'legal', reason: 'Correct the legal record' },
+    reopen: {
+      section: 'legal',
+      reason: 'Correct the legal record',
+      companyNameConfirmation: 'Acme Trading LLC',
+    },
     submit: {},
     activate: {},
   };

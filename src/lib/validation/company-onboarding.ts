@@ -249,10 +249,22 @@ export const clearCompanyBankIdentifierSchema = commandSchema
     }
   });
 
-export const reopenCompanyOnboardingSectionSchema = commandSchema.extend({
-  section: z.enum(COMPANY_ONBOARDING_SECTION_KEYS),
-  reason: normalizedText(3, 500),
-});
+export const reopenCompanyOnboardingSectionSchema = commandSchema
+  .extend({
+    section: z.enum(COMPANY_ONBOARDING_SECTION_KEYS),
+    reason: normalizedText(3, 500),
+    companyNameConfirmation: normalizedText(2, 200),
+    expectedCompanyName: normalizedText(2, 200),
+  })
+  .superRefine((value, context) => {
+    if (value.companyNameConfirmation !== value.expectedCompanyName) {
+      context.addIssue({
+        code: 'custom',
+        path: ['companyNameConfirmation'],
+        message: 'companyNameConfirmationMismatch',
+      });
+    }
+  });
 
 export const submitCompanyOnboardingSchema = commandSchema;
 export const activateCompanyOnboardingSchema = commandSchema;
