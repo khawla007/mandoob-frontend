@@ -73,6 +73,19 @@ test('group choices use fieldsets and legends rather than visual-only grouping',
   assert.match(office, /<legend/u);
 });
 
+test('forms serialize fixed country and currency codes for server validation', () => {
+  const office = read('OfficeDetailsForm.tsx');
+  assert.match(
+    office,
+    /<input\s+type="hidden"\s+value="AE"\s+\{\.\.\.register\('countryCode'\)\}\s*\/>/u,
+  );
+  const bank = read('BankDetailsForm.tsx');
+  assert.match(
+    bank,
+    /<input\s+type="hidden"\s+value="AED"\s+\{\.\.\.register\('currencyCode'\)\}\s*\/>/u,
+  );
+});
+
 test('repeatable rows use stable field arrays and keyboard-operable reorder/delete/undo controls', () => {
   for (const file of ['ShareholdersForm.tsx', 'ActivitiesForm.tsx']) {
     const source = read(file);

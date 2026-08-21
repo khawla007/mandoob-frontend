@@ -89,6 +89,7 @@ export function OfficeDetailsForm({
   ] as const;
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-6" noValidate>
+      <input type="hidden" value="AE" {...register('countryCode')} />
       <header className="space-y-1">
         <h2 className="text-xl font-semibold">{labels.title}</h2>
         <p className="text-muted-foreground text-sm">{labels.description}</p>
