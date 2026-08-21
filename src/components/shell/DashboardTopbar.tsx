@@ -49,17 +49,17 @@ export function DashboardTopbar({
   return (
     <header
       data-route-progress-anchor
-      className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 items-center gap-3 border-b px-4 backdrop-blur"
+      className="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 items-center gap-3 border-b px-4 backdrop-blur max-[240px]:gap-2 max-[240px]:px-2"
     >
       <SidebarTrigger />
-      <Separator orientation="vertical" className="h-5" />
+      <Separator orientation="vertical" className="h-5 max-[240px]:hidden" />
       <nav
         aria-label={t('breadcrumb')}
-        className="text-muted-foreground flex min-w-0 items-center gap-1 overflow-hidden text-sm"
+        className="text-muted-foreground flex min-w-0 items-center gap-1 overflow-hidden text-sm max-[240px]:hidden"
       >
         {breadcrumbs ?? fallbackCrumbs}
       </nav>
-      <div className="ms-auto flex shrink-0 items-center gap-2">
+      <div className="ms-auto flex shrink-0 items-center gap-2 max-[240px]:gap-1">
         {search}
         <LanguageSwitcher pathToRevalidate={pathname} />
         <ThemeToggle />

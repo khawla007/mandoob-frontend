@@ -91,6 +91,12 @@ test('dashboard topbar lets breadcrumbs shrink before mobile actions overflow', 
   assert.match(topbar, /className="ms-auto flex shrink-0 items-center/);
 });
 
+test('dashboard topbar collapses nonessential chrome at a 200 percent mobile reflow', () => {
+  assert.match(topbar, /max-\[240px\]:px-2/u);
+  assert.match(topbar, /max-\[240px\]:hidden/u);
+  assert.match(topbar, /max-\[240px\]:gap-1/u);
+});
+
 test('dashboard inset may shrink beside the tablet sidebar without page overflow', () => {
   assert.match(sidebarPrimitive, /relative flex w-full min-w-0 flex-1 flex-col/u);
 });
