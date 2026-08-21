@@ -21,6 +21,7 @@ if (reactServer) {
 
 const layout = readFileSync(new URL('./DashboardLayout.tsx', import.meta.url), 'utf8');
 const sidebar = readFileSync(new URL('./DashboardSidebar.tsx', import.meta.url), 'utf8');
+const sidebarPrimitive = readFileSync(new URL('../ui/sidebar.tsx', import.meta.url), 'utf8');
 const topbar = readFileSync(new URL('./DashboardTopbar.tsx', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
 
@@ -88,6 +89,10 @@ test('dashboard sidebar follows the active locale direction', () => {
 test('dashboard topbar lets breadcrumbs shrink before mobile actions overflow', () => {
   assert.match(topbar, /className="text-muted-foreground[^"\n]*min-w-0[^"\n]*overflow-hidden/);
   assert.match(topbar, /className="ms-auto flex shrink-0 items-center/);
+});
+
+test('dashboard inset may shrink beside the tablet sidebar without page overflow', () => {
+  assert.match(sidebarPrimitive, /relative flex w-full min-w-0 flex-1 flex-col/u);
 });
 
 test('collapsed dashboard submenu applies inert alongside aria-hidden', () => {
