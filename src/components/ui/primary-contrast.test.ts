@@ -104,6 +104,20 @@ renderTest('default dashboard action and status primitives meet AA contrast', as
   );
 });
 
+renderTest('destructive alert copy does not dilute its accessible foreground', async () => {
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const { Alert, AlertDescription } = await import('./alert');
+  const markup = renderToStaticMarkup(
+    React.createElement(
+      Alert,
+      { variant: 'destructive' },
+      React.createElement(AlertDescription, null, 'Action failed'),
+    ),
+  );
+  assert.match(markup, /alert-description\]:text-destructive/u);
+  assert.doesNotMatch(markup, /alert-description\]:text-destructive\/90/u);
+});
+
 test('public brand, marketing, chart, and focus-ring primitives remain unchanged', () => {
   const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
   const rootBlock = styles.match(/:root\s*\{([\s\S]*?)\}/u)?.[1] ?? '';

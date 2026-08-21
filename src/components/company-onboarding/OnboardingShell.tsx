@@ -41,7 +41,7 @@ export function OnboardingShell({
       <header className="space-y-2">
         <p className="text-primary font-mono text-xs tracking-wide uppercase">{labels.eyebrow}</p>
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{labels.title}</h1>
-        <p className="text-muted-foreground max-w-3xl text-sm md:text-base">{labels.description}</p>
+        <p className="text-foreground/70 max-w-3xl text-sm md:text-base">{labels.description}</p>
       </header>
 
       <div className="grid min-w-0 gap-6 md:grid-cols-[14rem_minmax(0,1fr)]">

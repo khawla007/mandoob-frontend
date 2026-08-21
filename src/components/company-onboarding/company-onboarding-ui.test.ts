@@ -23,6 +23,7 @@ test('shell owns one h1 and an ordered responsive semantic step rail', () => {
   assert.match(source, /overflow-x-auto/u);
   assert.match(source, /md:grid-cols-\[14rem_minmax\(0,1fr\)\]/u);
   assert.match(source, /min-w-0/u);
+  assert.match(source, /text-foreground\/70 max-w-3xl/u);
   assert.doesNotMatch(source, /linear-gradient|radial-gradient|metric|chart/u);
 });
 
