@@ -7,6 +7,10 @@ import { createTranslator } from 'use-intl/core';
 
 import en from '@/messages/en.json';
 import ar from '@/messages/ar.json';
+import {
+  COMPANY_ONBOARDING_READINESS_CODES,
+  COMPANY_ONBOARDING_SECTION_KEYS,
+} from '@/lib/company-onboarding/contracts';
 
 type Messages = Record<string, unknown>;
 
@@ -105,6 +109,42 @@ function shellKeysFromNavSources() {
 }
 
 describe('i18n/messages', () => {
+  it('keeps the complete company onboarding namespace in exact recursive parity', () => {
+    const english = (en as Messages).companyOnboarding;
+    const arabic = (ar as Messages).companyOnboarding;
+    assert.ok(english, 'Missing en.companyOnboarding');
+    assert.ok(arabic, 'Missing ar.companyOnboarding');
+    const englishPaths = leafPaths(english).sort();
+    const arabicPaths = leafPaths(arabic).sort();
+    assert.deepEqual(arabicPaths, englishPaths);
+
+    for (const path of englishPaths) {
+      const englishValue = valueAt(english, path);
+      const arabicValue = valueAt(arabic, path);
+      assert.equal(typeof englishValue, 'string', `Expected en.companyOnboarding.${path}`);
+      assert.equal(typeof arabicValue, 'string', `Expected ar.companyOnboarding.${path}`);
+      assert.deepEqual(
+        icuVariables(arabicValue as string),
+        icuVariables(englishValue as string),
+        `ICU variables differ at companyOnboarding.${path}`,
+      );
+      const literal = icuLiteralText(arabicValue as string)
+        .replace(/\b(?:PRO|UAE|IBAN|SWIFT|BIC|AED)\b/gu, '')
+        .trim();
+      assert.ok(
+        /[\u0600-\u06ff]/u.test(literal) || !/[A-Za-z]{2,}/u.test(literal),
+        `Arabic placeholder at companyOnboarding.${path}`,
+      );
+    }
+
+    for (const section of [...COMPANY_ONBOARDING_SECTION_KEYS, 'review']) {
+      assert.equal(typeof valueAt(english, `sections.${section}.step`), 'string');
+    }
+    for (const code of COMPANY_ONBOARDING_READINESS_CODES) {
+      assert.equal(typeof valueAt(english, `requirements.${code}`), 'string');
+      assert.equal(typeof valueAt(arabic, `requirements.${code}`), 'string');
+    }
+  });
   it('defines shell messages for every dashboard nav label', () => {
     const keys = shellKeysFromNavSources();
 

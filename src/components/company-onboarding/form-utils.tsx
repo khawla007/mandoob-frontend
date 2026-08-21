@@ -153,11 +153,57 @@ export function OnboardingFormFeedback({
       ) : state.status === 'error' ? (
         <Alert variant="destructive">
           <AlertTitle>{labels.errorTitle}</AlertTitle>
-          <AlertDescription>{labels.errors[state.code] ?? labels.errorSummary}</AlertDescription>
+          <AlertDescription>
+            <p>{labels.errors[state.code] ?? labels.errorSummary}</p>
+            {state.fieldErrors && Object.keys(state.fieldErrors).length > 0 ? (
+              <ul className="mt-2 list-disc space-y-1 ps-5">
+                {Object.keys(state.fieldErrors).map((field) => (
+                  <li key={field}>
+                    <a href={`#${fieldTarget(field)}`} className="underline underline-offset-4">
+                      {labels.errors.INVALID_SECTION_INPUT ?? labels.errorSummary}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </AlertDescription>
         </Alert>
       ) : null}
     </div>
   );
+}
+
+function fieldTarget(field: string): string {
+  const targets: Record<string, string> = {
+    companyName: 'legal-companyName',
+    displayName: 'legal-displayName',
+    jurisdictionType: 'legal-jurisdictionType',
+    licensingAuthority: 'legal-licensingAuthority',
+    legalStructure: 'legal-legalStructure',
+    tradeLicenseNo: 'legal-tradeLicenseNo',
+    licenseExpiry: 'legal-licenseExpiry',
+    shareholders: 'shareholders.0.fullName',
+    activities: 'activities-0-activityCode',
+    officeType: 'office-addressLine1',
+    addressLine1: 'office-addressLine1',
+    addressLine2: 'office-addressLine2',
+    area: 'office-area',
+    city: 'office-city',
+    emirate: 'office-emirate',
+    postalCode: 'office-postalCode',
+    providerName: 'office-providerName',
+    leaseReference: 'office-leaseReference',
+    leaseExpiry: 'office-leaseExpiry',
+    establishmentCardNumber: 'establishment-number',
+    establishmentCardExpiry: 'establishment-expiry',
+    bankName: 'bank-bankName',
+    branchName: 'bank-branchName',
+    accountHolderName: 'bank-accountHolderName',
+    swiftBic: 'bank-swiftBic',
+    iban: 'bank-iban',
+    accountNumber: 'bank-accountNumber',
+  };
+  return targets[field] ?? field;
 }
 
 export function OnboardingSubmitButton({

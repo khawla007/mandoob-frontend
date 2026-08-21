@@ -31,6 +31,227 @@
     "file": "ملف",
     "getStarted": "ابدأ الآن"
   },
+  "companyOnboarding": {
+    "shell": {
+      "eyebrow": "إعداد الشركة",
+      "title": "تهيئة الشركة",
+      "description": "أكمل سجل الشركة التشغيلي وراجعه قبل التفعيل.",
+      "navigationLabel": "أقسام تهيئة الشركة",
+      "status": {
+        "complete": "مكتمل",
+        "current": "الخطوة الحالية",
+        "incomplete": "غير مكتمل"
+      }
+    },
+    "form": {
+      "saved": "تم حفظ التغييرات.",
+      "saving": "جارٍ الحفظ…",
+      "save": "حفظ",
+      "saveContinue": "حفظ ومتابعة",
+      "errorTitle": "تعذر حفظ هذه التغييرات",
+      "errorSummary": "راجع الحقول المحددة وحاول مجددًا.",
+      "leaveWarning": "لديك تغييرات غير محفوظة. هل تريد مغادرة هذا القسم؟",
+      "completeSection": "وضع علامة اكتمال على هذا القسم",
+      "moveUp": "نقل لأعلى",
+      "moveDown": "نقل لأسفل",
+      "remove": "إزالة",
+      "removed": "تمت إزالة العنصر.",
+      "undo": "تراجع",
+      "none": "غير متوفر"
+    },
+    "errors": {
+      "COMPANY_NOT_FOUND": "تعذر العثور على سجل الشركة.",
+      "ASSIGNMENT_NOT_FOUND": "تعذر التحقق من تعيين شركتك النشط.",
+      "COMPANY_INACTIVE": "هذه الشركة غير متاحة للتهيئة.",
+      "STALE_ONBOARDING_VERSION": "تغيّر سجل الشركة. حدّث الصفحة وحاول مجددًا.",
+      "INVALID_SECTION_INPUT": "راجع الحقول المحددة.",
+      "SECTION_NOT_COMPLETABLE": "أكمل الحقول المطلوبة قبل إغلاق هذا القسم.",
+      "ONBOARDING_NOT_SUBMITTABLE": "لا يمكن إرسال سجل التهيئة في حالته الحالية.",
+      "COMPANY_NOT_READY": "عالج جميع عناصر الجاهزية قبل التفعيل.",
+      "OPERATION_REUSED": "لم يعد هذا الطلب مطابقًا للعملية المحفوظة. حاول مجددًا.",
+      "INTERNAL": "تعذر إكمال التغيير بأمان. حاول مجددًا."
+    },
+    "status": {
+      "not_started": "لم يبدأ",
+      "in_progress": "قيد التنفيذ",
+      "ready_for_activation": "جاهز للتفعيل",
+      "completed": "مفعّل"
+    },
+    "overview": {
+      "title": "تهيئة الشركة",
+      "description": "تابع تقدم الإعداد والجاهزية من خلال مسار عمل واحد مضبوط.",
+      "lifecycle": "دورة الحالة",
+      "progress": "اكتمل {complete} من {total} أقسام",
+      "blockers": "{count, plural, =0 {لا توجد عناصر جاهزية} one {عنصر جاهزية واحد} two {عنصرا جاهزية} few {# عناصر جاهزية} many {# عنصر جاهزية} other {# عنصر جاهزية}}",
+      "setup": "بدء الإعداد",
+      "resume": "متابعة الإعداد",
+      "review": "مراجعة التهيئة"
+    },
+    "adminSummary": {
+      "title": "جاهزية التهيئة",
+      "description": "راجع دورة الحالة والاكتمال والعوائق والتعيين النشط.",
+      "assigned": "المندوب المعيّن: {name}",
+      "unassigned": "لا يوجد تعيين نشط لمندوب"
+    },
+    "errorBoundary": {
+      "title": "تعذر تحميل التهيئة",
+      "description": "حاول تحميل هذا القسم مجددًا. لم تتغير أي بيانات للشركة.",
+      "retry": "حاول مجددًا"
+    },
+    "reopen": {
+      "title": "إعادة فتح هذا القسم",
+      "description": "تسمح إعادة الفتح بإجراء التصحيحات وتعيد الشركة إلى التهيئة.",
+      "reason": "سبب إعادة الفتح",
+      "confirmation": "اكتب اسم الشركة للتأكيد",
+      "submit": "إعادة فتح القسم",
+      "submitting": "جارٍ إعادة الفتح…",
+      "saved": "تمت إعادة فتح القسم.",
+      "error": "تعذرت إعادة فتح القسم. تحقق من التأكيد والسبب."
+    },
+    "sections": {
+      "legal": {
+        "step": "الملف القانوني",
+        "title": "الملف القانوني",
+        "description": "سجّل بيانات الرخصة الأساسية والهوية القانونية للشركة.",
+        "fields": {
+          "companyName": "اسم الشركة المسجل",
+          "displayName": "اسم العرض",
+          "jurisdictionType": "نوع الاختصاص",
+          "licensingAuthority": "جهة الترخيص",
+          "legalStructure": "الشكل القانوني",
+          "tradeLicenseNo": "رقم الرخصة التجارية",
+          "licenseExpiry": "انتهاء الرخصة"
+        },
+        "jurisdictions": {
+          "mainland": "البر الرئيسي",
+          "free_zone": "منطقة حرة",
+          "offshore": "خارجية"
+        }
+      },
+      "shareholders": {
+        "step": "المساهمون",
+        "title": "المساهمون",
+        "description": "سجّل صفوف الملكية وتأكد من إجمالي نسبة الملكية.",
+        "kindLegend": "نوع المساهم",
+        "kinds": {
+          "individual": "فرد",
+          "company": "شركة"
+        },
+        "fields": {
+          "fullName": "الاسم الكامل",
+          "nationalityCode": "رمز الجنسية",
+          "passportNumber": "رقم جواز السفر",
+          "legalName": "الاسم القانوني للشركة",
+          "countryOfIncorporation": "بلد التأسيس",
+          "registrationNumber": "رقم التسجيل",
+          "ownershipPercent": "نسبة الملكية"
+        },
+        "addIndividual": "إضافة فرد",
+        "addCompany": "إضافة شركة"
+      },
+      "activities": {
+        "step": "الأنشطة",
+        "title": "الأنشطة المسجلة",
+        "description": "أدرج الأنشطة المسجلة وحدد نشاطًا رئيسيًا واحدًا فقط.",
+        "fields": {
+          "activityCode": "رمز النشاط",
+          "activityName": "اسم النشاط",
+          "authorityName": "اسم الجهة"
+        },
+        "primaryLegend": "النشاط الرئيسي",
+        "primary": "تعيين كنشاط رئيسي",
+        "add": "إضافة نشاط"
+      },
+      "office": {
+        "step": "المكتب",
+        "title": "تفاصيل المكتب",
+        "description": "سجّل العنوان أو بيانات مزود الخدمة المناسبة لنوع المكتب.",
+        "officeTypeLegend": "نوع المكتب",
+        "types": {
+          "physical": "مكتب فعلي",
+          "flexi_desk": "مكتب مرن",
+          "virtual": "مكتب افتراضي"
+        },
+        "fields": {
+          "addressLine1": "سطر العنوان الأول",
+          "addressLine2": "سطر العنوان الثاني",
+          "area": "المنطقة",
+          "city": "المدينة",
+          "emirate": "الإمارة",
+          "postalCode": "الرمز البريدي",
+          "providerName": "اسم مزود الخدمة",
+          "leaseReference": "مرجع الإيجار",
+          "leaseExpiry": "انتهاء الإيجار"
+        }
+      },
+      "establishment": {
+        "step": "بطاقة المنشأة",
+        "title": "بطاقة المنشأة",
+        "description": "استبدل قيمة البطاقة المحمية فقط عند تغيرها.",
+        "maskedLabel": "البطاقة المحفوظة",
+        "cardNumber": "رقم بطاقة المنشأة الجديد",
+        "cardExpiry": "انتهاء البطاقة"
+      },
+      "bank": {
+        "step": "البيانات المصرفية",
+        "title": "البيانات المصرفية",
+        "description": "حافظ على بيانات الحساب واستبدل المعرّفات المحمية عند الحاجة فقط.",
+        "maskedLabel": "المعرّفات المحمية المحفوظة",
+        "fields": {
+          "bankName": "اسم المصرف",
+          "branchName": "اسم الفرع",
+          "accountHolderName": "اسم صاحب الحساب",
+          "swiftBic": "SWIFT/BIC",
+          "iban": "IBAN",
+          "accountNumber": "رقم الحساب"
+        },
+        "clearTitle": "مسح معرّف مصرفي محمي",
+        "clearDescription": "يؤدي هذا إلى إزالة المعرّف المحفوظ المحدد بعد تأكيد اسم الشركة.",
+        "clearIdentifier": "المعرّف المطلوب مسحه",
+        "clearConfirmation": "اكتب اسم الشركة للتأكيد",
+        "clear": "مسح المعرّف"
+      },
+      "review": {
+        "step": "المراجعة",
+        "title": "مراجعة الجاهزية",
+        "description": "عالج كل عنصر مدرج، ثم أرسل السجل وفعّل الشركة.",
+        "ready": "سجل الشركة جاهز لإجراء دورة الحالة التالي.",
+        "blocked": "التفعيل متوقف بسبب العناصر أدناه.",
+        "submit": "إرسال للتفعيل",
+        "activate": "تفعيل الشركة"
+      }
+    },
+    "requirements": {
+      "LEGAL_SECTION_INCOMPLETE": "أكمل قسم الملف القانوني.",
+      "LEGAL_NAME_MISSING": "أضف اسم الشركة المسجل.",
+      "JURISDICTION_TYPE_MISSING": "حدد نوع الاختصاص.",
+      "LICENSING_AUTHORITY_MISSING": "أضف جهة الترخيص.",
+      "LEGAL_STRUCTURE_MISSING": "أضف الشكل القانوني.",
+      "TRADE_LICENSE_MISSING": "أضف رقم الرخصة التجارية.",
+      "LICENSE_EXPIRY_MISSING": "أضف تاريخ انتهاء الرخصة.",
+      "LICENSE_EXPIRED": "حدّث الرخصة المنتهية.",
+      "SHAREHOLDERS_SECTION_INCOMPLETE": "أكمل قسم المساهمين.",
+      "SHAREHOLDER_MISSING": "أضف مساهمًا واحدًا على الأقل.",
+      "OWNERSHIP_TOTAL_NOT_100": "اضبط إجمالي الملكية على 100% بالضبط.",
+      "ACTIVITIES_SECTION_INCOMPLETE": "أكمل قسم الأنشطة.",
+      "ACTIVITY_MISSING": "أضف نشاطًا مسجلًا واحدًا على الأقل.",
+      "PRIMARY_ACTIVITY_MISSING": "حدد نشاطًا رئيسيًا واحدًا فقط.",
+      "OFFICE_SECTION_INCOMPLETE": "أكمل قسم المكتب.",
+      "OFFICE_TYPE_MISSING": "حدد نوع المكتب.",
+      "OFFICE_ADDRESS_MISSING": "أضف عنوان المكتب أو بيانات المزود المطلوبة.",
+      "OFFICE_LEASE_REFERENCE_MISSING": "أضف مرجع الإيجار.",
+      "OFFICE_LEASE_EXPIRY_MISSING": "أضف تاريخ انتهاء الإيجار.",
+      "OFFICE_LEASE_EXPIRED": "حدّث عقد الإيجار المنتهي.",
+      "ESTABLISHMENT_SECTION_INCOMPLETE": "أكمل قسم بطاقة المنشأة.",
+      "ESTABLISHMENT_CARD_MISSING": "أضف بطاقة المنشأة.",
+      "ESTABLISHMENT_CARD_EXPIRY_MISSING": "أضف تاريخ انتهاء بطاقة المنشأة.",
+      "ESTABLISHMENT_CARD_EXPIRED": "حدّث بطاقة المنشأة المنتهية.",
+      "BANK_SECTION_INCOMPLETE": "أكمل قسم البيانات المصرفية.",
+      "BANK_ACCOUNT_MISSING": "أضف بيانات الحساب المصرفي المطلوبة.",
+      "ACTIVE_VERIFIED_PRO_ASSIGNMENT_MISSING": "عيّن مندوبًا نشطًا تم التحقق من اعتماده.",
+      "TENANT_NOT_ACTIVATABLE": "أعد مساحة عمل الشركة إلى حالة قابلة للتفعيل."
+    }
+  },
   "proDocumentCenter": {
     "heading": {
       "eyebrow": "عمليات مستندات PRO",

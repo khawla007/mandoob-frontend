@@ -43,6 +43,7 @@ test('all forms use RHF with independent zod validation, linked errors, and poli
   assert.match(utilities, /useActionState/u);
   assert.match(utilities, /setFocus/u);
   assert.match(utilities, /summaryRef\.current\?\.focus/u);
+  assert.match(utilities, /<a href=\{`#\$\{fieldTarget\(field\)\}`\}/u);
   assert.match(utilities, /aria-live="polite"/u);
   assert.match(utilities, /aria-atomic="true"/u);
   assert.match(utilities, /claimFormSubmission/u);

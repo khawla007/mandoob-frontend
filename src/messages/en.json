@@ -31,6 +31,227 @@
     "file": "File",
     "getStarted": "Get started"
   },
+  "companyOnboarding": {
+    "shell": {
+      "eyebrow": "Company setup",
+      "title": "Company onboarding",
+      "description": "Complete and review the operational company record before activation.",
+      "navigationLabel": "Company onboarding sections",
+      "status": {
+        "complete": "Complete",
+        "current": "Current step",
+        "incomplete": "Incomplete"
+      }
+    },
+    "form": {
+      "saved": "Changes saved.",
+      "saving": "Saving…",
+      "save": "Save",
+      "saveContinue": "Save and continue",
+      "errorTitle": "We could not save these changes",
+      "errorSummary": "Review the highlighted fields and try again.",
+      "leaveWarning": "You have unsaved changes. Leave this section?",
+      "completeSection": "Mark this section complete",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove",
+      "removed": "Item removed.",
+      "undo": "Undo",
+      "none": "Not provided"
+    },
+    "errors": {
+      "COMPANY_NOT_FOUND": "The company record could not be found.",
+      "ASSIGNMENT_NOT_FOUND": "Your active company assignment could not be verified.",
+      "COMPANY_INACTIVE": "This company is not available for onboarding.",
+      "STALE_ONBOARDING_VERSION": "The company record changed. Refresh and try again.",
+      "INVALID_SECTION_INPUT": "Review the highlighted fields.",
+      "SECTION_NOT_COMPLETABLE": "Complete the required fields before closing this section.",
+      "ONBOARDING_NOT_SUBMITTABLE": "This onboarding record cannot be submitted in its current state.",
+      "COMPANY_NOT_READY": "Resolve every readiness item before activation.",
+      "OPERATION_REUSED": "This request no longer matches the saved operation. Try again.",
+      "INTERNAL": "The change could not be completed safely. Try again."
+    },
+    "status": {
+      "not_started": "Not started",
+      "in_progress": "In progress",
+      "ready_for_activation": "Ready for activation",
+      "completed": "Activated"
+    },
+    "overview": {
+      "title": "Company onboarding",
+      "description": "Track setup progress and readiness from one controlled workflow.",
+      "lifecycle": "Lifecycle",
+      "progress": "{complete} of {total} sections complete",
+      "blockers": "{count, plural, =0 {No readiness items} one {# readiness item} other {# readiness items}}",
+      "setup": "Start setup",
+      "resume": "Resume setup",
+      "review": "Review onboarding"
+    },
+    "adminSummary": {
+      "title": "Onboarding readiness",
+      "description": "Review lifecycle, completion, blockers, and the active assignment.",
+      "assigned": "Assigned to {name}",
+      "unassigned": "No active PRO assignment"
+    },
+    "errorBoundary": {
+      "title": "Onboarding could not be loaded",
+      "description": "Try loading this section again. No company data was changed.",
+      "retry": "Try again"
+    },
+    "reopen": {
+      "title": "Reopen this section",
+      "description": "Reopening allows corrections and returns the company to onboarding.",
+      "reason": "Reason for reopening",
+      "confirmation": "Type the company name to confirm",
+      "submit": "Reopen section",
+      "submitting": "Reopening…",
+      "saved": "Section reopened.",
+      "error": "The section could not be reopened. Check the confirmation and reason."
+    },
+    "sections": {
+      "legal": {
+        "step": "Legal profile",
+        "title": "Legal profile",
+        "description": "Record the company's core license and legal identity.",
+        "fields": {
+          "companyName": "Registered company name",
+          "displayName": "Display name",
+          "jurisdictionType": "Jurisdiction type",
+          "licensingAuthority": "Licensing authority",
+          "legalStructure": "Legal structure",
+          "tradeLicenseNo": "Trade license number",
+          "licenseExpiry": "License expiry"
+        },
+        "jurisdictions": {
+          "mainland": "Mainland",
+          "free_zone": "Free zone",
+          "offshore": "Offshore"
+        }
+      },
+      "shareholders": {
+        "step": "Shareholders",
+        "title": "Shareholders",
+        "description": "Record ownership rows and confirm the total ownership percentage.",
+        "kindLegend": "Shareholder type",
+        "kinds": {
+          "individual": "Individual",
+          "company": "Company"
+        },
+        "fields": {
+          "fullName": "Full name",
+          "nationalityCode": "Nationality code",
+          "passportNumber": "Passport number",
+          "legalName": "Legal company name",
+          "countryOfIncorporation": "Country of incorporation",
+          "registrationNumber": "Registration number",
+          "ownershipPercent": "Ownership percentage"
+        },
+        "addIndividual": "Add individual",
+        "addCompany": "Add company"
+      },
+      "activities": {
+        "step": "Activities",
+        "title": "Registered activities",
+        "description": "List registered activities and select exactly one primary activity.",
+        "fields": {
+          "activityCode": "Activity code",
+          "activityName": "Activity name",
+          "authorityName": "Authority name"
+        },
+        "primaryLegend": "Primary activity",
+        "primary": "Set as primary",
+        "add": "Add activity"
+      },
+      "office": {
+        "step": "Office",
+        "title": "Office details",
+        "description": "Record the address or service-provider details that match the office type.",
+        "officeTypeLegend": "Office type",
+        "types": {
+          "physical": "Physical office",
+          "flexi_desk": "Flexi desk",
+          "virtual": "Virtual office"
+        },
+        "fields": {
+          "addressLine1": "Address line 1",
+          "addressLine2": "Address line 2",
+          "area": "Area",
+          "city": "City",
+          "emirate": "Emirate",
+          "postalCode": "Postal code",
+          "providerName": "Provider name",
+          "leaseReference": "Lease reference",
+          "leaseExpiry": "Lease expiry"
+        }
+      },
+      "establishment": {
+        "step": "Establishment card",
+        "title": "Establishment card",
+        "description": "Replace the protected card value only when it changes.",
+        "maskedLabel": "Saved card",
+        "cardNumber": "New establishment card number",
+        "cardExpiry": "Card expiry"
+      },
+      "bank": {
+        "step": "Bank details",
+        "title": "Bank details",
+        "description": "Maintain account metadata and replace protected identifiers only when needed.",
+        "maskedLabel": "Saved protected identifiers",
+        "fields": {
+          "bankName": "Bank name",
+          "branchName": "Branch name",
+          "accountHolderName": "Account holder name",
+          "swiftBic": "SWIFT/BIC",
+          "iban": "IBAN",
+          "accountNumber": "Account number"
+        },
+        "clearTitle": "Clear a protected bank identifier",
+        "clearDescription": "This removes the selected saved identifier after company-name confirmation.",
+        "clearIdentifier": "Identifier to clear",
+        "clearConfirmation": "Type the company name to confirm",
+        "clear": "Clear identifier"
+      },
+      "review": {
+        "step": "Review",
+        "title": "Readiness review",
+        "description": "Resolve every listed item, submit the record, then activate the company.",
+        "ready": "The company record is ready for the next lifecycle action.",
+        "blocked": "Activation is blocked by the items below.",
+        "submit": "Submit for activation",
+        "activate": "Activate company"
+      }
+    },
+    "requirements": {
+      "LEGAL_SECTION_INCOMPLETE": "Complete the legal profile section.",
+      "LEGAL_NAME_MISSING": "Add the registered company name.",
+      "JURISDICTION_TYPE_MISSING": "Select a jurisdiction type.",
+      "LICENSING_AUTHORITY_MISSING": "Add the licensing authority.",
+      "LEGAL_STRUCTURE_MISSING": "Add the legal structure.",
+      "TRADE_LICENSE_MISSING": "Add the trade license number.",
+      "LICENSE_EXPIRY_MISSING": "Add the license expiry date.",
+      "LICENSE_EXPIRED": "Update the expired license.",
+      "SHAREHOLDERS_SECTION_INCOMPLETE": "Complete the shareholders section.",
+      "SHAREHOLDER_MISSING": "Add at least one shareholder.",
+      "OWNERSHIP_TOTAL_NOT_100": "Set total ownership to exactly 100%.",
+      "ACTIVITIES_SECTION_INCOMPLETE": "Complete the activities section.",
+      "ACTIVITY_MISSING": "Add at least one registered activity.",
+      "PRIMARY_ACTIVITY_MISSING": "Select exactly one primary activity.",
+      "OFFICE_SECTION_INCOMPLETE": "Complete the office section.",
+      "OFFICE_TYPE_MISSING": "Select an office type.",
+      "OFFICE_ADDRESS_MISSING": "Add the required office address or provider details.",
+      "OFFICE_LEASE_REFERENCE_MISSING": "Add the lease reference.",
+      "OFFICE_LEASE_EXPIRY_MISSING": "Add the lease expiry.",
+      "OFFICE_LEASE_EXPIRED": "Update the expired lease.",
+      "ESTABLISHMENT_SECTION_INCOMPLETE": "Complete the establishment card section.",
+      "ESTABLISHMENT_CARD_MISSING": "Add the establishment card.",
+      "ESTABLISHMENT_CARD_EXPIRY_MISSING": "Add the establishment card expiry.",
+      "ESTABLISHMENT_CARD_EXPIRED": "Update the expired establishment card.",
+      "BANK_SECTION_INCOMPLETE": "Complete the bank details section.",
+      "BANK_ACCOUNT_MISSING": "Add the required bank account details.",
+      "ACTIVE_VERIFIED_PRO_ASSIGNMENT_MISSING": "Assign an active credential-verified PRO.",
+      "TENANT_NOT_ACTIVATABLE": "Restore the company workspace to an activatable state."
+    }
+  },
   "proDocumentCenter": {
     "heading": {
       "eyebrow": "PRO document operations",

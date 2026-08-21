@@ -255,3 +255,23 @@ test('English and Arabic message trees retain exact keys and ICU variables', () 
     );
   }
 });
+
+test('onboarding copy avoids complete protected identifier examples and universal-law claims', () => {
+  for (const [locale, namespace] of [
+    ['en', (en as Messages).companyOnboarding],
+    ['ar', (ar as Messages).companyOnboarding],
+  ] as const) {
+    assert.ok(namespace, `Missing ${locale}.companyOnboarding`);
+    for (const [path, value] of leafEntries(namespace)) {
+      assert.doesNotMatch(value, /\bAE\d{21}\b/u, `${locale}.${path} contains a complete IBAN`);
+      assert.doesNotMatch(
+        value,
+        /\b(?:account|card)[ -]?(?:number)?[^\n]*\d{8,}\b/iu,
+        `${locale}.${path} contains a complete protected identifier example`,
+      );
+      for (const claim of UNIVERSAL_LEGAL_CLAIMS) {
+        assert.doesNotMatch(value, claim, `${locale}.${path} contains a universal-law claim`);
+      }
+    }
+  }
+});
