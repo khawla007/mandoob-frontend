@@ -125,6 +125,9 @@ test('review links each localized readiness code and explains disabled activatio
   assert.match(source, /disabled=\{blocked/u);
   assert.match(source, /aria-describedby=\{blocked \? blockerId : undefined\}/u);
   assert.match(source, /aria-live="polite"/u);
+  assert.match(source, /snapshot\.onboardingStatus === 'completed'/u);
+  assert.match(source, /completed \? labels\.complete/u);
+  assert.match(source, /!completed \? \(/u);
 });
 
 test('forms use logical direction-safe classes and no hardcoded visible English', () => {

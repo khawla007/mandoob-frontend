@@ -21,6 +21,7 @@ type Labels = OnboardingFormLabels & {
   title: string;
   description: string;
   ready: string;
+  complete: string;
   blocked: string;
   activate: string;
   submit: string;
@@ -43,6 +44,7 @@ export function OnboardingReview({
   sectionHrefs: Record<CompanyReadinessSection, string>;
 }) {
   const activationPhase = snapshot.onboardingStatus === 'ready_for_activation';
+  const completed = snapshot.onboardingStatus === 'completed';
   const setup = useOnboardingForm({
     schema: activateCompanyOnboardingSchema,
     action: activationPhase ? activateAction : submitAction,
@@ -72,7 +74,9 @@ export function OnboardingReview({
         }
       >
         {blocked ? <AlertCircle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
-        <p className="mt-2 font-medium">{blocked ? labels.blocked : labels.ready}</p>
+        <p className="mt-2 font-medium">
+          {completed ? labels.complete : blocked ? labels.blocked : labels.ready}
+        </p>
       </div>
       {blocked ? (
         <ul id={blockerId} className="space-y-2">
@@ -92,14 +96,16 @@ export function OnboardingReview({
         </ul>
       ) : null}
       <OnboardingFormFeedback state={state} labels={labels} summaryRef={summaryRef} />
-      <button
-        type="submit"
-        disabled={blocked}
-        aria-describedby={blocked ? blockerId : undefined}
-        className="bg-primary text-primary-foreground min-h-11 rounded-md px-4 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {activationPhase ? labels.activate : labels.submit}
-      </button>
+      {!completed ? (
+        <button
+          type="submit"
+          disabled={blocked}
+          aria-describedby={blocked ? blockerId : undefined}
+          className="bg-primary text-primary-foreground min-h-11 rounded-md px-4 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {activationPhase ? labels.activate : labels.submit}
+        </button>
+      ) : null}
       <span className="sr-only" aria-live="polite">
         {pending ? labels.saving : ''}
       </span>

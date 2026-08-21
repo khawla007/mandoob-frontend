@@ -302,6 +302,7 @@ export default async function AdminCompanyOnboardingSectionPage({
               title: tx('sections.review.title'),
               description: tx('sections.review.description'),
               ready: tx('sections.review.ready'),
+              complete: tx('sections.review.complete'),
               blocked: tx('sections.review.blocked'),
               submit: tx('sections.review.submit'),
               activate: tx('sections.review.activate'),

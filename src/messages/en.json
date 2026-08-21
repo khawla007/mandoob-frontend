@@ -216,6 +216,7 @@
         "title": "Readiness review",
         "description": "Resolve every listed item, submit the record, then activate the company.",
         "ready": "The company record is ready for the next lifecycle action.",
+        "complete": "Company onboarding is complete. Reopen a specific section only when a correction is required.",
         "blocked": "Activation is blocked by the items below.",
         "submit": "Submit for activation",
         "activate": "Activate company"
