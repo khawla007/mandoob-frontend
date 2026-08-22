@@ -194,7 +194,7 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         if (
           existing.bytes.byteLength !== bytes.byteLength ||
           existingHash !== metadata.sha256 ||
-          (existing.mime !== null && existing.mime !== inspected.mime)
+          existing.mime !== inspected.mime
         )
           return errorResponse('OPERATION_REUSED', 'Unable to complete lifecycle operation', 409);
       }

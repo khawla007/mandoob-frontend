@@ -3,6 +3,32 @@ set statement_timeout = '15s';
 
 begin;
 
+do $$
+begin
+  if has_table_privilege('service_role', 'public.pro_credential_evidence_removals', 'SELECT')
+     or has_table_privilege('service_role', 'public.pro_credential_evidence_removals', 'INSERT')
+     or has_table_privilege('service_role', 'public.pro_credential_evidence_removals', 'UPDATE')
+     or has_table_privilege('service_role', 'public.pro_credential_evidence_removals', 'DELETE') then
+    raise exception 'SERVICE_ROLE_RESERVATION_TABLE_ACCESS';
+  end if;
+  if not has_function_privilege(
+    'service_role',
+    'public.prepare_pro_credential_evidence_removal(uuid,uuid,uuid,bigint,uuid,text)',
+    'EXECUTE'
+  ) or not has_function_privilege(
+    'service_role',
+    'public.finalize_pro_credential_evidence_removal(uuid,uuid,uuid,bigint,uuid,text)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'service_role',
+    'public.remove_pro_credential_evidence(uuid,uuid,uuid,bigint,uuid,text)',
+    'EXECUTE'
+  ) then
+    raise exception 'SERVICE_ROLE_REMOVAL_RPC_PRIVILEGES';
+  end if;
+end;
+$$;
+
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at

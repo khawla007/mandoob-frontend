@@ -12,6 +12,28 @@ const prepared = () => ({
   evidenceId: E,
   storagePath: PATH,
 });
+const credential = {
+  credentialId: C,
+  type: 'pro_license' as const,
+  maskedIdentifier: null,
+  issuingAuthority: null,
+  issueDate: null,
+  expiryDate: null,
+  state: 'draft' as const,
+  version: 2,
+  evidenceCount: 0,
+  submittedAt: null,
+  supersedesCredentialId: null,
+};
+const operationId = '30000000-0000-4000-8000-000000000003';
+
+function removeRequest(overrides: Record<string, unknown> = {}) {
+  return new Request('http://localhost/evidence', {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ credentialId: C, expectedVersion: 1, operationId, ...overrides }),
+  });
+}
 
 test('evidence DELETE missing and mismatched CSRF touch no downstream stage', async () => {
   for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
@@ -22,10 +44,7 @@ test('evidence DELETE missing and mismatched CSRF touch no downstream stage', as
         touched.push('session');
         throw new Error('must not run');
       },
-      open: async () => {
-        touched.push('target');
-        throw new Error('must not run');
-      },
+      resolveTarget: async () => (touched.push('target'), null),
       limit: async () => (touched.push('limit'), 'allowed'),
       prepare: async () => (touched.push('mutation'), prepared()),
       finalize: async () => (touched.push('mutation'), null),
@@ -84,18 +103,6 @@ test('evidence DELETE follows the state-changing security order and derives acto
       calls.push('session'),
       { id: A, role: 'pro', tenantId: A, aal: 'aal2', mfaEnrolled: true, email: null }
     ),
-    open: async () => (
-      calls.push('target'),
-      {
-        evidence_id: E,
-        pro_profile_id: A,
-        credential_id: '20000000-0000-4000-8000-000000000002',
-        storage_path: `pro-credentials/${A}/20000000-0000-4000-8000-000000000002/${E}`,
-        mime_type: 'application/pdf',
-        size_bytes: 5,
-        original_name_safe: 'proof.pdf',
-      }
-    ),
     resolveTarget: async () => (
       calls.push('scope'),
       {
@@ -122,23 +129,12 @@ test('evidence DELETE follows the state-changing security order and derives acto
       calls.push('revalidate');
     },
   });
-  const response = await handler(
-    new Request('http://localhost/evidence', {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        expectedVersion: 1,
-        operationId: '30000000-0000-4000-8000-000000000003',
-      }),
-    }),
-    { params: Promise.resolve({ evidenceId: E }) },
-  );
+  const response = await handler(removeRequest(), { params: Promise.resolve({ evidenceId: E }) });
   assert.equal(response.status, 200);
   assert.equal(actor, A);
   assert.deepEqual(calls, [
     'csrf',
     'session',
-    'target',
     'scope',
     'limit',
     'prepare',
@@ -161,15 +157,6 @@ test('evidence DELETE keeps metadata on storage failure and retries missing-obje
       mfaEnrolled: true,
       email: null,
     }),
-    open: async () => ({
-      evidence_id: E,
-      pro_profile_id: A,
-      credential_id: '20000000-0000-4000-8000-000000000002',
-      storage_path: `pro-credentials/${A}/20000000-0000-4000-8000-000000000002/${E}`,
-      mime_type: 'application/pdf' as const,
-      size_bytes: 5,
-      original_name_safe: 'proof.pdf',
-    }),
     resolveTarget: async () => ({
       proProfileId: A,
       credentialIds: ['20000000-0000-4000-8000-000000000002'],
@@ -185,15 +172,7 @@ test('evidence DELETE keeps metadata on storage failure and retries missing-obje
     },
     revalidate: () => undefined,
   };
-  const makeRequest = () =>
-    new Request('http://localhost/evidence', {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        expectedVersion: 1,
-        operationId: '30000000-0000-4000-8000-000000000003',
-      }),
-    });
+  const makeRequest = () => removeRequest();
   const handler = createEvidenceDeleteHandler(base);
   const failed = await handler(makeRequest(), { params: Promise.resolve({ evidenceId: E }) });
   assert.equal(failed.status, 503);
@@ -219,15 +198,6 @@ test('evidence DELETE DAL failure is not success and retry repeats idempotent st
       mfaEnrolled: true,
       email: null,
     }),
-    open: async () => ({
-      evidence_id: E,
-      pro_profile_id: A,
-      credential_id: '20000000-0000-4000-8000-000000000002',
-      storage_path: `pro-credentials/${A}/20000000-0000-4000-8000-000000000002/${E}`,
-      mime_type: 'application/pdf',
-      size_bytes: 5,
-      original_name_safe: 'proof.pdf',
-    }),
     resolveTarget: async () => ({
       proProfileId: A,
       credentialIds: ['20000000-0000-4000-8000-000000000002'],
@@ -243,15 +213,7 @@ test('evidence DELETE DAL failure is not success and retry repeats idempotent st
     },
     revalidate: () => undefined,
   });
-  const makeRequest = () =>
-    new Request('http://localhost/evidence', {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        expectedVersion: 1,
-        operationId: '30000000-0000-4000-8000-000000000003',
-      }),
-    });
+  const makeRequest = () => removeRequest();
   assert.equal(
     (await handler(makeRequest(), { params: Promise.resolve({ evidenceId: E }) })).status,
     500,
@@ -263,15 +225,149 @@ test('evidence DELETE DAL failure is not success and retry repeats idempotent st
   assert.equal(erases, 2);
 });
 
-test('evidence DELETE hides denied sessions and fails closed when authoritative scope cannot resolve', async () => {
-  const request = new Request('http://localhost/evidence', {
-    method: 'DELETE',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      expectedVersion: 1,
-      operationId: '30000000-0000-4000-8000-000000000003',
+test('evidence DELETE replays a committed finalize after metadata is gone without another storage delete', async () => {
+  let prepares = 0;
+  let erases = 0;
+  let finalizes = 0;
+  let committed = false;
+  const handler = createEvidenceDeleteHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
     }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    prepare: async () => {
+      prepares += 1;
+      return committed ? { status: 'complete', credential } : prepared();
+    },
+    erase: async () => {
+      erases += 1;
+    },
+    finalize: async () => {
+      finalizes += 1;
+      committed = true;
+      throw new Error('response lost after commit');
+    },
+    revalidate: () => undefined,
   });
+
+  const first = await handler(removeRequest(), { params: Promise.resolve({ evidenceId: E }) });
+  assert.equal(first.status, 500);
+  assert.doesNotMatch(JSON.stringify(await first.json()), /response lost|storage|path/iu);
+
+  const replay = await handler(removeRequest(), { params: Promise.resolve({ evidenceId: E }) });
+  assert.equal(replay.status, 200);
+  assert.deepEqual((await replay.json()).credential, credential);
+  assert.equal(prepares, 2);
+  assert.equal(erases, 1);
+  assert.equal(finalizes, 1);
+});
+
+test('evidence DELETE rejects a completed receipt for a different credential', async () => {
+  let revalidated = 0;
+  const handler = createEvidenceDeleteHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    prepare: async () => ({
+      status: 'complete',
+      credential: { ...credential, credentialId: '20000000-0000-4000-8000-000000000099' },
+    }),
+    erase: async () => {
+      throw new Error('must not erase');
+    },
+    finalize: async () => {
+      throw new Error('must not finalize');
+    },
+    revalidate: () => {
+      revalidated += 1;
+    },
+  });
+  assert.equal(
+    (await handler(removeRequest(), { params: Promise.resolve({ evidenceId: E }) })).status,
+    404,
+  );
+  assert.equal(revalidated, 0);
+});
+
+test('evidence DELETE hides wrong credential, cross-owner, and unknown evidence without mutation', async () => {
+  const { ApiError } = await import('@/lib/errors');
+  const otherCredential = '20000000-0000-4000-8000-000000000099';
+  const otherPro = '10000000-0000-4000-8000-000000000099';
+  let preparedCalls = 0;
+  let erased = 0;
+  const base = {
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro' as const,
+      tenantId: A,
+      aal: 'aal2' as const,
+      mfaEnrolled: true,
+      email: null,
+    }),
+    limit: async () => 'allowed' as const,
+    prepare: async () => {
+      preparedCalls += 1;
+      throw new ApiError('NOT_FOUND', 'private evidence state', 404);
+    },
+    erase: async () => {
+      erased += 1;
+    },
+    finalize: async () => credential,
+    revalidate: () => undefined,
+  };
+  const wrongCredential = createEvidenceDeleteHandler({
+    ...base,
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+  });
+  const wrong = await wrongCredential(removeRequest({ credentialId: otherCredential }), {
+    params: Promise.resolve({ evidenceId: E }),
+  });
+  assert.equal(wrong.status, 404);
+
+  const crossOwner = createEvidenceDeleteHandler({
+    ...base,
+    resolveTarget: async () => ({ proProfileId: otherPro, credentialIds: [C] }),
+  });
+  assert.equal(
+    (await crossOwner(removeRequest(), { params: Promise.resolve({ evidenceId: E }) })).status,
+    404,
+  );
+  assert.equal(preparedCalls, 0);
+
+  const unknownEvidence = createEvidenceDeleteHandler({
+    ...base,
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+  });
+  const unknown = await unknownEvidence(removeRequest(), {
+    params: Promise.resolve({ evidenceId: E }),
+  });
+  assert.equal(unknown.status, 404);
+  assert.doesNotMatch(
+    JSON.stringify(await unknown.json()),
+    /private|evidence state|storage|path/iu,
+  );
+  assert.equal(preparedCalls, 1);
+  assert.equal(erased, 0);
+});
+
+test('evidence DELETE hides denied sessions and fails closed when authoritative scope cannot resolve', async () => {
+  const request = removeRequest();
   const denied = createEvidenceDeleteHandler({
     guardCsrf: async () => null,
     requirePro: async () => {
@@ -292,15 +388,6 @@ test('evidence DELETE hides denied sessions and fails closed when authoritative 
       aal: 'aal2',
       mfaEnrolled: true,
       email: null,
-    }),
-    open: async () => ({
-      evidence_id: E,
-      pro_profile_id: A,
-      credential_id: '20000000-0000-4000-8000-000000000002',
-      storage_path: `pro-credentials/${A}/20000000-0000-4000-8000-000000000002/${E}`,
-      mime_type: 'application/pdf',
-      size_bytes: 5,
-      original_name_safe: 'proof.pdf',
     }),
     resolveTarget: async () => null,
   });
@@ -373,15 +460,6 @@ test('evidence DELETE sanitizes stale, replay and unknown mutation errors', asyn
         mfaEnrolled: true,
         email: null,
       }),
-      open: async () => ({
-        evidence_id: E,
-        pro_profile_id: A,
-        credential_id: '20000000-0000-4000-8000-000000000002',
-        storage_path: `pro-credentials/${A}/20000000-0000-4000-8000-000000000002/${E}`,
-        mime_type: 'application/pdf',
-        size_bytes: 5,
-        original_name_safe: 'proof.pdf',
-      }),
       resolveTarget: async () => ({
         proProfileId: A,
         credentialIds: ['20000000-0000-4000-8000-000000000002'],
@@ -396,17 +474,7 @@ test('evidence DELETE sanitizes stale, replay and unknown mutation errors', asyn
       },
       revalidate: () => undefined,
     });
-    const response = await handler(
-      new Request('http://localhost/evidence', {
-        method: 'DELETE',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          expectedVersion: 1,
-          operationId: '30000000-0000-4000-8000-000000000003',
-        }),
-      }),
-      { params: Promise.resolve({ evidenceId: E }) },
-    );
+    const response = await handler(removeRequest(), { params: Promise.resolve({ evidenceId: E }) });
     assert.equal(response.status, status);
     const body = await response.json();
     assert.equal(body.code, code);

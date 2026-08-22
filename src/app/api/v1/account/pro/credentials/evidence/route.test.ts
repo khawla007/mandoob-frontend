@@ -301,6 +301,40 @@ test('same operation with different bytes conflicts without registration or dele
   assert.equal(registrations, 0);
 });
 
+test('same operation fails closed when stored MIME metadata is missing', async () => {
+  const existing = new TextEncoder().encode('%PDF-new');
+  let registrations = 0;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'test' }),
+    store: async () => 'exists',
+    readExisting: async () => ({ bytes: existing, mime: null }),
+    register: async () => {
+      registrations += 1;
+      return { credentialId: C };
+    },
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-22T00:00:00.000Z'),
+  });
+  const response = await handler(
+    upload(new File([existing], 'proof.pdf', { type: 'application/pdf' })),
+  );
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'OPERATION_REUSED');
+  assert.equal(registrations, 0);
+});
+
 test('ambiguous post-commit error leaves bytes untouched and retry reaches DB replay', async () => {
   let artifact: Uint8Array | null = null;
   let committed = false;

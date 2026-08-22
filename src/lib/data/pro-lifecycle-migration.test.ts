@@ -41,6 +41,14 @@ test('0071 makes evidence removal a private durable prepare/finalize protocol', 
     sql,
     /grant execute on function public\.prepare_pro_credential_evidence_removal[\s\S]*to service_role/u,
   );
+  assert.match(
+    sql,
+    /revoke all on table public\.pro_credential_evidence_removals from public, anon, authenticated, service_role/u,
+  );
+  assert.doesNotMatch(
+    sql,
+    /grant (?:select|insert|update|delete|all)[^;]*on table public\.pro_credential_evidence_removals/u,
+  );
   assert.doesNotMatch(sql, /to authenticated/u);
   assert.match(sql, /removal_reservation_immutable/u);
   assert.match(sql, /set status = 'complete', storage_path = null/u);

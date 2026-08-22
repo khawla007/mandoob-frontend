@@ -28,7 +28,6 @@ create unique index pro_credential_evidence_removals_one_prepared_credential
 alter table public.pro_credential_evidence_removals disable row level security;
 revoke all on table public.pro_credential_evidence_removals
   from public, anon, authenticated, service_role;
-grant select, insert, update on table public.pro_credential_evidence_removals to service_role;
 
 create or replace function public.guard_pro_credential_evidence_removal_reservation()
 returns trigger

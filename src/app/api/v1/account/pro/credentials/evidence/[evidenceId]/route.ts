@@ -23,7 +23,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 const uuid = z.string().uuid();
 const removeSchema = z
-  .object({ expectedVersion: z.number().int().nonnegative(), operationId: uuid })
+  .object({
+    credentialId: uuid,
+    expectedVersion: z.number().int().nonnegative(),
+    operationId: uuid,
+  })
   .strict();
 type Context = { params: Promise<{ evidenceId: string }> };
 
@@ -90,7 +94,6 @@ export function createEvidenceGetHandler(overrides: Partial<GetDeps> = {}) {
 type DeleteDeps = {
   guardCsrf(request: Request): Promise<Response | null>;
   requirePro(): Promise<SessionProfile>;
-  open(actorId: string, evidenceId: string): Promise<OpenedProCredentialEvidence>;
   resolveTarget(actorId: string, proProfileId: string): Promise<LifecycleTarget | null>;
   limit(actorId: string, targetId: string): Promise<LimitDecision>;
   prepare(
@@ -113,9 +116,7 @@ type DeleteDeps = {
 const deleteDefaults: DeleteDeps = {
   guardCsrf: async (request) => (await import('@/lib/auth/csrf-guard')).guardCsrf(request),
   requirePro: requireLiveProAccount,
-  open: async (...args) =>
-    (await import('@/lib/data/pro-credentials')).openProCredentialEvidenceMetadata(...args),
-  resolveTarget: (actorId, proProfileId) => resolveLifecycleTarget(actorId, proProfileId),
+  resolveTarget: (actorId) => resolveLifecycleTarget(actorId, actorId),
   limit: async (actorId, evidenceId) => {
     const { consumeSensitiveRateLimit, SENSITIVE_RATE_LIMITS } = await import('@/lib/rate-limit');
     return consumeSensitiveRateLimit({
@@ -157,50 +158,41 @@ export function createEvidenceDeleteHandler(overrides: Partial<DeleteDeps> = {})
       const { evidenceId } = await context.params;
       if (!uuid.safeParse(evidenceId).success)
         return errorResponse('VALIDATION_FAILED', 'Invalid evidence id', 400);
-      let evidence: OpenedProCredentialEvidence;
-      try {
-        evidence = await deps.open(session.id, evidenceId);
-      } catch {
-        return notFoundResponse();
-      }
-      if (
-        !isOwnedProCredentialEvidencePath(
-          evidence.storage_path,
-          session.id,
-          evidence.credential_id,
-          evidenceId,
-        )
-      )
-        return notFoundResponse();
-      const target = await deps.resolveTarget(session.id, evidence.pro_profile_id);
+      const raw: unknown = await request.json().catch(() => null);
+      const rawCredentialId =
+        raw && typeof raw === 'object' ? (raw as Record<string, unknown>).credentialId : undefined;
+      const target = await deps.resolveTarget(session.id, session.id);
       if (
         !target ||
-        target.proProfileId !== evidence.pro_profile_id ||
-        !target.credentialIds.includes(evidence.credential_id)
+        target.proProfileId !== session.id ||
+        typeof rawCredentialId !== 'string' ||
+        !target.credentialIds.includes(rawCredentialId)
       )
         return notFoundResponse();
       const limited = limitResponse(await deps.limit(session.id, target.proProfileId));
       if (limited) return limited;
-      const parsed = removeSchema.safeParse(await request.json().catch(() => null));
+      const parsed = removeSchema.safeParse(raw);
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
       const prepared = await deps.prepare(
         session.id,
-        evidence.credential_id,
+        parsed.data.credentialId,
         evidenceId,
         parsed.data.expectedVersion,
         parsed.data.operationId,
       );
       if (prepared.status === 'complete') {
+        if (prepared.credential.credentialId !== parsed.data.credentialId)
+          return notFoundResponse();
         await deps.revalidate(target, session.id);
         return jsonOk({ ok: true, credential: prepared.credential });
       }
       if (
-        prepared.credentialId !== evidence.credential_id ||
+        prepared.credentialId !== parsed.data.credentialId ||
         prepared.evidenceId !== evidenceId ||
         !isOwnedProCredentialEvidencePath(
           prepared.storagePath,
-          evidence.pro_profile_id,
-          evidence.credential_id,
+          session.id,
+          parsed.data.credentialId,
           evidenceId,
         )
       )
@@ -212,7 +204,7 @@ export function createEvidenceDeleteHandler(overrides: Partial<DeleteDeps> = {})
       }
       const credential = await deps.finalize(
         session.id,
-        evidence.credential_id,
+        parsed.data.credentialId,
         evidenceId,
         parsed.data.expectedVersion,
         parsed.data.operationId,
