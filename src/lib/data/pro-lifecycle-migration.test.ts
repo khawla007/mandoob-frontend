@@ -9,6 +9,7 @@ const migrationPaths = [
   'supabase/migrations/20260821102000_0070_pro_lifecycle_security_reconciliation.sql',
   'supabase/migrations/20260822100000_0071_pro_credential_evidence_removal_protocol.sql',
   'supabase/migrations/20260822110000_0072_pro_evidence_removal_recovery.sql',
+  'supabase/migrations/20260822120000_0073_pro_evidence_removal_fenced_recovery.sql',
 ] as const;
 
 function migration(index: number): string {
@@ -24,8 +25,91 @@ test('Step 3 uses the exact forward-only migration catalog', () => {
     'supabase/migrations/20260821102000_0070_pro_lifecycle_security_reconciliation.sql',
     'supabase/migrations/20260822100000_0071_pro_credential_evidence_removal_protocol.sql',
     'supabase/migrations/20260822110000_0072_pro_evidence_removal_recovery.sql',
+    'supabase/migrations/20260822120000_0073_pro_evidence_removal_fenced_recovery.sql',
   ]);
   assert.equal(existsSync(join(process.cwd(), migrationPaths[0])), true, migrationPaths[0]);
+});
+
+test('0073 fences every recovery as durable delete intent and supersedes cancellation', () => {
+  const sql = migration(5);
+  assert.match(sql, /add column recovery_operation_id uuid/u);
+  assert.match(sql, /status in \('prepared', 'recovering', 'complete', 'cancelled'\)/u);
+  assert.match(sql, /function public\.claim_pro_credential_evidence_removal_recovery/u);
+  assert.match(sql, /function public\.finalize_pro_credential_evidence_removal_recovery/u);
+  assert.match(sql, /security definer set search_path = ''/u);
+  assert.match(sql, /pg_advisory_xact_lock/u);
+  assert.match(sql, /for update/u);
+  assert.match(sql, /v_actor\.role not in \('admin', 'super_admin'\)/u);
+  assert.match(sql, /v_actor\.status <> 'active'/u);
+  assert.match(sql, /v_actor\.tenant_id is not null/u);
+  assert.match(sql, /v_removal\.status not in \('prepared', 'recovering', 'cancelled'\)/u);
+  assert.match(
+    sql,
+    /v_removal\.status = 'recovering'[\s\S]*lease_expires_at > pg_catalog\.now\(\)/u,
+  );
+  assert.match(sql, /set status = 'recovering'/u);
+  assert.match(sql, /recovery_operation_id = p_recovery_operation_id/u);
+  assert.match(sql, /evidence_removal_claim_lost/u);
+  assert.match(sql, /credential_evidence_removal_recovered/u);
+  assert.match(sql, /'originalactorid'/u);
+  assert.match(sql, /'recoveryactorid'/u);
+  assert.match(
+    sql,
+    /prepare_pro_credential_evidence_removal[\s\S]*v_removal\.status = 'recovering'[\s\S]*evidence_removal_in_progress/u,
+  );
+  assert.match(
+    sql,
+    /finalize_pro_credential_evidence_removal[\s\S]*v_removal\.status = 'recovering'[\s\S]*evidence_removal_in_progress/u,
+  );
+  assert.match(
+    sql,
+    /v_removal\.status = 'cancelled'[\s\S]*status in \('prepared', 'recovering'\)[\s\S]*evidence_removal_in_progress/u,
+  );
+  const prepare = sql.slice(
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_removal'),
+    sql.indexOf('create or replace function public.finalize_pro_credential_evidence_removal'),
+  );
+  const resume = prepare.slice(prepare.indexOf("if v_removal.status = 'cancelled'"));
+  assert.ok(
+    resume.indexOf('where id = v_removal.credential_id') <
+      resume.indexOf('select 1 from public.pro_credential_evidence_removals competing'),
+    'cancelled resume locks the credential before checking active competitors',
+  );
+  const claim = sql.slice(
+    sql.indexOf('create or replace function public.claim_pro_credential_evidence_removal_recovery'),
+    sql.indexOf(
+      'create or replace function public.finalize_pro_credential_evidence_removal_recovery',
+    ),
+  );
+  assert.ok(
+    claim.indexOf('where id = p_credential_id and pro_profile_id = p_pro_profile_id for update') <
+      claim.indexOf('select 1 from public.pro_credential_evidence_removals competing'),
+    'legacy cancellation claim locks the credential before checking active competitors',
+  );
+  assert.match(sql, /drop function public\.recover_pro_credential_evidence_removal\(uuid, uuid\)/u);
+  assert.doesNotMatch(sql, /from storage\.objects/u);
+  assert.doesNotMatch(sql, /credential_evidence_removal_cancelled/u);
+  const cleanup = sql.slice(
+    sql.indexOf('create or replace function public.cleanup_pro_credential_evidence_removals'),
+    sql.indexOf('revoke all on function public.recover_pro_credential_evidence_removal'),
+  );
+  assert.match(cleanup, /where status = 'complete'/u);
+  assert.doesNotMatch(cleanup, /cancelled|prepared|recovering/u);
+  for (const fn of [
+    'claim_pro_credential_evidence_removal_recovery',
+    'finalize_pro_credential_evidence_removal_recovery',
+  ]) {
+    assert.match(sql, new RegExp(`alter function public\\.${fn}[\\s\\S]*owner to postgres`, 'u'));
+    assert.match(
+      sql,
+      new RegExp(`grant execute on function public\\.${fn}[\\s\\S]*to service_role`, 'u'),
+    );
+  }
+  assert.doesNotMatch(sql, /to authenticated/u);
+  assert.match(
+    sql,
+    /revoke all on table public\.pro_credential_evidence_removals from public, anon, authenticated, service_role/u,
+  );
 });
 
 test('0072 adds bounded operator recovery and terminal retention without weakening reservations', () => {
@@ -303,6 +387,31 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
     assert.match(source, /ON_ERROR_STOP on/u);
     assert.match(source, /statement_timeout/u);
   }
+  const recovery = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_lifecycle_evidence_recovery.sql'),
+    'utf8',
+  ).replace(/\s+/gu, ' ');
+  assert.match(recovery, /claim_pro_credential_evidence_removal_recovery/u);
+  assert.match(recovery, /EXPECTED_OLD_FINALIZE_FENCE/u);
+  assert.match(recovery, /EVIDENCE_REMOVAL_LEASE_ACTIVE/u);
+  assert.match(recovery, /EVIDENCE_REMOVAL_CLAIM_LOST/u);
+  assert.match(recovery, /originalActorId/u);
+  assert.match(recovery, /recoveryActorId/u);
+  assert.match(recovery, /status = 'cancelled'/u);
+  assert.match(recovery, /UNSAFE_RETENTION_CLEANUP/u);
+  const raceA = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_lifecycle_recovery_session_a.sql'),
+    'utf8',
+  );
+  const raceB = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_lifecycle_recovery_session_b.sql'),
+    'utf8',
+  );
+  assert.match(raceA, /delete from storage\.objects/u);
+  assert.match(raceA, /EVIDENCE_REMOVAL_IN_PROGRESS/u);
+  assert.match(raceB, /claim_pro_credential_evidence_removal_recovery/u);
+  assert.match(raceB, /delete from storage\.objects/u);
+  assert.match(raceB, /finalize_pro_credential_evidence_removal_recovery/u);
 });
 
 test('0070 reconciles live access, term-linked assignments, grants, and legacy columns', () => {

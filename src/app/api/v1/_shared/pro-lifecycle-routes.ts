@@ -98,6 +98,9 @@ const SAFE_CODES = new Set([
   'PRO_CREDENTIAL_EXPIRED',
   'DECISION_REASON_INVALID',
   'EVIDENCE_REMOVAL_IN_PROGRESS',
+  'EVIDENCE_REMOVAL_LEASE_ACTIVE',
+  'EVIDENCE_REMOVAL_CLAIM_LOST',
+  'RECOVERY_RETRYABLE',
 ]);
 
 export function lifecycleErrorResponse(error: unknown, label: string): Response {
