@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatAedMinor } from '@/lib/data/pro-commercial-terms';
 import type { ProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
 import { ProCommercialTermForm } from './ProCommercialTermForm';
+import { formatProCommercialDate } from './pro-lifecycle-ui';
 import { ProTermStatusBadge } from './ProLifecycleStatusBadge';
 
 export async function ProCommercialTermsPanel({
@@ -70,10 +71,28 @@ export async function ProCommercialTermsPanel({
                           </div>
                           <div>
                             <dt className="text-muted-foreground text-xs">
-                              {t('terms.effectiveFrom')}
+                              {t('terms.effectivePeriod')}
                             </dt>
-                            <dd className="mt-1" dir="ltr">
-                              {current.effectiveFrom}
+                            <dd className="mt-1">
+                              <time dateTime={current.effectiveFrom}>
+                                {formatProCommercialDate(current.effectiveFrom, locale)}
+                              </time>{' '}
+                              –{' '}
+                              {current.effectiveTo ? (
+                                <time dateTime={current.effectiveTo}>
+                                  {formatProCommercialDate(current.effectiveTo, locale)}
+                                </time>
+                              ) : (
+                                t('terms.ongoing')
+                              )}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground text-xs">{t('terms.interval')}</dt>
+                            <dd className="mt-1">
+                              {current.retainerInterval
+                                ? t(`terms.intervals.${current.retainerInterval}`)
+                                : t('terms.notApplicable')}
                             </dd>
                           </div>
                         </dl>
@@ -82,18 +101,18 @@ export async function ProCommercialTermsPanel({
                     ))}
                   </div>
                 ) : (
-                  <>
-                    <p className="text-muted-foreground text-sm">{t('terms.empty')}</p>
-                    <ProCommercialTermForm userId={userId} termKind={termKind} term={null} />
-                  </>
+                  <p className="text-muted-foreground text-sm">{t('terms.empty')}</p>
                 )}
+                {!draft ? (
+                  <ProCommercialTermForm userId={userId} termKind={termKind} term={null} />
+                ) : null}
               </section>
             );
           })}
         </div>
         {terms.length ? (
           <div className="overflow-x-auto" role="region" aria-label={t('terms.historyLabel')}>
-            <table className="w-full min-w-2xl text-start text-sm">
+            <table className="w-full min-w-[64rem] text-start text-sm">
               <thead>
                 <tr className="border-b text-start">
                   <th scope="col" className="p-2 text-start font-medium">
@@ -103,10 +122,19 @@ export async function ProCommercialTermsPanel({
                     {t('terms.model')}
                   </th>
                   <th scope="col" className="p-2 text-start font-medium">
+                    {t('terms.interval')}
+                  </th>
+                  <th scope="col" className="p-2 text-start font-medium">
                     {t('terms.amount')}
                   </th>
                   <th scope="col" className="p-2 text-start font-medium">
+                    {t('terms.effectivePeriod')}
+                  </th>
+                  <th scope="col" className="p-2 text-start font-medium">
                     {t('terms.status')}
+                  </th>
+                  <th scope="col" className="p-2 text-start font-medium">
+                    {t('terms.version')}
                   </th>
                 </tr>
               </thead>
@@ -115,8 +143,26 @@ export async function ProCommercialTermsPanel({
                   <tr key={term.termId} className="border-b last:border-0">
                     <td className="p-2">{t(`terms.kinds.${term.termKind}`)}</td>
                     <td className="p-2">{t(`terms.models.${term.model}`)}</td>
+                    <td className="p-2">
+                      {term.retainerInterval
+                        ? t(`terms.intervals.${term.retainerInterval}`)
+                        : t('terms.notApplicable')}
+                    </td>
                     <td className="p-2 tabular-nums">
                       {formatAedMinor(term.amountMinor, locale === 'ar' ? 'ar-AE' : 'en-AE')}
+                    </td>
+                    <td className="p-2 whitespace-nowrap">
+                      <time dateTime={term.effectiveFrom}>
+                        {formatProCommercialDate(term.effectiveFrom, locale)}
+                      </time>{' '}
+                      –{' '}
+                      {term.effectiveTo ? (
+                        <time dateTime={term.effectiveTo}>
+                          {formatProCommercialDate(term.effectiveTo, locale)}
+                        </time>
+                      ) : (
+                        t('terms.ongoing')
+                      )}
                     </td>
                     <td className="p-2">
                       <ProTermStatusBadge
@@ -124,6 +170,7 @@ export async function ProCommercialTermsPanel({
                         label={t(`terms.statuses.${term.status}`)}
                       />
                     </td>
+                    <td className="p-2 font-mono tabular-nums">{term.version}</td>
                   </tr>
                 ))}
               </tbody>

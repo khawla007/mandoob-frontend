@@ -74,3 +74,28 @@ test('timeline rejects malformed cursors, oversized pages, and unsafe output bef
     (error: unknown) => error instanceof Error && 'code' in error && error.code === 'INTERNAL',
   );
 });
+
+test('cursor timeline preserves uniform not-found for unknown and inaccessible PROs', async () => {
+  const cursor = Buffer.from(JSON.stringify({ eventAt: EVENT_AT, eventId: EVENT_ID })).toString(
+    'base64url',
+  );
+  const { readProLifecycleTimeline } = await import('./pro-lifecycle-timeline');
+
+  for (const message of ['NOT_FOUND', 'FORBIDDEN']) {
+    await assert.rejects(
+      () =>
+        readProLifecycleTimeline(ACTOR_ID, PRO_ID, 25, cursor, {
+          supabase: {
+            async rpc() {
+              return { data: null, error: { message } };
+            },
+          } as never,
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'NOT_FOUND' &&
+        error.message === 'PRO not found',
+    );
+  }
+});

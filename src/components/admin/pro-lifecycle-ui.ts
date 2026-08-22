@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/i18n/format';
 import { decodeProTimelineCursor } from '@/lib/validation/pro-lifecycle';
 
 export type ProTimelineSearch = { cursor: string | null; invalid: boolean };
@@ -19,9 +20,18 @@ export function buildProTimelineHref(userId: string, cursor: string | null): str
 }
 
 export function formatProLifecycleTimestamp(value: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-AE' : 'en-AE', {
+  return formatDateTime(value, locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
     timeZone: 'Asia/Dubai',
-  }).format(new Date(value));
+  });
+}
+
+export function formatProCommercialDate(value: string, locale: string): string {
+  return formatDateTime(`${value}T12:00:00.000Z`, locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'Asia/Dubai',
+  });
 }

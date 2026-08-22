@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
+import { formatProCommercialDate } from './pro-lifecycle-ui';
 import { formatProRegistryDate } from './pro-registry-format';
 
 const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
@@ -159,7 +160,37 @@ test('commercial surfaces use mandated labels and disclaim money execution', () 
   assert.match(statuses, /ended:\s*CalendarX2/u);
   assert.match(panel, /ProTermStatusBadge/u);
   assert.match(panel, /t\(`terms\.statuses\.\$\{current\.status\}`\)/u);
+  assert.match(panel, /formatProCommercialDate/u);
+  assert.match(panel, /term\.effectiveTo/u);
+  assert.match(panel, /term\.retainerInterval/u);
+  assert.match(panel, /term\.version/u);
   assert.doesNotMatch(form, />\s*(Amount|Model|Activate|End|Save)\s*</u);
+});
+
+test('active term without a draft offers one primary replacement-draft action', () => {
+  const panel = read('src/components/admin/ProCommercialTermsPanel.tsx');
+  const form = read('src/components/admin/ProCommercialTermForm.tsx');
+  assert.match(panel, /!draft[\s\S]*ProCommercialTermForm[\s\S]*term=\{null\}/u);
+  assert.match(panel, /\[active, draft\][\s\S]*term=\{current\}/u);
+  assert.match(form, /variant=\{mode === 'end' \? 'outline' : 'default'\}/u);
+});
+
+test('commercial dates use explicit locale and Dubai timezone', () => {
+  const date = '2026-08-01';
+  for (const [locale, tag] of [
+    ['en', 'en-AE'],
+    ['ar', 'ar-AE'],
+  ] as const) {
+    assert.equal(
+      formatProCommercialDate(date, locale),
+      new Intl.DateTimeFormat(tag, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'Asia/Dubai',
+      }).format(new Date(`${date}T12:00:00.000Z`)),
+    );
+  }
 });
 
 test('timeline is semantic, localized, deterministic, and preserves validated cursor paging', () => {

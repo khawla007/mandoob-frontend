@@ -59,6 +59,10 @@ function internal(): ApiError {
   return new ApiError('INTERNAL', 'Unable to load PRO lifecycle timeline', 500);
 }
 
+function notFound(): ApiError {
+  return new ApiError('NOT_FOUND', 'PRO not found', 404);
+}
+
 export async function readProLifecycleTimeline(
   actorId: string,
   proProfileId: string,
@@ -80,7 +84,11 @@ export async function readProLifecycleTimeline(
     p_cursor_event_at: decoded?.eventAt ?? null,
     p_cursor_event_id: decoded?.eventId ?? null,
   });
-  if (error) throw internal();
+  if (error) {
+    const code = error.message?.trim();
+    if (code === 'NOT_FOUND' || code === 'FORBIDDEN') throw notFound();
+    throw internal();
+  }
   const parsed = resultSchema.safeParse(data);
   if (!parsed.success || parsed.data.items.length > parsedLimit) throw internal();
   const last = parsed.data.items.at(-1);
