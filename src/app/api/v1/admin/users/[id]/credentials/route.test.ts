@@ -113,6 +113,117 @@ test('operator review derives actor, resolves active PRO and credential before f
   assert.deepEqual(calls, ['csrf', 'session', 'target', 'limit', 'mutation', 'revalidate']);
 });
 
+test('operator reject and revoke validate the transient identifier after schema and before mutation', async () => {
+  for (const command of ['reject', 'revoke'] as const) {
+    const calls: string[] = [];
+    const handler = createAdminCredentialPostHandler({
+      guardCsrf: async () => null,
+      requireOperator: async () => ({
+        id: A,
+        role: 'admin',
+        tenantId: null,
+        aal: 'aal2',
+        mfaEnrolled: true,
+        email: null,
+      }),
+      resolveTarget: async () => (calls.push('target'), { proProfileId: P, credentialIds: [C] }),
+      limit: async () => (calls.push('limit'), 'allowed'),
+      validateReason: async (proProfileId, credentialId, reason) => {
+        assert.deepEqual([proProfileId, credentialId, reason], [P, C, 'Unrelated review reason']);
+        calls.push('reason');
+      },
+      review: async () => (calls.push('mutation'), { credentialId: C }),
+      revalidate: () => {
+        calls.push('revalidate');
+      },
+    });
+    const response = await handler(
+      req({
+        command,
+        credentialId: C,
+        expectedVersion: 1,
+        operationId: O,
+        reasonCode: 'DOCUMENT_INVALID',
+        reason: 'Unrelated review reason',
+      }),
+      { params: Promise.resolve({ id: P }) },
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(calls, ['target', 'limit', 'reason', 'mutation', 'revalidate']);
+  }
+
+  for (const command of ['begin_review', 'verify'] as const) {
+    let validations = 0;
+    const handler = createAdminCredentialPostHandler({
+      guardCsrf: async () => null,
+      requireOperator: async () => ({
+        id: A,
+        role: 'admin',
+        tenantId: null,
+        aal: 'aal2',
+        mfaEnrolled: true,
+        email: null,
+      }),
+      resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
+      limit: async () => 'allowed',
+      validateReason: async () => {
+        validations += 1;
+      },
+      review: async () => ({ credentialId: C }),
+      revalidate: () => undefined,
+    });
+    assert.equal(
+      (
+        await handler(req({ command, credentialId: C, expectedVersion: 1, operationId: O }), {
+          params: Promise.resolve({ id: P }),
+        })
+      ).status,
+      200,
+    );
+    assert.equal(validations, 0);
+  }
+});
+
+test('unsafe identifier decision reason is sanitized and never reaches mutation', async () => {
+  const { ApiError } = await import('@/lib/errors');
+  let mutations = 0;
+  const handler = createAdminCredentialPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    validateReason: async () => {
+      throw new ApiError('DECISION_REASON_INVALID', 'private LIC-9Z 72', 422);
+    },
+    review: async () => {
+      mutations += 1;
+      return null;
+    },
+    revalidate: () => undefined,
+  });
+  const response = await handler(
+    req({
+      command: 'reject',
+      credentialId: C,
+      expectedVersion: 1,
+      operationId: O,
+      reasonCode: 'DOCUMENT_INVALID',
+      reason: 'Unrelated review reason',
+    }),
+    { params: Promise.resolve({ id: P }) },
+  );
+  assert.equal(response.status, 422);
+  assert.equal((await response.json()).code, 'DECISION_REASON_INVALID');
+  assert.equal(mutations, 0);
+});
+
 test('operator review rejects wrong role/AAL1, malformed or unknown targets, bad commands, stale/replay and limiter failure without leaks', async () => {
   const base = {
     guardCsrf: async () => null,
@@ -240,6 +351,7 @@ test('operator reject/revoke reason matches the database safety boundary and map
     }),
     resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
     limit: async () => 'allowed' as const,
+    validateReason: async () => undefined,
     review: async () => ({ credentialId: C }),
     revalidate: () => undefined,
   };

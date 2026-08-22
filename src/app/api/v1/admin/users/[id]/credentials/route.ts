@@ -59,6 +59,7 @@ type Deps = {
   requireOperator(): Promise<SessionProfile>;
   resolveTarget(actorId: string, targetId: string): Promise<LifecycleTarget | null>;
   limit(actorId: string, targetId: string): Promise<LimitDecision>;
+  validateReason(proProfileId: string, credentialId: string, reason: string): Promise<void>;
   review(actorId: string, credentialId: string, input: Review): Promise<unknown>;
   revalidate(target: LifecycleTarget, userId: string): void | Promise<void>;
 };
@@ -75,6 +76,10 @@ const defaults: Deps = {
       ...SENSITIVE_RATE_LIMITS.credentialReview,
     });
   },
+  validateReason: async (...args) =>
+    (
+      await import('@/lib/data/pro-credential-decision-reason')
+    ).assertDecisionReasonExcludesCredentialIdentifier(...args),
   review: async (actorId, credentialId, input) =>
     (await import('@/lib/data/pro-credentials')).reviewProCredential(actorId, credentialId, input),
   revalidate: revalidateLifecyclePaths,
@@ -115,6 +120,12 @@ export function createAdminCredentialPostHandler(overrides: Partial<Deps> = {}) 
         return notFoundResponse();
       const parsed = reviewSchema.safeParse(raw);
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
+      if (parsed.data.command === 'reject' || parsed.data.command === 'revoke')
+        await deps.validateReason(
+          target.proProfileId,
+          parsed.data.credentialId,
+          parsed.data.reason,
+        );
       const credential = await deps.review(session.id, parsed.data.credentialId, parsed.data);
       await deps.revalidate(target, id);
       return jsonOk({ ok: true, credential });
