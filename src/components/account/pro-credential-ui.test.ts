@@ -1,0 +1,73 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import test from 'node:test';
+
+const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
+
+test('PRO credential panel is masked-only and exposes the complete legal self-service state model', () => {
+  const panel = read('src/components/account/ProCredentialPanel.tsx');
+  assert.match(panel, /maskedIdentifier/u);
+  assert.match(panel, /dir="ltr"/u);
+  assert.match(panel, /credential\.issueDate/u);
+  assert.match(panel, /credential\.expiryDate/u);
+  assert.match(panel, /draft/u);
+  assert.match(panel, /submitted/u);
+  assert.match(panel, /under_review/u);
+  assert.match(panel, /verified/u);
+  assert.match(panel, /rejected/u);
+  assert.match(panel, /expired/u);
+  assert.match(panel, /revoked/u);
+  assert.match(panel, /ProCredentialForm/u);
+  assert.match(panel, /ProCredentialEvidenceForm/u);
+  assert.match(panel, /replacement/u);
+  assert.match(panel, /reason/u);
+  assert.doesNotMatch(panel, /identifierCiphertext|identifierHash|storagePath|sha256/u);
+  assert.doesNotMatch(panel, /assignment|companySwitcher|company switcher/iu);
+});
+
+test('credential editor keeps protected identifier blank and implements accessible RHF/Zod behavior', () => {
+  const form = read('src/components/account/ProCredentialForm.tsx');
+  assert.match(form, /useForm/u);
+  assert.match(form, /zodResolver/u);
+  assert.match(form, /identifier:\s*''/u);
+  assert.doesNotMatch(form, /maskedIdentifier[^\n]*defaultValue/u);
+  assert.match(form, /<Label/u);
+  assert.match(form, /aria-describedby/u);
+  assert.match(form, /role="alert"/u);
+  assert.match(form, /errorSummaryRef/u);
+  assert.match(form, /setFocus/u);
+  assert.match(form, /claimFormSubmission/u);
+  assert.match(form, /beforeunload/u);
+  assert.match(form, /aria-live="polite"/u);
+  assert.match(form, /router\.refresh/u);
+  assert.doesNotMatch(form, />\s*(Save|Submit|Replace|Identifier|Issuing authority)\s*</u);
+});
+
+test('evidence form advertises accepted formats while leaving authoritative checks to the server route', () => {
+  const form = read('src/components/account/ProCredentialEvidenceForm.tsx');
+  assert.match(form, /useForm/u);
+  assert.match(form, /zodResolver/u);
+  assert.match(form, /accept="application\/pdf,image\/jpeg,image\/png"/u);
+  assert.match(form, /10/u);
+  assert.match(form, /FormData/u);
+  assert.match(form, /\/api\/v1\/account\/pro\/credentials\/evidence/u);
+  assert.match(form, /evidence\/\$\{evidence\.evidenceId\}/u);
+  assert.match(form, /method:\s*'DELETE'/u);
+  assert.match(form, /claimFormSubmission/u);
+  assert.match(form, /aria-live="polite"/u);
+  assert.match(form, /<Label/u);
+  assert.match(form, /originalNameSafe/u);
+  assert.doesNotMatch(form, /storagePath|sha256|scanProvider/u);
+});
+
+test('credential UI messages have English/Arabic parity and Arabic dates remain LTR', () => {
+  const en = JSON.parse(read('src/messages/en.json')) as { account: { proCredential: unknown } };
+  const ar = JSON.parse(read('src/messages/ar.json')) as { account: { proCredential: unknown } };
+  assert.ok(en.account.proCredential);
+  assert.deepEqual(
+    Object.keys(en.account.proCredential as object).sort(),
+    Object.keys(ar.account.proCredential as object).sort(),
+  );
+  assert.match(read('src/components/account/ProCredentialPanel.tsx'), /dir="ltr"/u);
+});

@@ -3,6 +3,11 @@ import { ApiError } from '@/lib/errors';
 import { decryptOptional, encryptOptional } from '@/lib/crypto/pii';
 import { updateEmployeeSelfPassport } from '@/lib/data/employee-self-passport';
 import type { Role } from '@/lib/auth/roles';
+import type { ProCredentialSnapshot } from '@/lib/data/pro-credentials';
+import type {
+  ProLifecycleTimelineItem,
+  ProLifecycleTimelinePage,
+} from '@/lib/data/pro-lifecycle-timeline';
 
 export type ReadSelfProfile = {
   id: string;
@@ -28,6 +33,44 @@ export type ReadSelfPro = {
   serviceAreas: string[];
   bio: string | null;
 };
+
+export type ReadSelfProCredentialSnapshot = ProCredentialSnapshot & {
+  latestDecision: ProLifecycleTimelineItem | null;
+};
+
+type SelfCredentialDeps = {
+  readCredentialSnapshot?: (
+    actorId: string,
+    proProfileId: string,
+  ) => Promise<ProCredentialSnapshot>;
+  readTimeline?: (
+    actorId: string,
+    proProfileId: string,
+    limit: number,
+    cursor: string | null,
+  ) => Promise<ProLifecycleTimelinePage>;
+};
+
+export async function readSelfProCredentialSnapshot(
+  profileId: string,
+  deps: SelfCredentialDeps = {},
+): Promise<ReadSelfProCredentialSnapshot> {
+  const readCredentialSnapshot =
+    deps.readCredentialSnapshot ??
+    (await import('@/lib/data/pro-credentials')).readProCredentialSnapshot;
+  const readTimeline =
+    deps.readTimeline ??
+    (await import('@/lib/data/pro-lifecycle-timeline')).readProLifecycleTimeline;
+  const snapshot = await readCredentialSnapshot(profileId, profileId);
+  const timeline = await Promise.allSettled([readTimeline(profileId, profileId, 25, null)]);
+  return {
+    ...snapshot,
+    latestDecision:
+      timeline[0]?.status === 'fulfilled'
+        ? (timeline[0].value.items.find((item) => item.eventKind.startsWith('credential_')) ?? null)
+        : null,
+  };
+}
 
 export type ReadSelfCustomer = {
   nationality: string | null;
