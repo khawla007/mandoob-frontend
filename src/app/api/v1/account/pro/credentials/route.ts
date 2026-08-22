@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { SessionProfile } from '@/lib/auth/require-user';
 import { errorResponse, jsonOk } from '@/lib/errors';
-import { proCredentialDraftSchema } from '@/lib/validation/pro-lifecycle';
+import { proCredentialDraftSaveSchema } from '@/lib/validation/pro-lifecycle';
 import {
   BodyTooLargeError,
   JSON_BODY_MAX_BYTES,
@@ -29,7 +29,7 @@ const version = z.number().int().nonnegative();
 const operationId = uuid;
 const commandSchema = z.discriminatedUnion('command', [
   z.object({ command: z.literal('create'), operationId }).strict(),
-  proCredentialDraftSchema.extend({ command: z.literal('save'), credentialId: uuid }).strict(),
+  proCredentialDraftSaveSchema.extend({ command: z.literal('save'), credentialId: uuid }).strict(),
   z
     .object({
       command: z.literal('submit'),

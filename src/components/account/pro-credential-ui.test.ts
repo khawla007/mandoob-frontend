@@ -58,6 +58,12 @@ test('evidence form advertises accepted formats while leaving authoritative chec
   assert.match(form, /aria-live="polite"/u);
   assert.match(form, /<Label/u);
   assert.match(form, /originalNameSafe/u);
+  assert.match(form, /formatProEvidenceRemovalConfirmation/u);
+  assert.match(form, /variant="destructive"/u);
+  assert.match(form, /errorSummaryRef/u);
+  assert.match(form, /credential-evidence-error-summary/u);
+  assert.match(form, /formatProEvidenceCreatedDate/u);
+  assert.match(form, /formatProEvidenceMime/u);
   assert.doesNotMatch(form, /storagePath|sha256|scanProvider/u);
 });
 

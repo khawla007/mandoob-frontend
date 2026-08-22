@@ -7,7 +7,7 @@ import { ApiError } from '@/lib/errors';
 import { PRO_CREDENTIAL_STATES } from '@/lib/pro-lifecycle/contracts';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import {
-  proCredentialDraftSchema,
+  proCredentialDraftSaveSchema,
   proCredentialEvidenceMetadataSchema,
   proCredentialReviewSchema,
 } from '@/lib/validation/pro-lifecycle';
@@ -95,6 +95,7 @@ const KNOWN_ERRORS: Record<string, { code: string; status: number }> = {
   STALE_CREDENTIAL_VERSION: { code: 'STALE_CREDENTIAL_VERSION', status: 409 },
   INVALID_CREDENTIAL_TRANSITION: { code: 'INVALID_CREDENTIAL_TRANSITION', status: 409 },
   CREDENTIAL_INCOMPLETE: { code: 'CREDENTIAL_INCOMPLETE', status: 409 },
+  CREDENTIAL_IDENTIFIER_REQUIRED: { code: 'CREDENTIAL_IDENTIFIER_REQUIRED', status: 409 },
   OPERATION_REUSED: { code: 'OPERATION_REUSED', status: 409 },
   PRO_CREDENTIAL_EXPIRED: { code: 'PRO_CREDENTIAL_EXPIRED', status: 409 },
   EVIDENCE_PATH_INVALID: { code: 'EVIDENCE_PATH_INVALID', status: 422 },
@@ -180,16 +181,20 @@ export async function createProCredentialDraft(
 export async function saveProCredentialDraft(
   actorId: string,
   credentialId: string,
-  input: z.input<typeof proCredentialDraftSchema>,
+  input: z.input<typeof proCredentialDraftSaveSchema>,
   deps: CredentialDeps = {},
 ): Promise<ProCredentialMask> {
-  const parsed = proCredentialDraftSchema.parse(input);
-  const identifierHash = createBlindIndex(CREDENTIAL_INDEX_DOMAIN, parsed.identifier);
-  const protectedIdentifier = encrypt(parsed.identifier);
+  const parsed = proCredentialDraftSaveSchema.parse(input);
+  const preserveIdentifier = parsed.identifier === '';
+  const identifierHash = preserveIdentifier
+    ? null
+    : createBlindIndex(CREDENTIAL_INDEX_DOMAIN, parsed.identifier);
+  const protectedIdentifier = preserveIdentifier ? null : encrypt(parsed.identifier);
   const logical = {
     credentialId: uuid.parse(credentialId),
     expectedVersion: parsed.expectedVersion,
     identifierHash,
+    preserveIdentifier,
     issuingAuthority: parsed.issuingAuthority,
     issueDate: parsed.issueDate,
     expiryDate: parsed.expiryDate,
@@ -202,9 +207,10 @@ export async function saveProCredentialDraft(
       p_expected_version: parsed.expectedVersion,
       p_operation_id: parsed.operationId,
       p_payload_hash: operationHash('save_pro_credential_draft', logical),
+      p_preserve_identifier: preserveIdentifier,
       p_identifier_ciphertext: protectedIdentifier,
       p_identifier_hash: identifierHash,
-      p_identifier_last4: parsed.identifier.slice(-4),
+      p_identifier_last4: preserveIdentifier ? null : parsed.identifier.slice(-4),
       p_issuing_authority: parsed.issuingAuthority,
       p_issue_date: parsed.issueDate,
       p_expiry_date: parsed.expiryDate,

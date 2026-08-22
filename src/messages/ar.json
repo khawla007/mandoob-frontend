@@ -700,6 +700,7 @@
       "notProvided": "غير متوفر",
       "identifier": "معرّف الترخيص",
       "identifierHelp": "أدخل المعرّف الكامل لاستبدال القيمة المحمية. يُعاد تحميل هذا الحقل فارغًا دائمًا.",
+      "identifierExistingHelp": "اترك الحقل فارغًا للاحتفاظ بالمعرّف المحمي، أو أدخل المعرّف الكامل لاستبداله. يُعاد تحميل هذا الحقل فارغًا دائمًا.",
       "issuingAuthority": "جهة الإصدار",
       "issueDate": "تاريخ الإصدار",
       "expiryDate": "تاريخ الانتهاء",
@@ -725,10 +726,19 @@
       "fileTooLarge": "اختر ملفًا لا يزيد حجمه عن 10 ميبيبايت.",
       "uploadEvidence": "رفع الإثبات",
       "removeEvidence": "إزالة",
+      "removeConfirmation": "هل تريد إزالة {filename}؟ لا يمكن التراجع عن ذلك.",
+      "confirmRemove": "إزالة الملف",
+      "cancelRemove": "إلغاء",
       "evidenceSaved": "تم تحديث المستندات.",
       "evidenceFailed": "تعذر تحديث المستندات. حاول مرة أخرى.",
       "noEvidence": "لا توجد ملفات إثبات متاحة.",
       "bytes": "بايت",
+      "createdDate": "تاريخ الرفع",
+      "mime": {
+        "pdf": "مستند PDF",
+        "jpeg": "صورة JPEG",
+        "png": "صورة PNG"
+      },
       "states": {
         "draft": "مسودة",
         "submitted": "مُرسل",

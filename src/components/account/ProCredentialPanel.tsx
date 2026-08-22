@@ -5,6 +5,11 @@ import { ProCredentialForm } from '@/components/account/ProCredentialForm';
 import { ProCredentialEvidenceForm } from '@/components/account/ProCredentialEvidenceForm';
 import type { ReadSelfProCredentialSnapshot } from '@/lib/data/account-self';
 import type { ProCredentialState } from '@/lib/pro-lifecycle/contracts';
+import {
+  buildProCredentialSelfView,
+  formatProEvidenceCreatedDate,
+  formatProEvidenceMime,
+} from '@/components/account/pro-credential-self-view';
 
 const stateIcons = {
   draft: FilePenLine,
@@ -51,15 +56,11 @@ export async function ProCredentialPanel({
   }
 
   const credential = snapshot.credentials[0] ?? null;
+  const view = buildProCredentialSelfView(credential);
   const Icon = credential ? stateIcons[credential.state] : FilePenLine;
   const credentialEvidence = credential
     ? snapshot.evidence.filter((item) => item.credentialId === credential.credentialId)
     : [];
-  const editable = credential?.state === 'draft';
-  const terminal =
-    credential?.state === 'rejected' ||
-    credential?.state === 'expired' ||
-    credential?.state === 'revoked';
   const reason =
     credential?.state === 'rejected' && snapshot.latestDecision?.eventKind === 'credential_rejected'
       ? snapshot.latestDecision.reason
@@ -77,7 +78,7 @@ export async function ProCredentialPanel({
         <p className="text-muted-foreground text-sm">{t('description')}</p>
       </div>
 
-      {!credential ? (
+      {view.create ? (
         <div className="space-y-3">
           <p className="text-muted-foreground text-sm">{t('empty')}</p>
           <ProCredentialForm mode="create" credential={null} />
@@ -114,9 +115,13 @@ export async function ProCredentialPanel({
               <p className="mt-1">{reason}</p>
             </div>
           ) : null}
-          {editable ? (
+          {view.edit ? (
             <div className="space-y-6">
-              <ProCredentialForm mode="edit" credential={credential} />
+              <ProCredentialForm
+                mode="edit"
+                credential={credential}
+                hasStoredIdentifier={credential.maskedIdentifier !== null}
+              />
               <div className="border-border border-t pt-5">
                 <h3 className="mb-3 font-medium">{t('evidenceTitle')}</h3>
                 <ProCredentialEvidenceForm
@@ -136,7 +141,7 @@ export async function ProCredentialPanel({
               ) : (
                 <ul className="space-y-2">
                   {credentialEvidence.map((evidence) => (
-                    <li key={evidence.evidenceId}>
+                    <li key={evidence.evidenceId} className="space-y-1">
                       <a
                         className="text-primary underline-offset-4 hover:underline"
                         href={`/api/v1/account/pro/credentials/evidence/${evidence.evidenceId}`}
@@ -145,13 +150,26 @@ export async function ProCredentialPanel({
                       >
                         {evidence.originalNameSafe}
                       </a>
+                      <p className="text-muted-foreground text-xs">
+                        {formatProEvidenceMime(evidence.mimeType, (key) => t(key))} ·{' '}
+                        {new Intl.NumberFormat(locale === 'ar' ? 'ar-AE' : 'en-AE').format(
+                          evidence.sizeBytes,
+                        )}{' '}
+                        {t('bytes')}
+                      </p>
+                      <p dir="ltr" className="text-muted-foreground text-xs">
+                        {t('createdDate')}{' '}
+                        {formatProEvidenceCreatedDate(evidence.createdAt, locale)}
+                      </p>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
           )}
-          {terminal ? <ProCredentialForm mode="replacement" credential={credential} /> : null}
+          {view.replacement ? (
+            <ProCredentialForm mode="replacement" credential={credential} />
+          ) : null}
         </>
       )}
     </section>

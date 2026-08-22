@@ -31,6 +31,24 @@ const credentialIdentifier = z
   .transform(normalizeProCredentialIdentifier)
   .pipe(z.string().regex(/^[A-Z0-9]{4,80}$/u));
 
+const credentialIdentifierOrBlank = z
+  .string()
+  .transform(normalizeProCredentialIdentifier)
+  .pipe(z.string().regex(/^(?:|[A-Z0-9]{4,80})$/u));
+
+function orderedCredentialDates(
+  value: { issueDate: string; expiryDate: string },
+  context: z.RefinementCtx,
+) {
+  if (value.issueDate > value.expiryDate) {
+    context.addIssue({
+      code: 'custom',
+      path: ['expiryDate'],
+      message: 'Expiry date must be on or after issue date',
+    });
+  }
+}
+
 export const proCredentialDraftSchema = z
   .object({
     identifier: credentialIdentifier,
@@ -41,15 +59,19 @@ export const proCredentialDraftSchema = z
     operationId,
   })
   .strict()
-  .superRefine((value, context) => {
-    if (value.issueDate > value.expiryDate) {
-      context.addIssue({
-        code: 'custom',
-        path: ['expiryDate'],
-        message: 'Expiry date must be on or after issue date',
-      });
-    }
-  });
+  .superRefine(orderedCredentialDates);
+
+export const proCredentialDraftSaveSchema = z
+  .object({
+    identifier: credentialIdentifierOrBlank,
+    issuingAuthority: trimmedLength(2, 160),
+    issueDate: calendarDate,
+    expiryDate: calendarDate,
+    expectedVersion: version,
+    operationId,
+  })
+  .strict()
+  .superRefine(orderedCredentialDates);
 
 const reviewBase = {
   expectedVersion: version,

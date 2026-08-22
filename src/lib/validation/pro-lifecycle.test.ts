@@ -6,6 +6,7 @@ import {
   normalizeProCredentialIdentifier,
   proCommercialTermSchema,
   proCredentialDraftSchema,
+  proCredentialDraftSaveSchema,
   proCredentialEvidenceMetadataSchema,
   proCredentialReviewSchema,
   proRegistryFiltersSchema,
@@ -45,6 +46,15 @@ test('enforces normalized identifier and authority boundaries', () => {
       false,
     );
   }
+});
+
+test('save boundary accepts an explicit blank identifier for database-side preservation only', () => {
+  const parsed = proCredentialDraftSaveSchema.parse(draftInput({ identifier: '   ' }));
+  assert.equal(parsed.identifier, '');
+  assert.equal(
+    proCredentialDraftSchema.safeParse(draftInput({ identifier: '   ' })).success,
+    false,
+  );
 });
 
 test('accepts strict Gregorian dates in order and rejects impossible dates', () => {

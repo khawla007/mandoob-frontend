@@ -700,6 +700,7 @@
       "notProvided": "Not provided",
       "identifier": "Licence identifier",
       "identifierHelp": "Enter the complete identifier to replace the protected value. This field always reloads blank.",
+      "identifierExistingHelp": "Leave blank to keep the protected identifier, or enter the complete identifier to replace it. This field always reloads blank.",
       "issuingAuthority": "Issuing authority",
       "issueDate": "Issue date",
       "expiryDate": "Expiry date",
@@ -725,10 +726,19 @@
       "fileTooLarge": "Choose a file no larger than 10 MiB.",
       "uploadEvidence": "Upload evidence",
       "removeEvidence": "Remove",
+      "removeConfirmation": "Remove {filename}? This cannot be undone.",
+      "confirmRemove": "Remove file",
+      "cancelRemove": "Cancel",
       "evidenceSaved": "Evidence updated.",
       "evidenceFailed": "Evidence could not be updated. Try again.",
       "noEvidence": "No evidence files are available.",
       "bytes": "bytes",
+      "createdDate": "Uploaded",
+      "mime": {
+        "pdf": "PDF document",
+        "jpeg": "JPEG image",
+        "png": "PNG image"
+      },
       "states": {
         "draft": "Draft",
         "submitted": "Submitted",

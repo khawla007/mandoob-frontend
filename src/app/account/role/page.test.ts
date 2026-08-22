@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
+import { requireLiveProAccount } from '@/app/api/v1/_shared/pro-lifecycle-routes';
 
 const page = () => readFileSync(join(process.cwd(), 'src/app/account/role/page.tsx'), 'utf8');
 
@@ -29,4 +30,34 @@ test('profile and credential sources load independently and credential failure r
 test('PRO role route does not render assignment controls or a company switcher', () => {
   const source = page();
   assert.doesNotMatch(source, /CompanySwitcher|Assignment|assignPro|tenant selector/iu);
+});
+
+test('self-view live authorization executes active, invited, inactive, and wrong-role cases', async () => {
+  const session = {
+    id: '11111111-1111-4111-8111-111111111111',
+    role: 'pro' as const,
+    tenantId: null,
+    aal: 'aal2' as const,
+    mfaEnrolled: true,
+    email: null,
+  };
+  const active = await requireLiveProAccount({
+    requireSession: async () => session,
+    lookupProfile: async () => ({ role: 'pro', status: 'active', tenant_id: null }),
+  });
+  assert.equal(active.role, 'pro');
+  assert.equal(active.aal, 'aal2');
+  for (const profile of [
+    { role: 'pro', status: 'invited', tenant_id: null },
+    { role: 'pro', status: 'inactive', tenant_id: null },
+    { role: 'customer', status: 'active', tenant_id: null },
+    { role: 'admin', status: 'active', tenant_id: null },
+  ]) {
+    await assert.rejects(
+      requireLiveProAccount({
+        requireSession: async () => session,
+        lookupProfile: async () => profile,
+      }),
+    );
+  }
 });

@@ -4890,13 +4890,14 @@ export type Database = {
           p_credential_id: string;
           p_expected_version: number;
           p_expiry_date: string;
-          p_identifier_ciphertext: string;
-          p_identifier_hash: string;
-          p_identifier_last4: string;
+          p_identifier_ciphertext: string | null;
+          p_identifier_hash: string | null;
+          p_identifier_last4: string | null;
           p_issue_date: string;
           p_issuing_authority: string;
           p_operation_id: string;
           p_payload_hash: string;
+          p_preserve_identifier: boolean;
         };
         Returns: Json;
       };

@@ -214,6 +214,11 @@ test('PRO route sanitizes stale, replay, and unknown mutation errors', async () 
     [new ApiError('NOT_FOUND', 'secret', 404), 404, 'NOT_FOUND'],
     [new ApiError('STALE_CREDENTIAL_VERSION', 'secret', 409), 409, 'STALE_CREDENTIAL_VERSION'],
     [new ApiError('OPERATION_REUSED', 'secret', 409), 409, 'OPERATION_REUSED'],
+    [
+      new ApiError('CREDENTIAL_IDENTIFIER_REQUIRED', 'secret', 409),
+      409,
+      'CREDENTIAL_IDENTIFIER_REQUIRED',
+    ],
     [new Error('database secret'), 500, 'INTERNAL'],
   ] as const) {
     const handler = createCredentialPostHandler({

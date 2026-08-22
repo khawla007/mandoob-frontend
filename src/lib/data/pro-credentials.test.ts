@@ -110,6 +110,55 @@ test('draft save normalizes, encrypts and blind-indexes only inside exact RPC ar
   assert.doesNotMatch(JSON.stringify(result), /cipher|hash|AB1234/u);
 });
 
+test('blank draft save requests database-side identifier preservation without ciphertext reload', async () => {
+  const { saveProCredentialDraft } = await import('./pro-credentials');
+  const supabase = fake([{ data: { ...mask, version: 2 }, error: null }]);
+  await saveProCredentialDraft(
+    ACTOR_ID,
+    CREDENTIAL_ID,
+    {
+      identifier: '   ',
+      issuingAuthority: 'DET',
+      issueDate: '2026-01-01',
+      expiryDate: '2027-01-01',
+      expectedVersion: 1,
+      operationId: OPERATION_ID,
+    },
+    { supabase: supabase as never },
+  );
+  assert.equal(supabase.calls[0]?.args.p_preserve_identifier, true);
+  assert.equal(supabase.calls[0]?.args.p_identifier_ciphertext, null);
+  assert.equal(supabase.calls[0]?.args.p_identifier_hash, null);
+  assert.equal(supabase.calls[0]?.args.p_identifier_last4, null);
+  assert.match(String(supabase.calls[0]?.args.p_payload_hash), /^[a-f0-9]{64}$/u);
+});
+
+test('blank save maps a missing stored identifier to a stable sanitized validation code', async () => {
+  const { saveProCredentialDraft } = await import('./pro-credentials');
+  const supabase = fake([{ data: null, error: { message: 'CREDENTIAL_IDENTIFIER_REQUIRED' } }]);
+  await assert.rejects(
+    () =>
+      saveProCredentialDraft(
+        ACTOR_ID,
+        CREDENTIAL_ID,
+        {
+          identifier: '',
+          issuingAuthority: 'DET',
+          issueDate: '2026-01-01',
+          expiryDate: '2027-01-01',
+          expectedVersion: 1,
+          operationId: OPERATION_ID,
+        },
+        { supabase: supabase as never },
+      ),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'CREDENTIAL_IDENTIFIER_REQUIRED' &&
+      !error.message.includes('CREDENTIAL_IDENTIFIER_REQUIRED'),
+  );
+});
+
 test('credential errors and malformed RPC results are sanitized', async () => {
   const { createProCredentialDraft } = await import('./pro-credentials');
   for (const response of [

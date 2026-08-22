@@ -15,6 +15,11 @@ import {
   releaseFormSubmission,
 } from '@/components/admin/form-submission-guard';
 import type { ProCredentialSnapshot } from '@/lib/data/pro-credentials';
+import {
+  formatProEvidenceCreatedDate,
+  formatProEvidenceMime,
+  formatProEvidenceRemovalConfirmation,
+} from '@/components/account/pro-credential-self-view';
 
 type Evidence = ProCredentialSnapshot['evidence'][number];
 const CLIENT_FILE_MAX_BYTES = 10 * 1024 * 1024;
@@ -47,11 +52,14 @@ export function ProCredentialEvidenceForm({
   const router = useRouter();
   const latch = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const uploadOperation = useRef(crypto.randomUUID());
   const removalOperations = useRef(new Map<string, string>());
   const [currentVersion, setCurrentVersion] = useState(version);
   const [pending, setPending] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [confirmingEvidenceId, setConfirmingEvidenceId] = useState<string | null>(null);
   const formState = useForm<EvidenceFileInput>({
     resolver: zodResolver(evidenceFileSchema),
   });
@@ -70,7 +78,8 @@ export function ProCredentialEvidenceForm({
   async function run(request: () => Promise<Response>, onSuccess?: () => void) {
     if (!claimFormSubmission(latch)) return;
     setPending(true);
-    setFeedback(null);
+    setError(null);
+    setSuccess(null);
     try {
       const response = await request();
       const payload = (await response.json().catch(() => null)) as {
@@ -78,13 +87,14 @@ export function ProCredentialEvidenceForm({
         credential?: { version?: unknown };
       } | null;
       if (!response.ok) {
-        setFeedback(
+        setError(
           payload?.code === 'STALE_CREDENTIAL_VERSION'
             ? t('stale')
             : payload?.code === 'OPERATION_REUSED'
               ? t('replayConflict')
               : t('evidenceFailed'),
         );
+        queueMicrotask(() => errorSummaryRef.current?.focus());
         return;
       }
       formState.reset();
@@ -93,10 +103,12 @@ export function ProCredentialEvidenceForm({
       }
       if (inputRef.current) inputRef.current.value = '';
       onSuccess?.();
-      setFeedback(t('evidenceSaved'));
+      setConfirmingEvidenceId(null);
+      setSuccess(t('evidenceSaved'));
       router.refresh();
     } catch {
-      setFeedback(t('evidenceFailed'));
+      setError(t('evidenceFailed'));
+      queueMicrotask(() => errorSummaryRef.current?.focus());
     } finally {
       setPending(false);
       releaseFormSubmission(latch);
@@ -125,8 +137,7 @@ export function ProCredentialEvidenceForm({
   function upload(event: React.FormEvent<HTMLFormElement>) {
     void formState.handleSubmit(
       (values) => uploadFile(values.file),
-      (errors) => {
-        setFeedback(errors.file?.type === 'custom' && file ? t('fileTooLarge') : t('fileRequired'));
+      () => {
         queueMicrotask(() => inputRef.current?.focus());
       },
     )(event);
@@ -155,6 +166,16 @@ export function ProCredentialEvidenceForm({
 
   return (
     <div className="space-y-4">
+      {error ? (
+        <div
+          ref={errorSummaryRef}
+          tabIndex={-1}
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 rounded-lg border p-3 text-sm"
+        >
+          {error}
+        </div>
+      ) : null}
       <ul className="divide-border divide-y" aria-label={t('evidenceList')}>
         {evidence.map((evidence) => (
           <li
@@ -171,21 +192,54 @@ export function ProCredentialEvidenceForm({
                 {evidence.originalNameSafe}
               </a>
               <p className="text-muted-foreground text-xs">
-                {evidence.mimeType} ·{' '}
+                {formatProEvidenceMime(evidence.mimeType, (key) => t(key))} ·{' '}
                 {new Intl.NumberFormat(locale === 'ar' ? 'ar-AE' : 'en-AE').format(
                   evidence.sizeBytes,
                 )}{' '}
                 {t('bytes')}
               </p>
+              <p dir="ltr" className="text-muted-foreground text-xs">
+                {t('createdDate')} {formatProEvidenceCreatedDate(evidence.createdAt, locale)}
+              </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => removeEvidence(evidence)}
-            >
-              {t('removeEvidence')}
-            </Button>
+            {confirmingEvidenceId === evidence.evidenceId ? (
+              <div
+                role="group"
+                aria-label={formatProEvidenceRemovalConfirmation(evidence.originalNameSafe, t)}
+                className="basis-full space-y-2 sm:basis-auto"
+              >
+                <p className="text-sm">
+                  {formatProEvidenceRemovalConfirmation(evidence.originalNameSafe, t)}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={pending}
+                    onClick={() => removeEvidence(evidence)}
+                  >
+                    {pending ? t('pending') : t('confirmRemove')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => setConfirmingEvidenceId(null)}
+                  >
+                    {t('cancelRemove')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => setConfirmingEvidenceId(evidence.evidenceId)}
+              >
+                {t('removeEvidence')}
+              </Button>
+            )}
           </li>
         ))}
       </ul>
@@ -197,7 +251,7 @@ export function ProCredentialEvidenceForm({
             id={`credential-evidence-${credentialId}`}
             type="file"
             accept="application/pdf,image/jpeg,image/png"
-            aria-describedby={`credential-evidence-help-${credentialId}`}
+            aria-describedby={`credential-evidence-help-${credentialId}${formState.formState.errors.file ? ` credential-evidence-error-summary-${credentialId}` : ''}`}
             aria-invalid={Boolean(formState.formState.errors.file)}
             onChange={(event) => {
               const selected = event.target.files?.[0];
@@ -219,9 +273,17 @@ export function ProCredentialEvidenceForm({
             {t('evidenceHelp')}
           </p>
           {formState.formState.errors.file ? (
-            <p role="alert" className="text-destructive text-sm">
-              {file ? t('fileTooLarge') : t('fileRequired')}
-            </p>
+            <div
+              ref={errorSummaryRef}
+              id={`credential-evidence-error-summary-${credentialId}`}
+              tabIndex={-1}
+              role="alert"
+              className="text-destructive text-sm"
+            >
+              <a className="underline" href={`#credential-evidence-${credentialId}`}>
+                {file ? t('fileTooLarge') : t('fileRequired')}
+              </a>
+            </div>
           ) : null}
         </div>
         <Button type="submit" disabled={pending}>
@@ -229,7 +291,7 @@ export function ProCredentialEvidenceForm({
         </Button>
       </form>
       <p aria-live="polite" className="text-muted-foreground text-sm">
-        {feedback}
+        {success}
       </p>
     </div>
   );

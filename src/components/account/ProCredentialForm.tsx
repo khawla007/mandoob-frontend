@@ -11,14 +11,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { postJson } from '@/lib/http/post';
-import { proCredentialDraftSchema } from '@/lib/validation/pro-lifecycle';
+import { proCredentialDraftSaveSchema } from '@/lib/validation/pro-lifecycle';
+import { createProCredentialSelfDraftSchema } from '@/components/account/pro-credential-self-view';
 import {
   claimFormSubmission,
   releaseFormSubmission,
 } from '@/components/admin/form-submission-guard';
 
-type DraftInput = z.input<typeof proCredentialDraftSchema>;
-type DraftOutput = z.output<typeof proCredentialDraftSchema>;
+type DraftInput = z.input<typeof proCredentialDraftSaveSchema>;
+type DraftOutput = z.output<typeof proCredentialDraftSaveSchema>;
 type EditableCredential = {
   credentialId: string;
   issuingAuthority: string | null;
@@ -49,9 +50,11 @@ function useUnsavedWarning(dirty: boolean, warning: string) {
 export function ProCredentialForm({
   mode,
   credential,
+  hasStoredIdentifier = false,
 }: {
   mode: 'create' | 'edit' | 'replacement';
   credential: EditableCredential | null;
+  hasStoredIdentifier?: boolean;
 }) {
   const t = useTranslations('account.proCredential');
   const router = useRouter();
@@ -67,7 +70,7 @@ export function ProCredentialForm({
     null,
   );
   const form = useForm<DraftInput, unknown, DraftOutput>({
-    resolver: zodResolver(proCredentialDraftSchema),
+    resolver: zodResolver(createProCredentialSelfDraftSchema(hasStoredIdentifier)),
     defaultValues: {
       identifier: '',
       issuingAuthority: credential?.issuingAuthority ?? '',
@@ -193,7 +196,7 @@ export function ProCredentialForm({
         <CredentialField
           id="credential-identifier"
           label={t('identifier')}
-          help={t('identifierHelp')}
+          help={t(hasStoredIdentifier ? 'identifierExistingHelp' : 'identifierHelp')}
           error={form.formState.errors.identifier ? t('invalidField') : null}
         >
           <Input
