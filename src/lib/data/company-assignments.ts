@@ -44,11 +44,18 @@ export type CompanyAssignment = {
   releaseReason: string | null;
 };
 
-export type AssignablePro = {
-  id: string;
-  fullName: string | null;
-  designation: string | null;
-  department: string | null;
+export type CurrentCompanyAssignment = CompanyAssignment & {
+  operationalAccess: 'allowed' | 'blocked';
+  operationalAccessCodes: Array<
+    | 'PRO_ACCOUNT_INACTIVE'
+    | 'PRO_CREDENTIAL_MISSING'
+    | 'PRO_CREDENTIAL_DRAFT'
+    | 'PRO_CREDENTIAL_SUBMITTED'
+    | 'PRO_CREDENTIAL_UNDER_REVIEW'
+    | 'PRO_CREDENTIAL_REJECTED'
+    | 'PRO_CREDENTIAL_EXPIRED'
+    | 'PRO_CREDENTIAL_REVOKED'
+  >;
 };
 
 export type CompanyAssignmentMutationResult = {
@@ -82,6 +89,39 @@ const mutationResultSchema = z
     compensationTermId: recordIdSchema,
   })
   .strict();
+const currentAssignmentSchema = z
+  .object({
+    assignmentId: recordIdSchema,
+    tenantId: recordIdSchema,
+    companyId: recordIdSchema,
+    proProfileId: recordIdSchema,
+    proFullName: z.string().nullable(),
+    status: z.literal('active'),
+    assignedAt: z.string().datetime({ offset: true }),
+    assignedBy: recordIdSchema,
+    releasedAt: z.null(),
+    releasedBy: z.null(),
+    releaseReason: z.null(),
+    operationalAccess: z.enum(['allowed', 'blocked']),
+    operationalAccessCodes: z.array(
+      z.enum([
+        'PRO_ACCOUNT_INACTIVE',
+        'PRO_CREDENTIAL_MISSING',
+        'PRO_CREDENTIAL_DRAFT',
+        'PRO_CREDENTIAL_SUBMITTED',
+        'PRO_CREDENTIAL_UNDER_REVIEW',
+        'PRO_CREDENTIAL_REJECTED',
+        'PRO_CREDENTIAL_EXPIRED',
+        'PRO_CREDENTIAL_REVOKED',
+      ]),
+    ),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if ((value.operationalAccess === 'blocked') !== value.operationalAccessCodes.length > 0) {
+      context.addIssue({ code: 'custom', message: 'Operational access is inconsistent' });
+    }
+  });
 const historyCursorSchema = z.object({
   assigned_at: z.string().datetime({ offset: true }),
   id: recordIdSchema,
@@ -205,17 +245,34 @@ export async function reassignCompanyPro(
 
 export async function readCurrentCompanyAssignment(
   companyId: string,
+  actorId: string,
   deps: AssignmentDeps = {},
-): Promise<CompanyAssignment | null> {
+): Promise<CurrentCompanyAssignment | null> {
   const parsedCompanyId = requireReadId(companyId);
-  const { data, error } = await client(deps)
-    .from('pro_company_assignments')
-    .select(ASSIGNMENT_COLUMNS)
-    .eq('company_id', parsedCompanyId)
-    .eq('status', 'active')
-    .maybeSingle();
+  const parsedActorId = requireReadId(actorId);
+  const { data, error } = await client(deps).rpc('read_current_company_assignment_summary', {
+    p_actor_id: parsedActorId,
+    p_company_id: parsedCompanyId,
+  });
   if (error) throw internalReadError();
-  return data ? toAssignment(data as AssignmentRow) : null;
+  if (data === null) return null;
+  const parsed = currentAssignmentSchema.safeParse(data);
+  if (!parsed.success) throw internalReadError();
+  return {
+    id: parsed.data.assignmentId,
+    tenantId: parsed.data.tenantId,
+    companyId: parsed.data.companyId,
+    proProfileId: parsed.data.proProfileId,
+    proFullName: parsed.data.proFullName,
+    status: parsed.data.status,
+    assignedAt: parsed.data.assignedAt,
+    assignedBy: parsed.data.assignedBy,
+    releasedAt: parsed.data.releasedAt,
+    releasedBy: parsed.data.releasedBy,
+    releaseReason: parsed.data.releaseReason,
+    operationalAccess: parsed.data.operationalAccess,
+    operationalAccessCodes: parsed.data.operationalAccessCodes,
+  };
 }
 
 export async function listCompanyAssignmentHistory(

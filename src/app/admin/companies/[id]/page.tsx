@@ -73,16 +73,10 @@ export default async function CompanyDetailPage({
   });
   if (!onboarding) notFound();
   const [currentAssignment, assignmentHistory, eligiblePros] = await Promise.all([
-    readCurrentCompanyAssignment(company.id),
+    readCurrentCompanyAssignment(company.id, operator.id),
     listCompanyAssignmentHistory(company.id),
     listEligibleProsForCompany(company.id, '', 100, operator.id),
   ]);
-  const availablePros = eligiblePros.map((pro) => ({
-    id: pro.proProfileId,
-    fullName: pro.fullName,
-    designation: pro.designation,
-    department: pro.department,
-  }));
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
@@ -214,7 +208,7 @@ export default async function CompanyDetailPage({
                 key={companyAssignmentFormIdentity(currentAssignment?.id)}
                 companyId={company.id}
                 currentAssignment={currentAssignment}
-                availablePros={availablePros}
+                availablePros={eligiblePros}
               />
             </CardContent>
           </Card>

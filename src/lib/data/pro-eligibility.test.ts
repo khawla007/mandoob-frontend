@@ -107,6 +107,49 @@ test('eligible selector is one bounded masked RPC and rejects unsafe output', as
   await assert.rejects(() => listEligibleProsForCompany(COMPANY_ID, '', 101, ACTOR_ID), /limit/u);
 });
 
+test('company selector preserves matched ineligible PROs and every canonical reason', async () => {
+  const { PRO_ASSIGNMENT_ELIGIBILITY_CODES } = await import('@/lib/pro-lifecycle/contracts');
+  const { listEligibleProsForCompany } = await import('./pro-eligibility');
+  const calls: unknown[] = [];
+  const rows = PRO_ASSIGNMENT_ELIGIBILITY_CODES.map((code, index) => ({
+    proProfileId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    fullName: `Matched PRO ${index + 1}`,
+    designation: null,
+    department: null,
+    eligibility: {
+      eligible: false,
+      codes: [code],
+      verifiedCredentialId: null,
+      pricingTermId: null,
+      compensationTermId: null,
+    },
+  }));
+
+  assert.deepEqual(
+    await listEligibleProsForCompany(COMPANY_ID, 'Matched', 100, ACTOR_ID, {
+      supabase: {
+        async rpc(name: string, args: unknown) {
+          calls.push({ name, args });
+          return { data: rows, error: null };
+        },
+      } as never,
+    }),
+    rows,
+  );
+  assert.deepEqual(calls, [
+    {
+      name: 'list_eligible_pros_for_company',
+      args: {
+        p_actor_id: ACTOR_ID,
+        p_company_id: COMPANY_ID,
+        p_query: 'Matched',
+        p_limit: 100,
+      },
+    },
+  ]);
+  assert.doesNotMatch(JSON.stringify(rows), /identifier|cipher|hash|storagePath/u);
+});
+
 test('preserves deterministic eligibility code order and rejects unknown output', async () => {
   const { parseProAssignmentEligibility } = await import('./pro-eligibility');
   const parsed = parseProAssignmentEligibility({

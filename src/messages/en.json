@@ -2400,6 +2400,7 @@
         "currentProLabel": "CURRENT PRO",
         "unnamedPro": "Unnamed PRO",
         "reassignDescription": "Select the replacement below. The current assignment is released atomically.",
+        "accessBlocked": "Operational access is blocked",
         "replacementProLabel": "Replacement PRO",
         "proLabel": "PRO user",
         "selectPro": "Select an available PRO",
@@ -2412,6 +2413,21 @@
         "noProsTitle": "No eligible PRO users",
         "noProsDescription": "Create an active PRO user and complete credential verification before assigning them.",
         "managePros": "Manage PRO users"
+      },
+      "eligibility": {
+        "PRO_ACCOUNT_INACTIVE": "Account is inactive",
+        "PRO_CREDENTIAL_MISSING": "Credential is missing",
+        "PRO_CREDENTIAL_DRAFT": "Credential is still a draft",
+        "PRO_CREDENTIAL_SUBMITTED": "Credential is awaiting review",
+        "PRO_CREDENTIAL_UNDER_REVIEW": "Credential is under review",
+        "PRO_CREDENTIAL_REJECTED": "Credential was rejected",
+        "PRO_CREDENTIAL_EXPIRED": "Credential has expired",
+        "PRO_CREDENTIAL_REVOKED": "Credential was revoked",
+        "PRO_ALREADY_ASSIGNED": "PRO is assigned to another company",
+        "PRICING_TERMS_MISSING": "Active pricing terms are missing",
+        "COMPENSATION_TERMS_MISSING": "Active compensation terms are missing",
+        "COMPANY_INACTIVE": "Company is inactive",
+        "COMPANY_ALREADY_ASSIGNED": "Company already has this active assignment"
       },
       "release": {
         "title": "Release PRO",

@@ -9,7 +9,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { AssignablePro, CompanyAssignment } from '@/lib/data/company-assignments';
+import type { CurrentCompanyAssignment } from '@/lib/data/company-assignments';
+import type { EligiblePro } from '@/lib/data/pro-eligibility';
 import { claimFormSubmission, releaseFormSubmission } from './form-submission-guard';
 import { PendingActionButton } from './PendingActionButton';
 import { AccessibleCompanyField } from './AccessibleCompanyField';
@@ -39,8 +40,8 @@ export function CompanyAssignmentForm({
   availablePros,
 }: {
   companyId: string;
-  currentAssignment: CompanyAssignment | null;
-  availablePros: AssignablePro[];
+  currentAssignment: CurrentCompanyAssignment | null;
+  availablePros: EligiblePro[];
 }) {
   const t = useTranslations('admin.companies');
   const action = currentAssignment ? reassignCompanyProAction : assignCompanyProAction;
@@ -93,6 +94,16 @@ export function CompanyAssignmentForm({
           <p className="text-muted-foreground mt-1 text-sm">
             {t('assignment.reassignDescription')}
           </p>
+          {currentAssignment.operationalAccess === 'blocked' ? (
+            <div className="mt-3" role="status">
+              <p className="text-destructive font-medium">{t('assignment.accessBlocked')}</p>
+              <ul className="text-muted-foreground mt-1 list-disc space-y-1 ps-5 text-sm">
+                {currentAssignment.operationalAccessCodes.map((code) => (
+                  <li key={code}>{t(`eligibility.${code}`)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -116,8 +127,15 @@ export function CompanyAssignmentForm({
                 {t('assignment.selectPro')}
               </option>
               {availablePros.map((pro) => (
-                <option key={pro.id} value={pro.id}>
+                <option
+                  key={pro.proProfileId}
+                  value={pro.proProfileId}
+                  disabled={!pro.eligibility.eligible}
+                >
                   {pro.fullName ?? t('assignment.unnamedPro')}
+                  {pro.eligibility.eligible
+                    ? ''
+                    : ` — ${pro.eligibility.codes.map((code) => t(`eligibility.${code}`)).join('; ')}`}
                 </option>
               ))}
             </select>

@@ -2400,6 +2400,7 @@
         "currentProLabel": "PRO الحالي",
         "unnamedPro": "PRO بدون اسم",
         "reassignDescription": "اختر البديل أدناه. سيتم إنهاء التعيين الحالي وتطبيق البديل كوحدة واحدة.",
+        "accessBlocked": "الوصول التشغيلي محظور",
         "replacementProLabel": "PRO البديل",
         "proLabel": "مستخدم PRO",
         "selectPro": "اختر PRO متاحاً",
@@ -2412,6 +2413,21 @@
         "noProsTitle": "لا يوجد مستخدمو PRO مؤهلون",
         "noProsDescription": "أنشئ مستخدم PRO نشطاً وأكمل التحقق من بيانات الاعتماد قبل تعيينه.",
         "managePros": "إدارة مستخدمي PRO"
+      },
+      "eligibility": {
+        "PRO_ACCOUNT_INACTIVE": "الحساب غير نشط",
+        "PRO_CREDENTIAL_MISSING": "بيانات الاعتماد مفقودة",
+        "PRO_CREDENTIAL_DRAFT": "بيانات الاعتماد ما زالت مسودة",
+        "PRO_CREDENTIAL_SUBMITTED": "بيانات الاعتماد بانتظار المراجعة",
+        "PRO_CREDENTIAL_UNDER_REVIEW": "بيانات الاعتماد قيد المراجعة",
+        "PRO_CREDENTIAL_REJECTED": "تم رفض بيانات الاعتماد",
+        "PRO_CREDENTIAL_EXPIRED": "انتهت صلاحية بيانات الاعتماد",
+        "PRO_CREDENTIAL_REVOKED": "تم إلغاء بيانات الاعتماد",
+        "PRO_ALREADY_ASSIGNED": "تم تعيين PRO لشركة أخرى",
+        "PRICING_TERMS_MISSING": "شروط التسعير النشطة مفقودة",
+        "COMPENSATION_TERMS_MISSING": "شروط التعويض النشطة مفقودة",
+        "COMPANY_INACTIVE": "الشركة غير نشطة",
+        "COMPANY_ALREADY_ASSIGNED": "لدى الشركة هذا التعيين النشط بالفعل"
       },
       "release": {
         "title": "إعفاء PRO",

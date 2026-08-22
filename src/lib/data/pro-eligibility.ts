@@ -107,6 +107,6 @@ export async function listEligibleProsForCompany(
   });
   if (error) throw internal();
   const parsed = z.array(eligibleProSchema).safeParse(data);
-  if (!parsed.success || parsed.data.some((row) => !row.eligibility.eligible)) throw internal();
+  if (!parsed.success) throw internal();
   return parsed.data;
 }
