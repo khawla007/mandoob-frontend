@@ -7,6 +7,7 @@ const migrationPaths = [
   'supabase/migrations/20260821100000_0068_pro_lifecycle_schema.sql',
   'supabase/migrations/20260821101000_0069_pro_lifecycle_workflows.sql',
   'supabase/migrations/20260821102000_0070_pro_lifecycle_security_reconciliation.sql',
+  'supabase/migrations/20260822100000_0071_pro_credential_evidence_removal_protocol.sql',
 ] as const;
 
 function migration(index: number): string {
@@ -20,8 +21,29 @@ test('Step 3 uses the exact forward-only migration catalog', () => {
     'supabase/migrations/20260821100000_0068_pro_lifecycle_schema.sql',
     'supabase/migrations/20260821101000_0069_pro_lifecycle_workflows.sql',
     'supabase/migrations/20260821102000_0070_pro_lifecycle_security_reconciliation.sql',
+    'supabase/migrations/20260822100000_0071_pro_credential_evidence_removal_protocol.sql',
   ]);
   assert.equal(existsSync(join(process.cwd(), migrationPaths[0])), true, migrationPaths[0]);
+});
+
+test('0071 makes evidence removal a private durable prepare/finalize protocol', () => {
+  const sql = migration(3);
+  assert.match(sql, /create table public\.pro_credential_evidence_removals/u);
+  assert.match(sql, /unique \(credential_id, operation_id\)/u);
+  assert.match(sql, /where status = 'prepared'/u);
+  assert.match(sql, /function public\.prepare_pro_credential_evidence_removal/u);
+  assert.match(sql, /function public\.finalize_pro_credential_evidence_removal/u);
+  assert.match(sql, /pg_advisory_xact_lock/u);
+  assert.match(sql, /for update/u);
+  assert.match(sql, /evidence_removal_in_progress/u);
+  assert.match(sql, /revoke all on function public\.remove_pro_credential_evidence/u);
+  assert.match(
+    sql,
+    /grant execute on function public\.prepare_pro_credential_evidence_removal[\s\S]*to service_role/u,
+  );
+  assert.doesNotMatch(sql, /to authenticated/u);
+  assert.match(sql, /removal_reservation_immutable/u);
+  assert.match(sql, /set status = 'complete', storage_path = null/u);
 });
 
 test('0068 defines normalized lifecycle, evidence, decision, receipt, term, and link tables', () => {
@@ -165,6 +187,10 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
     'pro_lifecycle_verify_session_b.sql',
     'pro_lifecycle_terms_session_a.sql',
     'pro_lifecycle_terms_session_b.sql',
+    'pro_lifecycle_evidence_removal.sql',
+    'pro_lifecycle_removal_session_a.sql',
+    'pro_lifecycle_removal_session_b.sql',
+    'pro_lifecycle_removal_concurrency_setup.sql',
   ]) {
     const path = join(process.cwd(), 'supabase/tests', fixture);
     assert.equal(existsSync(path), true, fixture);

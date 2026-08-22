@@ -11,6 +11,7 @@ const ACTOR_ID = '11111111-1111-4111-8111-111111111111';
 const PRO_ID = '22222222-2222-4222-8222-222222222222';
 const CREDENTIAL_ID = '33333333-3333-4333-8333-333333333333';
 const OPERATION_ID = '44444444-4444-4444-8444-444444444444';
+const EVIDENCE_ID = '55555555-5555-4555-8555-555555555555';
 
 const mask = {
   credentialId: CREDENTIAL_ID,
@@ -150,5 +151,96 @@ test('database invalid decision reason maps to the stable public code', async ()
       'code' in error &&
       error.code === 'DECISION_REASON_INVALID' &&
       !error.message.includes('INVALID_DECISION_REASON'),
+  );
+});
+
+test('evidence removal prepare and finalize share exact replay arguments', async () => {
+  const { prepareProCredentialEvidenceRemoval, finalizeProCredentialEvidenceRemoval } =
+    await import('./pro-credentials');
+  const prepared = {
+    status: 'prepared',
+    credentialId: CREDENTIAL_ID,
+    evidenceId: EVIDENCE_ID,
+    storagePath: `pro-credentials/${PRO_ID}/${CREDENTIAL_ID}/${EVIDENCE_ID}`,
+  };
+  const supabase = fake([
+    { data: prepared, error: null },
+    { data: mask, error: null },
+  ]);
+  assert.deepEqual(
+    await prepareProCredentialEvidenceRemoval(
+      ACTOR_ID,
+      CREDENTIAL_ID,
+      EVIDENCE_ID,
+      1,
+      OPERATION_ID,
+      { supabase: supabase as never },
+    ),
+    prepared,
+  );
+  assert.deepEqual(
+    await finalizeProCredentialEvidenceRemoval(
+      ACTOR_ID,
+      CREDENTIAL_ID,
+      EVIDENCE_ID,
+      1,
+      OPERATION_ID,
+      { supabase: supabase as never },
+    ),
+    mask,
+  );
+  assert.equal(supabase.calls[0]!.name, 'prepare_pro_credential_evidence_removal');
+  assert.equal(supabase.calls[1]!.name, 'finalize_pro_credential_evidence_removal');
+  assert.deepEqual(supabase.calls[0]!.args, supabase.calls[1]!.args);
+  assert.match(String(supabase.calls[0]!.args.p_payload_hash), /^[a-f0-9]{64}$/u);
+});
+
+test('evidence removal protocol maps stale, replay and competing reservations', async () => {
+  const { prepareProCredentialEvidenceRemoval } = await import('./pro-credentials');
+  for (const [message, code] of [
+    ['STALE_CREDENTIAL_VERSION', 'STALE_CREDENTIAL_VERSION'],
+    ['OPERATION_REUSED', 'OPERATION_REUSED'],
+    ['EVIDENCE_REMOVAL_IN_PROGRESS', 'EVIDENCE_REMOVAL_IN_PROGRESS'],
+  ]) {
+    const supabase = fake([{ data: null, error: { message } }]);
+    await assert.rejects(
+      () =>
+        prepareProCredentialEvidenceRemoval(ACTOR_ID, CREDENTIAL_ID, EVIDENCE_ID, 1, OPERATION_ID, {
+          supabase: supabase as never,
+        }),
+      (error: unknown) => error instanceof Error && 'code' in error && error.code === code,
+    );
+  }
+});
+
+test('evidence registration replay hash is stable across rescans of identical blob bytes', async () => {
+  const { registerProCredentialEvidence } = await import('./pro-credentials');
+  const supabase = fake([
+    { data: mask, error: null },
+    { data: mask, error: null },
+  ]);
+  for (const scanCompletedAt of ['2026-08-22T00:00:00.000Z', '2026-08-22T00:05:00.000Z']) {
+    await registerProCredentialEvidence(
+      ACTOR_ID,
+      CREDENTIAL_ID,
+      1,
+      OPERATION_ID,
+      EVIDENCE_ID,
+      `pro-credentials/${PRO_ID}/${CREDENTIAL_ID}/${EVIDENCE_ID}`,
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: 8,
+        sha256: 'a'.repeat(64),
+        originalNameSafe: 'proof.pdf',
+        scanProvider: 'fixture',
+        scanCompletedAt,
+      },
+      { supabase: supabase as never },
+    );
+  }
+  assert.equal(supabase.calls[0]!.args.p_payload_hash, supabase.calls[1]!.args.p_payload_hash);
+  assert.notEqual(
+    supabase.calls[0]!.args.p_scan_completed_at,
+    supabase.calls[1]!.args.p_scan_completed_at,
   );
 });

@@ -97,6 +97,7 @@ const SAFE_CODES = new Set([
   'TERM_DATE_OVERLAP',
   'PRO_CREDENTIAL_EXPIRED',
   'DECISION_REASON_INVALID',
+  'EVIDENCE_REMOVAL_IN_PROGRESS',
 ]);
 
 export function lifecycleErrorResponse(error: unknown, label: string): Response {

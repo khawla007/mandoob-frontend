@@ -4,6 +4,14 @@ import { createEvidenceDeleteHandler, createEvidenceGetHandler } from './route';
 
 const A = '10000000-0000-4000-8000-000000000001';
 const E = '40000000-0000-4000-8000-000000000004';
+const C = '20000000-0000-4000-8000-000000000002';
+const PATH = `pro-credentials/${A}/${C}/${E}`;
+const prepared = () => ({
+  status: 'prepared' as const,
+  credentialId: C,
+  evidenceId: E,
+  storagePath: PATH,
+});
 
 test('evidence DELETE missing and mismatched CSRF touch no downstream stage', async () => {
   for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
@@ -19,7 +27,8 @@ test('evidence DELETE missing and mismatched CSRF touch no downstream stage', as
         throw new Error('must not run');
       },
       limit: async () => (touched.push('limit'), 'allowed'),
-      remove: async () => (touched.push('mutation'), null),
+      prepare: async () => (touched.push('mutation'), prepared()),
+      finalize: async () => (touched.push('mutation'), null),
     });
     const response = await handler(new Request('http://localhost/evidence', { method: 'DELETE' }), {
       params: Promise.resolve({ evidenceId: E }),
@@ -97,10 +106,14 @@ test('evidence DELETE follows the state-changing security order and derives acto
       }
     ),
     limit: async () => (calls.push('limit'), 'allowed'),
-    remove: async (id) => {
+    prepare: async () => {
+      calls.push('prepare');
+      return prepared();
+    },
+    finalize: async (id) => {
       actor = id;
-      calls.push('mutation');
-      return { credentialId: '20000000-0000-4000-8000-000000000002' } as never;
+      calls.push('finalize');
+      return { credentialId: C } as never;
     },
     erase: async () => {
       calls.push('storage-delete');
@@ -128,8 +141,9 @@ test('evidence DELETE follows the state-changing security order and derives acto
     'target',
     'scope',
     'limit',
+    'prepare',
     'storage-delete',
-    'mutation',
+    'finalize',
     'revalidate',
   ]);
 });
@@ -164,7 +178,8 @@ test('evidence DELETE keeps metadata on storage failure and retries missing-obje
     erase: async () => {
       if (eraseAttempt++ === 0) throw new Error('private storage path');
     },
-    remove: async () => {
+    prepare: async () => prepared(),
+    finalize: async () => {
       mutations += 1;
       return { credentialId: E };
     },
@@ -221,7 +236,8 @@ test('evidence DELETE DAL failure is not success and retry repeats idempotent st
     erase: async () => {
       erases += 1;
     },
-    remove: async () => {
+    prepare: async () => prepared(),
+    finalize: async () => {
       if (removes++ === 0) throw new Error('private dal');
       return { credentialId: E };
     },
@@ -340,6 +356,11 @@ test('evidence DELETE sanitizes stale, replay and unknown mutation errors', asyn
       'STALE_CREDENTIAL_VERSION',
     ],
     [new ApiError('OPERATION_REUSED', 'private replay detail', 409), 409, 'OPERATION_REUSED'],
+    [
+      new ApiError('EVIDENCE_REMOVAL_IN_PROGRESS', 'private competing detail', 409),
+      409,
+      'EVIDENCE_REMOVAL_IN_PROGRESS',
+    ],
     [new Error('private database detail'), 500, 'INTERNAL'],
   ] as const) {
     const handler = createEvidenceDeleteHandler({
@@ -366,10 +387,13 @@ test('evidence DELETE sanitizes stale, replay and unknown mutation errors', asyn
         credentialIds: ['20000000-0000-4000-8000-000000000002'],
       }),
       limit: async () => 'allowed',
-      remove: async () => {
+      prepare: async () => {
         throw error;
       },
-      erase: async () => undefined,
+      finalize: async () => ({ credentialId: C }),
+      erase: async () => {
+        throw new Error('storage must not be touched');
+      },
       revalidate: () => undefined,
     });
     const response = await handler(

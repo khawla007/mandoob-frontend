@@ -25,3 +25,19 @@ test('credential download token is opaque, purpose-bound, and expires after 300 
   const tampered = `${token.slice(0, 10)}${token[10] === 'A' ? 'B' : 'A'}${token.slice(11)}`;
   await assert.rejects(() => verifyProCredentialDownloadToken(tampered, issued, crypto));
 });
+
+test('credential download rejects a validly encoded encrypted token with the wrong purpose', async () => {
+  const issued = new Date('2026-08-22T00:00:00.000Z');
+  const issuedAt = Math.floor(issued.getTime() / 1000);
+  const encrypted = crypto.encrypt(
+    JSON.stringify({
+      version: 1,
+      purpose: 'different-private-download',
+      evidenceId: E,
+      issuedAt,
+      expiresAt: issuedAt + 300,
+    }),
+  );
+  const token = Buffer.from(encrypted, 'utf8').toString('base64url');
+  await assert.rejects(() => verifyProCredentialDownloadToken(token, issued, crypto));
+});

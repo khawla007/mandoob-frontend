@@ -47,8 +47,8 @@ type Deps = {
     bytes: Uint8Array,
     options: { filename: string },
   ): Promise<{ clean: boolean; reason?: string; provider?: string }>;
-  resolveRegistration(actorId: string, evidenceId: string): Promise<boolean>;
-  store(path: string, bytes: Uint8Array, mime: SafeMime): Promise<void>;
+  store(path: string, bytes: Uint8Array, mime: SafeMime): Promise<'stored' | 'exists'>;
+  readExisting(path: string): Promise<{ bytes: Uint8Array; mime: string | null }>;
   register(
     actorId: string,
     credentialId: string,
@@ -58,7 +58,6 @@ type Deps = {
     path: string,
     metadata: z.input<typeof proCredentialEvidenceMetadataSchema>,
   ): Promise<unknown>;
-  rollback(path: string): Promise<void>;
   revalidate(target: LifecycleTarget, userId: string): void | Promise<void>;
   now(): Date;
 };
@@ -84,35 +83,29 @@ const defaults: Deps = {
   },
   scan: async (bytes, options) =>
     (await import('@/lib/security/scan-file')).scanFile(bytes, options),
-  resolveRegistration: async (actorId, evidenceId) => {
-    const { ApiError } = await import('@/lib/errors');
-    try {
-      await (
-        await import('@/lib/data/pro-credentials')
-      ).openProCredentialEvidenceMetadata(actorId, evidenceId);
-      return true;
-    } catch (error) {
-      if (error instanceof ApiError && error.code === 'NOT_FOUND') return false;
-      throw error;
-    }
-  },
   store: async (path, bytes, mime) => {
     const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
     const { error } = await createSupabaseServiceRoleClient()
       .storage.from('tenant-documents')
       .upload(path, bytes, { contentType: mime, upsert: false });
-    if (error) throw new Error('storage_upload_failed');
+    if (!error) return 'stored';
+    if (error.statusCode === '409' || /already exists|duplicate/iu.test(error.message))
+      return 'exists';
+    throw new Error('storage_upload_failed');
+  },
+  readExisting: async (path) => {
+    const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
+    const { data, error } = await createSupabaseServiceRoleClient()
+      .storage.from('tenant-documents')
+      .download(path);
+    if (error || !data) throw new Error('storage_read_failed');
+    return {
+      bytes: new Uint8Array(await data.arrayBuffer()),
+      mime: data.type || null,
+    };
   },
   register: async (...args) =>
     (await import('@/lib/data/pro-credentials')).registerProCredentialEvidence(...args),
-  rollback: async (path) => {
-    const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-    const { error } = await createSupabaseServiceRoleClient()
-      .storage.from('tenant-documents')
-      .remove([path]);
-    // Supabase remove is idempotent: a missing object returns an empty data array without error.
-    if (error) throw new Error('storage_cleanup_failed');
-  },
   revalidate: revalidateLifecyclePaths,
   now: () => new Date(),
 };
@@ -179,7 +172,7 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         return scan.reason === 'scanner_unavailable'
           ? errorResponse('SCANNER_UNAVAILABLE', 'File scanner temporarily unavailable', 503)
           : errorResponse('FILE_REJECTED_BY_SCAN', 'File was rejected', 422);
-      // The operation id gives an interrupted attempt a stable, exact orphan path to clean.
+      // A stable create-only path turns a crash after upload into a safely reusable artifact.
       const evidenceId = fields.data.operationId;
       const path = buildProCredentialEvidencePath(
         target.proProfileId,
@@ -194,35 +187,26 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         scanProvider: scan.provider ?? 'unknown',
         scanCompletedAt: deps.now().toISOString(),
       });
-      if (await deps.resolveRegistration(session.id, evidenceId)) {
-        return errorResponse('OPERATION_REUSED', 'Unable to complete lifecycle operation', 409);
+      const stored = await deps.store(path, bytes, inspected.mime);
+      if (stored === 'exists') {
+        const existing = await deps.readExisting(path);
+        const existingHash = createHash('sha256').update(existing.bytes).digest('hex');
+        if (
+          existing.bytes.byteLength !== bytes.byteLength ||
+          existingHash !== metadata.sha256 ||
+          (existing.mime !== null && existing.mime !== inspected.mime)
+        )
+          return errorResponse('OPERATION_REUSED', 'Unable to complete lifecycle operation', 409);
       }
-      try {
-        await deps.rollback(path);
-      } catch {
-        return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
-      }
-      await deps.store(path, bytes, inspected.mime);
-      let credential: unknown;
-      try {
-        credential = await deps.register(
-          session.id,
-          fields.data.credentialId,
-          fields.data.expectedVersion,
-          fields.data.operationId,
-          evidenceId,
-          path,
-          metadata,
-        );
-      } catch (error) {
-        if (await deps.resolveRegistration(session.id, evidenceId)) throw error;
-        try {
-          await deps.rollback(path);
-        } catch {
-          return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
-        }
-        throw error;
-      }
+      const credential = await deps.register(
+        session.id,
+        fields.data.credentialId,
+        fields.data.expectedVersion,
+        fields.data.operationId,
+        evidenceId,
+        path,
+        metadata,
+      );
       await deps.revalidate(target, session.id);
       return jsonOk({ ok: true, credential });
     } catch (error) {

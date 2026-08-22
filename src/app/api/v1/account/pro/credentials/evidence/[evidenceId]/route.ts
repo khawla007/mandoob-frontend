@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { SessionProfile } from '@/lib/auth/require-user';
 import type { OpenedProCredentialEvidence } from '@/lib/data/pro-credentials';
+import type { PreparedProCredentialEvidenceRemoval } from '@/lib/data/pro-credentials';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { isOwnedProCredentialEvidencePath } from '@/lib/storage/pro-credential-path';
 import {
@@ -92,7 +93,14 @@ type DeleteDeps = {
   open(actorId: string, evidenceId: string): Promise<OpenedProCredentialEvidence>;
   resolveTarget(actorId: string, proProfileId: string): Promise<LifecycleTarget | null>;
   limit(actorId: string, targetId: string): Promise<LimitDecision>;
-  remove(
+  prepare(
+    actorId: string,
+    credentialId: string,
+    evidenceId: string,
+    expectedVersion: number,
+    operationId: string,
+  ): Promise<PreparedProCredentialEvidenceRemoval>;
+  finalize(
     actorId: string,
     credentialId: string,
     evidenceId: string,
@@ -117,8 +125,10 @@ const deleteDefaults: DeleteDeps = {
       ...SENSITIVE_RATE_LIMITS.credentialMutation,
     });
   },
-  remove: async (...args) =>
-    (await import('@/lib/data/pro-credentials')).removeProCredentialEvidence(...args),
+  prepare: async (...args) =>
+    (await import('@/lib/data/pro-credentials')).prepareProCredentialEvidenceRemoval(...args),
+  finalize: async (...args) =>
+    (await import('@/lib/data/pro-credentials')).finalizeProCredentialEvidenceRemoval(...args),
   erase: async (path) => {
     const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
     const { error } = await createSupabaseServiceRoleClient()
@@ -173,12 +183,34 @@ export function createEvidenceDeleteHandler(overrides: Partial<DeleteDeps> = {})
       if (limited) return limited;
       const parsed = removeSchema.safeParse(await request.json().catch(() => null));
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
+      const prepared = await deps.prepare(
+        session.id,
+        evidence.credential_id,
+        evidenceId,
+        parsed.data.expectedVersion,
+        parsed.data.operationId,
+      );
+      if (prepared.status === 'complete') {
+        await deps.revalidate(target, session.id);
+        return jsonOk({ ok: true, credential: prepared.credential });
+      }
+      if (
+        prepared.credentialId !== evidence.credential_id ||
+        prepared.evidenceId !== evidenceId ||
+        !isOwnedProCredentialEvidencePath(
+          prepared.storagePath,
+          evidence.pro_profile_id,
+          evidence.credential_id,
+          evidenceId,
+        )
+      )
+        return notFoundResponse();
       try {
-        await deps.erase(evidence.storage_path);
+        await deps.erase(prepared.storagePath);
       } catch {
         return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
       }
-      const credential = await deps.remove(
+      const credential = await deps.finalize(
         session.id,
         evidence.credential_id,
         evidenceId,

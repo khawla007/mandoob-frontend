@@ -70,10 +70,22 @@ const openedEvidenceSchema = z
     original_name_safe: z.string().min(1).max(255),
   })
   .strict();
+const preparedEvidenceRemovalSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      status: z.literal('prepared'),
+      credentialId: uuid,
+      evidenceId: uuid,
+      storagePath: z.string().min(1),
+    })
+    .strict(),
+  z.object({ status: z.literal('complete'), credential: credentialMaskSchema }).strict(),
+]);
 
 export type ProCredentialMask = z.infer<typeof credentialMaskSchema>;
 export type ProCredentialSnapshot = z.infer<typeof snapshotSchema>;
 export type OpenedProCredentialEvidence = z.infer<typeof openedEvidenceSchema>;
+export type PreparedProCredentialEvidenceRemoval = z.infer<typeof preparedEvidenceRemovalSchema>;
 
 const CREDENTIAL_INDEX_DOMAIN = 'pro-credential-license:v1';
 const OPERATION_HASH_DOMAIN = 'pro-lifecycle-operation:v1';
@@ -89,6 +101,7 @@ const KNOWN_ERRORS: Record<string, { code: string; status: number }> = {
   EVIDENCE_METADATA_INVALID: { code: 'EVIDENCE_METADATA_INVALID', status: 422 },
   DECISION_REASON_INVALID: { code: 'DECISION_REASON_INVALID', status: 422 },
   INVALID_DECISION_REASON: { code: 'DECISION_REASON_INVALID', status: 422 },
+  EVIDENCE_REMOVAL_IN_PROGRESS: { code: 'EVIDENCE_REMOVAL_IN_PROGRESS', status: 409 },
 };
 
 function client(deps: CredentialDeps): CredentialClient {
@@ -303,14 +316,24 @@ export async function registerProCredentialEvidence(
   deps: CredentialDeps = {},
 ): Promise<ProCredentialMask> {
   const parsed = proCredentialEvidenceMetadataSchema.parse(metadata);
-  return versionMutation(
+  const logical = {
+    credentialId: uuid.parse(credentialId),
+    expectedVersion: z.number().int().nonnegative().parse(expectedVersion),
+    evidenceId: uuid.parse(evidenceId),
+    storagePath,
+    mimeType: parsed.mimeType,
+    sizeBytes: parsed.sizeBytes,
+    sha256: parsed.sha256,
+  };
+  return maskMutation(
     'register_pro_credential_evidence',
-    actorId,
-    credentialId,
-    expectedVersion,
-    operationId,
     {
-      p_evidence_id: uuid.parse(evidenceId),
+      p_actor_id: uuid.parse(actorId),
+      p_credential_id: logical.credentialId,
+      p_expected_version: logical.expectedVersion,
+      p_operation_id: uuid.parse(operationId),
+      p_payload_hash: operationHash('register_pro_credential_evidence', logical),
+      p_evidence_id: logical.evidenceId,
       p_storage_path: storagePath,
       p_mime_type: parsed.mimeType,
       p_size_bytes: parsed.sizeBytes,
@@ -323,21 +346,57 @@ export async function registerProCredentialEvidence(
   );
 }
 
-export function removeProCredentialEvidence(
+function evidenceRemovalArgs(
+  actorId: string,
+  credentialId: string,
+  evidenceId: string,
+  expectedVersion: number,
+  operationId: string,
+): Record<string, unknown> {
+  const logical = {
+    credentialId: uuid.parse(credentialId),
+    expectedVersion: z.number().int().nonnegative().parse(expectedVersion),
+    p_evidence_id: uuid.parse(evidenceId),
+  };
+  return {
+    p_actor_id: uuid.parse(actorId),
+    p_credential_id: logical.credentialId,
+    p_evidence_id: logical.p_evidence_id,
+    p_expected_version: logical.expectedVersion,
+    p_operation_id: uuid.parse(operationId),
+    p_payload_hash: operationHash('remove_pro_credential_evidence', logical),
+  };
+}
+
+export async function prepareProCredentialEvidenceRemoval(
   actorId: string,
   credentialId: string,
   evidenceId: string,
   expectedVersion: number,
   operationId: string,
   deps: CredentialDeps = {},
-) {
-  return versionMutation(
-    'remove_pro_credential_evidence',
-    actorId,
-    credentialId,
-    expectedVersion,
-    operationId,
-    { p_evidence_id: uuid.parse(evidenceId) },
+): Promise<PreparedProCredentialEvidenceRemoval> {
+  const { data, error } = await client(deps).rpc(
+    'prepare_pro_credential_evidence_removal',
+    evidenceRemovalArgs(actorId, credentialId, evidenceId, expectedVersion, operationId),
+  );
+  if (error) throw publicError(error.message);
+  const parsed = preparedEvidenceRemovalSchema.safeParse(data);
+  if (!parsed.success) throw publicError();
+  return parsed.data;
+}
+
+export async function finalizeProCredentialEvidenceRemoval(
+  actorId: string,
+  credentialId: string,
+  evidenceId: string,
+  expectedVersion: number,
+  operationId: string,
+  deps: CredentialDeps = {},
+): Promise<ProCredentialMask> {
+  return maskMutation(
+    'finalize_pro_credential_evidence_removal',
+    evidenceRemovalArgs(actorId, credentialId, evidenceId, expectedVersion, operationId),
     deps,
   );
 }

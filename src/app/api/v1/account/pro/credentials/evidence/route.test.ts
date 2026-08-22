@@ -64,9 +64,10 @@ test('evidence upload rejects oversized, dirty, mismatched and malware files bef
     scan: async () => ({ clean: true, provider: 'test' }),
     store: async () => {
       stored += 1;
+      return 'stored' as const;
     },
+    readExisting: async () => ({ bytes: new Uint8Array(), mime: null }),
     register: async () => ({ credentialId: C }) as never,
-    rollback: async () => undefined,
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
     randomId: () => '40000000-0000-4000-8000-000000000004',
@@ -152,19 +153,17 @@ test('evidence upload scans before private storage and registers a stable retry 
     store: async (p) => {
       calls.push('storage');
       path = p;
+      return 'stored';
     },
+    readExisting: async () => ({ bytes: new Uint8Array(), mime: null }),
     register: async () => {
       calls.push('mutation');
       return { credentialId: C, state: 'draft', version: 2 } as never;
-    },
-    rollback: async () => {
-      calls.push('rollback');
     },
     revalidate: () => {
       calls.push('revalidate');
     },
     now: () => new Date('2026-08-22T00:00:00.000Z'),
-    resolveRegistration: async () => false,
   });
   const response = await handler(
     upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
@@ -178,7 +177,6 @@ test('evidence upload scans before private storage and registers a stable retry 
     'limit',
     'magic',
     'scan',
-    'rollback',
     'storage',
     'mutation',
     'revalidate',
@@ -186,8 +184,10 @@ test('evidence upload scans before private storage and registers a stable retry 
   assert.doesNotMatch(JSON.stringify(await response.json()), /storage|sha256|scan|signed/iu);
 });
 
-test('registration failure removes the exact orphan and never reports success', async () => {
+test('crash after upload leaves a retryable artifact and an identical retry reuses it', async () => {
   const calls: string[] = [];
+  let artifact: Uint8Array | null = null;
+  let registrations = 0;
   const handler = createEvidencePostHandler({
     guardCsrf: async () => null,
     requirePro: async () => ({
@@ -202,93 +202,16 @@ test('registration failure removes the exact orphan and never reports success', 
     limit: async () => 'allowed',
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'test' }),
-    resolveRegistration: async () => false,
-    store: async () => {
+    store: async (_path, bytes) => {
       calls.push('store');
+      if (artifact) return 'exists';
+      artifact = bytes;
+      return 'stored';
     },
+    readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
     register: async () => {
       calls.push('register');
-      throw new Error('private rpc path');
-    },
-    rollback: async () => {
-      calls.push('cleanup');
-    },
-    revalidate: () => undefined,
-    now: () => new Date('2026-08-22T00:00:00.000Z'),
-  });
-  const response = await handler(
-    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
-  );
-  assert.equal(response.status, 500);
-  assert.deepEqual(calls, ['cleanup', 'store', 'register', 'cleanup']);
-  assert.doesNotMatch(JSON.stringify(await response.json()), /private|path/iu);
-});
-
-test('ambiguous registration failure never deletes evidence that became registered', async () => {
-  let registrationsChecked = 0;
-  let cleanups = 0;
-  const handler = createEvidencePostHandler({
-    guardCsrf: async () => null,
-    requirePro: async () => ({
-      id: A,
-      role: 'pro',
-      tenantId: A,
-      aal: 'aal2',
-      mfaEnrolled: true,
-      email: null,
-    }),
-    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
-    limit: async () => 'allowed',
-    inspectFile: async () => ({ mime: 'application/pdf' }),
-    scan: async () => ({ clean: true, provider: 'test' }),
-    resolveRegistration: async () => registrationsChecked++ > 0,
-    rollback: async () => {
-      cleanups += 1;
-    },
-    store: async () => undefined,
-    register: async () => {
-      throw new Error('ambiguous private transport failure');
-    },
-    revalidate: () => undefined,
-    now: () => new Date('2026-08-22T00:00:00.000Z'),
-  });
-  const response = await handler(
-    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
-  );
-  assert.equal(response.status, 500);
-  assert.equal(registrationsChecked, 2);
-  assert.equal(cleanups, 1, 'only the pre-upload orphan cleanup may run');
-});
-
-test('cleanup failure is sanitized and remains retryable via stable orphan pre-cleanup', async () => {
-  let attempt = 0;
-  let cleanupFailures = 1;
-  const calls: string[] = [];
-  const handler = createEvidencePostHandler({
-    guardCsrf: async () => null,
-    requirePro: async () => ({
-      id: A,
-      role: 'pro',
-      tenantId: A,
-      aal: 'aal2',
-      mfaEnrolled: true,
-      email: null,
-    }),
-    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
-    limit: async () => 'allowed',
-    inspectFile: async () => ({ mime: 'application/pdf' }),
-    scan: async () => ({ clean: true, provider: 'test' }),
-    resolveRegistration: async () => false,
-    rollback: async (path) => {
-      calls.push(`cleanup:${path}`);
-      if (cleanupFailures-- > 0) throw new Error('private storage failure');
-    },
-    store: async (path) => {
-      calls.push(`store:${path}`);
-    },
-    register: async () => {
-      calls.push('register');
-      if (attempt++ === 0) throw new Error('private rpc failure');
+      if (registrations++ === 0) throw new Error('private crash after upload');
       return { credentialId: C };
     },
     revalidate: () => undefined,
@@ -297,15 +220,127 @@ test('cleanup failure is sanitized and remains retryable via stable orphan pre-c
   const first = await handler(
     upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
   );
-  assert.equal(first.status, 503);
-  assert.doesNotMatch(JSON.stringify(await first.json()), /private|storage|path/iu);
+  assert.equal(first.status, 500);
+  assert.doesNotMatch(JSON.stringify(await first.json()), /private|path|sha256/iu);
   const second = await handler(
     upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
   );
-  assert.equal(second.status, 500);
-  const third = await handler(
-    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+  assert.equal(second.status, 200);
+  assert.deepEqual(calls, ['store', 'register', 'store', 'register']);
+});
+
+test('two identical concurrent retries share create-only bytes and both reach idempotent registration', async () => {
+  let artifact: Uint8Array | null = null;
+  let registrations = 0;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'test' }),
+    store: async (_path, bytes) => {
+      if (artifact) return 'exists';
+      artifact = bytes;
+      return 'stored';
+    },
+    readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
+    register: async () => ({ credentialId: C, replay: registrations++ > 0 }),
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-22T00:00:00.000Z'),
+  });
+  const responses = await Promise.all([
+    handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' }))),
+    handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' }))),
+  ]);
+  assert.deepEqual(
+    responses.map((response) => response.status),
+    [200, 200],
   );
-  assert.equal(third.status, 200);
-  assert.equal(calls.filter((call) => call === `cleanup:pro-credentials/${A}/${C}/${O}`).length, 4);
+  assert.equal(registrations, 2);
+});
+
+test('same operation with different bytes conflicts without registration or deletion', async () => {
+  const existing = new TextEncoder().encode('%PDF-existing');
+  let registrations = 0;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'test' }),
+    store: async () => 'exists',
+    readExisting: async () => ({ bytes: existing, mime: 'application/pdf' }),
+    register: async () => {
+      registrations += 1;
+      return { credentialId: C };
+    },
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-22T00:00:00.000Z'),
+  });
+  const response = await handler(
+    upload(new File(['%PDF-new'], 'proof.pdf', { type: 'application/pdf' })),
+  );
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'OPERATION_REUSED');
+  assert.equal(registrations, 0);
+});
+
+test('ambiguous post-commit error leaves bytes untouched and retry reaches DB replay', async () => {
+  let artifact: Uint8Array | null = null;
+  let committed = false;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'test' }),
+    store: async (_path, bytes) => {
+      if (artifact) return 'exists';
+      artifact = bytes;
+      return 'stored';
+    },
+    readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
+    register: async () => {
+      if (!committed) {
+        committed = true;
+        throw new Error('ambiguous response');
+      }
+      return { credentialId: C };
+    },
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-22T00:00:00.000Z'),
+  });
+  assert.equal(
+    (await handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })))).status,
+    500,
+  );
+  assert.equal(
+    (await handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })))).status,
+    200,
+  );
+  assert.ok(artifact);
 });
