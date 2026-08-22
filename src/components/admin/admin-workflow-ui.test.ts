@@ -1,19 +1,21 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
 const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
 
-test('PRO edit UI renders credential state and the operator verification control', () => {
+test('generic PRO edit UI renders a masked lifecycle summary without legacy verification control', () => {
   const panel = read('src/components/admin/EditUserPanel.tsx');
-  assert.match(panel, /VerifyProCredentialsButton/u);
-  assert.match(panel, /credentialsVerified/u);
-  assert.match(panel, /verifiedAt/u);
-  assert.match(panel, /expectedUpdatedAt=\{user\.pro\.updatedAt\}/u);
-  const button = read('src/components/admin/VerifyProCredentialsButton.tsx');
-  assert.match(button, /STALE_CREDENTIALS/u);
-  assert.match(button, /router\.refresh\(\)/u);
+  assert.match(panel, /credentialSummary/u);
+  assert.match(panel, /maskedIdentifier/u);
+  assert.doesNotMatch(panel, /VerifyProCredentialsButton|credentialsVerified|verifiedAt/u);
+});
+
+test('generic admin workflow has no legacy credential verification runtime path', () => {
+  assert.equal(existsSync('src/components/admin/VerifyProCredentialsButton.tsx'), false);
+  assert.equal(existsSync('src/lib/data/pro-credential-verification.ts'), false);
+  assert.equal(existsSync('src/app/api/v1/admin/users/[id]/credentials/route.ts'), false);
 });
 
 test('role conversion gives admin and super_admin the same business-role choices and keeps PRO tenantless', () => {

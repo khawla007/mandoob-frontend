@@ -39,7 +39,6 @@ function buildDefaults(user: EditableUser): EditUserInput {
       phone: profile.phone ?? '',
       tenant_id: null,
       role: 'pro',
-      license_no: user.pro.licenseNo ?? '',
       designation: user.pro.designation ?? '',
       department: user.pro.department ?? '',
       service_areas: (user.pro.serviceAreas as (typeof SERVICE_AREA_VALUES)[number][]) ?? [],

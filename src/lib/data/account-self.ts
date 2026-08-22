@@ -23,7 +23,6 @@ export type ReadSelfProfile = {
 };
 
 export type ReadSelfPro = {
-  licenseNo: string | null;
   designation: string | null;
   department: string | null;
   serviceAreas: string[];
@@ -87,11 +86,10 @@ export async function readSelfPro(): Promise<ReadSelfPro> {
   if (!userRes.user) throw new ApiError('UNAUTHENTICATED', 'Not signed in', 401);
   const { data } = await supabase
     .from('pro_profiles')
-    .select('license_no_encrypted, designation, department, service_areas, bio')
+    .select('designation, department, service_areas, bio')
     .eq('profile_id', userRes.user.id)
     .maybeSingle();
   return {
-    licenseNo: decryptOptional(data?.license_no_encrypted as string | null),
     designation: (data?.designation as string | null) ?? null,
     department: (data?.department as string | null) ?? null,
     serviceAreas: ((data?.service_areas as string[] | null) ?? []) as string[],
@@ -212,7 +210,6 @@ export function diffProfile(
 }
 
 export type RoleProUpdate = {
-  license_no?: string | null;
   designation?: string | null;
   department?: string | null;
   service_areas: string[];
@@ -237,7 +234,6 @@ export function buildRoleUpdate(
   if (role === 'pro') {
     const i = input as RoleProUpdate;
     return {
-      license_no_encrypted: encryptOptional(i.license_no ?? null),
       designation: i.designation ?? null,
       department: i.department ?? null,
       service_areas: i.service_areas,

@@ -34,7 +34,6 @@ export const createUserSchema = z.discriminatedUnion('role', [
     // New PRO identities start unassigned. Assignment RPCs set tenant scope
     // only after credentials are verified and a company is selected.
     tenant_id: z.null().default(null),
-    license_no: z.string().trim().min(1).max(200),
     designation: z.string().max(200).nullable().optional(),
     department: z.string().max(200).nullable().optional(),
     service_areas: z.array(z.enum(SERVICE_AREAS)).max(8),
@@ -84,7 +83,6 @@ export const editUserSchema = z.discriminatedUnion('role', [
   editAdminBase.extend({
     role: z.literal('pro'),
     tenant_id: z.null().default(null),
-    license_no: z.string().trim().min(1).max(200),
     designation: z.string().max(200).nullable().optional(),
     department: z.string().max(200).nullable().optional(),
     service_areas: z.array(z.enum(SERVICE_AREAS)).max(8),
@@ -132,7 +130,6 @@ export const changeRoleSchema = z.discriminatedUnion('newRole', [
     tenant_id: z.null().default(null),
     confirmation: z.literal('DEMOTE').optional(),
     reason: z.string().max(500).nullable().optional(),
-    license_no: z.string().trim().min(1).max(200),
     designation: z.string().max(200).nullable().optional(),
     department: z.string().max(200).nullable().optional(),
     service_areas: z.array(z.enum(SERVICE_AREAS)).max(8),

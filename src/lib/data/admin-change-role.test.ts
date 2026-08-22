@@ -14,6 +14,7 @@ const migration = readFileSync(
 );
 
 test('admin role changes delegate exact old and new claims to the fail-closed transition', () => {
+  assert.doesNotMatch(source, /license_no|license_no_encrypted/u);
   assert.match(source, /\.rpc\('admin_change_role_atomic'/);
   assert.doesNotMatch(source, /\.from\('(pro_profiles|customer_profiles|employees)'\)\.delete/);
   assert.doesNotMatch(source, /\.from\('(pro_profiles|customer_profiles|employees)'\)\.insert/);

@@ -43,19 +43,15 @@ test('admin user APIs never return unexpected provider error messages', () => {
   }
 });
 
-test('credential verification requires CSRF, live operator AAL2, and per-actor rate limiting', () => {
-  const source = readFileSync(
-    join(process.cwd(), 'src/app/api/v1/admin/users/[id]/credentials/route.ts'),
-    'utf8',
-  );
-  for (const marker of [
-    'guardCsrf(request)',
-    'requirePlatformOperator()',
-    "session.aal !== 'aal2'",
-    'consumeRateLimit({',
-    'expectedUpdatedAt',
+test('admin user mutations preserve the live operator AAL2 gate', () => {
+  for (const file of [
+    'src/app/api/v1/admin/users/route.ts',
+    'src/app/api/v1/admin/users/[id]/route.ts',
+    'src/app/api/v1/admin/users/[id]/role/route.ts',
+    'src/app/api/v1/admin/users/[id]/status/route.ts',
+    'src/app/api/v1/admin/users/[id]/mfa-reset/route.ts',
   ]) {
-    assert.match(source, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
+    const source = readFileSync(join(process.cwd(), file), 'utf8');
+    assert.match(source, /session\.aal !== 'aal2'/u, file);
   }
-  assert.ok(source.indexOf('consumeRateLimit({') < source.indexOf('verifyProCredentials('));
 });

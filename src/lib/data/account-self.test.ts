@@ -36,16 +36,15 @@ test('diffProfile no-op returns empty changedKeys', async () => {
   assert.deepEqual(d.changedKeys, []);
 });
 
-test('buildRoleUpdate for pro encrypts license_no', async () => {
+test('buildRoleUpdate for pro contains non-credential profile fields only', async () => {
   const { buildRoleUpdate } = await loadMod();
   const u = buildRoleUpdate('pro', {
-    license_no: 'L-123',
     designation: 'PRO',
     department: 'Ops',
     service_areas: ['Dubai'],
     bio: null,
   });
-  assert.equal(typeof u.license_no_encrypted, 'string');
+  assert.equal('license_no_encrypted' in u, false);
   assert.equal(u.designation, 'PRO');
 });
 

@@ -857,9 +857,13 @@ test('nullable customer and employee links retain composite workspace ownership'
 
 test('SQL fixtures cover credential denial and coordinated lifecycle races', () => {
   const privilege = normalizeSql(readSqlFixture('pro_profile_verification_privileges.sql'));
-  assert.match(privilege, /has_column_privilege[\s\S]*?'credentials_verified'[\s\S]*?'update'/);
-  assert.match(privilege, /has_column_privilege[\s\S]*?'license_no_encrypted'[\s\S]*?'update'/);
+  assert.match(privilege, /information_schema\.columns/u);
+  assert.match(
+    privilege,
+    /column_name in \( 'credentials_verified', 'license_no_encrypted', 'verified_at', 'verified_by_profile_id' \)/u,
+  );
   assert.match(privilege, /has_column_privilege[\s\S]*?'bio'[\s\S]*?'update'/);
+  assert.match(privilege, /has_column_privilege[\s\S]*?'service_areas'[\s\S]*?'update'/);
 
   const fixtures = [
     'company_assignment_concurrency_session_a.sql',

@@ -22,7 +22,6 @@ describe('editUserSchema — happy paths', () => {
       phone: editCommon.phone,
       tenant_id: null,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, true);
@@ -58,31 +57,29 @@ describe('editUserSchema — rejects', () => {
       editUserSchema.safeParse({
         ...editCommon,
         role: 'pro',
-        license_no: 'LIC-1',
         service_areas: ['DUBAI'],
       }).success,
       false,
     );
   });
-  it('rejects a whitespace-only PRO licence', () => {
-    assert.equal(
-      editUserSchema.safeParse({
-        full_name: editCommon.full_name,
-        phone: editCommon.phone,
-        tenant_id: null,
-        role: 'pro',
-        license_no: '   ',
-        service_areas: ['DUBAI'],
-      }).success,
-      false,
-    );
+  it('strips obsolete generic PRO licence input', () => {
+    const r = editUserSchema.safeParse({
+      full_name: editCommon.full_name,
+      phone: editCommon.phone,
+      tenant_id: null,
+      role: 'pro',
+      license_no: 'LIC-1',
+      service_areas: ['DUBAI'],
+    });
+    assert.equal(r.success, true);
+    if (r.success) assert.equal('license_no' in r.data, false);
   });
   it('rejects employee missing company_id', () => {
     const r = editUserSchema.safeParse({ ...editCommon, role: 'employee' });
     assert.equal(r.success, false);
   });
 
-  it('rejects when email is provided (immutable on edit)', () => {
+  it('strips email when provided (immutable on edit)', () => {
     // The editBaseFields type does not include email. Zod strips unknown keys
     // by default for object schemas; this assertion just ensures parse still
     // succeeds and that email is not in the parsed output.
@@ -92,13 +89,10 @@ describe('editUserSchema — rejects', () => {
       tenant_id: null,
       email: 'should-be-stripped@example.com',
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, true);
-    if (r.success) {
-      assert.equal('email' in r.data, false);
-    }
+    if (r.success) assert.equal('email' in r.data, false);
   });
 
   it('rejects employee with past visa_expiry', () => {
@@ -117,7 +111,6 @@ describe('changeRoleSchema — happy paths', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'pro',
       tenant_id: null,
-      license_no: 'LIC-2',
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, true);
@@ -163,20 +156,19 @@ describe('changeRoleSchema — rejects', () => {
   it('accepts pro newRole with omitted tenant_id as unassigned', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, true);
     assert.equal(r.success && r.data.tenant_id, null);
   });
 
-  it('rejects pro newRole missing license_no', () => {
+  it('accepts pro newRole without generic licence data', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'pro',
       tenant_id: null,
       service_areas: ['DUBAI'],
     });
-    assert.equal(r.success, false);
+    assert.equal(r.success, true);
   });
 
   it('rejects pro newRole carrying a tenant assignment', () => {
@@ -184,7 +176,6 @@ describe('changeRoleSchema — rejects', () => {
       changeRoleSchema.safeParse({
         newRole: 'pro',
         tenant_id: tenantId,
-        license_no: 'LIC-1',
         service_areas: ['DUBAI'],
       }).success,
       false,
@@ -203,7 +194,6 @@ describe('changeRoleSchema — rejects', () => {
     const r = changeRoleSchema.safeParse({
       newRole: 'pro',
       tenant_id: tenantId,
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
       confirmation: 'CONFIRM',
     });

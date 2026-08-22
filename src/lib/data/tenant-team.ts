@@ -53,9 +53,8 @@ export async function inviteColleague(
       full_name: input.full_name,
       email: input.email,
       // Phone is required by createUserSchema; the invitee fills it in via
-      // /account on first sign-in. Same placeholder convention as license_no.
+      // /account on first sign-in.
       phone: '+971500000000',
-      license_no: 'PENDING_ONBOARDING',
       service_areas: [],
       designation: null,
       department: null,

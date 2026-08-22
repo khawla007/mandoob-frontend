@@ -2,6 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { decryptOptional } from '@/lib/crypto/pii';
+import { readProCredentialSnapshot, type ProCredentialMask } from '@/lib/data/pro-credentials';
 import type { Role } from '@/lib/auth/roles';
 import { assertAdminCanModifyTarget, type ProfileStatus } from './admin-edit-helpers';
 
@@ -20,14 +21,11 @@ export type EditableProfile = {
 };
 
 export type EditablePro = {
-  licenseNo: string | null;
   designation: string | null;
   department: string | null;
   serviceAreas: string[];
   bio: string | null;
-  credentialsVerified: boolean;
-  verifiedAt: string | null;
-  verifiedByProfileId: string | null;
+  credentialSummary: ProCredentialMask | null;
   updatedAt: string;
 };
 
@@ -89,9 +87,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
   if (baseProfile.role === 'pro') {
     const { data: pro, error: proError } = await admin
       .from('pro_profiles')
-      .select(
-        'license_no_encrypted, designation, department, service_areas, bio, credentials_verified, verified_at, verified_by_profile_id, updated_at',
-      )
+      .select('designation, department, service_areas, bio, updated_at')
       .eq('profile_id', targetId)
       .maybeSingle();
     if (
@@ -103,18 +99,16 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
       console.error('admin PRO profile read failed', proError ?? { kind: 'invalid_version' });
       throw new ApiError('INTERNAL', 'Could not load user', 500);
     }
+    const credentialSnapshot = await readProCredentialSnapshot(caller.id, targetId);
     return {
       profile: baseProfile,
       role: 'pro',
       pro: {
-        licenseNo: decryptOptional(pro?.license_no_encrypted as string | null),
         designation: (pro?.designation as string | null) ?? null,
         department: (pro?.department as string | null) ?? null,
         serviceAreas: ((pro?.service_areas as string[] | null) ?? []) as string[],
         bio: (pro?.bio as string | null) ?? null,
-        credentialsVerified: Boolean(pro?.credentials_verified),
-        verifiedAt: (pro?.verified_at as string | null) ?? null,
-        verifiedByProfileId: (pro?.verified_by_profile_id as string | null) ?? null,
+        credentialSummary: credentialSnapshot.credentials[0] ?? null,
         updatedAt: pro?.updated_at as string,
       },
     };

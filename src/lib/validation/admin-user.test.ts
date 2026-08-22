@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createUserSchema } from './admin-user';
+import { changeRoleSchema, createUserSchema, editUserSchema } from './admin-user';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
 const companyId = '22222222-2222-4222-8222-222222222222';
@@ -26,7 +26,6 @@ describe('createUserSchema — happy paths', () => {
     const r = createUserSchema.safeParse({
       ...proCommon,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, true);
@@ -113,7 +112,6 @@ describe('createUserSchema — rejects', () => {
       email: baseCommon.email,
       phone: baseCommon.phone,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: [
         'DUBAI',
         'ABU_DHABI',
@@ -133,7 +131,6 @@ describe('createUserSchema — rejects', () => {
     const r = createUserSchema.safeParse({
       ...baseCommon,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
     });
     assert.equal(r.success, false);
@@ -172,7 +169,6 @@ describe('createUserSchema — rejects', () => {
     const r = createUserSchema.safeParse({
       ...proCommon,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
       phone: '0501234567',
     });
@@ -183,7 +179,6 @@ describe('createUserSchema — rejects', () => {
     const r = createUserSchema.safeParse({
       ...proCommon,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['DUBAI'],
       email: 'not-an-email',
     });
@@ -196,7 +191,6 @@ describe('createUserSchema — service area enum', () => {
     const r = createUserSchema.safeParse({
       ...proCommon,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['ALL_UAE'],
     });
     assert.equal(r.success, true);
@@ -206,7 +200,6 @@ describe('createUserSchema — service area enum', () => {
     const r = createUserSchema.safeParse({
       ...proCommon,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: [],
     });
     assert.equal(r.success, true);
@@ -216,9 +209,45 @@ describe('createUserSchema — service area enum', () => {
     const r = createUserSchema.safeParse({
       ...proCommon,
       role: 'pro',
-      license_no: 'LIC-1',
       service_areas: ['JEDDAH'],
     });
     assert.equal(r.success, false);
+  });
+});
+
+describe('normalized PRO profile separation', () => {
+  it('creates, edits, and changes to a tenantless PRO without generic licence input', () => {
+    const create = { ...proCommon, role: 'pro', service_areas: ['DUBAI'] } as const;
+    const edit = {
+      full_name: proCommon.full_name,
+      phone: proCommon.phone,
+      role: 'pro',
+      service_areas: ['DUBAI'],
+    } as const;
+    const role = { newRole: 'pro', service_areas: ['DUBAI'] } as const;
+    assert.equal(createUserSchema.safeParse(create).success, true);
+    assert.equal(editUserSchema.safeParse(edit).success, true);
+    assert.equal(changeRoleSchema.safeParse(role).success, true);
+  });
+
+  it('strips obsolete generic licence input from every parsed PRO payload', () => {
+    for (const [schema, value] of [
+      [createUserSchema, { ...proCommon, role: 'pro', service_areas: [], license_no: 'LIC-1' }],
+      [
+        editUserSchema,
+        {
+          full_name: 'A',
+          phone: proCommon.phone,
+          role: 'pro',
+          service_areas: [],
+          license_no: 'LIC-1',
+        },
+      ],
+      [changeRoleSchema, { newRole: 'pro', service_areas: [], license_no: 'LIC-1' }],
+    ] as const) {
+      const parsed = schema.safeParse(value);
+      assert.equal(parsed.success, true);
+      if (parsed.success) assert.equal('license_no' in parsed.data, false);
+    }
   });
 });
