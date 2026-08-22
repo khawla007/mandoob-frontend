@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { JSON_BODY_MAX_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { createEvidenceDeleteHandler, createEvidenceGetHandler } from './route';
 
 const A = '10000000-0000-4000-8000-000000000001';
@@ -35,6 +36,19 @@ function removeRequest(overrides: Record<string, unknown> = {}) {
   });
 }
 
+function chunkedRemoveRequest(bytes: number) {
+  return new Request('http://localhost/evidence', {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(bytes));
+      },
+    }),
+    duplex: 'half',
+  } as RequestInit);
+}
+
 test('evidence DELETE missing and mismatched CSRF touch no downstream stage', async () => {
   for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
     const touched: string[] = [];
@@ -55,6 +69,37 @@ test('evidence DELETE missing and mismatched CSRF touch no downstream stage', as
     assert.equal(response.status, 403);
     assert.deepEqual(touched, []);
   }
+});
+
+test('evidence DELETE limits before rejecting an oversized declared body', async () => {
+  const calls: string[] = [];
+  const handler = createEvidenceDeleteHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => (calls.push('target'), { proProfileId: A, credentialIds: [C] }),
+    limit: async () => (calls.push('limit'), 'allowed'),
+    prepare: async () => (calls.push('mutation'), prepared()),
+  });
+  const oversized = removeRequest();
+  oversized.headers.set('content-length', String(JSON_BODY_MAX_BYTES + 1));
+  const response = await handler(oversized, { params: Promise.resolve({ evidenceId: E }) });
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
+  calls.length = 0;
+  const chunkedResponse = await handler(chunkedRemoveRequest(JSON_BODY_MAX_BYTES + 1), {
+    params: Promise.resolve({ evidenceId: E }),
+  });
+  assert.equal(chunkedResponse.status, 413);
+  assert.equal((await chunkedResponse.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
 });
 
 test('evidence GET requires a live owner/operator with AAL2 and redirects to an opaque 300-second app token', async () => {

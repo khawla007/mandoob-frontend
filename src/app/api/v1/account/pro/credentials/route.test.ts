@@ -7,6 +7,7 @@ import {
   requireLiveLifecycleViewer,
   requireLiveProAccount,
 } from '@/app/api/v1/_shared/pro-lifecycle-routes';
+import { JSON_BODY_MAX_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { createCredentialPostHandler } from './route';
 
 const ACTOR = '10000000-0000-4000-8000-000000000001';
@@ -19,6 +20,19 @@ function request(body: unknown) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+}
+
+function chunkedJson(bytes: number) {
+  return new Request('http://localhost/api/v1/account/pro/credentials', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(bytes));
+      },
+    }),
+    duplex: 'half',
+  } as RequestInit);
 }
 
 test('PRO credential mutation executes the security pipeline in order', async () => {
@@ -59,6 +73,36 @@ test('PRO credential mutation executes the security pipeline in order', async ()
   );
   assert.equal(response.status, 200);
   assert.deepEqual(calls, ['csrf', 'session', 'target', 'limit', 'mutation', 'revalidate']);
+});
+
+test('PRO credential mutation limits before rejecting an oversized declared body', async () => {
+  const calls: string[] = [];
+  const handler = createCredentialPostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: ACTOR,
+      role: 'pro',
+      tenantId: ACTOR,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => (calls.push('target'), { proProfileId: ACTOR, credentialIds: [] }),
+    limit: async () => (calls.push('limit'), 'allowed'),
+    mutate: async () => (calls.push('mutation'), null),
+    revalidate: () => undefined,
+  });
+  const oversized = request({ command: 'create', operationId: OPERATION });
+  oversized.headers.set('content-length', String(JSON_BODY_MAX_BYTES + 1));
+  const response = await handler(oversized);
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
+  calls.length = 0;
+  const chunkedResponse = await handler(chunkedJson(JSON_BODY_MAX_BYTES + 1));
+  assert.equal(chunkedResponse.status, 413);
+  assert.equal((await chunkedResponse.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
 });
 
 test('PRO credential mutation blocks CSRF, AAL1, unknown credentials, limiter uncertainty and malformed commands', async (t) => {

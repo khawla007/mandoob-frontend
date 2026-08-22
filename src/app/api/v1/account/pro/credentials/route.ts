@@ -5,6 +5,11 @@ import type { SessionProfile } from '@/lib/auth/require-user';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { proCredentialDraftSchema } from '@/lib/validation/pro-lifecycle';
 import {
+  BodyTooLargeError,
+  JSON_BODY_MAX_BYTES,
+  readBoundedJson,
+} from '@/app/api/v1/_shared/bounded-body';
+import {
   lifecycleErrorResponse,
   limitResponse,
   notFoundResponse,
@@ -106,15 +111,22 @@ export function createCredentialPostHandler(overrides: Partial<Deps> = {}) {
     try {
       const aal = requireAal2Response(session);
       if (aal) return aal;
-      const raw: unknown = await request.json().catch(() => null);
       const target = await deps.resolveTarget(session.id);
       if (!target) return notFoundResponse();
+      const limited = limitResponse(await deps.limit(session.id, target.proProfileId));
+      if (limited) return limited;
+      let raw: unknown;
+      try {
+        raw = await readBoundedJson(request, JSON_BODY_MAX_BYTES);
+      } catch (error) {
+        return error instanceof BodyTooLargeError
+          ? errorResponse('PAYLOAD_TOO_LARGE', 'Request body is too large', 413)
+          : errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
+      }
       const rawCredentialId =
         raw && typeof raw === 'object' ? (raw as Record<string, unknown>).credentialId : undefined;
       if (typeof rawCredentialId === 'string' && !target.credentialIds.includes(rawCredentialId))
         return notFoundResponse();
-      const limited = limitResponse(await deps.limit(session.id, target.proProfileId));
-      if (limited) return limited;
       const parsed = commandSchema.safeParse(raw);
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
       const credential = await deps.mutate(session.id, target.proProfileId, parsed.data);

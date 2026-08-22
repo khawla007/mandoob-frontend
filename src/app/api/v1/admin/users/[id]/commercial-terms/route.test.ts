@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { JSON_BODY_MAX_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { createCommercialTermPostHandler } from './route';
 
 const A = '10000000-0000-4000-8000-000000000001';
@@ -12,6 +13,18 @@ const request = (body: unknown) =>
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+
+const chunkedRequest = (bytes: number) =>
+  new Request('http://localhost/terms', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(bytes));
+      },
+    }),
+    duplex: 'half',
+  } as RequestInit);
 
 test('commercial terms missing and mismatched CSRF touch no downstream stage', async () => {
   for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
@@ -29,6 +42,41 @@ test('commercial terms missing and mismatched CSRF touch no downstream stage', a
     assert.equal((await handler(request({}), { params: Promise.resolve({ id: P }) })).status, 403);
     assert.deepEqual(touched, []);
   }
+});
+
+test('commercial terms limit before rejecting an oversized declared body', async () => {
+  const calls: string[] = [];
+  const handler = createCommercialTermPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => (
+      calls.push('target'),
+      { proProfileId: P, credentialIds: [], termIds: [T] }
+    ),
+    limit: async () => (calls.push('limit'), 'allowed'),
+    mutate: async () => (calls.push('mutation'), null),
+    revalidate: () => undefined,
+  });
+  const oversized = request({ command: 'activate', termId: T, expectedVersion: 0, operationId: O });
+  oversized.headers.set('content-length', String(JSON_BODY_MAX_BYTES + 1));
+  const response = await handler(oversized, { params: Promise.resolve({ id: P }) });
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
+  calls.length = 0;
+  const chunkedResponse = await handler(chunkedRequest(JSON_BODY_MAX_BYTES + 1), {
+    params: Promise.resolve({ id: P }),
+  });
+  assert.equal(chunkedResponse.status, 413);
+  assert.equal((await chunkedResponse.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
 });
 
 test('commercial term commands use ordered guards, session actor and revalidation', async () => {

@@ -5,6 +5,11 @@ import type { SessionProfile } from '@/lib/auth/require-user';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { isValidCalendarDate } from '@/lib/validation/calendar-date';
 import {
+  BodyTooLargeError,
+  JSON_BODY_MAX_BYTES,
+  readBoundedJson,
+} from '@/app/api/v1/_shared/bounded-body';
+import {
   lifecycleErrorResponse,
   limitResponse,
   notFoundResponse,
@@ -133,15 +138,22 @@ export function createCommercialTermPostHandler(overrides: Partial<Deps> = {}) {
       const { id } = await context.params;
       if (!uuid.safeParse(id).success)
         return errorResponse('VALIDATION_FAILED', 'Invalid user id', 400);
-      const raw: unknown = await request.json().catch(() => null);
       const target = await deps.resolveTarget(session.id, id);
       if (!target) return notFoundResponse();
+      const limited = limitResponse(await deps.limit(session.id, id));
+      if (limited) return limited;
+      let raw: unknown;
+      try {
+        raw = await readBoundedJson(request, JSON_BODY_MAX_BYTES);
+      } catch (error) {
+        return error instanceof BodyTooLargeError
+          ? errorResponse('PAYLOAD_TOO_LARGE', 'Request body is too large', 413)
+          : errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
+      }
       const rawTermId =
         raw && typeof raw === 'object' ? (raw as Record<string, unknown>).termId : undefined;
       if (typeof rawTermId === 'string' && !(target.termIds ?? []).includes(rawTermId))
         return notFoundResponse();
-      const limited = limitResponse(await deps.limit(session.id, id));
-      if (limited) return limited;
       const parsed = termCommand.safeParse(raw);
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
       const term = await deps.mutate(session.id, id, parsed.data);

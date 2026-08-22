@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { MULTIPART_BODY_ENVELOPE_BYTES } from '@/app/api/v1/_shared/bounded-body';
+import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycle';
 import { createEvidencePostHandler } from './route';
 
 const A = '10000000-0000-4000-8000-000000000001';
@@ -24,6 +26,19 @@ function uploadWithExtraField(file: File) {
   });
 }
 
+function chunkedMultipart(bytes: number) {
+  return new Request('http://localhost/upload', {
+    method: 'POST',
+    headers: { 'content-type': 'multipart/form-data; boundary=fixture' },
+    body: new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(bytes));
+      },
+    }),
+    duplex: 'half',
+  } as RequestInit);
+}
+
 test('evidence upload missing and mismatched CSRF touch no downstream stage', async () => {
   for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
     const touched: string[] = [];
@@ -43,6 +58,40 @@ test('evidence upload missing and mismatched CSRF touch no downstream stage', as
     );
     assert.deepEqual(touched, []);
   }
+});
+
+test('evidence upload limits before rejecting an oversized declared multipart body', async () => {
+  const calls: string[] = [];
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => (calls.push('target'), { proProfileId: A, credentialIds: [C] }),
+    limit: async () => (calls.push('limit'), 'allowed'),
+    register: async () => (calls.push('mutation'), null),
+  });
+  const oversized = upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' }));
+  oversized.headers.set(
+    'content-length',
+    String(PRO_CREDENTIAL_EVIDENCE_MAX_BYTES + MULTIPART_BODY_ENVELOPE_BYTES + 1),
+  );
+  const response = await handler(oversized);
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
+  calls.length = 0;
+  const chunkedResponse = await handler(
+    chunkedMultipart(PRO_CREDENTIAL_EVIDENCE_MAX_BYTES + MULTIPART_BODY_ENVELOPE_BYTES + 1),
+  );
+  assert.equal(chunkedResponse.status, 413);
+  assert.equal((await chunkedResponse.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
 });
 
 test('evidence upload rejects oversized, dirty, mismatched and malware files before storage', async () => {

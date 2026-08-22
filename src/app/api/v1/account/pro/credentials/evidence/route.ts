@@ -7,6 +7,11 @@ import {
   PRO_CREDENTIAL_EVIDENCE_MAX_BYTES,
   proCredentialEvidenceMetadataSchema,
 } from '@/lib/validation/pro-lifecycle';
+import {
+  BodyTooLargeError,
+  MULTIPART_BODY_ENVELOPE_BYTES,
+  readBoundedFormData,
+} from '@/app/api/v1/_shared/bounded-body';
 import { buildProCredentialEvidencePath } from '@/lib/storage/pro-credential-path';
 import {
   lifecycleErrorResponse,
@@ -134,18 +139,24 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
     try {
       const aal = requireAal2Response(session);
       if (aal) return aal;
-      const form = await request.formData().catch(() => null);
-      const rawCredentialId = form?.get('credentialId');
       const target = await deps.resolveTarget(session.id);
-      if (
-        !target ||
-        typeof rawCredentialId !== 'string' ||
-        !target.credentialIds.includes(rawCredentialId)
-      )
-        return notFoundResponse();
+      if (!target) return notFoundResponse();
       const limited = limitResponse(await deps.limit(session.id, target.proProfileId));
       if (limited) return limited;
-      if (!form) return errorResponse('VALIDATION_FAILED', 'Invalid upload', 400);
+      let form: FormData;
+      try {
+        form = await readBoundedFormData(
+          request,
+          PRO_CREDENTIAL_EVIDENCE_MAX_BYTES + MULTIPART_BODY_ENVELOPE_BYTES,
+        );
+      } catch (error) {
+        return error instanceof BodyTooLargeError
+          ? errorResponse('PAYLOAD_TOO_LARGE', 'Upload is too large', 413)
+          : errorResponse('VALIDATION_FAILED', 'Invalid upload', 400);
+      }
+      const rawCredentialId = form.get('credentialId');
+      if (typeof rawCredentialId !== 'string' || !target.credentialIds.includes(rawCredentialId))
+        return notFoundResponse();
       const allowedFields = new Set(['credentialId', 'expectedVersion', 'operationId', 'file']);
       if (
         Array.from(form.keys()).some((key) => !allowedFields.has(key)) ||

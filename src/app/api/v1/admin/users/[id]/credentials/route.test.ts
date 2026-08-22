@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { JSON_BODY_MAX_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { createAdminCredentialPostHandler } from './route';
 
 const A = '10000000-0000-4000-8000-000000000001';
@@ -12,6 +13,18 @@ const req = (body: unknown) =>
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+
+const chunkedReq = (bytes: number) =>
+  new Request('http://localhost/admin', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(bytes));
+      },
+    }),
+    duplex: 'half',
+  } as RequestInit);
 
 test('admin review missing and mismatched CSRF touch no downstream stage', async () => {
   for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
@@ -29,6 +42,43 @@ test('admin review missing and mismatched CSRF touch no downstream stage', async
     assert.equal((await handler(req({}), { params: Promise.resolve({ id: P }) })).status, 403);
     assert.deepEqual(touched, []);
   }
+});
+
+test('operator review limits before rejecting an oversized declared body', async () => {
+  const calls: string[] = [];
+  const handler = createAdminCredentialPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => (calls.push('target'), { proProfileId: P, credentialIds: [C] }),
+    limit: async () => (calls.push('limit'), 'allowed'),
+    review: async () => (calls.push('mutation'), null),
+    revalidate: () => undefined,
+  });
+  const oversized = req({
+    command: 'begin_review',
+    credentialId: C,
+    expectedVersion: 1,
+    operationId: O,
+  });
+  oversized.headers.set('content-length', String(JSON_BODY_MAX_BYTES + 1));
+  const response = await handler(oversized, { params: Promise.resolve({ id: P }) });
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
+  calls.length = 0;
+  const chunkedResponse = await handler(chunkedReq(JSON_BODY_MAX_BYTES + 1), {
+    params: Promise.resolve({ id: P }),
+  });
+  assert.equal(chunkedResponse.status, 413);
+  assert.equal((await chunkedResponse.json()).code, 'PAYLOAD_TOO_LARGE');
+  assert.deepEqual(calls, ['target', 'limit']);
 });
 
 test('operator review derives actor, resolves active PRO and credential before fail-closed limiting and mutation', async () => {
