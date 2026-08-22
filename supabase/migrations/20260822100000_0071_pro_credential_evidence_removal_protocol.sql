@@ -130,7 +130,14 @@ begin
   select * into v_removal from public.pro_credential_evidence_removals
   where evidence_id = p_evidence_id for update;
   if found then
-    perform public.authorize_pro_lifecycle_actor(p_actor_id, v_removal.pro_profile_id, false);
+    begin
+      perform public.authorize_pro_lifecycle_actor(p_actor_id, v_removal.pro_profile_id, false);
+    exception when sqlstate 'P0001' then
+      if sqlerrm = 'FORBIDDEN' then
+        raise exception using errcode = 'P0001', message = 'NOT_FOUND';
+      end if;
+      raise;
+    end;
     if v_removal.actor_id <> p_actor_id or v_removal.operation_id <> p_operation_id then
       raise exception using errcode = 'P0001', message = 'EVIDENCE_REMOVAL_IN_PROGRESS';
     end if;
@@ -211,7 +218,14 @@ begin
   select * into v_removal from public.pro_credential_evidence_removals
   where evidence_id = p_evidence_id for update;
   if not found then raise exception using errcode = 'P0001', message = 'NOT_FOUND'; end if;
-  perform public.assert_pro_lifecycle_actor(p_actor_id, v_removal.pro_profile_id, false);
+  begin
+    perform public.assert_pro_lifecycle_actor(p_actor_id, v_removal.pro_profile_id, false);
+  exception when sqlstate 'P0001' then
+    if sqlerrm = 'FORBIDDEN' then
+      raise exception using errcode = 'P0001', message = 'NOT_FOUND';
+    end if;
+    raise;
+  end;
   if v_removal.actor_id <> p_actor_id or v_removal.operation_id <> p_operation_id
      or v_removal.credential_id <> p_credential_id
      or v_removal.expected_version <> p_expected_version

@@ -366,6 +366,55 @@ test('evidence DELETE hides wrong credential, cross-owner, and unknown evidence 
   assert.equal(erased, 0);
 });
 
+test('evidence DELETE makes a foreign existing reservation indistinguishable from unknown evidence', async () => {
+  const { ApiError } = await import('@/lib/errors');
+  let foreignPrepareCalls = 0;
+  const base = {
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro' as const,
+      tenantId: A,
+      aal: 'aal2' as const,
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed' as const,
+    erase: async () => {
+      throw new Error('must not erase');
+    },
+    finalize: async () => {
+      throw new Error('must not finalize');
+    },
+    revalidate: () => undefined,
+  };
+  const unknown = createEvidenceDeleteHandler({
+    ...base,
+    prepare: async () => {
+      throw new ApiError('NOT_FOUND', 'unknown evidence detail', 404);
+    },
+  });
+  const foreignReservation = createEvidenceDeleteHandler({
+    ...base,
+    prepare: async () => {
+      foreignPrepareCalls += 1;
+      throw new ApiError('NOT_FOUND', 'foreign reservation detail', 404);
+    },
+  });
+
+  const unknownResponse = await unknown(removeRequest(), {
+    params: Promise.resolve({ evidenceId: E }),
+  });
+  const foreignResponse = await foreignReservation(removeRequest(), {
+    params: Promise.resolve({ evidenceId: E }),
+  });
+  assert.equal(foreignPrepareCalls, 1, 'cross-owner request must reach prepare');
+  assert.equal(unknownResponse.status, 404);
+  assert.equal(foreignResponse.status, unknownResponse.status);
+  assert.deepEqual(await foreignResponse.json(), await unknownResponse.json());
+});
+
 test('evidence DELETE hides denied sessions and fails closed when authoritative scope cannot resolve', async () => {
   const request = removeRequest();
   const denied = createEvidenceDeleteHandler({

@@ -36,16 +36,37 @@ insert into auth.users (
   '93000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000',
   'authenticated', 'authenticated', 'removal-pro@example.invalid', 'synthetic', now(),
   '{}', '{}', now(), now()
+), (
+  '93000000-0000-4000-8000-000000000021', '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'foreign-removal-pro@example.invalid', 'synthetic', now(),
+  '{}', '{}', now(), now()
+), (
+  '93000000-0000-4000-8000-000000000031', '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'removal-operator@example.invalid', 'synthetic', now(),
+  '{}', '{}', now(), now()
 );
 insert into public.profiles (id, role, status, full_name)
-values ('93000000-0000-4000-8000-000000000001', 'pro', 'active', 'Removal PRO');
+values
+  ('93000000-0000-4000-8000-000000000001', 'pro', 'active', 'Removal PRO'),
+  ('93000000-0000-4000-8000-000000000021', 'pro', 'active', 'Foreign Removal PRO'),
+  ('93000000-0000-4000-8000-000000000031', 'admin', 'active', 'Removal Operator');
 insert into public.pro_profiles (profile_id)
-values ('93000000-0000-4000-8000-000000000001');
+values
+  ('93000000-0000-4000-8000-000000000001'),
+  ('93000000-0000-4000-8000-000000000021');
 insert into public.pro_credentials (id, pro_profile_id, state, version, created_by)
 values (
   '93000000-0000-4000-8000-000000000002',
   '93000000-0000-4000-8000-000000000001', 'draft', 0,
   '93000000-0000-4000-8000-000000000001'
+), (
+  '93000000-0000-4000-8000-000000000012',
+  '93000000-0000-4000-8000-000000000001', 'draft', 0,
+  '93000000-0000-4000-8000-000000000001'
+), (
+  '93000000-0000-4000-8000-000000000022',
+  '93000000-0000-4000-8000-000000000021', 'draft', 0,
+  '93000000-0000-4000-8000-000000000021'
 );
 insert into public.pro_credential_evidence (
   id, pro_profile_id, credential_id, storage_path, mime_type, size_bytes, sha256,
@@ -57,12 +78,25 @@ insert into public.pro_credential_evidence (
   'pro-credentials/93000000-0000-4000-8000-000000000001/93000000-0000-4000-8000-000000000002/93000000-0000-4000-8000-000000000003',
   'application/pdf', 8, repeat('a', 64), 'proof.pdf', 'fixture', now(),
   '93000000-0000-4000-8000-000000000001'
+), (
+  '93000000-0000-4000-8000-000000000013',
+  '93000000-0000-4000-8000-000000000001',
+  '93000000-0000-4000-8000-000000000012',
+  'pro-credentials/93000000-0000-4000-8000-000000000001/93000000-0000-4000-8000-000000000012/93000000-0000-4000-8000-000000000013',
+  'application/pdf', 8, repeat('d', 64), 'operator-proof.pdf', 'fixture', now(),
+  '93000000-0000-4000-8000-000000000001'
 );
 
 do $$
 declare
   v_prepared jsonb;
+  v_operator_prepared jsonb;
+  v_operator_result jsonb;
   v_result jsonb;
+  v_unknown_error text;
+  v_foreign_error text;
+  v_unknown_finalize_error text;
+  v_foreign_finalize_error text;
 begin
   v_prepared := public.prepare_pro_credential_evidence_removal(
     '93000000-0000-4000-8000-000000000001',
@@ -79,6 +113,83 @@ begin
     '93000000-0000-4000-8000-000000000003', 0,
     '93000000-0000-4000-8000-000000000004', repeat('b', 64)
   ) <> v_prepared then raise exception 'PREPARE_REPLAY_CHANGED'; end if;
+  begin
+    perform public.prepare_pro_credential_evidence_removal(
+      '93000000-0000-4000-8000-000000000021',
+      '93000000-0000-4000-8000-000000000022',
+      '93000000-0000-4000-8000-000000000099', 0,
+      '93000000-0000-4000-8000-000000000023', repeat('e', 64)
+    );
+    raise exception 'EXPECTED_UNKNOWN_EVIDENCE';
+  exception when sqlstate 'P0001' then
+    v_unknown_error := sqlerrm;
+  end;
+  begin
+    perform public.prepare_pro_credential_evidence_removal(
+      '93000000-0000-4000-8000-000000000021',
+      '93000000-0000-4000-8000-000000000022',
+      '93000000-0000-4000-8000-000000000003', 0,
+      '93000000-0000-4000-8000-000000000024', repeat('f', 64)
+    );
+    raise exception 'EXPECTED_FOREIGN_RESERVATION';
+  exception when sqlstate 'P0001' then
+    v_foreign_error := sqlerrm;
+  end;
+  if v_unknown_error <> 'NOT_FOUND' or v_foreign_error <> v_unknown_error then
+    raise exception 'RESERVATION_EXISTENCE_LEAK: unknown %, foreign %',
+      v_unknown_error, v_foreign_error;
+  end if;
+  v_operator_prepared := public.prepare_pro_credential_evidence_removal(
+    '93000000-0000-4000-8000-000000000031',
+    '93000000-0000-4000-8000-000000000012',
+    '93000000-0000-4000-8000-000000000013', 0,
+    '93000000-0000-4000-8000-000000000014', repeat('1', 64)
+  );
+  if v_operator_prepared ->> 'status' <> 'prepared' then
+    raise exception 'OPERATOR_PREPARE_DENIED';
+  end if;
+  if public.prepare_pro_credential_evidence_removal(
+    '93000000-0000-4000-8000-000000000031',
+    '93000000-0000-4000-8000-000000000012',
+    '93000000-0000-4000-8000-000000000013', 0,
+    '93000000-0000-4000-8000-000000000014', repeat('1', 64)
+  ) <> v_operator_prepared then raise exception 'OPERATOR_PREPARE_REPLAY_CHANGED'; end if;
+  begin
+    perform public.finalize_pro_credential_evidence_removal(
+      '93000000-0000-4000-8000-000000000021',
+      '93000000-0000-4000-8000-000000000022',
+      '93000000-0000-4000-8000-000000000099', 0,
+      '93000000-0000-4000-8000-000000000023', repeat('e', 64)
+    );
+    raise exception 'EXPECTED_UNKNOWN_FINALIZE';
+  exception when sqlstate 'P0001' then
+    v_unknown_finalize_error := sqlerrm;
+  end;
+  begin
+    perform public.finalize_pro_credential_evidence_removal(
+      '93000000-0000-4000-8000-000000000021',
+      '93000000-0000-4000-8000-000000000022',
+      '93000000-0000-4000-8000-000000000013', 0,
+      '93000000-0000-4000-8000-000000000024', repeat('f', 64)
+    );
+    raise exception 'EXPECTED_FOREIGN_FINALIZE';
+  exception when sqlstate 'P0001' then
+    v_foreign_finalize_error := sqlerrm;
+  end;
+  if v_unknown_finalize_error <> 'NOT_FOUND'
+     or v_foreign_finalize_error <> v_unknown_finalize_error then
+    raise exception 'FINALIZE_RESERVATION_EXISTENCE_LEAK: unknown %, foreign %',
+      v_unknown_finalize_error, v_foreign_finalize_error;
+  end if;
+  v_operator_result := public.finalize_pro_credential_evidence_removal(
+    '93000000-0000-4000-8000-000000000031',
+    '93000000-0000-4000-8000-000000000012',
+    '93000000-0000-4000-8000-000000000013', 0,
+    '93000000-0000-4000-8000-000000000014', repeat('1', 64)
+  );
+  if v_operator_result ->> 'version' <> '1' then
+    raise exception 'OPERATOR_FINALIZE_DENIED';
+  end if;
   begin
     perform public.prepare_pro_credential_evidence_removal(
       '93000000-0000-4000-8000-000000000001',

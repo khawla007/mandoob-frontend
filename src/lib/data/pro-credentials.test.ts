@@ -213,6 +213,24 @@ test('evidence removal protocol maps stale, replay and competing reservations', 
   }
 });
 
+test('evidence removal maps database NOT_FOUND to a sanitized 404', async () => {
+  const { prepareProCredentialEvidenceRemoval } = await import('./pro-credentials');
+  const supabase = fake([{ data: null, error: { message: 'NOT_FOUND' } }]);
+  await assert.rejects(
+    () =>
+      prepareProCredentialEvidenceRemoval(ACTOR_ID, CREDENTIAL_ID, EVIDENCE_ID, 1, OPERATION_ID, {
+        supabase: supabase as never,
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      'status' in error &&
+      error.code === 'NOT_FOUND' &&
+      error.status === 404 &&
+      !error.message.includes('NOT_FOUND'),
+  );
+});
+
 test('evidence registration replay hash is stable across rescans of identical blob bytes', async () => {
   const { registerProCredentialEvidence } = await import('./pro-credentials');
   const supabase = fake([

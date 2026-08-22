@@ -36,6 +36,23 @@ test('0071 makes evidence removal a private durable prepare/finalize protocol', 
   assert.match(sql, /pg_advisory_xact_lock/u);
   assert.match(sql, /for update/u);
   assert.match(sql, /evidence_removal_in_progress/u);
+  assert.match(
+    sql,
+    /prepare_pro_credential_evidence_removal[\s\S]*exception when sqlstate 'p0001' then if sqlerrm = 'forbidden' then raise exception using errcode = 'p0001', message = 'not_found'/u,
+  );
+  assert.match(
+    sql,
+    /finalize_pro_credential_evidence_removal[\s\S]*assert_pro_lifecycle_actor\(p_actor_id, v_removal\.pro_profile_id, false\)[\s\S]*exception when sqlstate 'p0001' then if sqlerrm = 'forbidden' then raise exception using errcode = 'p0001', message = 'not_found'/u,
+  );
+  assert.equal(
+    [
+      ...sql.matchAll(
+        /begin perform public\.(?:authorize|assert)_pro_lifecycle_actor\(p_actor_id, v_removal\.pro_profile_id, false\); exception when sqlstate 'p0001' then if sqlerrm = 'forbidden' then raise exception using errcode = 'p0001', message = 'not_found'; end if; raise; end;/gu,
+      ),
+    ].length,
+    2,
+    'prepare and finalize must only collapse explicit authorization denials and rethrow other errors',
+  );
   assert.match(sql, /revoke all on function public\.remove_pro_credential_evidence/u);
   assert.match(
     sql,
