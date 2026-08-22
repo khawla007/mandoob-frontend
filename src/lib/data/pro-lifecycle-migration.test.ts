@@ -380,6 +380,7 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
     'pro_lifecycle_recovery_concurrency_setup.sql',
     'pro_lifecycle_recovery_session_a.sql',
     'pro_lifecycle_recovery_session_b.sql',
+    'pro_credential_identifier_preservation.sql',
   ]) {
     const path = join(process.cwd(), 'supabase/tests', fixture);
     assert.equal(existsSync(path), true, fixture);
@@ -399,6 +400,16 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
   assert.match(recovery, /recoveryActorId/u);
   assert.match(recovery, /status = 'cancelled'/u);
   assert.match(recovery, /UNSAFE_RETENTION_CLEANUP/u);
+  const preservation = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_credential_identifier_preservation.sql'),
+    'utf8',
+  );
+  assert.match(preservation, /p_preserve_identifier/u);
+  assert.match(preservation, /EXPECTED_MISSING_IDENTIFIER_REJECTION/u);
+  assert.match(preservation, /EXPECTED_LEGACY_IDENTIFIER_REJECTION/u);
+  assert.match(preservation, /PRESERVED_IDENTIFIER_CHANGED/u);
+  assert.match(preservation, /EXPECTED_OPERATION_REUSED/u);
+  assert.match(preservation, /EXPECTED_STALE_CREDENTIAL_VERSION/u);
   const raceA = readFileSync(
     join(process.cwd(), 'supabase/tests/pro_lifecycle_recovery_session_a.sql'),
     'utf8',

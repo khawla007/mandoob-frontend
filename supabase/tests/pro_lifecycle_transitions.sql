@@ -41,6 +41,7 @@ begin
   perform public.save_pro_credential_draft(
     '91000000-0000-4000-8000-000000000002', v_credential_id, 0,
     '91000000-0000-4000-8000-000000000012', repeat('2', 64),
+    false,
     'synthetic-ciphertext', repeat('a', 64), 'AB12', 'Synthetic Authority',
     current_date, current_date + 365
   );

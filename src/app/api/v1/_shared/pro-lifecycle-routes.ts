@@ -17,7 +17,7 @@ type LiveLifecycleProfile = {
   status: unknown;
   tenant_id: unknown;
 };
-type LiveLifecycleViewerDeps = {
+export type LiveLifecycleViewerDeps = {
   requireSession?: () => Promise<SessionProfile>;
   lookupProfile?: (actorId: string) => Promise<LiveLifecycleProfile | null>;
 };

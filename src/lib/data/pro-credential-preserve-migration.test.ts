@@ -30,3 +30,14 @@ test('forward save workflow preserves only an existing protected identifier and 
   );
   assert.doesNotMatch(sql, /grant execute[\s\S]*authenticated/u);
 });
+
+test('all committed save fixtures call the current twelve-argument RPC signature', () => {
+  const transition = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_lifecycle_transitions.sql'),
+    'utf8',
+  );
+  assert.match(
+    transition,
+    /save_pro_credential_draft\([\s\S]*?repeat\('2', 64\),\s*false,\s*'synthetic-ciphertext'/u,
+  );
+});

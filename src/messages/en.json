@@ -710,7 +710,7 @@
       "submit": "Submit for review",
       "replacement": "Create replacement draft",
       "pending": "Working…",
-      "saved": "Credential saved. The protected identifier has been cleared.",
+      "saved": "Credential saved. The input is now blank; any saved identifier remains protected.",
       "failed": "The credential could not be updated. Try again.",
       "stale": "This credential changed in another session. Reload and try again.",
       "replayConflict": "This request was already used for different changes. Reload and try again.",

@@ -77,3 +77,17 @@ test('credential UI messages have English/Arabic parity and Arabic dates remain 
   );
   assert.match(read('src/components/account/ProCredentialPanel.tsx'), /dir="ltr"/u);
 });
+
+test('save success copy distinguishes the cleared input from the retained protected value', () => {
+  const en = JSON.parse(read('src/messages/en.json')) as {
+    account: { proCredential: { saved: string } };
+  };
+  const ar = JSON.parse(read('src/messages/ar.json')) as {
+    account: { proCredential: { saved: string } };
+  };
+  assert.match(en.account.proCredential.saved, /input is now blank/u);
+  assert.match(en.account.proCredential.saved, /saved identifier remains protected/u);
+  assert.doesNotMatch(en.account.proCredential.saved, /identifier has been cleared/u);
+  assert.match(ar.account.proCredential.saved, /حقل.*فارغ/u);
+  assert.match(ar.account.proCredential.saved, /المعرّف المحفوظ.*محمي/u);
+});

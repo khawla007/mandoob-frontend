@@ -2,16 +2,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { requireLiveProAccount } from '@/app/api/v1/_shared/pro-lifecycle-routes';
+import { requireProRolePageAccess } from '@/app/account/role/authorize';
 
 const page = () => readFileSync(join(process.cwd(), 'src/app/account/role/page.tsx'), 'utf8');
 
 test('PRO self-view directly requires a live active PRO and AAL2 before any read', () => {
   const source = page();
-  const auth = source.indexOf('requireLiveProAccount()');
-  const aal = source.indexOf('requireAal2(session)');
+  const auth = source.indexOf('requireProRolePageAccess()');
   const profile = source.indexOf('readSelfPro()');
-  assert.ok(auth >= 0 && aal > auth && profile > aal);
+  assert.ok(auth >= 0 && profile > auth);
   assert.match(source, /catch[\s\S]*notFound\(\)/u);
   assert.doesNotMatch(source, /session\.role === 'pro'/u);
 });
@@ -32,7 +31,7 @@ test('PRO role route does not render assignment controls or a company switcher',
   assert.doesNotMatch(source, /CompanySwitcher|Assignment|assignPro|tenant selector/iu);
 });
 
-test('self-view live authorization executes active, invited, inactive, and wrong-role cases', async () => {
+test('actual page authorization permits active PRO at AAL2 and uniformly denies AAL1', async () => {
   const session = {
     id: '11111111-1111-4111-8111-111111111111',
     role: 'pro' as const,
@@ -41,12 +40,35 @@ test('self-view live authorization executes active, invited, inactive, and wrong
     mfaEnrolled: true,
     email: null,
   };
-  const active = await requireLiveProAccount({
-    requireSession: async () => session,
-    lookupProfile: async () => ({ role: 'pro', status: 'active', tenant_id: null }),
+  const active = await requireProRolePageAccess({
+    liveViewer: {
+      requireSession: async () => session,
+      lookupProfile: async () => ({ role: 'pro', status: 'active', tenant_id: null }),
+    },
   });
   assert.equal(active.role, 'pro');
   assert.equal(active.aal, 'aal2');
+
+  await assert.rejects(
+    requireProRolePageAccess({
+      liveViewer: {
+        requireSession: async () => ({ ...session, aal: 'aal1' }),
+        lookupProfile: async () => ({ role: 'pro', status: 'active', tenant_id: null }),
+      },
+    }),
+    /ACCESS_DENIED/u,
+  );
+});
+
+test('actual page authorization uniformly denies invited, inactive, and wrong-role profiles', async () => {
+  const session = {
+    id: '11111111-1111-4111-8111-111111111111',
+    role: 'pro' as const,
+    tenantId: null,
+    aal: 'aal2' as const,
+    mfaEnrolled: true,
+    email: null,
+  };
   for (const profile of [
     { role: 'pro', status: 'invited', tenant_id: null },
     { role: 'pro', status: 'inactive', tenant_id: null },
@@ -54,10 +76,13 @@ test('self-view live authorization executes active, invited, inactive, and wrong
     { role: 'admin', status: 'active', tenant_id: null },
   ]) {
     await assert.rejects(
-      requireLiveProAccount({
-        requireSession: async () => session,
-        lookupProfile: async () => profile,
+      requireProRolePageAccess({
+        liveViewer: {
+          requireSession: async () => session,
+          lookupProfile: async () => profile,
+        },
       }),
+      /ACCESS_DENIED/u,
     );
   }
 });

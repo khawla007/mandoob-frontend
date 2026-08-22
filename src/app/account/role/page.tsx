@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/require-user';
-import { requireAal2 } from '@/lib/auth/require-role';
-import { requireLiveProAccount } from '@/app/api/v1/_shared/pro-lifecycle-routes';
+import { requireProRolePageAccess } from '@/app/account/role/authorize';
 import {
   readSelfPro,
   readSelfCustomer,
@@ -22,11 +21,10 @@ export default async function RolePage() {
   if (currentRole === 'pro') {
     let session;
     try {
-      session = await requireLiveProAccount();
+      session = await requireProRolePageAccess();
     } catch {
       notFound();
     }
-    await requireAal2(session);
     const [profileResult, credentialResult] = await Promise.allSettled([
       readSelfPro(),
       readSelfProCredentialSnapshot(session.id),
