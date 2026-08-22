@@ -2,7 +2,11 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { decryptOptional } from '@/lib/crypto/pii';
-import { readProCredentialSnapshot, type ProCredentialMask } from '@/lib/data/pro-credentials';
+import {
+  readProCredentialSnapshot,
+  type ProCredentialMask,
+  type ProCredentialSnapshot,
+} from '@/lib/data/pro-credentials';
 import type { Role } from '@/lib/auth/roles';
 import { assertAdminCanModifyTarget, type ProfileStatus } from './admin-edit-helpers';
 
@@ -50,6 +54,22 @@ export type EditableUser =
   | { profile: EditableProfile; role: 'employee'; employee: EditableEmployee }
   | { profile: EditableProfile; role: 'admin' }
   | { profile: EditableProfile; role: 'super_admin' };
+
+type CredentialSnapshotReader = (
+  actorId: string,
+  proProfileId: string,
+) => Promise<ProCredentialSnapshot>;
+
+export async function readEditableProCredentialSummary(
+  status: ProfileStatus,
+  actorId: string,
+  proProfileId: string,
+  reader: CredentialSnapshotReader = readProCredentialSnapshot,
+): Promise<ProCredentialMask | null> {
+  if (status !== 'active') return null;
+  const snapshot = await reader(actorId, proProfileId);
+  return snapshot.credentials[0] ?? null;
+}
 
 export async function getUserForEdit(targetId: string, caller: Caller): Promise<EditableUser> {
   const admin = createSupabaseServiceRoleClient();
@@ -99,7 +119,11 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
       console.error('admin PRO profile read failed', proError ?? { kind: 'invalid_version' });
       throw new ApiError('INTERNAL', 'Could not load user', 500);
     }
-    const credentialSnapshot = await readProCredentialSnapshot(caller.id, targetId);
+    const credentialSummary = await readEditableProCredentialSummary(
+      baseProfile.status,
+      caller.id,
+      targetId,
+    );
     return {
       profile: baseProfile,
       role: 'pro',
@@ -108,7 +132,7 @@ export async function getUserForEdit(targetId: string, caller: Caller): Promise<
         department: (pro?.department as string | null) ?? null,
         serviceAreas: ((pro?.service_areas as string[] | null) ?? []) as string[],
         bio: (pro?.bio as string | null) ?? null,
-        credentialSummary: credentialSnapshot.credentials[0] ?? null,
+        credentialSummary,
         updatedAt: pro?.updated_at as string,
       },
     };
