@@ -97,22 +97,28 @@ export function ProCommercialTermForm({
       };
     }
     setPending(true);
-    const response = await postJson(`/api/v1/admin/users/${userId}/commercial-terms`, body);
-    setPending(false);
-    releaseFormSubmission(latch);
-    if (!response.ok) {
-      let code = '';
-      try {
-        code = String(((await response.json()) as { code?: string }).code ?? '');
-      } catch {
-        // Keep the fallback localized and sanitized.
+    try {
+      const response = await postJson(`/api/v1/admin/users/${userId}/commercial-terms`, body);
+      if (!response.ok) {
+        let code = '';
+        try {
+          code = String(((await response.json()) as { code?: string }).code ?? '');
+        } catch {
+          // Keep the fallback localized and sanitized.
+        }
+        setError(code.startsWith('STALE_') ? t('stale') : t('failed'));
+        queueMicrotask(() => errorRef.current?.focus());
+        return;
       }
-      setError(code.startsWith('STALE_') ? t('stale') : t('failed'));
+      setSaved(t('saved'));
+      router.refresh();
+    } catch {
+      setError(t('failed'));
       queueMicrotask(() => errorRef.current?.focus());
-      return;
+    } finally {
+      setPending(false);
+      releaseFormSubmission(latch);
     }
-    setSaved(t('saved'));
-    router.refresh();
   }
 
   return (
@@ -199,7 +205,7 @@ export function ProCommercialTermForm({
             />
           </div>
         ) : null}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" variant={mode === 'end' ? 'outline' : 'default'} disabled={pending}>
           {pending ? t('pending') : t(`actions.${mode}`)}
         </Button>
       </fieldset>

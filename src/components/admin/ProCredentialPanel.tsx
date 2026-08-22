@@ -1,10 +1,10 @@
-import { FileText, ShieldCheck, ShieldX } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
 import { ProCredentialReviewForm } from './ProCredentialReviewForm';
+import { ProCredentialStatusBadge } from './ProLifecycleStatusBadge';
 
 type Credential = ProLifecycleDetail['credentials'][number];
 type Evidence = ProLifecycleDetail['evidence'][number];
@@ -29,17 +29,16 @@ function CredentialRecord({
   const tPromise = getTranslations('admin.user.proLifecycle');
   const localePromise = getLocale();
   return Promise.all([tPromise, localePromise]).then(([t, locale]) => {
-    const StateIcon = credential.state === 'verified' ? ShieldCheck : ShieldX;
     return (
       <section className="space-y-4 border-t pt-4 first:border-t-0 first:pt-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-medium">
             {t('credential.version', { version: credential.version })}
           </h3>
-          <Badge variant={credential.state === 'verified' ? 'default' : 'outline'}>
-            <StateIcon aria-hidden className="me-1 size-4" />
-            {t(`credentialStates.${credential.state}`)}
-          </Badge>
+          <ProCredentialStatusBadge
+            state={credential.state}
+            label={t(`credentialStates.${credential.state}`)}
+          />
         </div>
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>

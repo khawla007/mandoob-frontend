@@ -77,6 +77,7 @@ test('operator lifecycle detail uses server composition with one heading and foc
 test('credential surface is masked-only, semantic, evidence-owned, and exposes legal transitions', () => {
   const panel = read('src/components/admin/ProCredentialPanel.tsx');
   const form = read('src/components/admin/ProCredentialReviewForm.tsx');
+  const statuses = read('src/components/admin/ProLifecycleStatusBadge.tsx');
   assert.match(panel, /<dl/u);
   assert.match(panel, /maskedIdentifier/u);
   assert.match(panel, /dir="ltr"/u);
@@ -96,12 +97,32 @@ test('credential surface is masked-only, semantic, evidence-owned, and exposes l
   assert.match(form, /aria-live="polite"/u);
   assert.match(form, /errorRef\.current\?\.focus/u);
   assert.match(form, /router\.refresh/u);
+  assert.match(form, /try\s*\{[\s\S]*await postJson/u);
+  assert.match(form, /catch\s*\{[\s\S]*setError\(t\('failed'\)\)/u);
+  assert.match(
+    form,
+    /finally\s*\{[\s\S]*setPending\(false\)[\s\S]*releaseFormSubmission\(latch\)/u,
+  );
   assert.doesNotMatch(form, />\s*(Begin review|Verify|Reject|Revoke|Reason)\s*</u);
+  for (const [state, icon] of [
+    ['draft', 'FilePenLine'],
+    ['submitted', 'Send'],
+    ['under_review', 'FileSearch'],
+    ['verified', 'ShieldCheck'],
+    ['rejected', 'ShieldX'],
+    ['revoked', 'Ban'],
+  ]) {
+    assert.match(statuses, new RegExp(`${state}:\\s*${icon}`, 'u'));
+  }
+  assert.match(statuses, /aria-hidden/u);
+  assert.match(panel, /ProCredentialStatusBadge/u);
+  assert.match(panel, /t\(`credentialStates\.\$\{credential\.state\}`\)/u);
 });
 
 test('commercial surfaces use mandated labels and disclaim money execution', () => {
   const panel = read('src/components/admin/ProCommercialTermsPanel.tsx');
   const form = read('src/components/admin/ProCommercialTermForm.tsx');
+  const statuses = read('src/components/admin/ProLifecycleStatusBadge.tsx');
   const en = JSON.parse(read('src/messages/en.json')) as {
     admin: {
       user: {
@@ -122,6 +143,22 @@ test('commercial surfaces use mandated labels and disclaim money execution', () 
   assert.match(form, /claimFormSubmission/u);
   assert.match(form, /aria-live="polite"/u);
   assert.match(form, /errorRef\.current\?\.focus/u);
+  assert.match(form, /try\s*\{[\s\S]*await postJson/u);
+  assert.match(form, /catch\s*\{[\s\S]*setError\(t\('failed'\)\)/u);
+  assert.match(
+    form,
+    /finally\s*\{[\s\S]*setPending\(false\)[\s\S]*releaseFormSubmission\(latch\)/u,
+  );
+  assert.match(panel, /const active = matches\.find\(\(term\) => term\.status === 'active'\)/u);
+  assert.match(panel, /const draft = matches\.find\(\(term\) => term\.status === 'draft'\)/u);
+  assert.match(panel, /\[active, draft\]/u);
+  assert.match(panel, /ProCommercialTermForm[\s\S]*term=\{current\}/u);
+  assert.match(form, /variant=\{mode === 'end' \? 'outline' : 'default'\}/u);
+  assert.match(statuses, /draft:\s*FilePenLine/u);
+  assert.match(statuses, /active:\s*CircleCheck/u);
+  assert.match(statuses, /ended:\s*CalendarX2/u);
+  assert.match(panel, /ProTermStatusBadge/u);
+  assert.match(panel, /t\(`terms\.statuses\.\$\{current\.status\}`\)/u);
   assert.doesNotMatch(form, />\s*(Amount|Model|Activate|End|Save)\s*</u);
 });
 

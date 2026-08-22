@@ -78,30 +78,36 @@ export function ProCredentialReviewForm({
       return;
     }
     setPending(true);
-    const response = await postJson(`/api/v1/admin/users/${userId}/credentials`, {
-      command,
-      credentialId,
-      expectedVersion: version,
-      operationId: crypto.randomUUID(),
-      ...(command === 'reject' || command === 'revoke'
-        ? { reasonCode: reasonCode.trim().toUpperCase(), reason: reason.trim() }
-        : {}),
-    });
-    setPending(false);
-    releaseFormSubmission(latch);
-    if (!response.ok) {
-      let code = '';
-      try {
-        code = String(((await response.json()) as { code?: string }).code ?? '');
-      } catch {
-        // The localized generic message remains safe when the response is not JSON.
+    try {
+      const response = await postJson(`/api/v1/admin/users/${userId}/credentials`, {
+        command,
+        credentialId,
+        expectedVersion: version,
+        operationId: crypto.randomUUID(),
+        ...(command === 'reject' || command === 'revoke'
+          ? { reasonCode: reasonCode.trim().toUpperCase(), reason: reason.trim() }
+          : {}),
+      });
+      if (!response.ok) {
+        let code = '';
+        try {
+          code = String(((await response.json()) as { code?: string }).code ?? '');
+        } catch {
+          // The localized generic message remains safe when the response is not JSON.
+        }
+        setError(code.startsWith('STALE_') ? t('stale') : t('failed'));
+        queueMicrotask(() => errorRef.current?.focus());
+        return;
       }
-      setError(code.startsWith('STALE_') ? t('stale') : t('failed'));
+      setSaved(t('saved'));
+      router.refresh();
+    } catch {
+      setError(t('failed'));
       queueMicrotask(() => errorRef.current?.focus());
-      return;
+    } finally {
+      setPending(false);
+      releaseFormSubmission(latch);
     }
-    setSaved(t('saved'));
-    router.refresh();
   }
 
   return (
