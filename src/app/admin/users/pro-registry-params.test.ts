@@ -35,6 +35,22 @@ test('PRO registry parameters keep the fixed role and normalize approved filters
   });
 });
 
+test('GET toolbar empty optional controls normalize away without discarding search', () => {
+  const parsed = parseProRegistryParams({
+    role: 'pro',
+    q: 'Fatima',
+    accountStatus: '',
+    credentialState: '',
+    eligibility: '',
+    assignment: '',
+    expiryWindow: '',
+  });
+  assert.deepEqual(parsed, {
+    invalid: false,
+    filters: { ...PRO_REGISTRY_DEFAULTS, q: 'Fatima' },
+  });
+});
+
 test('unknown, repeated, unsafe, and out-of-range parameters fall back deterministically', () => {
   for (const input of [
     { role: 'pro', extra: 'unsafe' },

@@ -14,6 +14,8 @@ test('PRO mode reuses Users page with exact count, applied filters, reset, and d
   assert.match(page, /ProRegistryAppliedFilters/u);
   assert.match(page, /ProRegistryPagination/u);
   assert.match(page, /UsersEmptyState[\s\S]*resetHref/u);
+  assert.match(page, /result\.page === filters\.page[\s\S]*canonicalFilters/u);
+  assert.match(page, /ProRegistryPagination filters=\{canonicalFilters\}/u);
 });
 
 test('PRO registry table links to detail and exposes semantic sorting plus narrow scroll', () => {

@@ -87,13 +87,14 @@ function internal(): ApiError {
   return new ApiError('INTERNAL', 'Unable to load PRO registry', 500);
 }
 
-export async function listProRegistry(
+async function readRegistryPage(
+  client: RegistryClient,
   actorId: string,
   filters: ProRegistryFilters,
-  deps: RegistryDeps = {},
+  page: number,
 ): Promise<ProRegistryResult> {
-  const { data, error } = await db(deps).rpc('read_pro_registry', {
-    p_actor_id: uuid.parse(actorId),
+  const { data, error } = await client.rpc('read_pro_registry', {
+    p_actor_id: actorId,
     p_query: filters.q ?? null,
     p_account_status: filters.accountStatus ?? null,
     p_credential_state: filters.credentialState ?? null,
@@ -102,11 +103,25 @@ export async function listProRegistry(
     p_expiry_window: filters.expiryWindow ?? null,
     p_sort: filters.sort,
     p_direction: filters.direction,
-    p_page: filters.page,
+    p_page: page,
     p_page_size: 25,
   });
   if (error) throw internal();
   const parsed = resultSchema.safeParse(data);
-  if (!parsed.success || parsed.data.page !== filters.page) throw internal();
+  if (!parsed.success || parsed.data.page !== page) throw internal();
   return parsed.data;
+}
+
+export async function listProRegistry(
+  actorId: string,
+  filters: ProRegistryFilters,
+  deps: RegistryDeps = {},
+): Promise<ProRegistryResult> {
+  const client = db(deps);
+  const actor = uuid.parse(actorId);
+  const first = await readRegistryPage(client, actor, filters, filters.page);
+  if (first.totalPages > 0 && filters.page > first.totalPages) {
+    return readRegistryPage(client, actor, filters, first.totalPages);
+  }
+  return first;
 }

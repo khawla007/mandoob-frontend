@@ -52,7 +52,19 @@ export function parseProRegistryParams(raw: RawProRegistryParams): {
   ) {
     return { filters: PRO_REGISTRY_DEFAULTS, invalid: true };
   }
-  const parsed = proRegistryFiltersSchema.safeParse(raw);
+  const normalized = { ...raw };
+  for (const key of [
+    'q',
+    'accountStatus',
+    'credentialState',
+    'eligibility',
+    'assignment',
+    'expiryWindow',
+  ] as const) {
+    const value = normalized[key];
+    if (typeof value === 'string' && value.trim() === '') delete normalized[key];
+  }
+  const parsed = proRegistryFiltersSchema.safeParse(normalized);
   if (!parsed.success) return { filters: PRO_REGISTRY_DEFAULTS, invalid: true };
   return {
     filters: {

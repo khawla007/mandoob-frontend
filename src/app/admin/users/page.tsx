@@ -58,6 +58,8 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
   const t = await getTranslations('admin.user.proRegistry');
   const { filters, invalid } = parseProRegistryParams(raw);
   const result = await listProRegistry(actorId, filters);
+  const canonicalFilters =
+    result.page === filters.page ? filters : { ...filters, page: result.page };
   const filtersActive = Boolean(
     filters.q ||
     filters.accountStatus ||
@@ -91,8 +93,8 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
           <CardDescription>{t('directoryDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <ProRegistryToolbar filters={filters} />
-          <ProRegistryAppliedFilters filters={filters} />
+          <ProRegistryToolbar filters={canonicalFilters} />
+          <ProRegistryAppliedFilters filters={canonicalFilters} />
           {result.items.length === 0 ? (
             <UsersEmptyState
               filtersActive={filtersActive || invalid}
@@ -100,8 +102,8 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
             />
           ) : (
             <>
-              <ProRegistryTable rows={result.items} filters={filters} />
-              <ProRegistryPagination filters={filters} totalPages={result.totalPages} />
+              <ProRegistryTable rows={result.items} filters={canonicalFilters} />
+              <ProRegistryPagination filters={canonicalFilters} totalPages={result.totalPages} />
             </>
           )}
         </CardContent>
