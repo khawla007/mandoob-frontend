@@ -29,19 +29,17 @@ type Context = { params: Promise<{ evidenceId: string }> };
 type GetDeps = {
   requireViewer(): Promise<SessionProfile>;
   open(actorId: string, evidenceId: string): Promise<OpenedProCredentialEvidence>;
-  sign(path: string, ttlSeconds: number): Promise<string>;
+  issueToken(evidenceId: string, ttlSeconds: number): Promise<string>;
 };
 const getDefaults: GetDeps = {
   requireViewer: requireLiveLifecycleViewer,
   open: async (...args) =>
     (await import('@/lib/data/pro-credentials')).openProCredentialEvidenceMetadata(...args),
-  sign: async (path, ttl) => {
-    const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-    const { data, error } = await createSupabaseServiceRoleClient()
-      .storage.from('tenant-documents')
-      .createSignedUrl(path, ttl);
-    if (error || !data?.signedUrl) throw new Error('sign_failed');
-    return data.signedUrl;
+  issueToken: async (evidenceId, ttl) => {
+    const { issueProCredentialDownloadToken, PRO_CREDENTIAL_DOWNLOAD_TTL_SECONDS } =
+      await import('@/lib/security/pro-credential-download-token');
+    if (ttl !== PRO_CREDENTIAL_DOWNLOAD_TTL_SECONDS) throw new Error('invalid_ttl');
+    return issueProCredentialDownloadToken(evidenceId);
   },
 };
 
@@ -71,10 +69,13 @@ export function createEvidenceGetHandler(overrides: Partial<GetDeps> = {}) {
       )
         return notFoundResponse();
       try {
-        const signed = await deps.sign(evidence.storage_path, 300);
+        const token = await deps.issueToken(evidence.evidence_id, 300);
         return new Response(null, {
           status: 307,
-          headers: { location: signed, 'cache-control': 'no-store' },
+          headers: {
+            location: `/api/v1/account/pro/credentials/evidence/download?token=${encodeURIComponent(token)}`,
+            'cache-control': 'no-store',
+          },
         });
       } catch {
         return errorResponse('STORAGE_SIGN_FAILED', 'Unable to open evidence', 502);
@@ -123,8 +124,8 @@ const deleteDefaults: DeleteDeps = {
     const { error } = await createSupabaseServiceRoleClient()
       .storage.from('tenant-documents')
       .remove([path]);
-    if (error)
-      console.error('credential evidence cleanup failed', { kind: 'storage_cleanup_failed' });
+    // Supabase returns no error for a missing object, making a retry idempotent.
+    if (error) throw new Error('storage_cleanup_failed');
   },
   revalidate: revalidateLifecyclePaths,
 };
@@ -172,6 +173,11 @@ export function createEvidenceDeleteHandler(overrides: Partial<DeleteDeps> = {})
       if (limited) return limited;
       const parsed = removeSchema.safeParse(await request.json().catch(() => null));
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
+      try {
+        await deps.erase(evidence.storage_path);
+      } catch {
+        return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
+      }
       const credential = await deps.remove(
         session.id,
         evidence.credential_id,
@@ -179,7 +185,6 @@ export function createEvidenceDeleteHandler(overrides: Partial<DeleteDeps> = {})
         parsed.data.expectedVersion,
         parsed.data.operationId,
       );
-      await deps.erase(evidence.storage_path);
       await deps.revalidate(target, session.id);
       return jsonOk({ ok: true, credential });
     } catch (error) {

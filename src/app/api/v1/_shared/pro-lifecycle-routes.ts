@@ -96,6 +96,7 @@ const SAFE_CODES = new Set([
   'CREDENTIAL_IN_PROGRESS',
   'TERM_DATE_OVERLAP',
   'PRO_CREDENTIAL_EXPIRED',
+  'DECISION_REASON_INVALID',
 ]);
 
 export function lifecycleErrorResponse(error: unknown, label: string): Response {
@@ -161,10 +162,12 @@ export async function resolveLifecycleTarget(
 export async function revalidateLifecyclePaths(
   target: LifecycleTarget,
   userId?: string,
+  providedRevalidate?: (path: string, type?: 'layout' | 'page') => void,
 ): Promise<void> {
-  const { revalidatePath } = await import('next/cache');
+  const revalidatePath = providedRevalidate ?? (await import('next/cache')).revalidatePath;
   for (const path of buildLifecycleRevalidationPaths(target, userId)) {
-    revalidatePath(path);
+    if (target.tenantSlug && path === `/t/${target.tenantSlug}`) revalidatePath(path, 'layout');
+    else revalidatePath(path);
   }
 }
 

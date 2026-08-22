@@ -4,6 +4,10 @@ import { z } from 'zod';
 import type { SessionProfile } from '@/lib/auth/require-user';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import {
+  proDecisionReasonCodeSchema,
+  proDecisionReasonSchema,
+} from '@/lib/validation/pro-lifecycle';
+import {
   lifecycleErrorResponse,
   limitResponse,
   notFoundResponse,
@@ -22,18 +26,25 @@ const base = {
   expectedVersion: z.number().int().nonnegative(),
   operationId: uuid,
 } as const;
-const reason = z.string().trim().min(3).max(500);
-const reasonCode = z
-  .string()
-  .trim()
-  .min(2)
-  .max(80)
-  .regex(/^[A-Z][A-Z0-9_]*$/u);
 const reviewSchema = z.discriminatedUnion('command', [
   z.object({ command: z.literal('begin_review'), ...base }).strict(),
   z.object({ command: z.literal('verify'), ...base }).strict(),
-  z.object({ command: z.literal('reject'), ...base, reasonCode, reason }).strict(),
-  z.object({ command: z.literal('revoke'), ...base, reasonCode, reason }).strict(),
+  z
+    .object({
+      command: z.literal('reject'),
+      ...base,
+      reasonCode: proDecisionReasonCodeSchema,
+      reason: proDecisionReasonSchema,
+    })
+    .strict(),
+  z
+    .object({
+      command: z.literal('revoke'),
+      ...base,
+      reasonCode: proDecisionReasonCodeSchema,
+      reason: proDecisionReasonSchema,
+    })
+    .strict(),
 ]);
 type Review = z.infer<typeof reviewSchema>;
 type Context = { params: Promise<{ id: string }> };

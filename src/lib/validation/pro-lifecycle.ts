@@ -56,22 +56,42 @@ const reviewBase = {
   operationId,
 } as const;
 
+export const proDecisionReasonCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Z][A-Z0-9_]{1,63}$/u);
+
+export const proDecisionReasonSchema = z
+  .string()
+  .superRefine((value, context) => {
+    if (
+      /[\u0000-\u001f\u007f]/u.test(value) ||
+      /(pro-credentials\/|storage_path|identifier_(?:ciphertext|hash)|sha256|sqlstate)/iu.test(
+        value,
+      ) ||
+      /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/iu.test(value)
+    )
+      context.addIssue({ code: 'custom', message: 'Unsafe decision reason' });
+  })
+  .transform((value) => value.trim())
+  .pipe(trimmedLength(3, 500));
+
 export const proCredentialReviewSchema = z.discriminatedUnion('command', [
   z.object({ command: z.literal('begin_review'), ...reviewBase }).strict(),
   z.object({ command: z.literal('verify'), ...reviewBase }).strict(),
   z
     .object({
       command: z.literal('reject'),
-      reasonCode: trimmedLength(2, 80),
-      reason: trimmedLength(3, 500),
+      reasonCode: proDecisionReasonCodeSchema,
+      reason: proDecisionReasonSchema,
       ...reviewBase,
     })
     .strict(),
   z
     .object({
       command: z.literal('revoke'),
-      reasonCode: trimmedLength(2, 80),
-      reason: trimmedLength(3, 500),
+      reasonCode: proDecisionReasonCodeSchema,
+      reason: proDecisionReasonSchema,
       ...reviewBase,
     })
     .strict(),

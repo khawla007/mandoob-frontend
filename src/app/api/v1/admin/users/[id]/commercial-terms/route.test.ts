@@ -13,6 +13,24 @@ const request = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
+test('commercial terms missing and mismatched CSRF touch no downstream stage', async () => {
+  for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
+    const touched: string[] = [];
+    const handler = createCommercialTermPostHandler({
+      guardCsrf: async () => Response.json({ code }, { status: 403 }),
+      requireOperator: async () => {
+        touched.push('session');
+        throw new Error('must not run');
+      },
+      resolveTarget: async () => (touched.push('target'), null),
+      limit: async () => (touched.push('limit'), 'allowed'),
+      mutate: async () => (touched.push('mutation'), null),
+    });
+    assert.equal((await handler(request({}), { params: Promise.resolve({ id: P }) })).status, 403);
+    assert.deepEqual(touched, []);
+  }
+});
+
 test('commercial term commands use ordered guards, session actor and revalidation', async () => {
   const calls: string[] = [];
   let actor = '';

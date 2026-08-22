@@ -88,6 +88,7 @@ const KNOWN_ERRORS: Record<string, { code: string; status: number }> = {
   EVIDENCE_PATH_INVALID: { code: 'EVIDENCE_PATH_INVALID', status: 422 },
   EVIDENCE_METADATA_INVALID: { code: 'EVIDENCE_METADATA_INVALID', status: 422 },
   DECISION_REASON_INVALID: { code: 'DECISION_REASON_INVALID', status: 422 },
+  INVALID_DECISION_REASON: { code: 'DECISION_REASON_INVALID', status: 422 },
 };
 
 function client(deps: CredentialDeps): CredentialClient {

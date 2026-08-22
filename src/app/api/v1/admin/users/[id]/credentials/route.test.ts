@@ -13,6 +13,24 @@ const req = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
+test('admin review missing and mismatched CSRF touch no downstream stage', async () => {
+  for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
+    const touched: string[] = [];
+    const handler = createAdminCredentialPostHandler({
+      guardCsrf: async () => Response.json({ code }, { status: 403 }),
+      requireOperator: async () => {
+        touched.push('session');
+        throw new Error('must not run');
+      },
+      resolveTarget: async () => (touched.push('target'), null),
+      limit: async () => (touched.push('limit'), 'allowed'),
+      review: async () => (touched.push('mutation'), null),
+    });
+    assert.equal((await handler(req({}), { params: Promise.resolve({ id: P }) })).status, 403);
+    assert.deepEqual(touched, []);
+  }
+});
+
 test('operator review derives actor, resolves active PRO and credential before fail-closed limiting and mutation', async () => {
   const calls: string[] = [];
   let actor = '';
@@ -157,4 +175,55 @@ test('operator review rejects wrong role/AAL1, malformed or unknown targets, bad
     assert.equal(body.code, code);
     assert.doesNotMatch(JSON.stringify(body), /private/iu);
   }
+});
+
+test('operator reject/revoke reason matches the database safety boundary and maps its exact error', async () => {
+  const base = {
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'admin' as const,
+      tenantId: null,
+      aal: 'aal2' as const,
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
+    limit: async () => 'allowed' as const,
+    review: async () => ({ credentialId: C }),
+    revalidate: () => undefined,
+  };
+  for (const invalid of [
+    { reasonCode: `${'A'.repeat(65)}`, reason: 'Valid reason' },
+    { reasonCode: 'VALID_CODE', reason: 'bad\u0000control' },
+    { reasonCode: 'VALID_CODE', reason: 'contains pro-credentials/private' },
+    { reasonCode: 'VALID_CODE', reason: 'leaks storage_path' },
+    { reasonCode: 'VALID_CODE', reason: 'SQLSTATE P0001' },
+    { reasonCode: 'VALID_CODE', reason: `identifier 10000000-0000-4000-8000-000000000001` },
+  ]) {
+    const response = await createAdminCredentialPostHandler(base)(
+      req({ command: 'reject', credentialId: C, expectedVersion: 1, operationId: O, ...invalid }),
+      { params: Promise.resolve({ id: P }) },
+    );
+    assert.equal(response.status, 400, JSON.stringify(invalid));
+  }
+  const { ApiError } = await import('@/lib/errors');
+  const mapped = await createAdminCredentialPostHandler({
+    ...base,
+    review: async () => {
+      throw new ApiError('DECISION_REASON_INVALID', 'private', 422);
+    },
+  })(
+    req({
+      command: 'reject',
+      credentialId: C,
+      expectedVersion: 1,
+      operationId: O,
+      reasonCode: 'DOCUMENT_INVALID',
+      reason: 'Could not verify document',
+    }),
+    { params: Promise.resolve({ id: P }) },
+  );
+  assert.equal(mapped.status, 422);
+  assert.equal((await mapped.json()).code, 'DECISION_REASON_INVALID');
 });

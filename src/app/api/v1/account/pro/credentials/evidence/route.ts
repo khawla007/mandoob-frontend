@@ -47,6 +47,7 @@ type Deps = {
     bytes: Uint8Array,
     options: { filename: string },
   ): Promise<{ clean: boolean; reason?: string; provider?: string }>;
+  resolveRegistration(actorId: string, evidenceId: string): Promise<boolean>;
   store(path: string, bytes: Uint8Array, mime: SafeMime): Promise<void>;
   register(
     actorId: string,
@@ -60,7 +61,6 @@ type Deps = {
   rollback(path: string): Promise<void>;
   revalidate(target: LifecycleTarget, userId: string): void | Promise<void>;
   now(): Date;
-  randomId(): string;
 };
 
 const defaults: Deps = {
@@ -84,6 +84,18 @@ const defaults: Deps = {
   },
   scan: async (bytes, options) =>
     (await import('@/lib/security/scan-file')).scanFile(bytes, options),
+  resolveRegistration: async (actorId, evidenceId) => {
+    const { ApiError } = await import('@/lib/errors');
+    try {
+      await (
+        await import('@/lib/data/pro-credentials')
+      ).openProCredentialEvidenceMetadata(actorId, evidenceId);
+      return true;
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'NOT_FOUND') return false;
+      throw error;
+    }
+  },
   store: async (path, bytes, mime) => {
     const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
     const { error } = await createSupabaseServiceRoleClient()
@@ -95,11 +107,14 @@ const defaults: Deps = {
     (await import('@/lib/data/pro-credentials')).registerProCredentialEvidence(...args),
   rollback: async (path) => {
     const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-    await createSupabaseServiceRoleClient().storage.from('tenant-documents').remove([path]);
+    const { error } = await createSupabaseServiceRoleClient()
+      .storage.from('tenant-documents')
+      .remove([path]);
+    // Supabase remove is idempotent: a missing object returns an empty data array without error.
+    if (error) throw new Error('storage_cleanup_failed');
   },
   revalidate: revalidateLifecyclePaths,
   now: () => new Date(),
-  randomId: randomUUID,
 };
 
 function safeName(name: string): boolean {
@@ -164,7 +179,8 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         return scan.reason === 'scanner_unavailable'
           ? errorResponse('SCANNER_UNAVAILABLE', 'File scanner temporarily unavailable', 503)
           : errorResponse('FILE_REJECTED_BY_SCAN', 'File was rejected', 422);
-      const evidenceId = deps.randomId();
+      // The operation id gives an interrupted attempt a stable, exact orphan path to clean.
+      const evidenceId = fields.data.operationId;
       const path = buildProCredentialEvidencePath(
         target.proProfileId,
         fields.data.credentialId,
@@ -178,6 +194,14 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         scanProvider: scan.provider ?? 'unknown',
         scanCompletedAt: deps.now().toISOString(),
       });
+      if (await deps.resolveRegistration(session.id, evidenceId)) {
+        return errorResponse('OPERATION_REUSED', 'Unable to complete lifecycle operation', 409);
+      }
+      try {
+        await deps.rollback(path);
+      } catch {
+        return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
+      }
       await deps.store(path, bytes, inspected.mime);
       let credential: unknown;
       try {
@@ -191,7 +215,12 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
           metadata,
         );
       } catch (error) {
-        await deps.rollback(path).catch(() => undefined);
+        if (await deps.resolveRegistration(session.id, evidenceId)) throw error;
+        try {
+          await deps.rollback(path);
+        } catch {
+          return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
+        }
         throw error;
       }
       await deps.revalidate(target, session.id);

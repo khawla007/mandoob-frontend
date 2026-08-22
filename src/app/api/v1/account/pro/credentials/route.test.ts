@@ -77,18 +77,19 @@ test('PRO credential mutation blocks CSRF, AAL1, unknown credentials, limiter un
     mutate: async () => ({ credentialId: CREDENTIAL }) as never,
     revalidate: () => undefined,
   };
-  await t.test('CSRF first', async () => {
-    let touched = false;
-    const handler = createCredentialPostHandler({
-      ...base,
-      guardCsrf: async () => new Response(null, { status: 403 }),
-      requirePro: async () => {
-        touched = true;
-        return base.requirePro();
-      },
-    });
-    assert.equal((await handler(request({}))).status, 403);
-    assert.equal(touched, false);
+  await t.test('missing and mismatched CSRF short-circuit every downstream stage', async () => {
+    for (const code of ['CSRF_REQUIRED', 'CSRF_MISMATCH']) {
+      const touched: string[] = [];
+      const handler = createCredentialPostHandler({
+        guardCsrf: async () => Response.json({ code }, { status: 403 }),
+        requirePro: async () => (touched.push('session'), base.requirePro()),
+        resolveTarget: async () => (touched.push('target'), base.resolveTarget()),
+        limit: async () => (touched.push('limit'), 'allowed'),
+        mutate: async () => (touched.push('mutation'), { credentialId: CREDENTIAL }) as never,
+      });
+      assert.equal((await handler(request({}))).status, 403);
+      assert.deepEqual(touched, []);
+    }
   });
   await t.test('AAL2 required', async () => {
     const handler = createCredentialPostHandler({

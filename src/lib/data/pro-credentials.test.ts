@@ -127,3 +127,28 @@ test('credential errors and malformed RPC results are sanitized', async () => {
     );
   }
 });
+
+test('database invalid decision reason maps to the stable public code', async () => {
+  const { reviewProCredential } = await import('./pro-credentials');
+  const supabase = fake([{ data: null, error: { message: 'INVALID_DECISION_REASON' } }]);
+  await assert.rejects(
+    () =>
+      reviewProCredential(
+        ACTOR_ID,
+        CREDENTIAL_ID,
+        {
+          command: 'reject',
+          reasonCode: 'DOCUMENT_INVALID',
+          reason: 'Document could not be verified',
+          expectedVersion: 1,
+          operationId: OPERATION_ID,
+        },
+        { supabase: supabase as never },
+      ),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'DECISION_REASON_INVALID' &&
+      !error.message.includes('INVALID_DECISION_REASON'),
+  );
+});
