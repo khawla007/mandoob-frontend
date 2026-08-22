@@ -38,7 +38,7 @@ test('credential editor keeps protected identifier blank and implements accessib
   assert.match(form, /errorSummaryRef/u);
   assert.match(form, /setFocus/u);
   assert.match(form, /claimFormSubmission/u);
-  assert.match(form, /beforeunload/u);
+  assert.match(form, /useUnsavedChangesGuard/u);
   assert.match(form, /aria-live="polite"/u);
   assert.match(form, /router\.refresh/u);
   assert.doesNotMatch(form, />\s*(Save|Submit|Replace|Identifier|Issuing authority)\s*</u);
@@ -55,6 +55,7 @@ test('evidence form advertises accepted formats while leaving authoritative chec
   assert.match(form, /evidence\/\$\{evidence\.evidenceId\}/u);
   assert.match(form, /method:\s*'DELETE'/u);
   assert.match(form, /claimFormSubmission/u);
+  assert.match(form, /useUnsavedChangesGuard/u);
   assert.match(form, /aria-live="polite"/u);
   assert.match(form, /<Label/u);
   assert.match(form, /originalNameSafe/u);

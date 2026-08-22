@@ -17,6 +17,7 @@ import {
   claimFormSubmission,
   releaseFormSubmission,
 } from '@/components/admin/form-submission-guard';
+import { useUnsavedChangesGuard } from '@/components/account/use-unsaved-changes-guard';
 
 type DraftInput = z.input<typeof proCredentialDraftSaveSchema>;
 type DraftOutput = z.output<typeof proCredentialDraftSaveSchema>;
@@ -33,18 +34,6 @@ function responseCode(payload: unknown): string {
   const record = payload as { code?: unknown; error?: { code?: unknown } };
   const code = record.code ?? record.error?.code;
   return typeof code === 'string' ? code : '';
-}
-
-function useUnsavedWarning(dirty: boolean, warning: string) {
-  useEffect(() => {
-    if (!dirty) return;
-    const beforeunload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = warning;
-    };
-    window.addEventListener('beforeunload', beforeunload);
-    return () => window.removeEventListener('beforeunload', beforeunload);
-  }, [dirty, warning]);
 }
 
 export function ProCredentialForm({
@@ -80,7 +69,16 @@ export function ProCredentialForm({
       operationId: crypto.randomUUID(),
     },
   });
-  useUnsavedWarning(form.formState.isDirty, t('leaveWarning'));
+  const authoritativeVersion = credential?.version;
+  useEffect(() => {
+    if (mode !== 'edit' || authoritativeVersion === undefined) return;
+    form.setValue('expectedVersion', authoritativeVersion, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: false,
+    });
+  }, [authoritativeVersion, form, mode]);
+  useUnsavedChangesGuard(form.formState.isDirty, t('leaveWarning'));
 
   function focusError(errors: FieldErrors<DraftInput>) {
     const first = Object.keys(errors)[0] as keyof DraftInput | undefined;
@@ -204,7 +202,7 @@ export function ProCredentialForm({
             autoComplete="off"
             dir="ltr"
             aria-invalid={Boolean(form.formState.errors.identifier)}
-            aria-describedby="credential-identifier-help credential-identifier-error"
+            aria-describedby={`credential-identifier-help${form.formState.errors.identifier ? ' credential-identifier-error' : ''}`}
             {...form.register('identifier')}
           />
         </CredentialField>
@@ -216,7 +214,9 @@ export function ProCredentialForm({
           <Input
             id="credential-authority"
             aria-invalid={Boolean(form.formState.errors.issuingAuthority)}
-            aria-describedby="credential-authority-error"
+            aria-describedby={
+              form.formState.errors.issuingAuthority ? 'credential-authority-error' : undefined
+            }
             {...form.register('issuingAuthority')}
           />
         </CredentialField>
@@ -231,7 +231,9 @@ export function ProCredentialForm({
               type="date"
               dir="ltr"
               aria-invalid={Boolean(form.formState.errors.issueDate)}
-              aria-describedby="credential-issue-date-error"
+              aria-describedby={
+                form.formState.errors.issueDate ? 'credential-issue-date-error' : undefined
+              }
               {...form.register('issueDate')}
             />
           </CredentialField>
@@ -245,7 +247,9 @@ export function ProCredentialForm({
               type="date"
               dir="ltr"
               aria-invalid={Boolean(form.formState.errors.expiryDate)}
-              aria-describedby="credential-expiry-date-error"
+              aria-describedby={
+                form.formState.errors.expiryDate ? 'credential-expiry-date-error' : undefined
+              }
               {...form.register('expiryDate')}
             />
           </CredentialField>

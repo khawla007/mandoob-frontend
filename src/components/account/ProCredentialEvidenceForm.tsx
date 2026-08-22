@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useForm, useWatch } from 'react-hook-form';
@@ -20,6 +20,7 @@ import {
   formatProEvidenceMime,
   formatProEvidenceRemovalConfirmation,
 } from '@/components/account/pro-credential-self-view';
+import { useUnsavedChangesGuard } from '@/components/account/use-unsaved-changes-guard';
 
 type Evidence = ProCredentialSnapshot['evidence'][number];
 const CLIENT_FILE_MAX_BYTES = 10 * 1024 * 1024;
@@ -65,15 +66,7 @@ export function ProCredentialEvidenceForm({
   });
   const file = useWatch({ control: formState.control, name: 'file' });
 
-  useEffect(() => {
-    if (!file) return;
-    const beforeunload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = t('leaveWarning');
-    };
-    window.addEventListener('beforeunload', beforeunload);
-    return () => window.removeEventListener('beforeunload', beforeunload);
-  }, [file, t]);
+  useUnsavedChangesGuard(Boolean(file), t('leaveWarning'));
 
   async function run(request: () => Promise<Response>, onSuccess?: () => void) {
     if (!claimFormSubmission(latch)) return;
