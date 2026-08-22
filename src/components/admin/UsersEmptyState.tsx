@@ -3,7 +3,13 @@ import { getTranslations } from 'next-intl/server';
 import { Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export async function UsersEmptyState({ filtersActive }: { filtersActive: boolean }) {
+export async function UsersEmptyState({
+  filtersActive,
+  resetHref = '/admin/users',
+}: {
+  filtersActive: boolean;
+  resetHref?: string;
+}) {
   const t = await getTranslations('admin');
   return (
     <div className="border-border/60 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-12">
@@ -11,7 +17,7 @@ export async function UsersEmptyState({ filtersActive }: { filtersActive: boolea
       <p className="text-sm font-medium">{t('user.emptyState.noMatch')}</p>
       {filtersActive ? (
         <Button asChild variant="outline" size="sm">
-          <Link href="/admin/users">{t('user.emptyState.resetFilters')}</Link>
+          <Link href={resetHref}>{t('user.emptyState.resetFilters')}</Link>
         </Button>
       ) : (
         <p className="text-muted-foreground text-xs">{t('user.emptyState.noneYet')}</p>
