@@ -12,9 +12,14 @@ test('forward save workflow preserves only an existing protected identifier and 
     'utf8',
   );
   assert.match(sql, /p_preserve_identifier boolean/u);
-  assert.match(sql, /v_credential\.identifier_ciphertext is null/u);
-  assert.match(sql, /v_credential\.identifier_hash is null/u);
-  assert.match(sql, /v_credential\.identifier_last4 is null/u);
+  const preservePredicate = sql.slice(
+    sql.indexOf('if p_preserve_identifier then'),
+    sql.indexOf('if p_identifier_ciphertext is not null'),
+  );
+  assert.match(preservePredicate, /v_credential\.identifier_ciphertext is null/u);
+  assert.match(preservePredicate, /v_credential\.identifier_hash is null/u);
+  assert.match(preservePredicate, /v_credential\.identifier_last4 is null/u);
+  assert.match(preservePredicate, /v_credential\.legacy_unmasked/u);
   assert.match(sql, /CREDENTIAL_IDENTIFIER_REQUIRED/u);
   assert.match(sql, /pro_lifecycle_replay_result/u);
   assert.match(sql, /STALE_CREDENTIAL_VERSION/u);
@@ -29,6 +34,18 @@ test('forward save workflow preserves only an existing protected identifier and 
     /grant execute on function public\.save_pro_credential_draft[\s\S]*service_role/u,
   );
   assert.doesNotMatch(sql, /grant execute[\s\S]*authenticated/u);
+});
+
+test('legacy fixture has complete protected fields so rejection isolates the legacy flag', () => {
+  const fixture = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_credential_identifier_preservation.sql'),
+    'utf8',
+  );
+  assert.match(
+    fixture,
+    /pro_profile_id, identifier_ciphertext, identifier_hash, identifier_last4, legacy_unmasked, created_by/u,
+  );
+  assert.match(fixture, /'legacy-ciphertext', repeat\('b', 64\), 'CD34', true/u);
 });
 
 test('all committed save fixtures call the current twelve-argument RPC signature', () => {

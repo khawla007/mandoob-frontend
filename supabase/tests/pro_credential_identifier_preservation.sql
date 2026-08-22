@@ -36,10 +36,16 @@ select public.create_pro_credential_draft(
   '92000000-0000-4000-8000-000000000002',
   '92000000-0000-4000-8000-000000000012', repeat('2', 64)
 );
+-- The production shape deliberately forbids this historical combination.
+-- Drop both checks inside this rolled-back fixture so all protected fields can
+-- be populated and the RPC's legacy_unmasked guard is the sole rejection cause.
+alter table public.pro_credentials drop constraint pro_credentials_identifier_shape;
+alter table public.pro_credentials drop constraint pro_credentials_legacy_shape;
 insert into public.pro_credentials (
-  pro_profile_id, identifier_ciphertext, legacy_unmasked, created_by
+  pro_profile_id, identifier_ciphertext, identifier_hash, identifier_last4, legacy_unmasked, created_by
 ) values (
-  '92000000-0000-4000-8000-000000000003', 'legacy-ciphertext', true,
+  '92000000-0000-4000-8000-000000000003',
+  'legacy-ciphertext', repeat('b', 64), 'CD34', true,
   '92000000-0000-4000-8000-000000000003'
 );
 
