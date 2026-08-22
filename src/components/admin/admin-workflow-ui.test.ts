@@ -15,7 +15,9 @@ test('generic PRO edit UI renders a masked lifecycle summary without legacy veri
 test('generic admin workflow has no legacy credential verification runtime path', () => {
   assert.equal(existsSync('src/components/admin/VerifyProCredentialsButton.tsx'), false);
   assert.equal(existsSync('src/lib/data/pro-credential-verification.ts'), false);
-  assert.equal(existsSync('src/app/api/v1/admin/users/[id]/credentials/route.ts'), false);
+  const route = read('src/app/api/v1/admin/users/[id]/credentials/route.ts');
+  assert.doesNotMatch(route, /pro-credential-verification|VerifyProCredentialsButton/u);
+  assert.match(route, /reviewProCredential/u);
 });
 
 test('role conversion gives admin and super_admin the same business-role choices and keeps PRO tenantless', () => {
