@@ -119,9 +119,5 @@ export async function listProRegistry(
 ): Promise<ProRegistryResult> {
   const client = db(deps);
   const actor = uuid.parse(actorId);
-  const first = await readRegistryPage(client, actor, filters, filters.page);
-  if (first.totalPages > 0 && filters.page > first.totalPages) {
-    return readRegistryPage(client, actor, filters, first.totalPages);
-  }
-  return first;
+  return readRegistryPage(client, actor, filters, filters.page);
 }

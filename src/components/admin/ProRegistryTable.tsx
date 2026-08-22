@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 
 import {
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { ProRegistryRow } from '@/lib/data/pro-registry';
+import { formatProRegistryDate } from './pro-registry-format';
 
 const sortable = [
   ['full_name', 'name'],
@@ -32,6 +33,7 @@ export async function ProRegistryTable({
   filters: ProRegistryFilters;
 }) {
   const t = await getTranslations('admin.user.proRegistry');
+  const locale = await getLocale();
   return (
     <div
       role="region"
@@ -87,9 +89,13 @@ export async function ProRegistryTable({
                 </Badge>
               </TableCell>
               <TableCell className="font-mono text-xs">
-                {row.credentialExpiry ?? t('notAvailable')}
+                {row.credentialExpiry
+                  ? formatProRegistryDate(row.credentialExpiry, locale)
+                  : t('notAvailable')}
               </TableCell>
-              <TableCell className="font-mono text-xs">{row.createdAt.slice(0, 10)}</TableCell>
+              <TableCell className="font-mono text-xs">
+                {formatProRegistryDate(row.createdAt, locale)}
+              </TableCell>
               <TableCell>
                 <Badge variant="secondary">{t(`account.${row.accountStatus}`)}</Badge>
               </TableCell>

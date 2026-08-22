@@ -10,6 +10,7 @@ process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 
 const ACTOR_ID = '11111111-1111-4111-8111-111111111111';
 const PRO_ID = '22222222-2222-4222-8222-222222222222';
+const EVENT_ID = '33333333-3333-4333-8333-333333333333';
 
 test('direct PRO detail loader makes one aggregate authorized read and exposes safe lifecycle data', async () => {
   const calls: unknown[] = [];
@@ -75,6 +76,109 @@ test('direct detail maps unknown, non-PRO, and inaccessible RPC results to one n
       (error: unknown) => error instanceof Error && 'code' in error && error.code === 'NOT_FOUND',
     );
   }
+});
+
+test('realistic detail next cursor always decodes with the shared timeline decoder', async () => {
+  const cursorPayload = { eventAt: '2026-08-21T10:00:00.000Z', eventId: EVENT_ID };
+  const nextCursor = Buffer.from(JSON.stringify(cursorPayload)).toString('base64url');
+  const { readProLifecycleDetail } = await import('@/lib/data/pro-lifecycle-detail');
+  const { decodeProTimelineCursor } = await import('@/lib/validation/pro-lifecycle');
+  const snapshot = await readProLifecycleDetail(ACTOR_ID, PRO_ID, {
+    supabase: {
+      async rpc() {
+        return {
+          data: {
+            profile: {
+              id: PRO_ID,
+              fullName: 'Fatima Noor',
+              email: null,
+              emailUnavailable: true,
+              accountStatus: 'active',
+              designation: null,
+              department: null,
+              serviceAreas: [],
+              bio: null,
+              createdAt: '2026-08-01T10:00:00.000Z',
+            },
+            credentials: [
+              {
+                credentialId: EVENT_ID,
+                type: 'pro_license',
+                maskedIdentifier: '•••• 1234',
+                issuingAuthority: 'DET',
+                issueDate: '2026-01-01',
+                expiryDate: '2027-01-01',
+                state: 'verified',
+                version: 2,
+                evidenceCount: 1,
+                submittedAt: '2026-08-20T10:00:00.000Z',
+                supersedesCredentialId: null,
+              },
+            ],
+            evidence: [
+              {
+                evidenceId: ACTOR_ID,
+                credentialId: EVENT_ID,
+                mimeType: 'application/pdf',
+                sizeBytes: 1200,
+                originalNameSafe: 'licence.pdf',
+                createdAt: '2026-08-20T10:00:00.000Z',
+              },
+            ],
+            eligibility: {
+              eligible: true,
+              codes: [],
+              verifiedCredentialId: EVENT_ID,
+              pricingTermId: ACTOR_ID,
+              compensationTermId: PRO_ID,
+            },
+            assignment: {
+              assignmentId: ACTOR_ID,
+              tenantId: PRO_ID,
+              companyId: EVENT_ID,
+              companyName: 'Acme',
+              assignedAt: '2026-08-21T09:00:00.000Z',
+            },
+            commercialTerms: [
+              {
+                termId: ACTOR_ID,
+                termKind: 'pricing',
+                model: 'per_registration',
+                currency: 'AED',
+                amountMinor: 10000,
+                retainerInterval: null,
+                scope: 'all_registrations',
+                effectiveFrom: '2026-08-01',
+                effectiveTo: null,
+                status: 'active',
+                version: 1,
+              },
+            ],
+            timeline: {
+              items: [
+                {
+                  eventAt: cursorPayload.eventAt,
+                  eventId: EVENT_ID,
+                  eventKind: 'credential_verified',
+                  summaryCode: 'VERIFIED',
+                  actorDisplayName: 'Operator',
+                  companyDisplayName: null,
+                },
+              ],
+              nextCursor,
+            },
+          },
+          error: null,
+        };
+      },
+    } as never,
+  });
+  assert.deepEqual(decodeProTimelineCursor(snapshot.timeline.nextCursor!), cursorPayload);
+  const sql = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260822140000_0075_pro_registry_setwise.sql'),
+    'utf8',
+  );
+  assert.match(sql, /pg_catalog\.replace[\s\S]*pg_catalog\.chr\(10\)[\s\S]*pg_catalog\.chr\(13\)/u);
 });
 
 test('detail page authorizes before validating and loading one aggregate snapshot', () => {

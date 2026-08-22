@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
+import { formatProRegistryDate } from './pro-registry-format';
+
 const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
 
 test('PRO mode reuses Users page with exact count, applied filters, reset, and deterministic pages', () => {
@@ -14,8 +16,34 @@ test('PRO mode reuses Users page with exact count, applied filters, reset, and d
   assert.match(page, /ProRegistryAppliedFilters/u);
   assert.match(page, /ProRegistryPagination/u);
   assert.match(page, /UsersEmptyState[\s\S]*resetHref/u);
-  assert.match(page, /result\.page === filters\.page[\s\S]*canonicalFilters/u);
-  assert.match(page, /ProRegistryPagination filters=\{canonicalFilters\}/u);
+  assert.match(page, /canonicalProRegistryPage/u);
+  assert.match(page, /redirect\(buildProRegistryHref\(filters, \{ page: canonicalPage \}\)\)/u);
+});
+
+test('PRO registry dates use explicit locale and Dubai timezone', () => {
+  const iso = '2026-08-01T22:30:00.000Z';
+  assert.equal(
+    formatProRegistryDate(iso, 'en'),
+    new Intl.DateTimeFormat('en-AE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Dubai',
+    }).format(new Date(iso)),
+  );
+  assert.equal(
+    formatProRegistryDate(iso, 'ar'),
+    new Intl.DateTimeFormat('ar-AE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Dubai',
+    }).format(new Date(iso)),
+  );
+  const table = read('src/components/admin/ProRegistryTable.tsx');
+  assert.match(table, /getLocale/u);
+  assert.match(table, /formatProRegistryDate/u);
+  assert.doesNotMatch(table, /slice\(0, 10\)/u);
 });
 
 test('PRO registry table links to detail and exposes semantic sorting plus narrow scroll', () => {

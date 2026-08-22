@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,12 @@ import {
 } from '@/lib/data/users';
 import { listTenants, type TenantSummary } from '@/lib/data/tenants';
 import { listProRegistry } from '@/lib/data/pro-registry';
-import { parseProRegistryParams, type RawProRegistryParams } from './pro-registry-params';
+import {
+  buildProRegistryHref,
+  canonicalProRegistryPage,
+  parseProRegistryParams,
+  type RawProRegistryParams,
+} from './pro-registry-params';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,8 +64,10 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
   const t = await getTranslations('admin.user.proRegistry');
   const { filters, invalid } = parseProRegistryParams(raw);
   const result = await listProRegistry(actorId, filters);
-  const canonicalFilters =
-    result.page === filters.page ? filters : { ...filters, page: result.page };
+  const canonicalPage = canonicalProRegistryPage(filters.page, result.totalPages);
+  if (canonicalPage !== filters.page) {
+    redirect(buildProRegistryHref(filters, { page: canonicalPage }));
+  }
   const filtersActive = Boolean(
     filters.q ||
     filters.accountStatus ||
@@ -93,8 +101,8 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
           <CardDescription>{t('directoryDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <ProRegistryToolbar filters={canonicalFilters} />
-          <ProRegistryAppliedFilters filters={canonicalFilters} />
+          <ProRegistryToolbar filters={filters} />
+          <ProRegistryAppliedFilters filters={filters} />
           {result.items.length === 0 ? (
             <UsersEmptyState
               filtersActive={filtersActive || invalid}
@@ -102,8 +110,8 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
             />
           ) : (
             <>
-              <ProRegistryTable rows={result.items} filters={canonicalFilters} />
-              <ProRegistryPagination filters={canonicalFilters} totalPages={result.totalPages} />
+              <ProRegistryTable rows={result.items} filters={filters} />
+              <ProRegistryPagination filters={filters} totalPages={result.totalPages} />
             </>
           )}
         </CardContent>

@@ -29,6 +29,10 @@ export const PRO_REGISTRY_DEFAULTS: ProRegistryFilters = {
   page: 1,
 };
 
+export function canonicalProRegistryPage(requestedPage: number, totalPages: number): number {
+  return totalPages === 0 ? 1 : Math.min(requestedPage, totalPages);
+}
+
 const ALLOWED_KEYS = new Set([
   'role',
   'q',

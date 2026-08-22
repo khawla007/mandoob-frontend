@@ -113,34 +113,8 @@ test('registry rejects malformed output and sanitizes database errors', async ()
   }
 });
 
-test('registry clamps a stale page to the last exact page with only one bounded repeat', async () => {
+test('registry returns one exact stale-page read for the server redirect boundary', async () => {
   const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
-  const responses = [
-    { items: [], total: 26, page: 99, pageSize: 25, totalPages: 2 },
-    {
-      items: [
-        {
-          id: PRO_ID,
-          fullName: 'Fatima Noor',
-          email: 'fatima@example.com',
-          emailUnavailable: false,
-          accountStatus: 'active',
-          credentialState: null,
-          credentialExpiry: null,
-          eligible: false,
-          eligibilityCodes: ['PRO_CREDENTIAL_MISSING'],
-          assigned: false,
-          companyId: null,
-          companyName: null,
-          createdAt: '2026-08-01T10:00:00.000Z',
-        },
-      ],
-      total: 26,
-      page: 2,
-      pageSize: 25,
-      totalPages: 2,
-    },
-  ];
   const { listProRegistry } = await import('./pro-registry');
   const result = await listProRegistry(
     ACTOR_ID,
@@ -149,22 +123,41 @@ test('registry clamps a stale page to the last exact page with only one bounded 
       supabase: {
         async rpc(name: string, args: Record<string, unknown>) {
           calls.push({ name, args });
-          return { data: responses[calls.length - 1], error: null };
+          return {
+            data: { items: [], total: 26, page: 99, pageSize: 25, totalPages: 2 },
+            error: null,
+          };
         },
       } as never,
     },
   );
-  assert.equal(result.page, 2);
+  assert.equal(result.page, 99);
   assert.equal(result.total, 26);
-  assert.equal(result.items.length, 1);
   assert.deepEqual(
     calls.map((call) => call.args.p_page),
-    [99, 2],
+    [99],
   );
-  assert.equal(
-    calls.every((call) => call.name === 'read_pro_registry'),
-    true,
+});
+
+test('forward registry read is set-wise and contains no evaluator or correlated row path', () => {
+  const sql = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260822140000_0075_pro_registry_setwise.sql'),
+    'utf8',
   );
+  const registrySql = sql.slice(
+    0,
+    sql.indexOf('create or replace function public.read_pro_lifecycle_detail'),
+  );
+  assert.match(registrySql, /latest_credentials as/u);
+  assert.match(registrySql, /verified_credentials as/u);
+  assert.match(registrySql, /current_credentials as/u);
+  assert.match(registrySql, /active_assignments as/u);
+  assert.match(registrySql, /active_terms as/u);
+  assert.match(
+    registrySql,
+    /PRO_ACCOUNT_INACTIVE[\s\S]*PRO_CREDENTIAL_MISSING[\s\S]*PRO_ALREADY_ASSIGNED[\s\S]*PRICING_TERMS_MISSING[\s\S]*COMPENSATION_TERMS_MISSING/u,
+  );
+  assert.doesNotMatch(registrySql, /evaluate_pro_assignment_eligibility|cross join lateral/u);
 });
 
 test('registry migration is fixed-path, operator-only, counted, stable, and direct-grant closed', () => {

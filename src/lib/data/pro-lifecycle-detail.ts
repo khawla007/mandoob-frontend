@@ -8,6 +8,7 @@ import {
   PRO_CREDENTIAL_STATES,
 } from '@/lib/pro-lifecycle/contracts';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { proTimelineCursorSchema } from '@/lib/validation/pro-lifecycle';
 
 type RpcResult = { data: unknown; error: { message?: string } | null };
 type DetailClient = { rpc(name: string, args: Record<string, unknown>): Promise<RpcResult> };
@@ -118,7 +119,10 @@ const detailSchema = z
     assignment: assignmentSchema.nullable(),
     commercialTerms: z.array(termSchema),
     timeline: z
-      .object({ items: z.array(timelineItemSchema).max(25), nextCursor: z.string().nullable() })
+      .object({
+        items: z.array(timelineItemSchema).max(25),
+        nextCursor: proTimelineCursorSchema.nullable(),
+      })
       .strict(),
   })
   .strict();

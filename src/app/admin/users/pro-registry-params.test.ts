@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildProRegistryHref,
+  canonicalProRegistryPage,
   parseProRegistryParams,
   PRO_REGISTRY_DEFAULTS,
 } from './pro-registry-params';
@@ -85,4 +86,11 @@ test('registry URLs preserve context, reset page on filters, and expose a stable
     '/admin/users?role=pro&q=Fatima&accountStatus=active&sort=full_name&direction=asc&page=3',
   );
   assert.equal(buildProRegistryHref(current, { reset: true }), '/admin/users?role=pro');
+});
+
+test('canonical page is stable for valid, empty, and shrinking result sets', () => {
+  assert.equal(canonicalProRegistryPage(2, 4), 2);
+  assert.equal(canonicalProRegistryPage(99, 4), 4);
+  assert.equal(canonicalProRegistryPage(99, 0), 1);
+  assert.equal(canonicalProRegistryPage(1, 0), 1);
 });
