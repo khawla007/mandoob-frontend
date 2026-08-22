@@ -262,3 +262,44 @@ test('evidence registration replay hash is stable across rescans of identical bl
     supabase.calls[1]!.args.p_scan_completed_at,
   );
 });
+
+test('evidence registration treats a different safe filename as operation reuse', async () => {
+  const { registerProCredentialEvidence } = await import('./pro-credentials');
+  const supabase = fake([
+    { data: mask, error: null },
+    { data: null, error: { message: 'OPERATION_REUSED' } },
+  ]);
+  const metadata = {
+    mimeType: 'application/pdf' as const,
+    sizeBytes: 8,
+    sha256: 'a'.repeat(64),
+    scanProvider: 'fixture',
+    scanCompletedAt: '2026-08-22T00:00:00.000Z',
+  };
+  await registerProCredentialEvidence(
+    ACTOR_ID,
+    CREDENTIAL_ID,
+    1,
+    OPERATION_ID,
+    EVIDENCE_ID,
+    `pro-credentials/${PRO_ID}/${CREDENTIAL_ID}/${EVIDENCE_ID}`,
+    { ...metadata, originalNameSafe: 'proof.pdf' },
+    { supabase: supabase as never },
+  );
+  await assert.rejects(
+    () =>
+      registerProCredentialEvidence(
+        ACTOR_ID,
+        CREDENTIAL_ID,
+        1,
+        OPERATION_ID,
+        EVIDENCE_ID,
+        `pro-credentials/${PRO_ID}/${CREDENTIAL_ID}/${EVIDENCE_ID}`,
+        { ...metadata, originalNameSafe: 'renamed-proof.pdf' },
+        { supabase: supabase as never },
+      ),
+    (error: unknown) =>
+      error instanceof Error && 'code' in error && error.code === 'OPERATION_REUSED',
+  );
+  assert.notEqual(supabase.calls[0]!.args.p_payload_hash, supabase.calls[1]!.args.p_payload_hash);
+});

@@ -324,6 +324,7 @@ export async function registerProCredentialEvidence(
     mimeType: parsed.mimeType,
     sizeBytes: parsed.sizeBytes,
     sha256: parsed.sha256,
+    originalNameSafe: parsed.originalNameSafe,
   };
   return maskMutation(
     'register_pro_credential_evidence',
