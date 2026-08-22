@@ -5,11 +5,13 @@ import test from 'node:test';
 
 const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
 
-test('generic PRO edit UI renders a masked lifecycle summary without legacy verification control', () => {
+test('generic PRO edit UI links to lifecycle detail without credential values or legacy control', () => {
   const panel = read('src/components/admin/EditUserPanel.tsx');
-  assert.match(panel, /credentialSummary/u);
-  assert.match(panel, /maskedIdentifier/u);
-  assert.doesNotMatch(panel, /VerifyProCredentialsButton|credentialsVerified|verifiedAt/u);
+  assert.match(panel, /\/admin\/users\/\$\{profile\.id\}/u);
+  assert.doesNotMatch(
+    panel,
+    /credentialSummary|maskedIdentifier|VerifyProCredentialsButton|credentialsVerified|verifiedAt/u,
+  );
 });
 
 test('generic admin workflow has no legacy credential verification runtime path', () => {

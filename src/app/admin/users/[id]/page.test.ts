@@ -200,3 +200,83 @@ test('detail page preserves internal failures for the localized route error boun
   assert.match(boundary, /useTranslations\('admin\.user\.proRegistry'\)/u);
   assert.match(boundary, /reset\(\)/u);
 });
+
+test('timeline read model accepts normalized safe reasons and rejects private reason material', async () => {
+  const { readProLifecycleTimeline } = await import('@/lib/data/pro-lifecycle-timeline');
+  const valid = await readProLifecycleTimeline(ACTOR_ID, PRO_ID, 25, null, {
+    supabase: {
+      async rpc() {
+        return {
+          data: {
+            items: [
+              {
+                eventAt: '2026-08-21T10:00:00.000Z',
+                eventId: EVENT_ID,
+                eventKind: 'credential_rejected',
+                summaryCode: 'REJECTED',
+                reasonCode: 'DOCUMENT_UNCLEAR',
+                reason: 'The uploaded document is not readable.',
+                actorDisplayName: null,
+                companyDisplayName: null,
+              },
+            ],
+          },
+          error: null,
+        };
+      },
+    } as never,
+  });
+  assert.equal(valid.items[0]?.reasonCode, 'DOCUMENT_UNCLEAR');
+  assert.equal(valid.items[0]?.reason, 'The uploaded document is not readable.');
+  await assert.rejects(() =>
+    readProLifecycleTimeline(ACTOR_ID, PRO_ID, 25, null, {
+      supabase: {
+        async rpc() {
+          return {
+            data: {
+              items: [
+                {
+                  ...valid.items[0],
+                  reason: 'pro-credentials/private/object.pdf',
+                },
+              ],
+            },
+            error: null,
+          };
+        },
+      } as never,
+    }),
+  );
+});
+
+test('forward timeline read exposes only authorized normalized decision reasons', () => {
+  const sql = readFileSync(
+    join(
+      process.cwd(),
+      'supabase/migrations/20260822150000_0076_pro_lifecycle_timeline_reasons.sql',
+    ),
+    'utf8',
+  );
+  assert.match(sql, /create or replace function public\.read_pro_lifecycle_timeline/u);
+  assert.match(sql, /decision\.reason_code/u);
+  assert.match(sql, /decision\.reason/u);
+  assert.match(sql, /order by event_at desc, event_id desc/u);
+  assert.match(sql, /security definer[\s\S]*set search_path = ''/u);
+  assert.match(
+    sql,
+    /revoke all on function public\.read_pro_lifecycle_timeline[\s\S]*authenticated/u,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.read_pro_lifecycle_timeline[\s\S]*service_role/u,
+  );
+  assert.match(sql, /read_pro_lifecycle_detail_without_reasons_0076/u);
+  assert.match(sql, /jsonb_set[\s\S]*\{timeline,items\}/u);
+  assert.doesNotMatch(sql, /identifier_ciphertext|identifier_hash|storage_path|sha256/u);
+});
+
+test('detail page reuses aggregate first history page and only calls cursor reader for older pages', () => {
+  const source = readFileSync(join(process.cwd(), 'src/app/admin/users/[id]/page.tsx'), 'utf8');
+  assert.match(source, /timelineSelection\.cursor === null[\s\S]*snapshot\.timeline/u);
+  assert.match(source, /readProLifecycleTimeline[\s\S]*timelineSelection\.cursor/u);
+});

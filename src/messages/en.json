@@ -1766,7 +1766,9 @@
         "verifying": "Verifying…",
         "verified": "Credentials verified",
         "error": "Credential verification could not be completed. Review the PRO status and licence, then try again.",
-        "staleError": "The PRO credentials changed. The latest details have been loaded; review them before verifying."
+        "staleError": "The PRO credentials changed. The latest details have been loaded; review them before verifying.",
+        "lifecycleLinkHelp": "Credential values and lifecycle decisions are managed only on the protected PRO lifecycle page.",
+        "openLifecycle": "Open PRO lifecycle"
       },
       "fields": {
         "fullName": "Full name",
@@ -1933,6 +1935,114 @@
         "accountStatus": "Account status",
         "credentialStatus": "Credential status",
         "assignmentStatus": "Assignment"
+      },
+      "proLifecycle": {
+        "unavailable": "Unavailable",
+        "credentialStates": {
+          "draft": "Draft",
+          "submitted": "Submitted",
+          "under_review": "Under review",
+          "verified": "Verified",
+          "rejected": "Rejected",
+          "expired": "Expired",
+          "revoked": "Revoked"
+        },
+        "credential": {
+          "title": "PRO credential",
+          "version": "Credential version {version}",
+          "identifier": "Identifier",
+          "authority": "Issuing authority",
+          "issueDate": "Issue date",
+          "expiryDate": "Expiry date",
+          "evidenceTitle": "Evidence",
+          "noEvidence": "No evidence is attached to this credential.",
+          "empty": "No credential has been created."
+        },
+        "review": {
+          "legend": "Credential review decision",
+          "commandLabel": "Available action",
+          "commandRequired": "Choose an available action.",
+          "commands": {
+            "begin_review": "Begin review",
+            "verify": "Verify credential",
+            "reject": "Reject credential",
+            "revoke": "Revoke credential"
+          },
+          "help": "Only transitions allowed from the current credential state are shown.",
+          "reasonCodeLabel": "Reason code",
+          "reasonLabel": "Review reason",
+          "reasonHelp": "Do not include the credential identifier, evidence paths, or system errors.",
+          "reasonRequired": "Enter a review reason of at least three characters.",
+          "revokeConfirmation": "I confirm that revoking this verified credential can immediately block PRO operations.",
+          "revokeRequired": "Confirm the destructive revoke action.",
+          "submit": "Apply decision",
+          "pending": "Applying decision…",
+          "saved": "Decision saved.",
+          "errorTitle": "Decision not saved",
+          "failed": "The decision could not be completed safely. Review the current state and try again.",
+          "stale": "This credential changed before your decision was saved. Refresh and review the latest state before trying again."
+        },
+        "terms": {
+          "title": "PRO commercial terms",
+          "pricingTitle": "company-facing PRO service price",
+          "compensationTitle": "PRO compensation term",
+          "disclaimer": "Configured terms are not earned, payable, or paid money. This page records agreement versions only.",
+          "amount": "Amount",
+          "status": "Status",
+          "model": "Model",
+          "effectiveFrom": "Effective from",
+          "empty": "No term has been configured.",
+          "historyLabel": "Commercial term history",
+          "kind": "Term kind",
+          "kinds": { "pricing": "Service price", "compensation": "Compensation" },
+          "models": { "per_registration": "Per registration", "retainer": "Retainer" },
+          "statuses": { "draft": "Draft", "active": "Active", "ended": "Ended" },
+          "form": {
+            "legends": {
+              "create": "Create a term draft",
+              "activate": "Activate this draft",
+              "end": "End this active term"
+            },
+            "model": "Commercial model",
+            "models": { "per_registration": "Per registration", "retainer": "Retainer" },
+            "amount": "Amount in AED",
+            "amountPlaceholder": "0.00",
+            "amountHelp": "Enter a positive AED amount. It is stored in minor units.",
+            "interval": "Retainer interval",
+            "intervals": { "monthly": "Monthly", "annual": "Annual" },
+            "effectiveFrom": "Effective start date",
+            "effectiveTo": "Effective end date",
+            "required": "Enter a positive amount and an effective start date.",
+            "endRequired": "Choose the effective end date.",
+            "actions": { "create": "Save draft", "activate": "Activate term", "end": "End term" },
+            "pending": "Saving…",
+            "saved": "Commercial term saved.",
+            "errorTitle": "Term not saved",
+            "failed": "The commercial term could not be saved safely. Review the values and try again.",
+            "stale": "This term changed before it was saved. Refresh and review the latest version before trying again."
+          }
+        },
+        "timeline": {
+          "title": "Lifecycle history",
+          "invalidCursor": "The history link was invalid. The newest events are shown instead.",
+          "actor": "Actor",
+          "company": "Company",
+          "reason": "Reason",
+          "unavailable": "Unavailable",
+          "empty": "No lifecycle events are available.",
+          "next": "Older events",
+          "events": {
+            "credential_submitted": "Credential submitted",
+            "credential_review_started": "Credential review started",
+            "credential_verified": "Credential verified",
+            "credential_rejected": "Credential rejected",
+            "credential_expired": "Credential expired",
+            "credential_revoked": "Credential revoked",
+            "credential_superseded": "Credential superseded",
+            "assignment_assigned": "Company assigned",
+            "assignment_released": "Company released"
+          }
+        }
       },
       "roleChange": {
         "trigger": "Change role",

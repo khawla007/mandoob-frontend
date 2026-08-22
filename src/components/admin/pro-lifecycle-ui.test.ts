@@ -62,3 +62,89 @@ test('generic user rows retain edit links while PRO rows never paginate in clien
   assert.equal((registry.match(/\.rpc\(/gu) ?? []).length, 1);
   assert.doesNotMatch(registry, /auth\.admin|\.slice\(|getUserById|listUsers/u);
 });
+
+test('operator lifecycle detail uses server composition with one heading and focused client forms', () => {
+  const page = read('src/app/admin/users/[id]/page.tsx');
+  assert.equal((page.match(/<h1\b/gu) ?? []).length, 1);
+  assert.match(page, /ProCredentialPanel/u);
+  assert.match(page, /ProCommercialTermsPanel/u);
+  assert.match(page, /ProLifecycleTimeline/u);
+  assert.match(page, /searchParams/u);
+  assert.match(page, /readProLifecycleTimeline/u);
+  assert.doesNotMatch(page, /^['"]use client['"]/mu);
+});
+
+test('credential surface is masked-only, semantic, evidence-owned, and exposes legal transitions', () => {
+  const panel = read('src/components/admin/ProCredentialPanel.tsx');
+  const form = read('src/components/admin/ProCredentialReviewForm.tsx');
+  assert.match(panel, /<dl/u);
+  assert.match(panel, /maskedIdentifier/u);
+  assert.match(panel, /dir="ltr"/u);
+  assert.match(panel, /evidence\/\$\{item\.evidenceId\}/u);
+  assert.match(panel, /originalNameSafe/u);
+  assert.doesNotMatch(panel, /identifierCiphertext|identifierHash|storagePath|sha256/u);
+  assert.match(form, /LEGAL_CREDENTIAL_COMMANDS/u);
+  assert.match(form, /submitted:\s*\['begin_review'\]/u);
+  assert.match(form, /under_review:\s*\['verify', 'reject'\]/u);
+  assert.match(form, /verified:\s*\['revoke'\]/u);
+  assert.match(form, /<fieldset/u);
+  assert.match(form, /<legend/u);
+  assert.match(form, /<Label/u);
+  assert.match(form, /reason/u);
+  assert.match(form, /revokeConfirmation/u);
+  assert.match(form, /claimFormSubmission/u);
+  assert.match(form, /aria-live="polite"/u);
+  assert.match(form, /errorRef\.current\?\.focus/u);
+  assert.match(form, /router\.refresh/u);
+  assert.doesNotMatch(form, />\s*(Begin review|Verify|Reject|Revoke|Reason)\s*</u);
+});
+
+test('commercial surfaces use mandated labels and disclaim money execution', () => {
+  const panel = read('src/components/admin/ProCommercialTermsPanel.tsx');
+  const form = read('src/components/admin/ProCommercialTermForm.tsx');
+  const en = JSON.parse(read('src/messages/en.json')) as {
+    admin: {
+      user: {
+        proLifecycle: {
+          terms: { pricingTitle: string; compensationTitle: string; disclaimer: string };
+        };
+      };
+    };
+  };
+  const copy = en.admin.user.proLifecycle;
+  assert.equal(copy.terms.pricingTitle, 'company-facing PRO service price');
+  assert.equal(copy.terms.compensationTitle, 'PRO compensation term');
+  assert.match(copy.terms.disclaimer, /not earned, payable, or paid money/u);
+  assert.match(panel, /<dl/u);
+  assert.match(panel, /terms\.disclaimer/u);
+  assert.match(form, /<fieldset/u);
+  assert.match(form, /<legend/u);
+  assert.match(form, /claimFormSubmission/u);
+  assert.match(form, /aria-live="polite"/u);
+  assert.match(form, /errorRef\.current\?\.focus/u);
+  assert.doesNotMatch(form, />\s*(Amount|Model|Activate|End|Save)\s*</u);
+});
+
+test('timeline is semantic, localized, deterministic, and preserves validated cursor paging', () => {
+  const timeline = read('src/components/admin/ProLifecycleTimeline.tsx');
+  const page = read('src/app/admin/users/[id]/page.tsx');
+  assert.match(timeline, /<ol/u);
+  assert.match(timeline, /eventKind/u);
+  assert.match(timeline, /actorDisplayName \?\?/u);
+  assert.match(timeline, /companyDisplayName \?\?/u);
+  assert.match(timeline, /reasonCode/u);
+  assert.match(timeline, /reason/u);
+  assert.match(timeline, /formatProLifecycleTimestamp/u);
+  assert.doesNotMatch(timeline, />\s*(Timeline|Unavailable|Load more)\s*</u);
+  assert.match(page, /parseProTimelineSearchParams/u);
+  assert.match(timeline, /buildProTimelineHref/u);
+  assert.match(timeline, /timelinePage\.nextCursor/u);
+});
+
+test('generic PRO edit links to lifecycle detail and contains no credential input or value', () => {
+  const panel = read('src/components/admin/EditUserPanel.tsx');
+  const fields = read('src/components/admin/EditUserForm.tsx');
+  assert.match(panel, /\/admin\/users\/\$\{profile\.id\}/u);
+  assert.doesNotMatch(panel, /maskedIdentifier|credentialSummary|VerifyProCredentialsButton/u);
+  assert.doesNotMatch(fields, /licenseNo|credential|identifier/u);
+});

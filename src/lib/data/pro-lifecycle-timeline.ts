@@ -4,7 +4,11 @@ import { z } from 'zod';
 
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { decodeProTimelineCursor } from '@/lib/validation/pro-lifecycle';
+import {
+  decodeProTimelineCursor,
+  proDecisionReasonCodeSchema,
+  proDecisionReasonSchema,
+} from '@/lib/validation/pro-lifecycle';
 
 type RpcResult = { data: unknown; error: { message?: string } | null };
 type TimelineClient = { rpc(name: string, args: Record<string, unknown>): Promise<RpcResult> };
@@ -27,6 +31,14 @@ const itemSchema = z
       'assignment_released',
     ]),
     summaryCode: z.string().regex(/^[A-Z_]+$/u),
+    reasonCode: proDecisionReasonCodeSchema
+      .nullable()
+      .optional()
+      .transform((value) => value ?? null),
+    reason: proDecisionReasonSchema
+      .nullable()
+      .optional()
+      .transform((value) => value ?? null),
     actorDisplayName: z.string().nullable(),
     companyDisplayName: z.string().nullable(),
   })
