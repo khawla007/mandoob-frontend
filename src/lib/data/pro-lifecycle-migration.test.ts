@@ -8,6 +8,7 @@ const migrationPaths = [
   'supabase/migrations/20260821101000_0069_pro_lifecycle_workflows.sql',
   'supabase/migrations/20260821102000_0070_pro_lifecycle_security_reconciliation.sql',
   'supabase/migrations/20260822100000_0071_pro_credential_evidence_removal_protocol.sql',
+  'supabase/migrations/20260822110000_0072_pro_evidence_removal_recovery.sql',
 ] as const;
 
 function migration(index: number): string {
@@ -22,8 +23,83 @@ test('Step 3 uses the exact forward-only migration catalog', () => {
     'supabase/migrations/20260821101000_0069_pro_lifecycle_workflows.sql',
     'supabase/migrations/20260821102000_0070_pro_lifecycle_security_reconciliation.sql',
     'supabase/migrations/20260822100000_0071_pro_credential_evidence_removal_protocol.sql',
+    'supabase/migrations/20260822110000_0072_pro_evidence_removal_recovery.sql',
   ]);
   assert.equal(existsSync(join(process.cwd(), migrationPaths[0])), true, migrationPaths[0]);
+});
+
+test('0072 adds bounded operator recovery and terminal retention without weakening reservations', () => {
+  const sql = migration(4);
+  assert.match(sql, /add column lease_expires_at timestamptz/u);
+  assert.match(sql, /add column recovery_actor_id uuid/u);
+  assert.match(sql, /status in \('prepared', 'complete', 'cancelled'\)/u);
+  assert.match(sql, /function public\.recover_pro_credential_evidence_removal/u);
+  assert.match(sql, /function public\.cleanup_pro_credential_evidence_removals/u);
+  assert.match(sql, /pg_advisory_xact_lock/u);
+  assert.match(sql, /for update/u);
+  assert.match(sql, /v_actor\.role not in \('admin', 'super_admin'\)/u);
+  assert.match(sql, /v_actor\.status <> 'active'/u);
+  assert.match(sql, /v_actor\.tenant_id is not null/u);
+  assert.match(sql, /evidence_removal_lease_active/u);
+  assert.match(sql, /from storage\.objects/u);
+  assert.match(sql, /bucket_id = 'tenant-documents'/u);
+  assert.match(sql, /name = v_removal\.storage_path/u);
+  assert.match(sql, /status = 'cancelled'/u);
+  assert.match(sql, /credential_evidence_removal_cancelled/u);
+  assert.match(sql, /credential_evidence_removal_recovered/u);
+  assert.match(sql, /app\.pro_evidence_recovery/u);
+  assert.match(sql, /app\.pro_evidence_resume/u);
+  assert.match(
+    sql,
+    /guard_prepared_pro_evidence_removal[\s\S]*app\.pro_evidence_finalize[\s\S]*app\.pro_evidence_recovery/u,
+  );
+  assert.match(
+    sql,
+    /guard_pro_evidence_delete[\s\S]*app\.pro_evidence_finalize[\s\S]*app\.pro_evidence_recovery/u,
+  );
+  assert.match(
+    sql,
+    /v_removal\.status = 'cancelled'[\s\S]*set status = 'prepared'[\s\S]*lease_expires_at = pg_catalog\.now\(\) \+ interval '15 minutes'/u,
+  );
+  const recovery = sql.slice(
+    sql.indexOf('create or replace function public.recover_pro_credential_evidence_removal'),
+    sql.indexOf('create or replace function public.cleanup_pro_credential_evidence_removals'),
+  );
+  assert.ok(
+    recovery.indexOf('select * into v_actor from public.profiles where id = p_actor_id;') <
+      recovery.indexOf('pg_advisory_xact_lock'),
+    'unauthorized callers are rejected before reservation lookup',
+  );
+  assert.ok(
+    recovery.indexOf('pg_advisory_xact_lock') <
+      recovery.indexOf(
+        'select * into v_actor from public.profiles where id = p_actor_id for update',
+      ),
+    'operator row lock follows the shared evidence advisory lock order',
+  );
+  assert.doesNotMatch(recovery, /jsonb_build_object\([^;]*storage/u);
+  const cleanup = sql.slice(
+    sql.indexOf('create or replace function public.cleanup_pro_credential_evidence_removals'),
+    sql.indexOf('alter function public.cleanup_pro_credential_evidence_removals'),
+  );
+  assert.match(cleanup, /status in \('complete', 'cancelled'\)/u);
+  assert.match(cleanup, /interval '30 days'/u);
+  assert.doesNotMatch(cleanup, /status = 'prepared'/u);
+  assert.match(sql, /pro-evidence-removal-retention-cleanup/u);
+  assert.match(
+    sql,
+    /revoke all on table public\.pro_credential_evidence_removals from public, anon, authenticated, service_role/u,
+  );
+  for (const fn of [
+    'recover_pro_credential_evidence_removal',
+    'cleanup_pro_credential_evidence_removals',
+  ]) {
+    assert.match(sql, new RegExp(`alter function public\\.${fn}[\\s\\S]*owner to postgres`, 'u'));
+    assert.match(
+      sql,
+      new RegExp(`grant execute on function public\\.${fn}[\\s\\S]*to service_role`, 'u'),
+    );
+  }
 });
 
 test('0071 makes evidence removal a private durable prepare/finalize protocol', () => {
@@ -216,6 +292,10 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
     'pro_lifecycle_removal_session_a.sql',
     'pro_lifecycle_removal_session_b.sql',
     'pro_lifecycle_removal_concurrency_setup.sql',
+    'pro_lifecycle_evidence_recovery.sql',
+    'pro_lifecycle_recovery_concurrency_setup.sql',
+    'pro_lifecycle_recovery_session_a.sql',
+    'pro_lifecycle_recovery_session_b.sql',
   ]) {
     const path = join(process.cwd(), 'supabase/tests', fixture);
     assert.equal(existsSync(path), true, fixture);
