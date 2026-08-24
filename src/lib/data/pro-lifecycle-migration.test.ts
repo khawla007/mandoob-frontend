@@ -431,10 +431,12 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
   assert.match(raceA, /delete from storage\.objects/u);
   assert.match(raceA, /set_config\('storage\.allow_delete_query', 'true', true\)/u);
   assert.match(raceA, /EVIDENCE_REMOVAL_IN_PROGRESS/u);
+  assert.match(raceA, /classid = 69004 and objid = 2 and granted/u);
   assert.match(raceB, /claim_pro_credential_evidence_removal_recovery/u);
   assert.match(raceB, /delete from storage\.objects/u);
   assert.match(raceB, /set_config\('storage\.allow_delete_query', 'true', true\)/u);
   assert.match(raceB, /finalize_pro_credential_evidence_removal_recovery/u);
+  assert.match(raceB, /pg_advisory_xact_lock\(69004, 2\)/u);
   const removal = readFileSync(
     join(process.cwd(), 'supabase/tests/pro_lifecycle_evidence_removal.sql'),
     'utf8',
