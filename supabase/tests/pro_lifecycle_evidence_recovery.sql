@@ -89,7 +89,9 @@ begin
   if v_claim ->> 'status' <> 'recovering' or v_claim ->> 'storagePath' not like 'pro-credentials/%' then
     raise exception 'RECOVERY_CLAIM_INVALID';
   end if;
+  perform pg_catalog.set_config('storage.allow_delete_query', 'true', true);
   delete from storage.objects where bucket_id = 'tenant-documents' and name = v_claim ->> 'storagePath';
+  perform pg_catalog.set_config('storage.allow_delete_query', 'false', true);
   begin
     perform public.finalize_pro_credential_evidence_removal(
       '94000000-0000-4000-8000-000000000003', '94000000-0000-4000-8000-000000000010',
@@ -99,7 +101,9 @@ begin
     raise exception 'EXPECTED_OLD_FINALIZE_FENCE';
   exception when sqlstate 'P0001' then v_error := sqlerrm; end;
   if v_error <> 'EVIDENCE_REMOVAL_IN_PROGRESS' then raise exception 'OLD_FINALIZE_NOT_FENCED'; end if;
+  perform pg_catalog.set_config('storage.allow_delete_query', 'true', true);
   delete from storage.objects where bucket_id = 'tenant-documents' and name = v_claim ->> 'storagePath';
+  perform pg_catalog.set_config('storage.allow_delete_query', 'false', true);
   v_result := public.finalize_pro_credential_evidence_removal_recovery(
     '94000000-0000-4000-8000-000000000001', '94000000-0000-4000-8000-000000000003',
     '94000000-0000-4000-8000-000000000010', '94000000-0000-4000-8000-000000000011',

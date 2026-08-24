@@ -406,6 +406,10 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
   assert.equal([...recovery.matchAll(/set state = 'rejected'/gu)].length, 3);
   assert.doesNotMatch(recovery, /set status = 'inactive'/u);
   assert.match(recovery, /set status = 'disabled'/u);
+  assert.equal(
+    [...recovery.matchAll(/set_config\('storage\.allow_delete_query', 'true', true\)/gu)].length,
+    [...recovery.matchAll(/delete from storage\.objects/gu)].length,
+  );
   const preservation = readFileSync(
     join(process.cwd(), 'supabase/tests/pro_credential_identifier_preservation.sql'),
     'utf8',
@@ -425,9 +429,11 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
     'utf8',
   );
   assert.match(raceA, /delete from storage\.objects/u);
+  assert.match(raceA, /set_config\('storage\.allow_delete_query', 'true', true\)/u);
   assert.match(raceA, /EVIDENCE_REMOVAL_IN_PROGRESS/u);
   assert.match(raceB, /claim_pro_credential_evidence_removal_recovery/u);
   assert.match(raceB, /delete from storage\.objects/u);
+  assert.match(raceB, /set_config\('storage\.allow_delete_query', 'true', true\)/u);
   assert.match(raceB, /finalize_pro_credential_evidence_removal_recovery/u);
 });
 

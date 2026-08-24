@@ -1,7 +1,9 @@
 \set ON_ERROR_STOP on
 set statement_timeout = '25s';
 begin;
+select pg_catalog.set_config('storage.allow_delete_query', 'true', true);
 delete from storage.objects where bucket_id = 'tenant-documents' and name = 'pro-credentials/95000000-0000-4000-8000-000000000002/95000000-0000-4000-8000-000000000010/95000000-0000-4000-8000-000000000011';
+select pg_catalog.set_config('storage.allow_delete_query', 'false', true);
 select pg_catalog.pg_advisory_xact_lock(69004, 1);
 select pg_sleep(10);
 commit;
