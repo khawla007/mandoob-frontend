@@ -126,6 +126,39 @@ test('operator review derives actor, resolves active PRO and credential before f
   assert.deepEqual(calls, ['csrf', 'session', 'target', 'limit', 'mutation', 'revalidate']);
 });
 
+test('operator creates the first credential draft for an active PRO without credentials', async () => {
+  const calls: string[] = [];
+  let createdFor = '';
+  const handler = createAdminCredentialPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'super_admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: P, credentialIds: [] }),
+    limit: async () => (calls.push('limit'), 'allowed'),
+    create: async (actorId, proProfileId, operationId) => {
+      assert.deepEqual([actorId, operationId], [A, O]);
+      createdFor = proProfileId;
+      calls.push('create');
+      return { ...publicCredential(), state: 'draft', version: 0, evidenceCount: 0 };
+    },
+    revalidate: () => {
+      calls.push('revalidate');
+    },
+  });
+  const response = await handler(req({ command: 'create', operationId: O }), {
+    params: Promise.resolve({ id: P }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(createdFor, P);
+  assert.deepEqual(calls, ['limit', 'create', 'revalidate']);
+});
+
 test('operator reject and revoke validate the transient identifier after schema and before mutation', async () => {
   for (const command of ['reject', 'revoke'] as const) {
     const calls: string[] = [];

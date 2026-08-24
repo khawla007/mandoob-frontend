@@ -98,6 +98,11 @@ test('credential surface is masked-only, semantic, evidence-owned, and exposes l
   assert.match(form, /<Label/u);
   assert.match(form, /reason/u);
   assert.match(form, /OPERATOR_REVIEW_REASON_CODE/u);
+  assert.match(panel, /ProCredentialCreateDraftForm/u);
+  const create = read('src/components/admin/ProCredentialCreateDraftForm.tsx');
+  assert.match(create, /command: 'create'/u);
+  assert.match(create, /crypto\.randomUUID\(\)/u);
+  assert.match(create, /aria-busy=\{pending\}/u);
   assert.doesNotMatch(form, /reason-code-|setReasonCode|reasonCodeLabel/u);
   assert.match(form, /revokeConfirmation/u);
   assert.match(form, /claimFormSubmission/u);

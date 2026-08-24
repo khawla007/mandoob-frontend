@@ -57,6 +57,7 @@ const base = {
   operationId: uuid,
 } as const;
 const reviewSchema = z.discriminatedUnion('command', [
+  z.object({ command: z.literal('create'), operationId: uuid }).strict(),
   z.object({ command: z.literal('begin_review'), ...base }).strict(),
   z.object({ command: z.literal('verify'), ...base }).strict(),
   z
@@ -76,7 +77,8 @@ const reviewSchema = z.discriminatedUnion('command', [
     })
     .strict(),
 ]);
-type Review = z.infer<typeof reviewSchema>;
+type Command = z.infer<typeof reviewSchema>;
+type Review = Exclude<Command, { command: 'create' }>;
 type Context = { params: Promise<{ id: string }> };
 
 type Deps = {
@@ -84,6 +86,7 @@ type Deps = {
   requireOperator(): Promise<SessionProfile>;
   resolveTarget(actorId: string, targetId: string): Promise<LifecycleTarget | null>;
   limit(actorId: string, targetId: string): Promise<LimitDecision>;
+  create(actorId: string, targetId: string, operationId: string): Promise<unknown>;
   validateReason(proProfileId: string, credentialId: string, reason: string): Promise<void>;
   review(actorId: string, credentialId: string, input: Review): Promise<unknown>;
   revalidate(target: LifecycleTarget, userId: string): void | Promise<void>;
@@ -101,6 +104,12 @@ const defaults: Deps = {
       ...SENSITIVE_RATE_LIMITS.credentialReview,
     });
   },
+  create: async (actorId, targetId, operationId) =>
+    (await import('@/lib/data/pro-credentials')).createProCredentialDraft(
+      actorId,
+      targetId,
+      operationId,
+    ),
   validateReason: async (...args) =>
     (
       await import('@/lib/data/pro-credential-decision-reason')
@@ -139,12 +148,16 @@ export function createAdminCredentialPostHandler(overrides: Partial<Deps> = {}) 
           ? errorResponse('PAYLOAD_TOO_LARGE', 'Request body is too large', 413)
           : errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
       }
-      const rawCredentialId =
-        raw && typeof raw === 'object' ? (raw as Record<string, unknown>).credentialId : undefined;
-      if (typeof rawCredentialId !== 'string' || !target.credentialIds.includes(rawCredentialId))
-        return notFoundResponse();
       const parsed = reviewSchema.safeParse(raw);
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
+      if (parsed.data.command === 'create') {
+        const credential = publicCredentialSchema.parse(
+          await deps.create(session.id, target.proProfileId, parsed.data.operationId),
+        );
+        await deps.revalidate(target, id);
+        return jsonOk({ ok: true, credential });
+      }
+      if (!target.credentialIds.includes(parsed.data.credentialId)) return notFoundResponse();
       if (parsed.data.command === 'reject' || parsed.data.command === 'revoke')
         await deps.validateReason(
           target.proProfileId,

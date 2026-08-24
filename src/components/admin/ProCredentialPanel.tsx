@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ProCredentialMask, ProCredentialSnapshot } from '@/lib/data/pro-credentials';
+import { ProCredentialCreateDraftForm } from './ProCredentialCreateDraftForm';
 import { ProCredentialReviewForm } from './ProCredentialReviewForm';
 import { ProCredentialStatusBadge } from './ProLifecycleStatusBadge';
 import { ProLifecycleRecoveryPanel } from './ProLifecycleRecoveryPanel';
@@ -144,7 +145,7 @@ export async function ProCredentialPanel({
             />
           ))
         ) : (
-          <p className="text-muted-foreground text-sm">{t('credential.empty')}</p>
+          <ProCredentialCreateDraftForm userId={userId} />
         )}
       </CardContent>
     </Card>
