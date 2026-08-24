@@ -4,6 +4,7 @@ import 'server-only';
 
 import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
+import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
 import {
   assignProToCompany,
@@ -62,9 +63,7 @@ const dependencies: CompanyActionDependencies = {
   release: releaseCompanyPro,
   reassign: reassignCompanyPro,
   revalidate: revalidatePath,
-  reportError(context, error) {
-    console.error(context, error);
-  },
+  reportError: logSafeActionError,
 };
 
 export async function createCompanyAction(

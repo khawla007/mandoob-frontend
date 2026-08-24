@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { ApiError } from '@/lib/errors';
+import { logSafeActionError } from '@/lib/actions/server-action-security';
 import {
   runAssignCompanyProAction,
   runCreateCompanyAction,
@@ -372,4 +374,35 @@ test('unexpected errors never expose database details', async () => {
     code: 'INTERNAL',
   });
   assert.equal(JSON.stringify(result).includes('postgres'), false);
+});
+
+test('production company actions use allowlisted logging for protected provider errors', async () => {
+  const source = readFileSync('src/app/admin/companies/actions.ts', 'utf8');
+  assert.match(source, /logSafeActionError/u);
+  assert.doesNotMatch(source, /console\.error\(context,\s*error\)/u);
+
+  const canaries = [
+    'TASK13-CANARY-IDENTIFIER-9Z72',
+    'v1:TASK13-CANARY-CIPHERTEXT',
+    'TASK13-CANARY-HASH-0123456789',
+    'pro-credentials/TASK13-CANARY-STORAGE-PATH',
+    'https://storage.invalid/TASK13-CANARY-SIGNED-URL',
+    'TASK13-CANARY-RAW-PROVIDER-ERROR',
+  ];
+  const context = setup();
+  context.dependencies.assign = async () => {
+    throw new Error(canaries.join(' '));
+  };
+  context.dependencies.reportError = logSafeActionError;
+  const logged: unknown[] = [];
+  const original = console.error;
+  console.error = (...values: unknown[]) => logged.push(...values);
+  try {
+    const result = await runAssignCompanyProAction(assignData(), context.dependencies);
+    assert.equal(result.ok, false);
+    const external = JSON.stringify({ result, logged });
+    for (const canary of canaries) assert.equal(external.includes(canary), false);
+  } finally {
+    console.error = original;
+  }
 });
