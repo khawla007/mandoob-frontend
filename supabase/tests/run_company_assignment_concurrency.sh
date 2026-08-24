@@ -2,17 +2,20 @@
 set -euo pipefail
 : "${DATABASE_URL:?DATABASE_URL is required}"
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-psql=(psql "${DATABASE_URL}" -X --set=ON_ERROR_STOP=1)
-timeout 120s "${psql[@]}" -f "${test_dir}/company_assignment_concurrency_setup.sql"
-
 active_pid=""
 cleanup() {
+  local status=$?
+  trap - EXIT INT TERM
   if [[ -n "${active_pid}" ]] && kill -0 "${active_pid}" 2>/dev/null; then
     kill "${active_pid}" 2>/dev/null || true
     wait "${active_pid}" 2>/dev/null || true
   fi
+  timeout 120s "${psql[@]}" -f "${test_dir}/company_assignment_concurrency_teardown.sql" || true
+  exit "${status}"
 }
 trap cleanup EXIT INT TERM
+psql=(psql "${DATABASE_URL}" -X --set=ON_ERROR_STOP=1)
+timeout 120s "${psql[@]}" -f "${test_dir}/company_assignment_concurrency_setup.sql"
 
 run_pair() {
   local label="$1" file_a="$2" file_b="$3" lock_company_id="$4"
@@ -47,15 +50,15 @@ run_pair one-company company_assignment_concurrency_session_a.sql company_assign
   -v pro_a_profile_id=95000000-0000-4000-8000-000000000012 -v pro_b_profile_id=95000000-0000-4000-8000-000000000013 \
   -v actor_a_profile_id="$actor_a" -v actor_b_profile_id="$actor_b" -v expected_error=COMPANY_ALREADY_ASSIGNED
 
-release_id=$("${psql[@]}" -Atc "select assignment_id from public.assignment_concurrency_fixture_ids where fixture='release-assign'")
+release_id=$("${psql[@]}" -Atc "select id from public.pro_company_assignments where company_id='95000000-0000-4000-8000-000000000034' and status='active'")
 run_pair release-assign company_assignment_release_assign_session_a.sql company_assignment_release_assign_session_b.sql \
   95000000-0000-4000-8000-000000000034 95000000-0000-4000-8000-000000000014 '' \
   -v company_id=95000000-0000-4000-8000-000000000034 -v assignment_id="$release_id" \
   -v replacement_pro_profile_id=95000000-0000-4000-8000-000000000017 \
   -v actor_a_profile_id="$actor_a" -v actor_b_profile_id="$actor_b"
 
-swap_a=$("${psql[@]}" -Atc "select assignment_id from public.assignment_concurrency_fixture_ids where fixture='swap-a'")
-swap_b=$("${psql[@]}" -Atc "select assignment_id from public.assignment_concurrency_fixture_ids where fixture='swap-b'")
+swap_a=$("${psql[@]}" -Atc "select id from public.pro_company_assignments where company_id='95000000-0000-4000-8000-000000000035' and status='active'")
+swap_b=$("${psql[@]}" -Atc "select id from public.pro_company_assignments where company_id='95000000-0000-4000-8000-000000000036' and status='active'")
 run_pair swap-reassign company_assignment_swap_reassign_session_a.sql company_assignment_swap_reassign_session_b.sql \
   95000000-0000-4000-8000-000000000035 95000000-0000-4000-8000-000000000015 95000000-0000-4000-8000-000000000016 \
   -v company_a_id=95000000-0000-4000-8000-000000000035 -v company_b_id=95000000-0000-4000-8000-000000000036 \

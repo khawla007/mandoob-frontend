@@ -2,10 +2,12 @@
 
 import 'server-only';
 
+import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
 import {
   assignProToCompany,
+  readCurrentCompanyAssignment,
   reassignCompanyPro,
   releaseCompanyPro,
 } from '@/lib/data/company-assignments';
@@ -25,7 +27,24 @@ import {
 const dependencies: CompanyActionDependencies = {
   async requireActor() {
     const session = await requirePlatformOperator();
-    return { id: session.id, role: session.role as 'admin' | 'super_admin' };
+    return {
+      id: session.id,
+      role: session.role as 'admin' | 'super_admin',
+      aal: session.aal,
+    };
+  },
+  async getAssignmentTarget(companyId, assignmentId, actorId) {
+    const assignment = await readCurrentCompanyAssignment(companyId, actorId);
+    return assignment?.id === assignmentId ? { id: assignment.id } : null;
+  },
+  async limitAssignment(actorId, companyId) {
+    const { consumeSensitiveRateLimit, SENSITIVE_RATE_LIMITS } = await import('@/lib/rate-limit');
+    return consumeSensitiveRateLimit({
+      key: `company-pro-assignment:${actorId}:${companyId}`,
+      routeLabel: 'company-pro-assignment',
+      correlationId: randomUUID(),
+      ...SENSITIVE_RATE_LIMITS.credentialMutation,
+    });
   },
   provisionCompany: provisionTenant,
   async getCompany(companyId) {

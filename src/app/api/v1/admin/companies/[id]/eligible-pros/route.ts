@@ -51,7 +51,12 @@ export function createEligibleProsGetHandler(overrides: Partial<Deps> = {}) {
     if (aal) return aal;
     const { id } = await context.params;
     if (!uuid.safeParse(id).success) return notFoundResponse();
-    const company = await deps.resolveCompany(id);
+    let company: { id: string } | null;
+    try {
+      company = await deps.resolveCompany(id);
+    } catch {
+      return errorResponse('INTERNAL', 'Unable to search PRO users', 500);
+    }
     if (!company || company.id !== id) return notFoundResponse();
     let decision: LimitDecision;
     try {
@@ -69,8 +74,6 @@ export function createEligibleProsGetHandler(overrides: Partial<Deps> = {}) {
         rows: rows.map((row) => ({
           proProfileId: row.proProfileId,
           fullName: row.fullName,
-          designation: row.designation,
-          department: row.department,
           eligibility: { eligible: row.eligibility.eligible, codes: row.eligibility.codes },
         })),
       });

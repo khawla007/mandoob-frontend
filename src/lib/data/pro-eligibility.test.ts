@@ -74,8 +74,6 @@ test('eligible selector is one bounded masked RPC and rejects unsafe output', as
             {
               proProfileId: PRO_ID,
               fullName: 'Aisha PRO',
-              designation: 'Public Relations Officer',
-              department: null,
               eligibility: {
                 eligible: true,
                 codes: [],
@@ -114,8 +112,6 @@ test('company selector preserves matched ineligible PROs and every canonical rea
   const rows = PRO_ASSIGNMENT_ELIGIBILITY_CODES.map((code, index) => ({
     proProfileId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
     fullName: `Matched PRO ${index + 1}`,
-    designation: null,
-    department: null,
     eligibility: {
       eligible: false,
       codes: [code],

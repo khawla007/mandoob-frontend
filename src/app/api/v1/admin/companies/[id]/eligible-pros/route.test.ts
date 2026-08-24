@@ -64,8 +64,6 @@ test('lookup makes one bounded company-aware query and strips lifecycle ids', as
         {
           proProfileId: PRO,
           fullName: 'Ali PRO',
-          designation: null,
-          department: null,
           eligibility: {
             eligible: false,
             codes: ['PRICING_TERMS_MISSING'],
@@ -85,7 +83,7 @@ test('lookup makes one bounded company-aware query and strips lifecycle ids', as
   const text = await response.text();
   assert.doesNotMatch(
     text,
-    /verifiedCredentialId|pricingTermId|compensationTermId|storagePath|cipher/u,
+    /designation|department|verifiedCredentialId|pricingTermId|compensationTermId|storagePath|cipher/u,
   );
   assert.match(text, /PRICING_TERMS_MISSING/u);
 });
@@ -114,4 +112,39 @@ test('lookup fails closed with a sanitized response when the limiter is unavaila
   });
   assert.equal(response.status, 503);
   assert.doesNotMatch(await response.text(), /credentials leaked/u);
+});
+
+test('lookup sanitizes company resolution failures before limiter and list', async () => {
+  const { createEligibleProsGetHandler } = await import('./route');
+  const calls: string[] = [];
+  const handler = createEligibleProsGetHandler({
+    requireOperator: async () => ({
+      id: ACTOR,
+      role: 'admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveCompany: async () => {
+      calls.push('target');
+      throw new Error('postgres host=private password=raw');
+    },
+    limit: async () => {
+      calls.push('limit');
+      return 'allowed';
+    },
+    list: async () => {
+      calls.push('list');
+      return [];
+    },
+  });
+  const response = await handler(new Request('http://localhost/api?q=Ali'), {
+    params: Promise.resolve({ id: COMPANY }),
+  });
+  assert.equal(response.status, 500);
+  const text = await response.text();
+  assert.match(text, /INTERNAL/u);
+  assert.doesNotMatch(text, /postgres|private|password|raw/u);
+  assert.deepEqual(calls, ['target']);
 });

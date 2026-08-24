@@ -106,8 +106,9 @@ export function CompanyAssignmentForm({
         companyId={companyId}
         label={currentAssignment ? t('assignment.replacementProLabel') : t('assignment.proLabel')}
         name={proField}
+        error={proError ? t(`fieldErrors.${proField}`) : undefined}
+        errorId={`${proField}-error`}
       />
-      {proError ? <p className="text-destructive text-sm">{t(`fieldErrors.${proField}`)}</p> : null}
 
       {currentAssignment ? (
         <div className="grid gap-2">

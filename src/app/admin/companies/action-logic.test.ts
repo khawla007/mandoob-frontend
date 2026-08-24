@@ -28,7 +28,15 @@ function setup(role: 'admin' | 'super_admin' = 'admin') {
   const dependencies: CompanyActionDependencies = {
     requireActor: async () => {
       calls.push(`auth:${role}`);
-      return { id: actorId, role };
+      return { id: actorId, role, aal: 'aal2' };
+    },
+    getAssignmentTarget: async (_companyId, requestedAssignmentId) => {
+      calls.push(`assignment:${requestedAssignmentId}`);
+      return requestedAssignmentId === assignmentId ? { id: assignmentId } : null;
+    },
+    limitAssignment: async () => {
+      calls.push('limit');
+      return 'allowed';
     },
     provisionCompany: async () => {
       calls.push('provision');
@@ -165,6 +173,7 @@ test('assignment uses the authoritative actor and exact revalidation routes', as
   assert.deepEqual(context.calls, [
     'auth:admin',
     'company',
+    'limit',
     `assign:${actorId}`,
     'revalidate:/admin/companies',
     `revalidate:/admin/companies/${companyId}`,
@@ -188,7 +197,7 @@ test('release requires the exact company name and does not mutate on mismatch', 
     code: 'CONFIRMATION_MISMATCH',
     fieldErrors: { companyNameConfirmation: 'mismatch' },
   });
-  assert.deepEqual(context.calls, ['auth:admin', 'company']);
+  assert.deepEqual(context.calls, ['auth:admin', 'company', `assignment:${assignmentId}`, 'limit']);
 });
 
 test('release and reassignment identify invalid editable fields', async () => {
@@ -225,8 +234,14 @@ test('release requires a reason and revalidates only after success', async () =>
     ok: true,
     data: { outcome: 'released' },
   });
-  assert.deepEqual(valid.calls.slice(0, 3), ['auth:admin', 'company', `release:${actorId}`]);
-  assert.deepEqual(valid.calls.slice(3), [
+  assert.deepEqual(valid.calls.slice(0, 5), [
+    'auth:admin',
+    'company',
+    `assignment:${assignmentId}`,
+    'limit',
+    `release:${actorId}`,
+  ]);
+  assert.deepEqual(valid.calls.slice(5), [
     'revalidate:/admin/companies',
     `revalidate:/admin/companies/${companyId}`,
     `revalidate:/admin/companies/${companyId}/onboarding`,
@@ -245,7 +260,62 @@ test('reassignment uses the replacement PRO and authoritative actor', async () =
     ok: true,
     data: { assignmentId, outcome: 'reassigned' },
   });
-  assert.deepEqual(context.calls.slice(0, 3), ['auth:admin', 'company', `reassign:${actorId}`]);
+  assert.deepEqual(context.calls.slice(0, 5), [
+    'auth:admin',
+    'company',
+    `assignment:${assignmentId}`,
+    'limit',
+    `reassign:${actorId}`,
+  ]);
+});
+
+test('AAL1 assignment is denied before target, limiter, and mutation', async () => {
+  const context = setup();
+  context.dependencies.requireActor = async () => {
+    context.calls.push('auth:aal1');
+    return { id: actorId, role: 'admin', aal: 'aal1' };
+  };
+  const result = await runAssignCompanyProAction(assignData(), context.dependencies);
+  assert.deepEqual(result, {
+    ok: false,
+    error: 'Unable to update company assignment',
+    code: 'AAL2_REQUIRED',
+  });
+  assert.deepEqual(context.calls, ['auth:aal1']);
+});
+
+for (const decision of ['limited', 'unavailable'] as const) {
+  test(`${decision} sensitive limiter fails closed before assignment mutation`, async () => {
+    const context = setup();
+    context.dependencies.limitAssignment = async () => {
+      context.calls.push(`limit:${decision}`);
+      return decision;
+    };
+    const result = await runAssignCompanyProAction(assignData(), context.dependencies);
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.ok ? '' : result.code,
+      decision === 'limited' ? 'RATE_LIMITED' : 'SERVICE_UNAVAILABLE',
+    );
+    assert.deepEqual(context.calls, ['auth:admin', 'company', `limit:${decision}`]);
+  });
+}
+
+test('release and reassign reject a non-matching assignment before limiter and mutation', async () => {
+  for (const [run, data] of [
+    [runReleaseCompanyProAction, releaseData()],
+    [runReassignCompanyProAction, reassignData()],
+  ] as const) {
+    const context = setup();
+    context.dependencies.getAssignmentTarget = async () => {
+      context.calls.push('assignment:missing');
+      return null;
+    };
+    const result = await run(data, context.dependencies);
+    assert.equal(result.ok, false);
+    assert.equal(result.ok ? '' : result.code, 'ASSIGNMENT_NOT_FOUND');
+    assert.deepEqual(context.calls, ['auth:admin', 'company', 'assignment:missing']);
+  }
 });
 
 test('assignment mutations revalidate exact server-returned old and new PRO details', async () => {

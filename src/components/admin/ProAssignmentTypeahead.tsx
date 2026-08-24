@@ -8,8 +8,6 @@ import { Label } from '@/components/ui/label';
 type Row = {
   proProfileId: string;
   fullName: string | null;
-  designation: string | null;
-  department: string | null;
   eligibility: { eligible: boolean; codes: string[] };
 };
 
@@ -17,10 +15,14 @@ export function ProAssignmentTypeahead({
   companyId,
   label,
   name,
+  error,
+  errorId,
 }: {
   companyId: string;
   label: string;
   name: string;
+  error?: string;
+  errorId?: string;
 }) {
   const t = useTranslations('admin.companies');
   const listId = useId();
@@ -30,8 +32,10 @@ export function ProAssignmentTypeahead({
   const [active, setActive] = useState(-1);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const debounceRef = useRef<number | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     if (selectedId) return;
     if (query.trim().length < 2) return;
@@ -44,12 +48,14 @@ export function ProAssignmentTypeahead({
       )
         .then((response) => (response.ok ? response.json() : Promise.reject(new Error('lookup'))))
         .then((payload: { rows?: Row[] }) => {
+          if (requestId !== requestIdRef.current) return;
           setRows(payload.rows ?? []);
           setActive(-1);
           setState('ready');
         })
         .catch((error: unknown) => {
           if (error instanceof Error && error.name === 'AbortError') return;
+          if (requestId !== requestIdRef.current) return;
           setRows([]);
           setState('error');
         });
@@ -90,7 +96,9 @@ export function ProAssignmentTypeahead({
         aria-expanded={rows.length > 0}
         aria-controls={listId}
         aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-        aria-describedby={`${listId}-status`}
+        aria-describedby={`${listId}-status${error && errorId ? ` ${errorId}` : ''}`}
+        aria-invalid={error ? true : undefined}
+        required
         onChange={(event) => {
           const value = event.target.value;
           setQuery(value);
@@ -129,6 +137,11 @@ export function ProAssignmentTypeahead({
                 ? t('typeahead.empty')
                 : t('typeahead.results', { count: rows.length })}
       </p>
+      {error && errorId ? (
+        <p id={errorId} className="text-destructive text-sm">
+          {error}
+        </p>
+      ) : null}
       {rows.length > 0 ? (
         <ul
           id={listId}

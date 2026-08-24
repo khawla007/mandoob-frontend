@@ -166,14 +166,5 @@ select (public.assign_pro_to_company(
   '95000000-0000-4000-8000-000000000001'
 ) ->> 'assignmentId') as swap_assignment_b_id \gset
 
-create table if not exists public.assignment_concurrency_fixture_ids (
-  fixture text primary key, assignment_id uuid not null
-);
-truncate public.assignment_concurrency_fixture_ids;
-insert into public.assignment_concurrency_fixture_ids values
-  ('release-assign', :'release_assignment_id'),
-  ('swap-a', :'swap_assignment_a_id'),
-  ('swap-b', :'swap_assignment_b_id');
-revoke all on public.assignment_concurrency_fixture_ids from public, anon, authenticated;
 commit;
 select 'assignment_concurrency_ready' as assignment_concurrency_ready;

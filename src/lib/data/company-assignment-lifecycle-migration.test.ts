@@ -9,6 +9,8 @@ const fixturePath = 'supabase/tests/company_assignment_lifecycle.sql';
 const forwardFixPath =
   'supabase/migrations/20260822180000_0079_company_assignment_integration_fixes.sql';
 const runnerPath = 'supabase/tests/run_company_assignment_concurrency.sh';
+const bulkFixPath =
+  'supabase/migrations/20260824120000_0080_bulk_company_assignment_eligibility.sql';
 
 function normalized(path: string): string {
   return readFileSync(join(process.cwd(), path), 'utf8').replace(/\s+/gu, ' ').toLowerCase();
@@ -60,6 +62,24 @@ test('0079 defines one replacement-aware adapter and authoritative mutation iden
   assert.match(sql, /'previousproprofileid'/u);
   assert.match(sql, /security definer set search_path = ''/u);
   assert.doesNotMatch(sql, /to authenticated/u);
+});
+
+test('0080 replaces selector N+1 with a set-based bounded eligibility query', () => {
+  assert.equal(existsSync(join(process.cwd(), bulkFixPath)), true);
+  const sql = normalized(bulkFixPath);
+  assert.match(sql, /create or replace function public\.list_eligible_pros_for_company/u);
+  assert.match(sql, /with candidate_ids as/u);
+  assert.match(sql, /limit p_limit/u);
+  assert.match(sql, /credential_state as/u);
+  assert.match(sql, /pricing_terms as/u);
+  assert.match(sql, /compensation_terms as/u);
+  assert.match(sql, /expected_assignment/u);
+  assert.doesNotMatch(sql, /evaluate_(?:pro|company)_assignment_eligibility\s*\(/u);
+  assert.doesNotMatch(sql, /lateral/u);
+  assert.doesNotMatch(sql, /designation|department/u);
+  assert.match(sql, /security definer set search_path = ''/u);
+  assert.match(sql, /grant execute[\s\S]*to service_role/u);
+  assert.doesNotMatch(sql, /grant execute[\s\S]*to authenticated/u);
 });
 
 test('assignment lifecycle fixture covers eligibility, replay, rollback, races, and tenant states', () => {
@@ -183,4 +203,23 @@ test('concurrency setup transactionally resets only deterministic fixture identi
   assert.doesNotMatch(setup, /truncate public\.pro_company_assignments/u);
   assert.doesNotMatch(setup, /delete from public\.(?:profiles|tenants)\s*;/u);
   assert.match(setup, /commit; select 'assignment_concurrency_ready'/u);
+});
+
+test('concurrency runner always tears down fixtures and creates no helper table', () => {
+  const runner = readFileSync(join(process.cwd(), runnerPath), 'utf8');
+  const setup = normalized('supabase/tests/company_assignment_concurrency_setup.sql');
+  assert.match(runner, /company_assignment_concurrency_teardown\.sql/u);
+  assert.match(runner, /trap ['"]?cleanup ['"]?EXIT INT TERM/u);
+  assert.match(runner, /select id from public\.pro_company_assignments/u);
+  assert.doesNotMatch(runner, /assignment_concurrency_fixture_ids/u);
+  assert.doesNotMatch(setup, /assignment_concurrency_fixture_ids/u);
+  const teardown = normalized('supabase/tests/company_assignment_concurrency_teardown.sql');
+  assert.match(teardown, /^\s*\\set on_error_stop on begin;/u);
+  assert.match(teardown, /delete from public\.pro_assignment_term_links/u);
+  assert.match(teardown, /delete from public\.pro_company_assignments/u);
+  assert.match(teardown, /delete from public\.company_profiles/u);
+  assert.match(teardown, /delete from public\.tenants/u);
+  assert.match(teardown, /delete from auth\.users/u);
+  assert.doesNotMatch(teardown, /truncate/u);
+  assert.match(teardown, /commit;/u);
 });

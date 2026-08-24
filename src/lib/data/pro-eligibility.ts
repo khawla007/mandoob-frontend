@@ -43,8 +43,6 @@ const eligibleProSchema = z
   .object({
     proProfileId: uuid,
     fullName: z.string().nullable(),
-    designation: z.string().nullable(),
-    department: z.string().nullable(),
     eligibility: eligibilitySchema,
   })
   .strict();

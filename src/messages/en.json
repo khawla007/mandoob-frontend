@@ -2484,6 +2484,9 @@
         "STALE_ASSIGNMENT": "The assignment changed. Refresh the page and try again.",
         "ASSIGNMENT_CONFLICT": "The assignment conflicts with another recent change.",
         "NOT_FOUND": "The company could not be found.",
+        "AAL2_REQUIRED": "Complete MFA verification before updating an assignment.",
+        "RATE_LIMITED": "Too many assignment attempts. Try again shortly.",
+        "SERVICE_UNAVAILABLE": "Assignment protection is temporarily unavailable. Try again.",
         "INTERNAL": "The action could not be completed. Try again."
       },
       "fieldErrors": {

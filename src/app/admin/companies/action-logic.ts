@@ -31,6 +31,7 @@ export type CompanyActionResult<T = void> =
 export type CompanyAdminActor = {
   id: string;
   role: 'admin' | 'super_admin';
+  aal: 'aal1' | 'aal2' | null;
 };
 
 export type CompanyActionRecord = {
@@ -56,6 +57,15 @@ export type CompanyActionDependencies = {
     actorId: string,
   ): Promise<{ tenantId: string; companyId: string }>;
   getCompany(companyId: string): Promise<CompanyActionRecord | null>;
+  getAssignmentTarget(
+    companyId: string,
+    assignmentId: string,
+    actorId: string,
+  ): Promise<{ id: string } | null>;
+  limitAssignment(
+    actorId: string,
+    companyId: string,
+  ): Promise<'allowed' | 'limited' | 'unavailable'>;
   assign(input: AssignCompanyProInput, actorId: string): Promise<CompanyAssignmentMutationResult>;
   release(input: ReleaseCompanyProInput, actorId: string): Promise<CompanyReleaseMutationResult>;
   reassign(
@@ -144,6 +154,9 @@ function failure(
       'ASSIGNMENT_NOT_FOUND',
       'STALE_ASSIGNMENT',
       'ASSIGNMENT_CONFLICT',
+      'AAL2_REQUIRED',
+      'RATE_LIMITED',
+      'SERVICE_UNAVAILABLE',
     ]);
     if (publicCodes.has(error.code)) {
       return { ok: false, error: 'Unable to update company assignment', code: error.code };
@@ -154,6 +167,39 @@ function failure(
   }
   deps.reportError?.(fallback, error);
   return { ok: false, error: fallback, code: 'INTERNAL' };
+}
+
+function requireAal2(actor: CompanyAdminActor): void {
+  if (actor.aal !== 'aal2') throw new ApiError('AAL2_REQUIRED', 'MFA challenge required', 403);
+}
+
+async function requireAssignmentTarget(
+  companyId: string,
+  assignmentId: string,
+  actorId: string,
+  deps: CompanyActionDependencies,
+): Promise<void> {
+  const target = await deps.getAssignmentTarget(companyId, assignmentId, actorId);
+  if (!target || target.id !== assignmentId) {
+    throw new ApiError('ASSIGNMENT_NOT_FOUND', 'Assignment not found', 404);
+  }
+}
+
+async function requireAssignmentLimit(
+  actorId: string,
+  companyId: string,
+  deps: CompanyActionDependencies,
+): Promise<void> {
+  let decision: 'allowed' | 'limited' | 'unavailable';
+  try {
+    decision = await deps.limitAssignment(actorId, companyId);
+  } catch {
+    decision = 'unavailable';
+  }
+  if (decision === 'limited') throw new ApiError('RATE_LIMITED', 'Too many requests', 429);
+  if (decision === 'unavailable') {
+    throw new ApiError('SERVICE_UNAVAILABLE', 'Service unavailable', 503);
+  }
 }
 
 function revalidateCompany(
@@ -211,8 +257,10 @@ export async function runAssignCompanyProAction(
 ): Promise<CompanyActionResult<CompanyAssignmentActionData>> {
   try {
     const actor = await deps.requireActor();
+    requireAal2(actor);
     const input = parseAssign(formData);
     const company = await requireCompany(input.companyId, deps);
+    await requireAssignmentLimit(actor.id, company.id, deps);
     const { assignmentId, proProfileId } = await deps.assign(input, actor.id);
     revalidateCompany(company, deps, [proProfileId]);
     return { ok: true, data: { assignmentId, outcome: 'assigned' } };
@@ -227,8 +275,11 @@ export async function runReleaseCompanyProAction(
 ): Promise<CompanyActionResult<CompanyReleaseActionData>> {
   try {
     const actor = await deps.requireActor();
+    requireAal2(actor);
     const input = parseRelease(formData);
     const company = await requireCompany(input.companyId, deps);
+    await requireAssignmentTarget(company.id, input.assignmentId, actor.id, deps);
+    await requireAssignmentLimit(actor.id, company.id, deps);
     if (input.companyNameConfirmation !== company.companyName) {
       return {
         ok: false,
@@ -254,8 +305,11 @@ export async function runReassignCompanyProAction(
 ): Promise<CompanyActionResult<CompanyAssignmentActionData>> {
   try {
     const actor = await deps.requireActor();
+    requireAal2(actor);
     const input = parseReassign(formData);
     const company = await requireCompany(input.companyId, deps);
+    await requireAssignmentTarget(company.id, input.assignmentId, actor.id, deps);
+    await requireAssignmentLimit(actor.id, company.id, deps);
     const { assignmentId, proProfileId, previousProProfileId } = await deps.reassign(
       input,
       actor.id,
