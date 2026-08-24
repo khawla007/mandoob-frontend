@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -84,6 +85,7 @@ function resolveLocalImport(importer: string, specifier: string): string | null 
     `${unresolved}.jsx`,
     `${unresolved}.cjs`,
     `${unresolved}.mjs`,
+    `${unresolved}.mts`,
     `${unresolved}.json`,
     `${unresolved}.css`,
     join(unresolved, 'index.ts'),
@@ -101,7 +103,7 @@ function runtimeImportClosure(roots: readonly string[]) {
     const file = pending.pop();
     if (!file || closure.has(file)) continue;
     closure.add(file);
-    if (!/\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(file)) continue;
+    if (!/\.(?:ts|tsx|js|jsx|cjs|mjs|mts)$/u.test(file)) continue;
     const source = readFileSync(file, 'utf8');
     for (const specifier of localImportSpecifiers(source)) {
       const resolved = resolveLocalImport(file, specifier);
@@ -118,8 +120,8 @@ function runtimeSourceFiles(directory = 'src'): string[] {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) files.push(...runtimeSourceFiles(path));
     else if (
-      /\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(path) &&
-      !/\.(?:test|spec)\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(path) &&
+      /\.(?:ts|tsx|js|jsx|cjs|mjs|mts)$/u.test(path) &&
+      !/\.(?:test|spec)\.(?:ts|tsx|js|jsx|cjs|mjs|mts)$/u.test(path) &&
       !/\.d\.ts$/u.test(path)
     )
       files.push(path);
@@ -176,6 +178,16 @@ function assertNoProtectedPersistenceAdapter(file: string, source: string): void
   for (const exemption of protectedAdapterAuditExemptions.get(file) ?? [])
     auditedSource = auditedSource.replace(exemption, '');
   for (const pattern of protectedAdapterPatterns) assert.doesNotMatch(auditedSource, pattern, file);
+}
+
+function assertRuntimeClosureHasNoProtectedAdapters(roots: readonly string[]) {
+  const graph = runtimeImportClosure(roots);
+  assert.deepEqual(graph.unresolved, []);
+  for (const file of graph.files.filter((candidate) =>
+    /\.(?:ts|tsx|js|jsx|cjs|mjs|mts)$/u.test(candidate),
+  ))
+    assertNoProtectedPersistenceAdapter(file, readFileSync(file, 'utf8'));
+  return graph;
 }
 
 if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
@@ -406,6 +418,43 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
     assert.deepEqual(roots, runtimeFiles.slice().sort());
   });
 
+  test('runtime inventory discovers and audits uncommitted mts sources', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'step3-runtime-mts-'));
+    try {
+      const sourcePath = join(directory, 'uncommitted.mts');
+      writeFileSync(sourcePath, "metrics.increment('pro_lifecycle', payload);", 'utf8');
+      writeFileSync(join(directory, 'ignored.test.mts'), 'throw new Error();', 'utf8');
+      const files = runtimeSourceFiles(directory);
+      assert.deepEqual(files, [sourcePath]);
+      assert.throws(
+        () => assertNoProtectedPersistenceAdapter(sourcePath, readFileSync(sourcePath, 'utf8')),
+        /uncommitted\.mts/u,
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('runtime import closure resolves and audits imported mts modules', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'step3-import-mts-'));
+    try {
+      const root = join(directory, 'root.ts');
+      const imported = join(directory, 'adapter.mts');
+      writeFileSync(root, "import './adapter';", 'utf8');
+      writeFileSync(
+        imported,
+        "saveReportArtifact('Reports/launch-gate-evidence/output.json');",
+        'utf8',
+      );
+      const graph = runtimeImportClosure([root]);
+      assert.deepEqual(graph.unresolved, []);
+      assert.equal(graph.files.includes(imported), true);
+      assert.throws(() => assertRuntimeClosureHasNoProtectedAdapters([root]), /adapter\.mts/u);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   test('runtime audit rejects report, metrics, observability, and screenshot persistence mutations', () => {
     const mutations = [
       "saveReportArtifact('Reports/launch-gate-evidence/task13/output.json')",
@@ -475,18 +524,11 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
     const runtimeRoots = discoverStep3RuntimeRoots();
     assert.notEqual(runtimeRoots.length, 0);
     for (const root of runtimeRoots) assert.equal(existsSync(root), true, root);
-    const graph = runtimeImportClosure(runtimeRoots);
-    assert.deepEqual(graph.unresolved, []);
+    const graph = assertRuntimeClosureHasNoProtectedAdapters(runtimeRoots);
     assert.equal(
       runtimeRoots.every((file) => graph.files.includes(file)),
       true,
     );
     assert.equal(graph.files.length >= runtimeRoots.length, true);
-    for (const file of graph.files.filter((candidate) =>
-      /\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(candidate),
-    )) {
-      const source = readFileSync(file, 'utf8');
-      assertNoProtectedPersistenceAdapter(file, source);
-    }
   });
 }
