@@ -435,6 +435,15 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
   assert.match(raceB, /delete from storage\.objects/u);
   assert.match(raceB, /set_config\('storage\.allow_delete_query', 'true', true\)/u);
   assert.match(raceB, /finalize_pro_credential_evidence_removal_recovery/u);
+  const removal = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_lifecycle_evidence_removal.sql'),
+    'utf8',
+  ).replace(/\s+/gu, ' ');
+  assert.doesNotMatch(removal, /93000000-0000-4000-8000-000000000022/u);
+  assert.match(
+    removal,
+    /93000000-0000-4000-8000-000000000012[^;]*93000000-0000-4000-8000-000000000021', 'draft'/u,
+  );
 });
 
 test('0070 reconciles live access, term-linked assignments, grants, and legacy columns', () => {
