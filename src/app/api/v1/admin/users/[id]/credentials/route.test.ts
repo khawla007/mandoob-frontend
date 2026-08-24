@@ -7,6 +7,19 @@ const A = '10000000-0000-4000-8000-000000000001';
 const P = '20000000-0000-4000-8000-000000000002';
 const C = '30000000-0000-4000-8000-000000000003';
 const O = '40000000-0000-4000-8000-000000000004';
+const publicCredential = () => ({
+  credentialId: C,
+  type: 'pro_license' as const,
+  maskedIdentifier: '•••• 9Z72',
+  issuingAuthority: 'Synthetic Authority',
+  issueDate: '2026-01-01',
+  expiryDate: '2027-01-01',
+  state: 'under_review' as const,
+  version: 2,
+  evidenceCount: 1,
+  submittedAt: '2026-08-24T00:00:00.000Z',
+  supersedesCredentialId: null,
+});
 const req = (body: unknown) =>
   new Request('http://localhost/admin', {
     method: 'POST',
@@ -98,7 +111,7 @@ test('operator review derives actor, resolves active PRO and credential before f
     review: async (id) => {
       actor = id;
       calls.push('mutation');
-      return { credentialId: C } as never;
+      return publicCredential();
     },
     revalidate: () => {
       calls.push('revalidate');
@@ -132,7 +145,7 @@ test('operator reject and revoke validate the transient identifier after schema 
         assert.deepEqual([proProfileId, credentialId, reason], [P, C, 'Unrelated review reason']);
         calls.push('reason');
       },
-      review: async () => (calls.push('mutation'), { credentialId: C }),
+      review: async () => (calls.push('mutation'), publicCredential()),
       revalidate: () => {
         calls.push('revalidate');
       },
@@ -169,7 +182,7 @@ test('operator reject and revoke validate the transient identifier after schema 
       validateReason: async () => {
         validations += 1;
       },
-      review: async () => ({ credentialId: C }),
+      review: async () => publicCredential(),
       revalidate: () => undefined,
     });
     assert.equal(
@@ -222,6 +235,57 @@ test('unsafe identifier decision reason is sanitized and never reaches mutation'
   assert.equal(response.status, 422);
   assert.equal((await response.json()).code, 'DECISION_REASON_INVALID');
   assert.equal(mutations, 0);
+});
+
+test('operator review rejects protected mutation output at the route JSON boundary', async () => {
+  const canaries = [
+    'TASK13-CANARY-IDENTIFIER-9Z72',
+    'v1:TASK13-CANARY-CIPHERTEXT',
+    'TASK13-CANARY-HASH-0123456789',
+    'pro-credentials/TASK13-CANARY-STORAGE-PATH',
+    'https://storage.invalid/TASK13-CANARY-SIGNED-URL',
+    'TASK13-CANARY-RAW-PROVIDER-ERROR',
+  ];
+  const handler = createAdminCredentialPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    review: async () => ({
+      credentialId: C,
+      type: 'pro_license',
+      maskedIdentifier: '•••• 9Z72',
+      issuingAuthority: 'Synthetic Authority',
+      issueDate: '2026-01-01',
+      expiryDate: '2027-01-01',
+      state: 'verified',
+      version: 2,
+      evidenceCount: 1,
+      submittedAt: '2026-08-24T00:00:00.000Z',
+      supersedesCredentialId: null,
+      identifier: canaries[0],
+      identifierCiphertext: canaries[1],
+      identifierHash: canaries[2],
+      storagePath: canaries[3],
+      signedUrl: canaries[4],
+      rawError: canaries[5],
+    }),
+    revalidate: () => undefined,
+  });
+  const response = await handler(
+    req({ command: 'verify', credentialId: C, expectedVersion: 1, operationId: O }),
+    { params: Promise.resolve({ id: P }) },
+  );
+  const body = await response.text();
+  assert.equal(response.status, 500);
+  for (const canary of canaries) assert.doesNotMatch(body, new RegExp(canary, 'u'));
 });
 
 test('operator review rejects wrong role/AAL1, malformed or unknown targets, bad commands, stale/replay and limiter failure without leaks', async () => {

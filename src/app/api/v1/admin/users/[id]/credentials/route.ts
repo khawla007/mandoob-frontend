@@ -7,6 +7,7 @@ import {
   proDecisionReasonCodeSchema,
   proDecisionReasonSchema,
 } from '@/lib/validation/pro-lifecycle';
+import { PRO_CREDENTIAL_STATES } from '@/lib/pro-lifecycle/contracts';
 import {
   BodyTooLargeError,
   JSON_BODY_MAX_BYTES,
@@ -26,6 +27,21 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 const uuid = z.string().uuid();
+const publicCredentialSchema = z
+  .object({
+    credentialId: uuid,
+    type: z.literal('pro_license'),
+    maskedIdentifier: z.string().regex(/^•••• [A-Z0-9]{4}$/u).nullable(),
+    issuingAuthority: z.string().nullable(),
+    issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
+    expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
+    state: z.enum(PRO_CREDENTIAL_STATES),
+    version: z.number().int().nonnegative(),
+    evidenceCount: z.number().int().nonnegative(),
+    submittedAt: z.string().datetime({ offset: true }).nullable(),
+    supersedesCredentialId: uuid.nullable(),
+  })
+  .strict();
 const base = {
   credentialId: uuid,
   expectedVersion: z.number().int().nonnegative(),
@@ -126,7 +142,9 @@ export function createAdminCredentialPostHandler(overrides: Partial<Deps> = {}) 
           parsed.data.credentialId,
           parsed.data.reason,
         );
-      const credential = await deps.review(session.id, parsed.data.credentialId, parsed.data);
+      const credential = publicCredentialSchema.parse(
+        await deps.review(session.id, parsed.data.credentialId, parsed.data),
+      );
       await deps.revalidate(target, id);
       return jsonOk({ ok: true, credential });
     } catch (error) {
