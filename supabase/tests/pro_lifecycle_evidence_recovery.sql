@@ -27,8 +27,8 @@ insert into public.profiles (id, role, status, full_name) values
   ('94000000-0000-4000-8000-000000000002', 'super_admin', 'active', 'Fence Operator B'),
   ('94000000-0000-4000-8000-000000000003', 'pro', 'active', 'Fence PRO');
 insert into public.pro_profiles (profile_id) values ('94000000-0000-4000-8000-000000000003');
-insert into public.pro_credentials (id, pro_profile_id, state, version, created_by)
-select id, '94000000-0000-4000-8000-000000000003', 'draft', 0, '94000000-0000-4000-8000-000000000003'
+insert into public.pro_credentials (id, pro_profile_id, state, version, submitted_at, created_by)
+select id, '94000000-0000-4000-8000-000000000003', 'rejected', 0, now(), '94000000-0000-4000-8000-000000000003'
 from unnest(array[
   '94000000-0000-4000-8000-000000000010'::uuid,
   '94000000-0000-4000-8000-000000000020'::uuid,
@@ -77,6 +77,10 @@ declare
   v_result jsonb;
   v_error text;
 begin
+  perform pg_catalog.set_config('app.pro_evidence_finalize', '94000000-0000-4000-8000-000000000012', true);
+  update public.pro_credentials set state = 'draft', submitted_at = null
+  where id = '94000000-0000-4000-8000-000000000010';
+  perform pg_catalog.set_config('app.pro_evidence_finalize', '', true);
   v_claim := public.claim_pro_credential_evidence_removal_recovery(
     '94000000-0000-4000-8000-000000000001', '94000000-0000-4000-8000-000000000003',
     '94000000-0000-4000-8000-000000000010', '94000000-0000-4000-8000-000000000011',
@@ -110,6 +114,12 @@ begin
          and details ->> 'recoveryActorId' = '94000000-0000-4000-8000-000000000001'
      ) then raise exception 'RECOVERY_FINALIZE_INCOMPLETE'; end if;
 
+  update public.pro_credentials set state = 'rejected', submitted_at = now()
+  where id = '94000000-0000-4000-8000-000000000010';
+  perform pg_catalog.set_config('app.pro_evidence_finalize', '94000000-0000-4000-8000-000000000022', true);
+  update public.pro_credentials set state = 'draft', submitted_at = null
+  where id = '94000000-0000-4000-8000-000000000020';
+  perform pg_catalog.set_config('app.pro_evidence_finalize', '', true);
   perform public.claim_pro_credential_evidence_removal_recovery(
     '94000000-0000-4000-8000-000000000001', '94000000-0000-4000-8000-000000000003',
     '94000000-0000-4000-8000-000000000020', '94000000-0000-4000-8000-000000000021',
@@ -147,7 +157,11 @@ begin
     '94000000-0000-4000-8000-000000000025'
   );
 
-  update public.profiles set status = 'inactive' where id = '94000000-0000-4000-8000-000000000003';
+  update public.pro_credentials set state = 'rejected', submitted_at = now()
+  where id = '94000000-0000-4000-8000-000000000020';
+  update public.pro_credentials set state = 'draft', submitted_at = null
+  where id = '94000000-0000-4000-8000-000000000030';
+  update public.profiles set status = 'disabled' where id = '94000000-0000-4000-8000-000000000003';
   perform public.claim_pro_credential_evidence_removal_recovery(
     '94000000-0000-4000-8000-000000000001', '94000000-0000-4000-8000-000000000003',
     '94000000-0000-4000-8000-000000000030', '94000000-0000-4000-8000-000000000031',
@@ -158,6 +172,12 @@ begin
     '94000000-0000-4000-8000-000000000030', '94000000-0000-4000-8000-000000000031',
     '94000000-0000-4000-8000-000000000034'
   );
+  update public.pro_credentials set state = 'rejected', submitted_at = now()
+  where id = '94000000-0000-4000-8000-000000000030';
+  perform pg_catalog.set_config('app.pro_evidence_finalize', '94000000-0000-4000-8000-000000000043', true);
+  update public.pro_credentials set state = 'draft', submitted_at = null
+  where id = '94000000-0000-4000-8000-000000000040';
+  perform pg_catalog.set_config('app.pro_evidence_finalize', '', true);
   begin
     perform public.claim_pro_credential_evidence_removal_recovery(
       '94000000-0000-4000-8000-000000000001', '94000000-0000-4000-8000-000000000003',

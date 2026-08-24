@@ -400,6 +400,12 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
   assert.match(recovery, /recoveryActorId/u);
   assert.match(recovery, /status = 'cancelled'/u);
   assert.match(recovery, /UNSAFE_RETENTION_CLEANUP/u);
+  assert.doesNotMatch(recovery, /select id,[^;]*'draft'[^;]*from unnest/u);
+  assert.match(recovery, /select id,[^;]*'rejected'[^;]*from unnest/u);
+  assert.equal([...recovery.matchAll(/set state = 'draft'/gu)].length, 4);
+  assert.equal([...recovery.matchAll(/set state = 'rejected'/gu)].length, 3);
+  assert.doesNotMatch(recovery, /set status = 'inactive'/u);
+  assert.match(recovery, /set status = 'disabled'/u);
   const preservation = readFileSync(
     join(process.cwd(), 'supabase/tests/pro_credential_identifier_preservation.sql'),
     'utf8',
