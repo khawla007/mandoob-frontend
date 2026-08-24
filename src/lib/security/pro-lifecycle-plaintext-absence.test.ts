@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -54,6 +55,59 @@ function assertCanariesAbsent(label: string, value: unknown) {
   const serialized = typeof value === 'string' ? value : JSON.stringify(value);
   for (const canary of CANARIES)
     assert.equal(serialized.includes(canary), false, `${label}: ${canary}`);
+}
+
+function localImportSpecifiers(source: string): string[] {
+  const specifiers = new Set<string>();
+  for (const pattern of [
+    /\b(?:import|export)\s+(?:type\s+)?(?:[^'";]*?\s+from\s*)?['"]([^'"]+)['"]/gu,
+    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/gu,
+    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/gu,
+  ]) {
+    for (const match of source.matchAll(pattern)) {
+      const specifier = match[1];
+      if (specifier?.startsWith('@/') || specifier?.startsWith('.')) specifiers.add(specifier);
+    }
+  }
+  return [...specifiers];
+}
+
+function resolveLocalImport(importer: string, specifier: string): string | null {
+  const unresolved = specifier.startsWith('@/')
+    ? join('src', specifier.slice(2))
+    : normalize(join(dirname(importer), specifier));
+  const candidates = [
+    unresolved,
+    `${unresolved}.ts`,
+    `${unresolved}.tsx`,
+    `${unresolved}.js`,
+    `${unresolved}.jsx`,
+    `${unresolved}.json`,
+    `${unresolved}.css`,
+    join(unresolved, 'index.ts'),
+    join(unresolved, 'index.tsx'),
+    join(unresolved, 'index.js'),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+}
+
+function runtimeImportClosure(roots: readonly string[]) {
+  const closure = new Set<string>();
+  const unresolved: string[] = [];
+  const pending = [...roots];
+  while (pending.length > 0) {
+    const file = pending.pop();
+    if (!file || closure.has(file)) continue;
+    closure.add(file);
+    if (!/\.(?:ts|tsx|js|jsx)$/u.test(file)) continue;
+    const source = readFileSync(file, 'utf8');
+    for (const specifier of localImportSpecifiers(source)) {
+      const resolved = resolveLocalImport(file, specifier);
+      if (!resolved) unresolved.push(`${file} -> ${specifier}`);
+      else if (!closure.has(resolved)) pending.push(resolved);
+    }
+  }
+  return { files: [...closure].sort(), unresolved: unresolved.sort() };
 }
 
 if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
@@ -159,12 +213,17 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
       ['error', 'error', 'error'],
     );
 
+    const renderEnvironment: NodeJS.ProcessEnv = {
+      ...process.env,
+      PRO_LIFECYCLE_CANARY_RENDER_STATE: JSON.stringify(rscProps),
+    };
+    delete renderEnvironment.NODE_TEST_CONTEXT;
     const rendered = spawnSync(
       process.execPath,
       ['--import', 'tsx', fileURLToPath(import.meta.url)],
       {
         encoding: 'utf8',
-        env: { ...process.env, PRO_LIFECYCLE_CANARY_RENDER_STATE: JSON.stringify(rscProps) },
+        env: renderEnvironment,
       },
     );
     assert.equal(rendered.status, 0, `${rendered.stdout}\n${rendered.stderr}`);
@@ -263,29 +322,75 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
   });
 
   test('lifecycle runtime graph has no analytics, screenshot, or report-evidence persistence adapter', () => {
-    const runtimeFiles = [
-      'src/app/admin/users/[id]/page.tsx',
-      'src/app/admin/users/[id]/page-orchestration.ts',
-      'src/components/admin/ProCredentialPanel.tsx',
-      'src/components/admin/ProLifecycleTimeline.tsx',
-      'src/components/admin/ProLifecycleRecoveryPanel.tsx',
-      'src/app/api/v1/_shared/pro-lifecycle-routes.ts',
-      'src/app/api/v1/admin/users/[id]/credentials/route.ts',
-      'src/app/api/v1/account/pro/credentials/evidence/route.ts',
-      'src/app/admin/companies/actions.ts',
-      'src/app/admin/companies/action-logic.ts',
-      'src/lib/data/pro-credentials.ts',
-      'src/lib/data/pro-commercial-terms.ts',
-      'src/lib/data/pro-lifecycle-timeline.ts',
-    ];
-    for (const file of runtimeFiles) {
+    const inventoryResult = spawnSync(
+      'git',
+      [
+        'diff',
+        '--name-status',
+        '--diff-filter=ACMRD',
+        'cefef909d51c7c46c91f4d03b3cead6722a25555..HEAD',
+        '--',
+        'src',
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.equal(inventoryResult.status, 0, inventoryResult.stderr);
+    const inventoryError = inventoryResult.error as NodeJS.ErrnoException | undefined;
+    assert.equal(
+      inventoryError === undefined || inventoryError.code === 'EPERM',
+      true,
+      inventoryError?.message,
+    );
+    assert.notEqual(inventoryResult.stdout.trim(), '');
+    const changedRuntimeEntries = inventoryResult.stdout
+      .trim()
+      .split('\n')
+      .map((line) => {
+        const [status, ...paths] = line.split('\t');
+        return { status, file: paths.at(-1) ?? '' };
+      })
+      .filter(({ file }) => /\.(?:ts|tsx)$/u.test(file) && !/\.test\.(?:ts|tsx)$/u.test(file));
+    assert.equal(changedRuntimeEntries.length, 78);
+    const deletedRuntimeFiles = changedRuntimeEntries
+      .filter(({ status }) => status === 'D')
+      .map(({ file }) => file);
+    assert.equal(deletedRuntimeFiles.length, 2);
+    assert.equal(
+      deletedRuntimeFiles.every((file) => !existsSync(file)),
+      true,
+    );
+    const changedRuntimeFiles = changedRuntimeEntries
+      .filter(({ status }) => status !== 'D')
+      .map(({ file }) => file);
+    const graph = runtimeImportClosure(changedRuntimeFiles);
+    assert.deepEqual(graph.unresolved, []);
+    assert.equal(
+      changedRuntimeFiles.every((file) => graph.files.includes(file)),
+      true,
+    );
+    assert.equal(graph.files.length >= changedRuntimeFiles.length, true);
+    for (const file of graph.files.filter((candidate) => /\.(?:ts|tsx|js|jsx)$/u.test(candidate))) {
       const source = readFileSync(file, 'utf8');
       assert.doesNotMatch(
         source,
-        /\b(?:analytics|trackEvent|screenshot|captureScreenshot|writeFile|appendFile|createWriteStream)\b/u,
+        /(?:from\s*|import\s*\()\s*['"][^'"]*(?:analytics|telemetry|observability|posthog|segment|sentry|datadog|playwright|puppeteer|screenshot)[^'"]*['"]/iu,
         file,
       );
-      assert.doesNotMatch(source, /Reports\/launch-gate-evidence/u, file);
+      assert.doesNotMatch(
+        source,
+        /\b(?:analytics|telemetry|metrics|posthog|segment|sentry)\s*(?:\.|\()/iu,
+        file,
+      );
+      assert.doesNotMatch(
+        source,
+        /(?:\.|\b)(?:track|trackEvent|capture|captureEvent|captureException|recordEvent|sendBeacon|screenshot|takeScreenshot|saveScreenshot|persistEvidence|saveEvidence|writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|attach)\s*\(/iu,
+        file,
+      );
+      assert.doesNotMatch(
+        source,
+        /['"`][^'"`]*(?:analytics|telemetry|screenshots?|launch-gate-evidence)[^'"`]*['"`]/iu,
+        file,
+      );
     }
   });
 }
