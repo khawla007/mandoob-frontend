@@ -288,6 +288,114 @@ exception when sqlstate 'P0001' then
 end;
 $$;
 
+do $$
+declare
+  v_assignment_id uuid;
+  v_current_detail jsonb;
+  v_current_selector jsonb;
+  v_replacement_detail jsonb;
+  v_replacement_selector jsonb;
+begin
+  select id into v_assignment_id from public.pro_company_assignments
+  where company_id = '94000000-0000-4000-8000-000000000052' and status = 'active';
+  v_current_detail := public.evaluate_company_assignment_eligibility(
+    '94000000-0000-4000-8000-000000000012',
+    '94000000-0000-4000-8000-000000000052', null
+  );
+  v_current_selector := public.list_eligible_pros_for_company(
+    '94000000-0000-4000-8000-000000000001',
+    '94000000-0000-4000-8000-000000000052', 'Assignment PRO 2', 10
+  ) -> 0 -> 'eligibility';
+  if v_current_detail <> v_current_selector then raise exception 'current_candidate_parity'; end if;
+  v_replacement_detail := public.evaluate_company_assignment_eligibility(
+    '94000000-0000-4000-8000-000000000013',
+    '94000000-0000-4000-8000-000000000052', v_assignment_id
+  );
+  v_replacement_selector := public.list_eligible_pros_for_company(
+    '94000000-0000-4000-8000-000000000001',
+    '94000000-0000-4000-8000-000000000052', 'Assignment PRO 3', 10
+  ) -> 0 -> 'eligibility';
+  if v_replacement_detail <> v_replacement_selector then
+    raise exception 'replacement_candidate_parity';
+  end if;
+end;
+$$;
+
+create function pg_temp.fail_reassign_term_link() returns trigger language plpgsql as $$
+begin raise exception 'reassign_term_link_rollback'; end;
+$$;
+create trigger assignment_fixture_fail_reassign_term_link
+before insert on public.pro_assignment_term_links
+for each row execute function pg_temp.fail_reassign_term_link();
+do $$
+declare v_assignment_id uuid; v_history_count bigint; v_link_id uuid;
+begin
+  select id into v_assignment_id from public.pro_company_assignments
+  where company_id = '94000000-0000-4000-8000-000000000052' and status = 'active';
+  select count(*) into v_history_count from public.pro_company_assignments
+  where company_id = '94000000-0000-4000-8000-000000000052';
+  select assignment_id into v_link_id from public.pro_assignment_term_links
+  where assignment_id = v_assignment_id;
+  begin
+    perform public.reassign_company_pro(
+      '94000000-0000-4000-8000-000000000052', v_assignment_id,
+      '94000000-0000-4000-8000-000000000013', 'Rollback term link',
+      '94000000-0000-4000-8000-000000000001'
+    );
+    raise exception 'reassign_term_link_rollback unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'reassign_term_link_rollback' then raise; end if;
+  end;
+  if not exists (select 1 from public.pro_company_assignments where id = v_assignment_id
+      and status = 'active' and pro_profile_id = '94000000-0000-4000-8000-000000000012')
+     or (select count(*) from public.pro_company_assignments
+         where company_id = '94000000-0000-4000-8000-000000000052') <> v_history_count
+     or not exists (select 1 from public.pro_assignment_term_links where assignment_id = v_link_id)
+  then raise exception 'reassign_term_link_rollback state changed'; end if;
+end;
+$$;
+drop trigger assignment_fixture_fail_reassign_term_link on public.pro_assignment_term_links;
+
+create function pg_temp.fail_reassign_audit() returns trigger language plpgsql as $$
+begin
+  if new.action in ('company_pro_released', 'company_pro_assigned') then
+    raise exception 'reassign_audit_rollback';
+  end if;
+  return new;
+end;
+$$;
+create trigger assignment_fixture_fail_reassign_audit
+before insert on public.tenant_audit_log
+for each row execute function pg_temp.fail_reassign_audit();
+do $$
+declare v_assignment_id uuid; v_history_count bigint; v_link_id uuid;
+begin
+  select id into v_assignment_id from public.pro_company_assignments
+  where company_id = '94000000-0000-4000-8000-000000000052' and status = 'active';
+  select count(*) into v_history_count from public.pro_company_assignments
+  where company_id = '94000000-0000-4000-8000-000000000052';
+  select assignment_id into v_link_id from public.pro_assignment_term_links
+  where assignment_id = v_assignment_id;
+  begin
+    perform public.reassign_company_pro(
+      '94000000-0000-4000-8000-000000000052', v_assignment_id,
+      '94000000-0000-4000-8000-000000000014', 'Rollback audit',
+      '94000000-0000-4000-8000-000000000001'
+    );
+    raise exception 'reassign_audit_rollback unexpectedly succeeded';
+  exception when others then
+    if sqlerrm <> 'reassign_audit_rollback' then raise; end if;
+  end;
+  if not exists (select 1 from public.pro_company_assignments where id = v_assignment_id
+      and status = 'active' and pro_profile_id = '94000000-0000-4000-8000-000000000012')
+     or (select count(*) from public.pro_company_assignments
+         where company_id = '94000000-0000-4000-8000-000000000052') <> v_history_count
+     or not exists (select 1 from public.pro_assignment_term_links where assignment_id = v_link_id)
+  then raise exception 'reassign_audit_rollback state changed'; end if;
+end;
+$$;
+drop trigger assignment_fixture_fail_reassign_audit on public.tenant_audit_log;
+
 create function pg_temp.fail_term_link() returns trigger language plpgsql as $$
 begin raise exception 'term_link_rollback'; end;
 $$;

@@ -1,7 +1,10 @@
 import { z, ZodError } from 'zod';
 
 import { ApiError } from '@/lib/errors';
-import type { CompanyAssignmentMutationResult } from '@/lib/data/company-assignments';
+import type {
+  CompanyAssignmentMutationResult,
+  CompanyReleaseMutationResult,
+} from '@/lib/data/company-assignments';
 import {
   TENANT_PLANS,
   tenantSlugSchema,
@@ -54,7 +57,7 @@ export type CompanyActionDependencies = {
   ): Promise<{ tenantId: string; companyId: string }>;
   getCompany(companyId: string): Promise<CompanyActionRecord | null>;
   assign(input: AssignCompanyProInput, actorId: string): Promise<CompanyAssignmentMutationResult>;
-  release(input: ReleaseCompanyProInput, actorId: string): Promise<void>;
+  release(input: ReleaseCompanyProInput, actorId: string): Promise<CompanyReleaseMutationResult>;
   reassign(
     input: ReassignCompanyProInput,
     actorId: string,
@@ -153,11 +156,17 @@ function failure(
   return { ok: false, error: fallback, code: 'INTERNAL' };
 }
 
-function revalidateCompany(company: CompanyActionRecord, deps: CompanyActionDependencies): void {
+function revalidateCompany(
+  company: CompanyActionRecord,
+  deps: CompanyActionDependencies,
+  proProfileIds: string[] = [],
+): void {
   deps.revalidate('/admin/companies');
   deps.revalidate(`/admin/companies/${company.id}`);
   deps.revalidate(`/admin/companies/${company.id}/onboarding`);
   deps.revalidate('/admin/users');
+  for (const proProfileId of new Set(proProfileIds))
+    deps.revalidate(`/admin/users/${proProfileId}`);
   deps.revalidate(`/t/${company.tenantSlug}`);
   deps.revalidate(`/t/${company.tenantSlug}/company`);
   deps.revalidate(`/t/${company.tenantSlug}/company/setup`);
@@ -204,8 +213,8 @@ export async function runAssignCompanyProAction(
     const actor = await deps.requireActor();
     const input = parseAssign(formData);
     const company = await requireCompany(input.companyId, deps);
-    const { assignmentId } = await deps.assign(input, actor.id);
-    revalidateCompany(company, deps);
+    const { assignmentId, proProfileId } = await deps.assign(input, actor.id);
+    revalidateCompany(company, deps, [proProfileId]);
     return { ok: true, data: { assignmentId, outcome: 'assigned' } };
   } catch (error) {
     return failure(error, 'Invalid company assignment input', deps);
@@ -228,11 +237,11 @@ export async function runReleaseCompanyProAction(
         fieldErrors: { companyNameConfirmation: 'mismatch' },
       };
     }
-    await deps.release(
+    const released = await deps.release(
       { companyId: input.companyId, assignmentId: input.assignmentId, reason: input.reason },
       actor.id,
     );
-    revalidateCompany(company, deps);
+    revalidateCompany(company, deps, [released.previousProProfileId]);
     return { ok: true, data: { outcome: 'released' } };
   } catch (error) {
     return failure(error, 'Invalid company release input', deps);
@@ -247,8 +256,11 @@ export async function runReassignCompanyProAction(
     const actor = await deps.requireActor();
     const input = parseReassign(formData);
     const company = await requireCompany(input.companyId, deps);
-    const { assignmentId } = await deps.reassign(input, actor.id);
-    revalidateCompany(company, deps);
+    const { assignmentId, proProfileId, previousProProfileId } = await deps.reassign(
+      input,
+      actor.id,
+    );
+    revalidateCompany(company, deps, [previousProProfileId ?? '', proProfileId].filter(Boolean));
     return { ok: true, data: { assignmentId, outcome: 'reassigned' } };
   } catch (error) {
     return failure(error, 'Unable to update company assignment', deps);

@@ -2429,6 +2429,13 @@
         "COMPANY_INACTIVE": "Company is inactive",
         "COMPANY_ALREADY_ASSIGNED": "Company already has this active assignment"
       },
+      "typeahead": {
+        "prompt": "Type at least 2 characters to search PRO users.",
+        "loading": "Searching PRO users…",
+        "empty": "No matching PRO users found.",
+        "error": "PRO search is unavailable. Try again.",
+        "results": "{count, plural, one {# result} other {# results}}"
+      },
       "release": {
         "title": "Release PRO",
         "description": "End this assignment without selecting a replacement.",

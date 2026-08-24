@@ -49,10 +49,12 @@ function setup(role: 'admin' | 'super_admin' = 'admin') {
         assignmentId,
         pricingTermId: '77777777-7777-4777-8777-777777777777',
         compensationTermId: '88888888-8888-4888-8888-888888888888',
+        proProfileId: oldProId,
       };
     },
     release: async (_input, trustedActorId) => {
       calls.push(`release:${trustedActorId}`);
+      return { assignmentId, previousProProfileId: oldProId };
     },
     reassign: async (_input, trustedActorId) => {
       calls.push(`reassign:${trustedActorId}`);
@@ -60,6 +62,8 @@ function setup(role: 'admin' | 'super_admin' = 'admin') {
         assignmentId,
         pricingTermId: '77777777-7777-4777-8777-777777777777',
         compensationTermId: '88888888-8888-4888-8888-888888888888',
+        proProfileId: replacementProId,
+        previousProProfileId: oldProId,
       };
     },
     revalidate: (path) => calls.push(`revalidate:${path}`),
@@ -166,6 +170,7 @@ test('assignment uses the authoritative actor and exact revalidation routes', as
     `revalidate:/admin/companies/${companyId}`,
     `revalidate:/admin/companies/${companyId}/onboarding`,
     'revalidate:/admin/users',
+    `revalidate:/admin/users/${oldProId}`,
     'revalidate:/t/acme-trading',
     'revalidate:/t/acme-trading/company',
     'revalidate:/t/acme-trading/company/setup',
@@ -226,6 +231,7 @@ test('release requires a reason and revalidates only after success', async () =>
     `revalidate:/admin/companies/${companyId}`,
     `revalidate:/admin/companies/${companyId}/onboarding`,
     'revalidate:/admin/users',
+    `revalidate:/admin/users/${oldProId}`,
     'revalidate:/t/acme-trading',
     'revalidate:/t/acme-trading/company',
     'revalidate:/t/acme-trading/company/setup',
@@ -240,6 +246,21 @@ test('reassignment uses the replacement PRO and authoritative actor', async () =
     data: { assignmentId, outcome: 'reassigned' },
   });
   assert.deepEqual(context.calls.slice(0, 3), ['auth:admin', 'company', `reassign:${actorId}`]);
+});
+
+test('assignment mutations revalidate exact server-returned old and new PRO details', async () => {
+  const assigned = setup();
+  await runAssignCompanyProAction(assignData(), assigned.dependencies);
+  assert.ok(assigned.calls.includes(`revalidate:/admin/users/${oldProId}`));
+
+  const released = setup();
+  await runReleaseCompanyProAction(releaseData(), released.dependencies);
+  assert.ok(released.calls.includes(`revalidate:/admin/users/${oldProId}`));
+
+  const reassigned = setup();
+  await runReassignCompanyProAction(reassignData(), reassigned.dependencies);
+  assert.ok(reassigned.calls.includes(`revalidate:/admin/users/${oldProId}`));
+  assert.ok(reassigned.calls.includes(`revalidate:/admin/users/${replacementProId}`));
 });
 
 test('domain conflicts are sanitized and duplicate submissions remain replay-safe', async () => {

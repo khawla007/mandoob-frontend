@@ -18,14 +18,14 @@ select public.assign_pro_to_company(
 \set lifecycle_sqlstate :SQLSTATE
 commit;
 
-select :'lifecycle_sqlstate' = '00000' as expected_lifecycle_state,
+select :'lifecycle_sqlstate' = '00000' as expected_success,
   :'lifecycle_sqlstate' not in ('40P01', '55P03', '57014') as no_concurrency_failure \gset
 \if :no_concurrency_failure
 \else
   \set ON_ERROR_STOP on
   select 1 / 0;
 \endif
-\if :expected_lifecycle_state
+\if :expected_success
 \else
   \set ON_ERROR_STOP on
   select 1 / 0;
@@ -35,6 +35,31 @@ select count(*) = 1 as one_active_assignment
 from public.pro_company_assignments
 where company_id = :'company_id'::uuid and status = 'active' \gset
 \if :one_active_assignment
+\else
+  \set ON_ERROR_STOP on
+  select 1 / 0;
+\endif
+
+select count(*) = 2
+  and count(*) filter (where status = 'active') = 1
+  and count(*) filter (
+    where id = :'assignment_id'::uuid
+      and status = 'released'
+      and release_reason = 'coordinated release fixture'
+  ) = 1 as immutable_history
+from public.pro_company_assignments
+where company_id = :'company_id'::uuid \gset
+\if :immutable_history
+\else
+  \set ON_ERROR_STOP on
+  select 1 / 0;
+\endif
+
+select count(*) = 2 as term_links_preserved
+from public.pro_assignment_term_links links
+join public.pro_company_assignments assignment on assignment.id = links.assignment_id
+where assignment.company_id = :'company_id'::uuid \gset
+\if :term_links_preserved
 \else
   \set ON_ERROR_STOP on
   select 1 / 0;

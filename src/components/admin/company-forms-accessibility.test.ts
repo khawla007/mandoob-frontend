@@ -86,12 +86,16 @@ renderTest('completed mutation button remains disabled against replay', async ()
 });
 
 test('assignment form keeps ineligible matches visible with operator-only reasons', () => {
-  const source = readFileSync(
+  const form = readFileSync(
     join(process.cwd(), 'src/components/admin/CompanyAssignmentForm.tsx'),
     'utf8',
   );
-  assert.match(source, /disabled=\{!pro\.eligibility\.eligible\}/u);
-  assert.match(source, /pro\.eligibility\.codes/u);
-  assert.match(source, /operationalAccess === 'blocked'/u);
-  assert.match(source, /role="status"/u);
+  const typeahead = readFileSync(
+    join(process.cwd(), 'src/components/admin/ProAssignmentTypeahead.tsx'),
+    'utf8',
+  );
+  assert.match(typeahead, /aria-disabled=\{!row\.eligibility\.eligible\}/u);
+  assert.match(typeahead, /row\.eligibility\.codes/u);
+  assert.match(form, /operationalAccess === 'blocked'/u);
+  assert.match(form, /role="status"/u);
 });

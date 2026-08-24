@@ -9,8 +9,8 @@ set local lock_timeout = '5s';
 set local statement_timeout = '20s';
 
 select public.assign_pro_to_company(
-  :'company_id'::uuid,
-  :'pro_profile_id'::uuid,
+  :'company_a_id'::uuid,
+  :'pro_a_profile_id'::uuid,
   :'actor_a_profile_id'::uuid
 );
 \set lifecycle_sqlstate :SQLSTATE

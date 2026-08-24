@@ -17,7 +17,6 @@ import {
   listCompanyAssignmentHistory,
   readCurrentCompanyAssignment,
 } from '@/lib/data/company-assignments';
-import { listEligibleProsForCompany } from '@/lib/data/pro-eligibility';
 import { getCompanyById } from '@/lib/data/pro-firms';
 import {
   readCompanyOnboarding,
@@ -72,10 +71,9 @@ export default async function CompanyDetailPage({
     companyId: company.id,
   });
   if (!onboarding) notFound();
-  const [currentAssignment, assignmentHistory, eligiblePros] = await Promise.all([
+  const [currentAssignment, assignmentHistory] = await Promise.all([
     readCurrentCompanyAssignment(company.id, operator.id),
     listCompanyAssignmentHistory(company.id),
-    listEligibleProsForCompany(company.id, '', 100, operator.id),
   ]);
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -208,7 +206,6 @@ export default async function CompanyDetailPage({
                 key={companyAssignmentFormIdentity(currentAssignment?.id)}
                 companyId={company.id}
                 currentAssignment={currentAssignment}
-                availablePros={eligiblePros}
               />
             </CardContent>
           </Card>

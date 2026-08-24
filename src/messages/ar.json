@@ -2429,6 +2429,13 @@
         "COMPANY_INACTIVE": "الشركة غير نشطة",
         "COMPANY_ALREADY_ASSIGNED": "لدى الشركة هذا التعيين النشط بالفعل"
       },
+      "typeahead": {
+        "prompt": "اكتب حرفين على الأقل للبحث عن مستخدمي PRO.",
+        "loading": "جارٍ البحث عن مستخدمي PRO…",
+        "empty": "لم يتم العثور على مستخدمي PRO مطابقين.",
+        "error": "البحث عن PRO غير متاح. حاول مرة أخرى.",
+        "results": "{count, plural, one {نتيجة واحدة} two {نتيجتان} few {# نتائج} other {# نتيجة}}"
+      },
       "release": {
         "title": "إعفاء PRO",
         "description": "إنهاء هذا التعيين من دون اختيار بديل.",

@@ -16,10 +16,9 @@ test('company detail authorizes before company, onboarding, and assignment reads
   assert.match(page, /if \(!onboarding\) notFound\(\)/u);
 });
 
-test('company detail preserves company-aware eligibility and blocked assignment summaries', () => {
-  assert.match(page, /listEligibleProsForCompany\(company\.id, '', 100, operator\.id\)/u);
-  assert.match(page, /availablePros=\{eligiblePros\}/u);
-  assert.doesNotMatch(page, /const availablePros = eligiblePros\.map/u);
+test('company detail avoids preloading candidates and preserves blocked assignment summaries', () => {
+  assert.doesNotMatch(page, /listEligibleProsForCompany/u);
+  assert.doesNotMatch(page, /availablePros/u);
   assert.match(page, /currentAssignment=\{currentAssignment\}/u);
 });
 

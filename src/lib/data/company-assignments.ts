@@ -62,6 +62,12 @@ export type CompanyAssignmentMutationResult = {
   assignmentId: string;
   pricingTermId: string;
   compensationTermId: string;
+  proProfileId: string;
+  previousProProfileId?: string;
+};
+export type CompanyReleaseMutationResult = {
+  assignmentId: string;
+  previousProProfileId: string;
 };
 
 type AssignmentRow = {
@@ -87,6 +93,8 @@ const mutationResultSchema = z
     assignmentId: recordIdSchema,
     pricingTermId: recordIdSchema,
     compensationTermId: recordIdSchema,
+    proProfileId: recordIdSchema,
+    previousProProfileId: recordIdSchema.optional(),
   })
   .strict();
 const currentAssignmentSchema = z
@@ -122,6 +130,9 @@ const currentAssignmentSchema = z
       context.addIssue({ code: 'custom', message: 'Operational access is inconsistent' });
     }
   });
+const releaseResultSchema = z
+  .object({ assignmentId: recordIdSchema, previousProProfileId: recordIdSchema })
+  .strict();
 const historyCursorSchema = z.object({
   assigned_at: z.string().datetime({ offset: true }),
   id: recordIdSchema,
@@ -139,13 +150,6 @@ function publicMutationError(error: DbError): ApiError {
 
 function internalReadError(): ApiError {
   return new ApiError('INTERNAL', 'Unable to load company assignments', 500);
-}
-
-function requireRpcId(data: unknown, error: DbError): string {
-  if (error) throw publicMutationError(error);
-  const parsed = recordIdSchema.safeParse(data);
-  if (!parsed.success) throw publicMutationError(null);
-  return parsed.data;
 }
 
 function requireRpcAssignmentResult(
@@ -200,7 +204,7 @@ export async function assignProToCompany(
   // from requirePlatformOperator(), never from form data.
   const parsed = assignCompanyProSchema.parse(input);
   const parsedActorId = actorIdSchema.parse(actorId);
-  const { data, error } = await client(deps).rpc('assign_pro_to_company', {
+  const { data, error } = await client(deps).rpc('assign_pro_to_company_with_context', {
     p_company_id: parsed.companyId,
     p_pro_profile_id: parsed.proProfileId,
     p_actor_profile_id: parsedActorId,
@@ -212,17 +216,20 @@ export async function releaseCompanyPro(
   input: ReleaseCompanyProInput,
   actorId: string,
   deps: AssignmentDeps = {},
-): Promise<void> {
+): Promise<CompanyReleaseMutationResult> {
   // actorId is server-derived; it is intentionally separate from form input.
   const parsed = releaseCompanyProSchema.parse(input);
   const parsedActorId = actorIdSchema.parse(actorId);
-  const { data, error } = await client(deps).rpc('release_company_pro', {
+  const { data, error } = await client(deps).rpc('release_company_pro_with_context', {
     p_company_id: parsed.companyId,
     p_expected_assignment_id: parsed.assignmentId,
     p_reason: parsed.reason,
     p_actor_profile_id: parsedActorId,
   });
-  requireRpcId(data, error);
+  if (error) throw publicMutationError(error);
+  const result = releaseResultSchema.safeParse(data);
+  if (!result.success) throw publicMutationError(null);
+  return result.data;
 }
 
 export async function reassignCompanyPro(
@@ -233,7 +240,7 @@ export async function reassignCompanyPro(
   // actorId is server-derived; it is intentionally separate from form input.
   const parsed = reassignCompanyProSchema.parse(input);
   const parsedActorId = actorIdSchema.parse(actorId);
-  const { data, error } = await client(deps).rpc('reassign_company_pro', {
+  const { data, error } = await client(deps).rpc('reassign_company_pro_with_context', {
     p_company_id: parsed.companyId,
     p_expected_assignment_id: parsed.assignmentId,
     p_replacement_pro_profile_id: parsed.replacementProProfileId,

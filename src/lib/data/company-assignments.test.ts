@@ -78,20 +78,32 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
     await import('./company-assignments');
   const replacementId = '55555555-5555-4555-8555-555555555555';
   const supabase = fakeSupabase([
-    { data: { assignmentId, pricingTermId, compensationTermId }, error: null },
-    { data: assignmentId, error: null },
-    { data: { assignmentId: replacementId, pricingTermId, compensationTermId }, error: null },
+    { data: { assignmentId, pricingTermId, compensationTermId, proProfileId: proId }, error: null },
+    { data: { assignmentId, previousProProfileId: proId }, error: null },
+    {
+      data: {
+        assignmentId: replacementId,
+        pricingTermId,
+        compensationTermId,
+        proProfileId: replacementId,
+        previousProProfileId: proId,
+      },
+      error: null,
+    },
   ]);
 
   assert.deepEqual(
     await assignProToCompany({ companyId, proProfileId: proId }, actorId, {
       supabase: supabase as never,
     }),
-    { assignmentId, pricingTermId, compensationTermId },
+    { assignmentId, pricingTermId, compensationTermId, proProfileId: proId },
   );
-  await releaseCompanyPro({ companyId, assignmentId, reason: '  Engagement ended  ' }, actorId, {
-    supabase: supabase as never,
-  });
+  assert.deepEqual(
+    await releaseCompanyPro({ companyId, assignmentId, reason: '  Engagement ended  ' }, actorId, {
+      supabase: supabase as never,
+    }),
+    { assignmentId, previousProProfileId: proId },
+  );
   assert.deepEqual(
     await reassignCompanyPro(
       {
@@ -103,7 +115,13 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
       actorId,
       { supabase: supabase as never },
     ),
-    { assignmentId: replacementId, pricingTermId, compensationTermId },
+    {
+      assignmentId: replacementId,
+      pricingTermId,
+      compensationTermId,
+      proProfileId: replacementId,
+      previousProProfileId: proId,
+    },
   );
 
   assert.deepEqual(
@@ -111,7 +129,7 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
     [
       {
         kind: 'rpc',
-        name: 'assign_pro_to_company',
+        name: 'assign_pro_to_company_with_context',
         value: {
           p_company_id: companyId,
           p_pro_profile_id: proId,
@@ -120,7 +138,7 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
       },
       {
         kind: 'rpc',
-        name: 'release_company_pro',
+        name: 'release_company_pro_with_context',
         value: {
           p_company_id: companyId,
           p_expected_assignment_id: assignmentId,
@@ -130,7 +148,7 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
       },
       {
         kind: 'rpc',
-        name: 'reassign_company_pro',
+        name: 'reassign_company_pro_with_context',
         value: {
           p_company_id: companyId,
           p_expected_assignment_id: assignmentId,

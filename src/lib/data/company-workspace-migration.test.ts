@@ -893,11 +893,11 @@ test('SQL fixtures cover credential denial and coordinated lifecycle races', () 
   }
   const expectedSqlStates = new Map<string, string>([
     ['company_assignment_concurrency_session_a.sql', '00000'],
-    ['company_assignment_concurrency_session_b.sql', 'p0001'],
+    ['company_assignment_concurrency_session_b.sql', '00000'],
     ['company_assignment_release_assign_session_a.sql', '00000'],
     ['company_assignment_release_assign_session_b.sql', '00000'],
     ['company_assignment_swap_reassign_session_a.sql', 'p0001'],
-    ['company_assignment_swap_reassign_session_b.sql', 'p0001'],
+    ['company_assignment_swap_reassign_session_b.sql', '00000'],
   ]);
   for (const [name, fixture] of fixtures) {
     assert.match(
@@ -912,7 +912,7 @@ test('SQL fixtures cover credential denial and coordinated lifecycle races', () 
   )?.[1];
   assert.match(
     assignmentRaceB ?? '',
-    /company_id\s*=\s*:'company_id'::uuid\s+or\s+pro_profile_id\s*=\s*:'pro_profile_id'::uuid/,
+    /company_id\s+in\s*\(:'company_a_id'::uuid,\s*:'company_b_id'::uuid\)[\s\S]*?or\s+pro_profile_id\s+in\s*\(:'pro_a_profile_id'::uuid,\s*:'pro_b_profile_id'::uuid\)/,
     'assignment race B must verify the winner for company and PRO contention modes',
   );
   assert.match(combined, /actor_a_profile_id'::uuid\s*<>\s*:'actor_b_profile_id'::uuid/);
