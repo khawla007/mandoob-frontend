@@ -133,6 +133,29 @@ test('blank draft save requests database-side identifier preservation without ci
   assert.match(String(supabase.calls[0]?.args.p_payload_hash), /^[a-f0-9]{64}$/u);
 });
 
+test('self route-shaped draft input ignores its already-bound command and credential id', async () => {
+  const { saveProCredentialDraft } = await import('./pro-credentials');
+  const supabase = fake([{ data: { ...mask, version: 2 }, error: null }]);
+  const result = await saveProCredentialDraft(
+    ACTOR_ID,
+    CREDENTIAL_ID,
+    {
+      command: 'save',
+      credentialId: CREDENTIAL_ID,
+      identifier: 'AB1234',
+      issuingAuthority: 'DET',
+      issueDate: '2026-01-01',
+      expiryDate: '2027-01-01',
+      expectedVersion: 1,
+      operationId: OPERATION_ID,
+    },
+    { supabase: supabase as never },
+  );
+  assert.equal(result.version, 2);
+  assert.equal(supabase.calls[0]?.name, 'save_pro_credential_draft');
+  assert.equal(supabase.calls[0]?.args.p_credential_id, CREDENTIAL_ID);
+});
+
 test('blank save maps a missing stored identifier to a stable sanitized validation code', async () => {
   const { saveProCredentialDraft } = await import('./pro-credentials');
   const supabase = fake([{ data: null, error: { message: 'CREDENTIAL_IDENTIFIER_REQUIRED' } }]);

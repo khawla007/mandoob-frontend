@@ -181,10 +181,18 @@ export async function createProCredentialDraft(
 export async function saveProCredentialDraft(
   actorId: string,
   credentialId: string,
-  input: z.input<typeof proCredentialDraftSaveSchema>,
+  input: z.input<typeof proCredentialDraftSaveSchema> & {
+    command?: 'save';
+    credentialId?: string;
+  },
   deps: CredentialDeps = {},
 ): Promise<ProCredentialMask> {
-  const parsed = proCredentialDraftSaveSchema.parse(input);
+  const {
+    command: _alreadyBoundCommand,
+    credentialId: _alreadyBoundCredentialId,
+    ...draftInput
+  } = input;
+  const parsed = proCredentialDraftSaveSchema.parse(draftInput);
   const preserveIdentifier = parsed.identifier === '';
   const identifierHash = preserveIdentifier
     ? null
