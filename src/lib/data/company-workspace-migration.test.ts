@@ -723,9 +723,10 @@ test('legacy permissive policies are explicitly removed and verification fields 
       sql,
     );
   assert.ok(safeGrant, 'safe PRO self-update column grant is missing');
+  assert.match(safeGrant[1], /designation\s*,\s*department\s*,\s*service_areas\s*,\s*bio/u);
   assert.doesNotMatch(
     safeGrant[1],
-    /license_no_encrypted|designation|department|credentials_verified|verified_at|verified_by_profile_id/,
+    /license_no_encrypted|credentials_verified|verified_at|verified_by_profile_id/,
   );
 
   const proSafeUpdate = extractPolicies(sql, 'pro_profiles').find((policy) =>

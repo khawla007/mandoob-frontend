@@ -82,7 +82,7 @@ test('credential state is coherent, replay-safe, and unavailable to direct authe
   );
   assert.match(
     assignmentMigration,
-    /grant update \(\s*service_areas, bio\s*\)[\s\S]*to authenticated/iu,
+    /grant update \(\s*designation, department, service_areas, bio\s*\)[\s\S]*to authenticated/iu,
   );
 });
 
