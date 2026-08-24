@@ -294,6 +294,20 @@ test('registry controls have named forms, 44px targets, and icon-labelled filter
   assert.doesNotMatch(applied, /×/u);
 });
 
+test('registry controls reflow at 200 percent without widening the page', () => {
+  const toolbar = read('src/components/admin/ProRegistryToolbar.tsx');
+  assert.match(toolbar, /className="grid min-w-0 gap-3 lg:grid-cols-6"/u);
+  assert.match(toolbar, /className="min-w-0 lg:col-span-2"/u);
+  assert.match(toolbar, /className="min-w-0"/u);
+  assert.match(toolbar, /className="flex min-w-0 flex-wrap items-end gap-2 lg:col-span-6"/u);
+});
+
+test('destructive lifecycle badges use accessible solid foreground contrast', () => {
+  const badge = read('src/components/ui/badge.tsx');
+  assert.match(badge, /bg-destructive text-white/u);
+  assert.match(badge, /dark:bg-red-300 dark:text-red-950/u);
+});
+
 test('pending lifecycle mutations expose form-level busy state', () => {
   const review = read('src/components/admin/ProCredentialReviewForm.tsx');
   const terms = read('src/components/admin/ProCommercialTermForm.tsx');

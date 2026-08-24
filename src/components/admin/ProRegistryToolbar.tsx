@@ -23,10 +23,10 @@ export async function ProRegistryToolbar({ filters }: { filters: ProRegistryFilt
       action="/admin/users"
       method="get"
       aria-label={t('filterFormLabel')}
-      className="grid gap-3 lg:grid-cols-6"
+      className="grid min-w-0 gap-3 lg:grid-cols-6"
     >
       <input type="hidden" name="role" value="pro" />
-      <div className="lg:col-span-2">
+      <div className="min-w-0 lg:col-span-2">
         <Label htmlFor="pro-registry-q">{t('searchLabel')}</Label>
         <Input
           id="pro-registry-q"
@@ -38,7 +38,7 @@ export async function ProRegistryToolbar({ filters }: { filters: ProRegistryFilt
         />
       </div>
       {selects.map(([name, values]) => (
-        <div key={name}>
+        <div key={name} className="min-w-0">
           <Label htmlFor={`pro-registry-${name}`}>{t(`filters.${name}`)}</Label>
           <select
             id={`pro-registry-${name}`}
@@ -55,7 +55,7 @@ export async function ProRegistryToolbar({ filters }: { filters: ProRegistryFilt
           </select>
         </div>
       ))}
-      <div className="flex items-end gap-2 lg:col-span-6">
+      <div className="flex min-w-0 flex-wrap items-end gap-2 lg:col-span-6">
         <Button type="submit" className="min-h-11">
           {t('apply')}
         </Button>
