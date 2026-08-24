@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -82,6 +82,8 @@ function resolveLocalImport(importer: string, specifier: string): string | null 
     `${unresolved}.tsx`,
     `${unresolved}.js`,
     `${unresolved}.jsx`,
+    `${unresolved}.cjs`,
+    `${unresolved}.mjs`,
     `${unresolved}.json`,
     `${unresolved}.css`,
     join(unresolved, 'index.ts'),
@@ -99,7 +101,7 @@ function runtimeImportClosure(roots: readonly string[]) {
     const file = pending.pop();
     if (!file || closure.has(file)) continue;
     closure.add(file);
-    if (!/\.(?:ts|tsx|js|jsx)$/u.test(file)) continue;
+    if (!/\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(file)) continue;
     const source = readFileSync(file, 'utf8');
     for (const specifier of localImportSpecifiers(source)) {
       const resolved = resolveLocalImport(file, specifier);
@@ -108,6 +110,49 @@ function runtimeImportClosure(roots: readonly string[]) {
     }
   }
   return { files: [...closure].sort(), unresolved: unresolved.sort() };
+}
+
+const DECLARED_STEP3_RUNTIME_ROOTS = [
+  'src/app/account/page.tsx',
+  'src/app/admin/companies/[id]/page.tsx',
+  'src/app/admin/companies/actions.ts',
+  'src/app/admin/users/[id]/page.tsx',
+  'src/app/admin/users/page.tsx',
+  'src/app/api/v1/account/pro/credentials/route.ts',
+  'src/app/api/v1/admin/companies/[id]/eligible-pros/route.ts',
+  'src/app/api/v1/admin/users/[id]/commercial-terms/route.ts',
+  'src/app/api/v1/admin/users/[id]/credentials/route.ts',
+] as const;
+
+function runtimeSourceFiles(directory = 'src'): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...runtimeSourceFiles(path));
+    else if (
+      /\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(path) &&
+      !/\.(?:test|spec)\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(path) &&
+      !/\.d\.ts$/u.test(path)
+    )
+      files.push(path);
+  }
+  return files.sort();
+}
+
+function isStep3RuntimeRoot(file: string, source: string): boolean {
+  return (
+    /(?:pro-lifecycle|pro-credential|commercial-terms|company-assignment)/iu.test(file) ||
+    /(?:\bPro(?:Credential|Commercial|Lifecycle|Registry)|\bpro(?:Credential|Commercial|Lifecycle)|pro_(?:credentials|commercial|lifecycle)|pro_company_assignments|companyAssignment)/u.test(
+      source,
+    )
+  );
+}
+
+function discoverStep3RuntimeRoots(): string[] {
+  const discovered = runtimeSourceFiles().filter((file) =>
+    isStep3RuntimeRoot(file, readFileSync(file, 'utf8')),
+  );
+  return [...new Set([...DECLARED_STEP3_RUNTIME_ROOTS, ...discovered])].sort();
 }
 
 if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
@@ -321,55 +366,30 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
       assertCanariesAbsent(label, value);
   });
 
+  test('lifecycle runtime inventory is independent of Git history and fixed file counts', () => {
+    const inventorySource = `${runtimeSourceFiles.toString()}\n${discoverStep3RuntimeRoots.toString()}`;
+    assert.doesNotMatch(inventorySource, /\bgit\b|[0-9a-f]{40}|\.\.HEAD|changedRuntimeEntries/u);
+    assert.match(inventorySource, /runtimeSourceFiles/u);
+    assert.equal(
+      isStep3RuntimeRoot('src/lib/data/uncommitted.ts', 'export const proLifecycleDraft = true;'),
+      true,
+    );
+  });
+
   test('lifecycle runtime graph has no analytics, screenshot, or report-evidence persistence adapter', () => {
-    const inventoryResult = spawnSync(
-      'git',
-      [
-        'diff',
-        '--name-status',
-        '--diff-filter=ACMRD',
-        'cefef909d51c7c46c91f4d03b3cead6722a25555..HEAD',
-        '--',
-        'src',
-      ],
-      { encoding: 'utf8' },
-    );
-    assert.equal(inventoryResult.status, 0, inventoryResult.stderr);
-    const inventoryError = inventoryResult.error as NodeJS.ErrnoException | undefined;
-    assert.equal(
-      inventoryError === undefined || inventoryError.code === 'EPERM',
-      true,
-      inventoryError?.message,
-    );
-    assert.notEqual(inventoryResult.stdout.trim(), '');
-    const changedRuntimeEntries = inventoryResult.stdout
-      .trim()
-      .split('\n')
-      .map((line) => {
-        const [status, ...paths] = line.split('\t');
-        return { status, file: paths.at(-1) ?? '' };
-      })
-      .filter(({ file }) => /\.(?:ts|tsx)$/u.test(file) && !/\.test\.(?:ts|tsx)$/u.test(file));
-    assert.equal(changedRuntimeEntries.length, 78);
-    const deletedRuntimeFiles = changedRuntimeEntries
-      .filter(({ status }) => status === 'D')
-      .map(({ file }) => file);
-    assert.equal(deletedRuntimeFiles.length, 2);
-    assert.equal(
-      deletedRuntimeFiles.every((file) => !existsSync(file)),
-      true,
-    );
-    const changedRuntimeFiles = changedRuntimeEntries
-      .filter(({ status }) => status !== 'D')
-      .map(({ file }) => file);
-    const graph = runtimeImportClosure(changedRuntimeFiles);
+    for (const root of DECLARED_STEP3_RUNTIME_ROOTS) assert.equal(existsSync(root), true, root);
+    const runtimeRoots = discoverStep3RuntimeRoots();
+    assert.equal(runtimeRoots.length > DECLARED_STEP3_RUNTIME_ROOTS.length, true);
+    const graph = runtimeImportClosure(runtimeRoots);
     assert.deepEqual(graph.unresolved, []);
     assert.equal(
-      changedRuntimeFiles.every((file) => graph.files.includes(file)),
+      runtimeRoots.every((file) => graph.files.includes(file)),
       true,
     );
-    assert.equal(graph.files.length >= changedRuntimeFiles.length, true);
-    for (const file of graph.files.filter((candidate) => /\.(?:ts|tsx|js|jsx)$/u.test(candidate))) {
+    assert.equal(graph.files.length >= runtimeRoots.length, true);
+    for (const file of graph.files.filter((candidate) =>
+      /\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(candidate),
+    )) {
       const source = readFileSync(file, 'utf8');
       assert.doesNotMatch(
         source,
