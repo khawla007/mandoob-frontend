@@ -42,7 +42,7 @@ begin
     '91000000-0000-4000-8000-000000000002', v_credential_id, 0,
     '91000000-0000-4000-8000-000000000012', repeat('2', 64),
     false,
-    'synthetic-ciphertext', repeat('a', 64), 'AB12', 'Synthetic Authority',
+    'synthetic-ciphertext', repeat('0123456789abcdef', 4), 'AB12', 'Synthetic Authority',
     current_date, current_date + 365
   );
   perform public.register_pro_credential_evidence(
@@ -51,7 +51,7 @@ begin
     '91000000-0000-4000-8000-000000000014',
     'pro-credentials/91000000-0000-4000-8000-000000000002/' || v_credential_id::text ||
       '/91000000-0000-4000-8000-000000000014',
-    'application/pdf', 8, repeat('b', 64), 'evidence.pdf', 'synthetic-scanner', now()
+    'application/pdf', 8, repeat('fedcba9876543210', 4), 'evidence.pdf', 'synthetic-scanner', now()
   );
   perform public.submit_pro_credential(
     '91000000-0000-4000-8000-000000000002', v_credential_id, 2,
@@ -173,6 +173,23 @@ begin
       and details::text ~* '(synthetic-ciphertext|identifier_hash|storage_path|pro-credentials/)'
   ) then
     raise exception 'MISSING_OR_UNSAFE_LIFECYCLE_AUDIT';
+  end if;
+  if exists (
+    select 1
+    from (
+      select row_to_json(event_row)::text as payload from public.auth_events event_row
+      union all
+      select row_to_json(decision_row)::text from public.pro_credential_decisions decision_row
+      union all
+      select row_to_json(term_row)::text from public.pro_commercial_term_events term_row
+      union all
+      select row_to_json(receipt_row)::text from public.pro_lifecycle_operation_receipts receipt_row
+    ) persisted_surface
+    where payload ~ '(synthetic-ciphertext|pro-credentials/)'
+       or position(repeat('0123456789abcdef', 4) in payload) > 0
+       or position(repeat('fedcba9876543210', 4) in payload) > 0
+  ) then
+    raise exception 'UNSAFE_PERSISTED_LIFECYCLE_CANARY';
   end if;
 end;
 $$;

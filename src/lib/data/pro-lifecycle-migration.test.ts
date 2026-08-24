@@ -448,6 +448,25 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
   );
 });
 
+test('transition fixture checks protected canaries in every persisted lifecycle event surface', () => {
+  const fixture = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_lifecycle_transitions.sql'),
+    'utf8',
+  );
+  for (const surface of [
+    'auth_events',
+    'pro_credential_decisions',
+    'pro_commercial_term_events',
+    'pro_lifecycle_operation_receipts',
+  ]) {
+    assert.match(fixture, new RegExp(`${surface}[\\s\\S]*UNSAFE_PERSISTED_LIFECYCLE_CANARY`, 'u'));
+  }
+  assert.match(fixture, /synthetic-ciphertext/u);
+  assert.match(fixture, /pro-credentials\//u);
+  assert.match(fixture, /repeat\('0123456789abcdef', 4\)/u);
+  assert.match(fixture, /repeat\('fedcba9876543210', 4\)/u);
+});
+
 test('0070 reconciles live access, term-linked assignments, grants, and legacy columns', () => {
   assert.equal(existsSync(join(process.cwd(), migrationPaths[2])), true, migrationPaths[2]);
   const sql = migration(2);
