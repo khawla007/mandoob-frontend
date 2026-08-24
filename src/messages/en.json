@@ -2028,7 +2028,8 @@
           "noEvidence": "No evidence is attached to this credential.",
           "empty": "No credential has been created.",
           "loadError": "Credential details are temporarily unavailable. Commercial terms and history remain usable.",
-          "retry": "Retry credential details"
+          "retry": "Retry credential details",
+          "retryFormLabel": "Retry loading PRO credential details"
         },
         "review": {
           "legend": "Credential review decision",
@@ -2072,6 +2073,7 @@
           "empty": "No term has been configured.",
           "loadError": "Commercial terms are temporarily unavailable. Credential details and history remain usable.",
           "retry": "Retry commercial terms",
+          "retryFormLabel": "Retry loading PRO commercial terms",
           "historyLabel": "Commercial term history",
           "kind": "Term kind",
           "kinds": { "pricing": "Service price", "compensation": "Compensation" },
@@ -2113,6 +2115,7 @@
           "empty": "No lifecycle events are available.",
           "loadError": "Lifecycle history is temporarily unavailable. Credential details and commercial terms remain usable.",
           "retry": "Retry lifecycle history",
+          "retryFormLabel": "Retry loading PRO lifecycle history",
           "next": "Older events",
           "events": {
             "credential_submitted": "Credential submitted",

@@ -32,6 +32,7 @@ export async function ProLifecycleTimeline({
         title={t('title')}
         description={t('loadError')}
         retryLabel={t('retry')}
+        formLabel={t('retryFormLabel')}
         action={`/admin/users/${userId}`}
         retryCursor={retryCursor}
       />

@@ -27,6 +27,7 @@ export async function ProCommercialTermsPanel({
         title={t('terms.title')}
         description={t('terms.loadError')}
         retryLabel={t('terms.retry')}
+        formLabel={t('terms.retryFormLabel')}
         action={`/admin/users/${userId}`}
       />
     );

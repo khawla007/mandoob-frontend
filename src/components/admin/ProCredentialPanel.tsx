@@ -119,6 +119,7 @@ export async function ProCredentialPanel({
         title={t('credential.title')}
         description={t('credential.loadError')}
         retryLabel={t('credential.retry')}
+        formLabel={t('credential.retryFormLabel')}
         action={`/admin/users/${userId}`}
       />
     );
