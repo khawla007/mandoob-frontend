@@ -76,6 +76,18 @@ test('0079 defines one replacement-aware adapter and authoritative mutation iden
   assert.doesNotMatch(sql, /to authenticated/u);
 });
 
+test('0079 assigns its replacement composite row separately from the PRO display name', () => {
+  const sql = normalized(forwardFixPath);
+  assert.doesNotMatch(
+    sql,
+    /select assignment, profile\.full_name into v_assignment, v_pro_full_name/u,
+  );
+  assert.match(
+    sql,
+    /select assignment\.\* into v_assignment[\s\S]*select profile\.full_name into v_pro_full_name/u,
+  );
+});
+
 test('0080 replaces selector N+1 with a set-based bounded eligibility query', () => {
   assert.equal(existsSync(join(process.cwd(), bulkFixPath)), true);
   const sql = normalized(bulkFixPath);
