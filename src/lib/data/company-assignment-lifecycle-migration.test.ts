@@ -11,6 +11,8 @@ const forwardFixPath =
 const runnerPath = 'supabase/tests/run_company_assignment_concurrency.sh';
 const bulkFixPath =
   'supabase/migrations/20260824120000_0080_bulk_company_assignment_eligibility.sql';
+const onboardingReconciliationFixturePath =
+  'supabase/tests/company_onboarding_assignment_reconciliation.sql';
 
 function normalized(path: string): string {
   return readFileSync(join(process.cwd(), path), 'utf8').replace(/\s+/gu, ' ').toLowerCase();
@@ -157,6 +159,14 @@ test('assignment lifecycle fixture uses the persisted disabled profile status', 
   const sql = normalized(fixturePath);
   assert.doesNotMatch(sql, /set status = 'inactive'/u);
   assert.match(sql, /set status = 'disabled'/u);
+});
+
+test('Step 2 reconciliation fixture accepts the Step 3 selector eligibility projection', () => {
+  const sql = normalized(onboardingReconciliationFixturePath);
+  assert.doesNotMatch(sql, /jsonb_array_length\(v_selector\) <> 1/u);
+  assert.match(sql, /jsonb_array_length\(v_selector\) <> 3/u);
+  assert.match(sql, /jsonb_array_elements\(v_selector\)/u);
+  assert.match(sql, /candidate -> 'eligibility' ->> 'eligible'/u);
 });
 
 test('concurrency gate has deterministic setup and bounded portable orchestration', () => {

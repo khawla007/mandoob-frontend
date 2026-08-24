@@ -133,8 +133,13 @@ begin
   if pg_catalog.jsonb_array_length(v_snapshot -> 'credentials') <> 1
      or v_snapshot::text ~ 'identifierCiphertext|identifierHash|storagePath'
      or pg_catalog.jsonb_array_length(v_terms) <> 2
-     or pg_catalog.jsonb_array_length(v_selector) <> 1
-     or v_selector -> 0 ->> 'proProfileId' <> '93000000-0000-4000-8000-000000000013' then
+     or pg_catalog.jsonb_array_length(v_selector) <> 3
+     or not exists (
+       select 1
+       from pg_catalog.jsonb_array_elements(v_selector) as row(candidate)
+       where candidate ->> 'proProfileId' = '93000000-0000-4000-8000-000000000013'
+         and (candidate -> 'eligibility' ->> 'eligible')::boolean
+     ) then
     raise exception 'masked lifecycle aggregate mismatch';
   end if;
 
