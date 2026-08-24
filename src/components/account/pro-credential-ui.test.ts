@@ -58,6 +58,7 @@ test('evidence form advertises accepted formats while leaving authoritative chec
   assert.match(form, /useUnsavedChangesGuard/u);
   assert.match(form, /aria-live="polite"/u);
   assert.match(form, /<Label/u);
+  assert.match(form, /<form[\s\S]*aria-label=\{t\('evidenceUploadForm'\)\}/u);
   assert.match(form, /originalNameSafe/u);
   assert.match(form, /formatProEvidenceRemovalConfirmation/u);
   assert.match(form, /variant="destructive"/u);
@@ -108,4 +109,12 @@ test('self-service credential partial source remains recoverable and all mutatio
     assert.doesNotMatch(source, /setError\([^)]*(?:message|stack)/u);
     assert.match(source, /aria-live="polite"/u);
   }
+});
+
+test('read-only evidence links expose a full accessible target geometry', () => {
+  const panel = read('src/components/account/ProCredentialPanel.tsx');
+  assert.match(
+    panel,
+    /className="text-primary inline-flex min-h-11 items-center underline-offset-4/u,
+  );
 });

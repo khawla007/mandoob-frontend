@@ -242,7 +242,7 @@ export function ProCredentialEvidenceForm({
           </li>
         ))}
       </ul>
-      <form onSubmit={upload} className="space-y-3">
+      <form onSubmit={upload} aria-label={t('evidenceUploadForm')} className="space-y-3">
         <div className="space-y-2">
           <Label htmlFor={`credential-evidence-${credentialId}`}>{t('evidenceLabel')}</Label>
           <Input

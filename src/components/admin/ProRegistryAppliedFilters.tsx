@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { X } from 'lucide-react';
 
 import {
   buildProRegistryHref,
@@ -26,8 +27,13 @@ export async function ProRegistryAppliedFilters({ filters }: { filters: ProRegis
       <span className="text-muted-foreground text-xs">{t('appliedFilters')}</span>
       {present.map(([key, value]) => (
         <Badge key={key} asChild variant="secondary">
-          <Link href={buildProRegistryHref(filters, { [key]: undefined })}>
-            {t(`filters.${key}`)}: {key === 'q' ? value : t(`${key}.${value}`)} ×
+          <Link
+            href={buildProRegistryHref(filters, { [key]: undefined })}
+            className="min-h-11 gap-1.5 px-3"
+            aria-label={t('removeFilter', { filter: t(`filters.${key}`) })}
+          >
+            {t(`filters.${key}`)}: {key === 'q' ? value : t(`${key}.${value}`)}
+            <X aria-hidden className="size-4 shrink-0" />
           </Link>
         </Badge>
       ))}

@@ -722,6 +722,7 @@
       "leaveWarning": "You have unsaved credential changes.",
       "rejectedReason": "Review reason",
       "evidenceTitle": "Evidence",
+      "evidenceUploadForm": "Upload credential evidence",
       "evidenceList": "Uploaded licence evidence",
       "evidenceLabel": "Evidence file",
       "evidenceHelp": "PDF, JPEG, or PNG up to 10 MiB. The server verifies the actual file type and scans every upload.",
@@ -1917,9 +1918,11 @@
         "invalidDescription": "One or more URL filters were invalid. The safe default registry is shown.",
         "searchLabel": "Name or email",
         "searchPlaceholder": "Search PRO name or email",
+        "filterFormLabel": "Filter the PRO registry",
         "apply": "Apply filters",
         "reset": "Reset filters",
         "appliedFilters": "Applied filters",
+        "removeFilter": "Remove {filter} filter",
         "filters": {
           "all": "All",
           "q": "Search",
@@ -1998,7 +2001,7 @@
         "editProfile": "Edit profile",
         "summaryTitle": "Lifecycle summary",
         "email": "Email",
-        "accountStatus": "Account status",
+        "accountStatusLabel": "Account status",
         "credentialStatus": "Credential status",
         "assignmentStatus": "Assignment"
       },
@@ -2037,7 +2040,6 @@
             "revoke": "Revoke credential"
           },
           "help": "Only transitions allowed from the current credential state are shown.",
-          "reasonCodeLabel": "Reason code",
           "reasonLabel": "Review reason",
           "reasonHelp": "Do not include the credential identifier, evidence paths, or system errors.",
           "reasonRequired": "Enter a review reason of at least three characters.",

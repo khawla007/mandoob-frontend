@@ -72,6 +72,10 @@ test('operator lifecycle detail uses server composition with one heading and foc
   assert.match(page, /ProLifecycleTimeline/u);
   assert.match(page, /searchParams/u);
   assert.match(page, /readProLifecycleTimeline/u);
+  assert.match(page, /ProAccountStatusBadge/u);
+  assert.match(page, /ProCredentialStatusBadge/u);
+  assert.match(page, /t\('accountStatusLabel'\)/u);
+  assert.match(page, /Button asChild variant="outline" className="min-h-11"/u);
   assert.doesNotMatch(page, /^['"]use client['"]/mu);
 });
 
@@ -93,6 +97,8 @@ test('credential surface is masked-only, semantic, evidence-owned, and exposes l
   assert.match(form, /<legend/u);
   assert.match(form, /<Label/u);
   assert.match(form, /reason/u);
+  assert.match(form, /OPERATOR_REVIEW_REASON_CODE/u);
+  assert.doesNotMatch(form, /reason-code-|setReasonCode|reasonCodeLabel/u);
   assert.match(form, /revokeConfirmation/u);
   assert.match(form, /claimFormSubmission/u);
   assert.match(form, /aria-live="polite"/u);
@@ -116,6 +122,14 @@ test('credential surface is masked-only, semantic, evidence-owned, and exposes l
     assert.match(statuses, new RegExp(`${state}:\\s*${icon}`, 'u'));
   }
   assert.match(statuses, /aria-hidden/u);
+  for (const [state, icon] of [
+    ['active', 'CircleCheck'],
+    ['invited', 'Mail'],
+    ['disabled', 'Ban'],
+    ['suspended', 'CirclePause'],
+  ]) {
+    assert.match(statuses, new RegExp(`${state}:\\s*${icon}`, 'u'));
+  }
   assert.match(panel, /ProCredentialStatusBadge/u);
   assert.match(panel, /t\(`credentialStates\.\$\{credential\.state\}`\)/u);
 });
@@ -245,8 +259,27 @@ test('registry distinguishes empty, no-results, partial-email, loading, and sani
   assert.match(page, /ProRegistryEmptyState/u);
   assert.match(page, /filtersActive/u);
   assert.match(loading, /aria-live="polite"/u);
-  assert.match(loading, /h-\[25rem\]/u);
+  assert.match(loading, /aria-busy="true"/u);
+  assert.match(loading, /data-skeleton="toolbar"/u);
+  assert.match(loading, /data-skeleton="applied-filters"/u);
+  assert.match(loading, /data-skeleton="table"/u);
+  assert.match(loading, /data-skeleton="pagination"/u);
+  assert.doesNotMatch(loading, /h-\[25rem\]/u);
   assert.match(error, /errorDescription/u);
+  assert.equal((error.match(/className="min-h-11"/gu) ?? []).length, 2);
   assert.doesNotMatch(error, /error\.message|error\.stack/u);
   assert.match(page, /partialEmail/u);
+  assert.match(page, /Button asChild className="min-h-11"/u);
+});
+
+test('registry controls have named forms, 44px targets, and icon-labelled filter removal', () => {
+  const toolbar = read('src/components/admin/ProRegistryToolbar.tsx');
+  const applied = read('src/components/admin/ProRegistryAppliedFilters.tsx');
+  assert.match(toolbar, /<form[\s\S]*aria-label=\{t\('filterFormLabel'\)\}/u);
+  assert.match(toolbar, /id="pro-registry-q"[\s\S]*className="mt-1 min-h-11"/u);
+  assert.match(applied, /import \{ X \} from 'lucide-react'/u);
+  assert.match(applied, /className="min-h-11/u);
+  assert.match(applied, /aria-label=\{t\('removeFilter'/u);
+  assert.match(applied, /<X aria-hidden/u);
+  assert.doesNotMatch(applied, /×/u);
 });

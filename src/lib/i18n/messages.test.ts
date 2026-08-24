@@ -110,6 +110,47 @@ function shellKeysFromNavSources() {
 }
 
 describe('i18n/messages', () => {
+  it('keeps the registry account-status options unique in raw JSON and resolves every dynamic status at runtime', () => {
+    const dynamicStatusKeys = [
+      ...['active', 'invited', 'inactive'].map((value) => `accountStatus.${value}`),
+      ...PRO_CREDENTIAL_STATES.map((value) => `credentialState.${value}`),
+      ...['eligible', 'ineligible'].map((value) => `eligibility.${value}`),
+      ...['assigned', 'unassigned'].map((value) => `assignment.${value}`),
+      ...['expired', '30_days', '60_days', '90_days'].map((value) => `expiryWindow.${value}`),
+      ...['active', 'invited', 'disabled', 'suspended'].map((value) => `account.${value}`),
+      ...PRO_CREDENTIAL_STATES.map((value) => `credential.${value}`),
+      ...['eligible', 'ineligible'].map((value) => `eligible.${value}`),
+    ];
+
+    for (const [locale, messages] of [
+      ['en', en],
+      ['ar', ar],
+    ] as const) {
+      const raw = readFileSync(join(process.cwd(), `src/messages/${locale}.json`), 'utf8');
+      assert.equal(
+        (raw.match(/^ {8}"accountStatus":/gmu) ?? []).length,
+        1,
+        `${locale} has duplicate admin.user.proRegistry.accountStatus keys`,
+      );
+      const translate = createTranslator({
+        locale,
+        messages,
+        namespace: 'admin.user.proRegistry',
+      });
+      const translateStatus = translate as (key: string) => string;
+      const namespace = valueAt(messages, 'admin.user.proRegistry');
+      for (const key of dynamicStatusKeys) {
+        const expected = valueAt(namespace, key);
+        assert.equal(typeof expected, 'string', `Missing ${locale} dynamic status ${key}`);
+        assert.equal(
+          translateStatus(key),
+          expected,
+          `Runtime translation failed for ${locale}.${key}`,
+        );
+      }
+    }
+  });
+
   it('catalogs every PRO lifecycle state, event, error, term, filter, and action in exact EN/AR parity', () => {
     const lifecyclePaths = [
       ...PRO_CREDENTIAL_STATES.flatMap((state) => [

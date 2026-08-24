@@ -19,7 +19,12 @@ export async function ProRegistryToolbar({ filters }: { filters: ProRegistryFilt
     ['expiryWindow', ['expired', '30_days', '60_days', '90_days']],
   ] as const;
   return (
-    <form action="/admin/users" method="get" className="grid gap-3 lg:grid-cols-6">
+    <form
+      action="/admin/users"
+      method="get"
+      aria-label={t('filterFormLabel')}
+      className="grid gap-3 lg:grid-cols-6"
+    >
       <input type="hidden" name="role" value="pro" />
       <div className="lg:col-span-2">
         <Label htmlFor="pro-registry-q">{t('searchLabel')}</Label>
@@ -29,7 +34,7 @@ export async function ProRegistryToolbar({ filters }: { filters: ProRegistryFilt
           defaultValue={filters.q ?? ''}
           maxLength={160}
           placeholder={t('searchPlaceholder')}
-          className="mt-1"
+          className="mt-1 min-h-11"
         />
       </div>
       {selects.map(([name, values]) => (

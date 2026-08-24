@@ -2,12 +2,15 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProCommercialTermsPanel } from '@/components/admin/ProCommercialTermsPanel';
 import { ProCredentialPanel } from '@/components/admin/ProCredentialPanel';
 import { ProLifecycleTimeline } from '@/components/admin/ProLifecycleTimeline';
+import {
+  ProAccountStatusBadge,
+  ProCredentialStatusBadge,
+} from '@/components/admin/ProLifecycleStatusBadge';
 import { parseProTimelineSearchParams } from '@/components/admin/pro-lifecycle-ui';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
 import { readProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
@@ -70,7 +73,7 @@ export default async function ProLifecycleDetailPage({
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('detailDescription')}</p>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="min-h-11">
           <Link href={`/admin/users/${snapshot.profile.id}/edit`}>{t('editProfile')}</Link>
         </Button>
       </div>
@@ -87,17 +90,25 @@ export default async function ProLifecycleDetailPage({
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground text-xs">{t('accountStatus')}</dt>
+              <dt className="text-muted-foreground text-xs">{t('accountStatusLabel')}</dt>
               <dd className="mt-1">
-                <Badge variant="outline">{t(`account.${snapshot.profile.accountStatus}`)}</Badge>
+                <ProAccountStatusBadge
+                  status={snapshot.profile.accountStatus}
+                  label={t(`account.${snapshot.profile.accountStatus}`)}
+                />
               </dd>
             </div>
             <div>
               <dt className="text-muted-foreground text-xs">{t('credentialStatus')}</dt>
-              <dd className="mt-1 text-sm">
-                {snapshot.credentials[0]
-                  ? t(`credential.${snapshot.credentials[0].state}`)
-                  : t('notAvailable')}
+              <dd className="mt-1">
+                {snapshot.credentials[0] ? (
+                  <ProCredentialStatusBadge
+                    state={snapshot.credentials[0].state}
+                    label={t(`credential.${snapshot.credentials[0].state}`)}
+                  />
+                ) : (
+                  t('notAvailable')
+                )}
               </dd>
             </div>
             <div>

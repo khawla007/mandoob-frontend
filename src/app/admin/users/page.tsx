@@ -97,7 +97,7 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
             {t('resultCount', { count: result.total })}
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="min-h-11">
           <Link href="/admin/users/new?role=pro">{t('create')}</Link>
         </Button>
       </div>

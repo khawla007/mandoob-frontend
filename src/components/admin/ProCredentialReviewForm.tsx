@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { postJson } from '@/lib/http/post';
@@ -17,6 +16,7 @@ import {
 } from '@/components/admin/form-submission-guard';
 
 type ReviewCommand = 'begin_review' | 'verify' | 'reject' | 'revoke';
+const OPERATOR_REVIEW_REASON_CODE = 'OPERATOR_REVIEW';
 
 export const LEGAL_CREDENTIAL_COMMANDS: Record<ProCredentialState, ReviewCommand[]> = {
   draft: [],
@@ -43,7 +43,6 @@ export function ProCredentialReviewForm({
   const router = useRouter();
   const commands = LEGAL_CREDENTIAL_COMMANDS[state];
   const [command, setCommand] = useState<ReviewCommand | ''>(commands[0] ?? '');
-  const [reasonCode, setReasonCode] = useState('OPERATOR_REVIEW');
   const [reason, setReason] = useState('');
   const [revokeConfirmation, setRevokeConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +84,7 @@ export function ProCredentialReviewForm({
         expectedVersion: version,
         operationId: crypto.randomUUID(),
         ...(command === 'reject' || command === 'revoke'
-          ? { reasonCode: reasonCode.trim().toUpperCase(), reason: reason.trim() }
+          ? { reasonCode: OPERATOR_REVIEW_REASON_CODE, reason: reason.trim() }
           : {}),
       });
       if (!response.ok) {
@@ -144,18 +143,6 @@ export function ProCredentialReviewForm({
         </div>
         {command === 'reject' || command === 'revoke' ? (
           <>
-            <div className="space-y-2">
-              <Label htmlFor={`reason-code-${credentialId}`}>{t('reasonCodeLabel')}</Label>
-              <Input
-                id={`reason-code-${credentialId}`}
-                value={reasonCode}
-                onChange={(event) => setReasonCode(event.target.value)}
-                minLength={2}
-                maxLength={64}
-                required
-                className="min-h-11"
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor={`reason-${credentialId}`}>{t('reasonLabel')}</Label>
               <Textarea

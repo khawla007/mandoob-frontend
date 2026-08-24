@@ -162,7 +162,7 @@ export async function ProCredentialPanel({
                   {credentialEvidence.map((evidence) => (
                     <li key={evidence.evidenceId} className="space-y-1">
                       <a
-                        className="text-primary underline-offset-4 hover:underline"
+                        className="text-primary inline-flex min-h-11 items-center underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
                         href={`/api/v1/account/pro/credentials/evidence/${evidence.evidenceId}`}
                         target="_blank"
                         rel="noreferrer"
