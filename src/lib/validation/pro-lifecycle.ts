@@ -95,9 +95,7 @@ export const proDecisionReasonSchema = z
   .superRefine((value, context) => {
     if (
       /[\u0000-\u001f\u007f]/u.test(value) ||
-      /(pro-credentials\/|storage_path|identifier_ciphertext|sqlstate)/iu.test(
-        value,
-      ) ||
+      /(pro-credentials\/|storage_path|identifier_ciphertext|sqlstate)/iu.test(value) ||
       structuredDecisionSecretPatterns.some((pattern) => pattern.test(value)) ||
       /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/iu.test(value)
     )
