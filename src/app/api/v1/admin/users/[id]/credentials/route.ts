@@ -31,10 +31,19 @@ const publicCredentialSchema = z
   .object({
     credentialId: uuid,
     type: z.literal('pro_license'),
-    maskedIdentifier: z.string().regex(/^•••• [A-Z0-9]{4}$/u).nullable(),
+    maskedIdentifier: z
+      .string()
+      .regex(/^•••• [A-Z0-9]{4}$/u)
+      .nullable(),
     issuingAuthority: z.string().nullable(),
-    issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
-    expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
+    issueDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/u)
+      .nullable(),
+    expiryDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/u)
+      .nullable(),
     state: z.enum(PRO_CREDENTIAL_STATES),
     version: z.number().int().nonnegative(),
     evidenceCount: z.number().int().nonnegative(),
