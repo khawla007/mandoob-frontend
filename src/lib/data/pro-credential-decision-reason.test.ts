@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const PRO_ID = '20000000-0000-4000-8000-000000000002';
 const CREDENTIAL_ID = '30000000-0000-4000-8000-000000000003';
-const CANARY = 'LIC-9Z 72';
+const CANARY = 'TASK13-CANARY-IDENTIFIER-9Z72';
 
 function deps(overrides: Record<string, unknown> = {}) {
   return {
@@ -21,9 +21,9 @@ test('decision reason guard rejects exact and obfuscated full credential identif
   const { assertDecisionReasonExcludesCredentialIdentifier } =
     await import('./pro-credential-decision-reason');
   for (const reason of [
-    'LIC-9Z 72',
-    'lic 9z-72',
-    'Document identifier lic / 9z / 72 could not be verified',
+    'TASK13-CANARY-IDENTIFIER-9Z72',
+    'task13 canary identifier 9z 72',
+    'Document identifier TASK13 / CANARY / IDENTIFIER / 9Z / 72 could not be verified',
   ]) {
     await assert.rejects(
       () => assertDecisionReasonExcludesCredentialIdentifier(PRO_ID, CREDENTIAL_ID, reason, deps()),

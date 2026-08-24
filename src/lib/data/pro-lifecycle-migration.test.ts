@@ -367,6 +367,7 @@ test('0069 defines fixed-path service workflows, eligibility, timeline, and expi
 test('Step 3 SQL fixtures cover transitions and bounded credential and term races', () => {
   for (const fixture of [
     'pro_lifecycle_transitions.sql',
+    'pro_lifecycle_valid_content.sql',
     'pro_lifecycle_concurrency_setup.sql',
     'pro_lifecycle_verify_session_a.sql',
     'pro_lifecycle_verify_session_b.sql',
@@ -474,8 +475,12 @@ test('transition fixture checks protected canaries in every persisted lifecycle 
   ]) {
     assert.match(fixture, new RegExp(canary.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
   }
-  assert.match(fixture, /foreach v_canary in array v_canaries[\s\S]*reject_pro_credential/u);
-  assert.match(fixture, /foreach v_canary in array v_canaries[\s\S]*store_pro_lifecycle_receipt/u);
+  assert.match(fixture, /v_canary_keys text\[\][\s\S]*'identifierCiphertext'[\s\S]*'rawError'/u);
+  assert.match(fixture, /for v_canary_index[\s\S]*store_pro_lifecycle_receipt/u);
+  assert.match(
+    fixture,
+    /jsonb_build_object\([\s\S]*v_canary_keys\[v_canary_index\][\s\S]*v_canaries\[v_canary_index\]/u,
+  );
   for (const suffix of ['AUTH_EVENT', 'DECISION', 'TERM_EVENT', 'RECEIPT']) {
     assert.match(fixture, new RegExp(`UNSAFE_PERSISTED_LIFECYCLE_CANARY_${suffix}`, 'u'));
   }
@@ -498,6 +503,40 @@ test('0082 rejects protected decision reasons and direct unsafe receipt payloads
   assert.match(sql, /\[0-9a-f\]\{64\}/u);
   assert.match(sql, /perform public\.assert_safe_pro_lifecycle_result/u);
   assert.match(sql, /revoke all on function public\.assert_safe_pro_lifecycle_result/u);
+});
+
+test('0083 preserves approved reason and authority values behind structural guards', () => {
+  const path = join(
+    process.cwd(),
+    'supabase/migrations/20260824150000_0083_pro_lifecycle_structural_persistence_guards.sql',
+  );
+  assert.equal(existsSync(path), true);
+  const sql = readFileSync(path, 'utf8').replace(/\s+/gu, ' ').toLowerCase();
+  assert.match(sql, /create or replace function public\.assert_safe_pro_decision_reason/u);
+  assert.doesNotMatch(sql, /https\?:\/\//u);
+  assert.doesNotMatch(sql, /\[0-9a-f\]\{64\}/u);
+  assert.match(sql, /jsonb_object_keys/u);
+  assert.match(sql, /mask(?:ed)?identifier/u);
+  assert.match(sql, /unsafe_lifecycle_result/u);
+  for (const forbiddenKey of [
+    'identifier',
+    'identifierciphertext',
+    'identifierhash',
+    'storagepath',
+    'signedurl',
+    'rawerror',
+  ]) {
+    assert.doesNotMatch(sql, new RegExp(`'${forbiddenKey}'`, 'u'));
+  }
+
+  const fixture = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_lifecycle_valid_content.sql'),
+    'utf8',
+  );
+  assert.match(fixture, /The identifier could not be verified/u);
+  assert.match(fixture, /https:\/\/authority\.example/u);
+  assert.match(fixture, /save_pro_credential_draft/u);
+  assert.match(fixture, /revoke_pro_credential/u);
 });
 
 test('audit and term producers structurally cannot accept protected payload channels', () => {

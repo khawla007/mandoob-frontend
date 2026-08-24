@@ -35,6 +35,7 @@ declare
   v_compensation_id uuid;
   v_storage_path text;
   v_canary text;
+  v_canary_index integer;
   v_canaries text[] := array[
     'TASK13-CANARY-IDENTIFIER-9Z72',
     'v1:TASK13-CANARY-CIPHERTEXT',
@@ -42,6 +43,14 @@ declare
     'pro-credentials/TASK13-CANARY-STORAGE-PATH',
     'https://storage.invalid/TASK13-CANARY-SIGNED-URL',
     'TASK13-CANARY-RAW-PROVIDER-ERROR'
+  ];
+  v_canary_keys text[] := array[
+    'identifier',
+    'identifierCiphertext',
+    'identifierHash',
+    'storagePath',
+    'signedUrl',
+    'rawError'
   ];
 begin
   select id into strict v_credential_id
@@ -72,18 +81,6 @@ begin
     '91000000-0000-4000-8000-000000000001', v_credential_id, 3,
     '91000000-0000-4000-8000-000000000016', repeat('5', 64)
   );
-  foreach v_canary in array v_canaries loop
-    begin
-      perform public.reject_pro_credential(
-        '91000000-0000-4000-8000-000000000001', v_credential_id, 4,
-        '91000000-0000-4000-8000-000000000018', repeat('8', 64),
-        'UNSAFE_REASON', v_canary
-      );
-      raise exception 'EXPECTED_INVALID_DECISION_REASON';
-    exception when others then
-      if sqlerrm <> 'INVALID_DECISION_REASON' then raise; end if;
-    end;
-  end loop;
   begin
     perform public.reject_pro_credential(
       '91000000-0000-4000-8000-000000000001', v_credential_id, 4,
@@ -186,13 +183,15 @@ begin
   if v_result ->> 'state' <> 'draft' or v_result ->> 'supersedesCredentialId' <> v_credential_id::text then
     raise exception 'INVALID_REPLACEMENT_RESULT';
   end if;
-  foreach v_canary in array v_canaries loop
+  for v_canary_index in 1..pg_catalog.array_length(v_canaries, 1) loop
     begin
       perform public.store_pro_lifecycle_receipt(
         'credential', v_credential_id,
         '91000000-0000-4000-8000-000000000027', repeat('e', 64),
         public.pro_credential_masked_result(v_credential_id) ||
-          pg_catalog.jsonb_build_object('issuingAuthority', v_canary)
+          pg_catalog.jsonb_build_object(
+            v_canary_keys[v_canary_index], v_canaries[v_canary_index]
+          )
       );
       raise exception 'EXPECTED_UNSAFE_LIFECYCLE_RESULT';
     exception when others then
