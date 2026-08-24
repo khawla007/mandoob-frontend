@@ -5,12 +5,23 @@ test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 active_pid=""
 cleanup() {
   local status=$?
+  local teardown_status
   trap - EXIT INT TERM
   if [[ -n "${active_pid}" ]] && kill -0 "${active_pid}" 2>/dev/null; then
     kill "${active_pid}" 2>/dev/null || true
     wait "${active_pid}" 2>/dev/null || true
   fi
-  timeout 120s "${psql[@]}" -f "${test_dir}/company_assignment_concurrency_teardown.sql" || true
+  set +e
+  timeout 120s "${psql[@]}" -f "${test_dir}/company_assignment_concurrency_teardown.sql"
+  teardown_status=$?
+  set -e
+  if ((teardown_status != 0)); then
+    printf 'company assignment concurrency teardown failed with status %s\n' \
+      "${teardown_status}" >&2
+    if ((status == 0)); then
+      status="${teardown_status}"
+    fi
+  fi
   exit "${status}"
 }
 trap cleanup EXIT INT TERM

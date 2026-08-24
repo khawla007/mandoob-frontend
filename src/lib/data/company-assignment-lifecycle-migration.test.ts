@@ -215,6 +215,7 @@ test('concurrency runner always tears down fixtures and creates no helper table'
   assert.doesNotMatch(setup, /assignment_concurrency_fixture_ids/u);
   const teardown = normalized('supabase/tests/company_assignment_concurrency_teardown.sql');
   assert.match(teardown, /^\s*\\set on_error_stop on begin;/u);
+  assert.match(teardown, /drop table if exists public\.assignment_concurrency_fixture_ids/u);
   assert.match(teardown, /delete from public\.pro_assignment_term_links/u);
   assert.match(teardown, /delete from public\.pro_company_assignments/u);
   assert.match(teardown, /delete from public\.company_profiles/u);

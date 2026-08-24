@@ -1,6 +1,8 @@
 \set ON_ERROR_STOP on
 begin;
 
+drop table if exists public.assignment_concurrency_fixture_ids;
+
 delete from public.pro_assignment_term_links links
 using public.pro_company_assignments assignments
 where links.assignment_id = assignments.id
