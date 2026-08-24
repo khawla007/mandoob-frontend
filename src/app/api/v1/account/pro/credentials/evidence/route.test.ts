@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { MULTIPART_BODY_ENVELOPE_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycle';
 import { createEvidencePostHandler } from './route';
+
+test('Next proxy preserves the full 10 MiB evidence file plus multipart envelope', () => {
+  const config = readFileSync('next.config.ts', 'utf8');
+  assert.match(config, /proxyClientMaxBodySize:\s*11 \* 1024 \* 1024/u);
+});
 
 const A = '10000000-0000-4000-8000-000000000001';
 const C = '20000000-0000-4000-8000-000000000002';
