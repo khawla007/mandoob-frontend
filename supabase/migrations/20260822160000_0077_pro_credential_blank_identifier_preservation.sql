@@ -61,7 +61,7 @@ begin
        or p_identifier_last4 is not null then
       raise exception using errcode = '22023', message = 'CREDENTIAL_IDENTIFIER_REQUIRED';
     end if;
-  elsif pg_catalog.nullif(pg_catalog.btrim(p_identifier_ciphertext), '') is null
+  elsif nullif(pg_catalog.btrim(p_identifier_ciphertext), '') is null
         or p_identifier_hash is null
         or p_identifier_hash !~ '^[a-f0-9]{64}$'
         or p_identifier_last4 is null

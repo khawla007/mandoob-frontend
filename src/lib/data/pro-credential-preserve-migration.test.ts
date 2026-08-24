@@ -27,6 +27,8 @@ test('forward save workflow preserves only an existing protected identifier and 
   assert.match(sql, /case when p_preserve_identifier/u);
   assert.match(sql, /elsif[\s\S]{0,240}p_identifier_hash is null/u);
   assert.match(sql, /elsif[\s\S]{0,320}p_identifier_last4 is null/u);
+  assert.doesNotMatch(sql, /pg_catalog\.nullif/u);
+  assert.match(sql, /nullif\(pg_catalog\.btrim\(p_identifier_ciphertext\), ''\)/u);
   assert.match(sql, /security definer[\s\S]*set search_path = ''/u);
   assert.match(sql, /revoke all on function public\.save_pro_credential_draft/u);
   assert.match(
