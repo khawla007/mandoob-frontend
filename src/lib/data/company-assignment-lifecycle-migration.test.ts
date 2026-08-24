@@ -212,6 +212,7 @@ test('concurrency runner waits for session A lifecycle locks instead of sleeping
   assert.match(barrier, /pg_locks/u);
   assert.match(barrier, /locktype = 'advisory'/u);
   assert.match(barrier, /granted/u);
+  assert.match(barrier, /pg_stat_clear_snapshot/u);
   assert.match(barrier, /clock_timestamp\(\)[\s\S]*raise exception/u);
 
   for (const fixture of [
@@ -228,6 +229,7 @@ test('concurrency runner waits for session A lifecycle locks instead of sleeping
   assert.match(contender, /pg_stat_activity/u);
   assert.match(contender, /pg_locks/u);
   assert.match(contender, /granted = false/u);
+  assert.match(contender, /pg_stat_clear_snapshot/u);
   assert.match(contender, /clock_timestamp\(\)[\s\S]*raise exception/u);
 });
 
