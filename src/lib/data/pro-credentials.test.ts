@@ -203,6 +203,25 @@ test('database invalid decision reason maps to the stable public code', async ()
   );
 });
 
+test('operator route-shaped review input ignores its already-bound credential id', async () => {
+  const { reviewProCredential } = await import('./pro-credentials');
+  const supabase = fake([{ data: { ...mask, state: 'verified', version: 4 }, error: null }]);
+  const result = await reviewProCredential(
+    ACTOR_ID,
+    CREDENTIAL_ID,
+    {
+      command: 'verify',
+      credentialId: CREDENTIAL_ID,
+      expectedVersion: 3,
+      operationId: OPERATION_ID,
+    },
+    { supabase: supabase as never },
+  );
+  assert.equal(result.state, 'verified');
+  assert.equal(supabase.calls[0]?.name, 'verify_pro_credential');
+  assert.equal(supabase.calls[0]?.args.p_credential_id, CREDENTIAL_ID);
+});
+
 test('evidence removal prepare and finalize share exact replay arguments', async () => {
   const { prepareProCredentialEvidenceRemoval, finalizeProCredentialEvidenceRemoval } =
     await import('./pro-credentials');

@@ -268,10 +268,11 @@ export function submitProCredential(
 export async function reviewProCredential(
   actorId: string,
   credentialId: string,
-  input: z.input<typeof proCredentialReviewSchema>,
+  input: z.input<typeof proCredentialReviewSchema> & { credentialId?: string },
   deps: CredentialDeps = {},
 ): Promise<ProCredentialMask> {
-  const parsed = proCredentialReviewSchema.parse(input);
+  const { credentialId: _alreadyBoundCredentialId, ...reviewInput } = input;
+  const parsed = proCredentialReviewSchema.parse(reviewInput);
   const names = {
     begin_review: 'begin_pro_credential_review',
     verify: 'verify_pro_credential',
