@@ -33,11 +33,24 @@ declare
   v_result jsonb;
   v_pricing_id uuid;
   v_compensation_id uuid;
+  v_storage_path text;
+  v_canary text;
+  v_canaries text[] := array[
+    'TASK13-CANARY-IDENTIFIER-9Z72',
+    'v1:TASK13-CANARY-CIPHERTEXT',
+    repeat('0123456789abcdef', 4),
+    'pro-credentials/TASK13-CANARY-STORAGE-PATH',
+    'https://storage.invalid/TASK13-CANARY-SIGNED-URL',
+    'TASK13-CANARY-RAW-PROVIDER-ERROR'
+  ];
 begin
   select id into strict v_credential_id
   from public.pro_credentials
   where pro_profile_id = '91000000-0000-4000-8000-000000000002';
 
+  v_storage_path :=
+    'pro-credentials/91000000-0000-4000-8000-000000000002/' || v_credential_id::text ||
+    '/91000000-0000-4000-8000-000000000014';
   perform public.save_pro_credential_draft(
     '91000000-0000-4000-8000-000000000002', v_credential_id, 0,
     '91000000-0000-4000-8000-000000000012', repeat('2', 64),
@@ -48,9 +61,7 @@ begin
   perform public.register_pro_credential_evidence(
     '91000000-0000-4000-8000-000000000002', v_credential_id, 1,
     '91000000-0000-4000-8000-000000000013', repeat('3', 64),
-    '91000000-0000-4000-8000-000000000014',
-    'pro-credentials/91000000-0000-4000-8000-000000000002/' || v_credential_id::text ||
-      '/91000000-0000-4000-8000-000000000014',
+    '91000000-0000-4000-8000-000000000014', v_storage_path,
     'application/pdf', 8, repeat('fedcba9876543210', 4), 'evidence.pdf', 'synthetic-scanner', now()
   );
   perform public.submit_pro_credential(
@@ -61,6 +72,18 @@ begin
     '91000000-0000-4000-8000-000000000001', v_credential_id, 3,
     '91000000-0000-4000-8000-000000000016', repeat('5', 64)
   );
+  foreach v_canary in array v_canaries loop
+    begin
+      perform public.reject_pro_credential(
+        '91000000-0000-4000-8000-000000000001', v_credential_id, 4,
+        '91000000-0000-4000-8000-000000000018', repeat('8', 64),
+        'UNSAFE_REASON', v_canary
+      );
+      raise exception 'EXPECTED_INVALID_DECISION_REASON';
+    exception when others then
+      if sqlerrm <> 'INVALID_DECISION_REASON' then raise; end if;
+    end;
+  end loop;
   begin
     perform public.reject_pro_credential(
       '91000000-0000-4000-8000-000000000001', v_credential_id, 4,
@@ -163,6 +186,19 @@ begin
   if v_result ->> 'state' <> 'draft' or v_result ->> 'supersedesCredentialId' <> v_credential_id::text then
     raise exception 'INVALID_REPLACEMENT_RESULT';
   end if;
+  foreach v_canary in array v_canaries loop
+    begin
+      perform public.store_pro_lifecycle_receipt(
+        'credential', v_credential_id,
+        '91000000-0000-4000-8000-000000000027', repeat('e', 64),
+        public.pro_credential_masked_result(v_credential_id) ||
+          pg_catalog.jsonb_build_object('issuingAuthority', v_canary)
+      );
+      raise exception 'EXPECTED_UNSAFE_LIFECYCLE_RESULT';
+    exception when others then
+      if sqlerrm <> 'UNSAFE_LIFECYCLE_RESULT' then raise; end if;
+    end;
+  end loop;
   if not exists (
     select 1 from public.auth_events
     where kind = 'pro_lifecycle_changed'
@@ -174,23 +210,24 @@ begin
   ) then
     raise exception 'MISSING_OR_UNSAFE_LIFECYCLE_AUDIT';
   end if;
-  if exists (
-    select 1
-    from (
-      select row_to_json(event_row)::text as payload from public.auth_events event_row
-      union all
-      select row_to_json(decision_row)::text from public.pro_credential_decisions decision_row
-      union all
-      select row_to_json(term_row)::text from public.pro_commercial_term_events term_row
-      union all
-      select row_to_json(receipt_row)::text from public.pro_lifecycle_operation_receipts receipt_row
-    ) persisted_surface
-    where payload ~ '(synthetic-ciphertext|pro-credentials/)'
-       or position(repeat('0123456789abcdef', 4) in payload) > 0
-       or position(repeat('fedcba9876543210', 4) in payload) > 0
-  ) then
-    raise exception 'UNSAFE_PERSISTED_LIFECYCLE_CANARY';
-  end if;
+  foreach v_canary in array v_canaries || array['synthetic-ciphertext', v_storage_path, repeat('fedcba9876543210', 4)] loop
+    if exists (
+      select 1 from public.auth_events event_row
+      where position(v_canary in row_to_json(event_row)::text) > 0
+    ) then raise exception 'UNSAFE_PERSISTED_LIFECYCLE_CANARY_AUTH_EVENT'; end if;
+    if exists (
+      select 1 from public.pro_credential_decisions decision_row
+      where position(v_canary in row_to_json(decision_row)::text) > 0
+    ) then raise exception 'UNSAFE_PERSISTED_LIFECYCLE_CANARY_DECISION'; end if;
+    if exists (
+      select 1 from public.pro_commercial_term_events term_row
+      where position(v_canary in row_to_json(term_row)::text) > 0
+    ) then raise exception 'UNSAFE_PERSISTED_LIFECYCLE_CANARY_TERM_EVENT'; end if;
+    if exists (
+      select 1 from public.pro_lifecycle_operation_receipts receipt_row
+      where position(v_canary in row_to_json(receipt_row)::text) > 0
+    ) then raise exception 'UNSAFE_PERSISTED_LIFECYCLE_CANARY_RECEIPT'; end if;
+  end loop;
 end;
 $$;
 

@@ -465,6 +465,80 @@ test('transition fixture checks protected canaries in every persisted lifecycle 
   assert.match(fixture, /pro-credentials\//u);
   assert.match(fixture, /repeat\('0123456789abcdef', 4\)/u);
   assert.match(fixture, /repeat\('fedcba9876543210', 4\)/u);
+  for (const canary of [
+    'TASK13-CANARY-IDENTIFIER-9Z72',
+    'v1:TASK13-CANARY-CIPHERTEXT',
+    'pro-credentials/TASK13-CANARY-STORAGE-PATH',
+    'https://storage.invalid/TASK13-CANARY-SIGNED-URL',
+    'TASK13-CANARY-RAW-PROVIDER-ERROR',
+  ]) {
+    assert.match(fixture, new RegExp(canary.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
+  }
+  assert.match(fixture, /foreach v_canary in array v_canaries[\s\S]*reject_pro_credential/u);
+  assert.match(fixture, /foreach v_canary in array v_canaries[\s\S]*store_pro_lifecycle_receipt/u);
+  for (const suffix of ['AUTH_EVENT', 'DECISION', 'TERM_EVENT', 'RECEIPT']) {
+    assert.match(fixture, new RegExp(`UNSAFE_PERSISTED_LIFECYCLE_CANARY_${suffix}`, 'u'));
+  }
+});
+
+test('0082 rejects protected decision reasons and direct unsafe receipt payloads', () => {
+  const path = join(
+    process.cwd(),
+    'supabase/migrations/20260824140000_0082_pro_lifecycle_persistence_canary_guards.sql',
+  );
+  assert.equal(existsSync(path), true);
+  const sql = readFileSync(path, 'utf8').replace(/\s+/gu, ' ').toLowerCase();
+  assert.match(sql, /create or replace function public\.assert_safe_pro_lifecycle_result/u);
+  assert.match(sql, /jsonb_object_keys/u);
+  assert.match(sql, /unsafe_lifecycle_result/u);
+  assert.match(sql, /https\?/u);
+  assert.match(sql, /signed/u);
+  assert.match(sql, /raw/u);
+  assert.match(sql, /provider/u);
+  assert.match(sql, /\[0-9a-f\]\{64\}/u);
+  assert.match(sql, /perform public\.assert_safe_pro_lifecycle_result/u);
+  assert.match(sql, /revoke all on function public\.assert_safe_pro_lifecycle_result/u);
+});
+
+test('audit and term producers structurally cannot accept protected payload channels', () => {
+  const workflow = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260821101000_0069_pro_lifecycle_workflows.sql'),
+    'utf8',
+  );
+  const audit = workflow.slice(
+    workflow.indexOf('create or replace function public.write_pro_lifecycle_audit'),
+    workflow.indexOf('create or replace function public.pro_lifecycle_replay_result'),
+  );
+  assert.match(audit, /p_action text,[\s\S]*p_entity_id uuid,[\s\S]*p_version bigint/u);
+  assert.doesNotMatch(audit, /p_(?:details|payload|identifier|ciphertext|hash|path|url|error)/iu);
+  assert.match(
+    audit,
+    /jsonb_build_object\([\s\S]*'action'[\s\S]*'targetProProfileId'[\s\S]*'entityId'[\s\S]*'version'/u,
+  );
+
+  const schema = readFileSync(
+    join(process.cwd(), 'supabase/migrations/20260821100000_0068_pro_lifecycle_schema.sql'),
+    'utf8',
+  );
+  const termEvents = schema.slice(
+    schema.indexOf('create table public.pro_commercial_term_events'),
+    schema.indexOf('create table public.pro_lifecycle_operation_receipts'),
+  );
+  assert.doesNotMatch(
+    termEvents,
+    /\b(?:json|jsonb|details|reason|identifier|ciphertext|hash|path|url|error)\b/iu,
+  );
+
+  const credentialDal = readFileSync('src/lib/data/pro-credentials.ts', 'utf8');
+  assert.match(credentialDal, /encrypt\(parsed\.identifier\)/u);
+  assert.match(credentialDal, /createBlindIndex\([^;]*parsed\.identifier/u);
+  assert.doesNotMatch(credentialDal, /p_identifier(?:\W|$)/u);
+  const downloadRoute = readFileSync(
+    'src/app/api/v1/account/pro/credentials/evidence/download/route.ts',
+    'utf8',
+  );
+  assert.doesNotMatch(downloadRoute, /signedUrl|signed_url|createSignedUrl/iu);
+  assert.doesNotMatch(workflow, /p_(?:signed_url|raw_error)/iu);
 });
 
 test('0070 reconciles live access, term-linked assignments, grants, and legacy columns', () => {
