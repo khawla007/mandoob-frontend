@@ -40,10 +40,6 @@ delete from public.company_profiles where id in (
   select ('95000000-0000-4000-8000-' || pg_catalog.lpad(value::text, 12, '0'))::uuid
   from pg_catalog.generate_series(31, 36) value
 );
-delete from public.tenants where id in (
-  select ('95000000-0000-4000-8000-' || pg_catalog.lpad(value::text, 12, '0'))::uuid
-  from pg_catalog.generate_series(21, 26) value
-);
 delete from public.pro_profiles where profile_id in (
   select ('95000000-0000-4000-8000-' || pg_catalog.lpad(value::text, 12, '0'))::uuid
   from pg_catalog.generate_series(11, 17) value
@@ -53,6 +49,10 @@ delete from public.profiles where id in (
 ) or id in (
   select ('95000000-0000-4000-8000-' || pg_catalog.lpad(value::text, 12, '0'))::uuid
   from pg_catalog.generate_series(11, 17) value
+);
+delete from public.tenants where id in (
+  select ('95000000-0000-4000-8000-' || pg_catalog.lpad(value::text, 12, '0'))::uuid
+  from pg_catalog.generate_series(21, 26) value
 );
 delete from auth.users where id in (
   '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000002'

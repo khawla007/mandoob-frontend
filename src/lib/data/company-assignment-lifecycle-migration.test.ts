@@ -260,6 +260,10 @@ test('concurrency runner always tears down fixtures and creates no helper table'
   assert.match(teardown, /drop table if exists public\.assignment_concurrency_fixture_ids/u);
   assert.match(teardown, /delete from public\.pro_assignment_term_links/u);
   assert.match(teardown, /delete from public\.pro_company_assignments/u);
+  assert.ok(
+    teardown.indexOf('delete from public.profiles') <
+      teardown.indexOf('delete from public.tenants'),
+  );
   assert.match(teardown, /delete from public\.company_profiles/u);
   assert.match(teardown, /delete from public\.tenants/u);
   assert.match(teardown, /delete from auth\.users/u);
