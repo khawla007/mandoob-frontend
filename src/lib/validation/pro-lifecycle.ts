@@ -83,14 +83,22 @@ export const proDecisionReasonCodeSchema = z
   .trim()
   .regex(/^[A-Z][A-Z0-9_]{1,63}$/u);
 
+const structuredDecisionSecretPatterns = [
+  /\bv[0-9]+:[A-Za-z0-9+/]{16}:[A-Za-z0-9+/]{22}==:[A-Za-z0-9+/]+={0,2}(?:\b|$)/u,
+  /https?:\/\/[^\s]+\/storage\/v1\/object\/sign\/[^\s?]+[?&][^\s]*(?:token|signature|x-amz-signature)=/iu,
+  /\b(?:identifier[ _-]*hash|sha-?256)\s*[:=]\s*[0-9a-f]{64}\b/iu,
+  /\b(?:raw[ _-]*provider[ _-]*error|provider[ _-]*error\s*[:=])/iu,
+] as const;
+
 export const proDecisionReasonSchema = z
   .string()
   .superRefine((value, context) => {
     if (
       /[\u0000-\u001f\u007f]/u.test(value) ||
-      /(pro-credentials\/|storage_path|identifier_(?:ciphertext|hash)|sha256|sqlstate)/iu.test(
+      /(pro-credentials\/|storage_path|identifier_ciphertext|sqlstate)/iu.test(
         value,
       ) ||
+      structuredDecisionSecretPatterns.some((pattern) => pattern.test(value)) ||
       /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/iu.test(value)
     )
       context.addIssue({ code: 'custom', message: 'Unsafe decision reason' });

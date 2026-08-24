@@ -539,6 +539,22 @@ test('0083 preserves approved reason and authority values behind structural guar
   assert.match(fixture, /revoke_pro_credential/u);
 });
 
+test('0084 rejects structured decision secrets without restoring generic value blacklists', () => {
+  const path = join(
+    process.cwd(),
+    'supabase/migrations/20260824160000_0084_pro_decision_structured_secret_guards.sql',
+  );
+  assert.equal(existsSync(path), true);
+  const sql = readFileSync(path, 'utf8').replace(/\s+/gu, ' ').toLowerCase();
+  assert.match(sql, /create or replace function public\.assert_safe_pro_decision_reason/u);
+  assert.match(sql, /storage\/v1\/object\/sign/u);
+  assert.match(sql, /identifier\[ _-\]\*hash/u);
+  assert.match(sql, /raw\[ _-\]\*provider\[ _-\]\*error/u);
+  assert.match(sql, /v\[0-9\]\+:/u);
+  assert.doesNotMatch(sql, /or p_reason ~\* 'https\?:\/\/'/u);
+  assert.doesNotMatch(sql, /or p_reason ~\* '\[0-9a-f\]\{64\}'/u);
+});
+
 test('audit and term producers structurally cannot accept protected payload channels', () => {
   const workflow = readFileSync(
     join(process.cwd(), 'supabase/migrations/20260821101000_0069_pro_lifecycle_workflows.sql'),

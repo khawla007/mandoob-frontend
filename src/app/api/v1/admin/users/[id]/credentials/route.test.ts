@@ -237,6 +237,52 @@ test('unsafe identifier decision reason is sanitized and never reaches mutation'
   assert.equal(mutations, 0);
 });
 
+test('structured secret reasons return a sanitized validation error before mutation', async () => {
+  let mutations = 0;
+  const handler = createAdminCredentialPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    review: async () => {
+      mutations += 1;
+      return null;
+    },
+    revalidate: () => undefined,
+  });
+  for (const reason of [
+    'Credential ciphertext: v1:QUFBQUFBQUFBQUFB:QkJCQkJCQkJCQkJCQkJCQg==:VEFTSzEzQ0FORElEQVRF',
+    'Credential signed URL: https://storage.invalid/storage/v1/object/sign/pro-credentials/file.pdf?token=TASK13-CANARY',
+    `Identifier hash: ${'0123456789abcdef'.repeat(4)}`,
+    'Raw provider error: TASK13-CANARY-RAW-PROVIDER-ERROR',
+  ]) {
+    const response = await handler(
+      req({
+        command: 'reject',
+        credentialId: C,
+        expectedVersion: 1,
+        operationId: O,
+        reasonCode: 'DOCUMENT_INVALID',
+        reason,
+      }),
+      { params: Promise.resolve({ id: P }) },
+    );
+    const payload = await response.json();
+    const body = JSON.stringify(payload);
+    assert.equal(response.status, 400);
+    assert.deepEqual(payload, { error: 'Invalid request', code: 'VALIDATION_FAILED' });
+    assert.doesNotMatch(body, /TASK13|QUFB|012345|storage\.invalid/iu);
+  }
+  assert.equal(mutations, 0);
+});
+
 test('operator review rejects protected mutation output at the route JSON boundary', async () => {
   const canaries = [
     'TASK13-CANARY-IDENTIFIER-9Z72',

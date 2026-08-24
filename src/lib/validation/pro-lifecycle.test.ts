@@ -113,6 +113,36 @@ test('review reasons are normalized and required for reject and revoke only', ()
   }
 });
 
+test('review reasons reject structured credential secrets without blocking ordinary content', () => {
+  const base = { expectedVersion: 2, operationId: OPERATION_ID, reasonCode: 'DOCUMENT_INVALID' };
+  const secretReasons = [
+    'Credential ciphertext: v1:QUFBQUFBQUFBQUFB:QkJCQkJCQkJCQkJCQkJCQg==:VEFTSzEzQ0FORElEQVRF',
+    'Credential signed URL: https://storage.invalid/storage/v1/object/sign/pro-credentials/file.pdf?token=TASK13-CANARY',
+    `Identifier hash: ${'0123456789abcdef'.repeat(4)}`,
+    'Raw provider error: TASK13-CANARY-RAW-PROVIDER-ERROR',
+  ];
+  for (const command of ['reject', 'revoke'] as const) {
+    for (const reason of secretReasons) {
+      const result = proCredentialReviewSchema.safeParse({ ...base, command, reason });
+      assert.equal(result.success, false, `${command}: ${reason}`);
+      if (!result.success)
+        assert.doesNotMatch(JSON.stringify(result.error.flatten()), /TASK13|QUFB|012345/iu);
+    }
+    for (const reason of [
+      'The identifier could not be verified',
+      'See https://authority.example for validation guidance',
+      `Public case reference ${'0123456789abcdef'.repeat(4)}`,
+      'Public revision v2: awaiting confirmation',
+    ]) {
+      assert.equal(
+        proCredentialReviewSchema.safeParse({ ...base, command, reason }).success,
+        true,
+        `${command}: ${reason}`,
+      );
+    }
+  }
+});
+
 test('evidence metadata permits only clean supported files up to 10 MiB', () => {
   const valid = {
     mimeType: 'application/pdf',

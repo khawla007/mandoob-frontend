@@ -52,6 +52,12 @@ declare
     'signedUrl',
     'rawError'
   ];
+  v_secret_reasons text[] := array[
+    'Credential ciphertext: v1:QUFBQUFBQUFBQUFB:QkJCQkJCQkJCQkJCQkJCQg==:VEFTSzEzQ0FORElEQVRF',
+    'Credential signed URL: https://storage.invalid/storage/v1/object/sign/pro-credentials/file.pdf?token=TASK13-CANARY-SIGNED-URL',
+    'Identifier hash: ' || repeat('0123456789abcdef', 4),
+    'Raw provider error: TASK13-CANARY-RAW-PROVIDER-ERROR'
+  ];
 begin
   select id into strict v_credential_id
   from public.pro_credentials
@@ -81,6 +87,18 @@ begin
     '91000000-0000-4000-8000-000000000001', v_credential_id, 3,
     '91000000-0000-4000-8000-000000000016', repeat('5', 64)
   );
+  foreach v_canary in array v_secret_reasons loop
+    begin
+      perform public.reject_pro_credential(
+        '91000000-0000-4000-8000-000000000001', v_credential_id, 4,
+        '91000000-0000-4000-8000-000000000018', repeat('8', 64),
+        'UNSAFE_REASON', v_canary
+      );
+      raise exception 'EXPECTED_INVALID_DECISION_REASON';
+    exception when others then
+      if sqlerrm <> 'INVALID_DECISION_REASON' then raise; end if;
+    end;
+  end loop;
   begin
     perform public.reject_pro_credential(
       '91000000-0000-4000-8000-000000000001', v_credential_id, 4,
@@ -103,6 +121,18 @@ begin
   if not public.has_current_pro_credential('91000000-0000-4000-8000-000000000002') then
     raise exception 'VERIFIED_CREDENTIAL_NOT_CURRENT';
   end if;
+  foreach v_canary in array v_secret_reasons loop
+    begin
+      perform public.revoke_pro_credential(
+        '91000000-0000-4000-8000-000000000001', v_credential_id, 5,
+        '91000000-0000-4000-8000-000000000029', repeat('f', 64),
+        'UNSAFE_REASON', v_canary
+      );
+      raise exception 'EXPECTED_INVALID_DECISION_REASON';
+    exception when others then
+      if sqlerrm <> 'INVALID_DECISION_REASON' then raise; end if;
+    end;
+  end loop;
   update public.pro_credentials
   set issue_date = current_date - 365, expiry_date = current_date - 1
   where id = v_credential_id;
