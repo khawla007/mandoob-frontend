@@ -178,6 +178,8 @@ test('concurrency gate has deterministic setup and bounded portable orchestratio
   for (const name of ['one-pro', 'one-company', 'release-assign', 'swap-reassign'])
     assert.match(runner, new RegExp(name, 'u'));
   assert.match(setup, /assignment_concurrency_ready/u);
+  assert.doesNotMatch(setup, /public\.user_role/u);
+  assert.match(setup, /role::public\.app_role/u);
   for (const fixture of [
     'company_assignment_concurrency_session_b.sql',
     'company_assignment_swap_reassign_session_b.sql',

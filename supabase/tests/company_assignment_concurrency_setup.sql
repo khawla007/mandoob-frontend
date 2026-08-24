@@ -90,7 +90,7 @@ on conflict (id) do update set
   raw_user_meta_data = '{}'::jsonb,
   updated_at = pg_catalog.now();
 insert into public.profiles (id, role, status, full_name)
-select id, role::public.user_role, 'active', name from (values
+select id, role::public.app_role, 'active', name from (values
   ('95000000-0000-4000-8000-000000000001'::uuid, 'super_admin', 'Concurrency Admin A'),
   ('95000000-0000-4000-8000-000000000002'::uuid, 'admin', 'Concurrency Admin B'),
   ('95000000-0000-4000-8000-000000000011'::uuid, 'pro', 'Concurrency PRO 1'),
