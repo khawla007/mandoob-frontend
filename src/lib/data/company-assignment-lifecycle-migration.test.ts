@@ -153,6 +153,12 @@ test('assignment lifecycle fixture covers eligibility, replay, rollback, races, 
     assert.equal(existsSync(join(process.cwd(), 'supabase/tests', fixture)), true, fixture);
 });
 
+test('assignment lifecycle fixture uses the persisted disabled profile status', () => {
+  const sql = normalized(fixturePath);
+  assert.doesNotMatch(sql, /set status = 'inactive'/u);
+  assert.match(sql, /set status = 'disabled'/u);
+});
+
 test('concurrency gate has deterministic setup and bounded portable orchestration', () => {
   const runner = readFileSync(join(process.cwd(), runnerPath), 'utf8');
   const setup = normalized('supabase/tests/company_assignment_concurrency_setup.sql');

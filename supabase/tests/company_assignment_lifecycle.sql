@@ -83,7 +83,7 @@ end;
 $$;
 
 -- Exhaustive evaluator states: each mutation is rolled back automatically with the fixture.
-update public.profiles set status = 'inactive' where id = '94000000-0000-4000-8000-000000000013';
+update public.profiles set status = 'disabled' where id = '94000000-0000-4000-8000-000000000013';
 select pg_temp.assert_eligibility_code('94000000-0000-4000-8000-000000000013', null, 'PRO_ACCOUNT_INACTIVE');
 update public.profiles set status = 'active' where id = '94000000-0000-4000-8000-000000000013';
 delete from public.pro_credentials where pro_profile_id = '94000000-0000-4000-8000-000000000013';
