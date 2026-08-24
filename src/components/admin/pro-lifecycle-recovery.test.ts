@@ -105,7 +105,7 @@ renderTest('every recovery form has its localized English and Arabic accessible 
 renderTest('all registry account states render text with distinct Lucide semantics', async () => {
   const { renderToStaticMarkup } = await import('react-dom/server');
   const { ProAccountStatusBadge } = await import('./ProLifecycleStatusBadge');
-  for (const status of ['active', 'invited', 'inactive', 'disabled', 'suspended'] as const) {
+  for (const status of ['active', 'invited', 'disabled', 'suspended'] as const) {
     const html = renderToStaticMarkup(
       React.createElement(ProAccountStatusBadge, { status, label: `localized-${status}` }),
     );

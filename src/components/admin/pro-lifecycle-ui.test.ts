@@ -125,7 +125,6 @@ test('credential surface is masked-only, semantic, evidence-owned, and exposes l
   for (const [state, icon] of [
     ['active', 'CircleCheck'],
     ['invited', 'Mail'],
-    ['inactive', 'CircleMinus'],
     ['disabled', 'Ban'],
     ['suspended', 'CirclePause'],
   ]) {

@@ -21,7 +21,7 @@ const rowSchema = z
     fullName: z.string().nullable(),
     email: z.string().email().nullable(),
     emailUnavailable: z.boolean(),
-    accountStatus: z.enum(['active', 'invited', 'inactive', 'disabled', 'suspended']),
+    accountStatus: z.enum(['active', 'invited', 'disabled', 'suspended']),
     credentialState: z.enum(PRO_CREDENTIAL_STATES).nullable(),
     credentialExpiry: z
       .string()

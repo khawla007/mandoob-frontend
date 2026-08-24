@@ -113,6 +113,50 @@ test('registry rejects malformed output and sanitizes database errors', async ()
   }
 });
 
+test('registry rejects synthetic inactive account status from RPC rows', async () => {
+  const { listProRegistry } = await import('./pro-registry');
+  await assert.rejects(
+    () =>
+      listProRegistry(
+        ACTOR_ID,
+        { role: 'pro', sort: 'created_at', direction: 'desc', page: 1 },
+        {
+          supabase: {
+            async rpc() {
+              return {
+                data: {
+                  items: [
+                    {
+                      id: PRO_ID,
+                      fullName: 'Fatima Noor',
+                      email: 'fatima@example.com',
+                      emailUnavailable: false,
+                      accountStatus: 'inactive',
+                      credentialState: null,
+                      credentialExpiry: null,
+                      eligible: false,
+                      eligibilityCodes: ['PRO_ACCOUNT_INACTIVE'],
+                      assigned: false,
+                      companyId: null,
+                      companyName: null,
+                      createdAt: '2026-08-01T10:00:00.000Z',
+                    },
+                  ],
+                  total: 1,
+                  page: 1,
+                  pageSize: 25,
+                  totalPages: 1,
+                },
+                error: null,
+              };
+            },
+          } as never,
+        },
+      ),
+    (error: unknown) => error instanceof Error && 'code' in error && error.code === 'INTERNAL',
+  );
+});
+
 test('registry returns one exact stale-page read for the server redirect boundary', async () => {
   const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
   const { listProRegistry } = await import('./pro-registry');
