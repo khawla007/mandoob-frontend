@@ -1,4 +1,5 @@
 import 'server-only';
+import { createConnection } from 'node:net';
 import { env } from '@/lib/env';
 
 export type FileScanResult = {
@@ -11,6 +12,12 @@ export type ScanFileOptions = {
   filename?: string;
   timeoutMs?: number;
   pollIntervalMs?: number;
+  clamav?: { host: string; port: number };
+  clamavScanner?: (
+    data: Uint8Array,
+    endpoint: { host: string; port: number },
+    timeoutMs: number,
+  ) => Promise<FileScanResult>;
 };
 
 const VIRUSTOTAL_API_BASE = 'https://www.virustotal.com/api/v3';
@@ -45,6 +52,47 @@ function unavailable(provider = 'virustotal'): FileScanResult {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseClamAvResponse(response: string): FileScanResult {
+  if (/\bOK\s*\0?$/u.test(response)) return { clean: true, provider: 'clamav' };
+  if (/\bFOUND\s*\0?$/u.test(response))
+    return { clean: false, reason: 'malware_detected', provider: 'clamav' };
+  return unavailable('clamav');
+}
+
+async function scanWithClamAv(
+  data: Uint8Array,
+  endpoint: { host: string; port: number },
+  timeoutMs: number,
+): Promise<FileScanResult> {
+  return new Promise((resolve) => {
+    let response = '';
+    let settled = false;
+    const finish = (result: FileScanResult) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(result);
+    };
+    const socket = createConnection(endpoint);
+    socket.setTimeout(timeoutMs);
+    socket.once('connect', () => {
+      socket.write(Buffer.from('zINSTREAM\0', 'utf8'));
+      const length = Buffer.allocUnsafe(4);
+      length.writeUInt32BE(data.byteLength);
+      socket.write(length);
+      socket.write(data);
+      socket.end(Buffer.alloc(4));
+    });
+    socket.on('data', (chunk: Buffer) => {
+      response += chunk.toString('utf8');
+      if (response.includes('\0') || response.includes('\n')) finish(parseClamAvResponse(response));
+    });
+    socket.once('end', () => finish(parseClamAvResponse(response)));
+    socket.once('timeout', () => finish(unavailable('clamav')));
+    socket.once('error', () => finish(unavailable('clamav')));
+  });
 }
 
 function readStats(payload: VirusTotalAnalysis): {
@@ -117,6 +165,23 @@ export async function scanFile(
   const data = toUint8Array(buf);
   if (containsEicar(data)) {
     return { clean: false, reason: 'eicar_test', provider: 'local' };
+  }
+
+  const clamav =
+    opts.clamav ??
+    (env.CLAMAV_HOST && env.CLAMAV_PORT
+      ? { host: env.CLAMAV_HOST, port: env.CLAMAV_PORT }
+      : undefined);
+  if (clamav) {
+    try {
+      return await (opts.clamavScanner ?? scanWithClamAv)(
+        data,
+        clamav,
+        opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      );
+    } catch {
+      return unavailable('clamav');
+    }
   }
 
   try {

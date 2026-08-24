@@ -42,6 +42,22 @@ test('scanFile rejects the EICAR test vector locally', async () => {
   assert.equal(result.provider, 'local');
 });
 
+test('scanFile accepts a clean file through an isolated ClamAV INSTREAM endpoint', async () => {
+  const { scanFile } = await load();
+  const result = await scanFile(Buffer.from('%PDF-1.4 clean'), {
+    filename: 'clean.pdf',
+    timeoutMs: 5_000,
+    clamav: { host: '127.0.0.1', port: 3310 },
+    clamavScanner: async (data, endpoint, timeoutMs) => {
+      assert.equal(Buffer.from(data).toString('utf8'), '%PDF-1.4 clean');
+      assert.deepEqual(endpoint, { host: '127.0.0.1', port: 3310 });
+      assert.equal(timeoutMs, 5_000);
+      return { clean: true, provider: 'clamav' };
+    },
+  });
+  assert.deepEqual(result, { clean: true, provider: 'clamav' });
+});
+
 test('scanFile returns clean when VirusTotal completes with no detections', async () => {
   const getCalls = mockFetch([
     Response.json({ data: { id: 'analysis-id' } }),
