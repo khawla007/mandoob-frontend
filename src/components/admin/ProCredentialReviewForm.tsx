@@ -116,7 +116,7 @@ export function ProCredentialReviewForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} aria-busy={pending} className="space-y-4">
       {error ? (
         <Alert ref={errorRef} tabIndex={-1} variant="destructive">
           <AlertTitle>{t('errorTitle')}</AlertTitle>

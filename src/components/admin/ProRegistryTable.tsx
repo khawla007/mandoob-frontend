@@ -1,14 +1,6 @@
 import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
-import {
-  ArrowDown,
-  ArrowUp,
-  Building2,
-  ChevronsUpDown,
-  CircleCheck,
-  CircleX,
-  UserRoundCheck,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, Building2, ChevronsUpDown, CircleCheck, CircleX } from 'lucide-react';
 
 import {
   buildProRegistryHref,
@@ -25,7 +17,7 @@ import {
 } from '@/components/ui/table';
 import type { ProRegistryRow } from '@/lib/data/pro-registry';
 import { formatProRegistryDate } from './pro-registry-format';
-import { ProCredentialStatusBadge } from './ProLifecycleStatusBadge';
+import { ProAccountStatusBadge, ProCredentialStatusBadge } from './ProLifecycleStatusBadge';
 
 const sortable = [
   ['full_name', 'name'],
@@ -105,19 +97,19 @@ export async function ProRegistryTable({
                   </Badge>
                 )}
               </TableCell>
-              <TableCell className="font-mono text-xs">
+              <TableCell className="font-mono text-xs" dir="ltr">
                 {row.credentialExpiry
                   ? formatProRegistryDate(row.credentialExpiry, locale)
                   : t('notAvailable')}
               </TableCell>
-              <TableCell className="font-mono text-xs">
+              <TableCell className="font-mono text-xs" dir="ltr">
                 {formatProRegistryDate(row.createdAt, locale)}
               </TableCell>
               <TableCell>
-                <Badge variant="secondary">
-                  <UserRoundCheck aria-hidden />
-                  {t(`account.${row.accountStatus}`)}
-                </Badge>
+                <ProAccountStatusBadge
+                  status={row.accountStatus}
+                  label={t(`account.${row.accountStatus}`)}
+                />
               </TableCell>
               <TableCell>
                 <span className="inline-flex items-center gap-1">

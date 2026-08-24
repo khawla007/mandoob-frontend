@@ -1,18 +1,14 @@
-import Link from 'next/link';
-import { CircleDollarSign, RotateCcw } from 'lucide-react';
+import { CircleDollarSign } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { formatAedMinor } from '@/lib/data/pro-commercial-terms';
-import type { ProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
+import { formatAedMinor, type ProCommercialTerm } from '@/lib/data/pro-commercial-terms';
 import { ProCommercialTermForm } from './ProCommercialTermForm';
 import { formatProCommercialDate } from './pro-lifecycle-ui';
 import { ProTermStatusBadge } from './ProLifecycleStatusBadge';
+import { ProLifecycleRecoveryPanel } from './ProLifecycleRecoveryPanel';
 
-export type ProTermsSourceState =
-  | { kind: 'ready'; terms: ProLifecycleDetail['commercialTerms'] }
-  | { kind: 'error' };
+export type ProTermsSourceState = { kind: 'ready'; terms: ProCommercialTerm[] } | { kind: 'error' };
 
 export async function ProCommercialTermsPanel({
   userId,
@@ -20,31 +16,19 @@ export async function ProCommercialTermsPanel({
   sourceState,
 }: {
   userId: string;
-  terms: ProLifecycleDetail['commercialTerms'];
+  terms: ProCommercialTerm[];
   sourceState?: ProTermsSourceState;
 }) {
   const [t, locale] = await Promise.all([getTranslations('admin.user.proLifecycle'), getLocale()]);
   const resolved = sourceState ?? { kind: 'ready', terms };
   if (resolved.kind === 'error') {
     return (
-      <Card className="border-[var(--lifecycle-border)] bg-[var(--lifecycle-surface)]">
-        <CardHeader>
-          <CardTitle>
-            <h2>{t('terms.title')}</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p role="status" aria-live="polite" className="text-muted-foreground text-sm">
-            {t('terms.loadError')}
-          </p>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href={`/admin/users/${userId}`}>
-              <RotateCcw aria-hidden />
-              {t('terms.retry')}
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <ProLifecycleRecoveryPanel
+        title={t('terms.title')}
+        description={t('terms.loadError')}
+        retryLabel={t('terms.retry')}
+        action={`/admin/users/${userId}`}
+      />
     );
   }
   const availableTerms = resolved.terms;
@@ -81,7 +65,7 @@ export async function ProCommercialTermsPanel({
                         <dl className="grid grid-cols-2 gap-3 text-sm">
                           <div>
                             <dt className="text-muted-foreground text-xs">{t('terms.amount')}</dt>
-                            <dd className="mt-1 tabular-nums">
+                            <dd className="mt-1 tabular-nums" dir="ltr">
                               {formatAedMinor(
                                 current.amountMinor,
                                 locale === 'ar' ? 'ar-AE' : 'en-AE',
@@ -106,12 +90,12 @@ export async function ProCommercialTermsPanel({
                               {t('terms.effectivePeriod')}
                             </dt>
                             <dd className="mt-1">
-                              <time dateTime={current.effectiveFrom}>
+                              <time dateTime={current.effectiveFrom} dir="ltr">
                                 {formatProCommercialDate(current.effectiveFrom, locale)}
                               </time>{' '}
                               –{' '}
                               {current.effectiveTo ? (
-                                <time dateTime={current.effectiveTo}>
+                                <time dateTime={current.effectiveTo} dir="ltr">
                                   {formatProCommercialDate(current.effectiveTo, locale)}
                                 </time>
                               ) : (
@@ -185,16 +169,16 @@ export async function ProCommercialTermsPanel({
                         ? t(`terms.intervals.${term.retainerInterval}`)
                         : t('terms.notApplicable')}
                     </td>
-                    <td className="p-2 tabular-nums">
+                    <td className="p-2 tabular-nums" dir="ltr">
                       {formatAedMinor(term.amountMinor, locale === 'ar' ? 'ar-AE' : 'en-AE')}
                     </td>
                     <td className="p-2 whitespace-nowrap">
-                      <time dateTime={term.effectiveFrom}>
+                      <time dateTime={term.effectiveFrom} dir="ltr">
                         {formatProCommercialDate(term.effectiveFrom, locale)}
                       </time>{' '}
                       –{' '}
                       {term.effectiveTo ? (
-                        <time dateTime={term.effectiveTo}>
+                        <time dateTime={term.effectiveTo} dir="ltr">
                           {formatProCommercialDate(term.effectiveTo, locale)}
                         </time>
                       ) : (
@@ -207,7 +191,9 @@ export async function ProCommercialTermsPanel({
                         label={t(`terms.statuses.${term.status}`)}
                       />
                     </td>
-                    <td className="p-2 font-mono tabular-nums">{term.version}</td>
+                    <td className="p-2 font-mono tabular-nums" dir="ltr">
+                      {term.version}
+                    </td>
                   </tr>
                 ))}
               </tbody>

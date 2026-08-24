@@ -1953,6 +1953,7 @@
         "account": {
           "active": "نشط",
           "invited": "مدعو",
+          "inactive": "غير نشط",
           "disabled": "معطّل",
           "suspended": "موقوف"
         },

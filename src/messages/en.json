@@ -1953,6 +1953,7 @@
         "account": {
           "active": "Active",
           "invited": "Invited",
+          "inactive": "Inactive",
           "disabled": "Disabled",
           "suspended": "Suspended"
         },

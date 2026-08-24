@@ -2,6 +2,7 @@ import {
   Ban,
   CalendarX2,
   CircleCheck,
+  CircleMinus,
   CirclePause,
   ClockAlert,
   FilePenLine,
@@ -15,11 +16,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { ProCredentialState } from '@/lib/pro-lifecycle/contracts';
 
-export type ProAccountStatus = 'active' | 'invited' | 'disabled' | 'suspended';
+export type ProAccountStatus = 'active' | 'invited' | 'inactive' | 'disabled' | 'suspended';
 
 const ACCOUNT_STATUS_ICONS = {
   active: CircleCheck,
   invited: Mail,
+  inactive: CircleMinus,
   disabled: Ban,
   suspended: CirclePause,
 } satisfies Record<ProAccountStatus, typeof CircleCheck>;
@@ -27,6 +29,7 @@ const ACCOUNT_STATUS_ICONS = {
 const ACCOUNT_STATUS_VARIANTS = {
   active: 'default',
   invited: 'secondary',
+  inactive: 'outline',
   disabled: 'outline',
   suspended: 'destructive',
 } as const satisfies Record<ProAccountStatus, React.ComponentProps<typeof Badge>['variant']>;

@@ -13,12 +13,9 @@ import {
 } from '@/components/admin/ProLifecycleStatusBadge';
 import { parseProTimelineSearchParams } from '@/components/admin/pro-lifecycle-ui';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
-import { readProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
-import { readProLifecycleTimeline } from '@/lib/data/pro-lifecycle-timeline';
-import { readProCredentialSnapshot } from '@/lib/data/pro-credentials';
-import { readProCommercialTerms } from '@/lib/data/pro-commercial-terms';
 import { ApiError } from '@/lib/errors';
 import { isUuid } from '@/lib/util/uuid';
+import { loadProLifecyclePage } from './page-orchestration';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,29 +33,13 @@ export default async function ProLifecycleDetailPage({
   const timelineSelection = parseProTimelineSearchParams((await searchParams).timeline);
   let snapshot;
   try {
-    snapshot = await readProLifecycleDetail(operator.id, id);
+    snapshot = await loadProLifecyclePage(operator.id, id, timelineSelection.cursor);
   } catch (error) {
     if (error instanceof ApiError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
 
-  const [credentialResult, termsResult, timelineResult] = await Promise.allSettled([
-    readProCredentialSnapshot(operator.id, id),
-    readProCommercialTerms(operator.id, id),
-    readProLifecycleTimeline(operator.id, id, 25, timelineSelection.cursor),
-  ]);
-  const credentialState =
-    credentialResult.status === 'fulfilled'
-      ? { kind: 'ready' as const, ...credentialResult.value }
-      : { kind: 'error' as const };
-  const termsState =
-    termsResult.status === 'fulfilled'
-      ? { kind: 'ready' as const, terms: termsResult.value }
-      : { kind: 'error' as const };
-  const timelineState =
-    timelineResult.status === 'fulfilled'
-      ? { kind: 'ready' as const, timelinePage: timelineResult.value }
-      : { kind: 'error' as const };
+  const { identity, credentialState, termsState, timelineState } = snapshot;
 
   const t = await getTranslations('admin.user.proRegistry');
   return (
@@ -69,12 +50,12 @@ export default async function ProLifecycleDetailPage({
             {t('detailEyebrow')}
           </p>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {snapshot.profile.fullName ?? t('unnamed')}
+            {identity.profile.fullName ?? t('unnamed')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('detailDescription')}</p>
         </div>
         <Button asChild variant="outline" className="min-h-11">
-          <Link href={`/admin/users/${snapshot.profile.id}/edit`}>{t('editProfile')}</Link>
+          <Link href={`/admin/users/${identity.profile.id}/edit`}>{t('editProfile')}</Link>
         </Button>
       </div>
       <Card>
@@ -86,25 +67,25 @@ export default async function ProLifecycleDetailPage({
             <div>
               <dt className="text-muted-foreground text-xs">{t('email')}</dt>
               <dd className="mt-1 text-sm">
-                {snapshot.profile.emailUnavailable ? t('emailUnavailable') : snapshot.profile.email}
+                {identity.profile.emailUnavailable ? t('emailUnavailable') : identity.profile.email}
               </dd>
             </div>
             <div>
               <dt className="text-muted-foreground text-xs">{t('accountStatusLabel')}</dt>
               <dd className="mt-1">
                 <ProAccountStatusBadge
-                  status={snapshot.profile.accountStatus}
-                  label={t(`account.${snapshot.profile.accountStatus}`)}
+                  status={identity.profile.accountStatus}
+                  label={t(`account.${identity.profile.accountStatus}`)}
                 />
               </dd>
             </div>
             <div>
               <dt className="text-muted-foreground text-xs">{t('credentialStatus')}</dt>
               <dd className="mt-1">
-                {snapshot.credentials[0] ? (
+                {credentialState.kind === 'ready' && credentialState.credentials[0] ? (
                   <ProCredentialStatusBadge
-                    state={snapshot.credentials[0].state}
-                    label={t(`credential.${snapshot.credentials[0].state}`)}
+                    state={credentialState.credentials[0].state}
+                    label={t(`credential.${credentialState.credentials[0].state}`)}
                   />
                 ) : (
                   t('notAvailable')
@@ -114,8 +95,8 @@ export default async function ProLifecycleDetailPage({
             <div>
               <dt className="text-muted-foreground text-xs">{t('assignmentStatus')}</dt>
               <dd className="mt-1 text-sm">
-                {snapshot.assignment
-                  ? (snapshot.assignment.companyName ?? t('notAvailable'))
+                {identity.assignment
+                  ? (identity.assignment.companyName ?? t('notAvailable'))
                   : t('unassigned')}
               </dd>
             </div>
@@ -123,20 +104,25 @@ export default async function ProLifecycleDetailPage({
         </CardContent>
       </Card>
       <ProCredentialPanel
-        userId={snapshot.profile.id}
-        credentials={snapshot.credentials}
-        evidence={snapshot.evidence}
+        userId={identity.profile.id}
+        credentials={credentialState.kind === 'ready' ? credentialState.credentials : []}
+        evidence={credentialState.kind === 'ready' ? credentialState.evidence : []}
         sourceState={credentialState}
       />
       <ProCommercialTermsPanel
-        userId={snapshot.profile.id}
-        terms={snapshot.commercialTerms}
+        userId={identity.profile.id}
+        terms={termsState.kind === 'ready' ? termsState.terms : []}
         sourceState={termsState}
       />
       <ProLifecycleTimeline
-        userId={snapshot.profile.id}
-        timelinePage={snapshot.timeline}
+        userId={identity.profile.id}
+        timelinePage={
+          timelineState.kind === 'ready'
+            ? timelineState.timelinePage
+            : { items: [], nextCursor: null }
+        }
         invalidCursor={timelineSelection.invalid}
+        retryCursor={timelineSelection.cursor}
         sourceState={timelineState}
       />
     </div>

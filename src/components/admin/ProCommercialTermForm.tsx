@@ -9,13 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { postJson } from '@/lib/http/post';
-import type { ProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
+import type { ProCommercialTerm } from '@/lib/data/pro-commercial-terms';
 import {
   claimFormSubmission,
   releaseFormSubmission,
 } from '@/components/admin/form-submission-guard';
 
-type Term = ProLifecycleDetail['commercialTerms'][number];
+type Term = ProCommercialTerm;
 
 function amountToMinor(value: string): number | null {
   const normalized = value.trim();
@@ -128,7 +128,7 @@ export function ProCommercialTermForm({
   }
 
   return (
-    <form onSubmit={submit} className="mt-4 space-y-4">
+    <form onSubmit={submit} aria-busy={pending} className="mt-4 space-y-4">
       {error ? (
         <Alert ref={errorRef} tabIndex={-1} variant="destructive">
           <AlertTitle>{t('errorTitle')}</AlertTitle>

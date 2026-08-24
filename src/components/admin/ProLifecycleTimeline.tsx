@@ -1,21 +1,24 @@
 import Link from 'next/link';
-import { CalendarClock, RotateCcw, UserRound } from 'lucide-react';
+import { CalendarClock, UserRound } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ProLifecycleTimelinePage } from '@/lib/data/pro-lifecycle-timeline';
 import { buildProTimelineHref, formatProLifecycleTimestamp } from './pro-lifecycle-ui';
+import { ProLifecycleRecoveryPanel } from './ProLifecycleRecoveryPanel';
 
 export async function ProLifecycleTimeline({
   userId,
   timelinePage,
   invalidCursor,
+  retryCursor,
   sourceState,
 }: {
   userId: string;
   timelinePage: ProLifecycleTimelinePage;
   invalidCursor: boolean;
+  retryCursor?: string | null;
   sourceState?: { kind: 'ready'; timelinePage: ProLifecycleTimelinePage } | { kind: 'error' };
 }) {
   const [t, locale] = await Promise.all([
@@ -25,24 +28,13 @@ export async function ProLifecycleTimeline({
   const resolved = sourceState ?? { kind: 'ready', timelinePage };
   if (resolved.kind === 'error') {
     return (
-      <Card className="border-[var(--lifecycle-border)] bg-[var(--lifecycle-surface)]">
-        <CardHeader>
-          <CardTitle>
-            <h2>{t('title')}</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p role="status" aria-live="polite" className="text-muted-foreground text-sm">
-            {t('loadError')}
-          </p>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href={`/admin/users/${userId}`}>
-              <RotateCcw aria-hidden />
-              {t('retry')}
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <ProLifecycleRecoveryPanel
+        title={t('title')}
+        description={t('loadError')}
+        retryLabel={t('retry')}
+        action={`/admin/users/${userId}`}
+        retryCursor={retryCursor}
+      />
     );
   }
   const availableTimeline = resolved.timelinePage;

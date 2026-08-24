@@ -117,7 +117,9 @@ describe('i18n/messages', () => {
       ...['eligible', 'ineligible'].map((value) => `eligibility.${value}`),
       ...['assigned', 'unassigned'].map((value) => `assignment.${value}`),
       ...['expired', '30_days', '60_days', '90_days'].map((value) => `expiryWindow.${value}`),
-      ...['active', 'invited', 'disabled', 'suspended'].map((value) => `account.${value}`),
+      ...['active', 'invited', 'inactive', 'disabled', 'suspended'].map(
+        (value) => `account.${value}`,
+      ),
       ...PRO_CREDENTIAL_STATES.map((value) => `credential.${value}`),
       ...['eligible', 'ineligible'].map((value) => `eligible.${value}`),
     ];

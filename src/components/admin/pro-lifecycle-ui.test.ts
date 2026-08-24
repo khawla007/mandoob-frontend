@@ -71,7 +71,7 @@ test('operator lifecycle detail uses server composition with one heading and foc
   assert.match(page, /ProCommercialTermsPanel/u);
   assert.match(page, /ProLifecycleTimeline/u);
   assert.match(page, /searchParams/u);
-  assert.match(page, /readProLifecycleTimeline/u);
+  assert.match(page, /loadProLifecyclePage/u);
   assert.match(page, /ProAccountStatusBadge/u);
   assert.match(page, /ProCredentialStatusBadge/u);
   assert.match(page, /t\('accountStatusLabel'\)/u);
@@ -125,6 +125,7 @@ test('credential surface is masked-only, semantic, evidence-owned, and exposes l
   for (const [state, icon] of [
     ['active', 'CircleCheck'],
     ['invited', 'Mail'],
+    ['inactive', 'CircleMinus'],
     ['disabled', 'Ban'],
     ['suspended', 'CirclePause'],
   ]) {
@@ -175,6 +176,7 @@ test('commercial surfaces use mandated labels and disclaim money execution', () 
   assert.match(panel, /ProTermStatusBadge/u);
   assert.match(panel, /t\(`terms\.statuses\.\$\{current\.status\}`\)/u);
   assert.match(panel, /formatProCommercialDate/u);
+  assert.match(panel, /dir="ltr"/u);
   assert.match(panel, /term\.effectiveTo/u);
   assert.match(panel, /term\.retainerInterval/u);
   assert.match(panel, /term\.version/u);
@@ -221,6 +223,8 @@ test('timeline is semantic, localized, deterministic, and preserves validated cu
   assert.match(page, /parseProTimelineSearchParams/u);
   assert.match(timeline, /buildProTimelineHref/u);
   assert.match(timeline, /availableTimeline\.nextCursor/u);
+  assert.match(timeline, /retryCursor/u);
+  assert.match(timeline, /ProLifecycleRecoveryPanel/u);
 });
 
 test('generic PRO edit links to lifecycle detail and contains no credential input or value', () => {
@@ -233,19 +237,23 @@ test('generic PRO edit links to lifecycle detail and contains no credential inpu
 
 test('lifecycle surfaces expose independent partial-source recovery and complete accessible states', () => {
   const page = read('src/app/admin/users/[id]/page.tsx');
+  const orchestration = read('src/app/admin/users/[id]/page-orchestration.ts');
   const credential = read('src/components/admin/ProCredentialPanel.tsx');
   const terms = read('src/components/admin/ProCommercialTermsPanel.tsx');
   const timeline = read('src/components/admin/ProLifecycleTimeline.tsx');
-  assert.match(page, /Promise\.allSettled/u);
+  const recovery = read('src/components/admin/ProLifecycleRecoveryPanel.tsx');
+  assert.match(page, /loadProLifecyclePage/u);
+  assert.match(orchestration, /Promise\.allSettled/u);
   assert.match(page, /credentialState/u);
   assert.match(page, /termsState/u);
   assert.match(page, /timelineState/u);
   for (const source of [credential, terms, timeline]) {
     assert.match(source, /kind:\s*'ready'[\s\S]*kind:\s*'error'/u);
-    assert.match(source, /role="status"/u);
-    assert.match(source, /aria-live="polite"/u);
-    assert.match(source, /min-h-11/u);
+    assert.match(source, /ProLifecycleRecoveryPanel/u);
   }
+  assert.match(recovery, /role="status"/u);
+  assert.match(recovery, /aria-live="polite"/u);
+  assert.match(recovery, /min-h-11/u);
   assert.match(terms, /role="region"/u);
   assert.match(terms, /tabIndex=\{0\}/u);
   assert.match(timeline, /dir=\{locale === 'ar' \? 'rtl' : 'ltr'\}/u);
@@ -270,6 +278,9 @@ test('registry distinguishes empty, no-results, partial-email, loading, and sani
   assert.doesNotMatch(error, /error\.message|error\.stack/u);
   assert.match(page, /partialEmail/u);
   assert.match(page, /Button asChild className="min-h-11"/u);
+  const table = read('src/components/admin/ProRegistryTable.tsx');
+  assert.match(table, /ProAccountStatusBadge/u);
+  assert.match(table, /dir="ltr"/u);
 });
 
 test('registry controls have named forms, 44px targets, and icon-labelled filter removal', () => {
@@ -282,4 +293,12 @@ test('registry controls have named forms, 44px targets, and icon-labelled filter
   assert.match(applied, /aria-label=\{t\('removeFilter'/u);
   assert.match(applied, /<X aria-hidden/u);
   assert.doesNotMatch(applied, /×/u);
+});
+
+test('pending lifecycle mutations expose form-level busy state', () => {
+  const review = read('src/components/admin/ProCredentialReviewForm.tsx');
+  const terms = read('src/components/admin/ProCommercialTermForm.tsx');
+  for (const source of [review, terms]) {
+    assert.match(source, /<form[\s\S]*aria-busy=\{pending\}/u);
+  }
 });
