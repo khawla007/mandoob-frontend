@@ -1,5 +1,6 @@
--- Start while release session A sleeps. The assignment must complete only after
--- release commits, with exactly one live owner and synchronized cached scope.
+-- Start after the runner proves release session A owns its lifecycle locks. The
+-- assignment completes only after release commits, with one live owner and scope.
+select pg_catalog.set_config('application_name', :'session_b_name', false);
 select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_actors \gset
 \if :distinct_actors
 \else

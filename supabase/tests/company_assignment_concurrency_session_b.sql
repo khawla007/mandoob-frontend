@@ -1,5 +1,6 @@
 -- Session B must lose with the exact stable lifecycle code after session A commits.
 \set ON_ERROR_STOP off
+select pg_catalog.set_config('application_name', :'session_b_name', false);
 select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_actors \gset
 \if :distinct_actors
 \else

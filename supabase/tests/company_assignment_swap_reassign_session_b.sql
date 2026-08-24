@@ -1,6 +1,7 @@
--- Start while swap session A sleeps. Both calls should reject the already-active
--- replacement without deadlock; rollback expected failed transactions first.
+-- Start after the runner proves swap session A owns its lifecycle locks. Both
+-- calls reject the active replacement without deadlock; roll back failures first.
 \set ON_ERROR_STOP off
+select pg_catalog.set_config('application_name', :'session_b_name', false);
 select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_actors \gset
 \if :distinct_actors
 \else

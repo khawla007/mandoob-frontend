@@ -138,3 +138,49 @@ test('concurrency gate has deterministic setup and bounded portable orchestratio
   const swap = normalized('supabase/tests/company_assignment_swap_reassign_session_b.sql');
   assert.match(swap, /immutable_history/u);
 });
+
+test('concurrency runner waits for session A lifecycle locks instead of sleeping', () => {
+  const runner = readFileSync(join(process.cwd(), runnerPath), 'utf8');
+  assert.doesNotMatch(runner, /(^|\n)\s*sleep\s+\d/u);
+  assert.match(runner, /company_assignment_wait_for_locks\.sql/u);
+  assert.match(runner, /trap\s+['"]?cleanup/u);
+
+  const barrier = normalized('supabase/tests/company_assignment_wait_for_locks.sql');
+  assert.match(barrier, /pg_stat_activity/u);
+  assert.match(barrier, /pg_locks/u);
+  assert.match(barrier, /locktype = 'advisory'/u);
+  assert.match(barrier, /granted/u);
+  assert.match(barrier, /clock_timestamp\(\)[\s\S]*raise exception/u);
+
+  for (const fixture of [
+    'company_assignment_concurrency_session_a.sql',
+    'company_assignment_release_assign_session_a.sql',
+    'company_assignment_swap_reassign_session_a.sql',
+  ]) {
+    const sql = normalized(`supabase/tests/${fixture}`);
+    assert.doesNotMatch(sql, /select (?:pg_catalog\.)?pg_sleep\(8\)/u, fixture);
+    assert.match(sql, /application_name/u, fixture);
+    assert.match(sql, /company_assignment_wait_for_contender\.sql/u, fixture);
+  }
+  const contender = normalized('supabase/tests/company_assignment_wait_for_contender.sql');
+  assert.match(contender, /pg_stat_activity/u);
+  assert.match(contender, /pg_locks/u);
+  assert.match(contender, /granted = false/u);
+  assert.match(contender, /clock_timestamp\(\)[\s\S]*raise exception/u);
+});
+
+test('concurrency setup transactionally resets only deterministic fixture identities', () => {
+  const setup = normalized('supabase/tests/company_assignment_concurrency_setup.sql');
+  assert.match(setup, /^\s*\\set on_error_stop on begin;/u);
+  assert.match(setup, /delete from public\.pro_assignment_term_links/u);
+  assert.match(setup, /delete from public\.pro_company_assignments/u);
+  assert.match(setup, /delete from public\.tenant_audit_log/u);
+  assert.match(setup, /on conflict \(id\) do update/u);
+  assert.match(
+    setup,
+    /where (?:company_id|tenant_id|pro_profile_id) in \([\s\S]*95000000-0000-4000-8000/u,
+  );
+  assert.doesNotMatch(setup, /truncate public\.pro_company_assignments/u);
+  assert.doesNotMatch(setup, /delete from public\.(?:profiles|tenants)\s*;/u);
+  assert.match(setup, /commit; select 'assignment_concurrency_ready'/u);
+});

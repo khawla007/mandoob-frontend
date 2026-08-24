@@ -1,6 +1,7 @@
 -- Start with an active assignment. Session A releases it and holds the company
 -- and old-PRO transaction locks so session B must wait before assigning anew.
 \set ON_ERROR_STOP off
+select pg_catalog.set_config('application_name', :'session_a_name', false);
 begin;
 set local lock_timeout = '5s';
 set local statement_timeout = '20s';
@@ -13,7 +14,7 @@ select public.release_company_pro(
 );
 \set lifecycle_sqlstate :SQLSTATE
 
-select pg_sleep(8);
+\ir company_assignment_wait_for_contender.sql
 commit;
 
 select :'lifecycle_sqlstate' = '00000' as expected_lifecycle_state,

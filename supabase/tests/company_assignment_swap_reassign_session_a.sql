@@ -1,6 +1,7 @@
 -- Two active companies attempt to swap PROs. Holding the shared sorted PRO lock
 -- set makes the opposing session exercise the same global acquisition order.
 \set ON_ERROR_STOP off
+select pg_catalog.set_config('application_name', :'session_a_name', false);
 begin;
 set local lock_timeout = '12s';
 set local statement_timeout = '20s';
@@ -9,7 +10,7 @@ select public.lock_company_assignment_resources(
   :'company_a_id'::uuid,
   array[:'pro_a_profile_id'::uuid, :'pro_b_profile_id'::uuid]
 );
-select pg_sleep(8);
+\ir company_assignment_wait_for_contender.sql
 
 select public.reassign_company_pro(
   :'company_a_id'::uuid,
