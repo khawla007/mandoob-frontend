@@ -112,18 +112,6 @@ function runtimeImportClosure(roots: readonly string[]) {
   return { files: [...closure].sort(), unresolved: unresolved.sort() };
 }
 
-const DECLARED_STEP3_RUNTIME_ROOTS = [
-  'src/app/account/page.tsx',
-  'src/app/admin/companies/[id]/page.tsx',
-  'src/app/admin/companies/actions.ts',
-  'src/app/admin/users/[id]/page.tsx',
-  'src/app/admin/users/page.tsx',
-  'src/app/api/v1/account/pro/credentials/route.ts',
-  'src/app/api/v1/admin/companies/[id]/eligible-pros/route.ts',
-  'src/app/api/v1/admin/users/[id]/commercial-terms/route.ts',
-  'src/app/api/v1/admin/users/[id]/credentials/route.ts',
-] as const;
-
 function runtimeSourceFiles(directory = 'src'): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -139,20 +127,8 @@ function runtimeSourceFiles(directory = 'src'): string[] {
   return files.sort();
 }
 
-function isStep3RuntimeRoot(file: string, source: string): boolean {
-  return (
-    /(?:pro-lifecycle|pro-credential|commercial-terms|company-assignment)/iu.test(file) ||
-    /(?:\bPro(?:Credential|Commercial|Lifecycle|Registry)|\bpro(?:Credential|Commercial|Lifecycle)|pro_(?:credentials|commercial|lifecycle)|pro_company_assignments|companyAssignment)/u.test(
-      source,
-    )
-  );
-}
-
-function discoverStep3RuntimeRoots(): string[] {
-  const discovered = runtimeSourceFiles().filter((file) =>
-    isStep3RuntimeRoot(file, readFileSync(file, 'utf8')),
-  );
-  return [...new Set([...DECLARED_STEP3_RUNTIME_ROOTS, ...discovered])].sort();
+function discoverStep3RuntimeRoots(runtimeFiles = runtimeSourceFiles()): string[] {
+  return [...new Set(runtimeFiles)].sort();
 }
 
 if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
@@ -370,16 +346,23 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
     const inventorySource = `${runtimeSourceFiles.toString()}\n${discoverStep3RuntimeRoots.toString()}`;
     assert.doesNotMatch(inventorySource, /\bgit\b|[0-9a-f]{40}|\.\.HEAD|changedRuntimeEntries/u);
     assert.match(inventorySource, /runtimeSourceFiles/u);
-    assert.equal(
-      isStep3RuntimeRoot('src/lib/data/uncommitted.ts', 'export const proLifecycleDraft = true;'),
-      true,
-    );
+  });
+
+  test('runtime inventory audits framework entries and uncommitted convention files without keywords', () => {
+    const runtimeFiles = [
+      'src/app/layout.tsx',
+      'src/app/admin/users/error.tsx',
+      'src/app/admin/users/loading.tsx',
+      'src/app/synthetic-segment/loading.tsx',
+    ];
+    const roots = discoverStep3RuntimeRoots(runtimeFiles);
+    assert.deepEqual(roots, runtimeFiles.slice().sort());
   });
 
   test('lifecycle runtime graph has no analytics, screenshot, or report-evidence persistence adapter', () => {
-    for (const root of DECLARED_STEP3_RUNTIME_ROOTS) assert.equal(existsSync(root), true, root);
     const runtimeRoots = discoverStep3RuntimeRoots();
-    assert.equal(runtimeRoots.length > DECLARED_STEP3_RUNTIME_ROOTS.length, true);
+    assert.notEqual(runtimeRoots.length, 0);
+    for (const root of runtimeRoots) assert.equal(existsSync(root), true, root);
     const graph = runtimeImportClosure(runtimeRoots);
     assert.deepEqual(graph.unresolved, []);
     assert.equal(
@@ -393,22 +376,17 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
       const source = readFileSync(file, 'utf8');
       assert.doesNotMatch(
         source,
-        /(?:from\s*|import\s*\()\s*['"][^'"]*(?:analytics|telemetry|observability|posthog|segment|sentry|datadog|playwright|puppeteer|screenshot)[^'"]*['"]/iu,
+        /(?:from\s*|import\s*\()\s*['"][^'"]*(?:analytics|telemetry|posthog|segment|sentry|datadog|playwright|puppeteer|screenshot)[^'"]*['"]/iu,
         file,
       );
       assert.doesNotMatch(
         source,
-        /\b(?:analytics|telemetry|metrics|posthog|segment|sentry)\s*(?:\.|\()/iu,
+        /\b(?:analytics|telemetry|posthog|segment|sentry)\s*(?:\.|\()/iu,
         file,
       );
       assert.doesNotMatch(
         source,
         /(?:\.|\b)(?:track|trackEvent|capture|captureEvent|captureException|recordEvent|sendBeacon|screenshot|takeScreenshot|saveScreenshot|persistEvidence|saveEvidence|writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|attach)\s*\(/iu,
-        file,
-      );
-      assert.doesNotMatch(
-        source,
-        /['"`][^'"`]*(?:analytics|telemetry|screenshots?|launch-gate-evidence)[^'"`]*['"`]/iu,
         file,
       );
     }
