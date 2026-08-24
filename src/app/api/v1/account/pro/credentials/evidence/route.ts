@@ -13,6 +13,7 @@ import {
   readBoundedFormData,
 } from '@/app/api/v1/_shared/bounded-body';
 import { buildProCredentialEvidencePath } from '@/lib/storage/pro-credential-path';
+import { PRO_CREDENTIAL_STATES } from '@/lib/pro-lifecycle/contracts';
 import {
   lifecycleErrorResponse,
   limitResponse,
@@ -38,6 +39,21 @@ const uploadFields = z
     credentialId: z.string().uuid(),
     expectedVersion: multipartVersion,
     operationId: z.string().uuid(),
+  })
+  .strict();
+const publicCredentialSchema = z
+  .object({
+    credentialId: z.string().uuid(),
+    type: z.literal('pro_license'),
+    maskedIdentifier: z.string().regex(/^•••• [A-Z0-9]{4}$/u).nullable(),
+    issuingAuthority: z.string().nullable(),
+    issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
+    expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
+    state: z.enum(PRO_CREDENTIAL_STATES),
+    version: z.number().int().nonnegative(),
+    evidenceCount: z.number().int().nonnegative(),
+    submittedAt: z.string().datetime({ offset: true }).nullable(),
+    supersedesCredentialId: z.string().uuid().nullable(),
   })
   .strict();
 type SafeMime = 'application/pdf' | 'image/jpeg' | 'image/png';
@@ -209,14 +225,16 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         )
           return errorResponse('OPERATION_REUSED', 'Unable to complete lifecycle operation', 409);
       }
-      const credential = await deps.register(
-        session.id,
-        fields.data.credentialId,
-        fields.data.expectedVersion,
-        fields.data.operationId,
-        evidenceId,
-        path,
-        metadata,
+      const credential = publicCredentialSchema.parse(
+        await deps.register(
+          session.id,
+          fields.data.credentialId,
+          fields.data.expectedVersion,
+          fields.data.operationId,
+          evidenceId,
+          path,
+          metadata,
+        ),
       );
       await deps.revalidate(target, session.id);
       return jsonOk({ ok: true, credential });

@@ -8,6 +8,20 @@ const A = '10000000-0000-4000-8000-000000000001';
 const C = '20000000-0000-4000-8000-000000000002';
 const O = '30000000-0000-4000-8000-000000000003';
 
+const publicCredential = () => ({
+  credentialId: C,
+  type: 'pro_license' as const,
+  maskedIdentifier: '•••• 9Z72',
+  issuingAuthority: 'Synthetic Authority',
+  issueDate: '2026-01-01',
+  expiryDate: '2027-01-01',
+  state: 'draft' as const,
+  version: 2,
+  evidenceCount: 1,
+  submittedAt: null,
+  supersedesCredentialId: null,
+});
+
 function upload(file: File, fields: Record<string, string> = {}) {
   const form = new FormData();
   form.set('credentialId', C);
@@ -207,7 +221,7 @@ test('evidence upload scans before private storage and registers a stable retry 
     readExisting: async () => ({ bytes: new Uint8Array(), mime: null }),
     register: async () => {
       calls.push('mutation');
-      return { credentialId: C, state: 'draft', version: 2 } as never;
+      return publicCredential();
     },
     revalidate: () => {
       calls.push('revalidate');
@@ -231,6 +245,57 @@ test('evidence upload scans before private storage and registers a stable retry 
     'revalidate',
   ]);
   assert.doesNotMatch(JSON.stringify(await response.json()), /storage|sha256|scan|signed/iu);
+});
+
+test('evidence upload rejects protected registration output at the saved-evidence JSON boundary', async () => {
+  const canaries = [
+    'TASK13-CANARY-IDENTIFIER-9Z72',
+    'v1:TASK13-CANARY-CIPHERTEXT',
+    'TASK13-CANARY-HASH-0123456789',
+    'pro-credentials/TASK13-CANARY-STORAGE-PATH',
+    'https://storage.invalid/TASK13-CANARY-SIGNED-URL',
+    'TASK13-CANARY-RAW-PROVIDER-ERROR',
+  ];
+  const response = await createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'test' }),
+    store: async () => 'stored',
+    register: async () => ({
+      credentialId: C,
+      type: 'pro_license',
+      maskedIdentifier: '•••• 9Z72',
+      issuingAuthority: 'Synthetic Authority',
+      issueDate: '2026-01-01',
+      expiryDate: '2027-01-01',
+      state: 'draft',
+      version: 2,
+      evidenceCount: 1,
+      submittedAt: null,
+      supersedesCredentialId: null,
+      identifier: canaries[0],
+      identifierCiphertext: canaries[1],
+      identifierHash: canaries[2],
+      storagePath: canaries[3],
+      signedUrl: canaries[4],
+      rawError: canaries[5],
+    }),
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-24T00:00:00.000Z'),
+  })(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })));
+  const body = await response.text();
+  assert.equal(response.status, 500);
+  for (const canary of canaries) assert.equal(body.includes(canary), false);
 });
 
 test('crash after upload leaves a retryable artifact and an identical retry reuses it', async () => {
@@ -261,7 +326,7 @@ test('crash after upload leaves a retryable artifact and an identical retry reus
     register: async () => {
       calls.push('register');
       if (registrations++ === 0) throw new Error('private crash after upload');
-      return { credentialId: C };
+      return publicCredential();
     },
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
@@ -301,7 +366,10 @@ test('two identical concurrent retries share create-only bytes and both reach id
       return 'stored';
     },
     readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
-    register: async () => ({ credentialId: C, replay: registrations++ > 0 }),
+    register: async () => {
+      registrations += 1;
+      return publicCredential();
+    },
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
   });
@@ -337,7 +405,7 @@ test('same operation with different bytes conflicts without registration or dele
     readExisting: async () => ({ bytes: existing, mime: 'application/pdf' }),
     register: async () => {
       registrations += 1;
-      return { credentialId: C };
+      return publicCredential();
     },
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
@@ -371,7 +439,7 @@ test('same operation fails closed when stored MIME metadata is missing', async (
     readExisting: async () => ({ bytes: existing, mime: null }),
     register: async () => {
       registrations += 1;
-      return { credentialId: C };
+      return publicCredential();
     },
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
@@ -412,7 +480,7 @@ test('ambiguous post-commit error leaves bytes untouched and retry reaches DB re
         committed = true;
         throw new Error('ambiguous response');
       }
-      return { credentialId: C };
+      return publicCredential();
     },
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
