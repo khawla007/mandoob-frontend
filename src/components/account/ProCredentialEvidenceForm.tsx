@@ -85,7 +85,10 @@ export function ProCredentialEvidenceForm({
             ? t('stale')
             : payload?.code === 'OPERATION_REUSED'
               ? t('replayConflict')
-              : t('evidenceFailed'),
+              : payload?.code === 'EVIDENCE_REMOVAL_IN_PROGRESS' ||
+                  payload?.code === 'CREDENTIAL_IN_PROGRESS'
+                ? t('conflict')
+                : t('evidenceFailed'),
         );
         queueMicrotask(() => errorSummaryRef.current?.focus());
         return;
@@ -177,7 +180,7 @@ export function ProCredentialEvidenceForm({
           >
             <div className="min-w-0">
               <a
-                className="text-primary block truncate underline-offset-4 hover:underline"
+                className="text-primary focus-visible:ring-ring inline-flex min-h-11 max-w-full items-center truncate rounded-md underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
                 href={`/api/v1/account/pro/credentials/evidence/${evidence.evidenceId}`}
                 target="_blank"
                 rel="noreferrer"
@@ -210,6 +213,7 @@ export function ProCredentialEvidenceForm({
                     variant="destructive"
                     disabled={pending}
                     onClick={() => removeEvidence(evidence)}
+                    className="min-h-11"
                   >
                     {pending ? t('pending') : t('confirmRemove')}
                   </Button>
@@ -218,6 +222,7 @@ export function ProCredentialEvidenceForm({
                     variant="outline"
                     disabled={pending}
                     onClick={() => setConfirmingEvidenceId(null)}
+                    className="min-h-11"
                   >
                     {t('cancelRemove')}
                   </Button>
@@ -229,6 +234,7 @@ export function ProCredentialEvidenceForm({
                 variant="outline"
                 disabled={pending}
                 onClick={() => setConfirmingEvidenceId(evidence.evidenceId)}
+                className="min-h-11"
               >
                 {t('removeEvidence')}
               </Button>
@@ -246,6 +252,7 @@ export function ProCredentialEvidenceForm({
             accept="application/pdf,image/jpeg,image/png"
             aria-describedby={`credential-evidence-help-${credentialId}${formState.formState.errors.file ? ` credential-evidence-error-summary-${credentialId}` : ''}`}
             aria-invalid={Boolean(formState.formState.errors.file)}
+            className="min-h-11"
             onChange={(event) => {
               const selected = event.target.files?.[0];
               if (selected) {
@@ -279,7 +286,7 @@ export function ProCredentialEvidenceForm({
             </div>
           ) : null}
         </div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} className="min-h-11">
           {pending ? t('pending') : t('uploadEvidence')}
         </Button>
       </form>

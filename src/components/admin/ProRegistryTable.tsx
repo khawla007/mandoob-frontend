@@ -1,6 +1,14 @@
 import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Building2,
+  ChevronsUpDown,
+  CircleCheck,
+  CircleX,
+  UserRoundCheck,
+} from 'lucide-react';
 
 import {
   buildProRegistryHref,
@@ -17,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import type { ProRegistryRow } from '@/lib/data/pro-registry';
 import { formatProRegistryDate } from './pro-registry-format';
+import { ProCredentialStatusBadge } from './ProLifecycleStatusBadge';
 
 const sortable = [
   ['full_name', 'name'],
@@ -60,7 +69,7 @@ export async function ProRegistryTable({
                   }
                 >
                   <Link
-                    className="inline-flex items-center gap-1 hover:underline"
+                    className="focus-visible:ring-ring inline-flex min-h-11 items-center gap-1 rounded-md hover:underline focus-visible:ring-2 focus-visible:outline-none"
                     href={buildProRegistryHref(filters, { sort, direction })}
                   >
                     {t(`table.${label}`)} <Icon aria-hidden className="size-3" />
@@ -84,9 +93,17 @@ export async function ProRegistryTable({
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline">
-                  {row.credentialState ? t(`credential.${row.credentialState}`) : t('notAvailable')}
-                </Badge>
+                {row.credentialState ? (
+                  <ProCredentialStatusBadge
+                    state={row.credentialState}
+                    label={t(`credential.${row.credentialState}`)}
+                  />
+                ) : (
+                  <Badge variant="outline">
+                    <CircleX aria-hidden />
+                    {t('notAvailable')}
+                  </Badge>
+                )}
               </TableCell>
               <TableCell className="font-mono text-xs">
                 {row.credentialExpiry
@@ -97,15 +114,30 @@ export async function ProRegistryTable({
                 {formatProRegistryDate(row.createdAt, locale)}
               </TableCell>
               <TableCell>
-                <Badge variant="secondary">{t(`account.${row.accountStatus}`)}</Badge>
+                <Badge variant="secondary">
+                  <UserRoundCheck aria-hidden />
+                  {t(`account.${row.accountStatus}`)}
+                </Badge>
               </TableCell>
               <TableCell>
-                {row.eligible ? t('eligible.eligible') : t('eligible.ineligible')}
+                <span className="inline-flex items-center gap-1">
+                  {row.eligible ? (
+                    <CircleCheck aria-hidden className="size-4" />
+                  ) : (
+                    <CircleX aria-hidden className="size-4" />
+                  )}
+                  {row.eligible ? t('eligible.eligible') : t('eligible.ineligible')}
+                </span>
               </TableCell>
-              <TableCell>{row.companyName ?? t('unassigned')}</TableCell>
+              <TableCell>
+                <span className="inline-flex items-center gap-1">
+                  <Building2 aria-hidden className="size-4" />
+                  {row.companyName ?? t('unassigned')}
+                </span>
+              </TableCell>
               <TableCell>
                 <Link
-                  className="text-primary underline-offset-2 hover:underline"
+                  className="text-primary focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
                   href={`/admin/users/${row.id}`}
                 >
                   {t('open')}

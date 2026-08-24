@@ -22,7 +22,13 @@ export async function ProRegistryPagination({
         {t('pageOf', { page: filters.page, totalPages })}
       </p>
       <div className="flex gap-2">
-        <Button asChild={filters.page > 1} variant="outline" size="sm" disabled={filters.page <= 1}>
+        <Button
+          asChild={filters.page > 1}
+          variant="outline"
+          size="sm"
+          className="min-h-11"
+          disabled={filters.page <= 1}
+        >
           {filters.page > 1 ? (
             <Link href={buildProRegistryHref(filters, { page: filters.page - 1 })}>
               {t('previous')}
@@ -35,6 +41,7 @@ export async function ProRegistryPagination({
           asChild={filters.page < totalPages}
           variant="outline"
           size="sm"
+          className="min-h-11"
           disabled={filters.page >= totalPages}
         >
           {filters.page < totalPages ? (

@@ -1,13 +1,18 @@
-import { FileText } from 'lucide-react';
+import Link from 'next/link';
+import { FileText, RotateCcw } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import type { ProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
 import { ProCredentialReviewForm } from './ProCredentialReviewForm';
 import { ProCredentialStatusBadge } from './ProLifecycleStatusBadge';
 
 type Credential = ProLifecycleDetail['credentials'][number];
 type Evidence = ProLifecycleDetail['evidence'][number];
+export type ProCredentialSourceState =
+  | { kind: 'ready'; credentials: Credential[]; evidence: Evidence[] }
+  | { kind: 'error' };
 
 function formatDate(value: string | null, locale: string, unavailable: string): string {
   if (!value) return unavailable;
@@ -100,12 +105,37 @@ export async function ProCredentialPanel({
   userId,
   credentials,
   evidence,
+  sourceState,
 }: {
   userId: string;
   credentials: ProLifecycleDetail['credentials'];
   evidence: ProLifecycleDetail['evidence'];
+  sourceState?: ProCredentialSourceState;
 }) {
   const t = await getTranslations('admin.user.proLifecycle');
+  const resolved = sourceState ?? { kind: 'ready', credentials, evidence };
+  if (resolved.kind === 'error') {
+    return (
+      <Card className="border-[var(--lifecycle-border)] bg-[var(--lifecycle-surface)]">
+        <CardHeader>
+          <CardTitle>
+            <h2>{t('credential.title')}</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p role="status" aria-live="polite" className="text-muted-foreground text-sm">
+            {t('credential.loadError')}
+          </p>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={`/admin/users/${userId}`}>
+              <RotateCcw aria-hidden />
+              {t('credential.retry')}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card>
       <CardHeader>
@@ -114,13 +144,15 @@ export async function ProCredentialPanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        {credentials.length ? (
-          credentials.map((credential) => (
+        {resolved.credentials.length ? (
+          resolved.credentials.map((credential) => (
             <CredentialRecord
               key={credential.credentialId}
               userId={userId}
               credential={credential}
-              evidence={evidence.filter((item) => item.credentialId === credential.credentialId)}
+              evidence={resolved.evidence.filter(
+                (item) => item.credentialId === credential.credentialId,
+              )}
             />
           ))
         ) : (

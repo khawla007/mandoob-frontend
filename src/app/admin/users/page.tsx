@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { UsersToolbar } from '@/components/admin/UsersToolbar';
 import { UsersEmptyState } from '@/components/admin/UsersEmptyState';
+import { ProRegistryEmptyState } from '@/components/admin/ProRegistryEmptyState';
 import { UsersPagination } from '@/components/admin/UsersPagination';
 import { ProRegistryAppliedFilters } from '@/components/admin/ProRegistryAppliedFilters';
 import { ProRegistryPagination } from '@/components/admin/ProRegistryPagination';
@@ -84,6 +85,11 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
           <AlertDescription>{t('invalidDescription')}</AlertDescription>
         </Alert>
       )}
+      {result.items.some((item) => item.emailUnavailable) ? (
+        <Alert>
+          <AlertDescription>{t('partialEmail')}</AlertDescription>
+        </Alert>
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
@@ -104,10 +110,7 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
           <ProRegistryToolbar filters={filters} />
           <ProRegistryAppliedFilters filters={filters} />
           {result.items.length === 0 ? (
-            <UsersEmptyState
-              filtersActive={filtersActive || invalid}
-              resetHref="/admin/users?role=pro"
-            />
+            <ProRegistryEmptyState filtersActive={filtersActive || invalid} />
           ) : (
             <>
               <ProRegistryTable rows={result.items} filters={filters} />

@@ -275,3 +275,44 @@ test('onboarding copy avoids complete protected identifier examples and universa
     }
   }
 });
+
+test('PRO lifecycle sources localize visible copy and never expose raw state, error, or identifiers', () => {
+  const paths = [
+    'src/app/admin/users/[id]/page.tsx',
+    'src/components/admin/ProRegistryTable.tsx',
+    'src/components/admin/ProRegistryToolbar.tsx',
+    'src/components/admin/ProRegistryAppliedFilters.tsx',
+    'src/components/admin/ProCredentialPanel.tsx',
+    'src/components/admin/ProCredentialReviewForm.tsx',
+    'src/components/admin/ProCommercialTermsPanel.tsx',
+    'src/components/admin/ProCommercialTermForm.tsx',
+    'src/components/admin/ProLifecycleTimeline.tsx',
+    'src/components/account/ProCredentialPanel.tsx',
+    'src/components/account/ProCredentialForm.tsx',
+    'src/components/account/ProCredentialEvidenceForm.tsx',
+  ];
+  for (const path of paths) {
+    const copy = source(path);
+    assert.doesNotMatch(copy, />\s*[A-Z][A-Za-z ]{2,}\s*<\//u, `${path} has visible English`);
+    assert.doesNotMatch(
+      copy,
+      /\{(?:error\.message|error\.stack|response\.statusText)\}/u,
+      `${path} renders a raw error`,
+    );
+    assert.doesNotMatch(
+      copy,
+      /\bt\((?:status|state|eventKind|reasonCode)\)/u,
+      `${path} uses a raw value as a message key`,
+    );
+    assert.doesNotMatch(
+      copy,
+      />\s*(?:tenant|client)s?\s*</iu,
+      `${path} renders ownership terminology`,
+    );
+    assert.doesNotMatch(
+      copy,
+      /\b(?:AE\d{21}|\d{8,})\b/u,
+      `${path} contains a complete identifier example`,
+    );
+  }
+});

@@ -16,7 +16,7 @@ test('PRO mode reuses Users page with exact count, applied filters, reset, and d
   assert.match(page, /total/u);
   assert.match(page, /ProRegistryAppliedFilters/u);
   assert.match(page, /ProRegistryPagination/u);
-  assert.match(page, /UsersEmptyState[\s\S]*resetHref/u);
+  assert.match(page, /ProRegistryEmptyState[\s\S]*filtersActive/u);
   assert.match(page, /canonicalProRegistryPage/u);
   assert.match(page, /redirect\(buildProRegistryHref\(filters, \{ page: canonicalPage \}\)\)/u);
 });
@@ -206,7 +206,7 @@ test('timeline is semantic, localized, deterministic, and preserves validated cu
   assert.doesNotMatch(timeline, />\s*(Timeline|Unavailable|Load more)\s*</u);
   assert.match(page, /parseProTimelineSearchParams/u);
   assert.match(timeline, /buildProTimelineHref/u);
-  assert.match(timeline, /timelinePage\.nextCursor/u);
+  assert.match(timeline, /availableTimeline\.nextCursor/u);
 });
 
 test('generic PRO edit links to lifecycle detail and contains no credential input or value', () => {
@@ -215,4 +215,38 @@ test('generic PRO edit links to lifecycle detail and contains no credential inpu
   assert.match(panel, /\/admin\/users\/\$\{profile\.id\}/u);
   assert.doesNotMatch(panel, /maskedIdentifier|credentialSummary|VerifyProCredentialsButton/u);
   assert.doesNotMatch(fields, /licenseNo|credential|identifier/u);
+});
+
+test('lifecycle surfaces expose independent partial-source recovery and complete accessible states', () => {
+  const page = read('src/app/admin/users/[id]/page.tsx');
+  const credential = read('src/components/admin/ProCredentialPanel.tsx');
+  const terms = read('src/components/admin/ProCommercialTermsPanel.tsx');
+  const timeline = read('src/components/admin/ProLifecycleTimeline.tsx');
+  assert.match(page, /Promise\.allSettled/u);
+  assert.match(page, /credentialState/u);
+  assert.match(page, /termsState/u);
+  assert.match(page, /timelineState/u);
+  for (const source of [credential, terms, timeline]) {
+    assert.match(source, /kind:\s*'ready'[\s\S]*kind:\s*'error'/u);
+    assert.match(source, /role="status"/u);
+    assert.match(source, /aria-live="polite"/u);
+    assert.match(source, /min-h-11/u);
+  }
+  assert.match(terms, /role="region"/u);
+  assert.match(terms, /tabIndex=\{0\}/u);
+  assert.match(timeline, /dir=\{locale === 'ar' \? 'rtl' : 'ltr'\}/u);
+  assert.doesNotMatch(timeline, /\.reverse\(/u);
+});
+
+test('registry distinguishes empty, no-results, partial-email, loading, and sanitized error states', () => {
+  const page = read('src/app/admin/users/page.tsx');
+  const loading = read('src/app/admin/users/loading.tsx');
+  const error = read('src/app/admin/users/error.tsx');
+  assert.match(page, /ProRegistryEmptyState/u);
+  assert.match(page, /filtersActive/u);
+  assert.match(loading, /aria-live="polite"/u);
+  assert.match(loading, /h-\[25rem\]/u);
+  assert.match(error, /errorDescription/u);
+  assert.doesNotMatch(error, /error\.message|error\.stack/u);
+  assert.match(page, /partialEmail/u);
 });

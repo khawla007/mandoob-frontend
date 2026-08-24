@@ -39,7 +39,7 @@ export async function ProRegistryToolbar({ filters }: { filters: ProRegistryFilt
             id={`pro-registry-${name}`}
             name={name}
             defaultValue={filters[name] ?? ''}
-            className="border-input bg-background mt-1 h-9 w-full rounded-md border px-3 text-sm"
+            className="border-input bg-background mt-1 min-h-11 w-full rounded-md border px-3 text-sm focus-visible:ring-2"
           >
             <option value="">{t('filters.all')}</option>
             {values.map((value) => (
@@ -51,8 +51,10 @@ export async function ProRegistryToolbar({ filters }: { filters: ProRegistryFilt
         </div>
       ))}
       <div className="flex items-end gap-2 lg:col-span-6">
-        <Button type="submit">{t('apply')}</Button>
-        <Button asChild type="button" variant="ghost">
+        <Button type="submit" className="min-h-11">
+          {t('apply')}
+        </Button>
+        <Button asChild type="button" variant="ghost" className="min-h-11">
           <Link href="/admin/users?role=pro">{t('reset')}</Link>
         </Button>
       </div>

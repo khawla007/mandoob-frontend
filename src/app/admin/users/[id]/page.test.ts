@@ -275,8 +275,13 @@ test('forward timeline read exposes only authorized normalized decision reasons'
   assert.doesNotMatch(sql, /identifier_ciphertext|identifier_hash|storage_path|sha256/u);
 });
 
-test('detail page reuses aggregate first history page and only calls cursor reader for older pages', () => {
+test('detail page loads credential, term, and timeline sources independently after identity', () => {
   const source = readFileSync(join(process.cwd(), 'src/app/admin/users/[id]/page.tsx'), 'utf8');
-  assert.match(source, /timelineSelection\.cursor === null[\s\S]*snapshot\.timeline/u);
-  assert.match(source, /readProLifecycleTimeline[\s\S]*timelineSelection\.cursor/u);
+  assert.match(source, /Promise\.allSettled\(/u);
+  assert.match(source, /readProCredentialSnapshot\(operator\.id, id\)/u);
+  assert.match(source, /readProCommercialTerms\(operator\.id, id\)/u);
+  assert.match(
+    source,
+    /readProLifecycleTimeline\(operator\.id, id, 25, timelineSelection\.cursor\)/u,
+  );
 });

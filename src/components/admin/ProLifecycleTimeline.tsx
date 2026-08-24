@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CalendarClock, UserRound } from 'lucide-react';
+import { CalendarClock, RotateCcw, UserRound } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,41 @@ export async function ProLifecycleTimeline({
   userId,
   timelinePage,
   invalidCursor,
+  sourceState,
 }: {
   userId: string;
   timelinePage: ProLifecycleTimelinePage;
   invalidCursor: boolean;
+  sourceState?: { kind: 'ready'; timelinePage: ProLifecycleTimelinePage } | { kind: 'error' };
 }) {
   const [t, locale] = await Promise.all([
     getTranslations('admin.user.proLifecycle.timeline'),
     getLocale(),
   ]);
+  const resolved = sourceState ?? { kind: 'ready', timelinePage };
+  if (resolved.kind === 'error') {
+    return (
+      <Card className="border-[var(--lifecycle-border)] bg-[var(--lifecycle-surface)]">
+        <CardHeader>
+          <CardTitle>
+            <h2>{t('title')}</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p role="status" aria-live="polite" className="text-muted-foreground text-sm">
+            {t('loadError')}
+          </p>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={`/admin/users/${userId}`}>
+              <RotateCcw aria-hidden />
+              {t('retry')}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  const availableTimeline = resolved.timelinePage;
   return (
     <Card>
       <CardHeader>
@@ -33,9 +59,9 @@ export async function ProLifecycleTimeline({
             {t('invalidCursor')}
           </p>
         ) : null}
-        {timelinePage.items.length ? (
-          <ol className="relative space-y-5 border-s ps-5">
-            {timelinePage.items.map((item) => (
+        {availableTimeline.items.length ? (
+          <ol className="relative space-y-5 border-s ps-5" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+            {availableTimeline.items.map((item) => (
               <li key={`${item.eventAt}-${item.eventId}`} className="space-y-2">
                 <CalendarClock
                   aria-hidden
@@ -62,12 +88,7 @@ export async function ProLifecycleTimeline({
                   {item.reasonCode ? (
                     <div className="sm:col-span-2">
                       <dt className="text-muted-foreground inline">{t('reason')}: </dt>
-                      <dd className="inline">
-                        {item.reason ?? t('unavailable')}{' '}
-                        <span className="text-muted-foreground font-mono text-xs">
-                          ({item.reasonCode})
-                        </span>
-                      </dd>
+                      <dd className="inline">{item.reason ?? t('unavailable')}</dd>
                     </div>
                   ) : null}
                 </dl>
@@ -77,9 +98,11 @@ export async function ProLifecycleTimeline({
         ) : (
           <p className="text-muted-foreground text-sm">{t('empty')}</p>
         )}
-        {timelinePage.nextCursor ? (
-          <Button asChild variant="outline">
-            <Link href={buildProTimelineHref(userId, timelinePage.nextCursor)}>{t('next')}</Link>
+        {availableTimeline.nextCursor ? (
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={buildProTimelineHref(userId, availableTimeline.nextCursor)}>
+              {t('next')}
+            </Link>
           </Button>
         ) : null}
       </CardContent>

@@ -696,6 +696,8 @@
       "title": "PRO licence credential",
       "description": "Maintain your licence details and evidence. The complete identifier is never shown again after saving.",
       "unavailable": "Credential details are temporarily unavailable. You can still edit your PRO profile.",
+      "partialSource": "Licence details could not be loaded. Your PRO profile remains available.",
+      "retry": "Retry licence details",
       "empty": "No licence credential has been created yet.",
       "notProvided": "Not provided",
       "identifier": "Licence identifier",
@@ -714,6 +716,7 @@
       "failed": "The credential could not be updated. Try again.",
       "stale": "This credential changed in another session. Reload and try again.",
       "replayConflict": "This request was already used for different changes. Reload and try again.",
+      "conflict": "The credential is being changed elsewhere. Reload before trying again.",
       "invalidField": "Check the highlighted field.",
       "errorSummary": "Correct the credential details",
       "leaveWarning": "You have unsaved credential changes.",
@@ -1974,6 +1977,11 @@
         "open": "Open",
         "unnamed": "Unnamed PRO",
         "emailUnavailable": "Email unavailable",
+        "partialEmail": "Some account emails are temporarily unavailable. Registry rows and lifecycle actions remain usable.",
+        "empty": "No PRO records yet",
+        "emptyDescription": "Create the first PRO profile to begin the credential lifecycle.",
+        "noResults": "No PRO records match these filters",
+        "noResultsDescription": "Reset the filters or change the search to view registry records.",
         "notAvailable": "Not available",
         "unassigned": "Unassigned",
         "paginationLabel": "PRO registry pages",
@@ -2014,7 +2022,9 @@
           "expiryDate": "Expiry date",
           "evidenceTitle": "Evidence",
           "noEvidence": "No evidence is attached to this credential.",
-          "empty": "No credential has been created."
+          "empty": "No credential has been created.",
+          "loadError": "Credential details are temporarily unavailable. Commercial terms and history remain usable.",
+          "retry": "Retry credential details"
         },
         "review": {
           "legend": "Credential review decision",
@@ -2038,7 +2048,8 @@
           "saved": "Decision saved.",
           "errorTitle": "Decision not saved",
           "failed": "The decision could not be completed safely. Review the current state and try again.",
-          "stale": "This credential changed before your decision was saved. Refresh and review the latest state before trying again."
+          "stale": "This credential changed before your decision was saved. Refresh and review the latest state before trying again.",
+          "conflict": "Another credential action is still in progress. Refresh before trying again."
         },
         "terms": {
           "title": "PRO commercial terms",
@@ -2056,6 +2067,8 @@
           "ongoing": "Ongoing",
           "notApplicable": "Not applicable",
           "empty": "No term has been configured.",
+          "loadError": "Commercial terms are temporarily unavailable. Credential details and history remain usable.",
+          "retry": "Retry commercial terms",
           "historyLabel": "Commercial term history",
           "kind": "Term kind",
           "kinds": { "pricing": "Service price", "compensation": "Compensation" },
@@ -2083,7 +2096,8 @@
             "saved": "Commercial term saved.",
             "errorTitle": "Term not saved",
             "failed": "The commercial term could not be saved safely. Review the values and try again.",
-            "stale": "This term changed before it was saved. Refresh and review the latest version before trying again."
+            "stale": "This term changed before it was saved. Refresh and review the latest version before trying again.",
+            "conflict": "Another term change is still in progress. Refresh before trying again."
           }
         },
         "timeline": {
@@ -2094,6 +2108,8 @@
           "reason": "Reason",
           "unavailable": "Unavailable",
           "empty": "No lifecycle events are available.",
+          "loadError": "Lifecycle history is temporarily unavailable. Credential details and commercial terms remain usable.",
+          "retry": "Retry lifecycle history",
           "next": "Older events",
           "events": {
             "credential_submitted": "Credential submitted",

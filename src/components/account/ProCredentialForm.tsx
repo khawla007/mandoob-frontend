@@ -100,7 +100,9 @@ export function ProCredentialForm({
             ? t('stale')
             : code === 'OPERATION_REUSED'
               ? t('replayConflict')
-              : t('failed');
+              : code === 'CREDENTIAL_IN_PROGRESS' || code === 'INVALID_CREDENTIAL_TRANSITION'
+                ? t('conflict')
+                : t('failed');
         setFeedback({ kind: 'error', text });
         queueMicrotask(() => errorSummaryRef.current?.focus());
         return;
@@ -132,6 +134,7 @@ export function ProCredentialForm({
         <Button
           type="button"
           disabled={pending}
+          className="min-h-11"
           onClick={() =>
             perform(
               mode === 'create'
@@ -204,6 +207,7 @@ export function ProCredentialForm({
             aria-invalid={Boolean(form.formState.errors.identifier)}
             aria-describedby={`credential-identifier-help${form.formState.errors.identifier ? ' credential-identifier-error' : ''}`}
             {...form.register('identifier')}
+            className="min-h-11"
           />
         </CredentialField>
         <CredentialField
@@ -218,6 +222,7 @@ export function ProCredentialForm({
               form.formState.errors.issuingAuthority ? 'credential-authority-error' : undefined
             }
             {...form.register('issuingAuthority')}
+            className="min-h-11"
           />
         </CredentialField>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -235,6 +240,7 @@ export function ProCredentialForm({
                 form.formState.errors.issueDate ? 'credential-issue-date-error' : undefined
               }
               {...form.register('issueDate')}
+              className="min-h-11"
             />
           </CredentialField>
           <CredentialField
@@ -251,17 +257,19 @@ export function ProCredentialForm({
                 form.formState.errors.expiryDate ? 'credential-expiry-date-error' : undefined
               }
               {...form.register('expiryDate')}
+              className="min-h-11"
             />
           </CredentialField>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending} className="min-h-11">
             {pending ? t('pending') : t('saveDraft')}
           </Button>
           <Button
             type="button"
             variant="outline"
             disabled={pending || form.formState.isDirty}
+            className="min-h-11"
             onClick={() =>
               perform(
                 {

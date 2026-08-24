@@ -92,3 +92,20 @@ test('save success copy distinguishes the cleared input from the retained protec
   assert.match(ar.account.proCredential.saved, /حقل.*فارغ/u);
   assert.match(ar.account.proCredential.saved, /المعرّف المحفوظ.*محمي/u);
 });
+
+test('self-service credential partial source remains recoverable and all mutations sanitize conflicts', () => {
+  const panel = read('src/components/account/ProCredentialPanel.tsx');
+  const form = read('src/components/account/ProCredentialForm.tsx');
+  const evidence = read('src/components/account/ProCredentialEvidenceForm.tsx');
+  assert.match(panel, /partialSource/u);
+  assert.match(panel, /retryHref/u);
+  assert.match(panel, /RotateCcw/u);
+  assert.match(panel, /min-h-11/u);
+  assert.match(form, /CREDENTIAL_IN_PROGRESS/u);
+  assert.match(form, /INVALID_CREDENTIAL_TRANSITION/u);
+  assert.match(evidence, /EVIDENCE_REMOVAL_IN_PROGRESS/u);
+  for (const source of [form, evidence]) {
+    assert.doesNotMatch(source, /setError\([^)]*(?:message|stack)/u);
+    assert.match(source, /aria-live="polite"/u);
+  }
+});

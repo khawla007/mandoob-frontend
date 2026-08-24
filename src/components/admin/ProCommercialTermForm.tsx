@@ -106,7 +106,13 @@ export function ProCommercialTermForm({
         } catch {
           // Keep the fallback localized and sanitized.
         }
-        setError(code.startsWith('STALE_') ? t('stale') : t('failed'));
+        setError(
+          code.startsWith('STALE_')
+            ? t('stale')
+            : code === 'TERM_IN_PROGRESS' || code === 'OPERATION_REUSED'
+              ? t('conflict')
+              : t('failed'),
+        );
         queueMicrotask(() => errorRef.current?.focus());
         return;
       }
@@ -154,6 +160,8 @@ export function ProCommercialTermForm({
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder={t('amountPlaceholder')}
                 required
+                dir="ltr"
+                className="min-h-11"
               />
               <p className="text-muted-foreground text-xs">{t('amountHelp')}</p>
             </div>
@@ -179,6 +187,8 @@ export function ProCommercialTermForm({
                 value={effectiveFrom}
                 onChange={(event) => setEffectiveFrom(event.target.value)}
                 required
+                dir="ltr"
+                className="min-h-11"
               />
             </div>
             <div className="space-y-2">
@@ -189,6 +199,8 @@ export function ProCommercialTermForm({
                 value={effectiveTo}
                 min={effectiveFrom || undefined}
                 onChange={(event) => setEffectiveTo(event.target.value)}
+                dir="ltr"
+                className="min-h-11"
               />
             </div>
           </div>
@@ -202,10 +214,17 @@ export function ProCommercialTermForm({
               value={effectiveTo}
               onChange={(event) => setEffectiveTo(event.target.value)}
               required
+              dir="ltr"
+              className="min-h-11"
             />
           </div>
         ) : null}
-        <Button type="submit" variant={mode === 'end' ? 'outline' : 'default'} disabled={pending}>
+        <Button
+          type="submit"
+          variant={mode === 'end' ? 'outline' : 'default'}
+          disabled={pending}
+          className="min-h-11"
+        >
           {pending ? t('pending') : t(`actions.${mode}`)}
         </Button>
       </fieldset>

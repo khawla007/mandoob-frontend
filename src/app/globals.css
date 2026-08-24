@@ -81,6 +81,9 @@
   --signal-info: oklch(0.55 0.09 220);
   --signal-success: oklch(0.53 0.12 155);
   --signal-orange-soft: color-mix(in oklch, var(--brand-accent) 11%, var(--card));
+  --lifecycle-surface: color-mix(in oklch, var(--card) 94%, var(--signal-info));
+  --lifecycle-subtle: color-mix(in oklch, var(--card) 92%, var(--brand-accent));
+  --lifecycle-border: color-mix(in oklch, var(--border) 76%, var(--signal-info));
   --signal-grid: repeating-linear-gradient(
     135deg,
     transparent 0 12px,
@@ -145,6 +148,9 @@
   --signal-info: oklch(0.72 0.1 220);
   --signal-success: oklch(0.7 0.12 155);
   --signal-orange-soft: color-mix(in oklch, var(--brand-accent) 15%, var(--card));
+  --lifecycle-surface: color-mix(in oklch, var(--card) 90%, var(--signal-info));
+  --lifecycle-subtle: color-mix(in oklch, var(--card) 88%, var(--brand-accent));
+  --lifecycle-border: color-mix(in oklch, var(--border) 68%, var(--signal-info));
   --signal-grid: repeating-linear-gradient(
     135deg,
     transparent 0 12px,
@@ -177,6 +183,9 @@ body.dashboard-surface-active {
   }
   html {
     @apply font-sans;
+  }
+  [dir='rtl'] body {
+    font-family: var(--font-arabic), var(--font-geist-sans), sans-serif;
   }
 }
 

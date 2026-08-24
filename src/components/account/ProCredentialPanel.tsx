@@ -1,8 +1,19 @@
 import { getLocale, getTranslations } from 'next-intl/server';
-import { AlertCircle, BadgeCheck, Ban, Clock3, FilePenLine, Send, ShieldX } from 'lucide-react';
+import Link from 'next/link';
+import {
+  AlertCircle,
+  BadgeCheck,
+  Ban,
+  Clock3,
+  FilePenLine,
+  RotateCcw,
+  Send,
+  ShieldX,
+} from 'lucide-react';
 
 import { ProCredentialForm } from '@/components/account/ProCredentialForm';
 import { ProCredentialEvidenceForm } from '@/components/account/ProCredentialEvidenceForm';
+import { Button } from '@/components/ui/button';
 import type { ReadSelfProCredentialSnapshot } from '@/lib/data/account-self';
 import type { ProCredentialState } from '@/lib/pro-lifecycle/contracts';
 import {
@@ -34,9 +45,11 @@ function formatDate(value: string | null, locale: string, empty: string): string
 export async function ProCredentialPanel({
   snapshot,
   unavailable,
+  retryHref = '/account/role',
 }: {
   snapshot: ReadSelfProCredentialSnapshot | null;
   unavailable: boolean;
+  retryHref?: string;
 }) {
   const [t, locale] = await Promise.all([getTranslations('account.proCredential'), getLocale()]);
   if (unavailable || !snapshot) {
@@ -48,9 +61,15 @@ export async function ProCredentialPanel({
         <h2 id="credential-heading" className="text-lg font-semibold">
           {t('title')}
         </h2>
-        <p role="status" className="text-muted-foreground mt-2 text-sm">
-          {t('unavailable')}
+        <p role="status" aria-live="polite" className="text-muted-foreground mt-2 text-sm">
+          {t('partialSource')}
         </p>
+        <Button asChild variant="outline" className="mt-4 min-h-11">
+          <Link href={retryHref}>
+            <RotateCcw aria-hidden />
+            {t('retry')}
+          </Link>
+        </Button>
       </section>
     );
   }

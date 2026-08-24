@@ -12,6 +12,8 @@ import { parseProTimelineSearchParams } from '@/components/admin/pro-lifecycle-u
 import { requirePlatformOperator } from '@/lib/auth/require-role';
 import { readProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
 import { readProLifecycleTimeline } from '@/lib/data/pro-lifecycle-timeline';
+import { readProCredentialSnapshot } from '@/lib/data/pro-credentials';
+import { readProCommercialTerms } from '@/lib/data/pro-commercial-terms';
 import { ApiError } from '@/lib/errors';
 import { isUuid } from '@/lib/util/uuid';
 
@@ -30,21 +32,30 @@ export default async function ProLifecycleDetailPage({
 
   const timelineSelection = parseProTimelineSearchParams((await searchParams).timeline);
   let snapshot;
-  let timelinePage;
   try {
-    if (timelineSelection.cursor === null) {
-      snapshot = await readProLifecycleDetail(operator.id, id);
-      timelinePage = snapshot.timeline;
-    } else {
-      [snapshot, timelinePage] = await Promise.all([
-        readProLifecycleDetail(operator.id, id),
-        readProLifecycleTimeline(operator.id, id, 25, timelineSelection.cursor),
-      ]);
-    }
+    snapshot = await readProLifecycleDetail(operator.id, id);
   } catch (error) {
     if (error instanceof ApiError && error.code === 'NOT_FOUND') notFound();
     throw error;
   }
+
+  const [credentialResult, termsResult, timelineResult] = await Promise.allSettled([
+    readProCredentialSnapshot(operator.id, id),
+    readProCommercialTerms(operator.id, id),
+    readProLifecycleTimeline(operator.id, id, 25, timelineSelection.cursor),
+  ]);
+  const credentialState =
+    credentialResult.status === 'fulfilled'
+      ? { kind: 'ready' as const, ...credentialResult.value }
+      : { kind: 'error' as const };
+  const termsState =
+    termsResult.status === 'fulfilled'
+      ? { kind: 'ready' as const, terms: termsResult.value }
+      : { kind: 'error' as const };
+  const timelineState =
+    timelineResult.status === 'fulfilled'
+      ? { kind: 'ready' as const, timelinePage: timelineResult.value }
+      : { kind: 'error' as const };
 
   const t = await getTranslations('admin.user.proRegistry');
   return (
@@ -104,12 +115,18 @@ export default async function ProLifecycleDetailPage({
         userId={snapshot.profile.id}
         credentials={snapshot.credentials}
         evidence={snapshot.evidence}
+        sourceState={credentialState}
       />
-      <ProCommercialTermsPanel userId={snapshot.profile.id} terms={snapshot.commercialTerms} />
+      <ProCommercialTermsPanel
+        userId={snapshot.profile.id}
+        terms={snapshot.commercialTerms}
+        sourceState={termsState}
+      />
       <ProLifecycleTimeline
         userId={snapshot.profile.id}
-        timelinePage={timelinePage}
+        timelinePage={snapshot.timeline}
         invalidCursor={timelineSelection.invalid}
+        sourceState={timelineState}
       />
     </div>
   );

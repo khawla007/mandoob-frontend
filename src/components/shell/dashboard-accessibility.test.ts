@@ -108,6 +108,17 @@ test('dashboard inset may shrink beside the tablet sidebar without page overflow
   assert.match(sidebarPrimitive, /relative flex w-full min-w-0 flex-1 flex-col/u);
 });
 
+test('dashboard uses application fonts and lifecycle semantic surfaces in both themes', () => {
+  const rootLayout = readFileSync(new URL('../../app/layout.tsx', import.meta.url), 'utf8');
+  assert.match(rootLayout, /Noto_Kufi_Arabic/u);
+  assert.match(rootLayout, /--font-arabic/u);
+  assert.match(styles, /\[dir='rtl'\][\s\S]*font-family:\s*var\(--font-arabic\)/u);
+  for (const token of ['lifecycle-surface', 'lifecycle-subtle', 'lifecycle-border']) {
+    assert.match(styles, new RegExp(`--${token}:`, 'u'));
+    assert.match(styles, new RegExp(`\\.dark[\\s\\S]*--${token}:`, 'u'));
+  }
+});
+
 test('collapsed dashboard submenu applies inert alongside aria-hidden', () => {
   assert.match(sidebar, /aria-hidden=\{!open\}[\s\S]{0,80}inert=\{!open\}/u);
 });

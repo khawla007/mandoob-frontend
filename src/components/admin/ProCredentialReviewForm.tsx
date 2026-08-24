@@ -95,7 +95,13 @@ export function ProCredentialReviewForm({
         } catch {
           // The localized generic message remains safe when the response is not JSON.
         }
-        setError(code.startsWith('STALE_') ? t('stale') : t('failed'));
+        setError(
+          code.startsWith('STALE_')
+            ? t('stale')
+            : code === 'CREDENTIAL_IN_PROGRESS' || code === 'OPERATION_REUSED'
+              ? t('conflict')
+              : t('failed'),
+        );
         queueMicrotask(() => errorRef.current?.focus());
         return;
       }
@@ -147,6 +153,7 @@ export function ProCredentialReviewForm({
                 minLength={2}
                 maxLength={64}
                 required
+                className="min-h-11"
               />
             </div>
             <div className="space-y-2">
@@ -159,6 +166,7 @@ export function ProCredentialReviewForm({
                 maxLength={500}
                 aria-describedby={`reason-help-${credentialId}`}
                 required
+                className="min-h-11"
               />
               <p id={`reason-help-${credentialId}`} className="text-muted-foreground text-xs">
                 {t('reasonHelp')}
@@ -176,7 +184,7 @@ export function ProCredentialReviewForm({
             {t('revokeConfirmation')}
           </label>
         ) : null}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} className="min-h-11">
           {pending ? t('pending') : t('submit')}
         </Button>
       </fieldset>

@@ -1,21 +1,53 @@
-import { CircleDollarSign } from 'lucide-react';
+import Link from 'next/link';
+import { CircleDollarSign, RotateCcw } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { formatAedMinor } from '@/lib/data/pro-commercial-terms';
 import type { ProLifecycleDetail } from '@/lib/data/pro-lifecycle-detail';
 import { ProCommercialTermForm } from './ProCommercialTermForm';
 import { formatProCommercialDate } from './pro-lifecycle-ui';
 import { ProTermStatusBadge } from './ProLifecycleStatusBadge';
 
+export type ProTermsSourceState =
+  | { kind: 'ready'; terms: ProLifecycleDetail['commercialTerms'] }
+  | { kind: 'error' };
+
 export async function ProCommercialTermsPanel({
   userId,
   terms,
+  sourceState,
 }: {
   userId: string;
   terms: ProLifecycleDetail['commercialTerms'];
+  sourceState?: ProTermsSourceState;
 }) {
   const [t, locale] = await Promise.all([getTranslations('admin.user.proLifecycle'), getLocale()]);
+  const resolved = sourceState ?? { kind: 'ready', terms };
+  if (resolved.kind === 'error') {
+    return (
+      <Card className="border-[var(--lifecycle-border)] bg-[var(--lifecycle-surface)]">
+        <CardHeader>
+          <CardTitle>
+            <h2>{t('terms.title')}</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p role="status" aria-live="polite" className="text-muted-foreground text-sm">
+            {t('terms.loadError')}
+          </p>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={`/admin/users/${userId}`}>
+              <RotateCcw aria-hidden />
+              {t('terms.retry')}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  const availableTerms = resolved.terms;
   return (
     <Card>
       <CardHeader>
@@ -30,7 +62,7 @@ export async function ProCommercialTermsPanel({
         </div>
         <div className="grid min-w-0 gap-6 lg:grid-cols-2">
           {(['pricing', 'compensation'] as const).map((termKind) => {
-            const matches = terms.filter((term) => term.termKind === termKind);
+            const matches = availableTerms.filter((term) => term.termKind === termKind);
             const active = matches.find((term) => term.status === 'active');
             const draft = matches.find((term) => term.status === 'draft');
             const actionable = [active, draft].filter(
@@ -110,8 +142,13 @@ export async function ProCommercialTermsPanel({
             );
           })}
         </div>
-        {terms.length ? (
-          <div className="overflow-x-auto" role="region" aria-label={t('terms.historyLabel')}>
+        {availableTerms.length ? (
+          <div
+            className="overflow-x-auto"
+            role="region"
+            aria-label={t('terms.historyLabel')}
+            tabIndex={0}
+          >
             <table className="w-full min-w-[64rem] text-start text-sm">
               <thead>
                 <tr className="border-b text-start">
@@ -139,7 +176,7 @@ export async function ProCommercialTermsPanel({
                 </tr>
               </thead>
               <tbody>
-                {terms.map((term) => (
+                {availableTerms.map((term) => (
                   <tr key={term.termId} className="border-b last:border-0">
                     <td className="p-2">{t(`terms.kinds.${term.termKind}`)}</td>
                     <td className="p-2">{t(`terms.models.${term.model}`)}</td>
