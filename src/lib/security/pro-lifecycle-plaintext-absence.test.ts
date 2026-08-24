@@ -131,6 +131,53 @@ function discoverStep3RuntimeRoots(runtimeFiles = runtimeSourceFiles()): string[
   return [...new Set(runtimeFiles)].sort();
 }
 
+const protectedAdapterAuditExemptions = new Map<string, readonly RegExp[]>([
+  [
+    'src/app/admin/audit-logs/page.tsx',
+    [
+      /import\s*\{[^}]*\bauditLogFiltersSchema\b[^}]*\}\s*from '@\/lib\/validation\/observability';/gu,
+    ],
+  ],
+  [
+    'src/app/admin/observability/actions.ts',
+    [/import\s*\{[^}]*\}\s*from '@\/lib\/validation\/observability';/gu],
+  ],
+  [
+    'src/app/admin/sessions/page.tsx',
+    [/import \{ sessionsFiltersSchema \} from '@\/lib\/validation\/observability';/gu],
+  ],
+  [
+    'src/lib/data/audit-log.ts',
+    [/import\s*\{[^}]*\}\s*from '@\/lib\/validation\/observability';/gu],
+  ],
+  [
+    'src/components/admin/LockedAccountsTable.tsx',
+    [/import \{ unlockAccountAction \} from '@\/app\/admin\/observability\/actions';/gu],
+  ],
+  [
+    'src/components/admin/SessionsTable.tsx',
+    [/import\s*\{[^}]*\}\s*from '@\/app\/admin\/observability\/actions';/gu],
+  ],
+  ['src/components/estimator/CostEstimator.tsx', [/t\(['"]metrics\.[A-Za-z]+['"]\)/gu]],
+]);
+
+const protectedAdapterPatterns = [
+  /(?:from\s*|import\s*\()\s*['"][^'"]*(?:analytics|telemetry|observability|posthog|segment|sentry|datadog|playwright|puppeteer|screenshot)[^'"]*['"]/iu,
+  /\b(?:analytics|telemetry|metrics|observability|posthog|segment|sentry)\s*(?:\.[A-Za-z_$][\w$]*|\()/iu,
+  /\bcreate(?:Analytics|Metrics|Observability|Telemetry)Client\s*\(/u,
+  /\b(?:saveReportArtifact|persistReportArtifact|writeReportArtifact)\s*\(/u,
+  /(?:\.|\b)(?:track|trackEvent|capture|captureEvent|captureException|recordEvent|sendBeacon|screenshot|takeScreenshot|saveScreenshot|persistEvidence|saveEvidence|writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|attach)\s*\(/iu,
+  /Reports\/launch-gate-evidence\//u,
+  /screenshots?\/[^\s'"`]+\.(?:png|jpe?g|webp)/iu,
+] as const;
+
+function assertNoProtectedPersistenceAdapter(file: string, source: string): void {
+  let auditedSource = source;
+  for (const exemption of protectedAdapterAuditExemptions.get(file) ?? [])
+    auditedSource = auditedSource.replace(exemption, '');
+  for (const pattern of protectedAdapterPatterns) assert.doesNotMatch(auditedSource, pattern, file);
+}
+
 if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
   test('actual recovery component renders only sanitized orchestration state', async () => {
     const React = await import('react');
@@ -359,6 +406,71 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
     assert.deepEqual(roots, runtimeFiles.slice().sort());
   });
 
+  test('runtime audit rejects report, metrics, observability, and screenshot persistence mutations', () => {
+    const mutations = [
+      "saveReportArtifact('Reports/launch-gate-evidence/task13/output.json')",
+      "metrics.increment('pro_lifecycle', payload)",
+      "createObservabilityClient().emit('pro_lifecycle', payload)",
+      "await screenshot({ path: 'screenshots/pro-lifecycle.png' })",
+      "writeFile('Reports/launch-gate-evidence/pro-lifecycle/screenshot.png', bytes)",
+    ];
+    for (const mutation of mutations) {
+      assert.throws(
+        () => assertNoProtectedPersistenceAdapter('src/app/synthetic/loading.tsx', mutation),
+        /src\/app\/synthetic\/loading\.tsx/u,
+        mutation,
+      );
+    }
+  });
+
+  test('runtime audit exemptions are exact expressions and never exempt whole files', () => {
+    assert.deepEqual([...protectedAdapterAuditExemptions.keys()].sort(), [
+      'src/app/admin/audit-logs/page.tsx',
+      'src/app/admin/observability/actions.ts',
+      'src/app/admin/sessions/page.tsx',
+      'src/components/admin/LockedAccountsTable.tsx',
+      'src/components/admin/SessionsTable.tsx',
+      'src/components/estimator/CostEstimator.tsx',
+      'src/lib/data/audit-log.ts',
+    ]);
+    assert.doesNotThrow(() =>
+      assertNoProtectedPersistenceAdapter(
+        'src/app/admin/audit-logs/page.tsx',
+        "import { auditLogFiltersSchema } from '@/lib/validation/observability';",
+      ),
+    );
+    assert.doesNotThrow(() =>
+      assertNoProtectedPersistenceAdapter(
+        'src/components/estimator/CostEstimator.tsx',
+        "t('metrics.currency')",
+      ),
+    );
+    assert.throws(
+      () =>
+        assertNoProtectedPersistenceAdapter(
+          'src/app/admin/audit-logs/page.tsx',
+          "createObservabilityClient().emit('pro_lifecycle', payload)",
+        ),
+      /src\/app\/admin\/audit-logs\/page\.tsx/u,
+    );
+    assert.throws(
+      () =>
+        assertNoProtectedPersistenceAdapter(
+          'src/components/estimator/CostEstimator.tsx',
+          "metrics.increment('pro_lifecycle', payload)",
+        ),
+      /src\/components\/estimator\/CostEstimator\.tsx/u,
+    );
+    assert.throws(
+      () =>
+        assertNoProtectedPersistenceAdapter(
+          'src/app/admin/other/page.tsx',
+          "import { auditLogFiltersSchema } from '@/lib/validation/observability';",
+        ),
+      /src\/app\/admin\/other\/page\.tsx/u,
+    );
+  });
+
   test('lifecycle runtime graph has no analytics, screenshot, or report-evidence persistence adapter', () => {
     const runtimeRoots = discoverStep3RuntimeRoots();
     assert.notEqual(runtimeRoots.length, 0);
@@ -374,21 +486,7 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
       /\.(?:ts|tsx|js|jsx|cjs|mjs)$/u.test(candidate),
     )) {
       const source = readFileSync(file, 'utf8');
-      assert.doesNotMatch(
-        source,
-        /(?:from\s*|import\s*\()\s*['"][^'"]*(?:analytics|telemetry|posthog|segment|sentry|datadog|playwright|puppeteer|screenshot)[^'"]*['"]/iu,
-        file,
-      );
-      assert.doesNotMatch(
-        source,
-        /\b(?:analytics|telemetry|posthog|segment|sentry)\s*(?:\.|\()/iu,
-        file,
-      );
-      assert.doesNotMatch(
-        source,
-        /(?:\.|\b)(?:track|trackEvent|capture|captureEvent|captureException|recordEvent|sendBeacon|screenshot|takeScreenshot|saveScreenshot|persistEvidence|saveEvidence|writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|attach)\s*\(/iu,
-        file,
-      );
+      assertNoProtectedPersistenceAdapter(file, source);
     }
   });
 }
