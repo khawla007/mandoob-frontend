@@ -37,6 +37,18 @@ test('0078 makes selector and current detail use the authoritative company-aware
   assert.doesNotMatch(sql, /to authenticated/u);
 });
 
+test('0078 assigns its composite row separately from the PRO display name', () => {
+  const sql = normalized(migrationPath);
+  assert.doesNotMatch(
+    sql,
+    /select assignment, profile\.full_name into v_assignment, v_pro_full_name/u,
+  );
+  assert.match(
+    sql,
+    /select assignment\.\* into v_assignment[\s\S]*select profile\.full_name into v_pro_full_name/u,
+  );
+});
+
 test('0079 defines one replacement-aware adapter and authoritative mutation identities', () => {
   const sql = normalized(forwardFixPath);
   assert.match(sql, /function public\.evaluate_company_assignment_eligibility/u);

@@ -122,15 +122,19 @@ begin
     raise exception using errcode = '42501', message = 'FORBIDDEN';
   end if;
 
-  select assignment, profile.full_name
-    into v_assignment, v_pro_full_name
+  select assignment.*
+    into v_assignment
   from public.pro_company_assignments assignment
-  join public.profiles profile on profile.id = assignment.pro_profile_id
   where assignment.company_id = p_company_id
     and assignment.status = 'active';
   if not found then
     return null;
   end if;
+
+  select profile.full_name
+    into v_pro_full_name
+  from public.profiles profile
+  where profile.id = v_assignment.pro_profile_id;
 
   v_eligibility := public.evaluate_pro_assignment_eligibility(
     v_assignment.pro_profile_id, p_company_id
