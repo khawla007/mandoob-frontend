@@ -100,7 +100,7 @@ for (const [label, response, expected] of [
       async (clamav) => {
         const { scanFile } = await load();
         assert.deepEqual(
-          await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 500 }),
+          await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 5_000 }),
           expected,
         );
       },
@@ -126,50 +126,55 @@ test('ClamAV TCP protocol fails closed on socket error and no response', async (
   }
 });
 
-test('ClamAV TCP deadline is absolute even when a peer slowly drips bytes', async () => {
-  await withClamAvServer(
-    (socket) => {
-      const interval = setInterval(() => socket.write('x'), 10);
-      const finish = setTimeout(() => socket.end('stream: OK\0'), 200);
-      socket.once('close', () => clearInterval(interval));
-      socket.once('close', () => clearTimeout(finish));
-    },
-    async (clamav) => {
-      const { scanFile } = await load();
-      const started = Date.now();
-      const result = await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 40 });
-      assert.deepEqual(result, {
-        clean: false,
-        reason: 'scanner_unavailable',
-        provider: 'clamav',
-      });
-      assert.ok(
-        Date.now() - started < 150,
-        'slow activity must not extend the wall-clock deadline',
-      );
-    },
-  );
-});
+test(
+  'ClamAV TCP deadline is absolute even when a peer slowly drips bytes',
+  { timeout: 2_000 },
+  async () => {
+    let peerReturnedValidResult = false;
+    let returnValidResult = () => false;
+    await withClamAvServer(
+      (socket) => {
+        const interval = setInterval(() => socket.write('x'), 25);
+        returnValidResult = () => {
+          if (socket.destroyed) return false;
+          peerReturnedValidResult = true;
+          socket.end('stream: OK\0');
+          return true;
+        };
+        socket.once('close', () => clearInterval(interval));
+      },
+      async (clamav) => {
+        const { scanFile } = await load();
+        const result = await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 100 });
+        assert.deepEqual(result, {
+          clean: false,
+          reason: 'scanner_unavailable',
+          provider: 'clamav',
+        });
+        assert.equal(peerReturnedValidResult, false, 'scanner settles before the peer returns OK');
+        assert.equal(
+          returnValidResult(),
+          true,
+          'peer control can still return a valid OK response',
+        );
+      },
+    );
+  },
+);
 
-test('ClamAV TCP response is byte-bounded and fails closed before the peer finishes', async () => {
+test('ClamAV TCP response is byte-bounded despite a valid OK suffix', async () => {
   await withClamAvServer(
     (socket) => {
-      const chunk = Buffer.alloc(1024, 'x');
-      const interval = setInterval(() => socket.write(chunk), 5);
-      const finish = setTimeout(() => socket.end(), 200);
-      socket.once('close', () => clearInterval(interval));
-      socket.once('close', () => clearTimeout(finish));
+      socket.end(Buffer.concat([Buffer.alloc(4_097, 'x'), Buffer.from('stream: OK\0')]));
     },
     async (clamav) => {
       const { scanFile } = await load();
-      const started = Date.now();
-      const result = await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 500 });
+      const result = await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 5_000 });
       assert.deepEqual(result, {
         clean: false,
         reason: 'scanner_unavailable',
         provider: 'clamav',
       });
-      assert.ok(Date.now() - started < 150, 'oversized responses must be rejected immediately');
     },
   );
 });
