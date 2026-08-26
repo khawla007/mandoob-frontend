@@ -85,7 +85,7 @@ test('secured self route executes create, blank-preserving save, submit, and rep
   assert.equal(commands[1]?.identifier, '');
 });
 
-test('masked evidence open returns only an opaque app URL after owned metadata authorization', async () => {
+test('masked evidence open proxies the authorized file without credentials in a URL', async () => {
   const handler = createEvidenceGetHandler({
     requireViewer: async () => ({
       id: ACTOR,
@@ -101,18 +101,28 @@ test('masked evidence open returns only an opaque app URL after owned metadata a
       credential_id: CREDENTIAL,
       storage_path: `pro-credentials/${ACTOR}/${CREDENTIAL}/${OPERATION}`,
       mime_type: 'application/pdf',
-      size_bytes: 1024,
+      size_bytes: 5,
       original_name_safe: 'licence.pdf',
     }),
-    issueToken: async () => 'opaque-token',
+    download: async () => new Blob(['%PDF-'], { type: 'application/pdf' }),
   });
   const response = await handler(new Request('http://localhost'), {
     params: Promise.resolve({ evidenceId: OPERATION }),
   });
-  assert.equal(response.status, 307);
-  assert.equal(
-    response.headers.get('location'),
-    '/api/v1/account/pro/credentials/evidence/download?token=opaque-token',
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('location'), null);
+  assert.equal(response.headers.get('content-disposition'), 'attachment');
+  assert.equal(await response.text(), '%PDF-');
+  assert.doesNotMatch(response.url, /token|pro-credentials|licence\.pdf/iu);
+});
+
+test('mandatory operator MFA protects admin from removing the last verified factor', () => {
+  const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
+  const remove = source.slice(
+    source.indexOf('export async function removeMfaFactorAction'),
+    source.indexOf('export async function updateRoleFieldsAction'),
   );
-  assert.doesNotMatch(response.headers.get('location') ?? '', /pro-credentials|licence\.pdf/u);
+  for (const role of ['super_admin', 'admin', 'pro']) {
+    assert.match(remove, new RegExp(`session\\.role === '${role}'`, 'u'));
+  }
 });

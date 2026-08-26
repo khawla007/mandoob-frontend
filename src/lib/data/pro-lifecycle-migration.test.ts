@@ -819,7 +819,7 @@ test('0086b makes commercial-term versions row-local without weakening date or o
   assert.equal([...sql.matchAll(/security definer set search_path = ''/gu)].length, 3);
 });
 
-test('0086b rejects future commercial-term activation on the Dubai business date', () => {
+test('0086b permits a currently-effective fixed-duration term but rejects a future start', () => {
   const sql = readFileSync(join(process.cwd(), commercialTermIntegrityMigrationPath), 'utf8')
     .replace(/\s+/gu, ' ')
     .toLowerCase();
@@ -833,17 +833,18 @@ test('0086b rejects future commercial-term activation on the Dubai business date
   );
   assert.match(
     activate,
-    /if v_term\.status <> 'draft' or v_term\.effective_from > v_today or \(v_term\.effective_to is not null and v_term\.effective_to > v_today\) then[\s\S]*invalid_term_transition/u,
+    /if v_term\.status <> 'draft' or v_term\.effective_from > v_today then[\s\S]*invalid_term_transition/u,
   );
+  assert.doesNotMatch(activate, /v_term\.effective_to > v_today/u);
   assert.match(activate, /pro_lifecycle_replay_result/u);
   assert.match(activate, /stale_term_version/u);
   assert.match(activate, /store_pro_lifecycle_receipt/u);
   assert.match(activate, /commercial_term_(?:activated|ended)/u);
   assert.match(activate, /insert into public\.pro_commercial_term_events/u);
   assert.ok(
-    activate.indexOf('v_term.effective_to > v_today') <
+    activate.indexOf('v_term.effective_from > v_today') <
       activate.indexOf('select * into v_previous'),
-    'future activation boundaries must fail before the current active term is ended',
+    'future-start activation must fail before the current active term is ended',
   );
 });
 
@@ -880,12 +881,11 @@ test('commercial-term SQL regression proves two pricing and compensation rotatio
   assert.match(fixture, /foreach v_term_kind in array/u);
   assert.match(fixture, /for v_rotation in 1\.\.2 loop/u);
   assert.match(fixture, /expected_two_successive_rotations/u);
-  assert.match(fixture, /expected_future_effective_to_activation_rejection/u);
-  assert.match(fixture, /future_effective_to_activation_changed_current_term/u);
+  assert.match(fixture, /expected_fixed_duration_term_activation/u);
+  assert.match(fixture, /expected_fixed_duration_term_eligibility/u);
   assert.match(fixture, /expected_future_activation_rejection/u);
   assert.match(fixture, /expected_future_end_rejection/u);
   assert.match(fixture, /evaluate_pro_assignment_eligibility/u);
-  assert.match(fixture, /expected_eligible_after_future_boundary_rejections/u);
   assert.match(fixture, /pro_commercial_terms_profile_kind_version/u);
   assert.match(fixture, /pro_commercial_terms_profile_identity/u);
   assert.match(fixture, /pro_commercial_terms_active_date_exclusion/u);

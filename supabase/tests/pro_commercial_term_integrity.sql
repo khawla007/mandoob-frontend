@@ -173,26 +173,21 @@ begin
       v_term_kind, v_model, v_amount + 3, v_interval, v_today - 1, v_today + 1
     );
     v_draft_id := (v_result ->> 'termId')::uuid;
-    begin
-      perform public.activate_pro_commercial_term(
-        v_actor_id, v_draft_id, 1, gen_random_uuid(), repeat('7', 64)
-      );
-      raise exception 'EXPECTED_FUTURE_EFFECTIVE_TO_ACTIVATION_REJECTION';
-    exception when others then
-      if sqlerrm <> 'INVALID_TERM_TRANSITION' then raise; end if;
-    end;
+    perform public.activate_pro_commercial_term(
+      v_actor_id, v_draft_id, 1, gen_random_uuid(), repeat('7', 64)
+    );
     if not exists (
       select 1 from public.pro_commercial_terms
-      where id = v_active_id and status = 'active' and effective_to is null and version = 2
+      where id = v_draft_id and status = 'active'
+        and effective_from = v_today - 1 and effective_to = v_today + 1 and version = 2
     ) or not exists (
       select 1 from public.pro_commercial_terms
-      where id = v_draft_id and status = 'draft' and version = 1
+      where id = v_draft_id and status = 'active'
+        and effective_from <= v_today and effective_to >= v_today
     ) then
-      raise exception 'FUTURE_EFFECTIVE_TO_ACTIVATION_CHANGED_CURRENT_TERM';
+      raise exception 'EXPECTED_FIXED_DURATION_TERM_ACTIVATION';
     end if;
-
-    delete from public.pro_commercial_term_events where commercial_term_id = v_draft_id;
-    delete from public.pro_commercial_terms where id = v_draft_id;
+    v_active_id := v_draft_id;
 
     v_result := public.create_pro_commercial_term_draft(
       v_actor_id, v_pro_id, gen_random_uuid(), repeat('8', 64),
@@ -209,7 +204,8 @@ begin
     end;
     if not exists (
       select 1 from public.pro_commercial_terms
-      where id = v_active_id and status = 'active' and effective_to is null and version = 2
+      where id = v_active_id and status = 'active'
+        and effective_to = v_today + 1 and version = 2
     ) or not exists (
       select 1 from public.pro_commercial_terms
       where id = v_draft_id and status = 'draft' and version = 1
@@ -227,7 +223,8 @@ begin
     end;
     if not exists (
       select 1 from public.pro_commercial_terms
-      where id = v_active_id and status = 'active' and effective_to is null and version = 2
+      where id = v_active_id and status = 'active'
+        and effective_to = v_today + 1 and version = 2
     ) then
       raise exception 'FUTURE_END_CHANGED_CURRENT_TERM';
     end if;
@@ -236,7 +233,7 @@ begin
   v_result := public.evaluate_pro_assignment_eligibility(v_pro_id, null);
   if (v_result ->> 'eligible')::boolean is not true
      or v_result -> 'codes' <> '[]'::jsonb then
-    raise exception 'EXPECTED_ELIGIBLE_AFTER_FUTURE_BOUNDARY_REJECTIONS';
+    raise exception 'EXPECTED_FIXED_DURATION_TERM_ELIGIBILITY';
   end if;
   if not exists (
     select 1 from public.auth_events

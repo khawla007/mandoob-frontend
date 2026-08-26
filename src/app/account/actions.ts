@@ -191,7 +191,7 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
     const willRemoveVerified = verified.some((f) => f.id === factorId);
     if (
       willRemoveVerified &&
-      (session.role === 'super_admin' || session.role === 'pro') &&
+      (session.role === 'super_admin' || session.role === 'admin' || session.role === 'pro') &&
       verified.length <= 1
     ) {
       return {

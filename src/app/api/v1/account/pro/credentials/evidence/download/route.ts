@@ -2,6 +2,7 @@ import type { SessionProfile } from '@/lib/auth/require-user';
 import type { OpenedProCredentialEvidence } from '@/lib/data/pro-credentials';
 import { errorResponse } from '@/lib/errors';
 import { isOwnedProCredentialEvidencePath } from '@/lib/storage/pro-credential-path';
+import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycle';
 import {
   notFoundResponse,
   requireAal2Response,
@@ -43,8 +44,10 @@ export function createEvidenceDownloadHandler(overrides: Partial<Deps> = {}) {
       const session = await deps.requireViewer();
       const aal = requireAal2Response(session);
       if (aal) return aal;
-      const token = new URL(request.url).searchParams.get('token');
-      if (!token) return notFoundResponse();
+      const authorization = request.headers.get('authorization');
+      const bearer = authorization?.match(/^Bearer ([A-Za-z0-9_-]{1,4096})$/iu);
+      if (!bearer?.[1]) return notFoundResponse();
+      const token = bearer[1];
       const evidenceId = await deps.verifyToken(token);
       const evidence = await deps.open(session.id, evidenceId);
       if (
@@ -56,10 +59,15 @@ export function createEvidenceDownloadHandler(overrides: Partial<Deps> = {}) {
         )
       )
         return notFoundResponse();
+      if (evidence.size_bytes <= 0 || evidence.size_bytes > PRO_CREDENTIAL_EVIDENCE_MAX_BYTES)
+        return notFoundResponse();
       const body = await deps.download(evidence.storage_path);
+      if (body.size !== evidence.size_bytes || body.size > PRO_CREDENTIAL_EVIDENCE_MAX_BYTES)
+        return notFoundResponse();
       return new Response(body, {
         headers: {
           'content-type': evidence.mime_type,
+          'content-length': String(body.size),
           'content-disposition': 'attachment',
           'cache-control': 'private, no-store',
           'x-content-type-options': 'nosniff',

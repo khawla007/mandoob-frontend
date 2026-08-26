@@ -32,7 +32,9 @@ test('opaque download reauthorizes and streams without exposing storage path or 
     download: async () => new Blob(['%PDF-'], { type: 'application/pdf' }),
   });
   const response = await handler(
-    new Request('http://localhost/api/v1/account/pro/credentials/evidence/download?token=opaque'),
+    new Request('http://localhost/api/v1/account/pro/credentials/evidence/download', {
+      headers: { authorization: 'Bearer opaque' },
+    }),
   );
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('location'), null);
@@ -65,9 +67,31 @@ test('opaque download hides expired/invalid tokens and authorization failures', 
     }),
   ]) {
     const response = await handler(
-      new Request('http://localhost/api/v1/account/pro/credentials/evidence/download?token=opaque'),
+      new Request('http://localhost/api/v1/account/pro/credentials/evidence/download', {
+        headers: { authorization: 'Bearer opaque' },
+      }),
     );
     assert.equal(response.status, 404);
     assert.doesNotMatch(JSON.stringify(await response.json()), /expired|cross|path/iu);
   }
+});
+
+test('download credentials are rejected in URL query parameters', async () => {
+  let verified = false;
+  const response = await createEvidenceDownloadHandler({
+    requireViewer: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    verifyToken: async () => {
+      verified = true;
+      return E;
+    },
+  })(new Request('http://localhost/api/v1/account/pro/credentials/evidence/download?token=opaque'));
+  assert.equal(response.status, 404);
+  assert.equal(verified, false);
 });

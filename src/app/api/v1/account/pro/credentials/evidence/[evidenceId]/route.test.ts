@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSON_BODY_MAX_BYTES } from '@/app/api/v1/_shared/bounded-body';
+import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycle';
 import { createEvidenceDeleteHandler, createEvidenceGetHandler } from './route';
 
 const A = '10000000-0000-4000-8000-000000000001';
@@ -102,8 +103,7 @@ test('evidence DELETE limits before rejecting an oversized declared body', async
   assert.deepEqual(calls, ['target', 'limit']);
 });
 
-test('evidence GET requires a live owner/operator with AAL2 and redirects to an opaque 300-second app token', async () => {
-  const calls: unknown[] = [];
+test('evidence GET requires a live owner/operator with AAL2 and proxies the bounded file', async () => {
   const handler = createEvidenceGetHandler({
     requireViewer: async () => ({
       id: A,
@@ -122,21 +122,73 @@ test('evidence GET requires a live owner/operator with AAL2 and redirects to an 
       size_bytes: 5,
       original_name_safe: 'proof.pdf',
     }),
-    issueToken: async (evidenceId, ttl) => {
-      calls.push(evidenceId, ttl);
-      return 'opaque-token';
+    download: async (path) => {
+      assert.match(path, new RegExp(`${E}$`, 'u'));
+      return new Blob(['%PDF-'], { type: 'application/pdf' });
     },
   });
   const response = await handler(new Request('http://localhost/evidence'), {
     params: Promise.resolve({ evidenceId: E }),
   });
-  assert.equal(response.status, 307);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('location'), null);
+  assert.equal(response.headers.get('content-type'), 'application/pdf');
+  assert.equal(response.headers.get('content-disposition'), 'attachment');
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  assert.equal(await response.text(), '%PDF-');
+  assert.doesNotMatch(response.url, /token|pro-credentials|10000000|20000000/iu);
+});
+
+test('evidence GET rejects oversized metadata and mismatched storage bodies', async () => {
+  let downloads = 0;
+  const session = async () => ({
+    id: A,
+    role: 'pro' as const,
+    tenantId: A,
+    aal: 'aal2' as const,
+    mfaEnrolled: true,
+    email: null,
+  });
+  const evidence = (sizeBytes: number) => async () => ({
+    evidence_id: E,
+    pro_profile_id: A,
+    credential_id: C,
+    storage_path: PATH,
+    mime_type: 'application/pdf' as const,
+    size_bytes: sizeBytes,
+    original_name_safe: 'proof.pdf',
+  });
+  const oversized = createEvidenceGetHandler({
+    requireViewer: session,
+    open: evidence(PRO_CREDENTIAL_EVIDENCE_MAX_BYTES + 1),
+    download: async () => {
+      downloads += 1;
+      return new Blob([]);
+    },
+  });
   assert.equal(
-    response.headers.get('location'),
-    '/api/v1/account/pro/credentials/evidence/download?token=opaque-token',
+    (
+      await oversized(new Request('http://localhost/evidence'), {
+        params: Promise.resolve({ evidenceId: E }),
+      })
+    ).status,
+    404,
   );
-  assert.doesNotMatch(response.headers.get('location')!, /pro-credentials|10000000|20000000/iu);
-  assert.equal(calls[1], 300);
+  assert.equal(downloads, 0);
+
+  const mismatched = createEvidenceGetHandler({
+    requireViewer: session,
+    open: evidence(5),
+    download: async () => new Blob(['sixsix']),
+  });
+  assert.equal(
+    (
+      await mismatched(new Request('http://localhost/evidence'), {
+        params: Promise.resolve({ evidenceId: E }),
+      })
+    ).status,
+    404,
+  );
 });
 
 test('evidence DELETE follows the state-changing security order and derives actor', async () => {
@@ -504,7 +556,7 @@ test('evidence GET rejects malformed IDs and hides unknown/cross-PRO existence a
     open: async () => {
       throw new Error('private path');
     },
-    issueToken: async () => 'opaque',
+    download: async () => new Blob(['%PDF-']),
   };
   for (const evidenceId of ['dirty', E]) {
     const response = await createEvidenceGetHandler(base)(

@@ -6,6 +6,7 @@ import type { OpenedProCredentialEvidence } from '@/lib/data/pro-credentials';
 import type { PreparedProCredentialEvidenceRemoval } from '@/lib/data/pro-credentials';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { isOwnedProCredentialEvidencePath } from '@/lib/storage/pro-credential-path';
+import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycle';
 import {
   BodyTooLargeError,
   JSON_BODY_MAX_BYTES,
@@ -39,17 +40,19 @@ type Context = { params: Promise<{ evidenceId: string }> };
 type GetDeps = {
   requireViewer(): Promise<SessionProfile>;
   open(actorId: string, evidenceId: string): Promise<OpenedProCredentialEvidence>;
-  issueToken(evidenceId: string, ttlSeconds: number): Promise<string>;
+  download(path: string): Promise<Blob>;
 };
 const getDefaults: GetDeps = {
   requireViewer: requireLiveLifecycleViewer,
   open: async (...args) =>
     (await import('@/lib/data/pro-credentials')).openProCredentialEvidenceMetadata(...args),
-  issueToken: async (evidenceId, ttl) => {
-    const { issueProCredentialDownloadToken, PRO_CREDENTIAL_DOWNLOAD_TTL_SECONDS } =
-      await import('@/lib/security/pro-credential-download-token');
-    if (ttl !== PRO_CREDENTIAL_DOWNLOAD_TTL_SECONDS) throw new Error('invalid_ttl');
-    return issueProCredentialDownloadToken(evidenceId);
+  download: async (path) => {
+    const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
+    const { data, error } = await createSupabaseServiceRoleClient()
+      .storage.from('tenant-documents')
+      .download(path);
+    if (error || !data) throw new Error('storage_download_failed');
+    return data;
   },
 };
 
@@ -78,13 +81,19 @@ export function createEvidenceGetHandler(overrides: Partial<GetDeps> = {}) {
         )
       )
         return notFoundResponse();
+      if (evidence.size_bytes <= 0 || evidence.size_bytes > PRO_CREDENTIAL_EVIDENCE_MAX_BYTES)
+        return notFoundResponse();
       try {
-        const token = await deps.issueToken(evidence.evidence_id, 300);
-        return new Response(null, {
-          status: 307,
+        const body = await deps.download(evidence.storage_path);
+        if (body.size !== evidence.size_bytes || body.size > PRO_CREDENTIAL_EVIDENCE_MAX_BYTES)
+          return notFoundResponse();
+        return new Response(body, {
           headers: {
-            location: `/api/v1/account/pro/credentials/evidence/download?token=${encodeURIComponent(token)}`,
-            'cache-control': 'no-store',
+            'content-type': evidence.mime_type,
+            'content-length': String(body.size),
+            'content-disposition': 'attachment',
+            'cache-control': 'private, no-store',
+            'x-content-type-options': 'nosniff',
           },
         });
       } catch {
