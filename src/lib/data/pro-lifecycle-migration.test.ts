@@ -396,6 +396,8 @@ test('0086 requires zero credential history for create and preserves terminal re
   assert.match(fixture, /create_pro_credential_draft/u);
   assert.match(fixture, /create_pro_credential_replacement/u);
   assert.match(fixture, /supersedes_credential_id/u);
+  assert.match(fixture, /credential_replay_changed/u);
+  assert.match(fixture, /expected_credential_history_exists_for_new_operation/u);
 });
 
 test('Step 3 SQL fixtures cover transitions and bounded credential and term races', () => {

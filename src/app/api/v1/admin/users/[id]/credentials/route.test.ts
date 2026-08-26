@@ -160,6 +160,7 @@ test('operator creates the first credential draft for an active PRO without cred
 });
 
 test('operator cannot bypass replacement by creating over terminal credential history', async () => {
+  const { ApiError } = await import('@/lib/errors');
   let creates = 0;
   const handler = createAdminCredentialPostHandler({
     guardCsrf: async () => null,
@@ -175,7 +176,7 @@ test('operator cannot bypass replacement by creating over terminal credential hi
     limit: async () => 'allowed',
     create: async () => {
       creates += 1;
-      return publicCredential();
+      throw new ApiError('CREDENTIAL_HISTORY_EXISTS', 'private database detail', 409);
     },
   });
   const response = await handler(req({ command: 'create', operationId: O }), {
@@ -186,7 +187,37 @@ test('operator cannot bypass replacement by creating over terminal credential hi
     error: 'Unable to complete lifecycle operation',
     code: 'CREDENTIAL_HISTORY_EXISTS',
   });
-  assert.equal(creates, 0);
+  assert.equal(creates, 1);
+});
+
+test('operator create reaches a stored same-operation replay despite credential history', async () => {
+  let creates = 0;
+  const replay = { ...publicCredential(), state: 'draft' as const, version: 0, evidenceCount: 0 };
+  const handler = createAdminCredentialPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'super_admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    create: async (_actorId, _proProfileId, operationId) => {
+      assert.equal(operationId, O);
+      creates += 1;
+      return replay;
+    },
+    revalidate: () => undefined,
+  });
+  const response = await handler(req({ command: 'create', operationId: O }), {
+    params: Promise.resolve({ id: P }),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).credential, replay);
+  assert.equal(creates, 1);
 });
 
 test('operator reject and revoke validate the transient identifier after schema and before mutation', async () => {

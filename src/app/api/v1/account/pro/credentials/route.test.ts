@@ -247,6 +247,7 @@ test('PRO route sanitizes stale, replay, and unknown mutation errors', async () 
 });
 
 test('PRO cannot create a fresh draft over terminal history and must use replacement', async () => {
+  const { ApiError } = await import('@/lib/errors');
   let mutations = 0;
   const handler = createCredentialPostHandler({
     guardCsrf: async () => null,
@@ -262,7 +263,7 @@ test('PRO cannot create a fresh draft over terminal history and must use replace
     limit: async () => 'allowed',
     mutate: async () => {
       mutations += 1;
-      return {} as never;
+      throw new ApiError('CREDENTIAL_HISTORY_EXISTS', 'private database detail', 409);
     },
   });
   const response = await handler(request({ command: 'create', operationId: OPERATION }));
@@ -271,7 +272,35 @@ test('PRO cannot create a fresh draft over terminal history and must use replace
     error: 'Unable to complete lifecycle operation',
     code: 'CREDENTIAL_HISTORY_EXISTS',
   });
-  assert.equal(mutations, 0);
+  assert.equal(mutations, 1);
+});
+
+test('PRO create reaches a stored same-operation replay despite credential history', async () => {
+  let mutations = 0;
+  const replay = { credentialId: CREDENTIAL, state: 'draft', version: 0 };
+  const handler = createCredentialPostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: ACTOR,
+      role: 'pro',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: ACTOR, credentialIds: [CREDENTIAL] }),
+    limit: async () => 'allowed',
+    mutate: async (_actorId, _targetId, command) => {
+      assert.deepEqual(command, { command: 'create', operationId: OPERATION });
+      mutations += 1;
+      return replay;
+    },
+    revalidate: () => undefined,
+  });
+  const response = await handler(request({ command: 'create', operationId: OPERATION }));
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).credential, replay);
+  assert.equal(mutations, 1);
 });
 
 test('PRO credential mutation hides denied live sessions and revalidates every affected surface', async () => {

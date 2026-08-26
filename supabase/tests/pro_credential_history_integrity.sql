@@ -12,7 +12,8 @@ select id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticat
 from (values
   ('92000000-0000-4000-8000-000000000001'::uuid, 'rejected'),
   ('92000000-0000-4000-8000-000000000002'::uuid, 'expired'),
-  ('92000000-0000-4000-8000-000000000003'::uuid, 'revoked')
+  ('92000000-0000-4000-8000-000000000003'::uuid, 'revoked'),
+  ('92000000-0000-4000-8000-000000000004'::uuid, 'replay')
 ) fixture(id, state);
 
 insert into public.profiles (id, role, status, full_name)
@@ -20,19 +21,22 @@ select id, 'pro', 'active', 'History ' || state
 from (values
   ('92000000-0000-4000-8000-000000000001'::uuid, 'rejected'),
   ('92000000-0000-4000-8000-000000000002'::uuid, 'expired'),
-  ('92000000-0000-4000-8000-000000000003'::uuid, 'revoked')
+  ('92000000-0000-4000-8000-000000000003'::uuid, 'revoked'),
+  ('92000000-0000-4000-8000-000000000004'::uuid, 'replay')
 ) fixture(id, state);
 insert into public.pro_profiles (profile_id)
 values
   ('92000000-0000-4000-8000-000000000001'),
   ('92000000-0000-4000-8000-000000000002'),
-  ('92000000-0000-4000-8000-000000000003');
+  ('92000000-0000-4000-8000-000000000003'),
+  ('92000000-0000-4000-8000-000000000004');
 
 do $$
 declare
   v_target uuid;
   v_state public.pro_credential_state;
   v_old_id uuid;
+  v_first jsonb;
   v_replacement jsonb;
   v_index integer := 0;
 begin
@@ -75,6 +79,29 @@ begin
       raise exception 'INVALID_SUPERSEDED_CHAIN';
     end if;
   end loop;
+
+  v_first := public.create_pro_credential_draft(
+    '92000000-0000-4000-8000-000000000004',
+    '92000000-0000-4000-8000-000000000004',
+    '92000000-0000-4000-8000-000000000301', repeat('7', 64)
+  );
+  if public.create_pro_credential_draft(
+    '92000000-0000-4000-8000-000000000004',
+    '92000000-0000-4000-8000-000000000004',
+    '92000000-0000-4000-8000-000000000301', repeat('7', 64)
+  ) <> v_first then
+    raise exception 'CREDENTIAL_REPLAY_CHANGED';
+  end if;
+  begin
+    perform public.create_pro_credential_draft(
+      '92000000-0000-4000-8000-000000000004',
+      '92000000-0000-4000-8000-000000000004',
+      '92000000-0000-4000-8000-000000000302', repeat('7', 64)
+    );
+    raise exception 'EXPECTED_CREDENTIAL_HISTORY_EXISTS_FOR_NEW_OPERATION';
+  exception when others then
+    if sqlerrm <> 'CREDENTIAL_HISTORY_EXISTS' then raise; end if;
+  end;
 end;
 $$;
 
