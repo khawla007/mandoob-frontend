@@ -11,6 +11,8 @@ const migrationPaths = [
   'supabase/migrations/20260822110000_0072_pro_evidence_removal_recovery.sql',
   'supabase/migrations/20260822120000_0073_pro_evidence_removal_fenced_recovery.sql',
 ] as const;
+const credentialHistoryMigrationPath =
+  'supabase/migrations/20260826101000_0086_pro_credential_history_integrity.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
@@ -362,6 +364,38 @@ test('0069 defines fixed-path service workflows, eligibility, timeline, and expi
     assert.doesNotMatch(sql, new RegExp(`jsonb_build_object\\([^;]*'${protectedKey}'`, 'u'));
   }
   assert.match(sql, /if v_function_name in \([\s\S]*grant execute on function %s to service_role/u);
+});
+
+test('0086 requires zero credential history for create and preserves terminal replacement chains', () => {
+  const sql = readFileSync(join(process.cwd(), credentialHistoryMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  assert.match(sql, /function public\.create_pro_credential_draft/u);
+  assert.match(sql, /set search_path = ''/u);
+  assert.match(
+    sql,
+    /from public\.pro_credentials[\s\S]*pro_profile_id = p_pro_profile_id[\s\S]*for update/u,
+  );
+  assert.match(sql, /credential_history_exists/u);
+  assert.match(sql, /alter function public\.create_pro_credential_draft[\s\S]*owner to postgres/u);
+  assert.match(
+    sql,
+    /revoke all on function public\.create_pro_credential_draft[\s\S]*from public, anon, authenticated, service_role/u,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.create_pro_credential_draft[\s\S]*to service_role/u,
+  );
+  const fixture = readFileSync(
+    join(process.cwd(), 'supabase/tests/pro_credential_history_integrity.sql'),
+    'utf8',
+  ).toLowerCase();
+  for (const state of ['rejected', 'expired', 'revoked']) {
+    assert.match(fixture, new RegExp(`'${state}'::public\\.pro_credential_state`, 'u'));
+  }
+  assert.match(fixture, /create_pro_credential_draft/u);
+  assert.match(fixture, /create_pro_credential_replacement/u);
+  assert.match(fixture, /supersedes_credential_id/u);
 });
 
 test('Step 3 SQL fixtures cover transitions and bounded credential and term races', () => {

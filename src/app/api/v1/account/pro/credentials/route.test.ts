@@ -246,6 +246,34 @@ test('PRO route sanitizes stale, replay, and unknown mutation errors', async () 
   }
 });
 
+test('PRO cannot create a fresh draft over terminal history and must use replacement', async () => {
+  let mutations = 0;
+  const handler = createCredentialPostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: ACTOR,
+      role: 'pro',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: ACTOR, credentialIds: [CREDENTIAL] }),
+    limit: async () => 'allowed',
+    mutate: async () => {
+      mutations += 1;
+      return {} as never;
+    },
+  });
+  const response = await handler(request({ command: 'create', operationId: OPERATION }));
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    error: 'Unable to complete lifecycle operation',
+    code: 'CREDENTIAL_HISTORY_EXISTS',
+  });
+  assert.equal(mutations, 0);
+});
+
 test('PRO credential mutation hides denied live sessions and revalidates every affected surface', async () => {
   const denied = createCredentialPostHandler({
     guardCsrf: async () => null,

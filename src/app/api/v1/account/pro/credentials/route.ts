@@ -129,6 +129,12 @@ export function createCredentialPostHandler(overrides: Partial<Deps> = {}) {
         return notFoundResponse();
       const parsed = commandSchema.safeParse(raw);
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
+      if (parsed.data.command === 'create' && target.credentialIds.length > 0)
+        return errorResponse(
+          'CREDENTIAL_HISTORY_EXISTS',
+          'Unable to complete lifecycle operation',
+          409,
+        );
       const credential = await deps.mutate(session.id, target.proProfileId, parsed.data);
       await deps.revalidate(target, session.id);
       return jsonOk({ ok: true, credential });

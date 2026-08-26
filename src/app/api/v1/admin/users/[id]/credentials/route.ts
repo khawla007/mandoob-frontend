@@ -151,6 +151,12 @@ export function createAdminCredentialPostHandler(overrides: Partial<Deps> = {}) 
       const parsed = reviewSchema.safeParse(raw);
       if (!parsed.success) return errorResponse('VALIDATION_FAILED', 'Invalid request', 400);
       if (parsed.data.command === 'create') {
+        if (target.credentialIds.length > 0)
+          return errorResponse(
+            'CREDENTIAL_HISTORY_EXISTS',
+            'Unable to complete lifecycle operation',
+            409,
+          );
         const credential = publicCredentialSchema.parse(
           await deps.create(session.id, target.proProfileId, parsed.data.operationId),
         );

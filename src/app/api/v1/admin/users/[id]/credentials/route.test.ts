@@ -159,6 +159,36 @@ test('operator creates the first credential draft for an active PRO without cred
   assert.deepEqual(calls, ['limit', 'create', 'revalidate']);
 });
 
+test('operator cannot bypass replacement by creating over terminal credential history', async () => {
+  let creates = 0;
+  const handler = createAdminCredentialPostHandler({
+    guardCsrf: async () => null,
+    requireOperator: async () => ({
+      id: A,
+      role: 'super_admin',
+      tenantId: null,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: P, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    create: async () => {
+      creates += 1;
+      return publicCredential();
+    },
+  });
+  const response = await handler(req({ command: 'create', operationId: O }), {
+    params: Promise.resolve({ id: P }),
+  });
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    error: 'Unable to complete lifecycle operation',
+    code: 'CREDENTIAL_HISTORY_EXISTS',
+  });
+  assert.equal(creates, 0);
+});
+
 test('operator reject and revoke validate the transient identifier after schema and before mutation', async () => {
   for (const command of ['reject', 'revoke'] as const) {
     const calls: string[] = [];

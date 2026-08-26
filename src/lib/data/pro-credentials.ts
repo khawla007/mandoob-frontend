@@ -92,6 +92,7 @@ const OPERATION_HASH_DOMAIN = 'pro-lifecycle-operation:v1';
 const KNOWN_ERRORS: Record<string, { code: string; status: number }> = {
   NOT_FOUND: { code: 'NOT_FOUND', status: 404 },
   CREDENTIAL_IN_PROGRESS: { code: 'CREDENTIAL_IN_PROGRESS', status: 409 },
+  CREDENTIAL_HISTORY_EXISTS: { code: 'CREDENTIAL_HISTORY_EXISTS', status: 409 },
   STALE_CREDENTIAL_VERSION: { code: 'STALE_CREDENTIAL_VERSION', status: 409 },
   INVALID_CREDENTIAL_TRANSITION: { code: 'INVALID_CREDENTIAL_TRANSITION', status: 409 },
   CREDENTIAL_INCOMPLETE: { code: 'CREDENTIAL_INCOMPLETE', status: 409 },
