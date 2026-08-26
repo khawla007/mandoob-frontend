@@ -2308,6 +2308,27 @@ export type Database = {
           },
         ];
       };
+      mfa_factor_removal_reservations: {
+        Row: {
+          created_at: string;
+          factor_id: string;
+          operation_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          factor_id: string;
+          operation_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          factor_id?: string;
+          operation_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       meetings: {
         Row: {
           company_id: string | null;
@@ -4822,6 +4843,14 @@ export type Database = {
           p_storage_path: string;
         };
         Returns: Json;
+      };
+      reserve_mfa_factor_removal: {
+        Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
+        Returns: boolean;
+      };
+      release_mfa_factor_removal: {
+        Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
+        Returns: boolean;
       };
       prepare_pro_credential_evidence_upload: {
         Args: {

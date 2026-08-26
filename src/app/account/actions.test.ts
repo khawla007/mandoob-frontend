@@ -116,13 +116,15 @@ test('masked evidence open proxies the authorized file without credentials in a 
   assert.doesNotMatch(response.url, /token|pro-credentials|licence\.pdf/iu);
 });
 
-test('mandatory operator MFA protects admin from removing the last verified factor', () => {
+test('mandatory operator MFA removal delegates to the distributed invariant', () => {
   const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
   const remove = source.slice(
     source.indexOf('export async function removeMfaFactorAction'),
     source.indexOf('export async function updateRoleFieldsAction'),
   );
-  for (const role of ['super_admin', 'admin', 'pro']) {
-    assert.match(remove, new RegExp(`session\\.role === '${role}'`, 'u'));
-  }
+  assert.match(remove, /removeMfaFactorWithInvariant/u);
+  assert.match(remove, /reserveMfaFactorRemoval/u);
+  assert.match(remove, /releaseMfaFactorRemovalReservation/u);
+  assert.match(remove, /listVerifiedFactorIds/u);
+  assert.match(remove, /unenroll/u);
 });

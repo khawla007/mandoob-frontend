@@ -34,6 +34,48 @@ const evidenceTerminalReplaySqlTestPath = 'supabase/tests/pro_evidence_terminal_
 const evidenceReplayRetentionMigrationPath =
   'supabase/migrations/20260826107000_0086g_pro_evidence_replay_retention.sql';
 const evidenceTombstoneRetentionSqlTestPath = 'supabase/tests/pro_evidence_tombstone_retention.sql';
+const mfaRemovalReservationMigrationPath =
+  'supabase/migrations/20260826108000_0086h_mfa_factor_removal_reservations.sql';
+const mfaRemovalReservationSqlTestPath = 'supabase/tests/mfa_factor_removal_reservations.sql';
+
+test('0086h serializes privileged MFA factor removal with a durable crash-safe reservation', () => {
+  assert.equal(existsSync(join(process.cwd(), mfaRemovalReservationMigrationPath)), true);
+  const sql = readFileSync(join(process.cwd(), mfaRemovalReservationMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  assert.match(sql, /create table public\.mfa_factor_removal_reservations/u);
+  assert.match(sql, /user_id uuid primary key/u);
+  assert.match(sql, /operation_id uuid not null unique/u);
+  assert.doesNotMatch(sql, /expires_at|lease_expires/u);
+  assert.match(
+    sql,
+    /insert into public\.mfa_factor_removal_reservations[\s\S]*on conflict \(user_id\) do nothing/u,
+  );
+  assert.match(
+    sql,
+    /delete from public\.mfa_factor_removal_reservations[\s\S]*operation_id = p_operation_id/u,
+  );
+  assert.match(sql, /security definer set search_path = ''/u);
+  assert.match(
+    sql,
+    /revoke all on table public\.mfa_factor_removal_reservations from public, anon, authenticated, service_role/u,
+  );
+  assert.doesNotMatch(sql, /grant execute[\s\S]*to authenticated/u);
+  assert.match(sql, /grant execute[\s\S]*to service_role/u);
+});
+
+test('MFA removal SQL proves mutual exclusion and token-bound release', () => {
+  assert.equal(existsSync(join(process.cwd(), mfaRemovalReservationSqlTestPath)), true);
+  const sql = readFileSync(join(process.cwd(), mfaRemovalReservationSqlTestPath), 'utf8');
+  for (const marker of [
+    'FIRST_MFA_RESERVATION_REJECTED',
+    'CONCURRENT_MFA_RESERVATION_ACCEPTED',
+    'FOREIGN_MFA_RELEASE_ACCEPTED',
+    'MFA_RESERVATION_NOT_RELEASED',
+  ]) {
+    assert.match(sql, new RegExp(marker, 'u'));
+  }
+});
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
