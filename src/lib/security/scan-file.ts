@@ -23,6 +23,7 @@ export type ScanFileOptions = {
 const VIRUSTOTAL_API_BASE = 'https://www.virustotal.com/api/v3';
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
+const MAX_CLAMAV_RESPONSE_BYTES = 4_096;
 const EICAR_SIGNATURE = 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE';
 
 type VirusTotalAnalysis = {
@@ -68,15 +69,18 @@ async function scanWithClamAv(
 ): Promise<FileScanResult> {
   return new Promise((resolve) => {
     let response = '';
+    let responseBytes = 0;
     let settled = false;
+    let deadline: ReturnType<typeof setTimeout>;
     const finish = (result: FileScanResult) => {
       if (settled) return;
       settled = true;
+      clearTimeout(deadline);
       socket.destroy();
       resolve(result);
     };
     const socket = createConnection(endpoint);
-    socket.setTimeout(timeoutMs);
+    deadline = setTimeout(() => finish(unavailable('clamav')), timeoutMs);
     socket.once('connect', () => {
       socket.write(Buffer.from('zINSTREAM\0', 'utf8'));
       const length = Buffer.allocUnsafe(4);
@@ -86,11 +90,15 @@ async function scanWithClamAv(
       socket.end(Buffer.alloc(4));
     });
     socket.on('data', (chunk: Buffer) => {
+      responseBytes += chunk.byteLength;
+      if (responseBytes > MAX_CLAMAV_RESPONSE_BYTES) {
+        finish(unavailable('clamav'));
+        return;
+      }
       response += chunk.toString('utf8');
       if (response.includes('\0') || response.includes('\n')) finish(parseClamAvResponse(response));
     });
     socket.once('end', () => finish(parseClamAvResponse(response)));
-    socket.once('timeout', () => finish(unavailable('clamav')));
     socket.once('error', () => finish(unavailable('clamav')));
   });
 }

@@ -6,6 +6,7 @@ process.env.VIRUSTOTAL_API_KEY = 'vt_test_key';
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer, type Socket } from 'node:net';
 
 type ScanModule = typeof import('./scan-file');
 let mod: ScanModule | null = null;
@@ -56,6 +57,121 @@ test('scanFile accepts a clean file through an isolated ClamAV INSTREAM endpoint
     },
   });
   assert.deepEqual(result, { clean: true, provider: 'clamav' });
+});
+
+async function withClamAvServer(
+  respond: (socket: Socket) => void,
+  scan: (endpoint: { host: string; port: number }) => Promise<void>,
+) {
+  const sockets = new Set<Socket>();
+  const server = createServer({ allowHalfOpen: true }, (socket) => {
+    sockets.add(socket);
+    socket.on('error', () => undefined);
+    socket.once('close', () => sockets.delete(socket));
+    socket.once('data', () => respond(socket));
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    await scan({ host: '127.0.0.1', port: address.port });
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+}
+
+for (const [label, response, expected] of [
+  ['OK', 'stream: OK\0', { clean: true, provider: 'clamav' }],
+  [
+    'FOUND',
+    'stream: Synthetic.Test FOUND\0',
+    { clean: false, reason: 'malware_detected', provider: 'clamav' },
+  ],
+] as const) {
+  test(`ClamAV TCP protocol handles ${label}`, async () => {
+    await withClamAvServer(
+      (socket) => socket.end(response),
+      async (clamav) => {
+        const { scanFile } = await load();
+        assert.deepEqual(
+          await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 500 }),
+          expected,
+        );
+      },
+    );
+  });
+}
+
+test('ClamAV TCP protocol fails closed on socket error and no response', async () => {
+  for (const mode of ['error', 'silent'] as const) {
+    await withClamAvServer(
+      (socket) => {
+        if (mode === 'error') socket.destroy(new Error('synthetic scanner failure'));
+      },
+      async (clamav) => {
+        const { scanFile } = await load();
+        assert.deepEqual(await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 30 }), {
+          clean: false,
+          reason: 'scanner_unavailable',
+          provider: 'clamav',
+        });
+      },
+    );
+  }
+});
+
+test('ClamAV TCP deadline is absolute even when a peer slowly drips bytes', async () => {
+  await withClamAvServer(
+    (socket) => {
+      const interval = setInterval(() => socket.write('x'), 10);
+      const finish = setTimeout(() => socket.end('stream: OK\0'), 200);
+      socket.once('close', () => clearInterval(interval));
+      socket.once('close', () => clearTimeout(finish));
+    },
+    async (clamav) => {
+      const { scanFile } = await load();
+      const started = Date.now();
+      const result = await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 40 });
+      assert.deepEqual(result, {
+        clean: false,
+        reason: 'scanner_unavailable',
+        provider: 'clamav',
+      });
+      assert.ok(
+        Date.now() - started < 150,
+        'slow activity must not extend the wall-clock deadline',
+      );
+    },
+  );
+});
+
+test('ClamAV TCP response is byte-bounded and fails closed before the peer finishes', async () => {
+  await withClamAvServer(
+    (socket) => {
+      const chunk = Buffer.alloc(1024, 'x');
+      const interval = setInterval(() => socket.write(chunk), 5);
+      const finish = setTimeout(() => socket.end(), 200);
+      socket.once('close', () => clearInterval(interval));
+      socket.once('close', () => clearTimeout(finish));
+    },
+    async (clamav) => {
+      const { scanFile } = await load();
+      const started = Date.now();
+      const result = await scanFile(Buffer.from('fixture'), { clamav, timeoutMs: 500 });
+      assert.deepEqual(result, {
+        clean: false,
+        reason: 'scanner_unavailable',
+        provider: 'clamav',
+      });
+      assert.ok(Date.now() - started < 150, 'oversized responses must be rejected immediately');
+    },
+  );
 });
 
 test('scanFile returns clean when VirusTotal completes with no detections', async () => {
