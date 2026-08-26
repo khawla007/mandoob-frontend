@@ -2030,6 +2030,7 @@
           "createDraft": "Create credential draft",
           "creatingDraft": "Creating draft…",
           "createDraftError": "The credential draft could not be created. Try again.",
+          "createDraftSuccess": "Credential draft created.",
           "loadError": "Credential details are temporarily unavailable. Commercial terms and history remain usable.",
           "retry": "Retry credential details",
           "retryFormLabel": "Retry loading PRO credential details"

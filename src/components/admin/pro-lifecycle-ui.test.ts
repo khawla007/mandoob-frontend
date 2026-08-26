@@ -101,8 +101,17 @@ test('credential surface is masked-only, semantic, evidence-owned, and exposes l
   assert.match(panel, /ProCredentialCreateDraftForm/u);
   const create = read('src/components/admin/ProCredentialCreateDraftForm.tsx');
   assert.match(create, /command: 'create'/u);
-  assert.match(create, /crypto\.randomUUID\(\)/u);
+  assert.match(create, /claimFormSubmission/u);
+  assert.match(create, /operationIdRef\.current \?\?= crypto\.randomUUID\(\)/u);
+  assert.match(create, /operationIdRef\.current = null/u);
+  assert.match(create, /aria-live="polite"/u);
   assert.match(create, /aria-busy=\{pending\}/u);
+  for (const locale of ['en', 'ar']) {
+    const messages = JSON.parse(read(`src/messages/${locale}.json`)) as {
+      admin: { user: { proLifecycle: { credential: Record<string, string> } } };
+    };
+    assert.ok(messages.admin.user.proLifecycle.credential.createDraftSuccess);
+  }
   assert.doesNotMatch(form, /reason-code-|setReasonCode|reasonCodeLabel/u);
   assert.match(form, /revokeConfirmation/u);
   assert.match(form, /claimFormSubmission/u);
