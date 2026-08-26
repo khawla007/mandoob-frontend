@@ -15,7 +15,6 @@ import { requirePlatformOperator } from '@/lib/auth/require-role';
 import type { CompanyAssignment } from '@/lib/data/company-assignments';
 import {
   listCompanyAssignmentHistory,
-  listVerifiedUnassignedPros,
   readCurrentCompanyAssignment,
 } from '@/lib/data/company-assignments';
 import { getCompanyById } from '@/lib/data/pro-firms';
@@ -72,10 +71,9 @@ export default async function CompanyDetailPage({
     companyId: company.id,
   });
   if (!onboarding) notFound();
-  const [currentAssignment, assignmentHistory, availablePros] = await Promise.all([
-    readCurrentCompanyAssignment(company.id),
+  const [currentAssignment, assignmentHistory] = await Promise.all([
+    readCurrentCompanyAssignment(company.id, operator.id),
     listCompanyAssignmentHistory(company.id),
-    listVerifiedUnassignedPros(),
   ]);
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -208,7 +206,6 @@ export default async function CompanyDetailPage({
                 key={companyAssignmentFormIdentity(currentAssignment?.id)}
                 companyId={company.id}
                 currentAssignment={currentAssignment}
-                availablePros={availablePros}
               />
             </CardContent>
           </Card>

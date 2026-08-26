@@ -11,6 +11,7 @@ import {
   COMPANY_ONBOARDING_READINESS_CODES,
   COMPANY_ONBOARDING_SECTION_KEYS,
 } from '@/lib/company-onboarding/contracts';
+import { PRO_CREDENTIAL_STATES } from '@/lib/pro-lifecycle/contracts';
 
 type Messages = Record<string, unknown>;
 
@@ -109,6 +110,118 @@ function shellKeysFromNavSources() {
 }
 
 describe('i18n/messages', () => {
+  it('keeps the registry account-status options unique in raw JSON and resolves every dynamic status at runtime', () => {
+    const dynamicStatusKeys = [
+      ...['active', 'invited', 'inactive'].map((value) => `accountStatus.${value}`),
+      ...PRO_CREDENTIAL_STATES.map((value) => `credentialState.${value}`),
+      ...['eligible', 'ineligible'].map((value) => `eligibility.${value}`),
+      ...['assigned', 'unassigned'].map((value) => `assignment.${value}`),
+      ...['expired', '30_days', '60_days', '90_days'].map((value) => `expiryWindow.${value}`),
+      ...['active', 'invited', 'inactive', 'disabled', 'suspended'].map(
+        (value) => `account.${value}`,
+      ),
+      ...PRO_CREDENTIAL_STATES.map((value) => `credential.${value}`),
+      ...['eligible', 'ineligible'].map((value) => `eligible.${value}`),
+    ];
+
+    for (const [locale, messages] of [
+      ['en', en],
+      ['ar', ar],
+    ] as const) {
+      const raw = readFileSync(join(process.cwd(), `src/messages/${locale}.json`), 'utf8');
+      assert.equal(
+        (raw.match(/^ {8}"accountStatus":/gmu) ?? []).length,
+        1,
+        `${locale} has duplicate admin.user.proRegistry.accountStatus keys`,
+      );
+      const translate = createTranslator({
+        locale,
+        messages,
+        namespace: 'admin.user.proRegistry',
+      });
+      const translateStatus = translate as (key: string) => string;
+      const namespace = valueAt(messages, 'admin.user.proRegistry');
+      for (const key of dynamicStatusKeys) {
+        const expected = valueAt(namespace, key);
+        assert.equal(typeof expected, 'string', `Missing ${locale} dynamic status ${key}`);
+        assert.equal(
+          translateStatus(key),
+          expected,
+          `Runtime translation failed for ${locale}.${key}`,
+        );
+      }
+    }
+  });
+
+  it('catalogs every PRO lifecycle state, event, error, term, filter, and action in exact EN/AR parity', () => {
+    const lifecyclePaths = [
+      ...PRO_CREDENTIAL_STATES.flatMap((state) => [
+        `admin.user.proRegistry.credentialState.${state}`,
+        `admin.user.proRegistry.credential.${state}`,
+        `admin.user.proLifecycle.credentialStates.${state}`,
+        `account.proCredential.states.${state}`,
+      ]),
+      ...[
+        'credential_submitted',
+        'credential_review_started',
+        'credential_verified',
+        'credential_rejected',
+        'credential_expired',
+        'credential_revoked',
+        'credential_superseded',
+        'assignment_assigned',
+        'assignment_released',
+      ].map((event) => `admin.user.proLifecycle.timeline.events.${event}`),
+      ...['draft', 'active', 'ended'].map(
+        (status) => `admin.user.proLifecycle.terms.statuses.${status}`,
+      ),
+      ...['create', 'activate', 'end'].map(
+        (action) => `admin.user.proLifecycle.terms.form.actions.${action}`,
+      ),
+      ...['begin_review', 'verify', 'reject', 'revoke'].map(
+        (action) => `admin.user.proLifecycle.review.commands.${action}`,
+      ),
+      ...['accountStatus', 'credentialState', 'eligibility', 'assignment', 'expiryWindow'].map(
+        (filter) => `admin.user.proRegistry.filters.${filter}`,
+      ),
+      ...[
+        'admin.user.proRegistry.errorDescription',
+        'admin.user.proRegistry.partialEmail',
+        'admin.user.proLifecycle.credential.loadError',
+        'admin.user.proLifecycle.credential.retryFormLabel',
+        'admin.user.proLifecycle.terms.loadError',
+        'admin.user.proLifecycle.terms.retryFormLabel',
+        'admin.user.proLifecycle.timeline.loadError',
+        'admin.user.proLifecycle.timeline.retryFormLabel',
+        'admin.user.proLifecycle.review.failed',
+        'admin.user.proLifecycle.review.stale',
+        'admin.user.proLifecycle.review.conflict',
+        'admin.user.proLifecycle.terms.form.failed',
+        'admin.user.proLifecycle.terms.form.stale',
+        'admin.user.proLifecycle.terms.form.conflict',
+        'account.proCredential.failed',
+        'account.proCredential.stale',
+        'account.proCredential.replayConflict',
+        'account.proCredential.partialSource',
+      ],
+    ];
+
+    for (const path of lifecyclePaths) {
+      const englishValue = valueAt(en, path);
+      const arabicValue = valueAt(ar, path);
+      assert.equal(typeof englishValue, 'string', `Missing en.${path}`);
+      assert.equal(typeof arabicValue, 'string', `Missing ar.${path}`);
+      assert.deepEqual(
+        icuVariables(arabicValue as string),
+        icuVariables(englishValue as string),
+        `ICU variables differ at ${path}`,
+      );
+      const arabicLiteral = icuLiteralText(arabicValue as string)
+        .replace(/\b(?:PRO|AED)\b/gu, '')
+        .trim();
+      assert.ok(/[\u0600-\u06ff]/u.test(arabicLiteral), `Arabic copy is not meaningful at ${path}`);
+    }
+  });
   it('keeps the complete company onboarding namespace in exact recursive parity', () => {
     const english = (en as Messages).companyOnboarding;
     const arabic = (ar as Messages).companyOnboarding;

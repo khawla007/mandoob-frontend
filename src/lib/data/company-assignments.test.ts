@@ -70,27 +70,41 @@ const companyId = '11111111-1111-4111-8111-111111111111';
 const proId = '22222222-2222-4222-8222-222222222222';
 const assignmentId = '33333333-3333-4333-8333-333333333333';
 const actorId = '44444444-4444-4444-8444-444444444444';
+const pricingTermId = '77777777-7777-4777-8777-777777777777';
+const compensationTermId = '88888888-8888-4888-8888-888888888888';
 
 test('assignment mutations validate input and call exact lifecycle RPC arguments', async () => {
   const { assignProToCompany, releaseCompanyPro, reassignCompanyPro } =
     await import('./company-assignments');
   const replacementId = '55555555-5555-4555-8555-555555555555';
   const supabase = fakeSupabase([
-    { data: assignmentId, error: null },
-    { data: assignmentId, error: null },
-    { data: replacementId, error: null },
+    { data: { assignmentId, pricingTermId, compensationTermId, proProfileId: proId }, error: null },
+    { data: { assignmentId, previousProProfileId: proId }, error: null },
+    {
+      data: {
+        assignmentId: replacementId,
+        pricingTermId,
+        compensationTermId,
+        proProfileId: replacementId,
+        previousProProfileId: proId,
+      },
+      error: null,
+    },
   ]);
 
-  assert.equal(
+  assert.deepEqual(
     await assignProToCompany({ companyId, proProfileId: proId }, actorId, {
       supabase: supabase as never,
     }),
-    assignmentId,
+    { assignmentId, pricingTermId, compensationTermId, proProfileId: proId },
   );
-  await releaseCompanyPro({ companyId, assignmentId, reason: '  Engagement ended  ' }, actorId, {
-    supabase: supabase as never,
-  });
-  assert.equal(
+  assert.deepEqual(
+    await releaseCompanyPro({ companyId, assignmentId, reason: '  Engagement ended  ' }, actorId, {
+      supabase: supabase as never,
+    }),
+    { assignmentId, previousProProfileId: proId },
+  );
+  assert.deepEqual(
     await reassignCompanyPro(
       {
         companyId,
@@ -101,7 +115,13 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
       actorId,
       { supabase: supabase as never },
     ),
-    replacementId,
+    {
+      assignmentId: replacementId,
+      pricingTermId,
+      compensationTermId,
+      proProfileId: replacementId,
+      previousProProfileId: proId,
+    },
   );
 
   assert.deepEqual(
@@ -109,7 +129,7 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
     [
       {
         kind: 'rpc',
-        name: 'assign_pro_to_company',
+        name: 'assign_pro_to_company_with_context',
         value: {
           p_company_id: companyId,
           p_pro_profile_id: proId,
@@ -118,7 +138,7 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
       },
       {
         kind: 'rpc',
-        name: 'release_company_pro',
+        name: 'release_company_pro_with_context',
         value: {
           p_company_id: companyId,
           p_expected_assignment_id: assignmentId,
@@ -128,7 +148,7 @@ test('assignment mutations validate input and call exact lifecycle RPC arguments
       },
       {
         kind: 'rpc',
-        name: 'reassign_company_pro',
+        name: 'reassign_company_pro_with_context',
         value: {
           p_company_id: companyId,
           p_expected_assignment_id: assignmentId,
@@ -202,9 +222,9 @@ test('mutation failures expose mapped codes but never raw database messages', as
   );
 });
 
-test('malformed RPC return IDs are sanitized as internal failures', async () => {
+test('malformed or incomplete term-linked mutation results are sanitized', async () => {
   const { assignProToCompany } = await import('./company-assignments');
-  const supabase = fakeSupabase([{ data: 'not-a-uuid', error: null }]);
+  const supabase = fakeSupabase([{ data: { assignmentId, pricingTermId }, error: null }]);
 
   await assert.rejects(
     () =>
@@ -215,7 +235,7 @@ test('malformed RPC return IDs are sanitized as internal failures', async () => 
       error instanceof Error &&
       'code' in error &&
       error.code === 'INTERNAL' &&
-      !error.message.includes('not-a-uuid'),
+      !error.message.includes('pricing'),
   );
 });
 
@@ -305,25 +325,43 @@ function concurrentHistorySupabase() {
   };
 }
 
-test('current assignment is company-scoped and filters active status', async () => {
+test('current assignment is an operator-scoped summary with blocked operational access', async () => {
   const { readCurrentCompanyAssignment } = await import('./company-assignments');
-  const supabase = fakeSupabase([{ data: assignmentRow, error: null }]);
+  const supabase = fakeSupabase([
+    {
+      data: {
+        assignmentId,
+        tenantId: assignmentRow.tenant_id,
+        companyId,
+        proProfileId: proId,
+        proFullName: 'Aisha PRO',
+        status: 'active',
+        assignedAt: assignmentRow.assigned_at,
+        assignedBy: actorId,
+        releasedAt: null,
+        releasedBy: null,
+        releaseReason: null,
+        operationalAccess: 'blocked',
+        operationalAccessCodes: ['PRO_CREDENTIAL_REVOKED'],
+      },
+      error: null,
+    },
+  ]);
 
-  const row = await readCurrentCompanyAssignment(companyId, { supabase: supabase as never });
+  const row = await readCurrentCompanyAssignment(companyId, actorId, {
+    supabase: supabase as never,
+  });
 
   assert.equal(row?.proFullName, 'Aisha PRO');
-  assert.deepEqual(supabase.calls[0], { kind: 'from', name: 'pro_company_assignments' });
-  assert.equal(
-    supabase.calls.find((call) => call.kind === 'select')?.name,
-    'id, tenant_id, company_id, pro_profile_id, status, assigned_at, assigned_by, released_at, released_by, release_reason, profiles!pro_company_assignments_pro_profile_id_fkey(full_name)',
-  );
-  assert.deepEqual(
-    supabase.calls.filter((call) => call.kind === 'eq'),
-    [
-      { kind: 'eq', name: 'company_id', value: companyId },
-      { kind: 'eq', name: 'status', value: 'active' },
-    ],
-  );
+  assert.equal(row?.operationalAccess, 'blocked');
+  assert.deepEqual(row?.operationalAccessCodes, ['PRO_CREDENTIAL_REVOKED']);
+  assert.deepEqual(supabase.calls, [
+    {
+      kind: 'rpc',
+      name: 'read_current_company_assignment_summary',
+      value: { p_actor_id: actorId, p_company_id: companyId },
+    },
+  ]);
 });
 
 test('history keyset pagination survives a concurrent front insertion and equal-time tie', async () => {
@@ -435,7 +473,7 @@ test('assignment reads validate company IDs before service-role queries', async 
   const supabase = fakeSupabase([]);
 
   await assert.rejects(
-    () => readCurrentCompanyAssignment('bad-company', { supabase: supabase as never }),
+    () => readCurrentCompanyAssignment('bad-company', actorId, { supabase: supabase as never }),
     (error: unknown) => error instanceof Error && 'code' in error && error.code === 'INTERNAL',
   );
   await assert.rejects(
@@ -446,14 +484,20 @@ test('assignment reads validate company IDs before service-role queries', async 
 });
 
 test('assignment read database errors are sanitized', async () => {
-  const { readCurrentCompanyAssignment, listCompanyAssignmentHistory, listVerifiedUnassignedPros } =
+  const { readCurrentCompanyAssignment, listCompanyAssignmentHistory } =
     await import('./company-assignments');
-  for (const read of [readCurrentCompanyAssignment, listCompanyAssignmentHistory]) {
+  for (const [read, args] of [
+    [readCurrentCompanyAssignment, [companyId, actorId]],
+    [listCompanyAssignmentHistory, [companyId]],
+  ] as const) {
     const supabase = fakeSupabase([
       { data: null, error: { message: 'secret database details', code: 'XX000' } },
     ]);
     await assert.rejects(
-      () => read(companyId, { supabase: supabase as never }),
+      () =>
+        (read as (...args: unknown[]) => Promise<unknown>)(...args, {
+          supabase: supabase as never,
+        }),
       (error: unknown) =>
         error instanceof Error &&
         'code' in error &&
@@ -461,93 +505,4 @@ test('assignment read database errors are sanitized', async () => {
         !error.message.includes('secret'),
     );
   }
-
-  const supabase = fakeSupabase([
-    { data: null, error: { message: 'secret database details', code: 'XX000' } },
-  ]);
-  await assert.rejects(
-    () => listVerifiedUnassignedPros({ supabase: supabase as never }),
-    (error: unknown) =>
-      error instanceof Error &&
-      'code' in error &&
-      error.code === 'INTERNAL' &&
-      !error.message.includes('secret'),
-  );
-});
-
-test('assignable PRO query is verified, active, role-scoped and excludes active assignments', async () => {
-  const { listVerifiedUnassignedPros } = await import('./company-assignments');
-  const supabase = fakeSupabase([
-    {
-      data: [
-        {
-          id: proId,
-          full_name: 'Aisha PRO',
-          role: 'pro',
-          status: 'active',
-          pro_profiles: {
-            designation: 'Public Relations Officer',
-            department: 'Government Relations',
-            verified_at: '2026-08-01T00:00:00.000Z',
-            credentials_verified: true,
-          },
-          active_assignments: [],
-        },
-      ],
-      error: null,
-    },
-  ]);
-
-  const rows = await listVerifiedUnassignedPros({ supabase: supabase as never });
-
-  assert.deepEqual(rows, [
-    {
-      id: proId,
-      fullName: 'Aisha PRO',
-      designation: 'Public Relations Officer',
-      department: 'Government Relations',
-      verifiedAt: '2026-08-01T00:00:00.000Z',
-    },
-  ]);
-  assert.deepEqual(supabase.calls[0], { kind: 'from', name: 'profiles' });
-  assert.equal(
-    supabase.calls.find((call) => call.kind === 'select')?.name,
-    'id, full_name, pro_profiles!pro_profiles_profile_id_fkey!inner(designation, department, verified_at, credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey()',
-  );
-  for (const [name, value] of [
-    ['role', 'pro'],
-    ['status', 'active'],
-    ['pro_profiles.credentials_verified', true],
-    ['active_assignments.status', 'active'],
-  ] as const) {
-    assert.ok(
-      supabase.calls.some(
-        (call) => call.kind === 'eq' && call.name === name && call.value === value,
-      ),
-      `missing ${name} filter`,
-    );
-  }
-  assert.deepEqual(
-    supabase.calls.find((call) => call.kind === 'is'),
-    {
-      kind: 'is',
-      name: 'active_assignments',
-      value: null,
-    },
-  );
-  assert.deepEqual(
-    supabase.calls.filter((call) => call.kind === 'order'),
-    [
-      { kind: 'order', name: 'full_name', value: { ascending: true } },
-      { kind: 'order', name: 'id', value: { ascending: true } },
-    ],
-  );
-  assert.deepEqual(
-    supabase.calls.find((call) => call.kind === 'limit'),
-    {
-      kind: 'limit',
-      name: 'limit',
-      value: 500,
-    },
-  );
 });

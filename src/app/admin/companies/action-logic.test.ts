@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { ApiError } from '@/lib/errors';
+import { logSafeActionError } from '@/lib/actions/server-action-security';
 import {
   runAssignCompanyProAction,
   runCreateCompanyAction,
@@ -28,7 +30,15 @@ function setup(role: 'admin' | 'super_admin' = 'admin') {
   const dependencies: CompanyActionDependencies = {
     requireActor: async () => {
       calls.push(`auth:${role}`);
-      return { id: actorId, role };
+      return { id: actorId, role, aal: 'aal2' };
+    },
+    getAssignmentTarget: async (_companyId, requestedAssignmentId) => {
+      calls.push(`assignment:${requestedAssignmentId}`);
+      return requestedAssignmentId === assignmentId ? { id: assignmentId } : null;
+    },
+    limitAssignment: async () => {
+      calls.push('limit');
+      return 'allowed';
     },
     provisionCompany: async () => {
       calls.push('provision');
@@ -45,14 +55,26 @@ function setup(role: 'admin' | 'super_admin' = 'admin') {
     },
     assign: async (_input, trustedActorId) => {
       calls.push(`assign:${trustedActorId}`);
-      return assignmentId;
+      return {
+        assignmentId,
+        pricingTermId: '77777777-7777-4777-8777-777777777777',
+        compensationTermId: '88888888-8888-4888-8888-888888888888',
+        proProfileId: oldProId,
+      };
     },
     release: async (_input, trustedActorId) => {
       calls.push(`release:${trustedActorId}`);
+      return { assignmentId, previousProProfileId: oldProId };
     },
     reassign: async (_input, trustedActorId) => {
       calls.push(`reassign:${trustedActorId}`);
-      return assignmentId;
+      return {
+        assignmentId,
+        pricingTermId: '77777777-7777-4777-8777-777777777777',
+        compensationTermId: '88888888-8888-4888-8888-888888888888',
+        proProfileId: replacementProId,
+        previousProProfileId: oldProId,
+      };
     },
     revalidate: (path) => calls.push(`revalidate:${path}`),
   };
@@ -153,11 +175,13 @@ test('assignment uses the authoritative actor and exact revalidation routes', as
   assert.deepEqual(context.calls, [
     'auth:admin',
     'company',
+    'limit',
     `assign:${actorId}`,
     'revalidate:/admin/companies',
     `revalidate:/admin/companies/${companyId}`,
     `revalidate:/admin/companies/${companyId}/onboarding`,
     'revalidate:/admin/users',
+    `revalidate:/admin/users/${oldProId}`,
     'revalidate:/t/acme-trading',
     'revalidate:/t/acme-trading/company',
     'revalidate:/t/acme-trading/company/setup',
@@ -175,7 +199,7 @@ test('release requires the exact company name and does not mutate on mismatch', 
     code: 'CONFIRMATION_MISMATCH',
     fieldErrors: { companyNameConfirmation: 'mismatch' },
   });
-  assert.deepEqual(context.calls, ['auth:admin', 'company']);
+  assert.deepEqual(context.calls, ['auth:admin', 'company', `assignment:${assignmentId}`, 'limit']);
 });
 
 test('release and reassignment identify invalid editable fields', async () => {
@@ -212,12 +236,19 @@ test('release requires a reason and revalidates only after success', async () =>
     ok: true,
     data: { outcome: 'released' },
   });
-  assert.deepEqual(valid.calls.slice(0, 3), ['auth:admin', 'company', `release:${actorId}`]);
-  assert.deepEqual(valid.calls.slice(3), [
+  assert.deepEqual(valid.calls.slice(0, 5), [
+    'auth:admin',
+    'company',
+    `assignment:${assignmentId}`,
+    'limit',
+    `release:${actorId}`,
+  ]);
+  assert.deepEqual(valid.calls.slice(5), [
     'revalidate:/admin/companies',
     `revalidate:/admin/companies/${companyId}`,
     `revalidate:/admin/companies/${companyId}/onboarding`,
     'revalidate:/admin/users',
+    `revalidate:/admin/users/${oldProId}`,
     'revalidate:/t/acme-trading',
     'revalidate:/t/acme-trading/company',
     'revalidate:/t/acme-trading/company/setup',
@@ -231,7 +262,77 @@ test('reassignment uses the replacement PRO and authoritative actor', async () =
     ok: true,
     data: { assignmentId, outcome: 'reassigned' },
   });
-  assert.deepEqual(context.calls.slice(0, 3), ['auth:admin', 'company', `reassign:${actorId}`]);
+  assert.deepEqual(context.calls.slice(0, 5), [
+    'auth:admin',
+    'company',
+    `assignment:${assignmentId}`,
+    'limit',
+    `reassign:${actorId}`,
+  ]);
+});
+
+test('AAL1 assignment is denied before target, limiter, and mutation', async () => {
+  const context = setup();
+  context.dependencies.requireActor = async () => {
+    context.calls.push('auth:aal1');
+    return { id: actorId, role: 'admin', aal: 'aal1' };
+  };
+  const result = await runAssignCompanyProAction(assignData(), context.dependencies);
+  assert.deepEqual(result, {
+    ok: false,
+    error: 'Unable to update company assignment',
+    code: 'AAL2_REQUIRED',
+  });
+  assert.deepEqual(context.calls, ['auth:aal1']);
+});
+
+for (const decision of ['limited', 'unavailable'] as const) {
+  test(`${decision} sensitive limiter fails closed before assignment mutation`, async () => {
+    const context = setup();
+    context.dependencies.limitAssignment = async () => {
+      context.calls.push(`limit:${decision}`);
+      return decision;
+    };
+    const result = await runAssignCompanyProAction(assignData(), context.dependencies);
+    assert.equal(result.ok, false);
+    assert.equal(
+      result.ok ? '' : result.code,
+      decision === 'limited' ? 'RATE_LIMITED' : 'SERVICE_UNAVAILABLE',
+    );
+    assert.deepEqual(context.calls, ['auth:admin', 'company', `limit:${decision}`]);
+  });
+}
+
+test('release and reassign reject a non-matching assignment before limiter and mutation', async () => {
+  for (const [run, data] of [
+    [runReleaseCompanyProAction, releaseData()],
+    [runReassignCompanyProAction, reassignData()],
+  ] as const) {
+    const context = setup();
+    context.dependencies.getAssignmentTarget = async () => {
+      context.calls.push('assignment:missing');
+      return null;
+    };
+    const result = await run(data, context.dependencies);
+    assert.equal(result.ok, false);
+    assert.equal(result.ok ? '' : result.code, 'ASSIGNMENT_NOT_FOUND');
+    assert.deepEqual(context.calls, ['auth:admin', 'company', 'assignment:missing']);
+  }
+});
+
+test('assignment mutations revalidate exact server-returned old and new PRO details', async () => {
+  const assigned = setup();
+  await runAssignCompanyProAction(assignData(), assigned.dependencies);
+  assert.ok(assigned.calls.includes(`revalidate:/admin/users/${oldProId}`));
+
+  const released = setup();
+  await runReleaseCompanyProAction(releaseData(), released.dependencies);
+  assert.ok(released.calls.includes(`revalidate:/admin/users/${oldProId}`));
+
+  const reassigned = setup();
+  await runReassignCompanyProAction(reassignData(), reassigned.dependencies);
+  assert.ok(reassigned.calls.includes(`revalidate:/admin/users/${oldProId}`));
+  assert.ok(reassigned.calls.includes(`revalidate:/admin/users/${replacementProId}`));
 });
 
 test('domain conflicts are sanitized and duplicate submissions remain replay-safe', async () => {
@@ -273,4 +374,35 @@ test('unexpected errors never expose database details', async () => {
     code: 'INTERNAL',
   });
   assert.equal(JSON.stringify(result).includes('postgres'), false);
+});
+
+test('production company actions use allowlisted logging for protected provider errors', async () => {
+  const source = readFileSync('src/app/admin/companies/actions.ts', 'utf8');
+  assert.match(source, /logSafeActionError/u);
+  assert.doesNotMatch(source, /console\.error\(context,\s*error\)/u);
+
+  const canaries = [
+    'TASK13-CANARY-IDENTIFIER-9Z72',
+    'v1:TASK13-CANARY-CIPHERTEXT',
+    'TASK13-CANARY-HASH-0123456789',
+    'pro-credentials/TASK13-CANARY-STORAGE-PATH',
+    'https://storage.invalid/TASK13-CANARY-SIGNED-URL',
+    'TASK13-CANARY-RAW-PROVIDER-ERROR',
+  ];
+  const context = setup();
+  context.dependencies.assign = async () => {
+    throw new Error(canaries.join(' '));
+  };
+  context.dependencies.reportError = logSafeActionError;
+  const logged: unknown[] = [];
+  const original = console.error;
+  console.error = (...values: unknown[]) => logged.push(...values);
+  try {
+    const result = await runAssignCompanyProAction(assignData(), context.dependencies);
+    assert.equal(result.ok, false);
+    const external = JSON.stringify({ result, logged });
+    for (const canary of canaries) assert.equal(external.includes(canary), false);
+  } finally {
+    console.error = original;
+  }
 });

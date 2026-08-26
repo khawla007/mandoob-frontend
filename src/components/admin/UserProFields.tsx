@@ -24,19 +24,6 @@ export function UserProFields() {
       <p className="text-muted-foreground text-sm">{t('user.proAssignmentNotice')}</p>
       <FormField
         control={form.control}
-        name="license_no"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('user.fields.licenseNo')}</FormLabel>
-            <FormControl>
-              <Input {...field} value={field.value ?? ''} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
         name="designation"
         render={({ field }) => (
           <FormItem>

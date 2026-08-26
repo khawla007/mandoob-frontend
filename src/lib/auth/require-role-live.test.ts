@@ -22,7 +22,10 @@ function session(role: SessionProfile['role']): SessionProfile {
 }
 
 function guardDeps(current: SessionProfile, results: Array<{ data: unknown; error: unknown }>) {
-  const calls: Array<{ table: string; select: string; filters: Record<string, unknown> }> = [];
+  const calls: Array<
+    | { kind: 'from'; table: string; select: string; filters: Record<string, unknown> }
+    | { kind: 'rpc'; name: string; args: Record<string, unknown> }
+  > = [];
   let index = 0;
   const supabase = {
     from(table: string) {
@@ -38,11 +41,15 @@ function guardDeps(current: SessionProfile, results: Array<{ data: unknown; erro
           return query;
         },
         async maybeSingle() {
-          calls.push({ table, select: selected, filters: { ...filters } });
+          calls.push({ kind: 'from', table, select: selected, filters: { ...filters } });
           return results[index++];
         },
       };
       return query;
+    },
+    async rpc(name: string, args: Record<string, unknown>) {
+      calls.push({ kind: 'rpc', name, args });
+      return results[index++];
     },
   };
   return {
@@ -62,23 +69,16 @@ test('verified assigned PRO receives the authoritative company tenant from one f
   const auth = guardDeps(session('pro'), [
     { data: { role: 'pro', status: 'active', tenant_id: null }, error: null },
     {
-      data: { role: 'pro', status: 'active', active_assignments: [{ tenant_id: tenantId }] },
+      data: tenantId,
       error: null,
     },
   ]);
   const result = await resolveAuthoritativeRole(['pro'], auth.deps);
   assert.equal(result.tenantId, tenantId);
   assert.deepEqual(auth.calls[1], {
-    table: 'profiles',
-    select:
-      'role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(tenant_id)',
-    filters: {
-      id: actorId,
-      role: 'pro',
-      status: 'active',
-      'pro_profiles.credentials_verified': true,
-      'active_assignments.status': 'active',
-    },
+    kind: 'rpc',
+    name: 'read_authoritative_pro_tenant',
+    args: { p_actor_id: actorId },
   });
 });
 

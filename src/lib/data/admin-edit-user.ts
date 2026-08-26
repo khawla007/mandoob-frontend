@@ -1,7 +1,7 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { decryptOptional, encryptOptional } from '@/lib/crypto/pii';
+import { encryptOptional } from '@/lib/crypto/pii';
 import { hashPassportForLookup } from '@/lib/crypto/passport-lookup';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import type { EditUserOutput } from '@/lib/validation/admin-user';
@@ -13,10 +13,6 @@ type Caller = { id: string; role: Role; tenantId: string | null };
 export type AdminEditUserResult = {
   changedKeys: string[];
 };
-
-export function proLicenseChanged(current: string | null, next: string | null): boolean {
-  return (current?.trim() || null) !== (next?.trim() || null);
-}
 
 /**
  * PATCH /api/v1/admin/users/[id] orchestrator. Mutates the profile row + the
@@ -73,30 +69,12 @@ export async function adminEditUser(
 
   // Role-specific sub-row
   if (input.role === 'pro') {
-    const { data: currentPro, error: currentProError } = await admin
-      .from('pro_profiles')
-      .select('license_no_encrypted')
-      .eq('profile_id', targetId)
-      .maybeSingle();
-    if (currentProError || !currentPro) {
-      throw new ApiError('INTERNAL', 'Could not read PRO profile', 500);
-    }
-    const licenseChanged = proLicenseChanged(
-      decryptOptional(currentPro.license_no_encrypted),
-      input.license_no,
-    );
     const update: Record<string, unknown> = {
-      license_no_encrypted: encryptOptional(input.license_no),
       designation: input.designation ?? null,
       department: input.department ?? null,
       service_areas: input.service_areas,
       bio: input.bio ?? null,
     };
-    if (licenseChanged) {
-      update.credentials_verified = false;
-      update.verified_at = null;
-      update.verified_by_profile_id = null;
-    }
     const { error } = await admin.from('pro_profiles').update(update).eq('profile_id', targetId);
     if (error) {
       console.error('admin edit PRO update failed', error);

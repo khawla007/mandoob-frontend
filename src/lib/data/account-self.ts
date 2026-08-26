@@ -3,6 +3,11 @@ import { ApiError } from '@/lib/errors';
 import { decryptOptional, encryptOptional } from '@/lib/crypto/pii';
 import { updateEmployeeSelfPassport } from '@/lib/data/employee-self-passport';
 import type { Role } from '@/lib/auth/roles';
+import type { ProCredentialSnapshot } from '@/lib/data/pro-credentials';
+import type {
+  ProLifecycleTimelineItem,
+  ProLifecycleTimelinePage,
+} from '@/lib/data/pro-lifecycle-timeline';
 
 export type ReadSelfProfile = {
   id: string;
@@ -23,12 +28,49 @@ export type ReadSelfProfile = {
 };
 
 export type ReadSelfPro = {
-  licenseNo: string | null;
   designation: string | null;
   department: string | null;
   serviceAreas: string[];
   bio: string | null;
 };
+
+export type ReadSelfProCredentialSnapshot = ProCredentialSnapshot & {
+  latestDecision: ProLifecycleTimelineItem | null;
+};
+
+type SelfCredentialDeps = {
+  readCredentialSnapshot?: (
+    actorId: string,
+    proProfileId: string,
+  ) => Promise<ProCredentialSnapshot>;
+  readTimeline?: (
+    actorId: string,
+    proProfileId: string,
+    limit: number,
+    cursor: string | null,
+  ) => Promise<ProLifecycleTimelinePage>;
+};
+
+export async function readSelfProCredentialSnapshot(
+  profileId: string,
+  deps: SelfCredentialDeps = {},
+): Promise<ReadSelfProCredentialSnapshot> {
+  const readCredentialSnapshot =
+    deps.readCredentialSnapshot ??
+    (await import('@/lib/data/pro-credentials')).readProCredentialSnapshot;
+  const readTimeline =
+    deps.readTimeline ??
+    (await import('@/lib/data/pro-lifecycle-timeline')).readProLifecycleTimeline;
+  const snapshot = await readCredentialSnapshot(profileId, profileId);
+  const timeline = await Promise.allSettled([readTimeline(profileId, profileId, 25, null)]);
+  return {
+    ...snapshot,
+    latestDecision:
+      timeline[0]?.status === 'fulfilled'
+        ? (timeline[0].value.items.find((item) => item.eventKind.startsWith('credential_')) ?? null)
+        : null,
+  };
+}
 
 export type ReadSelfCustomer = {
   nationality: string | null;
@@ -87,11 +129,10 @@ export async function readSelfPro(): Promise<ReadSelfPro> {
   if (!userRes.user) throw new ApiError('UNAUTHENTICATED', 'Not signed in', 401);
   const { data } = await supabase
     .from('pro_profiles')
-    .select('license_no_encrypted, designation, department, service_areas, bio')
+    .select('designation, department, service_areas, bio')
     .eq('profile_id', userRes.user.id)
     .maybeSingle();
   return {
-    licenseNo: decryptOptional(data?.license_no_encrypted as string | null),
     designation: (data?.designation as string | null) ?? null,
     department: (data?.department as string | null) ?? null,
     serviceAreas: ((data?.service_areas as string[] | null) ?? []) as string[],
@@ -212,7 +253,6 @@ export function diffProfile(
 }
 
 export type RoleProUpdate = {
-  license_no?: string | null;
   designation?: string | null;
   department?: string | null;
   service_areas: string[];
@@ -237,7 +277,6 @@ export function buildRoleUpdate(
   if (role === 'pro') {
     const i = input as RoleProUpdate;
     return {
-      license_no_encrypted: encryptOptional(i.license_no ?? null),
       designation: i.designation ?? null,
       department: i.department ?? null,
       service_areas: i.service_areas,

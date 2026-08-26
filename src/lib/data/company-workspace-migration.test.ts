@@ -723,9 +723,11 @@ test('legacy permissive policies are explicitly removed and verification fields 
       sql,
     );
   assert.ok(safeGrant, 'safe PRO self-update column grant is missing');
+  assert.match(safeGrant[1], /service_areas\s*,\s*bio/u);
+  assert.doesNotMatch(safeGrant[1], /designation|department/u);
   assert.doesNotMatch(
     safeGrant[1],
-    /license_no_encrypted|designation|department|credentials_verified|verified_at|verified_by_profile_id/,
+    /license_no_encrypted|credentials_verified|verified_at|verified_by_profile_id/,
   );
 
   const proSafeUpdate = extractPolicies(sql, 'pro_profiles').find((policy) =>
@@ -857,9 +859,13 @@ test('nullable customer and employee links retain composite workspace ownership'
 
 test('SQL fixtures cover credential denial and coordinated lifecycle races', () => {
   const privilege = normalizeSql(readSqlFixture('pro_profile_verification_privileges.sql'));
-  assert.match(privilege, /has_column_privilege[\s\S]*?'credentials_verified'[\s\S]*?'update'/);
-  assert.match(privilege, /has_column_privilege[\s\S]*?'license_no_encrypted'[\s\S]*?'update'/);
+  assert.match(privilege, /information_schema\.columns/u);
+  assert.match(
+    privilege,
+    /column_name in \( 'credentials_verified', 'license_no_encrypted', 'verified_at', 'verified_by_profile_id' \)/u,
+  );
   assert.match(privilege, /has_column_privilege[\s\S]*?'bio'[\s\S]*?'update'/);
+  assert.match(privilege, /has_column_privilege[\s\S]*?'service_areas'[\s\S]*?'update'/);
 
   const fixtures = [
     'company_assignment_concurrency_session_a.sql',
@@ -889,11 +895,11 @@ test('SQL fixtures cover credential denial and coordinated lifecycle races', () 
   }
   const expectedSqlStates = new Map<string, string>([
     ['company_assignment_concurrency_session_a.sql', '00000'],
-    ['company_assignment_concurrency_session_b.sql', 'p0001'],
+    ['company_assignment_concurrency_session_b.sql', '00000'],
     ['company_assignment_release_assign_session_a.sql', '00000'],
     ['company_assignment_release_assign_session_b.sql', '00000'],
     ['company_assignment_swap_reassign_session_a.sql', 'p0001'],
-    ['company_assignment_swap_reassign_session_b.sql', 'p0001'],
+    ['company_assignment_swap_reassign_session_b.sql', '00000'],
   ]);
   for (const [name, fixture] of fixtures) {
     assert.match(
@@ -908,7 +914,7 @@ test('SQL fixtures cover credential denial and coordinated lifecycle races', () 
   )?.[1];
   assert.match(
     assignmentRaceB ?? '',
-    /company_id\s*=\s*:'company_id'::uuid\s+or\s+pro_profile_id\s*=\s*:'pro_profile_id'::uuid/,
+    /company_id\s+in\s*\(:'company_a_id'::uuid,\s*:'company_b_id'::uuid\)[\s\S]*?or\s+pro_profile_id\s+in\s*\(:'pro_a_profile_id'::uuid,\s*:'pro_b_profile_id'::uuid\)/,
     'assignment race B must verify the winner for company and PRO contention modes',
   );
   assert.match(combined, /actor_a_profile_id'::uuid\s*<>\s*:'actor_b_profile_id'::uuid/);

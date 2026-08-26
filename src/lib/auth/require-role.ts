@@ -13,7 +13,13 @@ type PlatformQuery = {
   eq(column: string, value: unknown): PlatformQuery;
   maybeSingle(): Promise<PlatformQueryResult>;
 };
-type PlatformClient = { from(table: string): PlatformQuery };
+type PlatformClient = {
+  from(table: string): PlatformQuery;
+  rpc(
+    name: 'read_authoritative_pro_tenant',
+    args: { p_actor_id: string },
+  ): Promise<{ data: string | null; error: { message?: string } | null }>;
+};
 type PlatformOperatorDeps = {
   requireSession?: () => Promise<SessionProfile>;
   supabase?: PlatformClient;
@@ -72,23 +78,10 @@ export async function resolveAuthoritativeRole(
     return { ...session, role: profile.role, tenantId: profile.tenant_id as string };
   }
   if (profile.role === 'pro') {
-    const { data: livePro, error: liveProError } = await admin
-      .from('profiles')
-      .select(
-        'role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(tenant_id)',
-      )
-      .eq('id', session.id)
-      .eq('role', 'pro')
-      .eq('status', 'active')
-      .eq('pro_profiles.credentials_verified', true)
-      .eq('active_assignments.status', 'active')
-      .maybeSingle();
-    const assignments = livePro?.active_assignments;
-    const assignment = Array.isArray(assignments) ? assignments[0] : assignments;
-    const tenantId =
-      assignment && typeof assignment === 'object'
-        ? (assignment as Record<string, unknown>).tenant_id
-        : null;
+    const { data: tenantId, error: liveProError } = await admin.rpc(
+      'read_authoritative_pro_tenant',
+      { p_actor_id: session.id },
+    );
     if (liveProError || !z.string().uuid().safeParse(tenantId).success) {
       return denyPlatformAccess(deps);
     }

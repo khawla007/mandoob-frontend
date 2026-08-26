@@ -3,6 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
 const renderTest = reactServer ? ((() => undefined) as unknown as typeof test) : test;
@@ -81,4 +83,19 @@ renderTest('completed mutation button remains disabled against replay', async ()
   assert.match(html, /disabled=""/u);
   assert.match(html, /aria-disabled="true"/u);
   assert.match(html, />Assign PRO</u);
+});
+
+test('assignment form keeps ineligible matches visible with operator-only reasons', () => {
+  const form = readFileSync(
+    join(process.cwd(), 'src/components/admin/CompanyAssignmentForm.tsx'),
+    'utf8',
+  );
+  const typeahead = readFileSync(
+    join(process.cwd(), 'src/components/admin/ProAssignmentTypeahead.tsx'),
+    'utf8',
+  );
+  assert.match(typeahead, /aria-disabled=\{!row\.eligibility\.eligible\}/u);
+  assert.match(typeahead, /row\.eligibility\.codes/u);
+  assert.match(form, /operationalAccess === 'blocked'/u);
+  assert.match(form, /role="status"/u);
 });

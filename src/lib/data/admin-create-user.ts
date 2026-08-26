@@ -106,9 +106,7 @@ export async function adminCreateUser(
   // ── Encrypt PII (§4 step 7) ──────────────────────────────────────────
   let encryptedPayload: Record<string, string | null> = {};
   try {
-    if (input.role === 'pro') {
-      encryptedPayload = { license_no_encrypted: encryptOptional(input.license_no) };
-    } else if (input.role === 'customer') {
+    if (input.role === 'customer') {
       encryptedPayload = {
         passport_no_encrypted: encryptOptional(input.passport_no ?? null),
       };
@@ -200,8 +198,6 @@ export async function adminCreateUser(
     if (input.role === 'pro') {
       const { error } = await admin.from('pro_profiles').insert({
         profile_id: newUserId,
-        credentials_verified: false,
-        license_no_encrypted: encryptedPayload.license_no_encrypted,
         designation: input.designation ?? null,
         department: input.department ?? null,
         service_areas: input.service_areas,

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,8 +7,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { UsersToolbar } from '@/components/admin/UsersToolbar';
 import { UsersEmptyState } from '@/components/admin/UsersEmptyState';
+import { ProRegistryEmptyState } from '@/components/admin/ProRegistryEmptyState';
 import { UsersPagination } from '@/components/admin/UsersPagination';
-import { requireRole } from '@/lib/auth/require-role';
+import { ProRegistryAppliedFilters } from '@/components/admin/ProRegistryAppliedFilters';
+import { ProRegistryPagination } from '@/components/admin/ProRegistryPagination';
+import { ProRegistryTable } from '@/components/admin/ProRegistryTable';
+import { ProRegistryToolbar } from '@/components/admin/ProRegistryToolbar';
+import { requirePlatformOperator } from '@/lib/auth/require-role';
 import { ROLES, type Role } from '@/lib/auth/roles';
 import {
   listUsersWithProfiles,
@@ -17,6 +23,13 @@ import {
   type SortDir,
 } from '@/lib/data/users';
 import { listTenants, type TenantSummary } from '@/lib/data/tenants';
+import { listProRegistry } from '@/lib/data/pro-registry';
+import {
+  buildProRegistryHref,
+  canonicalProRegistryPage,
+  parseProRegistryParams,
+  type RawProRegistryParams,
+} from './pro-registry-params';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,14 +45,83 @@ const SORT_DIRS: SortDir[] = ['asc', 'desc'];
 
 type SearchParams = {
   q?: string;
-  role?: string;
+  role?: string | string[];
   roles?: string;
   status?: string;
   tenant?: string;
   sort?: string;
   cursor?: string;
   created?: string;
+  accountStatus?: string;
+  credentialState?: string;
+  eligibility?: string;
+  assignment?: string;
+  expiryWindow?: string;
+  direction?: string;
+  page?: string;
 };
+
+async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; actorId: string }) {
+  const t = await getTranslations('admin.user.proRegistry');
+  const { filters, invalid } = parseProRegistryParams(raw);
+  const result = await listProRegistry(actorId, filters);
+  const canonicalPage = canonicalProRegistryPage(filters.page, result.totalPages);
+  if (canonicalPage !== filters.page) {
+    redirect(buildProRegistryHref(filters, { page: canonicalPage }));
+  }
+  const filtersActive = Boolean(
+    filters.q ||
+    filters.accountStatus ||
+    filters.credentialState ||
+    filters.eligibility ||
+    filters.assignment ||
+    filters.expiryWindow,
+  );
+  return (
+    <div className="space-y-6">
+      {invalid && (
+        <Alert>
+          <AlertTitle>{t('invalidTitle')}</AlertTitle>
+          <AlertDescription>{t('invalidDescription')}</AlertDescription>
+        </Alert>
+      )}
+      {result.items.some((item) => item.emailUnavailable) ? (
+        <Alert>
+          <AlertDescription>{t('partialEmail')}</AlertDescription>
+        </Alert>
+      ) : null}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t('resultCount', { count: result.total })}
+          </p>
+        </div>
+        <Button asChild className="min-h-11">
+          <Link href="/admin/users/new?role=pro">{t('create')}</Link>
+        </Button>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('directoryTitle')}</CardTitle>
+          <CardDescription>{t('directoryDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ProRegistryToolbar filters={filters} />
+          <ProRegistryAppliedFilters filters={filters} />
+          {result.items.length === 0 ? (
+            <ProRegistryEmptyState filtersActive={filtersActive || invalid} />
+          ) : (
+            <>
+              <ProRegistryTable rows={result.items} filters={filters} />
+              <ProRegistryPagination filters={filters} totalPages={result.totalPages} />
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function parseRoles(raw: string | undefined): Role[] | undefined {
   if (!raw) return undefined;
@@ -69,9 +151,12 @@ function parseSort(raw: string | undefined): { col: SortCol; dir: SortDir } {
 export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
   const t = await getTranslations('admin');
-  const session = await requireRole('super_admin', 'admin');
+  const session = await requirePlatformOperator();
   const viewerRole = session.role as Role;
-  const roles = parseRoles(sp.roles ?? sp.role);
+  if (sp.role === 'pro' || (Array.isArray(sp.role) && sp.role.includes('pro'))) {
+    return <ProRegistryMode raw={sp as RawProRegistryParams} actorId={session.id} />;
+  }
+  const roles = parseRoles(sp.roles ?? (typeof sp.role === 'string' ? sp.role : undefined));
   const status = parseStatus(sp.status);
   const sort = parseSort(sp.sort);
 

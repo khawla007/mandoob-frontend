@@ -9,6 +9,10 @@ const optionalEmail = z.preprocess(
   (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
   z.string().email().optional(),
 );
+const optionalPort = z.preprocess(
+  (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
+  z.coerce.number().int().positive().max(65_535).optional(),
+);
 
 const schema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -49,6 +53,8 @@ const schema = z.object({
   STRIPE_PRICE_ENTERPRISE: optionalStr,
 
   VIRUSTOTAL_API_KEY: optionalStr,
+  CLAMAV_HOST: optionalStr,
+  CLAMAV_PORT: optionalPort,
 
   OPENAI_API_KEY: optionalStr,
   OPENAI_TRANSCRIPTION_MODEL: optionalStr,

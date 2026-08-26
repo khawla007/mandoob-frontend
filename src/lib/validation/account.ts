@@ -78,7 +78,6 @@ export const MfaEnrollFinalizeSchema = z
 
 export const RoleProSchema = z
   .object({
-    license_no: z.string().max(50).optional(),
     designation: z.string().max(100).optional(),
     department: z.string().max(100).optional(),
     service_areas: z.array(z.string().max(50)).max(20).default([]),

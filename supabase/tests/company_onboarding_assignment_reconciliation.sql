@@ -21,12 +21,36 @@ insert into public.profiles (id, role, status, full_name) values
   ('93000000-0000-4000-8000-000000000011', 'pro', 'active', 'Step 2 PRO 1'),
   ('93000000-0000-4000-8000-000000000012', 'pro', 'active', 'Step 2 PRO 2'),
   ('93000000-0000-4000-8000-000000000013', 'pro', 'active', 'Step 2 PRO 3');
-insert into public.pro_profiles (
-  profile_id, credentials_verified, verified_at, verified_by_profile_id
-) values
-  ('93000000-0000-4000-8000-000000000011', true, pg_catalog.now(), '93000000-0000-4000-8000-000000000001'),
-  ('93000000-0000-4000-8000-000000000012', true, pg_catalog.now(), '93000000-0000-4000-8000-000000000001'),
-  ('93000000-0000-4000-8000-000000000013', true, pg_catalog.now(), '93000000-0000-4000-8000-000000000001');
+insert into public.pro_profiles (profile_id) values
+  ('93000000-0000-4000-8000-000000000011'),
+  ('93000000-0000-4000-8000-000000000012'),
+  ('93000000-0000-4000-8000-000000000013');
+insert into public.pro_credentials (
+  id, pro_profile_id, identifier_ciphertext, identifier_hash, identifier_last4,
+  issuing_authority, issue_date, expiry_date, state, version, submitted_at, created_by
+) select
+  credential_id, pro_id, 'synthetic', pg_catalog.repeat(hash_character, 64), last_four,
+  'Synthetic Authority', current_date - 30, current_date + 365,
+  'verified', 5, pg_catalog.now(), '93000000-0000-4000-8000-000000000001'
+from (values
+  ('93000000-0000-4000-8000-000000000041'::uuid, '93000000-0000-4000-8000-000000000011'::uuid, 'a', 'AA11'),
+  ('93000000-0000-4000-8000-000000000042'::uuid, '93000000-0000-4000-8000-000000000012'::uuid, 'b', 'BB22'),
+  ('93000000-0000-4000-8000-000000000043'::uuid, '93000000-0000-4000-8000-000000000013'::uuid, 'c', 'CC33')
+) credentials(credential_id, pro_id, hash_character, last_four);
+insert into public.pro_commercial_terms (
+  id, pro_profile_id, term_kind, model, amount_minor, effective_from,
+  status, version, created_by
+) select
+  term_id, pro_id, term_kind::public.pro_term_kind, 'per_registration', 10000,
+  current_date - 1, 'active', 1, '93000000-0000-4000-8000-000000000001'
+from (values
+  ('93000000-0000-4000-8000-000000000051'::uuid, '93000000-0000-4000-8000-000000000011'::uuid, 'pricing'),
+  ('93000000-0000-4000-8000-000000000052'::uuid, '93000000-0000-4000-8000-000000000011'::uuid, 'compensation'),
+  ('93000000-0000-4000-8000-000000000053'::uuid, '93000000-0000-4000-8000-000000000012'::uuid, 'pricing'),
+  ('93000000-0000-4000-8000-000000000054'::uuid, '93000000-0000-4000-8000-000000000012'::uuid, 'compensation'),
+  ('93000000-0000-4000-8000-000000000055'::uuid, '93000000-0000-4000-8000-000000000013'::uuid, 'pricing'),
+  ('93000000-0000-4000-8000-000000000056'::uuid, '93000000-0000-4000-8000-000000000013'::uuid, 'compensation')
+) terms(term_id, pro_id, term_kind);
 
 insert into public.tenants (id, name, slug, plan, status) values
   ('93000000-0000-4000-8000-000000000021', 'Onboarding Assignment', 'onboarding-assignment', 'starter', 'pending'),
@@ -35,11 +59,11 @@ insert into public.company_profiles (id, tenant_id, company_name, status) values
   ('93000000-0000-4000-8000-000000000031', '93000000-0000-4000-8000-000000000021', 'Onboarding Assignment LLC', 'onboarding'),
   ('93000000-0000-4000-8000-000000000032', '93000000-0000-4000-8000-000000000022', 'Operational Assignment LLC', 'active');
 
-select public.assign_pro_to_company(
+select (public.assign_pro_to_company(
   '93000000-0000-4000-8000-000000000031',
   '93000000-0000-4000-8000-000000000011',
   '93000000-0000-4000-8000-000000000001'
-) as onboarding_assignment_id \gset
+) ->> 'assignmentId')::uuid as onboarding_assignment_id \gset
 
 select public.reassign_company_pro(
   '93000000-0000-4000-8000-000000000031',
@@ -49,11 +73,11 @@ select public.reassign_company_pro(
   '93000000-0000-4000-8000-000000000001'
 );
 
-select public.assign_pro_to_company(
+select (public.assign_pro_to_company(
   '93000000-0000-4000-8000-000000000032',
   '93000000-0000-4000-8000-000000000013',
   '93000000-0000-4000-8000-000000000001'
-) as operational_assignment_id \gset
+) ->> 'assignmentId')::uuid as operational_assignment_id \gset
 
 select public.reassign_company_pro(
   '93000000-0000-4000-8000-000000000032',
@@ -64,7 +88,14 @@ select public.reassign_company_pro(
 );
 
 do $$
-declare v_onboarding_status text; v_operational_status text; v_forbidden_grants integer;
+declare
+  v_onboarding_status text;
+  v_operational_status text;
+  v_forbidden_grants integer;
+  v_term_link_count integer;
+  v_snapshot jsonb;
+  v_terms jsonb;
+  v_selector jsonb;
 begin
   select status into v_onboarding_status from public.tenants
   where id = '93000000-0000-4000-8000-000000000021';
@@ -73,6 +104,43 @@ begin
   if v_onboarding_status <> 'pending' or v_operational_status <> 'active' then
     raise exception 'tenant state mismatch: onboarding %, operational %',
       v_onboarding_status, v_operational_status;
+  end if;
+  select pg_catalog.count(*) into v_term_link_count
+  from public.pro_assignment_term_links link
+  join public.pro_company_assignments assignment on assignment.id = link.assignment_id
+  where assignment.company_id in (
+    '93000000-0000-4000-8000-000000000031',
+    '93000000-0000-4000-8000-000000000032'
+  );
+  if v_term_link_count <> 4 then
+    raise exception 'assignment term link mismatch: %', v_term_link_count;
+  end if;
+
+  v_snapshot := public.read_pro_credential_snapshot(
+    '93000000-0000-4000-8000-000000000001',
+    '93000000-0000-4000-8000-000000000013'
+  );
+  v_terms := public.read_pro_commercial_terms(
+    '93000000-0000-4000-8000-000000000001',
+    '93000000-0000-4000-8000-000000000013'
+  );
+  v_selector := public.list_eligible_pros_for_company(
+    '93000000-0000-4000-8000-000000000001',
+    '93000000-0000-4000-8000-000000000032',
+    null,
+    20
+  );
+  if pg_catalog.jsonb_array_length(v_snapshot -> 'credentials') <> 1
+     or v_snapshot::text ~ 'identifierCiphertext|identifierHash|storagePath'
+     or pg_catalog.jsonb_array_length(v_terms) <> 2
+     or pg_catalog.jsonb_array_length(v_selector) <> 3
+     or not exists (
+       select 1
+       from pg_catalog.jsonb_array_elements(v_selector) as row(candidate)
+       where candidate ->> 'proProfileId' = '93000000-0000-4000-8000-000000000013'
+         and (candidate -> 'eligibility' ->> 'eligible')::boolean
+     ) then
+    raise exception 'masked lifecycle aggregate mismatch';
   end if;
 
   select count(*) into v_forbidden_grants

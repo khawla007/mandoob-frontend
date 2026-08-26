@@ -44,12 +44,30 @@ export type CompanyAssignment = {
   releaseReason: string | null;
 };
 
-export type AssignablePro = {
-  id: string;
-  fullName: string | null;
-  designation: string | null;
-  department: string | null;
-  verifiedAt: string | null;
+export type CurrentCompanyAssignment = CompanyAssignment & {
+  operationalAccess: 'allowed' | 'blocked';
+  operationalAccessCodes: Array<
+    | 'PRO_ACCOUNT_INACTIVE'
+    | 'PRO_CREDENTIAL_MISSING'
+    | 'PRO_CREDENTIAL_DRAFT'
+    | 'PRO_CREDENTIAL_SUBMITTED'
+    | 'PRO_CREDENTIAL_UNDER_REVIEW'
+    | 'PRO_CREDENTIAL_REJECTED'
+    | 'PRO_CREDENTIAL_EXPIRED'
+    | 'PRO_CREDENTIAL_REVOKED'
+  >;
+};
+
+export type CompanyAssignmentMutationResult = {
+  assignmentId: string;
+  pricingTermId: string;
+  compensationTermId: string;
+  proProfileId: string;
+  previousProProfileId?: string;
+};
+export type CompanyReleaseMutationResult = {
+  assignmentId: string;
+  previousProProfileId: string;
 };
 
 type AssignmentRow = {
@@ -66,27 +84,55 @@ type AssignmentRow = {
   profiles?: { full_name?: string | null } | Array<{ full_name?: string | null }> | null;
 };
 
-type AssignableProRow = {
-  id: string;
-  full_name: string | null;
-  pro_profiles?:
-    | {
-        designation?: string | null;
-        department?: string | null;
-        verified_at?: string | null;
-      }
-    | Array<{
-        designation?: string | null;
-        department?: string | null;
-        verified_at?: string | null;
-      }>
-    | null;
-};
-
 const ASSIGNMENT_COLUMNS =
   'id, tenant_id, company_id, pro_profile_id, status, assigned_at, assigned_by, released_at, released_by, release_reason, profiles!pro_company_assignments_pro_profile_id_fkey(full_name)';
 const actorIdSchema = z.string().uuid();
 const recordIdSchema = z.string().uuid();
+const mutationResultSchema = z
+  .object({
+    assignmentId: recordIdSchema,
+    pricingTermId: recordIdSchema,
+    compensationTermId: recordIdSchema,
+    proProfileId: recordIdSchema,
+    previousProProfileId: recordIdSchema.optional(),
+  })
+  .strict();
+const currentAssignmentSchema = z
+  .object({
+    assignmentId: recordIdSchema,
+    tenantId: recordIdSchema,
+    companyId: recordIdSchema,
+    proProfileId: recordIdSchema,
+    proFullName: z.string().nullable(),
+    status: z.literal('active'),
+    assignedAt: z.string().datetime({ offset: true }),
+    assignedBy: recordIdSchema,
+    releasedAt: z.null(),
+    releasedBy: z.null(),
+    releaseReason: z.null(),
+    operationalAccess: z.enum(['allowed', 'blocked']),
+    operationalAccessCodes: z.array(
+      z.enum([
+        'PRO_ACCOUNT_INACTIVE',
+        'PRO_CREDENTIAL_MISSING',
+        'PRO_CREDENTIAL_DRAFT',
+        'PRO_CREDENTIAL_SUBMITTED',
+        'PRO_CREDENTIAL_UNDER_REVIEW',
+        'PRO_CREDENTIAL_REJECTED',
+        'PRO_CREDENTIAL_EXPIRED',
+        'PRO_CREDENTIAL_REVOKED',
+      ]),
+    ),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if ((value.operationalAccess === 'blocked') !== value.operationalAccessCodes.length > 0) {
+      context.addIssue({ code: 'custom', message: 'Operational access is inconsistent' });
+    }
+  });
+const releaseResultSchema = z
+  .object({ assignmentId: recordIdSchema, previousProProfileId: recordIdSchema })
+  .strict();
 const historyCursorSchema = z.object({
   assigned_at: z.string().datetime({ offset: true }),
   id: recordIdSchema,
@@ -106,9 +152,12 @@ function internalReadError(): ApiError {
   return new ApiError('INTERNAL', 'Unable to load company assignments', 500);
 }
 
-function requireRpcId(data: unknown, error: DbError): string {
+function requireRpcAssignmentResult(
+  data: unknown,
+  error: DbError,
+): CompanyAssignmentMutationResult {
   if (error) throw publicMutationError(error);
-  const parsed = recordIdSchema.safeParse(data);
+  const parsed = mutationResultSchema.safeParse(data);
   if (!parsed.success) throw publicMutationError(null);
   return parsed.data;
 }
@@ -150,67 +199,87 @@ export async function assignProToCompany(
   input: AssignCompanyProInput,
   actorId: string,
   deps: AssignmentDeps = {},
-): Promise<string> {
+): Promise<CompanyAssignmentMutationResult> {
   // actorId is a trusted server-derived value. Upcoming actions must source it
   // from requirePlatformOperator(), never from form data.
   const parsed = assignCompanyProSchema.parse(input);
   const parsedActorId = actorIdSchema.parse(actorId);
-  const { data, error } = await client(deps).rpc('assign_pro_to_company', {
+  const { data, error } = await client(deps).rpc('assign_pro_to_company_with_context', {
     p_company_id: parsed.companyId,
     p_pro_profile_id: parsed.proProfileId,
     p_actor_profile_id: parsedActorId,
   });
-  return requireRpcId(data, error);
+  return requireRpcAssignmentResult(data, error);
 }
 
 export async function releaseCompanyPro(
   input: ReleaseCompanyProInput,
   actorId: string,
   deps: AssignmentDeps = {},
-): Promise<void> {
+): Promise<CompanyReleaseMutationResult> {
   // actorId is server-derived; it is intentionally separate from form input.
   const parsed = releaseCompanyProSchema.parse(input);
   const parsedActorId = actorIdSchema.parse(actorId);
-  const { data, error } = await client(deps).rpc('release_company_pro', {
+  const { data, error } = await client(deps).rpc('release_company_pro_with_context', {
     p_company_id: parsed.companyId,
     p_expected_assignment_id: parsed.assignmentId,
     p_reason: parsed.reason,
     p_actor_profile_id: parsedActorId,
   });
-  requireRpcId(data, error);
+  if (error) throw publicMutationError(error);
+  const result = releaseResultSchema.safeParse(data);
+  if (!result.success) throw publicMutationError(null);
+  return result.data;
 }
 
 export async function reassignCompanyPro(
   input: ReassignCompanyProInput,
   actorId: string,
   deps: AssignmentDeps = {},
-): Promise<string> {
+): Promise<CompanyAssignmentMutationResult> {
   // actorId is server-derived; it is intentionally separate from form input.
   const parsed = reassignCompanyProSchema.parse(input);
   const parsedActorId = actorIdSchema.parse(actorId);
-  const { data, error } = await client(deps).rpc('reassign_company_pro', {
+  const { data, error } = await client(deps).rpc('reassign_company_pro_with_context', {
     p_company_id: parsed.companyId,
     p_expected_assignment_id: parsed.assignmentId,
     p_replacement_pro_profile_id: parsed.replacementProProfileId,
     p_reason: parsed.reason,
     p_actor_profile_id: parsedActorId,
   });
-  return requireRpcId(data, error);
+  return requireRpcAssignmentResult(data, error);
 }
 
 export async function readCurrentCompanyAssignment(
   companyId: string,
+  actorId: string,
   deps: AssignmentDeps = {},
-): Promise<CompanyAssignment | null> {
+): Promise<CurrentCompanyAssignment | null> {
   const parsedCompanyId = requireReadId(companyId);
-  const { data, error } = await client(deps)
-    .from('pro_company_assignments')
-    .select(ASSIGNMENT_COLUMNS)
-    .eq('company_id', parsedCompanyId)
-    .eq('status', 'active')
-    .maybeSingle();
+  const parsedActorId = requireReadId(actorId);
+  const { data, error } = await client(deps).rpc('read_current_company_assignment_summary', {
+    p_actor_id: parsedActorId,
+    p_company_id: parsedCompanyId,
+  });
   if (error) throw internalReadError();
-  return data ? toAssignment(data as AssignmentRow) : null;
+  if (data === null) return null;
+  const parsed = currentAssignmentSchema.safeParse(data);
+  if (!parsed.success) throw internalReadError();
+  return {
+    id: parsed.data.assignmentId,
+    tenantId: parsed.data.tenantId,
+    companyId: parsed.data.companyId,
+    proProfileId: parsed.data.proProfileId,
+    proFullName: parsed.data.proFullName,
+    status: parsed.data.status,
+    assignedAt: parsed.data.assignedAt,
+    assignedBy: parsed.data.assignedBy,
+    releasedAt: parsed.data.releasedAt,
+    releasedBy: parsed.data.releasedBy,
+    releaseReason: parsed.data.releaseReason,
+    operationalAccess: parsed.data.operationalAccess,
+    operationalAccessCodes: parsed.data.operationalAccessCodes,
+  };
 }
 
 export async function listCompanyAssignmentHistory(
@@ -253,34 +322,4 @@ export async function listCompanyAssignmentHistory(
     seenCursors.add(cursorKey);
     cursor = nextCursor;
   }
-}
-
-export async function listVerifiedUnassignedPros(
-  deps: AssignmentDeps = {},
-): Promise<AssignablePro[]> {
-  const { data, error } = await client(deps)
-    .from('profiles')
-    .select(
-      'id, full_name, pro_profiles!pro_profiles_profile_id_fkey!inner(designation, department, verified_at, credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey()',
-    )
-    .eq('role', 'pro')
-    .eq('status', 'active')
-    .eq('pro_profiles.credentials_verified', true)
-    .eq('active_assignments.status', 'active')
-    .is('active_assignments', null)
-    .order('full_name', { ascending: true })
-    .order('id', { ascending: true })
-    .limit(500);
-  if (error) throw internalReadError();
-
-  return ((data as AssignableProRow[] | null) ?? []).map((row) => {
-    const credentials = relatedOne(row.pro_profiles);
-    return {
-      id: row.id,
-      fullName: row.full_name,
-      designation: credentials?.designation ?? null,
-      department: credentials?.department ?? null,
-      verifiedAt: credentials?.verified_at ?? null,
-    };
-  });
 }

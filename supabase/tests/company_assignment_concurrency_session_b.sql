@@ -1,32 +1,37 @@
--- Start session B while session A is sleeping.
--- For the company race, use the same company_id and a different verified PRO.
--- For the PRO race, use a different company_id and the same pro_profile_id.
--- Expected after session A commits: COMPANY_ALREADY_ASSIGNED or
--- PRO_ALREADY_ASSIGNED respectively; no second active ledger row is created.
--- Example:
--- psql "$DATABASE_URL" -v company_id=... -v pro_profile_id=... -v actor_b_profile_id=... \
---   -f supabase/tests/company_assignment_concurrency_session_b.sql
+-- Session B must lose with the exact stable lifecycle code after session A commits.
 \set ON_ERROR_STOP off
+select pg_catalog.set_config('application_name', :'session_b_name', false);
 select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_actors \gset
 \if :distinct_actors
 \else
   \set ON_ERROR_STOP on
   select 1 / 0;
 \endif
+
 begin;
 set local lock_timeout = '12s';
 set local statement_timeout = '20s';
+select pg_catalog.set_config('task11.expected_error', :'expected_error', true);
+select pg_catalog.set_config('task11.company_b_id', :'company_b_id', true);
+select pg_catalog.set_config('task11.pro_b_profile_id', :'pro_b_profile_id', true);
+select pg_catalog.set_config('task11.actor_b_profile_id', :'actor_b_profile_id', true);
 
-select public.assign_pro_to_company(
-  :'company_id'::uuid,
-  :'pro_profile_id'::uuid,
-  :'actor_b_profile_id'::uuid
-);
+do $$
+begin
+  perform public.assign_pro_to_company(
+    pg_catalog.current_setting('task11.company_b_id')::uuid,
+    pg_catalog.current_setting('task11.pro_b_profile_id')::uuid,
+    pg_catalog.current_setting('task11.actor_b_profile_id')::uuid
+  );
+  raise exception 'EXPECTED_ERROR_NOT_RAISED';
+exception when sqlstate 'P0001' then
+  if sqlerrm <> pg_catalog.current_setting('task11.expected_error') then raise; end if;
+end;
+$$;
 \set lifecycle_sqlstate :SQLSTATE
+commit;
 
-rollback;
-
-select :'lifecycle_sqlstate' = 'P0001' as expected_lifecycle_state,
+select :'lifecycle_sqlstate' = '00000' as expected_lifecycle_state,
   :'lifecycle_sqlstate' not in ('40P01', '55P03', '57014') as no_concurrency_failure \gset
 \if :no_concurrency_failure
 \else
@@ -39,14 +44,14 @@ select :'lifecycle_sqlstate' = 'P0001' as expected_lifecycle_state,
   select 1 / 0;
 \endif
 
-select count(*) = 1 as one_active_assignment
+select count(*) = 1 as one_winner
 from public.pro_company_assignments
 where status = 'active'
   and (
-    company_id = :'company_id'::uuid
-    or pro_profile_id = :'pro_profile_id'::uuid
+    company_id in (:'company_a_id'::uuid, :'company_b_id'::uuid)
+    or pro_profile_id in (:'pro_a_profile_id'::uuid, :'pro_b_profile_id'::uuid)
   ) \gset
-\if :one_active_assignment
+\if :one_winner
 \else
   \set ON_ERROR_STOP on
   select 1 / 0;
@@ -54,16 +59,16 @@ where status = 'active'
 
 select count(*) = 1
   and bool_and(
-    p.tenant_id = a.tenant_id
-    and u.raw_app_meta_data ->> 'tenant_id' = a.tenant_id::text
+    profile.tenant_id = assignment.tenant_id
+    and auth_user.raw_app_meta_data ->> 'tenant_id' = assignment.tenant_id::text
   ) as scope_synchronized
-from public.pro_company_assignments a
-join public.profiles p on p.id = a.pro_profile_id
-join auth.users u on u.id = p.id
-where a.status = 'active'
+from public.pro_company_assignments assignment
+join public.profiles profile on profile.id = assignment.pro_profile_id
+join auth.users auth_user on auth_user.id = profile.id
+where assignment.status = 'active'
   and (
-    a.company_id = :'company_id'::uuid
-    or a.pro_profile_id = :'pro_profile_id'::uuid
+    assignment.company_id in (:'company_a_id'::uuid, :'company_b_id'::uuid)
+    or assignment.pro_profile_id in (:'pro_a_profile_id'::uuid, :'pro_b_profile_id'::uuid)
   ) \gset
 \if :scope_synchronized
 \else
@@ -71,13 +76,35 @@ where a.status = 'active'
   select 1 / 0;
 \endif
 
-select count(*) >= 1 as assignment_audited
+select count(*) = 1 as term_links_preserved
+from public.pro_assignment_term_links links
+join public.pro_company_assignments assignment on assignment.id = links.assignment_id
+where assignment.status = 'active'
+  and (
+    assignment.company_id in (:'company_a_id'::uuid, :'company_b_id'::uuid)
+    or assignment.pro_profile_id in (:'pro_a_profile_id'::uuid, :'pro_b_profile_id'::uuid)
+  ) \gset
+\if :term_links_preserved
+\else
+  \set ON_ERROR_STOP on
+  select 1 / 0;
+\endif
+
+select count(*) = 0 as immutable_history
+from public.pro_company_assignments
+where status = 'released'
+  and company_id in (:'company_a_id'::uuid, :'company_b_id'::uuid) \gset
+\if :immutable_history
+\else
+  \set ON_ERROR_STOP on
+  select 1 / 0;
+\endif
+
+select count(*) = 1 as assignment_audited
 from public.tenant_audit_log
 where action = 'company_pro_assigned'
-  and (
-    details ->> 'company_id' = :'company_id'
-    or details ->> 'pro_profile_id' = :'pro_profile_id'
-  ) \gset
+  and details ->> 'company_id' in (:'company_a_id', :'company_b_id')
+  and details ->> 'pro_profile_id' in (:'pro_a_profile_id', :'pro_b_profile_id') \gset
 \if :assignment_audited
 \else
   \set ON_ERROR_STOP on

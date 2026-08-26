@@ -12,7 +12,13 @@ type Query = {
   eq(column: string, value: unknown): Query;
   maybeSingle(): Promise<DbResult>;
 };
-type AccessClient = { from(table: string): Query };
+type AccessClient = {
+  from(table: string): Query;
+  rpc(
+    name: 'authorize_pro_company_access',
+    args: { p_actor_id: string; p_tenant_id: string; p_company_id: string | null },
+  ): Promise<{ data: boolean | null; error: { message?: string } | null }>;
+};
 type AccessDeps = {
   requireSession?: () => Promise<SessionProfile>;
   supabase?: AccessClient;
@@ -79,22 +85,12 @@ async function requireScopedCompanyAccess(
   }
 
   if (role === 'pro') {
-    let accessQuery = admin
-      .from('profiles')
-      .select(
-        'id, role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(id)',
-      )
-      .eq('id', session.id)
-      .eq('role', 'pro')
-      .eq('status', 'active')
-      .eq('pro_profiles.credentials_verified', true)
-      .eq('active_assignments.tenant_id', tenantId)
-      .eq('active_assignments.status', 'active');
-    if (companyId) {
-      accessQuery = accessQuery.eq('active_assignments.company_id', companyId);
-    }
-    const { data: access, error } = await accessQuery.maybeSingle();
-    if (error || !access) return denyAccess(deps);
+    const { data: allowed, error } = await admin.rpc('authorize_pro_company_access', {
+      p_actor_id: session.id,
+      p_tenant_id: tenantId,
+      p_company_id: companyId,
+    });
+    if (error || allowed !== true) return denyAccess(deps);
     return { ...session, role: 'pro', tenantId };
   }
 

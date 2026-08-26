@@ -26,10 +26,13 @@ function session(
   };
 }
 
-type DbResult = { data: Record<string, unknown> | null; error: { message: string } | null };
+type DbResult = { data: unknown; error: { message: string } | null };
 
 function authDeps(current: SessionProfile, results: DbResult[]) {
-  const calls: Array<{ table: string; select: string; filters: Record<string, unknown> }> = [];
+  const calls: Array<
+    | { kind: 'from'; table: string; select: string; filters: Record<string, unknown> }
+    | { kind: 'rpc'; name: string; args: Record<string, unknown> }
+  > = [];
   let resultIndex = 0;
   const supabase = {
     from(table: string) {
@@ -45,11 +48,15 @@ function authDeps(current: SessionProfile, results: DbResult[]) {
           return chain;
         },
         async maybeSingle() {
-          calls.push({ table, select: selected, filters: { ...filters } });
+          calls.push({ kind: 'from', table, select: selected, filters: { ...filters } });
           return results[resultIndex++];
         },
       };
       return chain;
+    },
+    async rpc(name: string, args: Record<string, unknown>) {
+      calls.push({ kind: 'rpc', name, args });
+      return results[resultIndex++];
     },
   };
   return {
@@ -68,28 +75,25 @@ test('current active PRO assignment grants company access', async () => {
   const { requireCompanyAccess } = await import('./require-company-access');
   const auth = authDeps(session('pro'), [
     { data: { role: 'pro', status: 'active', tenant_id: tenantId }, error: null },
-    { data: { id: 'live-access' }, error: null },
+    { data: true, error: null },
   ]);
 
   const result = await requireCompanyAccess(tenantId, auth.deps);
 
   assert.equal(result.role, 'pro');
   assert.deepEqual(auth.calls[0], {
+    kind: 'from',
     table: 'profiles',
     select: 'role, status, tenant_id',
     filters: { id: result.id },
   });
   assert.deepEqual(auth.calls[1], {
-    table: 'profiles',
-    select:
-      'id, role, status, pro_profiles!pro_profiles_profile_id_fkey!inner(credentials_verified), active_assignments:pro_company_assignments!pro_company_assignments_pro_profile_id_fkey!inner(id)',
-    filters: {
-      id: result.id,
-      role: 'pro',
-      status: 'active',
-      'pro_profiles.credentials_verified': true,
-      'active_assignments.tenant_id': tenantId,
-      'active_assignments.status': 'active',
+    kind: 'rpc',
+    name: 'authorize_pro_company_access',
+    args: {
+      p_actor_id: result.id,
+      p_tenant_id: tenantId,
+      p_company_id: null,
     },
   });
 });
@@ -192,19 +196,19 @@ test('exact-company access binds a PRO assignment to both tenant and company', a
   const { requireExactCompanyAccess } = await import('./require-company-access');
   const auth = authDeps(session('pro'), [
     { data: { role: 'pro', status: 'active', tenant_id: null }, error: null },
-    { data: { id: 'live-access' }, error: null },
+    { data: true, error: null },
   ]);
 
   const result = await requireExactCompanyAccess(tenantId, companyId, auth.deps);
   assert.equal(result.role, 'pro');
-  assert.deepEqual(auth.calls[1]?.filters, {
-    id: result.id,
-    role: 'pro',
-    status: 'active',
-    'pro_profiles.credentials_verified': true,
-    'active_assignments.tenant_id': tenantId,
-    'active_assignments.company_id': companyId,
-    'active_assignments.status': 'active',
+  assert.deepEqual(auth.calls[1], {
+    kind: 'rpc',
+    name: 'authorize_pro_company_access',
+    args: {
+      p_actor_id: result.id,
+      p_tenant_id: tenantId,
+      p_company_id: companyId,
+    },
   });
 });
 

@@ -54,7 +54,6 @@ export function ChangeRolePanel({
   const [submitting, setSubmitting] = useState(false);
 
   // Per-role state
-  const [licenseNo, setLicenseNo] = useState('');
   const [designation, setDesignation] = useState('');
   const [department, setDepartment] = useState('');
   const [serviceAreas, setServiceAreas] = useState<string[]>([]);
@@ -100,7 +99,6 @@ export function ChangeRolePanel({
 
     if (newRole === 'pro') {
       Object.assign(base, {
-        license_no: licenseNo.trim(),
         designation: designation || null,
         department: department || null,
         service_areas: serviceAreas,
@@ -203,10 +201,6 @@ export function ChangeRolePanel({
 
           {newRole === 'pro' && (
             <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>{t('user.fields.licenseNo')}</Label>
-                <Input value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} />
-              </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.designation')}</Label>
                 <Input value={designation} onChange={(e) => setDesignation(e.target.value)} />

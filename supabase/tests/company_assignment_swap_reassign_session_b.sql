@@ -1,6 +1,7 @@
--- Start while swap session A sleeps. Both calls should reject the already-active
--- replacement without deadlock; rollback expected failed transactions first.
+-- Start after the runner proves swap session A owns its lifecycle locks. Both
+-- calls reject the active replacement without deadlock; roll back failures first.
 \set ON_ERROR_STOP off
+select pg_catalog.set_config('application_name', :'session_b_name', false);
 select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_actors \gset
 \if :distinct_actors
 \else
@@ -10,20 +11,52 @@ select :'actor_a_profile_id'::uuid <> :'actor_b_profile_id'::uuid as distinct_ac
 begin;
 set local lock_timeout = '12s';
 set local statement_timeout = '20s';
+select pg_catalog.set_config('task11.expected_error', :'expected_error', true);
+select pg_catalog.set_config('task11.company_b_id', :'company_b_id', true);
+select pg_catalog.set_config('task11.assignment_b_id', :'assignment_b_id', true);
+select pg_catalog.set_config('task11.pro_a_profile_id', :'pro_a_profile_id', true);
+select pg_catalog.set_config('task11.actor_b_profile_id', :'actor_b_profile_id', true);
 
-select public.reassign_company_pro(
-  :'company_b_id'::uuid,
-  :'assignment_b_id'::uuid,
-  :'pro_a_profile_id'::uuid,
-  'swap race fixture b',
-  :'actor_b_profile_id'::uuid
-);
+do $$
+begin
+  perform public.reassign_company_pro(
+    pg_catalog.current_setting('task11.company_b_id')::uuid,
+    pg_catalog.current_setting('task11.assignment_b_id')::uuid,
+    pg_catalog.current_setting('task11.pro_a_profile_id')::uuid,
+    'swap race fixture b',
+    pg_catalog.current_setting('task11.actor_b_profile_id')::uuid
+  );
+  raise exception 'EXPECTED_ERROR_NOT_RAISED';
+exception when sqlstate 'P0001' then
+  if sqlerrm <> pg_catalog.current_setting('task11.expected_error') then raise; end if;
+end;
+$$;
 \set lifecycle_sqlstate :SQLSTATE
-rollback;
+commit;
 
-select :'lifecycle_sqlstate' = 'P0001' as expected_lifecycle_state,
+select :'lifecycle_sqlstate' = '00000' as expected_lifecycle_state,
   :'lifecycle_sqlstate' not in ('40P01', '55P03', '57014') as no_concurrency_failure \gset
 \if :no_concurrency_failure
+\else
+  \set ON_ERROR_STOP on
+  select 1 / 0;
+\endif
+
+select count(*) = 2 as term_links_preserved
+from public.pro_assignment_term_links links
+join public.pro_company_assignments assignment on assignment.id = links.assignment_id
+where assignment.id in (:'assignment_a_id'::uuid, :'assignment_b_id'::uuid) \gset
+\if :term_links_preserved
+\else
+  \set ON_ERROR_STOP on
+  select 1 / 0;
+\endif
+
+select count(*) = 0 as immutable_history
+from public.pro_company_assignments
+where company_id in (:'company_a_id'::uuid, :'company_b_id'::uuid)
+  and status = 'released' \gset
+\if :immutable_history
 \else
   \set ON_ERROR_STOP on
   select 1 / 0;

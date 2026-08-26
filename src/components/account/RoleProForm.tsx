@@ -17,7 +17,6 @@ type RoleProInput = z.input<typeof RoleProSchema>;
 type RoleProOutput = z.output<typeof RoleProSchema>;
 
 type Initial = {
-  licenseNo: string | null;
   designation: string | null;
   department: string | null;
   serviceAreas: string[];
@@ -31,7 +30,6 @@ export function RoleProForm({ initial }: { initial: Initial }) {
   const form = useForm<RoleProInput, unknown, RoleProOutput>({
     resolver: zodResolver(RoleProSchema),
     defaultValues: {
-      license_no: initial.licenseNo ?? undefined,
       designation: initial.designation ?? undefined,
       department: initial.department ?? undefined,
       service_areas: initial.serviceAreas,
@@ -52,7 +50,6 @@ export function RoleProForm({ initial }: { initial: Initial }) {
 
   return (
     <form onSubmit={onSubmit} className="max-w-xl space-y-4">
-      <TextField id="license_no" label={t('licenseNo')} form={form} />
       <TextField id="designation" label={t('designation')} form={form} />
       <TextField id="department" label={t('department')} form={form} />
       <div className="space-y-1">
@@ -93,7 +90,7 @@ function TextField({
   label,
   form,
 }: {
-  id: 'license_no' | 'designation' | 'department';
+  id: 'designation' | 'department';
   label: string;
   form: UseFormReturn<RoleProInput, unknown, RoleProOutput>;
 }) {

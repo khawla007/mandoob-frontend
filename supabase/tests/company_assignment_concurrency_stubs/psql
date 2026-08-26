@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${STUB_LOG:?STUB_LOG is required}"
+
+fixture=""
+query=false
+while (($#)); do
+  case "$1" in
+    -f)
+      fixture="$(basename "$2")"
+      shift 2
+      ;;
+    -Atc)
+      query=true
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+printf '%s\n' "${fixture:-query}" >>"${STUB_LOG}"
+
+case "${fixture}" in
+  company_assignment_concurrency_setup.sql)
+    exit "${STUB_SETUP_STATUS:-0}"
+    ;;
+  company_assignment_concurrency_teardown.sql)
+    exit "${STUB_TEARDOWN_STATUS:-0}"
+    ;;
+  company_assignment_wait_for_locks.sql)
+    exit "${STUB_WAIT_STATUS:-0}"
+    ;;
+  company_assignment_concurrency_session_a.sql)
+    if [[ "${STUB_BLOCK_SESSION_A:-0}" == 1 ]]; then
+      : "${STUB_CHILD_LOG:?STUB_CHILD_LOG is required when blocking session A}"
+      trap 'printf "terminated\n" >>"${STUB_CHILD_LOG}"; exit 143' TERM
+      printf '%s\n' "$$" >"${STUB_CHILD_LOG}"
+      while true; do
+        sleep 1
+      done
+    fi
+    ;;
+esac
+
+if [[ "${query}" == true ]]; then
+  printf '%s\n' '95000000-0000-4000-8000-000000000099'
+fi

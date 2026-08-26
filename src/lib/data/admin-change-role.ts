@@ -77,7 +77,6 @@ export async function adminChangeRole(
   let roleData: Record<string, unknown> = {};
   if (input.newRole === 'pro') {
     roleData = {
-      license_no_encrypted: encryptOptional(input.license_no),
       designation: input.designation ?? null,
       department: input.department ?? null,
       service_areas: input.service_areas,

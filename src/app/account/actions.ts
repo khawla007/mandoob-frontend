@@ -18,6 +18,7 @@ import { optInPhoneChannels } from '@/lib/comms/consent';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { listUserSessions, revokeSessionById, type SessionSummary } from '@/lib/auth/sessions';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
+import { removeMfaFactorWithInvariant } from '@/lib/auth/mfa-factor-removal';
 import { ApiError } from '@/lib/errors';
 
 export type ActionResult<T = undefined> =
@@ -186,24 +187,31 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
   try {
     const session = await requireUser();
     const supabase = await createSupabaseServerClient();
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const verified = (factors?.totp ?? []).filter((f) => f.status === 'verified');
-    const willRemoveVerified = verified.some((f) => f.id === factorId);
-    if (
-      willRemoveVerified &&
-      (session.role === 'super_admin' || session.role === 'pro') &&
-      verified.length <= 1
-    ) {
-      return {
-        ok: false,
-        error: {
-          code: 'MFA_REQUIRED',
-          message: 'MFA is mandatory for this role; add another factor first',
+    await removeMfaFactorWithInvariant(
+      { userId: session.id, role: session.role, factorId },
+      {
+        operationId: crypto.randomUUID,
+        reserve: async (...args) =>
+          (await import('@/lib/auth/mfa-factor-removal-reservation')).reserveMfaFactorRemoval(
+            ...args,
+          ),
+        release: async (...args) =>
+          (
+            await import('@/lib/auth/mfa-factor-removal-reservation')
+          ).releaseMfaFactorRemovalReservation(...args),
+        listVerifiedFactorIds: async () => {
+          const { data, error } = await supabase.auth.mfa.listFactors();
+          if (error) throw new ApiError('MFA_REMOVE_FAILED', 'Unable to read MFA factors', 502);
+          return (data?.totp ?? [])
+            .filter((factor) => factor.status === 'verified')
+            .map((factor) => factor.id);
         },
-      };
-    }
-    const { error } = await supabase.auth.mfa.unenroll({ factorId });
-    if (error) return { ok: false, error: { code: 'MFA_REMOVE_FAILED', message: error.message } };
+        unenroll: async (id) => {
+          const { error } = await supabase.auth.mfa.unenroll({ factorId: id });
+          if (error) throw new ApiError('MFA_REMOVE_FAILED', error.message, 502);
+        },
+      },
+    );
     const ctx = await getActionContext();
     await recordAuthEvent({
       kind: 'mfa_factor_removed',

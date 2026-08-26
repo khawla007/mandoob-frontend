@@ -36,17 +36,84 @@ test('diffProfile no-op returns empty changedKeys', async () => {
   assert.deepEqual(d.changedKeys, []);
 });
 
-test('buildRoleUpdate for pro encrypts license_no', async () => {
+test('buildRoleUpdate for pro contains non-credential profile fields only', async () => {
   const { buildRoleUpdate } = await loadMod();
   const u = buildRoleUpdate('pro', {
-    license_no: 'L-123',
     designation: 'PRO',
     department: 'Ops',
     service_areas: ['Dubai'],
     bio: null,
   });
-  assert.equal(typeof u.license_no_encrypted, 'string');
+  assert.equal('license_no_encrypted' in u, false);
   assert.equal(u.designation, 'PRO');
+});
+
+test('self credential loader returns only masks and safe evidence metadata', async () => {
+  const { readSelfProCredentialSnapshot } = await loadMod();
+  const profileId = '11111111-1111-4111-8111-111111111111';
+  const snapshot = await readSelfProCredentialSnapshot(profileId, {
+    readCredentialSnapshot: async (actorId, targetId) => {
+      assert.equal(actorId, profileId);
+      assert.equal(targetId, profileId);
+      return {
+        credentials: [
+          {
+            credentialId: '22222222-2222-4222-8222-222222222222',
+            type: 'pro_license' as const,
+            maskedIdentifier: '•••• 1234',
+            issuingAuthority: 'DET',
+            issueDate: '2026-01-01',
+            expiryDate: '2027-01-01',
+            state: 'verified' as const,
+            version: 2,
+            evidenceCount: 1,
+            submittedAt: '2026-08-20T10:00:00.000Z',
+            supersedesCredentialId: null,
+          },
+        ],
+        evidence: [
+          {
+            evidenceId: '33333333-3333-4333-8333-333333333333',
+            credentialId: '22222222-2222-4222-8222-222222222222',
+            mimeType: 'application/pdf' as const,
+            sizeBytes: 1024,
+            originalNameSafe: 'licence.pdf',
+            createdAt: '2026-08-20T10:00:00.000Z',
+          },
+        ],
+      };
+    },
+    readTimeline: async () => ({
+      items: [
+        {
+          eventAt: '2026-08-20T12:00:00.000Z',
+          eventId: '44444444-4444-4444-8444-444444444444',
+          eventKind: 'credential_verified',
+          summaryCode: 'VERIFIED',
+          reasonCode: null,
+          reason: null,
+          actorDisplayName: null,
+          companyDisplayName: null,
+        },
+      ],
+      nextCursor: null,
+    }),
+  });
+  assert.equal(snapshot.credentials[0]?.maskedIdentifier, '•••• 1234');
+  assert.equal(snapshot.latestDecision?.summaryCode, 'VERIFIED');
+  assert.doesNotMatch(JSON.stringify(snapshot), /ciphertext|identifierHash|storagePath|sha256/u);
+});
+
+test('self credential loader isolates optional timeline failure from the masked snapshot', async () => {
+  const { readSelfProCredentialSnapshot } = await loadMod();
+  const profileId = '11111111-1111-4111-8111-111111111111';
+  const snapshot = await readSelfProCredentialSnapshot(profileId, {
+    readCredentialSnapshot: async () => ({ credentials: [], evidence: [] }),
+    readTimeline: async () => {
+      throw new Error('private source error');
+    },
+  });
+  assert.deepEqual(snapshot, { credentials: [], evidence: [], latestDecision: null });
 });
 
 test('buildRoleUpdate for customer encrypts passport_no', async () => {
