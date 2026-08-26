@@ -119,7 +119,8 @@ begin
     raise exception using errcode = 'P0001', message = 'STALE_TERM_VERSION';
   end if;
   if v_term.status <> 'draft'
-     or v_term.effective_from > v_today then
+     or v_term.effective_from > v_today
+     or (v_term.effective_to is not null and v_term.effective_to < v_today) then
     raise exception using errcode = 'P0001', message = 'INVALID_TERM_TRANSITION';
   end if;
 

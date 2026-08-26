@@ -819,7 +819,7 @@ test('0086b makes commercial-term versions row-local without weakening date or o
   assert.equal([...sql.matchAll(/security definer set search_path = ''/gu)].length, 3);
 });
 
-test('0086b permits a currently-effective fixed-duration term but rejects a future start', () => {
+test('0086b permits a current fixed-duration term but rejects future-start and expired drafts', () => {
   const sql = readFileSync(join(process.cwd(), commercialTermIntegrityMigrationPath), 'utf8')
     .replace(/\s+/gu, ' ')
     .toLowerCase();
@@ -833,7 +833,7 @@ test('0086b permits a currently-effective fixed-duration term but rejects a futu
   );
   assert.match(
     activate,
-    /if v_term\.status <> 'draft' or v_term\.effective_from > v_today then[\s\S]*invalid_term_transition/u,
+    /if v_term\.status <> 'draft' or v_term\.effective_from > v_today or \(v_term\.effective_to is not null and v_term\.effective_to < v_today\) then[\s\S]*invalid_term_transition/u,
   );
   assert.doesNotMatch(activate, /v_term\.effective_to > v_today/u);
   assert.match(activate, /pro_lifecycle_replay_result/u);
@@ -883,6 +883,8 @@ test('commercial-term SQL regression proves two pricing and compensation rotatio
   assert.match(fixture, /expected_two_successive_rotations/u);
   assert.match(fixture, /expected_fixed_duration_term_activation/u);
   assert.match(fixture, /expected_fixed_duration_term_eligibility/u);
+  assert.match(fixture, /expected_expired_term_activation_rejection/u);
+  assert.match(fixture, /expired_activation_changed_current_term/u);
   assert.match(fixture, /expected_future_activation_rejection/u);
   assert.match(fixture, /expected_future_end_rejection/u);
   assert.match(fixture, /evaluate_pro_assignment_eligibility/u);

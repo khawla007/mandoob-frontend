@@ -228,6 +228,33 @@ begin
     ) then
       raise exception 'FUTURE_END_CHANGED_CURRENT_TERM';
     end if;
+
+    delete from public.pro_commercial_term_events where commercial_term_id = v_draft_id;
+    delete from public.pro_commercial_terms where id = v_draft_id;
+
+    v_result := public.create_pro_commercial_term_draft(
+      v_actor_id, v_pro_id, gen_random_uuid(), repeat('b', 64),
+      v_term_kind, v_model, v_amount + 5, v_interval, v_today - 10, v_today - 9
+    );
+    v_draft_id := (v_result ->> 'termId')::uuid;
+    begin
+      perform public.activate_pro_commercial_term(
+        v_actor_id, v_draft_id, 1, gen_random_uuid(), repeat('c', 64)
+      );
+      raise exception 'EXPECTED_EXPIRED_TERM_ACTIVATION_REJECTION';
+    exception when others then
+      if sqlerrm <> 'INVALID_TERM_TRANSITION' then raise; end if;
+    end;
+    if not exists (
+      select 1 from public.pro_commercial_terms
+      where id = v_active_id and status = 'active'
+        and effective_to = v_today + 1 and version = 2
+    ) or not exists (
+      select 1 from public.pro_commercial_terms
+      where id = v_draft_id and status = 'draft' and version = 1
+    ) then
+      raise exception 'EXPIRED_ACTIVATION_CHANGED_CURRENT_TERM';
+    end if;
   end loop;
 
   v_result := public.evaluate_pro_assignment_eligibility(v_pro_id, null);
