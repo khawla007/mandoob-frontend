@@ -654,3 +654,41 @@ test('completed reservation replay returns without storage or finalization', asy
   assert.equal(stored, 0);
   assert.equal(finalized, 0);
 });
+
+test('upload reservation conflicts return sanitized route-level 409 codes before storage', async () => {
+  for (const code of ['EVIDENCE_UPLOAD_IN_PROGRESS', 'EVIDENCE_UPLOAD_RESERVATION_LOST']) {
+    let stored = 0;
+    const handler = createEvidencePostHandler({
+      guardCsrf: async () => null,
+      requirePro: async () => ({
+        id: A,
+        role: 'pro',
+        tenantId: A,
+        aal: 'aal2',
+        mfaEnrolled: true,
+        email: null,
+      }),
+      resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+      limit: async () => 'allowed',
+      inspectFile: async () => ({ mime: 'application/pdf' }),
+      scan: async () => ({ clean: true, provider: 'clamav' }),
+      reserve: async () => {
+        throw new ApiError(code, 'private storage path/hash', 409);
+      },
+      store: async () => {
+        stored += 1;
+        return 'stored';
+      },
+      revalidate: () => undefined,
+      now: () => new Date('2026-08-26T10:00:00.000Z'),
+    });
+    const response = await handler(
+      upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+    );
+    assert.equal(response.status, 409);
+    const body = await response.text();
+    assert.match(body, new RegExp(code, 'u'));
+    assert.doesNotMatch(body, /private|storage path|hash/u);
+    assert.equal(stored, 0);
+  }
+});

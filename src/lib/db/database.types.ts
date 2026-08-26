@@ -3110,6 +3110,8 @@ export type Database = {
           original_name_safe: string;
           payload_hash: string;
           pro_profile_id: string;
+          recovery_lease_expires_at: string | null;
+          recovery_operation_id: string | null;
           scan_completed_at: string;
           scan_provider: string;
           sha256: string;
@@ -3133,6 +3135,8 @@ export type Database = {
           original_name_safe: string;
           payload_hash: string;
           pro_profile_id: string;
+          recovery_lease_expires_at?: string | null;
+          recovery_operation_id?: string | null;
           scan_completed_at: string;
           scan_provider: string;
           sha256: string;
@@ -3156,6 +3160,8 @@ export type Database = {
           original_name_safe?: string;
           payload_hash?: string;
           pro_profile_id?: string;
+          recovery_lease_expires_at?: string | null;
+          recovery_operation_id?: string | null;
           scan_completed_at?: string;
           scan_provider?: string;
           sha256?: string;
@@ -4831,6 +4837,24 @@ export type Database = {
           p_storage_path: string;
         };
         Returns: Json;
+      };
+      claim_pro_credential_evidence_upload_cleanup: {
+        Args: {
+          p_limit: number;
+          p_recovery_operation_id: string;
+        };
+        Returns: Json;
+      };
+      finalize_pro_credential_evidence_upload_cleanup: {
+        Args: {
+          p_recovery_operation_id: string;
+          p_reservation_id: string;
+        };
+        Returns: Json;
+      };
+      cleanup_finalized_pro_credential_evidence_upload_reservations: {
+        Args: never;
+        Returns: number;
       };
       finalize_pro_credential_evidence_upload: {
         Args: {

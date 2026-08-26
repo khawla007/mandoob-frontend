@@ -21,6 +21,11 @@ const evidenceUploadReservationMigrationPath =
   'supabase/migrations/20260826103000_0086c_pro_credential_evidence_upload_reservations.sql';
 const evidenceUploadReservationSqlTestPath =
   'supabase/tests/pro_credential_evidence_upload_reservations.sql';
+const evidenceUploadCleanupMigrationPath =
+  'supabase/migrations/20260826104000_0086d_pro_credential_evidence_upload_cleanup.sql';
+const evidenceUploadCleanupRunbookPath = 'docs/ops/pro-credential-evidence-upload-cleanup.md';
+const evidenceUploadCleanupSqlTestPath =
+  'supabase/tests/pro_credential_evidence_upload_cleanup.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
@@ -87,6 +92,84 @@ test('credential evidence upload SQL regression covers replay, fencing and clean
     'FINALIZATION_NOT_ATOMIC',
   ])
     assert.match(sql, new RegExp(marker, 'u'));
+});
+
+test('0086d installs leased cleanup and scheduled finalized-tombstone retention', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceUploadCleanupMigrationPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceUploadCleanupMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  for (const fn of [
+    'claim_pro_credential_evidence_upload_cleanup',
+    'finalize_pro_credential_evidence_upload_cleanup',
+    'cleanup_finalized_pro_credential_evidence_upload_reservations',
+  ]) {
+    assert.match(sql, new RegExp(`function public\\.${fn}[\\s\\S]*set search_path = ''`, 'u'));
+    assert.match(sql, new RegExp(`alter function public\\.${fn}[\\s\\S]*owner to postgres`, 'u'));
+  }
+  assert.match(sql, /for update skip locked/u);
+  assert.match(sql, /p_limit not between 1 and 25/u);
+  assert.match(sql, /status = 'cleanup'[\s\S]*cleanup_after <= pg_catalog\.now\(\)/u);
+  assert.match(sql, /status in \('prepared', 'cleanup', 'recovering', 'finalized'\)/u);
+  assert.match(sql, /not exists[\s\S]*from public\.pro_credential_evidence/u);
+  assert.match(sql, /interval '30 days'/u);
+  assert.match(sql, /cron\.schedule[\s\S]*pro-evidence-upload-tombstone-retention/u);
+  assert.doesNotMatch(sql, /delete from storage\.objects/u);
+  assert.match(
+    sql,
+    /grant execute on function public\.claim_pro_credential_evidence_upload_cleanup[\s\S]*to service_role/u,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.finalize_pro_credential_evidence_upload_cleanup[\s\S]*to service_role/u,
+  );
+  assert.doesNotMatch(sql, /grant execute[\s\S]*to authenticated/u);
+  assert.match(
+    sql,
+    /revoke all on function public\.register_pro_credential_evidence[\s\S]*from service_role/u,
+  );
+});
+
+test('credential evidence upload cleanup runbook documents external scheduling and retry safety', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceUploadCleanupRunbookPath)), true);
+  const docs = readFileSync(join(process.cwd(), evidenceUploadCleanupRunbookPath), 'utf8');
+  assert.match(docs, /\/api\/v1\/cron\/cleanup-pro-credential-evidence-uploads/u);
+  assert.match(docs, /x-cron-secret/u);
+  assert.match(docs, /CRON_SECRET/u);
+  assert.match(docs, /every (?:five|5) minutes/iu);
+  assert.match(docs, /retry/iu);
+});
+
+test('credential evidence upload cleanup SQL fixture covers claim, reference race and retention', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceUploadCleanupSqlTestPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceUploadCleanupSqlTestPath), 'utf8');
+  for (const marker of [
+    'EXPIRED_UPLOAD_NOT_CLAIMED',
+    'CLEANUP_FINALIZE_DID_NOT_DELETE',
+    'REFERENCED_CLEANUP_WAS_CLAIMED',
+    'REFERENCE_RACE_DELETED_RESERVATION',
+    'FINALIZED_RETENTION_INVALID',
+    'HISTORICAL_REGISTER_STILL_EXECUTABLE',
+  ])
+    assert.match(sql, new RegExp(marker, 'u'));
+});
+
+test('credential evidence upload cleanup has lock-controlled two-session race fixtures', () => {
+  const names = [
+    'pro_evidence_upload_cleanup_concurrency_setup.sql',
+    'pro_evidence_upload_cleanup_session_a.sql',
+    'pro_evidence_upload_cleanup_session_b.sql',
+    'pro_evidence_upload_cleanup_concurrency_teardown.sql',
+  ];
+  const sources = names.map((name) => {
+    const path = join(process.cwd(), 'supabase/tests', name);
+    assert.equal(existsSync(path), true, name);
+    return readFileSync(path, 'utf8');
+  });
+  assert.match(sources[1]!, /pg_advisory_xact_lock\(69006, 1\)/u);
+  assert.match(sources[2]!, /CLEANUP_CLAIMED_CONCURRENT_FINALIZATION/u);
+  assert.match(sources[2]!, /NEW_OPERATION_FINALIZED_ALONGSIDE_OLD/u);
+  assert.match(sources[2]!, /CONCURRENT_FINALIZATION_OUTCOME_UNSAFE/u);
 });
 
 test('Step 3 uses the exact forward-only migration catalog', () => {

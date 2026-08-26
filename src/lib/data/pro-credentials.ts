@@ -342,48 +342,6 @@ export function createProCredentialReplacement(
   );
 }
 
-export async function registerProCredentialEvidence(
-  actorId: string,
-  credentialId: string,
-  expectedVersion: number,
-  operationId: string,
-  evidenceId: string,
-  storagePath: string,
-  metadata: z.input<typeof proCredentialEvidenceMetadataSchema>,
-  deps: CredentialDeps = {},
-): Promise<ProCredentialMask> {
-  const parsed = proCredentialEvidenceMetadataSchema.parse(metadata);
-  const logical = {
-    credentialId: uuid.parse(credentialId),
-    expectedVersion: z.number().int().nonnegative().parse(expectedVersion),
-    evidenceId: uuid.parse(evidenceId),
-    storagePath,
-    mimeType: parsed.mimeType,
-    sizeBytes: parsed.sizeBytes,
-    sha256: parsed.sha256,
-    originalNameSafe: parsed.originalNameSafe,
-  };
-  return maskMutation(
-    'register_pro_credential_evidence',
-    {
-      p_actor_id: uuid.parse(actorId),
-      p_credential_id: logical.credentialId,
-      p_expected_version: logical.expectedVersion,
-      p_operation_id: uuid.parse(operationId),
-      p_payload_hash: operationHash('register_pro_credential_evidence', logical),
-      p_evidence_id: logical.evidenceId,
-      p_storage_path: storagePath,
-      p_mime_type: parsed.mimeType,
-      p_size_bytes: parsed.sizeBytes,
-      p_sha256: parsed.sha256,
-      p_original_name_safe: parsed.originalNameSafe,
-      p_scan_provider: parsed.scanProvider,
-      p_scan_completed_at: parsed.scanCompletedAt,
-    },
-    deps,
-  );
-}
-
 function evidenceUploadArgs(
   actorId: string,
   credentialId: string,
