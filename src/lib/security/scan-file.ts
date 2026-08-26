@@ -20,6 +20,10 @@ export type ScanFileOptions = {
   ) => Promise<FileScanResult>;
 };
 
+export type PrivateScanFileOptions = Omit<ScanFileOptions, 'clamav'> & {
+  clamav?: { host: string; port: number } | null;
+};
+
 const VIRUSTOTAL_API_BASE = 'https://www.virustotal.com/api/v3';
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
@@ -202,5 +206,35 @@ export async function scanFile(
     );
   } catch {
     return unavailable();
+  }
+}
+
+/** Scan sensitive evidence only inside the configured private ClamAV boundary. */
+export async function scanFilePrivate(
+  buf: ArrayBuffer | Uint8Array,
+  opts: PrivateScanFileOptions = {},
+): Promise<FileScanResult> {
+  const data = toUint8Array(buf);
+  if (containsEicar(data)) {
+    return { clean: false, reason: 'eicar_test', provider: 'local' };
+  }
+
+  const clamav =
+    opts.clamav === null
+      ? undefined
+      : (opts.clamav ??
+        (env.CLAMAV_HOST && env.CLAMAV_PORT
+          ? { host: env.CLAMAV_HOST, port: env.CLAMAV_PORT }
+          : undefined));
+  if (!clamav) return unavailable('clamav');
+
+  try {
+    return await (opts.clamavScanner ?? scanWithClamAv)(
+      data,
+      clamav,
+      opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    );
+  } catch {
+    return unavailable('clamav');
   }
 }

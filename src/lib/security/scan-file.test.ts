@@ -59,6 +59,49 @@ test('scanFile accepts a clean file through an isolated ClamAV INSTREAM endpoint
   assert.deepEqual(result, { clean: true, provider: 'clamav' });
 });
 
+test('private scan fails closed without ClamAV and never calls global fetch', async () => {
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    throw new Error('credential evidence must never leave the private scanner boundary');
+  };
+  const { scanFilePrivate } = await load();
+
+  const result = await scanFilePrivate(Buffer.from('%PDF-1.4 private evidence'), {
+    clamav: null,
+  });
+
+  assert.deepEqual(result, {
+    clean: false,
+    reason: 'scanner_unavailable',
+    provider: 'clamav',
+  });
+  assert.equal(fetchCalls, 0);
+});
+
+test('private scan uses configured ClamAV without VirusTotal fallback when it is unavailable', async () => {
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    throw new Error('unexpected third-party upload');
+  };
+  const { scanFilePrivate } = await load();
+
+  const result = await scanFilePrivate(Buffer.from('%PDF-1.4 private evidence'), {
+    clamav: { host: '127.0.0.1', port: 3310 },
+    clamavScanner: async () => {
+      throw new Error('private scanner unavailable');
+    },
+  });
+
+  assert.deepEqual(result, {
+    clean: false,
+    reason: 'scanner_unavailable',
+    provider: 'clamav',
+  });
+  assert.equal(fetchCalls, 0);
+});
+
 async function withClamAvServer(
   respond: (socket: Socket) => void,
   scan: (endpoint: { host: string; port: number }) => Promise<void>,

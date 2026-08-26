@@ -81,11 +81,27 @@ const preparedEvidenceRemovalSchema = z.discriminatedUnion('status', [
     .strict(),
   z.object({ status: z.literal('complete'), credential: credentialMaskSchema }).strict(),
 ]);
+const evidenceUploadCleanupSchema = z
+  .object({ reservationId: uuid, storagePath: z.string().min(1) })
+  .strict();
+const preparedEvidenceUploadSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      status: z.literal('prepared'),
+      credentialId: uuid,
+      evidenceId: uuid,
+      storagePath: z.string().min(1),
+      cleanup: z.array(evidenceUploadCleanupSchema).max(100),
+    })
+    .strict(),
+  z.object({ status: z.literal('complete'), credential: credentialMaskSchema }).strict(),
+]);
 
 export type ProCredentialMask = z.infer<typeof credentialMaskSchema>;
 export type ProCredentialSnapshot = z.infer<typeof snapshotSchema>;
 export type OpenedProCredentialEvidence = z.infer<typeof openedEvidenceSchema>;
 export type PreparedProCredentialEvidenceRemoval = z.infer<typeof preparedEvidenceRemovalSchema>;
+export type PreparedProCredentialEvidenceUpload = z.infer<typeof preparedEvidenceUploadSchema>;
 
 const CREDENTIAL_INDEX_DOMAIN = 'pro-credential-license:v1';
 const OPERATION_HASH_DOMAIN = 'pro-lifecycle-operation:v1';
@@ -104,6 +120,11 @@ const KNOWN_ERRORS: Record<string, { code: string; status: number }> = {
   DECISION_REASON_INVALID: { code: 'DECISION_REASON_INVALID', status: 422 },
   INVALID_DECISION_REASON: { code: 'DECISION_REASON_INVALID', status: 422 },
   EVIDENCE_REMOVAL_IN_PROGRESS: { code: 'EVIDENCE_REMOVAL_IN_PROGRESS', status: 409 },
+  EVIDENCE_UPLOAD_IN_PROGRESS: { code: 'EVIDENCE_UPLOAD_IN_PROGRESS', status: 409 },
+  EVIDENCE_UPLOAD_RESERVATION_LOST: {
+    code: 'EVIDENCE_UPLOAD_RESERVATION_LOST',
+    status: 409,
+  },
 };
 
 function client(deps: CredentialDeps): CredentialClient {
@@ -359,6 +380,96 @@ export async function registerProCredentialEvidence(
       p_scan_provider: parsed.scanProvider,
       p_scan_completed_at: parsed.scanCompletedAt,
     },
+    deps,
+  );
+}
+
+function evidenceUploadArgs(
+  actorId: string,
+  credentialId: string,
+  expectedVersion: number,
+  operationId: string,
+  evidenceId: string,
+  storagePath: string,
+  metadata: z.input<typeof proCredentialEvidenceMetadataSchema>,
+): Record<string, unknown> {
+  const parsed = proCredentialEvidenceMetadataSchema.parse(metadata);
+  const logical = {
+    credentialId: uuid.parse(credentialId),
+    expectedVersion: z.number().int().nonnegative().parse(expectedVersion),
+    evidenceId: uuid.parse(evidenceId),
+    storagePath,
+    mimeType: parsed.mimeType,
+    sizeBytes: parsed.sizeBytes,
+    sha256: parsed.sha256,
+    originalNameSafe: parsed.originalNameSafe,
+  };
+  return {
+    p_actor_id: uuid.parse(actorId),
+    p_credential_id: logical.credentialId,
+    p_expected_version: logical.expectedVersion,
+    p_operation_id: uuid.parse(operationId),
+    p_payload_hash: operationHash('register_pro_credential_evidence', logical),
+    p_evidence_id: logical.evidenceId,
+    p_storage_path: storagePath,
+    p_mime_type: parsed.mimeType,
+    p_size_bytes: parsed.sizeBytes,
+    p_sha256: parsed.sha256,
+    p_original_name_safe: parsed.originalNameSafe,
+    p_scan_provider: parsed.scanProvider,
+    p_scan_completed_at: parsed.scanCompletedAt,
+  };
+}
+
+export async function prepareProCredentialEvidenceUpload(
+  actorId: string,
+  credentialId: string,
+  expectedVersion: number,
+  operationId: string,
+  evidenceId: string,
+  storagePath: string,
+  metadata: z.input<typeof proCredentialEvidenceMetadataSchema>,
+  deps: CredentialDeps = {},
+): Promise<PreparedProCredentialEvidenceUpload> {
+  const { data, error } = await client(deps).rpc(
+    'prepare_pro_credential_evidence_upload',
+    evidenceUploadArgs(
+      actorId,
+      credentialId,
+      expectedVersion,
+      operationId,
+      evidenceId,
+      storagePath,
+      metadata,
+    ),
+  );
+  if (error) throw publicError(error.message);
+  const parsed = preparedEvidenceUploadSchema.safeParse(data);
+  if (!parsed.success) throw publicError();
+  return parsed.data;
+}
+
+export async function finalizeProCredentialEvidenceUpload(
+  actorId: string,
+  credentialId: string,
+  expectedVersion: number,
+  operationId: string,
+  evidenceId: string,
+  storagePath: string,
+  metadata: z.input<typeof proCredentialEvidenceMetadataSchema>,
+  deps: CredentialDeps = {},
+): Promise<ProCredentialMask> {
+  return maskMutation(
+    'finalize_pro_credential_evidence_upload',
+    evidenceUploadArgs(
+      actorId,
+      credentialId,
+      expectedVersion,
+      operationId,
+      evidenceId,
+      storagePath,
+      metadata,
+    ),
     deps,
   );
 }

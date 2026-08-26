@@ -3094,6 +3094,93 @@ export type Database = {
           },
         ];
       };
+      pro_credential_evidence_upload_reservations: {
+        Row: {
+          actor_id: string;
+          cleanup_after: string | null;
+          created_at: string;
+          credential_id: string;
+          evidence_id: string;
+          expected_version: number;
+          finalized_at: string | null;
+          id: string;
+          lease_expires_at: string | null;
+          mime_type: string;
+          operation_id: string;
+          original_name_safe: string;
+          payload_hash: string;
+          pro_profile_id: string;
+          scan_completed_at: string;
+          scan_provider: string;
+          sha256: string;
+          size_bytes: number;
+          status: string;
+          storage_path: string;
+          updated_at: string;
+        };
+        Insert: {
+          actor_id: string;
+          cleanup_after?: string | null;
+          created_at?: string;
+          credential_id: string;
+          evidence_id: string;
+          expected_version: number;
+          finalized_at?: string | null;
+          id?: string;
+          lease_expires_at?: string | null;
+          mime_type: string;
+          operation_id: string;
+          original_name_safe: string;
+          payload_hash: string;
+          pro_profile_id: string;
+          scan_completed_at: string;
+          scan_provider: string;
+          sha256: string;
+          size_bytes: number;
+          status?: string;
+          storage_path: string;
+          updated_at?: string;
+        };
+        Update: {
+          actor_id?: string;
+          cleanup_after?: string | null;
+          created_at?: string;
+          credential_id?: string;
+          evidence_id?: string;
+          expected_version?: number;
+          finalized_at?: string | null;
+          id?: string;
+          lease_expires_at?: string | null;
+          mime_type?: string;
+          operation_id?: string;
+          original_name_safe?: string;
+          payload_hash?: string;
+          pro_profile_id?: string;
+          scan_completed_at?: string;
+          scan_provider?: string;
+          sha256?: string;
+          size_bytes?: number;
+          status?: string;
+          storage_path?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_credential_evidence_upload_reservations_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_credential_evidence_upload_reservations_credential_fk';
+            columns: ['pro_profile_id', 'credential_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_credentials';
+            referencedColumns: ['pro_profile_id', 'id'];
+          },
+        ];
+      };
       pro_credentials: {
         Row: {
           created_at: string;
@@ -4710,6 +4797,42 @@ export type Database = {
         Returns: undefined;
       };
       register_pro_credential_evidence: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_original_name_safe: string;
+          p_payload_hash: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+        };
+        Returns: Json;
+      };
+      prepare_pro_credential_evidence_upload: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_original_name_safe: string;
+          p_payload_hash: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+        };
+        Returns: Json;
+      };
+      finalize_pro_credential_evidence_upload: {
         Args: {
           p_actor_id: string;
           p_credential_id: string;

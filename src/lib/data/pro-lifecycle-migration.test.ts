@@ -17,12 +17,77 @@ const profileSelfUpdateMigrationPath =
   'supabase/migrations/20260826100000_0085_pro_profile_self_update_columns.sql';
 const commercialTermIntegrityMigrationPath =
   'supabase/migrations/20260826102000_0086b_pro_commercial_term_integrity.sql';
+const evidenceUploadReservationMigrationPath =
+  'supabase/migrations/20260826103000_0086c_pro_credential_evidence_upload_reservations.sql';
+const evidenceUploadReservationSqlTestPath =
+  'supabase/tests/pro_credential_evidence_upload_reservations.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
     .replace(/\s+/gu, ' ')
     .toLowerCase();
 }
+
+test('0086c installs a private fenced credential evidence upload protocol', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceUploadReservationMigrationPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceUploadReservationMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  assert.match(sql, /create table public\.pro_credential_evidence_upload_reservations/u);
+  assert.match(sql, /unique.*credential_id.*where.*status = 'prepared'/u);
+  assert.match(sql, /function public\.prepare_pro_credential_evidence_upload/u);
+  assert.match(sql, /function public\.finalize_pro_credential_evidence_upload/u);
+  assert.match(sql, /function public\.guard_pro_credential_evidence_upload_reservation/u);
+  assert.match(sql, /function public\.guard_prepared_pro_credential_evidence_upload/u);
+  assert.match(sql, /app\.pro_evidence_upload_finalize/u);
+  assert.match(sql, /security definer set search_path = ''/u);
+  assert.match(sql, /for update/u);
+  assert.match(sql, /lease_expires_at/u);
+  assert.match(sql, /evidence_upload_in_progress/u);
+  assert.match(sql, /evidence_upload_reservation_lost/u);
+  assert.match(sql, /pro_lifecycle_replay_result/u);
+  assert.match(sql, /write_pro_lifecycle_audit/u);
+  assert.match(sql, /store_pro_lifecycle_receipt/u);
+  assert.match(sql, /not exists[\s\S]*from public\.pro_credential_evidence/u);
+  assert.match(
+    sql,
+    /alter function public\.prepare_pro_credential_evidence_upload[\s\S]*owner to postgres/u,
+  );
+  assert.match(
+    sql,
+    /alter function public\.finalize_pro_credential_evidence_upload[\s\S]*owner to postgres/u,
+  );
+  assert.match(
+    sql,
+    /revoke all on table public\.pro_credential_evidence_upload_reservations from public, anon, authenticated, service_role/u,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.prepare_pro_credential_evidence_upload[\s\S]*to service_role/u,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.finalize_pro_credential_evidence_upload[\s\S]*to service_role/u,
+  );
+  assert.doesNotMatch(sql, /grant execute[\s\S]*to authenticated/u);
+});
+
+test('credential evidence upload SQL regression covers replay, fencing and cleanup races', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceUploadReservationSqlTestPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceUploadReservationSqlTestPath), 'utf8');
+  for (const marker of [
+    'STALE_PREFLIGHT_ACCEPTED',
+    'PAYLOAD_MISMATCH_ACCEPTED',
+    'SAME_OPERATION_DID_NOT_RESUME',
+    'DIFFERENT_OPERATION_NOT_FENCED',
+    'CONCURRENT_CREDENTIAL_MUTATION_NOT_FENCED',
+    'EXPIRED_RESERVATION_NOT_RECOVERED',
+    'FINALIZATION_REPLAY_CHANGED',
+    'CLEANUP_REFERENCED_OBJECT',
+    'FINALIZATION_NOT_ATOMIC',
+  ])
+    assert.match(sql, new RegExp(marker, 'u'));
+});
 
 test('Step 3 uses the exact forward-only migration catalog', () => {
   assert.deepEqual(migrationPaths, [

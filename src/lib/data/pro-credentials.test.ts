@@ -394,3 +394,94 @@ test('evidence registration treats a different safe filename as operation reuse'
   );
   assert.notEqual(supabase.calls[0]!.args.p_payload_hash, supabase.calls[1]!.args.p_payload_hash);
 });
+
+test('evidence upload reservation and finalization share an exact stable payload', async () => {
+  const { prepareProCredentialEvidenceUpload, finalizeProCredentialEvidenceUpload } =
+    await import('./pro-credentials');
+  const metadata = {
+    mimeType: 'application/pdf' as const,
+    sizeBytes: 8,
+    sha256: 'a'.repeat(64),
+    originalNameSafe: 'proof.pdf',
+    scanProvider: 'clamav',
+    scanCompletedAt: '2026-08-26T10:00:00.000Z',
+  };
+  const storagePath = `pro-credentials/${PRO_ID}/${CREDENTIAL_ID}/${EVIDENCE_ID}`;
+  const prepared = {
+    status: 'prepared',
+    credentialId: CREDENTIAL_ID,
+    evidenceId: EVIDENCE_ID,
+    storagePath,
+    cleanup: [],
+  };
+  const supabase = fake([
+    { data: prepared, error: null },
+    { data: mask, error: null },
+  ]);
+
+  assert.deepEqual(
+    await prepareProCredentialEvidenceUpload(
+      ACTOR_ID,
+      CREDENTIAL_ID,
+      1,
+      OPERATION_ID,
+      EVIDENCE_ID,
+      storagePath,
+      metadata,
+      { supabase: supabase as never },
+    ),
+    prepared,
+  );
+  assert.deepEqual(
+    await finalizeProCredentialEvidenceUpload(
+      ACTOR_ID,
+      CREDENTIAL_ID,
+      1,
+      OPERATION_ID,
+      EVIDENCE_ID,
+      storagePath,
+      metadata,
+      { supabase: supabase as never },
+    ),
+    mask,
+  );
+  assert.equal(supabase.calls[0]!.name, 'prepare_pro_credential_evidence_upload');
+  assert.equal(supabase.calls[1]!.name, 'finalize_pro_credential_evidence_upload');
+  assert.deepEqual(supabase.calls[0]!.args, supabase.calls[1]!.args);
+  assert.match(String(supabase.calls[0]!.args.p_payload_hash), /^[a-f0-9]{64}$/u);
+  assert.equal(supabase.calls[0]!.args.p_storage_path, storagePath);
+});
+
+test('evidence upload reservation maps stale and competing operations to sanitized codes', async () => {
+  const { prepareProCredentialEvidenceUpload } = await import('./pro-credentials');
+  const metadata = {
+    mimeType: 'application/pdf' as const,
+    sizeBytes: 8,
+    sha256: 'a'.repeat(64),
+    originalNameSafe: 'proof.pdf',
+    scanProvider: 'clamav',
+    scanCompletedAt: '2026-08-26T10:00:00.000Z',
+  };
+  for (const [message, code] of [
+    ['STALE_CREDENTIAL_VERSION', 'STALE_CREDENTIAL_VERSION'],
+    ['OPERATION_REUSED', 'OPERATION_REUSED'],
+    ['EVIDENCE_UPLOAD_IN_PROGRESS', 'EVIDENCE_UPLOAD_IN_PROGRESS'],
+    ['EVIDENCE_UPLOAD_RESERVATION_LOST', 'EVIDENCE_UPLOAD_RESERVATION_LOST'],
+  ]) {
+    const supabase = fake([{ data: null, error: { message } }]);
+    await assert.rejects(
+      () =>
+        prepareProCredentialEvidenceUpload(
+          ACTOR_ID,
+          CREDENTIAL_ID,
+          1,
+          OPERATION_ID,
+          EVIDENCE_ID,
+          `pro-credentials/${PRO_ID}/${CREDENTIAL_ID}/${EVIDENCE_ID}`,
+          metadata,
+          { supabase: supabase as never },
+        ),
+      (error: unknown) => error instanceof Error && 'code' in error && error.code === code,
+    );
+  }
+});

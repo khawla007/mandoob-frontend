@@ -3,11 +3,18 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { MULTIPART_BODY_ENVELOPE_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycle';
+import { ApiError } from '@/lib/errors';
 import { createEvidencePostHandler } from './route';
 
 test('Next proxy preserves the full 10 MiB evidence file plus multipart envelope', () => {
   const config = readFileSync('next.config.ts', 'utf8');
   assert.match(config, /proxyClientMaxBodySize:\s*11 \* 1024 \* 1024/u);
+});
+
+test('credential evidence route is statically pinned to the private-only scanner', () => {
+  const source = readFileSync('src/app/api/v1/account/pro/credentials/evidence/route.ts', 'utf8');
+  assert.match(source, /scanFilePrivate/u);
+  assert.doesNotMatch(source, /\.scanFile\(bytes/u);
 });
 
 const A = '10000000-0000-4000-8000-000000000001';
@@ -26,6 +33,13 @@ const publicCredential = () => ({
   evidenceCount: 1,
   submittedAt: null,
   supersedesCredentialId: null,
+});
+const preparedReservation = () => ({
+  status: 'prepared' as const,
+  credentialId: C,
+  evidenceId: O,
+  storagePath: `pro-credentials/${A}/${C}/${O}`,
+  cleanup: [],
 });
 
 function upload(file: File, fields: Record<string, string> = {}) {
@@ -70,7 +84,7 @@ test('evidence upload missing and mismatched CSRF touch no downstream stage', as
       },
       resolveTarget: async () => (touched.push('target'), null),
       limit: async () => (touched.push('limit'), 'allowed'),
-      register: async () => (touched.push('mutation'), null),
+      finalize: async () => (touched.push('mutation'), null),
     });
     assert.equal(
       (await handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })))).status,
@@ -94,7 +108,7 @@ test('evidence upload limits before rejecting an oversized declared multipart bo
     }),
     resolveTarget: async () => (calls.push('target'), { proProfileId: A, credentialIds: [C] }),
     limit: async () => (calls.push('limit'), 'allowed'),
-    register: async () => (calls.push('mutation'), null),
+    finalize: async () => (calls.push('mutation'), null),
   });
   const oversized = upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' }));
   oversized.headers.set(
@@ -136,7 +150,7 @@ test('evidence upload rejects oversized, dirty, mismatched and malware files bef
       return 'stored' as const;
     },
     readExisting: async () => ({ bytes: new Uint8Array(), mime: null }),
-    register: async () => ({ credentialId: C }) as never,
+    finalize: async () => ({ credentialId: C }) as never,
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
     randomId: () => '40000000-0000-4000-8000-000000000004',
@@ -219,13 +233,14 @@ test('evidence upload scans before private storage and registers a stable retry 
     limit: async () => (calls.push('limit'), 'allowed'),
     inspectFile: async () => (calls.push('magic'), { mime: 'application/pdf' }),
     scan: async () => (calls.push('scan'), { clean: true, provider: 'test' }),
+    reserve: async () => (calls.push('reserve'), preparedReservation()),
     store: async (p) => {
       calls.push('storage');
       path = p;
       return 'stored';
     },
     readExisting: async () => ({ bytes: new Uint8Array(), mime: null }),
-    register: async () => {
+    finalize: async () => {
       calls.push('mutation');
       return publicCredential();
     },
@@ -246,6 +261,7 @@ test('evidence upload scans before private storage and registers a stable retry 
     'limit',
     'magic',
     'scan',
+    'reserve',
     'storage',
     'mutation',
     'revalidate',
@@ -276,8 +292,9 @@ test('evidence upload rejects protected registration output at the saved-evidenc
     limit: async () => 'allowed',
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'test' }),
+    reserve: async () => preparedReservation(),
     store: async () => 'stored',
-    register: async () => ({
+    finalize: async () => ({
       credentialId: C,
       type: 'pro_license',
       maskedIdentifier: '•••• 9Z72',
@@ -322,6 +339,7 @@ test('crash after upload leaves a retryable artifact and an identical retry reus
     limit: async () => 'allowed',
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'test' }),
+    reserve: async () => preparedReservation(),
     store: async (_path, bytes) => {
       calls.push('store');
       if (artifact) return 'exists';
@@ -329,7 +347,7 @@ test('crash after upload leaves a retryable artifact and an identical retry reus
       return 'stored';
     },
     readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
-    register: async () => {
+    finalize: async () => {
       calls.push('register');
       if (registrations++ === 0) throw new Error('private crash after upload');
       return publicCredential();
@@ -366,13 +384,14 @@ test('two identical concurrent retries share create-only bytes and both reach id
     limit: async () => 'allowed',
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'test' }),
+    reserve: async () => preparedReservation(),
     store: async (_path, bytes) => {
       if (artifact) return 'exists';
       artifact = bytes;
       return 'stored';
     },
     readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
-    register: async () => {
+    finalize: async () => {
       registrations += 1;
       return publicCredential();
     },
@@ -407,9 +426,10 @@ test('same operation with different bytes conflicts without registration or dele
     limit: async () => 'allowed',
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'test' }),
+    reserve: async () => preparedReservation(),
     store: async () => 'exists',
     readExisting: async () => ({ bytes: existing, mime: 'application/pdf' }),
-    register: async () => {
+    finalize: async () => {
       registrations += 1;
       return publicCredential();
     },
@@ -441,9 +461,10 @@ test('same operation fails closed when stored MIME metadata is missing', async (
     limit: async () => 'allowed',
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'test' }),
+    reserve: async () => preparedReservation(),
     store: async () => 'exists',
     readExisting: async () => ({ bytes: existing, mime: null }),
-    register: async () => {
+    finalize: async () => {
       registrations += 1;
       return publicCredential();
     },
@@ -461,6 +482,7 @@ test('same operation fails closed when stored MIME metadata is missing', async (
 test('ambiguous post-commit error leaves bytes untouched and retry reaches DB replay', async () => {
   let artifact: Uint8Array | null = null;
   let committed = false;
+  let erasures = 0;
   const handler = createEvidencePostHandler({
     guardCsrf: async () => null,
     requirePro: async () => ({
@@ -475,13 +497,17 @@ test('ambiguous post-commit error leaves bytes untouched and retry reaches DB re
     limit: async () => 'allowed',
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'test' }),
+    reserve: async () => preparedReservation(),
     store: async (_path, bytes) => {
       if (artifact) return 'exists';
       artifact = bytes;
       return 'stored';
     },
     readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
-    register: async () => {
+    erase: async () => {
+      erasures += 1;
+    },
+    finalize: async () => {
       if (!committed) {
         committed = true;
         throw new Error('ambiguous response');
@@ -495,9 +521,136 @@ test('ambiguous post-commit error leaves bytes untouched and retry reaches DB re
     (await handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })))).status,
     500,
   );
+  assert.equal(erasures, 0);
   assert.equal(
     (await handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })))).status,
     200,
   );
   assert.ok(artifact);
+  assert.equal(erasures, 0);
+});
+
+test('expired reservation recovery cleans only the fenced unreferenced predecessor before storage', async () => {
+  const calls: string[] = [];
+  const cleanupPath = `pro-credentials/${A}/${C}/40000000-0000-4000-8000-000000000004`;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'clamav' }),
+    reserve: async () => ({
+      ...preparedReservation(),
+      cleanup: [
+        { reservationId: '40000000-0000-4000-8000-000000000004', storagePath: cleanupPath },
+      ],
+    }),
+    erase: async (path) => {
+      calls.push(`erase:${path}`);
+    },
+    store: async () => {
+      calls.push('store');
+      return 'stored';
+    },
+    finalize: async () => {
+      calls.push('finalize');
+      return publicCredential();
+    },
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-26T10:00:00.000Z'),
+  });
+
+  const response = await handler(
+    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [`erase:${cleanupPath}`, 'store', 'finalize']);
+  assert.doesNotMatch(await response.text(), /pro-credentials|sha256|cleanup/iu);
+});
+
+test('stale reservation preflight rejects before private storage', async () => {
+  let stored = 0;
+  let finalized = 0;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'clamav' }),
+    reserve: async () => {
+      throw new ApiError('STALE_CREDENTIAL_VERSION', 'safe', 409);
+    },
+    store: async () => {
+      stored += 1;
+      return 'stored';
+    },
+    finalize: async () => {
+      finalized += 1;
+      return publicCredential();
+    },
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-26T10:00:00.000Z'),
+  });
+
+  const response = await handler(
+    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+  );
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'STALE_CREDENTIAL_VERSION');
+  assert.equal(stored, 0);
+  assert.equal(finalized, 0);
+});
+
+test('completed reservation replay returns without storage or finalization', async () => {
+  let stored = 0;
+  let finalized = 0;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'clamav' }),
+    reserve: async () => ({ status: 'complete', credential: publicCredential() }),
+    store: async () => {
+      stored += 1;
+      return 'stored';
+    },
+    finalize: async () => {
+      finalized += 1;
+      return publicCredential();
+    },
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-26T10:00:00.000Z'),
+  });
+
+  const response = await handler(
+    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(stored, 0);
+  assert.equal(finalized, 0);
 });
