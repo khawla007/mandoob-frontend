@@ -15,6 +15,8 @@ const credentialHistoryMigrationPath =
   'supabase/migrations/20260826101000_0086_pro_credential_history_integrity.sql';
 const profileSelfUpdateMigrationPath =
   'supabase/migrations/20260826100000_0085_pro_profile_self_update_columns.sql';
+const commercialTermIntegrityMigrationPath =
+  'supabase/migrations/20260826102000_0086b_pro_commercial_term_integrity.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
@@ -417,6 +419,123 @@ test('0085 installs the profile self edit audit event used by account actions', 
   );
 });
 
+test('0086b makes commercial-term versions row-local without weakening date or ownership constraints', () => {
+  assert.equal(existsSync(join(process.cwd(), commercialTermIntegrityMigrationPath)), true);
+  const sql = readFileSync(join(process.cwd(), commercialTermIntegrityMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  assert.match(
+    sql,
+    /alter table public\.pro_commercial_terms drop constraint pro_commercial_terms_profile_kind_version/u,
+  );
+  assert.doesNotMatch(sql, /drop constraint pro_commercial_terms_profile_identity/u);
+  assert.doesNotMatch(sql, /drop constraint pro_commercial_terms_active_date_exclusion/u);
+  const createDraft = sql.slice(
+    sql.indexOf('create or replace function public.create_pro_commercial_term_draft'),
+    sql.indexOf('create or replace function public.activate_pro_commercial_term'),
+  );
+  assert.match(createDraft, /'draft', 1, p_actor_id/u);
+  assert.match(createDraft, /'version', 1/u);
+  assert.doesNotMatch(createDraft, /max\(version\)|v_version/u);
+  assert.match(createDraft, /assert_pro_lifecycle_actor/u);
+  assert.match(createDraft, /pro_lifecycle_replay_result/u);
+  assert.match(createDraft, /store_pro_lifecycle_receipt/u);
+  assert.match(createDraft, /write_pro_lifecycle_audit/u);
+  assert.match(createDraft, /insert into public\.pro_commercial_term_events/u);
+  for (const signature of [
+    'create_pro_commercial_term_draft[\\s\\S]*date, date',
+    'activate_pro_commercial_term\\(uuid, uuid, bigint, uuid, text\\)',
+    'end_pro_commercial_term\\(uuid, uuid, bigint, uuid, text, date\\)',
+  ]) {
+    assert.match(
+      sql,
+      new RegExp(`alter function public\\.${signature}[\\s\\S]*owner to postgres`, 'u'),
+    );
+    assert.match(
+      sql,
+      new RegExp(
+        `revoke all on function public\\.${signature}[\\s\\S]*from public, anon, authenticated, service_role`,
+        'u',
+      ),
+    );
+    assert.match(
+      sql,
+      new RegExp(`grant execute on function public\\.${signature}[\\s\\S]*to service_role`, 'u'),
+    );
+  }
+  assert.equal([...sql.matchAll(/security definer set search_path = ''/gu)].length, 3);
+});
+
+test('0086b rejects future commercial-term activation on the Dubai business date', () => {
+  const sql = readFileSync(join(process.cwd(), commercialTermIntegrityMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  const activate = sql.slice(
+    sql.indexOf('create or replace function public.activate_pro_commercial_term'),
+    sql.indexOf('create or replace function public.end_pro_commercial_term'),
+  );
+  assert.match(
+    activate,
+    /v_today date := pg_catalog\.timezone\('asia\/dubai', pg_catalog\.now\(\)\)::date/u,
+  );
+  assert.match(
+    activate,
+    /if v_term\.status <> 'draft' or v_term\.effective_from > v_today then[\s\S]*invalid_term_transition/u,
+  );
+  assert.match(activate, /pro_lifecycle_replay_result/u);
+  assert.match(activate, /stale_term_version/u);
+  assert.match(activate, /store_pro_lifecycle_receipt/u);
+  assert.match(activate, /commercial_term_(?:activated|ended)/u);
+  assert.match(activate, /insert into public\.pro_commercial_term_events/u);
+  assert.ok(
+    activate.indexOf('v_term.effective_from > v_today') <
+      activate.indexOf('select * into v_previous'),
+    'future activation must fail before the current active term is ended',
+  );
+});
+
+test('0086b rejects future commercial-term end on the Dubai business date', () => {
+  const sql = readFileSync(join(process.cwd(), commercialTermIntegrityMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  const end = sql.slice(sql.indexOf('create or replace function public.end_pro_commercial_term'));
+  assert.match(
+    end,
+    /v_today date := pg_catalog\.timezone\('asia\/dubai', pg_catalog\.now\(\)\)::date/u,
+  );
+  assert.match(
+    end,
+    /if v_term\.status <> 'active' or p_effective_to < v_term\.effective_from or p_effective_to > v_today then[\s\S]*invalid_term_transition/u,
+  );
+  assert.match(end, /pro_lifecycle_replay_result/u);
+  assert.match(end, /stale_term_version/u);
+  assert.match(end, /store_pro_lifecycle_receipt/u);
+  assert.match(end, /commercial_term_ended/u);
+  assert.match(end, /insert into public\.pro_commercial_term_events/u);
+  assert.ok(
+    end.indexOf('p_effective_to > v_today') < end.indexOf('update public.pro_commercial_terms'),
+    'future end must fail before the active term is ended',
+  );
+});
+
+test('commercial-term SQL regression proves two pricing and compensation rotations and date boundaries', () => {
+  const fixturePath = join(process.cwd(), 'supabase/tests/pro_commercial_term_integrity.sql');
+  assert.equal(existsSync(fixturePath), true);
+  const fixture = readFileSync(fixturePath, 'utf8').replace(/\s+/gu, ' ').toLowerCase();
+  assert.match(fixture, /\\set on_error_stop on/u);
+  assert.match(fixture, /set statement_timeout/u);
+  assert.match(fixture, /foreach v_term_kind in array/u);
+  assert.match(fixture, /for v_rotation in 1\.\.2 loop/u);
+  assert.match(fixture, /expected_two_successive_rotations/u);
+  assert.match(fixture, /expected_future_activation_rejection/u);
+  assert.match(fixture, /expected_future_end_rejection/u);
+  assert.match(fixture, /evaluate_pro_assignment_eligibility/u);
+  assert.match(fixture, /expected_eligible_after_future_boundary_rejections/u);
+  assert.match(fixture, /pro_commercial_terms_profile_kind_version/u);
+  assert.match(fixture, /pro_commercial_terms_profile_identity/u);
+  assert.match(fixture, /pro_commercial_terms_active_date_exclusion/u);
+});
+
 test('Step 3 SQL fixtures cover transitions and bounded credential and term races', () => {
   for (const fixture of [
     'pro_lifecycle_transitions.sql',
@@ -435,6 +554,7 @@ test('Step 3 SQL fixtures cover transitions and bounded credential and term race
     'pro_lifecycle_recovery_session_a.sql',
     'pro_lifecycle_recovery_session_b.sql',
     'pro_credential_identifier_preservation.sql',
+    'pro_commercial_term_integrity.sql',
   ]) {
     const path = join(process.cwd(), 'supabase/tests', fixture);
     assert.equal(existsSync(path), true, fixture);
