@@ -90,7 +90,7 @@ begin
 
     v_result := public.create_pro_commercial_term_draft(
       v_actor_id, v_pro_id, gen_random_uuid(), repeat('1', 64),
-      v_term_kind, v_model, v_amount, v_interval, v_today - 2, null
+      v_term_kind, v_model, v_amount, v_interval, v_today - 4, null
     );
     if (v_result ->> 'version')::bigint <> 1 then
       raise exception 'EXPECTED_ROW_LOCAL_DRAFT_VERSION';
@@ -104,7 +104,7 @@ begin
       v_result := public.create_pro_commercial_term_draft(
         v_actor_id, v_pro_id, gen_random_uuid(), repeat('3', 64),
         v_term_kind, v_model, v_amount + v_rotation, v_interval,
-        v_today - (2 - v_rotation), null
+        v_today - (4 - v_rotation), null
       );
       if (v_result ->> 'version')::bigint <> 1 then
         raise exception 'EXPECTED_ROW_LOCAL_ROTATION_VERSION';
@@ -136,7 +136,7 @@ begin
     if not exists (
       select 1 from public.pro_commercial_terms
       where id = v_active_id and status = 'active'
-        and effective_from = v_today and effective_to is null and version = 2
+        and effective_from = v_today - 2 and effective_to is null and version = 2
     ) or (
       select count(*) from public.pro_commercial_terms
       where pro_profile_id = v_pro_id and term_kind = v_term_kind
@@ -170,12 +170,38 @@ begin
 
     v_result := public.create_pro_commercial_term_draft(
       v_actor_id, v_pro_id, gen_random_uuid(), repeat('6', 64),
-      v_term_kind, v_model, v_amount + 3, v_interval, v_today + 1, null
+      v_term_kind, v_model, v_amount + 3, v_interval, v_today - 1, v_today + 1
     );
     v_draft_id := (v_result ->> 'termId')::uuid;
     begin
       perform public.activate_pro_commercial_term(
         v_actor_id, v_draft_id, 1, gen_random_uuid(), repeat('7', 64)
+      );
+      raise exception 'EXPECTED_FUTURE_EFFECTIVE_TO_ACTIVATION_REJECTION';
+    exception when others then
+      if sqlerrm <> 'INVALID_TERM_TRANSITION' then raise; end if;
+    end;
+    if not exists (
+      select 1 from public.pro_commercial_terms
+      where id = v_active_id and status = 'active' and effective_to is null and version = 2
+    ) or not exists (
+      select 1 from public.pro_commercial_terms
+      where id = v_draft_id and status = 'draft' and version = 1
+    ) then
+      raise exception 'FUTURE_EFFECTIVE_TO_ACTIVATION_CHANGED_CURRENT_TERM';
+    end if;
+
+    delete from public.pro_commercial_term_events where commercial_term_id = v_draft_id;
+    delete from public.pro_commercial_terms where id = v_draft_id;
+
+    v_result := public.create_pro_commercial_term_draft(
+      v_actor_id, v_pro_id, gen_random_uuid(), repeat('8', 64),
+      v_term_kind, v_model, v_amount + 4, v_interval, v_today + 1, null
+    );
+    v_draft_id := (v_result ->> 'termId')::uuid;
+    begin
+      perform public.activate_pro_commercial_term(
+        v_actor_id, v_draft_id, 1, gen_random_uuid(), repeat('9', 64)
       );
       raise exception 'EXPECTED_FUTURE_ACTIVATION_REJECTION';
     exception when others then
@@ -193,7 +219,7 @@ begin
 
     begin
       perform public.end_pro_commercial_term(
-        v_actor_id, v_active_id, 2, gen_random_uuid(), repeat('9', 64), v_today + 1
+        v_actor_id, v_active_id, 2, gen_random_uuid(), repeat('a', 64), v_today + 1
       );
       raise exception 'EXPECTED_FUTURE_END_REJECTION';
     exception when others then

@@ -480,7 +480,7 @@ test('0086b rejects future commercial-term activation on the Dubai business date
   );
   assert.match(
     activate,
-    /if v_term\.status <> 'draft' or v_term\.effective_from > v_today then[\s\S]*invalid_term_transition/u,
+    /if v_term\.status <> 'draft' or v_term\.effective_from > v_today or \(v_term\.effective_to is not null and v_term\.effective_to > v_today\) then[\s\S]*invalid_term_transition/u,
   );
   assert.match(activate, /pro_lifecycle_replay_result/u);
   assert.match(activate, /stale_term_version/u);
@@ -488,9 +488,9 @@ test('0086b rejects future commercial-term activation on the Dubai business date
   assert.match(activate, /commercial_term_(?:activated|ended)/u);
   assert.match(activate, /insert into public\.pro_commercial_term_events/u);
   assert.ok(
-    activate.indexOf('v_term.effective_from > v_today') <
+    activate.indexOf('v_term.effective_to > v_today') <
       activate.indexOf('select * into v_previous'),
-    'future activation must fail before the current active term is ended',
+    'future activation boundaries must fail before the current active term is ended',
   );
 });
 
@@ -527,6 +527,8 @@ test('commercial-term SQL regression proves two pricing and compensation rotatio
   assert.match(fixture, /foreach v_term_kind in array/u);
   assert.match(fixture, /for v_rotation in 1\.\.2 loop/u);
   assert.match(fixture, /expected_two_successive_rotations/u);
+  assert.match(fixture, /expected_future_effective_to_activation_rejection/u);
+  assert.match(fixture, /future_effective_to_activation_changed_current_term/u);
   assert.match(fixture, /expected_future_activation_rejection/u);
   assert.match(fixture, /expected_future_end_rejection/u);
   assert.match(fixture, /evaluate_pro_assignment_eligibility/u);
