@@ -13,6 +13,8 @@ const migrationPaths = [
 ] as const;
 const credentialHistoryMigrationPath =
   'supabase/migrations/20260826101000_0086_pro_credential_history_integrity.sql';
+const profileSelfUpdateMigrationPath =
+  'supabase/migrations/20260826100000_0085_pro_profile_self_update_columns.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
@@ -403,6 +405,16 @@ test('0086 requires zero credential history for create and preserves terminal re
   assert.match(fixture, /supersedes_credential_id/u);
   assert.match(fixture, /credential_replay_changed/u);
   assert.match(fixture, /expected_credential_history_exists_for_new_operation/u);
+});
+
+test('0085 installs the profile self edit audit event used by account actions', () => {
+  const sql = readFileSync(join(process.cwd(), profileSelfUpdateMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  assert.match(
+    sql,
+    /alter type public\.auth_event_kind add value if not exists 'profile_self_edited'/u,
+  );
 });
 
 test('Step 3 SQL fixtures cover transitions and bounded credential and term races', () => {
