@@ -26,6 +26,8 @@ const evidenceUploadCleanupMigrationPath =
 const evidenceUploadCleanupRunbookPath = 'docs/ops/pro-credential-evidence-upload-cleanup.md';
 const evidenceUploadCleanupSqlTestPath =
   'supabase/tests/pro_credential_evidence_upload_cleanup.sql';
+const evidenceUploadQuiescenceMigrationPath =
+  'supabase/migrations/20260826105000_0086e_pro_evidence_upload_quiescence.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
@@ -138,6 +140,10 @@ test('credential evidence upload cleanup runbook documents external scheduling a
   assert.match(docs, /CRON_SECRET/u);
   assert.match(docs, /every (?:five|5) minutes/iu);
   assert.match(docs, /retry/iu);
+  assert.match(docs, /120 seconds/iu);
+  assert.match(docs, /five-minute quiescence/iu);
+  assert.match(docs, /two erases/iu);
+  assert.match(docs, /cleaned tombstone/iu);
 });
 
 test('credential evidence upload cleanup SQL fixture covers claim, reference race and retention', () => {
@@ -145,7 +151,9 @@ test('credential evidence upload cleanup SQL fixture covers claim, reference rac
   const sql = readFileSync(join(process.cwd(), evidenceUploadCleanupSqlTestPath), 'utf8');
   for (const marker of [
     'EXPIRED_UPLOAD_NOT_CLAIMED',
-    'CLEANUP_FINALIZE_DID_NOT_DELETE',
+    'FIRST_ERASE_NOT_QUIESCING',
+    'QUIESCENCE_SECOND_PASS_SKIPPED',
+    'SECOND_ERASE_NOT_RETAINED',
     'REFERENCED_CLEANUP_WAS_CLAIMED',
     'REFERENCE_RACE_DELETED_RESERVATION',
     'FINALIZED_RETENTION_INVALID',
@@ -170,6 +178,89 @@ test('credential evidence upload cleanup has lock-controlled two-session race fi
   assert.match(sources[2]!, /CLEANUP_CLAIMED_CONCURRENT_FINALIZATION/u);
   assert.match(sources[2]!, /NEW_OPERATION_FINALIZED_ALONGSIDE_OLD/u);
   assert.match(sources[2]!, /CONCURRENT_FINALIZATION_OUTCOME_UNSAFE/u);
+});
+
+test('0086e enforces two-pass quiescence and retained cleaned tombstones', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceUploadQuiescenceMigrationPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceUploadQuiescenceMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  assert.match(sql, /cleanup_passes/u);
+  assert.match(sql, /create schema if not exists private authorization postgres/u);
+  assert.match(sql, /revoke all on schema private from public, anon, authenticated, service_role/u);
+  assert.match(
+    sql,
+    /revoke all on function private\.prepare_pro_credential_evidence_upload_0086d[\s\S]*from public, anon, authenticated, service_role/u,
+  );
+  assert.match(sql, /status in \('prepared', 'cleanup', 'recovering', 'finalized', 'cleaned'\)/u);
+  assert.match(sql, /interval '5 minutes'/u);
+  assert.match(sql, /status = 'cleanup'[\s\S]*cleanup_passes = 1/u);
+  assert.match(sql, /status = 'cleaned'[\s\S]*cleanup_passes = 2/u);
+  assert.match(sql, /status in \('finalized', 'cleaned'\)[\s\S]*interval '30 days'/u);
+  assert.match(sql, /limit 1000[\s\S]*for update skip locked/u);
+  const cleanupFinalize = sql.slice(
+    sql.indexOf(
+      'create or replace function public.finalize_pro_credential_evidence_upload_cleanup',
+    ),
+    sql.indexOf(
+      'create or replace function public.cleanup_finalized_pro_credential_evidence_upload_reservations',
+    ),
+  );
+  assert.doesNotMatch(
+    cleanupFinalize,
+    /delete from public\.pro_credential_evidence_upload_reservations/u,
+  );
+  assert.doesNotMatch(sql, /(?:delete|insert|update)[\s\S]*storage\.objects/u);
+  for (const fn of [
+    'prepare_pro_credential_evidence_upload',
+    'prepare_pro_credential_evidence_removal',
+    'finalize_pro_credential_evidence_upload_cleanup',
+    'cleanup_finalized_pro_credential_evidence_upload_reservations',
+  ]) {
+    assert.match(sql, new RegExp(`function public\\.${fn}[\\s\\S]*set search_path = ''`, 'u'));
+    assert.match(sql, new RegExp(`alter function public\\.${fn}[\\s\\S]*owner to postgres`, 'u'));
+  }
+});
+
+test('0086e prepare RPCs mutually exclude active upload and removal reservations', () => {
+  const sql = readFileSync(join(process.cwd(), evidenceUploadQuiescenceMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  const upload = sql.slice(
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_upload'),
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_removal'),
+  );
+  const removal = sql.slice(
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_removal'),
+    sql.indexOf('create or replace function public.finalize_pro_credential_evidence_removal'),
+  );
+  assert.match(
+    upload,
+    /from public\.pro_credentials[\s\S]*for update[\s\S]*from public\.pro_credential_evidence_removals[\s\S]*status in \('prepared', 'recovering'\)/u,
+  );
+  assert.match(upload, /evidence_removal_in_progress/u);
+  assert.match(
+    removal,
+    /from public\.pro_credentials[\s\S]*for update[\s\S]*from public\.pro_credential_evidence_upload_reservations[\s\S]*status in \('prepared', 'recovering'\)/u,
+  );
+  assert.match(removal, /evidence_upload_in_progress/u);
+});
+
+test('evidence protocol mutex uses lock-controlled fixtures in both directions', () => {
+  for (const name of [
+    'pro_evidence_protocol_mutex_setup.sql',
+    'pro_evidence_protocol_mutex_upload_a.sql',
+    'pro_evidence_protocol_mutex_removal_b.sql',
+    'pro_evidence_protocol_mutex_removal_a.sql',
+    'pro_evidence_protocol_mutex_upload_b.sql',
+    'pro_evidence_protocol_mutex_resume.sql',
+    'pro_evidence_protocol_mutex_teardown.sql',
+  ]) {
+    const path = join(process.cwd(), 'supabase/tests', name);
+    assert.equal(existsSync(path), true, name);
+    const source = readFileSync(path, 'utf8');
+    assert.doesNotMatch(source, /(?:delete|insert|update)[\s\S]*storage\.objects/u);
+  }
 });
 
 test('Step 3 uses the exact forward-only migration catalog', () => {

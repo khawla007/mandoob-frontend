@@ -93,7 +93,12 @@ type Deps = {
     bytes: Uint8Array,
     options: { filename: string },
   ): Promise<{ clean: boolean; reason?: string; provider?: string }>;
-  store(path: string, bytes: Uint8Array, mime: SafeMime): Promise<'stored' | 'exists'>;
+  store(
+    path: string,
+    bytes: Uint8Array,
+    mime: SafeMime,
+    signal: AbortSignal,
+  ): Promise<'stored' | 'exists'>;
   readExisting(path: string): Promise<{ bytes: Uint8Array; mime: string | null }>;
   reserve(
     actorId: string,
@@ -114,6 +119,7 @@ type Deps = {
     metadata: z.input<typeof proCredentialEvidenceMetadataSchema>,
   ): Promise<unknown>;
   erase(path: string): Promise<void>;
+  uploadTimeoutMs: number;
   revalidate(target: LifecycleTarget, userId: string): void | Promise<void>;
   now(): Date;
 };
@@ -139,9 +145,9 @@ const defaults: Deps = {
   },
   scan: async (bytes, options) =>
     (await import('@/lib/security/scan-file')).scanFilePrivate(bytes, options),
-  store: async (path, bytes, mime) => {
+  store: async (path, bytes, mime, signal) => {
     const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-    const { error } = await createSupabaseServiceRoleClient()
+    const { error } = await createSupabaseServiceRoleClient({ signal })
       .storage.from('tenant-documents')
       .upload(path, bytes, { contentType: mime, upsert: false });
     if (!error) return 'stored';
@@ -171,9 +177,33 @@ const defaults: Deps = {
       .remove([path]);
     if (error) throw new Error('storage_cleanup_failed');
   },
+  uploadTimeoutMs: 120_000,
   revalidate: revalidateLifecyclePaths,
   now: () => new Date(),
 };
+
+async function storeWithDeadline<T>(
+  start: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const operation = start(controller.signal);
+  void operation.catch(() => undefined);
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error('storage_upload_timeout'));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function safeName(name: string): boolean {
   return (
@@ -280,7 +310,10 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
       )
         throw new Error('invalid_upload_reservation');
       for (const cleanup of reservation.cleanup) await deps.erase(cleanup.storagePath);
-      const stored = await deps.store(path, bytes, inspected.mime);
+      const stored = await storeWithDeadline(
+        (signal) => deps.store(path, bytes, inspected.mime, signal),
+        deps.uploadTimeoutMs,
+      );
       if (stored === 'exists') {
         const existing = await deps.readExisting(path);
         const existingHash = createHash('sha256').update(existing.bytes).digest('hex');

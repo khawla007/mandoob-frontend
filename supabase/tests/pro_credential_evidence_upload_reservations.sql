@@ -64,6 +64,7 @@ declare
   v_second_path text;
   v_prepared jsonb;
   v_replay jsonb;
+  v_cleanup jsonb;
 begin
   select id into strict v_credential_id
   from public.pro_credentials
@@ -214,11 +215,23 @@ begin
     v_first_path, 'application/pdf', 8, repeat('a', 64), 'proof.pdf', 'clamav',
     '2026-08-26T10:00:00Z', '97000000-0000-4000-8000-000000000001'
   );
+  alter table public.pro_credential_evidence_upload_reservations
+    disable trigger guard_pro_credential_evidence_upload_reservation;
   update public.pro_credential_evidence_upload_reservations
   set cleanup_after = now() - interval '1 minute'
   where credential_id = v_credential_id and operation_id = v_first_operation;
-  perform public.cleanup_pro_credential_evidence_upload_reservations();
-  if not exists (
+  alter table public.pro_credential_evidence_upload_reservations
+    enable trigger guard_pro_credential_evidence_upload_reservation;
+  v_cleanup := public.claim_pro_credential_evidence_upload_cleanup(
+    '97000000-0000-4000-8000-000000000018', 25
+  );
+  if exists (
+    select 1 from pg_catalog.jsonb_array_elements(v_cleanup) claim
+    where claim ->> 'reservationId' = (
+      select id::text from public.pro_credential_evidence_upload_reservations
+      where credential_id = v_credential_id and operation_id = v_first_operation
+    )
+  ) or not exists (
     select 1 from public.pro_credential_evidence_upload_reservations
     where credential_id = v_credential_id and operation_id = v_first_operation
   ) then

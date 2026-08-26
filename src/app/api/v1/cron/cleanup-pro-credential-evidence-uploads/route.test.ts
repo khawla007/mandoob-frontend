@@ -13,7 +13,7 @@ test('credential upload cleanup cron requires the configured secret before work'
     secret: () => 'cron-secret',
     run: async () => {
       runs += 1;
-      return { claimed: 0, cleaned: 0, referenced: 0, retryable: 0 };
+      return { claimed: 0, quiescing: 0, cleaned: 0, referenced: 0, retryable: 0 };
     },
   });
   for (const headers of [new Headers(), new Headers({ 'x-cron-secret': 'wrong' })]) {
@@ -29,7 +29,7 @@ test('credential upload cleanup cron returns only bounded aggregate counts', asy
   const { createCleanupRouteHandler } = await import('./route');
   const handler = createCleanupRouteHandler({
     secret: () => 'cron-secret',
-    run: async () => ({ claimed: 3, cleaned: 1, referenced: 1, retryable: 1 }),
+    run: async () => ({ claimed: 4, quiescing: 1, cleaned: 1, referenced: 1, retryable: 1 }),
   });
   const response = await handler(
     new Request('http://localhost/cron', {
@@ -40,7 +40,8 @@ test('credential upload cleanup cron returns only bounded aggregate counts', asy
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     ok: true,
-    claimed: 3,
+    claimed: 4,
+    quiescing: 1,
     cleaned: 1,
     referenced: 1,
     retryable: 1,

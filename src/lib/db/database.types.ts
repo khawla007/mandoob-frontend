@@ -3098,6 +3098,7 @@ export type Database = {
         Row: {
           actor_id: string;
           cleanup_after: string | null;
+          cleanup_passes: number;
           created_at: string;
           credential_id: string;
           evidence_id: string;
@@ -3123,6 +3124,7 @@ export type Database = {
         Insert: {
           actor_id: string;
           cleanup_after?: string | null;
+          cleanup_passes?: number;
           created_at?: string;
           credential_id: string;
           evidence_id: string;
@@ -3148,6 +3150,7 @@ export type Database = {
         Update: {
           actor_id?: string;
           cleanup_after?: string | null;
+          cleanup_passes?: number;
           created_at?: string;
           credential_id?: string;
           evidence_id?: string;

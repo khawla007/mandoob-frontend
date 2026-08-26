@@ -6,6 +6,11 @@ import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycl
 import { ApiError } from '@/lib/errors';
 import { createEvidencePostHandler } from './route';
 
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon_key_for_tests_padded_to_min_';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
+process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
+
 test('Next proxy preserves the full 10 MiB evidence file plus multipart envelope', () => {
   const config = readFileSync('next.config.ts', 'utf8');
   assert.match(config, /proxyClientMaxBodySize:\s*11 \* 1024 \* 1024/u);
@@ -267,6 +272,122 @@ test('evidence upload scans before private storage and registers a stable retry 
     'revalidate',
   ]);
   assert.doesNotMatch(JSON.stringify(await response.json()), /storage|sha256|scan|signed/iu);
+});
+
+test('credential evidence upload aborts and returns before a late Storage write settles', async () => {
+  let releaseStore!: (value: 'stored') => void;
+  let storeSignal: AbortSignal | undefined;
+  let finalized = 0;
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'clamav' }),
+    reserve: async () => preparedReservation(),
+    store: async (_path, _bytes, _mime, signal) => {
+      storeSignal = signal;
+      return new Promise<'stored'>((resolve) => {
+        releaseStore = resolve;
+      });
+    },
+    finalize: async () => {
+      finalized += 1;
+      return publicCredential();
+    },
+    uploadTimeoutMs: 5,
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-26T10:00:00.000Z'),
+  });
+  const responsePromise = handler(
+    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const wasAborted = storeSignal?.aborted ?? false;
+  releaseStore('stored');
+  const response = await responsePromise;
+  assert.equal(wasAborted, true);
+  assert.equal(response.status, 500);
+  assert.equal(finalized, 0);
+  assert.doesNotMatch(await response.text(), /storage|path|timeout/iu);
+});
+
+test('late Storage write after first cleanup remains discoverable and is erased on the second pass', async () => {
+  const { cleanupAbandonedProCredentialEvidenceUploads } =
+    await import('@/lib/data/pro-evidence-upload-cleanup');
+  let releaseStore!: () => void;
+  let objectExists = false;
+  let cleanupPass = 0;
+  const erasedExisting: boolean[] = [];
+  const handler = createEvidencePostHandler({
+    guardCsrf: async () => null,
+    requirePro: async () => ({
+      id: A,
+      role: 'pro',
+      tenantId: A,
+      aal: 'aal2',
+      mfaEnrolled: true,
+      email: null,
+    }),
+    resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+    limit: async () => 'allowed',
+    inspectFile: async () => ({ mime: 'application/pdf' }),
+    scan: async () => ({ clean: true, provider: 'clamav' }),
+    reserve: async () => preparedReservation(),
+    store: async () =>
+      new Promise<'stored'>((resolve) => {
+        releaseStore = () => {
+          objectExists = true;
+          resolve('stored');
+        };
+      }),
+    finalize: async () => publicCredential(),
+    uploadTimeoutMs: 5,
+    revalidate: () => undefined,
+    now: () => new Date('2026-08-26T10:00:00.000Z'),
+  });
+  const response = await handler(
+    upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+  );
+  assert.equal(response.status, 500);
+
+  const cleanup = () =>
+    cleanupAbandonedProCredentialEvidenceUploads({
+      workerId: () => A,
+      claim: async () => [
+        {
+          reservationId: O,
+          recoveryOperationId: A,
+          proProfileId: A,
+          credentialId: C,
+          evidenceId: O,
+          storagePath: `pro-credentials/${A}/${C}/${O}`,
+        },
+      ],
+      erase: async () => {
+        erasedExisting.push(objectExists);
+        objectExists = false;
+      },
+      finalize: async () => ({ status: cleanupPass++ === 0 ? 'quiescing' : 'cleaned' }),
+    });
+
+  const first = await cleanup();
+  assert.equal(first.quiescing, 1);
+  releaseStore();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(objectExists, true);
+  const second = await cleanup();
+  assert.equal(second.cleaned, 1);
+  assert.deepEqual(erasedExisting, [false, true]);
+  assert.equal(objectExists, false);
 });
 
 test('evidence upload rejects protected registration output at the saved-evidence JSON boundary', async () => {

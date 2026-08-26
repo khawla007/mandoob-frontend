@@ -11,6 +11,11 @@ If storage deletion or finalization has an ambiguous result, the claim remains r
 lease expires. The database rechecks evidence references before claiming and finalizing, so the
 worker never intentionally deletes a referenced artifact.
 
+Upload writes are hard-aborted after 120 seconds, with the abort signal passed to the underlying
+Storage fetch. Cleanup uses two erases: the first begins a five-minute quiescence while retaining the
+durable path, and the second runs only after that write deadline has elapsed. A successful second
+pass leaves a `cleaned` tombstone, so a late or ambiguous write cannot make its path undiscoverable.
+
 Postgres schedules finalized reservation tombstone retention independently each day. Finalized
-tombstones older than 30 days are removed in bounded batches; evidence rows and Storage objects are
-not removed by that retention job.
+and cleaned tombstones older than 30 days are removed in bounded batches; evidence rows and Storage
+objects are not removed by that retention job.

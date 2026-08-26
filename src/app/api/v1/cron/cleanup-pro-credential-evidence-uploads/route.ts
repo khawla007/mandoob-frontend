@@ -5,7 +5,13 @@ import { env } from '@/lib/env';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type Counts = { claimed: number; cleaned: number; referenced: number; retryable: number };
+type Counts = {
+  claimed: number;
+  quiescing: number;
+  cleaned: number;
+  referenced: number;
+  retryable: number;
+};
 type Deps = {
   secret(): string | undefined;
   run(): Promise<Counts>;

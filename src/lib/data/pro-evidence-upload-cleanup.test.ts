@@ -13,7 +13,7 @@ const CREDENTIAL = '40000000-0000-4000-8000-000000000004';
 const EVIDENCE = '50000000-0000-4000-8000-000000000005';
 const PATH = `pro-credentials/${PRO}/${CREDENTIAL}/${EVIDENCE}`;
 
-test('upload cleanup worker removes exact claimed paths then finalizes a bounded batch', async () => {
+test('upload cleanup worker records a first erase as quiescing, not cleaned', async () => {
   const { cleanupAbandonedProCredentialEvidenceUploads } =
     await import('./pro-evidence-upload-cleanup');
   const calls: string[] = [];
@@ -43,12 +43,18 @@ test('upload cleanup worker removes exact claimed paths then finalizes a bounded
       calls.push('finalize');
       assert.equal(reservationId, RESERVATION);
       assert.equal(workerId, WORKER);
-      return { status: 'cleaned' };
+      return { status: 'quiescing' };
     },
     timeoutMs: 100,
   });
   assert.deepEqual(calls, ['claim', 'erase', 'finalize']);
-  assert.deepEqual(result, { claimed: 1, cleaned: 1, referenced: 0, retryable: 0 });
+  assert.deepEqual(result, {
+    claimed: 1,
+    quiescing: 1,
+    cleaned: 0,
+    referenced: 0,
+    retryable: 0,
+  });
   assert.doesNotMatch(JSON.stringify(result), /pro-credentials|storagePath|sha256/u);
 });
 
@@ -77,7 +83,13 @@ test('upload cleanup keeps ambiguous storage or finalize outcomes retryable', as
       },
       timeoutMs: 10,
     });
-    assert.deepEqual(result, { claimed: 1, cleaned: 0, referenced: 0, retryable: 1 });
+    assert.deepEqual(result, {
+      claimed: 1,
+      quiescing: 0,
+      cleaned: 0,
+      referenced: 0,
+      retryable: 1,
+    });
   }
 });
 
@@ -106,7 +118,40 @@ test('upload cleanup rejects forged claim paths without deletion or finalization
       return { status: 'cleaned' };
     },
   });
-  assert.deepEqual(result, { claimed: 1, cleaned: 0, referenced: 0, retryable: 1 });
+  assert.deepEqual(result, {
+    claimed: 1,
+    quiescing: 0,
+    cleaned: 0,
+    referenced: 0,
+    retryable: 1,
+  });
   assert.equal(erased, 0);
   assert.equal(finalized, 0);
+});
+
+test('upload cleanup worker records the post-quiescence second erase as cleaned', async () => {
+  const { cleanupAbandonedProCredentialEvidenceUploads } =
+    await import('./pro-evidence-upload-cleanup');
+  const result = await cleanupAbandonedProCredentialEvidenceUploads({
+    workerId: () => WORKER,
+    claim: async () => [
+      {
+        reservationId: RESERVATION,
+        recoveryOperationId: WORKER,
+        proProfileId: PRO,
+        credentialId: CREDENTIAL,
+        evidenceId: EVIDENCE,
+        storagePath: PATH,
+      },
+    ],
+    erase: async () => undefined,
+    finalize: async () => ({ status: 'cleaned' }),
+  });
+  assert.deepEqual(result, {
+    claimed: 1,
+    quiescing: 0,
+    cleaned: 1,
+    referenced: 0,
+    retryable: 0,
+  });
 });

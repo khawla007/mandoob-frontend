@@ -13,6 +13,12 @@ do $$ begin
   ) or not has_function_privilege(
     'service_role', 'public.claim_pro_credential_evidence_upload_cleanup(uuid,integer)', 'EXECUTE'
   ) then raise exception 'CLEANUP_RPC_PRIVILEGES_INVALID'; end if;
+  if has_schema_privilege('service_role', 'private', 'USAGE')
+     or has_function_privilege(
+       'service_role',
+       'private.prepare_pro_credential_evidence_upload_0086d(uuid,uuid,bigint,uuid,text,uuid,text,text,bigint,text,text,text,timestamptz)',
+       'EXECUTE'
+     ) then raise exception 'PRIVATE_UPLOAD_RPC_EXECUTABLE'; end if;
 end $$;
 
 insert into auth.users (
@@ -66,9 +72,39 @@ begin
   v_result := public.finalize_pro_credential_evidence_upload_cleanup(
     v_reservation_id, '96000000-0000-4000-8000-000000000020'
   );
-  if v_result ->> 'status' <> 'cleaned' or exists (
-    select 1 from public.pro_credential_evidence_upload_reservations where id = v_reservation_id
-  ) then raise exception 'CLEANUP_FINALIZE_DID_NOT_DELETE'; end if;
+  if v_result ->> 'status' <> 'quiescing' or not exists (
+    select 1 from public.pro_credential_evidence_upload_reservations
+    where id = v_reservation_id and status = 'cleanup' and cleanup_passes = 1
+      and cleanup_after >= pg_catalog.now() + interval '4 minutes 50 seconds'
+  ) then raise exception 'FIRST_ERASE_NOT_QUIESCING'; end if;
+  v_claims := public.claim_pro_credential_evidence_upload_cleanup(
+    '96000000-0000-4000-8000-000000000028', 25
+  );
+  if exists (
+    select 1 from pg_catalog.jsonb_array_elements(v_claims) claim
+    where claim ->> 'reservationId' = v_reservation_id::text
+  ) then raise exception 'QUIESCENCE_SECOND_PASS_SKIPPED'; end if;
+  alter table public.pro_credential_evidence_upload_reservations
+    disable trigger guard_pro_credential_evidence_upload_reservation;
+  update public.pro_credential_evidence_upload_reservations
+  set cleanup_after = pg_catalog.now() - interval '1 minute'
+  where id = v_reservation_id;
+  alter table public.pro_credential_evidence_upload_reservations
+    enable trigger guard_pro_credential_evidence_upload_reservation;
+  v_claims := public.claim_pro_credential_evidence_upload_cleanup(
+    '96000000-0000-4000-8000-000000000029', 25
+  );
+  if not exists (
+    select 1 from pg_catalog.jsonb_array_elements(v_claims) claim
+    where claim ->> 'reservationId' = v_reservation_id::text
+  ) then raise exception 'SECOND_ERASE_NOT_CLAIMED'; end if;
+  v_result := public.finalize_pro_credential_evidence_upload_cleanup(
+    v_reservation_id, '96000000-0000-4000-8000-000000000029'
+  );
+  if v_result ->> 'status' <> 'cleaned' or not exists (
+    select 1 from public.pro_credential_evidence_upload_reservations
+    where id = v_reservation_id and status = 'cleaned' and cleanup_passes = 2
+  ) then raise exception 'SECOND_ERASE_NOT_RETAINED'; end if;
 
   insert into public.pro_credential_evidence_upload_reservations (
     id, pro_profile_id, credential_id, actor_id, expected_version, operation_id,
@@ -157,10 +193,30 @@ begin
     'application/pdf', 8, repeat('c', 64), 'old.pdf', 'clamav', now(),
     'finalized', now() - interval '31 days'
   );
+  insert into public.pro_credential_evidence_upload_reservations (
+    id, pro_profile_id, credential_id, actor_id, expected_version, operation_id,
+    payload_hash, evidence_id, storage_path, mime_type, size_bytes, sha256,
+    original_name_safe, scan_provider, scan_completed_at, status, cleanup_passes, finalized_at
+  ) values (
+    '96000000-0000-4000-8000-000000000042',
+    '96000000-0000-4000-8000-000000000001',
+    '96000000-0000-4000-8000-000000000010',
+    '96000000-0000-4000-8000-000000000001', 0,
+    '96000000-0000-4000-8000-000000000041', repeat('5', 64),
+    '96000000-0000-4000-8000-000000000041',
+    'pro-credentials/96000000-0000-4000-8000-000000000001/'
+      || '96000000-0000-4000-8000-000000000010/'
+      || '96000000-0000-4000-8000-000000000041',
+    'application/pdf', 8, repeat('e', 64), 'cleaned.pdf', 'clamav', now(),
+    'cleaned', 2, now() - interval '31 days'
+  );
   v_retained := public.cleanup_finalized_pro_credential_evidence_upload_reservations();
-  if v_retained < 1 or exists (
+  if v_retained < 2 or exists (
        select 1 from public.pro_credential_evidence_upload_reservations
-       where id = '96000000-0000-4000-8000-000000000032'
+       where id in (
+         '96000000-0000-4000-8000-000000000032',
+         '96000000-0000-4000-8000-000000000042'
+       )
      ) then raise exception 'FINALIZED_RETENTION_INVALID'; end if;
 end;
 $$;

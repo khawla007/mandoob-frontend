@@ -18,7 +18,9 @@ const claimSchema = z
   })
   .strict();
 const claimsSchema = z.array(claimSchema).max(25);
-const finalizeSchema = z.object({ status: z.enum(['cleaned', 'referenced']) }).strict();
+const finalizeSchema = z
+  .object({ status: z.enum(['quiescing', 'cleaned', 'referenced']) })
+  .strict();
 
 type Claim = z.infer<typeof claimSchema>;
 type FinalizeResult = z.infer<typeof finalizeSchema>;
@@ -97,7 +99,13 @@ export async function cleanupAbandonedProCredentialEvidenceUploads(deps: Cleanup
     .max(30_000)
     .parse(deps.timeoutMs ?? 10_000);
   const claims = await (deps.claim ?? claimBatch)(workerId, batchSize);
-  const result = { claimed: claims.length, cleaned: 0, referenced: 0, retryable: 0 };
+  const result = {
+    claimed: claims.length,
+    quiescing: 0,
+    cleaned: 0,
+    referenced: 0,
+    retryable: 0,
+  };
   for (const raw of claims) {
     try {
       const claim = claimSchema.parse(raw);
