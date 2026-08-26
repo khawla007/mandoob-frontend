@@ -55,11 +55,14 @@ begin
   v_result := public.prepare_pro_credential_evidence_upload(
     '95300000-0000-4000-8000-000000000001', '95300000-0000-4000-8000-000000000010', 0,
     v_upload_operation, repeat('1', 64), v_upload_operation, v_upload_path,
-    'application/pdf', 8, repeat('a', 64), 'terminal-upload.pdf', 'clamav',
-    '2026-08-26T12:00:00Z'
+    'application/pdf', 8, repeat('a', 64), 'terminal-upload.pdf', 'private-clamav-secondary',
+    '2026-08-26T12:05:00Z'
   );
-  if v_result ->> 'status' <> 'complete' or v_result #>> '{credential,version}' <> '1' then
+  if v_result ->> 'status' <> 'complete' then
     raise exception 'UPLOAD_TERMINAL_REPLAY_BLOCKED_BY_REMOVAL';
+  end if;
+  if v_result #>> '{credential,version}' <> '1' then
+    raise exception 'UPLOAD_TERMINAL_REPLAY_SCANNER_METADATA_CHANGED';
   end if;
 
   begin

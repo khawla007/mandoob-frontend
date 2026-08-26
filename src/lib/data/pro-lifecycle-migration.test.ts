@@ -31,6 +31,9 @@ const evidenceUploadQuiescenceMigrationPath =
 const evidenceTerminalReplayMigrationPath =
   'supabase/migrations/20260826106000_0086f_pro_evidence_terminal_replay_mutex.sql';
 const evidenceTerminalReplaySqlTestPath = 'supabase/tests/pro_evidence_terminal_replay_mutex.sql';
+const evidenceReplayRetentionMigrationPath =
+  'supabase/migrations/20260826107000_0086g_pro_evidence_replay_retention.sql';
+const evidenceTombstoneRetentionSqlTestPath = 'supabase/tests/pro_evidence_tombstone_retention.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
@@ -147,6 +150,8 @@ test('credential evidence upload cleanup runbook documents external scheduling a
   assert.match(docs, /five-minute quiescence/iu);
   assert.match(docs, /two erases/iu);
   assert.match(docs, /cleaned tombstone/iu);
+  assert.match(docs, /91\s+days/iu);
+  assert.match(docs, /90-day operation-receipt window/iu);
 });
 
 test('credential evidence upload cleanup SQL fixture covers claim, reference race and retention', () => {
@@ -308,6 +313,7 @@ test('terminal evidence replay SQL covers both opposing protocols and denial cas
   const sql = readFileSync(join(process.cwd(), evidenceTerminalReplaySqlTestPath), 'utf8');
   for (const marker of [
     'UPLOAD_TERMINAL_REPLAY_BLOCKED_BY_REMOVAL',
+    'UPLOAD_TERMINAL_REPLAY_SCANNER_METADATA_CHANGED',
     'REMOVAL_TERMINAL_REPLAY_BLOCKED_BY_UPLOAD',
     'UPLOAD_TERMINAL_REPLAY_PAYLOAD_MISMATCH_ACCEPTED',
     'REMOVAL_TERMINAL_REPLAY_PAYLOAD_MISMATCH_ACCEPTED',
@@ -318,6 +324,56 @@ test('terminal evidence replay SQL covers both opposing protocols and denial cas
   ]) {
     assert.match(sql, new RegExp(marker, 'u'));
   }
+  assert.doesNotMatch(sql, /(?:delete|insert|update)[\s\S]*storage\.objects/u);
+});
+
+test('0086g keeps logical upload replay stable and tombstones beyond receipt retention', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceReplayRetentionMigrationPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceReplayRetentionMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  const upload = sql.slice(
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_upload'),
+    sql.indexOf(
+      'create or replace function public.guard_pro_credential_evidence_removal_reservation',
+    ),
+  );
+  assert.match(upload, /v_terminal\.actor_id[\s\S]*v_terminal\.original_name_safe/u);
+  assert.doesNotMatch(upload, /v_terminal\.scan_provider|v_terminal\.scan_completed_at/u);
+  assert.match(
+    sql,
+    /status in \('finalized', 'cleaned'\)[\s\S]*interval '91 days'[\s\S]*limit 1000[\s\S]*for update skip locked/u,
+  );
+  assert.match(
+    sql,
+    /status = 'complete'[\s\S]*completed_at[\s\S]*status = 'cancelled'[\s\S]*cancelled_at[\s\S]*interval '91 days'[\s\S]*limit 1000[\s\S]*for update skip locked/u,
+  );
+  assert.match(sql, /pro-evidence-upload-tombstone-retention/u);
+  assert.match(sql, /pro-evidence-removal-retention-cleanup/u);
+  for (const fn of [
+    'prepare_pro_credential_evidence_upload',
+    'cleanup_finalized_pro_credential_evidence_upload_reservations',
+    'cleanup_pro_credential_evidence_removals',
+    'guard_pro_credential_evidence_removal_reservation',
+  ]) {
+    assert.match(sql, new RegExp(`function public\\.${fn}[\\s\\S]*set search_path = ''`, 'u'));
+    assert.match(sql, new RegExp(`alter function public\\.${fn}[\\s\\S]*owner to postgres`, 'u'));
+  }
+});
+
+test('evidence tombstone retention fixture covers receipt-window and expiry boundaries', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceTombstoneRetentionSqlTestPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceTombstoneRetentionSqlTestPath), 'utf8');
+  for (const marker of [
+    'UPLOAD_TOMBSTONE_REMOVED_INSIDE_RECEIPT_WINDOW',
+    'UPLOAD_TOMBSTONE_NOT_REMOVED_AFTER_RETENTION',
+    'REMOVAL_TOMBSTONE_REMOVED_INSIDE_RECEIPT_WINDOW',
+    'REMOVAL_TOMBSTONE_NOT_REMOVED_AFTER_RETENTION',
+  ]) {
+    assert.match(sql, new RegExp(marker, 'u'));
+  }
+  assert.match(sql, /90 days 12 hours/u);
+  assert.match(sql, /92 days/u);
   assert.doesNotMatch(sql, /(?:delete|insert|update)[\s\S]*storage\.objects/u);
 });
 

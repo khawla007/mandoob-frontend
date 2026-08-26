@@ -191,7 +191,7 @@ begin
       || '96000000-0000-4000-8000-000000000010/'
       || '96000000-0000-4000-8000-000000000031',
     'application/pdf', 8, repeat('c', 64), 'old.pdf', 'clamav', now(),
-    'finalized', now() - interval '31 days'
+    'finalized', now() - interval '92 days'
   );
   insert into public.pro_credential_evidence_upload_reservations (
     id, pro_profile_id, credential_id, actor_id, expected_version, operation_id,
@@ -208,7 +208,7 @@ begin
       || '96000000-0000-4000-8000-000000000010/'
       || '96000000-0000-4000-8000-000000000041',
     'application/pdf', 8, repeat('e', 64), 'cleaned.pdf', 'clamav', now(),
-    'cleaned', 2, now() - interval '31 days'
+    'cleaned', 2, now() - interval '92 days'
   );
   v_retained := public.cleanup_finalized_pro_credential_evidence_upload_reservations();
   if v_retained < 2 or exists (

@@ -14,8 +14,9 @@ worker never intentionally deletes a referenced artifact.
 Upload writes are hard-aborted after 120 seconds, with the abort signal passed to the underlying
 Storage fetch. Cleanup uses two erases: the first begins a five-minute quiescence while retaining the
 durable path, and the second runs only after that write deadline has elapsed. A successful second
-pass leaves a `cleaned` tombstone, so a late or ambiguous write cannot make its path undiscoverable.
+pass leaves a cleaned tombstone, so a late or ambiguous write cannot make its path undiscoverable.
 
 Postgres schedules finalized reservation tombstone retention independently each day. Finalized
-and cleaned tombstones older than 30 days are removed in bounded batches; evidence rows and Storage
-objects are not removed by that retention job.
+and cleaned upload tombstones, plus complete and cancelled removal tombstones, are retained for 91
+days—strictly longer than the 90-day operation-receipt window—then removed in bounded batches.
+Evidence rows and Storage objects are not removed by either retention job.

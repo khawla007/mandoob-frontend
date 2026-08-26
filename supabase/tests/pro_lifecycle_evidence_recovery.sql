@@ -64,7 +64,7 @@ insert into public.pro_credential_evidence_removals (
   id, pro_profile_id, credential_id, evidence_id, actor_id, expected_version,
   operation_id, payload_hash, status, sanitized_result, completed_at, lease_expires_at, created_at
 ) values (
-  '94000000-0000-4000-8000-000000000052', '94000000-0000-4000-8000-000000000003', '94000000-0000-4000-8000-000000000050', '94000000-0000-4000-8000-000000000051', '94000000-0000-4000-8000-000000000003', 0, '94000000-0000-4000-8000-000000000053', repeat('f', 64), 'complete', '{}'::jsonb, now() - interval '31 days', now() - interval '31 days', now() - interval '32 days'
+  '94000000-0000-4000-8000-000000000052', '94000000-0000-4000-8000-000000000003', '94000000-0000-4000-8000-000000000050', '94000000-0000-4000-8000-000000000051', '94000000-0000-4000-8000-000000000003', 0, '94000000-0000-4000-8000-000000000053', repeat('f', 64), 'complete', '{}'::jsonb, now() - interval '92 days', now() - interval '92 days', now() - interval '93 days'
 );
 
 insert into storage.objects (bucket_id, name) values (
