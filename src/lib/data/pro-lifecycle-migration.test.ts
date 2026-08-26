@@ -28,6 +28,9 @@ const evidenceUploadCleanupSqlTestPath =
   'supabase/tests/pro_credential_evidence_upload_cleanup.sql';
 const evidenceUploadQuiescenceMigrationPath =
   'supabase/migrations/20260826105000_0086e_pro_evidence_upload_quiescence.sql';
+const evidenceTerminalReplayMigrationPath =
+  'supabase/migrations/20260826106000_0086f_pro_evidence_terminal_replay_mutex.sql';
+const evidenceTerminalReplaySqlTestPath = 'supabase/tests/pro_evidence_terminal_replay_mutex.sql';
 
 function migration(index: number): string {
   return readFileSync(join(process.cwd(), migrationPaths[index]!), 'utf8')
@@ -261,6 +264,61 @@ test('evidence protocol mutex uses lock-controlled fixtures in both directions',
     const source = readFileSync(path, 'utf8');
     assert.doesNotMatch(source, /(?:delete|insert|update)[\s\S]*storage\.objects/u);
   }
+});
+
+test('0086f authorizes exact terminal replay before opposing protocol mutexes', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceTerminalReplayMigrationPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceTerminalReplayMigrationPath), 'utf8')
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
+  for (const fn of [
+    'prepare_pro_credential_evidence_upload',
+    'prepare_pro_credential_evidence_removal',
+  ]) {
+    assert.match(sql, new RegExp(`function public\\.${fn}[\\s\\S]*set search_path = ''`, 'u'));
+    assert.match(sql, new RegExp(`alter function public\\.${fn}[\\s\\S]*owner to postgres`, 'u'));
+    assert.match(
+      sql,
+      new RegExp(
+        `revoke all on function public\\.${fn}[\\s\\S]*from public, anon, authenticated`,
+        'u',
+      ),
+    );
+  }
+  const upload = sql.slice(
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_upload'),
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_removal'),
+  );
+  const removal = sql.slice(
+    sql.indexOf('create or replace function public.prepare_pro_credential_evidence_removal'),
+    sql.indexOf('alter function public.prepare_pro_credential_evidence_upload'),
+  );
+  assert.match(
+    upload,
+    /assert_pro_lifecycle_actor[\s\S]*status = 'finalized'[\s\S]*return[\s\S]*from public\.pro_credential_evidence_removals/u,
+  );
+  assert.match(
+    removal,
+    /assert_pro_lifecycle_actor[\s\S]*status = 'complete'[\s\S]*return[\s\S]*from public\.pro_credential_evidence_upload_reservations/u,
+  );
+});
+
+test('terminal evidence replay SQL covers both opposing protocols and denial cases', () => {
+  assert.equal(existsSync(join(process.cwd(), evidenceTerminalReplaySqlTestPath)), true);
+  const sql = readFileSync(join(process.cwd(), evidenceTerminalReplaySqlTestPath), 'utf8');
+  for (const marker of [
+    'UPLOAD_TERMINAL_REPLAY_BLOCKED_BY_REMOVAL',
+    'REMOVAL_TERMINAL_REPLAY_BLOCKED_BY_UPLOAD',
+    'UPLOAD_TERMINAL_REPLAY_PAYLOAD_MISMATCH_ACCEPTED',
+    'REMOVAL_TERMINAL_REPLAY_PAYLOAD_MISMATCH_ACCEPTED',
+    'UPLOAD_TERMINAL_REPLAY_ACTOR_MISMATCH_ACCEPTED',
+    'REMOVAL_TERMINAL_REPLAY_ACTOR_MISMATCH_ACCEPTED',
+    'UPLOAD_TERMINAL_REPLAY_UNAUTHORIZED',
+    'REMOVAL_TERMINAL_REPLAY_UNAUTHORIZED',
+  ]) {
+    assert.match(sql, new RegExp(marker, 'u'));
+  }
+  assert.doesNotMatch(sql, /(?:delete|insert|update)[\s\S]*storage\.objects/u);
 });
 
 test('Step 3 uses the exact forward-only migration catalog', () => {
