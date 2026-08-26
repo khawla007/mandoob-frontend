@@ -40,24 +40,6 @@ test('credential client uses the secured lifecycle APIs and refreshes masked ser
 
 test('secured self route executes create, blank-preserving save, submit, and replacement commands', async () => {
   const commands: Array<Record<string, unknown>> = [];
-  const handler = createCredentialPostHandler({
-    guardCsrf: async () => null,
-    requirePro: async () => ({
-      id: ACTOR,
-      role: 'pro',
-      tenantId: null,
-      aal: 'aal2',
-      mfaEnrolled: true,
-      email: null,
-    }),
-    resolveTarget: async () => ({ proProfileId: ACTOR, credentialIds: [CREDENTIAL] }),
-    limit: async () => 'allowed',
-    mutate: async (_actor, _target, command) => {
-      commands.push(command);
-      return { credentialId: CREDENTIAL, version: 2 };
-    },
-    revalidate: () => undefined,
-  });
   for (const body of [
     { command: 'create', operationId: OPERATION },
     {
@@ -73,6 +55,27 @@ test('secured self route executes create, blank-preserving save, submit, and rep
     { command: 'submit', credentialId: CREDENTIAL, expectedVersion: 1, operationId: OPERATION },
     { command: 'replace', credentialId: CREDENTIAL, expectedVersion: 1, operationId: OPERATION },
   ]) {
+    const handler = createCredentialPostHandler({
+      guardCsrf: async () => null,
+      requirePro: async () => ({
+        id: ACTOR,
+        role: 'pro',
+        tenantId: null,
+        aal: 'aal2',
+        mfaEnrolled: true,
+        email: null,
+      }),
+      resolveTarget: async () => ({
+        proProfileId: ACTOR,
+        credentialIds: body.command === 'create' ? [] : [CREDENTIAL],
+      }),
+      limit: async () => 'allowed',
+      mutate: async (_actor, _target, command) => {
+        commands.push(command);
+        return { credentialId: CREDENTIAL, version: 2 };
+      },
+      revalidate: () => undefined,
+    });
     assert.equal((await handler(credentialRequest(body))).status, 200);
   }
   assert.deepEqual(
