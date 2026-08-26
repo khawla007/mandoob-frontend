@@ -11,6 +11,14 @@ const assignmentMigration = readFileSync(
   join(process.cwd(), 'supabase/migrations/20260817091000_0060_company_assignment_rpcs_rls.sql'),
   'utf8',
 );
+const selfUpdateForwardMigration = readFileSync(
+  join(process.cwd(), 'supabase/migrations/20260826100000_0085_pro_profile_self_update_columns.sql'),
+  'utf8',
+);
+const selfUpdateForwardUpgradeSql = readFileSync(
+  join(process.cwd(), 'supabase/tests/pro_profile_self_update_forward_upgrade.sql'),
+  'utf8',
+);
 
 function functionDdl(name: string): string {
   const start = migration.indexOf(`function public.${name}`);
@@ -80,10 +88,15 @@ test('credential state is coherent, replay-safe, and unavailable to direct authe
     assignmentMigration,
     /revoke update on table public\.pro_profiles from public, anon, authenticated/iu,
   );
+  assert.match(assignmentMigration, /grant update \(\s*service_areas, bio\s*\)[\s\S]*to authenticated/iu);
+  assert.doesNotMatch(assignmentMigration, /grant update \(\s*designation, department/iu);
   assert.match(
-    assignmentMigration,
+    selfUpdateForwardMigration,
     /grant update \(\s*designation, department, service_areas, bio\s*\)[\s\S]*to authenticated/iu,
   );
+  assert.match(selfUpdateForwardMigration, /revoke update on table public\.pro_profiles/iu);
+  assert.match(selfUpdateForwardUpgradeSql, /has_column_privilege[\s\S]*designation[\s\S]*department/iu);
+  assert.match(selfUpdateForwardUpgradeSql, /raise exception/iu);
 });
 
 test('expanded admin audit actions include credential verification but not tenant creation', () => {

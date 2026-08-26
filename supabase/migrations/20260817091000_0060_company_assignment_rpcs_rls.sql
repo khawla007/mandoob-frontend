@@ -1370,7 +1370,7 @@ drop policy if exists pro_profiles_super_admin_all on public.pro_profiles;
 drop policy if exists pro_profiles_tenant_read on public.pro_profiles;
 revoke update on table public.pro_profiles from public, anon, authenticated;
 grant update (
-  designation, department, service_areas, bio
+  service_areas, bio
 ) on table public.pro_profiles to authenticated;
 create policy pro_profiles_self_read on public.pro_profiles for select
   using (
