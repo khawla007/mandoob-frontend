@@ -71,7 +71,8 @@ async function scanWithClamAv(
     let response = '';
     let responseBytes = 0;
     let settled = false;
-    let deadline: ReturnType<typeof setTimeout>;
+    const socket = createConnection(endpoint);
+    const deadline = setTimeout(() => finish(unavailable('clamav')), timeoutMs);
     const finish = (result: FileScanResult) => {
       if (settled) return;
       settled = true;
@@ -79,8 +80,6 @@ async function scanWithClamAv(
       socket.destroy();
       resolve(result);
     };
-    const socket = createConnection(endpoint);
-    deadline = setTimeout(() => finish(unavailable('clamav')), timeoutMs);
     socket.once('connect', () => {
       socket.write(Buffer.from('zINSTREAM\0', 'utf8'));
       const length = Buffer.allocUnsafe(4);

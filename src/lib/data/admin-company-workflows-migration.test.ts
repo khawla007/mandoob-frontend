@@ -12,7 +12,10 @@ const assignmentMigration = readFileSync(
   'utf8',
 );
 const selfUpdateForwardMigration = readFileSync(
-  join(process.cwd(), 'supabase/migrations/20260826100000_0085_pro_profile_self_update_columns.sql'),
+  join(
+    process.cwd(),
+    'supabase/migrations/20260826100000_0085_pro_profile_self_update_columns.sql',
+  ),
   'utf8',
 );
 const selfUpdateForwardUpgradeSql = readFileSync(
@@ -88,14 +91,20 @@ test('credential state is coherent, replay-safe, and unavailable to direct authe
     assignmentMigration,
     /revoke update on table public\.pro_profiles from public, anon, authenticated/iu,
   );
-  assert.match(assignmentMigration, /grant update \(\s*service_areas, bio\s*\)[\s\S]*to authenticated/iu);
+  assert.match(
+    assignmentMigration,
+    /grant update \(\s*service_areas, bio\s*\)[\s\S]*to authenticated/iu,
+  );
   assert.doesNotMatch(assignmentMigration, /grant update \(\s*designation, department/iu);
   assert.match(
     selfUpdateForwardMigration,
     /grant update \(\s*designation, department, service_areas, bio\s*\)[\s\S]*to authenticated/iu,
   );
   assert.match(selfUpdateForwardMigration, /revoke update on table public\.pro_profiles/iu);
-  assert.match(selfUpdateForwardUpgradeSql, /has_column_privilege[\s\S]*designation[\s\S]*department/iu);
+  assert.match(
+    selfUpdateForwardUpgradeSql,
+    /has_column_privilege[\s\S]*designation[\s\S]*department/iu,
+  );
   assert.match(selfUpdateForwardUpgradeSql, /raise exception/iu);
 });
 
