@@ -49,8 +49,8 @@ begin
   loop
     v_index := v_index + 1;
     insert into public.pro_credentials (
-      pro_profile_id, state, submitted_at, created_by
-    ) values (v_target, v_state, now(), v_target)
+      pro_profile_id, state, version, submitted_at, created_by
+    ) values (v_target, v_state, 1, now(), v_target)
     returning id into v_old_id;
 
     begin
@@ -65,7 +65,7 @@ begin
     end;
 
     v_replacement := public.create_pro_credential_replacement(
-      v_target, v_old_id, 0,
+      v_target, v_old_id, 1,
       ('92000000-0000-4000-8000-' || pg_catalog.lpad((200 + v_index)::text, 12, '0'))::uuid,
       pg_catalog.repeat((v_index + 3)::text, 64)
     );

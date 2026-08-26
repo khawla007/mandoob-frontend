@@ -395,6 +395,11 @@ test('0086 requires zero credential history for create and preserves terminal re
   }
   assert.match(fixture, /create_pro_credential_draft/u);
   assert.match(fixture, /create_pro_credential_replacement/u);
+  assert.match(
+    fixture,
+    /insert into public\.pro_credentials \([\s\S]*version[\s\S]*values \(v_target, v_state, 1,/u,
+  );
+  assert.match(fixture, /v_target, v_old_id, 1,/u);
   assert.match(fixture, /supersedes_credential_id/u);
   assert.match(fixture, /credential_replay_changed/u);
   assert.match(fixture, /expected_credential_history_exists_for_new_operation/u);
