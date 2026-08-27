@@ -165,7 +165,7 @@ Module._load = function (request, parent, isMain) {
         href: `/legacy-${index}`,
         label: `Legacy ${index}`,
       })),
-      authed: true,
+      authed: true as const,
       signInLabel: 'Sign in',
       ctaLabel: 'Get Estimate',
       accountHref: '/workspace',

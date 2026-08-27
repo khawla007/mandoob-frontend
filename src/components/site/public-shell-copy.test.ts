@@ -6,6 +6,8 @@ import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messagefor
 import ar from '@/messages/ar.json';
 import en from '@/messages/en.json';
 
+const headerSource = readFileSync(new URL('./SiteHeader.tsx', import.meta.url), 'utf8');
+
 type Messages = Record<string, unknown>;
 
 const SHELL_COPY_PATHS = [
@@ -147,4 +149,35 @@ describe('public-facing layout copy', () => {
       assert.equal(source.match(/<main\b/gu)?.length, 1);
     });
   }
+});
+
+describe('SiteHeader localization contract', () => {
+  it('localizes the brand, navigation, CTA, and mobile action copy through site messages', () => {
+    assert.match(headerSource, /aria-label=\{tSite\('brandHome'\)\}/u);
+    for (const key of [
+      'primaryNav',
+      'mobileNav',
+      'menuTitle',
+      'openMenu',
+      'closeMenu',
+      'getEstimate',
+      'openWorkspace',
+      'languageChanging',
+      'languageChangeFailed',
+    ]) {
+      assert.match(headerSource, new RegExp(`tSite\\('${key}'\\)`, 'u'));
+    }
+    assert.doesNotMatch(headerSource, />\s*(?:Platform|Customers|For PROs|Get Started)\s*</u);
+  });
+
+  it('passes safe localized language pending and failure copy across both switchers', () => {
+    assert.match(
+      headerSource,
+      /<LanguageSwitcher[^>]*failureMessage=\{tSite\('languageChangeFailed'\)\}[^>]*pendingLabel=\{tSite\('languageChanging'\)\}/u,
+    );
+    assert.match(
+      headerSource,
+      /<MobileNav[^>]*languageFailureMessage=\{tSite\('languageChangeFailed'\)\}[^>]*languagePendingLabel=\{tSite\('languageChanging'\)\}/u,
+    );
+  });
 });

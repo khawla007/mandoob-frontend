@@ -14,18 +14,31 @@ import type { PublicNavLink } from './public-navigation';
 type MobileNavLink = Pick<PublicNavLink, 'href' | 'label'> &
   Partial<Pick<PublicNavLink, 'id' | 'currentPath'>>;
 
-type MobileNavProps = {
+type MobileNavBaseProps = {
   links: readonly MobileNavLink[];
-  authed: boolean;
   signInLabel: string;
   ctaLabel: string;
-  accountHref?: string;
-  accountLabel?: string;
   openMenuLabel?: string;
   closeMenuLabel?: string;
   menuTitle?: string;
   mobileNavLabel?: string;
+  languageFailureMessage?: string;
+  languagePendingLabel?: string;
 };
+
+type MobileNavProps = MobileNavBaseProps &
+  (
+    | {
+        authed: true;
+        accountHref: string;
+        accountLabel: string;
+      }
+    | {
+        authed: false;
+        accountHref?: never;
+        accountLabel?: never;
+      }
+  );
 
 const legacyIdsByHref: Readonly<Record<string, PublicNavLink['id']>> = {
   '/#services': 'platform',
@@ -53,12 +66,14 @@ export function MobileNav({
   authed,
   signInLabel,
   ctaLabel,
-  accountHref = '/',
+  accountHref,
   accountLabel,
   openMenuLabel,
   closeMenuLabel,
   menuTitle,
   mobileNavLabel,
+  languageFailureMessage,
+  languagePendingLabel,
 }: MobileNavProps) {
   const t = useTranslations('site');
   const pathname = usePathname();
@@ -67,7 +82,6 @@ export function MobileNav({
   const resolvedCloseLabel = closeMenuLabel ?? t('closeMenu');
   const resolvedTitle = menuTitle ?? t('menuTitle');
   const resolvedNavLabel = mobileNavLabel ?? t('mobileNav');
-  const resolvedAccountLabel = accountLabel ?? t('openWorkspace');
   const publicLinks = normalizeLinks(links);
   const closeMenu = () => setOpen(false);
 
@@ -120,7 +134,11 @@ export function MobileNav({
           </nav>
 
           <div className="public-mobile-dialog__utilities">
-            <LanguageSwitcher className="public-mobile-dialog__language" />
+            <LanguageSwitcher
+              className="public-mobile-dialog__language"
+              failureMessage={languageFailureMessage}
+              pendingLabel={languagePendingLabel}
+            />
             <PublicThemeToggle />
           </div>
 
@@ -131,7 +149,7 @@ export function MobileNav({
                 onClick={closeMenu}
                 className="public-mobile-dialog__account"
               >
-                {resolvedAccountLabel}
+                {accountLabel}
               </Link>
             ) : (
               <Link href="/login" onClick={closeMenu} className="public-mobile-dialog__account">

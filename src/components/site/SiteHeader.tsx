@@ -6,9 +6,11 @@ import { resolveRoleHome } from '@/lib/auth/role-home';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
-import { ThemeToggle } from '@/components/admin/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { MobileNav } from './MobileNav';
+import { PublicNavLinks } from './PublicNavLinks';
+import { PublicThemeToggle } from './PublicThemeToggle';
+import { PUBLIC_NAV_ITEMS, type PublicNavLink } from './public-navigation';
 
 function BrandMark() {
   return (
@@ -49,45 +51,45 @@ async function getCustomerWorkspaceSlug(tenantId: string | null): Promise<string
 }
 
 export async function SiteHeader() {
-  const session = await getSessionProfile();
-  const displayName = session ? await getDisplayName(session.id) : null;
-  const homeHref = session
-    ? await resolveRoleHome({ role: session.role, tenantId: session.tenantId })
-    : '/login';
-  const workspaceSlug =
-    session?.role === 'customer' ? await getCustomerWorkspaceSlug(session.tenantId) : null;
-  const tAuth = await getTranslations('auth');
-  const tSite = await getTranslations('site');
-  const tCommon = await getTranslations('common');
+  const [session, tAuth, tSite] = await Promise.all([
+    getSessionProfile(),
+    getTranslations('auth'),
+    getTranslations('site'),
+  ]);
+  const [displayName, homeHref, workspaceSlug] = session
+    ? await Promise.all([
+        getDisplayName(session.id),
+        resolveRoleHome({ role: session.role, tenantId: session.tenantId }),
+        session.role === 'customer'
+          ? getCustomerWorkspaceSlug(session.tenantId)
+          : Promise.resolve(null),
+      ])
+    : [null, '/login', null];
 
-  const navLinks = [
-    { href: '/#services', label: 'Platform' },
-    { href: '/estimate', label: tSite('estimate') },
-    { href: '/#customers', label: 'Customers' },
-    { href: '/pro', label: 'For PROs' },
-    { href: '/pricing', label: tSite('pricing') },
-  ];
+  const navLinks: PublicNavLink[] = PUBLIC_NAV_ITEMS.map((item) => ({
+    ...item,
+    label: tSite(item.id),
+  }));
 
   return (
     <div className="site-public">
       <header className="nav" role="banner" data-route-progress-anchor>
         <div className="nav__inner container">
-          <Link href="/" className="nav__brand" aria-label="Mandoob home">
+          <Link href="/" className="nav__brand" aria-label={tSite('brandHome')}>
             <BrandMark />
             <span className="nav__brandName">Mandoob</span>
           </Link>
 
           <nav className="nav__links" aria-label={tSite('primaryNav')}>
-            {navLinks.map((l) => (
-              <Link key={l.href} href={l.href}>
-                {l.label}
-              </Link>
-            ))}
+            <PublicNavLinks links={navLinks} />
           </nav>
 
           <div className="nav__cta">
-            <ThemeToggle />
-            <LanguageSwitcher />
+            <PublicThemeToggle />
+            <LanguageSwitcher
+              failureMessage={tSite('languageChangeFailed')}
+              pendingLabel={tSite('languageChanging')}
+            />
             {session ? (
               <UserMenu
                 email={session.email}
@@ -97,23 +99,44 @@ export async function SiteHeader() {
                 workspaceSlug={workspaceSlug}
               />
             ) : (
-              <>
-                <Link className="link-muted" href="/login">
-                  {tAuth('signIn')}
-                </Link>
-                <Link className="btn btn--accent btn--sm" href="/estimate">
-                  {tCommon('getStarted')}
-                </Link>
-              </>
+              <Link className="link-muted" href="/login">
+                {tAuth('signIn')}
+              </Link>
             )}
+            <Link className="btn btn--accent btn--sm" href="/estimate">
+              {tSite('getEstimate')}
+            </Link>
           </div>
 
-          <MobileNav
-            links={navLinks}
-            authed={Boolean(session)}
-            signInLabel={tAuth('signIn')}
-            ctaLabel={tCommon('getStarted')}
-          />
+          {session ? (
+            <MobileNav
+              links={navLinks}
+              authed={true}
+              signInLabel={tAuth('signIn')}
+              ctaLabel={tSite('getEstimate')}
+              accountHref={homeHref}
+              accountLabel={tSite('openWorkspace')}
+              openMenuLabel={tSite('openMenu')}
+              closeMenuLabel={tSite('closeMenu')}
+              menuTitle={tSite('menuTitle')}
+              mobileNavLabel={tSite('mobileNav')}
+              languageFailureMessage={tSite('languageChangeFailed')}
+              languagePendingLabel={tSite('languageChanging')}
+            />
+          ) : (
+            <MobileNav
+              links={navLinks}
+              authed={false}
+              signInLabel={tAuth('signIn')}
+              ctaLabel={tSite('getEstimate')}
+              openMenuLabel={tSite('openMenu')}
+              closeMenuLabel={tSite('closeMenu')}
+              menuTitle={tSite('menuTitle')}
+              mobileNavLabel={tSite('mobileNav')}
+              languageFailureMessage={tSite('languageChangeFailed')}
+              languagePendingLabel={tSite('languageChanging')}
+            />
+          )}
         </div>
       </header>
     </div>
