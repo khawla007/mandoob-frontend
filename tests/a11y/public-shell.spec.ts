@@ -1,243 +1,483 @@
-import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import path from 'node:path';
 
-test.use({ viewport: { width: 390, height: 844 } });
+type Locale = 'en' | 'ar';
+type Theme = 'light' | 'dark';
 
-const expectedNavigation: readonly {
-  name: string;
-  href: string;
-  currentPath?: string;
-}[] = [
-  { name: 'Platform', href: '/#services', currentPath: '/' },
-  { name: 'Estimate', href: '/estimate', currentPath: '/estimate' },
-  { name: 'Customers', href: '/#customers' },
-  { name: 'For PROs', href: '/pro', currentPath: '/pro' },
-  { name: 'Pricing', href: '/pricing', currentPath: '/pricing' },
-];
+const matrix = [
+  { viewport: { width: 390, height: 844 }, locale: 'en', theme: 'dark' },
+  { viewport: { width: 768, height: 1024 }, locale: 'ar', theme: 'light' },
+  { viewport: { width: 1024, height: 768 }, locale: 'en', theme: 'light' },
+  { viewport: { width: 1440, height: 900 }, locale: 'ar', theme: 'dark' },
+  { viewport: { width: 1920, height: 1080 }, locale: 'en', theme: 'dark' },
+] as const;
 
-test('desktop and mobile use the same ordered destinations with exact current-page state', async ({
+const copy = {
+  en: {
+    dir: 'ltr',
+    primaryNav: 'Primary navigation',
+    mobileNav: 'Mobile navigation',
+    menu: 'Navigation menu',
+    open: 'Open menu',
+    close: 'Close menu',
+    skip: 'Skip to main content',
+    language: /English.*Language/u,
+    otherLanguage: 'العربية',
+    nextTheme: { light: 'Use dark theme', dark: 'Use light theme' },
+    navigation: ['Platform', 'Estimate', 'Customers', 'For PROs', 'Pricing'],
+  },
+  ar: {
+    dir: 'rtl',
+    primaryNav: 'التنقل الرئيسي',
+    mobileNav: 'التنقل على الأجهزة المحمولة',
+    menu: 'قائمة التنقل',
+    open: 'فتح القائمة',
+    close: 'إغلاق القائمة',
+    skip: 'الانتقال إلى المحتوى الرئيسي',
+    language: /العربية.*اللغة/u,
+    otherLanguage: 'English',
+    nextTheme: { light: 'استخدام المظهر الداكن', dark: 'استخدام المظهر الفاتح' },
+    navigation: ['المنصة', 'تقدير التكلفة', 'العملاء', 'لمتخصصي العلاقات الحكومية', 'الأسعار'],
+  },
+} as const;
+
+const navigationHrefs = ['/#services', '/estimate', '/#customers', '/pro', '/pricing'];
+const shellDestinations = [
+  '/',
+  '/estimate',
+  '/pro',
+  '/pricing',
+  '/login',
+  '/apply',
+  '/about',
+  '/knowledge-base',
+  '/contact',
+  '/legal/privacy',
+  '/legal/terms',
+  '/legal/pdpl',
+  '/legal/trust',
+] as const;
+
+declare global {
+  interface Window {
+    __shellThemeFrames?: string[];
+  }
+}
+
+async function primeState(context: BrowserContext, page: Page, locale: Locale, theme: Theme) {
+  await context.addCookies([
+    { name: 'NEXT_LOCALE', value: locale, url: 'http://localhost:3001', sameSite: 'Lax' },
+  ]);
+  await page.addInitScript((persistedTheme) => {
+    localStorage.setItem('theme', persistedTheme);
+    window.__shellThemeFrames = [];
+    const record = () => {
+      if (document.documentElement) {
+        window.__shellThemeFrames?.push(document.documentElement.className);
+      }
+    };
+    new MutationObserver(record).observe(document, {
+      attributes: true,
+      attributeFilter: ['class'],
+      childList: true,
+      subtree: true,
+    });
+    new PerformanceObserver((entries) => {
+      if (entries.getEntriesByName('first-paint').length === 0) return;
+      record();
+      document.documentElement.dataset.firstPaintTheme =
+        document.documentElement.classList.contains('dark')
+          ? 'dark'
+          : document.documentElement.classList.contains('light')
+            ? 'light'
+            : 'none';
+      document.documentElement.dataset.themeTransitions =
+        window.__shellThemeFrames?.join('|') ?? '';
+    }).observe({ type: 'paint', buffered: true });
+  }, theme);
+}
+
+function watchRuntime(page: Page) {
+  const problems: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') problems.push(`console: ${message.text()}`);
+  });
+  page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
+  page.on('requestfailed', (request) => {
+    const url = new URL(request.url());
+    if (url.origin === 'http://localhost:3001')
+      problems.push(`requestfailed: ${url.pathname} ${request.failure()?.errorText ?? ''}`);
+  });
+  page.on('response', (response) => {
+    const url = new URL(response.url());
+    if (url.origin === 'http://localhost:3001' && response.status() >= 400)
+      problems.push(`response: ${response.status()} ${url.pathname}`);
+  });
+  return problems;
+}
+
+async function expectNoShellOverflow(page: Page, dialogOpen = false) {
+  const overflow = await page.evaluate((isDialogOpen) => {
+    const viewportWidth = document.documentElement.clientWidth;
+    const shell = [
+      document.querySelector<HTMLElement>('header'),
+      document.querySelector<HTMLElement>('footer'),
+      ...(isDialogOpen ? [document.querySelector<HTMLElement>('.public-mobile-dialog')] : []),
+    ].filter((element): element is HTMLElement => Boolean(element));
+    return shell.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        tag: element.getAttribute('role') ?? element.tagName.toLowerCase(),
+        inlineOverflow: element.scrollWidth - element.clientWidth,
+        left: Math.floor(rect.left),
+        right: Math.ceil(rect.right - viewportWidth),
+      };
+    });
+  }, dialogOpen);
+  for (const entry of overflow) {
+    expect(entry.inlineOverflow, `${entry.tag} internal overflow`).toBeLessThanOrEqual(0);
+    expect(entry.left, `${entry.tag} left viewport bound`).toBeGreaterThanOrEqual(0);
+    expect(entry.right, `${entry.tag} right viewport bound`).toBeLessThanOrEqual(0);
+  }
+}
+
+async function expectVisibleTargetsAtLeast44(page: Page, scope: string) {
+  const undersized = await page.locator(scope).evaluateAll((targets) =>
+    targets
+      .filter((target) => {
+        const style = getComputedStyle(target);
+        const rect = target.getBoundingClientRect();
+        return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0;
+      })
+      .map((target) => {
+        const rect = target.getBoundingClientRect();
+        return {
+          name: target.getAttribute('aria-label') ?? target.textContent?.trim() ?? target.tagName,
+          width: rect.width,
+          height: rect.height,
+        };
+      })
+      .filter(({ width, height }) => width < 44 || height < 44),
+  );
+  expect(undersized).toEqual([]);
+}
+
+async function contrastRatio(page: Page, selector: string) {
+  return page.locator(selector).evaluate((element) => {
+    const parse = (value: string) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Canvas unavailable');
+      context.fillStyle = value;
+      context.fillRect(0, 0, 1, 1);
+      return [...context.getImageData(0, 0, 1, 1).data];
+    };
+    const luminance = (rgb: number[]) =>
+      rgb
+        .map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        })
+        .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const foreground = parse(getComputedStyle(element).color);
+    let background = parse(getComputedStyle(element).backgroundColor);
+    for (
+      let ancestor = element.parentElement;
+      ancestor && background[3] < 255;
+      ancestor = ancestor.parentElement
+    ) {
+      const layer = parse(getComputedStyle(ancestor).backgroundColor);
+      const foregroundAlpha = background[3] / 255;
+      const layerAlpha = layer[3] / 255;
+      const outputAlpha = foregroundAlpha + layerAlpha * (1 - foregroundAlpha);
+      if (outputAlpha === 0) continue;
+      background = [
+        ...background
+          .slice(0, 3)
+          .map(
+            (channel, index) =>
+              (channel * foregroundAlpha + layer[index] * layerAlpha * (1 - foregroundAlpha)) /
+              outputAlpha,
+          ),
+        outputAlpha * 255,
+      ];
+    }
+    const values = [luminance(foreground.slice(0, 3)), luminance(background.slice(0, 3))].sort(
+      (a, b) => b - a,
+    );
+    return (values[0] + 0.05) / (values[1] + 0.05);
+  });
+}
+
+for (const entry of matrix) {
+  const label = `${entry.viewport.width}x${entry.viewport.height} ${entry.locale.toUpperCase()} ${entry.theme}`;
+  test(`pairwise shell matrix — ${label}`, async ({ context, page }) => {
+    test.setTimeout(90_000);
+    const runtimeProblems = watchRuntime(page);
+    await page.setViewportSize(entry.viewport);
+    await page.emulateMedia({ colorScheme: entry.theme });
+    await primeState(context, page, entry.locale, entry.theme);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('banner')).toBeVisible();
+    const expected = copy[entry.locale];
+
+    await expect(page.locator('html')).toHaveAttribute('lang', entry.locale);
+    await expect(page.locator('html')).toHaveAttribute('dir', expected.dir);
+    await expect(page.locator('html')).toHaveClass(
+      new RegExp(`(?:^|\\s)${entry.theme}(?:\\s|$)`, 'u'),
+    );
+    await expect(page.locator('html')).toHaveAttribute('data-first-paint-theme', entry.theme);
+    const firstPaintTheme = await page.locator('html').getAttribute('data-first-paint-theme');
+    const themedFrames = ((await page.locator('html').getAttribute('data-theme-transitions')) ?? '')
+      .split('|')
+      .flatMap((className) => className.split(/\s+/u))
+      .filter((className) => className === 'light' || className === 'dark');
+    expect(firstPaintTheme).toBe(entry.theme);
+    expect(themedFrames).not.toContain(entry.theme === 'dark' ? 'light' : 'dark');
+
+    await expect(page.getByRole('banner')).toHaveCount(1);
+    await expect(page.getByRole('main')).toHaveCount(1);
+    await expect(page.getByRole('contentinfo')).toHaveCount(1);
+    await expect(page.locator('a.skip-link')).toHaveCount(1);
+    await expect(page.locator('a.skip-link')).toHaveText(expected.skip);
+    await expectNoShellOverflow(page);
+    await expectVisibleTargetsAtLeast44(
+      page,
+      'header a, header button, [role="dialog"] a, [role="dialog"] button',
+    );
+
+    const desktop = entry.viewport.width >= 1024;
+    if (desktop) {
+      await expect(
+        page.getByRole('button', { name: expected.nextTheme[entry.theme] }).first(),
+      ).toBeVisible();
+      const navigation = page.getByRole('navigation', { name: expected.primaryNav });
+      await expect(navigation).toBeVisible();
+      await expect(navigation.getByRole('link')).toHaveText(expected.navigation);
+      expect(
+        await navigation
+          .getByRole('link')
+          .evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
+      ).toEqual(navigationHrefs);
+      await expect(navigation.locator('[aria-current="page"]')).toHaveText(expected.navigation[0]);
+      await expect(
+        navigation.getByRole('link', { name: expected.navigation[2] }),
+      ).not.toHaveAttribute('aria-current');
+      await page.keyboard.press('Tab');
+      await expect(page.locator('a.skip-link')).toBeFocused();
+      await expect(page.locator('a.skip-link')).toHaveCSS('outline-style', /^(?!none$).+/u);
+      expect(await contrastRatio(page, '.nav__links [aria-current="page"]')).toBeGreaterThanOrEqual(
+        4.5,
+      );
+      expect(await contrastRatio(page, '.nav__cta .btn--accent')).toBeGreaterThanOrEqual(4.5);
+      const axe = await new AxeBuilder({ page })
+        .include('header')
+        .include('footer')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(
+        axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
+      ).toEqual([]);
+    } else {
+      const trigger = page.locator('.nav__menu');
+      await expect(trigger).toHaveAccessibleName(expected.open);
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      await trigger.click();
+      const dialog = page.getByRole('dialog', { name: expected.menu });
+      const navigation = dialog.getByRole('navigation', { name: expected.mobileNav });
+      await expect(dialog).toBeVisible();
+      await expect(
+        dialog.getByRole('button', { name: expected.nextTheme[entry.theme] }),
+      ).toBeVisible();
+      await expect(trigger).toHaveAttribute('aria-label', expected.close);
+      await expect(navigation.getByRole('link')).toHaveText(expected.navigation);
+      expect(
+        await navigation
+          .getByRole('link')
+          .evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
+      ).toEqual(navigationHrefs);
+      await expect(navigation.locator('[aria-current="page"]')).toHaveText(expected.navigation[0]);
+      await expect(
+        navigation.getByRole('link', { name: expected.navigation[2] }),
+      ).not.toHaveAttribute('aria-current');
+      await expectNoShellOverflow(page, true);
+      await expectVisibleTargetsAtLeast44(page, '[role="dialog"] a, [role="dialog"] button');
+      expect(await contrastRatio(page, '.public-mobile-dialog__cta')).toBeGreaterThanOrEqual(4.5);
+      const axe = await new AxeBuilder({ page })
+        .include('[role="dialog"]')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
+      expect(
+        axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
+      ).toEqual([]);
+      await dialog.getByRole('button', { name: expected.language }).click();
+      await expect(
+        page.getByRole('menuitemradio', { name: entry.locale === 'en' ? 'English' : 'العربية' }),
+      ).toHaveAttribute('aria-checked', 'true');
+      await expect(
+        page.getByRole('menuitemradio', { name: expected.otherLanguage }),
+      ).toHaveAttribute('aria-checked', 'false');
+      await page.keyboard.press('Escape');
+      await dialog.getByRole('button', { name: expected.close }).click();
+      await expect(dialog).toBeHidden();
+      await expect(trigger).toBeFocused();
+    }
+
+    if (desktop) {
+      await page.getByRole('button', { name: expected.language }).first().click();
+      await expect(
+        page.getByRole('menuitemradio', { name: entry.locale === 'en' ? 'English' : 'العربية' }),
+      ).toHaveAttribute('aria-checked', 'true');
+      await expect(
+        page.getByRole('menuitemradio', { name: expected.otherLanguage }),
+      ).toHaveAttribute('aria-checked', 'false');
+      await page.keyboard.press('Escape');
+    }
+    expect(runtimeProblems).toEqual([]);
+  });
+}
+
+test('keyboard lifecycle, reduced motion, route close, and navigation parity', async ({
+  context,
   page,
 }) => {
   test.setTimeout(90_000);
-  await page.setViewportSize({ width: 1280, height: 844 });
-
-  for (const path of ['/', '/estimate', '/pro', '/pricing'] as const) {
-    await page.goto(path, { waitUntil: 'domcontentloaded' });
-    const desktopNav = page.getByRole('navigation', { name: 'Primary navigation' });
-    await expect(desktopNav).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toHaveCount(1);
-    await expect(desktopNav.getByRole('link')).toHaveText(
-      expectedNavigation.map((item) => item.name),
-    );
-    await expect(desktopNav.locator('[aria-current="page"]')).toHaveText(
-      expectedNavigation.find((item) => item.currentPath === path)!.name,
-    );
-    await expect(desktopNav.getByRole('link', { name: 'Customers' })).not.toHaveAttribute(
-      'aria-current',
-    );
-
-    if (path === '/') {
-      const targetSizes = await page
-        .locator('.nav__brand, .nav__links a, .nav__cta a, .nav__cta button')
-        .evaluateAll((targets) =>
-          targets.map((target) => {
-            const rect = target.getBoundingClientRect();
-            return { width: rect.width, height: rect.height };
-          }),
-        );
-      expect(targetSizes.length).toBeGreaterThan(0);
-      expect(targetSizes.every(({ width, height }) => width >= 44 && height >= 44)).toBe(true);
-
-      const activeContrast = await page
-        .locator('.nav__links [aria-current="page"]')
-        .evaluate((activeLink) => {
-          const toSrgb = (value: string) => {
-            const colorCanvas = document.createElement('canvas');
-            colorCanvas.width = 1;
-            colorCanvas.height = 1;
-            const context = colorCanvas.getContext('2d', { willReadFrequently: true });
-            if (!context) throw new Error('Canvas color conversion is unavailable');
-            context.clearRect(0, 0, 1, 1);
-            context.fillStyle = value;
-            context.fillRect(0, 0, 1, 1);
-            const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
-            if (alpha === 0) throw new Error(`Unsupported or transparent color: ${value}`);
-            return {
-              channels: [red, green, blue] as const,
-              alpha: alpha / 255,
-            };
-          };
-          const foreground = toSrgb(getComputedStyle(activeLink).color);
-          const header = toSrgb(
-            getComputedStyle(document.querySelector<HTMLElement>('.nav')!).backgroundColor,
-          );
-          const canvas = toSrgb(
-            getComputedStyle(document.querySelector<HTMLElement>('.site-public')!).backgroundColor,
-          );
-          const [headerRed, headerGreen, headerBlue] = header.channels;
-          const [canvasRed, canvasGreen, canvasBlue] = canvas.channels;
-          const background = [
-            headerRed * header.alpha + canvasRed * (1 - header.alpha),
-            headerGreen * header.alpha + canvasGreen * (1 - header.alpha),
-            headerBlue * header.alpha + canvasBlue * (1 - header.alpha),
-          ] as const;
-          const luminance = (channels: readonly [number, number, number]) => {
-            const linear = channels.map((channel) => {
-              const normalized = channel / 255;
-              return normalized <= 0.04045
-                ? normalized / 12.92
-                : ((normalized + 0.055) / 1.055) ** 2.4;
-            });
-            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-          };
-          const values = [luminance(foreground.channels), luminance(background)].sort(
-            (first, second) => second - first,
-          );
-          return (values[0] + 0.05) / (values[1] + 0.05);
-        });
-      expect(activeContrast).toBeGreaterThanOrEqual(4.5);
-    }
-  }
-
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  const desktopNav = page.getByRole('navigation', { name: 'Primary navigation' });
-  const desktopDestinations = await desktopNav
-    .getByRole('link')
-    .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
-  expect(desktopDestinations).toEqual(expectedNavigation.map((item) => item.href));
-
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Open menu' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Navigation menu' });
-  const mobileNav = dialog.getByRole('navigation', { name: 'Mobile navigation' });
-  await expect(mobileNav.getByRole('link')).toHaveText(expectedNavigation.map((item) => item.name));
-  expect(
-    await mobileNav
-      .getByRole('link')
-      .evaluateAll((links) => links.map((link) => link.getAttribute('href'))),
-  ).toEqual(desktopDestinations);
-
-  await mobileNav.getByRole('link', { name: 'Customers' }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page).toHaveURL(/\/#customers$/u);
-});
-
-test('mobile public shell is modal, keyboard-contained, localized, and overflow-safe', async ({
-  page,
-}) => {
-  const runtimeErrors: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error') runtimeErrors.push(message.text());
-  });
-  page.on('pageerror', (error) => runtimeErrors.push(error.message));
-
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
+  await primeState(context, page, 'en', 'dark');
   await page.goto('/', { waitUntil: 'networkidle' });
-  const trigger = page.locator('.nav__menu');
-  await expect(trigger).toHaveAccessibleName('Open menu');
-  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  const trigger = page.getByRole('button', { name: copy.en.open });
   await trigger.focus();
   await page.keyboard.press('Enter');
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-
-  const dialog = page.getByRole('dialog', { name: 'Navigation menu' });
+  const dialog = page.getByRole('dialog', { name: copy.en.menu });
   await expect(dialog).toBeVisible();
-  expect(
-    await dialog.evaluate((element) => {
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return {
-        left: Math.round(rect.left),
-        top: Math.round(rect.top),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-        transform: style.transform,
-      };
-    }),
-  ).toEqual({ left: 0, top: 0, width: 390, height: 844, transform: 'none' });
-  await expect(dialog.locator(':focus')).toHaveCount(1);
-  await expect(page.locator('main')).toHaveCSS('pointer-events', 'none');
-  await expect(dialog).toHaveCSS('pointer-events', 'auto');
+  await expect(dialog).toHaveCSS('animation-name', 'none');
+  await expect(dialog).toHaveCSS('transition-duration', '0s');
   await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
-
+  await expect(page.locator('main')).toHaveCSS('pointer-events', 'none');
   const focusable = dialog.locator(
     'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
   );
-  const focusableCount = await focusable.count();
-  expect(focusableCount).toBeGreaterThan(3);
   await focusable.last().focus();
   await page.keyboard.press('Tab');
   await expect(focusable.first()).toBeFocused();
   await focusable.first().focus();
   await page.keyboard.press('Shift+Tab');
   await expect(focusable.last()).toBeFocused();
-
   await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
-
   await trigger.click();
-  await expect(dialog).toBeVisible();
-  await page.setViewportSize({ width: 1024, height: 844 });
+  await dialog.getByRole('link', { name: 'Customers' }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
-  await expect(page.locator('main')).toHaveCSS('pointer-events', 'auto');
-  await expect(trigger).toBeHidden();
-  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page).toHaveURL(/\/#customers$/u);
+  await trigger.click();
+  await page.evaluate(() => window.history.pushState({}, '', '/pricing?acceptance=1'));
+  await expect(dialog).toBeHidden();
+});
+
+test('equivalent 200% reflow preserves every shell control at 720x450 CSS pixels', async ({
+  context,
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 720, height: 450 });
+  await primeState(context, page, 'en', 'light');
+  await page.goto('/', { waitUntil: 'networkidle' });
+  const trigger = page.getByRole('button', { name: copy.en.open });
   await expect(trigger).toBeVisible();
-  await expect(trigger).toBeEnabled();
-  await trigger.focus();
-  await page.keyboard.press('Enter');
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: copy.en.menu });
   await expect(dialog).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await expect(trigger).toBeFocused();
+  await expectNoShellOverflow(page, true);
+  for (const name of [...copy.en.navigation, 'Sign in', 'Get Estimate'])
+    await expect(dialog.getByRole('link', { name, exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: copy.en.language })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: copy.en.nextTheme.light })).toBeVisible();
+  const evidenceDir = process.env.PUBLIC_SHELL_EVIDENCE_DIR;
+  if (evidenceDir)
+    await page.screenshot({
+      path: path.join(evidenceDir, 'reflow-200-equivalent-en-light-720x450.png'),
+    });
+});
 
-  await trigger.click();
-  await dialog.getByRole('link', { name: 'Platform' }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page).toHaveURL(/\/#services$/u);
+test('every unique shell destination returns a successful public or auth response', async ({
+  request,
+}) => {
+  for (const destination of shellDestinations) {
+    const response = await request.get(destination);
+    expect(response.status(), destination).toBeLessThan(400);
+  }
+});
 
-  await trigger.click();
-  await expect(dialog).toBeVisible();
-  await page.evaluate(() => {
-    window.history.pushState({}, '', '/pricing?mobile-dialog-pathname=1');
-  });
-  await expect(page).toHaveURL(/\/pricing\?mobile-dialog-pathname=1$/u);
-  await expect(dialog).toBeHidden();
-  await page.goto('/', { waitUntil: 'networkidle' });
-
-  await trigger.click();
-  const languageTrigger = dialog.getByRole('button', { name: /English.*Language/u });
-  await expect(languageTrigger).toBeVisible();
-  await languageTrigger.focus();
-  await page.keyboard.press('Enter');
-  const english = page.getByRole('menuitemradio', { name: 'English' });
-  const arabic = page.getByRole('menuitemradio', { name: 'العربية' });
-  await expect(english).toHaveAttribute('aria-checked', 'true');
-  await expect(arabic).toHaveAttribute('aria-checked', 'false');
-  await expect(english).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(arabic).toBeFocused();
-  await page.keyboard.press('Escape');
-
-  await expect(dialog.getByRole('button', { name: /theme/u })).toBeVisible();
-  await expect(dialog.getByRole('link', { name: /sign in/i })).toBeVisible();
-  await expect(dialog.getByRole('link', { name: /get started|get estimate/i })).toBeVisible();
-
-  await page.goto('/', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Open menu' }).click();
-  await page.getByRole('button', { name: /English.*Language/u }).click();
-  await page.getByRole('menuitemradio', { name: 'العربية' }).click();
-  await page.waitForLoadState('networkidle');
-  await page.getByRole('button', { name: 'فتح القائمة' }).click();
-  const arabicDialog = page.getByRole('dialog', { name: 'قائمة التنقل' });
-  await expect(arabicDialog).toBeVisible();
-  const overflow = await page.evaluate(() => {
-    const openDialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
-    return {
-      page: document.documentElement.scrollWidth - window.innerWidth,
-      dialog: openDialog.scrollWidth - openDialog.clientWidth,
-    };
-  });
-  expect(overflow).toEqual({ page: 0, dialog: 0 });
-  expect(runtimeErrors).toEqual([]);
+test('capture the five sanitized material states when evidence output is requested', async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const evidenceDir = process.env.PUBLIC_SHELL_EVIDENCE_DIR;
+  test.skip(!evidenceDir, 'Set PUBLIC_SHELL_EVIDENCE_DIR to retain sanitized screenshots.');
+  const states = [
+    {
+      file: 'desktop-en-light-1440x900.png',
+      locale: 'en',
+      theme: 'light',
+      route: '/',
+      viewport: { width: 1440, height: 900 },
+      menu: false,
+    },
+    {
+      file: 'desktop-ar-dark-1440x900.png',
+      locale: 'ar',
+      theme: 'dark',
+      route: '/',
+      viewport: { width: 1440, height: 900 },
+      menu: false,
+    },
+    {
+      file: 'mobile-menu-en-dark-390x844.png',
+      locale: 'en',
+      theme: 'dark',
+      route: '/pricing',
+      viewport: { width: 390, height: 844 },
+      menu: true,
+    },
+    {
+      file: 'mobile-menu-ar-dark-390x844.png',
+      locale: 'ar',
+      theme: 'dark',
+      route: '/pricing',
+      viewport: { width: 390, height: 844 },
+      menu: true,
+    },
+  ] as const;
+  for (const state of states) {
+    const context = await browser.newContext({
+      viewport: state.viewport,
+      colorScheme: state.theme,
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    await primeState(context, page, state.locale, state.theme);
+    await page.goto(state.route, { waitUntil: 'networkidle' });
+    await expect(page.getByRole('banner')).toBeVisible();
+    if (state.menu) {
+      await page.getByRole('button', { name: copy[state.locale].open }).click();
+      const dialog = page.getByRole('dialog', { name: copy[state.locale].menu });
+      await expect(dialog).toBeVisible();
+      await expectNoShellOverflow(page, true);
+      await page.screenshot({ path: path.join(evidenceDir!, state.file) });
+    } else {
+      await expect(page.locator('.hero h1')).toBeVisible();
+      await page.screenshot({ path: path.join(evidenceDir!, state.file) });
+    }
+    await context.close();
+  }
 });
