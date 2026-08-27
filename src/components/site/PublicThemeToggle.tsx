@@ -21,7 +21,6 @@ export function PublicThemeToggle() {
       type="button"
       className="public-theme-toggle"
       aria-label={t(nextAction)}
-      aria-pressed={mounted ? resolvedTheme === 'dark' : undefined}
       onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
     >
       <Sun className="public-theme-toggle__icon--sun" aria-hidden="true" size={18} />

@@ -209,6 +209,11 @@ renderTest('public theme control is hydration-stable, localized, and light/dark 
   assert.match(toggle, /themeUseDark/u);
   assert.match(toggle, /className="public-theme-toggle"/u);
   assert.match(toggle, /aria-label=/u);
+  assert.doesNotMatch(
+    toggle,
+    /aria-pressed=/u,
+    'a next-action label must not also present toggle-state semantics',
+  );
   assert.match(toggle, /useSyncExternalStore/u);
   assert.match(toggle, /getServerSnapshot/u);
   assert.match(toggle, /setTheme\(resolvedTheme === 'dark' \? 'light' : 'dark'\)/u);
