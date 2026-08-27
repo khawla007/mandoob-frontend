@@ -58,6 +58,12 @@ const shellDestinations = [
   '/legal/pdpl',
   '/legal/trust',
 ] as const;
+const currentRouteCases = [
+  { route: '/', currentIndex: 0 },
+  { route: '/estimate', currentIndex: 1 },
+  { route: '/pro', currentIndex: 3 },
+  { route: '/pricing', currentIndex: 4 },
+] as const;
 
 declare global {
   interface Window {
@@ -142,6 +148,72 @@ async function expectNoShellOverflow(page: Page, dialogOpen = false) {
   }
 }
 
+async function expectNoDocumentOverflow(page: Page) {
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(dimensions.scrollWidth, 'document horizontal overflow').toBeLessThanOrEqual(
+    dimensions.clientWidth,
+  );
+}
+
+async function expectLoadedShellImages(page: Page) {
+  await page.waitForLoadState('load');
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  const shellImages = page.locator('header.nav img, footer.footer img, .hero img');
+  const imageCount = await shellImages.count();
+  for (let index = 0; index < imageCount; index += 1)
+    await shellImages.nth(index).scrollIntoViewIfNeeded();
+  const checkedImages = await shellImages.evaluateAll((images) =>
+    images
+      .filter((image): image is HTMLImageElement => {
+        const style = getComputedStyle(image);
+        const rect = image.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0;
+      })
+      .map((image) => ({
+        source: new URL(image.currentSrc || image.src, location.href).pathname,
+        alt: image.alt,
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+      })),
+  );
+  expect(
+    checkedImages.filter(({ complete, naturalWidth }) => !complete || naturalWidth <= 0),
+  ).toEqual([]);
+
+  const heroBackground = await page.locator('.hero').evaluate(async (hero) => {
+    const match = getComputedStyle(hero).backgroundImage.match(/url\(["']?(.*?)["']?\)/u);
+    if (!match) return null;
+    const image = new Image();
+    image.src = match[1];
+    if (!image.complete) await image.decode();
+    return {
+      source: new URL(image.src, location.href).pathname,
+      complete: image.complete,
+      naturalWidth: image.naturalWidth,
+    };
+  });
+  expect(heroBackground).toMatchObject({
+    source: '/hero/skyline.jpg',
+    complete: true,
+  });
+  expect(heroBackground?.naturalWidth ?? 0).toBeGreaterThan(0);
+  test.info().annotations.push({
+    type: 'shell images checked',
+    description: JSON.stringify([
+      ...checkedImages.map(({ source, alt }) => ({ source, alt })),
+      { source: heroBackground?.source, kind: 'CSS background' },
+    ]),
+  });
+}
+
 async function expectVisibleTargetsAtLeast44(page: Page, scope: string) {
   const undersized = await page.locator(scope).evaluateAll((targets) =>
     targets
@@ -222,6 +294,7 @@ for (const entry of matrix) {
     await primeState(context, page, entry.locale, entry.theme);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('banner')).toBeVisible();
+    await expectLoadedShellImages(page);
     const expected = copy[entry.locale];
 
     await expect(page.locator('html')).toHaveAttribute('lang', entry.locale);
@@ -273,14 +346,17 @@ for (const entry of matrix) {
         4.5,
       );
       expect(await contrastRatio(page, '.nav__cta .btn--accent')).toBeGreaterThanOrEqual(4.5);
-      const axe = await new AxeBuilder({ page })
-        .include('header')
-        .include('footer')
-        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-        .analyze();
-      expect(
-        axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
-      ).toEqual([]);
+      for (const scope of ['header.nav', 'footer.footer']) {
+        const axe = await new AxeBuilder({ page })
+          .include(scope)
+          .setLegacyMode()
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze();
+        expect(
+          axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
+          `axe shell scope: ${scope}`,
+        ).toEqual([]);
+      }
     } else {
       const trigger = page.locator('.nav__menu');
       await expect(trigger).toHaveAccessibleName(expected.open);
@@ -308,6 +384,7 @@ for (const entry of matrix) {
       expect(await contrastRatio(page, '.public-mobile-dialog__cta')).toBeGreaterThanOrEqual(4.5);
       const axe = await new AxeBuilder({ page })
         .include('[role="dialog"]')
+        .setLegacyMode()
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
       expect(
@@ -336,9 +413,42 @@ for (const entry of matrix) {
       ).toHaveAttribute('aria-checked', 'false');
       await page.keyboard.press('Escape');
     }
+    await page.goto('/pricing', { waitUntil: 'networkidle' });
+    await expectNoDocumentOverflow(page);
     expect(runtimeProblems).toEqual([]);
   });
 }
+
+test('exact current state is correct on every page-owning navigation route', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  for (const { route, currentIndex } of currentRouteCases) {
+    await page.goto(route, { waitUntil: 'networkidle' });
+    const desktopNavigation = page.getByRole('navigation', { name: copy.en.primaryNav });
+    await expect(desktopNavigation.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(desktopNavigation.locator('[aria-current="page"]')).toHaveText(
+      copy.en.navigation[currentIndex],
+    );
+    await expect(
+      desktopNavigation.getByRole('link', { name: copy.en.navigation[2] }),
+    ).not.toHaveAttribute('aria-current');
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: copy.en.open }).click();
+    const mobileNavigation = page
+      .getByRole('dialog', { name: copy.en.menu })
+      .getByRole('navigation', { name: copy.en.mobileNav });
+    await expect(mobileNavigation.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(mobileNavigation.locator('[aria-current="page"]')).toHaveText(
+      copy.en.navigation[currentIndex],
+    );
+    await expect(
+      mobileNavigation.getByRole('link', { name: copy.en.navigation[2] }),
+    ).not.toHaveAttribute('aria-current');
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1280, height: 800 });
+  }
+});
 
 test('keyboard lifecycle, reduced motion, route close, and navigation parity', async ({
   context,
@@ -398,10 +508,43 @@ test('equivalent 200% reflow preserves every shell control at 720x450 CSS pixels
   const dialog = page.getByRole('dialog', { name: copy.en.menu });
   await expect(dialog).toBeVisible();
   await expectNoShellOverflow(page, true);
-  for (const name of [...copy.en.navigation, 'Sign in', 'Get Estimate'])
-    await expect(dialog.getByRole('link', { name, exact: true })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: copy.en.language })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: copy.en.nextTheme.light })).toBeVisible();
+  const controls = [
+    ...copy.en.navigation.map((name) => dialog.getByRole('link', { name, exact: true })),
+    dialog.getByRole('button', { name: copy.en.language }),
+    dialog.getByRole('button', { name: copy.en.nextTheme.light }),
+    dialog.getByRole('link', { name: 'Sign in', exact: true }),
+    dialog.getByRole('link', { name: 'Get Estimate', exact: true }),
+  ];
+  for (const control of controls) {
+    await control.scrollIntoViewIfNeeded();
+    await expect(control).toBeInViewport();
+    await expect(control).toBeVisible();
+    await control.click({ trial: true });
+  }
+  await dialog.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+  const dialogScroll = await dialog.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    scrollTop: element.scrollTop,
+  }));
+  expect(dialogScroll.scrollHeight).toBeGreaterThan(dialogScroll.clientHeight);
+  expect(dialogScroll.scrollTop).toBeGreaterThan(0);
+  expect(dialogScroll.scrollTop + dialogScroll.clientHeight).toBeGreaterThanOrEqual(
+    dialogScroll.scrollHeight - 1,
+  );
+  for (const control of controls.slice(-2)) {
+    await expect(control).toBeInViewport();
+    await control.click({ trial: true });
+  }
+  const keyboardControls = dialog.locator(
+    'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  );
+  await keyboardControls.first().focus();
+  for (let index = 1; index < (await keyboardControls.count()); index += 1) {
+    await page.keyboard.press('Tab');
+    await expect(keyboardControls.nth(index)).toBeFocused();
+  }
+  await expect(keyboardControls.last()).toBeInViewport();
   const evidenceDir = process.env.PUBLIC_SHELL_EVIDENCE_DIR;
   if (evidenceDir)
     await page.screenshot({
