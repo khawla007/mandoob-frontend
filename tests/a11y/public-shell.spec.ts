@@ -56,6 +56,23 @@ test('mobile public shell is modal, keyboard-contained, localized, and overflow-
   await expect(trigger).toBeFocused();
 
   await trigger.click();
+  await expect(dialog).toBeVisible();
+  await page.setViewportSize({ width: 1024, height: 844 });
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+  await expect(page.locator('main')).toHaveCSS('pointer-events', 'auto');
+  await expect(trigger).toBeHidden();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toBeEnabled();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+
+  await trigger.click();
   await dialog.getByRole('link', { name: 'Platform' }).click();
   await expect(dialog).toBeHidden();
   await expect(page).toHaveURL(/\/#services$/u);
@@ -86,10 +103,6 @@ test('mobile public shell is modal, keyboard-contained, localized, and overflow-
   await expect(dialog.getByRole('button', { name: /theme/u })).toBeVisible();
   await expect(dialog.getByRole('link', { name: /sign in/i })).toBeVisible();
   await expect(dialog.getByRole('link', { name: /get started|get estimate/i })).toBeVisible();
-
-  await dialog.getByRole('link', { name: 'Pricing' }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page).toHaveURL(/\/pricing$/u);
 
   await page.goto('/', { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Open menu' }).click();

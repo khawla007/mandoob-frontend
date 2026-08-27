@@ -546,10 +546,14 @@
 }
 .site-public.public-mobile-dialog [data-slot='dialog-close'] {
   inset-block-start: max(16px, env(safe-area-inset-top));
-  inset-inline-end: max(16px, env(safe-area-inset-right));
+  inset-inline-start: auto;
+  inset-inline-end: max(16px, env(safe-area-inset-right, 0px));
   min-inline-size: 44px;
   min-block-size: 44px;
   color: var(--ink);
+}
+.site-public.public-mobile-dialog:dir(rtl) [data-slot='dialog-close'] {
+  inset-inline-end: max(16px, env(safe-area-inset-left, 0px));
 }
 .site-public.public-mobile-dialog :focus-visible {
   outline-color: var(--public-focus-ring);

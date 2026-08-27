@@ -31,6 +31,13 @@ test('mobile navigation is controlled and closes for selection or pathname chang
   assert.match(source, /useEffect\([^]*setOpen\(false\)[^]*\[pathname\]/u);
 });
 
+test('desktop breakpoint listener closes and cleans up through the modern matchMedia API', () => {
+  assert.match(source, /matchMedia\('\(min-width: 1024px\)'\)/u);
+  assert.match(source, /addEventListener\('change',\s*handleBreakpointChange\)/u);
+  assert.match(source, /removeEventListener\('change',\s*handleBreakpointChange\)/u);
+  assert.match(source, /handleBreakpointChange[^]*event\.matches[^]*setOpen\(false\)/u);
+});
+
 test('the portalled dialog has a full-screen, dark, logical, responsive contract', () => {
   assert.match(css, /\.site-public\.public-mobile-dialog\s*\{/u);
   assert.match(
@@ -47,6 +54,14 @@ test('the portalled dialog has a full-screen, dark, logical, responsive contract
   assert.match(
     css,
     /@media\s*\(min-width:\s*1024px\)[^]*\.site-public \.nav__menu\s*\{[^}]*display:\s*none/u,
+  );
+  assert.match(
+    css,
+    /\.site-public\.public-mobile-dialog \[data-slot='dialog-close'\]\s*\{[^}]*inset-inline-start:\s*auto[^}]*env\(safe-area-inset-right,\s*0px\)/u,
+  );
+  assert.match(
+    css,
+    /\.site-public\.public-mobile-dialog:dir\(rtl\) \[data-slot='dialog-close'\]\s*\{[^}]*env\(safe-area-inset-left,\s*0px\)/u,
   );
 });
 
@@ -82,7 +97,10 @@ Module._load = function (request, parent, isMain) {
     DialogTitle: ({children}) => React.createElement('h2', null, children),
   };
   if (request === './PublicNavLinks') return {
-    PublicNavLinks: ({links, onNavigate}) => React.createElement('nav', null, links.map((link) => React.createElement('button', {key:link.href, type:'button', onClick:onNavigate}, link.label))),
+    PublicNavLinks: ({links, onNavigate}) => {
+      globalThis.__renderedLinkIds = links.map((link) => link.id);
+      return React.createElement('nav', null, links.map((link) => React.createElement('button', {key:link.id, type:'button', onClick:onNavigate}, link.label)));
+    },
   };
   if (request === './PublicThemeToggle') return {PublicThemeToggle: () => React.createElement('button', {type:'button'}, 'Theme')};
   if (request === '@/components/i18n/LanguageSwitcher') return {LanguageSwitcher: () => React.createElement('button', {type:'button'}, 'Language')};
@@ -112,6 +130,26 @@ Module._load = function (request, parent, isMain) {
     IS_REACT_ACT_ENVIRONMENT: true,
     __pathname: '/',
   });
+  const breakpointListeners = new Set<(event: MediaQueryListEvent) => void>();
+  let breakpointListenerAdds = 0;
+  let breakpointListenerRemoves = 0;
+  Object.defineProperty(browser, 'matchMedia', {
+    configurable: true,
+    value: (query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+          breakpointListenerAdds += 1;
+          breakpointListeners.add(listener);
+        },
+        removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+          breakpointListenerRemoves += 1;
+          breakpointListeners.delete(listener);
+        },
+      }) as unknown as MediaQueryList,
+  });
 
   test('trigger, immediate selection, pathname closure, and account actions work at runtime', async () => {
     const [{ act, createElement }, { createRoot }, { MobileNav }] = await Promise.all([
@@ -123,15 +161,19 @@ Module._load = function (request, parent, isMain) {
     document.body.append(container);
     const root = createRoot(container);
     const props = {
-      links: [{ id: 'pricing', href: '/pricing', currentPath: '/pricing', label: 'Pricing' }],
+      links: Array.from({ length: 7 }, (_, index) => ({
+        href: `/legacy-${index}`,
+        label: `Legacy ${index}`,
+      })),
       authed: true,
       signInLabel: 'Sign in',
       ctaLabel: 'Get Estimate',
       accountHref: '/workspace',
       accountLabel: 'Open workspace',
-    } as const;
+    };
     await act(() => root.render(createElement(MobileNav, props)));
     await act(() => new Promise((resolve) => setTimeout(resolve, 1)));
+    assert.equal(breakpointListenerAdds, 1);
     const trigger = container.querySelector<HTMLButtonElement>('.nav__menu')!;
     assert.equal(trigger.getAttribute('aria-expanded'), 'false');
     assert.equal(trigger.getAttribute('aria-label'), 'Open menu');
@@ -143,9 +185,22 @@ Module._load = function (request, parent, isMain) {
     assert.match(container.textContent ?? '', /Language/u);
     assert.equal(container.querySelector('a[href="/workspace"]')?.textContent, 'Open workspace');
     assert.equal(container.querySelector('a[href="/estimate"]')?.textContent, 'Get Estimate');
+    const renderedLinkIds = (globalThis as typeof globalThis & { __renderedLinkIds: string[] })
+      .__renderedLinkIds;
+    assert.equal(new Set(renderedLinkIds).size, 7, 'legacy link IDs must remain unique');
 
     await act(() => container.querySelector<HTMLButtonElement>('nav button')!.click());
     assert.equal(container.querySelector('[role="dialog"]'), null);
+
+    await act(() => trigger.click());
+    await act(() => {
+      for (const listener of breakpointListeners) {
+        listener({ matches: true } as MediaQueryListEvent);
+      }
+    });
+    assert.equal(container.querySelector('[role="dialog"]'), null);
+    await act(() => root.render(createElement(MobileNav, props)));
+    assert.equal(breakpointListenerAdds, 1, 'rerenders must not add breakpoint listeners');
 
     await act(() => trigger.click());
     (globalThis as typeof globalThis & { __pathname: string }).__pathname = '/pricing';
@@ -154,6 +209,19 @@ Module._load = function (request, parent, isMain) {
     assert.equal(container.querySelector('[role="dialog"]'), null);
 
     await act(() => root.unmount());
+    assert.equal(breakpointListenerRemoves, 1);
+    assert.equal(breakpointListeners.size, 0);
     container.remove();
+
+    const remountContainer = document.createElement('div');
+    document.body.append(remountContainer);
+    const remountRoot = createRoot(remountContainer);
+    await act(() => remountRoot.render(createElement(MobileNav, props)));
+    assert.equal(breakpointListenerAdds, 2);
+    assert.equal(breakpointListeners.size, 1, 'a remount must keep exactly one active listener');
+    await act(() => remountRoot.unmount());
+    assert.equal(breakpointListenerRemoves, 2);
+    assert.equal(breakpointListeners.size, 0);
+    remountContainer.remove();
   });
 }

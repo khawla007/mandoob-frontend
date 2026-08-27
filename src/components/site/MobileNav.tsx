@@ -27,17 +27,21 @@ type MobileNavProps = {
   mobileNavLabel?: string;
 };
 
-const fallbackIds: readonly PublicNavLink['id'][] = [
-  'platform',
-  'estimate',
-  'customers',
-  'forPros',
-  'pricing',
-];
+const legacyIdsByHref: Readonly<Record<string, PublicNavLink['id']>> = {
+  '/#services': 'platform',
+  '/estimate': 'estimate',
+  '/#customers': 'customers',
+  '/pro': 'forPros',
+  '/pricing': 'pricing',
+};
+
+function legacyIdFromHref(href: string): PublicNavLink['id'] {
+  return (legacyIdsByHref[href] ?? `legacy:${href}`) as PublicNavLink['id'];
+}
 
 function normalizeLinks(links: readonly MobileNavLink[]): PublicNavLink[] {
-  return links.map((link, index) => ({
-    id: link.id ?? fallbackIds[index] ?? 'platform',
+  return links.map((link) => ({
+    id: link.id ?? legacyIdFromHref(link.href),
     href: link.href,
     label: link.label,
     currentPath: link.currentPath,
@@ -71,6 +75,16 @@ export function MobileNav({
     const timerId = window.setTimeout(() => setOpen(false), 0);
     return () => window.clearTimeout(timerId);
   }, [pathname]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia('(min-width: 1024px)');
+    const handleBreakpointChange = (event: MediaQueryListEvent) => {
+      if (event.matches) setOpen(false);
+    };
+
+    desktopQuery.addEventListener('change', handleBreakpointChange);
+    return () => desktopQuery.removeEventListener('change', handleBreakpointChange);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
