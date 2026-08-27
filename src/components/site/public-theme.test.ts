@@ -129,6 +129,31 @@ renderTest('accent buttons consume semantic state tokens without hardcoded white
   );
 });
 
+renderTest('every cascaded accent-button background uses its accessible semantic state', () => {
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].filter(
+    ([, selector, body]) =>
+      /\.btn--accent(?![-\w])/u.test(selector) && /(?:^|;)\s*background\s*:/u.test(body),
+  );
+  assert.ok(rules.length >= 5, 'expected every base interactive accent-button rule');
+
+  for (const [, selector, body] of rules) {
+    const expected = selector.includes(':hover')
+      ? '--public-cta-hover-background'
+      : selector.includes(':active')
+        ? '--public-cta-active-background'
+        : selector.includes(':focus-visible')
+          ? '--public-cta-focus-background'
+          : selector.includes(':disabled') || selector.includes("[aria-disabled='true']")
+            ? '--public-cta-disabled-background'
+            : '--public-cta-background';
+    assert.match(
+      body,
+      new RegExp(`background:\\s*var\\(${expected}\\)`, 'u'),
+      `${selector.trim()} bypasses ${expected}`,
+    );
+  }
+});
+
 renderTest('shell focus and sticky header consume roles while the dialog token stays dark', () => {
   assert.match(declarations('.site-public :focus-visible'), /var\(--public-focus-ring\)/u);
   assert.match(declarations('.site-public .nav'), /var\(--public-header-surface\)/u);
