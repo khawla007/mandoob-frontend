@@ -126,13 +126,16 @@ describe('MobileNav authenticated destination type contract', () => {
 });
 
 describe('public header navigation styling contract', () => {
-  it('gives desktop links restrained logical-edge current semantics distinct from hover and focus', () => {
+  it('gives desktop links a contrast-safe current state distinct from hover and focus', () => {
     assert.match(
       cssSource,
-      /\.site-public \.nav__links a\[aria-current='page'\]\s*\{[^}]*border-inline-start:\s*2px solid var\(--accent\)[^}]*color:\s*var\(--accent-ink\)/u,
+      /\.site-public \.nav__links a\[aria-current='page'\]\s*\{[^}]*border-inline-start:\s*2px solid var\(--accent\)[^}]*color:\s*var\(--public-cta-background\)/u,
     );
-    assert.match(cssSource, /\.site-public \.nav__links a:hover\s*\{/u);
-    assert.match(cssSource, /\.site-public \.nav__links a:focus-visible\s*\{/u);
+    assert.match(cssSource, /\.site-public \.nav__links a:hover\s*\{[^}]*color:\s*var\(--ink\)/u);
+    assert.match(
+      cssSource,
+      /\.site-public \.nav__links a:focus-visible\s*\{[^}]*background:\s*var\(--public-surface\)[^}]*color:\s*var\(--ink\)/u,
+    );
   });
 
   it('keeps compact desktop utilities and all header controls at 44px targets', () => {
