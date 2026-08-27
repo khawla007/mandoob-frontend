@@ -164,6 +164,20 @@ renderTest('shell focus and sticky header consume roles while the dialog token s
   );
 });
 
+renderTest('current navigation and footer muted copy use AA semantic colors', () => {
+  assert.match(
+    declarations(".site-public .nav__links a[aria-current='page']"),
+    /color:\s*var\(--public-cta-background\)/u,
+  );
+  for (const selector of [
+    '.site-public .footer__tag',
+    '.site-public .footer__col h2',
+    '.site-public .footer__bottom .micro',
+  ]) {
+    assert.match(declarations(selector), /color:\s*var\(--zinc-600\)/u, selector);
+  }
+});
+
 renderTest('homepage hero image and two overlays remain exact and separate from modifiers', () => {
   const hero = declarations('.site-public .hero');
   assert.match(hero, /background-image:\s*url\('\/hero\/skyline\.jpg'\)/u);

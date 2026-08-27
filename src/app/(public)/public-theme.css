@@ -480,7 +480,7 @@
 }
 .site-public .nav__links a[aria-current='page'] {
   border-inline-start: 2px solid var(--accent);
-  color: var(--accent-ink);
+  color: var(--public-cta-background);
 }
 .site-public .nav__cta {
   display: none;
@@ -2720,7 +2720,7 @@
 .site-public .footer__tag {
   margin-block: var(--sp-3);
   font-size: var(--fs-14);
-  color: var(--zinc-500);
+  color: var(--zinc-600);
   max-inline-size: 32ch;
   overflow-wrap: anywhere;
 }
@@ -2734,7 +2734,7 @@
   font-size: var(--fs-12);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--zinc-500);
+  color: var(--zinc-600);
   margin-bottom: var(--sp-4);
   font-weight: 500;
 }
@@ -2770,6 +2770,9 @@
   justify-content: space-between;
   padding-block: var(--sp-4);
   overflow-wrap: anywhere;
+}
+.site-public .footer__bottom .micro {
+  color: var(--zinc-600);
 }
 @media (min-width: 768px) {
   .site-public .footer__bottom {
