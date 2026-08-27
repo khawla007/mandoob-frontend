@@ -1,67 +1,139 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
-type NavLink = { href: string; label: string };
+import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { PublicNavLinks } from './PublicNavLinks';
+import { PublicThemeToggle } from './PublicThemeToggle';
+import type { PublicNavLink } from './public-navigation';
+
+type MobileNavLink = Pick<PublicNavLink, 'href' | 'label'> &
+  Partial<Pick<PublicNavLink, 'id' | 'currentPath'>>;
+
+type MobileNavProps = {
+  links: readonly MobileNavLink[];
+  authed: boolean;
+  signInLabel: string;
+  ctaLabel: string;
+  accountHref?: string;
+  accountLabel?: string;
+  openMenuLabel?: string;
+  closeMenuLabel?: string;
+  menuTitle?: string;
+  mobileNavLabel?: string;
+};
+
+const fallbackIds: readonly PublicNavLink['id'][] = [
+  'platform',
+  'estimate',
+  'customers',
+  'forPros',
+  'pricing',
+];
+
+function normalizeLinks(links: readonly MobileNavLink[]): PublicNavLink[] {
+  return links.map((link, index) => ({
+    id: link.id ?? fallbackIds[index] ?? 'platform',
+    href: link.href,
+    label: link.label,
+    currentPath: link.currentPath,
+  }));
+}
 
 export function MobileNav({
   links,
   authed,
   signInLabel,
   ctaLabel,
-}: {
-  links: NavLink[];
-  authed: boolean;
-  signInLabel: string;
-  ctaLabel: string;
-}) {
+  accountHref = '/',
+  accountLabel,
+  openMenuLabel,
+  closeMenuLabel,
+  menuTitle,
+  mobileNavLabel,
+}: MobileNavProps) {
+  const t = useTranslations('site');
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const resolvedOpenLabel = openMenuLabel ?? t('openMenu');
+  const resolvedCloseLabel = closeMenuLabel ?? t('closeMenu');
+  const resolvedTitle = menuTitle ?? t('menuTitle');
+  const resolvedNavLabel = mobileNavLabel ?? t('mobileNav');
+  const resolvedAccountLabel = accountLabel ?? t('openWorkspace');
+  const publicLinks = normalizeLinks(links);
+  const closeMenu = () => setOpen(false);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timerId);
+  }, [pathname]);
 
   return (
-    <>
-      <button
-        type="button"
-        className="nav__menu"
-        aria-label="Open menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M4 7h16M4 12h16M4 17h16"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="nav__menu"
+          aria-label={open ? resolvedCloseLabel : resolvedOpenLabel}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      </DialogTrigger>
 
-      {open ? (
-        <div className="nav__mobile">
-          <nav className="nav__mobileLinks" aria-label="Mobile">
-            {links.map((l) => (
-              <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
-                {l.label}
-              </Link>
-            ))}
-            {!authed ? (
-              <>
-                <Link href="/login" onClick={() => setOpen(false)}>
-                  {signInLabel}
-                </Link>
-                <Link
-                  className="btn btn--accent btn--sm"
-                  href="/estimate"
-                  onClick={() => setOpen(false)}
-                >
-                  {ctaLabel}
-                </Link>
-              </>
-            ) : null}
+      <DialogContent
+        className="site-public public-mobile-dialog"
+        closeLabel={resolvedCloseLabel}
+        aria-describedby={undefined}
+      >
+        <div className="public-mobile-dialog__inner">
+          <DialogTitle className="public-mobile-dialog__title">{resolvedTitle}</DialogTitle>
+
+          <nav className="public-mobile-dialog__nav" aria-label={resolvedNavLabel}>
+            <PublicNavLinks links={publicLinks} onNavigate={closeMenu} />
           </nav>
+
+          <div className="public-mobile-dialog__utilities">
+            <LanguageSwitcher className="public-mobile-dialog__language" />
+            <PublicThemeToggle />
+          </div>
+
+          <div className="public-mobile-dialog__actions">
+            {authed ? (
+              <Link
+                href={accountHref}
+                onClick={closeMenu}
+                className="public-mobile-dialog__account"
+              >
+                {resolvedAccountLabel}
+              </Link>
+            ) : (
+              <Link href="/login" onClick={closeMenu} className="public-mobile-dialog__account">
+                {signInLabel}
+              </Link>
+            )}
+            <Link
+              className="btn btn--accent public-mobile-dialog__cta"
+              href="/estimate"
+              onClick={closeMenu}
+            >
+              {ctaLabel}
+            </Link>
+          </div>
         </div>
-      ) : null}
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

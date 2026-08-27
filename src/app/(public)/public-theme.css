@@ -481,13 +481,6 @@
     display: none;
   }
 }
-.site-public .nav__mobile {
-  position: absolute;
-  top: 100%;
-  inset-inline: 0;
-  border-bottom: 1px solid var(--pb-border);
-  background: var(--paper);
-}
 .site-public .public-theme-toggle {
   position: relative;
   display: inline-grid;
@@ -510,25 +503,140 @@
 .dark .site-public .public-theme-toggle__icon--moon {
   display: block;
 }
-@media (min-width: 1024px) {
-  .site-public .nav__mobile {
-    display: none;
-  }
+
+/* The dialog is portalled outside the header subtree, so it establishes the
+   public token scope itself. Its editorial night surface is intentional in
+   both root themes. */
+.site-public.public-mobile-dialog {
+  --ink: oklch(0.967 0.005 45);
+  --zinc-50: oklch(0.157 0.007 45);
+  --zinc-100: oklch(0.227 0.008 45);
+  --zinc-200: oklch(0.268 0.008 45);
+  --zinc-400: oklch(0.435 0.011 45);
+  --zinc-600: oklch(0.714 0.009 45);
+  --zinc-700: oklch(0.872 0.007 45);
+  --public-text-primary: var(--ink);
+  --public-text-muted: var(--zinc-600);
+  --public-surface: var(--zinc-100);
+  --popover: oklch(0.205 0.008 45);
+  --popover-foreground: var(--ink);
+  --accent: oklch(0.31 0.04 38);
+  --accent-foreground: var(--ink);
+  --border: oklch(1 0 0 / 12%);
+  --tw-translate-x: 0px !important;
+  --tw-translate-y: 0px !important;
+
+  inset-block: 0 !important;
+  inset-inline: 0 !important;
+  display: block;
+  inline-size: auto !important;
+  block-size: 100dvh;
+  max-inline-size: none !important;
+  max-block-size: none;
+  transform: none !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 0 !important;
+  padding: 0;
+  background: var(--public-mobile-dialog-surface);
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
-.site-public .nav__mobileLinks {
+.site-public.public-mobile-dialog [data-slot='dialog-close'] {
+  inset-block-start: max(16px, env(safe-area-inset-top));
+  inset-inline-end: max(16px, env(safe-area-inset-right));
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  color: var(--ink);
+}
+.site-public.public-mobile-dialog :focus-visible {
+  outline-color: var(--public-focus-ring);
+}
+.site-public .public-mobile-dialog__inner {
+  display: flex;
+  min-block-size: 100%;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: clamp(24px, 5dvh, 48px);
+  padding-block: max(72px, calc(env(safe-area-inset-top) + 64px))
+    max(24px, env(safe-area-inset-bottom));
+  padding-inline: clamp(24px, 8vw, 48px);
+}
+.site-public .public-mobile-dialog__title {
+  max-inline-size: calc(100% - 48px);
+  color: var(--ink);
+  font-size: clamp(1rem, 4vw, 1.25rem);
+  letter-spacing: -0.02em;
+}
+.site-public .public-mobile-dialog__nav,
+.site-public .public-mobile-dialog__nav > div {
   display: grid;
-  gap: var(--sp-3);
-  max-width: var(--container);
-  margin-inline: auto;
-  padding: var(--sp-4) var(--sp-3);
+  min-inline-size: 0;
+  gap: 2px;
 }
-.site-public .nav__mobileLinks a {
+.site-public .public-mobile-dialog__nav a {
+  display: flex;
+  min-block-size: 48px;
+  align-items: center;
+  border-block-end: 1px solid var(--border);
+  color: var(--ink);
+  font-size: clamp(1.35rem, 7vw, 2rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  padding-block: 10px;
+}
+.site-public .public-mobile-dialog__nav a[aria-current='page'] {
+  color: var(--public-cta-hover-background);
+}
+.site-public .public-mobile-dialog__utilities {
+  display: flex;
+  min-inline-size: 0;
+  align-items: center;
+  gap: 8px;
+}
+.site-public .public-mobile-dialog__utilities button,
+.site-public .public-mobile-dialog__account {
+  min-inline-size: 44px;
+  min-block-size: 44px;
+}
+.site-public .public-mobile-dialog__language {
+  color: var(--ink);
+}
+.site-public .public-mobile-dialog__actions {
+  display: grid;
+  min-inline-size: 0;
+  gap: 12px;
+  margin-block-start: auto;
+}
+.site-public .public-mobile-dialog__account,
+.site-public .public-mobile-dialog__cta {
+  display: inline-flex;
+  inline-size: 100%;
+  align-items: center;
+  justify-content: center;
+  padding-block: 12px;
+  padding-inline: 20px;
+  text-align: center;
+}
+.site-public .public-mobile-dialog__account {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--ink);
   font-size: var(--fs-15);
-  font-weight: 500;
-  color: var(--zinc-700);
+  font-weight: 600;
 }
-.site-public .nav__mobileLinks a.btn {
-  justify-self: start;
+.site-public .public-mobile-dialog__cta {
+  min-block-size: 52px;
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-public.public-mobile-dialog {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* ---------- 5. HERO ---------- */

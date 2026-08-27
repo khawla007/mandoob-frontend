@@ -48,6 +48,11 @@ export default defineConfig({
       testMatch: /smoke\/public-questionnaire\.spec\.ts/,
     },
     {
+      name: 'public-shell',
+      testMatch: /a11y\/public-shell\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
       name: 'authenticated-a11y',
       testMatch: /a11y\/(?:authenticated-routes|pro-dashboard)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
