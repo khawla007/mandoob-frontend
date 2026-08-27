@@ -61,13 +61,23 @@ test('mobile public shell is modal, keyboard-contained, localized, and overflow-
   await expect(page).toHaveURL(/\/#services$/u);
 
   await trigger.click();
-  await expect(dialog.getByRole('button', { name: /English.*Language/u })).toBeVisible();
-  await dialog.getByRole('button', { name: /English.*Language/u }).click();
+  await expect(dialog).toBeVisible();
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/pricing?mobile-dialog-pathname=1');
+  });
+  await expect(page).toHaveURL(/\/pricing\?mobile-dialog-pathname=1$/u);
+  await expect(dialog).toBeHidden();
+  await page.goto('/', { waitUntil: 'networkidle' });
+
+  await trigger.click();
+  const languageTrigger = dialog.getByRole('button', { name: /English.*Language/u });
+  await expect(languageTrigger).toBeVisible();
+  await languageTrigger.focus();
+  await page.keyboard.press('Enter');
   const english = page.getByRole('menuitemradio', { name: 'English' });
   const arabic = page.getByRole('menuitemradio', { name: 'العربية' });
   await expect(english).toHaveAttribute('aria-checked', 'true');
   await expect(arabic).toHaveAttribute('aria-checked', 'false');
-  await page.keyboard.press('Home');
   await expect(english).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(arabic).toBeFocused();
