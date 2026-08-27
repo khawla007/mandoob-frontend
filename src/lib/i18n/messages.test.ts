@@ -267,6 +267,29 @@ describe('i18n/messages', () => {
     }
   });
 
+  it('keeps the complete public site namespace in exact recursive and ICU parity', () => {
+    const english = (en as Messages).site;
+    const arabic = (ar as Messages).site;
+    assert.ok(english, 'Missing en.site');
+    assert.ok(arabic, 'Missing ar.site');
+
+    const englishPaths = leafPaths(english).sort();
+    const arabicPaths = leafPaths(arabic).sort();
+    assert.deepEqual(arabicPaths, englishPaths);
+
+    for (const path of englishPaths) {
+      const englishValue = valueAt(english, path);
+      const arabicValue = valueAt(arabic, path);
+      assert.equal(typeof englishValue, 'string', `Expected en.site.${path}`);
+      assert.equal(typeof arabicValue, 'string', `Expected ar.site.${path}`);
+      assert.deepEqual(
+        icuVariables(arabicValue as string),
+        icuVariables(englishValue as string),
+        `ICU variables differ at site.${path}`,
+      );
+    }
+  });
+
   it('keeps the complete PRO Document Center namespace in exact recursive parity', () => {
     const english = (en as Messages).proDocumentCenter;
     const arabic = (ar as Messages).proDocumentCenter;

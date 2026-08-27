@@ -1,11 +1,14 @@
+import { getTranslations } from 'next-intl/server';
 import { SiteHeader } from '@/components/site/SiteHeader';
 import { SiteFooter } from '@/components/site/SiteFooter';
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = await getTranslations('site');
+
   return (
     <div className="site-public flex min-h-screen flex-col">
       <a href="#main" className="skip-link">
-        Skip to main content
+        {t('skipToMain')}
       </a>
       <SiteHeader />
       <main id="main" className="flex flex-1 items-center justify-center">
