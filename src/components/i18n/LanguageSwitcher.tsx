@@ -9,7 +9,8 @@ import { locales, localeLabels, type Locale } from '@/lib/i18n/config';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -75,17 +76,20 @@ export function LanguageSwitcher({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {locales.map((loc) => (
-          <DropdownMenuItem
-            key={loc}
-            onSelect={() => onSelect(loc)}
-            disabled={pending}
-            data-active={loc === current}
-            className="cursor-pointer"
-          >
-            {localeLabels[loc]}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuRadioGroup value={current}>
+          {locales.map((loc) => (
+            <DropdownMenuRadioItem
+              key={loc}
+              value={loc}
+              onSelect={() => onSelect(loc)}
+              disabled={pending}
+              data-active={loc === current}
+              className="cursor-pointer"
+            >
+              {localeLabels[loc]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

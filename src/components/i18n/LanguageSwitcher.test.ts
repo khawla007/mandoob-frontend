@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -11,12 +12,15 @@ const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPG
 
 if (reactServer) {
   test('language switcher passes client interaction contracts', () => {
-    const preloadPath = join(process.env.TMPDIR ?? '/tmp', 'language-switcher-preload.cjs');
-    writeFileSync(
-      preloadPath,
-      `const Module = require('node:module');
+    const tempDirectory = mkdtempSync(join(tmpdir(), 'language-switcher-'));
+    const preloadPath = join(tempDirectory, 'preload.cjs');
+    try {
+      writeFileSync(
+        preloadPath,
+        `const Module = require('node:module');
 const requireFromProject = Module.createRequire(process.cwd() + '/package.json');
 const React = requireFromProject('react');
+const RadioContext = React.createContext(undefined);
 const load = Module._load;
 Module._load = function (request, parent, isMain) {
   if (request === 'next-intl') return {
@@ -34,20 +38,33 @@ Module._load = function (request, parent, isMain) {
     DropdownMenuTrigger: ({children}) => children,
     DropdownMenuContent: ({children}) => React.createElement('div', null, children),
     DropdownMenuItem: ({children, onSelect, ...props}) =>
-      React.createElement('button', {...props, type: 'button', onClick: onSelect}, children),
+      React.createElement('button', {...props, role: 'menuitem', type: 'button', onClick: onSelect}, children),
+    DropdownMenuRadioGroup: ({children, value}) =>
+      React.createElement(RadioContext.Provider, {value}, children),
+    DropdownMenuRadioItem: ({children, onSelect, value, ...props}) =>
+      React.createElement('button', {
+        ...props,
+        role: 'menuitemradio',
+        'aria-checked': React.useContext(RadioContext) === value,
+        type: 'button',
+        onClick: onSelect,
+      }, children),
   };
   if (request === '@/components/ui/button') return {
     Button: ({children, ...props}) => React.createElement('button', props, children),
   };
   return load.call(this, request, parent, isMain);
 };`,
-    );
-    const result = spawnSync(
-      process.execPath,
-      ['--import', 'tsx', '--require', preloadPath, '--test-reporter=spec', import.meta.filename],
-      { encoding: 'utf8', env: { ...process.env, LANGUAGE_SWITCHER_CLIENT: '1' } },
-    );
-    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+      );
+      const result = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', '--require', preloadPath, '--test-reporter=spec', import.meta.filename],
+        { encoding: 'utf8', env: { ...process.env, LANGUAGE_SWITCHER_CLIENT: '1' } },
+      );
+      assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    } finally {
+      rmSync(tempDirectory, { recursive: true, force: true });
+    }
   });
 } else if (process.env.LANGUAGE_SWITCHER_CLIENT === '1') {
   const browser = new Window({ url: 'https://app.example.test/' });
@@ -101,9 +118,15 @@ Module._load = function (request, parent, isMain) {
     };
     runtimeGlobals.__toastErrors = [];
     const { act, container, root } = await renderSwitcher();
-    const english = [...container.querySelectorAll('button')].find(
+    const english = [...container.querySelectorAll<HTMLButtonElement>('[data-active]')].find(
       (button) => button.textContent === 'English',
     )!;
+    const arabic = [...container.querySelectorAll<HTMLButtonElement>('[data-active]')].find(
+      (button) => button.textContent === 'العربية',
+    )!;
+    assert.equal(english.getAttribute('role'), 'menuitemradio');
+    assert.equal(english.getAttribute('aria-checked'), 'true');
+    assert.equal(arabic.getAttribute('aria-checked'), 'false');
     await act(() => english.click());
     assert.equal(calls, 0);
     await act(() => root.unmount());
