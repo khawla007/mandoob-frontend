@@ -71,10 +71,19 @@ declare global {
   }
 }
 
-async function primeState(context: BrowserContext, page: Page, locale: Locale, theme: Theme) {
-  await context.addCookies([
-    { name: 'NEXT_LOCALE', value: locale, url: 'http://localhost:3001', sameSite: 'Lax' },
-  ]);
+function configuredOrigin(baseURL: string | undefined) {
+  if (!baseURL) throw new Error('The public-shell project requires a configured baseURL.');
+  return new URL(baseURL).origin;
+}
+
+async function primeState(
+  context: BrowserContext,
+  page: Page,
+  locale: Locale,
+  theme: Theme,
+  origin: string,
+) {
+  await context.addCookies([{ name: 'NEXT_LOCALE', value: locale, url: origin, sameSite: 'Lax' }]);
   await page.addInitScript((persistedTheme) => {
     localStorage.setItem('theme', persistedTheme);
     window.__shellThemeFrames = [];
@@ -104,7 +113,7 @@ async function primeState(context: BrowserContext, page: Page, locale: Locale, t
   }, theme);
 }
 
-function watchRuntime(page: Page) {
+function watchRuntime(page: Page, origin: string) {
   const problems: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') problems.push(`console: ${message.text()}`);
@@ -112,12 +121,15 @@ function watchRuntime(page: Page) {
   page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
   page.on('requestfailed', (request) => {
     const url = new URL(request.url());
-    if (url.origin === 'http://localhost:3001')
-      problems.push(`requestfailed: ${url.pathname} ${request.failure()?.errorText ?? ''}`);
+    const failure = request.failure()?.errorText ?? '';
+    const expectedPrefetchCancellation =
+      request.resourceType() === 'fetch' && failure === 'net::ERR_ABORTED';
+    if (url.origin === origin && !expectedPrefetchCancellation)
+      problems.push(`requestfailed: ${request.resourceType()} ${url.pathname} ${failure}`);
   });
   page.on('response', (response) => {
     const url = new URL(response.url());
-    if (url.origin === 'http://localhost:3001' && response.status() >= 400)
+    if (url.origin === origin && response.status() >= 400)
       problems.push(`response: ${response.status()} ${url.pathname}`);
   });
   return problems;
@@ -286,12 +298,13 @@ async function contrastRatio(page: Page, selector: string) {
 
 for (const entry of matrix) {
   const label = `${entry.viewport.width}x${entry.viewport.height} ${entry.locale.toUpperCase()} ${entry.theme}`;
-  test(`pairwise shell matrix — ${label}`, async ({ context, page }) => {
+  test(`pairwise shell matrix — ${label}`, async ({ baseURL, context, page }) => {
     test.setTimeout(90_000);
-    const runtimeProblems = watchRuntime(page);
+    const origin = configuredOrigin(baseURL);
+    const runtimeProblems = watchRuntime(page, origin);
     await page.setViewportSize(entry.viewport);
     await page.emulateMedia({ colorScheme: entry.theme });
-    await primeState(context, page, entry.locale, entry.theme);
+    await primeState(context, page, entry.locale, entry.theme, origin);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('banner')).toBeVisible();
     await expectLoadedShellImages(page);
@@ -321,6 +334,7 @@ for (const entry of matrix) {
       page,
       'header a, header button, [role="dialog"] a, [role="dialog"] button',
     );
+    await expectVisibleTargetsAtLeast44(page, 'footer.footer .footer__col a');
 
     const desktop = entry.viewport.width >= 1024;
     if (desktop) {
@@ -451,13 +465,14 @@ test('exact current state is correct on every page-owning navigation route', asy
 });
 
 test('keyboard lifecycle, reduced motion, route close, and navigation parity', async ({
+  baseURL,
   context,
   page,
 }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
-  await primeState(context, page, 'en', 'dark');
+  await primeState(context, page, 'en', 'dark', configuredOrigin(baseURL));
   await page.goto('/', { waitUntil: 'networkidle' });
   await page.evaluate(
     () =>
@@ -495,12 +510,13 @@ test('keyboard lifecycle, reduced motion, route close, and navigation parity', a
 });
 
 test('equivalent 200% reflow preserves every shell control at 720x450 CSS pixels', async ({
+  baseURL,
   context,
   page,
 }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 720, height: 450 });
-  await primeState(context, page, 'en', 'light');
+  await primeState(context, page, 'en', 'light', configuredOrigin(baseURL));
   await page.goto('/', { waitUntil: 'networkidle' });
   const trigger = page.getByRole('button', { name: copy.en.open });
   await expect(trigger).toBeVisible();
@@ -566,7 +582,8 @@ test('every unique shell destination returns a successful public or auth respons
   }
 });
 
-test('capture the five sanitized material states when evidence output is requested', async ({
+test('capture four sanitized table material states when evidence output is requested', async ({
+  baseURL,
   browser,
 }) => {
   test.setTimeout(120_000);
@@ -606,26 +623,31 @@ test('capture the five sanitized material states when evidence output is request
       menu: true,
     },
   ] as const;
+  const origin = configuredOrigin(baseURL);
   for (const state of states) {
     const context = await browser.newContext({
+      baseURL,
       viewport: state.viewport,
       colorScheme: state.theme,
       reducedMotion: 'reduce',
     });
-    const page = await context.newPage();
-    await primeState(context, page, state.locale, state.theme);
-    await page.goto(state.route, { waitUntil: 'networkidle' });
-    await expect(page.getByRole('banner')).toBeVisible();
-    if (state.menu) {
-      await page.getByRole('button', { name: copy[state.locale].open }).click();
-      const dialog = page.getByRole('dialog', { name: copy[state.locale].menu });
-      await expect(dialog).toBeVisible();
-      await expectNoShellOverflow(page, true);
-      await page.screenshot({ path: path.join(evidenceDir!, state.file) });
-    } else {
-      await expect(page.locator('.hero h1')).toBeVisible();
-      await page.screenshot({ path: path.join(evidenceDir!, state.file) });
+    try {
+      const page = await context.newPage();
+      await primeState(context, page, state.locale, state.theme, origin);
+      await page.goto(state.route, { waitUntil: 'networkidle' });
+      await expect(page.getByRole('banner')).toBeVisible();
+      if (state.menu) {
+        await page.getByRole('button', { name: copy[state.locale].open }).click();
+        const dialog = page.getByRole('dialog', { name: copy[state.locale].menu });
+        await expect(dialog).toBeVisible();
+        await expectNoShellOverflow(page, true);
+        await page.screenshot({ path: path.join(evidenceDir!, state.file) });
+      } else {
+        await expect(page.locator('.hero h1')).toBeVisible();
+        await page.screenshot({ path: path.join(evidenceDir!, state.file) });
+      }
+    } finally {
+      await context.close();
     }
-    await context.close();
   }
 });
