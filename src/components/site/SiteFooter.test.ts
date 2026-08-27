@@ -29,7 +29,7 @@ function declarations(selector: string): string {
 
 describe('SiteFooter localization and integrity contract', () => {
   it('is an async server component backed by the footer and site catalogs', () => {
-    assert.match(footer, /import \{ getTranslations \} from 'next-intl\/server';/u);
+    assert.match(footer, /import \{[^}]*getTranslations[^}]*\} from 'next-intl\/server';/u);
     assert.match(footer, /export async function SiteFooter\(\)/u);
     assert.match(footer, /getTranslations\('site\.footer'\)/u);
     assert.match(footer, /getTranslations\('site'\)/u);
@@ -43,6 +43,21 @@ describe('SiteFooter localization and integrity contract', () => {
       assert.match(footer, new RegExp(`heading: tFooter\\('${heading}'\\)`, 'u'));
     }
     assert.match(footer, /aria-label=\{column\.heading\}/u);
+  });
+
+  it('uses level-two headings for each footer navigation group', () => {
+    assert.match(footer, /<h2>\{column\.heading\}<\/h2>/u);
+    assert.doesNotMatch(footer, /<h3>/u);
+  });
+
+  it('formats the generated year with the active request locale', () => {
+    assert.match(footer, /import \{ getLocale, getTranslations \} from 'next-intl\/server';/u);
+    assert.match(footer, /getLocale\(\)/u);
+    assert.match(
+      footer,
+      /new Intl\.NumberFormat\(locale,\s*\{\s*useGrouping:\s*false\s*\}\)\.format\(\s*new Date\(\)\.getFullYear\(\),?\s*\)/u,
+    );
+    assert.match(footer, /© \{year\} \{tFooter\('identity'\)\}/u);
   });
 
   it('preserves every reviewed destination with a catalog-backed label', () => {
@@ -84,9 +99,11 @@ describe('SiteFooter layout contract', () => {
     assert.doesNotMatch(declarations('.site-public .footer__grid'), /direction\s*:/u);
   });
 
-  it('provides 44px link targets, wrapping, and a visible semantic focus style', () => {
+  it('provides logical 44px square link targets, wrapping, and visible focus', () => {
     const link = declarations('.site-public .footer__col a');
-    assert.match(link, /min-height:\s*44px/u);
+    assert.match(link, /min-block-size:\s*44px/u);
+    assert.match(link, /min-inline-size:\s*44px/u);
+    assert.doesNotMatch(link, /min-(?:height|width):/u);
     assert.match(link, /overflow-wrap:\s*anywhere/u);
     assert.match(
       declarations('.site-public .footer__col a:focus-visible'),

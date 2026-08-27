@@ -1,6 +1,6 @@
 import 'server-only';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 function BrandMark() {
   return (
@@ -21,10 +21,14 @@ function BrandMark() {
 }
 
 export async function SiteFooter() {
-  const [tFooter, tSite] = await Promise.all([
+  const [tFooter, tSite, locale] = await Promise.all([
     getTranslations('site.footer'),
     getTranslations('site'),
+    getLocale(),
   ]);
+  const year = new Intl.NumberFormat(locale, { useGrouping: false }).format(
+    new Date().getFullYear(),
+  );
   const columns = [
     {
       heading: tFooter('product'),
@@ -70,7 +74,7 @@ export async function SiteFooter() {
 
           {columns.map((column) => (
             <nav key={column.heading} className="footer__col" aria-label={column.heading}>
-              <h3>{column.heading}</h3>
+              <h2>{column.heading}</h2>
               <ul>
                 {column.links.map((link) => (
                   <li key={link.href}>
@@ -85,7 +89,7 @@ export async function SiteFooter() {
         <div className="footer__rule" aria-hidden="true" />
         <div className="footer__bottom container">
           <p className="micro mono">
-            © {new Date().getFullYear()} {tFooter('identity')}
+            © {year} {tFooter('identity')}
           </p>
         </div>
       </footer>

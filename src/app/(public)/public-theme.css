@@ -2729,7 +2729,7 @@
   color: var(--zinc-600); /* a11y: 4.5:1 on --paper (was --zinc-400 = 2.5:1) */
   overflow-wrap: anywhere;
 }
-.site-public .footer__col h3 {
+.site-public .footer__col h2 {
   font-family: var(--mono-font);
   font-size: var(--fs-12);
   text-transform: uppercase;
@@ -2745,7 +2745,8 @@
 .site-public .footer__col a {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-block-size: 44px;
+  min-inline-size: 44px;
   font-size: var(--fs-14);
   color: var(--zinc-700);
   overflow-wrap: anywhere;
