@@ -24,10 +24,32 @@
   --zinc-900: oklch(0.227 0.008 45);
   --zinc-950: oklch(0.157 0.007 45);
 
-  --accent: var(--brand-accent); /* UAE-saffron warm red, used <8% */
+  --accent: var(--public-accent-decoration); /* UAE-saffron warm red, used <8% */
   --accent-hover: oklch(0.585 0.195 38); /* darker saffron for :hover */
   --accent-ink: oklch(0.57 0.19 38); /* accent as text on light paper, ~4.7:1 WCAG AA */
   --accent-soft: oklch(0.96 0.02 40);
+
+  /* Public semantic roles. CTA colors are resolved so every state can be
+     independently verified against WCAG AA without coupling to page tokens. */
+  --public-canvas: var(--paper);
+  --public-surface: var(--zinc-50);
+  --public-surface-elevated: var(--paper);
+  --public-text-primary: var(--ink);
+  --public-text-muted: var(--zinc-600);
+  --public-border-subtle: var(--zinc-200);
+  --public-border-strong: var(--zinc-400);
+  --public-accent-decoration: var(--brand-accent);
+  --public-cta-background: #b9380f;
+  --public-cta-text: #fff8f4;
+  --public-cta-hover-background: #9f2e0b;
+  --public-cta-active-background: #872508;
+  --public-cta-focus-background: #b9380f;
+  --public-cta-disabled-background: #6f5b54;
+  --public-cta-disabled-text: #fff8f4;
+  --public-header-surface: rgba(255, 255, 255, 0.85);
+  --public-mobile-dialog-surface: #181614;
+  --public-focus-ring: #b9380f;
+  --public-scrim: rgba(24, 18, 15, 0.72);
 
   --pb-border: oklch(0.918 0.006 45);
   --pb-border-dark: oklch(0.268 0.008 45);
@@ -106,6 +128,26 @@
   --accent-soft: oklch(0.22 0.04 38);
   --accent-ink: var(--accent); /* bright accent reads fine on dark paper (~4.6:1) */
 
+  --public-canvas: var(--paper);
+  --public-surface: var(--zinc-100);
+  --public-surface-elevated: var(--zinc-200);
+  --public-text-primary: var(--ink);
+  --public-text-muted: var(--zinc-600);
+  --public-border-subtle: var(--zinc-200);
+  --public-border-strong: var(--zinc-400);
+  --public-accent-decoration: var(--brand-accent);
+  --public-cta-background: #ff7043;
+  --public-cta-text: #21120d;
+  --public-cta-hover-background: #ff865f;
+  --public-cta-active-background: #e55c32;
+  --public-cta-focus-background: #ff7043;
+  --public-cta-disabled-background: #a97868;
+  --public-cta-disabled-text: #1d100c;
+  --public-header-surface: rgba(10, 10, 10, 0.85);
+  --public-mobile-dialog-surface: #181614;
+  --public-focus-ring: #ff865f;
+  --public-scrim: rgba(5, 4, 3, 0.82);
+
   /* shadcn surface tokens — mirror globals.css .dark so shadcn-driven controls
      (UserMenu, buttons) inside public pages darken too. */
   --background: oklch(0.145 0 0);
@@ -179,7 +221,7 @@
 }
 
 .site-public :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--public-focus-ring);
   outline-offset: 3px;
 }
 .site-public .visually-hidden {
@@ -339,11 +381,24 @@
   font-size: var(--fs-15);
 }
 .site-public .btn--accent {
-  background: var(--accent);
-  color: #fff;
+  background: var(--public-cta-background);
+  color: var(--public-cta-text);
 }
 .site-public .btn--accent:hover {
-  background: var(--accent-hover);
+  background: var(--public-cta-hover-background);
+}
+.site-public .btn--accent:active {
+  background: var(--public-cta-active-background);
+}
+.site-public .btn--accent:focus-visible {
+  background: var(--public-cta-focus-background);
+}
+.site-public .btn--accent:disabled,
+.site-public .btn--accent[aria-disabled='true'] {
+  cursor: not-allowed;
+  background: var(--public-cta-disabled-background);
+  color: var(--public-cta-disabled-text);
+  transform: none;
 }
 .site-public .btn--outline {
   background: var(--paper);
@@ -369,13 +424,13 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--public-header-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--pb-border);
 }
 .dark .site-public .nav {
-  background: rgba(10, 10, 10, 0.85);
+  background: var(--public-header-surface);
 }
 .site-public .nav__inner {
   display: flex;
@@ -432,6 +487,28 @@
   inset-inline: 0;
   border-bottom: 1px solid var(--pb-border);
   background: var(--paper);
+}
+.site-public .public-theme-toggle {
+  position: relative;
+  display: inline-grid;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  place-items: center;
+  border-radius: var(--r-pill);
+  color: var(--public-text-primary);
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+.site-public .public-theme-toggle:hover {
+  background: var(--public-surface);
+}
+.site-public .public-theme-toggle__icon--moon,
+.dark .site-public .public-theme-toggle__icon--sun {
+  display: none;
+}
+.dark .site-public .public-theme-toggle__icon--moon {
+  display: block;
 }
 @media (min-width: 1024px) {
   .site-public .nav__mobile {
