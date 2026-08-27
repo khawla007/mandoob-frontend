@@ -178,6 +178,14 @@ renderTest('current navigation and footer muted copy use AA semantic colors', ()
   }
 });
 
+renderTest('hidden skip link cannot create RTL document overflow', () => {
+  const hidden = declarations('.site-public .skip-link');
+  const focused = declarations('.site-public .skip-link:focus');
+  assert.doesNotMatch(hidden, /-9999px/u);
+  assert.match(hidden, /transform:\s*translateY\(-150%\)/u);
+  assert.match(focused, /transform:\s*translateY\(0\)/u);
+});
+
 renderTest('homepage hero image and two overlays remain exact and separate from modifiers', () => {
   const hero = declarations('.site-public .hero');
   assert.match(hero, /background-image:\s*url\('\/hero\/skyline\.jpg'\)/u);
