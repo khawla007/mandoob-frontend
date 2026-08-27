@@ -545,6 +545,11 @@ test('equivalent 200% reflow preserves every shell control at 720x450 CSS pixels
     await expect(keyboardControls.nth(index)).toBeFocused();
   }
   await expect(keyboardControls.last()).toBeInViewport();
+  const finalAction = controls.at(-1)!;
+  await finalAction.focus();
+  await finalAction.scrollIntoViewIfNeeded();
+  await expect(finalAction).toBeFocused();
+  await expect(finalAction).toBeInViewport();
   const evidenceDir = process.env.PUBLIC_SHELL_EVIDENCE_DIR;
   if (evidenceDir)
     await page.screenshot({
