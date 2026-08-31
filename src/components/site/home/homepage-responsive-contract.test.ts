@@ -18,28 +18,34 @@ function readOptionalFile(url: URL) {
   }
 }
 
-function extractCssBlock(source: string, atRule: RegExp) {
-  const start = source.search(atRule);
-  if (start < 0) return '';
+function extractCssBlocks(source: string, atRule: RegExp) {
+  const blocks: string[] = [];
+  const globalAtRule = new RegExp(atRule.source, `${atRule.flags.replace('g', '')}g`);
 
-  const openingBrace = source.indexOf('{', start);
-  if (openingBrace < 0) return '';
+  for (const match of source.matchAll(globalAtRule)) {
+    const start = match.index ?? 0;
+    const openingBrace = source.indexOf('{', start);
+    if (openingBrace < 0) continue;
 
-  let depth = 0;
-  for (let index = openingBrace; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}') depth -= 1;
-    if (depth === 0) return source.slice(start, index + 1);
+    let depth = 0;
+    for (let index = openingBrace; index < source.length; index += 1) {
+      if (source[index] === '{') depth += 1;
+      if (source[index] === '}') depth -= 1;
+      if (depth === 0) {
+        blocks.push(source.slice(start, index + 1));
+        break;
+      }
+    }
   }
 
-  return '';
+  return blocks;
 }
 
 const faqAccordion = readOptionalFile(new URL('./FaqAccordion.tsx', import.meta.url));
 const knowledgeFaqSection = readOptionalFile(
   new URL('./KnowledgeFaqSection.tsx', import.meta.url),
 );
-const reducedMotionCss = extractCssBlock(
+const reducedMotionCssBlocks = extractCssBlocks(
   css,
   /@media\s*\(prefers-reduced-motion:\s*reduce\)/u,
 );
@@ -92,7 +98,13 @@ describe('homepage responsive and accessibility contract', () => {
       css,
       /\.home-faq__item\[data-open\]\s+\.home-faq__answer\s*\{[^}]*grid-template-rows:\s*1fr/u,
     );
-    assert.match(reducedMotionCss, /\.home-faq__answer/u);
+    const faqReducedMotionCss = reducedMotionCssBlocks.find((block) =>
+      block.includes('.home-faq__answer'),
+    );
+    assert.match(
+      faqReducedMotionCss ?? '',
+      /\.home-faq__answer\s*\{[^}]*transition:\s*none/u,
+    );
   });
 
   it('uses high-contrast text tokens inside tinted and dark homepage bands', () => {
