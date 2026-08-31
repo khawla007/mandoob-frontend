@@ -8,10 +8,19 @@ const css = readFileSync(
 );
 
 describe('homepage responsive and accessibility contract', () => {
-  it('bounds the annotated preview and delays floating callouts until wide desktop', () => {
-    assert.match(css, /\.site-public \.annotated-showcase\s*\{[\s\S]*?overflow:\s*clip/u);
-    assert.match(css, /@media \(min-width:\s*1200px\)[^{]*\{[\s\S]*?\.annotated-chip/u);
-    assert.match(css, /\.site-public \.annotated-mock\s*\{[\s\S]*?min-width:\s*0/u);
+  it('defines the compact desktop reference grids', () => {
+    assert.match(
+      css,
+      /\.site-public \.home-setup-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,/u,
+    );
+    assert.match(
+      css,
+      /\.site-public \.home-services-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6,/u,
+    );
+    assert.match(
+      css,
+      /\.site-public \.home-knowledge-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4,/u,
+    );
   });
 
   it('provides accessible FAQ targets and focus treatment', () => {
@@ -19,14 +28,14 @@ describe('homepage responsive and accessibility contract', () => {
     assert.match(css, /\.home-faq summary:focus-visible\s*\{/u);
   });
 
-  it('keeps orientation and split content within the 768px tablet viewport', () => {
+  it('collapses dense bands without horizontal page overflow', () => {
     assert.match(
       css,
-      /\.site-public \.logo-track\.logo-track--orientation\s*\{[\s\S]*?white-space:\s*normal/u,
+      /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-faq__grid\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
     );
     assert.match(
       css,
-      /@media \(min-width:\s*900px\)[^{]*\{[\s\S]*?\.site-public \.split-showcase/u,
+      /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-estimator-band\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
     );
   });
 });

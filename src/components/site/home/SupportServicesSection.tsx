@@ -1,11 +1,4 @@
-import {
-  Briefcase,
-  Building2,
-  CalendarClock,
-  IdCard,
-  Landmark,
-  ReceiptText,
-} from 'lucide-react';
+import { Briefcase, Building2, CalendarClock, IdCard, Landmark, ReceiptText } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 
 const SERVICES = [
