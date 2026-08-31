@@ -2950,7 +2950,6 @@
     },
     "testimonials": {
       "title": "What Our Clients Say",
-      "direction": "ltr",
       "carouselLabel": "Client testimonials",
       "previousLabel": "Previous testimonial",
       "nextLabel": "Next testimonial",

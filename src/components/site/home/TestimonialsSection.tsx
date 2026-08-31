@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 import { TestimonialsCarousel, type Testimonial } from './TestimonialsCarousel';
 
@@ -16,7 +16,10 @@ const CLIENTS = [
 ] as const;
 
 export async function TestimonialsSection() {
-  const t = await getTranslations('home.testimonials');
+  const [t, locale] = await Promise.all([
+    getTranslations('home.testimonials'),
+    getLocale(),
+  ]);
   const testimonials: Testimonial[] = CLIENTS.map(({ key, image }) => ({
     id: key,
     image,
@@ -24,7 +27,7 @@ export async function TestimonialsSection() {
     role: t(`${key}Role`),
     quote: t(`${key}Quote`),
   }));
-  const direction = t('direction') === 'rtl' ? 'rtl' : 'ltr';
+  const direction = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
     <section className="home-testimonials-section" aria-labelledby="testimonials-h">

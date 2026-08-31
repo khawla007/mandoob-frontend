@@ -2950,7 +2950,6 @@
     },
     "testimonials": {
       "title": "ماذا يقول عملاؤنا",
-      "direction": "rtl",
       "carouselLabel": "آراء العملاء",
       "previousLabel": "رأي العميل السابق",
       "nextLabel": "رأي العميل التالي",
