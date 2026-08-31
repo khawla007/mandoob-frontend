@@ -18,9 +18,30 @@ function readOptionalFile(url: URL) {
   }
 }
 
+function extractCssBlock(source: string, atRule: RegExp) {
+  const start = source.search(atRule);
+  if (start < 0) return '';
+
+  const openingBrace = source.indexOf('{', start);
+  if (openingBrace < 0) return '';
+
+  let depth = 0;
+  for (let index = openingBrace; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+
+  return '';
+}
+
 const faqAccordion = readOptionalFile(new URL('./FaqAccordion.tsx', import.meta.url));
 const knowledgeFaqSection = readOptionalFile(
   new URL('./KnowledgeFaqSection.tsx', import.meta.url),
+);
+const reducedMotionCss = extractCssBlock(
+  css,
+  /@media\s*\(prefers-reduced-motion:\s*reduce\)/u,
 );
 
 describe('homepage responsive and accessibility contract', () => {
@@ -65,16 +86,13 @@ describe('homepage responsive and accessibility contract', () => {
     assert.doesNotMatch(knowledgeFaqSection, /<details/u);
     assert.match(
       css,
-      /\.home-faq__answer\s*\{[\s\S]*?grid-template-rows:\s*0fr;[\s\S]*?transition:/u,
+      /\.home-faq__answer\s*\{[^}]*grid-template-rows:\s*0fr;[^}]*transition:/u,
     );
     assert.match(
       css,
-      /\.home-faq__item\[data-open\]\s+\.home-faq__answer\s*\{[\s\S]*?grid-template-rows:\s*1fr/u,
+      /\.home-faq__item\[data-open\]\s+\.home-faq__answer\s*\{[^}]*grid-template-rows:\s*1fr/u,
     );
-    assert.match(
-      css,
-      /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.home-faq__answer/u,
-    );
+    assert.match(reducedMotionCss, /\.home-faq__answer/u);
   });
 
   it('uses high-contrast text tokens inside tinted and dark homepage bands', () => {
