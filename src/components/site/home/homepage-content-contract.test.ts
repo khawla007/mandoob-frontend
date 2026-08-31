@@ -45,13 +45,23 @@ describe('homepage claims and CTA contract', () => {
 
     assert.match(testimonials, /TestimonialsCarousel/u);
     assert.equal(testimonials.match(/key: 'client(?:10|[1-9])'/gu)?.length, 10);
-    assert.match(testimonials, /t\('previousLabel'\)/u);
-    assert.match(testimonials, /t\('nextLabel'\)/u);
-    assert.match(testimonials, /t\('position'/u);
-    assert.match(carousel, /aria-roledescription="carousel"/u);
-    assert.match(carousel, /onPointerDown/u);
-    assert.match(carousel, /onKeyDown/u);
-    assert.match(carousel, /onTransitionEnd/u);
+    assert.match(testimonials, /t\('carouselLabel'\)/u);
+    assert.match(testimonials, /t\('fiveStars'\)/u);
+    assert.doesNotMatch(testimonials, /previousLabel|nextLabel|positionLabels/u);
+    assert.match(carousel, /from 'swiper\/react'/u);
+    assert.match(carousel, /from 'swiper\/modules'/u);
+    assert.match(carousel, /modules=\{\[Autoplay\]\}/u);
+    assert.match(carousel, /delay:\s*0/u);
+    assert.match(carousel, /disableOnInteraction:\s*true/u);
+    assert.match(carousel, /pauseOnMouseEnter:\s*true/u);
+    assert.match(carousel, /speed=\{reducedMotion \? 0 : 8000\}/u);
+    assert.match(carousel, /loop=\{testimonials\.length > 4\}/u);
+    assert.match(carousel, /450:\s*\{ slidesPerView: 1, spaceBetween: 10 \}/u);
+    assert.match(carousel, /640:\s*\{ slidesPerView: 2, spaceBetween: 15 \}/u);
+    assert.match(carousel, /768:\s*\{ slidesPerView: 3, spaceBetween: 15 \}/u);
+    assert.match(carousel, /1024:\s*\{ slidesPerView: 4, spaceBetween: 20 \}/u);
+    assert.doesNotMatch(carousel, /onPointerDown|onTransitionEnd|CLONE_COUNT/u);
+    assert.doesNotMatch(carousel, /home-testimonials-arrow/u);
   });
 
   it('uses explicit catalog suffixes for setup-card facts', () => {

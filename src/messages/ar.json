@@ -2951,9 +2951,6 @@
     "testimonials": {
       "title": "ماذا يقول عملاؤنا",
       "carouselLabel": "آراء العملاء",
-      "previousLabel": "رأي العميل السابق",
-      "nextLabel": "رأي العميل التالي",
-      "position": "رأي العميل {current} من {total}",
       "fiveStars": "خمس نجوم من أصل خمس",
       "client1Name": "محمد الراشد",
       "client1Role": "رائد أعمال",

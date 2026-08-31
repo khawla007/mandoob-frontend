@@ -16,10 +16,7 @@ const CLIENTS = [
 ] as const;
 
 export async function TestimonialsSection() {
-  const [t, locale] = await Promise.all([
-    getTranslations('home.testimonials'),
-    getLocale(),
-  ]);
+  const [t, locale] = await Promise.all([getTranslations('home.testimonials'), getLocale()]);
   const testimonials: Testimonial[] = CLIENTS.map(({ key, image }) => ({
     id: key,
     image,
@@ -38,12 +35,7 @@ export async function TestimonialsSection() {
         <TestimonialsCarousel
           testimonials={testimonials}
           carouselLabel={t('carouselLabel')}
-          previousLabel={t('previousLabel')}
-          nextLabel={t('nextLabel')}
           ratingLabel={t('fiveStars')}
-          positionLabels={CLIENTS.map((_, index) =>
-            t('position', { current: index + 1, total: CLIENTS.length }),
-          )}
           direction={direction}
         />
       </div>

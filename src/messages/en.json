@@ -2951,9 +2951,6 @@
     "testimonials": {
       "title": "What Our Clients Say",
       "carouselLabel": "Client testimonials",
-      "previousLabel": "Previous testimonial",
-      "nextLabel": "Next testimonial",
-      "position": "Testimonial {current} of {total}",
       "fiveStars": "Five out of five stars",
       "client1Name": "Mohammed Al Rashid",
       "client1Role": "Entrepreneur",
