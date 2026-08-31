@@ -1,14 +1,30 @@
-import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
+
+import { TestimonialsCarousel, type Testimonial } from './TestimonialsCarousel';
 
 const CLIENTS = [
   { key: 'client1', image: '/customers/jonas-keller.svg' },
   { key: 'client2', image: '/customers/lina-chen.svg' },
   { key: 'client3', image: '/customers/omar-bensalem.svg' },
+  { key: 'client4', image: '/customers/priya-ramesh.svg' },
+  { key: 'client5', image: '/customers/jonas-keller.svg' },
+  { key: 'client6', image: '/customers/lina-chen.svg' },
+  { key: 'client7', image: '/customers/omar-bensalem.svg' },
+  { key: 'client8', image: '/customers/priya-ramesh.svg' },
+  { key: 'client9', image: '/customers/jonas-keller.svg' },
+  { key: 'client10', image: '/customers/lina-chen.svg' },
 ] as const;
 
 export async function TestimonialsSection() {
   const t = await getTranslations('home.testimonials');
+  const testimonials: Testimonial[] = CLIENTS.map(({ key, image }) => ({
+    id: key,
+    image,
+    name: t(`${key}Name`),
+    role: t(`${key}Role`),
+    quote: t(`${key}Quote`),
+  }));
+  const direction = t('direction') === 'rtl' ? 'rtl' : 'ltr';
 
   return (
     <section className="home-testimonials-section" aria-labelledby="testimonials-h">
@@ -16,31 +32,17 @@ export async function TestimonialsSection() {
         <h2 id="testimonials-h" className="home-section-title">
           {t('title')}
         </h2>
-        <div className="home-testimonials-shell">
-          <span className="home-testimonials-arrow" aria-hidden="true">
-            ‹
-          </span>
-          <div className="home-testimonials-grid">
-            {CLIENTS.map(({ key, image }) => (
-              <article className="home-testimonial-card" key={key}>
-                <div className="home-testimonial-card__head">
-                  <Image src={image} alt="" width={52} height={52} />
-                  <div>
-                    <h3>{t(`${key}Name`)}</h3>
-                    <p>{t(`${key}Role`)}</p>
-                    <span className="home-testimonial-card__stars" aria-label={t('fiveStars')}>
-                      ★★★★★
-                    </span>
-                  </div>
-                </div>
-                <blockquote>{t(`${key}Quote`)}</blockquote>
-              </article>
-            ))}
-          </div>
-          <span className="home-testimonials-arrow" aria-hidden="true">
-            ›
-          </span>
-        </div>
+        <TestimonialsCarousel
+          testimonials={testimonials}
+          carouselLabel={t('carouselLabel')}
+          previousLabel={t('previousLabel')}
+          nextLabel={t('nextLabel')}
+          ratingLabel={t('fiveStars')}
+          positionLabels={CLIENTS.map((_, index) =>
+            t('position', { current: index + 1, total: CLIENTS.length }),
+          )}
+          direction={direction}
+        />
       </div>
     </section>
   );

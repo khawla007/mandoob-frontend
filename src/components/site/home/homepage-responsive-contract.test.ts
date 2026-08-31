@@ -27,7 +27,7 @@ describe('homepage responsive and accessibility contract', () => {
     );
     assert.match(
       css,
-      /\.site-public \.home-testimonials-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,/u,
+      /\.site-public \.home-testimonials-carousel\s*\{[\s\S]*?--home-testimonial-columns:\s*3/u,
     );
   });
 
@@ -59,7 +59,12 @@ describe('homepage responsive and accessibility contract', () => {
     );
     assert.match(
       css,
-      /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-testimonials-grid\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
+      /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-testimonials-carousel\s*\{[\s\S]*?--home-testimonial-columns:\s*1/u,
     );
+    assert.match(
+      css,
+      /@media \(max-width:\s*1023px\)[\s\S]*?\.site-public \.home-testimonials-carousel\s*\{[\s\S]*?--home-testimonial-columns:\s*2/u,
+    );
+    assert.doesNotMatch(css, /\.site-public \.home-testimonials-arrow\s*\{[^}]*display:\s*none/u);
   });
 });

@@ -13,6 +13,7 @@ const componentSources = [
   'WhyMandoobSection.tsx',
   'SupportServicesSection.tsx',
   'TestimonialsSection.tsx',
+  'TestimonialsCarousel.tsx',
   'KnowledgeFaqSection.tsx',
   'FinalCtaSection.tsx',
 ].map((file) => ({ file, source: readFileSync(join(homeDirectory, file), 'utf8') }));
@@ -36,12 +37,21 @@ describe('homepage claims and CTA contract', () => {
     assert.doesNotMatch(hero, /stats-band|hero__spec/u);
   });
 
-  it('includes the three-card client testimonial row from the approved reference', () => {
+  it('renders ten localized testimonials through an accessible carousel', () => {
     const testimonials =
       componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';
+    const carousel =
+      componentSources.find(({ file }) => file === 'TestimonialsCarousel.tsx')?.source ?? '';
 
-    assert.match(testimonials, /home-testimonials-grid/u);
-    assert.equal(testimonials.match(/key: 'client[1-3]'/gu)?.length, 3);
+    assert.match(testimonials, /TestimonialsCarousel/u);
+    assert.equal(testimonials.match(/key: 'client(?:10|[1-9])'/gu)?.length, 10);
+    assert.match(testimonials, /t\('previousLabel'\)/u);
+    assert.match(testimonials, /t\('nextLabel'\)/u);
+    assert.match(testimonials, /t\('position'/u);
+    assert.match(carousel, /aria-roledescription="carousel"/u);
+    assert.match(carousel, /onPointerDown/u);
+    assert.match(carousel, /onKeyDown/u);
+    assert.match(carousel, /onTransitionEnd/u);
   });
 
   it('uses explicit catalog suffixes for setup-card facts', () => {
