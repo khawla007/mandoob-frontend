@@ -51,7 +51,7 @@ export async function HeroSection() {
           </span>
         </p>
         <div className="cta-row reveal">
-          <Link className="btn btn--accent" href="/estimate">
+          <Link className="btn btn--accent hero__estimate-cta" href="/estimate">
             {t('estimateCta')}
           </Link>
           <Link className="btn btn--outline" href="/apply">

@@ -401,6 +401,19 @@
   color: var(--public-cta-disabled-text);
   transform: none;
 }
+.site-public .hero__estimate-cta {
+  background: #ff7043;
+  color: #21120d;
+}
+.site-public .hero__estimate-cta:hover {
+  background: #ff865f;
+}
+.site-public .hero__estimate-cta:active {
+  background: #e55c32;
+}
+.site-public .hero__estimate-cta:focus-visible {
+  background: #ff7043;
+}
 .site-public .btn--outline {
   background: var(--paper);
   color: var(--ink);
