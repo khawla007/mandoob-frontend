@@ -1,10 +1,10 @@
-import { AnnotatedShowcaseSection } from '@/components/site/home/AnnotatedShowcaseSection';
 import { EstimatorSection } from '@/components/site/home/EstimatorSection';
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection';
 import { FlowSection } from '@/components/site/home/FlowSection';
 import { HeroSection } from '@/components/site/home/HeroSection';
 import { KnowledgeFaqSection } from '@/components/site/home/KnowledgeFaqSection';
 import { ServicesSection } from '@/components/site/home/ServicesSection';
+import { SupportServicesSection } from '@/components/site/home/SupportServicesSection';
 import { TrustBandSection } from '@/components/site/home/TrustBandSection';
 import { WhyMandoobSection } from '@/components/site/home/WhyMandoobSection';
 import { EntranceReveal } from '@/components/site/EntranceReveal';
@@ -16,10 +16,10 @@ export default function MarketingHomePage() {
       <HeroSection />
       <TrustBandSection />
       <ServicesSection />
-      <EstimatorSection />
       <FlowSection />
+      <EstimatorSection />
+      <SupportServicesSection />
       <WhyMandoobSection />
-      <AnnotatedShowcaseSection />
       <KnowledgeFaqSection />
       <FinalCtaSection />
     </>

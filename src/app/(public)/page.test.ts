@@ -10,10 +10,10 @@ describe('homepage composition contract', () => {
       '<HeroSection />',
       '<TrustBandSection />',
       '<ServicesSection />',
-      '<EstimatorSection />',
       '<FlowSection />',
+      '<EstimatorSection />',
+      '<SupportServicesSection />',
       '<WhyMandoobSection />',
-      '<AnnotatedShowcaseSection />',
       '<KnowledgeFaqSection />',
       '<FinalCtaSection />',
     ];
@@ -26,6 +26,7 @@ describe('homepage composition contract', () => {
     }
 
     assert.doesNotMatch(pageSource, /CustomersSection/u);
+    assert.doesNotMatch(pageSource, /AnnotatedShowcaseSection/u);
     assert.equal(
       pageSource.match(/<FinalCtaSection\s*\/>/gu)?.length,
       1,
