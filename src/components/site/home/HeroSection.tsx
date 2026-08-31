@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
-export function HeroSection() {
+export async function HeroSection() {
+  const t = await getTranslations('home.hero');
+
   return (
     <>
       <section className="hero" aria-labelledby="hero-h">
@@ -8,23 +11,23 @@ export function HeroSection() {
         <div className="container">
           <span className="eyebrow reveal reveal--mask">
             <span className="rise">
-              <span className="rise__i">.AE · UAE Business Platform</span>
+              <span className="rise__i">{t('eyebrow')}</span>
             </span>
           </span>
           <h1 id="hero-h" className="display reveal reveal--mask">
             <span className="rise">
               <span className="rise__i" style={{ '--rise-delay': '120ms' } as React.CSSProperties}>
-                Set
+                {t('set')}
               </span>
             </span>{' '}
             <span className="rise">
               <span className="rise__i" style={{ '--rise-delay': '200ms' } as React.CSSProperties}>
-                up.
+                {t('up')}
               </span>
             </span>{' '}
             <span className="rise">
               <span className="rise__i" style={{ '--rise-delay': '280ms' } as React.CSSProperties}>
-                Stay
+                {t('stay')}
               </span>
             </span>{' '}
             <span className="rise">
@@ -32,53 +35,51 @@ export function HeroSection() {
                 className="rise__i u-accent"
                 style={{ '--rise-delay': '360ms' } as React.CSSProperties}
               >
-                compliant.
+                {t('compliant')}
               </span>
             </span>{' '}
             <span className="rise">
               <span className="rise__i" style={{ '--rise-delay': '440ms' } as React.CSSProperties}>
-                Operate.
+                {t('operate')}
               </span>
             </span>
           </h1>
           <p className="lede reveal reveal--mask">
             <span className="rise rise--block">
               <span className="rise__i" style={{ '--rise-delay': '520ms' } as React.CSSProperties}>
-                Set up your UAE company in 7 to 14 days. Mainland, Free Zone, Offshore — get an
-                itemized cost estimate, submit your application, and stay compliant on visas,
-                Emirates ID, and licence renewals without ever paying a late-fine.
+                {t('lede')}
               </span>
             </span>
           </p>
           <div className="cta-row reveal">
             <Link className="btn btn--accent" href="/estimate">
-              Get Estimate
+              {t('estimateCta')}
             </Link>
             <Link className="btn btn--outline" href="/apply">
-              Start Application
+              {t('applyCta')}
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="stats-band" aria-label="Platform stats">
+      <section className="stats-band" aria-label={t('orientationLabel')}>
         <div className="container">
           <dl className="hero__spec">
             <div className="hero__stat reveal">
-              <dt className="hero__statL">businesses</dt>
-              <dd className="mono hero__statV">320+</dd>
+              <dt className="hero__statL">{t('orientation1Label')}</dt>
+              <dd className="mono hero__statV">{t('orientation1Value')}</dd>
             </div>
             <div className="hero__stat reveal">
-              <dt className="hero__statL">free zones</dt>
-              <dd className="mono hero__statV">45</dd>
+              <dt className="hero__statL">{t('orientation2Label')}</dt>
+              <dd className="mono hero__statV">{t('orientation2Value')}</dd>
             </div>
             <div className="hero__stat reveal">
-              <dt className="hero__statL">fines saved</dt>
-              <dd className="mono hero__statV u-accent">AED 2.4M</dd>
+              <dt className="hero__statL">{t('orientation3Label')}</dt>
+              <dd className="mono hero__statV u-accent">{t('orientation3Value')}</dd>
             </div>
             <div className="hero__stat reveal">
-              <dt className="hero__statL">on-time</dt>
-              <dd className="mono hero__statV">98%</dd>
+              <dt className="hero__statL">{t('orientation4Label')}</dt>
+              <dd className="mono hero__statV">{t('orientation4Value')}</dd>
             </div>
           </dl>
         </div>

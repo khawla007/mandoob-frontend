@@ -1,55 +1,41 @@
 import { SplitImageContent } from '@/components/site/SplitImageContent';
+import { getTranslations } from 'next-intl/server';
 
-export function FlowSection() {
+export async function FlowSection() {
+  const t = await getTranslations('home.flow');
+  const steps = [1, 2, 3, 4] as const;
+
   return (
     <section id="flow" className="section" aria-labelledby="flow-h">
       <div className="container">
         <SplitImageContent
-          mediaTone="soft"
           media={
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="https://illustrations.popsy.co/orange/digital-nomad.svg"
-              alt="Illustration of a founder running UAE company setup remotely as a digital nomad"
-              className="split-showcase__illust"
-              loading="lazy"
-              decoding="async"
-            />
+            <div className="home-journey-visual" aria-label={t('visualLabel')}>
+              {[1, 2, 3, 4].map((step) => (
+                <div className="home-journey-visual__step" key={step}>
+                  <span className="mono" aria-hidden="true">
+                    0{step}
+                  </span>
+                  <strong>{t(`visualStep${step}`)}</strong>
+                </div>
+              ))}
+            </div>
           }
         >
-          <span className="eyebrow eyebrow--accent">03 · How it works</span>
+          <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
           <h2 id="flow-h" className="h2">
-            From idea to trade license in 7–14 days.
+            {t('title')}
           </h2>
           <ol className="split-showcase__list split-showcase__list--steps">
-            <li>
-              <span className="flow__num mono" aria-hidden="true">
-                01
-              </span>
-              <h3>Submit</h3>
-              <p>10-minute dynamic questionnaire, branched by ownership and activity.</p>
-            </li>
-            <li>
-              <span className="flow__num mono" aria-hidden="true">
-                02
-              </span>
-              <h3>Estimate</h3>
-              <p>Itemized AED quote across DED, free zone, MOHRE, GDRFA, ICP, PRO.</p>
-            </li>
-            <li>
-              <span className="flow__num mono" aria-hidden="true">
-                03
-              </span>
-              <h3>Onboard</h3>
-              <p>Your assigned licensed PRO handles the file. Shared dashboard, signed docs.</p>
-            </li>
-            <li>
-              <span className="flow__num mono" aria-hidden="true">
-                04
-              </span>
-              <h3>Operate</h3>
-              <p>License, visas, Emirates ID, renewals, tracked to the day.</p>
-            </li>
+            {steps.map((step) => (
+              <li key={step}>
+                <span className="flow__num mono" aria-hidden="true">
+                  0{step}
+                </span>
+                <h3>{t(`step${step}Title`)}</h3>
+                <p>{t(`step${step}Text`)}</p>
+              </li>
+            ))}
           </ol>
         </SplitImageContent>
       </div>

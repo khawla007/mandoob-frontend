@@ -5,6 +5,11 @@ import { describe, it } from 'node:test';
 const componentSource = readFileSync(new URL('./FinalCtaSection.tsx', import.meta.url), 'utf8');
 
 describe('FinalCtaSection background interaction', () => {
+  it('keeps the protected section number in localized copy', () => {
+    assert.match(componentSource, /useTranslations\('home\.finalCta'\)/u);
+    assert.match(componentSource, /t\('eyebrow'\)/u);
+  });
+
   it('uses the fabric mesh background without old fake hover layers', () => {
     assert.match(componentSource, /'use client'/);
     assert.doesNotMatch(componentSource, /cta-section__panel/);
