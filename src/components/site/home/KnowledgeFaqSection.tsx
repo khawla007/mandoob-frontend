@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { FaqAccordion } from './FaqAccordion';
 
 const ARTICLES = [
   { key: 'card1', image: '/home-reference/business-setup-hd.png', href: '/knowledge-base' },
@@ -12,6 +13,10 @@ const ARTICLES = [
 export async function KnowledgeFaqSection() {
   const knowledge = await getTranslations('home.knowledge');
   const faq = await getTranslations('home.faq');
+  const faqItems = [1, 2, 3, 4, 5, 6].map((item) => ({
+    question: faq(`q${item}`),
+    answer: faq(`a${item}`),
+  }));
 
   return (
     <section id="customers" className="home-knowledge-section" aria-labelledby="knowledge-h">
@@ -53,14 +58,7 @@ export async function KnowledgeFaqSection() {
           <h3 id="faq-h" className="home-section-title">
             {faq('heading')}
           </h3>
-          <div className="home-faq__grid">
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <details key={item}>
-                <summary>{faq(`q${item}`)}</summary>
-                <p>{faq(`a${item}`)}</p>
-              </details>
-            ))}
-          </div>
+          <FaqAccordion items={faqItems} />
           <Link className="home-faq__link home-text-link" href="/knowledge-base">
             {faq('viewAll')} <span aria-hidden="true">→</span>
           </Link>
