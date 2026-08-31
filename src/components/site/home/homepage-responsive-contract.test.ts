@@ -91,6 +91,7 @@ describe('homepage responsive and accessibility contract', () => {
       /onClick=\{\(\) => setOpenIndex\(\(current\) => \(current === index \? null : index\)\)\}/u,
     );
     assert.match(faqAccordion, /data-open=\{isOpen \? '' : undefined\}/u);
+    assert.match(faqAccordion, /id=\{triggerId\}/u);
     assert.match(faqAccordion, /aria-expanded=\{isOpen\}/u);
     assert.match(faqAccordion, /aria-controls=\{answerId\}/u);
     assert.match(faqAccordion, /id=\{answerId\}/u);
@@ -103,7 +104,7 @@ describe('homepage responsive and accessibility contract', () => {
     );
     assert.match(
       css,
-      /\.home-faq__answer\s*\{[^}]*transition:\s*(?!none\b)[^;}]*grid-template-rows[^;}]*280ms/u,
+      /\.home-faq__answer\s*\{[^}]*transition:\s*(?!none\b)[^;}]*grid-template-rows\s+280ms\b/u,
     );
     assert.match(
       css,
