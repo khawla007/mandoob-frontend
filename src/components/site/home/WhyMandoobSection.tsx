@@ -1,42 +1,31 @@
-import { SplitImageContent } from '@/components/site/SplitImageContent';
+import { BellRing, FolderCheck, ListChecks, UserRoundCheck, Workflow } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+
+const ITEMS = [ListChecks, UserRoundCheck, FolderCheck, BellRing, Workflow] as const;
 
 export async function WhyMandoobSection() {
   const t = await getTranslations('home.why');
-  const items = [1, 2, 3, 4] as const;
 
   return (
-    <section className="section" aria-labelledby="why-h">
+    <section className="home-why-section" aria-labelledby="why-h">
       <div className="container">
-        <SplitImageContent
-          reverse
-          media={
-            <div className="home-workspace-preview" aria-label={t('visualTitle')}>
-              <span className="eyebrow">{t('visualEyebrow')}</span>
-              <strong>{t('visualTitle')}</strong>
-              <p>{t('visualText')}</p>
-              <div className="home-workspace-preview__rail" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-            </div>
-          }
-        >
+        <header className="home-centered-head reveal">
           <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
-          <h2 id="why-h" className="h2">
+          <h2 id="why-h" className="home-section-title">
             {t('title')}
           </h2>
-          <ul className="split-showcase__list">
-            {items.map((item) => (
-              <li key={item}>
-                <h3>{t(`item${item}Title`)}</h3>
-                <p>{t(`item${item}Text`)}</p>
-              </li>
-            ))}
-          </ul>
-        </SplitImageContent>
+        </header>
+        <ul className="home-why-row" role="list">
+          {ITEMS.map((Icon, index) => (
+            <li key={index}>
+              <span className="home-why-row__icon">
+                <Icon aria-hidden="true" />
+              </span>
+              <h3>{t(`item${index + 1}Title`)}</h3>
+              <p>{t(`item${index + 1}Text`)}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

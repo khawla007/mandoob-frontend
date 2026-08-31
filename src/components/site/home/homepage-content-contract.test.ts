@@ -47,6 +47,17 @@ describe('homepage claims and CTA contract', () => {
     assert.match(knowledge, /<section id="customers"/u);
   });
 
+  it('renders four image-led knowledge cards with real local routes', () => {
+    const knowledge =
+      componentSources.find(({ file }) => file === 'KnowledgeFaqSection.tsx')?.source ?? '';
+    assert.match(knowledge, /from 'next\/image'/u);
+    assert.equal(knowledge.match(/<article className="home-knowledge-card/u)?.length, 1);
+    assert.equal(knowledge.match(/key: 'card[1-4]'/gu)?.length, 4);
+    assert.match(knowledge, /ARTICLES\.map/u);
+    assert.match(knowledge, /'\/knowledge-base'/u);
+    assert.match(knowledge, /'\/blog'/u);
+  });
+
   it('rejects the unsupported proof, timing, savings, and remote fixture content from PF1-AUDIT-006', () => {
     for (const unsupported of [
       /320\+/u,

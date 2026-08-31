@@ -1,51 +1,63 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+
+const ARTICLES = [
+  { key: 'card1', image: '/hero/skyline.webp', href: '/knowledge-base' },
+  { key: 'card2', image: '/hero/knowledge-base-research.webp', href: '/knowledge-base' },
+  { key: 'card3', image: '/hero/pro-firm-operations.webp', href: '/blog' },
+  { key: 'card4', image: '/pro-hero-2.png', href: '/blog' },
+] as const;
 
 export async function KnowledgeFaqSection() {
   const knowledge = await getTranslations('home.knowledge');
   const faq = await getTranslations('home.faq');
 
   return (
-    <section id="customers" className="section" aria-labelledby="knowledge-h">
+    <section id="customers" className="home-knowledge-section" aria-labelledby="knowledge-h">
       <div className="container">
-        <header className="section__head reveal">
-          <span className="eyebrow eyebrow--accent">{knowledge('eyebrow')}</span>
-          <h2 id="knowledge-h" className="h2">
-            {knowledge('title')}
-          </h2>
-          <p className="section__lede">{knowledge('lede')}</p>
+        <header className="home-knowledge-head reveal">
+          <div>
+            <span className="eyebrow eyebrow--accent">{knowledge('eyebrow')}</span>
+            <h2 id="knowledge-h" className="home-section-title">
+              {knowledge('title')}
+            </h2>
+          </div>
+          <Link className="home-text-link" href="/knowledge-base">
+            {knowledge('viewAll')} <span aria-hidden="true">→</span>
+          </Link>
         </header>
+
         <div className="home-knowledge-grid cards-stagger" data-reveal-cards>
-          <article className="cell reveal">
-            <h3>{knowledge('kbTitle')}</h3>
-            <p>{knowledge('kbText')}</p>
-            <Link className="cell__link" href="/knowledge-base">
-              {knowledge('kbCta')} <span aria-hidden="true">↗</span>
-            </Link>
-          </article>
-          <article className="cell reveal">
-            <h3>{knowledge('blogTitle')}</h3>
-            <p>{knowledge('blogText')}</p>
-            <Link className="cell__link" href="/blog">
-              {knowledge('blogCta')} <span aria-hidden="true">↗</span>
-            </Link>
-          </article>
-          <aside className="cell home-principles reveal" aria-labelledby="principles-h">
-            <h3 id="principles-h">{knowledge('principlesTitle')}</h3>
-            <ul role="list">
-              {[1, 2, 3, 4].map((item) => (
-                <li key={item}>{knowledge(`principle${item}`)}</li>
-              ))}
-            </ul>
-          </aside>
+          {ARTICLES.map(({ key, image, href }) => (
+            <article className="home-knowledge-card reveal" key={key}>
+              <div className="home-knowledge-card__media">
+                <Image
+                  src={image}
+                  alt={knowledge(`${key}Alt`)}
+                  fill
+                  sizes="(max-width: 767px) 100vw, (max-width: 1100px) 50vw, 25vw"
+                />
+                <span>{knowledge(`${key}Category`)}</span>
+              </div>
+              <div className="home-knowledge-card__body">
+                <h3>{knowledge(`${key}Title`)}</h3>
+                <p>{knowledge(`${key}Text`)}</p>
+                <Link className="home-text-link" href={href}>
+                  {knowledge('readMore')} <span aria-hidden="true">→</span>
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
+
         <div className="home-faq" aria-labelledby="faq-h">
-          <h3 id="faq-h" className="home-faq__heading">
+          <h3 id="faq-h" className="home-section-title">
             {faq('heading')}
           </h3>
           <div className="home-faq__grid">
             {[1, 2, 3, 4, 5, 6].map((item) => (
-              <details className="cell" key={item}>
+              <details key={item}>
                 <summary>{faq(`q${item}`)}</summary>
                 <p>{faq(`a${item}`)}</p>
               </details>

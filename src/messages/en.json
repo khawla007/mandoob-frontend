@@ -2927,7 +2927,9 @@
       "item3Title": "Document and status visibility",
       "item3Text": "Keep requests, versions and review states connected to the company journey.",
       "item4Title": "Renewals and notifications",
-      "item4Text": "Record expiry dates and surface reminders through configured channels; outcomes remain subject to timely action and external authorities."
+      "item4Text": "Record expiry dates and surface reminders through configured channels; outcomes remain subject to timely action and external authorities.",
+      "item5Title": "Connected workspace",
+      "item5Text": "Keep setup context and ongoing company work visible in one coherent journey."
     },
     "preview": {
       "eyebrow": "05 · Inside the product",
@@ -2971,7 +2973,25 @@
       "principle1": "Clear discovery choices before application",
       "principle2": "Visible assumptions around indicative estimates",
       "principle3": "One assigned PRO accountable to one company workspace",
-      "principle4": "Connected status, document and renewal records"
+      "principle4": "Connected status, document and renewal records",
+      "viewAll": "View all guides",
+      "readMore": "Read more",
+      "card1Category": "Business setup",
+      "card1Title": "Choose a UAE setup path with context",
+      "card1Text": "Understand the discovery differences between Mainland, Free Zone and Offshore structures.",
+      "card1Alt": "Dubai skyline beside the waterfront",
+      "card2Category": "Knowledge base",
+      "card2Title": "Prepare business documents with clarity",
+      "card2Text": "Review practical guidance on documents, requirements and application readiness.",
+      "card2Alt": "Business research and document workspace",
+      "card3Category": "PRO operations",
+      "card3Title": "Keep company work and follow-up connected",
+      "card3Text": "See how an assigned PRO supports visible stages, documents and operational tasks.",
+      "card3Alt": "Mandoob company operations workspace",
+      "card4Category": "Business insights",
+      "card4Title": "Plan for renewals and ongoing requirements",
+      "card4Text": "Read available guidance for keeping company obligations visible after setup.",
+      "card4Alt": "Business professional reviewing company information"
     },
     "faq": {
       "heading": "Frequently asked questions",
