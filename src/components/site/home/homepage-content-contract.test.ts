@@ -18,6 +18,14 @@ const componentSources = [
 const allSource = componentSources.map(({ source }) => source).join('\n');
 
 describe('homepage claims and CTA contract', () => {
+  it('maps comparison labels to existing catalog suffixes instead of deriving key names', () => {
+    const services =
+      componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
+    assert.doesNotMatch(services, /row\[0\]\.toUpperCase/u);
+    assert.match(services, /valueSuffix:\s*'Ideal'/u);
+    assert.match(services, /valueSuffix:\s*'Market'/u);
+  });
+
   it('rejects the unsupported proof, timing, savings, and remote fixture content from PF1-AUDIT-006', () => {
     for (const unsupported of [
       /320\+/u,

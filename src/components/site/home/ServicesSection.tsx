@@ -7,6 +7,13 @@ const PATHS = [
   { key: 'offshore', query: 'offshore', marker: 'OS·03', cta: 'exploreOffshore' },
 ] as const;
 const SUPPORT = ['companySetup', 'proServices', 'bank', 'vat', 'visa', 'renewal'] as const;
+const COMPARISON_ROWS = [
+  { label: 'idealUse', valueSuffix: 'Ideal' },
+  { label: 'marketAccess', valueSuffix: 'Market' },
+  { label: 'ownership', valueSuffix: 'Ownership' },
+  { label: 'office', valueSuffix: 'Office' },
+  { label: 'visas', valueSuffix: 'Visas' },
+] as const;
 
 export async function ServicesSection() {
   const t = await getTranslations('home.services');
@@ -56,18 +63,14 @@ export async function ServicesSection() {
               </tr>
             </thead>
             <tbody>
-              {(['idealUse', 'marketAccess', 'ownership', 'office', 'visas'] as const).map(
-                (row) => (
-                  <tr key={row}>
-                    <th scope="row">{t(row)}</th>
-                    {PATHS.map((path) => (
-                      <td key={path.key}>
-                        {t(`${path.key}${row[0].toUpperCase()}${row.slice(1)}`)}
-                      </td>
-                    ))}
-                  </tr>
-                ),
-              )}
+              {COMPARISON_ROWS.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row">{t(row.label)}</th>
+                  {PATHS.map((path) => (
+                    <td key={path.key}>{t(`${path.key}${row.valueSuffix}`)}</td>
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
