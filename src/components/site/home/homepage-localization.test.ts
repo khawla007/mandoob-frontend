@@ -40,8 +40,8 @@ describe('homepage localization contract', () => {
     }
   });
 
-  it('retains the protected final section number and English label', () => {
-    assert.equal(valueAt((en as Catalog).home, 'finalCta.eyebrow'), '07 · Get started');
-    assert.match(valueAt((ar as Catalog).home, 'finalCta.eyebrow') as string, /^07 · /u);
+  it('uses the final section label without a numeric prefix', () => {
+    assert.equal(valueAt((en as Catalog).home, 'finalCta.eyebrow'), 'Get started');
+    assert.equal(valueAt((ar as Catalog).home, 'finalCta.eyebrow'), 'ابدأ');
   });
 });

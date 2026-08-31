@@ -18,6 +18,7 @@ export function FinalCtaSection() {
     >
       <FabricBackground
         pointer={pointer}
+        ambientMotion
         params={{ sphereRadius: 0.13, deformationStrength: 32 }}
       />
       <div className="cta-section__inner reveal container">

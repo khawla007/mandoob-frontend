@@ -341,7 +341,7 @@
 }
 .site-public .display--cta {
   font-size: clamp(2.5rem, 7vw, var(--fs-80));
-  max-width: 14ch;
+  max-width: 18ch;
   margin-inline: auto;
 }
 .site-public .lede {
@@ -3708,7 +3708,7 @@
   z-index: 10;
   isolation: isolate;
   text-align: center;
-  max-width: 720px;
+  max-width: 960px;
   margin-inline: auto;
 }
 .site-public .cta-section .display {
@@ -3733,9 +3733,20 @@
   font-size: var(--fs-15);
   color: oklch(0.45 0.01 45);
 }
+@keyframes cta-fabric-drift {
+  from {
+    transform: scale(1.025) translate3d(-0.5%, -0.25%, 0);
+  }
+  to {
+    transform: scale(1.025) translate3d(0.5%, 0.25%, 0);
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .site-public .cta-section:has(.fabric-background) {
     background-image: none;
+  }
+  .site-public .cta-section .fabric-background {
+    animation: cta-fabric-drift 12s ease-in-out infinite alternate;
   }
 }
 @media (prefers-reduced-motion: reduce) {

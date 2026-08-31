@@ -18,6 +18,7 @@ import {
 
 type FabricBackgroundProps = {
   pointer: MutableRefObject<PointerState>;
+  ambientMotion?: boolean;
   textureSrc?: string;
   textureAspect?: number;
   params?: Partial<FabricParams & { lightingIntensity: number }>;
@@ -25,6 +26,7 @@ type FabricBackgroundProps = {
 
 type FabricMeshProps = {
   pointer: MutableRefObject<PointerState>;
+  ambientMotion: boolean;
   textureSrc: string;
   textureAspect: number;
   params: FabricParams & { lightingIntensity: number };
@@ -81,7 +83,13 @@ function getQuality(width: number): FabricQuality {
   return 'low';
 }
 
-function FabricMesh({ pointer, textureSrc, textureAspect, params }: FabricMeshProps) {
+function FabricMesh({
+  pointer,
+  ambientMotion,
+  textureSrc,
+  textureAspect,
+  params,
+}: FabricMeshProps) {
   const meshRef = useRef<THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>>(null);
   const { viewport, size } = useThree();
   const quality = getQuality(size.width);
@@ -128,12 +136,21 @@ function FabricMesh({ pointer, textureSrc, textureAspect, params }: FabricMeshPr
     [params.lightingIntensity, texture, textureRepeat],
   );
 
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
 
     const state = stateRef.current;
-    stepFabric(state, pointer.current, params, delta);
+    const elapsed = clock.getElapsedTime();
+    const activePointer: PointerState =
+      pointer.current.active || !ambientMotion
+        ? pointer.current
+        : {
+            x: 0.5 + Math.sin(elapsed * 0.32) * 0.2,
+            y: 0.5 + Math.cos(elapsed * 0.27) * 0.12,
+            active: true,
+          };
+    stepFabric(state, activePointer, params, delta);
 
     const position = mesh.geometry.attributes.position as THREE.BufferAttribute;
     const tension = mesh.geometry.attributes.tension as THREE.BufferAttribute;
@@ -145,7 +162,7 @@ function FabricMesh({ pointer, textureSrc, textureAspect, params }: FabricMeshPr
         baseX: basePositions[i * 3],
         baseY: basePositions[i * 3 + 1],
         height,
-        pointer: pointer.current,
+        pointer: activePointer,
         viewportWidth: viewport.width,
         viewportHeight: viewport.height,
         cameraDistance: CAMERA_DISTANCE,
@@ -173,6 +190,7 @@ function FabricMesh({ pointer, textureSrc, textureAspect, params }: FabricMeshPr
 
 export function FabricBackground({
   pointer,
+  ambientMotion = false,
   textureSrc = '/images/cta-mashrabiya.png',
   textureAspect = 1774 / 887,
   params = {},
@@ -200,6 +218,7 @@ export function FabricBackground({
         >
           <FabricMesh
             pointer={pointer}
+            ambientMotion={ambientMotion}
             textureSrc={textureSrc}
             textureAspect={textureAspect}
             params={mergedParams}

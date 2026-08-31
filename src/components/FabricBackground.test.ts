@@ -9,12 +9,19 @@ const publicThemeSource = readFileSync(
 );
 
 describe('FabricBackground mesh deformation', () => {
+  it('provides ambient motion while preserving direct pointer interaction', () => {
+    assert.match(componentSource, /ambientMotion\?: boolean/u);
+    assert.match(componentSource, /pointer\.current\.active/u);
+    assert.match(componentSource, /Math\.sin\(elapsed/u);
+    assert.match(componentSource, /Math\.cos\(elapsed/u);
+  });
+
   it('keeps the bump centered on the cursor without section-center bias', () => {
     assert.doesNotMatch(componentSource, /lateralFalloff|inwardScale/);
     assert.match(componentSource, /const CAMERA_DISTANCE = 6;/);
     assert.match(
       componentSource,
-      /getCursorCenteredFabricPosition\(\{\s*baseX: basePositions\[i \* 3\],\s*baseY: basePositions\[i \* 3 \+ 1\],\s*height,\s*pointer: pointer\.current,\s*viewportWidth: viewport\.width,\s*viewportHeight: viewport\.height,\s*cameraDistance: CAMERA_DISTANCE,\s*\}\)/,
+      /getCursorCenteredFabricPosition\(\{\s*baseX: basePositions\[i \* 3\],\s*baseY: basePositions\[i \* 3 \+ 1\],\s*height,\s*pointer: activePointer,\s*viewportWidth: viewport\.width,\s*viewportHeight: viewport\.height,\s*cameraDistance: CAMERA_DISTANCE,\s*\}\)/,
     );
     assert.match(
       componentSource,
@@ -32,6 +39,10 @@ describe('FabricBackground mesh deformation', () => {
     assert.match(
       publicThemeSource,
       /@media \(prefers-reduced-motion: no-preference\)[\s\S]*?\.site-public \.cta-section:has\(\.fabric-background\)[\s\S]*?background-image: none;/,
+    );
+    assert.match(
+      publicThemeSource,
+      /\.site-public \.cta-section \.fabric-background\s*\{[^}]*animation:\s*cta-fabric-drift 12s ease-in-out infinite alternate/u,
     );
   });
 });
