@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 const ARTICLES = [
-  { key: 'card1', image: '/hero/skyline.webp', href: '/knowledge-base' },
-  { key: 'card2', image: '/hero/knowledge-base-research.webp', href: '/knowledge-base' },
-  { key: 'card3', image: '/hero/pro-firm-operations.webp', href: '/blog' },
-  { key: 'card4', image: '/pro-hero-2.png', href: '/blog' },
+  { key: 'card1', image: '/home-reference/business-setup.png', href: '/knowledge-base' },
+  { key: 'card2', image: '/home-reference/free-zone.png', href: '/knowledge-base' },
+  { key: 'card3', image: '/home-reference/pro-services.png', href: '/blog' },
+  { key: 'card4', image: '/home-reference/vat-registration.png', href: '/blog' },
 ] as const;
 
 export async function KnowledgeFaqSection() {
@@ -37,7 +37,6 @@ export async function KnowledgeFaqSection() {
                   fill
                   sizes="(max-width: 767px) 100vw, (max-width: 1100px) 50vw, 25vw"
                 />
-                <span>{knowledge(`${key}Category`)}</span>
               </div>
               <div className="home-knowledge-card__body">
                 <h3>{knowledge(`${key}Title`)}</h3>

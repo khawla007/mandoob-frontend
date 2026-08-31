@@ -68,6 +68,17 @@ describe('homepage claims and CTA contract', () => {
     assert.match(knowledge, /ARTICLES\.map/u);
     assert.match(knowledge, /'\/knowledge-base'/u);
     assert.match(knowledge, /'\/blog'/u);
+    for (const referenceImage of [
+      'business-setup.png',
+      'free-zone.png',
+      'pro-services.png',
+      'vat-registration.png',
+    ]) {
+      assert.match(
+        knowledge,
+        new RegExp(`/home-reference/${referenceImage.replace('.', '\\.')}`, 'u'),
+      );
+    }
   });
 
   it('rejects the unsupported proof, timing, savings, and remote fixture content from PF1-AUDIT-006', () => {

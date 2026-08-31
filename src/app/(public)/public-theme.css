@@ -1211,7 +1211,7 @@
 
 .site-public .home-knowledge-card__media {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 159 / 63;
   overflow: hidden;
   background: var(--zinc-100);
 }
