@@ -13,6 +13,7 @@
 ### Task 1: Lock Weelp parity with a failing contract test
 
 **Files:**
+
 - Modify: `src/components/site/home/homepage-content-contract.test.ts`
 
 - [ ] Replace the custom-carousel assertions with checks for imports from `swiper/react` and `swiper/modules`, `delay: 0`, `speed={reducedMotion ? 0 : 8000}`, `disableOnInteraction: true`, `pauseOnMouseEnter: true`, responsive 1/2/3/4 slide breakpoints, and looping.
@@ -22,6 +23,7 @@
 ### Task 2: Install Swiper and replace the custom carousel
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `src/components/site/home/TestimonialsCarousel.tsx`
@@ -35,6 +37,7 @@
 ### Task 3: Replace custom carousel CSS and verify
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 - Modify: `src/components/site/home/homepage-responsive-contract.test.ts`
 

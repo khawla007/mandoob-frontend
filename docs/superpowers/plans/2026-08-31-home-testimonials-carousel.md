@@ -13,6 +13,7 @@
 ### Task 1: Lock the carousel contract with failing tests
 
 **Files:**
+
 - Modify: `src/components/site/home/homepage-content-contract.test.ts`
 - Modify: `src/components/site/home/homepage-responsive-contract.test.ts`
 
@@ -23,6 +24,7 @@
 ### Task 2: Implement the client carousel and localized content
 
 **Files:**
+
 - Create: `src/components/site/home/TestimonialsCarousel.tsx`
 - Modify: `src/components/site/home/TestimonialsSection.tsx`
 - Modify: `src/messages/en.json`
@@ -37,6 +39,7 @@
 ### Task 3: Style and verify the responsive carousel
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 
 - [ ] Replace the static grid rules with an overflow-hidden viewport, moving flex track, three/two/one-card slide widths, interactive arrow states, touch-action support, and reduced-motion behavior.

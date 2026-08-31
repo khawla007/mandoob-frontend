@@ -13,6 +13,7 @@
 ### Task 1: Define the accordion behavior contract
 
 **Files:**
+
 - Modify: `src/components/site/home/homepage-responsive-contract.test.ts`
 - Test: `src/components/site/home/homepage-responsive-contract.test.ts`
 
@@ -64,6 +65,7 @@ git commit -m "test(public): define smooth FAQ accordion contract"
 ### Task 2: Implement the controlled accordion
 
 **Files:**
+
 - Create: `src/components/site/home/FaqAccordion.tsx`
 - Modify: `src/components/site/home/KnowledgeFaqSection.tsx`
 
@@ -93,7 +95,11 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
         const answerId = `${accordionId}-answer-${index}`;
 
         return (
-          <article className="home-faq__item" data-open={isOpen ? '' : undefined} key={item.question}>
+          <article
+            className="home-faq__item"
+            data-open={isOpen ? '' : undefined}
+            key={item.question}
+          >
             <h4>
               <button
                 id={triggerId}
@@ -137,7 +143,7 @@ const faqItems = [1, 2, 3, 4, 5, 6].map((item) => ({
 }));
 
 // Inside .home-faq:
-<FaqAccordion items={faqItems} />
+<FaqAccordion items={faqItems} />;
 ```
 
 - [ ] **Step 3: Run the contract to confirm implementation is still RED only for CSS**
@@ -153,6 +159,7 @@ Expected: FAIL on missing `.home-faq__answer` transition selectors, while compon
 ### Task 3: Add smooth motion and preserve the accepted styling
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 - Test: `src/components/site/home/homepage-responsive-contract.test.ts`
 
@@ -207,7 +214,9 @@ Preserve the current border, radius, colors, spacing, and responsive grid. Repla
   border-radius: 999px;
   background: currentColor;
   transform: translate(-50%, -50%);
-  transition: transform 220ms ease, opacity 180ms ease;
+  transition:
+    transform 220ms ease,
+    opacity 180ms ease;
 }
 
 .site-public .home-faq__indicator::after {
@@ -228,7 +237,9 @@ Preserve the current border, radius, colors, spacing, and responsive grid. Repla
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+  transition:
+    grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease;
 }
 
 .site-public .home-faq__item[data-open] .home-faq__answer {
