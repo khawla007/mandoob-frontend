@@ -94,6 +94,12 @@ describe('homepage responsive and accessibility contract', () => {
     assert.match(faqAccordion, /aria-controls=\{answerId\}/u);
     assert.match(faqAccordion, /id=\{answerId\}/u);
     assert.match(faqAccordion, /aria-labelledby=\{triggerId\}/u);
+    assert.match(faqAccordion, /className="home-faq__column"/u);
+    assert.match(faqAccordion, /style=\{\{ order: index \}\}/u);
+    assert.doesNotMatch(
+      faqAccordion,
+      /className="home-faq__indicator"[^>]*>[\s\S]*?\+[\s\S]*?<\/span>/u,
+    );
     assert.match(knowledgeFaqSection, /<FaqAccordion items=\{faqItems\} \/>/u);
     assert.doesNotMatch(knowledgeFaqSection, /<details/u);
     assert.match(css, /\.home-faq__answer\s*\{[^}]*grid-template-rows:\s*0fr;[^}]*transition:/u);
@@ -104,6 +110,11 @@ describe('homepage responsive and accessibility contract', () => {
     assert.match(
       css,
       /\.home-faq__item\[data-open\]\s+\.home-faq__answer\s*\{[^}]*grid-template-rows:\s*1fr/u,
+    );
+    assert.match(css, /\.home-faq__column\s*\{[^}]*display:\s*grid/u);
+    assert.match(
+      css,
+      /@media \(max-width:\s*767px\)[\s\S]*?\.home-faq__column\s*\{[^}]*display:\s*contents/u,
     );
     const faqReducedMotionCss = reducedMotionCssBlocks.find((block) =>
       block.includes('.home-faq__answer'),
