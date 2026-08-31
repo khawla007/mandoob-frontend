@@ -2844,7 +2844,7 @@
       "item4Text": "Visible documents, status and renewals"
     },
     "services": {
-      "eyebrow": "01 · Choose your setup",
+      "eyebrow": "Company setup",
       "title": "Choose the Right UAE Business Setup",
       "lede": "Compare your options before you commit. Eligibility and requirements depend on the activity, authority and applicant.",
       "mainlandTitle": "Mainland",
@@ -2893,7 +2893,7 @@
       "renewalText": "Tracked dates, reminders and workflow status after setup."
     },
     "estimator": {
-      "eyebrow": "02 · Cost estimator",
+      "eyebrow": "Cost estimator",
       "title": "Know Your Business Setup Cost Before You Start",
       "previewLabel": "Illustrative estimate preview",
       "sideTitle": "Itemized and ready for the next step.",
@@ -2915,7 +2915,7 @@
       "totalAmount": "AED 29,500"
     },
     "flow": {
-      "eyebrow": "03 · How it works",
+      "eyebrow": "How it works",
       "title": "Start Your UAE Business in Simple Steps",
       "visualLabel": "The setup journey continues into one company workspace",
       "visualStep1": "Discover the setup context",
@@ -2932,7 +2932,7 @@
       "step4Text": "After handoff, the assigned PRO supports one company through setup and ongoing operations."
     },
     "why": {
-      "eyebrow": "04 · Why Mandoob",
+      "eyebrow": "Why Mandoob",
       "title": "Why Choose Mandoob?",
       "visualEyebrow": "One company · One assigned PRO",
       "visualTitle": "A continuous operational record",
@@ -2949,6 +2949,7 @@
       "item5Text": "Keep setup context and ongoing company work visible in one coherent journey."
     },
     "testimonials": {
+      "eyebrow": "Customer stories",
       "title": "What Our Clients Say",
       "carouselLabel": "Client testimonials",
       "fiveStars": "Five out of five stars",
@@ -3012,7 +3013,7 @@
       "listLabel": "What the illustrative preview explains"
     },
     "knowledge": {
-      "eyebrow": "06 · Knowledge and answers",
+      "eyebrow": "Resources",
       "title": "Knowledge Base & Business Insights",
       "lede": "Mandoob connects setup discovery for entrepreneurs with one-company operations for companies and their assigned PRO. Use the existing knowledge routes for deeper reading, then check the common questions below.",
       "kbTitle": "Knowledge Base",
@@ -3046,6 +3047,7 @@
       "card4Alt": "Business professional reviewing company information"
     },
     "faq": {
+      "eyebrow": "Common questions",
       "heading": "Frequently asked questions",
       "viewAll": "View All FAQs",
       "q1": "What is the difference between Mainland, Free Zone and Offshore?",

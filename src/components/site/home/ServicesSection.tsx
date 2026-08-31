@@ -15,6 +15,7 @@ export async function ServicesSection() {
     <section id="services" className="home-setup-section" aria-labelledby="services-h">
       <div className="container">
         <header className="home-centered-head reveal">
+          <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
           <h2 id="services-h" className="home-section-title">
             {t('title')}
           </h2>

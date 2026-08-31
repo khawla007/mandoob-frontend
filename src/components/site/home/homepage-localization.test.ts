@@ -44,4 +44,19 @@ describe('homepage localization contract', () => {
     assert.equal(valueAt((en as Catalog).home, 'finalCta.eyebrow'), 'Get started');
     assert.equal(valueAt((ar as Catalog).home, 'finalCta.eyebrow'), 'ابدأ');
   });
+
+  it('uses non-numbered labels for major homepage sections', () => {
+    for (const path of [
+      'services.eyebrow',
+      'flow.eyebrow',
+      'estimator.eyebrow',
+      'why.eyebrow',
+      'testimonials.eyebrow',
+      'knowledge.eyebrow',
+      'faq.eyebrow',
+    ]) {
+      assert.doesNotMatch(valueAt((en as Catalog).home, path) as string, /^\d/u);
+      assert.doesNotMatch(valueAt((ar as Catalog).home, path) as string, /^\d/u);
+    }
+  });
 });

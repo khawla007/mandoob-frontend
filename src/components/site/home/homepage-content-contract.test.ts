@@ -30,6 +30,25 @@ describe('homepage claims and CTA contract', () => {
     );
   });
 
+  it('uses the shared eyebrow treatment on major homepage sections', () => {
+    for (const file of [
+      'ServicesSection.tsx',
+      'FlowSection.tsx',
+      'EstimatorSection.tsx',
+      'WhyMandoobSection.tsx',
+      'TestimonialsSection.tsx',
+    ]) {
+      const source = componentSources.find((component) => component.file === file)?.source ?? '';
+      assert.match(source, /eyebrow eyebrow--accent/u, `${file} needs the shared eyebrow style`);
+      assert.match(source, /t\('eyebrow'\)/u, `${file} needs localized eyebrow copy`);
+    }
+
+    const knowledge =
+      componentSources.find(({ file }) => file === 'KnowledgeFaqSection.tsx')?.source ?? '';
+    assert.match(knowledge, /knowledge\('eyebrow'\)/u);
+    assert.match(knowledge, /faq\('eyebrow'\)/u);
+  });
+
   it('uses the compact reference-led setup, journey and estimator structures', () => {
     const services =
       componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';

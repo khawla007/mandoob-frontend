@@ -1120,9 +1120,13 @@
   line-height: 1.5;
 }
 
-.site-public .home-testimonials-section .home-section-title {
+.site-public .home-testimonials-head {
   margin-bottom: 24px;
   text-align: center;
+}
+.site-public .home-testimonials-head .eyebrow {
+  display: block;
+  margin-bottom: 10px;
 }
 
 .site-public .home-testimonials-carousel {
@@ -1263,6 +1267,12 @@
 
 .site-public .home-faq {
   margin-top: clamp(42px, 6vw, 70px);
+}
+
+.site-public .home-faq > .eyebrow {
+  display: block;
+  margin-bottom: 10px;
+  text-align: center;
 }
 
 .site-public .home-faq > .home-section-title {
