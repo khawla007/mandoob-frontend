@@ -1,90 +1,47 @@
+import { Building2, Factory, Globe2 } from 'lucide-react';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 const PATHS = [
-  { key: 'mainland', query: 'mainland', marker: 'M·01', cta: 'exploreMainland' },
-  { key: 'freeZone', query: 'free-zone', marker: 'FZ·02', cta: 'exploreFreeZone' },
-  { key: 'offshore', query: 'offshore', marker: 'OS·03', cta: 'exploreOffshore' },
-] as const;
-const SUPPORT = ['companySetup', 'proServices', 'bank', 'vat', 'visa', 'renewal'] as const;
-const COMPARISON_ROWS = [
-  { label: 'idealUse', valueSuffix: 'Ideal' },
-  { label: 'marketAccess', valueSuffix: 'Market' },
-  { label: 'ownership', valueSuffix: 'Ownership' },
-  { label: 'office', valueSuffix: 'Office' },
-  { label: 'visas', valueSuffix: 'Visas' },
+  { key: 'mainland', query: 'mainland', cta: 'exploreMainland', Icon: Building2 },
+  { key: 'freeZone', query: 'free-zone', cta: 'exploreFreeZone', Icon: Factory },
+  { key: 'offshore', query: 'offshore', cta: 'exploreOffshore', Icon: Globe2 },
 ] as const;
 
 export async function ServicesSection() {
   const t = await getTranslations('home.services');
 
   return (
-    <section id="services" className="section" aria-labelledby="services-h">
+    <section id="services" className="home-setup-section" aria-labelledby="services-h">
       <div className="container">
-        <header className="section__head reveal">
+        <header className="home-centered-head reveal">
           <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
-          <h2 id="services-h" className="h2">
+          <h2 id="services-h" className="home-section-title">
             {t('title')}
           </h2>
-          <p className="section__lede">{t('lede')}</p>
+          <p>{t('lede')}</p>
         </header>
 
-        <div className="cell-row cell-row--joined cell-row--svc cards-stagger" data-reveal-cards>
-          {PATHS.map((path) => (
-            <article className="cell cell--svc reveal" key={path.key}>
-              <span className="cell__mark cell__mark--num" aria-hidden="true">
-                {path.marker}
+        <div className="home-setup-grid cards-stagger" data-reveal-cards>
+          {PATHS.map(({ key, query, cta, Icon }, index) => (
+            <article className={`home-setup-card home-setup-card--${index + 1} reveal`} key={key}>
+              <span className="home-icon-medallion">
+                <Icon aria-hidden="true" />
               </span>
-              <h3>{t(`${path.key}Title`)}</h3>
-              <p>{t(`${path.key}Summary`)}</p>
-              <Link className="cell__link" href={`/estimate?jurisdiction=${path.query}`}>
-                {t(path.cta)} <span aria-hidden="true">↗</span>
-              </Link>
+              <div>
+                <h3>{t(`${key}Title`)}</h3>
+                <p>{t(`${key}Summary`)}</p>
+                <ul role="list">
+                  <li>{t(`${key}Ideal`)}</li>
+                  <li>{t(`${key}Market`)}</li>
+                  <li>{t(`${key}Office`)}</li>
+                </ul>
+                <Link className="home-text-link" href={`/estimate?jurisdiction=${query}`}>
+                  {t(cta)} <span aria-hidden="true">→</span>
+                </Link>
+              </div>
             </article>
           ))}
-        </div>
-
-        <div
-          className="cell compare reveal"
-          tabIndex={0}
-          role="region"
-          aria-label={t('compareCaption')}
-        >
-          <table className="compare__table">
-            <caption className="visually-hidden">{t('compareCaption')}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('compare')}</th>
-                {PATHS.map((path) => (
-                  <th scope="col" key={path.key}>
-                    {t(`${path.key}Title`)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARISON_ROWS.map((row) => (
-                <tr key={row.label}>
-                  <th scope="row">{t(row.label)}</th>
-                  {PATHS.map((path) => (
-                    <td key={path.key}>{t(`${path.key}${row.valueSuffix}`)}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="home-support">
-          <h3 className="home-support__heading">{t('supportHeading')}</h3>
-          <ul className="home-support-grid" role="list">
-            {SUPPORT.map((service) => (
-              <li className="cell" key={service}>
-                <h4>{t(`${service}Title`)}</h4>
-                <p>{t(`${service}Text`)}</p>
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
     </section>

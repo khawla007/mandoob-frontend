@@ -11,19 +11,34 @@ const componentSources = [
   'EstimatorSection.tsx',
   'FlowSection.tsx',
   'WhyMandoobSection.tsx',
-  'AnnotatedShowcaseSection.tsx',
+  'SupportServicesSection.tsx',
   'KnowledgeFaqSection.tsx',
   'FinalCtaSection.tsx',
 ].map((file) => ({ file, source: readFileSync(join(homeDirectory, file), 'utf8') }));
 const allSource = componentSources.map(({ source }) => source).join('\n');
 
 describe('homepage claims and CTA contract', () => {
-  it('maps comparison labels to existing catalog suffixes instead of deriving key names', () => {
+  it('uses the compact reference-led setup, journey and estimator structures', () => {
+    const services =
+      componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
+    const flow = componentSources.find(({ file }) => file === 'FlowSection.tsx')?.source ?? '';
+    const estimator =
+      componentSources.find(({ file }) => file === 'EstimatorSection.tsx')?.source ?? '';
+
+    assert.doesNotMatch(services, /compare__table|home-support-grid/u);
+    assert.match(services, /home-setup-grid/u);
+    assert.match(flow, /home-flow-row/u);
+    assert.match(estimator, /home-estimator-band/u);
+    assert.match(estimator, /EstimatorPreview/u);
+  });
+
+  it('uses explicit catalog suffixes for setup-card facts', () => {
     const services =
       componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
     assert.doesNotMatch(services, /row\[0\]\.toUpperCase/u);
-    assert.match(services, /valueSuffix:\s*'Ideal'/u);
-    assert.match(services, /valueSuffix:\s*'Market'/u);
+    assert.match(services, /\$\{key\}Ideal/u);
+    assert.match(services, /\$\{key\}Market/u);
+    assert.match(services, /\$\{key\}Office/u);
   });
 
   it('keeps the accepted public-shell customers anchor resolvable', () => {
