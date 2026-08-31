@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
+import { getBlogCoverImage } from '@/lib/blog/cover-image';
 import { listPublishedBlogPosts, type BlogPost } from '@/lib/data/blog';
 
 const BLOG_POSTS_PER_PAGE = 12;
@@ -151,8 +153,22 @@ function blogPageHref(page: number) {
 }
 
 function BlogPostCell({ post }: { post: BlogPost }) {
+  const cover = getBlogCoverImage(post.title, post.slug);
+
   return (
     <article className="cell cell--svc">
+      <Link
+        href={`/blog/${post.slug}`}
+        className="blog-card__media"
+        aria-label={`Read ${post.title}`}
+      >
+        <Image
+          src={cover.src}
+          alt={cover.alt}
+          fill
+          sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw"
+        />
+      </Link>
       <div className="kb-meta">
         <span className="eyebrow">Article</span>
         {post.publishedAt ? (

@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 const ARTICLES = [
-  { key: 'card1', image: '/home-reference/business-setup.png', href: '/knowledge-base' },
-  { key: 'card2', image: '/home-reference/free-zone.png', href: '/knowledge-base' },
-  { key: 'card3', image: '/home-reference/pro-services.png', href: '/blog' },
-  { key: 'card4', image: '/home-reference/vat-registration.png', href: '/blog' },
+  { key: 'card1', image: '/home-reference/business-setup-hd.png', href: '/knowledge-base' },
+  { key: 'card2', image: '/home-reference/free-zone-hd.png', href: '/knowledge-base' },
+  { key: 'card3', image: '/home-reference/pro-services-hd.png', href: '/blog' },
+  { key: 'card4', image: '/home-reference/vat-registration-hd.png', href: '/blog' },
 ] as const;
 
 export async function KnowledgeFaqSection() {

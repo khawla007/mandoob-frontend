@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getBlogCoverImage } from '@/lib/blog/cover-image';
 import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { getPublishedBlogPostBySlug } from '@/lib/data/blog';
 
@@ -21,6 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
   const description = post.metaDescription ?? post.excerpt ?? undefined;
   const canonical = post.canonicalUrl ?? `/blog/${post.slug}`;
+  const cover = getBlogCoverImage(post.title, post.slug);
 
   return {
     title: post.metaTitle ?? `${post.title} | Mandoob Blog`,
@@ -36,6 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       url: canonical,
       publishedTime: post.publishedAt ?? undefined,
       modifiedTime: post.updatedAt,
+      images: [{ url: cover.src, alt: cover.alt }],
     },
   };
 }
@@ -52,6 +56,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
   if (!post) notFound();
 
   const html = sanitizeBlogHtml(post.contentHtml);
+  const cover = getBlogCoverImage(post.title, post.slug);
 
   return (
     <article>
@@ -65,6 +70,9 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
             {post.title}
           </h1>
           {post.excerpt ? <p className="lede">{post.excerpt}</p> : null}
+          <div className="blog-article__cover">
+            <Image src={cover.src} alt={cover.alt} fill sizes="100vw" priority />
+          </div>
         </div>
       </section>
 

@@ -69,10 +69,10 @@ describe('homepage claims and CTA contract', () => {
     assert.match(knowledge, /'\/knowledge-base'/u);
     assert.match(knowledge, /'\/blog'/u);
     for (const referenceImage of [
-      'business-setup.png',
-      'free-zone.png',
-      'pro-services.png',
-      'vat-registration.png',
+      'business-setup-hd.png',
+      'free-zone-hd.png',
+      'pro-services-hd.png',
+      'vat-registration-hd.png',
     ]) {
       assert.match(
         knowledge,
