@@ -26,6 +26,12 @@ describe('homepage claims and CTA contract', () => {
     assert.match(services, /valueSuffix:\s*'Market'/u);
   });
 
+  it('keeps the accepted public-shell customers anchor resolvable', () => {
+    const knowledge =
+      componentSources.find(({ file }) => file === 'KnowledgeFaqSection.tsx')?.source ?? '';
+    assert.match(knowledge, /<section id="customers"/u);
+  });
+
   it('rejects the unsupported proof, timing, savings, and remote fixture content from PF1-AUDIT-006', () => {
     for (const unsupported of [
       /320\+/u,

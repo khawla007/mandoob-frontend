@@ -18,4 +18,15 @@ describe('homepage responsive and accessibility contract', () => {
     assert.match(css, /\.home-faq summary\s*\{[\s\S]*?min-block-size:\s*44px/u);
     assert.match(css, /\.home-faq summary:focus-visible\s*\{/u);
   });
+
+  it('keeps orientation and split content within the 768px tablet viewport', () => {
+    assert.match(
+      css,
+      /\.site-public \.logo-track\.logo-track--orientation\s*\{[\s\S]*?white-space:\s*normal/u,
+    );
+    assert.match(
+      css,
+      /@media \(min-width:\s*900px\)[^{]*\{[\s\S]*?\.site-public \.split-showcase/u,
+    );
+  });
 });

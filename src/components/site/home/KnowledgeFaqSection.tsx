@@ -6,7 +6,7 @@ export async function KnowledgeFaqSection() {
   const faq = await getTranslations('home.faq');
 
   return (
-    <section id="knowledge" className="section" aria-labelledby="knowledge-h">
+    <section id="customers" className="section" aria-labelledby="knowledge-h">
       <div className="container">
         <header className="section__head reveal">
           <span className="eyebrow eyebrow--accent">{knowledge('eyebrow')}</span>
