@@ -86,13 +86,24 @@ describe('homepage responsive and accessibility contract', () => {
       faqAccordion,
       /setOpenIndex\(\(current\) => \(current === index \? null : index\)\)/u,
     );
+    assert.match(
+      faqAccordion,
+      /onClick=\{\(\) => setOpenIndex\(\(current\) => \(current === index \? null : index\)\)\}/u,
+    );
+    assert.match(faqAccordion, /data-open=\{isOpen \? '' : undefined\}/u);
     assert.match(faqAccordion, /aria-expanded=\{isOpen\}/u);
     assert.match(faqAccordion, /aria-controls=\{answerId\}/u);
+    assert.match(faqAccordion, /id=\{answerId\}/u);
+    assert.match(faqAccordion, /aria-labelledby=\{triggerId\}/u);
     assert.match(knowledgeFaqSection, /<FaqAccordion items=\{faqItems\} \/>/u);
     assert.doesNotMatch(knowledgeFaqSection, /<details/u);
     assert.match(
       css,
       /\.home-faq__answer\s*\{[^}]*grid-template-rows:\s*0fr;[^}]*transition:/u,
+    );
+    assert.match(
+      css,
+      /\.home-faq__answer\s*\{[^}]*transition:\s*(?!none\b)[^;}]*grid-template-rows[^;}]*280ms/u,
     );
     assert.match(
       css,
