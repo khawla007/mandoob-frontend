@@ -19,7 +19,7 @@ export function FinalCtaSection() {
       <FabricBackground
         pointer={pointer}
         ambientMotion
-        params={{ sphereRadius: 0.13, deformationStrength: 32 }}
+        params={{ sphereRadius: 0.18, deformationStrength: 72 }}
       />
       <div className="cta-section__inner reveal container">
         <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>

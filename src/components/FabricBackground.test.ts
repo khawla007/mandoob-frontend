@@ -42,7 +42,11 @@ describe('FabricBackground mesh deformation', () => {
     );
     assert.match(
       publicThemeSource,
-      /\.site-public \.cta-section \.fabric-background\s*\{[^}]*animation:\s*cta-fabric-drift 12s ease-in-out infinite alternate/u,
+      /\.site-public \.cta-section \.fabric-background\s*\{[^}]*animation:\s*cta-fabric-drift 8s ease-in-out infinite alternate/u,
+    );
+    assert.match(
+      publicThemeSource,
+      /\.site-public \.cta-section\s*\{[^}]*animation:\s*cta-pattern-pan 8s ease-in-out infinite alternate/u,
     );
   });
 });
