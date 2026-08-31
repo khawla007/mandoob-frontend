@@ -3695,9 +3695,9 @@
   inset: 0;
   background: radial-gradient(
     ellipse 55% 100% at 50% 50%,
-    rgba(255, 255, 255, 0.78) 0%,
-    rgba(255, 255, 255, 0.62) 34%,
-    rgba(255, 255, 255, 0.28) 62%,
+    rgba(255, 255, 255, 0.86) 0%,
+    rgba(255, 255, 255, 0.72) 34%,
+    rgba(255, 255, 255, 0.34) 62%,
     transparent 78%
   );
   pointer-events: none;
@@ -3733,31 +3733,9 @@
   font-size: var(--fs-15);
   color: oklch(0.45 0.01 45);
 }
-@keyframes cta-fabric-drift {
-  from {
-    transform: scale(1.08) translate3d(-2%, -1%, 0);
-  }
-  to {
-    transform: scale(1.08) translate3d(2%, 1%, 0);
-  }
-}
-@keyframes cta-pattern-pan {
-  from {
-    background-position: calc(50% - 80px) center;
-  }
-  to {
-    background-position: calc(50% + 80px) center;
-  }
-}
 @media (prefers-reduced-motion: no-preference) {
-  .site-public .cta-section {
-    animation: cta-pattern-pan 8s ease-in-out infinite alternate;
-  }
   .site-public .cta-section:has(.fabric-background) {
     background-image: none;
-  }
-  .site-public .cta-section .fabric-background {
-    animation: cta-fabric-drift 8s ease-in-out infinite alternate;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -23,7 +23,6 @@ describe('FinalCtaSection background interaction', () => {
     assert.match(componentSource, /useMouse/);
     assert.match(componentSource, /onPointerMove/);
     assert.match(componentSource, /onPointerLeave/);
-    assert.match(componentSource, /ambientMotion/u);
     assert.doesNotMatch(componentSource, /cta-section--honeycomb/);
     assert.doesNotMatch(componentSource, /cta-h-honeycomb/);
     assert.doesNotMatch(componentSource, /cta-final-honeycomb/);
@@ -41,7 +40,7 @@ describe('FinalCtaSection background interaction', () => {
   it('uses a compact, restrained fabric bump', () => {
     assert.match(
       componentSource,
-      /params=\{\{\s*sphereRadius:\s*0\.18,\s*deformationStrength:\s*72\s*\}\}/,
+      /params=\{\{\s*sphereRadius:\s*0\.13,\s*deformationStrength:\s*32\s*\}\}/,
     );
   });
 });
