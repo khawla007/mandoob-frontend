@@ -38,6 +38,10 @@ describe('homepage responsive and accessibility contract', () => {
       css,
       /\.site-public #estimator \.home-estimator-band__copy \.home-estimator-kicker\s*\{[^}]*color:\s*var\(--ink-inv\)/u,
     );
+    assert.match(
+      css,
+      /\.site-public \.home-testimonial-card__head p\s*\{[^}]*color:\s*var\(--zinc-600\)/u,
+    );
   });
 
   it('collapses dense bands without horizontal page overflow', () => {
