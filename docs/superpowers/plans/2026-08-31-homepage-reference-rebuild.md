@@ -13,6 +13,7 @@
 ### Task 1: Lock the reference-led composition
 
 **Files:**
+
 - Modify: `src/app/(public)/page.test.ts`
 - Modify: `src/app/(public)/page.tsx`
 - Create: `src/components/site/home/SupportServicesSection.tsx`
@@ -75,6 +76,7 @@ git commit -m "refactor(public): align homepage section sequence"
 ### Task 2: Rebuild setup, journey and estimator bands
 
 **Files:**
+
 - Modify: `src/components/site/home/TrustBandSection.tsx`
 - Modify: `src/components/site/home/ServicesSection.tsx`
 - Modify: `src/components/site/home/FlowSection.tsx`
@@ -108,7 +110,10 @@ Use `BadgeCheck`, `FileSearch`, `UserRoundCheck` and `CalendarClock` in the trus
     <li key={key}>
       <span className="home-flow-row__number">0{index + 1}</span>
       <Icon aria-hidden="true" />
-      <div><h3>{t(`${key}Title`)}</h3><p>{t(`${key}Text`)}</p></div>
+      <div>
+        <h3>{t(`${key}Title`)}</h3>
+        <p>{t(`${key}Text`)}</p>
+      </div>
     </li>
   ))}
 </ol>
@@ -132,6 +137,7 @@ git commit -m "feat(public): rebuild homepage setup journey and estimate bands"
 ### Task 3: Build compact capabilities, knowledge imagery and FAQ
 
 **Files:**
+
 - Modify: `src/components/site/home/SupportServicesSection.tsx`
 - Modify: `src/components/site/home/WhyMandoobSection.tsx`
 - Modify: `src/components/site/home/KnowledgeFaqSection.tsx`
@@ -188,6 +194,7 @@ git commit -m "feat(public): add reference-led services knowledge and FAQ"
 ### Task 4: Match the reference rhythm with scoped responsive styling
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 - Modify: `src/components/site/home/homepage-responsive-contract.test.ts`
 
@@ -199,7 +206,10 @@ Require the desktop grids and their mobile collapse:
 assert.match(css, /\.home-setup-grid[\s\S]*grid-template-columns:\s*repeat\(3,/u);
 assert.match(css, /\.home-services-grid[\s\S]*grid-template-columns:\s*repeat\(6,/u);
 assert.match(css, /\.home-knowledge-grid[\s\S]*grid-template-columns:\s*repeat\(4,/u);
-assert.match(css, /@media \(max-width:\s*767px\)[\s\S]*\.home-faq__grid[\s\S]*grid-template-columns:\s*1fr/u);
+assert.match(
+  css,
+  /@media \(max-width:\s*767px\)[\s\S]*\.home-faq__grid[\s\S]*grid-template-columns:\s*1fr/u,
+);
 ```
 
 - [ ] **Step 2: Run the responsive contract and verify red**
@@ -213,13 +223,35 @@ Expected: failure because the new layout classes are not styled.
 Replace obsolete homepage-body rules with compact, flat bands. Desktop values:
 
 ```css
-.site-public .home-setup-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
-.site-public .home-flow-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
-.site-public .home-estimator-band { display:grid; grid-template-columns:minmax(0,.9fr) minmax(22rem,1.1fr); }
-.site-public .home-services-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); }
-.site-public .home-why-row { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); }
-.site-public .home-knowledge-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
-.site-public .home-faq__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.site-public .home-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.site-public .home-flow-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.site-public .home-estimator-band {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(22rem, 1.1fr);
+}
+.site-public .home-services-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.site-public .home-why-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.site-public .home-knowledge-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.site-public .home-faq__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 ```
 
 At tablet, reduce services and knowledge to three/two columns. Below 768px, stack setup, flow, estimator and FAQ, use two service columns, maintain 44px controls and prevent overflow. Use logical properties and `[dir='rtl']` only for directional icon mirroring. Preserve all hero and `.cta-section` rules unchanged.
@@ -240,6 +272,7 @@ git commit -m "style(public): match homepage reference composition"
 ### Task 5: Verify candidate and refresh evidence
 
 **Files:**
+
 - Modify: `Reports/launch-gate-evidence/2026-08-31/public-frontend-phase-1/p1-03-homepage/verification.md` (repository root)
 - Replace: the four P1.03 evidence PNG files and `SHA256SUMS.txt` (repository root)
 - Modify: `Reports/daily-work-report.md` (repository root)

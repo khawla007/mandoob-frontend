@@ -11,7 +11,7 @@ export async function EstimatorSection() {
       <div className="container">
         <div className="home-estimator-band reveal">
           <div className="home-estimator-band__copy">
-            <span className="eyebrow">{t('eyebrow')}</span>
+            <span className="eyebrow home-estimator-kicker">{t('eyebrow')}</span>
             <h2 id="est-h">{t('title')}</h2>
             <p>{t('sideText')}</p>
             <p className="home-disclaimer">{t('disclaimer')}</p>

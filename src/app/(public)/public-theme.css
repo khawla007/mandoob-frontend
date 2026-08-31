@@ -894,7 +894,7 @@
   height: 38px;
   border-radius: 50%;
   background: var(--accent-soft);
-  color: var(--accent-ink);
+  color: var(--ink);
   font-size: var(--fs-12);
   font-weight: 700;
 }
@@ -937,8 +937,8 @@
   background: var(--zinc-50);
 }
 
-.site-public .home-estimator-band__copy .eyebrow {
-  color: color-mix(in oklch, var(--ink-inv) 72%, var(--accent));
+.site-public #estimator .home-estimator-band__copy .home-estimator-kicker {
+  color: var(--ink-inv);
 }
 
 .site-public .home-estimator-band__copy h2 {

@@ -28,6 +28,14 @@ describe('homepage responsive and accessibility contract', () => {
     assert.match(css, /\.home-faq summary:focus-visible\s*\{/u);
   });
 
+  it('uses high-contrast text tokens inside tinted and dark homepage bands', () => {
+    assert.match(css, /\.site-public \.home-flow-row__number\s*\{[^}]*color:\s*var\(--ink\)/u);
+    assert.match(
+      css,
+      /\.site-public #estimator \.home-estimator-band__copy \.home-estimator-kicker\s*\{[^}]*color:\s*var\(--ink-inv\)/u,
+    );
+  });
+
   it('collapses dense bands without horizontal page overflow', () => {
     assert.match(
       css,
