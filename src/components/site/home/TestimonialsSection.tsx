@@ -29,7 +29,7 @@ export async function TestimonialsSection() {
   return (
     <section className="home-testimonials-section" aria-labelledby="testimonials-h">
       <div className="container">
-        <header className="home-testimonials-head reveal">
+        <header className="home-testimonials-head">
           <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
           <h2 id="testimonials-h" className="home-section-title">
             {t('title')}

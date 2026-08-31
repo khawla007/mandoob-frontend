@@ -49,6 +49,14 @@ describe('homepage claims and CTA contract', () => {
     assert.match(knowledge, /faq\('eyebrow'\)/u);
   });
 
+  it('keeps the testimonial heading visible without waiting for a reveal observer', () => {
+    const testimonials =
+      componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';
+
+    assert.match(testimonials, /className="home-testimonials-head"/u);
+    assert.doesNotMatch(testimonials, /className="home-testimonials-head reveal"/u);
+  });
+
   it('uses the compact reference-led setup, journey and estimator structures', () => {
     const services =
       componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
