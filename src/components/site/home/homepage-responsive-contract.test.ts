@@ -7,6 +7,23 @@ const css = readFileSync(
   'utf8',
 );
 
+function readOptionalFile(url: URL) {
+  try {
+    return readFileSync(url, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return '';
+    }
+    throw error;
+  }
+}
+
+const faqAccordion = readOptionalFile(new URL('./FaqAccordion.tsx', import.meta.url));
+const knowledgeFaqSection = readFileSync(
+  new URL('./KnowledgeFaqSection.tsx', import.meta.url),
+  'utf8',
+);
+
 describe('homepage responsive and accessibility contract', () => {
   it('uses the approved wide public container', () => {
     assert.match(css, /--container:\s*1440px;/u);
@@ -34,6 +51,31 @@ describe('homepage responsive and accessibility contract', () => {
   it('provides accessible FAQ targets and focus treatment', () => {
     assert.match(css, /\.home-faq summary\s*\{[\s\S]*?min-block-size:\s*44px/u);
     assert.match(css, /\.home-faq summary:focus-visible\s*\{/u);
+  });
+
+  it('uses a smooth single-open FAQ accordion', () => {
+    assert.match(faqAccordion, /'use client';/u);
+    assert.match(faqAccordion, /useState<number \| null>\(null\)/u);
+    assert.match(
+      faqAccordion,
+      /setOpenIndex\(\(current\) => \(current === index \? null : index\)\)/u,
+    );
+    assert.match(faqAccordion, /aria-expanded=\{isOpen\}/u);
+    assert.match(faqAccordion, /aria-controls=\{answerId\}/u);
+    assert.match(knowledgeFaqSection, /<FaqAccordion items=\{faqItems\} \/>/u);
+    assert.doesNotMatch(knowledgeFaqSection, /<details/u);
+    assert.match(
+      css,
+      /\.home-faq__answer\s*\{[\s\S]*?grid-template-rows:\s*0fr;[\s\S]*?transition:/u,
+    );
+    assert.match(
+      css,
+      /\.home-faq__item\[data-open\]\s+\.home-faq__answer\s*\{[\s\S]*?grid-template-rows:\s*1fr/u,
+    );
+    assert.match(
+      css,
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.home-faq__answer/u,
+    );
   });
 
   it('uses high-contrast text tokens inside tinted and dark homepage bands', () => {
