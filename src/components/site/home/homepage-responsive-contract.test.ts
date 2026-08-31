@@ -19,9 +19,8 @@ function readOptionalFile(url: URL) {
 }
 
 const faqAccordion = readOptionalFile(new URL('./FaqAccordion.tsx', import.meta.url));
-const knowledgeFaqSection = readFileSync(
+const knowledgeFaqSection = readOptionalFile(
   new URL('./KnowledgeFaqSection.tsx', import.meta.url),
-  'utf8',
 );
 
 describe('homepage responsive and accessibility contract', () => {
