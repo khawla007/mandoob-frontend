@@ -13,10 +13,11 @@
 ### Task 1: Widen and verify the public container
 
 **Files:**
-- Modify: `src/app/(public)/public-theme.css:86`
-- Modify: `src/components/site/home/homepage-layout-contract.test.ts`
 
-- [ ] **Step 1: Write the failing contract**
+- Modify: `src/app/(public)/public-theme.css:86`
+- Modify: `src/components/site/home/homepage-responsive-contract.test.ts`
+
+- [x] **Step 1: Write the failing contract**
 
 Add this assertion to the public-theme contract:
 
@@ -26,17 +27,17 @@ it('uses the approved wide public container', () => {
 });
 ```
 
-- [ ] **Step 2: Verify the contract fails**
+- [x] **Step 2: Verify the contract fails**
 
 Run:
 
 ```bash
-node --import tsx --conditions=react-server --test src/components/site/home/homepage-layout-contract.test.ts
+node --import tsx --conditions=react-server --test src/components/site/home/homepage-responsive-contract.test.ts
 ```
 
 Expected: FAIL because the current token is `1200px`.
 
-- [ ] **Step 3: Implement the approved token**
+- [x] **Step 3: Implement the approved token**
 
 Change the shared token to:
 
@@ -44,13 +45,13 @@ Change the shared token to:
 --container: 1440px;
 ```
 
-- [ ] **Step 4: Verify code and rendering**
+- [x] **Step 4: Verify code and rendering**
 
 Run the focused layout contract, `npx tsc --noEmit`, `npm run lint`, `npx prettier --check` for the touched files, and `git diff --check`. On port 3001, confirm the desktop container is wider and that desktop and mobile `scrollWidth` equal `clientWidth`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
-git add src/app/'(public)'/public-theme.css src/components/site/home/homepage-layout-contract.test.ts
+git add src/app/'(public)'/public-theme.css src/components/site/home/homepage-responsive-contract.test.ts
 git commit -m "fix(public): widen shared content container"
 ```

@@ -8,6 +8,10 @@ const css = readFileSync(
 );
 
 describe('homepage responsive and accessibility contract', () => {
+  it('uses the approved wide public container', () => {
+    assert.match(css, /--container:\s*1440px;/u);
+  });
+
   it('defines the compact desktop reference grids', () => {
     assert.match(
       css,
