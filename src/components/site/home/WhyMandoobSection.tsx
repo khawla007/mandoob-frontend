@@ -10,7 +10,6 @@ export async function WhyMandoobSection() {
     <section className="home-why-section" aria-labelledby="why-h">
       <div className="container">
         <header className="home-centered-head reveal">
-          <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
           <h2 id="why-h" className="home-section-title">
             {t('title')}
           </h2>

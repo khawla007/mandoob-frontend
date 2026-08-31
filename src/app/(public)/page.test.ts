@@ -14,6 +14,7 @@ describe('homepage composition contract', () => {
       '<EstimatorSection />',
       '<SupportServicesSection />',
       '<WhyMandoobSection />',
+      '<TestimonialsSection />',
       '<KnowledgeFaqSection />',
       '<FinalCtaSection />',
     ];

@@ -8,6 +8,17 @@
 
 **Tech Stack:** Next.js 16 App Router, React server components, TypeScript, next-intl, next/image, lucide-react, scoped CSS, Node test runner.
 
+## Approved correction after visual review
+
+The final approved reference sequence also requires:
+
+- removing the legacy `stats-band` rendered after the protected hero visual;
+- replacing `EstimatorPreview` with a compact static sample-estimate breakdown;
+- inserting `TestimonialsSection` between `WhyMandoobSection` and `KnowledgeFaqSection`;
+- removing numbered eyebrow labels from the copied middle sections while retaining the protected final `07 · Get started` label.
+
+Regression contracts must assert these corrected boundaries and the three-column testimonial layout with a one-column mobile collapse.
+
 ---
 
 ### Task 1: Lock the reference-led composition

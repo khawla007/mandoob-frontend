@@ -12,6 +12,7 @@ const componentSources = [
   'FlowSection.tsx',
   'WhyMandoobSection.tsx',
   'SupportServicesSection.tsx',
+  'TestimonialsSection.tsx',
   'KnowledgeFaqSection.tsx',
   'FinalCtaSection.tsx',
 ].map((file) => ({ file, source: readFileSync(join(homeDirectory, file), 'utf8') }));
@@ -24,12 +25,23 @@ describe('homepage claims and CTA contract', () => {
     const flow = componentSources.find(({ file }) => file === 'FlowSection.tsx')?.source ?? '';
     const estimator =
       componentSources.find(({ file }) => file === 'EstimatorSection.tsx')?.source ?? '';
+    const hero = componentSources.find(({ file }) => file === 'HeroSection.tsx')?.source ?? '';
 
     assert.doesNotMatch(services, /compare__table|home-support-grid/u);
     assert.match(services, /home-setup-grid/u);
     assert.match(flow, /home-flow-row/u);
     assert.match(estimator, /home-estimator-band/u);
-    assert.match(estimator, /EstimatorPreview/u);
+    assert.match(estimator, /home-estimate-card/u);
+    assert.doesNotMatch(estimator, /EstimatorPreview/u);
+    assert.doesNotMatch(hero, /stats-band|hero__spec/u);
+  });
+
+  it('includes the three-card client testimonial row from the approved reference', () => {
+    const testimonials =
+      componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';
+
+    assert.match(testimonials, /home-testimonials-grid/u);
+    assert.equal(testimonials.match(/key: 'client[1-3]'/gu)?.length, 3);
   });
 
   it('uses explicit catalog suffixes for setup-card facts', () => {

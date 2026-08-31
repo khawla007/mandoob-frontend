@@ -18,7 +18,6 @@ export async function KnowledgeFaqSection() {
       <div className="container">
         <header className="home-knowledge-head reveal">
           <div>
-            <span className="eyebrow eyebrow--accent">{knowledge('eyebrow')}</span>
             <h2 id="knowledge-h" className="home-section-title">
               {knowledge('title')}
             </h2>
@@ -63,6 +62,9 @@ export async function KnowledgeFaqSection() {
               </details>
             ))}
           </div>
+          <Link className="home-faq__link home-text-link" href="/knowledge-base">
+            {faq('viewAll')} <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
     </section>

@@ -8,11 +8,11 @@ Rebuild the public homepage body to follow the composition and visual rhythm of 
 
 ## Fixed boundaries
 
-- Keep the existing Mandoob hero section unchanged.
+- Keep the existing Mandoob hero visual and content unchanged; remove the legacy stats band that followed it.
 - Keep `07 · Get started` unchanged as the final numbered section.
 - Do not change the public shell, dashboard, API, Supabase, provider or deployment contracts.
 - Continue using the website's current colors, typography, theme behavior and localization architecture.
-- Do not reproduce unsupported metrics, guarantees, testimonials, personal identities or contact details shown in the reference.
+- Do not reproduce unsupported metrics, guarantees or contact details shown in the reference.
 
 ## Chosen approach
 
@@ -28,11 +28,10 @@ Between the protected hero and final section, render:
 4. A dark navy estimator banner with copy and CTA on one side and an illustrative cost summary on the other.
 5. A six-item service row with distinct restrained color accents.
 6. A compact `Why Mandoob` capability row without unsupported performance claims.
-7. An image-led knowledge and insights row using suitable local project imagery and real routes.
-8. A two-column native FAQ layout that collapses to one column on mobile.
-9. The protected final `07 · Get started` section.
-
-Fabricated testimonial content from the reference will not be recreated. The surrounding sections close the resulting gap while preserving the reference's pacing.
+7. A three-card testimonial row matching the supplied reference, with localized supplied-reference identities and restrained quotes.
+8. An image-led knowledge and insights row using suitable local project imagery and real routes.
+9. A two-column native FAQ layout that collapses to one column on mobile.
+10. The protected final `07 · Get started` section.
 
 ## Visual direction
 
@@ -54,7 +53,7 @@ Fabricated testimonial content from the reference will not be recreated. The sur
 
 - Reuse the existing approved English and Arabic homepage catalogs where they fit; adjust only what the new structure requires.
 - Every CTA must resolve to an existing internal route or estimator query.
-- Cost values remain explicitly illustrative.
+- The estimator uses the reference's static sample-breakdown card instead of interactive controls, and its values remain explicitly illustrative.
 - FAQ uses keyboard-accessible native disclosure controls.
 
 ## Verification

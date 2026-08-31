@@ -21,6 +21,10 @@ describe('homepage responsive and accessibility contract', () => {
       css,
       /\.site-public \.home-knowledge-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4,/u,
     );
+    assert.match(
+      css,
+      /\.site-public \.home-testimonials-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,/u,
+    );
   });
 
   it('provides accessible FAQ targets and focus treatment', () => {
@@ -44,6 +48,10 @@ describe('homepage responsive and accessibility contract', () => {
     assert.match(
       css,
       /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-estimator-band\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
+    );
+    assert.match(
+      css,
+      /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-testimonials-grid\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
     );
   });
 });

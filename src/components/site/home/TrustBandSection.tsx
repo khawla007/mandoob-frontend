@@ -18,7 +18,10 @@ export async function TrustBandSection() {
               <span className="home-trust-grid__icon">
                 <Icon aria-hidden="true" />
               </span>
-              <span>{t(`item${index + 1}`)}</span>
+              <span className="home-trust-grid__copy">
+                <strong>{t(`item${index + 1}Title`)}</strong>
+                <span>{t(`item${index + 1}Text`)}</span>
+              </span>
             </li>
           ))}
         </ul>

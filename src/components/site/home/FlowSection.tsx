@@ -15,7 +15,6 @@ export async function FlowSection() {
     <section id="flow" className="home-flow-section" aria-labelledby="flow-h">
       <div className="container">
         <header className="home-centered-head reveal">
-          <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
           <h2 id="flow-h" className="home-section-title">
             {t('title')}
           </h2>
