@@ -252,6 +252,6 @@ Expected: CTA background `rgb(255, 87, 34)`, CTA text `rgb(255, 255, 255)`, hove
 
 Run: `git status --short`
 
-Run: `git diff HEAD~2 --name-only`
+Run: `git diff 3af3ea9..HEAD --name-only`
 
 Expected: frontend commits contain only the planned public CSS/tests/spec/plan files. No authenticated dashboard component or global font-loading file changed. Report the separately updated parent `docs/design-system.md`.

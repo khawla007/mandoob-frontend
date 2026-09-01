@@ -137,6 +137,14 @@ renderTest('public dark theme preserves a dark accent surface for flow markers',
   );
 });
 
+renderTest('mobile dialog inherits the canonical accent CTA token', () => {
+  assert.doesNotMatch(
+    declarations('.site-public.public-mobile-dialog'),
+    /--accent\s*:/u,
+  );
+  assert.match(declarations('.site-public .btn--accent'), /background:\s*var\(--accent\)/u);
+});
+
 renderTest('design-4 component colors and weights are preserved', () => {
   assert.match(
     declarations('.site-public .btn--accent'),

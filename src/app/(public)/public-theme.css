@@ -541,7 +541,6 @@
   --public-surface: var(--zinc-100);
   --popover: oklch(0.205 0.008 45);
   --popover-foreground: var(--ink);
-  --accent: oklch(0.31 0.04 38);
   --accent-foreground: var(--ink);
   --border: oklch(1 0 0 / 12%);
   --tw-translate-x: 0px !important;
