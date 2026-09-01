@@ -52,6 +52,35 @@ describe('company setup visual contract', () => {
     assert.match(css, /\.dark \.site-public \.setup-hero__checklist/u);
     assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.setup-card/u);
     const setupCss = css.slice(css.indexOf('P1.04 company setup discovery'));
-    assert.doesNotMatch(setupCss, /background-clip:\s*text|#[fF]{6}|#000(?:000)?/u);
+    assert.doesNotMatch(setupCss, /background-clip:\s*text/u);
+  });
+
+  it('locks P1.04 to the authoritative public light and dark palettes', () => {
+    assert.match(
+      css,
+      /\.site-public:has\(\.setup-page\)\s*\{[\s\S]*?--paper:\s*#fff;[\s\S]*?--ink:\s*#000;[\s\S]*?--accent:\s*#ff5722;[\s\S]*?--accent-hover:\s*#e64a19;/u,
+    );
+    assert.match(
+      css,
+      /\.dark \.site-public:has\(\.setup-page\)\s*\{[\s\S]*?--paper:\s*#18181b;[\s\S]*?--ink:\s*#fafafa;[\s\S]*?--zinc-950:\s*#f4f4f5;[\s\S]*?--accent:\s*#ff5722;/u,
+    );
+    assert.match(
+      css,
+      /\.site-public:has\(\.setup-page\) \.site-public\s*\{[\s\S]*?--paper:\s*inherit;[\s\S]*?--public-cta-background:\s*inherit;/u,
+    );
+  });
+
+  it('uses only Geist aliases and approved font weights in P1.04 styles', () => {
+    const setupCss = css.slice(css.indexOf('P1.04 company setup discovery'));
+    assert.match(css, /--font:\s*var\(--font-geist-sans\)/u);
+    assert.match(css, /--mono-font:\s*var\(--font-geist-mono\)/u);
+    const setupFontFamilies = [...setupCss.matchAll(/font-family:\s*([^;]+);/gu)].map((match) =>
+      match[1].trim(),
+    );
+    assert.equal(
+      setupFontFamilies.every((family) => ['var(--font)', 'var(--mono-font)'].includes(family)),
+      true,
+    );
+    assert.doesNotMatch(setupCss, /font-weight:\s*(?:650|[89]00)/u);
   });
 });

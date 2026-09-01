@@ -5468,6 +5468,133 @@
 }
 
 /* ---------- P1.04 company setup discovery ---------- */
+.site-public:has(.setup-page) {
+  --paper: #fff;
+  --ink: #000;
+  --ink-inv: #fafafa;
+  --zinc-50: #fafafa;
+  --zinc-100: #f4f4f5;
+  --zinc-200: #e4e4e7;
+  --zinc-300: #d4d4d8;
+  --zinc-400: #a1a1aa;
+  --zinc-500: #71717a;
+  --zinc-600: #52525b;
+  --zinc-700: #3f3f46;
+  --zinc-900: #18181b;
+  --zinc-950: #09090b;
+  --accent: #ff5722;
+  --accent-hover: #e64a19;
+  --accent-ink: #ff5722;
+  --accent-soft: #fff1ed;
+  --pb-border: #e4e4e7;
+  --pb-border-dark: #27272a;
+  --public-canvas: var(--paper);
+  --public-surface: var(--zinc-50);
+  --public-surface-elevated: var(--paper);
+  --public-text-primary: var(--ink);
+  --public-text-muted: var(--zinc-600);
+  --public-border-subtle: var(--zinc-200);
+  --public-border-strong: var(--zinc-400);
+  --public-accent-decoration: #ff5722;
+  --public-cta-background: #ff5722;
+  --public-cta-text: #fff;
+  --public-cta-hover-background: #e64a19;
+  --public-cta-active-background: #e64a19;
+  --public-cta-focus-background: #ff5722;
+  --public-cta-disabled-background: #a1a1aa;
+  --public-cta-disabled-text: #fff;
+  --public-header-surface: rgb(255 255 255 / 85%);
+  --public-mobile-dialog-surface: #09090b;
+  --public-focus-ring: #ff5722;
+  --public-scrim: rgb(9 9 11 / 72%);
+}
+
+.dark .site-public:has(.setup-page) {
+  --paper: #18181b;
+  --ink: #fafafa;
+  --ink-inv: #fafafa;
+  --zinc-50: #09090b;
+  --zinc-100: #18181b;
+  --zinc-200: #27272a;
+  --zinc-300: #3f3f46;
+  --zinc-400: #52525b;
+  --zinc-500: #71717a;
+  --zinc-600: #a1a1aa;
+  --zinc-700: #d4d4d8;
+  --zinc-900: #e4e4e7;
+  --zinc-950: #f4f4f5;
+  --accent: #ff5722;
+  --accent-hover: #e64a19;
+  --accent-ink: #ff5722;
+  --accent-soft: oklch(0.22 0.04 38);
+  --pb-border: #27272a;
+  --pb-border-dark: #3f3f46;
+  --public-canvas: var(--paper);
+  --public-surface: var(--zinc-100);
+  --public-surface-elevated: var(--zinc-200);
+  --public-text-primary: var(--ink);
+  --public-text-muted: var(--zinc-600);
+  --public-border-subtle: var(--zinc-200);
+  --public-border-strong: var(--zinc-400);
+  --public-accent-decoration: #ff5722;
+  --public-cta-background: #ff5722;
+  --public-cta-text: #fff;
+  --public-cta-hover-background: #e64a19;
+  --public-cta-active-background: #e64a19;
+  --public-cta-focus-background: #ff5722;
+  --public-cta-disabled-background: #52525b;
+  --public-cta-disabled-text: #fff;
+  --public-header-surface: rgb(24 24 27 / 85%);
+  --public-mobile-dialog-surface: #09090b;
+  --public-focus-ring: #ff5722;
+  --public-scrim: rgb(9 9 11 / 82%);
+}
+
+/* PublicHeader and PublicFooter keep their own scoped roots. On P1.04 routes,
+   inherit the authoritative route palette instead of re-declaring legacy tokens. */
+.site-public:has(.setup-page) .site-public {
+  --paper: inherit;
+  --ink: inherit;
+  --ink-inv: inherit;
+  --zinc-50: inherit;
+  --zinc-100: inherit;
+  --zinc-200: inherit;
+  --zinc-300: inherit;
+  --zinc-400: inherit;
+  --zinc-500: inherit;
+  --zinc-600: inherit;
+  --zinc-700: inherit;
+  --zinc-900: inherit;
+  --zinc-950: inherit;
+  --accent: inherit;
+  --accent-hover: inherit;
+  --accent-ink: inherit;
+  --accent-soft: inherit;
+  --pb-border: inherit;
+  --pb-border-dark: inherit;
+  --public-canvas: inherit;
+  --public-surface: inherit;
+  --public-surface-elevated: inherit;
+  --public-text-primary: inherit;
+  --public-text-muted: inherit;
+  --public-border-subtle: inherit;
+  --public-border-strong: inherit;
+  --public-accent-decoration: inherit;
+  --public-cta-background: inherit;
+  --public-cta-text: inherit;
+  --public-cta-hover-background: inherit;
+  --public-cta-active-background: inherit;
+  --public-cta-focus-background: inherit;
+  --public-cta-disabled-background: inherit;
+  --public-cta-disabled-text: inherit;
+  --public-header-surface: inherit;
+  --public-mobile-dialog-surface: inherit;
+  --public-focus-ring: inherit;
+  --public-scrim: inherit;
+  --font: inherit;
+  --mono-font: inherit;
+}
+
 .site-public .setup-page {
   overflow: clip;
   background: var(--paper);
@@ -5481,7 +5608,7 @@
 }
 .site-public .setup-section--dark {
   color: var(--ink-inv);
-  background: var(--zinc-950);
+  background: #09090b;
 }
 .site-public .setup-section__head {
   display: flex;
@@ -5557,7 +5684,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 52%, oklch(0.12 0.01 45 / 0.62));
+  background: linear-gradient(180deg, transparent 52%, rgb(9 9 11 / 62%));
   pointer-events: none;
 }
 .site-public .setup-hero__checklist {
@@ -5566,14 +5693,14 @@
   inset-inline: 24px;
   bottom: 24px;
   padding: 24px;
-  border: 1px solid oklch(0.92 0.006 45 / 0.28);
+  border: 1px solid rgb(228 228 231 / 28%);
   border-radius: var(--r-md);
   color: var(--ink-inv);
-  background: oklch(0.18 0.01 45 / 0.9);
+  background: rgb(24 24 27 / 90%);
   backdrop-filter: blur(14px);
 }
 .dark .site-public .setup-hero__checklist {
-  background: oklch(0.12 0.008 45 / 0.92);
+  background: rgb(9 9 11 / 92%);
 }
 .site-public .setup-hero__checklist h2 {
   margin-bottom: 12px;
@@ -5693,7 +5820,7 @@
   margin-top: 18px;
   color: var(--accent-ink);
   font-size: var(--fs-14);
-  font-weight: 650;
+  font-weight: 600;
 }
 .site-public .setup-card__link::after {
   content: '\2192';
@@ -5753,9 +5880,9 @@
   background: var(--paper);
 }
 .site-public .setup-panel--dark {
-  color: oklch(0.98 0.004 45);
-  background: oklch(0.16 0.008 45);
-  border-color: oklch(0.34 0.01 45);
+  color: #fafafa;
+  background: #09090b;
+  border-color: #27272a;
 }
 .site-public .setup-panel--dark h2,
 .site-public .setup-panel--dark h3,
@@ -5786,7 +5913,7 @@
 }
 .site-public .setup-panel--dark p,
 .site-public .setup-panel--dark li {
-  color: oklch(0.82 0.007 45);
+  color: #d4d4d8;
 }
 .site-public .setup-detail-list {
   display: grid;
@@ -5800,10 +5927,10 @@
   border-top: 1px solid var(--pb-border);
 }
 .site-public .setup-panel--dark .setup-detail-list li {
-  border-color: oklch(0.34 0.01 45);
+  border-color: #27272a;
 }
 .site-public .setup-panel--dark .setup-card__link {
-  color: oklch(0.74 0.17 42);
+  color: #ff5722;
 }
 .site-public .setup-process {
   display: grid;
@@ -5874,7 +6001,7 @@
   gap: 24px;
   padding: 24px 4px;
   cursor: pointer;
-  font-weight: 650;
+  font-weight: 600;
   list-style: none;
 }
 .site-public .setup-faq__item summary::-webkit-details-marker {
@@ -5901,7 +6028,7 @@
 .site-public .setup-conversion {
   padding-block: clamp(56px, 8vw, 96px);
   color: var(--ink-inv);
-  background: oklch(0.16 0.008 45);
+  background: #09090b;
 }
 .site-public .setup-conversion__inner {
   display: flex;
@@ -5918,7 +6045,7 @@
 .site-public .setup-conversion p {
   max-width: 620px;
   margin-top: 18px;
-  color: oklch(0.82 0.007 45);
+  color: #d4d4d8;
 }
 .site-public .setup-conversion .btn--outline {
   color: var(--ink-inv);
@@ -5945,7 +6072,7 @@
   gap: 7px;
   color: var(--zinc-700);
   font-size: var(--fs-13);
-  font-weight: 650;
+  font-weight: 600;
 }
 .site-public .setup-filter input,
 .site-public .setup-filter select {
