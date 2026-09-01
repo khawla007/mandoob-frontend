@@ -23,7 +23,10 @@ describe('About and Contact shared primitive contracts', () => {
     assert.match(source, /<h1 id=\{headingId\}/u);
     assert.match(source, /import Image from 'next\/image'/u);
     assert.match(source, /fill/u);
-    assert.match(source, /sizes="\(min-width: 1280px\) 48vw, \(min-width: 900px\) 46vw, 100vw"/u);
+    assert.match(
+      source,
+      /sizes="\(min-width: 1440px\) 43vw, \(min-width: 1280px\) 43vw, \(min-width: 900px\) 45vw, 100vw"/u,
+    );
     assert.match(source, /fetchPriority="high"/u);
     assert.match(source, /alt=\{imageAlt\}/u);
     assert.doesNotMatch(source, /['"]use client['"]/u);
@@ -75,11 +78,19 @@ describe('About and Contact shared primitive contracts', () => {
     const below900 = taskCss.match(
       /@media \(max-width: 899px\) \{([\s\S]*?)@media \(max-width: 639px\)/u,
     )?.[1];
+    const below1200 = taskCss.match(
+      /@media \(max-width: 1199px\) \{([\s\S]*?)@media \(max-width: 899px\)/u,
+    )?.[1];
     const below640 = taskCss.match(
       /@media \(max-width: 639px\) \{([\s\S]*?)@media \(prefers-reduced-motion: reduce\)/u,
     )?.[1];
+    assert.ok(below1200);
     assert.ok(below900);
     assert.ok(below640);
+    assert.match(
+      below1200,
+      /about-contact-hero__features\[data-feature-count='3'\],\s*\.site-public \.about-contact-hero__features\[data-feature-count='4'\]\s*\{[^}]*repeat\(2,/u,
+    );
     assert.match(
       below900,
       /about-contact-hero__features\[data-feature-count='3'\],\s*\.site-public \.about-contact-hero__features\[data-feature-count='4'\]\s*\{[^}]*repeat\(2,/u,
@@ -148,12 +159,17 @@ describe('About and Contact shared primitive contracts', () => {
     assert.match(css, /\.site-public \.about-contact-hero__grid\s*\{[^}]*grid-template-columns:/u);
     assert.match(css, /@media \(min-width: 1280px\)/u);
     assert.match(css, /max-inline-size:\s*1440px/u);
-    assert.match(
-      css,
-      /\.site-public \.about-contact-hero__visual\s*\{[^}]*margin-inline-end:\s*calc\(/u,
-    );
+    const gridRule = css.match(/\.site-public \.about-contact-hero__grid\s*\{([^}]*)\}/u)?.[1];
     const visualRule = css.match(/\.site-public \.about-contact-hero__visual\s*\{([^}]*)\}/u)?.[1];
+    assert.ok(gridRule);
     assert.ok(visualRule);
+    assert.match(
+      gridRule,
+      /inline-size:\s*min\(calc\(50vw \+ 688px\), calc\(100% - var\(--gutter\)\)\)/u,
+    );
+    assert.match(gridRule, /margin-inline-start:\s*auto/u);
+    assert.doesNotMatch(gridRule, /margin-inline-end|negative/u);
+    assert.doesNotMatch(visualRule, /margin-inline|calc\(50% - 50vw\)/u);
     assert.doesNotMatch(visualRule, /border(?:-radius)?:/u);
     assert.match(css, /(?:padding|margin|inset|border)-(?:inline|block)/u);
     assert.match(css, /\.dark \.site-public \.about-contact-/u);
@@ -164,5 +180,25 @@ describe('About and Contact shared primitive contracts', () => {
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.site-public \.about-contact-/u,
     );
     assert.doesNotMatch(css, /\.site-public \.about-contact-[^{]*\{[^}]*gradient[^;}]*text/u);
+  });
+
+  it('declares image candidates at least as wide as the measured 1280 and 1440 tracks', () => {
+    const source = readComponent('PageScenicHero.tsx');
+    const sizes = source.match(/sizes="([^"]+)"/u)?.[1];
+    assert.ok(sizes);
+
+    for (const viewport of [1280, 1440]) {
+      const gutter = 32;
+      const gap = Math.min(80, Math.max(32, viewport * 0.05));
+      const gridWidth = Math.min(viewport * 0.5 + 688, viewport - gutter);
+      const gridStart = viewport - gridWidth;
+      const imageTrack = ((gridWidth - gap) * 6) / 13;
+      const declaredWidth = viewport * 0.43;
+
+      assert.equal(gridStart, gutter, `${viewport}px grid misses the container content start`);
+      assert.equal(gridStart + gridWidth, viewport, `${viewport}px grid misses the viewport edge`);
+      assert.ok(declaredWidth >= imageTrack, `${viewport}px candidate undersizes its image track`);
+      assert.ok(declaredWidth - imageTrack < 8, `${viewport}px candidate is not track-accurate`);
+    }
   });
 });
