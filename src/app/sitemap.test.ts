@@ -26,9 +26,7 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
       '/mainland',
       '/free-zones',
       '/offshore',
-    ].filter(
-      (path) => !paths(entries).includes(path),
-    ),
+    ].filter((path) => !paths(entries).includes(path)),
     [],
   );
   assert.ok(paths(entries).includes('/knowledge-base/mainland-vs-free-zone'));

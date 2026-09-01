@@ -13,6 +13,7 @@
 ### Task 1: Lock route and composition contracts
 
 **Files:**
+
 - Create: `src/components/site/company-setup/company-setup-composition.test.ts`
 - Create: `src/app/(public)/mainland/page.tsx`
 - Create: `src/app/(public)/free-zones/page.tsx`
@@ -71,6 +72,7 @@ git commit -m "feat(public): add company setup discovery routes"
 ### Task 2: Build the typed, claim-safe presentation catalog
 
 **Files:**
+
 - Create: `src/lib/public-company-setup/contracts.ts`
 - Create: `src/lib/public-company-setup/catalog.ts`
 - Create: `src/lib/public-company-setup/catalog.test.ts`
@@ -86,7 +88,10 @@ assert.equal(MAINLAND_EMIRATES.length, 7);
 assert.equal(POPULAR_FREE_ZONES.length, 6);
 assert.equal(OFFSHORE_OPTIONS.filter((item) => item.authoritySlug).length, 2);
 assert.ok(POPULAR_FREE_ZONES.every((item) => item.href.startsWith('/company-setup/')));
-assert.doesNotMatch(JSON.stringify(PUBLIC_SETUP_CATALOG), /0% tax|guaranteed|confidentiality|45\+/iu);
+assert.doesNotMatch(
+  JSON.stringify(PUBLIC_SETUP_CATALOG),
+  /0% tax|guaranteed|confidentiality|45\+/iu,
+);
 ```
 
 - [ ] **Step 2: Run catalog tests and verify RED**
@@ -136,6 +141,7 @@ git commit -m "feat(public): add claim-safe setup discovery catalog"
 ### Task 3: Create shared strict-parity primitives
 
 **Files:**
+
 - Create: `src/components/site/company-setup/SetupHero.tsx`
 - Create: `src/components/site/company-setup/SetupBenefitStrip.tsx`
 - Create: `src/components/site/company-setup/SetupPanel.tsx`
@@ -184,6 +190,7 @@ git commit -m "feat(public): add setup discovery primitives"
 ### Task 4: Add scoped visual foundation and local imagery
 
 **Files:**
+
 - Create: `public/company-setup/mainland-hero.webp`
 - Create: `public/company-setup/free-zone-hero.webp`
 - Create: `public/company-setup/offshore-hero.webp`
@@ -218,6 +225,7 @@ git commit -m "feat(public): add setup discovery visual system"
 ### Task 5: Implement Mainland strict parity
 
 **Files:**
+
 - Create: `src/components/site/company-setup/MainlandDiscovery.tsx`
 - Create: `src/components/site/company-setup/mainland-discovery.test.ts`
 
@@ -245,6 +253,7 @@ git commit -m "feat(public): build mainland discovery page"
 ### Task 6: Implement Free Zone directory and strict parity
 
 **Files:**
+
 - Create: `src/components/site/company-setup/FreeZoneDirectory.tsx`
 - Create: `src/components/site/company-setup/FreeZonesDiscovery.tsx`
 - Create: `src/components/site/company-setup/free-zone-directory.test.tsx`
@@ -289,6 +298,7 @@ git commit -m "feat(public): build free zone discovery directory"
 ### Task 7: Implement Offshore strict parity
 
 **Files:**
+
 - Create: `src/components/site/company-setup/OffshoreDiscovery.tsx`
 - Create: `src/components/site/company-setup/offshore-discovery.test.ts`
 
@@ -316,6 +326,7 @@ git commit -m "feat(public): build offshore discovery page"
 ### Task 8: Wire navigation, sitemap, and authority-detail preservation
 
 **Files:**
+
 - Modify: `src/components/site/public-navigation.ts`
 - Modify: `src/components/site/public-navigation.test.ts`
 - Modify: `src/app/sitemap.ts`
@@ -344,6 +355,7 @@ git commit -m "feat(public): expose setup discovery routes"
 ### Task 9: Correct parity, accessibility, and dark mode in-browser
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 - Modify: affected `src/components/site/company-setup/*.tsx`
 - Modify: affected focused tests first for every discovered defect
@@ -368,6 +380,7 @@ git commit -m "fix(public): align setup pages with approved references"
 ### Task 10: Final gates, evidence, and handoff
 
 **Files:**
+
 - Create: `Reports/launch-gate-evidence/2026-09-01/public-frontend-phase-1/p1-04-company-setup/verification.md` outside the frontend git repository
 - Create: `Reports/launch-gate-evidence/2026-09-01/public-frontend-phase-1/p1-04-company-setup/parity-matrix.md` outside the frontend git repository
 - Create: `Reports/launch-gate-evidence/2026-09-01/public-frontend-phase-1/p1-04-company-setup/content-safety-register.md` outside the frontend git repository
