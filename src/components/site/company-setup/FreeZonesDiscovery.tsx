@@ -1,6 +1,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Building2, CheckCircle2, Clock3, Globe2, Search, WalletCards } from 'lucide-react';
+import {
+  Building2,
+  CheckCircle2,
+  Clock3,
+  Globe2,
+  MapPin,
+  Search,
+  UsersRound,
+  WalletCards,
+} from 'lucide-react';
 import { FREE_ZONE_DIRECTORY, POPULAR_FREE_ZONES } from '@/lib/public-company-setup/catalog';
 import { FreeZoneDirectory } from './FreeZoneDirectory';
 import { SetupBenefitStrip } from './SetupBenefitStrip';
@@ -33,7 +42,7 @@ export function FreeZonesDiscovery() {
           }}
           checklist={
             <>
-              <h2>Plan with the right inputs</h2>
+              <h2>Why Choose Free Zone?</h2>
               <ul className="setup-check-list">
                 <li>
                   <CheckCircle2 />
@@ -54,7 +63,7 @@ export function FreeZonesDiscovery() {
       </section>
       <section
         id="setup-benefits"
-        className="setup-benefit-strip"
+        className="setup-benefits-shell"
         aria-label="Free Zone setup considerations"
       >
         <SetupBenefitStrip
@@ -70,6 +79,21 @@ export function FreeZonesDiscovery() {
               icon: <WalletCards />,
             },
             { title: 'Timeline context', detail: 'See record-level estimates.', icon: <Clock3 /> },
+            {
+              title: 'Location choice',
+              detail: 'Compare emirate and operating context.',
+              icon: <MapPin />,
+            },
+            {
+              title: 'Workspace formats',
+              detail: 'Review recorded office options.',
+              icon: <Building2 />,
+            },
+            {
+              title: 'Visa planning',
+              detail: 'Account for team requirements.',
+              icon: <UsersRound />,
+            },
           ]}
         />
       </section>
@@ -140,41 +164,32 @@ export function FreeZonesDiscovery() {
       <section
         id="free-zone-comparison"
         className="setup-section"
-        aria-label="Mainland and Free Zone comparison"
+        aria-labelledby="free-zone-benefits-title"
       >
         <div className="container">
           <header className="setup-section__head">
             <div>
-              <span className="eyebrow">Structure comparison</span>
-              <h2>Mainland and Free Zone: frame the decision.</h2>
+              <span className="eyebrow">Compare Free Zone Benefits</span>
+              <h2 id="free-zone-benefits-title">Evaluate the operating fit.</h2>
             </div>
           </header>
-          <div className="setup-paired-panels">
-            <SetupPanel
-              title="Mainland"
-              description="Often considered for a company focused on UAE market operations."
-            >
-              <ul className="setup-detail-list">
-                <li>Emirate authority and activity route</li>
-                <li>Premises requirements can vary</li>
-                <li>External approvals may apply</li>
-              </ul>
-              <Link className="setup-card__link" href="/mainland">
-                Explore Mainland
-              </Link>
+          <div className="setup-activity-grid">
+            <SetupPanel title="Activity catalog">
+              <p>Compare activities available through each authority.</p>
             </SetupPanel>
-            <SetupPanel
-              className="setup-panel--dark"
-              title="Free Zone"
-              description="Often considered for an authority-led package and operating environment."
-            >
-              <ul className="setup-detail-list">
-                <li>Authority-specific activity catalog</li>
-                <li>Package, office, and visa variables</li>
-                <li>Rules for UAE market activity should be checked</li>
-              </ul>
+            <SetupPanel title="Workspace choice">
+              <p>Review flexi-desk and premises requirements.</p>
+            </SetupPanel>
+            <SetupPanel title="Visa planning">
+              <p>Confirm package capacity and current processing rules.</p>
+            </SetupPanel>
+            <SetupPanel title="Market route">
+              <p>Check the permitted route for UAE mainland activity.</p>
             </SetupPanel>
           </div>
+          <Link className="setup-card__link" href="/mainland">
+            Compare Mainland and Free Zone
+          </Link>
         </div>
       </section>
       <section
@@ -186,34 +201,58 @@ export function FreeZonesDiscovery() {
           <header className="setup-section__head">
             <div>
               <span className="eyebrow">From shortlist to setup</span>
-              <h2 id="free-zone-process-title">A disciplined four-step process.</h2>
+              <h2 id="free-zone-process-title">Cost context and a five-step process.</h2>
             </div>
             <p>Validate facts with the selected authority before payment or commitment.</p>
           </header>
-          <SetupProcess
-            steps={[
-              {
-                title: 'Define needs',
-                description: 'Confirm activity, owners, visas, and workspace.',
-                icon: <Search />,
-              },
-              {
-                title: 'Compare zones',
-                description: 'Review authority records and indicative ranges.',
-                icon: <Globe2 />,
-              },
-              {
-                title: 'Verify package',
-                description: 'Confirm current fees, inclusions, and approvals.',
-                icon: <CheckCircle2 />,
-              },
-              {
-                title: 'Apply',
-                description: 'Prepare documents and submit through the correct route.',
-                icon: <Building2 />,
-              },
-            ]}
-          />
+          <div className="setup-paired-panels">
+            <SetupPanel
+              className="setup-panel--dark"
+              title="Estimated Free Zone Setup Cost"
+              description="Indicative components vary by authority and selected package."
+            >
+              <ul className="setup-detail-list">
+                <li>Registration and license</li>
+                <li>Workspace or office</li>
+                <li>Immigration and visas</li>
+                <li>External approvals where applicable</li>
+              </ul>
+              <Link className="setup-card__link" href="/estimate?jurisdiction=free_zone">
+                Calculate an indicative estimate
+              </Link>
+            </SetupPanel>
+            <SetupPanel title="How to Start Your Business in a Free Zone">
+              <SetupProcess
+                steps={[
+                  {
+                    title: 'Define needs',
+                    description: 'Confirm activity, owners, visas, and workspace.',
+                    icon: <Search />,
+                  },
+                  {
+                    title: 'Compare zones',
+                    description: 'Review authority records and indicative ranges.',
+                    icon: <Globe2 />,
+                  },
+                  {
+                    title: 'Verify package',
+                    description: 'Confirm current fees, inclusions, and approvals.',
+                    icon: <CheckCircle2 />,
+                  },
+                  {
+                    title: 'Prepare documents',
+                    description: 'Assemble owner and company records.',
+                    icon: <Building2 />,
+                  },
+                  {
+                    title: 'Apply',
+                    description: 'Submit through the correct authority route.',
+                    icon: <CheckCircle2 />,
+                  },
+                ]}
+              />
+            </SetupPanel>
+          </div>
         </div>
       </section>
       <section id="setup-faq" className="setup-section">
@@ -235,6 +274,11 @@ export function FreeZonesDiscovery() {
               question: 'Can a Free Zone company operate in the mainland market?',
               answer:
                 'The permitted route depends on the activity and applicable rules. Obtain current, case-specific guidance before operating.',
+            },
+            {
+              question: 'Are authority timelines fixed?',
+              answer:
+                'No. Timelines vary with the selected package, approvals, document readiness, due diligence, and current authority processing.',
             },
           ]}
         />

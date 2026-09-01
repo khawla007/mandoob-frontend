@@ -5597,16 +5597,24 @@
   margin-top: 4px;
   color: var(--accent);
 }
-.site-public .setup-benefit-strip {
+.site-public .setup-benefits-shell {
   border-bottom: 1px solid var(--pb-border);
   background: var(--zinc-50);
 }
-.site-public .setup-benefit-strip ul {
+.site-public .setup-benefit-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.site-public .setup-benefit-strip--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+.site-public .setup-benefit-strip--5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+.site-public .setup-benefit-strip--6 {
+  grid-template-columns: repeat(6, 1fr);
 }
 .site-public .setup-benefit-strip li {
   display: grid;
@@ -5625,6 +5633,10 @@
 .site-public .setup-benefit-strip strong {
   display: block;
   font-size: var(--fs-15);
+}
+.site-public .setup-benefit-strip--5 li,
+.site-public .setup-benefit-strip--6 li {
+  padding-inline: 20px;
 }
 .site-public .setup-benefit-strip span {
   color: var(--zinc-600);
@@ -5741,9 +5753,16 @@
   background: var(--paper);
 }
 .site-public .setup-panel--dark {
+  color: oklch(0.98 0.004 45);
+  background: oklch(0.16 0.008 45);
+  border-color: oklch(0.34 0.01 45);
+}
+.site-public .setup-panel--dark h2,
+.site-public .setup-panel--dark h3,
+.site-public .setup-section--dark h2,
+.site-public .setup-section--dark h3,
+.site-public .setup-conversion h2 {
   color: var(--ink-inv);
-  background: var(--zinc-950);
-  border-color: var(--pb-border-dark);
 }
 .site-public .setup-panel__icon {
   display: grid;
@@ -5767,7 +5786,7 @@
 }
 .site-public .setup-panel--dark p,
 .site-public .setup-panel--dark li {
-  color: var(--zinc-300);
+  color: oklch(0.82 0.007 45);
 }
 .site-public .setup-detail-list {
   display: grid;
@@ -5781,11 +5800,14 @@
   border-top: 1px solid var(--pb-border);
 }
 .site-public .setup-panel--dark .setup-detail-list li {
-  border-color: var(--pb-border-dark);
+  border-color: oklch(0.34 0.01 45);
+}
+.site-public .setup-panel--dark .setup-card__link {
+  color: oklch(0.74 0.17 42);
 }
 .site-public .setup-process {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
   margin: 0;
   padding: 0;
@@ -5810,12 +5832,35 @@
   margin-bottom: 8px;
   font-size: var(--fs-17);
 }
+.site-public .setup-paired-panels .setup-process {
+  grid-template-columns: 1fr;
+}
+.site-public .setup-paired-panels .setup-process li {
+  padding: 18px;
+}
+.site-public .setup-paired-panels .setup-process li::before {
+  margin-bottom: 12px;
+}
 .site-public .setup-process p {
   color: var(--zinc-600);
   font-size: var(--fs-14);
 }
-.site-public .setup-faq {
+.site-public .setup-faq__inner {
   max-width: 980px;
+}
+.site-public .setup-faq__inner > header {
+  margin-bottom: 36px;
+  text-align: start;
+}
+.site-public .setup-faq__inner > header h2 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+.site-public .setup-faq__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 48px;
 }
 .site-public .setup-faq__item {
   border-top: 1px solid var(--pb-border);
@@ -5856,7 +5901,7 @@
 .site-public .setup-conversion {
   padding-block: clamp(56px, 8vw, 96px);
   color: var(--ink-inv);
-  background: var(--zinc-950);
+  background: oklch(0.16 0.008 45);
 }
 .site-public .setup-conversion__inner {
   display: flex;
@@ -5873,7 +5918,7 @@
 .site-public .setup-conversion p {
   max-width: 620px;
   margin-top: 18px;
-  color: var(--zinc-300);
+  color: oklch(0.82 0.007 45);
 }
 .site-public .setup-conversion .btn--outline {
   color: var(--ink-inv);
@@ -5990,6 +6035,9 @@
   .site-public .setup-directory__layout {
     grid-template-columns: 1fr;
   }
+  .site-public .setup-faq__grid {
+    grid-template-columns: 1fr;
+  }
   .site-public .setup-hero__visual {
     min-height: 480px;
   }
@@ -6021,7 +6069,7 @@
     bottom: 12px;
     padding: 18px;
   }
-  .site-public .setup-benefit-strip ul,
+  .site-public .setup-benefit-strip,
   .site-public .setup-emirate-grid,
   .site-public .setup-activity-grid,
   .site-public .setup-popular-grid,

@@ -8,6 +8,7 @@ import {
   MapPin,
   Plane,
   ShieldCheck,
+  UserRoundCheck,
 } from 'lucide-react';
 import { MAINLAND_EMIRATES } from '@/lib/public-company-setup/catalog';
 import { SetupBenefitStrip } from './SetupBenefitStrip';
@@ -61,7 +62,7 @@ export function MainlandDiscovery() {
       </section>
       <section
         id="setup-benefits"
-        className="setup-benefit-strip"
+        className="setup-benefits-shell"
         aria-label="Mainland setup considerations"
       >
         <SetupBenefitStrip
@@ -80,6 +81,11 @@ export function MainlandDiscovery() {
               title: 'Authority-specific route',
               detail: 'Confirm the responsible emirate authority.',
               icon: <ShieldCheck />,
+            },
+            {
+              title: 'Ownership review',
+              detail: 'Confirm current rules for your activity.',
+              icon: <UserRoundCheck />,
             },
           ]}
         />
@@ -231,6 +237,11 @@ export function MainlandDiscovery() {
               question: 'Are the estimator figures final?',
               answer:
                 'No. They are indicative planning figures based on accepted records and should be verified with the relevant authority or adviser.',
+            },
+            {
+              question: 'Do activities need additional approvals?',
+              answer:
+                'Some regulated or sector-specific activities may require external approvals. Confirm these requirements for the selected activity and emirate.',
             },
           ]}
         />

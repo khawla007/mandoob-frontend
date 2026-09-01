@@ -112,6 +112,8 @@ export function FreeZoneDirectory({ rows }: { rows: readonly FreeZoneDirectoryIt
                 <tr>
                   <th scope="col">Authority</th>
                   <th scope="col">Emirate</th>
+                  <th scope="col">Business type</th>
+                  <th scope="col">Ownership</th>
                   <th scope="col">Indicative cost</th>
                   <th scope="col">Timeline</th>
                   <th scope="col">Explore</th>
@@ -125,6 +127,8 @@ export function FreeZoneDirectory({ rows }: { rows: readonly FreeZoneDirectoryIt
                       <span>{item.description}</span>
                     </td>
                     <td>{item.emirateLabel}</td>
+                    <td>{item.businessTypes.join(', ')}</td>
+                    <td>Authority rules apply</td>
                     <td>{item.costLabel}</td>
                     <td>{item.timelineLabel}</td>
                     <td>

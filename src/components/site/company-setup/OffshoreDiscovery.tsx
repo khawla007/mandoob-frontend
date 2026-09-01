@@ -9,6 +9,7 @@ import {
   Network,
   Scale,
   ShieldCheck,
+  UserRoundCheck,
 } from 'lucide-react';
 import { OFFSHORE_OPTIONS } from '@/lib/public-company-setup/catalog';
 import { SetupBenefitStrip } from './SetupBenefitStrip';
@@ -38,7 +39,8 @@ export function OffshoreDiscovery() {
           secondaryCta={{ label: 'Start application', href: '/apply' }}
           checklist={
             <>
-              <h2>Is offshore suitable?</h2>
+              <h2>Why Choose Offshore?</h2>
+              <p>Is offshore suitable? Start with purpose and qualified review.</p>
               <ul className="setup-check-list">
                 <li>
                   <CheckCircle2 />
@@ -59,7 +61,7 @@ export function OffshoreDiscovery() {
       </section>
       <section
         id="setup-benefits"
-        className="setup-benefit-strip"
+        className="setup-benefits-shell"
         aria-label="Offshore planning considerations"
       >
         <SetupBenefitStrip
@@ -74,6 +76,16 @@ export function OffshoreDiscovery() {
               title: 'Professional review',
               detail: 'Confirm legal and tax treatment.',
               icon: <Scale />,
+            },
+            {
+              title: 'Ownership records',
+              detail: 'Prepare due-diligence information.',
+              icon: <UserRoundCheck />,
+            },
+            {
+              title: 'Renewal planning',
+              detail: 'Track ongoing authority obligations.',
+              icon: <ClipboardCheck />,
             },
           ]}
         />
@@ -116,35 +128,43 @@ export function OffshoreDiscovery() {
               </article>
             ))}
           </div>
+          <div className="cta-row" style={{ justifyContent: 'center', marginTop: 32 }}>
+            <Link className="btn btn--outline" href="/estimate?jurisdiction=offshore">
+              Compare Jurisdictions
+            </Link>
+          </div>
         </div>
       </section>
       <section
         id="offshore-benefits"
         className="setup-section setup-section--soft"
-        aria-label="Offshore uses and limitations"
+        aria-labelledby="offshore-benefits-title"
       >
-        <div className="setup-paired-panels container">
-          <SetupPanel
-            title="What offshore may support"
-            description="Depending on the structure, jurisdiction, and applicable rules."
-          >
-            <ul className="setup-detail-list">
-              <li>Holding certain assets or investments</li>
-              <li>International trading or ownership structures</li>
-              <li>Succession or group-structure planning</li>
-            </ul>
-          </SetupPanel>
-          <SetupPanel
-            className="setup-panel--dark"
-            title="What offshore does not automatically provide"
-            description="Outcomes depend on facts, counterparties, and current law."
-          >
-            <ul className="setup-detail-list">
-              <li>Permission to conduct onshore UAE business</li>
-              <li>A bank account, visa, or tax outcome</li>
-              <li>Exemption from compliance, reporting, or substance duties</li>
-            </ul>
-          </SetupPanel>
+        <div className="container">
+          <header className="setup-section__head">
+            <div>
+              <span className="eyebrow">Key Benefits of Offshore Companies</span>
+              <h2 id="offshore-benefits-title">What offshore may support.</h2>
+            </div>
+            <p>
+              Potential benefits are conditional. What offshore does not automatically provide
+              includes a bank account, visa, tax outcome, or permission for onshore activity.
+            </p>
+          </header>
+          <div className="setup-activity-grid">
+            <SetupPanel title="Asset holding">
+              <p>May support eligible asset or investment holding.</p>
+            </SetupPanel>
+            <SetupPanel title="International trade">
+              <p>May support suitable cross-border structures.</p>
+            </SetupPanel>
+            <SetupPanel title="Group structuring">
+              <p>May support a reviewed ownership structure.</p>
+            </SetupPanel>
+            <SetupPanel title="Succession planning">
+              <p>May form one part of qualified succession advice.</p>
+            </SetupPanel>
+          </div>
         </div>
       </section>
       <section
@@ -177,9 +197,14 @@ export function OffshoreDiscovery() {
                 icon: <ClipboardCheck />,
               },
               {
-                title: 'Prepare and file',
-                description: 'Complete due diligence and submit through the proper route.',
+                title: 'Prepare records',
+                description: 'Complete ownership and due-diligence documents.',
                 icon: <FolderCheck />,
+              },
+              {
+                title: 'File and verify',
+                description: 'Submit through the proper route and confirm issuance.',
+                icon: <CheckCircle2 />,
               },
             ]}
           />
@@ -193,31 +218,37 @@ export function OffshoreDiscovery() {
         <div className="container">
           <header className="setup-section__head">
             <div>
-              <span className="eyebrow">After incorporation</span>
-              <h2 id="offshore-operations-title">Plan the operating reality.</h2>
+              <span className="eyebrow">Planning overview</span>
+              <h2 id="offshore-operations-title">Cost, requirements, and timeline.</h2>
             </div>
           </header>
           <div className="setup-operations--three">
-            <SetupPanel title="Banking">
+            <SetupPanel title="Estimated Offshore Setup Cost">
               <span className="setup-panel__icon">
                 <CircleDollarSign />
               </span>
               <p>
-                Account opening is a separate decision made by financial institutions after due
-                diligence.
+                Registration, agent, document, and renewal components vary. Use the estimator for an
+                indicative view.
               </p>
             </SetupPanel>
-            <SetupPanel title="Records and filings">
+            <SetupPanel title="Requirements Overview">
               <span className="setup-panel__icon">
                 <FolderCheck />
               </span>
-              <p>Maintain required company, ownership, accounting, and compliance records.</p>
+              <p>
+                Prepare ownership, identity, purpose, due-diligence, and source-of-funds records as
+                required.
+              </p>
             </SetupPanel>
-            <SetupPanel title="Renewal and review">
+            <SetupPanel title="Estimated Timeline">
               <span className="setup-panel__icon">
                 <ShieldCheck />
               </span>
-              <p>Track renewals and re-check the structure when business facts or rules change.</p>
+              <p>
+                Timing is indicative and depends on complete records, due diligence, and authority
+                processing.
+              </p>
             </SetupPanel>
           </div>
         </div>
@@ -241,6 +272,11 @@ export function OffshoreDiscovery() {
               question: 'Does Mandoob provide tax or legal advice?',
               answer:
                 'No. Mandoob provides discovery and indicative planning information. Obtain advice from appropriately qualified professionals for your circumstances.',
+            },
+            {
+              question: 'What ongoing work should be planned?',
+              answer:
+                'Plan for renewals, company records, ownership updates, accounting, and any reporting or substance obligations that apply.',
             },
           ]}
         />
