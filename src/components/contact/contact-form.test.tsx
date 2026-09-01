@@ -5,6 +5,14 @@ import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 
 const contactFormSource = readFileSync(new URL('./ContactForm.tsx', import.meta.url), 'utf8');
+const legalRouteSource = readFileSync(
+  new URL('../../app/(public)/legal/[slug]/page.tsx', import.meta.url),
+  'utf8',
+);
+const publicCss = readFileSync(
+  new URL('../../app/(public)/public-theme.css', import.meta.url),
+  'utf8',
+);
 
 test('contact form source publishes no plausible phone fixture or placeholder', () => {
   assert.doesNotMatch(contactFormSource, /placeholder=["{][^\n>]*\+?971/iu);
@@ -12,6 +20,24 @@ test('contact form source publishes no plausible phone fixture or placeholder', 
     contactFormSource,
     /(?:\+971[\s()-]*\d{1,2}|\b0\d{1,2})[\s()-]*\d{3}[\s-]*\d{4}\b/u,
   );
+});
+
+test('consent links resolve through the published legal CMS route', () => {
+  assert.match(contactFormSource, /<Link href="\/legal\/privacy"/u);
+  assert.match(contactFormSource, /<Link href="\/legal\/terms"/u);
+  assert.doesNotMatch(contactFormSource, /<Link href="\/(?:privacy|terms)"/u);
+  assert.match(legalRouteSource, /resolveLegalCmsPage/u);
+  assert.match(legalRouteSource, /getPublishedCmsPageBySlug/u);
+});
+
+test('contact form CSS stays within the reference density budget', () => {
+  const formCss = publicCss.slice(
+    publicCss.indexOf('/* ---------- P1.05 CONTACT FORM ---------- */'),
+    publicCss.indexOf('/* ---------- About page P1.05 ---------- */'),
+  );
+  assert.match(formCss, /\.site-public \.contact-form\s*\{[^}]*gap:\s*14px/u);
+  assert.match(formCss, /\.site-public \.contact-form__grid\s*\{[^}]*gap:\s*12px/u);
+  assert.match(formCss, /\.site-public \.contact-form textarea\s*\{[^}]*min-block-size:\s*96px/u);
 });
 
 test('contact form passes its isolated client interaction suite', () => {

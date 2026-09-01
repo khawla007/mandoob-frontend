@@ -323,7 +323,7 @@ function ContactFormRuntime({
           <textarea
             id="contact-message"
             name="message"
-            rows={6}
+            rows={4}
             maxLength={CONTACT_LIMITS.messageMax}
             required
             disabled={pending}
@@ -350,11 +350,11 @@ function ContactFormRuntime({
         <div>
           <label htmlFor="contact-consent">
             I agree that Mandoob may use these details to respond, as described in the{' '}
-            <Link href="/privacy" prefetch={false}>
+            <Link href="/legal/privacy" prefetch={false}>
               Privacy Policy
             </Link>{' '}
             and{' '}
-            <Link href="/terms" prefetch={false}>
+            <Link href="/legal/terms" prefetch={false}>
               Terms of Service
             </Link>
             .

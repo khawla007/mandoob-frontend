@@ -21,13 +21,14 @@ import { PageScenicHero } from '../about-contact/PageScenicHero';
 import { PublicConversionBand } from '../about-contact/PublicConversionBand';
 import { RaisedInfoStrip } from '../about-contact/RaisedInfoStrip';
 
+const unavailableStatus = 'Unavailable';
+
 const contactChannels = [
   {
     title: 'Office location',
-    status: 'Unavailable',
     description: (
       <>
-        <strong className="contact-page__channel-status">Unavailable</strong>
+        <strong className="contact-page__channel-status">{unavailableStatus}</strong>
         <span>No verified office location is published on this page.</span>
       </>
     ),
@@ -35,10 +36,9 @@ const contactChannels = [
   },
   {
     title: 'Phone',
-    status: 'Unavailable',
     description: (
       <>
-        <strong className="contact-page__channel-status">Unavailable</strong>
+        <strong className="contact-page__channel-status">{unavailableStatus}</strong>
         <span>No verified phone destination is published on this page.</span>
       </>
     ),
@@ -46,10 +46,9 @@ const contactChannels = [
   },
   {
     title: 'Email',
-    status: 'Unavailable',
     description: (
       <>
-        <strong className="contact-page__channel-status">Unavailable</strong>
+        <strong className="contact-page__channel-status">{unavailableStatus}</strong>
         <span>No verified email destination is published on this page.</span>
       </>
     ),
@@ -57,10 +56,9 @@ const contactChannels = [
   },
   {
     title: 'WhatsApp',
-    status: 'Unavailable',
     description: (
       <>
-        <strong className="contact-page__channel-status">Unavailable</strong>
+        <strong className="contact-page__channel-status">{unavailableStatus}</strong>
         <span>No verified WhatsApp destination is published on this page.</span>
       </>
     ),
@@ -68,10 +66,9 @@ const contactChannels = [
   },
   {
     title: 'Hours',
-    status: 'Unavailable',
     description: (
       <>
-        <strong className="contact-page__channel-status">Unavailable</strong>
+        <strong className="contact-page__channel-status">{unavailableStatus}</strong>
         <span>No verified availability schedule is published on this page.</span>
       </>
     ),
@@ -213,7 +210,7 @@ export function ContactPageBody({ heroCopy }: ContactPageBodyProps) {
             </span>
             <div>
               <span className="eyebrow eyebrow--accent">WhatsApp</span>
-              <h2>Unavailable</h2>
+              <h2>WhatsApp is unavailable</h2>
               <p>
                 Mandoob does not currently publish a verified WhatsApp destination on this page.
               </p>

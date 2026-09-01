@@ -76,7 +76,8 @@ describe('strict-parity Contact page', () => {
       previous = index;
     }
 
-    assert.equal(channels.match(/status:\s*'Unavailable'/gu)?.length, 5);
+    assert.equal(channels.match(/status:/gu)?.length ?? 0, 0);
+    assert.equal(channels.match(/\{unavailableStatus\}/gu)?.length, 5);
     assert.equal(channels.match(/\btitle:\s*'/gu)?.length, 5);
     assert.doesNotMatch(channels, /href:|mailto:|tel:|https?:\/\//iu);
     assert.doesNotMatch(channels, /[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu);
@@ -101,7 +102,8 @@ describe('strict-parity Contact page', () => {
   });
 
   it('keeps WhatsApp unavailable and limits Quick Links to working safe routes', () => {
-    assert.match(body, /contact-page__whatsapp[\s\S]*?Unavailable/u);
+    assert.match(body, /contact-page__whatsapp[\s\S]*?WhatsApp is unavailable/iu);
+    assert.match(body, /<h2>WhatsApp is unavailable<\/h2>/u);
     assert.doesNotMatch(
       body.match(/<article className="contact-page__whatsapp"([\s\S]*?)<\/article>/u)?.[1] ?? '',
       /<Link|href=|https?:\/\//u,
@@ -146,7 +148,7 @@ describe('strict-parity Contact page', () => {
     );
     assert.match(
       contactCss,
-      /contact-page__workspace,[\s\S]*?padding-block:\s*clamp\([^,]+,[^,]+,\s*\d{2}px\)/u,
+      /contact-page__workspace\s*\{[^}]*padding-block:\s*clamp\([^,]+,[^,]+,\s*\d{2}px\)/u,
     );
     assert.match(contactCss, /\.dark \.site-public \.contact-page__/u);
     assert.match(contactCss, /(?:padding|margin|inset|border)-(?:inline|block)/u);
@@ -155,5 +157,28 @@ describe('strict-parity Contact page', () => {
       /\b(?:margin-left|margin-right|padding-left|padding-right|left|right):/u,
     );
     assert.doesNotMatch(contactCss, /(?:inline-size|width):\s*100vw/u);
+  });
+
+  it('caps Contact workspace and support density against the desktop reference budget', () => {
+    assert.match(
+      contactCss,
+      /\.site-public \.contact-page__workspace\s*\{[^}]*padding-block:\s*clamp\([^,]+,[^,]+,\s*24px\)/u,
+    );
+    assert.match(
+      contactCss,
+      /\.site-public \.contact-page__support-row\s*\{[^}]*padding-block:\s*6px/u,
+    );
+    assert.match(
+      contactCss,
+      /\.site-public \.contact-page__form-panel\s*\{[^}]*padding-block:\s*clamp\([^,]+,[^,]+,\s*22px\)/u,
+    );
+    assert.match(
+      contactCss,
+      /\.site-public \.contact-page__help-list > li\s*\{[^}]*padding-block:\s*8px/u,
+    );
+    assert.match(
+      contactCss,
+      /\.site-public \.contact-page__quick-links\s*\{[^}]*padding-block:\s*10px/u,
+    );
   });
 });

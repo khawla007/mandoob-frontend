@@ -127,8 +127,16 @@ if (existsSync(componentPath)) {
       assert.equal(control.hasAttribute('required'), true, `${id} must be semantically required`);
       assert.ok(container.querySelector(`label[for="contact-${id}"]`));
     }
-    assert.equal(container.querySelector('a[href="/privacy"]')?.textContent, 'Privacy Policy');
-    assert.equal(container.querySelector('a[href="/terms"]')?.textContent, 'Terms of Service');
+    assert.equal(
+      container.querySelector('a[href="/legal/privacy"]')?.textContent,
+      'Privacy Policy',
+    );
+    assert.equal(
+      container.querySelector('a[href="/legal/terms"]')?.textContent,
+      'Terms of Service',
+    );
+    assert.equal(container.querySelector('a[href="/privacy"]'), null);
+    assert.equal(container.querySelector('a[href="/terms"]'), null);
     assert.match(container.textContent ?? '', /all fields are required/i);
     assert.match(container.querySelector('form')?.className ?? '', /contact-form/u);
     assert.equal(
