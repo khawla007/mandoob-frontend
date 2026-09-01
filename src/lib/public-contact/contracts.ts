@@ -50,19 +50,31 @@ export type ContactValidationResult =
   | { ok: true; data: NormalizedContactPayload }
   | { ok: false; errors: ContactFieldError[] };
 
-type ContactResultBase = {
-  sent: boolean;
+type ContactUserFacingResult = {
   message: string;
-  synthetic?: true;
-  notice?: string;
 };
 
+type NonSyntheticResultMetadata = {
+  synthetic?: false;
+  notice?: never;
+};
+
+type SyntheticResultMetadata = {
+  synthetic: true;
+  notice: string;
+};
+
+type ContactNoSendResult =
+  | (ContactUserFacingResult & NonSyntheticResultMetadata & { sent: false })
+  | (ContactUserFacingResult & SyntheticResultMetadata & { sent: false });
+
 export type ContactSubmissionResult =
-  | (ContactResultBase & { status: 'success' })
-  | (ContactResultBase & { status: 'duplicate' })
-  | (ContactResultBase & { status: 'rate_limited'; retryAfterSeconds: number })
-  | (ContactResultBase & { status: 'failure'; retryable: boolean })
-  | (ContactResultBase & { status: 'unavailable' });
+  | (ContactUserFacingResult & NonSyntheticResultMetadata & { status: 'success'; sent: true })
+  | (ContactUserFacingResult & SyntheticResultMetadata & { status: 'success'; sent: false })
+  | (ContactNoSendResult & { status: 'duplicate' })
+  | (ContactNoSendResult & { status: 'rate_limited'; retryAfterSeconds: number })
+  | (ContactNoSendResult & { status: 'failure'; retryable: boolean })
+  | (ContactNoSendResult & { status: 'unavailable' });
 
 export type ContactAdapter = {
   submit(payload: NormalizedContactPayload): Promise<ContactSubmissionResult>;

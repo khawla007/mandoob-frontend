@@ -26,7 +26,7 @@ export function createSyntheticContactAdapter(outcome: SyntheticContactOutcome):
 
 function syntheticResult(outcome: SyntheticContactOutcome): ContactSubmissionResult {
   const common = {
-    sent: false,
+    sent: false as const,
     synthetic: true as const,
     notice: SYNTHETIC_CONTACT_NOTICE,
   };
