@@ -33,11 +33,29 @@ describe('temporary About and Contact route shells', () => {
       assert.equal(source.match(/<h1\b/gu)?.length, 1);
       assert.match(source, /import type \{ Metadata \} from 'next';/u);
       assert.match(source, /export const metadata: Metadata\s*=\s*\{/u);
-      assert.match(source, new RegExp(`alternates:\\s*\\{\\s*canonical:\\s*'${path}'`, 'u'));
+      assert.match(
+        source,
+        new RegExp(`alternates:\\s*\\{\\s*canonical:\\s*'https://mandoob\\.ae${path}'`, 'u'),
+      );
       assert.doesNotMatch(source, /['"]use client['"]/u);
       assert.doesNotMatch(source, /generateMetadata/u);
     });
   }
+
+  it('keeps Contact localized with only claim-safe existing catalog keys', () => {
+    assert.match(contactSource, /import \{ getTranslations \} from 'next-intl\/server';/u);
+    assert.match(contactSource, /export default async function ContactPage\(\)/u);
+    assert.match(contactSource, /await getTranslations\('contact'\)/u);
+    assert.match(contactSource, /await getTranslations\('site'\)/u);
+    assert.match(contactSource, /tContact\('eyebrow'\)/u);
+    assert.match(contactSource, /tContact\('title'\)/u);
+    assert.match(contactSource, /tSite\('footer\.description'\)/u);
+    assert.match(contactSource, /tSite\('getEstimate'\)/u);
+    assert.doesNotMatch(
+      contactSource,
+      /tContact\('(?:lede|comingSoonNote|officeCity|officeCountry|officeHours)'\)/u,
+    );
+  });
 
   it('uses only real in-scope conversion routes', () => {
     assert.match(aboutSource, /href=["{]?["']\/estimate["']/u);

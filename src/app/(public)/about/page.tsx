@@ -4,7 +4,7 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   title: 'About Mandoob',
   description: 'Learn how Mandoob supports UAE company setup and business administration.',
-  alternates: { canonical: '/about' },
+  alternates: { canonical: 'https://mandoob.ae/about' },
 };
 
 export default function AboutPage() {
