@@ -26,6 +26,8 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
       '/mainland',
       '/free-zones',
       '/offshore',
+      '/about',
+      '/contact',
     ].filter((path) => !paths(entries).includes(path)),
     [],
   );

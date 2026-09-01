@@ -57,6 +57,8 @@ export function buildPublicSitemap({
     '/mainland',
     '/free-zones',
     '/offshore',
+    '/about',
+    '/contact',
   ];
   const articlePaths = knowledgeBaseArticleSlugs.map((slug) => `/knowledge-base/${slug}`);
   const authorityPaths = getAuthoritySlugs().map((slug) => `/company-setup/${slug}`);
