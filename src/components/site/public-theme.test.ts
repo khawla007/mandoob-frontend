@@ -129,10 +129,18 @@ renderTest('public dark tokens retain accent CTA colors and invert the neutral r
   assert.match(declarations('.site-public .btn--accent'), /color:\s*#fff\b/iu);
 });
 
+renderTest('public dark theme preserves a dark accent surface for flow markers', () => {
+  assert.equal(rawToken(declarations('.dark .site-public'), 'accent-soft'), 'oklch(0.22 0.04 38)');
+  assert.match(
+    declarations('.site-public .home-flow-row__number'),
+    /background:\s*var\(--accent-soft\)/u,
+  );
+});
+
 renderTest('design-4 component colors and weights are preserved', () => {
   assert.match(
     declarations('.site-public .btn--accent'),
-    /background:\s*var\(--accent\)[^}]*color:\s*#fff/isu,
+    /background:\s*var\(--accent\)[\s\S]*color:\s*#fff/iu,
   );
   assert.match(
     declarations('.site-public .btn--accent:hover'),

@@ -122,6 +122,7 @@
   --accent: #ff5722;
   --accent-hover: #e64a19;
   --accent-ink: var(--accent);
+  --accent-soft: oklch(0.22 0.04 38);
   --pb-border: #27272a;
   --pb-border-dark: #3f3f46;
 
@@ -2300,12 +2301,6 @@
 }
 .site-public .cell--estmain {
   padding: 0;
-}
-.site-public #estimator .eyebrow {
-  color: var(--zinc-600); /* a11y: lift muted label to 4.5:1 on --paper */
-}
-.site-public #estimator .eyebrow--accent {
-  color: var(--accent-ink);
 }
 .site-public .est__tabs {
   display: flex;
