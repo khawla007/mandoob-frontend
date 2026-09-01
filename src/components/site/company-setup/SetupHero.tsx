@@ -61,7 +61,8 @@ export function SetupHero({
             src={imageSrc}
             alt={imageAlt}
             fill
-            priority
+            loading="eager"
+            fetchPriority="high"
             sizes="(min-width: 1024px) 56vw, 100vw"
           />
           {checklist ? <div className="setup-hero__checklist">{checklist}</div> : null}
