@@ -7,27 +7,24 @@
 
 /* ---------- 1. Tokens (scoped) ---------- */
 .site-public {
-  /* Neutrals tinted toward the saffron brand hue (~h45). Lightness held to the
-     original hex values so every contrast ratio is preserved; only a faint warm
-     chroma (0.004-0.011) is added so nothing reads as pure #000/#fff. */
-  --paper: oklch(0.995 0.004 45);
-  --ink: oklch(0.18 0.01 45);
-  --ink-inv: oklch(0.99 0.004 45); /* warm near-white text on dark/accent surfaces (no pure #fff) */
-  --zinc-50: oklch(0.985 0.004 45);
-  --zinc-100: oklch(0.967 0.005 45);
-  --zinc-200: oklch(0.918 0.006 45);
-  --zinc-300: oklch(0.872 0.007 45);
-  --zinc-400: oklch(0.714 0.009 45);
-  --zinc-500: oklch(0.553 0.011 45);
-  --zinc-600: oklch(0.435 0.011 45);
-  --zinc-700: oklch(0.357 0.01 45);
-  --zinc-900: oklch(0.227 0.008 45);
-  --zinc-950: oklch(0.157 0.007 45);
+  --paper: #ffffff;
+  --ink: #000000;
+  --ink-inv: #fff;
+  --zinc-50: #fafafa;
+  --zinc-100: #f4f4f5;
+  --zinc-200: #e4e4e7;
+  --zinc-300: #d4d4d8;
+  --zinc-400: #a1a1aa;
+  --zinc-500: #71717a;
+  --zinc-600: #52525b;
+  --zinc-700: #3f3f46;
+  --zinc-900: #18181b;
+  --zinc-950: #09090b;
 
-  --accent: var(--public-accent-decoration); /* UAE-saffron warm red, used <8% */
-  --accent-hover: oklch(0.585 0.195 38); /* darker saffron for :hover */
-  --accent-ink: oklch(0.57 0.19 38); /* accent as text on light paper, ~4.7:1 WCAG AA */
-  --accent-soft: oklch(0.96 0.02 40);
+  --accent: #ff5722;
+  --accent-hover: #e64a19;
+  --accent-ink: var(--accent);
+  --accent-soft: #fff1ed;
 
   /* Public semantic roles. CTA colors are resolved so every state can be
      independently verified against WCAG AA without coupling to page tokens. */
@@ -38,21 +35,21 @@
   --public-text-muted: var(--zinc-600);
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
-  --public-accent-decoration: var(--brand-accent);
-  --public-cta-background: #b9380f;
-  --public-cta-text: #fff8f4;
-  --public-cta-hover-background: #9f2e0b;
-  --public-cta-active-background: #872508;
-  --public-cta-focus-background: #b9380f;
+  --public-accent-decoration: var(--accent);
+  --public-cta-background: #ff5722;
+  --public-cta-text: #fff;
+  --public-cta-hover-background: #e64a19;
+  --public-cta-active-background: #e64a19;
+  --public-cta-focus-background: #ff5722;
   --public-cta-disabled-background: #6f5b54;
-  --public-cta-disabled-text: #fff8f4;
+  --public-cta-disabled-text: #fff;
   --public-header-surface: rgba(255, 255, 255, 0.85);
   --public-mobile-dialog-surface: #181614;
-  --public-focus-ring: #b9380f;
+  --public-focus-ring: #ff5722;
   --public-scrim: rgba(24, 18, 15, 0.72);
 
-  --pb-border: oklch(0.918 0.006 45);
-  --pb-border-dark: oklch(0.268 0.008 45);
+  --pb-border: #e4e4e7;
+  --pb-border-dark: #27272a;
 
   /* Geist is already loaded app-wide via globals.css */
   --font: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -108,25 +105,25 @@
    The .showcase block below re-pins the always-dark "terminal" mock so the
    inverted ramp does not turn it light. */
 .dark .site-public {
-  /* Warm-tinted, lightness-matched mirror of the light ramp (reversed roles). */
-  --paper: oklch(0.17 0.008 45);
-  --ink: oklch(0.985 0.004 45);
+  --paper: #18181b;
+  --ink: #fafafa;
 
-  --zinc-50: oklch(0.157 0.007 45);
-  --zinc-100: oklch(0.227 0.008 45);
-  --zinc-200: oklch(0.268 0.008 45);
-  --zinc-300: oklch(0.357 0.01 45);
-  --zinc-400: oklch(0.435 0.011 45);
-  --zinc-500: oklch(0.553 0.011 45);
-  --zinc-600: oklch(0.714 0.009 45);
-  --zinc-700: oklch(0.872 0.007 45);
-  --zinc-900: oklch(0.918 0.006 45);
-  --zinc-950: oklch(0.967 0.005 45);
+  --zinc-50: #09090b;
+  --zinc-100: #18181b;
+  --zinc-200: #27272a;
+  --zinc-300: #3f3f46;
+  --zinc-400: #52525b;
+  --zinc-500: #71717a;
+  --zinc-600: #a1a1aa;
+  --zinc-700: #d4d4d8;
+  --zinc-900: #e4e4e7;
+  --zinc-950: #f4f4f5;
 
-  --pb-border: oklch(0.268 0.008 45);
-  --pb-border-dark: oklch(0.357 0.01 45);
-  --accent-soft: oklch(0.22 0.04 38);
-  --accent-ink: var(--accent); /* bright accent reads fine on dark paper (~4.6:1) */
+  --accent: #ff5722;
+  --accent-hover: #e64a19;
+  --accent-ink: var(--accent);
+  --pb-border: #27272a;
+  --pb-border-dark: #3f3f46;
 
   --public-canvas: var(--paper);
   --public-surface: var(--zinc-100);
@@ -135,17 +132,17 @@
   --public-text-muted: var(--zinc-600);
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
-  --public-accent-decoration: var(--brand-accent);
-  --public-cta-background: #ff7043;
-  --public-cta-text: #21120d;
-  --public-cta-hover-background: #ff865f;
-  --public-cta-active-background: #e55c32;
-  --public-cta-focus-background: #ff7043;
+  --public-accent-decoration: var(--accent);
+  --public-cta-background: #ff5722;
+  --public-cta-text: #fff;
+  --public-cta-hover-background: #e64a19;
+  --public-cta-active-background: #e64a19;
+  --public-cta-focus-background: #ff5722;
   --public-cta-disabled-background: #a97868;
-  --public-cta-disabled-text: #1d100c;
+  --public-cta-disabled-text: #fff;
   --public-header-surface: rgba(10, 10, 10, 0.85);
   --public-mobile-dialog-surface: #181614;
-  --public-focus-ring: #ff865f;
+  --public-focus-ring: #ff5722;
   --public-scrim: rgba(5, 4, 3, 0.82);
 
   /* shadcn surface tokens — mirror globals.css .dark so shadcn-driven controls
@@ -280,13 +277,13 @@
   font-size: var(--fs-13);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--zinc-600);
+  color: var(--zinc-500);
 }
 .site-public .eyebrow--inv {
   color: var(--zinc-400);
 }
 .site-public .eyebrow--accent {
-  color: var(--accent-ink);
+  color: var(--zinc-500);
 }
 .site-public .mono {
   font-family: var(--mono-font);
@@ -851,9 +848,9 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  color: var(--accent-ink);
-  font-size: var(--fs-13);
-  font-weight: 700;
+  color: var(--accent);
+  font-size: var(--fs-14);
+  font-weight: 600;
 }
 
 .site-public .home-text-link span {
@@ -2282,7 +2279,7 @@
   align-self: flex-start;
   font-size: var(--fs-14);
   font-weight: 600;
-  color: var(--accent-ink);
+  color: var(--accent);
 }
 .site-public .cell__link span {
   display: inline-block;
