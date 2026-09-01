@@ -1,31 +1,28 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Autoplay } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 
 import 'swiper/css';
 
-export interface Testimonial {
+export interface WorkflowCapability {
   id: string;
-  image: string;
-  name: string;
-  role: string;
-  quote: string;
+  marker: string;
+  title: string;
+  context: string;
+  text: string;
 }
 
 interface TestimonialsCarouselProps {
-  testimonials: Testimonial[];
+  items: WorkflowCapability[];
   carouselLabel: string;
-  ratingLabel: string;
   direction: 'ltr' | 'rtl';
 }
 
 export function TestimonialsCarousel({
-  testimonials,
+  items,
   carouselLabel,
-  ratingLabel,
   direction,
 }: TestimonialsCarouselProps) {
   const [reducedMotion, setReducedMotion] = useState(
@@ -62,7 +59,7 @@ export function TestimonialsCarousel({
         autoplay={autoplayConfig}
         speed={reducedMotion ? 0 : 8000}
         spaceBetween={20}
-        loop={testimonials.length > 4}
+        loop={items.length > 4}
         breakpoints={{
           450: { slidesPerView: 1, spaceBetween: 10 },
           640: { slidesPerView: 2, spaceBetween: 15 },
@@ -70,20 +67,19 @@ export function TestimonialsCarousel({
           1024: { slidesPerView: 4, spaceBetween: 20 },
         }}
       >
-        {testimonials.map((testimonial) => (
-          <SwiperSlide key={testimonial.id}>
+        {items.map((item) => (
+          <SwiperSlide key={item.id}>
             <article className="home-testimonial-card" dir={direction}>
               <div className="home-testimonial-card__head">
-                <Image src={testimonial.image} alt="" width={52} height={52} />
+                <span className="home-testimonial-card__marker" aria-hidden="true">
+                  {item.marker}
+                </span>
                 <div>
-                  <h3>{testimonial.name}</h3>
-                  <p>{testimonial.role}</p>
-                  <span className="home-testimonial-card__stars" aria-label={ratingLabel}>
-                    ★★★★★
-                  </span>
+                  <h3>{item.title}</h3>
+                  <p>{item.context}</p>
                 </div>
               </div>
-              <blockquote>{testimonial.quote}</blockquote>
+              <p className="home-testimonial-card__text">{item.text}</p>
             </article>
           </SwiperSlide>
         ))}

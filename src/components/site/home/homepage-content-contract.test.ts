@@ -74,16 +74,16 @@ describe('homepage claims and CTA contract', () => {
     assert.doesNotMatch(hero, /stats-band|hero__spec/u);
   });
 
-  it('renders ten localized testimonials through an accessible carousel', () => {
+  it('preserves carousel density with factual workflow capabilities instead of fabricated proof', () => {
     const testimonials =
       componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';
     const carousel =
       componentSources.find(({ file }) => file === 'TestimonialsCarousel.tsx')?.source ?? '';
 
     assert.match(testimonials, /TestimonialsCarousel/u);
-    assert.equal(testimonials.match(/key: 'client(?:10|[1-9])'/gu)?.length, 10);
+    assert.equal(testimonials.match(/key: 'item(?:10|[1-9])'/gu)?.length, 10);
     assert.match(testimonials, /t\('carouselLabel'\)/u);
-    assert.match(testimonials, /t\('fiveStars'\)/u);
+    assert.doesNotMatch(testimonials, /CLIENTS|client\d+(?:Name|Role|Quote)|fiveStars/u);
     assert.doesNotMatch(testimonials, /previousLabel|nextLabel|positionLabels/u);
     assert.match(carousel, /from 'swiper\/react'/u);
     assert.match(carousel, /from 'swiper\/modules'/u);
@@ -92,7 +92,8 @@ describe('homepage claims and CTA contract', () => {
     assert.match(carousel, /disableOnInteraction:\s*true/u);
     assert.match(carousel, /pauseOnMouseEnter:\s*true/u);
     assert.match(carousel, /speed=\{reducedMotion \? 0 : 8000\}/u);
-    assert.match(carousel, /loop=\{testimonials\.length > 4\}/u);
+    assert.match(carousel, /loop=\{items\.length > 4\}/u);
+    assert.doesNotMatch(carousel, /blockquote|ratingLabel|★/u);
     assert.match(carousel, /450:\s*\{ slidesPerView: 1, spaceBetween: 10 \}/u);
     assert.match(carousel, /640:\s*\{ slidesPerView: 2, spaceBetween: 15 \}/u);
     assert.match(carousel, /768:\s*\{ slidesPerView: 3, spaceBetween: 15 \}/u);

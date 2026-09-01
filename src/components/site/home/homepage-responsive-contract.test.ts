@@ -132,6 +132,18 @@ describe('homepage responsive and accessibility contract', () => {
       css,
       /\.site-public \.home-testimonial-card__head p\s*\{[^}]*color:\s*var\(--zinc-600\)/u,
     );
+    assert.match(
+      css,
+      /\.site-public \.home-testimonial-card__marker\s*\{[^}]*color:\s*var\(--ink\)/u,
+    );
+  });
+
+  it('uses the defined public focus token for FAQ keyboard focus', () => {
+    assert.match(
+      css,
+      /\.site-public \.home-faq__trigger:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--public-focus-ring\)/u,
+    );
+    assert.doesNotMatch(css, /home-faq__trigger:focus-visible\s*\{[^}]*var\(--focus\)/u);
   });
 
   it('collapses dense bands without horizontal page overflow', () => {

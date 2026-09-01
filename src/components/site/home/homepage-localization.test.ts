@@ -40,9 +40,9 @@ describe('homepage localization contract', () => {
     }
   });
 
-  it('uses the final section label without a numeric prefix', () => {
-    assert.equal(valueAt((en as Catalog).home, 'finalCta.eyebrow'), 'Get started');
-    assert.equal(valueAt((ar as Catalog).home, 'finalCta.eyebrow'), 'ابدأ');
+  it('keeps the protected 07 label on the final section', () => {
+    assert.equal(valueAt((en as Catalog).home, 'finalCta.eyebrow'), '07 · Get started');
+    assert.equal(valueAt((ar as Catalog).home, 'finalCta.eyebrow'), '07 · ابدأ');
   });
 
   it('uses non-numbered labels for major homepage sections', () => {
@@ -57,6 +57,20 @@ describe('homepage localization contract', () => {
     ]) {
       assert.doesNotMatch(valueAt((en as Catalog).home, path) as string, /^\d/u);
       assert.doesNotMatch(valueAt((ar as Catalog).home, path) as string, /^\d/u);
+    }
+  });
+
+  it('does not publish unsupported named testimonials, ratings, or quotes', () => {
+    for (const catalog of [en, ar]) {
+      const testimonials = valueAt((catalog as Catalog).home, 'testimonials') as Catalog;
+      const keys = Object.keys(testimonials);
+      assert.ok(keys.includes('carouselLabel'));
+      assert.equal(
+        keys.filter((key) => /^item(?:10|[1-9])(?:Title|Context|Text)$/u.test(key)).length,
+        30,
+      );
+      assert.equal(keys.filter((key) => /^client\d|fiveStars/u.test(key)).length, 0);
+      assert.doesNotMatch(JSON.stringify(testimonials), /★★★★★|five out of five|خمس نجوم/iu);
     }
   });
 });

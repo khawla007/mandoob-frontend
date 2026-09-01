@@ -1,28 +1,28 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 
-import { TestimonialsCarousel, type Testimonial } from './TestimonialsCarousel';
+import { TestimonialsCarousel, type WorkflowCapability } from './TestimonialsCarousel';
 
-const CLIENTS = [
-  { key: 'client1', image: '/customers/jonas-keller.svg' },
-  { key: 'client2', image: '/customers/lina-chen.svg' },
-  { key: 'client3', image: '/customers/omar-bensalem.svg' },
-  { key: 'client4', image: '/customers/priya-ramesh.svg' },
-  { key: 'client5', image: '/customers/jonas-keller.svg' },
-  { key: 'client6', image: '/customers/lina-chen.svg' },
-  { key: 'client7', image: '/customers/omar-bensalem.svg' },
-  { key: 'client8', image: '/customers/priya-ramesh.svg' },
-  { key: 'client9', image: '/customers/jonas-keller.svg' },
-  { key: 'client10', image: '/customers/lina-chen.svg' },
+const WORKFLOW_ITEMS = [
+  { key: 'item1', marker: '01' },
+  { key: 'item2', marker: '02' },
+  { key: 'item3', marker: '03' },
+  { key: 'item4', marker: '04' },
+  { key: 'item5', marker: '05' },
+  { key: 'item6', marker: '06' },
+  { key: 'item7', marker: '07' },
+  { key: 'item8', marker: '08' },
+  { key: 'item9', marker: '09' },
+  { key: 'item10', marker: '10' },
 ] as const;
 
 export async function TestimonialsSection() {
   const [t, locale] = await Promise.all([getTranslations('home.testimonials'), getLocale()]);
-  const testimonials: Testimonial[] = CLIENTS.map(({ key, image }) => ({
+  const items: WorkflowCapability[] = WORKFLOW_ITEMS.map(({ key, marker }) => ({
     id: key,
-    image,
-    name: t(`${key}Name`),
-    role: t(`${key}Role`),
-    quote: t(`${key}Quote`),
+    marker,
+    title: t(`${key}Title`),
+    context: t(`${key}Context`),
+    text: t(`${key}Text`),
   }));
   const direction = locale === 'ar' ? 'rtl' : 'ltr';
 
@@ -36,9 +36,8 @@ export async function TestimonialsSection() {
           </h2>
         </header>
         <TestimonialsCarousel
-          testimonials={testimonials}
+          items={items}
           carouselLabel={t('carouselLabel')}
-          ratingLabel={t('fiveStars')}
           direction={direction}
         />
       </div>
