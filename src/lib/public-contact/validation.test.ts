@@ -91,6 +91,33 @@ test('normalizes common UAE mobile and landline display forms to E.164', () => {
   }
 });
 
+test('normalizes optional trunk zero in UAE international display forms', () => {
+  const cases: Array<[string, string]> = [
+    ['+971 (0) 50 123 4567', '+971501234567'],
+    ['+971 (0) 4 123 4567', '+97141234567'],
+  ];
+
+  for (const [raw, expected] of cases) {
+    assert.equal(normalizeUaePhone(raw), expected, raw);
+    assert.equal(expectValid(validPayload({ phone: raw })).phone, expected, raw);
+  }
+});
+
+test('preserves international prefix semantics instead of relabeling foreign numbers as UAE', () => {
+  for (const phone of [
+    '+50 123 4567',
+    '+4 123 4567',
+    '+00971 50 123 4567',
+    '+44 50 123 4567',
+    '0050 123 4567',
+    '0044 4 123 4567',
+  ]) {
+    assert.equal(normalizeUaePhone(phone), null, phone);
+    const [error] = errorsFor(validPayload({ phone }));
+    assert.deepEqual({ field: error.field, code: error.code }, { field: 'phone', code: 'invalid' });
+  }
+});
+
 test('rejects empty required fields with linked, field-specific errors', () => {
   const errors = errorsFor({
     fullName: ' ',

@@ -10,7 +10,7 @@ import {
 } from './contracts';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
-const UAE_NUMBER_PATTERN = /^971(?:5[024568]\d{7}|[234679]\d{7})$/u;
+const UAE_NATIONAL_NUMBER_PATTERN = /^(?:5[024568]\d{7}|[234679]\d{7})$/u;
 const PHONE_DISPLAY_PATTERN = /^\+?[\d\s().-]+$/u;
 
 const normalizeWhitespace = (value: string) => value.trim().replace(/\s+/gu, ' ');
@@ -21,16 +21,24 @@ export function normalizeUaePhone(value: string): string | null {
   if (!input || codePointLength(input) > CONTACT_LIMITS.phoneMax) return null;
   if (!PHONE_DISPLAY_PATTERN.test(input)) return null;
 
-  let digits = input.replace(/\D/gu, '');
-  if (digits.startsWith('00971')) {
-    digits = digits.slice(2);
+  const digits = input.replace(/\D/gu, '');
+  let nationalNumber: string;
+
+  if (input.startsWith('+')) {
+    if (!digits.startsWith('971')) return null;
+    nationalNumber = digits.slice(3).replace(/^0/u, '');
+  } else if (input.startsWith('00')) {
+    if (!digits.startsWith('00971')) return null;
+    nationalNumber = digits.slice(5).replace(/^0/u, '');
   } else if (digits.startsWith('0')) {
-    digits = `971${digits.slice(1)}`;
-  } else if (!digits.startsWith('971')) {
-    digits = `971${digits}`;
+    nationalNumber = digits.slice(1);
+  } else if (digits.startsWith('971')) {
+    nationalNumber = digits.slice(3).replace(/^0/u, '');
+  } else {
+    nationalNumber = digits;
   }
 
-  return UAE_NUMBER_PATTERN.test(digits) ? `+${digits}` : null;
+  return UAE_NATIONAL_NUMBER_PATTERN.test(nationalNumber) ? `+971${nationalNumber}` : null;
 }
 
 export function validateContactSubmission(payload: RawContactPayload): ContactValidationResult {
