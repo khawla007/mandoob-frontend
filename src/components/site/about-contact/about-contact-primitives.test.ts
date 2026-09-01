@@ -12,6 +12,7 @@ const readComponent = (file: string) => {
   }
 };
 const css = readFileSync(join(process.cwd(), 'src/app/(public)/public-theme.css'), 'utf8');
+const sharedCssMarker = '/* ---------- P1.05 shared About / Contact primitives ---------- */';
 
 describe('About and Contact shared primitive contracts', () => {
   it('renders one identified hero heading with semantic breadcrumbs and a priority image', () => {
@@ -58,7 +59,8 @@ describe('About and Contact shared primitive contracts', () => {
 
   it('accepts exactly three or four hero features and keeps each desktop set in one row', () => {
     const source = readComponent('PageScenicHero.tsx');
-    const taskCss = css.slice(css.indexOf('/* ---------- P1.05'));
+    assert.equal(css.split(sharedCssMarker).length - 1, 1, 'shared CSS marker must be unique');
+    const taskCss = css.slice(css.indexOf(sharedCssMarker));
     const featureType = source.match(/type ScenicHeroFeatures =([\s\S]*?);\n\n/u)?.[1];
 
     assert.ok(featureType);

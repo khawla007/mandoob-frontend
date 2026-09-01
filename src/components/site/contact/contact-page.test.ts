@@ -126,7 +126,7 @@ describe('strict-parity Contact page', () => {
     assert.match(body.slice(conversionIndex), /primaryCta=\{\{[^}]*href: '\/estimate' \}\}/u);
     assert.match(
       body.slice(conversionIndex),
-      /secondaryCta=\{\{ label: '[^']+', href: '\/apply' \}\}/u,
+      /secondaryCta=\{\{ label: '[^']*(?:help|guidance)[^']*', href: '\/knowledge-base' \}\}/iu,
     );
     assert.doesNotMatch(
       body,

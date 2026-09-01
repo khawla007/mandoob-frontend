@@ -284,7 +284,6 @@ function ContactFormRuntime({
             inputMode="tel"
             autoComplete="tel"
             maxLength={CONTACT_LIMITS.phoneMax}
-            placeholder="+971 50 123 4567"
             required
             disabled={pending}
             value={values.phone}

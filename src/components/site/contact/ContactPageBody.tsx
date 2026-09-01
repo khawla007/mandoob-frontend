@@ -240,9 +240,9 @@ export function ContactPageBody({ heroCopy }: ContactPageBodyProps) {
       <PublicConversionBand
         headingId="contact-conversion-title"
         title="Ready to organize your company setup?"
-        description="Start with an estimate or apply to join Mandoob as a PRO firm."
+        description="Start with an estimate or explore guidance for common UAE company setup questions."
         primaryCta={{ label: 'Get an estimate', href: '/estimate' }}
-        secondaryCta={{ label: 'Apply as a PRO firm', href: '/apply' }}
+        secondaryCta={{ label: 'Explore help guidance', href: '/knowledge-base' }}
       />
     </>
   );

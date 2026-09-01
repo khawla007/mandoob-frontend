@@ -131,6 +131,15 @@ if (existsSync(componentPath)) {
     assert.equal(container.querySelector('a[href="/terms"]')?.textContent, 'Terms of Service');
     assert.match(container.textContent ?? '', /all fields are required/i);
     assert.match(container.querySelector('form')?.className ?? '', /contact-form/u);
+    assert.equal(
+      container.querySelector<HTMLInputElement>('#contact-phone')?.getAttribute('placeholder'),
+      null,
+      'the phone field must not present a plausible contact fixture',
+    );
+    assert.match(
+      container.querySelector('#contact-phone-cue')?.textContent ?? '',
+      /UAE mobile or landline number/u,
+    );
     await act(() => root.unmount());
     container.remove();
   });
