@@ -144,7 +144,7 @@ renderTest('design-4 component colors and weights are preserved', () => {
   const homeLink = declarations('.site-public .home-text-link');
   assert.match(homeLink, /color:\s*var\(--accent\)/u);
   assert.match(homeLink, /font-size:\s*var\(--fs-14\)/u);
-  assert.match(homeLink, /font-weight:\s*600(?:;|$)/u);
+  assert.match(homeLink, /font-weight:\s*600\b/u);
 });
 
 renderTest('accent buttons preserve the August 1 shared palette', () => {
@@ -182,14 +182,15 @@ renderTest('accent-button overrides do not replace the August 1 base palette', (
   }
 });
 
-renderTest('dark accent-button overrides preserve the shared white CTA text', () => {
-  const darkColorOverrides = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].filter(
+renderTest('accent-button color overrides preserve the shared white CTA text', () => {
+  const colorRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].filter(
     ([, selector, body]) =>
-      /\.dark\s+\.site-public\s+\.btn--accent(?![-\w])/u.test(selector) &&
+      /\.btn--accent(?![-\w])/u.test(selector) &&
+      !/:disabled|\[aria-disabled=/u.test(selector) &&
       /(?:^|;)\s*color\s*:/u.test(body),
   );
 
-  for (const [, selector, body] of darkColorOverrides) {
+  for (const [, selector, body] of colorRules) {
     assert.match(
       body,
       /color:\s*#fff\b/iu,
