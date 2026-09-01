@@ -382,17 +382,11 @@
   font-size: var(--fs-15);
 }
 .site-public .btn--accent {
-  background: var(--public-cta-background);
-  color: var(--public-cta-text);
+  background: var(--accent);
+  color: #fff;
 }
 .site-public .btn--accent:hover {
-  background: var(--public-cta-hover-background);
-}
-.site-public .btn--accent:active {
-  background: var(--public-cta-active-background);
-}
-.site-public .btn--accent:focus-visible {
-  background: var(--public-cta-focus-background);
+  background: var(--accent-hover);
 }
 .site-public .btn--accent:disabled,
 .site-public .btn--accent[aria-disabled='true'] {
@@ -400,19 +394,6 @@
   background: var(--public-cta-disabled-background);
   color: var(--public-cta-disabled-text);
   transform: none;
-}
-.site-public .hero__estimate-cta {
-  background: #ff7043;
-  color: #21120d;
-}
-.site-public .hero__estimate-cta:hover {
-  background: #ff865f;
-}
-.site-public .hero__estimate-cta:active {
-  background: #e55c32;
-}
-.site-public .hero__estimate-cta:focus-visible {
-  background: #ff7043;
 }
 .site-public .btn--outline {
   background: var(--paper);

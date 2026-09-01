@@ -106,22 +106,13 @@ renderTest('every public CTA state meets WCAG AA in both themes', () => {
   }
 });
 
-renderTest('accent buttons consume semantic state tokens without hardcoded white', () => {
+renderTest('accent buttons preserve the August 1 shared palette', () => {
   const button = declarations('.site-public .btn--accent');
-  assert.match(button, /background:\s*var\(--public-cta-background\)/u);
-  assert.match(button, /color:\s*var\(--public-cta-text\)/u);
-  assert.doesNotMatch(button, /#fff(?:fff)?\b/iu);
+  assert.match(button, /background:\s*var\(--accent\)/u);
+  assert.match(button, /color:\s*#fff\b/iu);
   assert.match(
     css,
-    /\.site-public \.btn--accent:hover\s*\{[^}]*var\(--public-cta-hover-background\)/u,
-  );
-  assert.match(
-    css,
-    /\.site-public \.btn--accent:active\s*\{[^}]*var\(--public-cta-active-background\)/u,
-  );
-  assert.match(
-    css,
-    /\.site-public \.btn--accent:focus-visible\s*\{[^}]*var\(--public-cta-focus-background\)/u,
+    /\.site-public \.btn--accent:hover\s*\{[^}]*var\(--accent-hover\)/u,
   );
   assert.match(
     css,
@@ -129,23 +120,19 @@ renderTest('accent buttons consume semantic state tokens without hardcoded white
   );
 });
 
-renderTest('every cascaded accent-button background uses its accessible semantic state', () => {
+renderTest('accent-button overrides do not replace the August 1 base palette', () => {
   const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].filter(
     ([, selector, body]) =>
       /\.btn--accent(?![-\w])/u.test(selector) && /(?:^|;)\s*background\s*:/u.test(body),
   );
-  assert.ok(rules.length >= 5, 'expected every base interactive accent-button rule');
+  assert.ok(rules.length >= 3, 'expected base, hover, and disabled accent-button rules');
 
   for (const [, selector, body] of rules) {
     const expected = selector.includes(':hover')
-      ? '--public-cta-hover-background'
-      : selector.includes(':active')
-        ? '--public-cta-active-background'
-        : selector.includes(':focus-visible')
-          ? '--public-cta-focus-background'
-          : selector.includes(':disabled') || selector.includes("[aria-disabled='true']")
-            ? '--public-cta-disabled-background'
-            : '--public-cta-background';
+      ? '--accent-hover'
+      : selector.includes(':disabled') || selector.includes("[aria-disabled='true']")
+        ? '--public-cta-disabled-background'
+        : '--accent';
     assert.match(
       body,
       new RegExp(`background:\\s*var\\(${expected}\\)`, 'u'),
@@ -210,8 +197,6 @@ renderTest('new public shell rules use logical direction properties', () => {
     '.site-public .public-theme-toggle',
     '.site-public .btn--accent',
     '.site-public .btn--accent:hover',
-    '.site-public .btn--accent:active',
-    '.site-public .btn--accent:focus-visible',
     ".site-public .btn--accent:disabled,\n.site-public .btn--accent[aria-disabled='true']",
   ];
   for (const selector of touchedSelectors) {

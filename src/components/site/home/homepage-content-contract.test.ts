@@ -21,13 +21,14 @@ const allSource = componentSources.map(({ source }) => source).join('\n');
 const publicTheme = readFileSync(join(process.cwd(), 'src/app/(public)/public-theme.css'), 'utf8');
 
 describe('homepage claims and CTA contract', () => {
-  it('keeps the hero estimate button on the dark-mode palette in both themes', () => {
+  it('uses the August 1 shared accent color and white text for homepage CTAs', () => {
     const hero = componentSources.find(({ file }) => file === 'HeroSection.tsx')?.source ?? '';
     assert.match(hero, /btn btn--accent hero__estimate-cta/u);
     assert.match(
       publicTheme,
-      /\.site-public \.hero__estimate-cta\s*\{[^}]*background:\s*#ff7043;[^}]*color:\s*#21120d;/u,
+      /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--accent\);[^}]*color:\s*#fff;/u,
     );
+    assert.doesNotMatch(publicTheme, /\.site-public \.hero__estimate-cta\s*\{/u);
   });
 
   it('uses the shared eyebrow treatment on major homepage sections', () => {
