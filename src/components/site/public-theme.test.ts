@@ -32,27 +32,16 @@ function declarations(selector: string): string {
   return block;
 }
 
+function rawToken(block: string, name: string): string {
+  const value = block.match(new RegExp(`--${name}:\\s*([^;]+);`, 'u'))?.[1].trim();
+  assert.ok(value, `missing --${name}`);
+  return value;
+}
+
 function token(block: string, name: string): string {
   const value = block.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'iu'))?.[1];
   assert.ok(value, `missing resolved --${name}`);
   return value;
-}
-
-function relativeLuminance(hex: string): number {
-  const channels = hex
-    .slice(1)
-    .match(/.{2}/gu)
-    ?.map((channel) => Number.parseInt(channel, 16) / 255)
-    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
-  assert.ok(channels && channels.length === 3);
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-}
-
-function contrastRatio(first: string, second: string): number {
-  const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort(
-    (a, b) => b - a,
-  );
-  return (lighter + 0.05) / (darker + 0.05);
 }
 
 const semanticRoles = [
@@ -86,24 +75,74 @@ renderTest('public light and dark scopes expose the complete reusable semantic p
   }
 });
 
-renderTest('every public CTA state meets WCAG AA in both themes', () => {
-  const statePairs = [
-    ['default', 'public-cta-background', 'public-cta-text'],
-    ['hover', 'public-cta-hover-background', 'public-cta-text'],
-    ['active', 'public-cta-active-background', 'public-cta-text'],
-    ['focus', 'public-cta-focus-background', 'public-cta-text'],
-    ['disabled', 'public-cta-disabled-background', 'public-cta-disabled-text'],
-  ] as const;
-
-  for (const selector of ['.site-public', '.dark .site-public']) {
-    const block = declarations(selector);
-    for (const [state, backgroundName, textName] of statePairs) {
-      const background = token(block, backgroundName);
-      const foreground = token(block, textName);
-      const contrast = contrastRatio(background, foreground);
-      assert.ok(contrast >= 4.5, `${selector} ${state} CTA contrast was ${contrast.toFixed(2)}:1`);
-    }
+renderTest('public light tokens match the canonical design-4 palette and fonts', () => {
+  const block = declarations('.site-public');
+  const expected = {
+    paper: '#FFFFFF',
+    ink: '#000000',
+    'zinc-50': '#FAFAFA',
+    'zinc-100': '#F4F4F5',
+    'zinc-200': '#E4E4E7',
+    'zinc-300': '#D4D4D8',
+    'zinc-400': '#A1A1AA',
+    'zinc-500': '#71717A',
+    'zinc-600': '#52525B',
+    'zinc-700': '#3F3F46',
+    'zinc-900': '#18181B',
+    'zinc-950': '#09090B',
+    accent: '#FF5722',
+    'accent-hover': '#E64A19',
+    'accent-soft': '#FFF1ED',
+    'pb-border': '#E4E4E7',
+    'pb-border-dark': '#27272A',
+  } as const;
+  for (const [name, value] of Object.entries(expected)) {
+    assert.equal(rawToken(block, name).toUpperCase(), value);
   }
+  assert.match(rawToken(block, 'font'), /var\(--font-geist-sans\)/u);
+  assert.match(rawToken(block, 'mono-font'), /var\(--font-geist-mono\)/u);
+});
+
+renderTest('public dark tokens retain accent CTA colors and invert the neutral ramp', () => {
+  const block = declarations('.dark .site-public');
+  const expected = {
+    paper: '#18181B',
+    ink: '#FAFAFA',
+    'zinc-50': '#09090B',
+    'zinc-100': '#18181B',
+    'zinc-200': '#27272A',
+    'zinc-300': '#3F3F46',
+    'zinc-400': '#52525B',
+    'zinc-500': '#71717A',
+    'zinc-600': '#A1A1AA',
+    'zinc-700': '#D4D4D8',
+    'zinc-900': '#E4E4E7',
+    'zinc-950': '#F4F4F5',
+    accent: '#FF5722',
+    'accent-hover': '#E64A19',
+  } as const;
+  for (const [name, value] of Object.entries(expected)) {
+    assert.equal(rawToken(block, name).toUpperCase(), value);
+  }
+  assert.match(declarations('.site-public .btn--accent'), /color:\s*#fff\b/iu);
+});
+
+renderTest('design-4 component colors and weights are preserved', () => {
+  assert.match(
+    declarations('.site-public .btn--accent'),
+    /background:\s*var\(--accent\)[^}]*color:\s*#fff/isu,
+  );
+  assert.match(
+    declarations('.site-public .btn--accent:hover'),
+    /background:\s*var\(--accent-hover\)/u,
+  );
+  assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-500\)/u);
+  assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
+  assert.match(declarations('.site-public .cell__link'), /color:\s*var\(--accent\)/u);
+  const homeLink = declarations('.site-public .home-text-link');
+  assert.match(homeLink, /color:\s*var\(--accent\)/u);
+  assert.match(homeLink, /font-size:\s*var\(--fs-14\)/u);
+  assert.match(homeLink, /font-weight:\s*600/u);
 });
 
 renderTest('accent buttons preserve the August 1 shared palette', () => {

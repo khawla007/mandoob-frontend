@@ -50,6 +50,25 @@ describe('homepage claims and CTA contract', () => {
     assert.match(knowledge, /faq\('eyebrow'\)/u);
   });
 
+  it('uses the canonical design-4 eyebrow and inline-link treatment', () => {
+    assert.match(
+      publicTheme,
+      /\.site-public \.eyebrow--accent\s*\{[^}]*color:\s*var\(--zinc-500\)/u,
+    );
+    assert.match(
+      publicTheme,
+      /\.site-public \.home-text-link\s*\{[^}]*color:\s*var\(--accent\)/u,
+    );
+    assert.match(
+      publicTheme,
+      /\.site-public \.home-text-link\s*\{[^}]*font-size:\s*var\(--fs-14\)/u,
+    );
+    assert.match(
+      publicTheme,
+      /\.site-public \.home-text-link\s*\{[^}]*font-weight:\s*600/u,
+    );
+  });
+
   it('keeps the testimonial heading visible without waiting for a reveal observer', () => {
     const testimonials =
       componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';
