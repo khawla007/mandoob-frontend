@@ -49,6 +49,7 @@
   --public-header-surface: rgba(255, 255, 255, 0.85);
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #b9380f;
+  --public-danger: #8f1d14;
   --public-scrim: rgba(24, 18, 15, 0.72);
 
   --pb-border: oklch(0.918 0.006 45);
@@ -146,6 +147,7 @@
   --public-header-surface: rgba(10, 10, 10, 0.85);
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #ff865f;
+  --public-danger: #ffb4a8;
   --public-scrim: rgba(5, 4, 3, 0.82);
 
   /* shadcn surface tokens — mirror globals.css .dark so shadcn-driven controls
@@ -748,7 +750,7 @@
   outline-offset: 2px;
 }
 .site-public .contact-form [aria-invalid='true'] {
-  border-color: var(--public-danger, #b42318);
+  border-color: var(--public-danger);
 }
 .site-public .contact-form__cue,
 .site-public .contact-form__field-error {
@@ -756,7 +758,7 @@
   line-height: 1.45;
 }
 .site-public .contact-form__field-error {
-  color: var(--public-danger, #b42318);
+  color: var(--public-danger);
   font-weight: 600;
 }
 .site-public .contact-form__consent {
@@ -785,7 +787,7 @@
 .site-public .contact-form__error-summary,
 .site-public .contact-form__result {
   border: 1px solid var(--public-border-subtle);
-  border-inline-start: 4px solid var(--public-danger, #b42318);
+  border-inline-start: 4px solid var(--public-danger);
   border-radius: var(--r-sm);
   background: var(--public-surface);
   padding: 16px 18px;

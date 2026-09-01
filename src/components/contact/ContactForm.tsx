@@ -71,27 +71,49 @@ export function ContactForm({ demoOutcome, demoDelayMs = 0 }: ContactFormProps) 
 export function ContactFormTestHarness({
   adapter,
   delayMs = 0,
+  onResultCommitted,
 }: {
   adapter: ContactAdapter;
   delayMs?: number;
+  onResultCommitted?: (result: ContactSubmissionResult) => void;
 }) {
-  return <ContactFormRuntime adapter={adapter} delayMs={delayMs} />;
+  return (
+    <ContactFormRuntime adapter={adapter} delayMs={delayMs} onResultCommitted={onResultCommitted} />
+  );
 }
 
-function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; delayMs: number }) {
+function ContactFormRuntime({
+  adapter,
+  delayMs,
+  onResultCommitted,
+}: {
+  adapter: ContactAdapter;
+  delayMs: number;
+  onResultCommitted?: (result: ContactSubmissionResult) => void;
+}) {
   const [values, setValues] = useState<ContactValues>(INITIAL_VALUES);
   const [errors, setErrors] = useState<ContactFieldError[]>([]);
+  const [invalidAttempt, setInvalidAttempt] = useState(0);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<ContactSubmissionResult | null>(null);
   const pendingRef = useRef(false);
+  const mountedRef = useRef(true);
   const summaryRef = useRef<HTMLDivElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const fullNameRef = useRef<HTMLInputElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (errors.length > 0) summaryRef.current?.focus();
-  }, [errors]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      pendingRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (invalidAttempt > 0) summaryRef.current?.focus();
+  }, [invalidAttempt]);
 
   useEffect(() => {
     if (result) resultRef.current?.focus();
@@ -106,6 +128,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
     field: Field,
     value: ContactValues[Field],
   ) => {
+    if (pendingRef.current) return;
     setValues((current) => ({ ...current, [field]: value }));
     setErrors((current) => current.filter((error) => error.field !== field));
     setResult(null);
@@ -128,6 +151,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
     if (!validation.ok) {
       setResult(null);
       setErrors(validation.errors);
+      setInvalidAttempt((attempt) => attempt + 1);
       return;
     }
 
@@ -138,17 +162,26 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
       if (delayMs > 0) {
         await new Promise((resolve) => window.setTimeout(resolve, delayMs));
       }
-      setResult(await adapter.submit(validation.data));
+      if (!mountedRef.current) return;
+      const nextResult = await adapter.submit(validation.data);
+      if (mountedRef.current) {
+        setResult(nextResult);
+        onResultCommitted?.(nextResult);
+      }
     } catch {
-      setResult({
-        status: 'failure',
-        sent: false,
-        retryable: true,
-        message: 'Message delivery could not be completed. No message was sent.',
-      });
+      if (mountedRef.current) {
+        const failure: ContactSubmissionResult = {
+          status: 'failure',
+          sent: false,
+          retryable: true,
+          message: 'Message delivery could not be completed. No message was sent.',
+        };
+        setResult(failure);
+        onResultCommitted?.(failure);
+      }
     } finally {
       pendingRef.current = false;
-      setPending(false);
+      if (mountedRef.current) setPending(false);
     }
   };
 
@@ -214,6 +247,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
             autoComplete="name"
             maxLength={CONTACT_LIMITS.fullNameMax}
             required
+            disabled={pending}
             value={values.fullName}
             aria-invalid={Boolean(errorFor('fullName'))}
             aria-describedby={describedBy('fullName')}
@@ -229,6 +263,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
             autoComplete="email"
             maxLength={CONTACT_LIMITS.emailMax}
             required
+            disabled={pending}
             value={values.email}
             aria-invalid={Boolean(errorFor('email'))}
             aria-describedby={describedBy('email')}
@@ -251,6 +286,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
             maxLength={CONTACT_LIMITS.phoneMax}
             placeholder="+971 50 123 4567"
             required
+            disabled={pending}
             value={values.phone}
             aria-invalid={Boolean(errorFor('phone'))}
             aria-describedby={describedBy('phone', 'contact-phone-cue')}
@@ -263,6 +299,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
             id="contact-subject"
             name="subject"
             required
+            disabled={pending}
             value={values.subject}
             aria-invalid={Boolean(errorFor('subject'))}
             aria-describedby={describedBy('subject')}
@@ -290,6 +327,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
             rows={6}
             maxLength={CONTACT_LIMITS.messageMax}
             required
+            disabled={pending}
             value={values.message}
             aria-invalid={Boolean(errorFor('message'))}
             aria-describedby={describedBy('message', 'contact-message-cue')}
@@ -304,6 +342,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
           name="consent"
           type="checkbox"
           required
+          disabled={pending}
           checked={values.consent}
           aria-invalid={Boolean(errorFor('consent'))}
           aria-describedby={describedBy('consent')}
@@ -327,7 +366,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
 
       {pending ? (
         <p className="contact-form__pending" role="status" aria-live="polite">
-          Submitting securely…
+          Preparing this no-send preview… No message has been sent.
         </p>
       ) : null}
 
@@ -366,7 +405,7 @@ function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; del
           disabled={pending}
           aria-disabled={pending}
         >
-          {pending ? 'Submitting…' : 'Send message'}
+          {pending ? 'Preparing preview…' : 'Send message'}
         </button>
         <button type="button" className="btn btn--outline" disabled={pending} onClick={resetForm}>
           Reset

@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { Window } from 'happy-dom';
 
-import type { ContactAdapter } from '@/lib/public-contact/contracts';
+import type { ContactAdapter, ContactSubmissionResult } from '@/lib/public-contact/contracts';
 import { createSyntheticContactAdapter } from '@/lib/public-contact/demo-adapter';
 
 const componentPath = new URL('./ContactForm.tsx', import.meta.url);
@@ -46,7 +46,11 @@ if (existsSync(componentPath)) {
     return { act, container, root };
   }
 
-  async function renderInjectedForm(adapter: ContactAdapter, delayMs = 0) {
+  async function renderInjectedForm(
+    adapter: ContactAdapter,
+    delayMs = 0,
+    onResultCommitted?: (result: ContactSubmissionResult) => void,
+  ) {
     const [{ act, createElement }, { createRoot }, { ContactFormTestHarness }] = await Promise.all([
       import('react'),
       import('react-dom/client'),
@@ -55,7 +59,11 @@ if (existsSync(componentPath)) {
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
-    await act(() => root.render(createElement(ContactFormTestHarness, { adapter, delayMs })));
+    await act(() =>
+      root.render(
+        createElement(ContactFormTestHarness, { adapter, delayMs, onResultCommitted } as never),
+      ),
+    );
     return { act, container, root };
   }
 
@@ -123,11 +131,6 @@ if (existsSync(componentPath)) {
     assert.equal(container.querySelector('a[href="/terms"]')?.textContent, 'Terms of Service');
     assert.match(container.textContent ?? '', /all fields are required/i);
     assert.match(container.querySelector('form')?.className ?? '', /contact-form/u);
-    assert.match(
-      readFileSync(componentPath, 'utf8'),
-      /result\.sent\s*\?\s*['"]A message was sent\./u,
-      'result UI must explicitly describe real sent and no-send states',
-    );
     await act(() => root.unmount());
     container.remove();
   });
@@ -158,6 +161,17 @@ if (existsSync(componentPath)) {
     }
     anchors[0]!.click();
     assert.equal(document.activeElement, container.querySelector('#contact-fullName'));
+    await act(() =>
+      setControlValue(
+        container.querySelector<HTMLInputElement>('#contact-fullName')!,
+        'Amina Noor',
+      ),
+    );
+    assert.equal(
+      document.activeElement,
+      container.querySelector('#contact-fullName'),
+      'editing a linked field must not return focus to the summary',
+    );
     await act(() => root.unmount());
     container.remove();
   });
@@ -180,7 +194,30 @@ if (existsSync(componentPath)) {
     const button = container.querySelector<HTMLButtonElement>('button[type="submit"]')!;
     assert.equal(button.disabled, true);
     assert.equal(button.getAttribute('aria-disabled'), 'true');
-    assert.equal(container.querySelector('[role="status"]')?.textContent, 'Submitting securely…');
+    assert.equal(
+      container.querySelector('[role="status"]')?.textContent,
+      'Preparing this no-send preview… No message has been sent.',
+    );
+    for (const control of container.querySelectorAll<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >('input, textarea, select')) {
+      assert.equal(control.disabled, true, `${control.id} must be disabled while pending`);
+    }
+    const fullName = container.querySelector<HTMLInputElement>('#contact-fullName')!;
+    fullName.focus();
+    fullName.dispatchEvent(
+      new browser.KeyboardEvent('keydown', { bubbles: true, key: 'X' }) as unknown as Event,
+    );
+    assert.equal(fullName.value, 'Amina Noor', 'pending values must remain immutable');
+    assert.notEqual(
+      document.activeElement,
+      fullName,
+      'disabled pending fields cannot receive focus',
+    );
+    const reset = [...container.querySelectorAll<HTMLButtonElement>('button')].find(
+      (candidate) => candidate.textContent === 'Reset',
+    )!;
+    assert.equal(reset.disabled, true, 'reset must be disabled while pending');
     assert.equal(adapterInvocations, 0, 'adapter should not run before the deterministic delay');
     await act(() => new Promise((resolve) => setTimeout(resolve, 60)));
     assert.equal(adapterInvocations, 1, 'duplicate submit must invoke the adapter only once');
@@ -188,6 +225,50 @@ if (existsSync(componentPath)) {
     assert.equal(document.activeElement, result);
     assert.match(result.textContent ?? '', /no message was sent/i);
     await act(() => root.unmount());
+    container.remove();
+  });
+
+  test('commits a real sent result while mounted and renders the sent branch', async () => {
+    let committed = 0;
+    const realSuccess: ContactAdapter = {
+      async submit() {
+        return { status: 'success', sent: true, message: 'Your message was sent.' };
+      },
+    };
+    const { act, container, root } = await renderInjectedForm(realSuccess, 0, () => {
+      committed += 1;
+    });
+    await act(() => fillValidForm(container));
+    await act(async () => {
+      submit(container);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const result = container.querySelector<HTMLElement>('[data-contact-result="success"]')!;
+    assert.equal(committed, 1);
+    assert.match(result.textContent ?? '', /delivery status: a message was sent/i);
+    assert.doesNotMatch(result.textContent ?? '', /no message was sent/i);
+    await act(() => root.unmount());
+    container.remove();
+  });
+
+  test('ignores adapter completion after unmount', async () => {
+    let resolveResult!: (result: ContactSubmissionResult) => void;
+    const pendingResult = new Promise<ContactSubmissionResult>((resolve) => {
+      resolveResult = resolve;
+    });
+    let committed = 0;
+    const deferredAdapter: ContactAdapter = { submit: async () => pendingResult };
+    const { act, container, root } = await renderInjectedForm(deferredAdapter, 0, () => {
+      committed += 1;
+    });
+    await act(() => fillValidForm(container));
+    await act(() => submit(container));
+    await act(() => root.unmount());
+    await act(async () => {
+      resolveResult({ status: 'success', sent: true, message: 'Your message was sent.' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    assert.equal(committed, 0, 'unmounted forms must ignore async completion');
     container.remove();
   });
 
@@ -232,6 +313,28 @@ if (existsSync(componentPath)) {
     container.remove();
   });
 
+  test('danger tokens maintain AA contrast in light and dark form surfaces', () => {
+    const css = readFileSync(
+      new URL('../../app/(public)/public-theme.css', import.meta.url),
+      'utf8',
+    );
+    assert.match(css, /\.site-public \{[^]*?--public-danger: #8f1d14;/u);
+    assert.match(css, /\.dark \.site-public \{[^]*?--public-danger: #ffb4a8;/u);
+
+    const lightDanger = hexLuminance('#8f1d14');
+    const darkDanger = hexLuminance('#ffb4a8');
+    for (const background of [oklchLuminance(0.995, 0.004, 45), oklchLuminance(0.985, 0.004, 45)]) {
+      assert.ok(contrast(lightDanger, background) >= 4.5);
+    }
+    for (const background of [
+      oklchLuminance(0.17, 0.008, 45),
+      oklchLuminance(0.227, 0.008, 45),
+      oklchLuminance(0.268, 0.008, 45),
+    ]) {
+      assert.ok(contrast(darkDanger, background) >= 4.5);
+    }
+  });
+
   for (const outcome of [
     'success',
     'duplicate',
@@ -269,4 +372,30 @@ if (existsSync(componentPath)) {
       container.remove();
     });
   }
+}
+
+function hexLuminance(hex: string) {
+  const channels = hex
+    .slice(1)
+    .match(/.{2}/gu)!
+    .map((channel) => Number.parseInt(channel, 16) / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+}
+
+function oklchLuminance(lightness: number, chroma: number, hue: number) {
+  const angle = (hue * Math.PI) / 180;
+  const a = chroma * Math.cos(angle);
+  const b = chroma * Math.sin(angle);
+  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const red = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  const green = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  const blue = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function contrast(first: number, second: number) {
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
