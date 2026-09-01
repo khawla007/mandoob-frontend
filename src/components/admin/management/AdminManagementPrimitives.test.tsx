@@ -9,9 +9,13 @@ const renderTest = reactServer ? ((() => undefined) as unknown as typeof test) :
 
 if (reactServer) {
   test('Admin management primitive render contracts run with client React exports', () => {
-    const result = spawnSync(process.execPath, ['--import', 'tsx', fileURLToPath(import.meta.url)], {
-      encoding: 'utf8',
-    });
+    const result = spawnSync(
+      process.execPath,
+      ['--import', 'tsx', fileURLToPath(import.meta.url)],
+      {
+        encoding: 'utf8',
+      },
+    );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   });
 }
