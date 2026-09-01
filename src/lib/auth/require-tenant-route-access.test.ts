@@ -21,7 +21,7 @@ function session(role: SessionProfile['role']): SessionProfile {
     id: '22222222-2222-4222-8222-222222222222',
     email: 'actor@example.com',
     role,
-    tenantId: role === 'pro' ? tenant.id : null,
+    tenantId: role === 'pro' || role === 'customer' || role === 'employee' ? tenant.id : null,
     aal: 'aal1',
     mfaEnrolled: false,
   };
@@ -121,4 +121,35 @@ test('PRO boundary returns the authoritative PRO for controls and mutations', as
   });
   assert.equal(result.session.role, 'pro');
   assert.equal(result.session.tenantId, tenant.id);
+});
+
+test('Customer shell denies a customer whose authoritative tenant does not match the route', async () => {
+  const { requireCustomerTenantRouteAccess } = await import('./require-tenant-route-access');
+  await assert.rejects(
+    requireCustomerTenantRouteAccess('acme', {
+      resolveTenant: async () => tenant,
+      requireAccess: async () => ({
+        ...session('customer'),
+        tenantId: '33333333-3333-4333-8333-333333333333',
+      }),
+      deny: () => {
+        throw new Error('DENIED');
+      },
+    }),
+    /DENIED/u,
+  );
+});
+
+test('Customer shell accepts the matching customer and existing platform operator access', async () => {
+  const { requireCustomerTenantRouteAccess } = await import('./require-tenant-route-access');
+  for (const role of ['customer', 'super_admin'] as const) {
+    const result = await requireCustomerTenantRouteAccess('acme', {
+      resolveTenant: async () => tenant,
+      requireAccess: async () => session(role),
+      deny: () => {
+        throw new Error('DENIED');
+      },
+    });
+    assert.equal(result.session.role, role);
+  }
 });

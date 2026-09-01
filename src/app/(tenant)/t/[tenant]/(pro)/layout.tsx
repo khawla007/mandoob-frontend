@@ -17,8 +17,7 @@ export default async function ProLayout({
 }) {
   const { tenant: slug } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
-  // MFA enforcement toggles on in M6 once enrollment UI ships.
-  await requireMfaEnrolled(session).catch(() => {});
+  await requireMfaEnrolled(session);
 
   const branding = buildTenantBrandingView(
     (await getTenantBranding(tenant.id)) ?? {

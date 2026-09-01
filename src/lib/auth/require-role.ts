@@ -26,6 +26,9 @@ type PlatformOperatorDeps = {
   deny?: () => never;
 };
 type RoleGuardDeps = PlatformOperatorDeps;
+type MfaGuardDeps = {
+  redirect?: (path: string) => Promise<never> | never;
+};
 
 async function redirectTo(path: string): Promise<never> {
   // Keep Next's client runtime out of Node unit tests; production behavior is
@@ -100,12 +103,19 @@ export async function requirePlatformOperator(
   return resolveAuthoritativeRole(['admin', 'super_admin'], deps);
 }
 
-export async function requireAal2(session: SessionProfile): Promise<void> {
-  if (session.aal !== 'aal2') return redirectTo('/mfa/challenge');
+export async function requireAal2(session: SessionProfile, deps: MfaGuardDeps = {}): Promise<void> {
+  if (session.aal !== 'aal2') {
+    await (deps.redirect ?? redirectTo)('/mfa/challenge');
+  }
 }
 
-export async function requireMfaEnrolled(session: SessionProfile): Promise<void> {
-  if (!session.mfaEnrolled) return redirectTo('/mfa/enroll');
+export async function requireMfaEnrolled(
+  session: SessionProfile,
+  deps: MfaGuardDeps = {},
+): Promise<void> {
+  if (!session.mfaEnrolled) {
+    await (deps.redirect ?? redirectTo)('/mfa/enroll');
+  }
 }
 
 export async function requireTenantMatch(
