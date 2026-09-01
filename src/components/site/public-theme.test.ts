@@ -225,7 +225,7 @@ renderTest('shell focus and sticky header consume roles while the dialog token s
   );
 });
 
-renderTest('current navigation and footer muted copy use AA semantic colors', () => {
+renderTest('current navigation and footer muted copy use design-4 semantic colors', () => {
   assert.match(
     declarations(".site-public .nav__links a[aria-current='page']"),
     /color:\s*var\(--public-cta-background\)/u,

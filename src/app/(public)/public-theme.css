@@ -26,8 +26,9 @@
   --accent-ink: var(--accent);
   --accent-soft: #fff1ed;
 
-  /* Public semantic roles. CTA colors are resolved so every state can be
-     independently verified against WCAG AA without coupling to page tokens. */
+  /* Public semantic roles retain the canonical design-4 CTA palette. The
+     #ff5722 normal-text treatment is a documented visual exception, not a
+     WCAG AA normal-text contrast claim. */
   --public-canvas: var(--paper);
   --public-surface: var(--zinc-50);
   --public-surface-elevated: var(--paper);

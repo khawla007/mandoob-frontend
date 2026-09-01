@@ -22,14 +22,14 @@ test('PRO hero has compact desktop and mobile spacing without a fixed height', (
   assert.doesNotMatch(css, /\.site-public \.hero--pro\s*\{(?:(?!})[\s\S])*(?:height|max-height):/);
 });
 
-test('PRO hero inherits accessible semantic primary CTA colors', () => {
+test('PRO hero inherits the shared design-4 accent CTA colors', () => {
   assert.match(
     css,
-    /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--public-cta-background\)/,
+    /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--accent\);[^}]*color:\s*#fff;/,
   );
   assert.match(
     css,
-    /\.site-public \.btn--accent:hover\s*\{[^}]*background:\s*var\(--public-cta-hover-background\)/,
+    /\.site-public \.btn--accent:hover\s*\{[^}]*background:\s*var\(--accent-hover\)/,
   );
   assert.doesNotMatch(css, /\.site-public \.hero--pro \.btn--accent(?::hover)?\s*\{/);
 });

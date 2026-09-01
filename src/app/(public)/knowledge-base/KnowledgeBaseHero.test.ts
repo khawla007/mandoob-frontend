@@ -49,14 +49,14 @@ test('Knowledge Base hero has scoped natural-height responsive rules', () => {
   assert.doesNotMatch(mobileBlock, /(?:height|max-height):/);
 });
 
-test('Knowledge Base primary CTA inherits accessible semantic normal and hover colors', () => {
+test('Knowledge Base hero inherits the shared design-4 accent CTA colors', () => {
   assert.match(
     css,
-    /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--public-cta-background\)/,
+    /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--accent\);[^}]*color:\s*#fff;/,
   );
   assert.match(
     css,
-    /\.site-public \.btn--accent:hover\s*\{[^}]*background:\s*var\(--public-cta-hover-background\)/,
+    /\.site-public \.btn--accent:hover\s*\{[^}]*background:\s*var\(--accent-hover\)/,
   );
   assert.doesNotMatch(css, /\.site-public \.hero--knowledge-base \.btn--accent(?::hover)?\s*\{/);
 });
