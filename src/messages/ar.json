@@ -2706,7 +2706,12 @@
           "invoice_voided": "تم إلغاء فاتورة",
           "invoice_marked_paid": "تم تعليم الفاتورة كمدفوعة",
           "payment_succeeded": "تم استلام دفعة",
-          "refund_issued": "تم إصدار مبلغ مسترد"
+          "refund_issued": "تم إصدار مبلغ مسترد",
+          "company_pro_assigned": "تم تعيين مندوب للشركة",
+          "company_pro_released": "تم إنهاء تعيين المندوب من الشركة",
+          "company_onboarding_submitted": "تم إرسال إعداد الشركة",
+          "company_activation_attempted": "تمت مراجعة تفعيل الشركة",
+          "company_activated": "تم تفعيل الشركة"
         }
       }
     },

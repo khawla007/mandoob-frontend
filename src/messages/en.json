@@ -2718,7 +2718,12 @@
           "invoice_voided": "Invoice voided",
           "invoice_marked_paid": "Invoice marked paid",
           "payment_succeeded": "Payment received",
-          "refund_issued": "Refund issued"
+          "refund_issued": "Refund issued",
+          "company_pro_assigned": "PRO assigned to Company",
+          "company_pro_released": "PRO released from Company",
+          "company_onboarding_submitted": "Company onboarding submitted",
+          "company_activation_attempted": "Company activation reviewed",
+          "company_activated": "Company activated"
         }
       }
     },

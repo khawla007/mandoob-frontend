@@ -1,4 +1,5 @@
 import type { LeadStage } from '@/lib/data/leads-kanban';
+import { ADMIN_DASHBOARD_LINKS } from './links';
 
 export type DashboardPeriodDays = 7 | 30 | 90;
 
@@ -38,20 +39,142 @@ export type KpiDefinition = {
   id: KpiId;
   semantics: 'pointInTime' | 'period';
   tone: 'info' | 'orange' | 'warning' | 'urgent';
+  source: string;
+  scope: 'platform';
+  filters: readonly string[];
+  formula: string;
+  comparison: 'none';
+  statePolicy: 'live' | 'phase3-unavailable';
+  destination:
+    | { kind: 'none' }
+    | {
+        kind: 'separate-action';
+        href: (typeof ADMIN_DASHBOARD_LINKS)[keyof typeof ADMIN_DASHBOARD_LINKS];
+      };
 };
 
-export const KPI_DEFINITIONS: readonly KpiDefinition[] = [
-  { id: 'totalLeads', semantics: 'pointInTime', tone: 'orange' },
-  { id: 'totalPros', semantics: 'pointInTime', tone: 'info' },
-  { id: 'totalCompanies', semantics: 'pointInTime', tone: 'info' },
-  { id: 'activeAssignments', semantics: 'pointInTime', tone: 'orange' },
-  { id: 'unassignedPros', semantics: 'pointInTime', tone: 'warning' },
-  { id: 'unassignedCompanies', semantics: 'pointInTime', tone: 'warning' },
-  { id: 'activeRegistrations', semantics: 'period', tone: 'info' },
-  { id: 'pendingRenewals', semantics: 'pointInTime', tone: 'warning' },
-  { id: 'pendingPayments', semantics: 'pointInTime', tone: 'urgent' },
-  { id: 'documentsAwaitingReview', semantics: 'pointInTime', tone: 'warning' },
-] as const;
+export const KPI_DEFINITIONS = [
+  {
+    id: 'totalLeads',
+    semantics: 'pointInTime',
+    tone: 'orange',
+    source: 'leads',
+    scope: 'platform',
+    filters: ['source=questionnaire'],
+    formula: 'exact count',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'separate-action', href: ADMIN_DASHBOARD_LINKS.leads },
+  },
+  {
+    id: 'totalPros',
+    semantics: 'pointInTime',
+    tone: 'info',
+    source: 'profiles',
+    scope: 'platform',
+    filters: ['role=pro'],
+    formula: 'exact count',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'separate-action', href: ADMIN_DASHBOARD_LINKS.proRegistry },
+  },
+  {
+    id: 'totalCompanies',
+    semantics: 'pointInTime',
+    tone: 'info',
+    source: 'company_profiles',
+    scope: 'platform',
+    filters: [],
+    formula: 'exact count',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'separate-action', href: ADMIN_DASHBOARD_LINKS.companies },
+  },
+  {
+    id: 'activeAssignments',
+    semantics: 'pointInTime',
+    tone: 'orange',
+    source: 'pro_company_assignments',
+    scope: 'platform',
+    filters: ['status=active'],
+    formula: 'exact count',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'none' },
+  },
+  {
+    id: 'unassignedPros',
+    semantics: 'pointInTime',
+    tone: 'warning',
+    source: 'profiles + pro_company_assignments',
+    scope: 'platform',
+    filters: ['role=pro', 'status=active', 'assignment.status=active'],
+    formula: 'active PROs - active assignments',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'none' },
+  },
+  {
+    id: 'unassignedCompanies',
+    semantics: 'pointInTime',
+    tone: 'warning',
+    source: 'company_profiles + pro_company_assignments',
+    scope: 'platform',
+    filters: ['assignment.status=active'],
+    formula: 'companies - active assignments',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'none' },
+  },
+  {
+    id: 'activeRegistrations',
+    semantics: 'period',
+    tone: 'info',
+    source: 'phase3-registration-contract',
+    scope: 'platform',
+    filters: [],
+    formula: 'unavailable',
+    comparison: 'none',
+    statePolicy: 'phase3-unavailable',
+    destination: { kind: 'none' },
+  },
+  {
+    id: 'pendingRenewals',
+    semantics: 'pointInTime',
+    tone: 'warning',
+    source: 'renewals',
+    scope: 'platform',
+    filters: ['status in (due_soon,overdue)'],
+    formula: 'exact count',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'none' },
+  },
+  {
+    id: 'pendingPayments',
+    semantics: 'pointInTime',
+    tone: 'urgent',
+    source: 'invoices',
+    scope: 'platform',
+    filters: ['status=open'],
+    formula: 'exact count; no money inference',
+    comparison: 'none',
+    statePolicy: 'live',
+    destination: { kind: 'separate-action', href: ADMIN_DASHBOARD_LINKS.finance },
+  },
+  {
+    id: 'documentsAwaitingReview',
+    semantics: 'pointInTime',
+    tone: 'warning',
+    source: 'phase3-current-document-review-contract',
+    scope: 'platform',
+    filters: [],
+    formula: 'unavailable',
+    comparison: 'none',
+    statePolicy: 'phase3-unavailable',
+    destination: { kind: 'none' },
+  },
+] as const satisfies readonly KpiDefinition[];
 
 export type KpiDatum = { value: number };
 

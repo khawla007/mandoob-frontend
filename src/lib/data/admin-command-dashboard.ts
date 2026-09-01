@@ -1,6 +1,6 @@
 import 'server-only';
 import {
-  deriveAssignmentCounts,
+  deriveUnassignedCount,
   orderLeadStageCounts,
   resolveProHealth,
 } from '@/lib/admin-dashboard/aggregates';
@@ -27,19 +27,20 @@ const ACTIVITY_ACTIONS = [
   'invoice_marked_paid',
   'payment_succeeded',
   'refund_issued',
+  'company_pro_assigned',
+  'company_pro_released',
+  'company_onboarding_submitted',
+  'company_activation_attempted',
+  'company_activated',
 ] as const;
-
-type PortfolioCounts = {
-  totalLeads: number;
-  totalPros: number;
-  activePros: number;
-  totalCompanies: number;
-  activeAssignments: number;
-};
 
 type AdminCommandDashboardDeps = {
   authorize: () => Promise<unknown>;
-  loadPortfolio: () => Promise<PortfolioCounts>;
+  loadTotalLeads: () => Promise<number>;
+  loadTotalPros: () => Promise<number>;
+  loadActivePros: () => Promise<number>;
+  loadTotalCompanies: () => Promise<number>;
+  loadActiveAssignments: () => Promise<number>;
   loadPendingRenewals: () => Promise<number>;
   loadPendingPayments: () => Promise<number>;
   loadLeadFunnel: () => Promise<Partial<Record<LeadStage, number>>>;
@@ -77,34 +78,44 @@ async function defaultAuthorize() {
   return requirePlatformOperator();
 }
 
-async function defaultLoadPortfolio(): Promise<PortfolioCounts> {
+async function defaultLoadTotalLeads(): Promise<number> {
   const admin = await serviceClient();
-  const [totalLeads, totalPros, activePros, totalCompanies, activeAssignments] = await Promise.all([
-    exactCount(
-      admin
-        .from('leads')
-        .select('id', { count: 'exact', head: true })
-        .eq('source', 'questionnaire'),
-    ),
-    exactCount(
-      admin.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'pro'),
-    ),
-    exactCount(
-      admin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('role', 'pro')
-        .eq('status', 'active'),
-    ),
-    exactCount(admin.from('company_profiles').select('id', { count: 'exact', head: true })),
-    exactCount(
-      admin
-        .from('pro_company_assignments')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'active'),
-    ),
-  ]);
-  return { totalLeads, totalPros, activePros, totalCompanies, activeAssignments };
+  return exactCount(
+    admin.from('leads').select('id', { count: 'exact', head: true }).eq('source', 'questionnaire'),
+  );
+}
+
+async function defaultLoadTotalPros(): Promise<number> {
+  const admin = await serviceClient();
+  return exactCount(
+    admin.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'pro'),
+  );
+}
+
+async function defaultLoadActivePros(): Promise<number> {
+  const admin = await serviceClient();
+  return exactCount(
+    admin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'pro')
+      .eq('status', 'active'),
+  );
+}
+
+async function defaultLoadTotalCompanies(): Promise<number> {
+  const admin = await serviceClient();
+  return exactCount(admin.from('company_profiles').select('id', { count: 'exact', head: true }));
+}
+
+async function defaultLoadActiveAssignments(): Promise<number> {
+  const admin = await serviceClient();
+  return exactCount(
+    admin
+      .from('pro_company_assignments')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active'),
+  );
 }
 
 async function defaultLoadPendingRenewals(): Promise<number> {
@@ -213,7 +224,11 @@ async function defaultLoadProHealth(): Promise<ProHealthDatum[]> {
 
 const DEFAULT_DEPS: AdminCommandDashboardDeps = {
   authorize: defaultAuthorize,
-  loadPortfolio: defaultLoadPortfolio,
+  loadTotalLeads: defaultLoadTotalLeads,
+  loadTotalPros: defaultLoadTotalPros,
+  loadActivePros: defaultLoadActivePros,
+  loadTotalCompanies: defaultLoadTotalCompanies,
+  loadActiveAssignments: defaultLoadActiveAssignments,
   loadPendingRenewals: defaultLoadPendingRenewals,
   loadPendingPayments: defaultLoadPendingPayments,
   loadLeadFunnel: defaultLoadLeadFunnel,
@@ -231,6 +246,30 @@ function sanitizedError<T>(source: string, logFailure: (source: string) => void)
   return { state: 'error', reason: 'sanitized' };
 }
 
+function settledKpi(
+  result: PromiseSettledResult<number>,
+  source: string,
+  logFailure: (source: string) => void,
+): WidgetState<KpiDatum> {
+  return result.status === 'fulfilled' ? dataKpi(result.value) : sanitizedError(source, logFailure);
+}
+
+function derivedUnassignedKpi(
+  total: PromiseSettledResult<number>,
+  assignments: PromiseSettledResult<number>,
+  source: string,
+  logFailure: (source: string) => void,
+): WidgetState<KpiDatum> {
+  if (total.status === 'rejected' || assignments.status === 'rejected') {
+    return sanitizedError(source, logFailure);
+  }
+  try {
+    return dataKpi(deriveUnassignedCount(total.value, assignments.value));
+  } catch {
+    return sanitizedError(source, logFailure);
+  }
+}
+
 export async function loadAdminCommandDashboard(
   period: DashboardPeriod,
   overrides: Partial<AdminCommandDashboardDeps> = {},
@@ -238,8 +277,23 @@ export async function loadAdminCommandDashboard(
   const deps = { ...DEFAULT_DEPS, ...overrides };
   await deps.authorize();
 
-  const [portfolio, renewals, payments, funnel, activity, proHealth] = await Promise.allSettled([
-    deps.loadPortfolio(),
+  const [
+    totalLeads,
+    totalPros,
+    activePros,
+    totalCompanies,
+    activeAssignments,
+    renewals,
+    payments,
+    funnel,
+    activity,
+    proHealth,
+  ] = await Promise.allSettled([
+    deps.loadTotalLeads(),
+    deps.loadTotalPros(),
+    deps.loadActivePros(),
+    deps.loadTotalCompanies(),
+    deps.loadActiveAssignments(),
     deps.loadPendingRenewals(),
     deps.loadPendingPayments(),
     deps.loadLeadFunnel(),
@@ -247,52 +301,26 @@ export async function loadAdminCommandDashboard(
     deps.loadProHealth(),
   ]);
 
-  const portfolioStates: Partial<Record<KpiId, WidgetState<KpiDatum>>> = {};
-  if (portfolio.status === 'fulfilled') {
-    try {
-      const unassigned = deriveAssignmentCounts({
-        activePros: portfolio.value.activePros,
-        companies: portfolio.value.totalCompanies,
-        activeAssignments: portfolio.value.activeAssignments,
-      });
-      Object.assign(portfolioStates, {
-        totalLeads: dataKpi(portfolio.value.totalLeads),
-        totalPros: dataKpi(portfolio.value.totalPros),
-        totalCompanies: dataKpi(portfolio.value.totalCompanies),
-        activeAssignments: dataKpi(portfolio.value.activeAssignments),
-        unassignedPros: dataKpi(unassigned.unassignedPros),
-        unassignedCompanies: dataKpi(unassigned.unassignedCompanies),
-      });
-    } catch {
-      for (const id of [
-        'totalLeads',
-        'totalPros',
-        'totalCompanies',
-        'activeAssignments',
-        'unassignedPros',
-        'unassignedCompanies',
-      ] as const) {
-        portfolioStates[id] = sanitizedError(id, deps.logFailure);
-      }
-    }
-  } else {
-    for (const id of [
-      'totalLeads',
-      'totalPros',
-      'totalCompanies',
-      'activeAssignments',
-      'unassignedPros',
-      'unassignedCompanies',
-    ] as const) {
-      portfolioStates[id] = sanitizedError(id, deps.logFailure);
-    }
-  }
-
   const funnelRows = funnel.status === 'fulfilled' ? orderLeadStageCounts(funnel.value) : null;
   return {
     period,
     kpis: {
-      ...(portfolioStates as Record<KpiId, WidgetState<KpiDatum>>),
+      totalLeads: settledKpi(totalLeads, 'totalLeads', deps.logFailure),
+      totalPros: settledKpi(totalPros, 'totalPros', deps.logFailure),
+      totalCompanies: settledKpi(totalCompanies, 'totalCompanies', deps.logFailure),
+      activeAssignments: settledKpi(activeAssignments, 'activeAssignments', deps.logFailure),
+      unassignedPros: derivedUnassignedKpi(
+        activePros,
+        activeAssignments,
+        'unassignedPros',
+        deps.logFailure,
+      ),
+      unassignedCompanies: derivedUnassignedKpi(
+        totalCompanies,
+        activeAssignments,
+        'unassignedCompanies',
+        deps.logFailure,
+      ),
       activeRegistrations: unavailableWidget('phase3'),
       pendingRenewals:
         renewals.status === 'fulfilled'

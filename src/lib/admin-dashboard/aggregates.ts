@@ -46,6 +46,11 @@ export function deriveAssignmentCounts(input: {
   };
 }
 
+export function deriveUnassignedCount(total: number, activeAssignments: number): number {
+  if (activeAssignments > total) throw new Error('Assignment invariant violated');
+  return total - activeAssignments;
+}
+
 export function resolveProHealth(assignment: { companyName: string } | null): {
   state: 'assigned' | 'unassigned';
   companyName: string | null;

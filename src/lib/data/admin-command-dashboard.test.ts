@@ -24,13 +24,11 @@ const period: DashboardPeriod = {
 function deps(overrides: Record<string, unknown> = {}) {
   return {
     authorize: async () => ({ id: 'operator' }),
-    loadPortfolio: async () => ({
-      totalLeads: 0,
-      totalPros: 7,
-      activePros: 6,
-      totalCompanies: 8,
-      activeAssignments: 5,
-    }),
+    loadTotalLeads: async () => 0,
+    loadTotalPros: async () => 7,
+    loadActivePros: async () => 6,
+    loadTotalCompanies: async () => 8,
+    loadActiveAssignments: async () => 5,
     loadPendingRenewals: async () => 2,
     loadPendingPayments: async () => 3,
     loadLeadFunnel: async () => ({ new: 4, won: 1 }),
@@ -50,7 +48,7 @@ test('authorizes before starting any service-role source', async () => {
         assert.equal(sourceStarted, false);
         throw new Error('denied');
       },
-      loadPortfolio: async () => {
+      loadTotalLeads: async () => {
         sourceStarted = true;
         throw new Error('must not run');
       },
@@ -110,18 +108,38 @@ test('isolates an inconsistent assignment snapshot instead of failing the page',
   const result = await loadAdminCommandDashboard(
     period,
     deps({
-      loadPortfolio: async () => ({
-        totalLeads: 4,
-        totalPros: 1,
-        activePros: 1,
-        totalCompanies: 1,
-        activeAssignments: 2,
-      }),
+      loadTotalLeads: async () => 4,
+      loadTotalPros: async () => 1,
+      loadActivePros: async () => 1,
+      loadTotalCompanies: async () => 1,
+      loadActiveAssignments: async () => 2,
+    }),
+  );
+  assert.equal(result.kpis.totalLeads.state, 'data');
+  assert.equal(result.kpis.activeAssignments.state, 'data');
+  assert.equal(result.kpis.unassignedPros.state, 'error');
+  assert.equal(result.kpis.unassignedCompanies.state, 'error');
+  assert.equal(result.leadFunnel.state, 'data');
+});
+
+test('isolates each portfolio count and only its dependent derived KPI', async () => {
+  const result = await loadAdminCommandDashboard(
+    period,
+    deps({
+      loadTotalLeads: async () => {
+        throw new Error('lead count unavailable');
+      },
+      loadActivePros: async () => {
+        throw new Error('active PRO count unavailable');
+      },
     }),
   );
   assert.equal(result.kpis.totalLeads.state, 'error');
-  assert.equal(result.kpis.activeAssignments.state, 'error');
-  assert.equal(result.leadFunnel.state, 'data');
+  assert.equal(result.kpis.totalPros.state, 'data');
+  assert.equal(result.kpis.totalCompanies.state, 'data');
+  assert.equal(result.kpis.activeAssignments.state, 'data');
+  assert.equal(result.kpis.unassignedPros.state, 'error');
+  assert.equal(result.kpis.unassignedCompanies.state, 'data');
 });
 
 test('production source uses exact counts, bounded deterministic lists, and batched PRO joins', async () => {
@@ -134,6 +152,8 @@ test('production source uses exact counts, bounded deterministic lists, and batc
     /\.order\('created_at', \{ ascending: false \}\)[\s\S]*\.order\('id', \{ ascending: false \}\)/u,
   );
   assert.match(source, /\.in\('pro_profile_id', proIds\)/u);
+  assert.match(source, /company_pro_assigned/u);
+  assert.match(source, /company_activated/u);
   assert.doesNotMatch(source, /select\([^)]*details/u);
   assert.doesNotMatch(source, /auth_events/u);
 });

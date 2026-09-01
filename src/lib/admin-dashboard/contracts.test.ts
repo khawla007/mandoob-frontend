@@ -22,4 +22,19 @@ test('KPI deck preserves ten stable ordered slots and truthful unavailable contr
     state: 'unavailable',
     reason: 'phase3',
   });
+  for (const definition of KPI_DEFINITIONS) {
+    assert.equal(definition.scope, 'platform');
+    assert.equal(definition.comparison, 'none');
+    assert.ok(definition.source.length > 0);
+    assert.ok(definition.formula.length > 0);
+    assert.ok(Array.isArray(definition.filters));
+  }
+  assert.equal(
+    KPI_DEFINITIONS.find((item) => item.id === 'activeRegistrations')?.statePolicy,
+    'phase3-unavailable',
+  );
+  assert.deepEqual(KPI_DEFINITIONS.find((item) => item.id === 'totalLeads')?.destination, {
+    kind: 'separate-action',
+    href: '/admin/leads',
+  });
 });

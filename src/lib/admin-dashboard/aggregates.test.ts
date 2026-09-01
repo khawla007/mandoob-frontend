@@ -4,6 +4,7 @@ import {
   calculateDelta,
   calculatePercentage,
   deriveAssignmentCounts,
+  deriveUnassignedCount,
   orderLeadStageCounts,
   resolveProHealth,
 } from './aggregates';
@@ -35,6 +36,8 @@ test('assignment counts enforce the one-company invariant', () => {
     () => deriveAssignmentCounts({ activePros: 1, companies: 2, activeAssignments: 3 }),
     /assignment invariant/i,
   );
+  assert.equal(deriveUnassignedCount(8, 5), 3);
+  assert.throws(() => deriveUnassignedCount(1, 2), /assignment invariant/i);
 });
 
 test('PRO health is a transparent assignment label, never a score', () => {
