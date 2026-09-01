@@ -64,6 +64,7 @@
 
 - Create: `src/components/site/about/AboutPageBody.tsx`
 - Create: `src/components/site/about/about-page.test.ts`
+- Modify: `src/app/(public)/about/page.tsx`
 - Modify: `src/app/(public)/public-theme.css`
 
 - [ ] Write a failing contract for: scenic hero; five-item capability panel; Who We Are image/copy/Mission-Vision arrangement; four values; connected five-step process; four equal team-function cards; conversion band.
@@ -92,6 +93,7 @@
 
 - Create: `src/components/site/contact/ContactPageBody.tsx`
 - Create: `src/components/site/contact/contact-page.test.ts`
+- Modify: `src/app/(public)/contact/page.tsx`
 - Modify: `src/app/(public)/public-theme.css`
 
 - [ ] Write a failing contract for: scenic hero with four capabilities; five-channel panel in office/phone/email/WhatsApp/hours order; form/help workspace; WhatsApp/Quick Links row; conversion band.
