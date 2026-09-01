@@ -23,6 +23,7 @@ describe('adminNav', () => {
       'editorial',
       'business',
       'operations',
+      'platform',
       'tenants',
       'authSecurity',
       'account',
@@ -41,6 +42,16 @@ describe('adminNav', () => {
       '/admin/documents',
       '/admin/employees',
       '/admin/renewals',
+    ]);
+  });
+
+  it('exposes only the P2.04-owned platform design routes under Platform', () => {
+    assert.deepEqual(groupHrefs('platform'), [
+      '/admin/reports',
+      '/admin/compliance',
+      '/admin/system-status',
+      '/admin/questionnaire',
+      '/admin/plans',
     ]);
   });
 

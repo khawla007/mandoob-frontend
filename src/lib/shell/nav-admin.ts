@@ -18,6 +18,11 @@ import {
   Users,
   UserRoundSearch,
   CalendarClock,
+  Activity,
+  ClipboardList,
+  ListChecks,
+  Layers3,
+  FileBarChart,
 } from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
@@ -128,6 +133,37 @@ export const adminNav: ShellNavGroup[] = [
         labelFallback: 'Renewals & compliance',
         href: '/admin/renewals',
         icon: CalendarClock,
+      },
+    ],
+  },
+  {
+    labelKey: 'platform',
+    labelFallback: 'Platform',
+    items: [
+      { labelKey: 'reports', labelFallback: 'Reports', href: '/admin/reports', icon: FileBarChart },
+      {
+        labelKey: 'compliance',
+        labelFallback: 'Compliance',
+        href: '/admin/compliance',
+        icon: ClipboardList,
+      },
+      {
+        labelKey: 'systemStatus',
+        labelFallback: 'System status',
+        href: '/admin/system-status',
+        icon: Activity,
+      },
+      {
+        labelKey: 'questionnaireBuilder',
+        labelFallback: 'Questionnaire builder',
+        href: '/admin/questionnaire',
+        icon: ListChecks,
+      },
+      {
+        labelKey: 'plans',
+        labelFallback: 'Plans & allowances',
+        href: '/admin/plans',
+        icon: Layers3,
       },
     ],
   },
