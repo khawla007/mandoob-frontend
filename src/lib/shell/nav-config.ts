@@ -21,6 +21,11 @@ export type ShellNavGroup = {
   items: ShellNavItem[];
 };
 
+export type DashboardBreadcrumb = {
+  label: string;
+  href?: string;
+};
+
 export function resolveActiveShellHref(groups: ShellNavGroup[], pathname: string): string | null {
   const matches = groups
     .flatMap((group) => group.items.flatMap((item) => [item, ...(item.children ?? [])]))
@@ -28,4 +33,24 @@ export function resolveActiveShellHref(groups: ShellNavGroup[], pathname: string
     .toSorted((a, b) => b.href.length - a.href.length);
 
   return matches[0]?.href ?? null;
+}
+
+export function buildShellBreadcrumbs(
+  groups: ShellNavGroup[],
+  pathname: string,
+  home: { label: string; href: string },
+  translate: (key: string | undefined, fallback: string | undefined) => string,
+): DashboardBreadcrumb[] {
+  const activeHref = resolveActiveShellHref(groups, pathname);
+  if (!activeHref || activeHref === home.href) return [{ label: home.label }];
+
+  const item = groups
+    .flatMap((group) => group.items.flatMap((entry) => [entry, ...(entry.children ?? [])]))
+    .find((entry) => entry.href === activeHref);
+  if (!item) return [{ label: home.label }];
+
+  return [
+    { label: home.label, href: home.href },
+    { label: translate(item.labelKey, item.labelFallback) },
+  ];
 }

@@ -555,9 +555,28 @@
     "whatsappTemplates": "WhatsApp templates",
     "costData": "Cost data",
     "payments": "Payments",
+    "companyPortal": "Company portal",
+    "profile": "Profile",
+    "security": "Security",
+    "privacy": "Privacy and data erasure",
+    "terms": "Terms",
+    "navigation": "Navigation",
+    "findPage": "Find a page",
+    "findPageDescription": "Search the pages available in this workspace.",
+    "findPagePlaceholder": "Type a page name…",
+    "noPagesFound": "No available pages found.",
+    "notificationsUnavailable": "Notifications unavailable",
+    "accountMenu": "Account menu",
     "skipToContent": "Skip to content",
     "toggleSidebar": "Toggle sidebar",
     "breadcrumb": "Breadcrumb"
+  },
+  "dashboardStates": {
+    "loading": "Loading workspace",
+    "errorTitle": "This page could not be loaded",
+    "errorDescription": "Try loading this page again. No sensitive error details are shown here.",
+    "retry": "Try again",
+    "safeHome": "Return to a safe page"
   },
   "auth": {
     "email": "Email",

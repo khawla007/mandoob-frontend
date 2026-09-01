@@ -8,6 +8,9 @@ import {
 } from './DashboardSidebar';
 import { DashboardTopbar } from './DashboardTopbar';
 import { DashboardSurfaceScope } from './DashboardSurfaceScope';
+import { DashboardSkipLink } from './DashboardSkipLink';
+import type { DashboardBreadcrumb } from '@/lib/shell/nav-config';
+import type { DashboardNotificationState } from './DashboardNotifications';
 
 const SIGNAL_STUDIO_SIDEBAR_STYLE = {
   '--sidebar-width': '12.25rem',
@@ -24,7 +27,8 @@ export type DashboardLayoutProps = {
   brandLogoUrl?: string | null;
   user: DashboardSidebarUser;
   search?: ReactNode;
-  breadcrumbs?: ReactNode;
+  breadcrumbs?: DashboardBreadcrumb[];
+  notifications?: DashboardNotificationState;
   children: ReactNode;
 };
 
@@ -39,6 +43,7 @@ export function DashboardLayout({
   user,
   search,
   breadcrumbs,
+  notifications,
   children,
 }: DashboardLayoutProps) {
   return (
@@ -48,6 +53,7 @@ export function DashboardLayout({
       style={navKind === 'pro' ? SIGNAL_STUDIO_SIDEBAR_STYLE : undefined}
     >
       <DashboardSurfaceScope />
+      <DashboardSkipLink />
       <DashboardSidebar
         brand={brand}
         brandSubtitle={brandSubtitle}
@@ -59,7 +65,16 @@ export function DashboardLayout({
         user={user}
       />
       <SidebarInset>
-        <DashboardTopbar breadcrumbs={breadcrumbs} search={search} />
+        <DashboardTopbar
+          navKind={navKind}
+          navSlug={navSlug}
+          brand={brand}
+          brandHref={brandHref}
+          user={user}
+          breadcrumbs={breadcrumbs}
+          notifications={notifications}
+          search={search}
+        />
         <div id="main-content" className="dashboard-main flex-1 p-6 md:p-8">
           {children}
         </div>

@@ -555,9 +555,28 @@
     "whatsappTemplates": "قوالب واتساب",
     "costData": "بيانات التكلفة",
     "payments": "المدفوعات",
+    "companyPortal": "بوابة الشركة",
+    "profile": "الملف الشخصي",
+    "security": "الأمان",
+    "privacy": "الخصوصية وحذف البيانات",
+    "terms": "الشروط",
+    "navigation": "التنقل",
+    "findPage": "البحث عن صفحة",
+    "findPageDescription": "ابحث في الصفحات المتاحة ضمن مساحة العمل هذه.",
+    "findPagePlaceholder": "اكتب اسم الصفحة…",
+    "noPagesFound": "لم يتم العثور على صفحات متاحة.",
+    "notificationsUnavailable": "الإشعارات غير متاحة",
+    "accountMenu": "قائمة الحساب",
     "skipToContent": "تخطي إلى المحتوى",
     "toggleSidebar": "تبديل الشريط الجانبي",
     "breadcrumb": "مسار التنقل"
+  },
+  "dashboardStates": {
+    "loading": "جارٍ تحميل مساحة العمل",
+    "errorTitle": "تعذر تحميل هذه الصفحة",
+    "errorDescription": "حاول تحميل هذه الصفحة مجددًا. لا تُعرض هنا أي تفاصيل حساسة عن الخطأ.",
+    "retry": "حاول مجددًا",
+    "safeHome": "العودة إلى صفحة آمنة"
   },
   "auth": {
     "email": "البريد الإلكتروني",
