@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import {
   CONTACT_LIMITS,
   CONTACT_SUBJECTS,
+  type ContactAdapter,
   type ContactFieldError,
   type ContactFieldName,
   type ContactSubmissionResult,
@@ -59,6 +60,25 @@ const RESULT_HEADINGS: Record<ContactSubmissionResult['status'], string> = {
 };
 
 export function ContactForm({ demoOutcome, demoDelayMs = 0 }: ContactFormProps) {
+  const adapter = demoOutcome
+    ? createSyntheticContactAdapter(demoOutcome)
+    : productionContactAdapter;
+
+  return <ContactFormRuntime adapter={adapter} delayMs={demoDelayMs} />;
+}
+
+/** Client-test seam. Never pass adapter functions across a Server Component boundary. */
+export function ContactFormTestHarness({
+  adapter,
+  delayMs = 0,
+}: {
+  adapter: ContactAdapter;
+  delayMs?: number;
+}) {
+  return <ContactFormRuntime adapter={adapter} delayMs={delayMs} />;
+}
+
+function ContactFormRuntime({ adapter, delayMs }: { adapter: ContactAdapter; delayMs: number }) {
   const [values, setValues] = useState<ContactValues>(INITIAL_VALUES);
   const [errors, setErrors] = useState<ContactFieldError[]>([]);
   const [pending, setPending] = useState(false);
@@ -115,12 +135,9 @@ export function ContactForm({ demoOutcome, demoDelayMs = 0 }: ContactFormProps) 
     pendingRef.current = true;
     setPending(true);
     try {
-      if (demoDelayMs > 0) {
-        await new Promise((resolve) => window.setTimeout(resolve, demoDelayMs));
+      if (delayMs > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs));
       }
-      const adapter = demoOutcome
-        ? createSyntheticContactAdapter(demoOutcome)
-        : productionContactAdapter;
       setResult(await adapter.submit(validation.data));
     } catch {
       setResult({
