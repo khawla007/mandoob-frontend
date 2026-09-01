@@ -296,6 +296,35 @@ async function contrastRatio(page: Page, selector: string) {
   });
 }
 
+async function expectAxeCoverage(
+  page: Page,
+  scope: string,
+  approvedContrastExceptions: string[],
+  label: string,
+) {
+  const nonContrast = await new AxeBuilder({ page })
+    .include(scope)
+    .setLegacyMode()
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .disableRules('color-contrast')
+    .analyze();
+  expect(
+    nonContrast.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
+    `${label} non-contrast axe coverage`,
+  ).toEqual([]);
+
+  const colorContrast = new AxeBuilder({ page })
+    .include(scope)
+    .setLegacyMode()
+    .withRules(['color-contrast']);
+  for (const selector of approvedContrastExceptions) colorContrast.exclude(selector);
+  const contrast = await colorContrast.analyze();
+  expect(
+    contrast.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
+    `${label} color-contrast coverage outside documented exceptions`,
+  ).toEqual([]);
+}
+
 for (const entry of matrix) {
   const label = `${entry.viewport.width}x${entry.viewport.height} ${entry.locale.toUpperCase()} ${entry.theme}`;
   test(`pairwise shell matrix — ${label}`, async ({ baseURL, context, page }) => {
@@ -378,19 +407,12 @@ for (const entry of matrix) {
       ).toBeGreaterThanOrEqual(3);
       await expect(page.locator('.nav__cta .btn--accent')).toHaveAttribute('href', '/estimate');
       for (const scope of ['header.nav', 'footer.footer']) {
-        // These documented design-4 accent exceptions are manually checked above for
-        // role, destination, exact palette, and the approved visual contrast floor.
-        const axe = await new AxeBuilder({ page })
-          .include(scope)
-          .exclude('.nav__links [aria-current="page"]')
-          .exclude('.nav__cta .btn--accent')
-          .setLegacyMode()
-          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-          .analyze();
-        expect(
-          axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
+        await expectAxeCoverage(
+          page,
+          scope,
+          ['.nav__links [aria-current="page"]', '.nav__cta .btn--accent'],
           `axe shell scope: ${scope}`,
-        ).toEqual([]);
+        );
       }
     } else {
       const trigger = page.locator('.nav__menu');
@@ -429,17 +451,12 @@ for (const entry of matrix) {
         'Design-4 CTA palette has a documented visual floor, not a WCAG AA normal-text claim',
       ).toBeGreaterThanOrEqual(3);
       await expect(page.locator('.public-mobile-dialog__cta')).toHaveAttribute('href', '/estimate');
-      // The documented design-4 accent CTA exception is manually checked above for
-      // destination, exact palette, and the approved visual contrast floor.
-      const axe = await new AxeBuilder({ page })
-        .include('[role="dialog"]')
-        .exclude('.public-mobile-dialog__cta')
-        .setLegacyMode()
-        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-        .analyze();
-      expect(
-        axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
-      ).toEqual([]);
+      await expectAxeCoverage(
+        page,
+        '[role="dialog"]',
+        ['.public-mobile-dialog__cta'],
+        'axe mobile dialog',
+      );
       await dialog.getByRole('button', { name: expected.language }).click();
       await expect(
         page.getByRole('menuitemradio', { name: entry.locale === 'en' ? 'English' : 'العربية' }),
