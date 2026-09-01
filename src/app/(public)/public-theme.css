@@ -6461,7 +6461,8 @@
     min-block-size: 420px;
     margin-inline-end: 0;
   }
-  .site-public .about-contact-hero__features {
+  .site-public .about-contact-hero__features[data-feature-count='3'],
+  .site-public .about-contact-hero__features[data-feature-count='4'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .site-public .about-contact-info-strip__list {
@@ -6483,7 +6484,8 @@
   .site-public .about-contact-hero__title {
     font-size: clamp(2.6rem, 13vw, 4.25rem);
   }
-  .site-public .about-contact-hero__features {
+  .site-public .about-contact-hero__features[data-feature-count='3'],
+  .site-public .about-contact-hero__features[data-feature-count='4'] {
     grid-template-columns: 1fr;
   }
   .site-public .about-contact-hero__visual {

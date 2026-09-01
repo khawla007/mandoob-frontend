@@ -1,10 +1,10 @@
 import Link from 'next/link';
 
-import type { AboutContactPublicHref } from './publicRoutes';
+import type { PublicActionHref } from './PageScenicHero';
 
 type ConversionLink = {
   label: string;
-  href: AboutContactPublicHref;
+  href: PublicActionHref;
 };
 
 type PublicConversionBandProps = {

@@ -53,6 +53,7 @@ describe('About and Contact shared primitive contracts', () => {
 
   it('accepts exactly three or four hero features and keeps each desktop set in one row', () => {
     const source = readComponent('PageScenicHero.tsx');
+    const taskCss = css.slice(css.indexOf('/* ---------- P1.05'));
     const featureType = source.match(/type ScenicHeroFeatures =([\s\S]*?);\n\n/u)?.[1];
 
     assert.ok(featureType);
@@ -69,6 +70,23 @@ describe('About and Contact shared primitive contracts', () => {
     assert.match(
       css,
       /about-contact-hero__features\[data-feature-count='4'\][^{]*\{[^}]*repeat\(4,/u,
+    );
+
+    const below900 = taskCss.match(
+      /@media \(max-width: 899px\) \{([\s\S]*?)@media \(max-width: 639px\)/u,
+    )?.[1];
+    const below640 = taskCss.match(
+      /@media \(max-width: 639px\) \{([\s\S]*?)@media \(prefers-reduced-motion: reduce\)/u,
+    )?.[1];
+    assert.ok(below900);
+    assert.ok(below640);
+    assert.match(
+      below900,
+      /about-contact-hero__features\[data-feature-count='3'\],\s*\.site-public \.about-contact-hero__features\[data-feature-count='4'\]\s*\{[^}]*repeat\(2,/u,
+    );
+    assert.match(
+      below640,
+      /about-contact-hero__features\[data-feature-count='3'\],\s*\.site-public \.about-contact-hero__features\[data-feature-count='4'\]\s*\{[^}]*grid-template-columns:\s*1fr/u,
     );
   });
 
@@ -99,12 +117,11 @@ describe('About and Contact shared primitive contracts', () => {
     assert.doesNotMatch(source, /['"]use client['"]/u);
   });
 
-  it('restricts every dynamic CTA to the closed P1.05 public route set', () => {
-    const routes = readComponent('publicRoutes.ts');
+  it('restricts every dynamic CTA to the exact closed P1.05 public route set', () => {
     const hero = readComponent('PageScenicHero.tsx');
     const conversion = readComponent('PublicConversionBand.tsx');
-
-    for (const route of [
+    const union = hero.match(/export type PublicActionHref =([\s\S]*?);/u)?.[1];
+    const approved = [
       '/estimate',
       '/contact',
       '/apply',
@@ -112,12 +129,18 @@ describe('About and Contact shared primitive contracts', () => {
       '/mainland',
       '/free-zones',
       '/offshore',
-    ]) {
-      assert.match(routes, new RegExp(`'${route}'`, 'u'));
-    }
-    assert.doesNotMatch(routes, /`\/\$\{string\}`|['"]#|['"]\s*['"]/u);
-    assert.match(hero, /href: AboutContactPublicHref/u);
-    assert.match(conversion, /href: AboutContactPublicHref/u);
+    ];
+
+    assert.ok(union);
+    assert.deepEqual(
+      [...union.matchAll(/'([^']+)'/gu)].map((match) => match[1]),
+      approved,
+    );
+    assert.doesNotMatch(union, /#/u);
+    assert.match(hero, /href: PublicActionHref/u);
+    assert.match(conversion, /import type \{ PublicActionHref \} from '.\/PageScenicHero'/u);
+    assert.match(conversion, /href: PublicActionHref/u);
+    assert.equal(readComponent('publicRoutes.ts'), '');
   });
 
   it('scopes fluid reference geometry, logical properties, themes, focus, and reduced motion', () => {

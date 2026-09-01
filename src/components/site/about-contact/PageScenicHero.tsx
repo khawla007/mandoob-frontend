@@ -3,11 +3,19 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { CompactFeature, type CompactFeatureProps } from './CompactFeature';
-import type { AboutContactPublicHref } from './publicRoutes';
+
+export type PublicActionHref =
+  | '/estimate'
+  | '/contact'
+  | '/apply'
+  | '/knowledge-base'
+  | '/mainland'
+  | '/free-zones'
+  | '/offshore';
 
 type PublicLink = {
   label: string;
-  href: AboutContactPublicHref;
+  href: PublicActionHref;
 };
 
 type ScenicHeroFeatures =
