@@ -3,11 +3,16 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { CompactFeature, type CompactFeatureProps } from './CompactFeature';
+import type { AboutContactPublicHref } from './publicRoutes';
 
 type PublicLink = {
   label: string;
-  href: `/${string}`;
+  href: AboutContactPublicHref;
 };
+
+type ScenicHeroFeatures =
+  | readonly [CompactFeatureProps, CompactFeatureProps, CompactFeatureProps]
+  | readonly [CompactFeatureProps, CompactFeatureProps, CompactFeatureProps, CompactFeatureProps];
 
 type PageScenicHeroProps = {
   headingId: string;
@@ -19,7 +24,7 @@ type PageScenicHeroProps = {
   imageAlt: string;
   primaryCta: PublicLink;
   secondaryCta: PublicLink;
-  features?: readonly CompactFeatureProps[];
+  features?: ScenicHeroFeatures;
 };
 
 export function PageScenicHero({
@@ -62,7 +67,7 @@ export function PageScenicHero({
               </Link>
             </div>
             {features?.length ? (
-              <div className="about-contact-hero__features">
+              <div className="about-contact-hero__features" data-feature-count={features.length}>
                 {features.map((feature) => (
                   <CompactFeature key={feature.title} {...feature} />
                 ))}

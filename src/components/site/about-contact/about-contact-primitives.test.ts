@@ -30,6 +30,18 @@ describe('About and Contact shared primitive contracts', () => {
     assert.doesNotMatch(source, /href\s*=\s*(?:\{\s*)?['"]\s*(?:#[^'"]*)?['"]/u);
   });
 
+  it('renders exactly two wired hero CTA links', () => {
+    const source = readComponent('PageScenicHero.tsx');
+    const actions = source.match(
+      /<div className="about-contact-hero__actions">([\s\S]*?)<\/div>/u,
+    )?.[1];
+
+    assert.ok(actions);
+    assert.equal(actions.match(/<Link\b/gu)?.length, 2);
+    assert.match(actions, /href=\{primaryCta\.href\}/u);
+    assert.match(actions, /href=\{secondaryCta\.href\}/u);
+  });
+
   it('keeps compact features concise and structurally semantic', () => {
     const source = readComponent('CompactFeature.tsx');
 
@@ -37,6 +49,27 @@ describe('About and Contact shared primitive contracts', () => {
     assert.match(source, /aria-hidden="true"/u);
     assert.match(source, /<h2/u);
     assert.match(source, /<p/u);
+  });
+
+  it('accepts exactly three or four hero features and keeps each desktop set in one row', () => {
+    const source = readComponent('PageScenicHero.tsx');
+    const featureType = source.match(/type ScenicHeroFeatures =([\s\S]*?);\n\n/u)?.[1];
+
+    assert.ok(featureType);
+    const tuples = [...featureType.matchAll(/readonly \[([\s\S]*?)\]/gu)];
+    assert.deepEqual(
+      tuples.map((tuple) => tuple[1].match(/CompactFeatureProps/gu)?.length),
+      [3, 4],
+    );
+    assert.match(source, /data-feature-count=\{features\.length\}/u);
+    assert.match(
+      css,
+      /about-contact-hero__features\[data-feature-count='3'\][^{]*\{[^}]*repeat\(3,/u,
+    );
+    assert.match(
+      css,
+      /about-contact-hero__features\[data-feature-count='4'\][^{]*\{[^}]*repeat\(4,/u,
+    );
   });
 
   it('owns an exactly five-column raised information list with a supplied heading', () => {
@@ -66,11 +99,39 @@ describe('About and Contact shared primitive contracts', () => {
     assert.doesNotMatch(source, /['"]use client['"]/u);
   });
 
+  it('restricts every dynamic CTA to the closed P1.05 public route set', () => {
+    const routes = readComponent('publicRoutes.ts');
+    const hero = readComponent('PageScenicHero.tsx');
+    const conversion = readComponent('PublicConversionBand.tsx');
+
+    for (const route of [
+      '/estimate',
+      '/contact',
+      '/apply',
+      '/knowledge-base',
+      '/mainland',
+      '/free-zones',
+      '/offshore',
+    ]) {
+      assert.match(routes, new RegExp(`'${route}'`, 'u'));
+    }
+    assert.doesNotMatch(routes, /`\/\$\{string\}`|['"]#|['"]\s*['"]/u);
+    assert.match(hero, /href: AboutContactPublicHref/u);
+    assert.match(conversion, /href: AboutContactPublicHref/u);
+  });
+
   it('scopes fluid reference geometry, logical properties, themes, focus, and reduced motion', () => {
     assert.match(css, /\.site-public \.about-contact-hero/u);
     assert.match(css, /\.site-public \.about-contact-hero__grid\s*\{[^}]*grid-template-columns:/u);
     assert.match(css, /@media \(min-width: 1280px\)/u);
     assert.match(css, /max-inline-size:\s*1440px/u);
+    assert.match(
+      css,
+      /\.site-public \.about-contact-hero__visual\s*\{[^}]*margin-inline-end:\s*calc\(/u,
+    );
+    const visualRule = css.match(/\.site-public \.about-contact-hero__visual\s*\{([^}]*)\}/u)?.[1];
+    assert.ok(visualRule);
+    assert.doesNotMatch(visualRule, /border(?:-radius)?:/u);
     assert.match(css, /(?:padding|margin|inset|border)-(?:inline|block)/u);
     assert.match(css, /\.dark \.site-public \.about-contact-/u);
     assert.match(css, /var\(--(?:public-|zinc-|ink|paper|accent)/u);

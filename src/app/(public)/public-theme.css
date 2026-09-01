@@ -6290,9 +6290,14 @@
 }
 .site-public .about-contact-hero__features {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(16px, 2vw, 28px);
   margin-block-start: clamp(32px, 4vw, 52px);
+}
+.site-public .about-contact-hero__features[data-feature-count='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.site-public .about-contact-hero__features[data-feature-count='4'] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .site-public .about-contact-feature {
   display: grid;
@@ -6331,9 +6336,8 @@
 .site-public .about-contact-hero__visual {
   position: relative;
   min-block-size: clamp(440px, 43vw, 620px);
+  margin-inline-end: calc(50% - 50vw);
   overflow: hidden;
-  border: 1px solid var(--public-border-subtle);
-  border-radius: var(--r-md);
   background: var(--public-surface);
 }
 .site-public .about-contact-hero__visual > img {
@@ -6455,6 +6459,7 @@
   }
   .site-public .about-contact-hero__visual {
     min-block-size: 420px;
+    margin-inline-end: 0;
   }
   .site-public .about-contact-hero__features {
     grid-template-columns: repeat(2, minmax(0, 1fr));

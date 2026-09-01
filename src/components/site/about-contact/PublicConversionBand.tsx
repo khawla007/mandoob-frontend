@@ -1,8 +1,10 @@
 import Link from 'next/link';
 
+import type { AboutContactPublicHref } from './publicRoutes';
+
 type ConversionLink = {
   label: string;
-  href: `/${string}`;
+  href: AboutContactPublicHref;
 };
 
 type PublicConversionBandProps = {
