@@ -20,6 +20,13 @@ const componentSources = [
 const allSource = componentSources.map(({ source }) => source).join('\n');
 const publicTheme = readFileSync(join(process.cwd(), 'src/app/(public)/public-theme.css'), 'utf8');
 
+function declarations(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  const block = publicTheme.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'u'))?.[1];
+  assert.ok(block, `missing ${selector} declarations`);
+  return block;
+}
+
 describe('homepage claims and CTA contract', () => {
   it('uses the August 1 shared accent color and white text for homepage CTAs', () => {
     const hero = componentSources.find(({ file }) => file === 'HeroSection.tsx')?.source ?? '';
@@ -51,22 +58,11 @@ describe('homepage claims and CTA contract', () => {
   });
 
   it('uses the canonical design-4 eyebrow and inline-link treatment', () => {
-    assert.match(
-      publicTheme,
-      /\.site-public \.eyebrow--accent\s*\{[^}]*color:\s*var\(--zinc-500\)/u,
-    );
-    assert.match(
-      publicTheme,
-      /\.site-public \.home-text-link\s*\{[^}]*color:\s*var\(--accent\)/u,
-    );
-    assert.match(
-      publicTheme,
-      /\.site-public \.home-text-link\s*\{[^}]*font-size:\s*var\(--fs-14\)/u,
-    );
-    assert.match(
-      publicTheme,
-      /\.site-public \.home-text-link\s*\{[^}]*font-weight:\s*600/u,
-    );
+    assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
+    const homeLink = declarations('.site-public .home-text-link');
+    assert.match(homeLink, /color:\s*var\(--accent\)/u);
+    assert.match(homeLink, /font-size:\s*var\(--fs-14\)/u);
+    assert.match(homeLink, /font-weight:\s*600(?:;|$)/u);
   });
 
   it('keeps the testimonial heading visible without waiting for a reveal observer', () => {

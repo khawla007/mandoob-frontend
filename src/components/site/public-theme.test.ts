@@ -99,8 +99,8 @@ renderTest('public light tokens match the canonical design-4 palette and fonts',
   for (const [name, value] of Object.entries(expected)) {
     assert.equal(rawToken(block, name).toUpperCase(), value);
   }
-  assert.match(rawToken(block, 'font'), /var\(--font-geist-sans\)/u);
-  assert.match(rawToken(block, 'mono-font'), /var\(--font-geist-mono\)/u);
+  assert.match(rawToken(block, 'font'), /^var\(--font-geist-sans\)(?:,|$)/u);
+  assert.match(rawToken(block, 'mono-font'), /^var\(--font-geist-mono\)(?:,|$)/u);
 });
 
 renderTest('public dark tokens retain accent CTA colors and invert the neutral ramp', () => {
@@ -118,6 +118,8 @@ renderTest('public dark tokens retain accent CTA colors and invert the neutral r
     'zinc-700': '#D4D4D8',
     'zinc-900': '#E4E4E7',
     'zinc-950': '#F4F4F5',
+    'pb-border': '#27272A',
+    'pb-border-dark': '#3F3F46',
     accent: '#FF5722',
     'accent-hover': '#E64A19',
   } as const;
@@ -142,7 +144,7 @@ renderTest('design-4 component colors and weights are preserved', () => {
   const homeLink = declarations('.site-public .home-text-link');
   assert.match(homeLink, /color:\s*var\(--accent\)/u);
   assert.match(homeLink, /font-size:\s*var\(--fs-14\)/u);
-  assert.match(homeLink, /font-weight:\s*600/u);
+  assert.match(homeLink, /font-weight:\s*600(?:;|$)/u);
 });
 
 renderTest('accent buttons preserve the August 1 shared palette', () => {
@@ -176,6 +178,22 @@ renderTest('accent-button overrides do not replace the August 1 base palette', (
       body,
       new RegExp(`background:\\s*var\\(${expected}\\)`, 'u'),
       `${selector.trim()} bypasses ${expected}`,
+    );
+  }
+});
+
+renderTest('dark accent-button overrides preserve the shared white CTA text', () => {
+  const darkColorOverrides = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].filter(
+    ([, selector, body]) =>
+      /\.dark\s+\.site-public\s+\.btn--accent(?![-\w])/u.test(selector) &&
+      /(?:^|;)\s*color\s*:/u.test(body),
+  );
+
+  for (const [, selector, body] of darkColorOverrides) {
+    assert.match(
+      body,
+      /color:\s*#fff\b/iu,
+      `${selector.trim()} overrides the shared white CTA text`,
     );
   }
 });
