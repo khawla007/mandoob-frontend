@@ -2588,7 +2588,139 @@
     "dashboard": {
       "title": "Overview",
       "intro": "Cross-workspace authentication and identity signals.",
-      "lastDaysLive": "Last 30 days · live"
+      "lastDaysLive": "Last 30 days · live",
+      "command": {
+        "eyebrow": "Platform operations / Dubai",
+        "title": "Super Admin command dashboard",
+        "description": "Portfolio movement, assignment health, and operational attention across Mandoob.",
+        "period": {
+          "label": "Reporting period",
+          "days": "{days} days",
+          "range": "Reporting period · {range}",
+          "generatedAt": "Generated {timestamp}"
+        },
+        "actions": {
+          "leads": "Open leads",
+          "companies": "Open companies",
+          "openLeads": "Open leads",
+          "openAudit": "Open audit",
+          "openPros": "Open PROs",
+          "openFinance": "Open finance"
+        },
+        "kpis": {
+          "label": "Platform portfolio indicators",
+          "totalLeads": {
+            "label": "Total Leads",
+            "helper": "All questionnaire leads · point in time"
+          },
+          "totalPros": {
+            "label": "Total PROs",
+            "helper": "All registered PRO profiles · point in time"
+          },
+          "totalCompanies": {
+            "label": "Total Companies",
+            "helper": "Company records · point in time"
+          },
+          "activeAssignments": {
+            "label": "Active PRO–Company Assignments",
+            "helper": "Unique active assignment ledger"
+          },
+          "unassignedPros": {
+            "label": "Unassigned PROs",
+            "helper": "Active PROs without an active Company"
+          },
+          "unassignedCompanies": {
+            "label": "Unassigned Companies",
+            "helper": "Companies without an active PRO"
+          },
+          "activeRegistrations": {
+            "label": "Active Registrations",
+            "helper": "Selected reporting period"
+          },
+          "pendingRenewals": {
+            "label": "Pending Renewals",
+            "helper": "Due soon or overdue · point in time"
+          },
+          "pendingPayments": {
+            "label": "Pending Payments",
+            "helper": "Open invoices · point in time"
+          },
+          "documentsAwaitingReview": {
+            "label": "Documents Awaiting Review",
+            "helper": "Current document versions · point in time"
+          }
+        },
+        "unavailable": {
+          "title": "Unavailable",
+          "phase3": "Unavailable — Phase 3 contract required"
+        },
+        "error": {
+          "title": "This source could not be loaded",
+          "short": "Unavailable",
+          "description": "The issue is isolated; other dashboard sources remain available."
+        },
+        "panels": {
+          "registrationOverview": {
+            "title": "Registration Overview",
+            "description": "Registrations opened, active, and completed during the reporting period."
+          },
+          "leadFunnel": {
+            "title": "Lead Funnel",
+            "description": "Current platform lead stages from the accepted CRM contract.",
+            "denominator": "Percentages use all questionnaire leads as the denominator; an empty funnel is 0%."
+          },
+          "activity": {
+            "title": "Recent Activity",
+            "description": "Sanitized operational events in the reporting period.",
+            "empty": "No supported operational activity was recorded in this period."
+          },
+          "proHealth": {
+            "title": "PRO Operational Health",
+            "description": "Assignment state for active PROs; no ranking or composite score.",
+            "empty": "No active PRO profiles are available.",
+            "unnamed": "Unnamed PRO",
+            "notAssigned": "No Company assigned"
+          },
+          "revenue": {
+            "title": "Revenue Overview",
+            "description": "Collected revenue requires successful payments less valid refunds, by currency and period."
+          },
+          "registrationStages": {
+            "title": "Registrations by Stage",
+            "description": "Current registration-stage distribution with a defined denominator."
+          }
+        },
+        "table": {
+          "stage": "Stage",
+          "count": "Count",
+          "percentage": "Percentage",
+          "pro": "PRO",
+          "company": "Company",
+          "health": "Assignment"
+        },
+        "leadStages": {
+          "new": "New",
+          "contacted": "Contacted",
+          "qualified": "Qualified",
+          "won": "Won",
+          "lost": "Lost"
+        },
+        "proHealth": {
+          "assigned": "Assigned",
+          "unassigned": "Unassigned"
+        },
+        "activities": {
+          "platform": "Platform",
+          "lead_created": "Lead created",
+          "lead_assigned": "Lead assigned",
+          "lead_stage_changed": "Lead stage updated",
+          "invoice_created": "Invoice created",
+          "invoice_voided": "Invoice voided",
+          "invoice_marked_paid": "Invoice marked paid",
+          "payment_succeeded": "Payment received",
+          "refund_issued": "Refund issued"
+        }
+      }
     },
     "stats": {
       "totalUsers": "Total users",
