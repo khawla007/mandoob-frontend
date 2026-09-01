@@ -2526,7 +2526,11 @@
         "eyebrow": "عمليات الشركات",
         "title": "الشركات",
         "intro": "إدارة مساحات عمل الشركات القانونية وتعيين PRO واحد لكل شركة. يتم عرض {count}.",
-        "createButton": "إنشاء شركة"
+        "createButton": "إنشاء شركة",
+        "pageScope": "الصفحة الحالية · {count} شركة ظاهرة",
+        "summaryAssigned": "مُعيّنة في هذه الصفحة",
+        "summaryUnassigned": "غير مُعيّنة في هذه الصفحة",
+        "summaryLifecycleAttention": "تحتاج متابعة دورة الحياة في هذه الصفحة"
       },
       "directory": {
         "title": "دليل الشركات",
@@ -2599,7 +2603,17 @@
         "slug": "معرّف مساحة العمل",
         "tradeLicense": "الرخصة التجارية",
         "jurisdiction": "الاختصاص القضائي",
-        "notProvided": "غير متوفر"
+        "notProvided": "غير متوفر",
+        "stateDefinitions": {
+          "title": "حالات تشغيلية منفصلة",
+          "description": "تأتي هذه الحالات من مصادر منفصلة ولا يمكن استخدامها بالتبادل.",
+          "legal": "اكتمال الملف القانوني",
+          "activation": "تفعيل مساحة العمل",
+          "registration": "التسجيل لدى الجهة",
+          "registrationUnavailable": "غير متصل بمصدر تابع للجهة",
+          "lifecycle": "دورة حياة الشركة",
+          "assignment": "تعيين PRO"
+        }
       },
       "assignment": {
         "assignTitle": "تعيين PRO",

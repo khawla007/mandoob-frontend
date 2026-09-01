@@ -16,6 +16,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CompanyAppliedFilters } from '@/components/admin/CompanyAppliedFilters';
+import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
+import { summarizeVisibleCompanies } from '@/lib/admin-management/company-summaries';
 import {
   Table,
   TableBody,
@@ -49,29 +51,48 @@ export default async function CompaniesPage({
   ]);
   const listQuery = parseCompanyListQuery(sp);
   const companies = await listCompanies(listQuery);
+  const summary = summarizeVisibleCompanies(companies.rows);
   const canonicalHref = canonicalCompanyListHref(listQuery, companies.totalPages);
   if (canonicalHref) redirect(canonicalHref);
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-primary font-mono text-xs tracking-[0.14em] uppercase">
-            {t('page.eyebrow')}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('page.title')}</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-            {t('page.intro', { count: companies.total })}
-          </p>
+      <DashboardPageHeader
+        eyebrow={t('page.eyebrow')}
+        title={t('page.title')}
+        description={t('page.intro', { count: companies.total })}
+        primaryAction={
+          <Button asChild className="min-h-11 sm:min-h-9">
+            <Link href="/admin/companies/new">
+              <Plus aria-hidden="true" />
+              {t('page.createButton')}
+            </Link>
+          </Button>
+        }
+      />
+
+      <section aria-labelledby="visible-company-summary" className="space-y-2">
+        <p id="visible-company-summary" className="text-muted-foreground text-xs">
+          {t('page.pageScope', { count: summary.visible })}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(
+            [
+              ['summaryAssigned', summary.assigned],
+              ['summaryUnassigned', summary.unassigned],
+              ['summaryLifecycleAttention', summary.lifecycleAttention],
+            ] as const
+          ).map(([label, value]) => (
+            <Card key={label}>
+              <CardContent className="p-4">
+                <p className="text-muted-foreground text-xs">{t(`page.${label}`)}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-        <Button asChild className="min-h-11 sm:min-h-9">
-          <Link href="/admin/companies/new">
-            <Plus aria-hidden="true" />
-            {t('page.createButton')}
-          </Link>
-        </Button>
-      </div>
+      </section>
 
       <Card className="overflow-hidden">
         <CardHeader className="border-border/60 border-b">

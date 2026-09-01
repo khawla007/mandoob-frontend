@@ -2526,7 +2526,11 @@
         "eyebrow": "Company operations",
         "title": "Companies",
         "intro": "Manage legal company workspaces and their one-to-one PRO assignments. Showing {count}.",
-        "createButton": "Create company"
+        "createButton": "Create company",
+        "pageScope": "Current page · {count} visible companies",
+        "summaryAssigned": "Assigned on this page",
+        "summaryUnassigned": "Unassigned on this page",
+        "summaryLifecycleAttention": "Lifecycle attention on this page"
       },
       "directory": {
         "title": "Company directory",
@@ -2599,7 +2603,17 @@
         "slug": "Workspace slug",
         "tradeLicense": "Trade licence",
         "jurisdiction": "Jurisdiction",
-        "notProvided": "Not provided"
+        "notProvided": "Not provided",
+        "stateDefinitions": {
+          "title": "Distinct operating states",
+          "description": "These states come from separate sources and are not interchangeable.",
+          "legal": "Legal file completion",
+          "activation": "Workspace activation",
+          "registration": "Authority registration",
+          "registrationUnavailable": "Not connected to an authority source",
+          "lifecycle": "Company lifecycle",
+          "assignment": "PRO assignment"
+        }
       },
       "assignment": {
         "assignTitle": "Assign a PRO",
