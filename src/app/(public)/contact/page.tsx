@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 
 import { ContactPageBody } from '@/components/site/contact/ContactPageBody';
+import { resolveContactDemoMode } from '@/lib/public-contact/demo-mode';
 
 export const metadata: Metadata = {
   title: 'Contact Mandoob',
@@ -9,9 +10,17 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://mandoob.ae/contact' },
 };
 
-export default async function ContactPage() {
+type ContactPageProps = {
+  searchParams: Promise<{ demo?: string | string[] }>;
+};
+
+export default async function ContactPage({ searchParams }: ContactPageProps) {
   const tContact = await getTranslations('contact');
   const tSite = await getTranslations('site');
+  const demoMode =
+    process.env.NODE_ENV === 'development'
+      ? resolveContactDemoMode((await searchParams).demo, process.env.NODE_ENV)
+      : undefined;
 
   return (
     <ContactPageBody
@@ -21,6 +30,8 @@ export default async function ContactPage() {
         description: tSite('footer.description'),
         estimateLabel: tSite('getEstimate'),
       }}
+      demoOutcome={demoMode?.outcome}
+      demoDelayMs={demoMode?.delayMs}
     />
   );
 }

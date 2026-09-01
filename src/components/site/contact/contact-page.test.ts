@@ -46,7 +46,7 @@ describe('strict-parity Contact page', () => {
 
     assert.equal(body.match(/<PageScenicHero\b/gu)?.length, 1);
     assert.equal(body.match(/<RaisedInfoStrip\b/gu)?.length, 1);
-    assert.equal(body.match(/<ContactForm\s*\/>/gu)?.length, 1);
+    assert.equal(body.match(/<ContactForm\b/gu)?.length, 1);
     assert.equal(body.match(/<PublicConversionBand\b/gu)?.length, 1);
     assert.match(route, /import \{ ContactPageBody \}/u);
     assert.match(route, /<ContactPageBody[\s\S]*heroCopy=/u);
@@ -97,8 +97,18 @@ describe('strict-parity Contact page', () => {
       assert.match(categories, new RegExp(`title: '${label}'`, 'u'));
     }
     assert.match(categories, /bank[^']*(?:subject to|depend|not guaranteed)/iu);
-    assert.match(body, /<ContactForm\s*\/>/u);
+    assert.match(body, /<ContactForm\b[^>]*demoOutcome=\{demoOutcome\}/u);
     assert.match(body, /aria-labelledby="contact-help-title"/u);
+  });
+
+  it('exposes synthetic form outcomes only through the development-only browser evidence seam', () => {
+    assert.match(route, /process\.env\.NODE_ENV === 'development'/u);
+    assert.match(route, /resolveContactDemoMode/u);
+    assert.match(route, /demoOutcome=\{demoMode\?\.outcome\}/u);
+    assert.match(route, /demoDelayMs=\{demoMode\?\.delayMs\}/u);
+    assert.match(body, /demoOutcome\?: SyntheticContactOutcome/u);
+    assert.match(body, /demoDelayMs\?: number/u);
+    assert.match(body, /<ContactForm demoOutcome=\{demoOutcome\} demoDelayMs=\{demoDelayMs\} \/>/u);
   });
 
   it('keeps WhatsApp unavailable and limits Quick Links to working safe routes', () => {

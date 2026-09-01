@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import { ContactForm } from '@/components/contact/ContactForm';
+import type { SyntheticContactOutcome } from '@/lib/public-contact/demo-adapter';
 
 import { PageScenicHero } from '../about-contact/PageScenicHero';
 import { PublicConversionBand } from '../about-contact/PublicConversionBand';
@@ -126,9 +127,11 @@ type ContactPageBodyProps = {
     description: string;
     estimateLabel: string;
   };
+  demoOutcome?: SyntheticContactOutcome;
+  demoDelayMs?: number;
 };
 
-export function ContactPageBody({ heroCopy }: ContactPageBodyProps) {
+export function ContactPageBody({ heroCopy, demoOutcome, demoDelayMs }: ContactPageBodyProps) {
   return (
     <>
       <PageScenicHero
@@ -175,7 +178,7 @@ export function ContactPageBody({ heroCopy }: ContactPageBodyProps) {
       <section className="contact-page__workspace" aria-label="Send a message and help topics">
         <div className="contact-page__workspace-grid container">
           <div className="contact-page__form-panel">
-            <ContactForm />
+            <ContactForm demoOutcome={demoOutcome} demoDelayMs={demoDelayMs} />
           </div>
 
           <aside className="contact-page__help" aria-labelledby="contact-help-title">

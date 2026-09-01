@@ -74,7 +74,11 @@ describe('About composition and Contact route shell', () => {
 
   it('preserves claim-safe English and Arabic catalog usage in the server route', () => {
     assert.match(contactSource, /import \{ getTranslations \} from 'next-intl\/server';/u);
-    assert.match(contactSource, /export default async function ContactPage\(\)/u);
+    assert.match(
+      contactSource,
+      /export default async function ContactPage\(\{ searchParams \}: ContactPageProps\)/u,
+    );
+    assert.match(contactSource, /process\.env\.NODE_ENV === 'development'/u);
     assert.match(contactSource, /await getTranslations\('contact'\)/u);
     assert.match(contactSource, /await getTranslations\('site'\)/u);
     assert.match(contactSource, /eyebrow:\s*tContact\('eyebrow'\)/u);
