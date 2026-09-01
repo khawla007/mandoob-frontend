@@ -20,9 +20,9 @@
 - Modify: `src/app/sitemap.ts`
 - Modify: `src/app/sitemap.test.ts`
 
-- [ ] Add source-contract tests for one `h1`, static metadata/canonicals, the exact seven About and five Contact section IDs, accepted shell ownership, `/estimate` and `/contact` CTAs, valid legal/quick-link routes, sitemap entries, and rejection of `320+`, `45+`, `AED 2.4M`, `98%`, response/timing/fine/guarantee claims, sample contact values, and hash links.
+- [ ] Add source-contract tests for one `h1`, static metadata/canonicals, accepted shell ownership, `/estimate` and `/contact` CTAs, sitemap entries, and rejection of `320+`, `45+`, `AED 2.4M`, `98%`, response/timing/fine/guarantee claims, sample contact values, and hash links. Tasks 4 and 6 own the exact section-order and quick-link contracts once their page-body components exist.
 - [ ] Run the new tests and record the expected RED failures against the generic About and disabled Contact pages.
-- [ ] Add minimal server route shells rendering `AboutPageBody` and `ContactPageBody`, static metadata, and `/about` plus `/contact` sitemap paths.
+- [ ] Add temporary safe server route shells with one `h1`, real `/estimate` and `/contact` links, static metadata, and `/about` plus `/contact` sitemap paths; Tasks 4 and 6 replace the temporary bodies.
 - [ ] Re-run the focused tests to GREEN and commit.
 
 ### Task 2: Define and prove contact contracts
