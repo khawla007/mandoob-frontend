@@ -1,0 +1,86 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+
+import { CompactFeature, type CompactFeatureProps } from './CompactFeature';
+
+type PublicLink = {
+  label: string;
+  href: `/${string}`;
+};
+
+type PageScenicHeroProps = {
+  headingId: string;
+  eyebrow: string;
+  title: ReactNode;
+  description: string;
+  currentLabel: string;
+  imageSrc: `/${string}`;
+  imageAlt: string;
+  primaryCta: PublicLink;
+  secondaryCta: PublicLink;
+  features?: readonly CompactFeatureProps[];
+};
+
+export function PageScenicHero({
+  headingId,
+  eyebrow,
+  title,
+  description,
+  currentLabel,
+  imageSrc,
+  imageAlt,
+  primaryCta,
+  secondaryCta,
+  features,
+}: PageScenicHeroProps) {
+  return (
+    <section className="about-contact-hero" aria-labelledby={headingId}>
+      <div className="about-contact-hero__frame container">
+        <nav className="about-contact-breadcrumb" aria-label="Breadcrumb">
+          <ol>
+            <li>
+              <Link href="/">Home</Link>
+            </li>
+            <li aria-current="page">{currentLabel}</li>
+          </ol>
+        </nav>
+
+        <div className="about-contact-hero__grid">
+          <div className="about-contact-hero__copy">
+            <span className="eyebrow eyebrow--accent">{eyebrow}</span>
+            <h1 id={headingId} className="about-contact-hero__title">
+              {title}
+            </h1>
+            <p className="about-contact-hero__description">{description}</p>
+            <div className="about-contact-hero__actions">
+              <Link className="btn btn--accent" href={primaryCta.href}>
+                {primaryCta.label}
+              </Link>
+              <Link className="btn btn--outline" href={secondaryCta.href}>
+                {secondaryCta.label}
+              </Link>
+            </div>
+            {features?.length ? (
+              <div className="about-contact-hero__features">
+                {features.map((feature) => (
+                  <CompactFeature key={feature.title} {...feature} />
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="about-contact-hero__visual">
+            <Image
+              src={imageSrc}
+              alt={imageAlt}
+              fill
+              sizes="(min-width: 1280px) 48vw, (min-width: 900px) 46vw, 100vw"
+              fetchPriority="high"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
