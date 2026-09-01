@@ -1131,6 +1131,217 @@
   }
 }
 
+/* ---------- Contact page P1.05 ---------- */
+.site-public .contact-page__workspace,
+.site-public .contact-page__support-row {
+  padding-block: clamp(36px, 4vw, 56px);
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-hero__frame {
+  padding-block-start: 20px;
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-breadcrumb ol {
+  margin-block-end: 22px;
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-hero__copy {
+  padding-block: 10px 38px;
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-hero__title {
+  margin-block: 10px 14px;
+  font-size: clamp(2.75rem, 4.4vw, 4.2rem);
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-hero__actions {
+  margin-block-start: 20px;
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-hero__features {
+  gap: 18px;
+  margin-block-start: 22px;
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-feature__icon {
+  inline-size: 40px;
+  block-size: 40px;
+}
+.site-public .about-contact-hero.contact-page__hero .about-contact-hero__visual {
+  min-block-size: 430px;
+}
+.site-public .contact-page__hero + .about-contact-info-strip .about-contact-info-strip__list > li {
+  padding-block: 14px;
+}
+.site-public .contact-page__channel-status,
+.site-public .contact-page__channel-status + span {
+  display: block;
+}
+.site-public .contact-page__channel-status {
+  margin-block-end: 3px;
+  color: var(--public-text-primary);
+  font-size: var(--fs-12);
+}
+.site-public .contact-page__workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.14fr) minmax(360px, 0.86fr);
+  align-items: start;
+  gap: clamp(32px, 4.4vw, 64px);
+  max-inline-size: 1340px;
+}
+.site-public .contact-page__form-panel,
+.site-public .contact-page__help,
+.site-public .contact-page__whatsapp,
+.site-public .contact-page__quick-links {
+  min-inline-size: 0;
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+}
+.site-public .contact-page__form-panel {
+  padding-block: clamp(24px, 2.5vw, 34px);
+  padding-inline: clamp(22px, 3vw, 40px);
+  box-shadow: 0 18px 48px color-mix(in oklch, var(--zinc-950) 8%, transparent);
+}
+.site-public .contact-page__help {
+  padding-block: clamp(24px, 2.5vw, 34px);
+  padding-inline: clamp(22px, 2.6vw, 34px);
+}
+.site-public .contact-page__help > h2,
+.site-public .contact-page__quick-links > h2,
+.site-public .contact-page__whatsapp h2 {
+  margin-block-start: 9px;
+  color: var(--public-text-primary);
+  font-size: clamp(1.55rem, 2vw, 2rem);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+.site-public .contact-page__help > p,
+.site-public .contact-page__whatsapp p {
+  margin-block-start: 10px;
+  color: var(--public-text-muted);
+  font-size: var(--fs-14);
+  line-height: 1.55;
+}
+.site-public .contact-page__help-list {
+  display: grid;
+  gap: 0;
+  margin-block-start: 18px;
+}
+.site-public .contact-page__help-list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 13px;
+  padding-block: 13px;
+  border-block-start: 1px solid var(--public-border-subtle);
+}
+.site-public .contact-page__help-icon,
+.site-public .contact-page__support-icon {
+  display: grid;
+  inline-size: 40px;
+  block-size: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--r-pill);
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.site-public .contact-page__help-icon svg,
+.site-public .contact-page__support-icon svg {
+  inline-size: 20px;
+  block-size: 20px;
+}
+.site-public .contact-page__help-list h3 {
+  color: var(--public-text-primary);
+  font-size: var(--fs-15);
+  letter-spacing: -0.015em;
+}
+.site-public .contact-page__help-list p {
+  margin-block-start: 4px;
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+  line-height: 1.45;
+}
+.site-public .contact-page__support-row {
+  border-block-start: 1px solid var(--public-border-subtle);
+  background: var(--public-surface);
+}
+.site-public .contact-page__support-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: clamp(24px, 3vw, 42px);
+  max-inline-size: 1340px;
+}
+.site-public .contact-page__whatsapp {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  align-items: start;
+  gap: 16px;
+  padding-block: 30px;
+  padding-inline: clamp(22px, 3vw, 38px);
+}
+.site-public .contact-page__quick-links {
+  padding-block: 26px;
+  padding-inline: clamp(22px, 3vw, 38px);
+}
+.site-public .contact-page__quick-links ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 22px;
+  margin-block-start: 16px;
+}
+.site-public .contact-page__quick-links li {
+  border-block-start: 1px solid var(--public-border-subtle);
+}
+.site-public .contact-page__quick-links a {
+  display: flex;
+  min-block-size: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--public-text-primary);
+  font-size: var(--fs-14);
+  font-weight: 650;
+  transition: color var(--dur) var(--ease);
+}
+.site-public .contact-page__quick-links a:hover {
+  color: var(--accent-ink);
+}
+.site-public .contact-page__quick-links a:focus-visible {
+  outline: 3px solid var(--public-focus-ring);
+  outline-offset: 3px;
+}
+.site-public .contact-page__quick-links svg {
+  inline-size: 17px;
+  block-size: 17px;
+}
+.site-public
+  .contact-page__support-row
+  + .about-contact-conversion
+  .about-contact-conversion__inner {
+  min-block-size: 144px;
+  padding-block: 24px;
+}
+.dark .site-public .contact-page__form-panel,
+.dark .site-public .contact-page__help,
+.dark .site-public .contact-page__whatsapp,
+.dark .site-public .contact-page__quick-links,
+.dark .site-public .contact-page__support-row {
+  background: var(--public-surface-elevated);
+}
+
+@media (max-width: 899px) {
+  .site-public .contact-page__workspace-grid,
+  .site-public .contact-page__support-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 639px) {
+  .site-public .contact-page__quick-links ul {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-public .contact-page__quick-links a {
+    transition: none;
+  }
+}
+
 /* ---------- P1.03 reference-led homepage body ---------- */
 .site-public .home-setup-section,
 .site-public .home-flow-section,

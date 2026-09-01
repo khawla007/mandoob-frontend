@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+
+import { ContactPageBody } from '@/components/site/contact/ContactPageBody';
 
 export const metadata: Metadata = {
   title: 'Contact Mandoob',
@@ -13,19 +14,13 @@ export default async function ContactPage() {
   const tSite = await getTranslations('site');
 
   return (
-    <section className="section" aria-labelledby="contact-title">
-      <div className="container">
-        <header className="section__head">
-          <span className="eyebrow">{tContact('eyebrow')}</span>
-          <h1 id="contact-title" className="h2">
-            {tContact('title')}
-          </h1>
-          <p className="lede">{tSite('footer.description')}</p>
-        </header>
-        <Link className="btn btn--accent" href="/estimate">
-          {tSite('getEstimate')}
-        </Link>
-      </div>
-    </section>
+    <ContactPageBody
+      heroCopy={{
+        eyebrow: tContact('eyebrow'),
+        title: tContact('title'),
+        description: tSite('footer.description'),
+        estimateLabel: tSite('getEstimate'),
+      }}
+    />
   );
 }
