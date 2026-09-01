@@ -23,6 +23,7 @@ test('PRO hero has compact desktop and mobile spacing without a fixed height', (
 });
 
 test('PRO hero inherits the shared design-4 accent CTA colors', () => {
+  assert.match(component, /className="btn btn--accent"/);
   assert.match(
     css,
     /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--accent\);[^}]*color:\s*#fff;/,

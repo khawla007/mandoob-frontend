@@ -50,6 +50,11 @@ test('Knowledge Base hero has scoped natural-height responsive rules', () => {
 });
 
 test('Knowledge Base hero inherits the shared design-4 accent CTA colors', () => {
+  const hero = page.slice(
+    page.indexOf('{/* ============ HERO'),
+    page.indexOf('{/* ============ FEATURED'),
+  );
+  assert.match(hero, /className="btn btn--accent"/);
   assert.match(
     css,
     /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--accent\);[^}]*color:\s*#fff;/,

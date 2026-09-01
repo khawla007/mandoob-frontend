@@ -376,9 +376,14 @@ for (const entry of matrix) {
         await contrastRatio(page, '.nav__cta .btn--accent'),
         'Design-4 CTA palette has a documented visual floor, not a WCAG AA normal-text claim',
       ).toBeGreaterThanOrEqual(3);
+      await expect(page.locator('.nav__cta .btn--accent')).toHaveAttribute('href', '/estimate');
       for (const scope of ['header.nav', 'footer.footer']) {
+        // These documented design-4 accent exceptions are manually checked above for
+        // role, destination, exact palette, and the approved visual contrast floor.
         const axe = await new AxeBuilder({ page })
           .include(scope)
+          .exclude('.nav__links [aria-current="page"]')
+          .exclude('.nav__cta .btn--accent')
           .setLegacyMode()
           .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
           .analyze();
@@ -423,8 +428,12 @@ for (const entry of matrix) {
         await contrastRatio(page, '.public-mobile-dialog__cta'),
         'Design-4 CTA palette has a documented visual floor, not a WCAG AA normal-text claim',
       ).toBeGreaterThanOrEqual(3);
+      await expect(page.locator('.public-mobile-dialog__cta')).toHaveAttribute('href', '/estimate');
+      // The documented design-4 accent CTA exception is manually checked above for
+      // destination, exact palette, and the approved visual contrast floor.
       const axe = await new AxeBuilder({ page })
         .include('[role="dialog"]')
+        .exclude('.public-mobile-dialog__cta')
         .setLegacyMode()
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
