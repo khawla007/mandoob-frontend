@@ -6,6 +6,11 @@ const aboutSource = readFileSync(
   new URL('../../app/(public)/about/page.tsx', import.meta.url),
   'utf8',
 );
+const aboutBodySource = readFileSync(new URL('./about/AboutPageBody.tsx', import.meta.url), 'utf8');
+const scenicHeroSource = readFileSync(
+  new URL('./about-contact/PageScenicHero.tsx', import.meta.url),
+  'utf8',
+);
 const contactSource = readFileSync(
   new URL('../../app/(public)/contact/page.tsx', import.meta.url),
   'utf8',
@@ -15,10 +20,6 @@ const publicLayoutSource = readFileSync(
   'utf8',
 );
 
-const routes = [
-  { path: '/about', source: aboutSource },
-  { path: '/contact', source: contactSource },
-] as const;
 const samplePhonePattern = /(?:\+971[\s()-]*\d{1,2}|\b0\d{1,2})[\s()-]*\d{3}[\s-]*\d{4}\b/u;
 
 describe('temporary About and Contact route shells', () => {
@@ -28,19 +29,34 @@ describe('temporary About and Contact route shells', () => {
     }
   });
 
-  for (const { path, source } of routes) {
-    it(`${path} is a server route with one h1 and static canonical metadata`, () => {
-      assert.equal(source.match(/<h1\b/gu)?.length, 1);
-      assert.match(source, /import type \{ Metadata \} from 'next';/u);
-      assert.match(source, /export const metadata: Metadata\s*=\s*\{/u);
-      assert.match(
-        source,
-        new RegExp(`alternates:\\s*\\{\\s*canonical:\\s*'https://mandoob\\.ae${path}'`, 'u'),
-      );
-      assert.doesNotMatch(source, /['"]use client['"]/u);
-      assert.doesNotMatch(source, /generateMetadata/u);
-    });
-  }
+  it('/about delegates to its server body and owns one composed h1 with static metadata', () => {
+    assert.match(aboutSource, /import \{ AboutPageBody \}/u);
+    assert.match(aboutSource, /return <AboutPageBody\s*\/>;/u);
+    assert.match(aboutBodySource, /<PageScenicHero/u);
+    assert.equal(
+      [aboutSource, aboutBodySource, scenicHeroSource]
+        .map((source) => source.match(/<h1\b/gu)?.length ?? 0)
+        .reduce((total, count) => total + count, 0),
+      1,
+    );
+    assert.match(aboutSource, /import type \{ Metadata \} from 'next';/u);
+    assert.match(aboutSource, /export const metadata: Metadata\s*=\s*\{/u);
+    assert.match(aboutSource, /alternates:\s*\{\s*canonical:\s*'https:\/\/mandoob\.ae\/about'/u);
+    assert.doesNotMatch(`${aboutSource}\n${aboutBodySource}`, /['"]use client['"]/u);
+    assert.doesNotMatch(aboutSource, /generateMetadata/u);
+  });
+
+  it('/contact remains a server route with one h1 and static canonical metadata', () => {
+    assert.equal(contactSource.match(/<h1\b/gu)?.length, 1);
+    assert.match(contactSource, /import type \{ Metadata \} from 'next';/u);
+    assert.match(contactSource, /export const metadata: Metadata\s*=\s*\{/u);
+    assert.match(
+      contactSource,
+      /alternates:\s*\{\s*canonical:\s*'https:\/\/mandoob\.ae\/contact'/u,
+    );
+    assert.doesNotMatch(contactSource, /['"]use client['"]/u);
+    assert.doesNotMatch(contactSource, /generateMetadata/u);
+  });
 
   it('keeps Contact localized with only claim-safe existing catalog keys', () => {
     assert.match(contactSource, /import \{ getTranslations \} from 'next-intl\/server';/u);
@@ -58,11 +74,14 @@ describe('temporary About and Contact route shells', () => {
   });
 
   it('uses only real in-scope conversion routes', () => {
-    assert.match(aboutSource, /href=["{]?["']\/estimate["']/u);
-    assert.match(aboutSource, /href=["{]?["']\/contact["']/u);
+    assert.match(aboutBodySource, /href:\s*['"]\/estimate['"]/u);
+    assert.match(aboutBodySource, /href:\s*['"]\/contact['"]/u);
     assert.match(contactSource, /href=["{]?["']\/estimate["']/u);
 
-    for (const { path, source } of routes) {
+    for (const [path, source] of [
+      ['/about', `${aboutSource}\n${aboutBodySource}`],
+      ['/contact', contactSource],
+    ] as const) {
       assert.doesNotMatch(source, /href\s*=\s*(?:\{\s*)?["']\s*(?:#(?:[^"']*)?)?["']/u, path);
     }
   });
@@ -72,13 +91,16 @@ describe('temporary About and Contact route shells', () => {
     assert.match(publicLayoutSource, /<main id="main"/u);
     assert.match(publicLayoutSource, /<SiteFooter\s*\/>/u);
 
-    for (const { path, source } of routes) {
+    for (const [path, source] of [
+      ['/about', aboutSource],
+      ['/contact', contactSource],
+    ] as const) {
       assert.doesNotMatch(source, /SiteHeader|SiteFooter|<main\b/u, path);
     }
   });
 
   it('publishes no unsupported proof, timing, fine, guarantee, or sample contact claims', () => {
-    const allRouteSource = routes.map(({ source }) => source).join('\n');
+    const allRouteSource = [aboutSource, aboutBodySource, contactSource].join('\n');
     const unsupported = [
       /320\+/u,
       /45\+/u,
