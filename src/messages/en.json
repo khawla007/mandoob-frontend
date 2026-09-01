@@ -533,6 +533,10 @@
     "auth": "Auth",
     "authSecurity": "Auth & Security",
     "business": "Business",
+    "operations": "Operations",
+    "documentReview": "Document review",
+    "employeeOversight": "Employee oversight",
+    "renewalsCompliance": "Renewals & compliance",
     "users": "Users",
     "sessions": "Sessions",
     "mfaAndSecurity": "MFA & Security",
@@ -1815,6 +1819,50 @@
     }
   },
   "admin": {
+    "management": {
+      "documents": {
+        "eyebrow": "Operations · Documents",
+        "title": "Document review oversight",
+        "description": "Review cross-company document work without widening tenant-scoped document access.",
+        "summaries": { "submitted": "Submitted", "review": "Under review", "rejected": "Rejected" },
+        "filters": { "company": "Company", "status": "Review status", "type": "Document type" },
+        "queueTitle": "Document review queue",
+        "queueDescription": "Company and employee context, deadlines, current versions and review decisions will appear in this primary queue.",
+        "guidance": "The accepted workflow states are requested, submitted, under review, approved and rejected. No backlog is inferred from tenant-scoped sources.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted cross-company current-version review read exists on this base.",
+        "action": "Review document",
+        "actionExplanation": "Unavailable — Phase 3 mutation and ownership contract required."
+      },
+      "employees": {
+        "eyebrow": "Operations · Employees",
+        "title": "Employee oversight",
+        "description": "Inspect authorized cross-company visa, Emirates ID and renewal risk without exposing full identifiers.",
+        "summaries": { "visaRisk": "Visa attention", "eidRisk": "Emirates ID attention", "renewalRisk": "Renewal risk" },
+        "filters": { "search": "Search employee", "company": "Company", "risk": "Renewal risk" },
+        "queueTitle": "Employee oversight queue",
+        "queueDescription": "Employee, Company, visa, Emirates ID and renewal state belong in this primary queue with identifiers masked.",
+        "guidance": "Full passport, visa and Emirates ID numbers must never appear in collection rows. Exact detail links require an authorized Admin read contract.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted cross-company employee oversight read exists on this base.",
+        "action": "Open employee record",
+        "actionExplanation": "Unavailable — Phase 3 authorization and detail contract required."
+      },
+      "renewals": {
+        "eyebrow": "Operations · Compliance",
+        "title": "Renewals and compliance oversight",
+        "description": "Prioritize renewal risk across Companies using explicit urgency windows and truthful action availability.",
+        "summaries": { "overdue": "Overdue", "week": "Due this week", "days90": "Next 90 days" },
+        "filters": { "entity": "Entity", "type": "Renewal type", "status": "Workflow status" },
+        "queueTitle": "Renewal risk queue",
+        "queueDescription": "Urgency, entity, type, status, escalation and timeline context will appear in this primary queue.",
+        "guidance": "Accepted urgency groups are overdue, this week, this month and next 90 days. No reminders, batches or fines are inferred.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "Existing renewal reads are assigned-Company scoped; no accepted platform-wide read exists.",
+        "action": "Start renewal batch",
+        "actionExplanation": "Unavailable — Phase 3 batch, escalation and audit contract required."
+      }
+    },
     "user": {
       "createTitle": "Create user",
       "createIntro": "Sends a Supabase invite email and creates the matching profile.",

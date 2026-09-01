@@ -2,6 +2,7 @@ import {
   Building2,
   Columns3,
   DollarSign,
+  FileCheck2,
   FileSpreadsheet,
   Files,
   FolderTree,
@@ -15,6 +16,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   Users,
+  UserRoundSearch,
+  CalendarClock,
 } from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
@@ -101,6 +104,30 @@ export const adminNav: ShellNavGroup[] = [
         labelFallback: 'WhatsApp templates',
         href: '/admin/whatsapp-templates',
         icon: MessagesSquare,
+      },
+    ],
+  },
+  {
+    labelKey: 'operations',
+    labelFallback: 'Operations',
+    items: [
+      {
+        labelKey: 'documentReview',
+        labelFallback: 'Document review',
+        href: '/admin/documents',
+        icon: FileCheck2,
+      },
+      {
+        labelKey: 'employeeOversight',
+        labelFallback: 'Employee oversight',
+        href: '/admin/employees',
+        icon: UserRoundSearch,
+      },
+      {
+        labelKey: 'renewalsCompliance',
+        labelFallback: 'Renewals & compliance',
+        href: '/admin/renewals',
+        icon: CalendarClock,
       },
     ],
   },
