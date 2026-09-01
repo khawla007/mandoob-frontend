@@ -19,8 +19,15 @@ const routes = [
   { path: '/about', source: aboutSource },
   { path: '/contact', source: contactSource },
 ] as const;
+const samplePhonePattern = /(?:\+971[\s()-]*\d{1,2}|\b0\d{1,2})[\s()-]*\d{3}[\s-]*\d{4}\b/u;
 
 describe('temporary About and Contact route shells', () => {
+  it('recognizes common UAE sample phone formats as unsupported contact fixtures', () => {
+    for (const phone of ['+971 50 123 4567', '+971 4 123 4567', '050 123 4567', '04 123 4567']) {
+      assert.match(phone, samplePhonePattern);
+    }
+  });
+
   for (const { path, source } of routes) {
     it(`${path} is a server route with one h1 and static canonical metadata`, () => {
       assert.equal(source.match(/<h1\b/gu)?.length, 1);
@@ -66,7 +73,7 @@ describe('temporary About and Contact route shells', () => {
       /zero\s+(?:surprise|surprises|surprise fees|fines|variance|upsells)/iu,
       /[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu,
       /\b(?:mailto|tel):/iu,
-      /(?:\+?971|\b0\d{1,2})[\s()-]*\d{3}[\s-]*\d{4}\b/u,
+      samplePhonePattern,
       /\b(?:address|street|road|avenue|building|office|suite|floor|downtown)\b/iu,
       /\bhours?\b/iu,
       /\b(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b[^\n<]{0,30}\b(?:am|pm|\d{1,2}:\d{2})\b/iu,
