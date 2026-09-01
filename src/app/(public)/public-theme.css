@@ -685,6 +685,155 @@
   }
 }
 
+/* ---------- P1.05 CONTACT FORM ---------- */
+.site-public .contact-form {
+  display: grid;
+  gap: 22px;
+}
+.site-public .contact-form__intro {
+  display: grid;
+  gap: 8px;
+}
+.site-public .contact-form__intro h2 {
+  font-size: clamp(1.75rem, 2.4vw, 2.5rem);
+  letter-spacing: -0.035em;
+}
+.site-public .contact-form__intro > p:last-child,
+.site-public .contact-form__cue {
+  color: var(--public-text-muted);
+}
+.site-public .contact-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.site-public .contact-form__field,
+.site-public .contact-form__consent {
+  min-inline-size: 0;
+}
+.site-public .contact-form__field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+.site-public .contact-form__field--wide {
+  grid-column: 1 / -1;
+}
+.site-public .contact-form__field > label {
+  color: var(--public-text-primary);
+  font-size: var(--fs-14);
+  font-weight: 650;
+}
+.site-public .contact-form input:not([type='checkbox']),
+.site-public .contact-form select,
+.site-public .contact-form textarea {
+  inline-size: 100%;
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-sm);
+  background: var(--public-surface-elevated);
+  color: var(--public-text-primary);
+  font: inherit;
+  padding: 12px 14px;
+}
+.site-public .contact-form textarea {
+  min-block-size: 132px;
+  resize: vertical;
+}
+.site-public .contact-form input:not([type='checkbox']):focus-visible,
+.site-public .contact-form select:focus-visible,
+.site-public .contact-form textarea:focus-visible,
+.site-public .contact-form__consent input:focus-visible {
+  border-color: var(--public-focus-ring);
+  outline: 3px solid color-mix(in oklch, var(--public-focus-ring) 28%, transparent);
+  outline-offset: 2px;
+}
+.site-public .contact-form [aria-invalid='true'] {
+  border-color: var(--public-danger, #b42318);
+}
+.site-public .contact-form__cue,
+.site-public .contact-form__field-error {
+  font-size: var(--fs-12);
+  line-height: 1.45;
+}
+.site-public .contact-form__field-error {
+  color: var(--public-danger, #b42318);
+  font-weight: 600;
+}
+.site-public .contact-form__consent {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+}
+.site-public .contact-form__consent input {
+  inline-size: 18px;
+  block-size: 18px;
+  margin-block-start: 3px;
+  accent-color: var(--public-cta-background);
+}
+.site-public .contact-form__consent label {
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+  line-height: 1.55;
+}
+.site-public .contact-form__consent a,
+.site-public .contact-form__error-summary a {
+  color: var(--public-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.site-public .contact-form__error-summary,
+.site-public .contact-form__result {
+  border: 1px solid var(--public-border-subtle);
+  border-inline-start: 4px solid var(--public-danger, #b42318);
+  border-radius: var(--r-sm);
+  background: var(--public-surface);
+  padding: 16px 18px;
+}
+.site-public .contact-form__error-summary:focus-visible,
+.site-public .contact-form__result:focus-visible {
+  outline: 3px solid var(--public-focus-ring);
+  outline-offset: 3px;
+}
+.site-public .contact-form__error-summary h3,
+.site-public .contact-form__result h3 {
+  font-size: var(--fs-16);
+}
+.site-public .contact-form__error-summary ul {
+  display: grid;
+  gap: 4px;
+  margin-block-start: 8px;
+  padding-inline-start: 20px;
+}
+.site-public .contact-form__result {
+  display: grid;
+  gap: 8px;
+}
+.site-public .contact-form__result--success {
+  border-inline-start-color: var(--public-success, #14804a);
+}
+.site-public .contact-form__result--duplicate,
+.site-public .contact-form__result--rate_limited {
+  border-inline-start-color: var(--accent);
+}
+.site-public .contact-form__notice,
+.site-public .contact-form__pending,
+.site-public .contact-form__delivery {
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+}
+.site-public .contact-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 639px) {
+  .site-public .contact-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- About page P1.05 ---------- */
 .site-public .about-page__who,
 .site-public .about-page__values,
