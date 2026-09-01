@@ -1817,7 +1817,10 @@
     },
     "admin": {
       "title": "Lead pipeline",
-      "subtitle": "Questionnaire leads across every company workspace. Showing {total}."
+      "subtitle": "Questionnaire leads across every company workspace. Showing {total}.",
+      "funnelTitle": "Filtered funnel",
+      "funnelScope": "Counts reflect only the currently filtered Kanban result.",
+      "scoringExplanation": "Lead scores use disclosed questionnaire and estimate inputs. They prioritize review; they do not predict conversion or replace operator judgment."
     },
     "pro": {
       "title": "Leads",
@@ -1979,6 +1982,9 @@
       }
     },
     "user": {
+      "modeNavigation": "User management modes",
+      "modeAllUsers": "All users",
+      "modeProRegistry": "PRO registry",
       "createTitle": "Create user",
       "createIntro": "Sends a Supabase invite email and creates the matching profile.",
       "editTitle": "Edit user",
@@ -2091,6 +2097,9 @@
         "next": "Next"
       },
       "proRegistry": {
+        "modeNavigation": "User management modes",
+        "modeAllUsers": "All users",
+        "modeProRegistry": "PRO registry",
         "title": "PRO lifecycle registry",
         "create": "Create PRO",
         "resultCount": "{count, plural, one {# PRO} other {# PROs}}",
@@ -2920,7 +2929,13 @@
     },
     "finance": {
       "title": "Finance",
-      "intro": "Stripe subscription revenue.",
+      "intro": "Active Stripe subscription recurring value; this is not collected revenue, accounting, or profit.",
+      "pointInTime": "Rendered at",
+      "currencyUsd": "Currency",
+      "includedActive": "Included",
+      "activeSubscriptionsOnly": "Active subscriptions only",
+      "excludedStatuses": "Excluded",
+      "nonActiveExcluded": "Trialing, past-due, canceled, unpaid, incomplete and paused subscriptions",
       "tenantMrr": "Workspace MRR",
       "table": {
         "tenant": "Company workspace",
@@ -2948,6 +2963,15 @@
         "incomplete": "Incomplete",
         "incomplete_expired": "Incomplete expired",
         "paused": "Paused"
+      },
+      "unsupported": {
+        "title": "Accounting, collections and reconciliation",
+        "description": "Collected revenue, expenses, compensation, aging and reconciliation require ledger and payment-source contracts that are not present.",
+        "unavailableTitle": "Unavailable — finance ledger contract required",
+        "unavailableDescription": "No authoritative accounting ledger or reconciled collections source is connected on this base.",
+        "guidance": "The recurring-value metrics above remain subscription projections and must not be treated as revenue recognition or profit-and-loss reporting.",
+        "export": "Export finance report",
+        "exportExplanation": "Unavailable — an authoritative report schema and export contract are required."
       }
     },
     "erasure": {
@@ -3047,6 +3071,8 @@
     "whatsapp": {
       "title": "WhatsApp templates",
       "intro": "Track Meta approval state before templates are allowed into the outbound queue.",
+      "providerCaveat": "Approval values are operator-maintained records; this page does not poll Meta or prove the current provider state.",
+      "providerAudit": "Submitted, checked and updated timestamps are audit fields entered through this workflow and should be verified against the provider before sending.",
       "tenantPlaceholder": "Company workspace UUID for overrides",
       "allStatuses": "All statuses",
       "allCategories": "All categories",

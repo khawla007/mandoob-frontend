@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LeadKanbanBoard } from '@/components/leads/LeadKanbanBoard';
+import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { requireRole } from '@/lib/auth/require-role';
 import {
   getLeadDetail,
@@ -46,12 +47,35 @@ export default async function AdminLeadsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <DashboardPageHeader title={t('admin.title')} description={t('admin.subtitle', { total })} />
+
+      <section className="space-y-2" aria-labelledby="lead-funnel-summary">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('admin.title')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t('admin.subtitle', { total })}</p>
+          <h2 id="lead-funnel-summary" className="text-sm font-medium">
+            {t('admin.funnelTitle')}
+          </h2>
+          <p className="text-muted-foreground text-xs">{t('admin.funnelScope')}</p>
         </div>
-      </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {(
+            [
+              ['new', kanban.new.length],
+              ['contacted', kanban.contacted.length],
+              ['qualified', kanban.qualified.length],
+              ['won', kanban.won.length],
+              ['lost', kanban.lost.length],
+            ] as const
+          ).map(([stage, count]) => (
+            <Card key={stage}>
+              <CardContent className="p-4">
+                <p className="text-muted-foreground text-xs">{t(`stage.${stage}`)}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{count}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <p className="text-muted-foreground text-xs leading-5">{t('admin.scoringExplanation')}</p>
+      </section>
 
       <Card>
         <CardContent className="p-4">

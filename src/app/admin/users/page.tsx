@@ -79,6 +79,11 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
   );
   return (
     <div className="space-y-6">
+      <UserModeNavigation
+        label={t('modeNavigation')}
+        allUsers={t('modeAllUsers')}
+        proRegistry={t('modeProRegistry')}
+      />
       {invalid && (
         <Alert>
           <AlertTitle>{t('invalidTitle')}</AlertTitle>
@@ -184,6 +189,11 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-6">
+      <UserModeNavigation
+        label={t('user.modeNavigation')}
+        allUsers={t('user.modeAllUsers')}
+        proRegistry={t('user.modeProRegistry')}
+      />
       {sp.created && (
         <Alert>
           <AlertTitle>{t('user.createdAlertTitle')}</AlertTitle>
@@ -229,5 +239,26 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function UserModeNavigation({
+  label,
+  allUsers,
+  proRegistry,
+}: {
+  label: string;
+  allUsers: string;
+  proRegistry: string;
+}) {
+  return (
+    <nav aria-label={label} className="flex flex-wrap gap-2">
+      <Button asChild variant="outline" size="sm">
+        <Link href="/admin/users">{allUsers}</Link>
+      </Button>
+      <Button asChild variant="outline" size="sm">
+        <Link href="/admin/users?role=pro">{proRegistry}</Link>
+      </Button>
+    </nav>
   );
 }
