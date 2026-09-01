@@ -12,7 +12,7 @@ export function SetupConversionBand({
   estimateHref: string;
 }) {
   return (
-    <div className="container setup-conversion__inner">
+    <div className="setup-conversion__inner container">
       <div>
         <h2 id={headingId}>{title}</h2>
         <p>{description}</p>

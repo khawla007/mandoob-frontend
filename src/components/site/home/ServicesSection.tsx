@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 const PATHS = [
-  { key: 'mainland', query: 'mainland', cta: 'exploreMainland', Icon: Building2 },
-  { key: 'freeZone', query: 'free-zone', cta: 'exploreFreeZone', Icon: Factory },
-  { key: 'offshore', query: 'offshore', cta: 'exploreOffshore', Icon: Globe2 },
+  { key: 'mainland', href: '/mainland', cta: 'exploreMainland', Icon: Building2 },
+  { key: 'freeZone', href: '/free-zones', cta: 'exploreFreeZone', Icon: Factory },
+  { key: 'offshore', href: '/offshore', cta: 'exploreOffshore', Icon: Globe2 },
 ] as const;
 
 export async function ServicesSection() {
@@ -23,7 +23,7 @@ export async function ServicesSection() {
         </header>
 
         <div className="home-setup-grid cards-stagger" data-reveal-cards>
-          {PATHS.map(({ key, query, cta, Icon }, index) => (
+          {PATHS.map(({ key, href, cta, Icon }, index) => (
             <article className={`home-setup-card home-setup-card--${index + 1} reveal`} key={key}>
               <span className="home-icon-medallion">
                 <Icon aria-hidden="true" />
@@ -36,7 +36,7 @@ export async function ServicesSection() {
                   <li>{t(`${key}Market`)}</li>
                   <li>{t(`${key}Office`)}</li>
                 </ul>
-                <Link className="home-text-link" href={`/estimate?jurisdiction=${query}`}>
+                <Link className="home-text-link" href={href}>
                   {t(cta)} <span aria-hidden="true">→</span>
                 </Link>
               </div>

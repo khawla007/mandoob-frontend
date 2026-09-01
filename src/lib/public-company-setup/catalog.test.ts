@@ -15,7 +15,10 @@ describe('public company setup catalog', () => {
     assert.equal(POPULAR_FREE_ZONES.length, 6);
     assert.equal(OFFSHORE_OPTIONS.length, 3);
     assert.equal(OFFSHORE_OPTIONS.filter((item) => item.authoritySlug).length, 2);
-    assert.equal(OFFSHORE_OPTIONS.some((item) => /ajman offshore/iu.test(item.name)), false);
+    assert.equal(
+      OFFSHORE_OPTIONS.some((item) => /ajman offshore/iu.test(item.name)),
+      false,
+    );
   });
 
   it('resolves every authority card to the accepted detail catalog', () => {

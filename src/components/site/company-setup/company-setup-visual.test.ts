@@ -20,22 +20,37 @@ describe('company setup visual contract', () => {
   });
 
   it('defines scoped desktop reference grids and paired panel geometry', () => {
-    assert.match(css, /\.site-public \.setup-emirate-grid\s*\{[^}]*grid-template-columns:\s*repeat\(7,/su);
-    assert.match(css, /\.site-public \.setup-activity-grid\s*\{[^}]*grid-template-columns:\s*repeat\(4,/su);
-    assert.match(css, /\.site-public \.setup-popular-grid\s*\{[^}]*grid-template-columns:\s*repeat\(6,/su);
-    assert.match(css, /\.site-public \.setup-paired-panels\s*\{[^}]*grid-template-columns:\s*repeat\(2,/su);
-    assert.match(css, /\.site-public \.setup-operations--three\s*\{[^}]*grid-template-columns:\s*repeat\(3,/su);
+    assert.match(
+      css,
+      /\.site-public \.setup-emirate-grid\s*\{[^}]*grid-template-columns:\s*repeat\(7,/u,
+    );
+    assert.match(
+      css,
+      /\.site-public \.setup-activity-grid\s*\{[^}]*grid-template-columns:\s*repeat\(4,/u,
+    );
+    assert.match(
+      css,
+      /\.site-public \.setup-popular-grid\s*\{[^}]*grid-template-columns:\s*repeat\(6,/u,
+    );
+    assert.match(
+      css,
+      /\.site-public \.setup-paired-panels\s*\{[^}]*grid-template-columns:\s*repeat\(2,/u,
+    );
+    assert.match(
+      css,
+      /\.site-public \.setup-operations--three\s*\{[^}]*grid-template-columns:\s*repeat\(3,/u,
+    );
   });
 
   it('contains the directory table and visible keyboard focus without page overflow', () => {
-    assert.match(css, /\.site-public \.setup-directory__table-wrap\s*\{[^}]*overflow-x:\s*auto/su);
-    assert.match(css, /\.site-public \.setup-filter[^}]*:focus-visible/su);
-    assert.match(css, /\.site-public \.setup-faq__item summary:focus-visible/su);
+    assert.match(css, /\.site-public \.setup-directory__table-wrap\s*\{[^}]*overflow-x:\s*auto/u);
+    assert.match(css, /\.site-public \.setup-filter[^}]*:focus-visible/u);
+    assert.match(css, /\.site-public \.setup-faq__item summary:focus-visible/u);
   });
 
   it('provides dark and reduced-motion treatment without forbidden visual shortcuts', () => {
-    assert.match(css, /\.dark \.site-public \.setup-hero__checklist/su);
-    assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.setup-card/su);
+    assert.match(css, /\.dark \.site-public \.setup-hero__checklist/u);
+    assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.setup-card/u);
     const setupCss = css.slice(css.indexOf('P1.04 company setup discovery'));
     assert.doesNotMatch(setupCss, /background-clip:\s*text|#[fF]{6}|#000(?:000)?/u);
   });

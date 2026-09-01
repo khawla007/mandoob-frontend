@@ -7,7 +7,10 @@ describe('Free Zone directory filtering', () => {
   it('searches case-insensitively without mutating deterministic order', () => {
     const source = [...FREE_ZONE_DIRECTORY];
     const result = filterFreeZones(source, { ...EMPTY_FILTERS, query: 'dmcc' });
-    assert.deepEqual(result.map((item) => item.name), ['DMCC']);
+    assert.deepEqual(
+      result.map((item) => item.name),
+      ['DMCC'],
+    );
     assert.deepEqual(source, FREE_ZONE_DIRECTORY);
   });
 
@@ -19,7 +22,10 @@ describe('Free Zone directory filtering', () => {
       officeType: 'flexi',
       budget: 'under_15000',
     });
-    assert.deepEqual(result.map((item) => item.name), ['RAKEZ']);
+    assert.deepEqual(
+      result.map((item) => item.name),
+      ['RAKEZ'],
+    );
   });
 
   it('returns an empty list for an unsupported combination and all rows after clear', () => {

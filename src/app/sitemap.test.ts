@@ -16,7 +16,17 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
   });
 
   assert.deepEqual(
-    ['/', '/estimate', '/apply', '/pricing', '/knowledge-base', '/blog'].filter(
+    [
+      '/',
+      '/estimate',
+      '/apply',
+      '/pricing',
+      '/knowledge-base',
+      '/blog',
+      '/mainland',
+      '/free-zones',
+      '/offshore',
+    ].filter(
       (path) => !paths(entries).includes(path),
     ),
     [],

@@ -28,7 +28,7 @@ export function SetupHero({
   checklist,
 }: SetupHeroProps) {
   return (
-    <div className="container setup-hero__frame">
+    <div className="setup-hero__frame container">
       <nav className="setup-breadcrumb" aria-label="Breadcrumb">
         <ol>
           <li>
@@ -57,7 +57,13 @@ export function SetupHero({
           </div>
         </div>
         <div className="setup-hero__visual">
-          <Image src={imageSrc} alt={imageAlt} fill priority sizes="(min-width: 1024px) 56vw, 100vw" />
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            fill
+            priority
+            sizes="(min-width: 1024px) 56vw, 100vw"
+          />
           {checklist ? <div className="setup-hero__checklist">{checklist}</div> : null}
         </div>
       </div>

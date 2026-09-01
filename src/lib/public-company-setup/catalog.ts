@@ -79,7 +79,9 @@ function freeZoneItem(profile: (typeof FREE_ZONE_PROFILES)[number]): FreeZoneDir
     throw new Error(`Missing accepted Free Zone record for ${profile.name}`);
   }
   const rows = seededCostDataRows.filter((row) => row.authority === profile.name);
-  const baseRows = rows.filter((row) => row.feeType === 'license' || row.feeType === 'registration');
+  const baseRows = rows.filter(
+    (row) => row.feeType === 'license' || row.feeType === 'registration',
+  );
   const officeRows = rows.filter((row) => row.feeType.startsWith('office_'));
   const minCostMinor = baseRows.reduce((total, row) => total + row.amountMinor, 0);
   const maxCostMinor = minCostMinor + officeRows.reduce((total, row) => total + row.amountMinor, 0);
@@ -107,9 +109,8 @@ function freeZoneItem(profile: (typeof FREE_ZONE_PROFILES)[number]): FreeZoneDir
   };
 }
 
-export const FREE_ZONE_DIRECTORY: readonly FreeZoneDirectoryItem[] = FREE_ZONE_PROFILES.map(
-  freeZoneItem,
-);
+export const FREE_ZONE_DIRECTORY: readonly FreeZoneDirectoryItem[] =
+  FREE_ZONE_PROFILES.map(freeZoneItem);
 
 export const POPULAR_FREE_ZONES: readonly FreeZoneDirectoryItem[] = FREE_ZONE_DIRECTORY;
 

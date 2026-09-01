@@ -33,6 +33,12 @@ export function filterFreeZones(
       filters.businessType === 'all' || item.businessTypes.includes(filters.businessType);
     const matchesOffice =
       filters.officeType === 'all' || item.officeTypes.includes(filters.officeType);
-    return matchesQuery && matchesEmirate && matchesBusiness && matchesOffice && matchesBudget(item, filters.budget);
+    return (
+      matchesQuery &&
+      matchesEmirate &&
+      matchesBusiness &&
+      matchesOffice &&
+      matchesBudget(item, filters.budget)
+    );
   });
 }

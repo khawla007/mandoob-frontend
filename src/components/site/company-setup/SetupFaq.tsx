@@ -10,7 +10,7 @@ export function SetupFaq({
   items: readonly SetupFaqItem[];
 }) {
   return (
-    <div className="container setup-faq__inner" aria-labelledby={headingId}>
+    <div className="setup-faq__inner container" aria-labelledby={headingId}>
       <header className="setup-section-heading setup-section-heading--centered">
         <h2 id={headingId}>{title}</h2>
       </header>
