@@ -134,6 +134,7 @@ export function AboutPageBody() {
   return (
     <>
       <PageScenicHero
+        className="about-page__hero"
         headingId="about-page-title"
         eyebrow="About Mandoob"
         title={
@@ -144,7 +145,7 @@ export function AboutPageBody() {
         description="Mandoob brings company setup guidance and business administration into one clear workspace, with visible stages and a defined point of coordination."
         currentLabel="About"
         imageSrc="/hero/skyline.webp"
-        imageAlt="Dubai skyline beside the waterfront"
+        imageAlt="Dubai skyline at sunset"
         primaryCta={{ label: 'Get an estimate', href: '/estimate' }}
         secondaryCta={{ label: 'Contact Mandoob', href: '/contact' }}
         features={[
@@ -177,7 +178,7 @@ export function AboutPageBody() {
           <div className="about-page__who-image">
             <Image
               src="/hero/pro-firm-operations.webp"
-              alt="Business team reviewing company setup work together around a table"
+              alt="Company documents arranged on an office desk with the Dubai skyline in the background"
               fill
               sizes="(min-width: 1280px) 34vw, (min-width: 900px) 38vw, 100vw"
             />

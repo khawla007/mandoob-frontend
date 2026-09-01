@@ -690,18 +690,47 @@
 .site-public .about-page__values,
 .site-public .about-page__process,
 .site-public .about-page__team {
-  padding-block: clamp(64px, 7vw, 104px);
+  padding-block: clamp(24px, 2vw, 28px);
+}
+.site-public .about-contact-hero.about-page__hero .about-contact-hero__frame {
+  padding-block-start: 20px;
+}
+.site-public .about-contact-hero.about-page__hero .about-contact-breadcrumb ol {
+  margin-block-end: 24px;
+}
+.site-public .about-contact-hero.about-page__hero .about-contact-hero__copy {
+  padding-block: 12px 36px;
+}
+.site-public .about-contact-hero.about-page__hero .about-contact-hero__title {
+  margin-block: 10px 14px;
+  font-size: clamp(2.75rem, 4.4vw, 4.15rem);
+}
+.site-public .about-contact-hero.about-page__hero .about-contact-hero__actions {
+  margin-block-start: 20px;
+}
+.site-public .about-contact-hero.about-page__hero .about-contact-hero__features {
+  margin-block-start: 24px;
+}
+.site-public .about-contact-hero.about-page__hero .about-contact-hero__visual {
+  min-block-size: 410px;
+}
+.site-public .about-page__hero + .about-contact-info-strip .about-contact-info-strip__list > li {
+  padding-block: 12px;
+}
+.site-public .about-page__team + .about-contact-conversion .about-contact-conversion__inner {
+  min-block-size: 144px;
+  padding-block: 24px;
 }
 .site-public .about-page__who-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.9fr) minmax(270px, 0.72fr);
   align-items: center;
-  gap: clamp(28px, 3.5vw, 52px);
+  gap: clamp(22px, 2.5vw, 36px);
   max-inline-size: 1440px;
 }
 .site-public .about-page__who-image {
   position: relative;
-  min-block-size: 420px;
+  min-block-size: 300px;
   overflow: hidden;
   border-radius: var(--r-md);
   background: var(--public-surface);
@@ -716,22 +745,22 @@
 .site-public .about-page__section-heading h2 {
   margin-block-start: 12px;
   color: var(--public-text-primary);
-  font-size: clamp(2rem, 3.1vw, 3.4rem);
+  font-size: clamp(1.75rem, 2.2vw, 2.5rem);
   letter-spacing: -0.045em;
   line-height: 1.02;
 }
 .site-public .about-page__story p,
 .site-public .about-page__section-heading p {
-  margin-block-start: 18px;
+  margin-block-start: 12px;
   color: var(--public-text-muted);
-  line-height: 1.7;
+  line-height: 1.58;
 }
 .site-public .about-page__purpose {
   position: relative;
   z-index: 1;
   display: grid;
   align-self: stretch;
-  margin-inline-start: -76px;
+  margin-inline-start: -16px;
   border: 1px solid var(--public-border-subtle);
   border-radius: var(--r-md);
   background: var(--public-surface-elevated);
@@ -741,9 +770,9 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
-  padding-block: 28px;
-  padding-inline: 26px;
+  gap: 13px;
+  padding-block: 20px;
+  padding-inline: 20px;
 }
 .site-public .about-page__purpose article + article {
   border-block-start: 1px solid var(--public-border-subtle);
@@ -753,8 +782,8 @@
 .site-public .about-page__process-icon,
 .site-public .about-page__team-icon {
   display: grid;
-  inline-size: 50px;
-  block-size: 50px;
+  inline-size: 44px;
+  block-size: 44px;
   flex: 0 0 auto;
   place-items: center;
   border-radius: var(--r-pill);
@@ -765,8 +794,8 @@
 .site-public .about-page__value-icon svg,
 .site-public .about-page__process-icon svg,
 .site-public .about-page__team-icon svg {
-  inline-size: 23px;
-  block-size: 23px;
+  inline-size: 21px;
+  block-size: 21px;
 }
 .site-public .about-page__purpose h3,
 .site-public .about-page__values-list h3,
@@ -783,7 +812,7 @@
   margin-block-start: 7px;
   color: var(--public-text-muted);
   font-size: var(--fs-14);
-  line-height: 1.58;
+  line-height: 1.5;
 }
 .site-public .about-page__values {
   border-block: 1px solid var(--public-border-subtle);
@@ -791,7 +820,7 @@
 }
 .site-public .about-page__section-heading {
   max-inline-size: 760px;
-  margin-block-end: 40px;
+  margin-block-end: 20px;
 }
 .site-public .about-page__section-heading--centered {
   margin-inline: auto;
@@ -806,10 +835,10 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 13px;
   min-inline-size: 0;
-  padding-block: 26px;
-  padding-inline: clamp(18px, 2vw, 30px);
+  padding-block: 18px;
+  padding-inline: clamp(16px, 1.6vw, 22px);
 }
 .site-public .about-page__values-list > li + li {
   border-inline-start: 1px solid var(--public-border-subtle);
@@ -817,7 +846,7 @@
 .site-public .about-page__process-list {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: clamp(18px, 2.6vw, 38px);
+  gap: clamp(14px, 1.7vw, 24px);
 }
 .site-public .about-page__process-item {
   position: relative;
@@ -827,8 +856,8 @@
 .site-public .about-page__process-item:not(:last-child)::after {
   content: '';
   position: absolute;
-  inset-block-start: 24px;
-  inset-inline-start: calc(50% + 38px);
+  inset-block-start: 21px;
+  inset-inline-start: calc(50% + 34px);
   inline-size: calc(100% - 42px);
   border-block-start: 1px dashed var(--public-border-strong);
 }
@@ -841,7 +870,7 @@
 }
 .site-public .about-page__process-number {
   display: block;
-  margin-block: 18px 6px;
+  margin-block: 12px 4px;
   color: var(--accent-ink);
   font-family: var(--mono-font);
   font-size: var(--fs-12);
@@ -861,14 +890,14 @@
 }
 .site-public .about-page__team-list > li {
   min-inline-size: 0;
-  padding-block: 30px;
-  padding-inline: clamp(20px, 2.5vw, 34px);
+  padding-block: 20px;
+  padding-inline: clamp(18px, 1.8vw, 26px);
 }
 .site-public .about-page__team-list > li + li {
   border-inline-start: 1px solid var(--public-border-subtle);
 }
 .site-public .about-page__team-icon {
-  margin-block-end: 22px;
+  margin-block-end: 14px;
 }
 .dark .site-public .about-page__who-image,
 .dark .site-public .about-page__purpose,

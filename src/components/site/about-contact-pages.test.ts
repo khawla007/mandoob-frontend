@@ -21,8 +21,10 @@ const publicLayoutSource = readFileSync(
 );
 
 const samplePhonePattern = /(?:\+971[\s()-]*\d{1,2}|\b0\d{1,2})[\s()-]*\d{3}[\s-]*\d{4}\b/u;
+const sampleAddressPattern =
+  /\b(?:address|street|road|avenue|building|office|suite|floor|downtown)\b/iu;
 
-describe('temporary About and Contact route shells', () => {
+describe('About composition and Contact route shell', () => {
   it('recognizes common UAE sample phone formats as unsupported contact fixtures', () => {
     for (const phone of ['+971 50 123 4567', '+971 4 123 4567', '050 123 4567', '04 123 4567']) {
       assert.match(phone, samplePhonePattern);
@@ -114,11 +116,11 @@ describe('temporary About and Contact route shells', () => {
       /[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu,
       /\b(?:mailto|tel):/iu,
       samplePhonePattern,
-      /\b(?:address|street|road|avenue|building|office|suite|floor|downtown)\b/iu,
       /\bhours?\b/iu,
       /\b(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b[^\n<]{0,30}\b(?:am|pm|\d{1,2}:\d{2})\b/iu,
     ];
 
     for (const claim of unsupported) assert.doesNotMatch(allRouteSource, claim);
+    assert.doesNotMatch(contactSource, sampleAddressPattern);
   });
 });

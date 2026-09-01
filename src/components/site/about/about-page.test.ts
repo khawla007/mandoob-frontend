@@ -14,6 +14,7 @@ const readSource = (path: string) => {
 
 const body = readSource('src/components/site/about/AboutPageBody.tsx');
 const route = readSource('src/app/(public)/about/page.tsx');
+const scenicHero = readSource('src/components/site/about-contact/PageScenicHero.tsx');
 const css = readSource('src/app/(public)/public-theme.css');
 const aboutCss = css.slice(
   css.indexOf('/* ---------- About page P1.05 ---------- */'),
@@ -62,10 +63,16 @@ describe('strict-parity About page', () => {
   it('uses the two approved local images with responsive sizing and descriptive alternatives', () => {
     assert.match(body, /import Image from 'next\/image';/u);
     assert.match(body, /imageSrc="\/hero\/skyline\.webp"/u);
-    assert.match(body, /imageAlt="Dubai skyline beside the waterfront"/u);
+    assert.match(body, /imageAlt="Dubai skyline at sunset"/u);
+    assert.match(body, /className="about-page__hero"/u);
+    assert.match(scenicHero, /preload=\{true\}/u);
+    assert.doesNotMatch(scenicHero, /fetchPriority=|loading=/u);
     assert.match(body, /src="\/hero\/pro-firm-operations\.webp"/u);
     assert.match(body, /sizes="\(min-width: 1280px\) 34vw, \(min-width: 900px\) 38vw, 100vw"/u);
-    assert.match(body, /alt="Business team reviewing company setup work together around a table"/u);
+    assert.match(
+      body,
+      /alt="Company documents arranged on an office desk with the Dubai skyline in the background"/u,
+    );
     assert.doesNotMatch(body, /https?:\/\/[^'"\s)]+\.(?:png|jpe?g|webp|avif)/iu);
   });
 
@@ -143,6 +150,29 @@ describe('strict-parity About page', () => {
     assert.doesNotMatch(
       taskCss,
       /\b(?:margin-left|margin-right|padding-left|padding-right|left|right):/u,
+    );
+  });
+
+  it('caps desktop vertical density and type against the reference budget', () => {
+    assert.match(
+      aboutCss,
+      /about-page__who,[\s\S]*?padding-block:\s*clamp\([^,]+,[^,]+,\s*28px\)/u,
+    );
+    assert.match(
+      aboutCss,
+      /about-page__story h2,[\s\S]*?font-size:\s*clamp\([^,]+,[^,]+,\s*2\.5rem\)/u,
+    );
+    assert.match(aboutCss, /about-page__who-image\s*\{[^}]*min-block-size:\s*300px/u);
+    assert.match(
+      aboutCss,
+      /about-contact-hero\.about-page__hero[\s\S]*?about-contact-hero__visual\s*\{[^}]*min-block-size:\s*410px/u,
+    );
+    assert.match(aboutCss, /about-page__purpose article\s*\{[^}]*padding-block:\s*20px/u);
+    assert.match(aboutCss, /about-page__values-list > li\s*\{[^}]*padding-block:\s*18px/u);
+    assert.match(aboutCss, /about-page__team-list > li\s*\{[^}]*padding-block:\s*20px/u);
+    assert.match(
+      aboutCss,
+      /about-page__team \+ \.about-contact-conversion[\s\S]*?min-block-size:\s*144px/u,
     );
   });
 

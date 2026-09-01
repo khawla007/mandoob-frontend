@@ -23,6 +23,7 @@ type ScenicHeroFeatures =
   | readonly [CompactFeatureProps, CompactFeatureProps, CompactFeatureProps, CompactFeatureProps];
 
 type PageScenicHeroProps = {
+  className?: string;
   headingId: string;
   eyebrow: string;
   title: ReactNode;
@@ -36,6 +37,7 @@ type PageScenicHeroProps = {
 };
 
 export function PageScenicHero({
+  className,
   headingId,
   eyebrow,
   title,
@@ -48,7 +50,10 @@ export function PageScenicHero({
   features,
 }: PageScenicHeroProps) {
   return (
-    <section className="about-contact-hero" aria-labelledby={headingId}>
+    <section
+      className={className ? `about-contact-hero ${className}` : 'about-contact-hero'}
+      aria-labelledby={headingId}
+    >
       <div className="about-contact-hero__frame container">
         <nav className="about-contact-breadcrumb" aria-label="Breadcrumb">
           <ol>
@@ -90,7 +95,7 @@ export function PageScenicHero({
             alt={imageAlt}
             fill
             sizes="(min-width: 1440px) 43vw, (min-width: 1280px) 43vw, (min-width: 900px) 45vw, 100vw"
-            fetchPriority="high"
+            preload={true}
           />
         </div>
       </div>

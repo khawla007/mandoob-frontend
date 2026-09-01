@@ -27,7 +27,9 @@ describe('About and Contact shared primitive contracts', () => {
       source,
       /sizes="\(min-width: 1440px\) 43vw, \(min-width: 1280px\) 43vw, \(min-width: 900px\) 45vw, 100vw"/u,
     );
-    assert.match(source, /fetchPriority="high"/u);
+    assert.match(source, /preload=\{true\}/u);
+    assert.doesNotMatch(source, /fetchPriority=/u);
+    assert.doesNotMatch(source, /loading=/u);
     assert.match(source, /alt=\{imageAlt\}/u);
     assert.doesNotMatch(source, /['"]use client['"]/u);
     assert.doesNotMatch(source, /href\s*=\s*(?:\{\s*)?['"]\s*(?:#[^'"]*)?['"]/u);
