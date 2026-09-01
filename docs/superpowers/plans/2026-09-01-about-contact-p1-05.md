@@ -64,6 +64,7 @@
 
 - Create: `src/components/site/about/AboutPageBody.tsx`
 - Create: `src/components/site/about/about-page.test.ts`
+- Modify: `src/app/(public)/public-theme.css`
 
 - [ ] Write a failing contract for: scenic hero; five-item capability panel; Who We Are image/copy/Mission-Vision arrangement; four values; connected five-step process; four equal team-function cards; conversion band.
 - [ ] Assert local project imagery, descriptive alt text, real `/estimate` and `/contact` links, safe one-company/one-PRO copy, and no people/testimonials/metrics/guarantees.
@@ -77,6 +78,7 @@
 
 - Create: `src/components/contact/ContactForm.tsx`
 - Create: `src/components/contact/contact-form.test.tsx`
+- Modify: `src/app/(public)/public-theme.css`
 
 - [ ] Write a happy-dom client test harness that mounts the real form and verifies labels, field-grid controls, error-summary anchors/focus, consent links, invalid fields, pending announcement and duplicate-submit prevention, success/duplicate/rate/failure/unavailable messages, retry, reset, and focus restoration.
 - [ ] Run and verify RED.
@@ -90,6 +92,7 @@
 
 - Create: `src/components/site/contact/ContactPageBody.tsx`
 - Create: `src/components/site/contact/contact-page.test.ts`
+- Modify: `src/app/(public)/public-theme.css`
 
 - [ ] Write a failing contract for: scenic hero with four capabilities; five-channel panel in office/phone/email/WhatsApp/hours order; form/help workspace; WhatsApp/Quick Links row; conversion band.
 - [ ] Assert every unverified channel is visibly unavailable, supported help categories use qualified banking language, and quick links are limited to working routes.
