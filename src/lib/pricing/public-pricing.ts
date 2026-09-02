@@ -76,6 +76,48 @@ export type PublicPricingCategory =
   | 'Reporting and audit visibility'
   | 'Support';
 
+export const PUBLIC_PRICING_COMPARISON_STATUSES = [
+  'Included',
+  'Configurable',
+  'Usage-based',
+  'Unavailable',
+  'Contact',
+] as const;
+
+export type PublicPricingComparisonStatus = (typeof PUBLIC_PRICING_COMPARISON_STATUSES)[number];
+
+type PublicPricingApprovedComparisonStatus = Exclude<PublicPricingComparisonStatus, 'Contact'>;
+
+export type PublicPricingComparisonAllocation =
+  | {
+      status: PublicPricingApprovedComparisonStatus;
+      source: Extract<PublicPricingSource, { state: 'approved-static' }>;
+    }
+  | {
+      status: 'Contact';
+      source: Extract<PublicPricingSource, { state: 'unavailable' }>;
+    };
+
+type PublicPricingComparisonGroup =
+  | 'Company workspace'
+  | 'Documents and storage'
+  | 'Renewals'
+  | 'Invoices and payments'
+  | 'Communication allowances'
+  | 'Reporting and audit'
+  | 'Branding'
+  | 'Support';
+
+type PublicPricingComparisonRow = {
+  group: PublicPricingComparisonGroup;
+  detail: string;
+  tiers: readonly [
+    PublicPricingComparisonAllocation,
+    PublicPricingComparisonAllocation,
+    PublicPricingComparisonAllocation,
+  ];
+};
+
 type CostBoundary = {
   source: PublicPricingSource;
   categories: readonly string[];
@@ -110,6 +152,12 @@ export type PublicPricingContract = DeepReadonly<{
     source: PublicPricingSource;
     price: Extract<PublicPrice, { state: 'unavailable' }>;
   }[];
+  comparison: {
+    caption: ApprovedPublicationFact<'Compare approved capability categories across Starter, Professional, and Enterprise.'>;
+    summary: UnavailablePublicationFact;
+    tierIds: readonly ['starter', 'professional', 'enterprise'];
+    rows: readonly PublicPricingComparisonRow[];
+  };
   costBoundaries: {
     softwareAccess: {
       inPlan: true;
@@ -118,7 +166,14 @@ export type PublicPricingContract = DeepReadonly<{
     };
     governmentAndAuthority: CostBoundary;
     thirdParty: CostBoundary;
+    otherThirdParties: ApprovedPublicationFact<'Other third parties'>;
     variabilityNotice: string;
+    finalEstimateNotice: string;
+    estimateLink: {
+      href: '/estimate';
+      label: 'Indicative estimate';
+      source: Extract<PublicPricingSource, { state: 'approved-static' }>;
+    };
   };
 }>;
 
@@ -172,6 +227,33 @@ function cadenceAvailability() {
     display: PUBLICATION_SUMMARY.currentAvailability.text,
     reason: PUBLICATION_SUMMARY.currentAvailability.source.reason,
   } as const;
+}
+
+function approvedComparisonStatus(
+  status: PublicPricingApprovedComparisonStatus,
+): PublicPricingComparisonAllocation {
+  return { status, source: approvedStaticSource() };
+}
+
+function unapprovedComparisonAllocation(reason: string): PublicPricingComparisonAllocation {
+  return { status: 'Contact', source: { state: 'unavailable', reason } };
+}
+
+function repeatedComparisonAllocation(
+  allocation: PublicPricingComparisonAllocation,
+): PublicPricingComparisonRow['tiers'] {
+  return [allocation, allocation, allocation];
+}
+
+const UNAPPROVED_TIER_ALLOCATION_REASON =
+  'The tier allocation is not approved for public specification';
+
+function comparisonRow(
+  group: PublicPricingComparisonGroup,
+  detail: string,
+  allocation: PublicPricingComparisonAllocation,
+): PublicPricingComparisonRow {
+  return { group, detail, tiers: repeatedComparisonAllocation(allocation) };
 }
 
 const DIFFERENTIATION_CATEGORIES = [
@@ -242,6 +324,58 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       price: priceOnRequest(),
     },
   ],
+  comparison: {
+    caption: approvedPublicationFact(
+      'Compare approved capability categories across Starter, Professional, and Enterprise.',
+    ),
+    summary: unavailablePublicationFact(
+      'Category-level capabilities are shown without inventing tier allocations. Contact Mandoob to confirm the current specification.',
+      UNAPPROVED_TIER_ALLOCATION_REASON,
+    ),
+    tierIds: ['starter', 'professional', 'enterprise'],
+    rows: [
+      comparisonRow(
+        'Company workspace',
+        'Workspace access for at most one active assigned Company per PRO.',
+        approvedComparisonStatus('Included'),
+      ),
+      comparisonRow(
+        'Documents and storage',
+        'Document and storage capability; allocation requires confirmation.',
+        unapprovedComparisonAllocation(UNAPPROVED_TIER_ALLOCATION_REASON),
+      ),
+      comparisonRow(
+        'Renewals',
+        'Renewal records and workflow context; allocation requires confirmation.',
+        unapprovedComparisonAllocation(UNAPPROVED_TIER_ALLOCATION_REASON),
+      ),
+      comparisonRow(
+        'Invoices and payments',
+        'Invoice and payment capability; provider and allocation require confirmation.',
+        unapprovedComparisonAllocation(UNAPPROVED_TIER_ALLOCATION_REASON),
+      ),
+      comparisonRow(
+        'Communication allowances',
+        'Communication usage is an add-on concept; quantities are not published.',
+        approvedComparisonStatus('Usage-based'),
+      ),
+      comparisonRow(
+        'Reporting and audit',
+        'Reporting and audit visibility; allocation requires confirmation.',
+        unapprovedComparisonAllocation(UNAPPROVED_TIER_ALLOCATION_REASON),
+      ),
+      comparisonRow(
+        'Branding',
+        'Branding capability; configuration and allocation require confirmation.',
+        unapprovedComparisonAllocation(UNAPPROVED_TIER_ALLOCATION_REASON),
+      ),
+      comparisonRow(
+        'Support',
+        'Support is a differentiation category; terms require confirmation.',
+        unapprovedComparisonAllocation(UNAPPROVED_TIER_ALLOCATION_REASON),
+      ),
+    ],
+  },
   costBoundaries: {
     softwareAccess: {
       inPlan: true,
@@ -270,10 +404,27 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       ],
       price: priceOnRequest(),
     },
+    otherThirdParties: approvedPublicationFact('Other third parties'),
     variabilityNotice:
       'Government and third-party costs vary by jurisdiction, activity, office, visa, approval, provider, and current authority schedules.',
+    finalEstimateNotice:
+      'Final Company-setup estimates depend on selected inputs and current schedules.',
+    estimateLink: {
+      href: '/estimate',
+      label: 'Indicative estimate',
+      source: approvedStaticSource(),
+    },
   },
 } satisfies PublicPricingContract);
+
+export function resolvePublicComparisonStatus(
+  allocation: PublicPricingComparisonAllocation,
+): PublicPricingComparisonStatus {
+  if (allocation.source.state !== 'approved-static') return 'Contact';
+  return PUBLIC_PRICING_COMPARISON_STATUSES.includes(allocation.status)
+    ? allocation.status
+    : 'Contact';
+}
 
 const aed = new Intl.NumberFormat('en-AE', {
   style: 'currency',

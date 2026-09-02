@@ -1,12 +1,16 @@
 import Link from 'next/link';
 
-import { PUBLIC_PRICING_CONTRACT, formatPublicPrice } from '@/lib/pricing/public-pricing';
+import {
+  PUBLIC_PRICING_CONTRACT,
+  formatPublicPrice,
+  resolvePublicComparisonStatus,
+} from '@/lib/pricing/public-pricing';
 
 const cadenceLabel = (cadence: 'monthly' | 'annual') =>
   `${cadence.charAt(0).toUpperCase()}${cadence.slice(1)}`;
 
 export default function PricingPage() {
-  const { publicationSummary } = PUBLIC_PRICING_CONTRACT;
+  const { publicationSummary, costBoundaries } = PUBLIC_PRICING_CONTRACT;
 
   return (
     <>
@@ -124,6 +128,129 @@ export default function PricingPage() {
                 </Link>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="pricing-comparison" aria-labelledby="pricing-comparison-title">
+        <div className="container">
+          <header className="pricing-section__head">
+            <div>
+              <span className="eyebrow">Capability comparison</span>
+              <h2 id="pricing-comparison-title">Compare the published plan specification.</h2>
+            </div>
+            <p>{PUBLIC_PRICING_CONTRACT.comparison.summary.text}</p>
+          </header>
+
+          <div
+            className="pricing-comparison__table-wrap"
+            role="region"
+            aria-label="Plan capability comparison"
+            tabIndex={0}
+          >
+            <table>
+              <caption>{PUBLIC_PRICING_CONTRACT.comparison.caption.text}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Capability group</th>
+                  {PUBLIC_PRICING_CONTRACT.tiers.map((tier) => (
+                    <th scope="col" key={tier.id}>
+                      {tier.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PUBLIC_PRICING_CONTRACT.comparison.rows.map((row) => (
+                  <tr key={row.group}>
+                    <th scope="row">
+                      <strong>{row.group}</strong>
+                      <span>{row.detail}</span>
+                    </th>
+                    {row.tiers.map((allocation, index) => {
+                      const status = resolvePublicComparisonStatus(allocation);
+                      return (
+                        <td key={PUBLIC_PRICING_CONTRACT.comparison.tierIds[index]}>
+                          <span
+                            className="pricing-comparison__status"
+                            data-comparison-status={status}
+                          >
+                            {status}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="pricing-costs" aria-labelledby="pricing-costs-title">
+        <div className="container">
+          <header className="pricing-section__head">
+            <div>
+              <span className="eyebrow">Cost boundaries</span>
+              <h2 id="pricing-costs-title">Know what sits inside and outside the platform.</h2>
+            </div>
+            <p>{costBoundaries.variabilityNotice}</p>
+          </header>
+
+          <div className="pricing-costs__grid">
+            <article className="pricing-cost-panel pricing-cost-panel--platform">
+              <span className="pricing-cost-panel__index" aria-hidden="true">
+                01
+              </span>
+              <h3>Platform access</h3>
+              <p>
+                Plan access covers the Mandoob workspace boundary. Capability allocation and current
+                terms are confirmed during a plan discussion.
+              </p>
+              <ul>
+                {costBoundaries.softwareAccess.categories.map((category) => (
+                  <li key={category}>{category}</li>
+                ))}
+              </ul>
+            </article>
+
+            <article className="pricing-cost-panel">
+              <span className="pricing-cost-panel__index" aria-hidden="true">
+                02
+              </span>
+              <h3>Government and authority costs</h3>
+              <p>These setup costs are separate from Mandoob platform access.</p>
+              <ul>
+                {costBoundaries.governmentAndAuthority.categories.map((category) => (
+                  <li key={category}>{category}</li>
+                ))}
+              </ul>
+            </article>
+
+            <article className="pricing-cost-panel pricing-cost-panel--wide">
+              <span className="pricing-cost-panel__index" aria-hidden="true">
+                03
+              </span>
+              <h3>Additional and third-party costs</h3>
+              <p>Provider, usage, advisory, and other external charges remain separate.</p>
+              <ul>
+                {costBoundaries.thirdParty.categories.map((category) => (
+                  <li key={category}>{category}</li>
+                ))}
+                <li>{costBoundaries.otherThirdParties.text}</li>
+              </ul>
+            </article>
+          </div>
+
+          <div className="pricing-costs__estimate">
+            <div>
+              <span className="eyebrow">Company-setup planning</span>
+              <p>{costBoundaries.finalEstimateNotice}</p>
+            </div>
+            <Link className="btn btn--outline" href={costBoundaries.estimateLink.href}>
+              {costBoundaries.estimateLink.label}
+            </Link>
           </div>
         </div>
       </section>
