@@ -735,7 +735,7 @@
 .site-public .pricing-hero__lede {
   max-inline-size: 59ch;
   color: var(--public-text-muted);
-  font-size: var(--fs-18);
+  font-size: var(--fs-17);
 }
 .site-public .pricing-hero__policy {
   max-inline-size: 59ch;
@@ -833,7 +833,7 @@
 }
 .site-public .pricing-tier-card__head h3 {
   margin-block-start: 5px;
-  font-size: var(--fs-24);
+  font-size: var(--fs-20);
   letter-spacing: -0.035em;
 }
 .site-public .pricing-tier-card__fit {

@@ -15,6 +15,11 @@ const cssSource = readFileSync(
   new URL('../../../app/(public)/public-theme.css', import.meta.url),
   'utf8',
 );
+const pricingCssStart = cssSource.indexOf(
+  '/* ---------- P1.06 Pricing hero and tier cards ---------- */',
+);
+const pricingCssEnd = cssSource.indexOf('/* ---------- P1.05 CONTACT FORM ---------- */');
+const pricingCss = cssSource.slice(pricingCssStart, pricingCssEnd);
 
 const forbiddenPricingCopy =
   /popular|recommended|discount|saving|setup fee|free trial|checkout|\bUSD\b|\$\s*\d|\bAED\s*\d|\b\d+[,.]?\d*\s*(?:AED|USD|\/\s*month|\/\s*year)/iu;
@@ -111,11 +116,38 @@ describe('pricing hero and tier cards', () => {
     assert.doesNotMatch(pageSource, forbiddenPricingCopy);
   });
 
-  it('keeps pricing geometry scoped, desktop-dense, theme-aware, and overflow-safe', () => {
-    assert.match(cssSource, /\.site-public \.pricing-hero/u);
-    assert.match(cssSource, /\.site-public \.pricing-hero__grid\s*\{[^}]*grid-template-columns:/u);
-    assert.match(cssSource, /\.site-public \.pricing-tier-grid\s*\{[^}]*grid-template-columns:/u);
-    assert.match(cssSource, /\.dark \.site-public \.pricing-/u);
-    assert.doesNotMatch(cssSource, /\.pricing-[^{]*\{[^}]*(?:width|inline-size):\s*100vw/u);
+  it('uses only public-theme custom properties that are declared in the token source', () => {
+    assert.ok(pricingCssStart >= 0, 'pricing CSS marker must exist');
+    assert.ok(pricingCssEnd > pricingCssStart, 'pricing CSS block must end before the next marker');
+
+    const declaredTokens = new Set(
+      [...cssSource.matchAll(/(--[a-z0-9-]+)\s*:/giu)].map((match) => match[1]),
+    );
+    const usedTokens = new Set(
+      [...pricingCss.matchAll(/var\((--[a-z0-9-]+)/giu)].map((match) => match[1]),
+    );
+    const undefinedTokens = [...usedTokens].filter((token) => !declaredTokens.has(token)).sort();
+
+    assert.deepEqual(
+      undefinedTokens,
+      [],
+      `Undefined pricing CSS tokens: ${undefinedTokens.join(', ')}`,
+    );
+  });
+
+  it('keeps source-level pricing geometry scoped, theme-aware, and overflow-safe', () => {
+    assert.ok(pricingCss.length > 100);
+    assert.match(pricingCss, /\.site-public \.pricing-hero/u);
+    assert.match(pricingCss, /\.site-public \.pricing-hero__grid\s*\{[^}]*minmax\(0,/u);
+    assert.match(pricingCss, /\.site-public \.pricing-tier-grid\s*\{[^}]*repeat\(3,\s*minmax\(0,/u);
+    assert.match(pricingCss, /\.dark \.site-public \.pricing-/u);
+    assert.match(pricingCss, /@media \(max-width: 899px\)[\s\S]*grid-template-columns:\s*1fr/u);
+    assert.match(pricingCss, /(?:margin|padding|inset|border)-(?:inline|block)/u);
+    assert.doesNotMatch(
+      pricingCss,
+      /^(?!\s*(?:\.site-public|\.dark \.site-public|@|\/\*|\*|\}|$)).*\.pricing-/gmu,
+    );
+    assert.doesNotMatch(pricingCss, /\b(?:margin|padding)-(?:left|right):|\b(?:left|right):/u);
+    assert.doesNotMatch(pricingCss, /(?:inline-size|width):\s*100vw/u);
   });
 });
