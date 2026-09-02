@@ -1,9 +1,10 @@
 import { BentoGridSection } from '@/components/site/home/BentoGridSection';
 import { DashboardSection } from '@/components/site/home/DashboardSection';
-import { ProSuiteSection } from '@/components/site/home/ProSuiteSection';
-import { TrustBandSection } from '@/components/site/home/TrustBandSection';
+import { ProAudienceFitSection } from '@/components/site/pro/ProAudienceFitSection';
+import { ProCapabilitiesSection } from '@/components/site/pro/ProCapabilitiesSection';
 import { ProFinalCtaSection } from '@/components/site/pro/ProFinalCtaSection';
 import { ProHeroSection } from '@/components/site/pro/ProHeroSection';
+import { ProOperatingProcessSection } from '@/components/site/pro/ProOperatingProcessSection';
 import { EntranceReveal } from '@/components/site/EntranceReveal';
 
 export default function ProLandingPage() {
@@ -11,8 +12,9 @@ export default function ProLandingPage() {
     <>
       <EntranceReveal />
       <ProHeroSection />
-      <TrustBandSection />
-      <ProSuiteSection />
+      <ProAudienceFitSection />
+      <ProCapabilitiesSection />
+      <ProOperatingProcessSection />
       <DashboardSection />
       <BentoGridSection />
       <ProFinalCtaSection />
