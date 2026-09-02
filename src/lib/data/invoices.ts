@@ -206,6 +206,11 @@ export type InvoiceDetail = ProInvoiceRow & {
     createdAt: string;
   }[];
   audit: { id: string; action: string; createdAt: string; details: unknown }[];
+  sections: {
+    payments: 'available' | 'unavailable';
+    refunds: 'available' | 'unavailable';
+    audit: 'available' | 'unavailable';
+  };
 };
 
 export async function createInvoice(args: CreateInvoiceArgs): Promise<CreateInvoiceResult> {
@@ -354,14 +359,15 @@ export async function getInvoiceDetailForTenant(
   ]);
 
   const paymentIds = (paymentsResult.data ?? []).map((p) => p.id as string);
-  const { data: refunds } = paymentIds.length
+  const refundsResult = paymentIds.length
     ? await admin
         .from('refunds')
         .select('id, payment_id, idempotency_key, status, amount_minor, reason, created_at')
         .eq('tenant_id', tenantId)
         .in('payment_id', paymentIds)
         .order('created_at', { ascending: false })
-    : { data: [] };
+    : { data: [], error: null };
+  const refunds = refundsResult.data;
 
   return {
     id: invoice.id as string,
@@ -401,6 +407,11 @@ export async function getInvoiceDetailForTenant(
       createdAt: a.created_at as string,
       details: a.details,
     })),
+    sections: {
+      payments: paymentsResult.error ? 'unavailable' : 'available',
+      refunds: refundsResult.error ? 'unavailable' : 'available',
+      audit: auditResult.error ? 'unavailable' : 'available',
+    },
   };
 }
 

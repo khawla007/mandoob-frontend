@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +22,7 @@ export function InvoicesTable({
   rows: ProInvoiceRow[];
   emptyMessage?: string;
 }) {
+  const t = useTranslations('pro');
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{emptyMessage}</p>;
   }
@@ -30,12 +32,11 @@ export function InvoicesTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Invoice</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Due</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('paymentInvoice')}</TableHead>
+            <TableHead>{t('paymentStatus')}</TableHead>
+            <TableHead>{t('paymentDue')}</TableHead>
+            <TableHead className="text-right">{t('paymentAmount')}</TableHead>
+            <TableHead className="text-right">{t('paymentActions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -46,11 +47,6 @@ export function InvoicesTable({
                   <Link href={`/t/${slug}/payments/${row.id}`}>{row.label}</Link>
                 </Button>
                 <div className="text-muted-foreground font-mono text-xs">{row.id.slice(0, 8)}</div>
-              </TableCell>
-              <TableCell>
-                <Button asChild variant="link" className="h-auto p-0">
-                  <Link href={`/t/${slug}/company`}>{row.companyName}</Link>
-                </Button>
               </TableCell>
               <TableCell>
                 <Badge variant={row.status === 'open' ? 'default' : 'secondary'}>
@@ -66,7 +62,7 @@ export function InvoicesTable({
                     row.status === 'partially_refunded') && (
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/t/${slug}/payments/${row.id}/receipt`} target="_blank">
-                        Receipt
+                        {t('paymentReceipt')}
                       </Link>
                     </Button>
                   )}

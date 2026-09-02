@@ -65,16 +65,18 @@ export type ProFinanceCompanyRevenueRow = {
 export type ProFinanceFailedAttemptRow = {
   id: string;
   invoiceId: string;
-  companyId: string | null;
-  companyName: string;
-  amount: string;
   amountMinor: number;
   currency: string;
   status: string;
-  failureReason: string | null;
-  provider: string;
   method: string | null;
   createdAt: string;
+};
+
+export type ProFinanceBreakdownRow = {
+  key: string;
+  count: number;
+  amountMinor: number;
+  currency: string;
 };
 
 export type ProFinanceDashboard = {
@@ -91,6 +93,8 @@ export type ProFinanceDashboard = {
   collectionRateDisplay: string;
   kpis: ProFinanceKpi[];
   companyRevenue: ProFinanceCompanyRevenueRow[];
+  invoiceStatus: ProFinanceBreakdownRow[];
+  paymentMethods: ProFinanceBreakdownRow[];
   recentFailedAttempts: ProFinanceFailedAttemptRow[];
 };
 
@@ -234,25 +238,29 @@ export function calculateProFinanceDashboard(args: {
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 10)
     .map((payment) => {
-      const invoice = invoiceById.get(payment.invoice_id);
-      const companyId = invoice?.company_id ?? null;
       return {
         id: payment.id,
         invoiceId: payment.invoice_id,
-        companyId,
-        companyName: companyId
-          ? (companyNameById.get(companyId) ?? 'Unknown company')
-          : 'Unknown company',
-        amount: formatMoney(payment.amount_minor, payment.currency),
         amountMinor: payment.amount_minor,
         currency: payment.currency,
         status: payment.status,
-        failureReason: payment.failure_reason,
-        provider: payment.provider,
         method: payment.method,
         createdAt: payment.created_at,
       };
     });
+
+  const invoiceStatus = breakdown(
+    reportingInvoices.filter((invoice) => invoice.status !== 'draft' && invoice.status !== 'void'),
+    (invoice) => invoice.status,
+    (invoice) => invoice.amount_minor,
+    currency,
+  );
+  const paymentMethods = breakdown(
+    reportingPayments,
+    (payment) => payment.method ?? 'unknown',
+    (payment) => payment.amount_minor,
+    currency,
+  );
 
   return {
     currency,
@@ -289,8 +297,27 @@ export function calculateProFinanceDashboard(args: {
       },
     ],
     companyRevenue,
+    invoiceStatus,
+    paymentMethods,
     recentFailedAttempts,
   };
+}
+
+function breakdown<T>(
+  rows: T[],
+  keyFor: (row: T) => string,
+  amountFor: (row: T) => number,
+  currency: string,
+): ProFinanceBreakdownRow[] {
+  const values = new Map<string, ProFinanceBreakdownRow>();
+  for (const row of rows) {
+    const key = keyFor(row);
+    const current = values.get(key) ?? { key, count: 0, amountMinor: 0, currency };
+    current.count += 1;
+    current.amountMinor += amountFor(row);
+    values.set(key, current);
+  }
+  return [...values.values()].sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
 }
 
 export async function getProFinanceDashboard(

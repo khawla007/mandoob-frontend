@@ -261,18 +261,14 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
     dashboard.recentFailedAttempts.map((row) => ({
       id: row.id,
       status: row.status,
-      companyName: row.companyName,
       amountMinor: row.amountMinor,
-      failureReason: row.failureReason,
       createdAt: row.createdAt,
     })),
     [
       {
         id: 'payment-failed',
         status: 'failed',
-        companyName: 'Acme DMCC',
         amountMinor: 5_000,
-        failureReason: 'Insufficient funds',
         createdAt: '2026-05-19T10:00:00.000Z',
       },
     ],

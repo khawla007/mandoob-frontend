@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,6 +26,7 @@ export function InvoiceActions({
   status: string;
   refundOperation: RefundOperationState | null;
 }) {
+  const t = useTranslations('pro');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -47,15 +49,15 @@ export function InvoiceActions({
             ? await voidInvoiceAction({
                 tenantSlug: slug,
                 invoiceId,
-                reason: reason || 'Voided by PRO',
+                reason: reason || t('paymentDefaultVoidReason'),
               })
             : await issueRefundAction({
                 tenantSlug: slug,
                 invoiceId,
                 amountMinor: hasPendingRefund ? refundOperation.amountMinor : amountMinor,
                 reason: hasPendingRefund
-                  ? (refundOperation.reason ?? 'Refund requested')
-                  : reason || 'Refund requested',
+                  ? (refundOperation.reason ?? t('paymentDefaultRefundReason'))
+                  : reason || t('paymentDefaultRefundReason'),
                 operationId: refundOperationId.current!,
               });
       if (!result.ok) {
@@ -70,8 +72,8 @@ export function InvoiceActions({
       }
       setMessage(
         action === 'refund' && 'status' in result.data && result.data.status === 'pending'
-          ? 'Refund pending'
-          : 'Updated',
+          ? t('paymentRefundPending')
+          : t('paymentUpdated'),
       );
       router.refresh();
     });
@@ -86,23 +88,23 @@ export function InvoiceActions({
         {canClose && (
           <>
             <Button size="sm" variant="outline" disabled={pending} onClick={() => run('paid')}>
-              Mark paid
+              {t('paymentMarkPaid')}
             </Button>
             <Button size="sm" variant="outline" disabled={pending} onClick={() => run('void')}>
-              Void
+              {t('paymentVoid')}
             </Button>
           </>
         )}
         {canRefund && (
           <Button size="sm" variant="outline" disabled={pending} onClick={() => run('refund')}>
-            {hasPendingRefund ? 'Retry pending refund' : 'Refund'}
+            {hasPendingRefund ? t('paymentRetryRefund') : t('paymentRefund')}
           </Button>
         )}
       </div>
       {(canClose || canRefund) && (
         <Input
           className="h-7 max-w-52 text-xs"
-          placeholder={canRefund ? 'Refund reason' : 'Void note'}
+          placeholder={canRefund ? t('paymentRefundReason') : t('paymentVoidNote')}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           disabled={hasPendingRefund}

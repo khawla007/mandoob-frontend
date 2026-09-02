@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +32,7 @@ export default async function ProInvoiceDetailPage({
 
   const invoice = await getInvoiceDetailForTenant(tenant.id, company.id, invoiceId);
   if (!invoice) notFound();
+  const [locale, t] = await Promise.all([getLocale(), getTranslations('pro')]);
 
   const canShowReceipt =
     invoice.status === 'paid' ||
@@ -42,7 +44,7 @@ export default async function ProInvoiceDetailPage({
       <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
         <Link href={`/t/${tenant.slug}/payments`}>
           <ChevronLeft className="size-4" />
-          Back to payments
+          {t('paymentBack')}
         </Link>
       </Button>
 
@@ -61,7 +63,7 @@ export default async function ProInvoiceDetailPage({
           {canShowReceipt && (
             <Button asChild variant="outline">
               <Link href={`/t/${tenant.slug}/payments/${invoice.id}/receipt`} target="_blank">
-                Receipt
+                {t('paymentReceipt')}
               </Link>
             </Button>
           )}
@@ -77,53 +79,44 @@ export default async function ProInvoiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Invoice details</CardTitle>
+          <CardTitle className="text-lg">{t('paymentInvoiceDetails')}</CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Invoice ID" value={invoice.id} mono />
-            <Field label="Company" value={invoice.companyName} />
-            <Field label="Customer profile" value={invoice.customerProfileId ?? '—'} mono />
-            <Field label="Due date" value={invoice.dueAt ?? '—'} />
-            <Field label="Paid at" value={invoice.paidAt ?? '—'} />
-            <Field
-              label="Linked entity"
-              value={
-                invoice.linkedEntityType
-                  ? `${invoice.linkedEntityType}:${invoice.linkedEntityId ?? '—'}`
-                  : '—'
-              }
-              mono
-            />
+            <Field label={t('paymentInvoiceId')} value={invoice.id} mono />
+            <Field label={t('paymentCompany')} value={invoice.companyName} />
+            <Field label={t('paymentDueDate')} value={formatInvoiceDate(invoice.dueAt, locale)} />
+            <Field label={t('paymentPaidAt')} value={formatInvoiceDate(invoice.paidAt, locale)} />
+            <Field label={t('paymentLinkedEntity')} value={invoice.linkedEntityType ?? '—'} />
           </dl>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Payment attempts</CardTitle>
+          <CardTitle className="text-lg">{t('paymentAttemptsTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {invoice.payments.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No payment attempts recorded.</p>
+          {invoice.sections.payments === 'unavailable' ? (
+            <p className="text-muted-foreground text-sm">{t('paymentDetailsUnavailable')}</p>
+          ) : invoice.payments.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t('paymentAttemptsNone')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>{t('paymentStatus')}</TableHead>
+                  <TableHead>{t('paymentMethod')}</TableHead>
+                  <TableHead>{t('paymentReconciliation')}</TableHead>
+                  <TableHead className="text-right">{t('paymentAmount')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {invoice.payments.map((payment) => (
                   <TableRow key={payment.id}>
-                    <TableCell>{payment.provider}</TableCell>
                     <TableCell>{payment.status}</TableCell>
                     <TableCell>{payment.method ?? '—'}</TableCell>
-                    <TableCell>{payment.receivedAt ?? payment.failureReason ?? '—'}</TableCell>
+                    <TableCell>{formatInvoiceDate(payment.receivedAt, locale)}</TableCell>
                     <TableCell className="text-right">{payment.amount}</TableCell>
                   </TableRow>
                 ))}
@@ -135,19 +128,21 @@ export default async function ProInvoiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Refunds</CardTitle>
+          <CardTitle className="text-lg">{t('paymentRefunds')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {invoice.refunds.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No refunds recorded.</p>
+          {invoice.sections.refunds === 'unavailable' ? (
+            <p className="text-muted-foreground text-sm">{t('paymentDetailsUnavailable')}</p>
+          ) : invoice.refunds.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t('paymentRefundsNone')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>{t('paymentStatus')}</TableHead>
+                  <TableHead>{t('paymentReason')}</TableHead>
+                  <TableHead>{t('paymentCreated')}</TableHead>
+                  <TableHead className="text-right">{t('paymentAmount')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -155,7 +150,7 @@ export default async function ProInvoiceDetailPage({
                   <TableRow key={refund.id}>
                     <TableCell>{refund.status}</TableCell>
                     <TableCell>{refund.reason ?? '—'}</TableCell>
-                    <TableCell>{refund.createdAt}</TableCell>
+                    <TableCell>{formatInvoiceDate(refund.createdAt, locale)}</TableCell>
                     <TableCell className="text-right">{refund.amount}</TableCell>
                   </TableRow>
                 ))}
@@ -167,11 +162,13 @@ export default async function ProInvoiceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent audit</CardTitle>
+          <CardTitle className="text-lg">{t('paymentAudit')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {invoice.audit.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No audit entries found.</p>
+          {invoice.sections.audit === 'unavailable' ? (
+            <p className="text-muted-foreground text-sm">{t('paymentDetailsUnavailable')}</p>
+          ) : invoice.audit.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t('paymentAuditNone')}</p>
           ) : (
             <ul className="divide-border divide-y text-sm">
               {invoice.audit.map((entry) => (
@@ -180,7 +177,9 @@ export default async function ProInvoiceDetailPage({
                   className="flex items-center justify-between gap-4 py-2 first:pt-0"
                 >
                   <span className="font-medium">{entry.action}</span>
-                  <span className="text-muted-foreground">{entry.createdAt}</span>
+                  <span className="text-muted-foreground">
+                    {formatInvoiceDate(entry.createdAt, locale)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -198,4 +197,12 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
       <dd className={mono ? 'font-mono break-all' : 'font-medium'}>{value}</dd>
     </div>
   );
+}
+
+function formatInvoiceDate(value: string | null, locale: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
 }
