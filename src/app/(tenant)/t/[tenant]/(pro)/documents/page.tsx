@@ -34,6 +34,7 @@ import {
 } from '@/lib/validation/pro-document-center';
 import {
   documentCenterHref,
+  legacyCompanyRedirectHref,
   parseDocumentCenterSearch,
   type DocumentCenterSearchParams,
 } from './page-logic';
@@ -65,6 +66,8 @@ export default async function ProDocumentsPage({
   if (!company || company.tenantId !== tenant.id) notFound();
 
   const query = parseDocumentCenterSearch(search);
+  const legacyCompanyRedirect = legacyCompanyRedirectHref(slug, search, query);
+  if (legacyCompanyRedirect) redirect(legacyCompanyRedirect);
   const requestedPage = query.page;
   const [workspace, summary, t, locale] = await Promise.all([
     listProDocumentCenter(tenant.id, company.id, query),

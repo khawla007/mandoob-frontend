@@ -91,6 +91,14 @@ export function parseDocumentCenterSearch(
   });
 }
 
+export function legacyCompanyRedirectHref(
+  slug: string,
+  search: DocumentCenterSearchParams,
+  filters: DocumentCenterSearch,
+): string | null {
+  return search.company === undefined ? null : documentCenterHref(slug, filters);
+}
+
 export function documentCenterHref(
   slug: string,
   filters: DocumentCenterSearch,

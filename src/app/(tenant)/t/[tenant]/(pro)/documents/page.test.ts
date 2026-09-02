@@ -4,7 +4,11 @@ import { test } from 'node:test';
 
 import { ApiError } from '@/lib/errors';
 import { authorizeDocumentCenterRead } from './page-authorization';
-import { documentCenterHref, parseDocumentCenterSearch } from './page-logic';
+import {
+  documentCenterHref,
+  legacyCompanyRedirectHref,
+  parseDocumentCenterSearch,
+} from './page-logic';
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const readOptional = (path: string) => {
@@ -113,6 +117,35 @@ test('canonicalization removes stale company URL state and targets a focused ite
   assert.match(page, /Math\.ceil\(workspace\.total \/ workspace\.pageSize\)/u);
   assert.match(page, /requestedPage !== workspace\.page/u);
   assert.match(page, /redirect\(documentCenterHref\(slug, query, workspace\.page\)\)/u);
+});
+
+test('legacy company URLs redirect once while retaining validated Documents filters, page, and focus', () => {
+  const requestId = '22222222-2222-4222-8222-222222222222';
+  const filtered = parseDocumentCenterSearch({
+    company: '11111111-1111-4111-8111-111111111111',
+    view: 'submitted',
+    sort: 'newest',
+    window: 'all',
+    type: 'passport',
+    q: '  passport  ',
+    from: '2026-08-01',
+    to: '2026-08-31',
+    page: '3',
+  });
+  const redirectHref = legacyCompanyRedirectHref('acme', { company: 'legacy' }, filtered);
+  assert.equal(
+    redirectHref,
+    '/t/acme/documents?view=submitted&sort=newest&type=passport&q=passport&from=2026-08-01&to=2026-08-31&page=3',
+  );
+  assert.equal(legacyCompanyRedirectHref('acme', {}, filtered), null);
+
+  const focused = parseDocumentCenterSearch({ company: 'legacy', request: requestId, page: '3' });
+  assert.equal(
+    legacyCompanyRedirectHref('acme', { company: 'legacy' }, focused),
+    `/t/acme/documents?request=${requestId}`,
+  );
+  assert.match(page, /legacyCompanyRedirectHref\(slug, search, query\)/u);
+  assert.match(page, /if \(legacyCompanyRedirect\) redirect\(legacyCompanyRedirect\)/u);
 });
 
 test('filter controls remount from canonical URL state after summary navigation', () => {
