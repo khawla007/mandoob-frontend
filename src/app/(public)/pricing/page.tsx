@@ -167,10 +167,14 @@ export default function PricingPage() {
                       <strong>{row.group}</strong>
                       <span>{row.detail}</span>
                     </th>
-                    {row.tiers.map((allocation, index) => {
-                      const status = resolvePublicComparisonStatus(allocation);
+                    {PUBLIC_PRICING_CONTRACT.tiers.map((tier) => {
+                      const allocation = row.tiers[tier.id];
+                      const status = resolvePublicComparisonStatus(allocation, {
+                        tierId: tier.id,
+                        capabilityGroup: row.group,
+                      });
                       return (
-                        <td key={PUBLIC_PRICING_CONTRACT.comparison.tierIds[index]}>
+                        <td key={tier.id}>
                           <span
                             className="pricing-comparison__status"
                             data-comparison-status={status}
@@ -204,10 +208,7 @@ export default function PricingPage() {
                 01
               </span>
               <h3>Platform access</h3>
-              <p>
-                Plan access covers the Mandoob workspace boundary. Capability allocation and current
-                terms are confirmed during a plan discussion.
-              </p>
+              <p>{costBoundaries.softwareAccess.description.text}</p>
               <ul>
                 {costBoundaries.softwareAccess.categories.map((category) => (
                   <li key={category}>{category}</li>
@@ -220,7 +221,7 @@ export default function PricingPage() {
                 02
               </span>
               <h3>Government and authority costs</h3>
-              <p>These setup costs are separate from Mandoob platform access.</p>
+              <p>{costBoundaries.governmentAndAuthority.description.text}</p>
               <ul>
                 {costBoundaries.governmentAndAuthority.categories.map((category) => (
                   <li key={category}>{category}</li>
@@ -233,7 +234,7 @@ export default function PricingPage() {
                 03
               </span>
               <h3>Additional and third-party costs</h3>
-              <p>The categories below remain separate from platform access.</p>
+              <p>{costBoundaries.thirdParty.description.text}</p>
               <ul>
                 {costBoundaries.thirdParty.categories.map((category) => (
                   <li key={category}>{category}</li>

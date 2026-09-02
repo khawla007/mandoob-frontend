@@ -6,10 +6,12 @@ import { describe, it } from 'node:test';
 import React from 'react';
 
 import {
-  ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS,
+  ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE,
   PUBLIC_PRICING_COMPARISON_STATUSES,
   PUBLIC_PRICING_CONTRACT,
+  matchesUsageBasedTierAllocationEvidence,
   resolvePublicComparisonStatus,
+  type PublicPricingComparisonAllocation,
 } from '@/lib/pricing/public-pricing';
 
 const pageSource = readFileSync(
@@ -63,17 +65,15 @@ if (reactServer) {
 
 describe('pricing comparison contract', () => {
   it('centralizes exactly three tier columns and all required capability groups', () => {
-    assert.deepEqual(
-      PUBLIC_PRICING_CONTRACT.comparison.tierIds,
-      PUBLIC_PRICING_CONTRACT.tiers.map((tier) => tier.id),
-    );
-    assert.equal(PUBLIC_PRICING_CONTRACT.comparison.tierIds.length, 3);
+    assert.equal('tierIds' in PUBLIC_PRICING_CONTRACT.comparison, false);
+    const tierIds = PUBLIC_PRICING_CONTRACT.tiers.map((tier) => tier.id);
+    assert.deepEqual(tierIds, ['starter', 'professional', 'enterprise']);
     assert.deepEqual(
       PUBLIC_PRICING_CONTRACT.comparison.rows.map((row) => row.group),
       requiredGroups,
     );
     for (const row of PUBLIC_PRICING_CONTRACT.comparison.rows) {
-      assert.equal(row.tiers.length, 3, row.group);
+      assert.deepEqual(Object.keys(row.tiers), tierIds, row.group);
     }
   });
 
@@ -87,18 +87,25 @@ describe('pricing comparison contract', () => {
     ]);
 
     for (const row of PUBLIC_PRICING_CONTRACT.comparison.rows) {
-      for (const allocation of row.tiers) {
-        const visibleStatus = resolvePublicComparisonStatus(allocation);
+      for (const tier of PUBLIC_PRICING_CONTRACT.tiers) {
+        const allocation = row.tiers[tier.id];
+        const visibleStatus = resolvePublicComparisonStatus(allocation, {
+          tierId: tier.id,
+          capabilityGroup: row.group,
+        });
         assert.ok(PUBLIC_PRICING_COMPARISON_STATUSES.includes(visibleStatus));
         if (allocation.source.state === 'unavailable') assert.equal(visibleStatus, 'Contact');
       }
     }
 
     assert.equal(
-      resolvePublicComparisonStatus({
-        status: 'Included',
-        source: { state: 'unavailable', reason: 'Allocation is not approved' },
-      } as never),
+      resolvePublicComparisonStatus(
+        {
+          status: 'Included',
+          source: { state: 'unavailable', reason: 'Allocation is not approved' },
+        } as never,
+        { tierId: 'starter', capabilityGroup: 'Company workspace' },
+      ),
       'Contact',
     );
 
@@ -106,28 +113,72 @@ describe('pricing comparison contract', () => {
       (row) => row.group === 'Communication allowances',
     );
     assert.ok(communication);
-    for (const allocation of communication.tiers) {
+    for (const tier of PUBLIC_PRICING_CONTRACT.tiers) {
+      const allocation: PublicPricingComparisonAllocation = communication.tiers[tier.id];
       assert.equal(allocation.source.state, 'unavailable');
-      assert.equal(resolvePublicComparisonStatus(allocation), 'Contact');
+      assert.equal(
+        resolvePublicComparisonStatus(allocation, {
+          tierId: tier.id,
+          capabilityGroup: communication.group,
+        }),
+        'Contact',
+      );
     }
     assert.ok(
       PUBLIC_PRICING_CONTRACT.comparison.rows.every((row) =>
-        row.tiers.every(
-          (allocation) =>
-            resolvePublicComparisonStatus(allocation) !== 'Usage-based' ||
-            allocation.source.state === 'approved-static',
+        PUBLIC_PRICING_CONTRACT.tiers.every(
+          (tier) =>
+            resolvePublicComparisonStatus(row.tiers[tier.id], {
+              tierId: tier.id,
+              capabilityGroup: row.group,
+            }) !== 'Usage-based',
         ),
       ),
-      'A per-tier Usage-based status requires an accepted allocation source',
+      'A per-tier Usage-based status requires accepted allocation-specific evidence',
     );
-    assert.deepEqual(ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS, []);
+    assert.deepEqual(ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE, []);
     assert.equal(
-      resolvePublicComparisonStatus({
-        status: 'Usage-based',
-        source: { state: 'approved-static', source: 'Category-level add-on concept only' },
-      }),
+      resolvePublicComparisonStatus(
+        {
+          status: 'Usage-based',
+          source: { state: 'approved-static', source: 'Category-level add-on concept only' },
+        } as never,
+        { tierId: 'starter', capabilityGroup: 'Communication allowances' },
+      ),
       'Contact',
       'Category-level add-on approval must not publish a per-tier Usage-based allocation',
+    );
+
+    const allocation = {
+      status: 'Usage-based',
+      evidenceId: 'reviewed-starter-communications',
+      tierId: 'starter',
+      capabilityGroup: 'Communication allowances',
+      source: { state: 'approved-static', source: 'Reviewed allocation evidence' },
+    } as const;
+    const evidence = {
+      id: 'reviewed-starter-communications',
+      tierId: 'starter',
+      capabilityGroup: 'Communication allowances',
+    } as const;
+    assert.equal(matchesUsageBasedTierAllocationEvidence(allocation, allocation, evidence), true);
+    assert.equal(
+      matchesUsageBasedTierAllocationEvidence(
+        allocation,
+        { tierId: 'professional', capabilityGroup: 'Communication allowances' },
+        evidence,
+      ),
+      false,
+      'Evidence for one tier cannot authorize another tier',
+    );
+    assert.equal(
+      matchesUsageBasedTierAllocationEvidence(
+        allocation,
+        { tierId: 'starter', capabilityGroup: 'Support' },
+        evidence,
+      ),
+      false,
+      'Evidence for one capability group cannot authorize another group',
     );
     assert.equal(PUBLIC_PRICING_CONTRACT.addOns[0].category, 'Communication usage');
     assert.equal(PUBLIC_PRICING_CONTRACT.addOns[0].basis.text, 'Usage-based');
@@ -163,6 +214,14 @@ describe('pricing comparison contract', () => {
       'Final Company-setup estimates depend on selected inputs and current schedules.',
     );
     assert.equal(costBoundaries.finalEstimateNotice.source.state, 'approved-static');
+    for (const description of [
+      costBoundaries.softwareAccess.description,
+      costBoundaries.governmentAndAuthority.description,
+      costBoundaries.thirdParty.description,
+    ]) {
+      assert.equal(description.source.state, 'approved-static');
+      assert.ok(description.text.length > 20);
+    }
     assert.doesNotMatch(
       JSON.stringify(costBoundaries),
       /\b(?:AED|USD)\s*\d|\d[,.]?\d*\s*(?:AED|USD)/iu,
@@ -194,6 +253,21 @@ describe('pricing comparison and cost-boundary sections', () => {
       (table.match(/data-comparison-status=/gu) ?? []).length,
       requiredGroups.length * 3,
     );
+    const resolvedStatuses = PUBLIC_PRICING_CONTRACT.comparison.rows.flatMap((row) =>
+      PUBLIC_PRICING_CONTRACT.tiers.map((tier) =>
+        resolvePublicComparisonStatus(row.tiers[tier.id], {
+          tierId: tier.id,
+          capabilityGroup: row.group,
+        }),
+      ),
+    );
+    for (const status of PUBLIC_PRICING_COMPARISON_STATUSES) {
+      const expectedCount = resolvedStatuses.filter((value) => value === status).length;
+      const actualCount = (
+        table.match(new RegExp(`data-comparison-status="${status}">${status}<\\/span>`, 'gu')) ?? []
+      ).length;
+      assert.equal(actualCount, expectedCount, `${status} must be visible cell text`);
+    }
     assert.doesNotMatch(table, /aria-label="(?:included|contact|usage-based)"/iu);
   });
 
@@ -235,6 +309,9 @@ describe('pricing comparison and cost-boundary sections', () => {
     assert.match(pageSource, /costBoundaries/u);
     assert.match(pageSource, /costBoundaries\.variabilityNotice\.text/u);
     assert.match(pageSource, /costBoundaries\.finalEstimateNotice\.text/u);
+    assert.match(pageSource, /costBoundaries\.softwareAccess\.description\.text/u);
+    assert.match(pageSource, /costBoundaries\.governmentAndAuthority\.description\.text/u);
+    assert.match(pageSource, /costBoundaries\.thirdParty\.description\.text/u);
     assert.doesNotMatch(pageSource, /\badvisory\b/iu);
     assert.doesNotMatch(
       pageSource,
@@ -243,8 +320,24 @@ describe('pricing comparison and cost-boundary sections', () => {
 
     assert.match(pricingCss, /\.site-public \.pricing-comparison/u);
     assert.match(pricingCss, /\.site-public \.pricing-comparison__table-wrap/u);
+    assert.match(
+      pricingCss,
+      /\.site-public \.pricing-comparison__table-wrap\s*\{[^}]*overflow-x:\s*auto/u,
+    );
+    assert.match(
+      pricingCss,
+      /\.site-public \.pricing-comparison table\s*\{[^}]*min-inline-size:\s*820px/u,
+    );
     assert.match(pricingCss, /\.site-public \.pricing-costs/u);
     assert.match(pricingCss, /\.dark \.site-public \.pricing-comparison/u);
+    assert.match(
+      pricingCss,
+      /\.dark \.site-public \.pricing-comparison__table-wrap,[\s\S]*?border-color:\s*var\(--public-border-strong\)/u,
+    );
+    assert.match(
+      pricingCss,
+      /\.dark \.site-public \.pricing-comparison caption,[\s\S]*?border-color:\s*var\(--public-border-strong\)/u,
+    );
     assert.match(pricingCss, /@media \(max-width: 899px\)[\s\S]*\.pricing-costs__grid/u);
     assert.match(pricingCss, /(?:margin|padding|inset|border)-(?:inline|block)/u);
     assert.doesNotMatch(pricingCss, /\b(?:margin|padding)-(?:left|right):|\b(?:left|right):/u);

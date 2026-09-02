@@ -48,6 +48,8 @@ type PublicPricingTierIdentity =
   | { id: 'professional'; name: 'Professional' }
   | { id: 'enterprise'; name: 'Enterprise' };
 
+export type PublicPricingTierId = PublicPricingTierIdentity['id'];
+
 type PublicPricingTierDetails = {
   source: PublicPricingSource;
   intendedFit: string;
@@ -76,11 +78,6 @@ export type PublicPricingCategory =
   | 'Reporting and audit visibility'
   | 'Support';
 
-// A category-level communication add-on is approved, but no per-tier allocation source is.
-export const ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS = Object.freeze(
-  [] as readonly string[],
-);
-
 export const PUBLIC_PRICING_COMPARISON_STATUSES = [
   'Included',
   'Configurable',
@@ -91,19 +88,12 @@ export const PUBLIC_PRICING_COMPARISON_STATUSES = [
 
 export type PublicPricingComparisonStatus = (typeof PUBLIC_PRICING_COMPARISON_STATUSES)[number];
 
-type PublicPricingApprovedComparisonStatus = Exclude<PublicPricingComparisonStatus, 'Contact'>;
+type PublicPricingApprovedComparisonStatus = Exclude<
+  PublicPricingComparisonStatus,
+  'Contact' | 'Usage-based'
+>;
 
-export type PublicPricingComparisonAllocation =
-  | {
-      status: PublicPricingApprovedComparisonStatus;
-      source: Extract<PublicPricingSource, { state: 'approved-static' }>;
-    }
-  | {
-      status: 'Contact';
-      source: Extract<PublicPricingSource, { state: 'unavailable' }>;
-    };
-
-type PublicPricingComparisonGroup =
+export type PublicPricingComparisonGroup =
   | 'Company workspace'
   | 'Documents and storage'
   | 'Renewals'
@@ -113,20 +103,41 @@ type PublicPricingComparisonGroup =
   | 'Branding'
   | 'Support';
 
+export type PublicPricingAllocationContext = {
+  tierId: PublicPricingTierId;
+  capabilityGroup: PublicPricingComparisonGroup;
+};
+
+export type PublicPricingUsageBasedAllocationEvidence = PublicPricingAllocationContext & {
+  id: string;
+};
+
+// Category-level add-on approval is not tier evidence; this registry stays closed until reviewed.
+export const ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE = Object.freeze(
+  [] as readonly PublicPricingUsageBasedAllocationEvidence[],
+);
+
+export type PublicPricingComparisonAllocation =
+  | {
+      status: PublicPricingApprovedComparisonStatus;
+      source: Extract<PublicPricingSource, { state: 'approved-static' }>;
+    }
+  | {
+      status: 'Usage-based';
+      evidenceId: string;
+      tierId: PublicPricingTierId;
+      capabilityGroup: PublicPricingComparisonGroup;
+      source: Extract<PublicPricingSource, { state: 'approved-static' }>;
+    }
+  | {
+      status: 'Contact';
+      source: Extract<PublicPricingSource, { state: 'unavailable' }>;
+    };
+
 type PublicPricingComparisonRow = {
   group: PublicPricingComparisonGroup;
   detail: string;
-  tiers: readonly [
-    PublicPricingComparisonAllocation,
-    PublicPricingComparisonAllocation,
-    PublicPricingComparisonAllocation,
-  ];
-};
-
-type CostBoundary = {
-  source: PublicPricingSource;
-  categories: readonly string[];
-  price: Extract<PublicPrice, { state: 'unavailable' }>;
+  tiers: Readonly<Record<PublicPricingTierId, PublicPricingComparisonAllocation>>;
 };
 
 type ApprovedPublicationFact<Text extends string = string> = {
@@ -137,6 +148,13 @@ type ApprovedPublicationFact<Text extends string = string> = {
 type UnavailablePublicationFact<Text extends string = string> = {
   text: Text;
   source: Extract<PublicPricingSource, { state: 'unavailable' }>;
+};
+
+type CostBoundary = {
+  source: PublicPricingSource;
+  description: ApprovedPublicationFact;
+  categories: readonly string[];
+  price: Extract<PublicPrice, { state: 'unavailable' }>;
 };
 
 type PublicPricingPublicationSummary = {
@@ -161,13 +179,13 @@ export type PublicPricingContract = DeepReadonly<{
   comparison: {
     caption: ApprovedPublicationFact<'Compare approved capability categories across Starter, Professional, and Enterprise.'>;
     summary: UnavailablePublicationFact;
-    tierIds: readonly ['starter', 'professional', 'enterprise'];
     rows: readonly PublicPricingComparisonRow[];
   };
   costBoundaries: {
     softwareAccess: {
       inPlan: true;
       source: PublicPricingSource;
+      description: ApprovedPublicationFact;
       categories: readonly ['Workspace access'];
     };
     governmentAndAuthority: CostBoundary;
@@ -248,7 +266,11 @@ function unapprovedComparisonAllocation(reason: string): PublicPricingComparison
 function repeatedComparisonAllocation(
   allocation: PublicPricingComparisonAllocation,
 ): PublicPricingComparisonRow['tiers'] {
-  return [allocation, allocation, allocation];
+  return {
+    starter: allocation,
+    professional: allocation,
+    enterprise: allocation,
+  };
 }
 
 const UNAPPROVED_TIER_ALLOCATION_REASON =
@@ -339,7 +361,6 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       'Category-level capabilities are shown without inventing tier allocations. Contact Mandoob to confirm the current specification.',
       UNAPPROVED_TIER_ALLOCATION_REASON,
     ),
-    tierIds: ['starter', 'professional', 'enterprise'],
     rows: [
       comparisonRow(
         'Company workspace',
@@ -387,10 +408,16 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
     softwareAccess: {
       inPlan: true,
       source: approvedStaticSource(),
+      description: approvedPublicationFact(
+        'Plan access covers the Mandoob workspace boundary. Capability allocation and current terms are confirmed during a plan discussion.',
+      ),
       categories: ['Workspace access'],
     },
     governmentAndAuthority: {
       source: approvedStaticSource(),
+      description: approvedPublicationFact(
+        'These setup costs are separate from Mandoob platform access.',
+      ),
       categories: [
         'Company registration',
         'Government and authority fees',
@@ -400,6 +427,9 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
     },
     thirdParty: {
       source: approvedStaticSource(),
+      description: approvedPublicationFact(
+        'The categories below remain separate from platform access.',
+      ),
       categories: [
         'Office',
         'Banking',
@@ -426,15 +456,36 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
   },
 } satisfies PublicPricingContract);
 
+type UsageBasedComparisonAllocation = Extract<
+  PublicPricingComparisonAllocation,
+  { status: 'Usage-based' }
+>;
+
+export function matchesUsageBasedTierAllocationEvidence(
+  allocation: UsageBasedComparisonAllocation,
+  context: PublicPricingAllocationContext,
+  evidence: PublicPricingUsageBasedAllocationEvidence,
+): boolean {
+  return (
+    allocation.evidenceId === evidence.id &&
+    allocation.tierId === context.tierId &&
+    allocation.capabilityGroup === context.capabilityGroup &&
+    evidence.tierId === context.tierId &&
+    evidence.capabilityGroup === context.capabilityGroup
+  );
+}
+
 export function resolvePublicComparisonStatus(
   allocation: PublicPricingComparisonAllocation,
+  context: PublicPricingAllocationContext,
 ): PublicPricingComparisonStatus {
-  if (allocation.source.state !== 'approved-static') return 'Contact';
-  if (
-    allocation.status === 'Usage-based' &&
-    !ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS.includes(allocation.source.source)
-  ) {
-    return 'Contact';
+  if (!allocation || allocation.source.state !== 'approved-static') return 'Contact';
+  if (allocation.status === 'Usage-based') {
+    return ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE.some((evidence) =>
+      matchesUsageBasedTierAllocationEvidence(allocation, context, evidence),
+    )
+      ? 'Usage-based'
+      : 'Contact';
   }
   return PUBLIC_PRICING_COMPARISON_STATUSES.includes(allocation.status)
     ? allocation.status
