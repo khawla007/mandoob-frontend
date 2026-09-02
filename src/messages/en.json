@@ -369,6 +369,9 @@
       "opening": "Opening file…",
       "popupBlocked": "Allow pop-ups for Mandoob, then try opening the file again.",
       "success": "Document Center updated successfully.",
+      "reviewUnavailable": "Review unavailable",
+      "expiryUnavailable": "Expiry update unavailable",
+      "phase3Unavailable": "This action is unavailable until its company-scoped Phase 3 workflow is released.",
       "history": "Version history"
     },
     "request": {
@@ -503,6 +506,7 @@
       "tenantInactive": "This company workspace is inactive. Contact an administrator before continuing.",
       "expiryExternallyManaged": "Update this expiry from its source record.",
       "openFailed": "The secure file link could not be created. Try again.",
+      "phase3Unavailable": "This action is unavailable until its company-scoped Phase 3 workflow is released.",
       "unexpected": "The action could not be completed safely. Try again."
     },
     "units": {

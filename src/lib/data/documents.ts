@@ -460,12 +460,14 @@ export async function listDocumentsForCompany(
 
 export async function getDocumentSignedUrl(
   tenantId: string,
+  companyId: string,
   versionId: string,
   ttlSeconds = 60 * 5,
 ): Promise<{ url: string; expiresAt: string }> {
   const normalizedTenantId = normalizeUuid(tenantId);
+  const normalizedExpectedCompanyId = normalizeUuid(companyId);
   const normalizedVersionId = normalizeUuid(versionId);
-  if (!normalizedTenantId || !normalizedVersionId) {
+  if (!normalizedTenantId || !normalizedExpectedCompanyId || !normalizedVersionId) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
   }
   if (!Number.isInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 300) {
@@ -476,7 +478,7 @@ export async function getDocumentSignedUrl(
   const { data: version, error: readErr } = await admin
     .from('document_versions')
     .select(
-      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id))',
+      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id))',
     )
     .eq('id', normalizedVersionId)
     .maybeSingle();
@@ -494,11 +496,13 @@ export async function getDocumentSignedUrl(
       request_id: string | null;
       current_version_id: string | null;
       company: { id: string; tenant_id: string } | null;
+      request: { id: string; tenant_id: string; company_id: string } | null;
     } | null;
   };
   const owned = version as unknown as OwnedVersionRow;
   const document = owned.document;
   const company = document?.company;
+  const request = document?.request;
   const normalizedCompanyId = company ? normalizeUuid(company.id) : null;
   if (
     owned.id !== normalizedVersionId ||
@@ -507,9 +511,15 @@ export async function getDocumentSignedUrl(
     document.tenant_id !== normalizedTenantId ||
     !company ||
     !normalizedCompanyId ||
+    normalizedCompanyId !== normalizedExpectedCompanyId ||
     company.id !== normalizedCompanyId ||
     document.company_id !== normalizedCompanyId ||
     company.tenant_id !== normalizedTenantId ||
+    (document.request_id !== null &&
+      (!request ||
+        request.id !== document.request_id ||
+        request.tenant_id !== normalizedTenantId ||
+        request.company_id !== normalizedExpectedCompanyId)) ||
     typeof owned.storage_path !== 'string' ||
     !isGeneratedStoragePath(owned.storage_path, normalizedTenantId, normalizedCompanyId)
   ) {

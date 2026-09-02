@@ -40,6 +40,9 @@ renderTest('loading skeleton renders localized busy semantics and stable geometr
   assert.match(html, /جارٍ تحميل المستندات/u);
   assert.equal((html.match(/document-center__skeleton-summary/gu) ?? []).length, 6);
   assert.equal((html.match(/document-center__skeleton-table-row/gu) ?? []).length, 5);
+  assert.match(html, /document-center__skeleton-company-context/u);
+  assert.match(html, /document-center__skeleton-actions/u);
+  assert.equal((html.match(/document-center__skeleton-action h-/gu) ?? []).length, 2);
   assert.match(html, /document-center__skeleton-filter/u);
   assert.match(html, /document-center__skeleton-table-head/u);
 });

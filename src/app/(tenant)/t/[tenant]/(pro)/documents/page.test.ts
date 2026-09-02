@@ -129,13 +129,16 @@ test('client action islands keep React 19 and server-action boundaries explicit'
     assert.match(client, /^'use client';/u);
     assert.doesNotMatch(client, /as never/u);
   }
-  assert.match(actions, /aria-live="polite"/u);
+  assert.match(requestDialog, /aria-live="polite"/u);
   assert.doesNotMatch(history, /aria-live=/u);
-  assert.match(actions, /useActionState/u);
   assert.match(actions, /resolvePrimaryDocumentAction\(row\)/u);
   assert.match(actions, /data-primary=/u);
   assert.match(actions, /openDocumentVersionWithPopup/u);
   assert.doesNotMatch(actions, /await openDocumentVersionAction[\s\S]*window\.open/u);
+  assert.doesNotMatch(
+    actions,
+    /reviewDocumentCenterAction|setDocumentExpiryAction|useActionState|<form action=/u,
+  );
   assert.match(history, /loadVersionHistoryAction\(slug, documentId\)/u);
   assert.doesNotMatch(history, /versions !== null/u);
   assert.doesNotMatch(queue, /row=\{row\}/u);
@@ -172,6 +175,9 @@ test('route loading and error recovery are localized, semantic, and sanitized', 
   assert.match(loadingView, /Array\.from\(\{ length: 6 \}/u);
   assert.match(loadingView, /document-center__skeleton-filter/u);
   assert.match(loadingView, /document-center__skeleton-table/u);
+  assert.match(loadingView, /document-center__skeleton-company-context/u);
+  assert.match(loadingView, /document-center__skeleton-actions/u);
+  assert.equal((loadingView.match(/document-center__skeleton-action h-/gu) ?? []).length, 2);
 
   assert.match(errorBoundary, /^'use client';/u);
   assert.match(errorBoundary, /useTranslations\('proDocumentCenter'\)/u);

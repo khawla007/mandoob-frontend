@@ -12,14 +12,9 @@ import {
   logSafeActionError,
   normalizeActionRequestMetadata,
 } from '@/lib/actions/server-action-security';
-import {
-  createDocumentRequest,
-  getDocumentSignedUrl,
-  setDocumentReview,
-} from '@/lib/data/documents';
+import { createDocumentRequest, getDocumentSignedUrl } from '@/lib/data/documents';
 import {
   listDocumentVersionHistory,
-  setDocumentExpiry,
   type DocumentVersionHistoryEntry,
 } from '@/lib/data/pro-document-center';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
@@ -50,10 +45,8 @@ function dependencies(): DocumentCenterActionDependencies {
       return normalizeActionRequestMetadata(requestHeaders);
     },
     createRequest: createDocumentRequest,
-    reviewVersion: setDocumentReview,
     openVersion: getDocumentSignedUrl,
     loadHistory: listDocumentVersionHistory,
-    setExpiry: setDocumentExpiry,
     revalidate: revalidatePath,
     rethrowNavigation: (error) => unstable_rethrow(error),
     logUnexpected: (operation, error) => logSafeActionError(operation, error),

@@ -15,8 +15,15 @@ export function DocumentCenterLoadingView({ label }: { label: string }) {
           <Skeleton className="h-3 w-40 max-w-full" />
           <Skeleton className="h-8 w-56 max-w-full" />
           <Skeleton className="h-4 w-[32rem] max-w-full" />
+          <Skeleton className="document-center__skeleton-company-context h-3 w-56 max-w-full" />
         </div>
-        <Skeleton className="h-11 w-48 max-w-full rounded-lg" />
+        <div className="document-center__skeleton-actions flex flex-wrap items-end gap-2">
+          <Skeleton className="document-center__skeleton-action h-11 w-48 max-w-full rounded-lg" />
+          <div className="grid gap-1">
+            <Skeleton className="document-center__skeleton-action h-11 w-52 max-w-full rounded-lg" />
+            <Skeleton className="h-3 w-52 max-w-full" />
+          </div>
+        </div>
       </header>
 
       <section

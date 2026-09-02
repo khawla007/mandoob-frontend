@@ -183,7 +183,7 @@ export async function getCustomerDocumentSignedUrlAction(
       throw new ApiError('FORBIDDEN', 'Version not accessible', 403);
     }
 
-    const signed = await getDocumentSignedUrl(ctx.tenant.id, versionId);
+    const signed = await getDocumentSignedUrl(ctx.tenant.id, ctx.linkedCompanyId, versionId);
     return { ok: true, data: signed };
   } catch (e) {
     if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };

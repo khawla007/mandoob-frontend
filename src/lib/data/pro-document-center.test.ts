@@ -133,7 +133,6 @@ test('listProDocumentCenter binds the assigned company through the exact RPC fil
     entityKind: 'document',
     entityId: DOCUMENT,
     tenantId: TENANT,
-    companyId: CLIENT,
     employeeId: null,
     employeeName: null,
     docType: 'passport',
@@ -289,34 +288,51 @@ function historyVersion(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('listDocumentVersionHistory makes one snapshot RPC and maps stable newest-first history', async () => {
-  const calls = captureFetch(() =>
-    json({
-      documentId: DOCUMENT,
-      currentVersionId: VERSION_2,
-      total: 2,
-      versions: [
-        historyVersion(),
-        historyVersion({
-          versionId: VERSION_1,
-          versionNumber: 1,
-          current: false,
-          uploadedAt: '2026-08-11T10:00:00.000Z',
-          reviewStatus: 'rejected',
-          reviewerName: 'Omar',
-          reviewNote: 'Blurred',
-          sizeBytes: 100,
-        }),
-      ],
-    }),
+function ownedHistoryDocument(overrides: Record<string, unknown> = {}) {
+  return {
+    id: DOCUMENT,
+    tenant_id: TENANT,
+    company_id: CLIENT,
+    request_id: null,
+    company: { id: CLIENT, tenant_id: TENANT },
+    request: null,
+    ...overrides,
+  };
+}
+
+function historyCalls(payload: unknown): FetchCall[] {
+  return captureFetch((call) =>
+    call.url.includes('/rest/v1/documents') ? json(ownedHistoryDocument()) : json(payload),
   );
+}
+
+test('listDocumentVersionHistory makes one snapshot RPC and maps stable newest-first history', async () => {
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: VERSION_2,
+    total: 2,
+    versions: [
+      historyVersion(),
+      historyVersion({
+        versionId: VERSION_1,
+        versionNumber: 1,
+        current: false,
+        uploadedAt: '2026-08-11T10:00:00.000Z',
+        reviewStatus: 'rejected',
+        reviewerName: 'Omar',
+        reviewNote: 'Blurred',
+        sizeBytes: 100,
+      }),
+    ],
+  });
   const { listDocumentVersionHistory } = await load();
 
-  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+  const result = await listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT);
 
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /\/rest\/v1\/rpc\/get_pro_document_version_history$/u);
-  assert.deepEqual(calls[0].body, { p_tenant_id: TENANT, p_document_id: DOCUMENT });
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].url, /\/rest\/v1\/documents/u);
+  assert.match(calls[1].url, /\/rest\/v1\/rpc\/get_pro_document_version_history$/u);
+  assert.deepEqual(calls[1].body, { p_tenant_id: TENANT, p_document_id: DOCUMENT });
   assert.deepEqual(
     result.map((row) => ({ id: row.versionId, version: row.versionNumber, current: row.current })),
     [
@@ -330,43 +346,39 @@ test('listDocumentVersionHistory makes one snapshot RPC and maps stable newest-f
 });
 
 test('listDocumentVersionHistory rejects malformed snapshot envelopes', async () => {
-  const calls = captureFetch(() =>
-    json({
-      documentId: DOCUMENT,
-      currentVersionId: VERSION_1,
-      total: 2,
-      versions: [historyVersion({ versionId: VERSION_1, versionNumber: 1 })],
-    }),
-  );
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: VERSION_1,
+    total: 2,
+    versions: [historyVersion({ versionId: VERSION_1, versionNumber: 1 })],
+  });
   const { listDocumentVersionHistory } = await load();
 
   await assert.rejects(
-    () => listDocumentVersionHistory(TENANT, DOCUMENT),
+    () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
     (error) => error instanceof ApiError && error.code === 'INTERNAL',
   );
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
 });
 
 test('listDocumentVersionHistory accepts retained versions when the document has no current head', async () => {
-  const calls = captureFetch(() =>
-    json({
-      documentId: DOCUMENT,
-      currentVersionId: null,
-      total: 1,
-      versions: [
-        historyVersion({
-          versionId: VERSION_1,
-          versionNumber: 1,
-          current: false,
-        }),
-      ],
-    }),
-  );
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: null,
+    total: 1,
+    versions: [
+      historyVersion({
+        versionId: VERSION_1,
+        versionNumber: 1,
+        current: false,
+      }),
+    ],
+  });
   const { listDocumentVersionHistory } = await load();
 
-  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+  const result = await listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT);
 
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
   assert.equal(result.length, 1);
   assert.equal(result[0].versionId, VERSION_1);
   assert.equal(result[0].current, false);
@@ -397,14 +409,17 @@ test('listDocumentVersionHistory returns every 1001+ version from one immutable 
     versionId: '99999999-9999-4999-8999-999999999999',
     uploadedAt: versions[500].uploadedAt,
   });
-  const calls = captureFetch(() =>
-    json({ documentId: DOCUMENT, currentVersionId: currentId, total, versions }),
-  );
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: currentId,
+    total,
+    versions,
+  });
   const { listDocumentVersionHistory } = await load();
 
-  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+  const result = await listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT);
 
-  assert.equal(calls.length, 1, 'a late below-cursor insert cannot enter a second read snapshot');
+  assert.equal(calls.length, 2, 'a late below-cursor insert cannot enter a second read snapshot');
   assert.equal(result.length, total);
   assert.equal(result[0].versionNumber, total);
   assert.equal(result.at(-1)?.versionNumber, 1);
@@ -421,7 +436,7 @@ test('listDocumentVersionHistory collapses missing and foreign ownership and san
   for (const response of [json(null), json(null)]) {
     const calls = captureFetch(() => response);
     await assert.rejects(
-      () => listDocumentVersionHistory(TENANT, DOCUMENT),
+      () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
       (error) =>
         error instanceof ApiError &&
         error.code === 'NOT_FOUND' &&
@@ -434,13 +449,38 @@ test('listDocumentVersionHistory collapses missing and foreign ownership and san
     json({ message: 'secret storage_path and ownership detail' }, 500),
   );
   await assert.rejects(
-    () => listDocumentVersionHistory(TENANT, DOCUMENT),
+    () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
     (error) =>
       error instanceof ApiError &&
       error.code === 'INTERNAL' &&
       error.message === 'Unable to load document history',
   );
   assert.equal(calls.length, 1);
+});
+
+test('listDocumentVersionHistory rejects a same-tenant foreign company before the history RPC', async () => {
+  const foreignCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch((call) =>
+    call.url.includes('/rest/v1/documents')
+      ? json(
+          ownedHistoryDocument({
+            company_id: foreignCompany,
+            company: { id: foreignCompany, tenant_id: TENANT },
+          }),
+        )
+      : json({ message: 'history RPC must not be called' }, 500),
+  );
+  const { listDocumentVersionHistory } = await load();
+
+  await assert.rejects(
+    () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls.some((call) => call.url.includes('/rpc/get_pro_document_version_history')),
+    false,
+  );
 });
 
 function expiryContext() {

@@ -22,7 +22,6 @@ export type DocumentCenterRow = {
   entityKind: 'request' | 'document';
   entityId: string;
   tenantId: string;
-  companyId: string;
   employeeId: string | null;
   employeeName: string | null;
   docType: DocType;
@@ -98,7 +97,6 @@ function mapRpcRow(row: RpcRow): DocumentCenterRow {
     entityKind: row.entity_kind as DocumentCenterRow['entityKind'],
     entityId: row.entity_id as string,
     tenantId: row.tenant_id as string,
-    companyId: row.company_id as string,
     employeeId: asNullableString(row.employee_id),
     employeeName: asNullableString(row.employee_name),
     docType: row.doc_type as DocType,
@@ -357,11 +355,48 @@ function isValidVersionSnapshot(
 
 export async function listDocumentVersionHistory(
   tenantId: string,
+  companyId: string,
   documentId: string,
 ): Promise<DocumentVersionHistoryEntry[]> {
   const validTenantId = uuidSchema.parse(tenantId);
+  const validCompanyId = uuidSchema.parse(companyId);
   const validDocumentId = uuidSchema.parse(documentId);
   const admin = createSupabaseServiceRoleClient();
+  const { data: ownedDocument, error: ownershipError } = await admin
+    .from('documents')
+    .select(
+      'id, tenant_id, company_id, request_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id)',
+    )
+    .eq('id', validDocumentId)
+    .eq('tenant_id', validTenantId)
+    .eq('company_id', validCompanyId)
+    .maybeSingle();
+  const owned = ownedDocument as {
+    id: string;
+    tenant_id: string;
+    company_id: string;
+    request_id: string | null;
+    company: { id: string; tenant_id: string } | null;
+    request: { id: string; tenant_id: string; company_id: string } | null;
+  } | null;
+  if (ownershipError) {
+    throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+  }
+  if (
+    !owned ||
+    owned.id !== validDocumentId ||
+    owned.tenant_id !== validTenantId ||
+    owned.company_id !== validCompanyId ||
+    owned.company?.id !== validCompanyId ||
+    owned.company.tenant_id !== validTenantId ||
+    (owned.request_id !== null &&
+      (!owned.request ||
+        owned.request.id !== owned.request_id ||
+        owned.request.tenant_id !== validTenantId ||
+        owned.request.company_id !== validCompanyId))
+  ) {
+    throw new ApiError('NOT_FOUND', 'Document not found', 404);
+  }
   const { data, error } = await admin.rpc(
     'get_pro_document_version_history' as never,
     { p_tenant_id: validTenantId, p_document_id: validDocumentId } as never,

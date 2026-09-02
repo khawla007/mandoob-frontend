@@ -68,6 +68,7 @@ function ownedVersion(overrides: Record<string, unknown> = {}) {
       request_id: REQUEST,
       current_version_id: VERSION,
       company: { id: CLIENT, tenant_id: TENANT },
+      request: { id: REQUEST, tenant_id: TENANT, company_id: CLIENT },
     },
     ...overrides,
   };
@@ -186,13 +187,13 @@ test('getDocumentSignedUrl rejects invalid UUIDs and a missing version before si
   const { getDocumentSignedUrl } = await load();
 
   await assert.rejects(
-    () => getDocumentSignedUrl('not-a-uuid', VERSION),
+    () => getDocumentSignedUrl('not-a-uuid', CLIENT, VERSION),
     (err) => err instanceof ApiError && err.code === 'VALIDATION_FAILED',
   );
   assert.equal(calls.length, 0);
 
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
   );
   assert.equal(calls.length, 1);
@@ -207,7 +208,7 @@ test('getDocumentSignedUrl pins the version FK and exact inner company ownership
   const { getDocumentSignedUrl } = await load();
 
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
   );
 
@@ -218,6 +219,10 @@ test('getDocumentSignedUrl pins the version FK and exact inner company ownership
     select,
     /company:company_profiles!documents_company_tenant_fk!inner\(id,\s*tenant_id\)/u,
   );
+  assert.match(
+    select,
+    /request:document_requests!documents_request_id_fkey\(id,\s*tenant_id,\s*company_id\)/u,
+  );
 });
 
 test('getDocumentSignedUrl validates TTL before any database or storage I/O', async () => {
@@ -226,7 +231,7 @@ test('getDocumentSignedUrl validates TTL before any database or storage I/O', as
 
   for (const ttl of [-1, 0, 301, Number.POSITIVE_INFINITY, Number.NaN, 1.5]) {
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, VERSION, ttl),
+      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION, ttl),
       (err) => err instanceof ApiError && err.code === 'VALIDATION_FAILED',
     );
   }
@@ -252,6 +257,12 @@ test('getDocumentSignedUrl requires the full tenant-company-document-version own
         company: { id: CLIENT, tenant_id: foreignTenant },
       },
     }),
+    ownedVersion({
+      document: {
+        ...ownedVersion().document,
+        request: { id: REQUEST, tenant_id: TENANT, company_id: foreignTenant },
+      },
+    }),
   ];
   let index = 0;
   const calls = captureFetch(() => json(mismatches[index++]));
@@ -260,12 +271,39 @@ test('getDocumentSignedUrl requires the full tenant-company-document-version own
   for (const mismatch of mismatches) {
     void mismatch;
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, VERSION),
+      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
       (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
     );
   }
 
   assert.equal(calls.length, mismatches.length);
+  assert.equal(
+    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
+    false,
+  );
+});
+
+test('getDocumentSignedUrl rejects a same-tenant version owned by another company before signing', async () => {
+  const foreignCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch(() =>
+    json(
+      ownedVersion({
+        document: {
+          ...ownedVersion().document,
+          company_id: foreignCompany,
+          company: { id: foreignCompany, tenant_id: TENANT },
+          request: { id: REQUEST, tenant_id: TENANT, company_id: foreignCompany },
+        },
+      }),
+    ),
+  );
+  const { getDocumentSignedUrl } = await load();
+
+  await assert.rejects(
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(calls.length, 1);
   assert.equal(
     calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
     false,
@@ -279,7 +317,7 @@ test('getDocumentSignedUrl rejects a tampered storage prefix and signs only the 
   const { getDocumentSignedUrl } = await load();
 
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION, 91),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION, 91),
     (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
   );
   assert.equal(tamperedCalls.length, 1);
@@ -295,7 +333,7 @@ test('getDocumentSignedUrl rejects a tampered storage prefix and signs only the 
     return json({ message: 'unexpected request' }, 500);
   });
   const before = Date.now();
-  const result = await getDocumentSignedUrl(TENANT, VERSION, 91);
+  const result = await getDocumentSignedUrl(TENANT, CLIENT, VERSION, 91);
 
   assert.deepEqual(Object.keys(result).sort(), ['expiresAt', 'url']);
   assert.equal(result.url, 'https://test.supabase.co/storage/v1/object/sign/private?token=test');
@@ -331,7 +369,7 @@ test('getDocumentSignedUrl rejects traversal, encoded separators, and malformed 
   for (const badPath of badPaths) {
     void badPath;
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, VERSION),
+      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
       (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
     );
   }
@@ -353,7 +391,7 @@ test('getDocumentSignedUrl signs a contained legacy generated storage key', asyn
   });
   const { getDocumentSignedUrl } = await load();
 
-  const result = await getDocumentSignedUrl(TENANT, VERSION);
+  const result = await getDocumentSignedUrl(TENANT, CLIENT, VERSION);
 
   assert.match(result.url, /token=legacy/u);
   const signCall = calls.find((call) => call.url.includes('/storage/v1/object/sign/'));
@@ -369,7 +407,12 @@ test('getDocumentSignedUrl normalizes uppercase UUIDs before query, ownership ch
   });
   const { getDocumentSignedUrl } = await load();
 
-  const result = await getDocumentSignedUrl(TENANT.toUpperCase(), VERSION.toUpperCase(), 45);
+  const result = await getDocumentSignedUrl(
+    TENANT.toUpperCase(),
+    CLIENT.toUpperCase(),
+    VERSION.toUpperCase(),
+    45,
+  );
 
   assert.match(result.url, /token=normalized/u);
   assert.equal(new URL(calls[0].url).searchParams.get('id'), `eq.${VERSION}`);
@@ -383,7 +426,7 @@ test('getDocumentSignedUrl sanitizes database and storage failures', async () =>
   const { getDocumentSignedUrl } = await load();
   captureFetch(() => json({ code: 'XX000', message: 'secret database detail' }, 500));
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) =>
       err instanceof ApiError &&
       err.code === 'INTERNAL' &&
@@ -396,7 +439,7 @@ test('getDocumentSignedUrl sanitizes database and storage failures', async () =>
       : json({ message: 'secret storage detail' }, 500),
   );
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) =>
       err instanceof ApiError &&
       err.code === 'STORAGE_SIGN_FAILED' &&

@@ -2,22 +2,13 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import type { CreateDocumentRequestCtx, SetDocumentReviewCtx } from '@/lib/data/documents';
-import type {
-  DocumentVersionHistoryEntry,
-  SetDocumentExpiryContext,
-} from '@/lib/data/pro-document-center';
+import type { CreateDocumentRequestCtx } from '@/lib/data/documents';
+import type { DocumentVersionHistoryEntry } from '@/lib/data/pro-document-center';
 import { ApiError } from '@/lib/errors';
 import {
   createDocumentRequestSchema,
-  documentReviewSchema,
   type CreateDocumentRequestInput,
-  type DocumentReviewInput,
 } from '@/lib/validation/document';
-import {
-  documentExpirySchema,
-  type DocumentExpiryInput,
-} from '@/lib/validation/pro-document-center';
 
 type MessageKey =
   | 'documents.errors.validation'
@@ -27,6 +18,7 @@ type MessageKey =
   | 'documents.errors.tenantInactive'
   | 'documents.errors.expiryExternallyManaged'
   | 'documents.errors.openFailed'
+  | 'documents.errors.phase3Unavailable'
   | 'documents.errors.unexpected';
 
 export type DocumentCenterActionResult<T = undefined> =
@@ -48,17 +40,16 @@ export type DocumentCenterActionDependencies = {
     ctx: CreateDocumentRequestCtx,
     input: CreateDocumentRequestInput,
   ): Promise<{ id: string; companyId: string }>;
-  reviewVersion(
+  openVersion(
+    tenantId: string,
+    companyId: string,
     versionId: string,
-    ctx: SetDocumentReviewCtx,
-    input: DocumentReviewInput,
-  ): Promise<{ companyId: string }>;
-  openVersion(tenantId: string, versionId: string): Promise<{ url: string; expiresAt: string }>;
-  loadHistory(tenantId: string, documentId: string): Promise<DocumentVersionHistoryEntry[]>;
-  setExpiry(
-    ctx: SetDocumentExpiryContext,
-    input: DocumentExpiryInput,
-  ): Promise<{ companyId: string }>;
+  ): Promise<{ url: string; expiresAt: string }>;
+  loadHistory(
+    tenantId: string,
+    companyId: string,
+    documentId: string,
+  ): Promise<DocumentVersionHistoryEntry[]>;
   revalidate(path: string): void;
   rethrowNavigation(error: unknown): void;
   logUnexpected(label: string, error: unknown): void;
@@ -66,6 +57,7 @@ export type DocumentCenterActionDependencies = {
 
 type AuthorizedContext = {
   tenant: TenantIdentity;
+  company: CompanyIdentity;
   actor: { tenantId: string; actorId: string; role: 'pro'; ip: string; userAgent: string | null };
 };
 
@@ -74,12 +66,6 @@ const normalizedUuidSchema = z
   .uuid()
   .transform((value) => value.toLowerCase());
 const requestActionSchema = createDocumentRequestSchema.omit({ company_id: true });
-const actionEntityIdsSchema = z.object({
-  company_id: normalizedUuidSchema,
-  entity_id: normalizedUuidSchema,
-});
-const expiryActionSchema = documentExpirySchema.extend({ document_id: normalizedUuidSchema });
-
 async function resolveAndAuthorize(
   slug: string,
   session: ProSession,
@@ -92,8 +78,13 @@ async function resolveAndAuthorize(
   }
   await actionDependencies.requireActive(tenant.id);
   const metadata = await actionDependencies.callerMetadata();
+  const company = await actionDependencies.resolveAssignedCompany(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) {
+    throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
+  }
   return {
     tenant,
+    company,
     actor: {
       tenantId: tenant.id,
       actorId: session.id,
@@ -155,7 +146,6 @@ function readFormStrings<K extends string>(
 
 function revalidateDocumentRoutes(
   slug: string,
-  companyId: string,
   actionDependencies: DocumentCenterActionDependencies,
 ) {
   actionDependencies.revalidate(`/t/${slug}/documents`);
@@ -171,10 +161,6 @@ export async function runRequestDocumentCenterAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const company = await actionDependencies.resolveAssignedCompany(session.id, slug);
-    if (!company || company.tenantId !== authorization.tenant.id) {
-      throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
-    }
     const values = readFormStrings(formData, ['doc_type', 'label', 'due_at', 'notes'] as const);
     if (!values) return validationFailure();
     const parsed = requestActionSchema.safeParse(values);
@@ -182,9 +168,9 @@ export async function runRequestDocumentCenterAction(
 
     const request = await actionDependencies.createRequest(authorization.actor, {
       ...parsed.data,
-      company_id: company.id,
+      company_id: authorization.company.id,
     });
-    revalidateDocumentRoutes(slug, request.companyId, actionDependencies);
+    revalidateDocumentRoutes(slug, actionDependencies);
     return { ok: true, code: 'SUCCESS', data: { requestId: request.id } };
   } catch (error) {
     return errorResult(error, 'document_center.request', actionDependencies);
@@ -199,28 +185,12 @@ export async function runReviewDocumentCenterAction(
 ): Promise<DocumentCenterActionResult> {
   try {
     const session = await actionDependencies.requirePro(slug);
-    const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, [
-      'version_id',
-      'company_id',
-      'status',
-      'note',
-    ] as const);
-    if (!values) return validationFailure();
-    const ids = actionEntityIdsSchema.safeParse({
-      company_id: values.company_id,
-      entity_id: values.version_id,
-    });
-    const review = documentReviewSchema.safeParse({ status: values.status, note: values.note });
-    if (!ids.success || !review.success) return validationFailure();
-
-    const reviewed = await actionDependencies.reviewVersion(
-      ids.data.entity_id,
-      authorization.actor,
-      review.data,
-    );
-    revalidateDocumentRoutes(slug, reviewed.companyId, actionDependencies);
-    return { ok: true, code: 'SUCCESS', data: undefined };
+    await resolveAndAuthorize(slug, session, actionDependencies);
+    return {
+      ok: false,
+      code: 'PHASE_3_UNAVAILABLE',
+      messageKey: 'documents.errors.phase3Unavailable',
+    };
   } catch (error) {
     return errorResult(error, 'document_center.review', actionDependencies);
   }
@@ -238,6 +208,7 @@ export async function runOpenDocumentVersionAction(
     if (!parsedVersionId.success) return validationFailure();
     const signed = await actionDependencies.openVersion(
       authorization.tenant.id,
+      authorization.company.id,
       parsedVersionId.data,
     );
     return {
@@ -262,6 +233,7 @@ export async function runLoadVersionHistoryAction(
     if (!parsedDocumentId.success) return validationFailure();
     const history = await actionDependencies.loadHistory(
       authorization.tenant.id,
+      authorization.company.id,
       parsedDocumentId.data,
     );
     const sanitized = history.map((version) => ({
@@ -293,19 +265,12 @@ export async function runSetDocumentExpiryAction(
 ): Promise<DocumentCenterActionResult> {
   try {
     const session = await actionDependencies.requirePro(slug);
-    const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, ['document_id', 'company_id', 'expires_on'] as const);
-    if (!values) return validationFailure();
-    const companyId = normalizedUuidSchema.safeParse(values.company_id);
-    const expiry = expiryActionSchema.safeParse({
-      document_id: values.document_id,
-      expires_on: values.expires_on,
-    });
-    if (!companyId.success || !expiry.success) return validationFailure();
-
-    const updated = await actionDependencies.setExpiry(authorization.actor, expiry.data);
-    revalidateDocumentRoutes(slug, updated.companyId, actionDependencies);
-    return { ok: true, code: 'SUCCESS', data: undefined };
+    await resolveAndAuthorize(slug, session, actionDependencies);
+    return {
+      ok: false,
+      code: 'PHASE_3_UNAVAILABLE',
+      messageKey: 'documents.errors.phase3Unavailable',
+    };
   } catch (error) {
     return errorResult(error, 'document_center.expiry', actionDependencies);
   }
