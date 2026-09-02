@@ -1,27 +1,29 @@
 import { updateApplicationFormAction } from '@/app/(tenant)/t/[tenant]/(pro)/applications/actions';
-import type { ServiceCase } from '@/lib/data/service-cases';
+import type { ServiceCase, ServiceCaseQueueItem } from '@/lib/data/service-cases';
 import { ApplicationStatusActions } from './ApplicationStatusActions';
 
 export type ApplicationsTableLabels = {
-  company: string;
+  title: string;
   service: string;
+  priority: string;
   status: string;
-  owner: string;
+  blockers: string;
   slaDue: string;
+  updatedAt: string;
   action: string;
-  unassigned: string;
-  unknownCompany: string;
+  noBlocker: string;
   slaPrefix: string;
   duePrefix: string;
   slaBreached: string;
   complete: string;
   cancel: string;
   updating: string;
-  updated: string;
+  updateSuccess: string;
   noAction: string;
   empty: string;
   emptyHint: string;
   statuses: Record<ServiceCase['status'], string>;
+  priorities: Record<ServiceCase['priority'], string>;
 };
 
 function formatTimestamp(value: string | null, locale: string): string | null {
@@ -33,7 +35,7 @@ function formatTimestamp(value: string | null, locale: string): string | null {
   }).format(new Date(value));
 }
 
-function isSlaBreached(row: ServiceCase): boolean {
+function isSlaBreached(row: ServiceCaseQueueItem): boolean {
   return Boolean(
     row.slaDueAt &&
     Date.parse(row.slaDueAt) < Date.now() &&
@@ -48,7 +50,7 @@ export function ApplicationsTable({
   labels,
   locale,
 }: {
-  rows: ServiceCase[];
+  rows: ServiceCaseQueueItem[];
   slug: string;
   labels: ApplicationsTableLabels;
   locale: string;
@@ -63,26 +65,32 @@ export function ApplicationsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-lg border" role="region" aria-label={labels.title}>
       <table className="w-full text-sm">
         <thead className="bg-muted/40 border-b">
           <tr>
             <th scope="col" className="px-3 py-2.5 text-left font-medium">
-              {labels.company}
+              {labels.title}
             </th>
             <th scope="col" className="px-3 py-2.5 text-left font-medium">
               {labels.service}
             </th>
             <th scope="col" className="px-3 py-2.5 text-left font-medium">
+              {labels.priority}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-left font-medium">
               {labels.status}
             </th>
             <th scope="col" className="px-3 py-2.5 text-left font-medium">
-              {labels.owner}
+              {labels.blockers}
             </th>
             <th scope="col" className="px-3 py-2.5 text-left font-medium">
               {labels.slaDue}
             </th>
-            <th scope="col" className="px-3 py-2.5 text-right font-medium">
+            <th scope="col" className="px-3 py-2.5 text-left font-medium">
+              {labels.updatedAt}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-end font-medium">
               {labels.action}
             </th>
           </tr>
@@ -93,19 +101,15 @@ export function ApplicationsTable({
             const update = updateApplicationFormAction.bind(null, slug, row.id);
             return (
               <tr key={row.id} className="hover:bg-muted/30 align-top transition-colors">
-                <td className="px-3 py-3 font-medium">
-                  {row.companyName || labels.unknownCompany}
-                </td>
-                <td className="px-3 py-3">
-                  <div className="font-medium">{row.title}</div>
-                  <div className="text-muted-foreground mt-0.5 text-xs">{row.serviceType}</div>
-                </td>
+                <td className="px-3 py-3 font-medium">{row.title}</td>
+                <td className="px-3 py-3">{row.serviceType}</td>
+                <td className="px-3 py-3">{labels.priorities[row.priority]}</td>
                 <td className="px-3 py-3">
                   <span className="bg-secondary text-secondary-foreground inline-flex rounded-full px-2 py-0.5 text-xs font-medium">
                     {labels.statuses[row.status]}
                   </span>
                 </td>
-                <td className="px-3 py-3">{row.ownerName ?? labels.unassigned}</td>
+                <td className="px-3 py-3">{row.blockedReason ?? labels.noBlocker}</td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   {row.slaDueAt ? (
                     <div className={breached ? 'text-destructive font-medium' : undefined}>
@@ -121,9 +125,12 @@ export function ApplicationsTable({
                     <span aria-hidden="true">—</span>
                   )}
                 </td>
+                <td className="text-muted-foreground px-3 py-3 whitespace-nowrap">
+                  {formatTimestamp(row.updatedAt, locale)}
+                </td>
                 <td className="px-3 py-3">
                   {row.status === 'completed' || row.status === 'cancelled' ? (
-                    <span className="text-muted-foreground block text-right text-xs">
+                    <span className="text-muted-foreground block text-end text-xs">
                       {labels.noAction}
                     </span>
                   ) : (
@@ -133,7 +140,7 @@ export function ApplicationsTable({
                         complete: labels.complete,
                         cancel: labels.cancel,
                         pending: labels.updating,
-                        success: labels.updated,
+                        success: labels.updateSuccess,
                       }}
                     />
                   )}

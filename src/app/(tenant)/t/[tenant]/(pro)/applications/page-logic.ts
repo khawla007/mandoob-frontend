@@ -4,7 +4,6 @@ import { applicationOpenStatuses, parseApplicationSignalFilter } from '@/lib/sig
 export type ApplicationSearchParams = {
   case?: string | string[];
   status?: string | string[];
-  owner?: string | string[];
   serviceType?: string | string[];
   page?: string | string[];
   view?: string | string[];
@@ -16,7 +15,6 @@ export type ApplicationSearchParams = {
 type ParsedApplicationFilters = {
   id?: string;
   status?: Array<(typeof serviceCaseStatuses)[number]>;
-  assigned_to?: string;
   service_type?: string;
   company_id?: string;
   deadlineDate?: string;
@@ -37,7 +35,6 @@ export function applicationPageHref(
   filters: {
     id?: string;
     status?: string[];
-    assigned_to?: string;
     service_type?: string;
     deadlineDate?: string;
     deadlinePeriod?: 'morning' | 'afternoon';
@@ -47,7 +44,6 @@ export function applicationPageHref(
   const params = new URLSearchParams();
   if (filters.id) params.set('case', filters.id);
   if (filters.status?.length) params.set('status', filters.status.join(','));
-  if (filters.assigned_to) params.set('owner', filters.assigned_to);
   if (filters.service_type) params.set('serviceType', filters.service_type);
   if (filters.deadlineDate && filters.deadlinePeriod) {
     params.set('date', filters.deadlineDate);
@@ -64,7 +60,6 @@ export function parseApplicationFilters(search: ApplicationSearchParams): Parsed
   const parsed = serviceCaseFilterSchema.safeParse({
     ...(first(search.case) ? { id: first(search.case) } : {}),
     ...(status?.length ? { status } : {}),
-    ...(first(search.owner) ? { assigned_to: first(search.owner) } : {}),
     ...(first(search.serviceType) ? { service_type: first(search.serviceType) } : {}),
   });
   if (!parsed.success) return {};
@@ -74,7 +69,7 @@ export function parseApplicationFilters(search: ApplicationSearchParams): Parsed
   if ('date' in signal && signal.date) {
     return {
       ...parsed.data,
-      status: [...applicationOpenStatuses],
+      status: parsed.data.status ?? [...applicationOpenStatuses],
       deadlineDate: signal.date,
       deadlinePeriod: signal.period,
     };

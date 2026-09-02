@@ -34,6 +34,8 @@ export type ServiceCase = {
   updatedAt: string;
 };
 
+export type ServiceCaseQueueItem = Omit<ServiceCase, 'companyName' | 'ownerName'>;
+
 export type ServiceCaseDbRow = {
   id: string;
   tenant_id: string;
@@ -269,7 +271,6 @@ export async function listServiceCaseWorkspace(
   filters: {
     caseId?: string;
     status?: ServiceCaseStatus[];
-    assignedTo?: string;
     companyId?: string;
     serviceType?: string;
     page?: number;
@@ -278,9 +279,7 @@ export async function listServiceCaseWorkspace(
   } = {},
   deps: ServiceCaseDeps = {},
 ): Promise<{
-  cases: ServiceCase[];
-  companies: ServiceCaseOption[];
-  owners: ServiceCaseOption[];
+  cases: ServiceCaseQueueItem[];
   total: number;
   page: number;
   pageSize: number;
@@ -288,7 +287,6 @@ export async function listServiceCaseWorkspace(
   const parsedFilters = serviceCaseFilterSchema.safeParse({
     id: filters.caseId,
     status: filters.status,
-    assigned_to: filters.assignedTo,
     company_id: filters.companyId,
     service_type: filters.serviceType,
   });
@@ -297,55 +295,21 @@ export async function listServiceCaseWorkspace(
   const admin = await client(deps);
   const page = parsedFilters.data.id ? 1 : Math.max(1, Math.trunc(filters.page ?? 1));
   const from = (page - 1) * SERVICE_CASE_PAGE_SIZE;
-  const [caseResult, companyRows, ownerRows] = await Promise.all([
-    serviceCaseQuery(
-      admin,
-      tenantId,
-      {
-        ...parsedFilters.data,
-        deadlineDate: filters.deadlineDate,
-        deadlinePeriod: filters.deadlinePeriod,
-      },
-      'service_cases_ranked',
-    ).range(from, from + SERVICE_CASE_PAGE_SIZE - 1),
-    listAllOptionRows<ServiceCaseCompanyRow>((batchFrom, batchTo) => {
-      let query = admin
-        .from('company_profiles')
-        .select('id, tenant_id, company_name')
-        .eq('tenant_id', tenantId);
-      if (parsedFilters.data.company_id) {
-        query = query.eq('id', parsedFilters.data.company_id);
-      }
-      return query
-        .order('company_name', { ascending: true })
-        .order('id', { ascending: true })
-        .range(batchFrom, batchTo);
-    }, 'Could not load application companies'),
-    listAllOptionRows<ServiceCaseOwnerRow>(
-      (batchFrom, batchTo) =>
-        admin
-          .from('profiles')
-          .select('id, tenant_id, full_name, role, status')
-          .eq('tenant_id', tenantId)
-          .eq('role', 'pro')
-          .eq('status', 'active')
-          .order('full_name', { ascending: true })
-          .order('id', { ascending: true })
-          .range(batchFrom, batchTo),
-      'Could not load application owners',
-    ),
-  ]);
+  const caseResult = await serviceCaseQuery(
+    admin,
+    tenantId,
+    {
+      ...parsedFilters.data,
+      deadlineDate: filters.deadlineDate,
+      deadlinePeriod: filters.deadlinePeriod,
+    },
+    'service_cases_ranked',
+  ).range(from, from + SERVICE_CASE_PAGE_SIZE - 1);
   queryError(caseResult.error, 'Could not load applications');
 
   const rows = (caseResult.data ?? []) as ServiceCaseDbRow[];
   return {
-    cases: hydrateServiceCases(rows, companyRows, ownerRows, tenantId),
-    companies: companyRows
-      .filter((row) => row.tenant_id === tenantId)
-      .map((row) => ({ id: row.id, name: row.company_name })),
-    owners: ownerRows
-      .filter((row) => row.tenant_id === tenantId)
-      .map((row) => ({ id: row.id, name: row.full_name?.trim() || row.id })),
+    cases: rows.filter((row) => row.tenant_id === tenantId).map((row) => toServiceCase(row)),
     total: caseResult.count ?? 0,
     page,
     pageSize: SERVICE_CASE_PAGE_SIZE,

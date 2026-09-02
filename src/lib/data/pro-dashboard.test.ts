@@ -805,7 +805,6 @@ test('dashboard action hrefs use filters and entity routes consumed by destinati
   });
   assert.equal(caseFilters.id, input.serviceCases[0].id);
   assert.equal(caseFilters.status, undefined);
-  assert.equal(caseFilters.assigned_to, undefined);
 
   const renewalUrl = new URL(byKind.get('renewal')!.href, 'https://mandoob.test');
   assert.equal(renewalUrl.pathname, '/t/acme/renewals');

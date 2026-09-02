@@ -53,11 +53,10 @@ test('case deadline drilldowns preserve normalized dashboard application filters
     },
   ];
   const links = buildDeadlineDrilldowns(events, 'acme', '2026-08-12', 'morning', {
-    ownerId: '11111111-1111-4111-8111-111111111111',
     serviceType: 'Golden visa',
   });
   assert.equal(
     links[0].href,
-    '/t/acme/applications?date=2026-08-12&period=morning&eventTypes=case&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa',
+    '/t/acme/applications?date=2026-08-12&period=morning&eventTypes=case&serviceType=Golden+visa',
   );
 });

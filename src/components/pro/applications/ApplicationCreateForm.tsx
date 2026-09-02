@@ -3,7 +3,6 @@
 import { useActionState } from 'react';
 import type { ApplicationActionResult } from '@/app/(tenant)/t/[tenant]/(pro)/applications/actions';
 
-type Option = { id: string; name: string };
 type CreateState = ApplicationActionResult<{ id: string }> | null;
 
 export type ApplicationCreateFormLabels = {
@@ -11,8 +10,6 @@ export type ApplicationCreateFormLabels = {
   serviceType: string;
   priority: string;
   priorities: Record<'low' | 'normal' | 'high' | 'urgent', string>;
-  owner: string;
-  unassigned: string;
   dueAt: string;
   slaDueAt: string;
   submit: string;
@@ -25,11 +22,9 @@ const fieldClass =
 
 export function ApplicationCreateForm({
   action,
-  owners,
   labels,
 }: {
   action: (previous: CreateState, formData: FormData) => Promise<CreateState>;
-  owners: Option[];
   labels: ApplicationCreateFormLabels;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
@@ -50,17 +45,6 @@ export function ApplicationCreateForm({
           {(['low', 'normal', 'high', 'urgent'] as const).map((priority) => (
             <option key={priority} value={priority}>
               {labels.priorities[priority]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1.5 text-sm font-medium">
-        {labels.owner}
-        <select name="assigned_to" className={fieldClass}>
-          <option value="">{labels.unassigned}</option>
-          {owners.map((owner) => (
-            <option key={owner.id} value={owner.id}>
-              {owner.name}
             </option>
           ))}
         </select>

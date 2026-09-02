@@ -26,18 +26,17 @@ test('application signal URLs round-trip semantic open and Dubai deadline filter
   assert.deepEqual(parseApplicationSignalFilter({ date: 'bad', period: 'night' }), {});
 });
 
-test('application signal URLs preserve normalized dashboard owner and service filters', () => {
+test('application signal URLs preserve only the supported service filter', () => {
   const scope = {
-    ownerId: '11111111-1111-4111-8111-111111111111',
     serviceType: 'Golden visa',
   };
   assert.equal(
     applicationSignalHref('acme', { view: 'open' }, scope),
-    '/t/acme/applications?view=open&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa',
+    '/t/acme/applications?view=open&serviceType=Golden+visa',
   );
   assert.equal(
     withApplicationScope('/t/acme/applications?case=case-1', scope),
-    '/t/acme/applications?case=case-1&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa',
+    '/t/acme/applications?case=case-1&serviceType=Golden+visa',
   );
 });
 

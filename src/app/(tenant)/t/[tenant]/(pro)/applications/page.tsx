@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { ApplicationCreateForm } from '@/components/pro/applications/ApplicationCreateForm';
 import { ApplicationsTable } from '@/components/pro/applications/ApplicationsTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +32,7 @@ export default async function ApplicationsPage({
   const { tenant: slug } = await params;
   const search = await searchParams;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
@@ -39,7 +41,6 @@ export default async function ApplicationsPage({
   const [workspace, t, locale] = await Promise.all([
     listServiceCaseWorkspace(tenant.id, {
       status: filters.status,
-      assignedTo: filters.assigned_to,
       companyId: company.id,
       serviceType: filters.service_type,
       caseId: filters.id,
@@ -54,7 +55,7 @@ export default async function ApplicationsPage({
   if (requestedPage > totalPages) {
     redirect(applicationPageHref(slug, filters, totalPages));
   }
-  const { cases, owners: ownerOptions } = workspace;
+  const { cases } = workspace;
   const create = createApplicationFormAction.bind(null, slug);
   const statusLabels = Object.fromEntries(
     serviceCaseStatuses.map((status) => [status, t(`applicationStatuses.${status}`)]),
@@ -65,7 +66,7 @@ export default async function ApplicationsPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('applications')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          {t('applicationsPageSubtitle', { tenant: tenant.name, count: workspace.total })}
+          {t('applicationsPageSubtitle', { company: company.companyName, count: workspace.total })}
         </p>
       </div>
 
@@ -75,7 +76,6 @@ export default async function ApplicationsPage({
         </summary>
         <ApplicationCreateForm
           action={create}
-          owners={ownerOptions}
           labels={{
             title: t('applicationTitle'),
             serviceType: t('applicationServiceType'),
@@ -86,8 +86,6 @@ export default async function ApplicationsPage({
               high: t('applicationPriorities.high'),
               urgent: t('applicationPriorities.urgent'),
             },
-            owner: t('applicationOwner'),
-            unassigned: t('applicationUnassigned'),
             dueAt: t('applicationDueAt'),
             slaDueAt: t('applicationSlaDueAt'),
             submit: t('createApplication'),
@@ -97,11 +95,14 @@ export default async function ApplicationsPage({
         />
       </details>
 
-      <Card>
+      <Card className="signal-panel">
         <CardHeader>
           <CardTitle className="text-lg">{t('applicationPipeline')}</CardTitle>
           <CardDescription>{t('applicationFilters')}</CardDescription>
-          <form method="get" className="grid gap-3 pt-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+          <form
+            method="get"
+            className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]"
+          >
             <label className="grid gap-1.5 text-sm font-medium">
               {t('applicationStatus')}
               <select
@@ -118,23 +119,34 @@ export default async function ApplicationsPage({
               </select>
             </label>
             <label className="grid gap-1.5 text-sm font-medium">
-              {t('applicationOwner')}
-              <select name="owner" defaultValue={filters.assigned_to ?? ''} className={fieldClass}>
-                <option value="">{t('allApplicationOwners')}</option>
-                {ownerOptions.map((owner) => (
-                  <option key={owner.id} value={owner.id}>
-                    {owner.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1.5 text-sm font-medium">
               {t('applicationServiceType')}
               <input
                 name="serviceType"
                 defaultValue={filters.service_type ?? ''}
                 className={fieldClass}
               />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">
+              {t('applicationDeadlineDate')}
+              <input
+                type="date"
+                name="date"
+                defaultValue={filters.deadlineDate ?? ''}
+                className={fieldClass}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">
+              {t('applicationDeadlinePeriod')}
+              <select
+                name="period"
+                defaultValue={filters.deadlinePeriod ?? ''}
+                className={fieldClass}
+              >
+                <option value="">{t('allApplicationDeadlinePeriods')}</option>
+                <option value="morning">{t('applicationDeadlineMorning')}</option>
+                <option value="afternoon">{t('applicationDeadlineAfternoon')}</option>
+              </select>
+              <input type="hidden" name="eventTypes" value="case" />
             </label>
             <div className="flex items-end">
               <button
@@ -143,6 +155,14 @@ export default async function ApplicationsPage({
               >
                 {t('filterApplications')}
               </button>
+              {filters.status?.length || filters.service_type || filters.deadlineDate ? (
+                <Link
+                  href={`/t/${encodeURIComponent(slug)}/applications`}
+                  className="text-muted-foreground hover:text-foreground focus-visible:ring-ring ms-3 inline-flex h-9 items-center text-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2"
+                >
+                  {t('resetApplicationFilters')}
+                </Link>
+              ) : null}
             </div>
           </form>
         </CardHeader>
@@ -152,25 +172,32 @@ export default async function ApplicationsPage({
             slug={slug}
             locale={locale}
             labels={{
-              company: t('applicationCompany'),
+              title: t('applicationTitle'),
               service: t('applicationService'),
+              priority: t('applicationPriority'),
               status: t('applicationStatus'),
-              owner: t('applicationOwner'),
+              blockers: t('applicationBlockers'),
               slaDue: t('applicationSlaAndDue'),
+              updatedAt: t('applicationUpdatedAt'),
               action: t('applicationAction'),
-              unassigned: t('applicationUnassigned'),
-              unknownCompany: t('applicationUnknownCompany'),
+              noBlocker: t('applicationNoBlocker'),
               slaPrefix: t('applicationSla'),
               duePrefix: t('applicationDue'),
               slaBreached: t('applicationSlaBreached'),
               complete: t('completeApplication'),
               cancel: t('cancelApplication'),
               updating: t('applicationUpdating'),
-              updated: t('applicationUpdated'),
+              updateSuccess: t('applicationUpdated'),
               noAction: t('noApplicationAction'),
               empty: t('applicationsEmpty'),
               emptyHint: t('applicationsEmptyHint'),
               statuses: statusLabels,
+              priorities: {
+                low: t('applicationPriorities.low'),
+                normal: t('applicationPriorities.normal'),
+                high: t('applicationPriorities.high'),
+                urgent: t('applicationPriorities.urgent'),
+              },
             }}
           />
           {workspace.total > 0 ? (

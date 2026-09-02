@@ -179,6 +179,45 @@ test('create action converts datetime-local values as Dubai business time', asyn
   assert.equal(input?.company_id, COMPANY_ID);
 });
 
+test('create action derives the assignee from the authorized PRO and ignores a spoofed profile id', async () => {
+  let input: Record<string, unknown> | undefined;
+  const context = setup({
+    createCase: async (_ctx, raw) => {
+      input = raw as Record<string, unknown>;
+      return { id: CASE_ID };
+    },
+  });
+
+  const result = await runCreateApplicationAction(
+    'acme',
+    { ...validCreate, assigned_to: OTHER_TENANT_ID },
+    context.dependencies,
+  );
+
+  assert.deepEqual(result, { ok: true, data: { id: CASE_ID } });
+  assert.equal(input?.assigned_to, ACTOR_ID);
+});
+
+test('update action ignores a spoofed assignee while retaining the assigned-company case scope', async () => {
+  let input: Record<string, unknown> | undefined;
+  const context = setup({
+    updateCase: async (_ctx, _id, raw) => {
+      input = raw as Record<string, unknown>;
+    },
+  });
+
+  const result = await runUpdateApplicationAction(
+    'acme',
+    CASE_ID,
+    { priority: 'high', assigned_to: OTHER_TENANT_ID },
+    context.dependencies,
+  );
+
+  assert.deepEqual(result, { ok: true, data: undefined });
+  assert.equal(input?.priority, 'high');
+  assert.equal(Object.hasOwn(input ?? {}, 'assigned_to'), false);
+});
+
 test('create action rejects an invalid datetime-local value before mutation', async () => {
   const context = setup();
   const form = new FormData();
