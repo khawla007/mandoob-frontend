@@ -235,6 +235,7 @@ function paymentStatusLabel(status: string, t: Awaited<ReturnType<typeof getTran
     succeeded: 'paymentStatusSucceeded',
     failed: 'paymentStatusFailed',
     abandoned: 'paymentStatusAbandoned',
+    initiated: 'paymentStatusInitiated',
     pending: 'paymentStatusPending',
     refunded: 'paymentStatusRefunded',
     partially_refunded: 'paymentStatusPartiallyRefunded',
@@ -255,6 +256,8 @@ function paymentMethodLabel(method: string | null, t: Awaited<ReturnType<typeof 
     card: 'paymentMethodCard',
     cash: 'paymentMethodCash',
     bank_transfer: 'paymentMethodBankTransfer',
+    mada: 'paymentMethodMada',
+    apple_pay: 'paymentMethodApplePay',
   };
   return method && known[method] ? t(known[method]) : t('paymentMethodUnavailable');
 }
@@ -285,8 +288,10 @@ function auditActionLabel(action: string, t: Awaited<ReturnType<typeof getTransl
     invoice_created: 'paymentAuditInvoiceCreated',
     invoice_voided: 'paymentAuditInvoiceVoided',
     invoice_paid: 'paymentAuditInvoicePaid',
+    invoice_marked_paid: 'paymentAuditInvoicePaid',
     refund_requested: 'paymentAuditRefundRequested',
     refund_succeeded: 'paymentAuditRefundSucceeded',
+    refund_issued: 'paymentAuditRefundSucceeded',
   };
   return known[action] ? t(known[action]) : t('paymentValueUnavailable');
 }

@@ -291,6 +291,7 @@ function paymentStatusLabel(key: string, t: Awaited<ReturnType<typeof getTransla
     succeeded: 'paymentStatusSucceeded',
     failed: 'paymentStatusFailed',
     abandoned: 'paymentStatusAbandoned',
+    initiated: 'paymentStatusInitiated',
     pending: 'paymentStatusPending',
     refunded: 'paymentStatusRefunded',
     partially_refunded: 'paymentStatusPartiallyRefunded',
@@ -303,6 +304,8 @@ function paymentMethodLabel(key: string, t: Awaited<ReturnType<typeof getTransla
     card: 'paymentMethodCard',
     cash: 'paymentMethodCash',
     bank_transfer: 'paymentMethodBankTransfer',
+    mada: 'paymentMethodMada',
+    apple_pay: 'paymentMethodApplePay',
     unknown: 'paymentMethodUnavailable',
   };
   return known[key] ? t(known[key]) : t('paymentMethodUnavailable');

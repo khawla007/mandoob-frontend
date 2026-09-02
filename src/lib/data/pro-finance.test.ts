@@ -32,6 +32,7 @@ test('finance ignores rows owned by another company in the same tenant', () => {
 test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO finance metrics', () => {
   const dashboard = calculateProFinanceDashboard({
     tenantId,
+    now: new Date('2026-05-21T20:00:00.000Z'),
     today: '2026-05-21',
     companies: [
       { id: 'client-1', tenant_id: tenantId, company_name: 'Acme DMCC' },
@@ -230,7 +231,9 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
   assert.equal(dashboard.outstandingReceivablesMinor, 5_000);
   assert.equal(dashboard.openInvoiceCount, 1);
   assert.equal(dashboard.overdueInvoiceCount, 1);
-  assert.equal(dashboard.collectionRate, 69.6969696969697);
+  assert.equal(dashboard.currentMonthBilledMinor, 15_000);
+  assert.equal(dashboard.currentMonthNetCollectedMinor, 11_500);
+  assert.equal(dashboard.collectionRate, 76.66666666666667);
   assert.equal(dashboard.totalRevenueCollected, 'AED\u00a0115.00');
   assert.equal(dashboard.outstandingReceivables, 'AED\u00a050.00');
 
@@ -273,6 +276,30 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
       },
     ],
   );
+});
+
+test('one injected Dubai clock drives both aging date and billing month', () => {
+  const dashboard = calculateProFinanceDashboard({
+    tenantId,
+    now: new Date('2026-05-20T20:00:00.000Z'),
+    companies: [{ id: 'assigned', tenant_id: tenantId, company_name: 'Assigned Company' }],
+    invoices: [
+      {
+        id: 'due-today',
+        tenant_id: tenantId,
+        company_id: 'assigned',
+        amount_minor: 100,
+        currency: 'AED',
+        status: 'open',
+        due_at: '2026-05-21',
+        created_at: '2026-05-01T00:00:00.000Z',
+      },
+    ],
+    payments: [],
+    refunds: [],
+  });
+  assert.equal(dashboard.currentMonthBilledMinor, 100);
+  assert.equal(dashboard.aging[0]?.key, 'due_today');
 });
 
 test('calculateProFinanceDashboard reports one currency without summing mixed minor units', () => {

@@ -121,7 +121,8 @@ export function calculateProFinanceDashboard(args: {
   paymentsAvailable?: boolean;
   refundsAvailable?: boolean;
 }): ProFinanceDashboard {
-  const today = args.today ?? businessDate();
+  const clock = args.now ?? new Date();
+  const today = args.today ?? businessDate(clock);
   const companies = args.companies.filter((row) => row.tenant_id === args.tenantId);
   const companyId = companies[0]?.id;
   const invoices = args.invoices.filter(
@@ -169,7 +170,7 @@ export function calculateProFinanceDashboard(args: {
     })
     .reduce((sum, row) => sum + row.amount_minor, 0);
   const totalRevenueCollectedMinor = totalPaymentCollectedMinor - succeededRefundsMinor;
-  const currentMonth = dubaiMonthKey(args.now ?? new Date());
+  const currentMonth = dubaiMonthKey(clock);
   const currentMonthBilledMinor = eligibleInvoices
     .filter(
       (invoice) =>

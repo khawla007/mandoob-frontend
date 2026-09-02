@@ -70,3 +70,15 @@ test('finance strings have English and Arabic parity', () => {
     }
   }
 });
+
+test('finance renders accepted payment enums and audit actions through localized maps', () => {
+  const analytics = read(`${base}/analytics/page.tsx`);
+  const detail = read(`${base}/[invoiceId]/page.tsx`);
+  for (const source of [analytics, detail]) {
+    assert.match(source, /initiated: 'paymentStatusInitiated'/);
+    assert.match(source, /mada: 'paymentMethodMada'/);
+    assert.match(source, /apple_pay: 'paymentMethodApplePay'/);
+  }
+  assert.match(detail, /invoice_marked_paid: 'paymentAuditInvoicePaid'/);
+  assert.match(detail, /refund_issued: 'paymentAuditRefundSucceeded'/);
+});
