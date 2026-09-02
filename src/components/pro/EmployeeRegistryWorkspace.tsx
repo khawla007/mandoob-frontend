@@ -118,13 +118,20 @@ function SelectFilter({
 export function EmployeeRegistrySignals({
   result,
   labels,
+  locale,
 }: {
   result: EmployeeRegistryResult;
   labels: Labels;
+  locale: string;
 }) {
+  const numberFormatter = new Intl.NumberFormat(locale);
   const values =
     result.state !== 'unavailable'
-      ? [String(result.total), String(result.rows.length), String(result.page)]
+      ? [
+          numberFormatter.format(result.total),
+          numberFormatter.format(result.rows.length),
+          numberFormatter.format(result.page),
+        ]
       : [labels.unavailableValue, labels.unavailableValue, labels.unavailableValue];
   return (
     <div className="grid gap-3 sm:grid-cols-3">
@@ -216,14 +223,17 @@ export function EmployeeRegistryPagination({
   search,
   result,
   labels,
+  locale,
 }: {
   slug: string;
   search: EmployeeRegistrySearch;
   result: EmployeeRegistryResult;
   labels: Labels;
+  locale: string;
 }) {
   if (result.state === 'unavailable' || result.total <= result.pageSize) return null;
   const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
+  const numberFormatter = new Intl.NumberFormat(locale);
   const href = (page: number) => {
     const query = new URLSearchParams();
     if (search.q) query.set('q', search.q);
@@ -239,25 +249,44 @@ export function EmployeeRegistryPagination({
     <nav className="flex items-center justify-between gap-3" aria-label={labels.pagination}>
       <p className="text-muted-foreground text-sm">
         {labels.pageCount
-          .replace('{current}', String(result.page))
-          .replace('{total}', String(pageCount))}
+          .replace('{current}', numberFormatter.format(result.page))
+          .replace('{total}', numberFormatter.format(pageCount))}
       </p>
       <div className="flex gap-2">
-        <Button asChild disabled={result.page <= 1} variant="outline">
-          <Link aria-disabled={result.page <= 1} href={href(Math.max(1, result.page - 1))}>
-            {labels.previous}
-          </Link>
-        </Button>
-        <Button asChild disabled={result.page >= pageCount} variant="outline">
-          <Link
-            aria-disabled={result.page >= pageCount}
-            href={href(Math.min(pageCount, result.page + 1))}
-          >
-            {labels.next}
-          </Link>
-        </Button>
+        <PaginationButton
+          disabled={result.page <= 1}
+          href={href(Math.max(1, result.page - 1))}
+          label={labels.previous}
+        />
+        <PaginationButton
+          disabled={result.page >= pageCount}
+          href={href(Math.min(pageCount, result.page + 1))}
+          label={labels.next}
+        />
       </div>
     </nav>
+  );
+}
+
+function PaginationButton({
+  disabled,
+  href,
+  label,
+}: {
+  disabled: boolean;
+  href: string;
+  label: string;
+}) {
+  if (disabled)
+    return (
+      <Button disabled variant="outline">
+        {label}
+      </Button>
+    );
+  return (
+    <Button asChild variant="outline">
+      <Link href={href}>{label}</Link>
+    </Button>
   );
 }
 

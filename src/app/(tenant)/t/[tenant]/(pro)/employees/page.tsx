@@ -107,7 +107,7 @@ export default async function ProEmployeesPage({
   return (
     <div className="space-y-6">
       <EmployeeRegistryHeader slug={slug} labels={labels} />
-      <EmployeeRegistrySignals result={result} labels={labels} />
+      <EmployeeRegistrySignals result={result} labels={labels} locale={locale} />
       <EmployeeRegistryFilters slug={slug} search={search} labels={labels} />
       <section className="space-y-3">
         <div>
@@ -115,7 +115,13 @@ export default async function ProEmployeesPage({
           <p className="text-muted-foreground text-sm">{registryDescription}</p>
         </div>
         <EmployeeRegistryTable result={result} labels={labels} locale={locale} />
-        <EmployeeRegistryPagination slug={slug} search={search} result={result} labels={labels} />
+        <EmployeeRegistryPagination
+          slug={slug}
+          search={search}
+          result={result}
+          labels={labels}
+          locale={locale}
+        />
       </section>
     </div>
   );

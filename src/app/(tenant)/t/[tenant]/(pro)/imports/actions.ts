@@ -8,6 +8,7 @@ import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-acc
 import { runAuthorizedMutation } from '@/lib/auth/authorized-mutation';
 import { resolveImportCompany } from '@/lib/data/import-company-access';
 import { finalizeBulkImportSuccess } from '@/lib/data/import-audit';
+import { uploadAndCreateBulkImportJob } from '@/lib/data/import-upload';
 import {
   createSupabaseBulkImportStore,
   executeBulkImportRows,
@@ -76,25 +77,31 @@ export async function uploadBulkImportAction(
     const storagePath = `${tenant.id}/${jobId}.csv`;
     const admin = createSupabaseServiceRoleClient();
     const bytes = Buffer.from(await file.arrayBuffer());
-    const upload = await admin.storage.from(BUCKET).upload(storagePath, bytes, {
-      contentType: 'text/csv',
-      upsert: false,
+    const artifact = await uploadAndCreateBulkImportJob({
+      storagePath,
+      upload: () =>
+        admin.storage.from(BUCKET).upload(storagePath, bytes, {
+          contentType: 'text/csv',
+          upsert: false,
+        }),
+      createJob: () =>
+        admin.from('bulk_import_jobs').insert({
+          id: jobId,
+          tenant_id: tenant.id,
+          created_by: session.id,
+          kind: 'employees',
+          company_id: company.id,
+          storage_path: storagePath,
+          status: 'uploaded',
+        }),
+      remove: (paths) => admin.storage.from(BUCKET).remove(paths),
+      logCleanupFailure: () => console.error('bulk-import.cleanup failed'),
     });
-    if (upload.error) {
+    if (artifact === 'upload_failed') {
       console.error('bulk-import.upload failed');
       return { ok: false, error: 'Could not upload CSV', code: 'INTERNAL' };
     }
-
-    const { error } = await admin.from('bulk_import_jobs').insert({
-      id: jobId,
-      tenant_id: tenant.id,
-      created_by: session.id,
-      kind: 'employees',
-      company_id: company.id,
-      storage_path: storagePath,
-      status: 'uploaded',
-    });
-    if (error) {
+    if (artifact === 'job_insert_failed') {
       console.error('bulk-import.job-insert failed');
       return { ok: false, error: 'Could not create import job', code: 'INTERNAL' };
     }
