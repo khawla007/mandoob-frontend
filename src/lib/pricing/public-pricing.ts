@@ -104,18 +104,27 @@ export type PublicPricingComparisonGroup =
   | 'Support';
 
 export type PublicPricingAllocationContext = {
-  tierId: PublicPricingTierId;
-  capabilityGroup: PublicPricingComparisonGroup;
+  readonly tierId: PublicPricingTierId;
+  readonly capabilityGroup: PublicPricingComparisonGroup;
 };
 
-export type PublicPricingUsageBasedAllocationEvidence = PublicPricingAllocationContext & {
-  id: string;
-};
+export type PublicPricingUsageBasedAllocationEvidence = Readonly<
+  PublicPricingAllocationContext & {
+    id: string;
+  }
+>;
+
+export function freezePublicPricingUsageBasedAllocationEvidenceRegistry<
+  const Evidence extends readonly PublicPricingUsageBasedAllocationEvidence[],
+>(evidence: Evidence): DeepReadonly<Evidence> {
+  return deepFreeze(evidence);
+}
 
 // Category-level add-on approval is not tier evidence; this registry stays closed until reviewed.
-export const ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE = Object.freeze(
-  [] as readonly PublicPricingUsageBasedAllocationEvidence[],
-);
+export const ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE =
+  freezePublicPricingUsageBasedAllocationEvidenceRegistry(
+    [] as readonly PublicPricingUsageBasedAllocationEvidence[],
+  );
 
 export type PublicPricingComparisonAllocation =
   | {

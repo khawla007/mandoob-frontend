@@ -9,10 +9,28 @@ import {
   ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE,
   PUBLIC_PRICING_COMPARISON_STATUSES,
   PUBLIC_PRICING_CONTRACT,
+  freezePublicPricingUsageBasedAllocationEvidenceRegistry,
   matchesUsageBasedTierAllocationEvidence,
   resolvePublicComparisonStatus,
   type PublicPricingComparisonAllocation,
+  type PublicPricingUsageBasedAllocationEvidence,
 } from '@/lib/pricing/public-pricing';
+
+if (false) {
+  const evidence: PublicPricingUsageBasedAllocationEvidence = {
+    id: 'reviewed-starter-communications',
+    tierId: 'starter',
+    capabilityGroup: 'Communication allowances',
+  };
+  // @ts-expect-error allocation evidence ids are immutable
+  evidence.id = 'replacement';
+  // @ts-expect-error allocation evidence tier bindings are immutable
+  evidence.tierId = 'professional';
+  // @ts-expect-error allocation evidence capability bindings are immutable
+  evidence.capabilityGroup = 'Support';
+  // @ts-expect-error the accepted evidence registry is immutable
+  ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE.push(evidence);
+}
 
 const pageSource = readFileSync(
   new URL('../../../app/(public)/pricing/page.tsx', import.meta.url),
@@ -137,6 +155,19 @@ describe('pricing comparison contract', () => {
       'A per-tier Usage-based status requires accepted allocation-specific evidence',
     );
     assert.deepEqual(ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE, []);
+    assert.equal(Object.isFrozen(ACCEPTED_USAGE_BASED_TIER_ALLOCATION_EVIDENCE), true);
+    const frozenEvidence = freezePublicPricingUsageBasedAllocationEvidenceRegistry([
+      {
+        id: 'reviewed-starter-communications',
+        tierId: 'starter',
+        capabilityGroup: 'Communication allowances',
+      },
+    ] as const);
+    assert.equal(Object.isFrozen(frozenEvidence), true);
+    assert.equal(Object.isFrozen(frozenEvidence[0]), true);
+    assert.throws(() => {
+      (frozenEvidence[0] as { id: string }).id = 'replacement';
+    }, TypeError);
     assert.equal(
       resolvePublicComparisonStatus(
         {
