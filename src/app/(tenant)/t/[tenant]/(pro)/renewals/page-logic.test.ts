@@ -54,14 +54,21 @@ test('renewal deadline drilldown consumes exact date and Dubai period', () => {
   );
 });
 
-test('renewals page consumes the target in a tenant-scoped exact DAL read', () => {
+test('renewals page consumes focus in an assigned-Company exact workspace read', () => {
   const page = readFileSync(
     join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/renewals/page.tsx'),
     'utf8',
   );
   const dal = readFileSync(join(process.cwd(), 'src/lib/data/renewals.ts'), 'utf8');
-  assert.match(page, /parseRenewalSearch\(sp\)/);
-  assert.match(page, /renewalId\s*\?\s*\{ id: renewalId \}/);
+  const workspace = readFileSync(
+    join(process.cwd(), 'src/lib/data/pro-renewal-workspace.ts'),
+    'utf8',
+  );
+  assert.match(page, /parseRenewalWorkspaceSearch\(await searchParams\)/);
+  assert.match(page, /listProRenewalWorkspace\(/);
+  assert.match(workspace, /focus:.*first\('focus'\).*first\('target'\)/);
+  assert.match(workspace, /\.eq\('tenant_id', access\.tenantId\)/);
+  assert.match(workspace, /\.eq\('company_id', access\.companyId\)/);
+  assert.match(workspace, /if \(search\.focus\) return scoped\.eq\('id', search\.focus\)/);
   assert.match(dal, /\.eq\('tenant_id', tenantId\)/);
-  assert.match(dal, /if \(opts\.id\)[\s\S]*\.eq\('id', opts\.id\)/);
 });
