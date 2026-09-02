@@ -7,6 +7,7 @@ import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { runAuthorizedMutation } from '@/lib/auth/authorized-mutation';
 import { resolveImportCompany } from '@/lib/data/import-company-access';
+import { finalizeBulkImportSuccess } from '@/lib/data/import-audit';
 import {
   createSupabaseBulkImportStore,
   executeBulkImportRows,
@@ -230,22 +231,31 @@ export async function executeBulkImportAction(
         },
         'importing',
       );
-      await writeAcceptedImportAudit(admin, tenant.id, session.id, company.id, {
-        kind: job.kind,
-        total: validation.totalRows,
-        succeeded: result.insertedRows,
-        skipped: result.skippedRows,
-        failed: countDistinctImportErrorRows(
-          allErrors.filter((rowError) => rowError.code !== 'DUPLICATE_SKIPPED'),
-        ),
-      });
+      const success = await finalizeBulkImportSuccess(
+        { ok: true as const, data: { processedRows: result.processedRows, errorRows } },
+        {
+          tenantId: tenant.id,
+          actorId: session.id,
+          companyId: company.id,
+          details: {
+            kind: job.kind,
+            total: validation.totalRows,
+            succeeded: result.insertedRows,
+            skipped: result.skippedRows,
+            failed: countDistinctImportErrorRows(
+              allErrors.filter((rowError) => rowError.code !== 'DUPLICATE_SKIPPED'),
+            ),
+          },
+          write: async (record) => {
+            const { error } = await admin.from('tenant_audit_log').insert(record);
+            if (error) throw error;
+          },
+        },
+      );
 
       revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
       revalidatePath(`/t/${tenantSlug}/employees`);
-      return {
-        ok: true,
-        data: { processedRows: result.processedRows, errorRows },
-      };
+      return success;
     },
     compensate: async ({ tenant }, error) => {
       if (shouldCompensateImportFailure(error)) {
@@ -295,27 +305,6 @@ export async function cancelBulkImportAction(
   } catch {
     console.error('bulk-import.cancel unexpected');
     return { ok: false, error: 'Could not cancel import', code: 'INTERNAL' };
-  }
-}
-
-async function writeAcceptedImportAudit(
-  admin: ReturnType<typeof createSupabaseServiceRoleClient>,
-  tenantId: string,
-  actorId: string,
-  companyId: string,
-  details: Record<string, string | number>,
-) {
-  try {
-    const { error } = await admin.from('tenant_audit_log').insert({
-      tenant_id: tenantId,
-      actor_id: actorId,
-      action: 'bulk_imported',
-      source: 'self_serve',
-      details: { company_id: companyId, ...details },
-    });
-    if (error) console.error('bulk-import.audit failed');
-  } catch {
-    console.error('bulk-import.audit failed');
   }
 }
 

@@ -31,7 +31,7 @@ export function EmployeeRegistryFilters({
 }) {
   return (
     <form
-      className="border-border/60 grid gap-3 rounded-lg border p-4 md:grid-cols-[minmax(0,1fr)_repeat(3,minmax(9rem,auto))_auto]"
+      className="border-border/60 grid gap-3 rounded-lg border p-4 md:grid-cols-[minmax(0,1fr)_repeat(4,minmax(9rem,auto))_auto]"
       method="get"
     >
       <label className="grid gap-1 text-sm" htmlFor="employee-search">
@@ -52,10 +52,17 @@ export function EmployeeRegistryFilters({
         labels={labels}
       />
       <SelectFilter
-        name="identity"
-        value={search.identity}
-        label={labels.identity}
-        options={['all', 'visa', 'eid']}
+        name="visa"
+        value={search.visa}
+        label={labels.visaFilter}
+        options={['any', 'recorded_expiry', 'missing_expiry']}
+        labels={labels}
+      />
+      <SelectFilter
+        name="eid"
+        value={search.eid}
+        label={labels.eidFilter}
+        options={['any', 'recorded_expiry', 'missing_expiry']}
         labels={labels}
       />
       <SelectFilter
@@ -175,6 +182,7 @@ export function EmployeeRegistryTable({
   });
   return (
     <div className="space-y-2">
+      <p className="text-muted-foreground text-sm">{labels.identifierSurfaceUnavailable}</p>
       <p className="text-muted-foreground text-sm">{labels.phase3Note}</p>
       <div
         className="border-border/60 overflow-x-auto rounded-lg border"
@@ -220,7 +228,8 @@ export function EmployeeRegistryPagination({
     const query = new URLSearchParams();
     if (search.q) query.set('q', search.q);
     if (search.status !== 'all') query.set('status', search.status);
-    if (search.identity !== 'all') query.set('identity', search.identity);
+    if (search.visa !== 'any') query.set('visa', search.visa);
+    if (search.eid !== 'any') query.set('eid', search.eid);
     if (search.risk !== 'all') query.set('risk', search.risk);
     if (search.focus) query.set('focus', search.focus);
     query.set('page', String(page));
@@ -276,12 +285,14 @@ function EmployeeRow({
       <IdentityCell
         expiry={row.visaExpiry}
         state={row.visaState}
+        identifierState={row.visaIdentifierState}
         labels={labels}
         formatDate={formatDate}
       />
       <IdentityCell
         expiry={row.eidExpiry}
         state={row.eidState}
+        identifierState={row.eidIdentifierState}
         labels={labels}
         formatDate={formatDate}
       />
@@ -298,11 +309,13 @@ function EmployeeRow({
 function IdentityCell({
   expiry,
   state,
+  identifierState,
   labels,
   formatDate,
 }: {
   expiry: string | null;
   state: string;
+  identifierState: string;
   labels: Labels;
   formatDate: Intl.DateTimeFormat;
 }) {
@@ -310,8 +323,9 @@ function IdentityCell({
     <TableCell className="min-w-36">
       <Badge variant={state === 'expired' ? 'destructive' : 'secondary'}>{labels[state]}</Badge>
       <p className="text-muted-foreground mt-1 text-xs whitespace-nowrap">
-        {expiry ? formatDate.format(new Date(`${expiry}T00:00:00Z`)) : labels.notRecorded}
+        {expiry ? formatDate.format(new Date(`${expiry}T00:00:00Z`)) : labels.expiryNotRecorded}
       </p>
+      <p className="text-muted-foreground mt-1 text-xs">{labels[identifierState]}</p>
     </TableCell>
   );
 }

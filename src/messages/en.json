@@ -1069,20 +1069,23 @@
         "search": "Search",
         "searchPlaceholder": "Name or email",
         "status": "Employment status",
-        "identity": "Expiry record",
         "risk": "Renewal risk",
         "apply": "Apply",
         "reset": "Reset",
         "all": "All",
-        "visa": "Visa expiry available",
-        "eid": "Emirates ID expiry available"
+        "any": "Any expiry state",
+        "visa": "Visa expiry",
+        "eid": "Emirates ID expiry",
+        "recordedExpiry": "Expiry recorded",
+        "missingExpiry": "Expiry not recorded"
       },
       "status": { "active": "Active", "inactive": "Inactive", "terminated": "Terminated" },
       "identity": {
-        "missing": "Not recorded",
+        "missing": "Expiry not recorded",
         "expired": "Expired",
         "attention": "Due within 90 days",
-        "current": "Current"
+        "current": "Current",
+        "unavailableWithoutMaskedContract": "Identifier unavailable: no accepted masked/display contract exists."
       },
       "risk": { "attention": "Needs attention", "clear": "Clear", "unknown": "Not assessed" },
       "signals": {
@@ -1096,10 +1099,13 @@
         "description": "{count} exact matching employees.",
         "label": "Employee registry",
         "employee": "Employee",
+        "visa": "Visa expiry",
+        "eid": "Emirates ID expiry",
         "risk": "Renewal risk",
         "provenance": "Import provenance",
         "phase3Unavailable": "Phase 3 unavailable",
-        "phase3Note": "Import provenance and document actions are unavailable until Phase 3."
+        "phase3Note": "Import provenance and document actions are unavailable until Phase 3.",
+        "identifierSurfaceUnavailable": "Visa and Emirates ID identifiers are unavailable because no accepted masked/display contract exists."
       },
       "pagination": {
         "label": "Employee registry pages",

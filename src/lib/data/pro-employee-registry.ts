@@ -7,7 +7,8 @@ export const EMPLOYEE_REGISTRY_PAGE_SIZE = 25;
 const searchSchema = z.object({
   q: z.string().trim().max(120).optional(),
   status: z.enum(['all', 'active', 'inactive', 'terminated']).optional(),
-  identity: z.enum(['all', 'visa', 'eid']).optional(),
+  visa: z.enum(['any', 'recorded_expiry', 'missing_expiry']).optional(),
+  eid: z.enum(['any', 'recorded_expiry', 'missing_expiry']).optional(),
   risk: z.enum(['all', 'attention']).optional(),
   page: z.coerce.number().int().min(1).max(10_000).optional(),
   focus: z.string().uuid().optional(),
@@ -16,7 +17,8 @@ const searchSchema = z.object({
 export type EmployeeRegistrySearch = {
   q: string;
   status: 'all' | 'active' | 'inactive' | 'terminated';
-  identity: 'all' | 'visa' | 'eid';
+  visa: 'any' | 'recorded_expiry' | 'missing_expiry';
+  eid: 'any' | 'recorded_expiry' | 'missing_expiry';
   risk: 'all' | 'attention';
   page: number;
   focus: string | null;
@@ -32,11 +34,18 @@ export type EmployeeRegistryRow = {
   eidExpiry: string | null;
   visaState: EmployeeIdentityState;
   eidState: EmployeeIdentityState;
+  visaIdentifierState: EmployeeIdentifierDisplayState;
+  eidIdentifierState: EmployeeIdentifierDisplayState;
   risk: EmployeeRisk;
 };
 
 export type EmployeeIdentityState = 'missing' | 'expired' | 'attention' | 'current';
+export type EmployeeIdentifierDisplayState = 'unavailable_without_masked_contract';
 export type EmployeeRisk = 'attention' | 'clear' | 'unknown';
+
+export function employeeIdentifierDisplayState(): EmployeeIdentifierDisplayState {
+  return 'unavailable_without_masked_contract';
+}
 
 type RegistryBase = {
   rows: EmployeeRegistryRow[];
@@ -99,6 +108,21 @@ export type EmployeeRegistryDependencies = {
   ) => Promise<EmployeeRegistryAccess>;
   store?: EmployeeRegistryStore;
 };
+type EmployeeRegistrySupabaseQuery = PromiseLike<unknown> & {
+  select: (
+    columns: string,
+    options?: { count: 'exact'; head?: boolean },
+  ) => EmployeeRegistrySupabaseQuery;
+  eq: (column: string, value: string) => EmployeeRegistrySupabaseQuery;
+  not: (column: string, operator: string, value: null) => EmployeeRegistrySupabaseQuery;
+  is: (column: string, value: null) => EmployeeRegistrySupabaseQuery;
+  or: (filter: string) => EmployeeRegistrySupabaseQuery;
+  order: (column: string, options: { ascending: boolean }) => EmployeeRegistrySupabaseQuery;
+  range: (from: number, to: number) => EmployeeRegistrySupabaseQuery;
+};
+export type EmployeeRegistrySupabaseClient = {
+  from: (table: string) => EmployeeRegistrySupabaseQuery;
+};
 
 export function parseEmployeeRegistrySearch(input: Record<string, string | string[] | undefined>) {
   const value = (key: string) => {
@@ -108,7 +132,8 @@ export function parseEmployeeRegistrySearch(input: Record<string, string | strin
   const parsed = searchSchema.safeParse({
     q: value('q'),
     status: value('status'),
-    identity: value('identity'),
+    visa: value('visa'),
+    eid: value('eid'),
     risk: value('risk'),
     page: value('page'),
     focus: value('focus'),
@@ -117,7 +142,8 @@ export function parseEmployeeRegistrySearch(input: Record<string, string | strin
   return {
     q: data.q ?? '',
     status: data.status ?? 'all',
-    identity: data.identity ?? 'all',
+    visa: data.visa ?? 'any',
+    eid: data.eid ?? 'any',
     risk: data.risk ?? 'all',
     page: data.page ?? 1,
     focus: data.focus ?? null,
@@ -132,7 +158,8 @@ export function employeeRegistryHref(
   const query = new URLSearchParams();
   if (search.q) query.set('q', search.q);
   if (search.status !== 'all') query.set('status', search.status);
-  if (search.identity !== 'all') query.set('identity', search.identity);
+  if (search.visa !== 'any') query.set('visa', search.visa);
+  if (search.eid !== 'any') query.set('eid', search.eid);
   if (search.risk !== 'all') query.set('risk', search.risk);
   if (search.focus) query.set('focus', search.focus);
   if (page > 1) query.set('page', String(page));
@@ -207,17 +234,28 @@ async function authorizeRegistryRead({
 
 async function createSupabaseEmployeeRegistryStore(now: Date): Promise<EmployeeRegistryStore> {
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
+  return createEmployeeRegistrySupabaseStore(
+    createSupabaseServiceRoleClient() as unknown as EmployeeRegistrySupabaseClient,
+    now,
+  );
+}
+
+export function createEmployeeRegistrySupabaseStore(
+  admin: EmployeeRegistrySupabaseClient,
+  now: Date,
+): EmployeeRegistryStore {
   return {
     list: async ({ tenantId, companyId, search, from, to }) => {
-      const admin = createSupabaseServiceRoleClient();
       let query = admin
         .from('employees')
         .select('id, name, email, nationality, status, visa_expiry, eid_expiry', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .eq('company_id', companyId);
       if (search.status !== 'all') query = query.eq('status', search.status);
-      if (search.identity === 'visa') query = query.not('visa_expiry', 'is', null);
-      if (search.identity === 'eid') query = query.not('eid_expiry', 'is', null);
+      if (search.visa === 'recorded_expiry') query = query.not('visa_expiry', 'is', null);
+      if (search.visa === 'missing_expiry') query = query.is('visa_expiry', null);
+      if (search.eid === 'recorded_expiry') query = query.not('eid_expiry', 'is', null);
+      if (search.eid === 'missing_expiry') query = query.is('eid_expiry', null);
       if (search.risk === 'attention')
         query = query.or(
           `visa_expiry.lte.${isoDateInDubai(now, 90)},eid_expiry.lte.${isoDateInDubai(now, 90)}`,
@@ -237,7 +275,6 @@ async function createSupabaseEmployeeRegistryStore(now: Date): Promise<EmployeeR
       };
     },
     total: async ({ tenantId, companyId }) => {
-      const admin = createSupabaseServiceRoleClient();
       return (await admin
         .from('employees')
         .select('id', { count: 'exact', head: true })
@@ -272,6 +309,8 @@ function toRegistryRow(row: EmployeeRegistryDbRow, now: Date): EmployeeRegistryR
     eidExpiry: row.eid_expiry,
     visaState: identityState(row.visa_expiry, now),
     eidState: identityState(row.eid_expiry, now),
+    visaIdentifierState: employeeIdentifierDisplayState(),
+    eidIdentifierState: employeeIdentifierDisplayState(),
     risk: employeeRisk(row.visa_expiry, row.eid_expiry, now),
   };
 }
