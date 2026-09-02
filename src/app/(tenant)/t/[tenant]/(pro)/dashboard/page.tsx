@@ -385,6 +385,7 @@ export default async function ProDashboard({
             title={t('registration.title')}
             description={t('registration.description')}
             unavailable={t('registrationUnavailable')}
+            stages={t.raw('registration.stages') as string[]}
           />
           <DashboardUnavailablePanel
             title={t('activity.title')}

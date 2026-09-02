@@ -227,6 +227,15 @@ test('dashboard keeps readiness, lifecycle, and registration as distinct concept
   assert.match(source, /company\.status/u);
   assert.match(source, /registrationUnavailable/u);
   assert.doesNotMatch(source, /registrationPercent|registrationProgress:\s*company/u);
+  assert.deepEqual(en.pro.dashboard.signalStudio.registration.stages, [
+    'Application Submitted',
+    'Initial Approval',
+    'Name Reservation',
+    'License Issuance',
+    'Visa Processing',
+    'Bank Account',
+    'Completed',
+  ]);
 });
 
 test('dashboard uses the compact asymmetric Signal Studio composition', () => {

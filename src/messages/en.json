@@ -1366,7 +1366,16 @@
         },
         "registration": {
           "title": "Registration context",
-          "description": "Authority-stage history and evidence"
+          "description": "Authority-stage history and evidence",
+          "stages": [
+            "Application Submitted",
+            "Initial Approval",
+            "Name Reservation",
+            "License Issuance",
+            "Visa Processing",
+            "Bank Account",
+            "Completed"
+          ]
         },
         "registrationUnavailable": "Detailed progress unavailable — P2.09/Phase 3 contract required",
         "activity": {

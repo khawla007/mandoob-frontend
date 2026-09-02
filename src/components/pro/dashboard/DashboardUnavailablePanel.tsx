@@ -6,10 +6,12 @@ export function DashboardUnavailablePanel({
   title,
   description,
   unavailable,
+  stages,
 }: {
   title: string;
   description: string;
   unavailable: string;
+  stages?: readonly string[];
 }) {
   return (
     <Card className="signal-panel">
@@ -27,6 +29,13 @@ export function DashboardUnavailablePanel({
         >
           {unavailable}
         </p>
+        {stages ? (
+          <ol className="text-muted-foreground mt-3 list-decimal space-y-1 ps-5 text-xs">
+            {stages.map((stage) => (
+              <li key={stage}>{stage}</li>
+            ))}
+          </ol>
+        ) : null}
       </CardContent>
     </Card>
   );
