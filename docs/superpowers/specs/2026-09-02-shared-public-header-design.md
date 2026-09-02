@@ -20,4 +20,3 @@ Update the shared public navigation CSS and its contract tests. No page-specific
 - Run the focused public navigation and header tests.
 - Run TypeScript and lint checks appropriate to the touched files.
 - Verify the header visually on the homepage, a secondary public page, login/register, and an authenticated account page when local authentication state permits.
-
