@@ -117,7 +117,7 @@ const quickLinks = [
   { label: 'Free zone setup', href: '/free-zones' },
   { label: 'Offshore setup', href: '/offshore' },
   { label: 'Knowledge base', href: '/knowledge-base' },
-  { label: 'Apply as a PRO firm', href: '/apply' },
+  { label: 'Start an application', href: '/apply' },
 ] as const;
 
 type ContactPageBodyProps = {

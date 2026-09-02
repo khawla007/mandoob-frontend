@@ -730,9 +730,9 @@
 .site-public .contact-form select,
 .site-public .contact-form textarea {
   inline-size: 100%;
-  border: 1px solid var(--public-border-subtle);
+  border: 1px solid var(--contact-control-border, var(--public-border-subtle));
   border-radius: var(--r-sm);
-  background: var(--public-surface-elevated);
+  background: var(--contact-control-background, var(--public-surface-elevated));
   color: var(--public-text-primary);
   font: inherit;
   padding: 9px 12px;
@@ -749,7 +749,9 @@
   outline: 3px solid color-mix(in oklch, var(--public-focus-ring) 28%, transparent);
   outline-offset: 2px;
 }
-.site-public .contact-form [aria-invalid='true'] {
+.site-public .contact-form input:not([type='checkbox'])[aria-invalid='true'],
+.site-public .contact-form select[aria-invalid='true'],
+.site-public .contact-form textarea[aria-invalid='true'] {
   border-color: var(--public-danger);
 }
 .site-public .contact-form__cue,
@@ -1191,6 +1193,10 @@
   padding-block: clamp(18px, 2vw, 22px);
   padding-inline: clamp(20px, 2.4vw, 28px);
   box-shadow: 0 18px 48px color-mix(in oklch, var(--zinc-950) 8%, transparent);
+}
+.dark .site-public .contact-page__form-panel {
+  --contact-control-background: var(--zinc-100);
+  --contact-control-border: var(--zinc-500);
 }
 .site-public .contact-page__help {
   padding-block: clamp(18px, 2vw, 22px);
