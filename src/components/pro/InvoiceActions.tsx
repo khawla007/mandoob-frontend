@@ -2,9 +2,19 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { formatMoney } from '@/lib/format/money';
 import {
   issueRefundAction,
   markInvoicePaidAction,
@@ -18,6 +28,7 @@ export function InvoiceActions({
   slug,
   invoiceId,
   amountMinor,
+  currency,
   remainingRefundableMinor,
   status,
   refundOperation,
@@ -26,16 +37,19 @@ export function InvoiceActions({
   slug: string;
   invoiceId: string;
   amountMinor: number;
+  currency: string;
   remainingRefundableMinor: number | null;
   status: string;
   refundOperation: RefundOperationState | null;
   refundAvailable?: boolean;
 }) {
   const t = useTranslations('pro');
+  const locale = useLocale();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const [confirmation, setConfirmation] = useState<'void' | 'refund' | null>(null);
   const refundOperationId = useRef<string | null>(null);
   const hasPendingRefund = refundOperation?.status === 'pending';
 
@@ -83,6 +97,7 @@ export function InvoiceActions({
           : t('paymentUpdated'),
       );
       router.refresh();
+      setConfirmation(null);
     });
   }
 
@@ -94,38 +109,98 @@ export function InvoiceActions({
       remainingMinor: remainingRefundableMinor,
       hasPendingRefund,
     });
+  const refundAmount = hasPendingRefund
+    ? refundOperation.amountMinor
+    : (remainingRefundableMinor ?? amountMinor);
+  const amount = formatMoney(amountMinor, currency, locale);
+  const remaining = formatMoney(remainingRefundableMinor ?? 0, currency, locale);
 
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap justify-end gap-2">
         {canClose && (
           <>
-            <Button size="sm" variant="outline" disabled={pending} onClick={() => run('paid')}>
+            <Button
+              size="sm"
+              className="min-h-11"
+              variant="outline"
+              disabled={pending}
+              onClick={() => run('paid')}
+            >
               {t('paymentMarkPaid')}
             </Button>
-            <Button size="sm" variant="outline" disabled={pending} onClick={() => run('void')}>
+            <Button
+              size="sm"
+              className="min-h-11"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setConfirmation('void')}
+            >
               {t('paymentVoid')}
             </Button>
           </>
         )}
         {canRefund && (
-          <Button size="sm" variant="outline" disabled={pending} onClick={() => run('refund')}>
+          <Button
+            size="sm"
+            className="min-h-11"
+            variant="outline"
+            disabled={pending}
+            onClick={() => (hasPendingRefund ? run('refund') : setConfirmation('refund'))}
+          >
             {hasPendingRefund ? t('paymentRetryRefund') : t('paymentRefund')}
           </Button>
         )}
       </div>
-      {(canClose || canRefund) && (
+      {(canClose || canRefund) && !hasPendingRefund && (
+        <label className="text-muted-foreground text-xs" htmlFor="refund-reason">
+          {canRefund ? t('paymentRefundReason') : t('paymentVoidNote')}
+        </label>
+      )}
+      {(canClose || canRefund) && !hasPendingRefund && (
         <Input
-          className="h-7 max-w-52 text-xs"
+          id="refund-reason"
+          className="min-h-11 max-w-52 text-xs"
           placeholder={canRefund ? t('paymentRefundReason') : t('paymentVoidNote')}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          disabled={hasPendingRefund}
         />
       )}
       {message ? (
         <p className="text-muted-foreground max-w-52 text-right text-xs">{message}</p>
       ) : null}
+      <Dialog open={confirmation !== null} onOpenChange={(open) => !open && setConfirmation(null)}>
+        <DialogContent closeLabel={t('paymentCloseDialog')}>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmation === 'void' ? t('paymentConfirmVoid') : t('paymentConfirmRefund')}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmation === 'void'
+                ? t('paymentConfirmVoidDescription', { invoice: invoiceId, amount })
+                : t('paymentConfirmRefundDescription', {
+                    invoice: invoiceId,
+                    amount: formatMoney(refundAmount, currency, locale),
+                    remaining,
+                  })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button className="min-h-11" variant="outline">
+                {t('paymentCancel')}
+              </Button>
+            </DialogClose>
+            <Button
+              className="min-h-11"
+              disabled={pending}
+              onClick={() => confirmation && run(confirmation)}
+            >
+              {confirmation === 'void' ? t('paymentVoid') : t('paymentRefund')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

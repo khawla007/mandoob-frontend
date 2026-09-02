@@ -85,6 +85,8 @@ export type ProFinanceDashboard = {
   excludedCurrencyCodes: string[];
   totalRevenueCollectedMinor: number;
   totalRevenueCollected: string;
+  currentMonthBilledMinor: number;
+  currentMonthNetCollectedMinor: number;
   outstandingReceivablesMinor: number;
   outstandingReceivables: string;
   openInvoiceCount: number;
@@ -98,6 +100,10 @@ export type ProFinanceDashboard = {
   paymentMethods: ProFinanceBreakdownRow[];
   reconciliation: { state: 'unavailable'; reason: 'phase_3' };
   recentFailedAttempts: ProFinanceFailedAttemptRow[];
+  analyticsAvailability: {
+    collection: 'available' | 'unavailable';
+    paymentActivity: 'available' | 'unavailable';
+  };
 };
 
 const ELIGIBLE_INVOICE_STATUSES = new Set(['draft', 'void']);
@@ -111,6 +117,9 @@ export function calculateProFinanceDashboard(args: {
   refunds: ProFinanceRefundInput[];
   companies: ProFinanceCompanyInput[];
   today?: string;
+  now?: Date;
+  paymentsAvailable?: boolean;
+  refundsAvailable?: boolean;
 }): ProFinanceDashboard {
   const today = args.today ?? businessDate();
   const companies = args.companies.filter((row) => row.tenant_id === args.tenantId);
@@ -160,6 +169,33 @@ export function calculateProFinanceDashboard(args: {
     })
     .reduce((sum, row) => sum + row.amount_minor, 0);
   const totalRevenueCollectedMinor = totalPaymentCollectedMinor - succeededRefundsMinor;
+  const currentMonth = dubaiMonthKey(args.now ?? new Date());
+  const currentMonthBilledMinor = eligibleInvoices
+    .filter(
+      (invoice) =>
+        invoice.currency === currency && dubaiMonthKey(invoice.created_at) === currentMonth,
+    )
+    .reduce((sum, invoice) => sum + invoice.amount_minor, 0);
+  const currentMonthPaymentsMinor = successfulPayments
+    .filter(
+      (payment) =>
+        payment.currency === currency && dubaiMonthKey(payment.received_at) === currentMonth,
+    )
+    .reduce((sum, payment) => sum + payment.amount_minor, 0);
+  const currentMonthRefundsMinor = refunds
+    .filter((refund) => {
+      const payment = paymentById.get(refund.payment_id);
+      return (
+        refund.status === 'succeeded' &&
+        dubaiMonthKey(refund.created_at) === currentMonth &&
+        payment !== undefined &&
+        COLLECTED_PAYMENT_STATUSES.has(payment.status) &&
+        payment.currency === currency &&
+        invoiceById.get(payment.invoice_id)?.currency === payment.currency
+      );
+    })
+    .reduce((sum, refund) => sum + refund.amount_minor, 0);
+  const currentMonthNetCollectedMinor = currentMonthPaymentsMinor - currentMonthRefundsMinor;
 
   const reportingInvoices = eligibleInvoices.filter((row) => row.currency === currency);
   const reportingPayments = payments.filter(
@@ -171,8 +207,10 @@ export function calculateProFinanceDashboard(args: {
   const overdueInvoiceCount = openInvoices.filter(
     (row) => row.due_at !== null && row.due_at < today,
   ).length;
-  const denominator = totalRevenueCollectedMinor + outstandingReceivablesMinor;
-  const collectionRate = denominator > 0 ? (totalRevenueCollectedMinor / denominator) * 100 : 0;
+  const collectionRate =
+    currentMonthBilledMinor > 0
+      ? (currentMonthNetCollectedMinor / currentMonthBilledMinor) * 100
+      : 0;
   const collectionRateDisplay = `${collectionRate.toFixed(1)}%`;
 
   const byCompany = new Map<
@@ -287,6 +325,8 @@ export function calculateProFinanceDashboard(args: {
     excludedCurrencyCodes,
     totalRevenueCollectedMinor,
     totalRevenueCollected: formatMoney(totalRevenueCollectedMinor, currency),
+    currentMonthBilledMinor,
+    currentMonthNetCollectedMinor,
     outstandingReceivablesMinor,
     outstandingReceivables: formatMoney(outstandingReceivablesMinor, currency),
     openInvoiceCount: openInvoices.length,
@@ -321,6 +361,13 @@ export function calculateProFinanceDashboard(args: {
     paymentMethods,
     reconciliation: { state: 'unavailable', reason: 'phase_3' },
     recentFailedAttempts,
+    analyticsAvailability: {
+      collection:
+        args.paymentsAvailable === false || args.refundsAvailable === false
+          ? 'unavailable'
+          : 'available',
+      paymentActivity: args.paymentsAvailable === false ? 'unavailable' : 'available',
+    },
   };
 }
 
@@ -391,7 +438,7 @@ export async function getProFinanceDashboard(
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
   const admin = createSupabaseServiceRoleClient();
 
-  const [invoiceRows, paymentRows, refundRows, companyRows] = await Promise.all([
+  const [invoiceResult, paymentResult, refundResult, companyResult] = await Promise.allSettled([
     loadAllRangePages('PRO finance invoices', (from, to) =>
       admin
         .from('invoices')
@@ -437,12 +484,18 @@ export async function getProFinanceDashboard(
     ),
   ]);
 
+  if (invoiceResult.status === 'rejected') throw invoiceResult.reason;
+  if (companyResult.status === 'rejected') throw companyResult.reason;
+  const paymentsAvailable = paymentResult.status === 'fulfilled';
+  const refundsAvailable = paymentsAvailable && refundResult.status === 'fulfilled';
   return calculateProFinanceDashboard({
     tenantId,
-    invoices: invoiceRows as ProFinanceInvoiceInput[],
-    payments: paymentRows as ProFinancePaymentInput[],
-    refunds: refundRows as ProFinanceRefundInput[],
-    companies: companyRows as ProFinanceCompanyInput[],
+    invoices: invoiceResult.value as ProFinanceInvoiceInput[],
+    payments: paymentsAvailable ? (paymentResult.value as ProFinancePaymentInput[]) : [],
+    refunds: refundsAvailable ? (refundResult.value as ProFinanceRefundInput[]) : [],
+    companies: companyResult.value as ProFinanceCompanyInput[],
+    paymentsAvailable,
+    refundsAvailable,
   });
 }
 
@@ -472,4 +525,18 @@ function reportingCurrency(
   payments: ProFinancePaymentInput[],
 ): string {
   return signalReportingCurrency(invoices, payments);
+}
+
+function dubaiMonthKey(value: Date | string | null): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Dubai',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  return year && month ? `${year}-${month}` : null;
 }

@@ -17,6 +17,7 @@ import { getProFinanceDashboard } from '@/lib/data/pro-finance';
 import type { ProFinanceDashboard } from '@/lib/data/pro-finance';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { formatMoney as formatMinorMoney } from '@/lib/format/money';
+import { formatFinanceDate } from '@/lib/format/finance-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +80,7 @@ export default async function ProPaymentAnalyticsPage({
             </CardHeader>
             <CardContent>
               <div className="font-mono text-2xl font-semibold">
-                {readKpi(dashboard, kpi.key, locale)}
+                {readKpi(dashboard, kpi.key, locale, t)}
               </div>
             </CardContent>
           </Card>
@@ -113,7 +114,7 @@ export default async function ProPaymentAnalyticsPage({
               <TableBody>
                 {dashboard.invoiceStatus.map((row) => (
                   <TableRow key={row.key}>
-                    <TableCell className="font-medium">{row.key}</TableCell>
+                    <TableCell className="font-medium">{invoiceStatusLabel(row.key, t)}</TableCell>
                     <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
                     <TableCell className="text-right">
                       {formatMoney(row.amountMinor, row.currency, locale)}
@@ -131,7 +132,11 @@ export default async function ProPaymentAnalyticsPage({
           <CardTitle className="text-lg">{t('paymentMethods')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {dashboard.paymentMethods.length === 0 ? (
+          {dashboard.analyticsAvailability.paymentActivity === 'unavailable' ? (
+            <p className="text-muted-foreground text-sm">
+              {t('paymentPaymentActivityUnavailable')}
+            </p>
+          ) : dashboard.paymentMethods.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('paymentAnalyticsEmpty')}</p>
           ) : (
             <Table>
@@ -145,7 +150,7 @@ export default async function ProPaymentAnalyticsPage({
               <TableBody>
                 {dashboard.paymentMethods.map((row) => (
                   <TableRow key={row.key}>
-                    <TableCell className="font-medium">{row.key}</TableCell>
+                    <TableCell className="font-medium">{paymentMethodLabel(row.key, t)}</TableCell>
                     <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
                     <TableCell className="text-right">
                       {formatMoney(row.amountMinor, row.currency, locale)}
@@ -204,7 +209,11 @@ export default async function ProPaymentAnalyticsPage({
           <CardTitle className="text-lg">{t('paymentAttempts')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {failedAttempts.length === 0 ? (
+          {dashboard.analyticsAvailability.paymentActivity === 'unavailable' ? (
+            <p className="text-muted-foreground text-sm">
+              {t('paymentPaymentActivityUnavailable')}
+            </p>
+          ) : failedAttempts.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('paymentAttemptsEmpty')}</p>
           ) : (
             <Table>
@@ -220,8 +229,10 @@ export default async function ProPaymentAnalyticsPage({
                 {failedAttempts.map((attempt) => (
                   <TableRow key={attempt.id}>
                     <TableCell className="font-mono">{attempt.invoiceId.slice(0, 8)}</TableCell>
-                    <TableCell>{attempt.status}</TableCell>
-                    <TableCell>{formatDate(attempt.createdAt, locale)}</TableCell>
+                    <TableCell>{paymentStatusLabel(attempt.status, t)}</TableCell>
+                    <TableCell>
+                      {formatFinanceDate(attempt.createdAt, locale, t('paymentDateUnavailable'))}
+                    </TableCell>
                     <TableCell className="text-right">
                       {formatMoney(attempt.amountMinor, attempt.currency, locale)}
                     </TableCell>
@@ -236,15 +247,24 @@ export default async function ProPaymentAnalyticsPage({
   );
 }
 
-function readKpi(dashboard: ProFinanceDashboard, key: KpiKey, locale: string) {
+function readKpi(
+  dashboard: ProFinanceDashboard,
+  key: KpiKey,
+  locale: string,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+) {
   if (key === 'collectedRevenue')
-    return formatMoney(dashboard.totalRevenueCollectedMinor, dashboard.currency, locale);
+    return dashboard.analyticsAvailability.collection === 'available'
+      ? formatMoney(dashboard.currentMonthNetCollectedMinor, dashboard.currency, locale)
+      : t('paymentCollectionUnavailable');
   if (key === 'outstandingReceivables')
     return formatMoney(dashboard.outstandingReceivablesMinor, dashboard.currency, locale);
   if (key === 'openInvoices') return String(dashboard.openInvoiceCount ?? 0);
   if (key === 'overdueInvoices') return String(dashboard.overdueInvoiceCount ?? 0);
 
-  return dashboard.collectionRateDisplay;
+  return dashboard.analyticsAvailability.collection === 'available'
+    ? dashboard.collectionRateDisplay
+    : t('paymentCollectionUnavailable');
 }
 
 function formatMoney(amountMinor: number, currency: string, locale: string) {
@@ -254,8 +274,38 @@ function formatMoney(amountMinor: number, currency: string, locale: string) {
 function formatCount(value: number, locale: string) {
   return new Intl.NumberFormat(locale).format(value);
 }
-function formatDate(value: string, locale: string) {
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value));
+function invoiceStatusLabel(key: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    draft: 'paymentStatusDraft',
+    open: 'paymentStatusOpen',
+    paid: 'paymentStatusPaid',
+    void: 'paymentStatusVoid',
+    refunded: 'paymentStatusRefunded',
+    partially_refunded: 'paymentStatusPartiallyRefunded',
+  };
+  return known[key] ? t(known[key]) : t('paymentValueUnavailable');
+}
+
+function paymentStatusLabel(key: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    succeeded: 'paymentStatusSucceeded',
+    failed: 'paymentStatusFailed',
+    abandoned: 'paymentStatusAbandoned',
+    pending: 'paymentStatusPending',
+    refunded: 'paymentStatusRefunded',
+    partially_refunded: 'paymentStatusPartiallyRefunded',
+  };
+  return known[key] ? t(known[key]) : t('paymentValueUnavailable');
+}
+
+function paymentMethodLabel(key: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    card: 'paymentMethodCard',
+    cash: 'paymentMethodCash',
+    bank_transfer: 'paymentMethodBankTransfer',
+    unknown: 'paymentMethodUnavailable',
+  };
+  return known[key] ? t(known[key]) : t('paymentMethodUnavailable');
 }
 
 function agingLabel(key: string, t: Awaited<ReturnType<typeof getTranslations>>) {

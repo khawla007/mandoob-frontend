@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { ProInvoiceRow } from '@/lib/data/invoices';
+import { formatFinanceDate } from '@/lib/format/finance-date';
 import { InvoiceActions } from './InvoiceActions';
 
 export function InvoicesTable({
@@ -23,6 +24,7 @@ export function InvoicesTable({
   emptyMessage?: string;
 }) {
   const t = useTranslations('pro');
+  const locale = useLocale();
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{emptyMessage}</p>;
   }
@@ -50,10 +52,12 @@ export function InvoicesTable({
               </TableCell>
               <TableCell>
                 <Badge variant={row.status === 'open' ? 'default' : 'secondary'}>
-                  {row.status}
+                  {invoiceStatusLabel(row.status, t)}
                 </Badge>
               </TableCell>
-              <TableCell>{row.dueAt ?? '—'}</TableCell>
+              <TableCell>
+                {formatFinanceDate(row.dueAt, locale, t('paymentDateUnavailable'))}
+              </TableCell>
               <TableCell className="text-right font-medium">{row.amount}</TableCell>
               <TableCell className="text-right">
                 <div className="flex flex-col items-end gap-2">
@@ -70,6 +74,7 @@ export function InvoicesTable({
                     slug={slug}
                     invoiceId={row.id}
                     amountMinor={row.amountMinor}
+                    currency={row.currency}
                     remainingRefundableMinor={row.remainingRefundableMinor}
                     status={row.status}
                     refundOperation={row.refundOperation}
@@ -83,4 +88,16 @@ export function InvoicesTable({
       </Table>
     </div>
   );
+}
+
+function invoiceStatusLabel(status: string, t: ReturnType<typeof useTranslations<'pro'>>) {
+  const known: Record<string, string> = {
+    draft: 'paymentStatusDraft',
+    open: 'paymentStatusOpen',
+    paid: 'paymentStatusPaid',
+    void: 'paymentStatusVoid',
+    refunded: 'paymentStatusRefunded',
+    partially_refunded: 'paymentStatusPartiallyRefunded',
+  };
+  return known[status] ? t(known[status]) : t('paymentValueUnavailable');
 }

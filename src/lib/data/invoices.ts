@@ -431,7 +431,7 @@ export async function getInvoiceDetailForTenant(
     linkedEntityId: (invoice.linked_entity_id as string | null) ?? null,
     payments: (paymentsResult.data ?? []).map((p) => ({
       id: p.id as string,
-      provider: paymentProviderLabel(p.provider as string),
+      provider: paymentProviderCode(p.provider as string),
       method: (p.method as string | null) ?? null,
       status: p.status as string,
       amount: formatMoney(p.amount_minor as number, p.currency as string),
@@ -464,10 +464,8 @@ function paymentAttemptContext(status: string): 'success' | 'failure' | 'pending
   return 'pending';
 }
 
-function paymentProviderLabel(provider: string): string {
-  if (provider === 'tap') return 'Tap';
-  if (provider === 'manual') return 'Manual';
-  return 'Payment provider';
+function paymentProviderCode(provider: string): string {
+  return provider === 'tap' || provider === 'manual' ? provider : 'unknown';
 }
 
 export async function getReceiptPayloadForCustomer(

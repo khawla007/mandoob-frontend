@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { InvoiceActions } from '@/components/pro/InvoiceActions';
+import { formatFinanceDate } from '@/lib/format/finance-date';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getInvoiceDetailForTenant } from '@/lib/data/invoices';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
@@ -53,7 +54,7 @@ export default async function ProInvoiceDetailPage({
           <h1 className="text-2xl font-semibold tracking-tight">{invoice.label}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={invoice.status === 'open' ? 'default' : 'secondary'}>
-              {invoice.status}
+              {invoiceStatusLabel(invoice.status, t)}
             </Badge>
             <span className="text-muted-foreground">{invoice.amount}</span>
             <span className="text-muted-foreground">· {invoice.companyName}</span>
@@ -71,6 +72,7 @@ export default async function ProInvoiceDetailPage({
             slug={tenant.slug}
             invoiceId={invoice.id}
             amountMinor={invoice.amountMinor}
+            currency={invoice.currency}
             remainingRefundableMinor={invoice.remainingRefundableMinor}
             status={invoice.status}
             refundOperation={invoice.refundOperation}
@@ -87,8 +89,14 @@ export default async function ProInvoiceDetailPage({
           <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <Field label={t('paymentInvoiceId')} value={invoice.id} mono />
             <Field label={t('paymentCompany')} value={invoice.companyName} />
-            <Field label={t('paymentDueDate')} value={formatInvoiceDate(invoice.dueAt, locale)} />
-            <Field label={t('paymentPaidAt')} value={formatInvoiceDate(invoice.paidAt, locale)} />
+            <Field
+              label={t('paymentDueDate')}
+              value={formatInvoiceDate(invoice.dueAt, locale, t('paymentDateUnavailable'))}
+            />
+            <Field
+              label={t('paymentPaidAt')}
+              value={formatInvoiceDate(invoice.paidAt, locale, t('paymentDateUnavailable'))}
+            />
             <Field label={t('paymentLinkedEntity')} value={invoice.linkedEntityType ?? '—'} />
           </dl>
         </CardContent>
@@ -118,10 +126,12 @@ export default async function ProInvoiceDetailPage({
               <TableBody>
                 {invoice.payments.map((payment) => (
                   <TableRow key={payment.id}>
-                    <TableCell>{payment.status}</TableCell>
-                    <TableCell>{payment.provider}</TableCell>
-                    <TableCell>{payment.method ?? '—'}</TableCell>
-                    <TableCell>{formatInvoiceDate(payment.createdAt, locale)}</TableCell>
+                    <TableCell>{paymentStatusLabel(payment.status, t)}</TableCell>
+                    <TableCell>{paymentProviderLabel(payment.provider, t)}</TableCell>
+                    <TableCell>{paymentMethodLabel(payment.method, t)}</TableCell>
+                    <TableCell>
+                      {formatInvoiceDate(payment.createdAt, locale, t('paymentDateUnavailable'))}
+                    </TableCell>
                     <TableCell>{t(`paymentAttempt${payment.context}`)}</TableCell>
                     <TableCell className="text-right">{payment.amount}</TableCell>
                   </TableRow>
@@ -163,9 +173,11 @@ export default async function ProInvoiceDetailPage({
               <TableBody>
                 {invoice.refunds.map((refund) => (
                   <TableRow key={refund.id}>
-                    <TableCell>{refund.status}</TableCell>
+                    <TableCell>{refundStatusLabel(refund.status, t)}</TableCell>
                     <TableCell>{refund.reason ?? '—'}</TableCell>
-                    <TableCell>{formatInvoiceDate(refund.createdAt, locale)}</TableCell>
+                    <TableCell>
+                      {formatInvoiceDate(refund.createdAt, locale, t('paymentDateUnavailable'))}
+                    </TableCell>
                     <TableCell className="text-right">{refund.amount}</TableCell>
                   </TableRow>
                 ))}
@@ -191,9 +203,9 @@ export default async function ProInvoiceDetailPage({
                   key={entry.id}
                   className="flex items-center justify-between gap-4 py-2 first:pt-0"
                 >
-                  <span className="font-medium">{entry.action}</span>
+                  <span className="font-medium">{auditActionLabel(entry.action, t)}</span>
                   <span className="text-muted-foreground">
-                    {formatInvoiceDate(entry.createdAt, locale)}
+                    {formatInvoiceDate(entry.createdAt, locale, t('paymentDateUnavailable'))}
                   </span>
                 </li>
               ))}
@@ -214,10 +226,67 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
   );
 }
 
-function formatInvoiceDate(value: string | null, locale: string) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? '—'
-    : new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
+function formatInvoiceDate(value: string | null, locale: string, unavailable: string) {
+  return formatFinanceDate(value, locale, unavailable);
+}
+
+function paymentStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    succeeded: 'paymentStatusSucceeded',
+    failed: 'paymentStatusFailed',
+    abandoned: 'paymentStatusAbandoned',
+    pending: 'paymentStatusPending',
+    refunded: 'paymentStatusRefunded',
+    partially_refunded: 'paymentStatusPartiallyRefunded',
+  };
+  return known[status] ? t(known[status]) : t('paymentValueUnavailable');
+}
+
+function paymentProviderLabel(provider: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  return provider === 'tap'
+    ? t('paymentProviderTap')
+    : provider === 'manual'
+      ? t('paymentProviderManual')
+      : t('paymentProviderUnavailable');
+}
+
+function paymentMethodLabel(method: string | null, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    card: 'paymentMethodCard',
+    cash: 'paymentMethodCash',
+    bank_transfer: 'paymentMethodBankTransfer',
+  };
+  return method && known[method] ? t(known[method]) : t('paymentMethodUnavailable');
+}
+
+function invoiceStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    draft: 'paymentStatusDraft',
+    open: 'paymentStatusOpen',
+    paid: 'paymentStatusPaid',
+    void: 'paymentStatusVoid',
+    refunded: 'paymentStatusRefunded',
+    partially_refunded: 'paymentStatusPartiallyRefunded',
+  };
+  return known[status] ? t(known[status]) : t('paymentValueUnavailable');
+}
+
+function refundStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    succeeded: 'paymentStatusSucceeded',
+    pending: 'paymentStatusPending',
+    failed: 'paymentStatusFailed',
+  };
+  return known[status] ? t(known[status]) : t('paymentValueUnavailable');
+}
+
+function auditActionLabel(action: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  const known: Record<string, string> = {
+    invoice_created: 'paymentAuditInvoiceCreated',
+    invoice_voided: 'paymentAuditInvoiceVoided',
+    invoice_paid: 'paymentAuditInvoicePaid',
+    refund_requested: 'paymentAuditRefundRequested',
+    refund_succeeded: 'paymentAuditRefundSucceeded',
+  };
+  return known[action] ? t(known[action]) : t('paymentValueUnavailable');
 }

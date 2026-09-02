@@ -21,7 +21,11 @@ test('refund UI keeps one operation UUID across retries and releases terminal su
   assert.match(source, /canShowRefundAction\(\{/u);
   assert.match(source, /hasPendingRefund/u);
   assert.match(source, /refundAvailable/u);
-  assert.match(source, /<Input[\s\S]*disabled=\{hasPendingRefund\}/u);
+  assert.match(source, /\(canClose \|\| canRefund\) && !hasPendingRefund/u);
+  assert.match(source, /<Dialog/u);
+  assert.match(source, /htmlFor="refund-reason"/u);
+  assert.match(source, /paymentConfirmRefund/u);
+  assert.match(source, /min-h-11/u);
 });
 
 test('invoice reads pass the latest durable refund operation to every action surface', () => {
