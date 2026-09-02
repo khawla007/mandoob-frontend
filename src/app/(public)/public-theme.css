@@ -1604,6 +1604,11 @@
   .site-public .pro-process__list h3 {
     margin-block-start: 0;
   }
+
+  .site-public .pro-process__qualification {
+    grid-column: 2;
+    grid-row: 4;
+  }
 }
 
 @media (max-width: 639px) {

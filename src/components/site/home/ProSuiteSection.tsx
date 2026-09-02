@@ -36,11 +36,11 @@ function PublicProSuite() {
     >
       <div className="container">
         <header className="section__head reveal">
-          <span className="eyebrow">{capabilities.eyebrow}</span>
+          <span className="eyebrow">{capabilities.eyebrow.text}</span>
           <h2 id="pro-capabilities-title" className="h2">
-            {capabilities.title}
+            {capabilities.title.text}
           </h2>
-          <p>{capabilities.description}</p>
+          <p>{capabilities.description.text}</p>
         </header>
       </div>
       <div className="container">
@@ -66,7 +66,7 @@ function PublicProSuite() {
                   <span className="cell__icon" aria-hidden="true">
                     <Icon size={16} strokeWidth={1.75} />
                   </span>
-                  <span className="eyebrow">{item.title}</span>
+                  <span className="eyebrow">{item.title.text}</span>
                 </div>
                 <h3 data-source-state={item.summary.source.state}>{item.summary.text}</h3>
                 {item.facts.map((fact) => (
@@ -74,6 +74,14 @@ function PublicProSuite() {
                     {fact.text}
                   </p>
                 ))}
+                {item.availability ? (
+                  <p
+                    className="pro-capabilities__qualification"
+                    data-source-state={item.availability.source.state}
+                  >
+                    {item.availability.text}
+                  </p>
+                ) : null}
               </li>
             );
           })}

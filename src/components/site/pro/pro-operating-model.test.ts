@@ -6,12 +6,21 @@ import { describe, it } from 'node:test';
 import React from 'react';
 
 import { PUBLIC_PRO_CONTENT } from '@/lib/pro/public-pro';
+import type { ApprovedPublicProFact, UnavailablePublicProFact } from '@/lib/pro/public-pro';
 
 const pageSource = readFileSync(
   new URL('../../../app/(public)/pro/page.tsx', import.meta.url),
   'utf8',
 );
 const heroSource = readFileSync(new URL('./ProHeroSection.tsx', import.meta.url), 'utf8');
+const audienceSource = readFileSync(
+  new URL('./ProAudienceFitSection.tsx', import.meta.url),
+  'utf8',
+);
+const processSource = readFileSync(
+  new URL('./ProOperatingProcessSection.tsx', import.meta.url),
+  'utf8',
+);
 const cssSource = readFileSync(
   new URL('../../../app/(public)/public-theme.css', import.meta.url),
   'utf8',
@@ -48,6 +57,31 @@ const capabilityConcepts = [
   /customer and employee portal/iu,
 ] as const;
 
+type AssertTrue<Value extends true> = Value;
+type AffirmativePublicProFact =
+  | (typeof PUBLIC_PRO_CONTENT.hero)['breadcrumb' | 'eyebrow' | 'title' | 'accent' | 'description']
+  | (typeof PUBLIC_PRO_CONTENT.hero.links)[number]['label']
+  | (typeof PUBLIC_PRO_CONTENT.policy)['label']
+  | (typeof PUBLIC_PRO_CONTENT.policy.items)[number]['term' | 'detail']
+  | (typeof PUBLIC_PRO_CONTENT.audience)['eyebrow' | 'title' | 'description']
+  | (typeof PUBLIC_PRO_CONTENT.audience.items)[number]['title' | 'description']
+  | (typeof PUBLIC_PRO_CONTENT.capabilities)['eyebrow' | 'title' | 'description']
+  | (typeof PUBLIC_PRO_CONTENT.capabilities.items)[number]['title' | 'summary']
+  | (typeof PUBLIC_PRO_CONTENT.capabilities.items)[number]['facts'][number]
+  | (typeof PUBLIC_PRO_CONTENT.process)['eyebrow' | 'title' | 'description']
+  | (typeof PUBLIC_PRO_CONTENT.process.steps)[number]['title' | 'description'];
+type AffirmativeFieldsUseApprovedFact = AssertTrue<
+  AffirmativePublicProFact extends ApprovedPublicProFact ? true : false
+>;
+type UnavailableCannotPopulateAffirmativeFields = AssertTrue<
+  UnavailablePublicProFact extends AffirmativePublicProFact ? false : true
+>;
+
+const affirmativeCompileContract: readonly [
+  AffirmativeFieldsUseApprovedFact,
+  UnavailableCannotPopulateAffirmativeFields,
+] = [true, true];
+
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
 const renderIt = reactServer ? ((() => undefined) as unknown as typeof it) : it;
 
@@ -81,6 +115,61 @@ if (reactServer) {
 }
 
 describe('centralized PRO content contract', () => {
+  it('types affirmative fields as approved facts and rejects unavailable substitutions', () => {
+    assert.deepEqual(affirmativeCompileContract, [true, true]);
+    assert.ok(
+      [
+        PUBLIC_PRO_CONTENT.hero.breadcrumb,
+        PUBLIC_PRO_CONTENT.hero.eyebrow,
+        PUBLIC_PRO_CONTENT.hero.title,
+        PUBLIC_PRO_CONTENT.hero.accent,
+        PUBLIC_PRO_CONTENT.hero.description,
+        PUBLIC_PRO_CONTENT.policy.label,
+        PUBLIC_PRO_CONTENT.audience.eyebrow,
+        PUBLIC_PRO_CONTENT.audience.title,
+        PUBLIC_PRO_CONTENT.audience.description,
+        PUBLIC_PRO_CONTENT.capabilities.eyebrow,
+        PUBLIC_PRO_CONTENT.capabilities.title,
+        PUBLIC_PRO_CONTENT.capabilities.description,
+        PUBLIC_PRO_CONTENT.process.eyebrow,
+        PUBLIC_PRO_CONTENT.process.title,
+        PUBLIC_PRO_CONTENT.process.description,
+      ].every((fact) => fact.source.state === 'approved-static'),
+    );
+    assert.ok(
+      PUBLIC_PRO_CONTENT.hero.links.every((link) => link.label.source.state === 'approved-static'),
+    );
+    assert.ok(
+      PUBLIC_PRO_CONTENT.policy.items.every(
+        (item) =>
+          item.term.source.state === 'approved-static' &&
+          item.detail.source.state === 'approved-static',
+      ),
+    );
+    assert.ok(
+      PUBLIC_PRO_CONTENT.audience.items.every(
+        (item) =>
+          item.title.source.state === 'approved-static' &&
+          item.description.source.state === 'approved-static',
+      ),
+    );
+    assert.ok(
+      PUBLIC_PRO_CONTENT.capabilities.items.every(
+        (item) =>
+          item.title.source.state === 'approved-static' &&
+          item.summary.source.state === 'approved-static' &&
+          item.facts.every((fact) => fact.source.state === 'approved-static'),
+      ),
+    );
+    assert.ok(
+      PUBLIC_PRO_CONTENT.process.steps.every(
+        (step) =>
+          step.title.source.state === 'approved-static' &&
+          step.description.source.state === 'approved-static',
+      ),
+    );
+  });
+
   it('deeply freezes hero, fit, capability, and ordered process content', () => {
     assert.equal(Object.isFrozen(PUBLIC_PRO_CONTENT), true);
     assert.equal(Object.isFrozen(PUBLIC_PRO_CONTENT.hero), true);
@@ -125,14 +214,19 @@ describe('centralized PRO content contract', () => {
     assert.ok(communication);
     assert.deepEqual(
       foundations.facts.map((fact) => fact.source.state),
-      ['approved-static', 'approved-static', 'unavailable'],
+      ['approved-static', 'approved-static'],
     );
     assert.deepEqual(
       finance.facts.map((fact) => fact.source.state),
-      ['approved-static', 'unavailable'],
+      ['approved-static'],
     );
+    assert.equal(foundations.availability?.source.state, 'unavailable');
+    assert.equal(finance.availability?.source.state, 'unavailable');
     assert.match(finance.facts[0].text, /invoice.*payment workflow/iu);
-    assert.match(finance.facts[1].text, /checkout.*provider.*transaction.*confirmation/iu);
+    assert.match(
+      finance.availability?.text ?? '',
+      /checkout.*provider.*transaction.*confirmation/iu,
+    );
     assert.equal(communication.description.source.state, 'approved-static');
     assert.equal(communication.availability?.source.state, 'unavailable');
     assert.match(communication.availability?.text ?? '', /configured channels.*when available/iu);
@@ -145,7 +239,12 @@ describe('centralized PRO content contract', () => {
 
   it('retains all eight required operational capability concepts across five mosaic groups', () => {
     const contractCopy = PUBLIC_PRO_CONTENT.capabilities.items
-      .flatMap((item) => [item.title, item.summary.text, ...item.facts.map((fact) => fact.text)])
+      .flatMap((item) => [
+        item.title.text,
+        item.summary.text,
+        ...item.facts.map((fact) => fact.text),
+        item.availability?.text ?? '',
+      ])
       .join(' ');
 
     for (const concept of capabilityConcepts) {
@@ -211,7 +310,7 @@ describe('PRO hero, fit, capabilities, and process rendering', () => {
         assert.match(section, new RegExp(`data-pro-capability="${item.id}"`, 'u'));
         assert.match(
           section,
-          new RegExp(`>${item.title.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<`, 'u'),
+          new RegExp(`>${item.title.text.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<`, 'u'),
         );
       }
       assert.equal((section.match(/class="cell cell--table reveal"/gu) ?? []).length, 1);
@@ -251,6 +350,17 @@ describe('PRO hero, fit, capabilities, and process rendering', () => {
     assert.match(processSection, /data-source-state="approved-static"/u);
     assert.match(processSection, /data-source-state="unavailable"/u);
     assert.match(processSection, /provider and API availability/iu);
+    const unavailableTags = [
+      ...capabilitySection.matchAll(/<p([^>]*)data-source-state="unavailable"[^>]*>/gu),
+      ...processSection.matchAll(/<p([^>]*)data-source-state="unavailable"[^>]*>/gu),
+    ];
+    assert.ok(unavailableTags.length >= 3);
+    for (const [, attributes] of unavailableTags) {
+      assert.match(
+        attributes,
+        /class="(?:pro-capabilities__qualification|pro-process__qualification|pro-process__availability)"/u,
+      );
+    }
   });
 
   renderIt(
@@ -270,7 +380,7 @@ describe('PRO hero, fit, capabilities, and process rendering', () => {
         previous = position;
         assert.match(
           section,
-          new RegExp(`>${step.title.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<`, 'u'),
+          new RegExp(`>${step.title.text.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<`, 'u'),
         );
       }
       assert.match(section, /configured channels.*when available/iu);
@@ -304,9 +414,24 @@ describe('PRO composition and scoped theme contract', () => {
   renderIt(
     'keeps the default shared suite render identical to its explicit homepage variant',
     async () => {
-      assert.equal(await renderProSuite(), await renderProSuite('home'));
+      const defaultHtml = await renderProSuite();
+      assert.equal(defaultHtml, await renderProSuite('home'));
+      assert.match(defaultHtml, /<section id="pro-suite" class="section"/u);
+      assert.match(defaultHtml, /<ul class="mosaic"/u);
+      assert.equal((defaultHtml.match(/class="cell cell--/gu) ?? []).length, 5);
+      assert.match(defaultHtml, /Built for a PRO working in one assigned company\./u);
+      assert.match(defaultHtml, /Acme Trading FZ-LLC/u);
     },
   );
+
+  it('uses exhaustive ID-keyed icon records instead of item-index coupling', () => {
+    assert.match(audienceSource, /satisfies Record<PublicProAudienceId,/u);
+    assert.match(audienceSource, /audienceIcons\[item\.id\]/u);
+    assert.doesNotMatch(audienceSource, /icons\[index\]|map\(\(item, index\)/u);
+    assert.match(processSource, /satisfies Record<PublicProProcessId,/u);
+    assert.match(processSource, /processIcons\[step\.id\]/u);
+    assert.doesNotMatch(processSource, /processIcons\[index\]/u);
+  });
 
   it('uses only the existing PRO hero image and centralized hero content', () => {
     assert.match(heroSource, /PUBLIC_PRO_CONTENT\.hero/u);
@@ -323,6 +448,10 @@ describe('PRO composition and scoped theme contract', () => {
     assert.match(proCss, /\.site-public \.pro-process__list/u);
     assert.match(proCss, /\.dark \.site-public \.pro-/u);
     assert.match(proCss, /@media \(max-width: 899px\)/u);
+    assert.match(
+      proCss,
+      /@media \(max-width: 899px\)[\s\S]*?\.site-public \.pro-process__qualification\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*4;/u,
+    );
     assert.match(proCss, /(?:margin|padding|inset|border)-(?:inline|block)/u);
     assert.doesNotMatch(proCss, /\b(?:margin|padding)-(?:left|right):|\b(?:left|right):/u);
     assert.doesNotMatch(proCss, /(?:inline-size|width):\s*100vw/u);

@@ -16,18 +16,18 @@ export function ProHeroSection() {
               <li>
                 <Link href="/">Home</Link>
               </li>
-              <li aria-current="page">{hero.breadcrumb}</li>
+              <li aria-current="page">{hero.breadcrumb.text}</li>
             </ol>
           </nav>
           <span className="eyebrow reveal reveal--mask">
             <span className="rise">
-              <span className="rise__i">{hero.eyebrow}</span>
+              <span className="rise__i">{hero.eyebrow.text}</span>
             </span>
           </span>
           <h1 id="pro-hero-h" className="display reveal reveal--mask">
             <span className="rise">
               <span className="rise__i" style={{ '--rise-delay': '120ms' } as React.CSSProperties}>
-                {hero.title}
+                {hero.title.text}
               </span>
             </span>{' '}
             <span className="rise">
@@ -35,14 +35,14 @@ export function ProHeroSection() {
                 className="rise__i u-accent"
                 style={{ '--rise-delay': '240ms' } as React.CSSProperties}
               >
-                {hero.accent}
+                {hero.accent.text}
               </span>
             </span>
           </h1>
           <p className="lede reveal reveal--mask">
             <span className="rise rise--block">
               <span className="rise__i" style={{ '--rise-delay': '520ms' } as React.CSSProperties}>
-                {hero.description}
+                {hero.description.text}
               </span>
             </span>
           </p>
@@ -53,20 +53,20 @@ export function ProHeroSection() {
                 href={link.href}
                 key={link.href}
               >
-                {link.label}
+                {link.label.text}
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="stats-band" aria-label={policy.label}>
+      <section className="stats-band" aria-label={policy.label.text}>
         <div className="container">
           <dl className="hero__spec">
             {policy.items.map((item) => (
-              <div className="hero__stat reveal" key={item.term}>
-                <dt className="hero__statL">{item.term}</dt>
-                <dd className="mono hero__statV">{item.detail}</dd>
+              <div className="hero__stat reveal" key={item.term.text}>
+                <dt className="hero__statL">{item.term.text}</dt>
+                <dd className="mono hero__statV">{item.detail.text}</dd>
               </div>
             ))}
           </dl>
