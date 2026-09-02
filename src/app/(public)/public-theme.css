@@ -455,8 +455,8 @@
   min-inline-size: 44px;
   min-block-size: 44px;
   align-items: center;
-  border-inline-start: 2px solid transparent;
-  padding-inline: 10px 8px;
+  border-bottom: 2px solid transparent;
+  padding-inline: 8px;
   font-size: var(--fs-14);
   font-weight: 500;
   color: var(--zinc-600);
@@ -473,7 +473,7 @@
   color: var(--ink);
 }
 .site-public .nav__links a[aria-current='page'] {
-  border-inline-start: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
   color: var(--public-cta-background);
 }
 .site-public .nav__cta {
