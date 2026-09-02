@@ -330,6 +330,39 @@ if (existsSync(componentPath)) {
     container.remove();
   });
 
+  test('ignores synthetic demo props in the production client build', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      configurable: true,
+      enumerable: true,
+      value: 'production',
+      writable: true,
+    });
+    try {
+      const { act, container, root } = await renderForm({
+        demoOutcome: 'success',
+      });
+      await act(() => fillValidForm(container));
+      await act(async () => {
+        submit(container);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      const result = container.querySelector<HTMLElement>('[data-contact-result="unavailable"]')!;
+      assert.ok(result);
+      assert.match(result.textContent ?? '', /delivery status: no message was sent/i);
+      assert.doesNotMatch(result.textContent ?? '', /synthetic contact preview/i);
+      await act(() => root.unmount());
+      container.remove();
+    } finally {
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        configurable: true,
+        enumerable: true,
+        value: previousNodeEnv,
+        writable: true,
+      });
+    }
+  });
+
   test('danger tokens maintain AA contrast in light and dark form surfaces', () => {
     const css = readFileSync(
       new URL('../../app/(public)/public-theme.css', import.meta.url),
@@ -360,7 +393,9 @@ if (existsSync(componentPath)) {
     'unavailable',
   ] as const) {
     test(`renders the honest ${outcome} state with safe recovery`, async () => {
-      const { act, container, root } = await renderForm({ demoOutcome: outcome });
+      const { act, container, root } = await renderInjectedForm(
+        createSyntheticContactAdapter(outcome),
+      );
       await act(() => fillValidForm(container));
       await act(async () => {
         submit(container);

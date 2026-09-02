@@ -4,11 +4,8 @@ import { test } from 'node:test';
 import ts from 'typescript';
 
 import type { ContactSubmissionResult, NormalizedContactPayload } from './contracts';
-import {
-  createSyntheticContactAdapter,
-  productionContactAdapter,
-  SYNTHETIC_CONTACT_NOTICE,
-} from './demo-adapter';
+import { createSyntheticContactAdapter, SYNTHETIC_CONTACT_NOTICE } from './demo-adapter';
+import { productionContactAdapter } from './production-adapter';
 
 const payload: NormalizedContactPayload = {
   fullName: 'Amina Noor',
@@ -252,12 +249,18 @@ test('dependency audit enumerates every TypeScript module dependency form', () =
 
 test('adapter source has no I/O, server action, provider, timer, random, or notification path', () => {
   const source = readFileSync(new URL('./demo-adapter.ts', import.meta.url), 'utf8');
+  const productionSource = readFileSync(
+    new URL('./production-adapter.ts', import.meta.url),
+    'utf8',
+  );
   assert.deepEqual(
     moduleSpecifiersIn(source),
     ['./contracts'],
     'adapter may only depend on its pure type contract',
   );
   assert.deepEqual(dangerousCodeConstructsIn(source), []);
+  assert.deepEqual(moduleSpecifiersIn(productionSource), ['./contracts']);
+  assert.deepEqual(dangerousCodeConstructsIn(productionSource), []);
 
   const forbidden: Array<[string, RegExp]> = [
     ['fetch', /\bfetch\s*\(/u],
@@ -280,5 +283,6 @@ test('adapter source has no I/O, server action, provider, timer, random, or noti
 
   for (const [label, pattern] of forbidden) {
     assert.doesNotMatch(source, pattern, label);
+    assert.doesNotMatch(productionSource, pattern, `production ${label}`);
   }
 });

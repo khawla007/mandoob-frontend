@@ -11,11 +11,8 @@ import {
   type ContactFieldName,
   type ContactSubmissionResult,
 } from '@/lib/public-contact/contracts';
-import {
-  createSyntheticContactAdapter,
-  productionContactAdapter,
-  type SyntheticContactOutcome,
-} from '@/lib/public-contact/demo-adapter';
+import { type SyntheticContactOutcome } from '@/lib/public-contact/demo-adapter';
+import { productionContactAdapter } from '@/lib/public-contact/production-adapter';
 import { validateContactSubmission } from '@/lib/public-contact/validation';
 
 type ContactFormProps = {
@@ -60,11 +57,24 @@ const RESULT_HEADINGS: Record<ContactSubmissionResult['status'], string> = {
 };
 
 export function ContactForm({ demoOutcome, demoDelayMs = 0 }: ContactFormProps) {
-  const adapter = demoOutcome
-    ? createSyntheticContactAdapter(demoOutcome)
+  const developmentDemo = process.env.NODE_ENV === 'development' && demoOutcome;
+  const adapter = developmentDemo
+    ? createDevelopmentContactAdapter(developmentDemo)
     : productionContactAdapter;
 
-  return <ContactFormRuntime adapter={adapter} delayMs={demoDelayMs} />;
+  return <ContactFormRuntime adapter={adapter} delayMs={developmentDemo ? demoDelayMs : 0} />;
+}
+
+function createDevelopmentContactAdapter(outcome: SyntheticContactOutcome): ContactAdapter {
+  return {
+    async submit(payload) {
+      if (process.env.NODE_ENV !== 'development') {
+        return productionContactAdapter.submit(payload);
+      }
+      const { createSyntheticContactAdapter } = await import('@/lib/public-contact/demo-adapter');
+      return createSyntheticContactAdapter(outcome).submit(payload);
+    },
+  };
 }
 
 /** Client-test seam. Never pass adapter functions across a Server Component boundary. */

@@ -22,6 +22,19 @@ test('contact form source publishes no plausible phone fixture or placeholder', 
   );
 });
 
+test('production client graph cannot select or statically import a synthetic adapter', () => {
+  assert.match(contactFormSource, /process\.env\.NODE_ENV === 'development'/u);
+  assert.match(contactFormSource, /await import\('@\/lib\/public-contact\/demo-adapter'\)/u);
+  assert.doesNotMatch(
+    contactFormSource,
+    /import\s*\{[^}]*createSyntheticContactAdapter[^}]*\}\s*from\s*['"]@\/lib\/public-contact\/demo-adapter['"]/u,
+  );
+  assert.match(
+    contactFormSource,
+    /import \{ productionContactAdapter \} from '@\/lib\/public-contact\/production-adapter'/u,
+  );
+});
+
 test('consent links resolve through the published legal CMS route', () => {
   assert.match(contactFormSource, /<Link href="\/legal\/privacy"/u);
   assert.match(contactFormSource, /<Link href="\/legal\/terms"/u);

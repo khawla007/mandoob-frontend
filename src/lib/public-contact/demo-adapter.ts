@@ -4,18 +4,6 @@ export const SYNTHETIC_CONTACT_NOTICE = 'Synthetic contact preview only. No mess
 
 export type SyntheticContactOutcome = ContactSubmissionResult['status'];
 
-export const productionContactAdapter: ContactAdapter = {
-  async submit() {
-    return {
-      status: 'unavailable',
-      sent: false,
-      message: 'Contact delivery is not available yet. No message was sent.',
-    };
-  },
-};
-
-export const defaultContactAdapter = productionContactAdapter;
-
 export function createSyntheticContactAdapter(outcome: SyntheticContactOutcome): ContactAdapter {
   return {
     async submit() {
