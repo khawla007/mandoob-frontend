@@ -64,6 +64,14 @@ describe('strict-parity Contact page', () => {
     assert.equal(features.match(/\btitle:\s*'/gu)?.length, 4);
     assert.equal(body.match(/<h1\b/gu)?.length ?? 0, 0);
     assert.equal(route.match(/<h1\b/gu)?.length ?? 0, 0);
+    const heroStart = body.indexOf('<PageScenicHero');
+    const heroEnd = body.indexOf('<RaisedInfoStrip');
+    assert.ok(heroStart > 0);
+    assert.ok(heroEnd > heroStart);
+    assert.doesNotMatch(
+      body.slice(heroStart, heroEnd),
+      /primaryCta|secondaryCta|href: '\/(?:estimate|knowledge-base)'/u,
+    );
   });
 
   it('locks five unavailable channel slots in the approved order without destinations', () => {

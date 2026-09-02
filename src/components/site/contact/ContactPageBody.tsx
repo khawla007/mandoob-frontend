@@ -125,7 +125,6 @@ type ContactPageBodyProps = {
     eyebrow: string;
     title: string;
     description: string;
-    estimateLabel: string;
   };
   demoOutcome?: SyntheticContactOutcome;
   demoDelayMs?: number;
@@ -143,8 +142,6 @@ export function ContactPageBody({ heroCopy, demoOutcome, demoDelayMs }: ContactP
         currentLabel="Contact"
         imageSrc="/hero/skyline.webp"
         imageAlt="Dubai skyline at sunset"
-        primaryCta={{ label: heroCopy.estimateLabel, href: '/estimate' }}
-        secondaryCta={{ label: 'Explore guidance', href: '/knowledge-base' }}
         features={[
           {
             title: 'Company setup',

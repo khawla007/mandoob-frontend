@@ -28,7 +28,6 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
         eyebrow: tContact('eyebrow'),
         title: tContact('title'),
         description: tSite('footer.description'),
-        estimateLabel: tSite('getEstimate'),
       }}
       demoOutcome={demoMode?.outcome}
       demoDelayMs={demoMode?.delayMs}

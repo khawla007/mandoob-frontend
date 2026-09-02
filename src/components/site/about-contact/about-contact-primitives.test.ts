@@ -36,16 +36,16 @@ describe('About and Contact shared primitive contracts', () => {
     assert.doesNotMatch(source, /href\s*=\s*(?:\{\s*)?['"]\s*(?:#[^'"]*)?['"]/u);
   });
 
-  it('renders exactly two wired hero CTA links', () => {
+  it('keeps the scenic hero free of CTA rows and action props', () => {
     const source = readComponent('PageScenicHero.tsx');
-    const actions = source.match(
-      /<div className="about-contact-hero__actions">([\s\S]*?)<\/div>/u,
-    )?.[1];
 
-    assert.ok(actions);
-    assert.equal(actions.match(/<Link\b/gu)?.length, 2);
-    assert.match(actions, /href=\{primaryCta\.href\}/u);
-    assert.match(actions, /href=\{secondaryCta\.href\}/u);
+    assert.equal(
+      source.match(/<Link\b/gu)?.length,
+      1,
+      'only the breadcrumb Home link belongs here',
+    );
+    assert.doesNotMatch(source, /about-contact-hero__actions/u);
+    assert.doesNotMatch(source, /primaryCta|secondaryCta|PublicActionHref|PublicLink/u);
   });
 
   it('keeps compact features concise and structurally semantic', () => {
@@ -133,9 +133,9 @@ describe('About and Contact shared primitive contracts', () => {
   });
 
   it('restricts every dynamic CTA to the exact closed P1.05 public route set', () => {
-    const hero = readComponent('PageScenicHero.tsx');
     const conversion = readComponent('PublicConversionBand.tsx');
-    const union = hero.match(/export type PublicActionHref =([\s\S]*?);/u)?.[1];
+    const hero = readComponent('PageScenicHero.tsx');
+    const union = conversion.match(/export type PublicActionHref =([\s\S]*?);/u)?.[1];
     const approved = [
       '/estimate',
       '/contact',
@@ -152,9 +152,8 @@ describe('About and Contact shared primitive contracts', () => {
       approved,
     );
     assert.doesNotMatch(union, /#/u);
-    assert.match(hero, /href: PublicActionHref/u);
-    assert.match(conversion, /import type \{ PublicActionHref \} from '.\/PageScenicHero'/u);
     assert.match(conversion, /href: PublicActionHref/u);
+    assert.doesNotMatch(hero, /PublicActionHref|primaryCta|secondaryCta/u);
     assert.equal(readComponent('publicRoutes.ts'), '');
   });
 

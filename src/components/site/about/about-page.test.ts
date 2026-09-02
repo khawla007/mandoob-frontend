@@ -76,7 +76,7 @@ describe('strict-parity About page', () => {
     assert.doesNotMatch(body, /https?:\/\/[^'"\s)]+\.(?:png|jpe?g|webp|avif)/iu);
   });
 
-  it('uses safe one-company and one-PRO language with real conversion routes', () => {
+  it('uses safe one-company and one-PRO language with routes only in the final conversion band', () => {
     for (const label of [
       'One company workspace',
       'One assigned PRO',
@@ -89,8 +89,22 @@ describe('strict-parity About page', () => {
 
     assert.match(body, /one workspace for each company/iu);
     assert.match(body, /one assigned PRO/iu);
-    assert.match(body, /primaryCta=\{\{ label: '[^']+', href: '\/estimate' \}\}/u);
-    assert.match(body, /secondaryCta=\{\{ label: '[^']+', href: '\/contact' \}\}/u);
+    const heroEnd = body.indexOf('<RaisedInfoStrip');
+    const conversionIndex = body.lastIndexOf('<PublicConversionBand');
+    assert.ok(heroEnd > 0);
+    assert.ok(conversionIndex > heroEnd);
+    assert.doesNotMatch(
+      body.slice(0, heroEnd),
+      /primaryCta|secondaryCta|href: '\/(?:estimate|contact)'/u,
+    );
+    assert.match(
+      body.slice(conversionIndex),
+      /primaryCta=\{\{ label: '[^']+', href: '\/estimate' \}\}/u,
+    );
+    assert.match(
+      body.slice(conversionIndex),
+      /secondaryCta=\{\{ label: '[^']+', href: '\/contact' \}\}/u,
+    );
     assert.doesNotMatch(body, /href\s*=\s*(?:\{\s*)?['"]\s*(?:#[^'"]*)?['"]/u);
   });
 

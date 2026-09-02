@@ -856,9 +856,6 @@
   margin-block: 10px 14px;
   font-size: clamp(2.75rem, 4.4vw, 4.15rem);
 }
-.site-public .about-contact-hero.about-page__hero .about-contact-hero__actions {
-  margin-block-start: 20px;
-}
 .site-public .about-contact-hero.about-page__hero .about-contact-hero__features {
   margin-block-start: 24px;
 }
@@ -1150,9 +1147,6 @@
 .site-public .about-contact-hero.contact-page__hero .about-contact-hero__title {
   margin-block: 10px 14px;
   font-size: clamp(2.75rem, 4.4vw, 4.2rem);
-}
-.site-public .about-contact-hero.contact-page__hero .about-contact-hero__actions {
-  margin-block-start: 20px;
 }
 .site-public .about-contact-hero.contact-page__hero .about-contact-hero__features {
   gap: 18px;
@@ -6911,7 +6905,6 @@
   color: var(--public-text-primary);
 }
 .site-public .about-contact-breadcrumb a:focus-visible,
-.site-public .about-contact-hero__actions a:focus-visible,
 .site-public .about-contact-conversion__actions a:focus-visible {
   outline: 3px solid var(--public-focus-ring);
   outline-offset: 4px;
@@ -6942,12 +6935,6 @@
   max-inline-size: 58ch;
   color: var(--public-text-muted);
   font-size: var(--fs-17);
-}
-.site-public .about-contact-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-block-start: 28px;
 }
 .site-public .about-contact-hero__features {
   display: grid;
@@ -7168,11 +7155,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .site-public .about-contact-breadcrumb a,
-  .site-public .about-contact-hero__actions a,
   .site-public .about-contact-conversion__actions a {
     transition: none;
   }
-  .site-public .about-contact-hero__actions a:active,
   .site-public .about-contact-conversion__actions a:active {
     transform: none;
   }

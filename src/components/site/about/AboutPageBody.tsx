@@ -146,8 +146,6 @@ export function AboutPageBody() {
         currentLabel="About"
         imageSrc="/hero/skyline.webp"
         imageAlt="Dubai skyline at sunset"
-        primaryCta={{ label: 'Get an estimate', href: '/estimate' }}
-        secondaryCta={{ label: 'Contact Mandoob', href: '/contact' }}
         features={[
           {
             title: 'Clear workspace',

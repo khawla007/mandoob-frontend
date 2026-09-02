@@ -1,6 +1,13 @@
 import Link from 'next/link';
 
-import type { PublicActionHref } from './PageScenicHero';
+export type PublicActionHref =
+  | '/estimate'
+  | '/contact'
+  | '/apply'
+  | '/knowledge-base'
+  | '/mainland'
+  | '/free-zones'
+  | '/offshore';
 
 type ConversionLink = {
   label: string;

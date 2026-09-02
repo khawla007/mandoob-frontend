@@ -84,7 +84,7 @@ describe('About composition and Contact route shell', () => {
     assert.match(contactSource, /eyebrow:\s*tContact\('eyebrow'\)/u);
     assert.match(contactSource, /title:\s*tContact\('title'\)/u);
     assert.match(contactSource, /description:\s*tSite\('footer\.description'\)/u);
-    assert.match(contactSource, /estimateLabel:\s*tSite\('getEstimate'\)/u);
+    assert.doesNotMatch(contactSource, /estimateLabel|tSite\('getEstimate'\)/u);
     assert.doesNotMatch(
       contactSource,
       /tContact\('(?:lede|comingSoonNote|officeCity|officeCountry|officeHours)'\)/u,
@@ -96,6 +96,13 @@ describe('About composition and Contact route shell', () => {
     assert.match(aboutBodySource, /href:\s*['"]\/estimate['"]/u);
     assert.match(aboutBodySource, /href:\s*['"]\/contact['"]/u);
     assert.match(contactBodySource, /href:\s*['"]\/estimate['"]/u);
+    for (const source of [aboutBodySource, contactBodySource]) {
+      const heroStart = source.indexOf('<PageScenicHero');
+      const heroEnd = source.indexOf('<RaisedInfoStrip');
+      assert.ok(heroStart > 0);
+      assert.ok(heroEnd > heroStart);
+      assert.doesNotMatch(source.slice(heroStart, heroEnd), /primaryCta|secondaryCta/u);
+    }
 
     for (const [path, source] of [
       ['/about', `${aboutSource}\n${aboutBodySource}`],

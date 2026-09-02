@@ -4,20 +4,6 @@ import type { ReactNode } from 'react';
 
 import { CompactFeature, type CompactFeatureProps } from './CompactFeature';
 
-export type PublicActionHref =
-  | '/estimate'
-  | '/contact'
-  | '/apply'
-  | '/knowledge-base'
-  | '/mainland'
-  | '/free-zones'
-  | '/offshore';
-
-type PublicLink = {
-  label: string;
-  href: PublicActionHref;
-};
-
 type ScenicHeroFeatures =
   | readonly [CompactFeatureProps, CompactFeatureProps, CompactFeatureProps]
   | readonly [CompactFeatureProps, CompactFeatureProps, CompactFeatureProps, CompactFeatureProps];
@@ -31,8 +17,6 @@ type PageScenicHeroProps = {
   currentLabel: string;
   imageSrc: `/${string}`;
   imageAlt: string;
-  primaryCta: PublicLink;
-  secondaryCta: PublicLink;
   features?: ScenicHeroFeatures;
 };
 
@@ -45,8 +29,6 @@ export function PageScenicHero({
   currentLabel,
   imageSrc,
   imageAlt,
-  primaryCta,
-  secondaryCta,
   features,
 }: PageScenicHeroProps) {
   return (
@@ -72,14 +54,6 @@ export function PageScenicHero({
             {title}
           </h1>
           <p className="about-contact-hero__description">{description}</p>
-          <div className="about-contact-hero__actions">
-            <Link className="btn btn--accent" href={primaryCta.href}>
-              {primaryCta.label}
-            </Link>
-            <Link className="btn btn--outline" href={secondaryCta.href}>
-              {secondaryCta.label}
-            </Link>
-          </div>
           {features?.length ? (
             <div className="about-contact-hero__features" data-feature-count={features.length}>
               {features.map((feature) => (
