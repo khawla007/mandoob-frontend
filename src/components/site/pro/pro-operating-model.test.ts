@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import React from 'react';
 
-import { ProSuiteSection } from '@/components/site/home/ProSuiteSection';
 import { PUBLIC_PRO_CONTENT } from '@/lib/pro/public-pro';
 
 const pageSource = readFileSync(
@@ -38,6 +37,17 @@ const capabilityIds = [
   'invoices-payments',
 ] as const;
 
+const capabilityConcepts = [
+  /Legal Company profile/iu,
+  /employee records.*visa and Emirates ID/iu,
+  /Company documents[\s\S]*Storage allocation/iu,
+  /Renewal records/iu,
+  /invoice and payment workflow/iu,
+  /Branding and contact configuration/iu,
+  /attributed activity/iu,
+  /customer and employee portal/iu,
+] as const;
+
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
 const renderIt = reactServer ? ((() => undefined) as unknown as typeof it) : it;
 
@@ -50,7 +60,10 @@ const renderProPage = async () => {
 };
 
 const renderProSuite = async (variant?: 'home' | 'pro') => {
-  const { renderToStaticMarkup } = await import('react-dom/server');
+  const [{ renderToStaticMarkup }, { ProSuiteSection }] = await Promise.all([
+    import('react-dom/server'),
+    import('@/components/site/home/ProSuiteSection'),
+  ]);
   return renderToStaticMarkup(ProSuiteSection(variant ? { variant } : undefined));
 };
 
@@ -129,6 +142,16 @@ describe('centralized PRO content contract', () => {
       /provider and API availability/iu,
     );
   });
+
+  it('retains all eight required operational capability concepts across five mosaic groups', () => {
+    const contractCopy = PUBLIC_PRO_CONTENT.capabilities.items
+      .flatMap((item) => [item.title, item.summary.text, ...item.facts.map((fact) => fact.text)])
+      .join(' ');
+
+    for (const concept of capabilityConcepts) {
+      assert.match(contractCopy, concept);
+    }
+  });
 });
 
 describe('PRO hero, fit, capabilities, and process rendering', () => {
@@ -196,6 +219,9 @@ describe('PRO hero, fit, capabilities, and process rendering', () => {
       assert.equal((section.match(/class="cell cell--visas reveal"/gu) ?? []).length, 1);
       assert.equal((section.match(/class="cell cell--eid reveal"/gu) ?? []).length, 1);
       assert.equal((section.match(/class="cell cell--renewals reveal"/gu) ?? []).length, 1);
+      for (const concept of capabilityConcepts) {
+        assert.match(section, concept);
+      }
       assert.doesNotMatch(
         section,
         /Acme|\.mandoob\.app|784-|activity\.log|invoice\.paid|\bRLS\b|IMMUTABLE|\bLIVE\b|zero fines|90\s*\/\s*30\s*\/\s*7/iu,
