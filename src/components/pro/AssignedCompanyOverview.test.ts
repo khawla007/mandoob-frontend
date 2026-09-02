@@ -1,11 +1,28 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { COMPANY_ONBOARDING_READINESS_CODES } from '@/lib/company-onboarding/contracts';
 import type { CompanyOnboardingSnapshot } from '@/lib/data/company-onboarding';
 import type { AssignedCompanyProfile } from '@/lib/data/company-profile';
-import { AssignedCompanyOverview } from './AssignedCompanyOverview';
+import type { CompanyPanelState } from '@/lib/data/company-workspace';
+
+const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
+const renderTest = reactServer ? ((() => undefined) as unknown as typeof test) : test;
+
+if (reactServer) {
+  test('AssignedCompanyOverview render contracts run under the client React export condition', () => {
+    const result = spawnSync(
+      process.execPath,
+      ['--import', 'tsx', fileURLToPath(import.meta.url)],
+      {
+        encoding: 'utf8',
+      },
+    );
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  });
+}
 
 const company: AssignedCompanyProfile = {
   id: '33333333-3333-4333-8333-333333333333',
@@ -104,7 +121,9 @@ const sectionHrefs = {
   workspace: '/t/acme/company/setup/review',
 };
 
-function render(profile: React.ComponentProps<typeof AssignedCompanyOverview>['profile']): string {
+async function render(profile: CompanyPanelState<CompanyOnboardingSnapshot>): Promise<string> {
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const { AssignedCompanyOverview } = await import('./AssignedCompanyOverview');
   return renderToStaticMarkup(
     React.createElement(AssignedCompanyOverview, {
       company,
@@ -117,44 +136,51 @@ function render(profile: React.ComponentProps<typeof AssignedCompanyOverview>['p
   );
 }
 
-test('legal-profile unavailability is localized and does not erase the Company workspace', () => {
-  const html = render({ status: 'error' });
-  assert.match(html, /Legal profile unavailable/u);
-  assert.match(html, /Documents remain available\./u);
-  assert.doesNotMatch(html, /private rpc detail|Acme Trading LLC/u);
-});
+renderTest(
+  'legal-profile unavailability is localized and does not erase the Company workspace',
+  async () => {
+    const html = await render({ status: 'error' });
+    assert.match(html, /Legal profile unavailable/u);
+    assert.match(html, /Documents remain available\./u);
+    assert.doesNotMatch(html, /private rpc detail|Acme Trading LLC/u);
+  },
+);
 
-test('detailed legal overview renders lifecycle from Company status and canonical setup links', () => {
-  const snapshot: CompanyOnboardingSnapshot = {
-    companyId: company.id,
-    tenantId: company.tenantId,
-    companyName: company.companyName,
-    displayName: null,
-    companyStatus: company.status,
-    jurisdictionType: 'mainland',
-    licensingAuthority: 'Dubai Mainland',
-    legalStructure: 'LLC',
-    tradeLicenseNo: 'DED-123456',
-    licenseExpiry: '2027-08-17',
-    establishmentCardMasked: '•••• 1234',
-    establishmentCardExpiry: '2027-08-17',
-    onboardingStatus: 'completed',
-    onboardingVersion: 4,
-    shareholders: [],
-    activities: [],
-    office: null,
-    bank: null,
-    sectionProgress: Object.fromEntries(
-      Object.keys(company.sectionProgress).map((section) => [
-        section,
-        { status: 'complete', completedAt: '2026-08-17T10:00:00.000Z' },
-      ]),
-    ) as CompanyOnboardingSnapshot['sectionProgress'],
-    requirements: [],
-  };
-  const html = render({ status: 'ready', data: snapshot });
-  assert.match(html, /Company lifecycle/u);
-  assert.match(html, /Active company/u);
-  assert.doesNotMatch(html, /Completed onboarding/u);
-  for (const href of Object.values(sectionHrefs).slice(0, 6)) assert.match(html, new RegExp(href));
-});
+renderTest(
+  'detailed legal overview renders lifecycle from Company status and canonical setup links',
+  async () => {
+    const snapshot: CompanyOnboardingSnapshot = {
+      companyId: company.id,
+      tenantId: company.tenantId,
+      companyName: company.companyName,
+      displayName: null,
+      companyStatus: company.status,
+      jurisdictionType: 'mainland',
+      licensingAuthority: 'Dubai Mainland',
+      legalStructure: 'LLC',
+      tradeLicenseNo: 'DED-123456',
+      licenseExpiry: '2027-08-17',
+      establishmentCardMasked: '•••• 1234',
+      establishmentCardExpiry: '2027-08-17',
+      onboardingStatus: 'completed',
+      onboardingVersion: 4,
+      shareholders: [],
+      activities: [],
+      office: null,
+      bank: null,
+      sectionProgress: Object.fromEntries(
+        Object.keys(company.sectionProgress).map((section) => [
+          section,
+          { status: 'complete', completedAt: '2026-08-17T10:00:00.000Z' },
+        ]),
+      ) as CompanyOnboardingSnapshot['sectionProgress'],
+      requirements: [],
+    };
+    const html = await render({ status: 'ready', data: snapshot });
+    assert.match(html, /Company lifecycle/u);
+    assert.match(html, /Active company/u);
+    assert.doesNotMatch(html, /Completed onboarding/u);
+    for (const href of Object.values(sectionHrefs).slice(0, 6))
+      assert.match(html, new RegExp(href));
+  },
+);
