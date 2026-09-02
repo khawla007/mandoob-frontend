@@ -10,6 +10,18 @@ const cssSource = readFileSync(
   new URL('../../app/(public)/public-theme.css', import.meta.url),
   'utf8',
 );
+const publicLayoutSource = readFileSync(
+  new URL('../../app/(public)/layout.tsx', import.meta.url),
+  'utf8',
+);
+const authLayoutSource = readFileSync(
+  new URL('../../app/(auth)/layout.tsx', import.meta.url),
+  'utf8',
+);
+const accountLayoutSource = readFileSync(
+  new URL('../../app/account/layout.tsx', import.meta.url),
+  'utf8',
+);
 
 describe('public navigation contract', () => {
   it('defines the shared navigation destinations in display order', () => {
@@ -35,6 +47,15 @@ describe('public navigation contract', () => {
   it('uses exact path matching instead of prefix matching', () => {
     assert.equal(isPublicNavCurrent('/pricing', '/pricing'), true);
     assert.equal(isPublicNavCurrent('/pricing', '/pricing/extra'), false);
+  });
+});
+
+describe('shared public header layout integration', () => {
+  it('uses the homepage header on public, auth, and account routes', () => {
+    for (const source of [publicLayoutSource, authLayoutSource, accountLayoutSource]) {
+      assert.match(source, /import \{ SiteHeader \} from '@\/components\/site\/SiteHeader'/u);
+      assert.equal(source.match(/<SiteHeader \/>/gu)?.length, 1);
+    }
   });
 });
 
