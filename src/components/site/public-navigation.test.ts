@@ -162,6 +162,10 @@ describe('public header navigation styling contract', () => {
   it('gives desktop links a contrast-safe current state distinct from hover and focus', () => {
     assert.match(
       cssSource,
+      /\.site-public \.nav__links a\s*\{[^}]*border-bottom:\s*2px solid transparent/u,
+    );
+    assert.match(
+      cssSource,
       /\.site-public \.nav__links a\[aria-current='page'\]\s*\{[^}]*border-bottom:\s*2px solid var\(--accent\)[^}]*color:\s*var\(--public-cta-background\)/u,
     );
     assert.doesNotMatch(
