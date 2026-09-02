@@ -52,9 +52,21 @@ describe('public navigation contract', () => {
 
 describe('shared public header layout integration', () => {
   it('uses the homepage header on public, auth, and account routes', () => {
-    for (const source of [publicLayoutSource, authLayoutSource, accountLayoutSource]) {
-      assert.match(source, /import \{ SiteHeader \} from '@\/components\/site\/SiteHeader'/u);
-      assert.equal(source.match(/<SiteHeader \/>/gu)?.length, 1);
+    for (const [layoutName, source] of [
+      ['public', publicLayoutSource],
+      ['auth', authLayoutSource],
+      ['account', accountLayoutSource],
+    ] as const) {
+      assert.match(
+        source,
+        /import \{ SiteHeader \} from '@\/components\/site\/SiteHeader'/u,
+        `${layoutName} layout must import SiteHeader`,
+      );
+      assert.equal(
+        source.match(/<SiteHeader\b/gu)?.length,
+        1,
+        `${layoutName} layout must render exactly one SiteHeader opening tag`,
+      );
     }
   });
 });
