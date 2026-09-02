@@ -23,6 +23,7 @@ const assigned = {
     bank: 'incomplete' as const,
   },
   readinessCodes: [],
+  readinessState: 'data' as const,
   createdAt: '2026-08-17T00:00:00.000Z',
   updatedAt: '2026-08-18T00:00:00.000Z',
 };

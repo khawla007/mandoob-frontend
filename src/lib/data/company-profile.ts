@@ -40,6 +40,7 @@ export type AssignedCompanyProfile = {
   onboardingVersion: number;
   sectionProgress: Record<CompanyOnboardingSectionKey, CompanyOnboardingSectionStatus>;
   readinessCodes: CompanyReadinessCode[];
+  readinessState: 'data' | 'unavailable';
   createdAt: string;
   updatedAt: string;
 };
@@ -96,6 +97,7 @@ const COMPANY_COLUMNS =
 function toAssignedCompanyProfile(
   row: z.infer<typeof companyRowSchema>,
   readinessCodes: CompanyReadinessCode[],
+  readinessState: AssignedCompanyProfile['readinessState'],
 ): AssignedCompanyProfile {
   const sectionProgress = Object.fromEntries(
     row.company_onboarding_sections.map(({ section_key, status }) => [section_key, status]),
@@ -114,6 +116,7 @@ function toAssignedCompanyProfile(
     onboardingVersion: row.onboarding_version,
     sectionProgress,
     readinessCodes,
+    readinessState,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -155,19 +158,23 @@ export async function readAssignedCompanyForPro(
   const row = companyRowSchema.safeParse(data);
   if (error || !row.success) return null;
 
+  let readinessCodes: CompanyReadinessCode[];
+  let readinessState: AssignedCompanyProfile['readinessState'] = 'unavailable';
   const readiness = await admin.rpc('evaluate_company_activation_readiness', {
     p_company_id: assignmentRow.data.company_id,
   });
-  if (readiness.error) return null;
-
-  let readinessCodes: CompanyReadinessCode[];
-  try {
-    readinessCodes = parseCompanyReadinessRequirements(readiness.data).map(({ code }) => code);
-  } catch {
-    return null;
+  if (!readiness.error) {
+    try {
+      readinessCodes = parseCompanyReadinessRequirements(readiness.data).map(({ code }) => code);
+      readinessState = 'data';
+    } catch {
+      readinessCodes = [];
+    }
+  } else {
+    readinessCodes = [];
   }
 
-  return toAssignedCompanyProfile(row.data, readinessCodes);
+  return toAssignedCompanyProfile(row.data, readinessCodes, readinessState);
 }
 
 export async function readAssignedCompanyDashboardForPro(
@@ -226,7 +233,7 @@ export async function readAssignedCompanyDashboardForPro(
   }
   return {
     ...base,
-    company: toAssignedCompanyProfile(row.data, readinessCodes),
+    company: toAssignedCompanyProfile(row.data, readinessCodes, readinessState),
     profileState: 'data',
     readinessState,
   };

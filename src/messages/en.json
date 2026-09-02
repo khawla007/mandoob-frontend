@@ -935,6 +935,7 @@
         "unavailableDescription": "The legal profile could not be loaded. Documents, renewals, payments, and activity remain independently available.",
         "legalCompleteness": "Legal-profile completeness",
         "activationReadiness": "Activation readiness",
+        "activationUnavailable": "Activation readiness is temporarily unavailable.",
         "activationReady": "Ready for activation",
         "primaryActivity": "Primary",
         "additionalActivity": "Additional",

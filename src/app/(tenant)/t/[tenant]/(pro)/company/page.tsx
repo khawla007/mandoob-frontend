@@ -132,15 +132,16 @@ export default async function AssignedCompanyPage({
         labels={{
           title: tOnboarding('overview.title'),
           description: tOnboarding('overview.description'),
-          lifecycle: tOnboarding('overview.lifecycle'),
           progress: tOnboarding('overview.progress', {
             complete: Object.values(company.sectionProgress).filter(
               (status) => status === 'complete',
             ).length,
             total: Object.keys(company.sectionProgress).length,
           }),
-          blockers: tOnboarding('overview.blockers', { count: company.readinessCodes.length }),
-          status: tOnboarding(`status.${company.onboardingStatus}`),
+          readiness:
+            company.readinessState === 'data'
+              ? tOnboarding('overview.blockers', { count: company.readinessCodes.length })
+              : t('profile.activationUnavailable'),
           cta:
             company.onboardingStatus === 'not_started'
               ? tOnboarding('overview.setup')
@@ -400,10 +401,8 @@ function CompanyOnboardingSummary({
   labels: {
     title: string;
     description: string;
-    lifecycle: string;
     progress: string;
-    blockers: string;
-    status: string;
+    readiness: string;
     cta: string;
   };
 }) {
@@ -426,10 +425,7 @@ function CompanyOnboardingSummary({
               <CheckCircle2 className="text-signal-success size-4" aria-hidden="true" />
               {labels.progress}
             </span>
-            <span>{labels.blockers}</span>
-            <span>
-              {labels.lifecycle}: {labels.status}
-            </span>
+            <span>{labels.readiness}</span>
           </div>
           <div
             className="bg-muted h-2 max-w-xl overflow-hidden rounded-full"

@@ -111,6 +111,7 @@ test('assigned company loader resolves tenant then verifies the live PRO assignm
       bank: 'incomplete',
     },
     readinessCodes: ['OFFICE_SECTION_INCOMPLETE', 'BANK_SECTION_INCOMPLETE'],
+    readinessState: 'data',
     createdAt: '2026-08-17T10:00:00.000Z',
     updatedAt: '2026-08-17T10:00:00.000Z',
   });
@@ -187,6 +188,25 @@ test('released, unknown, wrong-tenant and read-error states expose the same not-
     });
     assert.equal(value, null);
   }
+});
+
+test('assigned company preserves the verified assignment when activation readiness is unavailable', async () => {
+  const { readAssignedCompanyForPro } = await import('./company-profile');
+  const tenant = { id: tenantId, slug: 'acme', name: 'Acme', plan: 'pro', status: 'active' };
+  const result = await readAssignedCompanyForPro(profileId, 'acme', {
+    supabase: fakeSupabase([
+      { data: tenant, error: null },
+      { data: { company_id: companyId }, error: null },
+      { data: company, error: null },
+      { data: null, error: { message: 'private rpc detail' } },
+    ]) as never,
+  });
+
+  assert.equal(result?.id, companyId);
+  assert.equal(result?.tenantId, tenantId);
+  assert.equal(result?.companyName, 'Acme Trading LLC');
+  assert.equal(result?.readinessState, 'unavailable');
+  assert.deepEqual(result?.readinessCodes, []);
 });
 
 test('invalid profile identifiers fail closed without querying service-role data', async () => {

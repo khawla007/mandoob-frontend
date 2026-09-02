@@ -935,6 +935,7 @@
         "unavailableDescription": "تعذر تحميل الملف القانوني. تظل المستندات والتجديدات والمدفوعات والنشاط متاحة بصورة مستقلة.",
         "legalCompleteness": "اكتمال الملف القانوني",
         "activationReadiness": "جاهزية التفعيل",
+        "activationUnavailable": "جاهزية التفعيل غير متاحة مؤقتًا.",
         "activationReady": "جاهزة للتفعيل",
         "primaryActivity": "رئيسي",
         "additionalActivity": "إضافي",

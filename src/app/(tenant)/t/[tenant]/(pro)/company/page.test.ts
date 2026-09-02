@@ -225,6 +225,10 @@ test('Assigned Company operational labels have exact English and Arabic parity',
     assert.deepEqual(Object.keys(assigned.activity.actions).sort(), expected.auditActions);
     assert.deepEqual(Object.keys(assigned.activity.sources).sort(), expected.auditSources);
   }
+  assert.deepEqual(
+    Object.keys(english.pro.assignedCompany.profile).sort(),
+    Object.keys(arabic.pro.assignedCompany.profile).sort(),
+  );
 });
 
 test('overview replaces the legacy editor with lifecycle, progress, blockers, and one canonical CTA', () => {
@@ -236,6 +240,16 @@ test('overview replaces the legacy editor with lifecycle, progress, blockers, an
   assert.doesNotMatch(page, /CompanyProfileForm|updateAssignedCompanyProfile/u);
   assert.equal((page.match(/href=\{onboardingHref\}/gu) ?? []).length, 1);
   assert.equal(existsSync(legacyActionsPath), false);
+});
+
+test('compact setup summary does not present onboarding status as Company lifecycle', () => {
+  const summary = page.slice(page.indexOf('function CompanyOnboardingSummary'));
+  assert.doesNotMatch(
+    summary,
+    /labels\.lifecycle|labels\.status|company\.status|onboardingStatus/u,
+  );
+  assert.match(overview, /labels\.lifecycleValue/u);
+  assert.match(overview, /company\.status/u);
 });
 
 test('employee import no longer accepts company selection or a company identifier input', () => {
