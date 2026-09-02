@@ -198,3 +198,36 @@ test('invalid profile identifiers fail closed without querying service-role data
   );
   assert.equal(supabase.calls.length, 0);
 });
+
+test('dashboard assignment remains authorized when optional Company profile or readiness data fails', async () => {
+  const { readAssignedCompanyDashboardForPro } = await import('./company-profile');
+  const tenant = { id: tenantId, slug: 'acme', name: 'Acme', plan: 'pro', status: 'active' };
+
+  const missingProfile = await readAssignedCompanyDashboardForPro(profileId, 'acme', {
+    supabase: fakeSupabase([
+      { data: tenant, error: null },
+      { data: { company_id: companyId }, error: null },
+      { data: null, error: { message: 'private query detail' } },
+    ]) as never,
+  });
+  assert.deepEqual(missingProfile, {
+    tenantId,
+    companyId,
+    company: null,
+    profileState: 'unavailable',
+    readinessState: 'unavailable',
+  });
+
+  const missingReadiness = await readAssignedCompanyDashboardForPro(profileId, 'acme', {
+    supabase: fakeSupabase([
+      { data: tenant, error: null },
+      { data: { company_id: companyId }, error: null },
+      { data: company, error: null },
+      { data: null, error: { message: 'private rpc detail' } },
+    ]) as never,
+  });
+  assert.equal(missingReadiness?.company?.companyName, 'Acme Trading LLC');
+  assert.equal(missingReadiness?.profileState, 'data');
+  assert.equal(missingReadiness?.readinessState, 'unavailable');
+  assert.deepEqual(missingReadiness?.company?.readinessCodes, []);
+});

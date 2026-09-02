@@ -44,6 +44,14 @@ export type AssignedCompanyProfile = {
   updatedAt: string;
 };
 
+export type AssignedCompanyDashboardContext = {
+  tenantId: string;
+  companyId: string;
+  company: AssignedCompanyProfile | null;
+  profileState: 'data' | 'unavailable';
+  readinessState: 'data' | 'unavailable';
+};
+
 const uuidSchema = z.string().uuid();
 const companyRowSchema = z.object({
   id: uuidSchema,
@@ -84,6 +92,32 @@ const companyRowSchema = z.object({
 
 const COMPANY_COLUMNS =
   'id, tenant_id, company_name, status, licensing_authority, trade_license_no, license_expiry, onboarding_status, onboarding_version, company_shareholders!company_shareholders_company_tenant_fk(count), company_registered_activities!company_registered_activities_company_tenant_fk(count), company_onboarding_sections!company_onboarding_sections_company_tenant_fk(section_key, status), created_at, updated_at';
+
+function toAssignedCompanyProfile(
+  row: z.infer<typeof companyRowSchema>,
+  readinessCodes: CompanyReadinessCode[],
+): AssignedCompanyProfile {
+  const sectionProgress = Object.fromEntries(
+    row.company_onboarding_sections.map(({ section_key, status }) => [section_key, status]),
+  ) as Record<CompanyOnboardingSectionKey, CompanyOnboardingSectionStatus>;
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    companyName: row.company_name,
+    status: row.status,
+    jurisdiction: row.licensing_authority,
+    tradeLicenseNo: row.trade_license_no,
+    licenseExpiry: row.license_expiry,
+    shareholderCount: row.company_shareholders[0].count,
+    registeredActivityCount: row.company_registered_activities[0].count,
+    onboardingStatus: row.onboarding_status,
+    onboardingVersion: row.onboarding_version,
+    sectionProgress,
+    readinessCodes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 export async function readAssignedCompanyForPro(
   profileId: string,
@@ -133,25 +167,67 @@ export async function readAssignedCompanyForPro(
     return null;
   }
 
-  const sectionProgress = Object.fromEntries(
-    row.data.company_onboarding_sections.map(({ section_key, status }) => [section_key, status]),
-  ) as Record<CompanyOnboardingSectionKey, CompanyOnboardingSectionStatus>;
+  return toAssignedCompanyProfile(row.data, readinessCodes);
+}
 
+export async function readAssignedCompanyDashboardForPro(
+  profileId: string,
+  tenantSlug: string,
+  dependencies: CompanyProfileDependencies = {},
+): Promise<AssignedCompanyDashboardContext | null> {
+  if (!uuidSchema.safeParse(profileId).success || tenantSlug.trim() === '') return null;
+  const admin =
+    dependencies.supabase ?? (createSupabaseServiceRoleClient() as unknown as CompanyProfileClient);
+  const { data: tenant, error: tenantError } = await admin
+    .from('tenants')
+    .select('id, slug, name, plan, status')
+    .eq('slug', tenantSlug)
+    .maybeSingle();
+  const tenantRow = z.object({ id: uuidSchema }).safeParse(tenant);
+  if (tenantError || !tenantRow.success) return null;
+  const { data: assignment, error: assignmentError } = await admin
+    .from('pro_company_assignments')
+    .select('company_id')
+    .eq('pro_profile_id', profileId)
+    .eq('tenant_id', tenantRow.data.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  const assignmentRow = z.object({ company_id: uuidSchema }).safeParse(assignment);
+  if (assignmentError || !assignmentRow.success) return null;
+
+  const base = { tenantId: tenantRow.data.id, companyId: assignmentRow.data.company_id };
+  const { data, error } = await admin
+    .from('company_profiles')
+    .select(COMPANY_COLUMNS)
+    .eq('id', assignmentRow.data.company_id)
+    .eq('tenant_id', tenantRow.data.id)
+    .maybeSingle();
+  const row = companyRowSchema.safeParse(data);
+  if (error || !row.success)
+    return {
+      ...base,
+      company: null,
+      profileState: 'unavailable',
+      readinessState: 'unavailable',
+    };
+
+  const readiness = await admin.rpc('evaluate_company_activation_readiness', {
+    p_company_id: assignmentRow.data.company_id,
+  });
+  let readinessCodes: CompanyReadinessCode[] = [];
+  let readinessState: AssignedCompanyDashboardContext['readinessState'] = 'unavailable';
+  if (!readiness.error) {
+    try {
+      readinessCodes = parseCompanyReadinessRequirements(readiness.data).map(({ code }) => code);
+      readinessState = 'data';
+    } catch {
+      // The dashboard keeps independent Company-scoped groups available.
+    }
+  }
   return {
-    id: row.data.id,
-    tenantId: row.data.tenant_id,
-    companyName: row.data.company_name,
-    status: row.data.status,
-    jurisdiction: row.data.licensing_authority,
-    tradeLicenseNo: row.data.trade_license_no,
-    licenseExpiry: row.data.license_expiry,
-    shareholderCount: row.data.company_shareholders[0].count,
-    registeredActivityCount: row.data.company_registered_activities[0].count,
-    onboardingStatus: row.data.onboarding_status,
-    onboardingVersion: row.data.onboarding_version,
-    sectionProgress,
-    readinessCodes,
-    createdAt: row.data.created_at,
-    updatedAt: row.data.updated_at,
+    ...base,
+    company: toAssignedCompanyProfile(row.data, readinessCodes),
+    profileState: 'data',
+    readinessState,
   };
 }

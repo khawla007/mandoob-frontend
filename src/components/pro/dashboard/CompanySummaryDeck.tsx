@@ -28,12 +28,14 @@ export function CompanySummaryDeck({
   labels,
   states,
 }: {
-  company: AssignedCompanyProfile;
+  company: AssignedCompanyProfile | null;
   dashboard: ProDashboardData;
   tenantSlug: string;
   locale: string;
   labels: CompanySummaryDeckLabels;
-  states?: Partial<Record<'documents' | 'actions' | 'renewals' | 'finance', SummaryState>>;
+  states?: Partial<
+    Record<'readiness' | 'documents' | 'actions' | 'renewals' | 'finance', SummaryState>
+  >;
 }) {
   const number = new Intl.NumberFormat(locale);
   const money = new Intl.NumberFormat(locale, {
@@ -46,8 +48,16 @@ export function CompanySummaryDeck({
     {
       key: 'readiness',
       label: labels.readiness,
-      value: company.readinessCodes.length === 0 ? labels.ready : labels.actionRequired,
-      helper: number.format(company.readinessCodes.length),
+      value:
+        company && !states?.readiness
+          ? company.readinessCodes.length === 0
+            ? labels.ready
+            : labels.actionRequired
+          : labels.unavailable,
+      helper:
+        company && !states?.readiness
+          ? number.format(company.readinessCodes.length)
+          : (states?.readiness?.message ?? labels.unavailable),
       href: `${base}/company`,
       tone: 'signal-kpi--orange',
     },

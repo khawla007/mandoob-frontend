@@ -103,7 +103,7 @@ test('dashboard renders only tenant-normalized filters and reports rejected inpu
   const source = readFileSync(pagePath, 'utf8');
   assert.match(
     source,
-    /getProDashboardData\(\s*tenant\.id,\s*company\.id,\s*range,\s*requestedFilters\.filters,?\s*\)/,
+    /getProDashboardData\(\s*tenant\.id,\s*companyContext\.companyId,\s*range,\s*requestedFilters\.filters,?\s*\)/,
   );
   assert.match(source, /resolveDashboardFilterState/);
   assert.match(source, /dashboard\.errors\.operations !== undefined/);
@@ -167,7 +167,7 @@ test('dashboard page resolves the assigned company before its scoped read and ha
   assert.match(source, /searchParams:\s*Promise</);
   assert.match(source, /await Promise\.all\(\[params, searchParams\]\)/);
   const tenantAccess = source.indexOf('requireProTenantRouteAccess(slug)');
-  const companyAccess = source.indexOf('readAssignedCompanyForPro(session.id, slug)');
+  const companyAccess = source.indexOf('readAssignedCompanyDashboardForPro(session.id, slug)');
   const dashboardRead = source.indexOf('getProDashboardData(');
   assert.ok(tenantAccess >= 0);
   assert.ok(companyAccess > tenantAccess);
@@ -175,6 +175,14 @@ test('dashboard page resolves the assigned company before its scoped read and ha
   assert.doesNotMatch(source, /SignupsChart|RecentLoginsTable|getProDashboardMetrics/);
   assert.doesNotMatch(metrics, /ProDashboardKpiKey|ProDashboardMetric|getProDashboardMetrics/);
   assert.doesNotMatch(source, /allBranches|branchUnavailable|name="owner"/u);
+});
+
+test('optional Company command failures do not erase independent dashboard groups', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /companyContext\.companyId/u);
+  assert.match(source, /companyContext\.profileState === 'data'/u);
+  assert.match(source, /companyContext\.readinessState === 'data'/u);
+  assert.match(source, /companyUnavailable/u);
 });
 
 test('dashboard has one responsive composition and moves Action Deck before charts below lg', () => {

@@ -22,7 +22,7 @@ import {
   type RenewalStreamsLabels,
 } from '@/components/pro/dashboard';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
+import { readAssignedCompanyDashboardForPro } from '@/lib/data/company-profile';
 import { getProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
 import {
@@ -53,15 +53,16 @@ export default async function ProDashboard({
 }) {
   const [{ tenant: slug }, search] = await Promise.all([params, searchParams]);
   const { session, tenant } = await requireProTenantRouteAccess(slug);
-  const company = await readAssignedCompanyForPro(session.id, slug);
-  if (!company || company.tenantId !== tenant.id) notFound();
+  const companyContext = await readAssignedCompanyDashboardForPro(session.id, slug);
+  if (!companyContext || companyContext.tenantId !== tenant.id) notFound();
+  const company = companyContext.company;
 
   const range = parseDashboardRange(search.range);
   const requestedFilters = parseDashboardFilters(search);
   const [t, locale, dashboard] = await Promise.all([
     getTranslations('pro.dashboard.signalStudio'),
     getLocale(),
-    getProDashboardData(tenant.id, company.id, range, requestedFilters.filters),
+    getProDashboardData(tenant.id, companyContext.companyId, range, requestedFilters.filters),
   ]);
   const filterState = resolveDashboardFilterState(
     requestedFilters,
@@ -102,8 +103,12 @@ export default async function ProDashboard({
     registration: t('companyCommand.registration'),
     registrationUnavailable: t('companyCommand.registrationUnavailable'),
     openCompany: t('companyCommand.openCompany'),
-    lifecycleValue: t(`companyCommand.lifecycleValues.${company.status}`),
-    onboardingValue: t(`companyCommand.onboardingValues.${company.onboardingStatus}`),
+    lifecycleValue: company
+      ? t(`companyCommand.lifecycleValues.${company.status}`)
+      : t('summary.unavailable'),
+    onboardingValue: company
+      ? t(`companyCommand.onboardingValues.${company.onboardingStatus}`)
+      : t('summary.unavailable'),
   } satisfies CompanyCommandLabels;
   const summaryLabels = {
     readiness: t('summary.readiness'),
@@ -226,7 +231,7 @@ export default async function ProDashboard({
       <header className="signal-dashboard__heading relative flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="min-w-0">
           <p className="signal-dashboard__eyebrow">{t('eyebrow')}</p>
-          <h1>{t('headline', { company: company.companyName })}</h1>
+          <h1>{t('headline', { company: company?.companyName ?? t('companyFallback') })}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('subtitle')}</p>
         </div>
         <div className="signal-dashboard__heading-tools">
@@ -289,12 +294,22 @@ export default async function ProDashboard({
         </div>
       </header>
 
-      <CompanyCommand
-        company={company}
-        tenantSlug={tenant.slug}
-        locale={locale}
-        labels={companyLabels}
-      />
+      {company &&
+      companyContext.profileState === 'data' &&
+      companyContext.readinessState === 'data' ? (
+        <CompanyCommand
+          company={company}
+          tenantSlug={tenant.slug}
+          locale={locale}
+          labels={companyLabels}
+        />
+      ) : (
+        <DashboardUnavailablePanel
+          title={t('companyCommand.assignedCompany')}
+          description={t('companyCommand.activationReadiness')}
+          unavailable={t('companyUnavailable')}
+        />
+      )}
       <CompanySummaryDeck
         company={company}
         dashboard={dashboard}
@@ -302,6 +317,10 @@ export default async function ProDashboard({
         locale={locale}
         labels={summaryLabels}
         states={{
+          readiness:
+            companyContext.profileState === 'data' && companyContext.readinessState === 'data'
+              ? undefined
+              : { kind: 'error', message: t('companyUnavailable') },
           documents: stateFor(['documents']),
           actions: stateFor(['operations', 'renewals', 'documents', 'finance']),
           renewals: stateFor(['renewals']),

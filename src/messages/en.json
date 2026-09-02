@@ -1221,6 +1221,8 @@
       "signalStudio": {
         "title": "Command Center",
         "subtitle": "Assigned-Company status, obligations, and next actions.",
+        "companyFallback": "Assigned Company",
+        "companyUnavailable": "Company profile and readiness are temporarily unavailable. Independent operational panels remain available.",
         "masthead": "DXB / OPERATIONS SIGNAL",
         "generatedAt": "Generated {date}",
         "eyebrow": "TODAY’S OPERATING PICTURE",
