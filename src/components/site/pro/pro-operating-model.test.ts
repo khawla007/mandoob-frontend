@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import React from 'react';
 
+import { ProSuiteSection } from '@/components/site/home/ProSuiteSection';
 import { PUBLIC_PRO_CONTENT } from '@/lib/pro/public-pro';
 
 const pageSource = readFileSync(
@@ -30,14 +31,11 @@ const processIds = [
 ] as const;
 
 const capabilityIds = [
-  'legal-company-profile',
-  'employees-visa-eid',
-  'documents-storage',
+  'company-foundations',
+  'workforce-portals',
+  'records-audit',
   'renewals',
   'invoices-payments',
-  'branding-contact',
-  'audit-visibility',
-  'portal-context',
 ] as const;
 
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
@@ -49,6 +47,11 @@ const renderProPage = async () => {
     import('@/app/(public)/pro/page'),
   ]);
   return renderToStaticMarkup(React.createElement(ProPage));
+};
+
+const renderProSuite = async (variant?: 'home' | 'pro') => {
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  return renderToStaticMarkup(ProSuiteSection(variant ? { variant } : undefined));
 };
 
 if (reactServer) {
@@ -77,7 +80,7 @@ describe('centralized PRO content contract', () => {
     }, TypeError);
   });
 
-  it('defines the exact six-step one-Company process and safe capability coverage', () => {
+  it('defines the exact six-step one-Company process and five asymmetric capability groups', () => {
     assert.deepEqual(
       PUBLIC_PRO_CONTENT.process.steps.map((step) => step.id),
       processIds,
@@ -87,21 +90,43 @@ describe('centralized PRO content contract', () => {
       capabilityIds,
     );
     assert.ok(
-      PUBLIC_PRO_CONTENT.process.steps.every((step) => step.source.state === 'approved-static'),
-    );
-    assert.ok(
-      PUBLIC_PRO_CONTENT.capabilities.items.every(
-        (item) => item.source.state === 'approved-static',
+      PUBLIC_PRO_CONTENT.process.steps.every(
+        (step) => step.description.source.state === 'approved-static',
       ),
     );
-    assert.match(
-      PUBLIC_PRO_CONTENT.process.steps[4].description,
-      /configured channels.*when available/iu,
+  });
+
+  it('keeps approved capabilities distinct from unavailable provider and delivery facts', () => {
+    const foundations = PUBLIC_PRO_CONTENT.capabilities.items.find(
+      (item) => item.id === 'company-foundations',
     );
+    const finance = PUBLIC_PRO_CONTENT.capabilities.items.find(
+      (item) => item.id === 'invoices-payments',
+    );
+    const communication = PUBLIC_PRO_CONTENT.process.steps.find(
+      (step) => step.id === 'configured-communication',
+    );
+
+    assert.ok(foundations);
+    assert.ok(finance);
+    assert.ok(communication);
+    assert.deepEqual(
+      foundations.facts.map((fact) => fact.source.state),
+      ['approved-static', 'approved-static', 'unavailable'],
+    );
+    assert.deepEqual(
+      finance.facts.map((fact) => fact.source.state),
+      ['approved-static', 'unavailable'],
+    );
+    assert.match(finance.facts[0].text, /invoice.*payment workflow/iu);
+    assert.match(finance.facts[1].text, /checkout.*provider.*transaction.*confirmation/iu);
+    assert.equal(communication.description.source.state, 'approved-static');
+    assert.equal(communication.availability?.source.state, 'unavailable');
+    assert.match(communication.availability?.text ?? '', /configured channels.*when available/iu);
+    assert.equal(PUBLIC_PRO_CONTENT.process.availabilityNote.source.state, 'unavailable');
     assert.match(
-      PUBLIC_PRO_CONTENT.capabilities.items.find((item) => item.id === 'invoices-payments')!
-        .description,
-      /provider.*availability/iu,
+      PUBLIC_PRO_CONTENT.process.availabilityNote.text,
+      /provider and API availability/iu,
     );
   });
 });
@@ -150,14 +175,15 @@ describe('PRO hero, fit, capabilities, and process rendering', () => {
   );
 
   renderIt(
-    'renders the PRO-only operational capability suite without samples or proof claims',
+    'renders the PRO-only operational suite in the established asymmetric five-cell mosaic',
     async () => {
       const html = await renderProPage();
       const start = html.indexOf('id="pro-capabilities"');
       const end = html.indexOf('</section>', start);
       const section = html.slice(start, end);
 
-      assert.equal((section.match(/data-pro-capability=/gu) ?? []).length, capabilityIds.length);
+      assert.match(section, /<ul[^>]*class="mosaic pro-capabilities__mosaic"/u);
+      assert.equal((section.match(/data-pro-capability=/gu) ?? []).length, 5);
       for (const item of PUBLIC_PRO_CONTENT.capabilities.items) {
         assert.match(section, new RegExp(`data-pro-capability="${item.id}"`, 'u'));
         assert.match(
@@ -165,12 +191,41 @@ describe('PRO hero, fit, capabilities, and process rendering', () => {
           new RegExp(`>${item.title.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<`, 'u'),
         );
       }
+      assert.equal((section.match(/class="cell cell--table reveal"/gu) ?? []).length, 1);
+      assert.equal((section.match(/class="cell cell--log reveal"/gu) ?? []).length, 1);
+      assert.equal((section.match(/class="cell cell--visas reveal"/gu) ?? []).length, 1);
+      assert.equal((section.match(/class="cell cell--eid reveal"/gu) ?? []).length, 1);
+      assert.equal((section.match(/class="cell cell--renewals reveal"/gu) ?? []).length, 1);
       assert.doesNotMatch(
         section,
         /Acme|\.mandoob\.app|784-|activity\.log|invoice\.paid|\bRLS\b|IMMUTABLE|\bLIVE\b|zero fines|90\s*\/\s*30\s*\/\s*7/iu,
       );
     },
   );
+
+  renderIt('renders source-state qualifications as separate visible facts', async () => {
+    const html = await renderProPage();
+    const capabilityStart = html.indexOf('id="pro-capabilities"');
+    const capabilityEnd = html.indexOf('</section>', capabilityStart);
+    const capabilitySection = html.slice(capabilityStart, capabilityEnd);
+    const processStart = html.indexOf('id="pro-operating-process"');
+    const processEnd = html.indexOf('</section>', processStart);
+    const processSection = html.slice(processStart, processEnd);
+
+    assert.match(capabilitySection, /data-source-state="approved-static"/u);
+    assert.match(capabilitySection, /data-source-state="unavailable"/u);
+    assert.match(
+      capabilitySection,
+      /data-source-state="approved-static"[^>]*>[^<]*invoice[^<]*payment workflow/iu,
+    );
+    assert.match(
+      capabilitySection,
+      /data-source-state="unavailable"[^>]*>[^<]*checkout[^<]*provider[^<]*transaction/iu,
+    );
+    assert.match(processSection, /data-source-state="approved-static"/u);
+    assert.match(processSection, /data-source-state="unavailable"/u);
+    assert.match(processSection, /provider and API availability/iu);
+  });
 
   renderIt(
     'renders exactly six ordered operating steps with qualified channel availability',
@@ -214,11 +269,18 @@ describe('PRO hero, fit, capabilities, and process rendering', () => {
 describe('PRO composition and scoped theme contract', () => {
   it('retires homepage-owned mounts only from the PRO page', () => {
     assert.doesNotMatch(pageSource, /TrustBandSection/u);
-    assert.doesNotMatch(pageSource, /ProSuiteSection/u);
+    assert.match(pageSource, /<ProSuiteSection variant="pro" \/>/u);
     assert.match(pageSource, /ProAudienceFitSection/u);
-    assert.match(pageSource, /ProCapabilitiesSection/u);
+    assert.doesNotMatch(pageSource, /ProCapabilitiesSection/u);
     assert.match(pageSource, /ProOperatingProcessSection/u);
   });
+
+  renderIt(
+    'keeps the default shared suite render identical to its explicit homepage variant',
+    async () => {
+      assert.equal(await renderProSuite(), await renderProSuite('home'));
+    },
+  );
 
   it('uses only the existing PRO hero image and centralized hero content', () => {
     assert.match(heroSource, /PUBLIC_PRO_CONTENT\.hero/u);
@@ -230,12 +292,29 @@ describe('PRO composition and scoped theme contract', () => {
     assert.ok(proCssStart >= 0);
     assert.ok(proCss.length > 100);
     assert.match(proCss, /\.site-public \.pro-fit/u);
-    assert.match(proCss, /\.site-public \.pro-capabilities__grid/u);
+    assert.match(proCss, /\.site-public \.pro-capabilities__mosaic/u);
+    assert.doesNotMatch(proCss, /\.site-public \.pro-capabilities__grid/u);
     assert.match(proCss, /\.site-public \.pro-process__list/u);
     assert.match(proCss, /\.dark \.site-public \.pro-/u);
     assert.match(proCss, /@media \(max-width: 899px\)/u);
     assert.match(proCss, /(?:margin|padding|inset|border)-(?:inline|block)/u);
     assert.doesNotMatch(proCss, /\b(?:margin|padding)-(?:left|right):|\b(?:left|right):/u);
     assert.doesNotMatch(proCss, /(?:inline-size|width):\s*100vw/u);
+  });
+
+  it('uses only declared public-theme tokens in the Slice 6 CSS block', () => {
+    const declaredTokens = new Set(
+      [...cssSource.matchAll(/(--[a-z0-9-]+)\s*:/giu)].map((match) => match[1]),
+    );
+    const usedTokens = new Set(
+      [...proCss.matchAll(/var\((--[a-z0-9-]+)/giu)].map((match) => match[1]),
+    );
+    const undefinedTokens = [...usedTokens].filter((token) => !declaredTokens.has(token)).sort();
+
+    assert.deepEqual(
+      undefinedTokens,
+      [],
+      `Undefined PRO CSS tokens: ${undefinedTokens.join(', ')}`,
+    );
   });
 });

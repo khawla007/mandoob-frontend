@@ -39,12 +39,25 @@ export function ProOperatingProcessSection() {
                 </span>
                 <span className="pro-process__number">Step {index + 1}</span>
                 <h3>{step.title}</h3>
-                <p>{step.description}</p>
+                <p data-source-state={step.description.source.state}>{step.description.text}</p>
+                {step.availability ? (
+                  <p
+                    className="pro-process__qualification"
+                    data-source-state={step.availability.source.state}
+                  >
+                    {step.availability.text}
+                  </p>
+                ) : null}
               </li>
             );
           })}
         </ol>
-        <p className="pro-process__availability">{process.availabilityNote}</p>
+        <p
+          className="pro-process__availability"
+          data-source-state={process.availabilityNote.source.state}
+        >
+          {process.availabilityNote.text}
+        </p>
       </div>
     </section>
   );

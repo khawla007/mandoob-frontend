@@ -1,7 +1,18 @@
-export type PublicProSource = Readonly<{
-  state: 'approved-static';
-  source: string;
-}>;
+export type PublicProSource =
+  | Readonly<{ state: 'approved-static'; source: string }>
+  | Readonly<{ state: 'unavailable'; reason: string }>;
+
+type ApprovedPublicProFact = {
+  text: string;
+  source: Extract<PublicProSource, { state: 'approved-static' }>;
+};
+
+type UnavailablePublicProFact = {
+  text: string;
+  source: Extract<PublicProSource, { state: 'unavailable' }>;
+};
+
+type PublicProFact = ApprovedPublicProFact | UnavailablePublicProFact;
 
 type DeepReadonly<T> = T extends (...args: never[]) => unknown
   ? T
@@ -14,14 +25,11 @@ type DeepReadonly<T> = T extends (...args: never[]) => unknown
 type PublicProAudienceId = 'verified-operations' | 'one-company-assignment' | 'bounded-access';
 
 export type PublicProCapabilityId =
-  | 'legal-company-profile'
-  | 'employees-visa-eid'
-  | 'documents-storage'
+  | 'company-foundations'
+  | 'workforce-portals'
+  | 'records-audit'
   | 'renewals'
-  | 'invoices-payments'
-  | 'branding-contact'
-  | 'audit-visibility'
-  | 'portal-context';
+  | 'invoices-payments';
 
 type PublicProProcessId =
   | 'request-verify'
@@ -65,8 +73,8 @@ type PublicProContent = DeepReadonly<{
     items: readonly {
       id: PublicProCapabilityId;
       title: string;
-      description: string;
-      source: PublicProSource;
+      summary: ApprovedPublicProFact;
+      facts: readonly PublicProFact[];
     }[];
   };
   process: {
@@ -76,16 +84,26 @@ type PublicProContent = DeepReadonly<{
     steps: readonly {
       id: PublicProProcessId;
       title: string;
-      description: string;
-      source: PublicProSource;
+      description: ApprovedPublicProFact;
+      availability?: UnavailablePublicProFact;
     }[];
-    availabilityNote: string;
+    availabilityNote: UnavailablePublicProFact;
   };
 }>;
 
-const approvedStatic = (): PublicProSource => ({
+const approvedStatic = (): Extract<PublicProSource, { state: 'approved-static' }> => ({
   state: 'approved-static',
   source: 'P1.06 frozen claim register and one-PRO/one-Company product policy',
+});
+
+const approvedFact = (text: string): ApprovedPublicProFact => ({
+  text,
+  source: approvedStatic(),
+});
+
+const unavailableFact = (text: string, reason: string): UnavailablePublicProFact => ({
+  text,
+  source: { state: 'unavailable', reason },
 });
 
 function deepFreeze<T>(value: T): DeepReadonly<T> {
@@ -170,60 +188,77 @@ export const PUBLIC_PRO_CONTENT: PublicProContent = deepFreeze({
       'These areas describe supported workspace context. They do not promise authority decisions, regulated advice, or provider delivery.',
     items: [
       {
-        id: 'legal-company-profile',
-        title: 'Legal Company profile',
-        description:
-          'Organize legal and operational Company details and review setup readiness without implying certification or approval.',
-        source: approvedStatic(),
+        id: 'company-foundations',
+        title: 'Company foundations',
+        summary: approvedFact('Legal Company profile and configured identity.'),
+        facts: [
+          approvedFact(
+            'Organize legal and operational Company details and review setup readiness without implying certification or approval.',
+          ),
+          approvedFact(
+            'Branding and contact configuration provide Company-facing identity and channel context.',
+          ),
+          unavailableFact(
+            'Branding provisioning and contact-channel provider availability require confirmation.',
+            'No accepted production source confirms provisioning or provider delivery.',
+          ),
+        ],
       },
       {
-        id: 'employees-visa-eid',
-        title: 'Employees, visa and Emirates ID',
-        description:
-          'Track employee records and relevant visa and Emirates ID workflow context for the assigned Company.',
-        source: approvedStatic(),
+        id: 'workforce-portals',
+        title: 'Workforce and portal context',
+        summary: approvedFact('Employee, visa, Emirates ID and supported portal context.'),
+        facts: [
+          approvedFact(
+            'Track employee records and relevant visa and Emirates ID workflow context for the assigned Company.',
+          ),
+          approvedFact(
+            'Coordinate supported customer and employee portal views when access is configured.',
+          ),
+          unavailableFact(
+            'Portal access and delivery depend on confirmed workspace configuration.',
+            'No public production source confirms portal provisioning for every plan.',
+          ),
+        ],
       },
       {
-        id: 'documents-storage',
-        title: 'Documents and storage',
-        description:
-          'Keep Company documents, requests and review context together; available storage terms depend on the confirmed plan.',
-        source: approvedStatic(),
+        id: 'records-audit',
+        title: 'Documents and audit visibility',
+        summary: approvedFact('Company records with visible review and activity context.'),
+        facts: [
+          approvedFact('Keep Company documents, requests and review context together.'),
+          approvedFact(
+            'Review attributed activity and workflow context without presenting technical security proof.',
+          ),
+          unavailableFact(
+            'Storage allocation and detailed audit availability require plan confirmation.',
+            'Exact storage and audit allocations are not approved for public publication.',
+          ),
+        ],
       },
       {
         id: 'renewals',
         title: 'Renewals',
-        description:
-          'Maintain renewal records, deadline visibility and reminder context when the relevant configuration is available.',
-        source: approvedStatic(),
+        summary: approvedFact('Renewal records and deadline visibility.'),
+        facts: [
+          approvedFact('Maintain renewal records and deadline workflow context for the Company.'),
+          unavailableFact(
+            'Reminder cadence and delivery require confirmed configuration and channel availability.',
+            'No accepted production source confirms cadence or delivery channels.',
+          ),
+        ],
       },
       {
         id: 'invoices-payments',
         title: 'Invoices and payments',
-        description:
-          'Organize invoice and payment workflow context; checkout, provider and transaction availability require confirmation.',
-        source: approvedStatic(),
-      },
-      {
-        id: 'branding-contact',
-        title: 'Branding and contact configuration',
-        description:
-          'Configure Company-facing identity and contact-channel context where the selected plan and providers support it.',
-        source: approvedStatic(),
-      },
-      {
-        id: 'audit-visibility',
-        title: 'Audit visibility',
-        description:
-          'Review attributed activity and workflow context without presenting the public page as technical security proof.',
-        source: approvedStatic(),
-      },
-      {
-        id: 'portal-context',
-        title: 'Customer and employee portal context',
-        description:
-          'Coordinate supported customer and employee views when access and the relevant workspace capabilities are configured.',
-        source: approvedStatic(),
+        summary: approvedFact('Invoice and payment workflow context.'),
+        facts: [
+          approvedFact('Organize invoice and payment workflow context for the assigned Company.'),
+          unavailableFact(
+            'Checkout, provider and transaction availability require confirmation.',
+            'Billing-provider and checkout production availability are not approved public facts.',
+          ),
+        ],
       },
     ],
   },
@@ -236,47 +271,53 @@ export const PUBLIC_PRO_CONTENT: PublicProContent = deepFreeze({
       {
         id: 'request-verify',
         title: 'Request and verify access',
-        description:
+        description: approvedFact(
           'Discuss access through the current contact route, then complete the required account review.',
-        source: approvedStatic(),
+        ),
       },
       {
         id: 'company-assignment',
         title: 'Receive one active Company assignment',
-        description:
+        description: approvedFact(
           'An eligible PRO receives at most one active Company assignment under Mandoob platform policy.',
-        source: approvedStatic(),
+        ),
       },
       {
         id: 'company-setup',
         title: 'Complete and review Company setup',
-        description:
+        description: approvedFact(
           'Organize the legal Company profile and review available readiness information before operation.',
-        source: approvedStatic(),
+        ),
       },
       {
         id: 'operate-workspace',
         title: 'Operate the Company workspace',
-        description:
+        description: approvedFact(
           'Work with registrations, documents, employees, renewals, invoices and related Company records.',
-        source: approvedStatic(),
+        ),
       },
       {
         id: 'configured-communication',
         title: 'Use configured communication channels',
-        description:
+        description: approvedFact(
+          'Use Company communication workflow context after the relevant workspace configuration.',
+        ),
+        availability: unavailableFact(
           'Communicate through configured channels when available for the workspace and selected provider.',
-        source: approvedStatic(),
+          'No accepted production source confirms channel or provider delivery.',
+        ),
       },
       {
         id: 'authorization-audit',
         title: 'Maintain authorized status and audit context',
-        description:
+        description: approvedFact(
           'Keep access conditions current and retain visible activity context for authorized Company work.',
-        source: approvedStatic(),
+        ),
       },
     ],
-    availabilityNote:
+    availabilityNote: unavailableFact(
       'Configured-channel delivery and connected workflow steps depend on provider and API availability; this page does not present every integration as available.',
+      'Connected provider and API production availability is not approved for public publication.',
+    ),
   },
 });
