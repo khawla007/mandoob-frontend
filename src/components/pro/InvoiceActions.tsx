@@ -11,6 +11,7 @@ import {
   voidInvoiceAction,
 } from '@/app/(tenant)/t/[tenant]/(pro)/payments/actions';
 import type { RefundOperationState } from '@/lib/data/invoices';
+import { canShowRefundAction } from '@/lib/data/invoice-finance-state';
 import { syncRefundOperationId } from './refund-operation-state';
 
 export function InvoiceActions({
@@ -87,10 +88,12 @@ export function InvoiceActions({
 
   const canClose = status === 'open' || status === 'draft';
   const canRefund =
-    refundAvailable &&
-    remainingRefundableMinor !== null &&
-    remainingRefundableMinor > 0 &&
-    (status === 'paid' || status === 'partially_refunded');
+    (status === 'paid' || status === 'partially_refunded') &&
+    canShowRefundAction({
+      detailsAvailable: refundAvailable,
+      remainingMinor: remainingRefundableMinor,
+      hasPendingRefund,
+    });
 
   return (
     <div className="flex flex-col items-end gap-2">

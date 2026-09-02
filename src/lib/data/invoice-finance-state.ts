@@ -21,6 +21,17 @@ export function remainingRefundableMinor(args: {
   return Math.max(0, payment.amountMinor - reserved);
 }
 
+export function canShowRefundAction(args: {
+  detailsAvailable: boolean;
+  remainingMinor: number | null;
+  hasPendingRefund: boolean;
+}): boolean {
+  return (
+    args.detailsAvailable &&
+    (args.hasPendingRefund || (args.remainingMinor !== null && args.remainingMinor > 0))
+  );
+}
+
 export function resolveInvoiceFinanceSections(args: {
   payments: boolean;
   refunds: boolean;

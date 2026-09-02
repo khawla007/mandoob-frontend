@@ -18,7 +18,8 @@ test('refund UI keeps one operation UUID across retries and releases terminal su
   assert.match(source, /useEffect\([\s\S]*syncRefundOperationId/u);
   assert.match(source, /refundOperation\?\.status === 'pending'/u);
   assert.match(source, /paymentRetryRefund/u);
-  assert.match(source, /remainingRefundableMinor !== null/u);
+  assert.match(source, /canShowRefundAction\(\{/u);
+  assert.match(source, /hasPendingRefund/u);
   assert.match(source, /refundAvailable/u);
   assert.match(source, /<Input[\s\S]*disabled=\{hasPendingRefund\}/u);
 });

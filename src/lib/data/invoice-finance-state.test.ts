@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { remainingRefundableMinor, resolveInvoiceFinanceSections } from './invoice-finance-state';
+import {
+  canShowRefundAction,
+  remainingRefundableMinor,
+  resolveInvoiceFinanceSections,
+} from './invoice-finance-state';
 
 test('remaining refundable balance matches the refund RPC latest-payment and reservation rule', () => {
   assert.equal(
@@ -93,5 +97,20 @@ test('payment failure makes all refund-dependent sections unavailable', () => {
       refundOperation: 'unavailable',
       audit: 'available',
     },
+  );
+});
+
+test('a pending durable refund remains retryable after it reserves the full balance', () => {
+  assert.equal(
+    canShowRefundAction({ detailsAvailable: true, remainingMinor: 0, hasPendingRefund: true }),
+    true,
+  );
+  assert.equal(
+    canShowRefundAction({ detailsAvailable: true, remainingMinor: 0, hasPendingRefund: false }),
+    false,
+  );
+  assert.equal(
+    canShowRefundAction({ detailsAvailable: false, remainingMinor: 100, hasPendingRefund: true }),
+    false,
   );
 });

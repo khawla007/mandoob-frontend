@@ -426,7 +426,7 @@ export async function getInvoiceDetailForTenant(
         ? mapRefundOperation(refunds.find((refund) => refund.idempotency_key))
         : null,
     remainingRefundableMinor: remaining,
-    refundAvailable: remaining !== null && remaining > 0,
+    refundAvailable: remaining !== null,
     linkedEntityType: (invoice.linked_entity_type as string | null) ?? null,
     linkedEntityId: (invoice.linked_entity_id as string | null) ?? null,
     payments: (paymentsResult.data ?? []).map((p) => ({
