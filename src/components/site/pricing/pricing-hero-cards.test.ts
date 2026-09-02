@@ -22,7 +22,7 @@ const pricingCssEnd = cssSource.indexOf('/* ---------- P1.05 CONTACT FORM ------
 const pricingCss = cssSource.slice(pricingCssStart, pricingCssEnd);
 
 const forbiddenPricingCopy =
-  /popular|recommended|discount|saving|setup fee|free trial|checkout|\bUSD\b|\$\s*\d|\bAED\s*\d|\b\d+[,.]?\d*\s*(?:AED|USD|\/\s*month|\/\s*year)/iu;
+  /popular|recommended|discount|saving|setup fee|free trial|\bUSD\b|\$\s*\d|\bAED\s*\d|\b\d+[,.]?\d*\s*(?:AED|USD|\/\s*month|\/\s*year)/iu;
 
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
 const renderIt = reactServer ? ((() => undefined) as unknown as typeof it) : it;
@@ -104,7 +104,8 @@ describe('pricing hero and tier cards', () => {
       );
       assert.equal((html.match(/Annual concept<\/span>Subject to confirmation/gu) ?? []).length, 3);
       assert.equal((html.match(/Government and third-party costs are separate/gu) ?? []).length, 3);
-      assert.equal((html.match(/href="\/contact"/gu) ?? []).length, 4);
+      const heroAndTiers = html.slice(0, html.indexOf('<section class="pricing-comparison"'));
+      assert.equal((heroAndTiers.match(/href="\/contact"/gu) ?? []).length, 4);
       assert.doesNotMatch(html, forbiddenPricingCopy);
     },
   );

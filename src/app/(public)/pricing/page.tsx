@@ -255,6 +255,87 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+
+      <section className="pricing-access" aria-labelledby="pricing-access-title">
+        <div className="container">
+          <header className="pricing-section__head">
+            <div>
+              <span className="eyebrow">Plan access</span>
+              <h2 id="pricing-access-title">How plan access works.</h2>
+            </div>
+            <p>{PUBLIC_PRICING_CONTRACT.accessProcess.intro.text}</p>
+          </header>
+
+          <ol className="pricing-process">
+            {PUBLIC_PRICING_CONTRACT.accessProcess.steps.map((step, index) => (
+              <li key={step.id} data-pricing-process-step={step.id}>
+                <span className="pricing-process__number" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
+                {step.id === 'discuss-verify' ? <Link href="/contact">Discuss plans</Link> : null}
+              </li>
+            ))}
+          </ol>
+
+          <div className="pricing-access__unavailable" aria-label="Unavailable plan actions">
+            <p>
+              <strong>Registration</strong>
+              {PUBLIC_PRICING_CONTRACT.accessProcess.registration.text}
+            </p>
+            <p>
+              <strong>Checkout and provider</strong>
+              {PUBLIC_PRICING_CONTRACT.accessProcess.checkout.text}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="pricing-faq" aria-labelledby="pricing-faq-title">
+        <div className="container">
+          <header className="pricing-section__head">
+            <div>
+              <span className="eyebrow">Pricing FAQ</span>
+              <h2 id="pricing-faq-title">Plan questions, answered carefully.</h2>
+            </div>
+            <p>
+              These answers describe the current publication boundary. Confirm current terms before
+              relying on a plan decision.
+            </p>
+          </header>
+
+          <div className="pricing-faq__grid">
+            {PUBLIC_PRICING_CONTRACT.faq.map((item) => (
+              <details key={item.id} className="pricing-faq__item" data-pricing-faq={item.id}>
+                <summary>{item.question}</summary>
+                <p>{item.answer.text}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="pricing-final-cta" aria-labelledby="pricing-final-cta-title">
+        <div className="pricing-final-cta__skyline" aria-hidden="true" />
+        <div className="pricing-final-cta__inner container">
+          <div className="pricing-final-cta__copy">
+            <h2 id="pricing-final-cta-title">{PUBLIC_PRICING_CONTRACT.finalCta.title.text}</h2>
+            <p>{PUBLIC_PRICING_CONTRACT.finalCta.description.text}</p>
+          </div>
+          <div className="pricing-final-cta__actions">
+            {PUBLIC_PRICING_CONTRACT.finalCta.links.map((link, index) => (
+              <Link
+                key={link.href}
+                className={index === 0 ? 'btn pricing-final-cta__primary' : 'btn'}
+                href={link.href}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
     </>
   );
 }

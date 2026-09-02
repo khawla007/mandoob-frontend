@@ -1080,6 +1080,193 @@
   margin-block-start: 6px;
   font-weight: 600;
 }
+.site-public .pricing-access,
+.site-public .pricing-faq {
+  padding-block: clamp(64px, 8vw, 104px);
+}
+.site-public .pricing-access {
+  border-block-start: 1px solid var(--public-border-subtle);
+  background: var(--public-canvas);
+}
+.site-public .pricing-process {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+  list-style: none;
+}
+.site-public .pricing-process li {
+  min-inline-size: 0;
+  padding-block: clamp(24px, 3vw, 38px);
+  padding-inline: clamp(22px, 2.7vw, 34px);
+}
+.site-public .pricing-process li:not(:nth-child(3n + 1)) {
+  border-inline-start: 1px solid var(--public-border-subtle);
+}
+.site-public .pricing-process li:nth-child(n + 4) {
+  border-block-start: 1px solid var(--public-border-subtle);
+}
+.site-public .pricing-process__number {
+  display: block;
+  margin-block-end: 34px;
+  color: var(--accent);
+  font-family: var(--mono-font);
+  font-size: var(--fs-12);
+}
+.site-public .pricing-process h3 {
+  font-size: var(--fs-17);
+  letter-spacing: -0.025em;
+}
+.site-public .pricing-process p {
+  margin-block-start: 9px;
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+}
+.site-public .pricing-process a {
+  display: inline-flex;
+  margin-block-start: 18px;
+  color: var(--public-cta-background);
+  font-size: var(--fs-13);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.site-public .pricing-access__unavailable {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-block-start: 22px;
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--zinc-50);
+}
+.site-public .pricing-access__unavailable p {
+  padding-block: 20px;
+  padding-inline: clamp(22px, 2.7vw, 34px);
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+}
+.site-public .pricing-access__unavailable p + p {
+  border-inline-start: 1px solid var(--public-border-subtle);
+}
+.site-public .pricing-access__unavailable strong {
+  display: block;
+  margin-block-end: 5px;
+  color: var(--public-text-primary);
+}
+.site-public .pricing-faq {
+  border-block-start: 1px solid var(--public-border-subtle);
+  background: var(--zinc-50);
+}
+.site-public .pricing-faq__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(32px, 5vw, 72px);
+}
+.site-public .pricing-faq__item {
+  border-block-start: 1px solid var(--public-border-subtle);
+}
+.site-public .pricing-faq__item:nth-last-child(-n + 2) {
+  border-block-end: 1px solid var(--public-border-subtle);
+}
+.site-public .pricing-faq__item summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 24px;
+  padding-inline: 4px;
+  cursor: pointer;
+  font-weight: 650;
+  list-style: none;
+}
+.site-public .pricing-faq__item summary::-webkit-details-marker {
+  display: none;
+}
+.site-public .pricing-faq__item summary::after {
+  content: '+';
+  color: var(--public-cta-background);
+  font-size: 1.4em;
+}
+.site-public .pricing-faq__item[open] summary::after {
+  content: '\2212';
+}
+.site-public .pricing-faq__item summary:focus-visible {
+  outline: 3px solid var(--public-focus-ring);
+  outline-offset: 4px;
+  border-radius: var(--r-sm);
+}
+.site-public .pricing-faq__item p {
+  max-inline-size: 68ch;
+  padding-block-end: 24px;
+  padding-inline: 4px;
+  color: var(--public-text-muted);
+  font-size: var(--fs-14);
+}
+.site-public .pricing-final-cta {
+  --pricing-final-bg: var(--zinc-950);
+  --pricing-final-text: var(--ink-inv);
+  --pricing-final-muted: var(--zinc-300);
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--pricing-final-text);
+  background: var(--pricing-final-bg);
+}
+.site-public .pricing-final-cta__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-block-size: 180px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding-block: 38px;
+}
+.site-public .pricing-final-cta__copy {
+  max-inline-size: 680px;
+}
+.site-public .pricing-final-cta h2 {
+  color: var(--pricing-final-text);
+  font-size: clamp(1.9rem, 3vw, 3rem);
+  letter-spacing: -0.04em;
+}
+.site-public .pricing-final-cta p {
+  margin-block-start: 10px;
+  color: var(--pricing-final-muted);
+}
+.site-public .pricing-final-cta__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.site-public .pricing-final-cta__actions a {
+  min-inline-size: 190px;
+  border: 1px solid var(--zinc-300);
+  background: var(--public-surface-elevated);
+  color: var(--public-text-primary);
+}
+.site-public .pricing-final-cta__actions a:hover {
+  border-color: var(--public-focus-ring);
+  color: var(--public-cta-background);
+}
+.site-public .pricing-final-cta__skyline {
+  position: absolute;
+  z-index: 0;
+  inset-block-end: -4px;
+  inset-inline-end: 0;
+  inline-size: min(48vw, 720px);
+  block-size: 132px;
+  opacity: 0.12;
+  background: var(--accent);
+  -webkit-mask: url('/decor/dubai-skyline.svg') center 100% / contain no-repeat;
+  mask: url('/decor/dubai-skyline.svg') center 100% / contain no-repeat;
+  pointer-events: none;
+}
 .dark .site-public .pricing-hero__context,
 .dark .site-public .pricing-tier-grid {
   border-color: var(--public-border-strong);
@@ -1093,8 +1280,16 @@
 }
 
 .dark .site-public .pricing-comparison,
-.dark .site-public .pricing-costs {
+.dark .site-public .pricing-costs,
+.dark .site-public .pricing-access,
+.dark .site-public .pricing-faq {
   border-color: var(--public-border-strong);
+}
+
+.dark .site-public .pricing-final-cta {
+  --pricing-final-bg: var(--zinc-50);
+  --pricing-final-text: var(--ink);
+  --pricing-final-muted: var(--zinc-600);
 }
 
 .dark .site-public .pricing-hero__context dl,
@@ -1110,7 +1305,12 @@
 .dark .site-public .pricing-cost-panel:nth-child(2),
 .dark .site-public .pricing-cost-panel--wide,
 .dark .site-public .pricing-cost-panel ul,
-.dark .site-public .pricing-cost-panel li {
+.dark .site-public .pricing-cost-panel li,
+.dark .site-public .pricing-process,
+.dark .site-public .pricing-process li,
+.dark .site-public .pricing-access__unavailable,
+.dark .site-public .pricing-access__unavailable p,
+.dark .site-public .pricing-faq__item {
   border-color: var(--public-border-strong);
 }
 
@@ -1119,8 +1319,31 @@
   .site-public .pricing-tiers__head,
   .site-public .pricing-tier-grid,
   .site-public .pricing-section__head,
-  .site-public .pricing-costs__grid {
+  .site-public .pricing-costs__grid,
+  .site-public .pricing-faq__grid {
     grid-template-columns: 1fr;
+  }
+  .site-public .pricing-process {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .site-public .pricing-process li:not(:nth-child(3n + 1)) {
+    border-inline-start: 0;
+  }
+  .site-public .pricing-process li:nth-child(even) {
+    border-inline-start: 1px solid var(--public-border-subtle);
+  }
+  .site-public .pricing-process li:nth-child(n + 3) {
+    border-block-start: 1px solid var(--public-border-subtle);
+  }
+  .site-public .pricing-faq__item:nth-last-child(-n + 2) {
+    border-block-end: 0;
+  }
+  .site-public .pricing-faq__item:last-child {
+    border-block-end: 1px solid var(--public-border-subtle);
+  }
+  .site-public .pricing-final-cta__inner {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .site-public .pricing-tier-card + .pricing-tier-card {
     border-block-start: 1px solid var(--public-border-subtle);
@@ -1161,10 +1384,29 @@
   .site-public .pricing-costs__estimate .btn {
     inline-size: 100%;
   }
+  .site-public .pricing-process,
+  .site-public .pricing-access__unavailable {
+    grid-template-columns: 1fr;
+  }
+  .site-public .pricing-process li:nth-child(even),
+  .site-public .pricing-access__unavailable p + p {
+    border-inline-start: 0;
+  }
+  .site-public .pricing-process li + li,
+  .site-public .pricing-access__unavailable p + p {
+    border-block-start: 1px solid var(--public-border-subtle);
+  }
+  .site-public .pricing-final-cta__actions,
+  .site-public .pricing-final-cta__actions a {
+    inline-size: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .site-public .pricing-breadcrumb a {
+    transition: none;
+  }
+  .site-public .pricing-final-cta__actions a {
     transition: none;
   }
 }

@@ -175,6 +175,25 @@ type PublicPricingPublicationSummary = {
   separateCostsNotice: ApprovedPublicationFact<'Government and third-party costs are separate.'>;
 };
 
+type PublicPricingAccessStepId =
+  | 'review-fit'
+  | 'discuss-verify'
+  | 'verify-access'
+  | 'assign-company'
+  | 'configure-workspace'
+  | 'operate-billing';
+
+type PublicPricingFaqId =
+  | 'subscription-includes'
+  | 'pricing-confirmation'
+  | 'company-limit'
+  | 'billing-cadence'
+  | 'external-fees'
+  | 'allowances-add-ons'
+  | 'plan-changes'
+  | 'estimate-versus-quote'
+  | 'billing-provider';
+
 export type PublicPricingContract = DeepReadonly<{
   publicationSummary: PublicPricingPublicationSummary;
   tiers: readonly PublicPricingTier[];
@@ -207,6 +226,31 @@ export type PublicPricingContract = DeepReadonly<{
       label: 'Indicative estimate';
       source: Extract<PublicPricingSource, { state: 'approved-static' }>;
     };
+  };
+  accessProcess: {
+    intro: ApprovedPublicationFact;
+    steps: readonly {
+      id: PublicPricingAccessStepId;
+      title: string;
+      description: string;
+      source: Extract<PublicPricingSource, { state: 'approved-static' }>;
+    }[];
+    registration: UnavailablePublicationFact;
+    checkout: UnavailablePublicationFact;
+  };
+  faq: readonly {
+    id: PublicPricingFaqId;
+    question: string;
+    answer: ApprovedPublicationFact | UnavailablePublicationFact;
+  }[];
+  finalCta: {
+    title: ApprovedPublicationFact;
+    description: ApprovedPublicationFact;
+    links: readonly {
+      label: 'Discuss plans' | 'Explore PRO workspace';
+      href: '/contact' | '/pro';
+      source: Extract<PublicPricingSource, { state: 'approved-static' }>;
+    }[];
   };
 }>;
 
@@ -462,6 +506,141 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       label: 'Indicative estimate',
       source: approvedStaticSource(),
     },
+  },
+  accessProcess: {
+    intro: approvedPublicationFact(
+      'Plan access moves from fit review and confirmation into verified access, one-Company assignment, workspace configuration, and operation.',
+    ),
+    steps: [
+      {
+        id: 'review-fit',
+        title: 'Review plan fit',
+        description:
+          'Compare the published tier concepts with the workspace capabilities you need.',
+        source: approvedStaticSource(),
+      },
+      {
+        id: 'discuss-verify',
+        title: 'Discuss and verify the plan',
+        description:
+          'Confirm the current plan specification, billing cadence, allowances, and terms with Mandoob.',
+        source: approvedStaticSource(),
+      },
+      {
+        id: 'verify-access',
+        title: 'Verify PRO and Company access',
+        description: 'PRO and Company access is reviewed before a workspace can be made available.',
+        source: approvedStaticSource(),
+      },
+      {
+        id: 'assign-company',
+        title: 'Receive one-Company assignment',
+        description: 'An eligible PRO receives at most one active assigned Company.',
+        source: approvedStaticSource(),
+      },
+      {
+        id: 'configure-workspace',
+        title: 'Configure the workspace',
+        description:
+          'Review Company details and configure the supported workspace capabilities that apply.',
+        source: approvedStaticSource(),
+      },
+      {
+        id: 'operate-billing',
+        title: 'Operate and manage billing',
+        description:
+          'Use the assigned workspace and manage subscription context when the required billing capability is available.',
+        source: approvedStaticSource(),
+      },
+    ],
+    registration: unavailablePublicationFact(
+      'PRO registration is unavailable in this phase and remains owned by P1.10.',
+      'The P1.10 PRO registration frontend is not implemented',
+    ),
+    checkout: unavailablePublicationFact(
+      'Checkout and billing provider access are unavailable in this phase and remain owned by Phase 3.',
+      'Checkout and billing providers are Phase 3 capabilities',
+    ),
+  },
+  faq: [
+    {
+      id: 'subscription-includes',
+      question: 'What does a Mandoob subscription include?',
+      answer: approvedPublicationFact(
+        'A subscription provides workspace access for at most one active assigned Company per PRO. The exact capability allocation and current terms are confirmed during a plan discussion.',
+      ),
+    },
+    {
+      id: 'pricing-confirmation',
+      question: 'Why do exact prices require confirmation?',
+      answer: unavailablePublicationFact(
+        'Exact amounts, current billing terms, allowances, and tier allocations do not have an approved public source, so Mandoob must confirm them before access.',
+        'Exact public pricing and allocation are not approved for publication',
+      ),
+    },
+    {
+      id: 'company-limit',
+      question: 'Does every tier keep the one-Company limit?',
+      answer: approvedPublicationFact(
+        'Yes. Every tier permits at most one active assigned Company per PRO; a higher tier does not add another Company.',
+      ),
+    },
+    {
+      id: 'billing-cadence',
+      question: 'Are monthly and annual billing available?',
+      answer: unavailablePublicationFact(
+        'Monthly and annual are supported plan concepts, but current availability and terms require confirmation. No pricing advantage is published for either cadence.',
+        'Current cadence availability and terms are not approved for publication',
+      ),
+    },
+    {
+      id: 'external-fees',
+      question: 'Are government and third-party fees included?',
+      answer: approvedPublicationFact(
+        'Government, authority, provider, and other third-party costs are separate from platform access and vary with jurisdiction, activity, office, visa, approval, provider, and current schedules.',
+      ),
+    },
+    {
+      id: 'allowances-add-ons',
+      question: 'How do allowances and add-ons work?',
+      answer: unavailablePublicationFact(
+        'Communication allowances use an approved usage-based add-on concept. Current quantities, tier allocation, terms, and prices require confirmation and remain unavailable for publication.',
+        'Allowance quantities, allocation, and add-on terms are not approved for publication',
+      ),
+    },
+    {
+      id: 'plan-changes',
+      question: 'Can a plan be upgraded, downgraded, or cancelled?',
+      answer: unavailablePublicationFact(
+        'Availability and terms for upgrades, downgrades, and cancellation require confirmation before you rely on a plan-change option.',
+        'Plan-change and cancellation terms are not approved for publication',
+      ),
+    },
+    {
+      id: 'estimate-versus-quote',
+      question: 'Is the Company-setup estimator a final quote?',
+      answer: approvedPublicationFact(
+        'No. The estimator is indicative Company-setup planning, not a published plan amount or final quote; current schedules and selected inputs still apply.',
+      ),
+    },
+    {
+      id: 'billing-provider',
+      question: 'Is online billing or checkout available now?',
+      answer: unavailablePublicationFact(
+        'Billing provider and checkout access are unavailable in this phase and remain owned by Phase 3. Published invoice, payment, and subscription-management concepts do not establish current provider availability.',
+        'Checkout and billing providers are Phase 3 capabilities',
+      ),
+    },
+  ],
+  finalCta: {
+    title: approvedPublicationFact('Find the plan context that fits your Company workspace.'),
+    description: approvedPublicationFact(
+      'Discuss the current specification with Mandoob or explore how the PRO workspace is structured.',
+    ),
+    links: [
+      { label: 'Discuss plans', href: '/contact', source: approvedStaticSource() },
+      { label: 'Explore PRO workspace', href: '/pro', source: approvedStaticSource() },
+    ],
   },
 } satisfies PublicPricingContract);
 
