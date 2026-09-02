@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import {
   EmployeeRegistryFilters,
@@ -8,8 +8,10 @@ import {
   EmployeeRegistryTable,
 } from '@/components/pro/EmployeeRegistryWorkspace';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
+  employeeRegistryHref,
   listProEmployeeRegistry,
   parseEmployeeRegistrySearch,
 } from '@/lib/data/pro-employee-registry';
@@ -25,15 +27,28 @@ export default async function ProEmployeesPage({
 }) {
   const [{ tenant: slug }, rawSearch] = await Promise.all([params, searchParams]);
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
   const search = parseEmployeeRegistrySearch(rawSearch);
   const [result, t, locale] = await Promise.all([
-    listProEmployeeRegistry(tenant.id, company.id, search),
+    listProEmployeeRegistry({ actorProfileId: session.id, tenantSlug: slug, search }),
     getTranslations('pro.employeeRegistry'),
     getLocale(),
   ]);
+  if (result.canonicalPage !== search.page)
+    redirect(employeeRegistryHref(slug, search, result.canonicalPage));
+  const registryDescription =
+    result.state === 'data'
+      ? t('table.description', { count: result.total })
+      : result.state === 'partial'
+        ? t('states.partial')
+        : result.state === 'no_results'
+          ? t('states.emptyFiltered')
+          : result.state === 'empty'
+            ? t('states.empty')
+            : t('states.sanitizedError');
   const labels = {
     eyebrow: t('eyebrow'),
     title: t('title'),
@@ -62,8 +77,8 @@ export default async function ProEmployeesPage({
     notRecorded: t('notRecorded'),
     tableRisk: t('table.risk'),
     provenance: t('table.provenance'),
-    provenanceUnavailable: t('table.provenanceUnavailable'),
-    maskedIdentifier: t('table.maskedIdentifier'),
+    phase3Unavailable: t('table.phase3Unavailable'),
+    phase3Note: t('table.phase3Note'),
     missing: t('identity.missing'),
     expired: t('identity.expired'),
     current: t('identity.current'),
@@ -90,11 +105,7 @@ export default async function ProEmployeesPage({
       <section className="space-y-3">
         <div>
           <h2 className="text-lg font-semibold">{t('table.title')}</h2>
-          <p className="text-muted-foreground text-sm">
-            {result.state === 'data'
-              ? t('table.description', { count: result.total })
-              : t('states.partial')}
-          </p>
+          <p className="text-muted-foreground text-sm">{registryDescription}</p>
         </div>
         <EmployeeRegistryTable result={result} labels={labels} locale={locale} />
         <EmployeeRegistryPagination slug={slug} search={search} result={result} labels={labels} />

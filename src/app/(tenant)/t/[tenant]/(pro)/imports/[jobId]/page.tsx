@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
   safeImportErrorCode,
@@ -61,6 +62,7 @@ export default async function BulkImportJobPage({
 }) {
   const { tenant: slug, jobId } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 

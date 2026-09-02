@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import {
   employeeRisk,
-  maskIdentifierPresence,
+  listProEmployeeRegistry,
   parseEmployeeRegistrySearch,
 } from './pro-employee-registry';
 
@@ -37,9 +37,114 @@ test('registry reports renewal attention from only date-backed visa and EID valu
   assert.equal(employeeRisk(null, null, new Date('2026-05-01T00:00:00Z')), 'unknown');
 });
 
-test('registry never returns identity values and uses only a presence-safe mask', () => {
-  assert.equal(maskIdentifierPresence(null), 'missing');
-  assert.equal(maskIdentifierPresence('encrypted-value'), 'recorded');
+test('registry authorizes the actor before querying and scopes every store call to the resolved Company', async () => {
+  const calls: Array<Record<string, unknown>> = [];
+  const result = await listProEmployeeRegistry(
+    {
+      actorProfileId: 'pro-1',
+      tenantSlug: 'acme',
+      search: parseEmployeeRegistrySearch({ status: 'active', identity: 'visa', page: '2' }),
+    },
+    {
+      authorize: async ({ actorProfileId, tenantSlug }) => {
+        assert.equal(actorProfileId, 'pro-1');
+        assert.equal(tenantSlug, 'acme');
+        return { tenantId: 'tenant-1', companyId: 'company-1' };
+      },
+      store: {
+        list: async (input) => {
+          calls.push(input);
+          return { data: [], count: 0, error: null };
+        },
+        total: async (input) => {
+          calls.push(input);
+          return { count: 3, error: null };
+        },
+      },
+    },
+  );
+
+  assert.equal(result.state, 'no_results');
+  assert.equal(result.canonicalPage, 1);
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((call) => call.tenantId === 'tenant-1' && call.companyId === 'company-1'));
+  assert.deepEqual(calls[0]?.search, {
+    q: '',
+    status: 'active',
+    identity: 'visa',
+    risk: 'all',
+    page: 2,
+    focus: null,
+  });
+});
+
+test('inactive or cross-Company authorization cannot reach the service-role store', async () => {
+  for (const code of ['TENANT_INACTIVE', 'ASSIGNED_COMPANY_MISMATCH']) {
+    let queried = false;
+    await assert.rejects(
+      listProEmployeeRegistry(
+        { actorProfileId: 'pro-1', tenantSlug: 'acme', search: parseEmployeeRegistrySearch({}) },
+        {
+          authorize: async () => {
+            throw new Error(code);
+          },
+          store: {
+            list: async () => {
+              queried = true;
+              return { data: [], count: 0, error: null };
+            },
+            total: async () => ({ count: 0, error: null }),
+          },
+        },
+      ),
+      new RegExp(code),
+    );
+    assert.equal(queried, false);
+  }
+});
+
+test('registry distinguishes empty, no-results, unavailable, and partial count failure without source rows', async () => {
+  const search = parseEmployeeRegistrySearch({});
+  const authorize = async () => ({ tenantId: 'tenant-1', companyId: 'company-1' });
+  const base = { actorProfileId: 'pro-1', tenantSlug: 'acme', search };
+  const withStore = async (
+    list: { count: number | null; error: unknown },
+    total: { count: number | null; error: unknown },
+  ) =>
+    listProEmployeeRegistry(base, {
+      authorize,
+      store: { list: async () => ({ data: [], ...list }), total: async () => total },
+    });
+
+  assert.equal(
+    (await withStore({ count: 0, error: null }, { count: 0, error: null })).state,
+    'empty',
+  );
+  assert.equal(
+    (await withStore({ count: 0, error: null }, { count: 5, error: null })).state,
+    'no_results',
+  );
+  assert.equal(
+    (await withStore({ count: null, error: new Error('private') }, { count: 0, error: null }))
+      .state,
+    'unavailable',
+  );
+  assert.equal(
+    (await withStore({ count: 1, error: null }, { count: null, error: new Error('private') }))
+      .state,
+    'partial',
+  );
+  const unavailableOnLaterPage = await listProEmployeeRegistry(
+    { ...base, search: parseEmployeeRegistrySearch({ page: '3' }) },
+    {
+      authorize,
+      store: {
+        list: async () => ({ data: null, count: null, error: new Error('private') }),
+        total: async () => ({ count: 0, error: null }),
+      },
+    },
+  );
+  assert.equal(unavailableOnLaterPage.canonicalPage, 3);
 });
 
 test('registry page is a Company-scoped, server-paginated read-only workspace', () => {
@@ -52,8 +157,10 @@ test('registry page is a Company-scoped, server-paginated read-only workspace', 
 
   assert.match(page, /requireProTenantRouteAccess\(slug\)/u);
   assert.match(page, /readAssignedCompanyForPro\(session\.id, slug\)/u);
-  assert.match(page, /listProEmployeeRegistry\(tenant\.id, company\.id,/u);
-  assert.match(data, /\.eq\('tenant_id', tenantId\)[\s\S]*?\.eq\('company_id', companyId\)/u);
+  assert.match(page, /requireActiveTenant\(tenant\.id\)/u);
+  assert.match(page, /listProEmployeeRegistry\(\{/u);
+  assert.match(data, /actorProfileId/u);
+  assert.match(data, /requireActiveTenant\(tenant\.id\)/u);
   assert.match(data, /count: 'exact'/u);
   assert.match(
     data,

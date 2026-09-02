@@ -1062,20 +1062,20 @@
     "employeeRegistry": {
       "eyebrow": "Company workforce",
       "title": "Employees",
-      "description": "Read-only employee identity and renewal signals for your assigned company.",
+      "description": "Read-only employee status and visa or Emirates ID expiry signals for your assigned company.",
       "import": "Import CSV",
       "notRecorded": "Not recorded",
       "filters": {
         "search": "Search",
         "searchPlaceholder": "Name or email",
         "status": "Employment status",
-        "identity": "Identity record",
+        "identity": "Expiry record",
         "risk": "Renewal risk",
         "apply": "Apply",
         "reset": "Reset",
         "all": "All",
-        "visa": "Visa recorded",
-        "eid": "Emirates ID recorded"
+        "visa": "Visa expiry available",
+        "eid": "Emirates ID expiry available"
       },
       "status": { "active": "Active", "inactive": "Inactive", "terminated": "Terminated" },
       "identity": {
@@ -1098,8 +1098,8 @@
         "employee": "Employee",
         "risk": "Renewal risk",
         "provenance": "Import provenance",
-        "provenanceUnavailable": "Not recorded",
-        "maskedIdentifier": "Identifier hidden"
+        "phase3Unavailable": "Phase 3 unavailable",
+        "phase3Note": "Import provenance and document actions are unavailable until Phase 3."
       },
       "pagination": {
         "label": "Employee registry pages",
@@ -1113,7 +1113,7 @@
         "emptyFiltered": "No employees match these filters.",
         "emptyFilteredGuidance": "Reset or change the filters to view the registry.",
         "unavailable": "Employee registry unavailable",
-        "partial": "Some employee signals may be unavailable. Working data is shown independently.",
+        "partial": "The company total is temporarily unavailable. Matching employee rows remain available.",
         "sanitizedError": "Please retry. No employee details are shown in this message.",
         "retry": "Retry"
       }

@@ -16,6 +16,7 @@ import type {
   EmployeeRegistryRow,
   EmployeeRegistrySearch,
 } from '@/lib/data/pro-employee-registry';
+import { employeeRegistryDisplayState } from '@/lib/data/employee-registry-display';
 
 type Labels = Record<string, string>;
 
@@ -115,7 +116,7 @@ export function EmployeeRegistrySignals({
   labels: Labels;
 }) {
   const values =
-    result.state === 'data'
+    result.state !== 'unavailable'
       ? [String(result.total), String(result.rows.length), String(result.page)]
       : [labels.unavailableValue, labels.unavailableValue, labels.unavailableValue];
   return (
@@ -139,20 +140,33 @@ export function EmployeeRegistryTable({
   labels: Labels;
   locale: string;
 }) {
-  if (result.state === 'unavailable')
+  const displayState = employeeRegistryDisplayState(result);
+  if (displayState === 'unavailable')
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
         <p className="font-medium">{labels.unavailable}</p>
         <p className="text-muted-foreground mt-1 text-sm">{labels.sanitizedError}</p>
       </div>
     );
-  if (result.rows.length === 0)
+  if (displayState === 'partial')
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
-        <p className="font-medium">{result.total === 0 ? labels.empty : labels.emptyFiltered}</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {result.total === 0 ? labels.emptyGuidance : labels.emptyFilteredGuidance}
-        </p>
+        <p className="font-medium">{labels.partial}</p>
+        <p className="text-muted-foreground mt-1 text-sm">{labels.sanitizedError}</p>
+      </div>
+    );
+  if (displayState === 'no_results')
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center">
+        <p className="font-medium">{labels.emptyFiltered}</p>
+        <p className="text-muted-foreground mt-1 text-sm">{labels.emptyFilteredGuidance}</p>
+      </div>
+    );
+  if (displayState === 'empty')
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center">
+        <p className="font-medium">{labels.empty}</p>
+        <p className="text-muted-foreground mt-1 text-sm">{labels.emptyGuidance}</p>
       </div>
     );
   const formatDate = new Intl.DateTimeFormat(locale, {
@@ -160,28 +174,31 @@ export function EmployeeRegistryTable({
     timeZone: 'Asia/Dubai',
   });
   return (
-    <div
-      className="border-border/60 overflow-x-auto rounded-lg border"
-      role="region"
-      aria-label={labels.table}
-    >
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{labels.employee}</TableHead>
-            <TableHead>{labels.status}</TableHead>
-            <TableHead>{labels.visa}</TableHead>
-            <TableHead>{labels.eid}</TableHead>
-            <TableHead>{labels.tableRisk}</TableHead>
-            <TableHead>{labels.provenance}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {result.rows.map((row) => (
-            <EmployeeRow row={row} key={row.id} labels={labels} formatDate={formatDate} />
-          ))}
-        </TableBody>
-      </Table>
+    <div className="space-y-2">
+      <p className="text-muted-foreground text-sm">{labels.phase3Note}</p>
+      <div
+        className="border-border/60 overflow-x-auto rounded-lg border"
+        role="region"
+        aria-label={labels.table}
+      >
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{labels.employee}</TableHead>
+              <TableHead>{labels.status}</TableHead>
+              <TableHead>{labels.visa}</TableHead>
+              <TableHead>{labels.eid}</TableHead>
+              <TableHead>{labels.tableRisk}</TableHead>
+              <TableHead>{labels.provenance}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {result.rows.map((row) => (
+              <EmployeeRow row={row} key={row.id} labels={labels} formatDate={formatDate} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
@@ -197,7 +214,7 @@ export function EmployeeRegistryPagination({
   result: EmployeeRegistryResult;
   labels: Labels;
 }) {
-  if (result.state !== 'data' || result.total <= result.pageSize) return null;
+  if (result.state === 'unavailable' || result.total <= result.pageSize) return null;
   const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
   const href = (page: number) => {
     const query = new URLSearchParams();
@@ -273,9 +290,7 @@ function EmployeeRow({
           {labels[row.risk]}
         </Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground text-sm">
-        {labels.provenanceUnavailable}
-      </TableCell>
+      <TableCell className="text-muted-foreground text-sm">{labels.phase3Unavailable}</TableCell>
     </TableRow>
   );
 }
@@ -297,7 +312,6 @@ function IdentityCell({
       <p className="text-muted-foreground mt-1 text-xs whitespace-nowrap">
         {expiry ? formatDate.format(new Date(`${expiry}T00:00:00Z`)) : labels.notRecorded}
       </p>
-      <p className="text-muted-foreground text-xs">{labels.maskedIdentifier}</p>
     </TableCell>
   );
 }

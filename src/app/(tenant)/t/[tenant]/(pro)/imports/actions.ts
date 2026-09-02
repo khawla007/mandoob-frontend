@@ -97,9 +97,6 @@ export async function uploadBulkImportAction(
       console.error('bulk-import.job-insert failed');
       return { ok: false, error: 'Could not create import job', code: 'INTERNAL' };
     }
-    await writeImportAudit(admin, tenant.id, session.id, company.id, 'bulk_import_uploaded', {
-      kind: 'employees',
-    });
     return { ok: true, data: { id: jobId } };
   } catch (error) {
     if (error instanceof Error && ['TENANT_NOT_FOUND', 'FORBIDDEN'].includes(error.message)) {
@@ -156,19 +153,6 @@ export async function validateBulkImportAction(
         },
         'validating',
       );
-      await writeImportAudit(
-        admin,
-        tenant.id,
-        context.session.id,
-        company.id,
-        'bulk_import_validated',
-        {
-          kind: job.kind,
-          total: result.totalRows,
-          invalid: invalidRows,
-        },
-      );
-
       revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
       return { ok: true, data: { totalRows: result.totalRows, errorRows: invalidRows } };
     },
@@ -246,7 +230,7 @@ export async function executeBulkImportAction(
         },
         'importing',
       );
-      await writeImportAudit(admin, tenant.id, session.id, company.id, 'bulk_imported', {
+      await writeAcceptedImportAudit(admin, tenant.id, session.id, company.id, {
         kind: job.kind,
         total: validation.totalRows,
         succeeded: result.insertedRows,
@@ -306,10 +290,6 @@ export async function cancelBulkImportAction(
       },
       job.status,
     );
-    await writeImportAudit(admin, tenant.id, session.id, company.id, 'bulk_import_cancelled', {
-      kind: job.kind,
-      priorStatus: job.status,
-    });
     revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
     return { ok: true, data: { status: 'cancelled' } };
   } catch {
@@ -318,22 +298,25 @@ export async function cancelBulkImportAction(
   }
 }
 
-async function writeImportAudit(
+async function writeAcceptedImportAudit(
   admin: ReturnType<typeof createSupabaseServiceRoleClient>,
   tenantId: string,
   actorId: string,
   companyId: string,
-  action: string,
   details: Record<string, string | number>,
 ) {
-  const { error } = await admin.from('tenant_audit_log').insert({
-    tenant_id: tenantId,
-    actor_id: actorId,
-    action,
-    source: 'self_serve',
-    details: { companyId, ...details },
-  });
-  if (error) throw error;
+  try {
+    const { error } = await admin.from('tenant_audit_log').insert({
+      tenant_id: tenantId,
+      actor_id: actorId,
+      action: 'bulk_imported',
+      source: 'self_serve',
+      details: { company_id: companyId, ...details },
+    });
+    if (error) console.error('bulk-import.audit failed');
+  } catch {
+    console.error('bulk-import.audit failed');
+  }
 }
 
 async function readJob(

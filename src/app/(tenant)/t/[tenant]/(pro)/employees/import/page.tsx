@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmployeeImportForm } from '@/components/pro/EmployeeImportForm';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { uploadBulkImportAction } from '../../imports/actions';
 
@@ -16,9 +17,10 @@ export default async function EmployeeImportPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const { session } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
-  if (!company) notFound();
+  if (!company || company.tenantId !== tenant.id) notFound();
   const t = await getTranslations('pro.employeeImport');
 
   async function upload(
