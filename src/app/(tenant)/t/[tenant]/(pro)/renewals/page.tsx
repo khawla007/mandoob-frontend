@@ -44,13 +44,18 @@ export default async function RenewalsPage({
     redirect(renewalWorkspaceHref(slug, search, workspace.canonicalPage));
   }
 
-  const totalPages = Math.max(1, Math.ceil(workspace.total / workspace.pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil((workspace.total === null ? 0 : workspace.total) / workspace.pageSize),
+  );
   const hasFilters = Boolean(
     search.type !== 'all' ||
     search.status !== 'all' ||
     search.urgency !== 'all' ||
     search.q ||
-    search.focus,
+    search.focus ||
+    search.dateState !== 'all' ||
+    search.deadlineDate,
   );
   const number = new Intl.NumberFormat(locale);
   const typeLabels = {
@@ -66,17 +71,36 @@ export default async function RenewalsPage({
     completed: t('renewalStatusCompleted'),
     cancelled: t('renewalStatusCancelled'),
   };
-  const summaries = [
-    { label: t('renewalSummaryFiltered'), value: workspace.total, hint: t('renewalSummaryExact') },
+  const unavailableSummary = workspace.state === 'unavailable';
+  const summaries: Array<{ label: string; value: number | null; hint: string }> = [
+    {
+      label: t('renewalSummaryFiltered'),
+      value: unavailableSummary ? null : workspace.total,
+      hint: unavailableSummary ? t('renewalSummaryUnavailable') : t('renewalSummaryExact'),
+    },
     {
       label: t('renewalSummaryVisible'),
-      value: workspace.rows.length,
-      hint: t('renewalSummaryCurrentPage'),
+      value: unavailableSummary ? null : workspace.rows.length,
+      hint: unavailableSummary ? t('renewalSummaryUnavailable') : t('renewalSummaryCurrentPage'),
     },
     {
       label: t('renewalSummaryOverdue'),
-      value: workspace.rows.filter((row) => row.status === 'overdue' || row.daysOut < 0).length,
-      hint: t('renewalSummaryCurrentPage'),
+      value: unavailableSummary
+        ? null
+        : workspace.rows.filter(
+            (row) =>
+              row.status !== 'completed' &&
+              row.status !== 'cancelled' &&
+              (row.status === 'overdue' || (row.daysOut !== null && row.daysOut < 0)),
+          ).length,
+      hint: unavailableSummary ? t('renewalSummaryUnavailable') : t('renewalSummaryCurrentPage'),
+    },
+    {
+      label: t('renewalSummaryMissingDates'),
+      value: unavailableSummary
+        ? null
+        : workspace.rows.filter((row) => row.dueDate === null).length,
+      hint: unavailableSummary ? t('renewalSummaryUnavailable') : t('renewalSummaryCurrentPage'),
     },
   ];
 
@@ -96,11 +120,13 @@ export default async function RenewalsPage({
         </CardHeader>
       </Card>
 
-      <dl className="signal-kpis-grid grid gap-2 sm:grid-cols-3">
+      <dl className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {summaries.map((summary) => (
           <div key={summary.label} className="signal-kpi signal-kpi--info min-w-0">
             <dt className="signal-kpi__label">{summary.label}</dt>
-            <dd className="signal-kpi__value">{number.format(summary.value)}</dd>
+            <dd className="signal-kpi__value">
+              {summary.value === null ? t('renewalValueUnavailable') : number.format(summary.value)}
+            </dd>
             <p className="signal-kpi__helper">{summary.hint}</p>
           </div>
         ))}
@@ -120,6 +146,14 @@ export default async function RenewalsPage({
             className="grid gap-3 pt-2 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]"
           >
             <input type="hidden" name="tab" value={search.tab} />
+            {search.focus ? <input type="hidden" name="focus" value={search.focus} /> : null}
+            {search.deadlineDate && search.deadlinePeriod ? (
+              <>
+                <input type="hidden" name="date" value={search.deadlineDate} />
+                <input type="hidden" name="period" value={search.deadlinePeriod} />
+                <input type="hidden" name="eventTypes" value="renewal" />
+              </>
+            ) : null}
             <label className="grid gap-1.5 text-sm font-medium">
               {t('renewalType')}
               <select name="type" defaultValue={search.type} className={fieldClass}>
@@ -155,7 +189,15 @@ export default async function RenewalsPage({
             </label>
             <label className="grid gap-1.5 text-sm font-medium">
               {t('renewalUrgency')}
-              <select name="urgency" defaultValue={search.urgency} className={fieldClass}>
+              <select
+                name="urgency"
+                defaultValue={search.urgency}
+                className={fieldClass}
+                disabled={search.tab !== 'active'}
+                aria-describedby={
+                  search.tab !== 'active' ? 'renewal-urgency-active-only' : undefined
+                }
+              >
                 <option value="all">{t('renewalUrgencyAll')}</option>
                 <option value="overdue">{t('renewalUrgencyOverdue')}</option>
                 <option value="today">{t('renewalUrgencyToday')}</option>
@@ -164,6 +206,19 @@ export default async function RenewalsPage({
                 <option value="60">{t('renewalUrgency60')}</option>
                 <option value="90">{t('renewalUrgency90')}</option>
                 <option value="future">{t('renewalUrgencyFuture')}</option>
+              </select>
+              {search.tab !== 'active' ? (
+                <span id="renewal-urgency-active-only" className="text-muted-foreground text-xs">
+                  {t('renewalStatusActiveOnly')}
+                </span>
+              ) : null}
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">
+              {t('renewalDateState')}
+              <select name="due" defaultValue={search.dateState} className={fieldClass}>
+                <option value="all">{t('renewalAllDateStates')}</option>
+                <option value="recorded">{t('renewalRecordedDates')}</option>
+                <option value="missing">{t('renewalMissingDates')}</option>
               </select>
             </label>
             <label className="grid gap-1.5 text-sm font-medium sm:col-span-2 xl:col-span-3">
@@ -186,6 +241,9 @@ export default async function RenewalsPage({
                     urgency: 'all',
                     q: '',
                     focus: null,
+                    dateState: 'all',
+                    deadlineDate: undefined,
+                    deadlinePeriod: undefined,
                     page: 1,
                   })}
                   className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex h-9 items-center text-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2"
@@ -230,6 +288,7 @@ export default async function RenewalsPage({
                 today: t('renewalUrgencyToday'),
                 overdue: t('renewalUrgencyOverdue'),
                 days: t('renewalDays'),
+                missingDate: t('renewalMissingDate'),
                 typeValues: typeLabels,
                 statusValues: statusLabels,
                 sourceValues: {
@@ -239,7 +298,7 @@ export default async function RenewalsPage({
               }}
             />
           ) : null}
-          {workspace.total > 0 ? (
+          {workspace.total !== null && workspace.total > 0 ? (
             <Pagination
               slug={slug}
               search={search}
@@ -266,6 +325,7 @@ export default async function RenewalsPage({
           labels={{
             title: t('renewalTimeline'),
             due: t('renewalDue'),
+            missingDate: t('renewalMissingDate'),
             types: typeLabels,
             statuses: statusLabels,
           }}
@@ -298,7 +358,14 @@ function RenewalTabs({
       {(Object.keys(labels) as RenewalWorkspaceSearch['tab'][]).map((tab) => (
         <Link
           key={tab}
-          href={renewalWorkspaceHref(slug, { ...search, tab, status: 'all', page: 1, focus: null })}
+          href={renewalWorkspaceHref(slug, {
+            ...search,
+            tab,
+            status: 'all',
+            urgency: tab === 'active' ? search.urgency : 'all',
+            page: 1,
+            focus: null,
+          })}
           className={
             tab === search.tab
               ? 'text-foreground font-medium underline underline-offset-4'

@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import type { RenewalRow, RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import type { RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import type { RenewalWorkspaceRow } from '@/lib/data/pro-renewal-workspace';
 
 export type RenewalsTableLabels = {
   queue: string;
@@ -12,13 +13,15 @@ export type RenewalsTableLabels = {
   today: string;
   overdue: string;
   days: string;
+  missingDate: string;
   typeValues: Record<RenewalType, string>;
   statusValues: Record<RenewalStatus, string>;
-  sourceValues: Record<RenewalRow['source'], string>;
+  sourceValues: Record<RenewalWorkspaceRow['source'], string>;
 };
 
-function dueText(row: RenewalRow, labels: RenewalsTableLabels): string | null {
+function dueText(row: RenewalWorkspaceRow, labels: RenewalsTableLabels): string | null {
   if (row.status === 'completed' || row.status === 'cancelled') return null;
+  if (row.daysOut === null) return null;
   if (row.daysOut < 0) return `${Math.abs(row.daysOut)} ${labels.days} ${labels.overdue}`;
   if (row.daysOut === 0) return labels.today;
   return `${row.daysOut} ${labels.days}`;
@@ -29,7 +32,7 @@ export function RenewalsTable({
   labels,
   locale,
 }: {
-  rows: RenewalRow[];
+  rows: RenewalWorkspaceRow[];
   labels: RenewalsTableLabels;
   locale: string;
 }) {
@@ -67,7 +70,11 @@ export function RenewalsTable({
               </td>
               <td className="max-w-[28rem] px-3 py-3 font-medium break-words">{row.label}</td>
               <td className="px-3 py-3 whitespace-nowrap">
-                <div>{date.format(new Date(`${row.dueDate}T00:00:00Z`))}</div>
+                <div>
+                  {row.dueDate
+                    ? date.format(new Date(`${row.dueDate}T00:00:00Z`))
+                    : labels.missingDate}
+                </div>
                 {dueText(row, labels) ? (
                   <div className="text-muted-foreground mt-0.5 text-xs">{dueText(row, labels)}</div>
                 ) : null}

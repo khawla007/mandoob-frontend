@@ -1,15 +1,17 @@
-import type { RenewalRow, RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import type { RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import type { RenewalWorkspaceRow } from '@/lib/data/pro-renewal-workspace';
 
 export function RenewalsTimeline({
   rows,
   locale,
   labels,
 }: {
-  rows: RenewalRow[];
+  rows: RenewalWorkspaceRow[];
   locale: string;
   labels: {
     title: string;
     due: string;
+    missingDate: string;
     types: Record<RenewalType, string>;
     statuses: Record<RenewalStatus, string>;
   };
@@ -33,7 +35,7 @@ export function RenewalsTimeline({
             <p className="font-medium">{row.label}</p>
             <p className="text-muted-foreground mt-0.5 text-xs">
               {labels.types[row.type]} · {labels.statuses[row.status]} · {labels.due}{' '}
-              {date.format(new Date(`${row.dueDate}T00:00:00Z`))}
+              {row.dueDate ? date.format(new Date(`${row.dueDate}T00:00:00Z`)) : labels.missingDate}
             </p>
           </li>
         ))}

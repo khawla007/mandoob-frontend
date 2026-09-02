@@ -66,9 +66,9 @@ test('renewals page consumes focus in an assigned-Company exact workspace read',
   );
   assert.match(page, /parseRenewalWorkspaceSearch\(await searchParams\)/);
   assert.match(page, /listProRenewalWorkspace\(/);
-  assert.match(workspace, /focus:.*first\('focus'\).*first\('target'\)/);
+  assert.match(workspace, /focus:.*first\('focus'\).*first\('target'\).*first\('renewal'\)/);
   assert.match(workspace, /\.eq\('tenant_id', access\.tenantId\)/);
   assert.match(workspace, /\.eq\('company_id', access\.companyId\)/);
-  assert.match(workspace, /if \(search\.focus\) return scoped\.eq\('id', search\.focus\)/);
+  assert.match(workspace, /if \(search\.focus\) scoped = scoped\.eq\('id', search\.focus\)/);
   assert.match(dal, /\.eq\('tenant_id', tenantId\)/);
 });

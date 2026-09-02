@@ -30,6 +30,7 @@ test('renewal workspace accepts only supported URL filters and preserves a valid
       q: 'trade',
       page: 2,
       focus,
+      dateState: 'all',
     },
   );
   assert.deepEqual(parseRenewalWorkspaceSearch({ type: 'passport', urgency: '45', page: '-1' }), {
@@ -40,6 +41,7 @@ test('renewal workspace accepts only supported URL filters and preserves a valid
     q: '',
     page: 1,
     focus: null,
+    dateState: 'all',
   });
   assert.equal(
     parseRenewalWorkspaceSearch({ tab: 'completed', status: 'overdue' }).status,
@@ -58,19 +60,79 @@ test('renewal workspace links preserve the supported filter and reset pagination
   });
   assert.equal(
     renewalWorkspaceHref('north star/uae', search),
-    '/t/north%20star%2Fuae/renewals?tab=completed&type=eid&urgency=90&q=EID&page=3',
+    '/t/north%20star%2Fuae/renewals?tab=completed&type=eid&q=EID&page=3',
   );
   assert.equal(
     renewalWorkspaceHref('acme', { ...search, page: 1 }),
-    '/t/acme/renewals?tab=completed&type=eid&urgency=90&q=EID',
+    '/t/acme/renewals?tab=completed&type=eid&q=EID',
   );
 });
 
-test('renewal urgency uses Dubai business dates and separates overdue, today, windows, future, and terminal records', () => {
+test('renewal workspace consumes legacy Signal focus, days, and Dubai deadline links without dropping their filters', () => {
+  const focus = '22222222-2222-4222-8222-222222222222';
+  const parsed = parseRenewalWorkspaceSearch({
+    renewal: focus,
+    days: '30',
+    date: '2026-08-12',
+    period: 'afternoon',
+    eventTypes: 'renewal',
+  });
+  assert.deepEqual(parsed, {
+    tab: 'active',
+    type: 'all',
+    status: 'all',
+    urgency: '30',
+    q: '',
+    page: 1,
+    focus,
+    deadlineDate: '2026-08-12',
+    deadlinePeriod: 'afternoon',
+    dateState: 'recorded',
+  });
+  assert.equal(
+    renewalWorkspaceHref('acme', parsed),
+    `/t/acme/renewals?urgency=30&focus=${focus}&due=recorded&date=2026-08-12&period=afternoon&eventTypes=renewal`,
+  );
+  assert.deepEqual(
+    parseRenewalWorkspaceSearch({ date: 'bad', period: 'afternoon', eventTypes: 'renewal' }),
+    {
+      tab: 'active',
+      type: 'all',
+      status: 'all',
+      urgency: 'all',
+      q: '',
+      page: 1,
+      focus: null,
+      dateState: 'all',
+    },
+  );
+});
+
+test('terminal tabs canonicalize urgency while missing-date remains an explicit distinct filter', () => {
+  const terminal = parseRenewalWorkspaceSearch({
+    tab: 'completed',
+    urgency: '30',
+    days: '90',
+    due: 'missing',
+  });
+  assert.equal(terminal.urgency, 'all');
+  assert.equal(terminal.dateState, 'missing');
+  assert.equal(classifyRenewalUrgency(null, 'completed', '2026-08-12'), 'completed');
+  assert.equal(classifyRenewalUrgency(null, 'cancelled', '2026-08-12'), 'cancelled');
+  assert.equal(classifyRenewalUrgency(null, 'upcoming', '2026-08-12'), 'missing');
+  assert.doesNotMatch(
+    renewalWorkspaceHref('acme', { ...terminal, urgency: '90' }),
+    /urgency=/u,
+    'terminal links must not reintroduce an ignored urgency window',
+  );
+});
+
+test('renewal urgency uses Dubai business dates and separates overdue, today, cumulative windows, future, and terminal records', () => {
   const today = '2026-08-12';
   assert.equal(classifyRenewalUrgency('2026-08-11', 'overdue', today), 'overdue');
   assert.equal(classifyRenewalUrgency('2026-08-12', 'due_soon', today), 'today');
   assert.equal(classifyRenewalUrgency('2026-08-19', 'upcoming', today), '7');
+  assert.equal(classifyRenewalUrgency('2026-08-20', 'upcoming', today), '30');
   assert.equal(classifyRenewalUrgency('2026-09-11', 'upcoming', today), '30');
   assert.equal(classifyRenewalUrgency('2026-10-11', 'upcoming', today), '60');
   assert.equal(classifyRenewalUrgency('2026-11-10', 'upcoming', today), '90');
@@ -147,6 +209,11 @@ test('renewal workspace authorizes before its exact Company-scoped store read an
     ).state,
     'unavailable',
   );
+  const unavailable = await stateFor(
+    { data: [], count: null, error: new Error('private') },
+    { count: 0, error: null },
+  );
+  assert.equal(unavailable.total, null, 'failed reads must not manufacture a numeric zero total');
 });
 
 test('renewal workspace never reaches the store when authorization fails', async () => {
@@ -249,7 +316,7 @@ test('renewal Supabase adapter applies exact tenant and Company ownership, stabl
     ['in', 'status', ['upcoming', 'due_soon', 'overdue']],
     ['eq', 'type', 'license'],
     ['ilike', 'label', '%trade%'],
-    ['gt', 'due_date', '2026-08-19'],
+    ['gt', 'due_date', '2026-08-12'],
     ['lte', 'due_date', '2026-09-11'],
     ['order', 'due_date', { ascending: true }],
     ['order', 'id', { ascending: true }],
@@ -257,5 +324,100 @@ test('renewal Supabase adapter applies exact tenant and Company ownership, stabl
     ['select', 'id', { count: 'exact', head: true }],
     ['eq', 'tenant_id', 'tenant-1'],
     ['eq', 'company_id', 'company-1'],
+  ]);
+});
+
+test('renewal adapter keeps terminal rows out of urgency windows and can query defensively missing due dates', async () => {
+  const calls: Array<[string, ...unknown[]]> = [];
+  const response = { data: [], count: 0, error: null };
+  const fluent = Object.fromEntries(
+    ['select', 'eq', 'in', 'ilike', 'lte', 'gte', 'lt', 'gt', 'is', 'not', 'order', 'range'].map(
+      (method) => [
+        method,
+        (...args: unknown[]) => {
+          calls.push([method, ...args]);
+          return fluent;
+        },
+      ],
+    ),
+  ) as Record<string, (...args: unknown[]) => unknown> & {
+    then: (resolve: (value: typeof response) => unknown) => Promise<unknown>;
+  };
+  fluent.then = (resolve) => Promise.resolve(response).then(resolve);
+  const store = createRenewalWorkspaceSupabaseStore({ from: () => fluent } as never);
+  await store.list({
+    tenantId: 'tenant-1',
+    companyId: 'company-1',
+    search: parseRenewalWorkspaceSearch({ tab: 'completed', urgency: '30', due: 'missing' }),
+    from: 0,
+    to: 24,
+    today: '2026-08-12',
+  });
+  assert.deepEqual(calls, [
+    [
+      'select',
+      'id, tenant_id, company_id, type, label, due_date, status, source, completed_at, created_at, updated_at',
+      { count: 'exact' },
+    ],
+    ['eq', 'tenant_id', 'tenant-1'],
+    ['eq', 'company_id', 'company-1'],
+    ['in', 'status', ['completed']],
+    ['is', 'due_date', null],
+    ['order', 'due_date', { ascending: true }],
+    ['order', 'id', { ascending: true }],
+    ['range', 0, 24],
+  ]);
+});
+
+test('renewal adapter keeps exact Signal target, cumulative days, and Dubai deadline constraints together', async () => {
+  const calls: Array<[string, ...unknown[]]> = [];
+  const response = { data: [], count: 0, error: null };
+  const fluent = Object.fromEntries(
+    ['select', 'eq', 'in', 'ilike', 'lte', 'gte', 'lt', 'gt', 'is', 'not', 'order', 'range'].map(
+      (method) => [
+        method,
+        (...args: unknown[]) => {
+          calls.push([method, ...args]);
+          return fluent;
+        },
+      ],
+    ),
+  ) as Record<string, (...args: unknown[]) => unknown> & {
+    then: (resolve: (value: typeof response) => unknown) => Promise<unknown>;
+  };
+  fluent.then = (resolve) => Promise.resolve(response).then(resolve);
+  const focus = '33333333-3333-4333-8333-333333333333';
+  const store = createRenewalWorkspaceSupabaseStore({ from: () => fluent } as never);
+  await store.list({
+    tenantId: 'tenant-1',
+    companyId: 'company-1',
+    search: parseRenewalWorkspaceSearch({
+      target: focus,
+      days: '30',
+      date: '2026-08-12',
+      period: 'morning',
+      eventTypes: 'renewal',
+    }),
+    from: 0,
+    to: 24,
+    today: '2026-08-01',
+  });
+  assert.deepEqual(calls, [
+    [
+      'select',
+      'id, tenant_id, company_id, type, label, due_date, status, source, completed_at, created_at, updated_at',
+      { count: 'exact' },
+    ],
+    ['eq', 'tenant_id', 'tenant-1'],
+    ['eq', 'company_id', 'company-1'],
+    ['eq', 'id', focus],
+    ['in', 'status', ['upcoming', 'due_soon', 'overdue']],
+    ['not', 'due_date', 'is', null],
+    ['eq', 'due_date', '2026-08-12'],
+    ['gt', 'due_date', '2026-08-01'],
+    ['lte', 'due_date', '2026-08-31'],
+    ['order', 'due_date', { ascending: true }],
+    ['order', 'id', { ascending: true }],
+    ['range', 0, 24],
   ]);
 });

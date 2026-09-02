@@ -16,6 +16,7 @@ const renewalWorkspaceSearchSchema = z.object({
   q: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).max(10_000).optional(),
   focus: z.string().uuid().optional(),
+  due: z.enum(['all', 'recorded', 'missing']).optional(),
 });
 
 export type RenewalWorkspaceSearch = {
@@ -26,12 +27,20 @@ export type RenewalWorkspaceSearch = {
   q: string;
   page: number;
   focus: string | null;
+  dateState: 'all' | 'recorded' | 'missing';
+  deadlineDate?: string;
+  deadlinePeriod?: 'morning' | 'afternoon';
 };
 
 export type RenewalUrgency =
   | Exclude<RenewalWorkspaceSearch['urgency'], 'all'>
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'missing';
+export type RenewalWorkspaceRow = Omit<RenewalRow, 'dueDate' | 'daysOut'> & {
+  dueDate: string | null;
+  daysOut: number | null;
+};
 export type RenewalWorkspaceAccess = { tenantId: string; companyId: string };
 export type RenewalWorkspaceDbRow = {
   id: string;
@@ -39,7 +48,7 @@ export type RenewalWorkspaceDbRow = {
   company_id: string;
   type: RenewalType;
   label: string;
-  due_date: string;
+  due_date: string | null;
   status: RenewalStatus;
   source: 'license_backfill' | 'manual';
   completed_at: string | null;
@@ -66,7 +75,7 @@ export type RenewalWorkspaceStore = {
 };
 
 type WorkspaceBase = {
-  rows: RenewalRow[];
+  rows: RenewalWorkspaceRow[];
   total: number;
   unfilteredTotal: number | null;
   page: number;
@@ -80,7 +89,7 @@ export type RenewalWorkspaceResult =
   | {
       state: 'unavailable';
       rows: [];
-      total: 0;
+      total: null;
       unfilteredTotal: null;
       page: number;
       pageSize: number;
@@ -112,18 +121,35 @@ export function parseRenewalWorkspaceSearch(
     urgency: first('urgency'),
     q: first('q'),
     page: first('page'),
-    focus: first('focus') ?? first('target'),
+    focus: first('focus') ?? first('target') ?? first('renewal'),
+    due: first('due') ?? (first('missingDate') === 'true' ? 'missing' : undefined),
   });
   const value = parsed.success ? parsed.data : {};
   const tab = value.tab ?? 'active';
+  const rawDays = Number(first('days'));
+  const legacyUrgency = [7, 30, 60, 90].includes(rawDays) ? String(rawDays) : undefined;
+  const urgency = value.urgency ?? legacyUrgency ?? 'all';
+  const date = first('date');
+  const period = first('period');
+  const deadline: Pick<RenewalWorkspaceSearch, 'deadlineDate' | 'deadlinePeriod'> =
+    date &&
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date &&
+    (period === 'morning' || period === 'afternoon') &&
+    first('eventTypes') === 'renewal'
+      ? { deadlineDate: date, deadlinePeriod: period as 'morning' | 'afternoon' }
+      : {};
+  const dateState = value.due ?? (deadline.deadlineDate ? 'recorded' : 'all');
   return {
     tab,
     type: value.type ?? 'all',
     status: tab === 'active' ? (value.status ?? 'all') : 'all',
-    urgency: value.urgency ?? 'all',
+    urgency: tab === 'active' ? (urgency as RenewalWorkspaceSearch['urgency']) : 'all',
     q: value.q ?? '',
     page: value.page ?? 1,
     focus: value.focus ?? null,
+    dateState,
+    ...(dateState !== 'missing' ? deadline : {}),
   };
 }
 
@@ -136,21 +162,28 @@ export function renewalWorkspaceHref(
   if (search.tab !== 'active') query.set('tab', search.tab);
   if (search.type !== 'all') query.set('type', search.type);
   if (search.status !== 'all' && search.tab === 'active') query.set('status', search.status);
-  if (search.urgency !== 'all') query.set('urgency', search.urgency);
+  if (search.urgency !== 'all' && search.tab === 'active') query.set('urgency', search.urgency);
   if (search.q) query.set('q', search.q);
   if (search.focus) query.set('focus', search.focus);
+  if (search.dateState !== 'all') query.set('due', search.dateState);
+  if (search.deadlineDate && search.deadlinePeriod) {
+    query.set('date', search.deadlineDate);
+    query.set('period', search.deadlinePeriod);
+    query.set('eventTypes', 'renewal');
+  }
   if (page > 1) query.set('page', String(page));
   const suffix = query.toString();
   return `/t/${encodeURIComponent(slug)}/renewals${suffix ? `?${suffix}` : ''}`;
 }
 
 export function classifyRenewalUrgency(
-  dueDate: string,
+  dueDate: string | null,
   status: RenewalStatus,
   today = signalBusinessDate(),
 ): RenewalUrgency {
   if (status === 'completed') return 'completed';
   if (status === 'cancelled') return 'cancelled';
+  if (!dueDate) return 'missing';
   const days = signalDaysBetween(today, dueDate);
   if (days < 0) return 'overdue';
   if (days === 0) return 'today';
@@ -161,7 +194,7 @@ export function classifyRenewalUrgency(
   return 'future';
 }
 
-function toRenewalRow(row: RenewalWorkspaceDbRow, today: string): RenewalRow {
+function toRenewalRow(row: RenewalWorkspaceDbRow, today: string): RenewalWorkspaceRow {
   return {
     id: row.id,
     tenantId: row.tenant_id,
@@ -169,7 +202,7 @@ function toRenewalRow(row: RenewalWorkspaceDbRow, today: string): RenewalRow {
     type: row.type,
     label: row.label,
     dueDate: row.due_date,
-    daysOut: signalDaysBetween(today, row.due_date),
+    daysOut: row.due_date ? signalDaysBetween(today, row.due_date) : null,
     status: row.status,
     source: row.source,
     completedAt: row.completed_at,
@@ -205,7 +238,7 @@ export async function listProRenewalWorkspace(
     return {
       state: 'unavailable',
       rows: [],
-      total: 0,
+      total: null,
       unfilteredTotal: null,
       page,
       pageSize: RENEWAL_WORKSPACE_PAGE_SIZE,
@@ -256,6 +289,8 @@ type RenewalWorkspaceQuery = PromiseLike<unknown> & {
   eq: (column: string, value: string) => RenewalWorkspaceQuery;
   in: (column: string, values: string[]) => RenewalWorkspaceQuery;
   ilike: (column: string, value: string) => RenewalWorkspaceQuery;
+  is: (column: string, value: null) => RenewalWorkspaceQuery;
+  not: (column: string, operator: 'is', value: null) => RenewalWorkspaceQuery;
   lte: (column: string, value: string) => RenewalWorkspaceQuery;
   gte: (column: string, value: string) => RenewalWorkspaceQuery;
   lt: (column: string, value: string) => RenewalWorkspaceQuery;
@@ -284,29 +319,33 @@ export function createRenewalWorkspaceSupabaseStore(
     today: string,
   ) => {
     let scoped = query.eq('tenant_id', access.tenantId).eq('company_id', access.companyId);
-    if (search.focus) return scoped.eq('id', search.focus);
+    // Signal drilldowns may carry both an exact renewal and a queue filter. Keep
+    // both constraints; dropping the latter changes the meaning of the link.
+    if (search.focus) scoped = scoped.eq('id', search.focus);
     scoped = scoped.in('status', search.tab === 'active' ? [...activeStatuses] : [search.tab]);
     if (search.status !== 'all' && search.tab === 'active')
       scoped = scoped.eq('status', search.status);
     if (search.type !== 'all') scoped = scoped.eq('type', search.type);
     if (search.q)
       scoped = scoped.ilike('label', `%${search.q.replaceAll('%', '\\%').replaceAll('_', '\\_')}%`);
+    if (search.dateState === 'missing') scoped = scoped.is('due_date', null);
+    if (search.dateState === 'recorded') scoped = scoped.not('due_date', 'is', null);
+    if (search.deadlineDate) {
+      // Renewals persist a Dubai business *date*, not a timestamp. The Signal
+      // period remains in the canonical link, while this schema can truthfully
+      // narrow the queue to that exact stored business date.
+      scoped = scoped.eq('due_date', search.deadlineDate);
+    }
     if (search.urgency === 'overdue') scoped = scoped.lt('due_date', today);
     if (search.urgency === 'today') scoped = scoped.eq('due_date', today);
     if (search.urgency === '7')
       scoped = scoped.gt('due_date', today).lte('due_date', addSignalDays(today, 7));
     if (search.urgency === '30')
-      scoped = scoped
-        .gt('due_date', addSignalDays(today, 7))
-        .lte('due_date', addSignalDays(today, 30));
+      scoped = scoped.gt('due_date', today).lte('due_date', addSignalDays(today, 30));
     if (search.urgency === '60')
-      scoped = scoped
-        .gt('due_date', addSignalDays(today, 30))
-        .lte('due_date', addSignalDays(today, 60));
+      scoped = scoped.gt('due_date', today).lte('due_date', addSignalDays(today, 60));
     if (search.urgency === '90')
-      scoped = scoped
-        .gt('due_date', addSignalDays(today, 60))
-        .lte('due_date', addSignalDays(today, 90));
+      scoped = scoped.gt('due_date', today).lte('due_date', addSignalDays(today, 90));
     if (search.urgency === 'future') scoped = scoped.gt('due_date', addSignalDays(today, 90));
     return scoped;
   };

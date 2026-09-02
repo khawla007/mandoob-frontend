@@ -32,18 +32,22 @@ test('renewal page is an active-tenant, assigned-Company, server-paginated read-
   );
 });
 
-test('renewal page supports tab, type, status, urgency, search, page, and focus without a missing-date control', () => {
+test('renewal page supports canonical Signal drilldowns, missing dates, and unavailable summaries', () => {
   const page = readFileSync(pagePath, 'utf8');
+  const table = readFileSync(tablePath, 'utf8');
   const workspace = readFileSync(workspacePath, 'utf8');
-  for (const name of ['tab', 'type', 'status', 'urgency', 'q', 'page', 'focus']) {
+  for (const name of ['tab', 'type', 'status', 'urgency', 'q', 'page', 'focus', 'due', 'renewal']) {
     assert.match(workspace, new RegExp(`['\"]${name}['\"]`, 'u'));
   }
   assert.match(page, /name="type"/u);
   assert.match(page, /name="status"/u);
   assert.match(page, /renewalStatusActiveOnly/u);
   assert.match(page, /name="urgency"/u);
+  assert.match(page, /name="due"/u);
+  assert.match(page, /workspace\.state === 'unavailable'/u);
+  assert.match(page, /summary\.value === null/u);
+  assert.match(table, /row\.dueDate[\s\S]*?labels\.missingDate/u);
   assert.match(page, /name="q"/u);
-  assert.doesNotMatch(page, /missing[ -]?date/iu);
 });
 
 test('renewal route supplies localized loading and sanitized retry geometry', () => {
@@ -74,11 +78,19 @@ test('renewal copy stays in English-Arabic parity for unavailable actions and qu
     'renewalMutationsUnavailableDescription',
     'renewalSummaryFiltered',
     'renewalSummaryVisible',
+    'renewalSummaryMissingDates',
     'renewalSummaryExact',
     'renewalSummaryCurrentPage',
+    'renewalSummaryUnavailable',
+    'renewalValueUnavailable',
     'renewalFilters',
     'renewalSearch',
     'renewalUrgency',
+    'renewalDateState',
+    'renewalAllDateStates',
+    'renewalRecordedDates',
+    'renewalMissingDates',
+    'renewalMissingDate',
     'renewalNoResults',
     'renewalNoResultsHint',
     'renewalQueue',
