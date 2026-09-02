@@ -50,6 +50,8 @@ type PublicPricingTierIdentity =
 
 type PublicPricingTierDetails = {
   source: PublicPricingSource;
+  intendedFit: string;
+  caveat: string;
   price: PublicPrice;
   activeCompanyLimit: 1;
   companyPolicy: 'At most one active Company per PRO';
@@ -133,10 +135,13 @@ const DIFFERENTIATION_CATEGORIES = [
 
 function createTier<const Identity extends PublicPricingTierIdentity>(
   identity: Identity,
+  intendedFit: string,
 ): Identity & PublicPricingTierDetails {
   return {
     ...identity,
     source: approvedStaticSource(),
+    intendedFit,
+    caveat: 'Capability allocation, allowances, and current terms require plan confirmation.',
     price: priceOnRequest(),
     activeCompanyLimit: 1,
     companyPolicy: 'At most one active Company per PRO',
@@ -166,9 +171,18 @@ function deepFreeze<T>(value: T): DeepReadonly<T> {
 
 export const PUBLIC_PRICING_CONTRACT = deepFreeze({
   tiers: [
-    createTier({ id: 'starter', name: 'Starter' }),
-    createTier({ id: 'professional', name: 'Professional' }),
-    createTier({ id: 'enterprise', name: 'Enterprise' }),
+    createTier(
+      { id: 'starter', name: 'Starter' },
+      'For PROs shaping a focused Company workspace and its core operating records.',
+    ),
+    createTier(
+      { id: 'professional', name: 'Professional' },
+      'For PROs coordinating broader workflows for one active assigned Company.',
+    ),
+    createTier(
+      { id: 'enterprise', name: 'Enterprise' },
+      'For PROs who need a tailored workspace specification and support discussion.',
+    ),
   ],
   differentiationCategories: [...DIFFERENTIATION_CATEGORIES],
   addOns: [
