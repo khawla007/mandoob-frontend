@@ -8,6 +8,19 @@ import { addSignalDays, signalBusinessDate, signalDaysBetween } from '@/lib/data
 export const RENEWAL_WORKSPACE_PAGE_SIZE = 25;
 
 const activeStatuses = ['upcoming', 'due_soon', 'overdue'] as const satisfies RenewalStatus[];
+
+function isStrictIsoCalendarDate(value: string | undefined): value is string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value ?? '');
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1) return false;
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
 const renewalWorkspaceSearchSchema = z.object({
   tab: z.enum(['active', 'completed', 'cancelled']).optional(),
   type: z.enum(['all', 'license', 'visa', 'eid', 'ejari']).optional(),
@@ -133,8 +146,7 @@ export function parseRenewalWorkspaceSearch(
   const period = first('period');
   const deadline: Pick<RenewalWorkspaceSearch, 'deadlineDate' | 'deadlinePeriod'> =
     date &&
-    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
-    new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date &&
+    isStrictIsoCalendarDate(date) &&
     (period === 'morning' || period === 'afternoon') &&
     first('eventTypes') === 'renewal'
       ? { deadlineDate: date, deadlinePeriod: period as 'morning' | 'afternoon' }

@@ -108,6 +108,44 @@ test('renewal workspace consumes legacy Signal focus, days, and Dubai deadline l
   );
 });
 
+test('renewal workspace rejects malformed calendar dates without throwing, including repeated query values', () => {
+  for (const date of ['2026-99-99', '2026-04-31', '2026-02-29']) {
+    assert.doesNotThrow(() =>
+      parseRenewalWorkspaceSearch({ date, period: 'afternoon', eventTypes: 'renewal' }),
+    );
+    assert.equal(
+      parseRenewalWorkspaceSearch({ date, period: 'afternoon', eventTypes: 'renewal' })
+        .deadlineDate,
+      undefined,
+    );
+  }
+  assert.deepEqual(
+    parseRenewalWorkspaceSearch({
+      date: ['2026-99-99', '2026-08-12'],
+      period: ['afternoon', 'morning'],
+      eventTypes: ['renewal', 'invoice'],
+    }),
+    {
+      tab: 'active',
+      type: 'all',
+      status: 'all',
+      urgency: 'all',
+      q: '',
+      page: 1,
+      focus: null,
+      dateState: 'all',
+    },
+  );
+  assert.equal(
+    parseRenewalWorkspaceSearch({
+      date: '2028-02-29',
+      period: 'morning',
+      eventTypes: 'renewal',
+    }).deadlineDate,
+    '2028-02-29',
+  );
+});
+
 test('terminal tabs canonicalize urgency while missing-date remains an explicit distinct filter', () => {
   const terminal = parseRenewalWorkspaceSearch({
     tab: 'completed',
