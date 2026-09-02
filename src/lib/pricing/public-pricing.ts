@@ -16,6 +16,7 @@ export type PublicPricingSource =
 type NumericPublicPrice =
   | {
       state: 'live' | 'approved-static';
+      source: string;
       currency: 'AED';
       minorUnits: number;
     }
@@ -39,7 +40,12 @@ export type PublicPricingTier = {
   companyPolicy: 'At most one active Company per PRO';
   cadences: readonly {
     name: 'monthly' | 'annual';
-    source: PublicPricingSource;
+    concept: Extract<PublicPricingSource, { state: 'approved-static' }>;
+    availability: {
+      state: 'unavailable';
+      display: 'Subject to confirmation';
+      reason: string;
+    };
   }[];
   categories: readonly PublicPricingCategory[];
 };
@@ -88,6 +94,12 @@ const PRICE_ON_REQUEST = {
   reason: 'No approved exact public amount exists',
 } as const satisfies PublicPrice;
 
+const CADENCE_AVAILABILITY = {
+  state: 'unavailable',
+  display: 'Subject to confirmation',
+  reason: 'Current monthly and annual availability is not approved for publication',
+} as const;
+
 const DIFFERENTIATION_CATEGORIES = [
   'Platform features',
   'Storage and documents',
@@ -105,8 +117,16 @@ function tier(id: PublicPricingTier['id'], name: PublicPricingTier['name']): Pub
     activeCompanyLimit: 1,
     companyPolicy: 'At most one active Company per PRO',
     cadences: [
-      { name: 'monthly', source: APPROVED_STATIC_SOURCE },
-      { name: 'annual', source: APPROVED_STATIC_SOURCE },
+      {
+        name: 'monthly',
+        concept: APPROVED_STATIC_SOURCE,
+        availability: CADENCE_AVAILABILITY,
+      },
+      {
+        name: 'annual',
+        concept: APPROVED_STATIC_SOURCE,
+        availability: CADENCE_AVAILABILITY,
+      },
     ],
     categories: DIFFERENTIATION_CATEGORIES,
   };
@@ -169,6 +189,12 @@ const aed = new Intl.NumberFormat('en-AE', {
 
 export function formatPublicPrice(price: PublicPrice): string {
   if (price.state === 'unavailable') return price.display;
+  if (
+    price.state !== 'illustrative' &&
+    (typeof price.source !== 'string' || !price.source.trim())
+  ) {
+    throw new Error('Numeric public pricing requires accepted source provenance');
+  }
   if (price.currency !== 'AED') throw new Error('Numeric public pricing must use AED');
   if (!Number.isInteger(price.minorUnits)) {
     throw new Error('Numeric public pricing must use integer minor units');

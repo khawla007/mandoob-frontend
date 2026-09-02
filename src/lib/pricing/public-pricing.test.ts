@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
   PUBLIC_PRICING_CONTRACT,
@@ -6,6 +7,11 @@ import {
   formatPublicPrice,
   type PublicPrice,
 } from './public-pricing';
+
+const pricingPageSource = readFileSync(
+  new URL('../../app/(public)/pricing/page.tsx', import.meta.url),
+  'utf8',
+);
 
 describe('public pricing presentation contract', () => {
   it('provides the exact approved tier order', () => {
@@ -39,15 +45,18 @@ describe('public pricing presentation contract', () => {
   it('requires AED, explicit currency, and integer minor units for numeric prices', () => {
     const approvedPrice: PublicPrice = {
       state: 'approved-static',
+      source: 'Accepted test fixture',
       currency: 'AED',
       minorUnits: 12_500,
     };
 
+    assert.equal(approvedPrice.source, 'Accepted test fixture');
     assert.equal(formatPublicPrice(approvedPrice), 'AED 125');
     assert.throws(
       () =>
         formatPublicPrice({
           state: 'approved-static',
+          source: 'Accepted test fixture',
           currency: 'USD',
           minorUnits: 12_500,
         } as unknown as PublicPrice),
@@ -57,10 +66,20 @@ describe('public pricing presentation contract', () => {
       () =>
         formatPublicPrice({
           state: 'approved-static',
+          source: 'Accepted test fixture',
           currency: 'AED',
           minorUnits: 12.5,
         }),
       /integer minor units/iu,
+    );
+    assert.throws(
+      () =>
+        formatPublicPrice({
+          state: 'approved-static',
+          currency: 'AED',
+          minorUnits: 12_500,
+        } as PublicPrice),
+      /accepted source provenance/iu,
     );
   });
 
@@ -88,11 +107,28 @@ describe('public pricing presentation contract', () => {
         tier.cadences.map((cadence) => cadence.name),
         ['monthly', 'annual'],
       );
+      for (const cadence of tier.cadences) {
+        assert.equal(cadence.concept.state, 'approved-static');
+        assert.equal(cadence.availability.state, 'unavailable');
+        assert.equal(cadence.availability.display, 'Subject to confirmation');
+      }
     }
 
     assert.doesNotMatch(
       JSON.stringify(PUBLIC_PRICING_CONTRACT),
       /discount|saving|percent|price lock|crossed-out/iu,
+    );
+  });
+
+  it('keeps the pricing page free of local price and allocation fixtures', () => {
+    assert.match(pricingPageSource, /PUBLIC_PRICING_CONTRACT/u);
+    assert.match(pricingPageSource, /formatPublicPrice/u);
+    assert.doesNotMatch(pricingPageSource, /\bconst\s+plans\s*=/u);
+    assert.doesNotMatch(pricingPageSource, /\bUSD\b|\b(?:4900|9900|19900)\b/u);
+    assert.doesNotMatch(pricingPageSource, /\/\s*month\b|\/month\b/iu);
+    assert.doesNotMatch(
+      pricingPageSource,
+      /features\s*:\s*\[|WhatsApp\s*\+\s*SMS|Priority support|Renewal alerts/iu,
     );
   });
 

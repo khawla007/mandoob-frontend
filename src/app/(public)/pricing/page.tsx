@@ -1,23 +1,5 @@
 import Link from 'next/link';
-import { formatMoney } from '@/lib/format/money';
-
-const plans = [
-  {
-    name: 'Starter',
-    price: 4900,
-    features: ['Company workspace', 'Document requests', 'Renewal alerts'],
-  },
-  {
-    name: 'Professional',
-    price: 9900,
-    features: ['Payments', 'WhatsApp + SMS', 'Audit exports'],
-  },
-  {
-    name: 'Enterprise',
-    price: 19900,
-    features: ['Assignment controls', 'Advanced audit', 'Priority support'],
-  },
-];
+import { PUBLIC_PRICING_CONTRACT, formatPublicPrice } from '@/lib/pricing/public-pricing';
 
 export default function PricingPage() {
   return (
@@ -37,14 +19,18 @@ export default function PricingPage() {
       </div>
       <div className="container">
         <div className="cell-row">
-          {plans.map((plan) => (
+          {PUBLIC_PRICING_CONTRACT.tiers.map((plan) => (
             <article key={plan.name} className="cell cell--svc">
               <span className="eyebrow">{plan.name}</span>
-              <p className="cell__metric">{formatMoney(plan.price, 'USD')}</p>
-              <p className="cell__sub">/ month</p>
+              <p className="cell__metric">{formatPublicPrice(plan.price)}</p>
+              <p className="cell__sub">
+                {plan.cadences
+                  .map((cadence) => `${cadence.name} concept — ${cadence.availability.display}`)
+                  .join('; ')}
+              </p>
               <ul className="dash-list">
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
+                {plan.categories.map((category) => (
+                  <li key={category}>{category}</li>
                 ))}
               </ul>
               <Link className="btn btn--accent btn--sm" href="/contact">
