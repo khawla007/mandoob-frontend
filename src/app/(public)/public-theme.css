@@ -920,6 +920,7 @@
 }
 .dark .site-public .pricing-hero__context,
 .dark .site-public .pricing-tier-grid {
+  border-color: var(--public-border-strong);
   box-shadow: none;
 }
 

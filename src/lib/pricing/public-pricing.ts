@@ -82,7 +82,27 @@ type CostBoundary = {
   price: Extract<PublicPrice, { state: 'unavailable' }>;
 };
 
+type ApprovedPublicationFact<Text extends string = string> = {
+  text: Text;
+  source: Extract<PublicPricingSource, { state: 'approved-static' }>;
+};
+
+type UnavailablePublicationFact<Text extends string = string> = {
+  text: Text;
+  source: Extract<PublicPricingSource, { state: 'unavailable' }>;
+};
+
+type PublicPricingPublicationSummary = {
+  companyPolicy: ApprovedPublicationFact<'At most one active Company per PRO'>;
+  billingConcepts: ApprovedPublicationFact<'Monthly and annual'>;
+  currentAvailability: UnavailablePublicationFact<'Subject to confirmation'>;
+  confirmationNotice: UnavailablePublicationFact;
+  categoryAllocationNotice: UnavailablePublicationFact;
+  separateCostsNotice: ApprovedPublicationFact<'Government and third-party costs are separate.'>;
+};
+
 export type PublicPricingContract = DeepReadonly<{
+  publicationSummary: PublicPricingPublicationSummary;
   tiers: readonly PublicPricingTier[];
   differentiationCategories: readonly PublicPricingCategory[];
   addOns: readonly {
@@ -109,6 +129,35 @@ function approvedStaticSource() {
   } as const satisfies PublicPricingSource;
 }
 
+function approvedPublicationFact<const Text extends string>(text: Text) {
+  return { text, source: approvedStaticSource() } as const;
+}
+
+function unavailablePublicationFact<const Text extends string>(text: Text, reason: string) {
+  return {
+    text,
+    source: { state: 'unavailable', reason } as const,
+  } as const;
+}
+
+const PUBLICATION_SUMMARY = {
+  companyPolicy: approvedPublicationFact('At most one active Company per PRO'),
+  billingConcepts: approvedPublicationFact('Monthly and annual'),
+  currentAvailability: unavailablePublicationFact(
+    'Subject to confirmation',
+    'Current monthly and annual availability is not approved for publication',
+  ),
+  confirmationNotice: unavailablePublicationFact(
+    'Exact amounts, billing terms, category allocation, and allowances are confirmed during a plan discussion.',
+    'Exact amounts, billing terms, category allocation, and allowances are not approved for publication',
+  ),
+  categoryAllocationNotice: unavailablePublicationFact(
+    'The categories below describe supported areas only. Exact allocation and current terms are confirmed before access.',
+    'Exact category allocation and current terms are not approved for publication',
+  ),
+  separateCostsNotice: approvedPublicationFact('Government and third-party costs are separate.'),
+} as const satisfies PublicPricingPublicationSummary;
+
 function priceOnRequest() {
   return {
     state: 'unavailable',
@@ -120,8 +169,8 @@ function priceOnRequest() {
 function cadenceAvailability() {
   return {
     state: 'unavailable',
-    display: 'Subject to confirmation',
-    reason: 'Current monthly and annual availability is not approved for publication',
+    display: PUBLICATION_SUMMARY.currentAvailability.text,
+    reason: PUBLICATION_SUMMARY.currentAvailability.source.reason,
   } as const;
 }
 
@@ -144,7 +193,7 @@ function createTier<const Identity extends PublicPricingTierIdentity>(
     caveat: 'Capability allocation, allowances, and current terms require plan confirmation.',
     price: priceOnRequest(),
     activeCompanyLimit: 1,
-    companyPolicy: 'At most one active Company per PRO',
+    companyPolicy: PUBLICATION_SUMMARY.companyPolicy.text,
     cadences: [
       {
         name: 'monthly',
@@ -170,6 +219,7 @@ function deepFreeze<T>(value: T): DeepReadonly<T> {
 }
 
 export const PUBLIC_PRICING_CONTRACT = deepFreeze({
+  publicationSummary: PUBLICATION_SUMMARY,
   tiers: [
     createTier(
       { id: 'starter', name: 'Starter' },

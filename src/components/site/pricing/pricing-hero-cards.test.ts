@@ -58,7 +58,7 @@ describe('pricing hero and tier cards', () => {
       assert.match(html, /<nav[^>]*aria-label="Breadcrumb"/u);
       assert.match(html, /<li aria-current="page">Pricing<\/li>/u);
       assert.match(html, /workspace/iu);
-      assert.match(html, /at most one active Company per PRO/u);
+      assert.match(html, /At most one active Company per PRO/u);
       assert.match(html, /monthly and annual/iu);
       assert.match(html, /subject to confirmation/iu);
       assert.match(html, /<a[^>]*href="\/contact"[^>]*>Discuss plans<\/a>/u);
@@ -78,8 +78,8 @@ describe('pricing hero and tier cards', () => {
         assert.ok(tierStart > previousTier, `${tier.name} must follow the preceding tier`);
         previousTier = tierStart;
 
-        const intendedFit = (tier as unknown as { intendedFit?: string }).intendedFit;
-        const caveat = (tier as unknown as { caveat?: string }).caveat;
+        const intendedFit = tier.intendedFit;
+        const caveat = tier.caveat;
         assert.ok(intendedFit, `${tier.name} must define intended-fit language centrally`);
         assert.ok(caveat, `${tier.name} must define its caveat centrally`);
         assert.match(html, new RegExp(intendedFit.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
@@ -97,7 +97,7 @@ describe('pricing hero and tier cards', () => {
       }
 
       assert.equal((html.match(/Price on request/gu) ?? []).length, 3);
-      assert.equal((html.match(/At most one active Company per PRO/gu) ?? []).length, 3);
+      assert.equal((html.match(/At most one active Company per PRO/gu) ?? []).length, 5);
       assert.equal(
         (html.match(/Monthly concept<\/span>Subject to confirmation/gu) ?? []).length,
         3,
@@ -114,6 +114,27 @@ describe('pricing hero and tier cards', () => {
     assert.match(pageSource, /formatPublicPrice\((?:plan|tier)\.price\)/u);
     assert.doesNotMatch(pageSource, /\b(?:const|let|var)\s+(?:plans|tiers|packages)\s*=/u);
     assert.doesNotMatch(pageSource, forbiddenPricingCopy);
+  });
+
+  it('renders publication-summary facts from the centralized contract without weaker literals', () => {
+    for (const field of [
+      'companyPolicy',
+      'billingConcepts',
+      'currentAvailability',
+      'confirmationNotice',
+      'categoryAllocationNotice',
+      'separateCostsNotice',
+    ]) {
+      assert.match(pageSource, new RegExp(`publicationSummary\\.${field}\\.text`, 'u'), field);
+    }
+
+    assert.doesNotMatch(pageSource, /One active assignment/u);
+    assert.doesNotMatch(pageSource, /Every tier supports at most one active Company per PRO/u);
+    assert.doesNotMatch(pageSource, />Monthly and annual</u);
+    assert.doesNotMatch(pageSource, />Subject to confirmation</u);
+    assert.doesNotMatch(pageSource, /Exact amounts, billing terms, category allocation/iu);
+    assert.doesNotMatch(pageSource, /The categories below describe supported areas only/iu);
+    assert.doesNotMatch(pageSource, /Government and third-party costs are separate/iu);
   });
 
   it('uses only public-theme custom properties that are declared in the token source', () => {
@@ -135,12 +156,16 @@ describe('pricing hero and tier cards', () => {
     );
   });
 
-  it('keeps source-level pricing geometry scoped, theme-aware, and overflow-safe', () => {
+  it('locks source-level scoping, theme, and overflow-trigger safeguards', () => {
     assert.ok(pricingCss.length > 100);
     assert.match(pricingCss, /\.site-public \.pricing-hero/u);
     assert.match(pricingCss, /\.site-public \.pricing-hero__grid\s*\{[^}]*minmax\(0,/u);
     assert.match(pricingCss, /\.site-public \.pricing-tier-grid\s*\{[^}]*repeat\(3,\s*minmax\(0,/u);
     assert.match(pricingCss, /\.dark \.site-public \.pricing-/u);
+    assert.match(
+      pricingCss,
+      /\.dark \.site-public \.pricing-hero__context,[\s\S]*?\.dark \.site-public \.pricing-tier-grid\s*\{[^}]*border-color:\s*var\(--public-border-strong\)/u,
+    );
     assert.match(pricingCss, /@media \(max-width: 899px\)[\s\S]*grid-template-columns:\s*1fr/u);
     assert.match(pricingCss, /(?:margin|padding|inset|border)-(?:inline|block)/u);
     assert.doesNotMatch(

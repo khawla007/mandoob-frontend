@@ -6,6 +6,8 @@ const cadenceLabel = (cadence: 'monthly' | 'annual') =>
   `${cadence.charAt(0).toUpperCase()}${cadence.slice(1)}`;
 
 export default function PricingPage() {
+  const { publicationSummary } = PUBLIC_PRICING_CONTRACT;
+
   return (
     <>
       <section className="pricing-hero" aria-labelledby="pricing-title">
@@ -27,9 +29,7 @@ export default function PricingPage() {
                 Compare Mandoob subscription concepts for a focused PRO workspace, operating
                 records, and supported Company workflows.
               </p>
-              <p className="pricing-hero__policy">
-                Every tier supports at most one active Company per PRO.
-              </p>
+              <p className="pricing-hero__policy">{publicationSummary.companyPolicy.text}.</p>
               <div className="cta-row pricing-hero__actions">
                 <Link className="btn btn--accent btn--lg" href="/contact">
                   Discuss plans
@@ -45,21 +45,18 @@ export default function PricingPage() {
               <dl>
                 <div>
                   <dt>Company policy</dt>
-                  <dd>One active assignment on every tier</dd>
+                  <dd>{publicationSummary.companyPolicy.text}</dd>
                 </div>
                 <div>
                   <dt>Billing concepts</dt>
-                  <dd>Monthly and annual</dd>
+                  <dd>{publicationSummary.billingConcepts.text}</dd>
                 </div>
                 <div>
                   <dt>Current availability</dt>
-                  <dd>Subject to confirmation</dd>
+                  <dd>{publicationSummary.currentAvailability.text}</dd>
                 </div>
               </dl>
-              <p>
-                Exact amounts, billing terms, category allocation, and allowances are confirmed
-                during a plan discussion.
-              </p>
+              <p>{publicationSummary.confirmationNotice.text}</p>
             </aside>
           </div>
         </div>
@@ -70,10 +67,7 @@ export default function PricingPage() {
           <header className="pricing-tiers__head">
             <span className="eyebrow">Plan fit</span>
             <h2 id="pricing-tiers-title">Compare the workspace tiers</h2>
-            <p>
-              The categories below describe supported areas only. Exact allocation and current terms
-              are confirmed before access.
-            </p>
+            <p>{publicationSummary.categoryAllocationNotice.text}</p>
           </header>
 
           <div className="pricing-tier-grid">
@@ -121,7 +115,7 @@ export default function PricingPage() {
 
                 <div className="pricing-tier-card__boundaries">
                   <p className="pricing-tier-card__company">{plan.companyPolicy}</p>
-                  <p>Government and third-party costs are separate.</p>
+                  <p>{publicationSummary.separateCostsNotice.text}</p>
                   <p>{plan.caveat}</p>
                 </div>
 

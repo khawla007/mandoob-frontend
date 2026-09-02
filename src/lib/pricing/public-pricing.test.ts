@@ -30,6 +30,18 @@ if (false) {
 }
 
 describe('public pricing presentation contract', () => {
+  it('centralizes publication-summary facts with their approved or unavailable source state', () => {
+    const summary = PUBLIC_PRICING_CONTRACT.publicationSummary;
+    assert.equal(summary.companyPolicy.text, 'At most one active Company per PRO');
+    assert.equal(summary.companyPolicy.source.state, 'approved-static');
+    assert.equal(summary.billingConcepts.source.state, 'approved-static');
+    assert.equal(summary.currentAvailability.source.state, 'unavailable');
+    assert.equal(summary.confirmationNotice.source.state, 'unavailable');
+    assert.equal(summary.categoryAllocationNotice.source.state, 'unavailable');
+    assert.equal(summary.separateCostsNotice.source.state, 'approved-static');
+    assert.doesNotMatch(JSON.stringify(summary), /One active assignment/u);
+  });
+
   it('provides the exact approved tier order', () => {
     assert.deepEqual(
       PUBLIC_PRICING_CONTRACT.tiers.map((tier) => tier.name),
