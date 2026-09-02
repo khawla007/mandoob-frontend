@@ -175,4 +175,23 @@ describe('pricing hero and tier cards', () => {
     assert.doesNotMatch(pricingCss, /\b(?:margin|padding)-(?:left|right):|\b(?:left|right):/u);
     assert.doesNotMatch(pricingCss, /(?:inline-size|width):\s*100vw/u);
   });
+
+  it('uses the strong public border for every dark elevated-surface divider', () => {
+    const strongDarkSelectors = new Set(
+      [...pricingCss.matchAll(/([^{}]+)\{([^{}]*)\}/gu)]
+        .filter((match) => /border-color:\s*var\(--public-border-strong\)/u.test(match[2]))
+        .flatMap((match) => match[1].split(',').map((selector) => selector.trim())),
+    );
+
+    for (const selector of [
+      '.dark .site-public .pricing-hero__context dl',
+      '.dark .site-public .pricing-hero__context dl > div',
+      '.dark .site-public .pricing-tier-card + .pricing-tier-card',
+      '.dark .site-public .pricing-tier-card__price',
+      '.dark .site-public .pricing-tier-card__cadence',
+      '.dark .site-public .pricing-tier-card__boundaries',
+    ]) {
+      assert.ok(strongDarkSelectors.has(selector), `${selector} must use the strong dark border`);
+    }
+  });
 });

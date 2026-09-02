@@ -924,6 +924,15 @@
   box-shadow: none;
 }
 
+.dark .site-public .pricing-hero__context dl,
+.dark .site-public .pricing-hero__context dl > div,
+.dark .site-public .pricing-tier-card + .pricing-tier-card,
+.dark .site-public .pricing-tier-card__price,
+.dark .site-public .pricing-tier-card__cadence,
+.dark .site-public .pricing-tier-card__boundaries {
+  border-color: var(--public-border-strong);
+}
+
 @media (max-width: 899px) {
   .site-public .pricing-hero__grid,
   .site-public .pricing-tiers__head,
