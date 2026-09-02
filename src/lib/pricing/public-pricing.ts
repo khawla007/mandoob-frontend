@@ -13,10 +13,14 @@ export type PublicPricingSource =
   | { state: 'illustrative'; label: string }
   | { state: 'unavailable'; reason: string };
 
+// No exact public price source is accepted yet. Adding an ID requires accepted evidence first.
+export const ACCEPTED_NUMERIC_PRICE_SOURCE_IDS = Object.freeze([] as const);
+export type AcceptedNumericPriceSourceId = (typeof ACCEPTED_NUMERIC_PRICE_SOURCE_IDS)[number];
+
 type NumericPublicPrice =
   | {
       state: 'live' | 'approved-static';
-      source: string;
+      sourceId: AcceptedNumericPriceSourceId;
       currency: 'AED';
       minorUnits: number;
     }
@@ -31,9 +35,20 @@ export type PublicPrice =
   | NumericPublicPrice
   | { state: 'unavailable'; display: 'Price on request'; reason: string };
 
-export type PublicPricingTier = {
-  id: 'starter' | 'professional' | 'enterprise';
-  name: 'Starter' | 'Professional' | 'Enterprise';
+type DeepReadonly<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly (infer Item)[]
+    ? readonly DeepReadonly<Item>[]
+    : T extends object
+      ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> }
+      : T;
+
+type PublicPricingTierIdentity =
+  | { id: 'starter'; name: 'Starter' }
+  | { id: 'professional'; name: 'Professional' }
+  | { id: 'enterprise'; name: 'Enterprise' };
+
+type PublicPricingTierDetails = {
   source: PublicPricingSource;
   price: PublicPrice;
   activeCompanyLimit: 1;
@@ -50,6 +65,8 @@ export type PublicPricingTier = {
   categories: readonly PublicPricingCategory[];
 };
 
+export type PublicPricingTier = DeepReadonly<PublicPricingTierIdentity & PublicPricingTierDetails>;
+
 export type PublicPricingCategory =
   | 'Platform features'
   | 'Storage and documents'
@@ -63,7 +80,7 @@ type CostBoundary = {
   price: Extract<PublicPrice, { state: 'unavailable' }>;
 };
 
-export type PublicPricingContract = {
+export type PublicPricingContract = DeepReadonly<{
   tiers: readonly PublicPricingTier[];
   differentiationCategories: readonly PublicPricingCategory[];
   addOns: readonly {
@@ -81,24 +98,30 @@ export type PublicPricingContract = {
     thirdParty: CostBoundary;
     variabilityNotice: string;
   };
-};
+}>;
 
-const APPROVED_STATIC_SOURCE = {
-  state: 'approved-static',
-  source: 'P1.06 frozen claim contract',
-} as const satisfies PublicPricingSource;
+function approvedStaticSource() {
+  return {
+    state: 'approved-static',
+    source: 'P1.06 frozen claim contract',
+  } as const satisfies PublicPricingSource;
+}
 
-const PRICE_ON_REQUEST = {
-  state: 'unavailable',
-  display: 'Price on request',
-  reason: 'No approved exact public amount exists',
-} as const satisfies PublicPrice;
+function priceOnRequest() {
+  return {
+    state: 'unavailable',
+    display: 'Price on request',
+    reason: 'No approved exact public amount exists',
+  } as const satisfies PublicPrice;
+}
 
-const CADENCE_AVAILABILITY = {
-  state: 'unavailable',
-  display: 'Subject to confirmation',
-  reason: 'Current monthly and annual availability is not approved for publication',
-} as const;
+function cadenceAvailability() {
+  return {
+    state: 'unavailable',
+    display: 'Subject to confirmation',
+    reason: 'Current monthly and annual availability is not approved for publication',
+  } as const;
+}
 
 const DIFFERENTIATION_CATEGORIES = [
   'Platform features',
@@ -108,61 +131,70 @@ const DIFFERENTIATION_CATEGORIES = [
   'Support',
 ] as const satisfies readonly PublicPricingCategory[];
 
-function tier(id: PublicPricingTier['id'], name: PublicPricingTier['name']): PublicPricingTier {
+function createTier<const Identity extends PublicPricingTierIdentity>(
+  identity: Identity,
+): Identity & PublicPricingTierDetails {
   return {
-    id,
-    name,
-    source: APPROVED_STATIC_SOURCE,
-    price: PRICE_ON_REQUEST,
+    ...identity,
+    source: approvedStaticSource(),
+    price: priceOnRequest(),
     activeCompanyLimit: 1,
     companyPolicy: 'At most one active Company per PRO',
     cadences: [
       {
         name: 'monthly',
-        concept: APPROVED_STATIC_SOURCE,
-        availability: CADENCE_AVAILABILITY,
+        concept: approvedStaticSource(),
+        availability: cadenceAvailability(),
       },
       {
         name: 'annual',
-        concept: APPROVED_STATIC_SOURCE,
-        availability: CADENCE_AVAILABILITY,
+        concept: approvedStaticSource(),
+        availability: cadenceAvailability(),
       },
     ],
-    categories: DIFFERENTIATION_CATEGORIES,
+    categories: [...DIFFERENTIATION_CATEGORIES],
   };
 }
 
-export const PUBLIC_PRICING_CONTRACT = {
+function deepFreeze<T>(value: T): DeepReadonly<T> {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) {
+    return value as DeepReadonly<T>;
+  }
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value) as DeepReadonly<T>;
+}
+
+export const PUBLIC_PRICING_CONTRACT = deepFreeze({
   tiers: [
-    tier('starter', 'Starter'),
-    tier('professional', 'Professional'),
-    tier('enterprise', 'Enterprise'),
+    createTier({ id: 'starter', name: 'Starter' }),
+    createTier({ id: 'professional', name: 'Professional' }),
+    createTier({ id: 'enterprise', name: 'Enterprise' }),
   ],
-  differentiationCategories: DIFFERENTIATION_CATEGORIES,
+  differentiationCategories: [...DIFFERENTIATION_CATEGORIES],
   addOns: [
     {
       category: 'Communication usage',
-      source: APPROVED_STATIC_SOURCE,
-      price: PRICE_ON_REQUEST,
+      source: approvedStaticSource(),
+      price: priceOnRequest(),
     },
   ],
   costBoundaries: {
     softwareAccess: {
       inPlan: true,
-      source: APPROVED_STATIC_SOURCE,
+      source: approvedStaticSource(),
       categories: ['Workspace access'],
     },
     governmentAndAuthority: {
-      source: APPROVED_STATIC_SOURCE,
+      source: approvedStaticSource(),
       categories: [
         'Company registration',
         'Government and authority fees',
         'Visa, medical, and Emirates ID',
       ],
-      price: PRICE_ON_REQUEST,
+      price: priceOnRequest(),
     },
     thirdParty: {
-      source: APPROVED_STATIC_SOURCE,
+      source: approvedStaticSource(),
       categories: [
         'Office',
         'Banking',
@@ -172,12 +204,12 @@ export const PUBLIC_PRICING_CONTRACT = {
         'Communication usage',
         'Optional professional services',
       ],
-      price: PRICE_ON_REQUEST,
+      price: priceOnRequest(),
     },
     variabilityNotice:
       'Government and third-party costs vary by jurisdiction, activity, office, visa, approval, provider, and current authority schedules.',
   },
-} as const satisfies PublicPricingContract;
+} satisfies PublicPricingContract);
 
 const aed = new Intl.NumberFormat('en-AE', {
   style: 'currency',
@@ -189,17 +221,17 @@ const aed = new Intl.NumberFormat('en-AE', {
 
 export function formatPublicPrice(price: PublicPrice): string {
   if (price.state === 'unavailable') return price.display;
-  if (
-    price.state !== 'illustrative' &&
-    (typeof price.source !== 'string' || !price.source.trim())
-  ) {
-    throw new Error('Numeric public pricing requires accepted source provenance');
+  if (price.state === 'illustrative') {
+    if (!price.label.trim())
+      throw new Error('Numeric pricing requires a nonempty illustrative label');
+  } else if (!(ACCEPTED_NUMERIC_PRICE_SOURCE_IDS as readonly string[]).includes(price.sourceId)) {
+    throw new Error('Numeric public pricing requires an accepted numeric price source');
   }
   if (price.currency !== 'AED') throw new Error('Numeric public pricing must use AED');
-  if (!Number.isInteger(price.minorUnits)) {
-    throw new Error('Numeric public pricing must use integer minor units');
+  if (!Number.isSafeInteger(price.minorUnits) || price.minorUnits < 0) {
+    throw new Error('Numeric public pricing must use nonnegative safe integer minor units');
   }
 
   const formatted = aed.format(price.minorUnits / 100).replace(/\u00a0/gu, ' ');
-  return price.state === 'illustrative' ? `${price.label}: ${formatted}` : formatted;
+  return price.state === 'illustrative' ? `${price.label.trim()}: ${formatted}` : formatted;
 }

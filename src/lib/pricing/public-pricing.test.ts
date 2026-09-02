@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
+  ACCEPTED_NUMERIC_PRICE_SOURCE_IDS,
   PUBLIC_PRICING_CONTRACT,
   PUBLIC_PRICING_SOURCE_STATES,
   formatPublicPrice,
@@ -12,6 +13,21 @@ const pricingPageSource = readFileSync(
   new URL('../../app/(public)/pricing/page.tsx', import.meta.url),
   'utf8',
 );
+
+if (false) {
+  const unauthorizedPrice: PublicPrice = {
+    state: 'live',
+    // @ts-expect-error no live or approved numeric price source is currently accepted
+    sourceId: 'arbitrary-source',
+    currency: 'AED',
+    minorUnits: 12_500,
+  };
+  void unauthorizedPrice;
+  // @ts-expect-error the published contract is deeply readonly
+  PUBLIC_PRICING_CONTRACT.tiers[0].cadences.push({});
+  // @ts-expect-error nested contract facts cannot be reassigned
+  PUBLIC_PRICING_CONTRACT.tiers[0].cadences[0].availability.display = 'Subject to confirmation';
+}
 
 describe('public pricing presentation contract', () => {
   it('provides the exact approved tier order', () => {
@@ -43,30 +59,36 @@ describe('public pricing presentation contract', () => {
   });
 
   it('requires AED, explicit currency, and integer minor units for numeric prices', () => {
-    const approvedPrice: PublicPrice = {
-      state: 'approved-static',
-      source: 'Accepted test fixture',
-      currency: 'AED',
-      minorUnits: 12_500,
-    };
-
-    assert.equal(approvedPrice.source, 'Accepted test fixture');
-    assert.equal(formatPublicPrice(approvedPrice), 'AED 125');
+    assert.deepEqual(ACCEPTED_NUMERIC_PRICE_SOURCE_IDS, []);
+    assert.equal(Object.isFrozen(ACCEPTED_NUMERIC_PRICE_SOURCE_IDS), true);
+    assert.throws(() => {
+      (ACCEPTED_NUMERIC_PRICE_SOURCE_IDS as unknown as string[]).push('arbitrary-source');
+    }, TypeError);
     assert.throws(
       () =>
         formatPublicPrice({
-          state: 'approved-static',
-          source: 'Accepted test fixture',
+          state: 'illustrative',
+          label: 'Illustrative',
           currency: 'USD',
           minorUnits: 12_500,
         } as unknown as PublicPrice),
-      /AED/iu,
+      /must use AED/iu,
     );
     assert.throws(
       () =>
         formatPublicPrice({
           state: 'approved-static',
-          source: 'Accepted test fixture',
+          sourceId: 'arbitrary-source',
+          currency: 'USD',
+          minorUnits: 12_500,
+        } as unknown as PublicPrice),
+      /accepted numeric price source/iu,
+    );
+    assert.throws(
+      () =>
+        formatPublicPrice({
+          state: 'illustrative',
+          label: 'Illustrative',
           currency: 'AED',
           minorUnits: 12.5,
         }),
@@ -76,10 +98,34 @@ describe('public pricing presentation contract', () => {
       () =>
         formatPublicPrice({
           state: 'approved-static',
+          sourceId: '',
           currency: 'AED',
           minorUnits: 12_500,
-        } as PublicPrice),
-      /accepted source provenance/iu,
+        } as unknown as PublicPrice),
+      /accepted numeric price source/iu,
+    );
+  });
+
+  it('rejects negative or unsafe numeric minor units', () => {
+    assert.throws(
+      () =>
+        formatPublicPrice({
+          state: 'illustrative',
+          label: 'Illustrative',
+          currency: 'AED',
+          minorUnits: -1,
+        }),
+      /nonnegative safe integer minor units/iu,
+    );
+    assert.throws(
+      () =>
+        formatPublicPrice({
+          state: 'illustrative',
+          label: 'Illustrative',
+          currency: 'AED',
+          minorUnits: Number.MAX_SAFE_INTEGER + 1,
+        }),
+      /nonnegative safe integer minor units/iu,
     );
   });
 
@@ -98,6 +144,16 @@ describe('public pricing presentation contract', () => {
         minorUnits: 12_500,
       }),
       'Illustrative: AED 125',
+    );
+    assert.throws(
+      () =>
+        formatPublicPrice({
+          state: 'illustrative',
+          label: '   ',
+          currency: 'AED',
+          minorUnits: 12_500,
+        }),
+      /nonempty illustrative label/iu,
     );
   });
 
@@ -123,6 +179,9 @@ describe('public pricing presentation contract', () => {
   it('keeps the pricing page free of local price and allocation fixtures', () => {
     assert.match(pricingPageSource, /PUBLIC_PRICING_CONTRACT/u);
     assert.match(pricingPageSource, /formatPublicPrice/u);
+    assert.match(pricingPageSource, /PUBLIC_PRICING_CONTRACT\.tiers\.map/u);
+    assert.match(pricingPageSource, /\{plan\.name\}/u);
+    assert.match(pricingPageSource, /formatPublicPrice\(plan\.price\)/u);
     assert.doesNotMatch(pricingPageSource, /\bconst\s+plans\s*=/u);
     assert.doesNotMatch(pricingPageSource, /\bUSD\b|\b(?:4900|9900|19900)\b/u);
     assert.doesNotMatch(pricingPageSource, /\/\s*month\b|\/month\b/iu);
@@ -145,10 +204,44 @@ describe('public pricing presentation contract', () => {
       ['Communication usage'],
     );
     assert.ok(
-      PUBLIC_PRICING_CONTRACT.tiers.every((tier) =>
-        tier.categories.every((category) => typeof category === 'string'),
+      PUBLIC_PRICING_CONTRACT.tiers.every(
+        (tier) =>
+          tier.categories.length === PUBLIC_PRICING_CONTRACT.differentiationCategories.length &&
+          tier.categories.every(
+            (category, index) =>
+              category.length > 0 &&
+              category === PUBLIC_PRICING_CONTRACT.differentiationCategories[index],
+          ),
       ),
     );
+  });
+
+  it('keeps tier identifiers paired with their approved names', () => {
+    assert.deepEqual(
+      PUBLIC_PRICING_CONTRACT.tiers.map(({ id, name }) => [id, name]),
+      [
+        ['starter', 'Starter'],
+        ['professional', 'Professional'],
+        ['enterprise', 'Enterprise'],
+      ],
+    );
+  });
+
+  it('deeply freezes the production contract and rejects mutation', () => {
+    const assertDeeplyFrozen = (value: unknown): void => {
+      if (typeof value !== 'object' || value === null) return;
+      assert.equal(Object.isFrozen(value), true);
+      for (const child of Object.values(value)) assertDeeplyFrozen(child);
+    };
+
+    assertDeeplyFrozen(PUBLIC_PRICING_CONTRACT);
+    assert.throws(() => {
+      (PUBLIC_PRICING_CONTRACT.tiers as unknown as Array<unknown>).push({});
+    }, TypeError);
+    assert.throws(() => {
+      (PUBLIC_PRICING_CONTRACT.tiers[0].cadences[0].availability as { display: string }).display =
+        'Available';
+    }, TypeError);
   });
 
   it('separates software access, government and authority costs, and third-party costs', () => {
