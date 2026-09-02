@@ -430,6 +430,7 @@ function CompanyOnboardingSummary({
           <div
             className="bg-muted h-2 max-w-xl overflow-hidden rounded-full"
             role="progressbar"
+            aria-label={labels.progress}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={percent}

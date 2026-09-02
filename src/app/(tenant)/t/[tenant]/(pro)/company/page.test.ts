@@ -248,6 +248,7 @@ test('compact setup summary does not present onboarding status as Company lifecy
     summary,
     /labels\.lifecycle|labels\.status|company\.status|onboardingStatus/u,
   );
+  assert.match(summary, /role="progressbar"[\s\S]*aria-label=\{labels\.progress\}/u);
   assert.match(overview, /labels\.lifecycleValue/u);
   assert.match(overview, /company\.status/u);
 });
