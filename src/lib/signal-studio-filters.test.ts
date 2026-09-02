@@ -24,6 +24,10 @@ test('application signal URLs round-trip semantic open and Dubai deadline filter
     deadline,
   );
   assert.deepEqual(parseApplicationSignalFilter({ date: 'bad', period: 'night' }), {});
+  assert.deepEqual(
+    parseApplicationSignalFilter({ date: '9999-99-99', period: 'morning', eventTypes: 'case' }),
+    {},
+  );
 });
 
 test('application signal URLs preserve only the supported service filter', () => {

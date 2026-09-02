@@ -156,12 +156,14 @@ function serviceCaseQuery(
     .from(source)
     .select(SERVICE_CASE_COLUMNS, { count: 'exact' })
     .eq('tenant_id', tenantId);
+  // A focused case is still only visible inside the assigned company. Keep this
+  // predicate outside the id branch so a guessed case ID cannot cross companies.
+  if (filters.company_id) query = query.eq('company_id', filters.company_id);
   if (filters.id) {
     query = query.eq('id', filters.id);
   } else {
     if (filters.status?.length) query = query.in('status', filters.status);
     if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
-    if (filters.company_id) query = query.eq('company_id', filters.company_id);
     if (filters.service_type) query = query.eq('service_type', filters.service_type);
     if (filters.deadlineDate && filters.deadlinePeriod) {
       query = query.or(applicationDeadlineQuery(filters.deadlineDate, filters.deadlinePeriod));
@@ -219,9 +221,10 @@ function hydrateServiceCases(
 
 export async function listServiceCases(
   tenantId: string,
-  filters: { status?: ServiceCaseStatus[]; assignedTo?: string; companyId?: string } = {},
+  filters: { companyId: string; status?: ServiceCaseStatus[]; assignedTo?: string },
   deps: ServiceCaseDeps = {},
 ): Promise<ServiceCase[]> {
+  if (!filters.companyId) throw invalidInput('Company scope is required');
   const parsedFilters = serviceCaseFilterSchema.safeParse({
     status: filters.status,
     assigned_to: filters.assignedTo,
@@ -269,14 +272,14 @@ export async function listServiceCases(
 export async function listServiceCaseWorkspace(
   tenantId: string,
   filters: {
+    companyId: string;
     caseId?: string;
     status?: ServiceCaseStatus[];
-    companyId?: string;
     serviceType?: string;
     page?: number;
     deadlineDate?: string;
     deadlinePeriod?: 'morning' | 'afternoon';
-  } = {},
+  },
   deps: ServiceCaseDeps = {},
 ): Promise<{
   cases: ServiceCaseQueueItem[];
@@ -284,6 +287,7 @@ export async function listServiceCaseWorkspace(
   page: number;
   pageSize: number;
 }> {
+  if (!filters.companyId) throw invalidInput('Company scope is required');
   const parsedFilters = serviceCaseFilterSchema.safeParse({
     id: filters.caseId,
     status: filters.status,

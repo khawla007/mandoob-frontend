@@ -3,13 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { ApplicationCreateForm } from '@/components/pro/applications/ApplicationCreateForm';
 import { ApplicationsTable } from '@/components/pro/applications/ApplicationsTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { listServiceCaseWorkspace, type ServiceCaseStatus } from '@/lib/data/service-cases';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { serviceCaseStatuses } from '@/lib/validation/service-case';
-import { createApplicationFormAction } from './actions';
 import {
   applicationPageHref,
   parseApplicationFilters,
@@ -56,7 +54,32 @@ export default async function ApplicationsPage({
     redirect(applicationPageHref(slug, filters, totalPages));
   }
   const { cases } = workspace;
-  const create = createApplicationFormAction.bind(null, slug);
+  const hasFilters = Boolean(
+    filters.id || filters.status?.length || filters.service_type || filters.deadlineDate,
+  );
+  const summaries = [
+    {
+      label: t('applicationSummaryFiltered'),
+      value: workspace.total,
+      hint: t('applicationSummaryExact'),
+    },
+    {
+      label: t('applicationSummaryVisible'),
+      value: cases.length,
+      hint: t('applicationSummaryCurrentPage'),
+    },
+    {
+      label: t('applicationSummaryOpen'),
+      value: cases.filter((row) => row.status !== 'completed' && row.status !== 'cancelled').length,
+      hint: t('applicationSummaryCurrentPage'),
+    },
+    {
+      label: t('applicationSummaryBlocked'),
+      value: cases.filter((row) => Boolean(row.blockedReason)).length,
+      hint: t('applicationSummaryCurrentPage'),
+    },
+  ];
+  const number = new Intl.NumberFormat(locale);
   const statusLabels = Object.fromEntries(
     serviceCaseStatuses.map((status) => [status, t(`applicationStatuses.${status}`)]),
   ) as Record<ServiceCaseStatus, string>;
@@ -70,30 +93,22 @@ export default async function ApplicationsPage({
         </p>
       </div>
 
-      <details className="group rounded-xl border">
-        <summary className="hover:bg-muted/40 focus-visible:ring-ring cursor-pointer list-none rounded-xl px-5 py-4 font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset">
-          {t('createApplication')}
-        </summary>
-        <ApplicationCreateForm
-          action={create}
-          labels={{
-            title: t('applicationTitle'),
-            serviceType: t('applicationServiceType'),
-            priority: t('applicationPriority'),
-            priorities: {
-              low: t('applicationPriorities.low'),
-              normal: t('applicationPriorities.normal'),
-              high: t('applicationPriorities.high'),
-              urgent: t('applicationPriorities.urgent'),
-            },
-            dueAt: t('applicationDueAt'),
-            slaDueAt: t('applicationSlaDueAt'),
-            submit: t('createApplication'),
-            pending: t('applicationCreating'),
-            success: t('applicationCreated'),
-          }}
-        />
-      </details>
+      <Card className="signal-panel border-dashed">
+        <CardHeader>
+          <CardTitle className="text-base">{t('applicationMutationsUnavailable')}</CardTitle>
+          <CardDescription>{t('applicationMutationsUnavailableDescription')}</CardDescription>
+        </CardHeader>
+      </Card>
+
+      <dl className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {summaries.map((summary) => (
+          <div key={summary.label} className="signal-kpi signal-kpi--info">
+            <dt className="signal-kpi__label">{summary.label}</dt>
+            <dd className="signal-kpi__value">{number.format(summary.value)}</dd>
+            <p className="signal-kpi__helper">{summary.hint}</p>
+          </div>
+        ))}
+      </dl>
 
       <Card className="signal-panel">
         <CardHeader>
@@ -155,7 +170,7 @@ export default async function ApplicationsPage({
               >
                 {t('filterApplications')}
               </button>
-              {filters.status?.length || filters.service_type || filters.deadlineDate ? (
+              {hasFilters ? (
                 <Link
                   href={`/t/${encodeURIComponent(slug)}/applications`}
                   className="text-muted-foreground hover:text-foreground focus-visible:ring-ring ms-3 inline-flex h-9 items-center text-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2"
@@ -169,7 +184,6 @@ export default async function ApplicationsPage({
         <CardContent className="space-y-4">
           <ApplicationsTable
             rows={cases}
-            slug={slug}
             locale={locale}
             labels={{
               title: t('applicationTitle'),
@@ -184,13 +198,9 @@ export default async function ApplicationsPage({
               slaPrefix: t('applicationSla'),
               duePrefix: t('applicationDue'),
               slaBreached: t('applicationSlaBreached'),
-              complete: t('completeApplication'),
-              cancel: t('cancelApplication'),
-              updating: t('applicationUpdating'),
-              updateSuccess: t('applicationUpdated'),
-              noAction: t('noApplicationAction'),
-              empty: t('applicationsEmpty'),
-              emptyHint: t('applicationsEmptyHint'),
+              mutationsUnavailable: t('applicationMutationsUnavailable'),
+              empty: hasFilters ? t('applicationNoResults') : t('applicationsEmpty'),
+              emptyHint: hasFilters ? t('applicationNoResultsHint') : t('applicationsEmptyHint'),
               statuses: statusLabels,
               priorities: {
                 low: t('applicationPriorities.low'),

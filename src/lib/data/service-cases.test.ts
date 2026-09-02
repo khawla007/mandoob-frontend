@@ -316,7 +316,11 @@ test('listServiceCases never hydrates cross-tenant client or owner names', async
       },
     ],
   });
-  const [row] = await listServiceCases(TENANT_1, {}, { supabase: db as never });
+  const [row] = await listServiceCases(
+    TENANT_1,
+    { companyId: CLIENT_2 },
+    { supabase: db as never },
+  );
   assert.equal(row.companyName, '');
   assert.equal(row.ownerName, null);
 });
@@ -353,7 +357,7 @@ test('owner options include only active PRO firm owners', async () => {
 test('listServiceCases converts database and hydration errors to ApiError', async () => {
   const casesFailure = fakeSupabase({}, { 'service_cases:select': { message: 'db down' } });
   await assert.rejects(
-    () => listServiceCases(TENANT_1, {}, { supabase: casesFailure as never }),
+    () => listServiceCases(TENANT_1, { companyId: CLIENT_1 }, { supabase: casesFailure as never }),
     (error) => error instanceof ApiError && error.code === 'INTERNAL',
   );
 
@@ -362,7 +366,8 @@ test('listServiceCases converts database and hydration errors to ApiError', asyn
     { 'company_profiles:select': { message: 'client lookup down' } },
   );
   await assert.rejects(
-    () => listServiceCases(TENANT_1, {}, { supabase: hydrationFailure as never }),
+    () =>
+      listServiceCases(TENANT_1, { companyId: CLIENT_1 }, { supabase: hydrationFailure as never }),
     (error) => error instanceof ApiError && error.code === 'INTERNAL',
   );
 });
@@ -384,7 +389,7 @@ test('listServiceCaseWorkspace loads only the assigned-company queue with an exa
 
   const workspace = await listServiceCaseWorkspace(
     TENANT_1,
-    { status: ['documents_pending'] },
+    { companyId: CLIENT_1, status: ['documents_pending'] },
     { supabase: db as never },
   );
 
@@ -421,7 +426,7 @@ test('targeted service-case workspace uses a tenant-scoped exact id and first pa
 
   const workspace = await listServiceCaseWorkspace(
     TENANT_1,
-    { caseId: CASE_1, status: ['cancelled'], page: 99 },
+    { caseId: CASE_1, companyId: CLIENT_1, status: ['cancelled'], page: 99 },
     { supabase: db as never },
   );
   assert.deepEqual(
@@ -436,6 +441,40 @@ test('targeted service-case workspace uses a tenant-scoped exact id and first pa
   assert.ok(query?.filters.some((filter) => filter.key === 'id' && filter.value === CASE_1));
   assert.ok(!query?.filters.some((filter) => filter.key === 'status'));
   assert.deepEqual(query?.range, [0, SERVICE_CASE_PAGE_SIZE - 1]);
+});
+
+test('targeted service-case workspace keeps the assigned-company predicate for a cross-company case id', async () => {
+  const db = fakeSupabase({
+    service_cases_ranked: [caseRow({ id: CASE_1, company_id: CLIENT_2 })],
+  });
+
+  const workspace = await listServiceCaseWorkspace(
+    TENANT_1,
+    { caseId: CASE_1, companyId: CLIENT_1 },
+    { supabase: db as never },
+  );
+
+  assert.equal(workspace.total, 0);
+  assert.deepEqual(workspace.cases, []);
+  const query = db.calls.find((call) => call.table === 'service_cases_ranked');
+  assert.ok(query?.filters.some((filter) => filter.key === 'id' && filter.value === CASE_1));
+  assert.ok(
+    query?.filters.some((filter) => filter.key === 'company_id' && filter.value === CLIENT_1),
+  );
+});
+
+test('service-case list and workspace reject a missing company scope before querying', async () => {
+  const db = fakeSupabase({ service_cases_ranked: [caseRow()] });
+  await assert.rejects(
+    () => listServiceCases(TENANT_1, {} as { companyId: string }, { supabase: db as never }),
+    (error) => error instanceof ApiError && error.code === 'INVALID_INPUT',
+  );
+  await assert.rejects(
+    () =>
+      listServiceCaseWorkspace(TENANT_1, {} as { companyId: string }, { supabase: db as never }),
+    (error) => error instanceof ApiError && error.code === 'INVALID_INPUT',
+  );
+  assert.equal(db.calls.length, 0);
 });
 
 test('exported service-case DAL uses explicit ranges instead of silent query limits', () => {
@@ -474,7 +513,7 @@ test('service-case workspace pages its ranked queue without loading unrelated co
 
   const workspace = await listServiceCaseWorkspace(
     TENANT_1,
-    { page: 2 },
+    { companyId: CLIENT_1, page: 2 },
     { supabase: db as never },
   );
 
@@ -505,7 +544,7 @@ test('service-case workspace applies service type inside the tenant-scoped case 
 
   const workspace = await listServiceCaseWorkspace(
     TENANT_1,
-    { serviceType: 'Golden visa' },
+    { companyId: CLIENT_1, serviceType: 'Golden visa' },
     { supabase: db as never },
   );
 
@@ -557,10 +596,14 @@ test('service-case workspace applies global business ranking before the page bou
     ],
   });
 
-  const firstPage = await listServiceCaseWorkspace(TENANT_1, {}, { supabase: db as never });
+  const firstPage = await listServiceCaseWorkspace(
+    TENANT_1,
+    { companyId: CLIENT_1 },
+    { supabase: db as never },
+  );
   const secondPage = await listServiceCaseWorkspace(
     TENANT_1,
-    { page: 2 },
+    { companyId: CLIENT_1, page: 2 },
     { supabase: db as never },
   );
   assert.equal(firstPage.total, 51);
@@ -619,7 +662,10 @@ test('listServiceCases deliberately batches beyond PostgREST max_rows', async ()
     ],
   });
 
-  assert.equal((await listServiceCases(TENANT_1, {}, { supabase: db as never })).length, 1005);
+  assert.equal(
+    (await listServiceCases(TENANT_1, { companyId: CLIENT_1 }, { supabase: db as never })).length,
+    1005,
+  );
   assert.deepEqual(
     db.calls.filter((call) => call.table === 'service_cases').map((call) => call.range),
     [

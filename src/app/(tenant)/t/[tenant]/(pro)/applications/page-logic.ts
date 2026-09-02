@@ -26,8 +26,10 @@ function first(value: string | string[] | undefined): string | undefined {
 }
 
 export function parseApplicationPage(value: string | string[] | undefined): number {
-  const parsed = Number.parseInt(first(value) ?? '1', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  const raw = first(value);
+  if (!raw || !/^[1-9]\d*$/.test(raw)) return 1;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) ? parsed : 1;
 }
 
 export function applicationPageHref(

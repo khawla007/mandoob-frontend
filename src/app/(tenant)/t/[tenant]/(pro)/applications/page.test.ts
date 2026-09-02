@@ -18,10 +18,6 @@ const createFormPath = join(
   process.cwd(),
   'src/components/pro/applications/ApplicationCreateForm.tsx',
 );
-const statusActionsPath = join(
-  process.cwd(),
-  'src/components/pro/applications/ApplicationStatusActions.tsx',
-);
 const logicPath = join(
   process.cwd(),
   'src/app/(tenant)/t/[tenant]/(pro)/applications/page-logic.ts',
@@ -184,6 +180,8 @@ test('application pagination normalizes repeated page params and preserves activ
   assert.equal(parseApplicationPage(['2', '999']), 2);
   assert.equal(parseApplicationPage('0'), 1);
   assert.equal(parseApplicationPage('bad'), 1);
+  assert.equal(parseApplicationPage('2pages'), 1);
+  assert.equal(parseApplicationPage('9007199254740992'), 1);
   assert.equal(
     applicationPageHref(
       'acme',
@@ -213,12 +211,10 @@ test('dashboard application metric round-trips service filters without an owner 
   );
 });
 
-test('applications workspace has the required table contract and Dubai date display', () => {
+test('applications workspace has the required read-only queue contract and Dubai date display', () => {
   const page = readFileSync(pagePath, 'utf8');
   const table = readFileSync(tablePath, 'utf8');
-  const statusActions = readFileSync(statusActionsPath, 'utf8');
   assert.match(page, /<form[^>]+method="get"/);
-  assert.match(page, /ApplicationCreateForm/);
   for (const heading of [
     'title',
     'service',
@@ -231,28 +227,27 @@ test('applications workspace has the required table contract and Dubai date disp
   ]) {
     assert.match(table, new RegExp(`labels\\.${heading}`));
   }
-  assert.match(statusActions, /focus-visible:ring/);
-  assert.match(table, /updateApplicationFormAction\.bind/);
   assert.match(table, /row\.blockedReason/);
   assert.match(table, /row\.updatedAt/);
   assert.match(table, /timeZone:\s*'Asia\/Dubai'/);
   assert.match(table, /locale:\s*string/);
-  assert.doesNotMatch(table, /name="completed_at"/);
+  assert.match(page, /applicationMutationsUnavailable/);
+  assert.match(table, /labels\.mutationsUnavailable/);
+  assert.doesNotMatch([page, table].join('\n'), /ApplicationCreateForm|ApplicationStatusActions/);
+  assert.doesNotMatch(
+    [page, table].join('\n'),
+    /useActionState|createApplicationFormAction|updateApplicationFormAction/,
+  );
 });
 
-test('application mutation forms expose pending and accessible result feedback without casts', () => {
+test('applications presents truthful filtered and current-page counts with distinct no-results copy', () => {
   const page = readFileSync(pagePath, 'utf8');
-  const table = readFileSync(tablePath, 'utf8');
-  const createForm = readFileSync(createFormPath, 'utf8');
-  const statusActions = readFileSync(statusActionsPath, 'utf8');
-  for (const source of [createForm, statusActions]) {
-    assert.match(source, /^'use client';/);
-    assert.match(source, /useActionState/);
-    assert.match(source, /aria-live="polite"/);
-    assert.match(source, /disabled=\{pending\}/);
-  }
-  assert.match(table, /ApplicationStatusActions/);
-  assert.doesNotMatch([page, table, createForm, statusActions].join('\n'), /as never/);
+  assert.match(page, /workspace\.total/);
+  assert.match(page, /cases\.length/);
+  assert.match(page, /blockedReason/);
+  assert.match(page, /applicationNoResults/);
+  assert.match(page, /applicationsEmpty/);
+  assert.match(page, /resetApplicationFilters/);
 });
 
 test('application datetime labels explicitly identify Dubai time and UTC+04 in both locales', () => {
