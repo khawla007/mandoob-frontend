@@ -58,13 +58,13 @@ export async function SettingsWhiteLabelChecklist({
       state:
         branding.status === 'unavailable'
           ? 'unavailable'
-          : branding.data?.primary_color
+          : branding.data?.logo_url && branding.data.primary_color
             ? 'complete'
             : 'incomplete',
       detail:
         branding.status === 'unavailable'
           ? t('sourceUnavailable')
-          : branding.data?.primary_color
+          : branding.data?.logo_url && branding.data.primary_color
             ? t('whiteLabel.details.brandingComplete')
             : t('whiteLabel.details.brandingIncomplete'),
     },

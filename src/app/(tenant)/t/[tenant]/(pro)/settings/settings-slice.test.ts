@@ -81,6 +81,23 @@ test('settings routes include compact loading and localized retry states', () =>
   assert.ok(existsSync(billingLoading));
   assert.match(readFileSync(error, 'utf8'), /t\('loadFailed'\)/u);
   assert.match(readFileSync(error, 'utf8'), /t\('retry'\)/u);
+  for (const file of [loading, billingLoading]) {
+    const source = readFileSync(file, 'utf8');
+    assert.match(source, /getTranslations\('pro\.settings'\)/u);
+    assert.doesNotMatch(source, /aria-label="Loading/u);
+  }
+});
+
+test('provider cards show source-backed configuration states, never connection or verification claims', () => {
+  for (const file of [
+    'src/components/pro/SettingsSmtpCard.tsx',
+    'src/components/pro/SettingsWhatsAppCard.tsx',
+  ]) {
+    const source = read(file);
+    assert.match(source, /deriveProviderState/u, file);
+    assert.match(source, /providerStatus\.\$\{status\}/u, file);
+    assert.doesNotMatch(source, /connected|verified/iu, file);
+  }
 });
 
 test('English and Arabic settings catalogs have the same top-level settings keys', () => {

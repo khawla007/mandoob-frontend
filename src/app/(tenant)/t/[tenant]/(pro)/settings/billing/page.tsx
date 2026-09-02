@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { getBillingSubscriptionSnapshot } from '@/lib/data/tenant-billing';
+import {
+  billingCancellationState,
+  billingStatusKey,
+  getBillingSubscriptionSnapshot,
+} from '@/lib/data/tenant-billing';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { formatMoney } from '@/lib/format/money';
 
@@ -16,8 +20,12 @@ const STATUS_VARIANT = {
   trialing: 'secondary',
   past_due: 'destructive',
   incomplete: 'secondary',
+  incomplete_expired: 'outline',
+  paused: 'secondary',
+  unpaid: 'destructive',
   canceled: 'outline',
   cancelled: 'outline',
+  unknown: 'secondary',
 } as const;
 
 export default async function BillingSettingsPage({
@@ -69,8 +77,8 @@ export default async function BillingSettingsPage({
               <div>
                 <dt className="text-muted-foreground">{t('billing.status')}</dt>
                 <dd className="mt-1">
-                  <Badge variant={STATUS_VARIANT[snapshot.data.status]}>
-                    {t(`billing.statuses.${snapshot.data.status}`)}
+                  <Badge variant={STATUS_VARIANT[billingStatusKey(snapshot.data.status)]}>
+                    {t(`billing.statuses.${billingStatusKey(snapshot.data.status)}`)}
                   </Badge>
                 </dd>
               </div>
@@ -92,11 +100,7 @@ export default async function BillingSettingsPage({
               <div>
                 <dt className="text-muted-foreground">{t('billing.cancellation')}</dt>
                 <dd className="mt-1 font-medium">
-                  {snapshot.data.cancelAtPeriodEnd
-                    ? t('billing.cancelScheduled')
-                    : snapshot.data.canceledAt
-                      ? t('billing.cancelled')
-                      : t('billing.notScheduled')}
+                  {t(`billing.cancellationStates.${billingCancellationState(snapshot.data)}`)}
                 </dd>
               </div>
             </dl>

@@ -1232,6 +1232,17 @@
       "sourceUnavailable": "This source is temporarily unavailable. Other settings remain available.",
       "loadFailed": "Settings could not be loaded",
       "retry": "Retry",
+      "loading": {
+        "settings": "Loading settings",
+        "billing": "Loading billing"
+      },
+      "actionErrors": {
+        "validation": "Check the entered details and try again.",
+        "unavailable": "This setting is temporarily unavailable. No changes were saved.",
+        "forbidden": "You no longer have access to this workspace.",
+        "saveFailed": "Could not save this setting.",
+        "credentialRequired": "Enter a credential before saving this configuration."
+      },
       "context": {
         "title": "Verified context",
         "assignmentActive": "Live assignment",
@@ -1259,9 +1270,11 @@
         "periodEnd": "Current period ends",
         "cancellation": "Cancellation",
         "notAvailable": "Not available",
-        "cancelScheduled": "Cancellation scheduled at period end",
-        "cancelled": "Cancelled",
-        "notScheduled": "Not scheduled",
+        "cancellationStates": {
+          "cancelled": "Cancelled",
+          "scheduled": "Cancellation scheduled at period end",
+          "not_scheduled": "Not scheduled"
+        },
         "planSelectionUnavailable": "Plan selection unavailable — Phase 3 contract required",
         "changePlan": "Change plan",
         "manageBilling": "Manage billing",
@@ -1271,8 +1284,12 @@
           "trialing": "Trialing",
           "past_due": "Past due",
           "incomplete": "Incomplete",
+          "incomplete_expired": "Incomplete expired",
+          "paused": "Paused",
+          "unpaid": "Unpaid",
           "canceled": "Cancelled",
-          "cancelled": "Cancelled"
+          "cancelled": "Cancelled",
+          "unknown": "Status unavailable"
         }
       },
       "saving": "Saving…",
@@ -1317,9 +1334,6 @@
         "title": "WhatsApp",
         "description": "Meta Cloud API credentials for company workspace messaging.",
         "savedDescription": "WhatsApp config updated.",
-        "statusConnected": "Connected",
-        "statusDisabled": "Disabled",
-        "statusNotConfigured": "Not configured",
         "phoneNumberId": "Phone number ID",
         "businessAccountId": "Business account ID",
         "accessToken": "Access token",

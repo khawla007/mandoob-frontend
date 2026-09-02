@@ -10,6 +10,7 @@ import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { encrypt } from '@/lib/crypto/pii';
+import { resolveSecretPrerequisite } from '@/lib/settings/secret-prerequisite';
 import {
   brandingSchema,
   contactSchema,
@@ -23,7 +24,14 @@ import {
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
-  | { ok: false; error: string; code: string };
+  | { ok: false; errorKey: SettingsActionErrorKey; code: string };
+
+export type SettingsActionErrorKey =
+  | 'validation'
+  | 'unavailable'
+  | 'forbidden'
+  | 'saveFailed'
+  | 'credentialRequired';
 
 async function getCallerContext() {
   const hdr = await headers();
@@ -79,17 +87,17 @@ async function logSettingsUpdate(
   }).catch((err) => console.error('recordAuthEvent failed', err));
 }
 
-function actionFailure(error: unknown, fallback: string): ActionResult<never> {
+function actionFailure(error: unknown, fallback: SettingsActionErrorKey): ActionResult<never> {
   if (error instanceof ApiError) {
-    const messages: Partial<Record<string, string>> = {
-      FORBIDDEN: 'You no longer have access to this workspace.',
-      TENANT_INACTIVE: 'This workspace is unavailable.',
-      TENANT_NOT_FOUND: 'This workspace is unavailable.',
+    const errorKeys: Partial<Record<string, SettingsActionErrorKey>> = {
+      FORBIDDEN: 'forbidden',
+      TENANT_INACTIVE: 'unavailable',
+      TENANT_NOT_FOUND: 'unavailable',
     };
-    return { ok: false, error: messages[error.code] ?? fallback, code: error.code };
+    return { ok: false, errorKey: errorKeys[error.code] ?? fallback, code: error.code };
   }
   console.error('settings action failed', error);
-  return { ok: false, error: fallback, code: 'INTERNAL' };
+  return { ok: false, errorKey: fallback, code: 'INTERNAL' };
 }
 
 export async function updateBrandingAction(
@@ -99,7 +107,7 @@ export async function updateBrandingAction(
   try {
     const parsed = brandingSchema.safeParse(raw);
     if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
+      return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
     const { ctx, tenant } = await resolveAndAuthorize(slug);
     const input: BrandingInput = parsed.data;
@@ -116,14 +124,14 @@ export async function updateBrandingAction(
     const { error } = await admin.from('tenants').update(patch).eq('id', tenant.id);
     if (error) {
       console.error('updateBranding failed', error);
-      return { ok: false, error: 'Could not save branding', code: 'INTERNAL' };
+      return { ok: false, errorKey: 'saveFailed', code: 'INTERNAL' };
     }
 
     await logSettingsUpdate(ctx, tenant.id, 'branding', Object.keys(patch));
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    return actionFailure(e, 'Could not save branding');
+    return actionFailure(e, 'saveFailed');
   }
 }
 
@@ -131,7 +139,7 @@ export async function updateContactAction(slug: string, raw: unknown): Promise<A
   try {
     const parsed = contactSchema.safeParse(raw);
     if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
+      return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
     const { ctx, tenant } = await resolveAndAuthorize(slug);
     const input: ContactInput = parsed.data;
@@ -147,14 +155,14 @@ export async function updateContactAction(slug: string, raw: unknown): Promise<A
     const { error } = await admin.from('tenants').update(patch).eq('id', tenant.id);
     if (error) {
       console.error('updateContact failed', error);
-      return { ok: false, error: 'Could not save contact info', code: 'INTERNAL' };
+      return { ok: false, errorKey: 'saveFailed', code: 'INTERNAL' };
     }
 
     await logSettingsUpdate(ctx, tenant.id, 'contact', Object.keys(patch));
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    return actionFailure(e, 'Could not save contact info');
+    return actionFailure(e, 'saveFailed');
   }
 }
 
@@ -162,56 +170,57 @@ export async function updateSmtpAction(slug: string, raw: unknown): Promise<Acti
   try {
     const parsed = smtpSchema.safeParse(raw);
     if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
+      return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
     const { ctx, tenant } = await resolveAndAuthorize(slug);
     const input: SmtpInput = parsed.data;
 
     const admin = createSupabaseServiceRoleClient();
-    const { data: existing } = await admin
-      .from('tenant_smtp_config')
-      .select('password_encrypted')
-      .eq('tenant_id', tenant.id)
-      .maybeSingle();
-
-    const newPassword = (input.password ?? '').trim();
-    const passwordEncrypted = newPassword
-      ? encrypt(newPassword)
-      : ((existing?.password_encrypted as string | undefined) ?? null);
-
-    if (!passwordEncrypted) {
+    const secret = await resolveSecretPrerequisite({
+      replacementSecret: input.password ?? '',
+      readExisting: async () => {
+        const { data, error } = await admin
+          .from('tenant_smtp_config')
+          .select('password_encrypted')
+          .eq('tenant_id', tenant.id)
+          .maybeSingle();
+        return {
+          secret: (data?.password_encrypted as string | undefined) ?? null,
+          unavailable: Boolean(error),
+        };
+      },
+      encrypt,
+      mutate: async (passwordEncrypted) => {
+        const { error } = await admin.from('tenant_smtp_config').upsert(
+          {
+            tenant_id: tenant.id,
+            host: input.host,
+            port: input.port,
+            username: input.username,
+            password_encrypted: passwordEncrypted,
+            from_address: input.from_address,
+            enabled: input.enabled,
+          },
+          { onConflict: 'tenant_id' },
+        );
+        if (error) throw new ApiError('INTERNAL', 'SMTP config update failed', 500);
+      },
+    });
+    if (!secret.ok) {
       return {
         ok: false,
-        error: 'Password is required when configuring SMTP for the first time',
-        code: 'VALIDATION_FAILED',
+        errorKey: secret.reason === 'unavailable' ? 'unavailable' : 'credentialRequired',
+        code: secret.reason === 'unavailable' ? 'SOURCE_UNAVAILABLE' : 'VALIDATION_FAILED',
       };
     }
 
-    const row = {
-      tenant_id: tenant.id,
-      host: input.host,
-      port: input.port,
-      username: input.username,
-      password_encrypted: passwordEncrypted,
-      from_address: input.from_address,
-      enabled: input.enabled,
-    };
-
-    const { error } = await admin
-      .from('tenant_smtp_config')
-      .upsert(row, { onConflict: 'tenant_id' });
-    if (error) {
-      console.error('updateSmtp failed', error);
-      return { ok: false, error: 'Could not save SMTP config', code: 'INTERNAL' };
-    }
-
     const changed = ['host', 'port', 'username', 'from_address', 'enabled'];
-    if (newPassword) changed.push('password');
+    if (input.password?.trim()) changed.push('password');
     await logSettingsUpdate(ctx, tenant.id, 'smtp', changed);
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    return actionFailure(e, 'Could not save SMTP config');
+    return actionFailure(e, 'saveFailed');
   }
 }
 
@@ -222,52 +231,54 @@ export async function updateWhatsAppAction(
   try {
     const parsed = whatsappSchema.safeParse(raw);
     if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
+      return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
     const { ctx, tenant } = await resolveAndAuthorize(slug);
     const input: WhatsAppInput = parsed.data;
 
     const admin = createSupabaseServiceRoleClient();
-    const { data: existing } = await admin
-      .from('tenant_whatsapp_config')
-      .select('access_token_encrypted')
-      .eq('tenant_id', tenant.id)
-      .maybeSingle();
-
-    const newToken = (input.access_token ?? '').trim();
-    const accessTokenEncrypted = newToken
-      ? encrypt(newToken)
-      : ((existing?.access_token_encrypted as string | undefined) ?? null);
-
-    if (!accessTokenEncrypted) {
+    const secret = await resolveSecretPrerequisite({
+      replacementSecret: input.access_token ?? '',
+      readExisting: async () => {
+        const { data, error } = await admin
+          .from('tenant_whatsapp_config')
+          .select('access_token_encrypted')
+          .eq('tenant_id', tenant.id)
+          .maybeSingle();
+        return {
+          secret: (data?.access_token_encrypted as string | undefined) ?? null,
+          unavailable: Boolean(error),
+        };
+      },
+      encrypt,
+      mutate: async (accessTokenEncrypted) => {
+        const { error } = await admin.from('tenant_whatsapp_config').upsert(
+          {
+            tenant_id: tenant.id,
+            business_account_id: input.business_account_id,
+            phone_number_id: input.phone_number_id,
+            access_token_encrypted: accessTokenEncrypted,
+            enabled: input.enabled,
+          },
+          { onConflict: 'tenant_id' },
+        );
+        if (error) throw new ApiError('INTERNAL', 'WhatsApp config update failed', 500);
+      },
+    });
+    if (!secret.ok) {
       return {
         ok: false,
-        error: 'Access token is required when configuring WhatsApp for the first time',
-        code: 'VALIDATION_FAILED',
+        errorKey: secret.reason === 'unavailable' ? 'unavailable' : 'credentialRequired',
+        code: secret.reason === 'unavailable' ? 'SOURCE_UNAVAILABLE' : 'VALIDATION_FAILED',
       };
     }
 
-    const { error } = await admin.from('tenant_whatsapp_config').upsert(
-      {
-        tenant_id: tenant.id,
-        business_account_id: input.business_account_id,
-        phone_number_id: input.phone_number_id,
-        access_token_encrypted: accessTokenEncrypted,
-        enabled: input.enabled,
-      },
-      { onConflict: 'tenant_id' },
-    );
-    if (error) {
-      console.error('updateWhatsApp failed', error);
-      return { ok: false, error: 'Could not save WhatsApp config', code: 'INTERNAL' };
-    }
-
     const changed = ['business_account_id', 'phone_number_id', 'enabled'];
-    if (newToken) changed.push('access_token');
+    if (input.access_token?.trim()) changed.push('access_token');
     await logSettingsUpdate(ctx, tenant.id, 'whatsapp', changed);
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    return actionFailure(e, 'Could not save WhatsApp config');
+    return actionFailure(e, 'saveFailed');
   }
 }

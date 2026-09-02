@@ -24,3 +24,8 @@ test('provider source failures remain unavailable instead of appearing unconfigu
 test('provider state identifies an absent source row as not configured', () => {
   assert.equal(deriveProviderState({ status: 'ready', data: null }), 'not_configured');
 });
+
+test('a disabled row without its required credential is not configured', () => {
+  const config: RedactedProviderConfig = { enabled: false, hasCredential: false };
+  assert.equal(deriveProviderState({ status: 'ready', data: config }), 'not_configured');
+});

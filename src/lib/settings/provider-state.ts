@@ -19,6 +19,7 @@ export function deriveProviderState(
   if (source.status === 'unavailable') return 'unavailable';
   if (!source.data) return 'not_configured';
   if (source.data.enabled && !source.data.hasCredential) return 'misconfigured';
+  if (!source.data.hasCredential) return 'not_configured';
   if (source.data.enabled) return 'enabled';
   return 'configured';
 }

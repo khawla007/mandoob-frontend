@@ -1232,6 +1232,17 @@
       "sourceUnavailable": "هذا المصدر غير متاح مؤقتًا. تظل الإعدادات الأخرى متاحة.",
       "loadFailed": "تعذر تحميل الإعدادات",
       "retry": "إعادة المحاولة",
+      "loading": {
+        "settings": "جارٍ تحميل الإعدادات",
+        "billing": "جارٍ تحميل الفوترة"
+      },
+      "actionErrors": {
+        "validation": "تحقق من البيانات المدخلة وحاول مرة أخرى.",
+        "unavailable": "هذا الإعداد غير متاح مؤقتًا. لم يتم حفظ أي تغييرات.",
+        "forbidden": "لم يعد لديك حق الوصول إلى مساحة العمل هذه.",
+        "saveFailed": "تعذر حفظ هذا الإعداد.",
+        "credentialRequired": "أدخل بيانات اعتماد قبل حفظ هذا الإعداد."
+      },
       "context": {
         "title": "السياق الموثق",
         "assignmentActive": "تعيين نشط",
@@ -1259,9 +1270,11 @@
         "periodEnd": "انتهاء الفترة الحالية",
         "cancellation": "الإلغاء",
         "notAvailable": "غير متاح",
-        "cancelScheduled": "تمت جدولة الإلغاء عند نهاية الفترة",
-        "cancelled": "ملغي",
-        "notScheduled": "غير مجدول",
+        "cancellationStates": {
+          "cancelled": "ملغي",
+          "scheduled": "تمت جدولة الإلغاء عند نهاية الفترة",
+          "not_scheduled": "غير مجدول"
+        },
         "planSelectionUnavailable": "اختيار الخطة غير متاح — يتطلب عقد المرحلة 3",
         "changePlan": "تغيير الخطة",
         "manageBilling": "إدارة الفوترة",
@@ -1271,8 +1284,12 @@
           "trialing": "تجريبي",
           "past_due": "متأخر السداد",
           "incomplete": "غير مكتمل",
+          "incomplete_expired": "انتهت صلاحية الاشتراك غير المكتمل",
+          "paused": "موقوف مؤقتًا",
+          "unpaid": "غير مدفوع",
           "canceled": "ملغي",
-          "cancelled": "ملغي"
+          "cancelled": "ملغي",
+          "unknown": "الحالة غير متاحة"
         }
       },
       "saving": "جارٍ الحفظ…",
@@ -1317,9 +1334,6 @@
         "title": "واتساب",
         "description": "بيانات اعتماد Meta Cloud API لمراسلات مساحة عمل الشركة.",
         "savedDescription": "تم تحديث إعدادات واتساب.",
-        "statusConnected": "متصل",
-        "statusDisabled": "مُعطّل",
-        "statusNotConfigured": "غير مُهيّأ",
         "phoneNumberId": "معرّف رقم الهاتف",
         "businessAccountId": "معرّف حساب الأعمال",
         "accessToken": "رمز الوصول",

@@ -6,9 +6,13 @@ import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 
-export const BILLING_ACTIONS_UNAVAILABLE = 'Plan selection unavailable — Phase 3 contract required';
+export const BILLING_ACTIONS_UNAVAILABLE = 'BILLING_ACTIONS_UNAVAILABLE';
 
-export type BillingActionResult = { ok: false; code: 'BILLING_ACTIONS_UNAVAILABLE'; error: string };
+export type BillingActionResult = {
+  ok: false;
+  code: 'BILLING_ACTIONS_UNAVAILABLE';
+  errorKey: 'billingActionsUnavailable';
+};
 
 async function authorizeBillingAction(slug: string): Promise<void> {
   const { session, tenant } = await requireProTenantRouteAccess(slug);
@@ -20,7 +24,7 @@ async function authorizeBillingAction(slug: string): Promise<void> {
 }
 
 function unavailable(): BillingActionResult {
-  return { ok: false, code: 'BILLING_ACTIONS_UNAVAILABLE', error: BILLING_ACTIONS_UNAVAILABLE };
+  return { ok: false, code: 'BILLING_ACTIONS_UNAVAILABLE', errorKey: 'billingActionsUnavailable' };
 }
 
 export async function startCheckoutAction(formData: FormData): Promise<BillingActionResult> {
