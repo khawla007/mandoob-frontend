@@ -87,9 +87,11 @@ describe('pricing process, FAQ, and final CTA contract', () => {
     }, TypeError);
   });
 
-  it('centralizes all required FAQ answers with reviewed source states and cautious copy', () => {
-    const { faq } = PUBLIC_PRICING_CONTRACT;
+  it('centralizes the FAQ boundary intro and immutable answer fragments with source states', () => {
+    const { faq, faqIntro } = PUBLIC_PRICING_CONTRACT;
 
+    assert.equal(faqIntro.source.state, 'unavailable');
+    assert.match(faqIntro.text, /publication boundary.*confirm current terms/iu);
     assert.deepEqual(
       faq.map((item) => item.id),
       faqIds,
@@ -98,14 +100,24 @@ describe('pricing process, FAQ, and final CTA contract', () => {
       faq.every(
         (item) =>
           item.question.length > 8 &&
-          item.answer.text.length > 35 &&
-          ['approved-static', 'unavailable'].includes(item.answer.source.state),
+          item.answer.fragments.length > 0 &&
+          item.answer.fragments.every(
+            (fragment) =>
+              fragment.text.length > 20 &&
+              ['approved-static', 'unavailable'].includes(fragment.source.state),
+          ),
       ),
     );
     assert.equal(Object.isFrozen(faq), true);
     assert.equal(Object.isFrozen(faq[0].answer), true);
+    assert.equal(Object.isFrozen(faq[0].answer.fragments), true);
 
-    const answers = Object.fromEntries(faq.map((item) => [item.id, item.answer.text]));
+    const answers = Object.fromEntries(
+      faq.map((item) => [
+        item.id,
+        item.answer.fragments.map((fragment) => fragment.text).join(' '),
+      ]),
+    );
     assert.match(answers['subscription-includes'], /workspace.*one active assigned Company/iu);
     assert.match(answers['pricing-confirmation'], /exact amounts.*confirm/iu);
     assert.match(answers['company-limit'], /every tier.*at most one active.*Company/iu);
@@ -120,6 +132,26 @@ describe('pricing process, FAQ, and final CTA contract', () => {
       JSON.stringify(faq),
       /guarantee|service.level|response time|provider is live|fully compliant|instant purchase/iu,
     );
+  });
+
+  it('keeps cadence and add-on answers split between approved concepts and unavailable terms', () => {
+    const cadence = PUBLIC_PRICING_CONTRACT.faq.find((item) => item.id === 'billing-cadence');
+    const addOns = PUBLIC_PRICING_CONTRACT.faq.find((item) => item.id === 'allowances-add-ons');
+
+    assert.ok(cadence);
+    assert.ok(addOns);
+    assert.deepEqual(
+      cadence.answer.fragments.map((fragment) => fragment.source.state),
+      ['approved-static', 'unavailable'],
+    );
+    assert.deepEqual(
+      addOns.answer.fragments.map((fragment) => fragment.source.state),
+      ['approved-static', 'unavailable'],
+    );
+    assert.match(cadence.answer.fragments[0].text, /monthly and annual.*plan concepts/iu);
+    assert.match(cadence.answer.fragments[1].text, /availability.*confirmation/iu);
+    assert.match(addOns.answer.fragments[0].text, /usage-based add-on concept/iu);
+    assert.match(addOns.answer.fragments[1].text, /quantities.*confirmation/iu);
   });
 
   it('freezes the exact final CTA link order, labels, and destinations', () => {
@@ -175,8 +207,12 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
       const sectionEnd = html.indexOf('</section>', sectionStart);
       const section = html.slice(sectionStart, sectionEnd);
 
-      assert.match(section, /PRO registration is unavailable[^<]*P1\.10/iu);
-      assert.match(section, /checkout and billing provider access are unavailable[^<]*Phase 3/iu);
+      assert.match(section, /<aside[^>]*aria-labelledby="pricing-unavailable-title"/u);
+      assert.match(section, /<h3 id="pricing-unavailable-title">Unavailable plan actions<\/h3>/u);
+      assert.match(section, /<ul/u);
+      assert.equal((section.match(/<li>/gu) ?? []).length, 2);
+      assert.match(section, /PRO registration is unavailable[\s\S]*P1\.10/iu);
+      assert.match(section, /checkout and billing provider access are unavailable[\s\S]*Phase 3/iu);
       assert.doesNotMatch(section, /href="\/register\/pro(?:"|[/?#])/u);
       assert.doesNotMatch(section, /href="[^"]*(?:checkout|stripe|payment)[^"]*"/iu);
       assert.doesNotMatch(section, />[^<]*(?:Register|Sign up|Checkout|Buy now)[^<]*<\/a>/iu);
@@ -194,6 +230,7 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
 
       assert.ok(sectionStart >= 0);
       assert.match(section, /class="pricing-faq__grid"/u);
+      assert.match(section, new RegExp(PUBLIC_PRICING_CONTRACT.faqIntro.text, 'u'));
       assert.equal((section.match(/<details[^>]*data-pricing-faq=/gu) ?? []).length, faqIds.length);
       assert.equal((section.match(/<summary>/gu) ?? []).length, faqIds.length);
       for (const item of PUBLIC_PRICING_CONTRACT.faq) {
@@ -202,10 +239,12 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
           section,
           new RegExp(`>${item.question.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<`, 'u'),
         );
-        assert.match(
-          section,
-          new RegExp(item.answer.text.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'),
-        );
+        for (const fragment of item.answer.fragments) {
+          assert.match(
+            section,
+            new RegExp(fragment.text.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'),
+          );
+        }
       }
       assert.doesNotMatch(section, /role="button"|aria-expanded|onClick/iu);
     },
@@ -213,10 +252,12 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
 
   renderIt('renders the exact final conversion-band actions once and in order', async () => {
     const html = await renderPricingPage();
-    const sectionStart = html.indexOf('aria-labelledby="pricing-final-cta-title"');
+    const headingReference = html.indexOf('aria-labelledby="pricing-final-cta-title"');
+    const sectionStart = html.lastIndexOf('<section', headingReference);
     const sectionEnd = html.indexOf('</section>', sectionStart);
     const section = html.slice(sectionStart, sectionEnd);
 
+    assert.match(section, /class="about-contact-conversion"/u);
     const links = [...section.matchAll(/<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/gu)].map(
       (match) => ({ href: match[1], label: match[2] }),
     );
@@ -230,7 +271,11 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
   it('renders every section from the centralized contract without scattered commercial arrays', () => {
     assert.match(pageSource, /PUBLIC_PRICING_CONTRACT\.accessProcess\.steps\.map/u);
     assert.match(pageSource, /PUBLIC_PRICING_CONTRACT\.faq\.map/u);
-    assert.match(pageSource, /PUBLIC_PRICING_CONTRACT\.finalCta\.links\.map/u);
+    assert.match(pageSource, /import \{ PublicConversionBand \}/u);
+    assert.match(pageSource, /<PublicConversionBand/u);
+    assert.match(pageSource, /PUBLIC_PRICING_CONTRACT\.faqIntro\.text/u);
+    assert.match(pageSource, /item\.answer\.fragments\.map/u);
+    assert.doesNotMatch(pageSource, /<section className="pricing-final-cta"/u);
     assert.doesNotMatch(
       pageSource,
       /\b(?:const|let|var)\s+(?:processSteps|steps|faqs|faqItems|finalCtas|ctaLinks)\s*=/u,
@@ -248,8 +293,9 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
       /\.site-public \.pricing-faq__grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/u,
     );
     assert.match(pricingCss, /\.site-public \.pricing-faq__item summary:focus-visible/u);
-    assert.match(pricingCss, /\.site-public \.pricing-final-cta/u);
-    assert.match(pricingCss, /\.dark \.site-public \.pricing-(?:access|faq|final-cta)/u);
+    assert.doesNotMatch(pricingCss, /\.site-public \.pricing-final-cta/u);
+    assert.match(pricingCss, /\.dark \.site-public \.pricing-access/u);
+    assert.match(pricingCss, /\.dark \.site-public \.pricing-faq/u);
     assert.match(pricingCss, /@media \(max-width: 899px\)[\s\S]*\.pricing-faq__grid/u);
     assert.match(pricingCss, /(?:margin|padding|inset|border)-(?:inline|block)/u);
     assert.doesNotMatch(pricingCss, /\b(?:margin|padding)-(?:left|right):|\b(?:left|right):/u);

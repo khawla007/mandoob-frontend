@@ -1136,20 +1136,28 @@
   text-underline-offset: 4px;
 }
 .site-public .pricing-access__unavailable {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-block-start: 22px;
   border: 1px solid var(--public-border-subtle);
   border-radius: var(--r-md);
   background: var(--zinc-50);
 }
-.site-public .pricing-access__unavailable p {
+.site-public .pricing-access__unavailable h3 {
+  padding-block: 16px;
+  padding-inline: clamp(22px, 2.7vw, 34px);
+  border-block-end: 1px solid var(--public-border-subtle);
+  font-size: var(--fs-14);
+}
+.site-public .pricing-access__unavailable ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.site-public .pricing-access__unavailable li {
   padding-block: 20px;
   padding-inline: clamp(22px, 2.7vw, 34px);
   color: var(--public-text-muted);
   font-size: var(--fs-13);
 }
-.site-public .pricing-access__unavailable p + p {
+.site-public .pricing-access__unavailable li + li {
   border-inline-start: 1px solid var(--public-border-subtle);
 }
 .site-public .pricing-access__unavailable strong {
@@ -1205,68 +1213,6 @@
   color: var(--public-text-muted);
   font-size: var(--fs-14);
 }
-.site-public .pricing-final-cta {
-  --pricing-final-bg: var(--zinc-950);
-  --pricing-final-text: var(--ink-inv);
-  --pricing-final-muted: var(--zinc-300);
-
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  color: var(--pricing-final-text);
-  background: var(--pricing-final-bg);
-}
-.site-public .pricing-final-cta__inner {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  min-block-size: 180px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 32px;
-  padding-block: 38px;
-}
-.site-public .pricing-final-cta__copy {
-  max-inline-size: 680px;
-}
-.site-public .pricing-final-cta h2 {
-  color: var(--pricing-final-text);
-  font-size: clamp(1.9rem, 3vw, 3rem);
-  letter-spacing: -0.04em;
-}
-.site-public .pricing-final-cta p {
-  margin-block-start: 10px;
-  color: var(--pricing-final-muted);
-}
-.site-public .pricing-final-cta__actions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.site-public .pricing-final-cta__actions a {
-  min-inline-size: 190px;
-  border: 1px solid var(--zinc-300);
-  background: var(--public-surface-elevated);
-  color: var(--public-text-primary);
-}
-.site-public .pricing-final-cta__actions a:hover {
-  border-color: var(--public-focus-ring);
-  color: var(--public-cta-background);
-}
-.site-public .pricing-final-cta__skyline {
-  position: absolute;
-  z-index: 0;
-  inset-block-end: -4px;
-  inset-inline-end: 0;
-  inline-size: min(48vw, 720px);
-  block-size: 132px;
-  opacity: 0.12;
-  background: var(--accent);
-  -webkit-mask: url('/decor/dubai-skyline.svg') center 100% / contain no-repeat;
-  mask: url('/decor/dubai-skyline.svg') center 100% / contain no-repeat;
-  pointer-events: none;
-}
 .dark .site-public .pricing-hero__context,
 .dark .site-public .pricing-tier-grid {
   border-color: var(--public-border-strong);
@@ -1286,12 +1232,6 @@
   border-color: var(--public-border-strong);
 }
 
-.dark .site-public .pricing-final-cta {
-  --pricing-final-bg: var(--zinc-50);
-  --pricing-final-text: var(--ink);
-  --pricing-final-muted: var(--zinc-600);
-}
-
 .dark .site-public .pricing-hero__context dl,
 .dark .site-public .pricing-hero__context dl > div,
 .dark .site-public .pricing-tier-card + .pricing-tier-card,
@@ -1309,7 +1249,8 @@
 .dark .site-public .pricing-process,
 .dark .site-public .pricing-process li,
 .dark .site-public .pricing-access__unavailable,
-.dark .site-public .pricing-access__unavailable p,
+.dark .site-public .pricing-access__unavailable h3,
+.dark .site-public .pricing-access__unavailable li,
 .dark .site-public .pricing-faq__item {
   border-color: var(--public-border-strong);
 }
@@ -1340,10 +1281,6 @@
   }
   .site-public .pricing-faq__item:last-child {
     border-block-end: 1px solid var(--public-border-subtle);
-  }
-  .site-public .pricing-final-cta__inner {
-    align-items: flex-start;
-    flex-direction: column;
   }
   .site-public .pricing-tier-card + .pricing-tier-card {
     border-block-start: 1px solid var(--public-border-subtle);
@@ -1385,28 +1322,21 @@
     inline-size: 100%;
   }
   .site-public .pricing-process,
-  .site-public .pricing-access__unavailable {
+  .site-public .pricing-access__unavailable ul {
     grid-template-columns: 1fr;
   }
   .site-public .pricing-process li:nth-child(even),
-  .site-public .pricing-access__unavailable p + p {
+  .site-public .pricing-access__unavailable li + li {
     border-inline-start: 0;
   }
   .site-public .pricing-process li + li,
-  .site-public .pricing-access__unavailable p + p {
+  .site-public .pricing-access__unavailable li + li {
     border-block-start: 1px solid var(--public-border-subtle);
-  }
-  .site-public .pricing-final-cta__actions,
-  .site-public .pricing-final-cta__actions a {
-    inline-size: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .site-public .pricing-breadcrumb a {
-    transition: none;
-  }
-  .site-public .pricing-final-cta__actions a {
     transition: none;
   }
 }

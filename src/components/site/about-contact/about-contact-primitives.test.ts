@@ -132,7 +132,7 @@ describe('About and Contact shared primitive contracts', () => {
     assert.doesNotMatch(source, /['"]use client['"]/u);
   });
 
-  it('restricts every dynamic CTA to the exact closed P1.05 public route set', () => {
+  it('restricts every dynamic CTA to the exact closed approved public route set', () => {
     const conversion = readComponent('PublicConversionBand.tsx');
     const hero = readComponent('PageScenicHero.tsx');
     const union = conversion.match(/export type PublicActionHref =([\s\S]*?);/u)?.[1];
@@ -144,6 +144,7 @@ describe('About and Contact shared primitive contracts', () => {
       '/mainland',
       '/free-zones',
       '/offshore',
+      '/pro',
     ];
 
     assert.ok(union);

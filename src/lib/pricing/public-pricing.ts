@@ -238,10 +238,13 @@ export type PublicPricingContract = DeepReadonly<{
     registration: UnavailablePublicationFact;
     checkout: UnavailablePublicationFact;
   };
+  faqIntro: UnavailablePublicationFact;
   faq: readonly {
     id: PublicPricingFaqId;
     question: string;
-    answer: ApprovedPublicationFact | UnavailablePublicationFact;
+    answer: {
+      fragments: readonly (ApprovedPublicationFact | UnavailablePublicationFact)[];
+    };
   }[];
   finalCta: {
     title: ApprovedPublicationFact;
@@ -562,74 +565,122 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       'Checkout and billing providers are Phase 3 capabilities',
     ),
   },
+  faqIntro: unavailablePublicationFact(
+    'These answers describe the current publication boundary. Confirm current terms before relying on a plan decision.',
+    'Current plan terms are confirmed during a plan discussion',
+  ),
   faq: [
     {
       id: 'subscription-includes',
       question: 'What does a Mandoob subscription include?',
-      answer: approvedPublicationFact(
-        'A subscription provides workspace access for at most one active assigned Company per PRO. The exact capability allocation and current terms are confirmed during a plan discussion.',
-      ),
+      answer: {
+        fragments: [
+          approvedPublicationFact(
+            'A subscription provides workspace access for at most one active assigned Company per PRO.',
+          ),
+          unavailablePublicationFact(
+            'The exact capability allocation and current terms are confirmed during a plan discussion.',
+            'Exact capability allocation and current terms are not approved for publication',
+          ),
+        ],
+      },
     },
     {
       id: 'pricing-confirmation',
       question: 'Why do exact prices require confirmation?',
-      answer: unavailablePublicationFact(
-        'Exact amounts, current billing terms, allowances, and tier allocations do not have an approved public source, so Mandoob must confirm them before access.',
-        'Exact public pricing and allocation are not approved for publication',
-      ),
+      answer: {
+        fragments: [
+          unavailablePublicationFact(
+            'Exact amounts, current billing terms, allowances, and tier allocations do not have an approved public source, so Mandoob must confirm them before access.',
+            'Exact public pricing and allocation are not approved for publication',
+          ),
+        ],
+      },
     },
     {
       id: 'company-limit',
       question: 'Does every tier keep the one-Company limit?',
-      answer: approvedPublicationFact(
-        'Yes. Every tier permits at most one active assigned Company per PRO; a higher tier does not add another Company.',
-      ),
+      answer: {
+        fragments: [
+          approvedPublicationFact(
+            'Yes. Every tier permits at most one active assigned Company per PRO; a higher tier does not add another Company.',
+          ),
+        ],
+      },
     },
     {
       id: 'billing-cadence',
       question: 'Are monthly and annual billing available?',
-      answer: unavailablePublicationFact(
-        'Monthly and annual are supported plan concepts, but current availability and terms require confirmation. No pricing advantage is published for either cadence.',
-        'Current cadence availability and terms are not approved for publication',
-      ),
+      answer: {
+        fragments: [
+          approvedPublicationFact('Monthly and annual are supported plan concepts.'),
+          unavailablePublicationFact(
+            'Current availability and terms require confirmation. No pricing advantage is published for either cadence.',
+            'Current cadence availability and terms are not approved for publication',
+          ),
+        ],
+      },
     },
     {
       id: 'external-fees',
       question: 'Are government and third-party fees included?',
-      answer: approvedPublicationFact(
-        'Government, authority, provider, and other third-party costs are separate from platform access and vary with jurisdiction, activity, office, visa, approval, provider, and current schedules.',
-      ),
+      answer: {
+        fragments: [
+          approvedPublicationFact(
+            'Government, authority, provider, and other third-party costs are separate from platform access and vary with jurisdiction, activity, office, visa, approval, provider, and current schedules.',
+          ),
+        ],
+      },
     },
     {
       id: 'allowances-add-ons',
       question: 'How do allowances and add-ons work?',
-      answer: unavailablePublicationFact(
-        'Communication allowances use an approved usage-based add-on concept. Current quantities, tier allocation, terms, and prices require confirmation and remain unavailable for publication.',
-        'Allowance quantities, allocation, and add-on terms are not approved for publication',
-      ),
+      answer: {
+        fragments: [
+          approvedPublicationFact(
+            'Communication allowances use an approved usage-based add-on concept.',
+          ),
+          unavailablePublicationFact(
+            'Current quantities, tier allocation, terms, and prices require confirmation and remain unavailable for publication.',
+            'Allowance quantities, allocation, and add-on terms are not approved for publication',
+          ),
+        ],
+      },
     },
     {
       id: 'plan-changes',
       question: 'Can a plan be upgraded, downgraded, or cancelled?',
-      answer: unavailablePublicationFact(
-        'Availability and terms for upgrades, downgrades, and cancellation require confirmation before you rely on a plan-change option.',
-        'Plan-change and cancellation terms are not approved for publication',
-      ),
+      answer: {
+        fragments: [
+          unavailablePublicationFact(
+            'Availability and terms for upgrades, downgrades, and cancellation require confirmation before you rely on a plan-change option.',
+            'Plan-change and cancellation terms are not approved for publication',
+          ),
+        ],
+      },
     },
     {
       id: 'estimate-versus-quote',
       question: 'Is the Company-setup estimator a final quote?',
-      answer: approvedPublicationFact(
-        'No. The estimator is indicative Company-setup planning, not a published plan amount or final quote; current schedules and selected inputs still apply.',
-      ),
+      answer: {
+        fragments: [
+          approvedPublicationFact(
+            'No. The estimator is indicative Company-setup planning, not a published plan amount or final quote; current schedules and selected inputs still apply.',
+          ),
+        ],
+      },
     },
     {
       id: 'billing-provider',
       question: 'Is online billing or checkout available now?',
-      answer: unavailablePublicationFact(
-        'Billing provider and checkout access are unavailable in this phase and remain owned by Phase 3. Published invoice, payment, and subscription-management concepts do not establish current provider availability.',
-        'Checkout and billing providers are Phase 3 capabilities',
-      ),
+      answer: {
+        fragments: [
+          unavailablePublicationFact(
+            'Billing provider and checkout access are unavailable in this phase and remain owned by Phase 3. Published invoice, payment, and subscription-management concepts do not establish current provider availability.',
+            'Checkout and billing providers are Phase 3 capabilities',
+          ),
+        ],
+      },
     },
   ],
   finalCta: {
