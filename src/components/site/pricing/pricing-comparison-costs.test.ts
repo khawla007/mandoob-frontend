@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import React from 'react';
 
 import {
+  ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS,
   PUBLIC_PRICING_COMPARISON_STATUSES,
   PUBLIC_PRICING_CONTRACT,
   resolvePublicComparisonStatus,
@@ -100,6 +101,37 @@ describe('pricing comparison contract', () => {
       } as never),
       'Contact',
     );
+
+    const communication = PUBLIC_PRICING_CONTRACT.comparison.rows.find(
+      (row) => row.group === 'Communication allowances',
+    );
+    assert.ok(communication);
+    for (const allocation of communication.tiers) {
+      assert.equal(allocation.source.state, 'unavailable');
+      assert.equal(resolvePublicComparisonStatus(allocation), 'Contact');
+    }
+    assert.ok(
+      PUBLIC_PRICING_CONTRACT.comparison.rows.every((row) =>
+        row.tiers.every(
+          (allocation) =>
+            resolvePublicComparisonStatus(allocation) !== 'Usage-based' ||
+            allocation.source.state === 'approved-static',
+        ),
+      ),
+      'A per-tier Usage-based status requires an accepted allocation source',
+    );
+    assert.deepEqual(ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS, []);
+    assert.equal(
+      resolvePublicComparisonStatus({
+        status: 'Usage-based',
+        source: { state: 'approved-static', source: 'Category-level add-on concept only' },
+      }),
+      'Contact',
+      'Category-level add-on approval must not publish a per-tier Usage-based allocation',
+    );
+    assert.equal(PUBLIC_PRICING_CONTRACT.addOns[0].category, 'Communication usage');
+    assert.equal(PUBLIC_PRICING_CONTRACT.addOns[0].basis.text, 'Usage-based');
+    assert.equal(PUBLIC_PRICING_CONTRACT.addOns[0].basis.source.state, 'approved-static');
   });
 
   it('keeps cost categories and variability in the centralized contract without exact fees', () => {
@@ -122,9 +154,15 @@ describe('pricing comparison contract', () => {
     assert.equal(costBoundaries.otherThirdParties.text, 'Other third parties');
     assert.equal(costBoundaries.otherThirdParties.source.state, 'approved-static');
     assert.match(
-      costBoundaries.variabilityNotice,
+      costBoundaries.variabilityNotice.text,
       /jurisdiction, activity, office, visa, approval, provider, and current authority schedules/iu,
     );
+    assert.equal(costBoundaries.variabilityNotice.source.state, 'approved-static');
+    assert.equal(
+      costBoundaries.finalEstimateNotice.text,
+      'Final Company-setup estimates depend on selected inputs and current schedules.',
+    );
+    assert.equal(costBoundaries.finalEstimateNotice.source.state, 'approved-static');
     assert.doesNotMatch(
       JSON.stringify(costBoundaries),
       /\b(?:AED|USD)\s*\d|\d[,.]?\d*\s*(?:AED|USD)/iu,
@@ -187,7 +225,7 @@ describe('pricing comparison and cost-boundary sections', () => {
     assert.match(html, /<a[^>]*href="\/estimate"[^>]*>Indicative estimate<\/a>/u);
     assert.doesNotMatch(
       html,
-      /guaranteed total|binding quote|subscription price|\b(?:AED|USD)\s*\d/iu,
+      /\badvisory\b|guaranteed total|binding quote|subscription price|\b(?:AED|USD)\s*\d/iu,
     );
   });
 
@@ -195,6 +233,9 @@ describe('pricing comparison and cost-boundary sections', () => {
     assert.match(pageSource, /PUBLIC_PRICING_CONTRACT\.comparison\.rows\.map/u);
     assert.match(pageSource, /resolvePublicComparisonStatus/u);
     assert.match(pageSource, /costBoundaries/u);
+    assert.match(pageSource, /costBoundaries\.variabilityNotice\.text/u);
+    assert.match(pageSource, /costBoundaries\.finalEstimateNotice\.text/u);
+    assert.doesNotMatch(pageSource, /\badvisory\b/iu);
     assert.doesNotMatch(
       pageSource,
       /\b(?:const|let|var)\s+(?:comparison|comparisonRows|costs)\s*=/u,

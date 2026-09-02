@@ -195,7 +195,7 @@ export default function PricingPage() {
               <span className="eyebrow">Cost boundaries</span>
               <h2 id="pricing-costs-title">Know what sits inside and outside the platform.</h2>
             </div>
-            <p>{costBoundaries.variabilityNotice}</p>
+            <p>{costBoundaries.variabilityNotice.text}</p>
           </header>
 
           <div className="pricing-costs__grid">
@@ -233,7 +233,7 @@ export default function PricingPage() {
                 03
               </span>
               <h3>Additional and third-party costs</h3>
-              <p>Provider, usage, advisory, and other external charges remain separate.</p>
+              <p>The categories below remain separate from platform access.</p>
               <ul>
                 {costBoundaries.thirdParty.categories.map((category) => (
                   <li key={category}>{category}</li>
@@ -246,7 +246,7 @@ export default function PricingPage() {
           <div className="pricing-costs__estimate">
             <div>
               <span className="eyebrow">Company-setup planning</span>
-              <p>{costBoundaries.finalEstimateNotice}</p>
+              <p>{costBoundaries.finalEstimateNotice.text}</p>
             </div>
             <Link className="btn btn--outline" href={costBoundaries.estimateLink.href}>
               {costBoundaries.estimateLink.label}

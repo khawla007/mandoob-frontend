@@ -76,6 +76,11 @@ export type PublicPricingCategory =
   | 'Reporting and audit visibility'
   | 'Support';
 
+// A category-level communication add-on is approved, but no per-tier allocation source is.
+export const ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS = Object.freeze(
+  [] as readonly string[],
+);
+
 export const PUBLIC_PRICING_COMPARISON_STATUSES = [
   'Included',
   'Configurable',
@@ -149,6 +154,7 @@ export type PublicPricingContract = DeepReadonly<{
   differentiationCategories: readonly PublicPricingCategory[];
   addOns: readonly {
     category: 'Communication usage';
+    basis: ApprovedPublicationFact<'Usage-based'>;
     source: PublicPricingSource;
     price: Extract<PublicPrice, { state: 'unavailable' }>;
   }[];
@@ -167,8 +173,8 @@ export type PublicPricingContract = DeepReadonly<{
     governmentAndAuthority: CostBoundary;
     thirdParty: CostBoundary;
     otherThirdParties: ApprovedPublicationFact<'Other third parties'>;
-    variabilityNotice: string;
-    finalEstimateNotice: string;
+    variabilityNotice: ApprovedPublicationFact<'Government and third-party costs vary by jurisdiction, activity, office, visa, approval, provider, and current authority schedules.'>;
+    finalEstimateNotice: ApprovedPublicationFact<'Final Company-setup estimates depend on selected inputs and current schedules.'>;
     estimateLink: {
       href: '/estimate';
       label: 'Indicative estimate';
@@ -320,6 +326,7 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
   addOns: [
     {
       category: 'Communication usage',
+      basis: approvedPublicationFact('Usage-based'),
       source: approvedStaticSource(),
       price: priceOnRequest(),
     },
@@ -356,8 +363,8 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       ),
       comparisonRow(
         'Communication allowances',
-        'Communication usage is an add-on concept; quantities are not published.',
-        approvedComparisonStatus('Usage-based'),
+        'Allowance quantities and per-tier allocation require confirmation.',
+        unapprovedComparisonAllocation(UNAPPROVED_TIER_ALLOCATION_REASON),
       ),
       comparisonRow(
         'Reporting and audit',
@@ -405,10 +412,12 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       price: priceOnRequest(),
     },
     otherThirdParties: approvedPublicationFact('Other third parties'),
-    variabilityNotice:
+    variabilityNotice: approvedPublicationFact(
       'Government and third-party costs vary by jurisdiction, activity, office, visa, approval, provider, and current authority schedules.',
-    finalEstimateNotice:
+    ),
+    finalEstimateNotice: approvedPublicationFact(
       'Final Company-setup estimates depend on selected inputs and current schedules.',
+    ),
     estimateLink: {
       href: '/estimate',
       label: 'Indicative estimate',
@@ -421,6 +430,12 @@ export function resolvePublicComparisonStatus(
   allocation: PublicPricingComparisonAllocation,
 ): PublicPricingComparisonStatus {
   if (allocation.source.state !== 'approved-static') return 'Contact';
+  if (
+    allocation.status === 'Usage-based' &&
+    !ACCEPTED_USAGE_BASED_TIER_ALLOCATION_SOURCE_IDS.includes(allocation.source.source)
+  ) {
+    return 'Contact';
+  }
   return PUBLIC_PRICING_COMPARISON_STATUSES.includes(allocation.status)
     ? allocation.status
     : 'Contact';
