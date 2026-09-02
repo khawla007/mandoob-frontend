@@ -1059,6 +1059,65 @@
         }
       }
     },
+    "employeeRegistry": {
+      "eyebrow": "Company workforce",
+      "title": "Employees",
+      "description": "Read-only employee identity and renewal signals for your assigned company.",
+      "import": "Import CSV",
+      "notRecorded": "Not recorded",
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Name or email",
+        "status": "Employment status",
+        "identity": "Identity record",
+        "risk": "Renewal risk",
+        "apply": "Apply",
+        "reset": "Reset",
+        "all": "All",
+        "visa": "Visa recorded",
+        "eid": "Emirates ID recorded"
+      },
+      "status": { "active": "Active", "inactive": "Inactive", "terminated": "Terminated" },
+      "identity": {
+        "missing": "Not recorded",
+        "expired": "Expired",
+        "attention": "Due within 90 days",
+        "current": "Current"
+      },
+      "risk": { "attention": "Needs attention", "clear": "Clear", "unknown": "Not assessed" },
+      "signals": {
+        "total": "Matching employees",
+        "visible": "Visible on this page",
+        "page": "Page",
+        "unavailableValue": "Unavailable"
+      },
+      "table": {
+        "title": "Employee registry",
+        "description": "{count} exact matching employees.",
+        "label": "Employee registry",
+        "employee": "Employee",
+        "risk": "Renewal risk",
+        "provenance": "Import provenance",
+        "provenanceUnavailable": "Not recorded",
+        "maskedIdentifier": "Identifier hidden"
+      },
+      "pagination": {
+        "label": "Employee registry pages",
+        "previous": "Previous",
+        "next": "Next",
+        "pageCount": "Page {current} of {total}"
+      },
+      "states": {
+        "empty": "No employees are recorded for this assigned company.",
+        "emptyGuidance": "Import a CSV only when you have an approved employee source file.",
+        "emptyFiltered": "No employees match these filters.",
+        "emptyFilteredGuidance": "Reset or change the filters to view the registry.",
+        "unavailable": "Employee registry unavailable",
+        "partial": "Some employee signals may be unavailable. Working data is shown independently.",
+        "sanitizedError": "Please retry. No employee details are shown in this message.",
+        "retry": "Retry"
+      }
+    },
     "employeeImport": {
       "eyebrow": "Employee records",
       "title": "Import employees",
@@ -1068,7 +1127,11 @@
       "cardDescription": "Existing passport numbers for your assigned company are skipped by default.",
       "file": "CSV file",
       "upload": "Upload CSV",
-      "template": "Download template"
+      "template": "Download template",
+      "guidance": "CSV only. The upload is checked before validation; XLSX is not accepted.",
+      "pending": "Uploading CSV…",
+      "resultReady": "Upload ready. Opening the import job…",
+      "resultError": "The import could not be started."
     },
     "importJob": {
       "title": "Import job",
@@ -1093,6 +1156,18 @@
       "cancel": "Cancel",
       "refreshing": "Refreshing every 3 seconds",
       "cannotCancel": "Import execution cannot be cancelled after it starts.",
+      "pending": "Working…",
+      "actionSuccess": "Import job updated.",
+      "actionError": "The import action could not be completed.",
+      "retry": "Retry",
+      "state": {
+        "pending": "Waiting for the next import step.",
+        "parsing": "The CSV is being processed.",
+        "partial": "Import completed with rows needing attention.",
+        "success": "Import completed.",
+        "failure": "Import failed safely.",
+        "cancel": "Import was cancelled."
+      },
       "errorsTitle": "Row errors",
       "errorsDescription": "Validation failures, skipped duplicates, and partial insert errors.",
       "noErrors": "No row errors reported.",
@@ -1103,6 +1178,7 @@
         "code": "Code"
       },
       "errorsCsv": "Errors CSV",
+      "errorsDownloadUnavailable": "A protected error-file download is not available for this job.",
       "emptyValue": "Not available",
       "fields": {
         "name": "Name",
