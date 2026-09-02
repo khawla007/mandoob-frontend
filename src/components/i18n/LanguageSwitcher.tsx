@@ -35,6 +35,8 @@ export function LanguageSwitcher({
   const tSite = useTranslations('site');
   const [pending, startTransition] = useTransition();
   const submittingRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const pointerDismissedRef = useRef(false);
   const resolvedFailureMessage = failureMessage ?? tSite('languageChangeFailed');
   const resolvedPendingLabel = pendingLabel ?? tSite('languageChanging');
 
@@ -60,6 +62,7 @@ export function LanguageSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          ref={triggerRef}
           variant="ghost"
           size="sm"
           aria-label={
@@ -75,7 +78,18 @@ export function LanguageSwitcher({
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent
+        align="end"
+        onPointerDownOutside={() => {
+          pointerDismissedRef.current = true;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!pointerDismissedRef.current) return;
+          pointerDismissedRef.current = false;
+          event.preventDefault();
+          triggerRef.current?.blur();
+        }}
+      >
         <DropdownMenuRadioGroup value={current}>
           {locales.map((loc) => (
             <DropdownMenuRadioItem

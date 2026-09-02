@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import Link from 'next/link';
 import { Briefcase, LayoutDashboard, User } from 'lucide-react';
 
@@ -37,9 +38,12 @@ export function UserMenu({
   const href = isCustomer ? '/account' : homeHref;
   const label = isCustomer ? 'My account' : 'Dashboard';
   const Icon = isCustomer ? User : LayoutDashboard;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const pointerDismissedRef = useRef(false);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        ref={triggerRef}
         aria-label="Account menu"
         className="focus-visible:ring-ring rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       >
@@ -49,7 +53,19 @@ export function UserMenu({
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent
+        align="end"
+        className="w-56"
+        onPointerDownOutside={() => {
+          pointerDismissedRef.current = true;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!pointerDismissedRef.current) return;
+          pointerDismissedRef.current = false;
+          event.preventDefault();
+          triggerRef.current?.blur();
+        }}
+      >
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span className="truncate text-sm font-medium">{displayName ?? 'Signed in'}</span>
           {email && (

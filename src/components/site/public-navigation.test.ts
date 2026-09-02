@@ -6,6 +6,11 @@ import { PUBLIC_NAV_ITEMS, isPublicNavCurrent } from './public-navigation';
 const rendererSource = readFileSync(new URL('./PublicNavLinks.tsx', import.meta.url), 'utf8');
 const headerSource = readFileSync(new URL('./SiteHeader.tsx', import.meta.url), 'utf8');
 const mobileSource = readFileSync(new URL('./MobileNav.tsx', import.meta.url), 'utf8');
+const userMenuSource = readFileSync(new URL('./UserMenu.tsx', import.meta.url), 'utf8');
+const languageSwitcherSource = readFileSync(
+  new URL('../i18n/LanguageSwitcher.tsx', import.meta.url),
+  'utf8',
+);
 const cssSource = readFileSync(
   new URL('../../app/(public)/public-theme.css', import.meta.url),
   'utf8',
@@ -155,6 +160,25 @@ describe('MobileNav authenticated destination type contract', () => {
       /authed:\s*false;[^}]*accountHref\?:\s*never;[^}]*accountLabel\?:\s*never/u,
     );
     assert.doesNotMatch(mobileSource, /accountHref\s*=\s*['"]\/['"]/u);
+  });
+});
+
+describe('public header dropdown focus contract', () => {
+  it('removes restored focus only after pointer dismissal', () => {
+    for (const [controlName, source] of [
+      ['language switcher', languageSwitcherSource],
+      ['account menu', userMenuSource],
+    ] as const) {
+      assert.match(source, /const triggerRef = useRef<HTMLButtonElement>\(null\)/u, controlName);
+      assert.match(source, /const pointerDismissedRef = useRef\(false\)/u, controlName);
+      assert.match(source, /ref=\{triggerRef\}/u, controlName);
+      assert.match(source, /onPointerDownOutside=/u, controlName);
+      assert.match(
+        source,
+        /onCloseAutoFocus=\{\(event\) => \{[^}]*if \(!pointerDismissedRef\.current\) return;[^}]*event\.preventDefault\(\);[^}]*triggerRef\.current\?\.blur\(\);/u,
+        controlName,
+      );
+    }
   });
 });
 
