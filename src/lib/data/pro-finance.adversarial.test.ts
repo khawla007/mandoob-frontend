@@ -135,6 +135,86 @@ test('collected revenue only includes succeeded payments and refunds tied to eli
   assert.equal(dashboard.totalRevenueCollectedMinor, 8_000);
 });
 
+test('collected revenue preserves transitioned partial and full refund payment collections', () => {
+  const common = {
+    tenantId: 't1',
+    today: '2026-09-02',
+    companies: [{ id: 'c1', tenant_id: 't1', company_name: 'Assigned' }],
+    invoices: [
+      {
+        id: 'live',
+        tenant_id: 't1',
+        company_id: 'c1',
+        amount_minor: 1000,
+        currency: 'AED',
+        status: 'paid',
+        due_at: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ],
+  };
+  const partial = calculateProFinanceDashboard({
+    ...common,
+    payments: [
+      {
+        id: 'p',
+        tenant_id: 't1',
+        invoice_id: 'live',
+        amount_minor: 1000,
+        currency: 'AED',
+        status: 'partially_refunded',
+        method: 'card',
+        provider: 'tap',
+        failure_reason: null,
+        received_at: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ],
+    refunds: [
+      {
+        id: 'r',
+        tenant_id: 't1',
+        payment_id: 'p',
+        amount_minor: 250,
+        status: 'succeeded',
+        reason: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ],
+  });
+  const full = calculateProFinanceDashboard({
+    ...common,
+    payments: [
+      {
+        id: 'p',
+        tenant_id: 't1',
+        invoice_id: 'live',
+        amount_minor: 1000,
+        currency: 'AED',
+        status: 'refunded',
+        method: 'card',
+        provider: 'tap',
+        failure_reason: null,
+        received_at: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ],
+    refunds: [
+      {
+        id: 'r',
+        tenant_id: 't1',
+        payment_id: 'p',
+        amount_minor: 1000,
+        status: 'succeeded',
+        reason: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ],
+  });
+  assert.equal(partial.totalRevenueCollectedMinor, 750);
+  assert.equal(full.totalRevenueCollectedMinor, 0);
+});
+
 test('aging uses Dubai business date and only eligible open invoices', () => {
   const dashboard = calculateProFinanceDashboard({
     tenantId: 't1',
@@ -181,5 +261,61 @@ test('aging uses Dubai business date and only eligible open invoices', () => {
       ['overdue', 100],
       ['due_today', 200],
     ],
+  );
+});
+
+test('aging buckets separate 7, 30, future, and missing-date boundaries', () => {
+  const dashboard = calculateProFinanceDashboard({
+    tenantId: 't1',
+    today: '2026-09-02',
+    companies: [{ id: 'c1', tenant_id: 't1', company_name: 'Assigned' }],
+    payments: [],
+    refunds: [],
+    invoices: [
+      {
+        id: 'seven',
+        tenant_id: 't1',
+        company_id: 'c1',
+        amount_minor: 7,
+        currency: 'AED',
+        status: 'open',
+        due_at: '2026-09-09',
+        created_at: '2026-09-01T00:00:00Z',
+      },
+      {
+        id: 'thirty',
+        tenant_id: 't1',
+        company_id: 'c1',
+        amount_minor: 30,
+        currency: 'AED',
+        status: 'open',
+        due_at: '2026-10-02',
+        created_at: '2026-09-01T00:00:00Z',
+      },
+      {
+        id: 'future',
+        tenant_id: 't1',
+        company_id: 'c1',
+        amount_minor: 31,
+        currency: 'AED',
+        status: 'open',
+        due_at: '2026-10-03',
+        created_at: '2026-09-01T00:00:00Z',
+      },
+      {
+        id: 'missing',
+        tenant_id: 't1',
+        company_id: 'c1',
+        amount_minor: 1,
+        currency: 'AED',
+        status: 'open',
+        due_at: null,
+        created_at: '2026-09-01T00:00:00Z',
+      },
+    ],
+  });
+  assert.deepEqual(
+    dashboard.aging.map((row) => row.key),
+    ['within_7_days', 'within_30_days', 'future_over_30_days', 'missing_due_date'],
   );
 });

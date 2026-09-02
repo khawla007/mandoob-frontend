@@ -96,12 +96,12 @@ export type ProFinanceDashboard = {
   invoiceStatus: ProFinanceBreakdownRow[];
   aging: ProFinanceBreakdownRow[];
   paymentMethods: ProFinanceBreakdownRow[];
-  reconciliation: { state: 'unavailable'; reason: 'phase_fly_3' };
+  reconciliation: { state: 'unavailable'; reason: 'phase_3' };
   recentFailedAttempts: ProFinanceFailedAttemptRow[];
 };
 
 const ELIGIBLE_INVOICE_STATUSES = new Set(['draft', 'void']);
-const SUCCESSFUL_PAYMENT_STATUS = 'succeeded';
+const COLLECTED_PAYMENT_STATUSES = new Set(['succeeded', 'partially_refunded', 'refunded']);
 const FAILED_PAYMENT_STATUSES = new Set(['failed', 'abandoned']);
 
 export function calculateProFinanceDashboard(args: {
@@ -141,7 +141,7 @@ export function calculateProFinanceDashboard(args: {
 
   const successfulPayments = payments.filter(
     (row) =>
-      row.status === SUCCESSFUL_PAYMENT_STATUS &&
+      COLLECTED_PAYMENT_STATUSES.has(row.status) &&
       invoiceById.get(row.invoice_id)?.currency === row.currency,
   );
   const totalPaymentCollectedMinor = successfulPayments
@@ -152,7 +152,8 @@ export function calculateProFinanceDashboard(args: {
       const payment = paymentById.get(row.payment_id);
       return (
         row.status === 'succeeded' &&
-        payment?.status === SUCCESSFUL_PAYMENT_STATUS &&
+        payment &&
+        COLLECTED_PAYMENT_STATUSES.has(payment.status) &&
         payment.currency === currency &&
         invoiceById.get(payment.invoice_id)?.currency === payment.currency
       );
@@ -210,7 +211,7 @@ export function calculateProFinanceDashboard(args: {
   }
 
   for (const payment of reportingPayments) {
-    if (payment.status !== SUCCESSFUL_PAYMENT_STATUS) continue;
+    if (!COLLECTED_PAYMENT_STATUSES.has(payment.status)) continue;
     const invoice = invoiceById.get(payment.invoice_id);
     if (!invoice) continue;
     const row = ensureCompany(invoice.company_id, payment.currency);
@@ -226,7 +227,7 @@ export function calculateProFinanceDashboard(args: {
       !payment ||
       !invoice ||
       payment.currency !== currency ||
-      payment.status !== SUCCESSFUL_PAYMENT_STATUS
+      !COLLECTED_PAYMENT_STATUSES.has(payment.status)
     ) {
       continue;
     }
@@ -318,7 +319,7 @@ export function calculateProFinanceDashboard(args: {
     invoiceStatus,
     aging,
     paymentMethods,
-    reconciliation: { state: 'unavailable', reason: 'phase_fly_3' },
+    reconciliation: { state: 'unavailable', reason: 'phase_3' },
     recentFailedAttempts,
   };
 }
@@ -331,20 +332,39 @@ function calculateAging(
   const rows = new Map<string, ProFinanceBreakdownRow>();
   for (const invoice of invoices) {
     if (invoice.status !== 'open') continue;
-    const key = !invoice.due_at
-      ? 'no_due_date'
-      : invoice.due_at < today
-        ? 'overdue'
-        : invoice.due_at === today
-          ? 'due_today'
-          : 'due_next_30';
+    const days = invoice.due_at ? calendarDayDifference(today, invoice.due_at) : null;
+    const key =
+      days === null
+        ? 'missing_due_date'
+        : days < 0
+          ? 'overdue'
+          : days === 0
+            ? 'due_today'
+            : days <= 7
+              ? 'within_7_days'
+              : days <= 30
+                ? 'within_30_days'
+                : 'future_over_30_days';
     const current = rows.get(key) ?? { key, count: 0, amountMinor: 0, currency };
     current.count += 1;
     current.amountMinor += invoice.amount_minor;
     rows.set(key, current);
   }
-  const order = ['overdue', 'due_today', 'due_next_30', 'no_due_date'];
+  const order = [
+    'overdue',
+    'due_today',
+    'within_7_days',
+    'within_30_days',
+    'future_over_30_days',
+    'missing_due_date',
+  ];
   return [...rows.values()].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+}
+
+function calendarDayDifference(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((end - start) / 86_400_000);
 }
 
 function breakdown<T>(

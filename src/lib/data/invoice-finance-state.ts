@@ -1,15 +1,24 @@
 export function remainingRefundableMinor(args: {
   currency: string;
-  payments: Array<{ amountMinor: number; currency: string; status: string }>;
-  refunds: Array<{ amountMinor: number; currency: string; status: string }>;
-}): number {
-  const successful = args.payments
-    .filter((payment) => payment.status === 'succeeded' && payment.currency === args.currency)
-    .reduce((total, payment) => total + payment.amountMinor, 0);
-  const settled = args.refunds
-    .filter((refund) => refund.status === 'succeeded' && refund.currency === args.currency)
+  payments: Array<{
+    id: string;
+    amountMinor: number;
+    currency: string;
+    status: string;
+    createdAt: string;
+  }>;
+  refunds: Array<{ paymentId: string; amountMinor: number; status: string }>;
+}): number | null {
+  const payment = args.payments
+    .filter(
+      (candidate) => candidate.status === 'succeeded' || candidate.status === 'partially_refunded',
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0];
+  if (!payment || payment.currency !== args.currency) return null;
+  const reserved = args.refunds
+    .filter((refund) => refund.paymentId === payment.id && refund.status !== 'failed')
     .reduce((total, refund) => total + refund.amountMinor, 0);
-  return Math.max(0, successful - settled);
+  return Math.max(0, payment.amountMinor - reserved);
 }
 
 export function resolveInvoiceFinanceSections(args: {

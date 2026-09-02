@@ -2,28 +2,66 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { remainingRefundableMinor, resolveInvoiceFinanceSections } from './invoice-finance-state';
 
-test('remaining refundable minor units only subtract succeeded refunds in matching currency', () => {
+test('remaining refundable balance matches the refund RPC latest-payment and reservation rule', () => {
   assert.equal(
     remainingRefundableMinor({
       currency: 'AED',
       payments: [
-        { amountMinor: 1000, currency: 'AED', status: 'succeeded' },
-        { amountMinor: 500, currency: 'AED', status: 'failed' },
+        {
+          id: 'old',
+          amountMinor: 500,
+          currency: 'AED',
+          status: 'succeeded',
+          createdAt: '2026-09-01T00:00:00Z',
+        },
+        {
+          id: 'latest',
+          amountMinor: 1000,
+          currency: 'AED',
+          status: 'partially_refunded',
+          createdAt: '2026-09-02T00:00:00Z',
+        },
       ],
       refunds: [
-        { amountMinor: 250, currency: 'AED', status: 'succeeded' },
-        { amountMinor: 750, currency: 'USD', status: 'succeeded' },
+        { paymentId: 'old', amountMinor: 500, status: 'succeeded' },
+        { paymentId: 'latest', amountMinor: 250, status: 'succeeded' },
+        { paymentId: 'latest', amountMinor: 100, status: 'pending' },
+        { paymentId: 'latest', amountMinor: 100, status: 'failed' },
       ],
     }),
-    750,
+    650,
   );
   assert.equal(
     remainingRefundableMinor({
       currency: 'AED',
-      payments: [{ amountMinor: 1000, currency: 'AED', status: 'succeeded' }],
-      refunds: [{ amountMinor: 1000, currency: 'AED', status: 'succeeded' }],
+      payments: [
+        {
+          id: 'p',
+          amountMinor: 1000,
+          currency: 'AED',
+          status: 'succeeded',
+          createdAt: '2026-09-02T00:00:00Z',
+        },
+      ],
+      refunds: [{ paymentId: 'p', amountMinor: 1000, status: 'succeeded' }],
     }),
     0,
+  );
+  assert.equal(
+    remainingRefundableMinor({
+      currency: 'AED',
+      payments: [
+        {
+          id: 'p',
+          amountMinor: 1000,
+          currency: 'USD',
+          status: 'succeeded',
+          createdAt: '2026-09-02T00:00:00Z',
+        },
+      ],
+      refunds: [],
+    }),
+    null,
   );
 });
 

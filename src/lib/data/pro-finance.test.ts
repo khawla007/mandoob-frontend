@@ -223,15 +223,15 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
     ],
   });
 
-  assert.equal(dashboard.totalRevenueCollectedMinor, 10_000);
+  assert.equal(dashboard.totalRevenueCollectedMinor, 11_500);
   assert.equal(dashboard.currency, 'AED');
   assert.equal(dashboard.hasMixedCurrencies, false);
   assert.deepEqual(dashboard.excludedCurrencyCodes, []);
   assert.equal(dashboard.outstandingReceivablesMinor, 5_000);
   assert.equal(dashboard.openInvoiceCount, 1);
   assert.equal(dashboard.overdueInvoiceCount, 1);
-  assert.equal(dashboard.collectionRate, 66.66666666666666);
-  assert.equal(dashboard.totalRevenueCollected, 'AED\u00a0100.00');
+  assert.equal(dashboard.collectionRate, 69.6969696969697);
+  assert.equal(dashboard.totalRevenueCollected, 'AED\u00a0115.00');
   assert.equal(dashboard.outstandingReceivables, 'AED\u00a050.00');
 
   assert.deepEqual(
@@ -249,10 +249,10 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
         companyId: 'client-1',
         companyName: 'Acme DMCC',
         currency: 'AED',
-        collectedMinor: 10_000,
+        collectedMinor: 11_500,
         outstandingMinor: 5_000,
         invoiceCount: 2,
-        lastPaymentAt: '2026-05-10T10:00:00.000Z',
+        lastPaymentAt: '2026-05-12T10:00:00.000Z',
       },
     ],
   );

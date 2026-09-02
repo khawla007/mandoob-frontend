@@ -177,7 +177,7 @@ export default async function ProPaymentAnalyticsPage({
               <TableBody>
                 {dashboard.aging.map((row) => (
                   <TableRow key={row.key}>
-                    <TableCell className="font-medium">{row.key}</TableCell>
+                    <TableCell className="font-medium">{agingLabel(row.key, t)}</TableCell>
                     <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
                     <TableCell className="text-right">
                       {formatMoney(row.amountMinor, row.currency, locale)}
@@ -256,4 +256,13 @@ function formatCount(value: number, locale: string) {
 }
 function formatDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value));
+}
+
+function agingLabel(key: string, t: Awaited<ReturnType<typeof getTranslations>>) {
+  if (key === 'overdue') return t('paymentAgingOverdue');
+  if (key === 'due_today') return t('paymentAgingDueToday');
+  if (key === 'within_7_days') return t('paymentAgingWithin7');
+  if (key === 'within_30_days') return t('paymentAgingWithin30');
+  if (key === 'future_over_30_days') return t('paymentAgingFuture');
+  return t('paymentAgingMissing');
 }

@@ -203,7 +203,7 @@ export type InvoiceDetail = ProInvoiceRow & {
     amount: string;
     receivedAt: string | null;
     createdAt: string;
-    context: 'success' | 'failure' | 'pending';
+    context: 'success' | 'failure' | 'pending' | 'refunded';
   }[];
   refunds: {
     id: string;
@@ -394,13 +394,15 @@ export async function getInvoiceDetailForTenant(
       ? remainingRefundableMinor({
           currency: invoiceCurrency,
           payments: (paymentsResult.data ?? []).map((payment) => ({
+            id: payment.id as string,
             amountMinor: payment.amount_minor as number,
             currency: payment.currency as string,
             status: payment.status as string,
+            createdAt: payment.created_at as string,
           })),
           refunds: refunds.map((refund) => ({
+            paymentId: refund.payment_id as string,
             amountMinor: refund.amount_minor as number,
-            currency: invoiceCurrency,
             status: refund.status as string,
           })),
         })
@@ -455,8 +457,9 @@ export async function getInvoiceDetailForTenant(
   };
 }
 
-function paymentAttemptContext(status: string): 'success' | 'failure' | 'pending' {
+function paymentAttemptContext(status: string): 'success' | 'failure' | 'pending' | 'refunded' {
   if (status === 'succeeded') return 'success';
+  if (status === 'partially_refunded' || status === 'refunded') return 'refunded';
   if (status === 'failed' || status === 'abandoned') return 'failure';
   return 'pending';
 }
