@@ -35,7 +35,7 @@ export function SettingsContactCard({ slug, initial }: { slug: string; initial: 
         privacy_url: privacy,
       });
       if (!r.ok) {
-        setError(`${r.code}: ${r.error}`);
+        setError(r.error);
         return;
       }
       setSaved(true);

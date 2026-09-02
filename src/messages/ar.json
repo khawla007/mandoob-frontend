@@ -1226,6 +1226,55 @@
       "csvHeader": "الصف,الحقل,الرسالة,الرمز"
     },
     "settings": {
+      "eyebrow": "عناصر التحكم بمساحة العمل",
+      "title": "الإعدادات",
+      "description": "إعدادات مساحة العمل الموثقة للشركة المعيّنة لك.",
+      "sourceUnavailable": "هذا المصدر غير متاح مؤقتًا. تظل الإعدادات الأخرى متاحة.",
+      "loadFailed": "تعذر تحميل الإعدادات",
+      "retry": "إعادة المحاولة",
+      "context": {
+        "title": "السياق الموثق",
+        "assignmentActive": "تعيين نشط",
+        "company": "الشركة: {company}",
+        "workspace": "مساحة عمل المندوب: {workspace}"
+      },
+      "providerStatus": {
+        "not_configured": "غير مُهيّأ",
+        "configured": "مُهيّأ",
+        "enabled": "مُفعّل",
+        "misconfigured": "الإعداد يحتاج إلى انتباه",
+        "unavailable": "حالة المزوّد غير متاحة"
+      },
+      "billing": {
+        "eyebrow": "الفوترة",
+        "title": "إعدادات الفوترة",
+        "description": "معلومات الاشتراك الحالية لمساحة العمل الموثقة.",
+        "currentSubscription": "الاشتراك الحالي",
+        "readOnlyDescription": "تغييرات الاشتراك غير متاحة حتى يتم التحقق من كتالوج المرحلة 3 وعقود المزوّد.",
+        "providerUnavailable": "معلومات الاشتراك غير متاحة مؤقتًا.",
+        "noSubscription": "لا يوجد اشتراك حالي مسجل.",
+        "plan": "الخطة",
+        "status": "الحالة",
+        "amount": "المبلغ",
+        "periodEnd": "انتهاء الفترة الحالية",
+        "cancellation": "الإلغاء",
+        "notAvailable": "غير متاح",
+        "cancelScheduled": "تمت جدولة الإلغاء عند نهاية الفترة",
+        "cancelled": "ملغي",
+        "notScheduled": "غير مجدول",
+        "planSelectionUnavailable": "اختيار الخطة غير متاح — يتطلب عقد المرحلة 3",
+        "changePlan": "تغيير الخطة",
+        "manageBilling": "إدارة الفوترة",
+        "cancelSubscription": "إلغاء الاشتراك",
+        "statuses": {
+          "active": "نشط",
+          "trialing": "تجريبي",
+          "past_due": "متأخر السداد",
+          "incomplete": "غير مكتمل",
+          "canceled": "ملغي",
+          "cancelled": "ملغي"
+        }
+      },
       "saving": "جارٍ الحفظ…",
       "saved": "تم الحفظ",
       "couldNotSave": "تعذر الحفظ",
@@ -1281,6 +1330,7 @@
       "whiteLabel": {
         "title": "إعداد العلامة البيضاء",
         "description": "جاهزية النطاق الفرعي والعلامة والمُرسِل والاتصالات.",
+        "openWorkspace": "فتح مساحة العمل الموثقة",
         "ready": "{complete}/{total} جاهز",
         "items": {
           "branding": "الهوية البصرية",

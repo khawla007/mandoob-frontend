@@ -37,7 +37,7 @@ export function SettingsBrandingCard({ slug, initial }: { slug: string; initial:
         secondary_color: secondary,
       });
       if (!r.ok) {
-        setError(`${r.code}: ${r.error}`);
+        setError(r.error);
         return;
       }
       setSaved(true);

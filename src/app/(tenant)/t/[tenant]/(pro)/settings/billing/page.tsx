@@ -1,33 +1,24 @@
+import { notFound } from 'next/navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { getBillingSubscriptionSnapshot } from '@/lib/data/tenant-billing';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { formatMoney } from '@/lib/format/money';
-import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { cancelSubscriptionAction, openBillingPortalAction, startCheckoutAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const plans = [
-  {
-    id: 'starter',
-    label: 'Starter',
-    amount: 4900,
-    features: ['Company workspace', 'Email queue', 'Renewal alerts'],
-  },
-  {
-    id: 'professional',
-    label: 'Professional',
-    amount: 9900,
-    features: ['Payments', 'WhatsApp + SMS', 'Audit exports'],
-  },
-  {
-    id: 'enterprise',
-    label: 'Enterprise',
-    amount: 19900,
-    features: ['Priority support', 'Assignment controls', 'Advanced audit'],
-  },
-] as const;
+const STATUS_VARIANT = {
+  active: 'default',
+  trialing: 'secondary',
+  past_due: 'destructive',
+  incomplete: 'secondary',
+  canceled: 'outline',
+  cancelled: 'outline',
+} as const;
 
 export default async function BillingSettingsPage({
   params,
@@ -35,86 +26,106 @@ export default async function BillingSettingsPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const { tenant } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
-  const admin = createSupabaseServiceRoleClient();
-  const { data: subscription } = await admin
-    .from('subscriptions')
-    .select(
-      'plan, status, current_period_end, cancel_at_period_end, unit_amount_minor, currency, interval',
-    )
-    .eq('tenant_id', tenant.id)
-    .maybeSingle();
+  const [t, locale, snapshot] = await Promise.all([
+    getTranslations('pro.settings'),
+    getLocale(),
+    getBillingSubscriptionSnapshot(tenant.id),
+  ]);
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Dubai' });
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="mx-auto w-full max-w-[96rem] space-y-6">
+      <header className="min-w-0">
+        <p className="text-signal-accent-copy font-mono text-xs tracking-[0.14em] uppercase">
+          {t('billing.eyebrow')}
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+          {t('billing.title')}
+        </h1>
+        <p className="text-muted-foreground mt-1 max-w-2xl text-sm">{t('billing.description')}</p>
+      </header>
+
+      <Card className="signal-panel">
         <CardHeader>
-          <CardTitle>Subscription</CardTitle>
+          <CardTitle className="text-lg">{t('billing.currentSubscription')}</CardTitle>
+          <CardDescription>{t('billing.readOnlyDescription')}</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-medium capitalize">
-                {subscription?.plan ?? tenant.plan}
-              </span>
-              <Badge variant="outline">{subscription?.status ?? 'not subscribed'}</Badge>
-            </div>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {subscription
-                ? `${formatMoney(subscription.unit_amount_minor, subscription.currency)} / ${subscription.interval}`
-                : 'Choose a plan to activate Stripe subscription billing.'}
+        <CardContent>
+          {snapshot.status === 'unavailable' ? (
+            <p className="text-signal-urgent text-sm" role="status">
+              {t('billing.providerUnavailable')}
             </p>
-            {subscription?.current_period_end ? (
-              <p className="text-muted-foreground mt-1 text-xs">
-                Current period ends{' '}
-                {new Date(subscription.current_period_end).toLocaleDateString('en-GB')}
-              </p>
-            ) : null}
-          </div>
-          {subscription ? (
-            <div className="flex gap-2">
-              <form action={openBillingPortalAction}>
-                <input type="hidden" name="tenantSlug" value={slug} />
-                <Button type="submit">Manage billing</Button>
-              </form>
-              {!subscription.cancel_at_period_end ? (
-                <form action={cancelSubscriptionAction}>
-                  <input type="hidden" name="tenantSlug" value={slug} />
-                  <Button type="submit" variant="outline">
-                    Cancel
-                  </Button>
-                </form>
-              ) : null}
-            </div>
-          ) : null}
+          ) : snapshot.data ? (
+            <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted-foreground">{t('billing.plan')}</dt>
+                <dd className="mt-1 font-medium">{snapshot.data.plan}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">{t('billing.status')}</dt>
+                <dd className="mt-1">
+                  <Badge variant={STATUS_VARIANT[snapshot.data.status]}>
+                    {t(`billing.statuses.${snapshot.data.status}`)}
+                  </Badge>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">{t('billing.amount')}</dt>
+                <dd className="mt-1 font-medium">
+                  {formatMoney(snapshot.data.unitAmountMinor, snapshot.data.currency, locale)} /{' '}
+                  {snapshot.data.interval}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">{t('billing.periodEnd')}</dt>
+                <dd className="mt-1 font-medium">
+                  {snapshot.data.currentPeriodEnd
+                    ? date.format(new Date(snapshot.data.currentPeriodEnd))
+                    : t('billing.notAvailable')}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">{t('billing.cancellation')}</dt>
+                <dd className="mt-1 font-medium">
+                  {snapshot.data.cancelAtPeriodEnd
+                    ? t('billing.cancelScheduled')
+                    : snapshot.data.canceledAt
+                      ? t('billing.cancelled')
+                      : t('billing.notScheduled')}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-muted-foreground text-sm" role="status">
+              {t('billing.noSubscription')}
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {plans.map((plan) => (
-          <Card key={plan.id}>
-            <CardHeader>
-              <CardTitle>{plan.label}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-2xl font-semibold">{formatMoney(plan.amount, 'USD')}</div>
-              <ul className="text-muted-foreground space-y-2 text-sm">
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-              <form action={startCheckoutAction}>
-                <input type="hidden" name="tenantSlug" value={slug} />
-                <input type="hidden" name="plan" value={plan.id} />
-                <Button className="w-full" type="submit">
-                  {subscription ? 'Change plan' : 'Subscribe'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card className="signal-panel">
+        <CardContent className="pt-6">
+          <p id="billing-actions-unavailable" className="font-medium">
+            {t('billing.planSelectionUnavailable')}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2" aria-describedby="billing-actions-unavailable">
+            <Button type="button" disabled>
+              {t('billing.changePlan')}
+            </Button>
+            <Button type="button" variant="outline" disabled>
+              {t('billing.manageBilling')}
+            </Button>
+            <Button type="button" variant="outline" disabled>
+              {t('billing.cancelSubscription')}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

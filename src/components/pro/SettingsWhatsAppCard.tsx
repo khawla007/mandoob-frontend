@@ -45,7 +45,7 @@ export function SettingsWhatsAppCard({
         has_existing_token: hasExistingToken,
       });
       if (!r.ok) {
-        setError(`${r.code}: ${r.error}`);
+        setError(r.error);
         return;
       }
       setSaved(true);

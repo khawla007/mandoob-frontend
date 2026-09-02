@@ -4,9 +4,9 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
-import { requireRole } from '@/lib/auth/require-role';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
+import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { encrypt } from '@/lib/crypto/pii';
@@ -26,26 +26,27 @@ export type ActionResult<T = void> =
   | { ok: false; error: string; code: string };
 
 async function getCallerContext() {
-  const session = await requireRole('pro');
   const hdr = await headers();
   const ip = hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const userAgent = hdr.get('user-agent') ?? null;
-  return {
-    caller: { id: session.id, role: session.role!, tenantId: session.tenantId },
-    ip,
-    userAgent,
-  };
+  return { ip, userAgent };
 }
 
 async function resolveAndAuthorize(slug: string) {
-  const ctx = await getCallerContext();
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (ctx.caller.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  }
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
   await requireActiveTenant(tenant.id);
-  return { ctx, tenant };
+  const company = await readAssignedCompanyForPro(session.id, tenant.slug);
+  if (!company || company.tenantId !== tenant.id) {
+    throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
+  }
+  const request = await getCallerContext();
+  return {
+    ctx: {
+      caller: { id: session.id },
+      ...request,
+    },
+    tenant,
+  };
 }
 
 function emptyToNull(v: string | undefined | null): string | null {
@@ -76,6 +77,19 @@ async function logSettingsUpdate(
     userAgent: ctx.userAgent,
     details: { section, changed_fields: changedFields },
   }).catch((err) => console.error('recordAuthEvent failed', err));
+}
+
+function actionFailure(error: unknown, fallback: string): ActionResult<never> {
+  if (error instanceof ApiError) {
+    const messages: Partial<Record<string, string>> = {
+      FORBIDDEN: 'You no longer have access to this workspace.',
+      TENANT_INACTIVE: 'This workspace is unavailable.',
+      TENANT_NOT_FOUND: 'This workspace is unavailable.',
+    };
+    return { ok: false, error: messages[error.code] ?? fallback, code: error.code };
+  }
+  console.error('settings action failed', error);
+  return { ok: false, error: fallback, code: 'INTERNAL' };
 }
 
 export async function updateBrandingAction(
@@ -109,9 +123,7 @@ export async function updateBrandingAction(
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
-    console.error('updateBrandingAction unexpected error', e);
-    return { ok: false, error: 'Could not save branding', code: 'INTERNAL' };
+    return actionFailure(e, 'Could not save branding');
   }
 }
 
@@ -142,9 +154,7 @@ export async function updateContactAction(slug: string, raw: unknown): Promise<A
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
-    console.error('updateContactAction unexpected error', e);
-    return { ok: false, error: 'Could not save contact info', code: 'INTERNAL' };
+    return actionFailure(e, 'Could not save contact info');
   }
 }
 
@@ -201,9 +211,7 @@ export async function updateSmtpAction(slug: string, raw: unknown): Promise<Acti
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
-    console.error('updateSmtpAction unexpected error', e);
-    return { ok: false, error: 'Could not save SMTP config', code: 'INTERNAL' };
+    return actionFailure(e, 'Could not save SMTP config');
   }
 }
 
@@ -260,8 +268,6 @@ export async function updateWhatsAppAction(
     revalidatePath(`/t/${slug}/settings`);
     return { ok: true, data: undefined };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
-    console.error('updateWhatsAppAction unexpected error', e);
-    return { ok: false, error: 'Could not save WhatsApp config', code: 'INTERNAL' };
+    return actionFailure(e, 'Could not save WhatsApp config');
   }
 }

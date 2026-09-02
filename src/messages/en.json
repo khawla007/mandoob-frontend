@@ -1226,6 +1226,55 @@
       "csvHeader": "Row,Field,Message,Code"
     },
     "settings": {
+      "eyebrow": "Workspace controls",
+      "title": "Settings",
+      "description": "Verified workspace configuration for your assigned company.",
+      "sourceUnavailable": "This source is temporarily unavailable. Other settings remain available.",
+      "loadFailed": "Settings could not be loaded",
+      "retry": "Retry",
+      "context": {
+        "title": "Verified context",
+        "assignmentActive": "Live assignment",
+        "company": "Company: {company}",
+        "workspace": "PRO workspace: {workspace}"
+      },
+      "providerStatus": {
+        "not_configured": "Not configured",
+        "configured": "Configured",
+        "enabled": "Enabled",
+        "misconfigured": "Configuration needs attention",
+        "unavailable": "Provider state unavailable"
+      },
+      "billing": {
+        "eyebrow": "Billing",
+        "title": "Billing settings",
+        "description": "Current subscription information for this verified workspace.",
+        "currentSubscription": "Current subscription",
+        "readOnlyDescription": "Subscription changes are unavailable until the Phase 3 catalog and provider contracts are verified.",
+        "providerUnavailable": "Subscription information is temporarily unavailable.",
+        "noSubscription": "No current subscription is recorded.",
+        "plan": "Plan",
+        "status": "Status",
+        "amount": "Amount",
+        "periodEnd": "Current period ends",
+        "cancellation": "Cancellation",
+        "notAvailable": "Not available",
+        "cancelScheduled": "Cancellation scheduled at period end",
+        "cancelled": "Cancelled",
+        "notScheduled": "Not scheduled",
+        "planSelectionUnavailable": "Plan selection unavailable — Phase 3 contract required",
+        "changePlan": "Change plan",
+        "manageBilling": "Manage billing",
+        "cancelSubscription": "Cancel subscription",
+        "statuses": {
+          "active": "Active",
+          "trialing": "Trialing",
+          "past_due": "Past due",
+          "incomplete": "Incomplete",
+          "canceled": "Cancelled",
+          "cancelled": "Cancelled"
+        }
+      },
       "saving": "Saving…",
       "saved": "Saved",
       "couldNotSave": "Could not save",
@@ -1281,6 +1330,7 @@
       "whiteLabel": {
         "title": "White-label setup",
         "description": "Subdomain, brand, sender, and comms readiness.",
+        "openWorkspace": "Open verified workspace",
         "ready": "{complete}/{total} ready",
         "items": {
           "branding": "Branding",

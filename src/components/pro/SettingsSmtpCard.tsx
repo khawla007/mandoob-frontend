@@ -44,7 +44,7 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
         enabled,
       });
       if (!r.ok) {
-        setError(`${r.code}: ${r.error}`);
+        setError(r.error);
         return;
       }
       setSaved(true);
