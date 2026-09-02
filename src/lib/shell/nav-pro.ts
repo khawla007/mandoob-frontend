@@ -3,7 +3,6 @@ import {
   Building2,
   CalendarClock,
   ClipboardList,
-  Columns3,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -40,7 +39,6 @@ export function buildProNav(slug: string): ShellNavGroup[] {
           href: `${base}/applications`,
           icon: ClipboardList,
         },
-        { labelKey: 'leads', labelFallback: 'Leads', href: `${base}/leads`, icon: Columns3 },
         {
           labelKey: 'meetings',
           labelFallback: 'Meetings',

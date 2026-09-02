@@ -18,12 +18,6 @@ const metricsPath = join(process.cwd(), 'src/lib/data/tenant-metrics.ts');
 const loadingPath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/loading.tsx');
 const errorPath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/error.tsx');
 
-test('hero uses the full priority signal total instead of the capped deck length', () => {
-  const source = readFileSync(pagePath, 'utf8');
-  assert.match(source, /actionCount:\s*dashboard\.totalPrioritySignals/);
-  assert.doesNotMatch(source, /actionCount:\s*dashboard\.actionDeck\.length/);
-});
-
 test('dashboard read authorization completes before a service-role dashboard read', async () => {
   const calls: string[] = [];
   const tenant = await authorizeProDashboardRead('acme', {
@@ -90,27 +84,18 @@ test('dashboard range parser accepts only one supported value', () => {
   assert.equal(parseDashboardRange([]), 30);
 });
 
-test('dashboard filters reject repeated/malformed values and accept schema-backed fields', () => {
-  assert.deepEqual(
-    parseDashboardFilters({
-      owner: '11111111-1111-4111-8111-111111111111',
-      serviceType: 'Golden visa',
-    }),
-    {
-      filters: {
-        ownerId: '11111111-1111-4111-8111-111111111111',
-        serviceType: 'Golden visa',
-      },
-      invalid: false,
-    },
-  );
-  assert.deepEqual(parseDashboardFilters({ owner: ['a', 'b'], serviceType: ['x', 'y'] }), {
+test('dashboard filters reject repeated/malformed service values', () => {
+  assert.deepEqual(parseDashboardFilters({ serviceType: 'Golden visa' }), {
+    filters: { serviceType: 'Golden visa' },
+    invalid: false,
+  });
+  assert.deepEqual(parseDashboardFilters({ serviceType: ['x', 'y'] }), {
     filters: {},
     invalid: true,
   });
-  assert.deepEqual(parseDashboardFilters({ owner: 'bad', serviceType: 'xx' }), {
+  assert.deepEqual(parseDashboardFilters({ serviceType: 'xx' }), {
     filters: { serviceType: 'xx' },
-    invalid: true,
+    invalid: false,
   });
 });
 
@@ -129,7 +114,6 @@ test('dashboard renders only tenant-normalized filters and reports rejected inpu
 test('dashboard preserves syntactically valid filter intent while operations validation is unavailable', () => {
   const requested = {
     filters: {
-      ownerId: '11111111-1111-4111-8111-111111111111',
       serviceType: 'Golden visa',
     },
     invalid: false,
@@ -190,26 +174,59 @@ test('dashboard page resolves the assigned company before its scoped read and ha
   assert.ok(dashboardRead > companyAccess);
   assert.doesNotMatch(source, /SignupsChart|RecentLoginsTable|getProDashboardMetrics/);
   assert.doesNotMatch(metrics, /ProDashboardKpiKey|ProDashboardMetric|getProDashboardMetrics/);
-  assert.match(source, /allBranches/);
-  assert.match(source, /disabled/);
+  assert.doesNotMatch(source, /allBranches|branchUnavailable|name="owner"/u);
 });
 
 test('dashboard has one responsive composition and moves Action Deck before charts below lg', () => {
   const source = readFileSync(pagePath, 'utf8');
   for (const component of [
-    'SignalHero',
-    'SignalKpis',
+    'CompanyCommand',
+    'CompanySummaryDeck',
     'CaseVelocityChart',
     'CollectionsWaterfall',
     'ActionDeck',
     'DeadlineHeatmap',
     'RenewalStreams',
-    'TeamSignal',
+    'PendingDocuments',
   ]) {
     assert.equal((source.match(new RegExp(`<${component}\\b`, 'g')) ?? []).length, 1, component);
   }
   assert.match(source, /order-1[^"']*lg:order-2[\s\S]*<ActionDeck/);
   assert.match(source, /order-2[^"']*lg:order-1[\s\S]*<CaseVelocityChart/);
+});
+
+test('dashboard composes a one-Company command surface without team, score, or owner controls', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /<CompanyCommand\b/u);
+  assert.match(source, /<CompanySummaryDeck\b/u);
+  assert.match(source, /<PendingDocuments\b/u);
+  assert.match(source, /<DashboardUnavailablePanel\b/u);
+  assert.doesNotMatch(source, /SignalHero|TeamSignal|canViewTeam|TeamSignalLabels/u);
+  assert.doesNotMatch(source, /name="owner"|filters\.owner|allOwners/u);
+  assert.doesNotMatch(source, /operationsScore|health|workloadBalance|assignWork/u);
+});
+
+test('dashboard labels its snapshot as generated and keeps registration, activity, and notifications truthful', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /t\('generatedAt'/u);
+  assert.doesNotMatch(source, /t\('live'\)/u);
+  assert.match(source, /registrationUnavailable/u);
+  assert.match(source, /activityUnavailable/u);
+  assert.match(source, /notificationsUnavailable/u);
+  assert.doesNotMatch(source, /notificationCount|unreadCount|viewAllNotifications/u);
+});
+
+test('dashboard keeps readiness, lifecycle, and registration as distinct concepts', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  const command = readFileSync(
+    join(process.cwd(), 'src/components/pro/dashboard/CompanyCommand.tsx'),
+    'utf8',
+  );
+  assert.match(source, /company\.onboardingStatus/u);
+  assert.match(command, /company\.readinessCodes/u);
+  assert.match(source, /company\.status/u);
+  assert.match(source, /registrationUnavailable/u);
+  assert.doesNotMatch(source, /registrationPercent|registrationProgress:\s*company/u);
 });
 
 test('dashboard uses the compact asymmetric Signal Studio composition', () => {
@@ -218,7 +235,6 @@ test('dashboard uses the compact asymmetric Signal Studio composition', () => {
   assert.match(source, /className="signal-dashboard__masthead/);
   assert.match(source, /className="signal-dashboard__heading/);
   assert.match(source, /className="signal-dashboard__filters/);
-  assert.match(source, /className="signal-dashboard__kpis/);
   assert.match(source, /className="signal-dashboard__layout/);
   assert.match(source, /className="signal-dashboard__operations/);
   assert.match(source, /className="signal-dashboard__rail/);
@@ -231,9 +247,9 @@ test('dashboard keeps functional filters in a compact disclosure instead of a la
   assert.match(source, /<form[\s\S]*className="signal-dashboard__filters/);
 });
 
-test('dashboard passes normalized filters to application drilldown widgets', () => {
+test('dashboard passes normalized service filters to application drilldown widgets', () => {
   const source = readFileSync(pagePath, 'utf8');
-  for (const component of ['SignalHero', 'SignalKpis', 'ActionDeck', 'DeadlineHeatmap']) {
+  for (const component of ['ActionDeck', 'DeadlineHeatmap']) {
     assert.match(source, new RegExp(`<${component}[\\s\\S]{0,900}filters,`), component);
   }
 });
@@ -263,21 +279,14 @@ test('Signal Studio translations have complete English and Arabic route label pa
   for (const key of [
     'title',
     'subtitle',
-    'prioritySignals',
-    'operationsScore',
-    'openActionDeck',
-    'assignWork',
-    'activeCompany',
-    'openCases',
-    'renewalsDue',
-    'collections',
+    'generatedAt',
+    'priorityActions',
     'caseVelocity',
     'opened',
     'completed',
     'deadlineIntensity',
     'collectionsWaterfall',
     'renewalStreams',
-    'teamSignal',
     'empty',
     'retry',
     'range7',
@@ -292,13 +301,7 @@ test('Signal Studio translations have complete English and Arabic route label pa
 test('dashboard reads parameterized widget labels as raw templates', () => {
   const source = readFileSync(pagePath, 'utf8');
   const templateKeys = [
-    'hero.scoreAria',
-    'hero.dialogTitle',
-    'hero.velocityAria',
-    'kpis.activeCompanyHelper',
-    'kpis.openCasesHelper',
-    'kpis.renewalsHelper',
-    'kpis.collectionsHelper',
+    'companyCommand.profileSections',
     'caseVelocityLabels.summary',
     'collectionsLabels.barLabel',
     'collectionsLabels.summary',
@@ -310,9 +313,6 @@ test('dashboard reads parameterized widget labels as raw templates', () => {
     'deadlineLabels.cellLabel',
     'deadlineLabels.eventLink',
     'deadlineLabels.documentLink',
-    'teamLabels.activeCases',
-    'teamLabels.capacity',
-    'teamLabels.capacityValue',
   ];
 
   for (const key of templateKeys) {

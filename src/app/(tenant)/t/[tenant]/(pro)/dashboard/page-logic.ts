@@ -1,7 +1,7 @@
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
 
 export type DashboardRange = 7 | 30 | 90;
-export type DashboardFilters = { ownerId?: string; serviceType?: string };
+export type DashboardFilters = { serviceType?: string };
 export type DashboardErrorGroup = keyof ProDashboardData['errors'];
 export type DashboardErrorMessages = Record<DashboardErrorGroup, string>;
 export type ParsedDashboardFilters = { filters: DashboardFilters; invalid: boolean };
@@ -13,27 +13,16 @@ export function parseDashboardRange(value: string | string[] | undefined): Dashb
 }
 
 export function parseDashboardFilters(search: {
-  owner?: string | string[];
   serviceType?: string | string[];
 }): ParsedDashboardFilters {
-  const owner = typeof search.owner === 'string' ? search.owner : undefined;
   const serviceType =
     typeof search.serviceType === 'string' ? search.serviceType.trim() : undefined;
-  const validOwner = Boolean(
-    owner &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(owner),
-  );
   const validService = Boolean(serviceType && serviceType.length >= 2 && serviceType.length <= 80);
   return {
     filters: {
-      ...(owner && validOwner ? { ownerId: owner } : {}),
       ...(validService ? { serviceType } : {}),
     },
-    invalid:
-      Array.isArray(search.owner) ||
-      Boolean(owner && !validOwner) ||
-      Array.isArray(search.serviceType) ||
-      Boolean(serviceType && !validService),
+    invalid: Array.isArray(search.serviceType) || Boolean(serviceType && !validService),
   };
 }
 
@@ -43,7 +32,7 @@ export function resolveDashboardFilterState(
   operationsUnavailable: boolean,
 ): { filters: DashboardFilters; notice?: 'invalid' | 'pending' } {
   if (operationsUnavailable) {
-    const hasRequestedFilter = Boolean(requested.filters.ownerId || requested.filters.serviceType);
+    const hasRequestedFilter = Boolean(requested.filters.serviceType);
     return {
       filters: requested.filters,
       ...(requested.invalid
@@ -53,9 +42,7 @@ export function resolveDashboardFilterState(
           : {}),
     };
   }
-  const membershipRejected =
-    requested.filters.ownerId !== applied.ownerId ||
-    requested.filters.serviceType !== applied.serviceType;
+  const membershipRejected = requested.filters.serviceType !== applied.serviceType;
   return {
     filters: applied,
     ...(requested.invalid || membershipRejected ? { notice: 'invalid' as const } : {}),
@@ -65,7 +52,6 @@ export function resolveDashboardFilterState(
 export function dashboardQuery(filters: DashboardFilters, range?: DashboardRange): string {
   const query = new URLSearchParams();
   if (range) query.set('range', String(range));
-  if (filters.ownerId) query.set('owner', filters.ownerId);
   if (filters.serviceType) query.set('serviceType', filters.serviceType);
   return query.toString();
 }

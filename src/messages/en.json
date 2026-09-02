@@ -1220,27 +1220,18 @@
       },
       "signalStudio": {
         "title": "Command Center",
-        "subtitle": "{tenant} · live operational signals and next actions.",
+        "subtitle": "Assigned-Company status, obligations, and next actions.",
         "masthead": "DXB / OPERATIONS SIGNAL",
-        "live": "LIVE",
+        "generatedAt": "Generated {date}",
         "eyebrow": "TODAY’S OPERATING PICTURE",
-        "headline": "Everything moving, at a glance.",
-        "prioritySignals": "Priority signals",
-        "operationsScore": "Operations score",
-        "openActionDeck": "Open action deck",
-        "assignWork": "Assign work",
-        "activeCompany": "Assigned company",
-        "openCases": "Open cases",
-        "renewalsDue": "Renewals due",
-        "collections": "Collections",
+        "headline": "{company}, at a glance.",
+        "priorityActions": "Priority actions",
         "caseVelocity": "Case velocity",
         "opened": "Opened",
         "completed": "Completed",
         "deadlineIntensity": "Deadline intensity",
         "collectionsWaterfall": "Collections waterfall",
         "renewalStreams": "Renewal streams",
-        "teamSignal": "Workload signal",
-        "actionDeck": "Action deck",
         "empty": "No signals need attention right now.",
         "loading": "Loading dashboard signal…",
         "retry": "Retry",
@@ -1250,28 +1241,47 @@
         "rangeLabel": "Dashboard date range",
         "daySuffix": "d",
         "date": "Date",
-        "hero": {
-          "actionSummary": "operational signals need attention now.",
-          "scoreAria": "Operations score {score} out of 100. Open score details.",
-          "scoreDetails": "Score inputs",
-          "openScoreDetails": "View score inputs",
-          "dialogTitle": "Operations score: {score}",
-          "dialogDescription": "A transparent view of the five inputs used to calculate operational health.",
-          "higherHealthier": "Higher is healthier",
-          "lowerHealthier": "Lower is healthier",
-          "velocity": "Live velocity",
-          "velocityAria": "Over {days} days, {opened} cases opened and {completed} completed.",
-          "overdueRatio": "Overdue case ratio",
-          "slaCompletionRate": "Completed within SLA",
-          "blockedRatio": "Cases blocked past threshold",
-          "reminderRate": "Renewal reminders sent on time",
-          "workloadBalance": "Workload balance"
+        "companyCommand": {
+          "assignedCompany": "Assigned Company",
+          "lifecycle": "Lifecycle",
+          "jurisdiction": "Jurisdiction",
+          "licenceExpiry": "Licence expiry",
+          "licenceMissing": "Not recorded",
+          "legalProfile": "Legal profile",
+          "profileSections": "{complete} of {total} legal sections complete",
+          "activationReadiness": "Activation readiness",
+          "ready": "Ready for activation",
+          "blockers": "Action required",
+          "registration": "Authority registration",
+          "registrationUnavailable": "Detailed progress unavailable — P2.09/Phase 3 contract required",
+          "openCompany": "Open assigned Company",
+          "lifecycleValues": {
+            "onboarding": "Onboarding",
+            "active": "Active",
+            "renewal_due": "Renewal due",
+            "renewal_overdue": "Renewal overdue",
+            "suspended": "Suspended",
+            "churned": "Churned"
+          },
+          "onboardingValues": {
+            "not_started": "Not started",
+            "in_progress": "In progress",
+            "ready_for_activation": "Ready for activation",
+            "completed": "Legal profile complete"
+          }
         },
-        "kpis": {
-          "activeCompanyHelper": "Current assignment state",
-          "openCasesHelper": "{moving} moving · {blocked} blocked",
-          "renewalsHelper": "{count} due within 7 days",
-          "collectionsHelper": "{rate}% of billed value collected"
+        "summary": {
+          "readiness": "Company readiness",
+          "ready": "Ready",
+          "actionRequired": "Action required",
+          "registration": "Registration state",
+          "unavailable": "Unavailable",
+          "documents": "Pending documents",
+          "priorityActions": "Priority actions",
+          "renewals": "Renewals due",
+          "renewalsPeriod": "Within 30 Dubai days",
+          "invoices": "Open invoices",
+          "outstanding": "Open and overdue value"
         },
         "caseVelocityLabels": {
           "empty": "No case activity in this period yet.",
@@ -1297,8 +1307,7 @@
           "empty": "No urgent cases or deadlines need action.",
           "reviewApplications": "Review applications",
           "description": "Highest-priority work ranked by deadline and blockage.",
-          "actionAria": "Open {title} for {company}. Owner: {owner}. Urgency: {urgency}. {countdown}. {absoluteDeadline}.",
-          "unassigned": "Unassigned",
+          "actionAria": "Open {title} for {company}. Urgency: {urgency}. {countdown}. {absoluteDeadline}.",
           "noDeadline": "No deadline",
           "absoluteDeadline": "Dubai deadline: {deadline}",
           "countdown": {
@@ -1344,15 +1353,32 @@
             "ejari": "Tenancy and lease documents"
           }
         },
-        "teamLabels": {
-          "empty": "No active assigned-company workload is available.",
-          "openApplications": "Open applications",
-          "description": "Open workload and remaining capacity in the assigned company.",
-          "unassignedCases": "Unassigned cases",
-          "activeCases": "{count} active cases",
-          "capacity": "Capacity for {name}",
-          "capacityValue": "{percent}% capacity"
+        "pendingDocuments": {
+          "title": "Pending documents",
+          "description": "Highest-priority assigned-Company document work.",
+          "empty": "No assigned-Company document work needs attention.",
+          "openDocuments": "Open documents",
+          "states": {
+            "awaitingUpload": "Awaiting upload",
+            "reviewPending": "Submitted · review pending",
+            "actionRequired": "Rejected · action required"
+          }
         },
+        "registration": {
+          "title": "Registration context",
+          "description": "Authority-stage history and evidence"
+        },
+        "registrationUnavailable": "Detailed progress unavailable — P2.09/Phase 3 contract required",
+        "activity": {
+          "title": "Recent Company activity",
+          "description": "Authorized immutable operational history"
+        },
+        "activityUnavailable": "Recent activity unavailable — P2.10/Phase 3 contract required",
+        "notifications": {
+          "title": "Notifications",
+          "description": "Availability without unread or delivery claims"
+        },
+        "notificationsUnavailable": "Notifications unavailable — P2.10/Phase 3 contract required",
         "errors": {
           "identity": "Company information is temporarily unavailable.",
           "links": "Dashboard links are temporarily unavailable.",
@@ -1363,13 +1389,8 @@
         },
         "filters": {
           "toggle": "Filters",
-          "owner": "Case owner",
-          "allOwners": "All owners",
           "serviceType": "Service type",
           "allServices": "All services",
-          "branch": "Branch",
-          "allBranches": "All branches",
-          "branchUnavailable": "Branch filtering is unavailable because this workspace has no branch field.",
           "invalidNotice": "One or more filters were not available in this workspace and were ignored.",
           "pendingNotice": "Filters are preserved, but could not be verified while application data is unavailable.",
           "apply": "Apply filters"

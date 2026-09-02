@@ -19,8 +19,9 @@ export {
   type RenewalStreamsLabels,
   type RenewalStreamsProps,
 } from './RenewalStreams';
-export { SignalHero, type SignalHeroLabels, type SignalHeroProps } from './SignalHero';
-export { SignalKpis, type SignalKpisLabels, type SignalKpisProps } from './SignalKpis';
-export { TeamSignal, type TeamSignalLabels, type TeamSignalProps } from './TeamSignal';
+export { CompanyCommand, type CompanyCommandLabels } from './CompanyCommand';
+export { CompanySummaryDeck, type CompanySummaryDeckLabels } from './CompanySummaryDeck';
+export { PendingDocuments, type PendingDocumentsLabels } from './PendingDocuments';
+export { DashboardUnavailablePanel } from './DashboardUnavailablePanel';
 export { dashboardHref, type DashboardTarget } from './dashboard-links';
 export { type EmptyAction, type WidgetBaseLabels, type WidgetStateProps } from './widget-state';

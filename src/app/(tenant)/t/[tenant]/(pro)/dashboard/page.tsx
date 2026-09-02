@@ -6,28 +6,28 @@ import {
   ActionDeck,
   CaseVelocityChart,
   CollectionsWaterfall,
+  CompanyCommand,
+  CompanySummaryDeck,
+  DashboardUnavailablePanel,
   DeadlineHeatmap,
+  PendingDocuments,
   RenewalStreams,
-  SignalHero,
-  SignalKpis,
-  TeamSignal,
   type ActionDeckLabels,
   type CaseVelocityChartLabels,
   type CollectionsWaterfallLabels,
+  type CompanyCommandLabels,
+  type CompanySummaryDeckLabels,
   type DeadlineHeatmapLabels,
+  type PendingDocumentsLabels,
   type RenewalStreamsLabels,
-  type SignalHeroLabels,
-  type SignalKpisLabels,
-  type TeamSignalLabels,
 } from '@/components/pro/dashboard';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { getProDashboardData } from '@/lib/data/pro-dashboard';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
+import { getProDashboardData } from '@/lib/data/pro-dashboard';
 import { cn } from '@/lib/utils';
-
 import {
-  dashboardWidgetState,
   dashboardQuery,
+  dashboardWidgetState,
   parseDashboardFilters,
   parseDashboardRange,
   resolveDashboardFilterState,
@@ -37,17 +37,10 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-type DashboardSearchParams = {
-  range?: string | string[];
-  owner?: string | string[];
-  serviceType?: string | string[];
-};
+type DashboardSearchParams = { range?: string | string[]; serviceType?: string | string[] };
 type WidgetErrorState = { kind: 'error'; message: string; retryHref: string };
 
-function dataOrError<T extends object>(
-  state: WidgetErrorState | undefined,
-  data: T,
-): T | WidgetErrorState {
+function dataOrError<T extends object>(state: WidgetErrorState | undefined, data: T) {
   return state ?? data;
 }
 
@@ -62,21 +55,14 @@ export default async function ProDashboard({
   const { session, tenant } = await requireProTenantRouteAccess(slug);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
-  const [t, locale] = await Promise.all([
-    getTranslations('pro.dashboard.signalStudio'),
-    getLocale(),
-  ]);
-  const canViewFinance = true;
-  const canViewTeam = true;
 
   const range = parseDashboardRange(search.range);
   const requestedFilters = parseDashboardFilters(search);
-  const dashboard = await getProDashboardData(
-    tenant.id,
-    company.id,
-    range,
-    requestedFilters.filters,
-  );
+  const [t, locale, dashboard] = await Promise.all([
+    getTranslations('pro.dashboard.signalStudio'),
+    getLocale(),
+    getProDashboardData(tenant.id, company.id, range, requestedFilters.filters),
+  ]);
   const filterState = resolveDashboardFilterState(
     requestedFilters,
     dashboard.appliedFilters,
@@ -86,11 +72,8 @@ export default async function ProDashboard({
   const filterQuery = dashboardQuery(filters);
   const generatedAt = new Intl.DateTimeFormat(locale, {
     timeZone: 'Asia/Dubai',
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
+    dateStyle: 'medium',
+    timeStyle: 'short',
   }).format(new Date(dashboard.generatedAt));
   const retryHref = `/t/${encodeURIComponent(tenant.slug)}/dashboard?${dashboardQuery(filters, range)}`;
   const errorMessages = {
@@ -105,42 +88,36 @@ export default async function ProDashboard({
     dashboardWidgetState(dashboard.errors, groups, errorMessages, retryHref);
   const baseLabels = { loading: t('loading'), retry: t('retry') };
 
-  const heroLabels = {
-    ...baseLabels,
-    prioritySignals: t('prioritySignals'),
-    actionSummary: t('hero.actionSummary'),
-    openActionDeck: t('openActionDeck'),
-    assignWork: t('assignWork'),
-    score: t('operationsScore'),
-    scoreAria: t.raw('hero.scoreAria'),
-    scoreDetails: t('hero.scoreDetails'),
-    openScoreDetails: t('hero.openScoreDetails'),
-    dialogTitle: t.raw('hero.dialogTitle'),
-    dialogDescription: t('hero.dialogDescription'),
-    higherHealthier: t('hero.higherHealthier'),
-    lowerHealthier: t('hero.lowerHealthier'),
-    velocity: t('hero.velocity'),
-    velocityAria: t.raw('hero.velocityAria'),
-    daySuffix: t('daySuffix'),
-    opened: t('opened'),
-    completed: t('completed'),
-    overdueRatio: t('hero.overdueRatio'),
-    slaCompletionRate: t('hero.slaCompletionRate'),
-    blockedRatio: t('hero.blockedRatio'),
-    reminderRate: t('hero.reminderRate'),
-    workloadBalance: t('hero.workloadBalance'),
-  } satisfies SignalHeroLabels;
-  const kpiLabels = {
-    ...baseLabels,
-    activeCompany: t('activeCompany'),
-    activeCompanyHelper: t.raw('kpis.activeCompanyHelper'),
-    openCases: t('openCases'),
-    openCasesHelper: t.raw('kpis.openCasesHelper'),
-    renewalsDue: t('renewalsDue'),
-    renewalsHelper: t.raw('kpis.renewalsHelper'),
-    collections: t('collections'),
-    collectionsHelper: t.raw('kpis.collectionsHelper'),
-  } satisfies SignalKpisLabels;
+  const companyLabels = {
+    assignedCompany: t('companyCommand.assignedCompany'),
+    lifecycle: t('companyCommand.lifecycle'),
+    jurisdiction: t('companyCommand.jurisdiction'),
+    licenceExpiry: t('companyCommand.licenceExpiry'),
+    licenceMissing: t('companyCommand.licenceMissing'),
+    legalProfile: t('companyCommand.legalProfile'),
+    profileSections: t.raw('companyCommand.profileSections'),
+    activationReadiness: t('companyCommand.activationReadiness'),
+    ready: t('companyCommand.ready'),
+    blockers: t('companyCommand.blockers'),
+    registration: t('companyCommand.registration'),
+    registrationUnavailable: t('companyCommand.registrationUnavailable'),
+    openCompany: t('companyCommand.openCompany'),
+    lifecycleValue: t(`companyCommand.lifecycleValues.${company.status}`),
+    onboardingValue: t(`companyCommand.onboardingValues.${company.onboardingStatus}`),
+  } satisfies CompanyCommandLabels;
+  const summaryLabels = {
+    readiness: t('summary.readiness'),
+    ready: t('summary.ready'),
+    actionRequired: t('summary.actionRequired'),
+    registration: t('summary.registration'),
+    unavailable: t('summary.unavailable'),
+    documents: t('summary.documents'),
+    priorityActions: t('summary.priorityActions'),
+    renewals: t('summary.renewals'),
+    renewalsPeriod: t('summary.renewalsPeriod'),
+    invoices: t('summary.invoices'),
+    outstanding: t('summary.outstanding'),
+  } satisfies CompanySummaryDeckLabels;
   const velocityLabels = {
     ...baseLabels,
     empty: t('caseVelocityLabels.empty'),
@@ -174,10 +151,9 @@ export default async function ProDashboard({
     ...baseLabels,
     empty: t('actionLabels.empty'),
     reviewApplications: t('actionLabels.reviewApplications'),
-    title: t('actionDeck'),
+    title: t('priorityActions'),
     description: t('actionLabels.description'),
     actionAria: t.raw('actionLabels.actionAria'),
-    unassigned: t('actionLabels.unassigned'),
     noDeadline: t('actionLabels.noDeadline'),
     urgency: {
       breached: t('actionLabels.urgency.breached'),
@@ -227,34 +203,31 @@ export default async function ProDashboard({
       ejari: t('renewalLabels.types.ejari'),
     },
   } satisfies RenewalStreamsLabels;
-  const teamLabels = {
+  const documentLabels = {
     ...baseLabels,
-    empty: t('teamLabels.empty'),
-    openApplications: t('teamLabels.openApplications'),
-    title: t('teamSignal'),
-    description: t('teamLabels.description'),
-    unassignedCases: t('teamLabels.unassignedCases'),
-    activeCases: t.raw('teamLabels.activeCases'),
-    capacity: t.raw('teamLabels.capacity'),
-    capacityValue: t.raw('teamLabels.capacityValue'),
-  } satisfies TeamSignalLabels;
+    title: t('pendingDocuments.title'),
+    description: t('pendingDocuments.description'),
+    empty: t('pendingDocuments.empty'),
+    openDocuments: t('pendingDocuments.openDocuments'),
+    states: {
+      'awaiting-upload': t('pendingDocuments.states.awaitingUpload'),
+      'review-pending': t('pendingDocuments.states.reviewPending'),
+      'action-required': t('pendingDocuments.states.actionRequired'),
+    },
+  } satisfies PendingDocumentsLabels;
   const rangeLabels = { 7: t('range7'), 30: t('range30'), 90: t('range90') } as const;
 
   return (
     <div className="signal-dashboard">
       <div className="signal-dashboard__masthead">
         <strong>{t('masthead')}</strong>
-        <span className="signal-dashboard__live">{t('live')}</span>
-        <time dateTime={dashboard.generatedAt}>{generatedAt} GST</time>
+        <time dateTime={dashboard.generatedAt}>{t('generatedAt', { date: generatedAt })}</time>
       </div>
-
       <header className="signal-dashboard__heading relative flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="min-w-0">
           <p className="signal-dashboard__eyebrow">{t('eyebrow')}</p>
-          <h1>{t('headline')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {t('subtitle', { tenant: tenant.name })}
-          </p>
+          <h1>{t('headline', { company: company.companyName })}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('subtitle')}</p>
         </div>
         <div className="signal-dashboard__heading-tools">
           <nav aria-label={t('rangeLabel')} className="bg-muted flex w-fit rounded-lg p-1">
@@ -278,24 +251,9 @@ export default async function ProDashboard({
             <summary>{t('filters.toggle')}</summary>
             <form
               method="get"
-              className="signal-dashboard__filters grid gap-3 rounded-2xl border p-4 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_auto]"
+              className="signal-dashboard__filters grid gap-3 rounded-xl border p-4 sm:grid-cols-[1fr_auto]"
             >
               <input type="hidden" name="range" value={range} />
-              <label className="text-sm font-medium">
-                {t('filters.owner')}
-                <select
-                  name="owner"
-                  defaultValue={filters.ownerId ?? ''}
-                  className="border-input bg-background mt-1 block h-9 w-full rounded-md border px-3"
-                >
-                  <option value="">{t('filters.allOwners')}</option>
-                  {dashboard.filterOptions.owners.map((owner) => (
-                    <option key={owner.id} value={owner.id}>
-                      {owner.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="text-sm font-medium">
                 {t('filters.serviceType')}
                 <select
@@ -311,27 +269,14 @@ export default async function ProDashboard({
                   ))}
                 </select>
               </label>
-              <label className="text-sm font-medium">
-                {t('filters.branch')}
-                <select
-                  disabled
-                  aria-describedby="branch-unavailable"
-                  className="border-input bg-muted mt-1 block h-9 w-full rounded-md border px-3"
-                >
-                  <option>{t('filters.allBranches')}</option>
-                </select>
-                <span id="branch-unavailable" className="text-muted-foreground text-xs">
-                  {t('filters.branchUnavailable')}
-                </span>
-              </label>
-              <button className="bg-primary text-primary-foreground h-9 self-end rounded-md px-4 text-sm font-medium">
+              <button
+                type="submit"
+                className="bg-primary text-primary-foreground min-h-9 self-end rounded-md px-4 text-sm font-semibold"
+              >
                 {t('filters.apply')}
               </button>
               {filterState.notice ? (
-                <p
-                  role="status"
-                  className="text-muted-foreground text-sm sm:col-span-3 lg:col-span-4"
-                >
+                <p role="status" className="text-muted-foreground text-sm sm:col-span-2">
                   {t(
                     filterState.notice === 'pending'
                       ? 'filters.pendingNotice'
@@ -344,34 +289,25 @@ export default async function ProDashboard({
         </div>
       </header>
 
-      <SignalHero
+      <CompanyCommand
+        company={company}
+        tenantSlug={tenant.slug}
         locale={locale}
-        labels={heroLabels}
-        {...dataOrError(stateFor(['operations', 'renewals', 'documents', 'finance']), {
-          health: dashboard.health,
-          actionCount: dashboard.totalPrioritySignals,
-          caseVelocity: dashboard.caseVelocity,
-          tenantSlug: tenant.slug,
-          filters,
-        })}
+        labels={companyLabels}
       />
-      <div className="signal-dashboard__kpis">
-        <SignalKpis
-          locale={locale}
-          labels={kpiLabels}
-          {...dataOrError(undefined, {
-            kpis: dashboard.kpis,
-            tenantSlug: tenant.slug,
-            filters,
-            states: {
-              activeCompany: stateFor(['identity']),
-              openCases: stateFor(['operations']),
-              renewals: stateFor(['renewals']),
-              finance: stateFor(['finance']),
-            },
-          })}
-        />
-      </div>
+      <CompanySummaryDeck
+        company={company}
+        dashboard={dashboard}
+        tenantSlug={tenant.slug}
+        locale={locale}
+        labels={summaryLabels}
+        states={{
+          documents: stateFor(['documents']),
+          actions: stateFor(['operations', 'renewals', 'documents', 'finance']),
+          renewals: stateFor(['renewals']),
+          finance: stateFor(['finance']),
+        }}
+      />
 
       <div className="signal-dashboard__layout">
         <div className="signal-dashboard__operations">
@@ -419,12 +355,19 @@ export default async function ProDashboard({
             />
           </div>
         </div>
-
         <aside className="signal-dashboard__rail">
+          <PendingDocuments
+            locale={locale}
+            labels={documentLabels}
+            {...dataOrError(stateFor(['documents']), {
+              documents: dashboard.pendingDocuments,
+              tenantSlug: tenant.slug,
+            })}
+          />
           <CollectionsWaterfall
             locale={locale}
             labels={collectionsLabels}
-            canViewFinance={canViewFinance}
+            canViewFinance
             {...dataOrError(stateFor(['finance']), {
               finance: dashboard.finance,
               tenantSlug: tenant.slug,
@@ -438,18 +381,21 @@ export default async function ProDashboard({
               tenantSlug: tenant.slug,
             })}
           />
-          {canViewTeam ? (
-            <TeamSignal
-              locale={locale}
-              labels={teamLabels}
-              {...dataOrError(stateFor(['operations']), {
-                team: dashboard.team,
-                unassignedCases: dashboard.kpis.unassignedCases,
-                tenantSlug: tenant.slug,
-                filters,
-              })}
-            />
-          ) : null}
+          <DashboardUnavailablePanel
+            title={t('registration.title')}
+            description={t('registration.description')}
+            unavailable={t('registrationUnavailable')}
+          />
+          <DashboardUnavailablePanel
+            title={t('activity.title')}
+            description={t('activity.description')}
+            unavailable={t('activityUnavailable')}
+          />
+          <DashboardUnavailablePanel
+            title={t('notifications.title')}
+            description={t('notifications.description')}
+            unavailable={t('notificationsUnavailable')}
+          />
         </aside>
       </div>
     </div>

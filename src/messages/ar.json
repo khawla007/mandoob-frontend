@@ -1220,27 +1220,18 @@
       },
       "signalStudio": {
         "title": "مركز القيادة",
-        "subtitle": "{tenant} · مؤشرات تشغيلية مباشرة وخطوات العمل التالية.",
+        "subtitle": "حالة الشركة المعيّنة والتزاماتها وخطواتها التالية.",
         "masthead": "دبي / مؤشر العمليات",
-        "live": "مباشر",
+        "generatedAt": "تم الإنشاء في {date}",
         "eyebrow": "صورة العمليات اليوم",
-        "headline": "كل شيء يتحرك، في لمحة واحدة.",
-        "prioritySignals": "إشارات ذات أولوية",
-        "operationsScore": "مؤشر كفاءة العمليات",
-        "openActionDeck": "فتح قائمة الإجراءات",
-        "assignWork": "تعيين العمل",
-        "activeCompany": "الشركة المعيّنة",
-        "openCases": "المعاملات المفتوحة",
-        "renewalsDue": "التجديدات المستحقة",
-        "collections": "التحصيلات",
+        "headline": "{company} في لمحة واحدة.",
+        "priorityActions": "الإجراءات ذات الأولوية",
         "caseVelocity": "وتيرة المعاملات",
         "opened": "المفتوحة",
         "completed": "المكتملة",
         "deadlineIntensity": "كثافة المواعيد النهائية",
         "collectionsWaterfall": "تدفق التحصيلات",
         "renewalStreams": "مسارات التجديد",
-        "teamSignal": "مؤشر أعباء العمل",
-        "actionDeck": "قائمة الإجراءات",
         "empty": "لا توجد مؤشرات تستدعي المتابعة حاليًا.",
         "loading": "جارٍ تحميل مؤشر لوحة التحكم…",
         "retry": "إعادة المحاولة",
@@ -1250,28 +1241,47 @@
         "rangeLabel": "النطاق الزمني للوحة التحكم",
         "daySuffix": "ي",
         "date": "التاريخ",
-        "hero": {
-          "actionSummary": "إشارات تشغيلية تستدعي المتابعة الآن.",
-          "scoreAria": "مؤشر كفاءة العمليات {score} من 100. افتح تفاصيل المؤشر.",
-          "scoreDetails": "مدخلات المؤشر",
-          "openScoreDetails": "عرض مدخلات المؤشر",
-          "dialogTitle": "مؤشر كفاءة العمليات: {score}",
-          "dialogDescription": "عرض واضح للمدخلات الخمسة المستخدمة في حساب كفاءة العمليات.",
-          "higherHealthier": "القيمة الأعلى أفضل",
-          "lowerHealthier": "القيمة الأقل أفضل",
-          "velocity": "الوتيرة المباشرة",
-          "velocityAria": "خلال {days} يومًا، فُتحت {opened} معاملات واكتملت {completed} معاملات.",
-          "overdueRatio": "نسبة المعاملات المتأخرة",
-          "slaCompletionRate": "المنجزة ضمن اتفاقية مستوى الخدمة",
-          "blockedRatio": "المعاملات المتوقفة بعد الحد الزمني",
-          "reminderRate": "تذكيرات التجديد المرسلة في موعدها",
-          "workloadBalance": "توازن أعباء العمل"
+        "companyCommand": {
+          "assignedCompany": "الشركة المعيّنة",
+          "lifecycle": "دورة الحياة",
+          "jurisdiction": "الاختصاص",
+          "licenceExpiry": "انتهاء الرخصة",
+          "licenceMissing": "غير مسجل",
+          "legalProfile": "الملف القانوني",
+          "profileSections": "اكتمل {complete} من {total} أقسام قانونية",
+          "activationReadiness": "جاهزية التفعيل",
+          "ready": "جاهزة للتفعيل",
+          "blockers": "إجراء مطلوب",
+          "registration": "التسجيل لدى الجهة",
+          "registrationUnavailable": "التقدم التفصيلي غير متاح — يلزم عقد P2.09/المرحلة 3",
+          "openCompany": "فتح الشركة المعيّنة",
+          "lifecycleValues": {
+            "onboarding": "قيد الإعداد",
+            "active": "نشطة",
+            "renewal_due": "التجديد مستحق",
+            "renewal_overdue": "التجديد متأخر",
+            "suspended": "معلّقة",
+            "churned": "منتهية"
+          },
+          "onboardingValues": {
+            "not_started": "لم يبدأ",
+            "in_progress": "قيد التنفيذ",
+            "ready_for_activation": "جاهزة للتفعيل",
+            "completed": "الملف القانوني مكتمل"
+          }
         },
-        "kpis": {
-          "activeCompanyHelper": "حالة التعيين الحالية",
-          "openCasesHelper": "{moving} قيد التنفيذ · {blocked} متوقفة",
-          "renewalsHelper": "{count} مستحقة خلال 7 أيام",
-          "collectionsHelper": "تم تحصيل {rate}% من القيمة المفوترة"
+        "summary": {
+          "readiness": "جاهزية الشركة",
+          "ready": "جاهزة",
+          "actionRequired": "إجراء مطلوب",
+          "registration": "حالة التسجيل",
+          "unavailable": "غير متاح",
+          "documents": "المستندات المعلّقة",
+          "priorityActions": "الإجراءات ذات الأولوية",
+          "renewals": "التجديدات المستحقة",
+          "renewalsPeriod": "خلال 30 يومًا بتوقيت دبي",
+          "invoices": "الفواتير المفتوحة",
+          "outstanding": "القيمة المفتوحة والمتأخرة"
         },
         "caseVelocityLabels": {
           "empty": "لا يوجد نشاط للمعاملات خلال هذه الفترة حتى الآن.",
@@ -1297,8 +1307,7 @@
           "empty": "لا توجد معاملات عاجلة أو مواعيد نهائية تستدعي إجراءً.",
           "reviewApplications": "مراجعة الطلبات",
           "description": "الأعمال الأعلى أولوية مرتبة حسب الموعد ومدة التوقف.",
-          "actionAria": "فتح {title} للشركة {company}. المسؤول: {owner}. درجة الاستعجال: {urgency}. {countdown}. {absoluteDeadline}.",
-          "unassigned": "غير معيّنة",
+          "actionAria": "فتح {title} للشركة {company}. درجة الاستعجال: {urgency}. {countdown}. {absoluteDeadline}.",
           "noDeadline": "بلا موعد نهائي",
           "absoluteDeadline": "الموعد النهائي بتوقيت دبي: {deadline}",
           "countdown": {
@@ -1344,15 +1353,32 @@
             "ejari": "مستندات الإيجار وعقود الإيجار"
           }
         },
-        "teamLabels": {
-          "empty": "لا تتوفر أعباء عمل نشطة للشركة المعيّنة.",
-          "openApplications": "فتح الطلبات",
-          "description": "العمل المفتوح والطاقة الاستيعابية المتبقية في الشركة المعيّنة.",
-          "unassignedCases": "معاملات غير معيّنة",
-          "activeCases": "{count} معاملات نشطة",
-          "capacity": "الطاقة الاستيعابية لـ {name}",
-          "capacityValue": "الطاقة الاستيعابية {percent}%"
+        "pendingDocuments": {
+          "title": "المستندات المعلّقة",
+          "description": "أعمال مستندات الشركة المعيّنة الأعلى أولوية.",
+          "empty": "لا توجد أعمال مستندات للشركة المعيّنة تستدعي المتابعة.",
+          "openDocuments": "فتح المستندات",
+          "states": {
+            "awaitingUpload": "بانتظار الرفع",
+            "reviewPending": "تم التقديم · بانتظار المراجعة",
+            "actionRequired": "مرفوض · إجراء مطلوب"
+          }
         },
+        "registration": {
+          "title": "سياق التسجيل",
+          "description": "سجل مراحل الجهة والأدلة"
+        },
+        "registrationUnavailable": "التقدم التفصيلي غير متاح — يلزم عقد P2.09/المرحلة 3",
+        "activity": {
+          "title": "نشاط الشركة الأخير",
+          "description": "سجل عمليات ثابت ومصرح به"
+        },
+        "activityUnavailable": "النشاط الأخير غير متاح — يلزم عقد P2.10/المرحلة 3",
+        "notifications": {
+          "title": "الإشعارات",
+          "description": "التوفر دون ادعاءات غير المقروء أو التسليم"
+        },
+        "notificationsUnavailable": "الإشعارات غير متاحة — يلزم عقد P2.10/المرحلة 3",
         "errors": {
           "identity": "معلومات الشركة غير متاحة مؤقتًا.",
           "links": "روابط لوحة التحكم غير متاحة مؤقتًا.",
@@ -1363,13 +1389,8 @@
         },
         "filters": {
           "toggle": "عوامل التصفية",
-          "owner": "مسؤول المعاملة",
-          "allOwners": "جميع المسؤولين",
           "serviceType": "نوع الخدمة",
           "allServices": "جميع الخدمات",
-          "branch": "الفرع",
-          "allBranches": "جميع الفروع",
-          "branchUnavailable": "تصفية الفروع غير متاحة لأن مساحة العمل لا تحتوي على حقل للفرع.",
           "invalidNotice": "تم تجاهل عامل تصفية واحد أو أكثر لأنه غير متاح في مساحة العمل هذه.",
           "pendingNotice": "تم الاحتفاظ بعوامل التصفية، لكن تعذر التحقق منها أثناء عدم توفر بيانات الطلبات.",
           "apply": "تطبيق عوامل التصفية"

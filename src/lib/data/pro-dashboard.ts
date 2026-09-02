@@ -8,7 +8,6 @@ export type ProDashboardData = {
   kpis: {
     activeCompany: number;
     openCases: number;
-    unassignedCases: number;
     movingCases: number;
     blockedCases: number;
     renewalsDue30d: number;
@@ -17,14 +16,6 @@ export type ProDashboardData = {
     currency: string;
     collectionRate: number;
   };
-  health: {
-    score: number;
-    overdueRatio: number;
-    slaCompletionRate: number;
-    blockedRatio: number;
-    reminderRate: number;
-    workloadBalance: number;
-  };
   caseVelocity: Array<{ date: string; opened: number; completed: number }>;
   actionDeck: Array<{
     id: string;
@@ -32,7 +23,6 @@ export type ProDashboardData = {
     title: string;
     detail: string;
     companyName: string;
-    ownerName: string | null;
     deadline: string | null;
     urgency: 'breached' | 'urgent' | 'soon' | 'normal';
     href: string;
@@ -58,18 +48,17 @@ export type ProDashboardData = {
     'license' | 'visa' | 'eid' | 'ejari',
     { d7: number; d30: number; d60: number; d90: number }
   >;
-  team: Array<{
-    profileId: string;
-    tenantId: string;
-    name: string;
-    activeCases: number;
-    capacityPercent: number;
+  pendingDocuments: Array<{
+    id: string;
+    label: string;
+    state: 'awaiting-upload' | 'review-pending' | 'action-required';
+    deadline: string | null;
+    href: string;
   }>;
   filterOptions: {
-    owners: Array<{ id: string; name: string }>;
     serviceTypes: string[];
   };
-  appliedFilters: { ownerId?: string; serviceType?: string };
+  appliedFilters: { serviceType?: string };
   filtersRejected: boolean;
   errors: Partial<
     Record<'identity' | 'links' | 'operations' | 'renewals' | 'documents' | 'finance', string>
@@ -82,14 +71,6 @@ type CompanyInput = {
   company_name: string;
   status: string;
   created_at?: string;
-};
-
-type ProfileInput = {
-  id: string;
-  tenant_id: string | null;
-  full_name: string | null;
-  role: string;
-  status: string;
 };
 
 type ServiceCaseInput = {
@@ -190,7 +171,6 @@ export type ProDashboardInput = {
   tenantSlug?: string;
   days?: 7 | 30 | 90;
   companies: CompanyInput[];
-  profiles: ProfileInput[];
   serviceCases: ServiceCaseInput[];
   renewals: RenewalInput[];
   documentRequests: DocumentRequestInput[];
@@ -199,7 +179,7 @@ export type ProDashboardInput = {
   payments: PaymentInput[];
   refunds: RefundInput[];
   errors?: ProDashboardData['errors'];
-  filters?: { ownerId?: string; serviceType?: string };
+  filters?: { serviceType?: string };
 };
 
 type Action = ProDashboardData['actionDeck'][number];
@@ -208,11 +188,6 @@ const ACTIVE_RENEWAL_STATUSES = new Set(['upcoming', 'due_soon', 'overdue']);
 const CLOSED_CASE_STATUSES = new Set(['completed', 'cancelled']);
 const PAGE_SIZE = 500;
 const ID_BATCH_SIZE = 100;
-/** Explicit utilization target; overload remains visible above 100%. */
-export const ACTIVE_CASE_UTILIZATION_TARGET = 10;
-/** `updated_at` is the blocked-since proxy because service_cases has no blocked_at. */
-export const BLOCKED_AGE_THRESHOLD_DAYS = 3;
-const REMINDER_ON_TIME_WINDOW_MS = 86_400_000;
 const BUSINESS_TIME_ZONE = 'Asia/Dubai';
 const COLLECTED_PAYMENT_STATUSES = new Set(['succeeded', 'refunded', 'partially_refunded']);
 
@@ -223,31 +198,20 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   );
   const assignedCompany = companies[0];
   const companyIds = new Set(assignedCompany ? [assignedCompany.id] : []);
-  const profiles = input.profiles.filter((row) => row.tenant_id === tenantId);
   const tenantServiceCases = input.serviceCases.filter(
     (row) => row.tenant_id === tenantId && companyIds.has(row.company_id),
   );
-  const activeOwners = profiles.filter((row) => row.status === 'active' && row.role === 'pro');
-  const ownerIds = new Set(activeOwners.map((row) => row.id));
   const serviceTypes = Array.from(
     new Set(tenantServiceCases.map((row) => row.service_type)),
   ).sort();
   const appliedFilters = {
-    ...(input.filters?.ownerId && ownerIds.has(input.filters.ownerId)
-      ? { ownerId: input.filters.ownerId }
-      : {}),
     ...(input.filters?.serviceType && serviceTypes.includes(input.filters.serviceType)
       ? { serviceType: input.filters.serviceType }
       : {}),
   };
-  const filtersRejected = Boolean(
-    (input.filters?.ownerId && !appliedFilters.ownerId) ||
-    (input.filters?.serviceType && !appliedFilters.serviceType),
-  );
+  const filtersRejected = Boolean(input.filters?.serviceType && !appliedFilters.serviceType);
   const serviceCases = tenantServiceCases.filter(
-    (row) =>
-      (!appliedFilters.ownerId || row.assigned_to === appliedFilters.ownerId) &&
-      (!appliedFilters.serviceType || row.service_type === appliedFilters.serviceType),
+    (row) => !appliedFilters.serviceType || row.service_type === appliedFilters.serviceType,
   );
   const renewals = input.renewals.filter(
     (row) => row.tenant_id === tenantId && companyIds.has(row.company_id),
@@ -270,12 +234,7 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     (row) => row.tenant_id === tenantId && paymentIds.has(row.payment_id),
   );
   const companyNames = new Map(companies.map((row) => [row.id, row.company_name]));
-  const ownerNames = new Map(profiles.map((row) => [row.id, row.full_name]));
   const openCases = serviceCases.filter((row) => !CLOSED_CASE_STATUSES.has(row.status));
-  const activeOwnerIds = ownerIds;
-  const unassignedCases = openCases.filter(
-    (row) => row.assigned_to === null || !activeOwnerIds.has(row.assigned_to),
-  ).length;
   const activeRenewals = renewals.filter((row) => ACTIVE_RENEWAL_STATUSES.has(row.status));
   const today = businessDate(now);
   const currentMonth = today.slice(0, 7);
@@ -320,29 +279,6 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const blockedCases = openCases.filter((row) => row.blocked_reason !== null);
   const movingCases = openCases.filter((row) => row.blocked_reason === null);
 
-  const caseCountByAssignee = new Map<string, number>();
-  for (const row of openCases) {
-    if (row.assigned_to) {
-      caseCountByAssignee.set(row.assigned_to, (caseCountByAssignee.get(row.assigned_to) ?? 0) + 1);
-    }
-  }
-
-  const team = profiles
-    .filter((row) => row.status === 'active' && row.role === 'pro')
-    .map((profile) => {
-      const activeCases = caseCountByAssignee.get(profile.id) ?? 0;
-      return {
-        profileId: profile.id,
-        tenantId,
-        name: profile.full_name ?? 'Unnamed team member',
-        activeCases,
-        capacityPercent: Math.round((activeCases / ACTIVE_CASE_UTILIZATION_TARGET) * 100),
-      };
-    })
-    .sort(
-      (left, right) => right.activeCases - left.activeCases || left.name.localeCompare(right.name),
-    );
-
   const days = input.days ?? 30;
   const dateWindow = utcDateWindow(today, days);
   const openedByDate = countByDate(serviceCases.map((row) => row.created_at));
@@ -362,11 +298,51 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     documents,
     openInvoices: openReportingInvoices,
     companyNames,
-    ownerNames,
     now,
     tenantSlug: input.tenantSlug,
   });
   const actionDeck = selectActionDeck(rankedActions);
+  const base = input.tenantSlug ? `/t/${encodeURIComponent(input.tenantSlug)}` : null;
+  const pendingDocuments = [
+    ...documents.flatMap((row) => {
+      const reviewStatus = currentReviewStatus(row.currentVersion, row.tenant_id);
+      if (reviewStatus !== 'pending' && reviewStatus !== 'rejected') return [];
+      return [
+        {
+          id: row.id,
+          label: row.label ?? 'Document review',
+          state:
+            reviewStatus === 'rejected'
+              ? ('action-required' as const)
+              : ('review-pending' as const),
+          deadline: null,
+          href: base ? `${base}/company?tab=documents&document=${encodeURIComponent(row.id)}` : '#',
+        },
+      ];
+    }),
+    ...documentRequests.flatMap((row) =>
+      row.status === 'pending'
+        ? [
+            {
+              id: row.id,
+              label: row.label,
+              state: 'awaiting-upload' as const,
+              deadline: row.due_at,
+              href: base
+                ? `${base}/company?tab=documents&request=${encodeURIComponent(row.id)}`
+                : '#',
+            },
+          ]
+        : [],
+    ),
+  ]
+    .sort(
+      (left, right) =>
+        (left.state === 'action-required' ? 0 : 1) - (right.state === 'action-required' ? 0 : 1) ||
+        deadlineDate(left.deadline).localeCompare(deadlineDate(right.deadline)) ||
+        left.id.localeCompare(right.id),
+    )
+    .slice(0, 5);
 
   const deadlineEvents = rankedActions.flatMap((action) => {
     if (!action.deadline) return [];
@@ -401,62 +377,6 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
   const renewalStreams = renewalStreamCounts(activeRenewals, today);
   const renewalsDue7d = activeRenewals.filter((row) => row.due_date <= addUtcDays(today, 7)).length;
   const renewalsDue30d = activeRenewals.filter((row) => row.due_date <= dueSoonDate).length;
-  const overdueRatio = percent(
-    openCases.filter((row) => {
-      const deadline = deadlineForCase(row);
-      return deadline !== null && businessDeadlineTimestamp(deadline) < now.getTime();
-    }).length,
-    openCases.length,
-  );
-  const completedWithSla = serviceCases.filter(
-    (row) => row.status === 'completed' && row.completed_at !== null && row.sla_due_at !== null,
-  );
-  const slaCompletionRate = percent(
-    completedWithSla.filter(
-      (row) => Date.parse(row.completed_at!) <= businessDeadlineTimestamp(row.sla_due_at!),
-    ).length,
-    completedWithSla.length,
-  );
-  const blockedThreshold = now.getTime() - BLOCKED_AGE_THRESHOLD_DAYS * 86_400_000;
-  const blockedRatio = percent(
-    blockedCases.filter((row) => Date.parse(row.updated_at) <= blockedThreshold).length,
-    openCases.length,
-  );
-  const dueForReminder = activeRenewals.flatMap((row) => {
-    // No elapsed schedule means "not yet measurable"; a missing send for an elapsed schedule is late.
-    const schedules = (row.notify_at ?? [])
-      .map((value) => Date.parse(value))
-      .filter((value) => Number.isFinite(value) && value <= now.getTime());
-    return schedules.length ? [{ row, scheduledAt: Math.max(...schedules) }] : [];
-  });
-  const reminderRate = percent(
-    dueForReminder.filter(({ row, scheduledAt }) => {
-      if (!row.last_notified_at) return false;
-      const sentAt = Date.parse(row.last_notified_at);
-      return sentAt >= scheduledAt && sentAt <= scheduledAt + REMINDER_ON_TIME_WINDOW_MS;
-    }).length,
-    dueForReminder.length,
-  );
-  const workloadBalance =
-    team.length === 0
-      ? 0
-      : calculateWorkloadBalance([
-          ...team.map((member) => member.activeCases),
-          ...(unassignedCases > 0 ? [unassignedCases] : []),
-        ]);
-  const healthSignals = [
-    100 - overdueRatio,
-    slaCompletionRate,
-    100 - blockedRatio,
-    reminderRate,
-    workloadBalance,
-  ];
-  const score =
-    companies.length + serviceCases.length + renewals.length === 0
-      ? 0
-      : clamp(
-          Math.round(healthSignals.reduce((sum, value) => sum + value, 0) / healthSignals.length),
-        );
   const activeCompany = assignedCompany?.status === 'active' ? 1 : 0;
 
   return {
@@ -465,7 +385,6 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
     kpis: {
       activeCompany,
       openCases: openCases.length,
-      unassignedCases,
       movingCases: movingCases.length,
       blockedCases: blockedCases.length,
       renewalsDue30d,
@@ -473,14 +392,6 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
       collectedMinor,
       currency: financeDashboard.currency,
       collectionRate: billedMinor > 0 ? roundOne((collectedMinor / billedMinor) * 100) : 0,
-    },
-    health: {
-      score,
-      overdueRatio,
-      slaCompletionRate,
-      blockedRatio,
-      reminderRate,
-      workloadBalance,
     },
     caseVelocity,
     actionDeck,
@@ -498,9 +409,8 @@ export function calculateProDashboard(input: ProDashboardInput, now: Date): ProD
       currency: financeDashboard.currency,
     },
     renewalStreams,
-    team,
+    pendingDocuments,
     filterOptions: {
-      owners: activeOwners.map((row) => ({ id: row.id, name: row.full_name ?? row.id })),
       serviceTypes,
     },
     appliedFilters,
@@ -516,7 +426,6 @@ function buildActions(args: {
   documents: DocumentInput[];
   openInvoices: InvoiceInput[];
   companyNames: Map<string, string>;
-  ownerNames: Map<string, string | null>;
   now: Date;
   tenantSlug?: string;
 }): Action[] {
@@ -533,7 +442,6 @@ function buildActions(args: {
           ? `${row.service_type} — ${row.blocked_reason}`
           : row.service_type,
         companyName: companyName(row.company_id),
-        ownerName: row.assigned_to ? (args.ownerNames.get(row.assigned_to) ?? null) : null,
         deadline,
         urgency: urgency(deadline, args.now),
         href: base ? `${base}/applications?case=${encodeURIComponent(row.id)}` : '#',
@@ -546,7 +454,6 @@ function buildActions(args: {
         title: row.label,
         detail: `${row.type} renewal`,
         companyName: companyName(row.company_id),
-        ownerName: null,
         deadline: row.due_date,
         urgency: urgency(row.due_date, args.now),
         href: base ? `${base}/renewals?tab=active&renewal=${encodeURIComponent(row.id)}` : '#',
@@ -561,7 +468,6 @@ function buildActions(args: {
           title: row.label,
           detail: 'Document request pending',
           companyName: companyName(row.company_id),
-          ownerName: null,
           deadline: row.due_at,
           urgency: urgency(row.due_at, args.now),
           href: base ? `${base}/company?tab=documents&request=${encodeURIComponent(row.id)}` : '#',
@@ -576,7 +482,6 @@ function buildActions(args: {
           title: row.label ?? 'Document review',
           detail: 'Awaiting document review',
           companyName: companyName(row.company_id),
-          ownerName: null,
           deadline: null,
           urgency: 'normal',
           href: base ? `${base}/company?tab=documents&document=${encodeURIComponent(row.id)}` : '#',
@@ -589,7 +494,6 @@ function buildActions(args: {
         title: row.label,
         detail: `${row.currency} ${(row.amount_minor / 100).toFixed(2)}`,
         companyName: companyName(row.company_id),
-        ownerName: null,
         deadline: row.due_at,
         urgency: urgency(row.due_at, args.now),
         href: base ? `${base}/payments/${encodeURIComponent(row.id)}` : '#',
@@ -691,21 +595,6 @@ export function associateCurrentDocumentVersions(
       ...document,
       currentVersion: currentVersionId ? (tenantVersions.get(currentVersionId) ?? null) : null,
     }));
-}
-
-function calculateWorkloadBalance(activeCases: number[]): number {
-  if (activeCases.length === 0) return 0;
-  const maximum = Math.max(...activeCases);
-  if (maximum === 0) return 100;
-  return clamp(roundOne((1 - (maximum - Math.min(...activeCases)) / maximum) * 100));
-}
-
-function percent(numerator: number, denominator: number): number {
-  return denominator === 0 ? 0 : clamp(roundOne((numerator / denominator) * 100));
-}
-
-function clamp(value: number): number {
-  return Math.min(100, Math.max(0, value));
 }
 
 function roundOne(value: number): number {
@@ -870,7 +759,6 @@ type ProDashboardErrorGroup = keyof ProDashboardData['errors'];
 const SOURCE_ERROR_GROUPS: Record<string, ProDashboardErrorGroup> = {
   tenantSlug: 'links',
   companies: 'identity',
-  profiles: 'operations',
   serviceCases: 'operations',
   renewals: 'renewals',
   documentRequests: 'documents',
@@ -1005,7 +893,7 @@ export async function getProDashboardData(
   tenantId: string,
   assignedCompanyId: string,
   days: 7 | 30 | 90 = 30,
-  filters?: { ownerId?: string; serviceType?: string },
+  filters?: { serviceType?: string },
 ): Promise<ProDashboardData> {
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
   const admin = createSupabaseServiceRoleClient();
@@ -1039,7 +927,6 @@ export async function getProDashboardData(
       'id, tenant_id, company_name, status, created_at',
       { column: 'id', value: assignedCompanyId },
     ),
-    profiles: load<ProfileInput>('profiles', 'id, tenant_id, full_name, role, status'),
     serviceCases: load<ServiceCaseInput>(
       'service_cases_ranked',
       'id, tenant_id, company_id, title, service_type, status, priority, assigned_to, due_at, sla_due_at, blocked_reason, completed_at, created_at, updated_at',
@@ -1074,7 +961,6 @@ export async function getProDashboardData(
   const {
     tenantSlug: tenantSlugs,
     companies,
-    profiles,
     serviceCases,
     renewals,
     documentRequests,
@@ -1093,7 +979,6 @@ export async function getProDashboardData(
       tenantSlug: tenantSlugs[0],
       days,
       companies,
-      profiles,
       serviceCases,
       renewals,
       documentRequests,

@@ -1,5 +1,6 @@
-import { permanentRedirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
   parseAssignedCompanySearch,
   type AssignedCompanySearchParams,
@@ -14,8 +15,10 @@ export default async function LegacyCompanyDetailPage({
   params: Promise<{ tenant: string; companyId: string }>;
   searchParams: Promise<AssignedCompanySearchParams>;
 }) {
-  const { tenant: slug } = await params;
-  await requireProTenantRouteAccess(slug);
+  const { tenant: slug, companyId } = await params;
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id || company.id !== companyId) notFound();
 
   const focus = parseAssignedCompanySearch(await searchParams);
   const query = new URLSearchParams({ tab: focus.tab });
