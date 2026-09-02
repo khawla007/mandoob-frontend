@@ -20,6 +20,9 @@ const requestDialog = read('../../../../../../components/pro/documents/RequestDo
 const history = read('../../../../../../components/pro/documents/VersionHistoryDialog.tsx');
 const summary = read('../../../../../../components/pro/documents/DocumentSummaryGrid.tsx');
 const queue = read('../../../../../../components/pro/documents/DocumentWorkQueue.tsx');
+const batchRequest = readOptional(
+  '../../../../../../components/pro/documents/DocumentBatchRequestUnavailable.tsx',
+);
 const loading = readOptional('./loading.tsx');
 const errorBoundary = readOptional('./error.tsx');
 const loadingView = read(
@@ -71,13 +74,18 @@ test('page completes exact PRO authorization before every service-role workspace
   );
 
   const authorization = page.indexOf('requireProTenantRouteAccess(');
+  const activeCheck = page.indexOf('requireActiveTenant(tenant.id)');
   assert.notEqual(authorization, -1);
+  assert.ok(
+    activeCheck > authorization,
+    'active tenant validation must follow route authorization',
+  );
   for (const serviceRead of [
     'listProDocumentCenter(',
     'getDocumentCenterSummary(',
     'readAssignedCompanyForPro(',
   ]) {
-    assert.ok(authorization < page.indexOf(serviceRead), `${serviceRead} must follow auth`);
+    assert.ok(activeCheck < page.indexOf(serviceRead), `${serviceRead} must follow active check`);
   }
 });
 
@@ -89,7 +97,7 @@ test('independent server reads launch in one parallel boundary without a company
   assert.doesNotMatch([actions, history, queue].join('\n'), /fetch\(/u);
 });
 
-test('canonicalization preserves validated filters and targets a focused item on page one', () => {
+test('canonicalization removes stale company URL state and targets a focused item on page one', () => {
   const focused = parseDocumentCenterSearch({
     company: '11111111-1111-4111-8111-111111111111',
     view: 'rejected',
@@ -99,8 +107,9 @@ test('canonicalization preserves validated filters and targets a focused item on
   assert.equal(focused.page, 1);
   assert.equal(
     documentCenterHref('acme', focused),
-    '/t/acme/documents?view=rejected&company=11111111-1111-4111-8111-111111111111&request=22222222-2222-4222-8222-222222222222',
+    '/t/acme/documents?view=rejected&request=22222222-2222-4222-8222-222222222222',
   );
+  assert.equal('companyId' in focused, false);
   assert.match(page, /Math\.ceil\(workspace\.total \/ workspace\.pageSize\)/u);
   assert.match(page, /requestedPage !== workspace\.page/u);
   assert.match(page, /redirect\(documentCenterHref\(slug, query, workspace\.page\)\)/u);
@@ -179,10 +188,20 @@ test('route loading and error recovery are localized, semantic, and sanitized', 
   assert.doesNotMatch(errorBoundary, />\s*[A-Za-z][^<{]*</u);
 });
 
-test('request and filter forms cannot choose or spoof another company', () => {
+test('one-company Documents removes Company controls and presentation while keeping server scope', () => {
   assert.doesNotMatch(requestDialog, /DocumentCompanySearchField|name="company_id"/u);
   assert.doesNotMatch(page, /searchDocumentCenterCompanyOptions|getDocumentCenterCompanyOption/u);
-  assert.match(page, /companyId: company\.id/u);
+  assert.doesNotMatch(queue, /labels\.company|row\.companyName|companyName/u);
+  assert.match(page, /listProDocumentCenter\(tenant\.id, company\.id, query\)/u);
+  assert.match(page, /getDocumentCenterSummary\(tenant\.id, company\.id, dubaiToday\(\)\)/u);
+  assert.match(page, /heading\.companyContext/u);
+});
+
+test('batch requesting is explicitly unavailable until the accepted Phase 3 mutation exists', () => {
+  assert.match(batchRequest, /disabled/u);
+  assert.match(batchRequest, /labels\.title/u);
+  assert.match(batchRequest, /labels\.description/u);
+  assert.doesNotMatch(batchRequest, /<form|action=|useActionState|requestDocumentCenterAction/u);
 });
 
 test('route sends numeric counts through ICU instead of raw templates or preformatted values', () => {

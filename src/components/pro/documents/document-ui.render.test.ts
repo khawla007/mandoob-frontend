@@ -123,7 +123,6 @@ renderTest(
       query: parseDocumentCenterSearch({
         q: 'stale',
         view: 'submitted',
-        company: '11111111-1111-4111-8111-111111111111',
         type: 'passport',
         window: 'custom',
         from: '2026-08-01',
@@ -261,7 +260,6 @@ const filterLabels: DocumentFilterLabels = {
   search: 'Search',
   searchPlaceholder: 'Find',
   view: 'View',
-  company: 'Company',
   type: 'Type',
   window: 'Window',
   from: 'From',

@@ -91,72 +91,15 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test('searchDocumentCenterCompanyOptions bounds a 1001-client firm to stable tenant-scoped matches', async () => {
-  const rows = Array.from({ length: 1001 }, (_, index) => ({
-    id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
-    company_name: `Client ${String(index).padStart(4, '0')}`,
-  }));
-  const calls = captureFetch(() => json(rows.slice(100, 150)));
-  const loaded = await load();
-  assert.equal(typeof loaded.searchDocumentCenterCompanyOptions, 'function');
-
-  const options = await loaded.searchDocumentCenterCompanyOptions(TENANT, ' Client 1 ', 50);
-
-  assert.equal(options.length, 50);
-  assert.deepEqual(options[0], { id: rows[100].id, companyName: rows[100].company_name });
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /select=id%2Ccompany_name/u);
-  assert.match(calls[0].url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
-  assert.match(calls[0].url, /company_name=ilike\.%25Client\+1%25/u);
-  assert.match(calls[0].url, /order=company_name\.asc%2Cid\.asc/u);
-  assert.match(calls[0].url, /limit=50/u);
-  assert.doesNotMatch(
-    readFileSync(new URL('./pro-document-center.ts', import.meta.url), 'utf8'),
-    /CLIENT_OPTION_BATCH_SIZE|\.range\(/u,
-  );
-});
-
-test('document client search validates query and limit before reading', async () => {
-  const calls = captureFetch(() => json([]));
-  const loaded = await load();
-  assert.equal(typeof loaded.searchDocumentCenterCompanyOptions, 'function');
-
-  await assert.rejects(() => loaded.searchDocumentCenterCompanyOptions('not-a-tenant', '', 50));
-  await assert.rejects(() =>
-    loaded.searchDocumentCenterCompanyOptions(TENANT, 'x'.repeat(101), 50),
-  );
-  await assert.rejects(() => loaded.searchDocumentCenterCompanyOptions(TENANT, '', 51));
-  assert.equal(calls.length, 0);
-});
-
-test('getDocumentCenterCompanyOption resolves one exact tenant-owned selected client', async () => {
-  const selected = {
-    id: '00000000-0000-4000-8000-000000000777',
-    company_name: 'Selected Client',
-  };
-  const calls = captureFetch(() => json(selected));
-  const loaded = await load();
-  assert.equal(typeof loaded.getDocumentCenterCompanyOption, 'function');
-
-  assert.deepEqual(await loaded.getDocumentCenterCompanyOption(TENANT, selected.id), {
-    id: selected.id,
-    companyName: selected.company_name,
-  });
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
-  assert.match(calls[0].url, /id=eq\.00000000-0000-4000-8000-000000000777/u);
-});
-
-test('listProDocumentCenter sends exact validated filters to only the RPC and maps without storage paths', async () => {
+test('listProDocumentCenter binds the assigned company through the exact RPC filter without storage paths', async () => {
   const calls = captureFetch(() => json([rpcRow()]));
   const { listProDocumentCenter } = await load();
 
-  const result = await listProDocumentCenter(TENANT, {
+  const result = await listProDocumentCenter(TENANT, CLIENT, {
     view: 'submitted',
     sort: 'newest',
     window: 'all',
     search: 'passport',
-    companyId: CLIENT,
     docType: 'passport',
     from: '2026-08-01',
     to: '2026-08-31',
@@ -191,8 +134,6 @@ test('listProDocumentCenter sends exact validated filters to only the RPC and ma
     entityId: DOCUMENT,
     tenantId: TENANT,
     companyId: CLIENT,
-    companyName: 'Acme LLC',
-    companyStatus: 'active',
     employeeId: null,
     employeeName: null,
     docType: 'passport',
@@ -225,7 +166,7 @@ test('document center accepts canonical PostgreSQL UUIDs used by trusted tenant 
   const calls = captureFetch(() => json([]));
   const { listProDocumentCenter } = await load();
 
-  await listProDocumentCenter(POSTGRES_TENANT, {});
+  await listProDocumentCenter(POSTGRES_TENANT, CLIENT, {});
 
   assert.equal(calls.length, 1);
   assert.equal((calls[0].body as Record<string, unknown>).p_tenant_id, POSTGRES_TENANT);
@@ -241,7 +182,7 @@ test('listProDocumentCenter uses the RPC effective page with the exact total', a
   const calls = captureFetch(() => json(serverPage));
   const { listProDocumentCenter } = await load();
 
-  const result = await listProDocumentCenter(TENANT, { page: 1001 });
+  const result = await listProDocumentCenter(TENANT, CLIENT, { page: 1001 });
 
   assert.equal((calls[0].body as Record<string, unknown>).p_page, 1001);
   assert.equal((calls[0].body as Record<string, unknown>).p_page_size, 50);
@@ -254,7 +195,7 @@ test('listProDocumentCenter uses the RPC effective page with the exact total', a
 test('listProDocumentCenter returns total zero for an empty RPC result and sanitizes DB failures', async () => {
   const { listProDocumentCenter } = await load();
   captureFetch(() => json([]));
-  assert.deepEqual(await listProDocumentCenter(TENANT, {}), {
+  assert.deepEqual(await listProDocumentCenter(TENANT, CLIENT, {}), {
     rows: [],
     total: 0,
     page: 1,
@@ -263,7 +204,7 @@ test('listProDocumentCenter returns total zero for an empty RPC result and sanit
 
   captureFetch(() => json({ message: 'secret storage_path and SQL detail' }, 500));
   await assert.rejects(
-    () => listProDocumentCenter(TENANT, {}),
+    () => listProDocumentCenter(TENANT, CLIENT, {}),
     (error) =>
       error instanceof ApiError &&
       error.code === 'INTERNAL' &&
@@ -271,7 +212,7 @@ test('listProDocumentCenter returns total zero for an empty RPC result and sanit
   );
 });
 
-test('getDocumentCenterSummary isolates each RPC result when one source fails', async () => {
+test('getDocumentCenterSummary binds every count to the assigned company and isolates failures', async () => {
   const totals: Record<string, number> = {
     requested: 11,
     submitted: 12,
@@ -288,7 +229,7 @@ test('getDocumentCenterSummary isolates each RPC result when one source fails', 
   });
   const { getDocumentCenterSummary } = await load();
 
-  const result = await getDocumentCenterSummary(TENANT, '2026-08-13');
+  const result = await getDocumentCenterSummary(TENANT, CLIENT, '2026-08-13');
 
   assert.deepEqual(result, {
     awaitingUpload: { ok: true, value: 11 },
@@ -302,6 +243,7 @@ test('getDocumentCenterSummary isolates each RPC result when one source fails', 
   for (const call of calls) {
     const body = call.body as Record<string, unknown>;
     assert.equal(body.p_tenant_id, TENANT);
+    assert.equal(body.p_company_id, CLIENT);
     assert.equal(body.p_page, 1);
     assert.equal(body.p_page_size, 1);
   }
@@ -310,6 +252,21 @@ test('getDocumentCenterSummary isolates each RPC result when one source fails', 
   )!;
   assert.equal((expiring.body as Record<string, unknown>).p_expiry_from, '2026-08-13');
   assert.equal((expiring.body as Record<string, unknown>).p_expiry_to, '2026-09-12');
+});
+
+test('summary requests never reuse another company scope', async () => {
+  const otherCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch(() => json([]));
+  const { getDocumentCenterSummary } = await load();
+
+  await getDocumentCenterSummary(TENANT, CLIENT, '2026-08-13');
+  await getDocumentCenterSummary(TENANT, otherCompany, '2026-08-13');
+
+  assert.equal(calls.length, 12);
+  assert.deepEqual(
+    calls.map((call) => (call.body as Record<string, unknown>).p_company_id),
+    [...Array(6).fill(CLIENT), ...Array(6).fill(otherCompany)],
+  );
 });
 
 function historyVersion(overrides: Record<string, unknown> = {}) {

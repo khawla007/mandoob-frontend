@@ -18,7 +18,6 @@ type ReviewStatus = NonNullable<DocumentCenterRow['reviewStatus']>;
 
 export type DocumentQueueLabels = {
   region: string;
-  company: string;
   documentType: string;
   requestStatus: string;
   reviewStatus: string;
@@ -134,9 +133,7 @@ export function DocumentWorkQueue({
     query.view !== 'all' ||
     query.sort !== 'urgency' ||
     query.window !== 'all' ||
-    Boolean(
-      query.companyId || query.docType || query.search || query.from || query.to || query.focus,
-    );
+    Boolean(query.docType || query.search || query.from || query.to || query.focus);
 
   if (rows.length === 0) {
     return (
@@ -184,11 +181,10 @@ export function DocumentWorkQueue({
         tabIndex={0}
         className="document-center__queue-scroll focus-visible:ring-ring max-w-full overflow-x-auto rounded-xl border focus-visible:ring-2 focus-visible:outline-none"
       >
-        <table className="w-full min-w-[86rem] text-sm">
+        <table className="w-full min-w-[74rem] text-sm">
           <thead className="bg-muted/50 border-b">
             <tr>
               {[
-                labels.company,
                 labels.documentType,
                 labels.requestStatus,
                 labels.reviewStatus,
@@ -216,21 +212,16 @@ export function DocumentWorkQueue({
                   aria-current={focused ? 'true' : undefined}
                   className="aria-current:bg-primary/5 hover:bg-muted/20 align-top transition-colors"
                 >
-                  <td className="max-w-52 px-3 py-3">
-                    <span className="block font-medium break-words" title={row.companyName}>
-                      {row.companyName}
+                  <td className="max-w-56 px-3 py-3">
+                    <span className="block font-medium break-words">{row.label}</span>
+                    <span className="text-muted-foreground mt-1 block text-xs">
+                      {labels.docTypes[row.docType]}
                     </span>
                     {row.employeeName ? (
                       <span className="text-muted-foreground mt-1 block text-xs">
                         {labels.employee}: {row.employeeName}
                       </span>
                     ) : null}
-                  </td>
-                  <td className="max-w-56 px-3 py-3">
-                    <span className="block font-medium break-words">{row.label}</span>
-                    <span className="text-muted-foreground mt-1 block text-xs">
-                      {labels.docTypes[row.docType]}
-                    </span>
                   </td>
                   <td className="px-3 py-3">
                     {row.requestStatus ? (

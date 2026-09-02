@@ -257,7 +257,8 @@
     "heading": {
       "eyebrow": "PRO document operations",
       "title": "Document Center",
-      "subtitle": "Manage {tenant} documents, requests, reviews, and deadlines across {count, plural, one {# record} other {# records}}."
+      "subtitle": "Manage {tenant} documents, requests, reviews, and deadlines across {count, plural, one {# record} other {# records}}.",
+      "companyContext": "Assigned company: {company}"
     },
     "summary": {
       "awaitingUpload": {
@@ -383,6 +384,10 @@
       "pending": "Sending request…",
       "success": "The document request was sent.",
       "error": "The request could not be sent. Review the fields and try again."
+    },
+    "batch": {
+      "title": "Batch request unavailable",
+      "description": "Batch document requests are planned for Phase 3 and cannot be sent yet."
     },
     "review": {
       "approve": "Approve",

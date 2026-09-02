@@ -7,7 +7,6 @@ export type DocumentFilterLabels = {
   search: string;
   searchPlaceholder: string;
   view: string;
-  company: string;
   type: string;
   window: string;
   from: string;

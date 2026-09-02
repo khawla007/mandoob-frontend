@@ -13,7 +13,6 @@ import {
   parseDocumentCenterSearch,
 } from '../../app/(tenant)/t/[tenant]/(pro)/documents/page-logic';
 
-const COMPANY_ID = '11111111-1111-4111-8111-111111111111';
 const REQUEST_ID = '22222222-2222-4222-8222-222222222222';
 const DOCUMENT_ID = '33333333-3333-4333-8333-333333333333';
 
@@ -31,14 +30,14 @@ test('document center exposes only the locked view, sort, and window values', ()
   assert.deepEqual(documentCenterWindows, ['all', 'overdue', '7', '30', '90']);
 });
 
-test('document center parser consumes only the first repeated scalar value', () => {
+test('document center parser consumes only the first repeated scalar value and ignores stale company state', () => {
   assert.deepEqual(
     parseDocumentCenterSearch({ view: ['rejected', 'approved'], page: ['2', '9'] }),
     { view: 'rejected', sort: 'urgency', window: 'all', page: 2 },
   );
   assert.deepEqual(
     parseDocumentCenterSearch({
-      company: [COMPANY_ID, 'not-a-uuid'],
+      company: ['11111111-1111-4111-8111-111111111111', 'not-a-uuid'],
       type: ['visa', 'birth_certificate'],
       q: ['  renewal  ', 'ignored'],
       search: 'ignored alias',
@@ -48,7 +47,6 @@ test('document center parser consumes only the first repeated scalar value', () 
       sort: 'urgency',
       window: 'all',
       page: 1,
-      companyId: COMPANY_ID,
       docType: 'visa',
       search: 'renewal',
     },
@@ -65,7 +63,7 @@ test('document center parser falls back per invalid field without trusting later
       view: ['nope', 'approved'],
       sort: ['bad', 'newest'],
       window: ['999', '30'],
-      company: ['not-a-uuid', COMPANY_ID],
+      company: ['not-a-uuid', '11111111-1111-4111-8111-111111111111'],
       type: ['unknown', 'visa'],
       from: ['2026-02-30', '2026-08-01'],
       to: ['2026-08-32', '2026-08-31'],
@@ -117,7 +115,7 @@ test('document center parser drops inverted valid date bounds without discarding
   assert.deepEqual(
     parseDocumentCenterSearch({
       view: 'submitted',
-      company: COMPANY_ID,
+      company: '11111111-1111-4111-8111-111111111111',
       from: '2026-08-31',
       to: '2026-08-01',
     }),
@@ -126,7 +124,6 @@ test('document center parser drops inverted valid date bounds without discarding
       sort: 'urgency',
       window: 'all',
       page: 1,
-      companyId: COMPANY_ID,
     },
   );
 });
@@ -160,7 +157,7 @@ test('document center href emits only validated non-default filters and preserve
     view: 'rejected',
     sort: 'due_date',
     window: '30',
-    company: COMPANY_ID,
+    company: '11111111-1111-4111-8111-111111111111',
     type: 'insurance_policy',
     q: '  annual renewal  ',
     from: '2026-08-01',
@@ -169,18 +166,18 @@ test('document center href emits only validated non-default filters and preserve
   });
   assert.equal(
     documentCenterHref('north star/uae', filters, 3),
-    `/t/north%20star%2Fuae/documents?view=rejected&sort=due_date&window=30&company=${COMPANY_ID}&type=insurance_policy&q=annual+renewal&document=${DOCUMENT_ID}`,
+    `/t/north%20star%2Fuae/documents?view=rejected&sort=due_date&window=30&type=insurance_policy&q=annual+renewal&document=${DOCUMENT_ID}`,
   );
   assert.equal(documentCenterHref('acme', parseDocumentCenterSearch({})), '/t/acme/documents');
   const pagedFilters = parseDocumentCenterSearch({
     view: 'submitted',
-    company: COMPANY_ID,
+    company: '11111111-1111-4111-8111-111111111111',
     page: '2',
   });
   for (const invalidPage of [0, Number.NaN, 10_001]) {
     assert.equal(
       documentCenterHref('acme', pagedFilters, invalidPage),
-      `/t/acme/documents?view=submitted&company=${COMPANY_ID}&page=2`,
+      '/t/acme/documents?view=submitted&page=2',
       String(invalidPage),
     );
   }
@@ -190,13 +187,13 @@ test('document center href emits only validated non-default filters and preserve
   );
 });
 
-test('document center schema accepts only validated normalized query primitives', () => {
+test('document center schema excludes company selection from URL query primitives', () => {
   assert.equal(
     documentCenterSearchSchema.safeParse({
       view: 'requested',
       sort: 'newest',
       window: '7',
-      companyId: COMPANY_ID,
+      companyId: '11111111-1111-4111-8111-111111111111',
       docType: 'aoa',
       search: 'trade license',
       from: '2026-08-01',
