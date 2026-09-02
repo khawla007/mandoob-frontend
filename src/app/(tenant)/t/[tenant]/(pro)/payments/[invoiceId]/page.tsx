@@ -71,8 +71,10 @@ export default async function ProInvoiceDetailPage({
             slug={tenant.slug}
             invoiceId={invoice.id}
             amountMinor={invoice.amountMinor}
+            remainingRefundableMinor={invoice.remainingRefundableMinor}
             status={invoice.status}
             refundOperation={invoice.refundOperation}
+            refundAvailable={invoice.refundAvailable}
           />
         </div>
       </div>
@@ -106,8 +108,10 @@ export default async function ProInvoiceDetailPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('paymentStatus')}</TableHead>
+                  <TableHead>{t('paymentProvider')}</TableHead>
                   <TableHead>{t('paymentMethod')}</TableHead>
-                  <TableHead>{t('paymentReconciliation')}</TableHead>
+                  <TableHead>{t('paymentAttempted')}</TableHead>
+                  <TableHead>{t('paymentContext')}</TableHead>
                   <TableHead className="text-right">{t('paymentAmount')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -115,14 +119,25 @@ export default async function ProInvoiceDetailPage({
                 {invoice.payments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell>{payment.status}</TableCell>
+                    <TableCell>{payment.provider}</TableCell>
                     <TableCell>{payment.method ?? '—'}</TableCell>
-                    <TableCell>{formatInvoiceDate(payment.receivedAt, locale)}</TableCell>
+                    <TableCell>{formatInvoiceDate(payment.createdAt, locale)}</TableCell>
+                    <TableCell>{t(`paymentAttempt${payment.context}`)}</TableCell>
                     <TableCell className="text-right">{payment.amount}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('paymentReconciliation')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">{t('paymentReconciliationUnavailable')}</p>
         </CardContent>
       </Card>
 

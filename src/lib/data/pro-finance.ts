@@ -94,11 +94,14 @@ export type ProFinanceDashboard = {
   kpis: ProFinanceKpi[];
   companyRevenue: ProFinanceCompanyRevenueRow[];
   invoiceStatus: ProFinanceBreakdownRow[];
+  aging: ProFinanceBreakdownRow[];
   paymentMethods: ProFinanceBreakdownRow[];
+  reconciliation: { state: 'unavailable'; reason: 'phase_fly_3' };
   recentFailedAttempts: ProFinanceFailedAttemptRow[];
 };
 
-const COLLECTED_PAYMENT_STATUSES = new Set(['succeeded', 'refunded', 'partially_refunded']);
+const ELIGIBLE_INVOICE_STATUSES = new Set(['draft', 'void']);
+const SUCCESSFUL_PAYMENT_STATUS = 'succeeded';
 const FAILED_PAYMENT_STATUSES = new Set(['failed', 'abandoned']);
 
 export function calculateProFinanceDashboard(args: {
@@ -115,39 +118,53 @@ export function calculateProFinanceDashboard(args: {
   const invoices = args.invoices.filter(
     (row) => row.tenant_id === args.tenantId && row.company_id === companyId,
   );
-  const invoiceIds = new Set(invoices.map((row) => row.id));
+  const eligibleInvoices = invoices.filter((row) => !ELIGIBLE_INVOICE_STATUSES.has(row.status));
+  const eligibleInvoiceIds = new Set(eligibleInvoices.map((row) => row.id));
   const payments = args.payments.filter(
-    (row) => row.tenant_id === args.tenantId && invoiceIds.has(row.invoice_id),
+    (row) => row.tenant_id === args.tenantId && eligibleInvoiceIds.has(row.invoice_id),
   );
   const paymentIds = new Set(payments.map((row) => row.id));
   const refunds = args.refunds.filter(
     (row) => row.tenant_id === args.tenantId && paymentIds.has(row.payment_id),
   );
-  const invoiceById = new Map(invoices.map((row) => [row.id, row]));
+  const invoiceById = new Map(eligibleInvoices.map((row) => [row.id, row]));
   const companyNameById = new Map(companies.map((row) => [row.id, row.company_name]));
   const paymentById = new Map(payments.map((row) => [row.id, row]));
-  const currency = reportingCurrency(invoices, payments);
+  const currency = reportingCurrency(eligibleInvoices, payments);
   const currencyCodes = new Set([
-    ...invoices.map((row) => row.currency),
+    ...eligibleInvoices.map((row) => row.currency),
     ...payments.map((row) => row.currency),
   ]);
   const excludedCurrencyCodes = Array.from(currencyCodes)
     .filter((code) => code !== currency)
     .sort();
 
-  const totalPaymentCollectedMinor = payments
-    .filter((row) => row.currency === currency && COLLECTED_PAYMENT_STATUSES.has(row.status))
+  const successfulPayments = payments.filter(
+    (row) =>
+      row.status === SUCCESSFUL_PAYMENT_STATUS &&
+      invoiceById.get(row.invoice_id)?.currency === row.currency,
+  );
+  const totalPaymentCollectedMinor = successfulPayments
+    .filter((row) => row.currency === currency)
     .reduce((sum, row) => sum + row.amount_minor, 0);
   const succeededRefundsMinor = refunds
     .filter((row) => {
       const payment = paymentById.get(row.payment_id);
-      return row.status === 'succeeded' && payment?.currency === currency;
+      return (
+        row.status === 'succeeded' &&
+        payment?.status === SUCCESSFUL_PAYMENT_STATUS &&
+        payment.currency === currency &&
+        invoiceById.get(payment.invoice_id)?.currency === payment.currency
+      );
     })
     .reduce((sum, row) => sum + row.amount_minor, 0);
   const totalRevenueCollectedMinor = totalPaymentCollectedMinor - succeededRefundsMinor;
 
-  const reportingInvoices = invoices.filter((row) => row.currency === currency);
-  const reportingPayments = payments.filter((row) => row.currency === currency);
+  const reportingInvoices = eligibleInvoices.filter((row) => row.currency === currency);
+  const reportingPayments = payments.filter(
+    (row) =>
+      row.currency === currency && invoiceById.get(row.invoice_id)?.currency === row.currency,
+  );
   const openInvoices = reportingInvoices.filter((row) => row.status === 'open');
   const outstandingReceivablesMinor = openInvoices.reduce((sum, row) => sum + row.amount_minor, 0);
   const overdueInvoiceCount = openInvoices.filter(
@@ -193,7 +210,7 @@ export function calculateProFinanceDashboard(args: {
   }
 
   for (const payment of reportingPayments) {
-    if (!COLLECTED_PAYMENT_STATUSES.has(payment.status)) continue;
+    if (payment.status !== SUCCESSFUL_PAYMENT_STATUS) continue;
     const invoice = invoiceById.get(payment.invoice_id);
     if (!invoice) continue;
     const row = ensureCompany(invoice.company_id, payment.currency);
@@ -209,7 +226,7 @@ export function calculateProFinanceDashboard(args: {
       !payment ||
       !invoice ||
       payment.currency !== currency ||
-      !COLLECTED_PAYMENT_STATUSES.has(payment.status)
+      payment.status !== SUCCESSFUL_PAYMENT_STATUS
     ) {
       continue;
     }
@@ -250,7 +267,7 @@ export function calculateProFinanceDashboard(args: {
     });
 
   const invoiceStatus = breakdown(
-    reportingInvoices.filter((invoice) => invoice.status !== 'draft' && invoice.status !== 'void'),
+    reportingInvoices,
     (invoice) => invoice.status,
     (invoice) => invoice.amount_minor,
     currency,
@@ -261,6 +278,7 @@ export function calculateProFinanceDashboard(args: {
     (payment) => payment.amount_minor,
     currency,
   );
+  const aging = calculateAging(reportingInvoices, today, currency);
 
   return {
     currency,
@@ -298,9 +316,35 @@ export function calculateProFinanceDashboard(args: {
     ],
     companyRevenue,
     invoiceStatus,
+    aging,
     paymentMethods,
+    reconciliation: { state: 'unavailable', reason: 'phase_fly_3' },
     recentFailedAttempts,
   };
+}
+
+function calculateAging(
+  invoices: ProFinanceInvoiceInput[],
+  today: string,
+  currency: string,
+): ProFinanceBreakdownRow[] {
+  const rows = new Map<string, ProFinanceBreakdownRow>();
+  for (const invoice of invoices) {
+    if (invoice.status !== 'open') continue;
+    const key = !invoice.due_at
+      ? 'no_due_date'
+      : invoice.due_at < today
+        ? 'overdue'
+        : invoice.due_at === today
+          ? 'due_today'
+          : 'due_next_30';
+    const current = rows.get(key) ?? { key, count: 0, amountMinor: 0, currency };
+    current.count += 1;
+    current.amountMinor += invoice.amount_minor;
+    rows.set(key, current);
+  }
+  const order = ['overdue', 'due_today', 'due_next_30', 'no_due_date'];
+  return [...rows.values()].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 }
 
 function breakdown<T>(

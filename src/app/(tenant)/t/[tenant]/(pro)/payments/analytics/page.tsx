@@ -160,6 +160,47 @@ export default async function ProPaymentAnalyticsPage({
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg">{t('paymentAging')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {dashboard.aging.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t('paymentAgingEmpty')}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('paymentStatus')}</TableHead>
+                  <TableHead className="text-right">{t('paymentCount')}</TableHead>
+                  <TableHead className="text-right">{t('paymentAmount')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dashboard.aging.map((row) => (
+                  <TableRow key={row.key}>
+                    <TableCell className="font-medium">{row.key}</TableCell>
+                    <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(row.amountMinor, row.currency, locale)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('paymentReconciliation')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">{t('paymentReconciliationUnavailable')}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-lg">{t('paymentAttempts')}</CardTitle>
         </CardHeader>
         <CardContent>

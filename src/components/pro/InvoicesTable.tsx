@@ -70,8 +70,10 @@ export function InvoicesTable({
                     slug={slug}
                     invoiceId={row.id}
                     amountMinor={row.amountMinor}
+                    remainingRefundableMinor={row.remainingRefundableMinor}
                     status={row.status}
                     refundOperation={row.refundOperation}
+                    refundAvailable={row.refundAvailable}
                   />
                 </div>
               </TableCell>

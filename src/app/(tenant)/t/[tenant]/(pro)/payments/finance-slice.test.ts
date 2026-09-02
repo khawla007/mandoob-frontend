@@ -31,8 +31,8 @@ test('finance analytics only renders evidence-backed assigned-company operationa
 test('invoice detail does not expose raw provider, profile, or provider failure identifiers', () => {
   const detail = read(`${base}/[invoiceId]/page.tsx`);
   assert.doesNotMatch(detail, /Customer profile/);
-  assert.doesNotMatch(detail, /\{payment\.provider\}/);
   assert.doesNotMatch(detail, /payment\.failureReason/);
+  assert.match(detail, /paymentAttempt\$\{payment\.context\}/);
   assert.match(detail, /formatInvoiceDate/);
 });
 

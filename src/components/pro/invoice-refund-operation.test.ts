@@ -14,11 +14,12 @@ test('refund UI keeps one operation UUID across retries and releases terminal su
     source,
     /result\.data\.status === 'succeeded'[\s\S]*refundOperationId\.current = null/u,
   );
-  assert.match(source, /result\.data\.status === 'pending'[\s\S]*Refund pending/u);
+  assert.match(source, /result\.data\.status === 'pending'[\s\S]*paymentRefundPending/u);
   assert.match(source, /useEffect\([\s\S]*syncRefundOperationId/u);
   assert.match(source, /refundOperation\?\.status === 'pending'/u);
-  assert.match(source, /Retry pending refund/u);
-  assert.match(source, /Retry pending refund/u);
+  assert.match(source, /paymentRetryRefund/u);
+  assert.match(source, /remainingRefundableMinor !== null/u);
+  assert.match(source, /refundAvailable/u);
   assert.match(source, /<Input[\s\S]*disabled=\{hasPendingRefund\}/u);
 });
 

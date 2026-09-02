@@ -17,14 +17,18 @@ export function InvoiceActions({
   slug,
   invoiceId,
   amountMinor,
+  remainingRefundableMinor,
   status,
   refundOperation,
+  refundAvailable = false,
 }: {
   slug: string;
   invoiceId: string;
   amountMinor: number;
+  remainingRefundableMinor: number | null;
   status: string;
   refundOperation: RefundOperationState | null;
+  refundAvailable?: boolean;
 }) {
   const t = useTranslations('pro');
   const router = useRouter();
@@ -54,7 +58,9 @@ export function InvoiceActions({
             : await issueRefundAction({
                 tenantSlug: slug,
                 invoiceId,
-                amountMinor: hasPendingRefund ? refundOperation.amountMinor : amountMinor,
+                amountMinor: hasPendingRefund
+                  ? refundOperation.amountMinor
+                  : (remainingRefundableMinor ?? amountMinor),
                 reason: hasPendingRefund
                   ? (refundOperation.reason ?? t('paymentDefaultRefundReason'))
                   : reason || t('paymentDefaultRefundReason'),
@@ -80,7 +86,11 @@ export function InvoiceActions({
   }
 
   const canClose = status === 'open' || status === 'draft';
-  const canRefund = status === 'paid' || status === 'partially_refunded';
+  const canRefund =
+    refundAvailable &&
+    remainingRefundableMinor !== null &&
+    remainingRefundableMinor > 0 &&
+    (status === 'paid' || status === 'partially_refunded');
 
   return (
     <div className="flex flex-col items-end gap-2">
