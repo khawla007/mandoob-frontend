@@ -930,6 +930,18 @@
         "activity": "Activity"
       },
       "overviewDescription": "Verified legal and operational details for this company.",
+      "profile": {
+        "unavailableTitle": "Legal profile unavailable",
+        "unavailableDescription": "The legal profile could not be loaded. Documents, renewals, payments, and activity remain independently available.",
+        "legalCompleteness": "Legal-profile completeness",
+        "activationReadiness": "Activation readiness",
+        "activationReady": "Ready for activation",
+        "primaryActivity": "Primary",
+        "additionalActivity": "Additional",
+        "openSection": "Open setup section",
+        "address": "Office address",
+        "currency": "Account currency"
+      },
       "fields": {
         "companyName": "Company name",
         "status": "Status",

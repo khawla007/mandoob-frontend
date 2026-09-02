@@ -930,6 +930,18 @@
         "activity": "النشاط"
       },
       "overviewDescription": "البيانات القانونية والتشغيلية الموثقة لهذه الشركة.",
+      "profile": {
+        "unavailableTitle": "الملف القانوني غير متاح",
+        "unavailableDescription": "تعذر تحميل الملف القانوني. تظل المستندات والتجديدات والمدفوعات والنشاط متاحة بصورة مستقلة.",
+        "legalCompleteness": "اكتمال الملف القانوني",
+        "activationReadiness": "جاهزية التفعيل",
+        "activationReady": "جاهزة للتفعيل",
+        "primaryActivity": "رئيسي",
+        "additionalActivity": "إضافي",
+        "openSection": "فتح قسم الإعداد",
+        "address": "عنوان المكتب",
+        "currency": "عملة الحساب"
+      },
       "fields": {
         "companyName": "اسم الشركة",
         "status": "الحالة",

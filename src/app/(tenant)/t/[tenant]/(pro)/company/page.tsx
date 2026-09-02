@@ -6,7 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { AssignedCompanyTabs } from '@/components/pro/AssignedCompanyTabs';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
-import { loadAssignedCompanyWorkspace } from '@/lib/data/company-workspace';
+import { readCompanyOnboarding } from '@/lib/data/company-onboarding';
+import { loadAssignedCompanyWorkspace, type CompanyPanelState } from '@/lib/data/company-workspace';
+import {
+  COMPANY_ONBOARDING_READINESS_CODES,
+  COMPANY_ONBOARDING_SECTION_KEYS,
+  type CompanyReadinessCode,
+  type CompanyReadinessSection,
+} from '@/lib/company-onboarding/contracts';
 import { DOC_TYPES } from '@/lib/validation/document';
 import type { AssignedCompanyProfile } from '@/lib/data/company-profile';
 import {
@@ -36,7 +43,32 @@ export default async function AssignedCompanyPage({
     getTranslations('proDocumentCenter.docTypes'),
     getLocale(),
   ]);
-  const workspace = await loadAssignedCompanyWorkspace(company.tenantId, company.id, focus);
+  const [workspace, snapshot] = await Promise.all([
+    loadAssignedCompanyWorkspace(company.tenantId, company.id, focus),
+    focus.tab === 'overview'
+      ? readCompanyOnboarding({
+          actorProfileId: session.id,
+          tenantId: company.tenantId,
+          companyId: company.id,
+        })
+      : Promise.resolve(null),
+  ]);
+  const profile: CompanyPanelState<NonNullable<typeof snapshot>> =
+    focus.tab !== 'overview'
+      ? { status: 'unrequested' }
+      : snapshot
+        ? { status: 'ready', data: snapshot }
+        : { status: 'error' };
+  const sectionHrefs = {
+    ...Object.fromEntries(
+      COMPANY_ONBOARDING_SECTION_KEYS.map((section) => [
+        section,
+        companyOnboardingSectionHref(slug, section),
+      ]),
+    ),
+    assignment: companyOnboardingSectionHref(slug, 'review'),
+    workspace: companyOnboardingSectionHref(slug, 'review'),
+  } as Record<CompanyReadinessSection, string>;
   const dateFormatter = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeZone: 'Asia/Dubai',
@@ -121,6 +153,7 @@ export default async function AssignedCompanyPage({
       <AssignedCompanyTabs
         slug={slug}
         company={company}
+        profile={profile}
         workspace={workspace}
         activeTab={focus.tab}
         focusedDocumentId={
@@ -131,6 +164,7 @@ export default async function AssignedCompanyPage({
         }
         locale={locale}
         dateFormatter={dateFormatter}
+        sectionHrefs={sectionHrefs}
         labels={{
           tabsLabel: t('tabsLabel'),
           tabs: {
@@ -260,6 +294,95 @@ export default async function AssignedCompanyPage({
             title: t('activity.title'),
             description: t('activity.description'),
             empty: t('activity.empty'),
+          },
+          profile: {
+            unavailableTitle: t('profile.unavailableTitle'),
+            unavailableDescription: t('profile.unavailableDescription'),
+            emptyValue: t('emptyValue'),
+            legalCompleteness: t('profile.legalCompleteness'),
+            activationReadiness: t('profile.activationReadiness'),
+            lifecycle: tOnboarding('overview.lifecycle'),
+            lifecycleValue: t(`status.${company.status}`),
+            sectionsComplete:
+              profile.status === 'ready'
+                ? tOnboarding('overview.progress', {
+                    complete: Object.values(profile.data.sectionProgress).filter(
+                      ({ status }) => status === 'complete',
+                    ).length,
+                    total: Object.keys(profile.data.sectionProgress).length,
+                  })
+                : '',
+            activationReady: t('profile.activationReady'),
+            activationBlocked:
+              profile.status === 'ready'
+                ? tOnboarding('overview.blockers', { count: profile.data.requirements.length })
+                : '',
+            primaryActivity: t('profile.primaryActivity'),
+            additionalActivity: t('profile.additionalActivity'),
+            openSection: t('profile.openSection'),
+            sectionStatuses: {
+              complete: tOnboarding('shell.status.complete'),
+              incomplete: tOnboarding('shell.status.incomplete'),
+            },
+            sections: {
+              legal: tOnboarding('sections.legal.title'),
+              shareholders: tOnboarding('sections.shareholders.title'),
+              activities: tOnboarding('sections.activities.title'),
+              office: tOnboarding('sections.office.title'),
+              establishment: tOnboarding('sections.establishment.title'),
+              bank: tOnboarding('sections.bank.title'),
+            },
+            fields: {
+              registeredName: tOnboarding('sections.legal.fields.companyName'),
+              displayName: tOnboarding('sections.legal.fields.displayName'),
+              jurisdictionType: tOnboarding('sections.legal.fields.jurisdictionType'),
+              licensingAuthority: tOnboarding('sections.legal.fields.licensingAuthority'),
+              legalStructure: tOnboarding('sections.legal.fields.legalStructure'),
+              tradeLicense: tOnboarding('sections.legal.fields.tradeLicenseNo'),
+              licenseExpiry: tOnboarding('sections.legal.fields.licenseExpiry'),
+              shareholderType: tOnboarding('sections.shareholders.kindLegend'),
+              nationality: tOnboarding('sections.shareholders.fields.nationalityCode'),
+              incorporationCountry: tOnboarding(
+                'sections.shareholders.fields.countryOfIncorporation',
+              ),
+              registrationNumber: tOnboarding('sections.shareholders.fields.registrationNumber'),
+              ownershipPercent: tOnboarding('sections.shareholders.fields.ownershipPercent'),
+              activityCode: tOnboarding('sections.activities.fields.activityCode'),
+              authorityName: tOnboarding('sections.activities.fields.authorityName'),
+              officeType: tOnboarding('sections.office.officeTypeLegend'),
+              address: t('profile.address'),
+              providerName: tOnboarding('sections.office.fields.providerName'),
+              leaseReference: tOnboarding('sections.office.fields.leaseReference'),
+              leaseExpiry: tOnboarding('sections.office.fields.leaseExpiry'),
+              establishmentCard: tOnboarding('sections.establishment.maskedLabel'),
+              establishmentExpiry: tOnboarding('sections.establishment.cardExpiry'),
+              bankName: tOnboarding('sections.bank.fields.bankName'),
+              branchName: tOnboarding('sections.bank.fields.branchName'),
+              accountHolderName: tOnboarding('sections.bank.fields.accountHolderName'),
+              currency: t('profile.currency'),
+              iban: tOnboarding('sections.bank.fields.iban'),
+              accountNumber: tOnboarding('sections.bank.fields.accountNumber'),
+            },
+            jurisdictions: {
+              mainland: tOnboarding('sections.legal.jurisdictions.mainland'),
+              free_zone: tOnboarding('sections.legal.jurisdictions.free_zone'),
+              offshore: tOnboarding('sections.legal.jurisdictions.offshore'),
+            },
+            officeTypes: {
+              physical: tOnboarding('sections.office.types.physical'),
+              flexi_desk: tOnboarding('sections.office.types.flexi_desk'),
+              virtual: tOnboarding('sections.office.types.virtual'),
+            },
+            shareholderKinds: {
+              individual: tOnboarding('sections.shareholders.kinds.individual'),
+              company: tOnboarding('sections.shareholders.kinds.company'),
+            },
+            requirements: Object.fromEntries(
+              COMPANY_ONBOARDING_READINESS_CODES.map((code) => [
+                code,
+                tOnboarding(`requirements.${code}`),
+              ]),
+            ) as Record<CompanyReadinessCode, string>,
           },
         }}
       />
