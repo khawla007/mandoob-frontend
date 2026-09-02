@@ -64,7 +64,9 @@ test('renewals page consumes focus in an assigned-Company exact workspace read',
     join(process.cwd(), 'src/lib/data/pro-renewal-workspace.ts'),
     'utf8',
   );
-  assert.match(page, /parseRenewalWorkspaceSearch\(await searchParams\)/);
+  assert.match(page, /const rawSearchParams = await searchParams/u);
+  assert.match(page, /parseRenewalWorkspaceSearch\(rawSearchParams\)/u);
+  assert.match(page, /renewalWorkspaceCanonicalRedirect\(slug, rawSearchParams, search\)/u);
   assert.match(page, /listProRenewalWorkspace\(/);
   assert.match(workspace, /focus:.*first\('focus'\).*first\('target'\).*first\('renewal'\)/);
   assert.match(workspace, /\.eq\('tenant_id', access\.tenantId\)/);

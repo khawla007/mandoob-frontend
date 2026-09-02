@@ -17,6 +17,8 @@ test('renewal page is an active-tenant, assigned-Company, server-paginated read-
   assert.match(page, /requireActiveTenant\(tenant\.id\)/u);
   assert.match(page, /readAssignedCompanyForPro\(session\.id, slug\)/u);
   assert.match(page, /listProRenewalWorkspace\(/u);
+  assert.match(page, /renewalWorkspaceCanonicalRedirect\(/u);
+  assert.match(page, /if \(canonicalHref\) redirect\(canonicalHref\)/u);
   assert.match(page, /workspace\.total/u);
   assert.match(page, /<nav[^>]+aria-label=/u);
   assert.match(page, /renewalWorkspaceHref\(/u);

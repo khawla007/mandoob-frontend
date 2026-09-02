@@ -5,6 +5,7 @@ import {
   classifyRenewalUrgency,
   createRenewalWorkspaceSupabaseStore,
   listProRenewalWorkspace,
+  renewalWorkspaceCanonicalRedirect,
   parseRenewalWorkspaceSearch,
   renewalWorkspaceHref,
   type RenewalWorkspaceStore,
@@ -66,6 +67,42 @@ test('renewal workspace links preserve the supported filter and reset pagination
     renewalWorkspaceHref('acme', { ...search, page: 1 }),
     '/t/acme/renewals?tab=completed&type=eid&q=EID',
   );
+});
+
+test('renewal page canonical redirect preserves semantic filters, focus, and page while dropping raw legacy, repeats, and unsupported keys', () => {
+  const focus = '44444444-4444-4444-8444-444444444444';
+  const raw = {
+    type: ['license', 'passport'],
+    days: ['30', '90'],
+    target: [focus, 'not-a-uuid'],
+    q: ['  trade  ', 'ignored'],
+    date: ['2028-02-29', '2026-99-99'],
+    period: ['morning', 'afternoon'],
+    eventTypes: ['renewal', 'invoice'],
+    page: ['3', '4'],
+    noise: 'drop-me',
+  };
+  const parsed = parseRenewalWorkspaceSearch(raw);
+  assert.equal(
+    renewalWorkspaceCanonicalRedirect('acme', raw, { ...parsed, focus: null }),
+    '/t/acme/renewals?type=license&urgency=30&q=trade&due=recorded&date=2028-02-29&period=morning&eventTypes=renewal&page=3',
+  );
+  assert.equal(
+    renewalWorkspaceCanonicalRedirect('acme', raw, parsed),
+    `/t/acme/renewals?type=license&urgency=30&q=trade&focus=${focus}&due=recorded&date=2028-02-29&period=morning&eventTypes=renewal`,
+    'a focused renewal is a one-record queue, so canonical pagination is page one',
+  );
+  const canonical = '/t/acme/renewals?type=license&urgency=30&q=trade&page=3';
+  assert.equal(
+    renewalWorkspaceCanonicalRedirect(
+      'acme',
+      { type: 'license', urgency: '30', q: 'trade', page: '3' },
+      parseRenewalWorkspaceSearch({ type: 'license', urgency: '30', q: 'trade', page: '3' }),
+    ),
+    null,
+    'canonical requests must not redirect in a loop',
+  );
+  assert.equal(canonical, '/t/acme/renewals?type=license&urgency=30&q=trade&page=3');
 });
 
 test('renewal workspace consumes legacy Signal focus, days, and Dubai deadline links without dropping their filters', () => {

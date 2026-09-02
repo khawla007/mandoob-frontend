@@ -11,6 +11,7 @@ import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
   listProRenewalWorkspace,
   parseRenewalWorkspaceSearch,
+  renewalWorkspaceCanonicalRedirect,
   renewalWorkspaceHref,
   type RenewalWorkspaceSearch,
 } from '@/lib/data/pro-renewal-workspace';
@@ -29,11 +30,14 @@ export default async function RenewalsPage({
   searchParams: Promise<RenewalSearchParams>;
 }) {
   const { tenant: slug } = await params;
-  const search = parseRenewalWorkspaceSearch(await searchParams);
+  const rawSearchParams = await searchParams;
+  const search = parseRenewalWorkspaceSearch(rawSearchParams);
   const { session, tenant } = await requireProTenantRouteAccess(slug);
   await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
+  const canonicalHref = renewalWorkspaceCanonicalRedirect(slug, rawSearchParams, search);
+  if (canonicalHref) redirect(canonicalHref);
 
   const [workspace, t, locale] = await Promise.all([
     listProRenewalWorkspace({ actorProfileId: session.id, tenantSlug: slug, search }),

@@ -188,6 +188,25 @@ export function renewalWorkspaceHref(
   return `/t/${encodeURIComponent(slug)}/renewals${suffix ? `?${suffix}` : ''}`;
 }
 
+/** Redirect a parsed URL only when its raw query is not its canonical renewal representation. */
+export function renewalWorkspaceCanonicalRedirect(
+  slug: string,
+  raw: Record<string, string | string[] | undefined>,
+  search: RenewalWorkspaceSearch,
+): string | null {
+  const incoming = new URLSearchParams();
+  for (const [key, rawValue] of Object.entries(raw)) {
+    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+    for (const value of values) {
+      if (typeof value === 'string') incoming.append(key, value);
+    }
+  }
+  const rawSuffix = incoming.toString();
+  const rawHref = `/t/${encodeURIComponent(slug)}/renewals${rawSuffix ? `?${rawSuffix}` : ''}`;
+  const canonicalHref = renewalWorkspaceHref(slug, search, search.focus ? 1 : search.page);
+  return rawHref === canonicalHref ? null : canonicalHref;
+}
+
 export function classifyRenewalUrgency(
   dueDate: string | null,
   status: RenewalStatus,
