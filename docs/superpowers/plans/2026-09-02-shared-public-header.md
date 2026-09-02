@@ -13,6 +13,7 @@
 ### Task 1: Protect Shared Header Usage Across Route Groups
 
 **Files:**
+
 - Modify: `src/components/site/public-navigation.test.ts`
 - Test: `src/components/site/public-navigation.test.ts`
 
@@ -41,7 +42,10 @@ Add this contract:
 describe('shared public header layout integration', () => {
   it('uses the homepage header on public, auth, and account routes', () => {
     for (const layoutSource of [publicLayoutSource, authLayoutSource, accountLayoutSource]) {
-      assert.match(layoutSource, /import \{ SiteHeader \} from '@\/components\/site\/SiteHeader';/u);
+      assert.match(
+        layoutSource,
+        /import \{ SiteHeader \} from '@\/components\/site\/SiteHeader';/u,
+      );
       assert.equal(layoutSource.match(/<SiteHeader \/>/gu)?.length, 1);
     }
   });
@@ -64,6 +68,7 @@ git commit -m "test(public): protect shared header layouts"
 ### Task 2: Move the Active Indicator to the Bottom Edge
 
 **Files:**
+
 - Modify: `src/components/site/public-navigation.test.ts`
 - Modify: `src/app/(public)/public-theme.css`
 - Test: `src/components/site/public-navigation.test.ts`
