@@ -2,6 +2,7 @@ import { BentoGridSection } from '@/components/site/home/BentoGridSection';
 import { DashboardSection } from '@/components/site/home/DashboardSection';
 import { ProSuiteSection } from '@/components/site/home/ProSuiteSection';
 import { ProAudienceFitSection } from '@/components/site/pro/ProAudienceFitSection';
+import { ProBenefitsFaqSection } from '@/components/site/pro/ProBenefitsFaqSection';
 import { ProFinalCtaSection } from '@/components/site/pro/ProFinalCtaSection';
 import { ProHeroSection } from '@/components/site/pro/ProHeroSection';
 import { ProOperatingProcessSection } from '@/components/site/pro/ProOperatingProcessSection';
@@ -15,8 +16,9 @@ export default function ProLandingPage() {
       <ProAudienceFitSection />
       <ProSuiteSection variant="pro" />
       <ProOperatingProcessSection />
-      <DashboardSection />
-      <BentoGridSection />
+      <DashboardSection variant="pro" />
+      <BentoGridSection variant="pro" />
+      <ProBenefitsFaqSection />
       <ProFinalCtaSection />
     </>
   );

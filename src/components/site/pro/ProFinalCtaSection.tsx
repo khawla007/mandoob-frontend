@@ -1,24 +1,26 @@
 import Link from 'next/link';
 
+import { PUBLIC_PRO_CONTENT } from '@/lib/pro/public-pro';
+
 export function ProFinalCtaSection() {
+  const { finalCta } = PUBLIC_PRO_CONTENT;
+
   return (
-    <section className="cta-section" aria-labelledby="pro-cta-h">
-      <div className="cta-section__inner reveal container">
-        <span className="eyebrow">04 · Get started</span>
-        <h2 id="pro-cta-h" className="display display--cta">
-          Ready to operate your assigned company?
-        </h2>
-        <Link className="btn btn--accent btn--lg" href="/pricing" id="pro-cta-final">
-          See Pricing
-        </Link>
-        <p className="micro mono">Three tiers. AED-billed. No setup fee.</p>
-        <div className="cta-divider" aria-hidden="true" />
-        <p className="cta-secondary">
-          Want to discuss access?{' '}
-          <Link className="cell__link" href="/contact">
-            Contact sales <span aria-hidden="true">↗</span>
+    <section className="about-contact-conversion" aria-labelledby="pro-final-cta-title">
+      <div className="about-contact-conversion__skyline" aria-hidden="true" />
+      <div className="about-contact-conversion__inner container">
+        <div className="about-contact-conversion__copy">
+          <h2 id="pro-final-cta-title">{finalCta.title.text}</h2>
+          <p>{finalCta.description.text}</p>
+        </div>
+        <div className="about-contact-conversion__actions">
+          <Link className="btn about-contact-conversion__primary" href={finalCta.links[0].href}>
+            {finalCta.links[0].label.text}
           </Link>
-        </p>
+          <Link className="btn about-contact-conversion__secondary" href={finalCta.links[1].href}>
+            {finalCta.links[1].label.text}
+          </Link>
+        </div>
       </div>
     </section>
   );

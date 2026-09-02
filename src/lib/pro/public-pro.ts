@@ -1,5 +1,8 @@
+import { PUBLIC_PRICING_CONTRACT } from '@/lib/pricing/public-pricing';
+
 export type PublicProSource =
   | Readonly<{ state: 'approved-static'; source: string }>
+  | Readonly<{ state: 'illustrative'; label: 'Illustrative product preview' }>
   | Readonly<{ state: 'unavailable'; reason: string }>;
 
 export type ApprovedPublicProFact = {
@@ -10,6 +13,11 @@ export type ApprovedPublicProFact = {
 export type UnavailablePublicProFact = {
   text: string;
   source: Extract<PublicProSource, { state: 'unavailable' }>;
+};
+
+export type IllustrativePublicProFact = {
+  text: string;
+  source: Extract<PublicProSource, { state: 'illustrative' }>;
 };
 
 type DeepReadonly<T> = T extends (...args: never[]) => unknown
@@ -39,6 +47,17 @@ export type PublicProProcessId =
   | 'operate-workspace'
   | 'configured-communication'
   | 'authorization-audit';
+
+export type PublicProFaqId =
+  | 'eligibility'
+  | 'assignment'
+  | 'company-limit'
+  | 'migration-import'
+  | 'white-label'
+  | 'channels-providers'
+  | 'subscription-access'
+  | 'support'
+  | 'next-steps';
 
 type PublicProContent = DeepReadonly<{
   hero: {
@@ -90,6 +109,78 @@ type PublicProContent = DeepReadonly<{
     }[];
     availabilityNote: UnavailablePublicProFact;
   };
+  preview: {
+    label: IllustrativePublicProFact;
+    description: ApprovedPublicProFact;
+    dashboard: {
+      title: ApprovedPublicProFact;
+      interaction: UnavailablePublicProFact;
+      navigation: readonly ApprovedPublicProFact[];
+      slots: readonly {
+        label: ApprovedPublicProFact;
+        value: ApprovedPublicProFact | IllustrativePublicProFact | UnavailablePublicProFact;
+      }[];
+      areas: readonly {
+        label: ApprovedPublicProFact;
+        state: IllustrativePublicProFact | UnavailablePublicProFact;
+      }[];
+    };
+    bento: {
+      eyebrow: ApprovedPublicProFact;
+      title: ApprovedPublicProFact;
+      description: ApprovedPublicProFact;
+      tiles: readonly {
+        id: string;
+        eyebrow: ApprovedPublicProFact;
+        title: ApprovedPublicProFact;
+        preview: IllustrativePublicProFact | UnavailablePublicProFact;
+        details: readonly ApprovedPublicProFact[];
+      }[];
+    };
+  };
+  benefits: {
+    eyebrow: ApprovedPublicProFact;
+    title: ApprovedPublicProFact;
+    description: ApprovedPublicProFact;
+    items: readonly {
+      id: string;
+      title: ApprovedPublicProFact;
+      description: ApprovedPublicProFact;
+    }[];
+  };
+  packages: {
+    eyebrow: ApprovedPublicProFact;
+    title: ApprovedPublicProFact;
+    description: UnavailablePublicProFact;
+    tiers: readonly {
+      id: 'starter' | 'professional' | 'enterprise';
+      name: 'Starter' | 'Professional' | 'Enterprise';
+      activeCompanyLimit: 1;
+      companyPolicy: 'At most one active Company per PRO';
+      allocation: UnavailablePublicProFact;
+    }[];
+    link: { label: ApprovedPublicProFact; href: '/pricing' };
+  };
+  faq: {
+    eyebrow: ApprovedPublicProFact;
+    title: ApprovedPublicProFact;
+    description: UnavailablePublicProFact;
+    items: readonly {
+      id: PublicProFaqId;
+      question: ApprovedPublicProFact;
+      answer: {
+        fragments: readonly (ApprovedPublicProFact | UnavailablePublicProFact)[];
+      };
+    }[];
+  };
+  finalCta: {
+    title: ApprovedPublicProFact;
+    description: ApprovedPublicProFact;
+    links: readonly [
+      { label: ApprovedPublicProFact; href: '/pricing' },
+      { label: ApprovedPublicProFact; href: '/contact' },
+    ];
+  };
 }>;
 
 const approvedStatic = (): Extract<PublicProSource, { state: 'approved-static' }> => ({
@@ -105,6 +196,11 @@ const approvedFact = (text: string): ApprovedPublicProFact => ({
 const unavailableFact = (text: string, reason: string): UnavailablePublicProFact => ({
   text,
   source: { state: 'unavailable', reason },
+});
+
+const illustrativeFact = (text: string): IllustrativePublicProFact => ({
+  text,
+  source: { state: 'illustrative', label: 'Illustrative product preview' },
 });
 
 function deepFreeze<T>(value: T): DeepReadonly<T> {
@@ -320,5 +416,325 @@ export const PUBLIC_PRO_CONTENT: PublicProContent = deepFreeze({
       'Configured-channel delivery and connected workflow steps depend on provider and API availability; this page does not present every integration as available.',
       'Connected provider and API production availability is not approved for public publication.',
     ),
+  },
+  preview: {
+    label: illustrativeFact('Illustrative product preview'),
+    description: approvedFact(
+      'A noninteractive workspace illustration showing the information hierarchy for at most one active assigned Company. It contains no production records.',
+    ),
+    dashboard: {
+      title: approvedFact('One-Company workspace context'),
+      interaction: unavailableFact(
+        'Preview controls and navigation are unavailable.',
+        'The public preview is intentionally noninteractive and is not an authenticated workspace.',
+      ),
+      navigation: [
+        approvedFact('Company'),
+        approvedFact('Readiness'),
+        approvedFact('Documents'),
+        approvedFact('Renewals'),
+        approvedFact('Invoices'),
+      ],
+      slots: [
+        {
+          label: approvedFact('Company scope'),
+          value: approvedFact('At most one active assigned Company'),
+        },
+        {
+          label: approvedFact('Assignment'),
+          value: illustrativeFact('Required access context'),
+        },
+        {
+          label: approvedFact('Setup readiness'),
+          value: illustrativeFact('Review context'),
+        },
+        {
+          label: approvedFact('Connected data'),
+          value: unavailableFact(
+            'Unavailable in this preview',
+            'No production Company data is used in the public preview.',
+          ),
+        },
+      ],
+      areas: [
+        {
+          label: approvedFact('Legal Company profile'),
+          state: illustrativeFact('Illustrative workspace area'),
+        },
+        {
+          label: approvedFact('Document and renewal context'),
+          state: illustrativeFact('Illustrative workspace area'),
+        },
+        {
+          label: approvedFact('Invoice and payment context'),
+          state: unavailableFact(
+            'Provider and transaction data unavailable',
+            'Public provider and transaction availability is not approved.',
+          ),
+        },
+      ],
+    },
+    bento: {
+      eyebrow: approvedFact('05 · Capability preview'),
+      title: approvedFact('One Company, six organized workspace areas.'),
+      description: approvedFact(
+        'These generalized surfaces illustrate capability context without production records or enabled actions.',
+      ),
+      tiles: [
+        {
+          id: 'company-readiness',
+          eyebrow: approvedFact('Legal Company readiness'),
+          title: approvedFact('Review profile and setup context.'),
+          preview: illustrativeFact('Illustrative readiness stages'),
+          details: [
+            approvedFact('Company profile'),
+            approvedFact('Setup context'),
+            approvedFact('Review state'),
+          ],
+        },
+        {
+          id: 'renewal-context',
+          eyebrow: approvedFact('Renewal context'),
+          title: approvedFact('Keep deadline context visible.'),
+          preview: illustrativeFact('Illustrative renewal states'),
+          details: [approvedFact('Review required'), approvedFact('Upcoming context')],
+        },
+        {
+          id: 'document-context',
+          eyebrow: approvedFact('Document context'),
+          title: approvedFact('Organize request and review states.'),
+          preview: illustrativeFact('Illustrative document states'),
+          details: [
+            approvedFact('Requested'),
+            approvedFact('In review'),
+            approvedFact('Available'),
+          ],
+        },
+        {
+          id: 'assigned-company',
+          eyebrow: approvedFact('Assigned Company'),
+          title: approvedFact('At most one active Company workspace.'),
+          preview: illustrativeFact('Illustrative assignment context'),
+          details: [approvedFact('Assignment required'), approvedFact('Platform policy')],
+        },
+        {
+          id: 'activity-context',
+          eyebrow: approvedFact('Activity context'),
+          title: approvedFact('Review attributed workflow context.'),
+          preview: unavailableFact(
+            'Activity records unavailable in this preview',
+            'The public preview contains no production events or actors.',
+          ),
+          details: [approvedFact('Visible attribution'), approvedFact('Workflow context')],
+        },
+        {
+          id: 'invoice-context',
+          eyebrow: approvedFact('Invoice and payment context'),
+          title: approvedFact('Organize billing workflow context.'),
+          preview: unavailableFact(
+            'Provider and transaction details unavailable',
+            'Provider, checkout, and transaction availability is not approved for publication.',
+          ),
+          details: [approvedFact('Invoice context'), approvedFact('Payment context')],
+        },
+      ],
+    },
+  },
+  benefits: {
+    eyebrow: approvedFact('06 · Workspace capabilities'),
+    title: approvedFact('Context for organized Company operations.'),
+    description: approvedFact(
+      'These are workspace capabilities, not promises of approvals, savings, compliance, or operational outcomes.',
+    ),
+    items: [
+      {
+        id: 'centralized-records',
+        title: approvedFact('Centralized records'),
+        description: approvedFact(
+          'Keep supported Company records and review context within one assigned workspace.',
+        ),
+      },
+      {
+        id: 'visible-deadlines',
+        title: approvedFact('Visible deadlines'),
+        description: approvedFact(
+          'Present renewal and deadline context where the relevant records are configured.',
+        ),
+      },
+      {
+        id: 'controlled-access',
+        title: approvedFact('Controlled access'),
+        description: approvedFact(
+          'Apply verification, assignment, and workspace access conditions to Company operations.',
+        ),
+      },
+      {
+        id: 'workflow-context',
+        title: approvedFact('Workflow context'),
+        description: approvedFact(
+          'Connect available Company, document, renewal, invoice, and activity context.',
+        ),
+      },
+    ],
+  },
+  packages: {
+    eyebrow: approvedFact('Plan connection'),
+    title: approvedFact('The same one-Company policy across every tier.'),
+    description: unavailableFact(
+      'Exact capability allocation, allowances, support terms, and current availability require confirmation.',
+      'Tier allocation, allowances, support terms, and current availability are not approved for publication.',
+    ),
+    tiers: PUBLIC_PRICING_CONTRACT.tiers.map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      activeCompanyLimit: tier.activeCompanyLimit,
+      companyPolicy: tier.companyPolicy,
+      allocation: unavailableFact(
+        'Allocation and allowances: contact Mandoob',
+        'Exact tier allocation and allowances are not approved for publication.',
+      ),
+    })),
+    link: { label: approvedFact('Compare plans'), href: '/pricing' },
+  },
+  faq: {
+    eyebrow: approvedFact('PRO questions'),
+    title: approvedFact('Access and workspace boundaries.'),
+    description: unavailableFact(
+      'Current commercial, provider, migration, and support details require confirmation before access.',
+      'Current commercial, provider, migration, and support terms are not approved for publication.',
+    ),
+    items: [
+      {
+        id: 'eligibility',
+        question: approvedFact('Who is eligible for PRO access?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'The workspace is intended for verified UAE PRO operations responsible for administering one assigned Company.',
+            ),
+            unavailableFact(
+              'Eligibility is determined through account review and is not automatic acceptance or regulated certification.',
+              'A public eligibility decision cannot be made before account review.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'assignment',
+        question: approvedFact('How does Company assignment work?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'Workspace access begins after verification and an active Company assignment under Mandoob platform policy.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'company-limit',
+        question: approvedFact('Can a PRO operate more than one Company?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'No. Each PRO operates at most one active assigned Company across Starter, Professional, and Enterprise.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'migration-import',
+        question: approvedFact('Can existing records be migrated or imported?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'Migration and import needs can be reviewed as part of workspace planning.',
+            ),
+            unavailableFact(
+              'Supported formats, scope, timing, and current import availability require confirmation.',
+              'No approved public migration or import specification exists.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'white-label',
+        question: approvedFact('What white-label configuration is supported?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'Branding, subdomain, and contact configuration are supported capability areas.',
+            ),
+            unavailableFact(
+              'Provisioning, allocation, and current configuration availability require confirmation.',
+              'White-label provisioning and tier allocation are not approved for publication.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'channels-providers',
+        question: approvedFact('Which communication channels and providers are available?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'The workspace can provide configured-channel workflow context when available.',
+            ),
+            unavailableFact(
+              'Channel delivery, provider selection, and connected API availability require confirmation.',
+              'No public production source confirms channel, provider, or API delivery.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'subscription-access',
+        question: approvedFact('How does subscription access begin?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'Plan fit, verification, one-Company assignment, and workspace configuration precede access.',
+            ),
+            unavailableFact(
+              'Self-service registration and checkout are unavailable in this phase.',
+              'Registration remains P1.10-owned and checkout remains Phase 3-owned.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'support',
+        question: approvedFact('What support is included?'),
+        answer: {
+          fragments: [
+            approvedFact('Support is a plan differentiation category.'),
+            unavailableFact(
+              'Support allocation, channels, hours, and service terms require confirmation.',
+              'No approved public support allocation or service commitment exists.',
+            ),
+          ],
+        },
+      },
+      {
+        id: 'next-steps',
+        question: approvedFact('What are the next steps?'),
+        answer: {
+          fragments: [
+            approvedFact(
+              'Explore the published plan concepts, then use the contact route to discuss access and current terms.',
+            ),
+          ],
+        },
+      },
+    ],
+  },
+  finalCta: {
+    title: approvedFact('Explore the plan that fits one assigned Company.'),
+    description: approvedFact(
+      'Compare plan concepts or use the current contact route to discuss verification and access.',
+    ),
+    links: [
+      { label: approvedFact('Explore plans'), href: '/pricing' },
+      { label: approvedFact('Discuss access'), href: '/contact' },
+    ],
   },
 });

@@ -9,7 +9,94 @@ import {
   Users,
 } from 'lucide-react';
 
-export function BentoGridSection() {
+import { PUBLIC_PRO_CONTENT } from '@/lib/pro/public-pro';
+
+const proBentoClasses = [
+  'bento-tile--feature',
+  'bento-tile--renewals',
+  'bento-tile--docs',
+  'bento-tile--tenant',
+  'bento-tile--audit',
+  'bento-tile--pay',
+] as const;
+
+const proBentoIcons = [Building2, BellRing, FileText, Building2, History, CreditCard] as const;
+
+function ProBentoGridSection() {
+  const { label, bento } = PUBLIC_PRO_CONTENT.preview;
+
+  return (
+    <section id="bento" className="section pro-bento" aria-labelledby="pro-bento-title">
+      <div className="container">
+        <header className="section__head reveal">
+          <span className="eyebrow">{bento.eyebrow.text}</span>
+          <h2 id="pro-bento-title" className="h2">
+            {bento.title.text}
+          </h2>
+          <p>{bento.description.text}</p>
+          <p className="pro-preview-label" data-source-state={label.source.state}>
+            {label.text}
+          </p>
+        </header>
+      </div>
+
+      <div className="container">
+        <ul
+          className="bento-grid bento-grid--pro"
+          role="list"
+          aria-label="Illustrative one-Company capability preview"
+          data-reveal-cards
+        >
+          {bento.tiles.map((tile, index) => {
+            const Icon = proBentoIcons[index];
+            return (
+              <li
+                key={tile.id}
+                className={`bento-tile ${proBentoClasses[index]} reveal`}
+                data-pro-bento-tile={tile.id}
+              >
+                <div className="bento-tile__head">
+                  <span className="bento-tile__icon" aria-hidden="true">
+                    <Icon size={16} strokeWidth={1.75} />
+                  </span>
+                  <span className="eyebrow">{tile.eyebrow.text}</span>
+                  <span
+                    className="bento-tile__state mono"
+                    data-source-state={tile.preview.source.state}
+                  >
+                    {tile.preview.source.state === 'illustrative'
+                      ? 'Illustrative product preview'
+                      : 'Unavailable'}
+                  </span>
+                </div>
+                <h3 className="bento-tile__title">{tile.title.text}</h3>
+                <p
+                  className="pro-bento-preview__state"
+                  data-source-state={tile.preview.source.state}
+                >
+                  {tile.preview.text}
+                </p>
+                <ul
+                  className="pro-bento-preview"
+                  role="list"
+                  aria-label={`${tile.eyebrow.text} areas`}
+                >
+                  {tile.details.map((detail) => (
+                    <li key={detail.text}>{detail.text}</li>
+                  ))}
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+export function BentoGridSection({ variant = 'home' }: { variant?: 'home' | 'pro' } = {}) {
+  if (variant === 'pro') return <ProBentoGridSection />;
+
   return (
     <section id="bento" className="section" aria-labelledby="bento-h">
       <div className="container">
