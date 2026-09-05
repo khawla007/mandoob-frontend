@@ -87,6 +87,7 @@ export async function SiteHeader() {
           <div className="nav__cta">
             <PublicThemeToggle />
             <LanguageSwitcher
+              variant="public"
               failureMessage={tSite('languageChangeFailed')}
               pendingLabel={tSite('languageChanging')}
             />

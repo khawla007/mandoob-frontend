@@ -148,6 +148,10 @@ describe('SiteHeader responsive navigation integration', () => {
     assert.equal(headerSource.match(/className="btn btn--accent btn--sm"/gu)?.length, 1);
     assert.doesNotMatch(headerSource, /tCommon\('getStarted'\)/u);
   });
+
+  it('uses the public language switcher variant on desktop', () => {
+    assert.match(headerSource, /<LanguageSwitcher\b[^>]*\bvariant="public"[^>]*\/>/u);
+  });
 });
 
 describe('MobileNav authenticated destination type contract', () => {
@@ -161,6 +165,10 @@ describe('MobileNav authenticated destination type contract', () => {
       /authed:\s*false;[^}]*accountHref\?:\s*never;[^}]*accountLabel\?:\s*never/u,
     );
     assert.doesNotMatch(mobileSource, /accountHref\s*=\s*['"]\/['"]/u);
+  });
+
+  it('uses the public language switcher variant in the mobile dialog', () => {
+    assert.match(mobileSource, /<LanguageSwitcher\b[^>]*\bvariant="public"[^>]*\/>/u);
   });
 });
 
@@ -227,6 +235,47 @@ describe('public header navigation styling contract', () => {
     assert.match(
       cssSource,
       /\.site-public \.nav__cta > \.link-muted\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center/u,
+    );
+  });
+
+  it('styles the public language trigger as a compact pill control', () => {
+    assert.match(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*min-block-size:\s*44px[^}]*padding-inline:\s*12px[^}]*border:\s*1px solid var\(--pb-border\)[^}]*border-radius:\s*var\(--r-pill\)[^}]*font-size:\s*var\(--fs-14\)[^}]*font-weight:\s*500/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public:hover,\s*\.site-public \.language-switcher__trigger--public\[data-state='open'\]\s*\{[^}]*background:\s*var\(--public-surface\)[^}]*color:\s*var\(--ink\)/u,
+    );
+  });
+
+  it('animates the public language chevron only while open', () => {
+    assert.match(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public svg:last-child\s*\{[^}]*transition:\s*transform var\(--dur\) var\(--ease\)/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public\[data-state='open'\] svg:last-child\s*\{[^}]*transform:\s*rotate\(180deg\)/u,
+    );
+    assert.doesNotMatch(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public(?:\s|:hover)+svg:last-child\s*\{[^}]*transform:\s*rotate/u,
+    );
+  });
+
+  it('sizes the portaled public language menu and keeps its indicator RTL-safe', () => {
+    assert.match(
+      cssSource,
+      /\.language-switcher__content--public\s*\{[^}]*min-inline-size:\s*160px[^}]*padding:\s*4px/u,
+    );
+    assert.match(
+      cssSource,
+      /\.language-switcher__item--public\s*\{[^}]*min-block-size:\s*44px[^}]*font-size:\s*0\.875rem/u,
+    );
+    assert.match(
+      cssSource,
+      /\.language-switcher__item--public > span\s*\{[^}]*right:\s*auto[^}]*inset-inline-end:\s*8px/u,
     );
   });
 });

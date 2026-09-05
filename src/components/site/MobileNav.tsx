@@ -136,6 +136,7 @@ export function MobileNav({
           <div className="public-mobile-dialog__utilities">
             <LanguageSwitcher
               className="public-mobile-dialog__language"
+              variant="public"
               failureMessage={languageFailureMessage}
               pendingLabel={languagePendingLabel}
             />
