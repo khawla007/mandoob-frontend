@@ -255,13 +255,21 @@ describe('public header navigation styling contract', () => {
       cssSource,
       /\.site-public \.public-topbar\s*\{[^}]*display:\s*grid[^}]*grid-template-rows:\s*1fr[^}]*transition:[^}]*grid-template-rows 420ms/u,
     );
-    assert.match(
+    assert.doesNotMatch(
       cssSource,
-      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*grid-template-rows:\s*0fr[^}]*opacity:\s*0/u,
+      /\.site-public \.public-topbar\s*\{[^}]*(?:opacity|transition:[^}]*opacity)/u,
     );
     assert.match(
       cssSource,
-      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar__inner\s*\{[^}]*transform:\s*translateY\(-100%\)/u,
+      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*grid-template-rows:\s*0fr/u,
+    );
+    assert.doesNotMatch(
+      cssSource,
+      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*opacity/u,
+    );
+    assert.doesNotMatch(
+      cssSource,
+      /\.site-public(?:\.public-header-frame\[data-collapsed='true'\])? \.public-topbar__inner\s*\{[^}]*(?:transform|transition)/u,
     );
   });
 
@@ -286,7 +294,7 @@ describe('public header navigation styling contract', () => {
   it('disables contact bar movement when reduced motion is requested', () => {
     assert.match(
       cssSource,
-      /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.public-topbar,\s*\.site-public \.public-topbar__inner\s*\{[^}]*transition:\s*none/u,
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.public-topbar\s*\{[^}]*transition:\s*none/u,
     );
   });
 
