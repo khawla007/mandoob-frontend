@@ -280,7 +280,8 @@ function expiryState(expiry: string | null, today: string): CustomerEmployeeRow[
 
 function isStrictDate(value: string | null): value is string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
-  return new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function escapeIlike(value: string) {

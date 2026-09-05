@@ -60,6 +60,8 @@ test('Dubai renewal buckets separate overdue, today/due-soon, upcoming, complete
   assert.equal(classifyCustomerRenewalBucket('2026-10-06', 'upcoming', today), 'upcoming');
   assert.equal(classifyCustomerRenewalBucket(null, 'upcoming', today), 'missing-date');
   assert.equal(classifyCustomerRenewalBucket('2026-02-30', 'upcoming', today), 'missing-date');
+  assert.doesNotThrow(() => classifyCustomerRenewalBucket('2026-99-99', 'upcoming', today));
+  assert.equal(classifyCustomerRenewalBucket('2026-99-99', 'upcoming', today), 'missing-date');
   assert.equal(classifyCustomerRenewalBucket(null, 'completed', today), 'completed');
   assert.equal(classifyCustomerRenewalBucket('2026-09-01', 'cancelled', today), 'cancelled');
 });
@@ -190,6 +192,42 @@ test('employee renewal resolution fails closed on a cross-Company employee row',
   );
   assert.equal(result.state, 'error');
   assert.equal(result.rows.length, 0);
+});
+
+test('employee-label-only failure returns an accurate partial reason while preserving the renewal row', async () => {
+  const result = await listCustomerRenewals(
+    { tenantSlug: 'acme', search: parseCustomerRenewalSearch({}) },
+    {
+      authorize: async () => authorized,
+      today: '2026-09-05',
+      store: {
+        list: async () => ({
+          data: [
+            {
+              id: 'renewal-1',
+              tenant_id: 'tenant-1',
+              company_id: 'company-1',
+              employee_id: 'employee-1',
+              type: 'visa',
+              label: 'Visa renewal',
+              due_date: '2026-10-01',
+              status: 'due_soon',
+              source: 'manual',
+              completed_at: null,
+            },
+          ],
+          count: 1,
+          error: null,
+        }),
+        total: async () => ({ count: 1, error: null }),
+        bucketCount: async () => ({ count: 1, error: null }),
+        employees: async () => ({ data: null, error: new Error('private') }),
+      },
+    },
+  );
+  assert.equal(result.state, 'partial');
+  assert.deepEqual(result.partialReasons, ['employee-labels']);
+  assert.equal(result.rows[0]?.entityLabelState, 'unavailable');
 });
 
 test('renewal loader authorizes directly and never reads for unlinked or operator preview', async () => {

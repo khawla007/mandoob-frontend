@@ -71,6 +71,7 @@ type CustomerRenewalEmployeeDbRow = {
 };
 type Scope = { tenantId: string; companyId: string };
 type SummaryBucket = 'overdue' | 'due-soon' | 'upcoming' | 'completed';
+export type CustomerRenewalPartialReason = 'total' | 'summaries' | 'employee-labels';
 export type CustomerRenewalStore = {
   list: (
     input: Scope & { search: CustomerRenewalSearch; today: string; from: number; to: number },
@@ -96,6 +97,7 @@ type Base = {
   pageSize: number;
   canonicalPage: number;
   summaries: Summaries;
+  partialReasons: CustomerRenewalPartialReason[];
   mutations: 'phase-3-unavailable';
 };
 export type CustomerRenewalResult =
@@ -109,6 +111,7 @@ export type CustomerRenewalResult =
       pageSize: number;
       canonicalPage: number;
       summaries: Summaries;
+      partialReasons: [];
       mutations: 'phase-3-unavailable';
     };
 export type CustomerRenewalDependencies = {
@@ -190,7 +193,8 @@ export function classifyCustomerRenewalBucket(
 
 function isStrictDate(value: string | null): value is string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
-  return new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 export async function listCustomerRenewals(
@@ -215,6 +219,7 @@ export async function listCustomerRenewals(
     pageSize: CUSTOMER_RENEWAL_PAGE_SIZE,
     canonicalPage: page,
     summaries: unavailableSummaries,
+    partialReasons: [] as [],
     mutations: 'phase-3-unavailable' as const,
   };
   if (access.kind === 'unlinked') return { ...unavailable, state: 'unlinked' };
@@ -279,6 +284,9 @@ export async function listCustomerRenewals(
     return { ...unavailable, summaries, state: 'error' };
   }
   const employees = new Map((employeeResult.data ?? []).map((employee) => [employee.id, employee]));
+  const employeeLabelsUnavailable = employeeIds.some(
+    (employeeId) => !employees.get(employeeId)?.name.trim(),
+  );
   const rows = (listed.data ?? []).map((row) => {
     const dueDate = isStrictDate(row.due_date) ? row.due_date : null;
     const employee = row.employee_id ? employees.get(row.employee_id) : null;
@@ -311,6 +319,10 @@ export async function listCustomerRenewals(
     page,
     Math.max(1, Math.ceil(listed.count / CUSTOMER_RENEWAL_PAGE_SIZE)),
   );
+  const partialReasons: CustomerRenewalPartialReason[] = [];
+  if (total.error || total.count === null) partialReasons.push('total');
+  if (Object.values(summaries).some((value) => value === null)) partialReasons.push('summaries');
+  if (employeeResult.error || employeeLabelsUnavailable) partialReasons.push('employee-labels');
   const base: Base = {
     rows,
     total: listed.count,
@@ -319,15 +331,10 @@ export async function listCustomerRenewals(
     pageSize: CUSTOMER_RENEWAL_PAGE_SIZE,
     canonicalPage,
     summaries,
+    partialReasons,
     mutations: 'phase-3-unavailable',
   };
-  if (
-    total.error ||
-    total.count === null ||
-    Object.values(summaries).some((value) => value === null) ||
-    employeeResult.error
-  )
-    return { ...base, state: 'partial' };
+  if (partialReasons.length) return { ...base, state: 'partial' };
   if (listed.count === 0) return { ...base, state: total.count === 0 ? 'empty' : 'no-results' };
   return { ...base, state: 'ready' };
 }

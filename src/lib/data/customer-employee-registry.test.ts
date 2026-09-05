@@ -242,6 +242,37 @@ test('Customer employee registry treats malformed expiry dates as missing', asyn
   assert.equal(result.rows[0]?.visaExpiry, null);
 });
 
+test('Customer employee registry never throws on a non-normalizable calendar date', async () => {
+  const result = await listCustomerEmployeeRegistry(
+    { tenantSlug: 'acme', search: parseCustomerEmployeeRegistrySearch({}) },
+    {
+      authorize: async () => authorized,
+      today: '2026-09-05',
+      store: {
+        list: async () => ({
+          data: [
+            {
+              id: 'employee-1',
+              tenant_id: 'tenant-1',
+              company_id: 'company-1',
+              name: 'Safe',
+              nationality: null,
+              status: 'active',
+              visa_expiry: '2026-99-99',
+              eid_expiry: null,
+            },
+          ],
+          count: 1,
+          error: null,
+        }),
+        total: async () => ({ count: 1, error: null }),
+      },
+    },
+  );
+  assert.equal(result.rows[0]?.visaState, 'missing');
+  assert.equal(result.rows[0]?.visaExpiry, null);
+});
+
 test('Customer employee adapter selects approved HR fields only and scopes/filter/sorts/ranges every read', async () => {
   const traces: Array<[string, ...unknown[]]> = [];
   const response = { data: [], count: 0, error: null };

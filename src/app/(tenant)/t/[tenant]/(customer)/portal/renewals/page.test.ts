@@ -43,6 +43,14 @@ test('Customer renewal rows distinguish Company and employee entities with unava
   assert.match(page, /entityUnavailable/u);
 });
 
+test('partial-state presentation names exact totals, summary counts, and employee-label failures separately', () => {
+  assert.match(page, /partialReasons/u);
+  assert.match(page, /partialTotalDescription/u);
+  assert.match(page, /partialSummariesDescription/u);
+  assert.match(page, /partialEmployeeLabelsDescription/u);
+  assert.match(en.customer.renewalWorkspace.partialEmployeeLabelsDescription, /employee label/iu);
+});
+
 test('Customer renewal route includes loading, empty, no-results, missing-date, error, partial, unlinked, and permission truth', () => {
   for (const key of [
     'empty',

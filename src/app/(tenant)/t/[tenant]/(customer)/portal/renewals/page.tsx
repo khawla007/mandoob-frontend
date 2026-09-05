@@ -44,9 +44,9 @@ export default async function CustomerRenewalsPage({
       : workspace.state === 'no-results'
         ? (['noResults', 'noResultsDescription'] as const)
         : workspace.state === 'error'
-          ? (['error', 'errorDescription'] as const)
-          : workspace.state === 'partial'
-            ? (['partial', 'partialDescription'] as const)
+            ? (['error', 'errorDescription'] as const)
+            : workspace.state === 'partial'
+              ? (['partial', 'partialDescription'] as const)
             : workspace.state === 'unlinked'
               ? (['unlinked', 'unlinkedDescription'] as const)
               : workspace.state === 'permission'
@@ -152,7 +152,26 @@ export default async function CustomerRenewalsPage({
           </form>
         </CardHeader>
         <CardContent className="space-y-4">
-          {stateCopy ? <State title={t(stateCopy[0])} description={t(stateCopy[1])} /> : null}
+          {stateCopy ? (
+            <State
+              title={t(stateCopy[0])}
+              description={
+                workspace.state === 'partial'
+                  ? workspace.partialReasons
+                      .map((reason) =>
+                        t(
+                          reason === 'total'
+                            ? 'partialTotalDescription'
+                            : reason === 'summaries'
+                              ? 'partialSummariesDescription'
+                              : 'partialEmployeeLabelsDescription',
+                        ),
+                      )
+                      .join(' ')
+                  : t(stateCopy[1])
+              }
+            />
+          ) : null}
           {workspace.rows.length ? (
             <RenewalList workspace={workspace} locale={locale} date={date} t={t} />
           ) : null}
