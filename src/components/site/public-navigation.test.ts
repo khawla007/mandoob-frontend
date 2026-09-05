@@ -259,6 +259,17 @@ describe('public header navigation styling contract', () => {
     );
   });
 
+  it('uses the shared small typography token for desktop contact copy', () => {
+    assert.match(
+      cssSource,
+      /\.site-public \.public-topbar__tagline\s*\{[^}]*font-size:\s*var\(--fs-12\)/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.public-topbar__contacts a\s*\{[^}]*font-size:\s*var\(--fs-12\)/u,
+    );
+  });
+
   it('keeps the mobile contact row compact by hiding its tagline', () => {
     assert.match(
       cssSource,
