@@ -231,25 +231,21 @@ describe('public header navigation styling contract', () => {
     );
   });
 
-  it('vertically centers the desktop sign-in link with the other header controls', () => {
+  it('presents language and sign-in as one flat secondary action tier', () => {
     assert.match(
       cssSource,
-      /\.site-public \.nav__cta > \.link-muted\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center/u,
+      /\.site-public \.nav__cta > \.link-muted,\s*\.site-public \.language-switcher__trigger--public\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center[^}]*padding-inline:\s*10px[^}]*border:\s*1px solid transparent[^}]*border-radius:\s*var\(--r-md\)[^}]*color:\s*var\(--zinc-600\)[^}]*background:\s*transparent[^}]*font-size:\s*var\(--fs-14\)[^}]*font-weight:\s*500/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.nav__cta > \.link-muted:hover,\s*\.site-public \.language-switcher__trigger--public:hover,\s*\.site-public \.language-switcher__trigger--public\[data-state='open'\]\s*\{[^}]*background:\s*var\(--public-surface\)[^}]*color:\s*var\(--ink\)/u,
     );
   });
 
-  it('styles the public language trigger as a compact pill control', () => {
+  it('styles the public language trigger as a compact dropdown control', () => {
     assert.match(
       cssSource,
-      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*min-block-size:\s*44px[^}]*padding-inline:\s*12px[^}]*border:\s*1px solid var\(--pb-border\)[^}]*border-radius:\s*var\(--r-pill\)[^}]*font-size:\s*var\(--fs-14\)[^}]*font-weight:\s*500/u,
-    );
-    assert.match(
-      cssSource,
-      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*color:\s*var\(--zinc-600\)/u,
-    );
-    assert.match(
-      cssSource,
-      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*background:\s*transparent/u,
+      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*min-block-size:\s*44px/u,
     );
     assert.match(
       cssSource,
@@ -257,7 +253,7 @@ describe('public header navigation styling contract', () => {
     );
     assert.match(
       cssSource,
-      /\.site-public \.language-switcher__trigger--public:hover,\s*\.site-public \.language-switcher__trigger--public\[data-state='open'\]\s*\{[^}]*border-color:\s*var\(--zinc-300\)[^}]*background:\s*var\(--public-surface\)[^}]*color:\s*var\(--ink\)/u,
+      /\.site-public \.language-switcher__trigger--public:hover,\s*\.site-public \.language-switcher__trigger--public\[data-state='open'\]/u,
     );
   });
 
