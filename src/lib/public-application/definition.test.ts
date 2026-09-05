@@ -5,6 +5,7 @@ import {
   APPLICATION_DEFINITION,
   APPLICATION_DEFINITION_VERSION,
   EMPTY_APPLICATION_DRAFT,
+  getApplicationDefinitionSource,
 } from './index';
 
 test('the reviewed application definition has stable stages and ordered setup substeps', () => {
@@ -29,6 +30,40 @@ test('the reviewed application definition has stable stages and ordered setup su
     APPLICATION_DEFINITION.documentRules.map((rule) => rule.id),
     ['contact-passport', 'business-plan', 'shareholder-passport'],
   );
+  assert.deepEqual(
+    APPLICATION_DEFINITION.fields.slice(0, 6).map((field) => field.id),
+    [
+      'application-full-name',
+      'application-nationality',
+      'application-email',
+      'application-phone',
+      'application-contact-channel',
+      'application-activity',
+    ],
+  );
+  assert.deepEqual(
+    APPLICATION_DEFINITION.reviewSections.map((section) => section.id),
+    ['personal', 'business', 'setup', 'services', 'ownership'],
+  );
+  assert.equal(APPLICATION_DEFINITION.confirmationLabels.heading, 'Application preview complete');
+});
+
+test('definition source accepts only the exact reviewed contract and fails closed', () => {
+  const clone = structuredClone(APPLICATION_DEFINITION);
+  assert.deepEqual(getApplicationDefinitionSource(clone), {
+    status: 'ready',
+    definition: clone,
+  });
+  assert.deepEqual(getApplicationDefinitionSource({ ...clone, version: 'unknown-version' }), {
+    status: 'unavailable',
+    retryable: true,
+    reason: 'invalid-definition',
+  });
+  assert.deepEqual(getApplicationDefinitionSource({ ...clone, injected: 'unknown' }), {
+    status: 'unavailable',
+    retryable: true,
+    reason: 'invalid-definition',
+  });
 });
 
 test('definition choices use only P1.08 catalog IDs and preserve compatibility relations', () => {

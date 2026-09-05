@@ -3,6 +3,7 @@ import type {
   ApplicationAdapter,
   ApplicationCompletionInput,
 } from './contracts';
+import { isValidatedApplicationCompletion } from './validation';
 
 export type DemoApplicationOutcome =
   | 'confirmed-preview'
@@ -33,6 +34,13 @@ function demoResult(
   outcome: DemoApplicationOutcome,
   input: ApplicationCompletionInput,
 ): Exclude<ApplicationActionState, { status: 'idle' | 'pending' }> {
+  if (!isValidatedApplicationCompletion(input)) {
+    return {
+      status: 'error',
+      retryable: false,
+      message: 'Complete validation and both confirmations before previewing the application.',
+    };
+  }
   if (outcome === 'confirmed-preview') {
     return {
       status: 'confirmed-preview',

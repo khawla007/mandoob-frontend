@@ -6,9 +6,52 @@ import { test } from 'node:test';
 import { APPLICATION_DEFINITION } from './definition';
 import {
   createDemoApplicationAdapter,
+  EMPTY_APPLICATION_DRAFT,
   parseEstimatorApplicationHandoff,
+  prepareApplicationCompletion,
   productionApplicationAdapter,
+  type ApplicationDraft,
 } from './index';
+
+const validDraft: ApplicationDraft = {
+  ...EMPTY_APPLICATION_DRAFT,
+  contact: {
+    fullName: 'Example Person',
+    nationality: 'AE',
+    email: 'person@example.test',
+    phone: '',
+  },
+  business: {
+    activityId: 'professional-services',
+    preferredNames: ['Example Company', '', ''],
+    summary: 'A sufficiently detailed business activity summary.',
+  },
+  setup: {
+    jurisdiction: 'free_zone',
+    authorityId: 'dmcc',
+    legalStructureId: 'fz_llc',
+    officeTypeId: 'flexi',
+    officeNotes: '',
+    addOnIds: ['bank-account-assistance'],
+  },
+  visas: {
+    required: true,
+    investorCount: '1',
+    employeeCount: '1',
+    familyCount: '1',
+    estimatorTotalSuggestion: 3,
+  },
+  shareholders: [
+    {
+      id: 'shareholder-1',
+      kind: 'individual',
+      fullName: 'Example Person',
+      nationality: 'AE',
+      ownershipBasisPoints: '10000',
+    },
+  ],
+  confirmations: { informationIsTrue: true, dataProcessingConsent: true },
+};
 
 test('strict handoff accepts exact P1.08 values and keeps visas as a suggestion only', () => {
   const result = parseEstimatorApplicationHandoff(
@@ -54,25 +97,17 @@ test('handoff rejects repeated, oversized, unknown, unsafe, incomplete, and mism
 });
 
 test('demo and production adapters return truthful no-write discriminated results', async () => {
-  const input = {
-    jurisdiction: 'free_zone' as const,
-    authorityId: 'dmcc',
-    activityId: 'professional-services',
-    legalStructureId: 'fz_llc' as const,
-    shareholderCount: 2,
-    visaCount: 3,
-    officeTypeId: 'flexi' as const,
-    addOnIds: ['bank-account-assistance'],
-    readyDocumentCount: 0,
-  };
-  const unavailable = await productionApplicationAdapter.complete(input);
+  const prepared = prepareApplicationCompletion(validDraft, APPLICATION_DEFINITION);
+  assert.equal(prepared.status, 'ready');
+  if (prepared.status !== 'ready') return;
+  const unavailable = await productionApplicationAdapter.complete(prepared.value);
   assert.deepEqual(unavailable, {
     status: 'unavailable',
     retryable: false,
     message: 'Online submission is not connected yet. No application was sent.',
   });
 
-  const demo = await createDemoApplicationAdapter('confirmed-preview').complete(input);
+  const demo = await createDemoApplicationAdapter('confirmed-preview').complete(prepared.value);
   assert.equal(demo.status, 'confirmed-preview');
   if (demo.status === 'confirmed-preview') {
     assert.equal(demo.confirmation.sent, false);
@@ -80,6 +115,25 @@ test('demo and production adapters return truthful no-write discriminated result
     assert.match(demo.confirmation.demoReference ?? '', /^DEMO-[A-Z0-9]{10}$/u);
     assert.equal(JSON.stringify(demo.confirmation).includes('Example Person'), false);
   }
+});
+
+test('demo confirmation rejects arbitrary summaries and drafts without both consents', async () => {
+  const arbitrary = await createDemoApplicationAdapter('confirmed-preview').complete({} as never);
+  assert.deepEqual(arbitrary, {
+    status: 'error',
+    retryable: false,
+    message: 'Complete validation and both confirmations before previewing the application.',
+  });
+  assert.equal(
+    prepareApplicationCompletion(
+      {
+        ...validDraft,
+        confirmations: { informationIsTrue: true, dataProcessingConsent: false },
+      },
+      APPLICATION_DEFINITION,
+    ).status,
+    'invalid',
+  );
 });
 
 test('adapter graph is isolated from the preserved live questionnaire path and network calls', () => {

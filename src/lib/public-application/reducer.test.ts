@@ -50,6 +50,14 @@ const completedDraft: ApplicationDraft = {
 };
 
 test('jurisdiction and authority changes clear incompatible dependants and stale review state', () => {
+  assert.equal(
+    reduceApplicationDraft(
+      completedDraft,
+      { type: 'set-jurisdiction', value: 'free_zone' },
+      APPLICATION_DEFINITION,
+    ),
+    completedDraft,
+  );
   const jurisdictionChanged = reduceApplicationDraft(
     completedDraft,
     { type: 'set-jurisdiction', value: 'offshore' },
@@ -61,7 +69,7 @@ test('jurisdiction and authority changes clear incompatible dependants and stale
     legalStructureId: null,
     officeTypeId: null,
     officeNotes: '',
-    addOnIds: [],
+    addOnIds: ['bank-account-assistance'],
   });
   assert.deepEqual(jurisdictionChanged.visas, {
     required: null,
@@ -87,6 +95,56 @@ test('jurisdiction and authority changes clear incompatible dependants and stale
   assert.equal(authorityChanged.setup.officeTypeId, null);
 });
 
+test('compatible upstream edits retain compatible values and only clear stale context', () => {
+  const changed = reduceApplicationDraft(
+    { ...completedDraft, setup: { ...completedDraft.setup, legalStructureId: 'branch' } },
+    { type: 'set-jurisdiction', value: 'mainland' },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(changed.business.activityId, 'professional-services');
+  assert.equal(changed.setup.legalStructureId, 'branch');
+  assert.equal(changed.setup.authorityId, null);
+  assert.equal(changed.setup.officeTypeId, null);
+  assert.equal(
+    reduceApplicationDraft(
+      completedDraft,
+      { type: 'set-authority', value: 'dmcc' },
+      APPLICATION_DEFINITION,
+    ),
+    completedDraft,
+  );
+});
+
+test('all contact and business material edits clear consent and confirmed state', () => {
+  for (const action of [
+    { type: 'set-contact-field', field: 'email', value: 'changed@example.test' },
+    { type: 'set-business-summary', value: 'A changed and still sufficient summary.' },
+    { type: 'set-preferred-name', index: 0, value: 'Changed Company' },
+  ] as const) {
+    const state = reduceApplicationWorkspace(
+      { draft: completedDraft, action: { status: 'duplicate', message: 'Synthetic state.' } },
+      action,
+      APPLICATION_DEFINITION,
+    );
+    assert.equal(state.action.status, 'idle');
+    assert.deepEqual(state.draft.confirmations, {
+      informationIsTrue: false,
+      dataProcessingConsent: false,
+    });
+  }
+
+  const unchecked = reduceApplicationWorkspace(
+    { draft: completedDraft, action: { status: 'pending' } },
+    { type: 'set-confirmation', field: 'informationIsTrue', value: false },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(unchecked.action.status, 'idle');
+  assert.deepEqual(unchecked.draft.confirmations, {
+    informationIsTrue: false,
+    dataProcessingConsent: false,
+  });
+});
+
 test('visa and office edits invalidate dependent context without manufacturing values', () => {
   const visasDisabled = reduceApplicationDraft(
     completedDraft,
@@ -100,7 +158,7 @@ test('visa and office edits invalidate dependent context without manufacturing v
     familyCount: '',
     estimatorTotalSuggestion: null,
   });
-  assert.equal(visasDisabled.setup.officeTypeId, null);
+  assert.equal(visasDisabled.setup.officeTypeId, 'flexi');
   assert.equal(Object.keys(visasDisabled.documentReadiness).length, 0);
 
   const officeChanged = reduceApplicationDraft(

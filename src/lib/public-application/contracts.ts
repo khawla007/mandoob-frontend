@@ -9,6 +9,13 @@ export type ApplicationChoice = {
   description: string;
 };
 
+export type ApplicationFieldDefinition = {
+  id: string;
+  stepId: ApplicationStepId;
+  label: string;
+  rule: string;
+};
+
 export type ApplicationAuthority = ApplicationChoice & {
   jurisdiction: Jurisdiction;
   activityIds: string[];
@@ -26,7 +33,7 @@ export type ApplicationDefinition = {
   setupSubsteps: ReadonlyArray<{ id: SetupSubstepId; label: string }>;
   jurisdictions: ReadonlyArray<ApplicationChoice & { id: Jurisdiction }>;
   authorities: ReadonlyArray<ApplicationAuthority>;
-  activities: ReadonlyArray<ApplicationChoice>;
+  activities: ReadonlyArray<ApplicationChoice & { jurisdictions: Jurisdiction[] }>;
   legalStructures: ReadonlyArray<ApplicationChoice & { id: LegalStructure }>;
   officeTypes: ReadonlyArray<ApplicationChoice & { id: OfficeType }>;
   addOns: ReadonlyArray<ApplicationChoice>;
@@ -42,6 +49,27 @@ export type ApplicationDefinition = {
     required: boolean;
     previewOnly: true;
   }>;
+  fields: ReadonlyArray<ApplicationFieldDefinition>;
+  limits: {
+    nameMin: 2;
+    nameMax: 160;
+    emailMax: 254;
+    phoneMax: 32;
+    businessSummaryMin: 10;
+    businessSummaryMax: 2000;
+    companyNameMax: 120;
+    officeNotesMax: 1000;
+    ownershipTotalBasisPoints: 10000;
+  };
+  reviewSections: ReadonlyArray<{
+    id: 'personal' | 'business' | 'setup' | 'services' | 'ownership';
+    label: string;
+  }>;
+  confirmationLabels: {
+    heading: 'Application preview complete';
+    mode: 'Local preview';
+    notSent: 'No application was sent to Mandoob.';
+  };
   legalLinks: { privacy: '/legal/privacy'; terms: '/legal/terms' };
 };
 
@@ -107,7 +135,7 @@ export type ApplicationValidation =
       status: 'valid';
       errors: [];
       firstInvalidControlId: null;
-      steps: Record<ApplicationStepId, 'complete'>;
+      steps: Record<ApplicationStepId, ApplicationStepStatus>;
     }
   | {
       status: 'invalid';
@@ -155,7 +183,10 @@ export type ApplicationWorkspaceState = {
   action: ApplicationActionState;
 };
 
-export type ApplicationCompletionInput = ApplicationConfirmationSummary;
+declare const validatedCompletion: unique symbol;
+export type ApplicationCompletionInput = ApplicationConfirmationSummary & {
+  readonly [validatedCompletion]: true;
+};
 export type ApplicationAdapter = {
   complete(
     input: ApplicationCompletionInput,

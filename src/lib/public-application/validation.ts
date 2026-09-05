@@ -5,13 +5,21 @@ import type {
   ApplicationStepStatus,
   ApplicationValidation,
   ApplicationValidationError,
+  ApplicationCompletionInput,
+  ApplicationConfirmationSummary,
 } from './contracts';
+import { getApplicationDefinitionSource } from './definition';
+
+const validatedCompletions = new WeakSet<object>();
 
 export function validateApplication(
   draft: ApplicationDraft,
   definition: ApplicationDefinition,
 ): ApplicationValidation {
-  const errors = definition.steps.flatMap((step) => errorsForStep(draft, step.id, definition));
+  const errors = sortErrors(
+    definition.steps.flatMap((step) => errorsForStep(draft, step.id, definition)),
+    definition,
+  );
   const steps = Object.fromEntries(
     definition.steps.map((step) => [
       step.id,
@@ -34,22 +42,26 @@ export function validateApplicationStep(
   stepId: ApplicationStepId,
   definition: ApplicationDefinition,
 ): ApplicationValidation {
-  const errors = errorsForStep(draft, stepId, definition);
+  const currentIndex = definition.steps.findIndex((step) => step.id === stepId);
+  const errors = sortErrors(
+    definition.steps
+      .slice(0, currentIndex + 1)
+      .flatMap((step) => errorsForStep(draft, step.id, definition)),
+    definition,
+  );
   const steps = Object.fromEntries(
-    definition.steps.map((step) => [
-      step.id,
-      step.id === stepId ? (errors.length ? 'invalid' : 'complete') : 'incomplete',
-    ]),
+    definition.steps.map((step, index) => {
+      if (index > currentIndex) return [step.id, 'incomplete'];
+      const stepErrors = errorsForStep(draft, step.id, definition);
+      return [step.id, stepErrors.length ? 'invalid' : 'complete'];
+    }),
   ) as Record<ApplicationStepId, ApplicationStepStatus>;
   if (errors.length === 0) {
     return {
       status: 'valid',
       errors: [],
       firstInvalidControlId: null,
-      steps: Object.fromEntries(definition.steps.map((step) => [step.id, 'complete'])) as Record<
-        ApplicationStepId,
-        'complete'
-      >,
+      steps,
     };
   }
   return { status: 'invalid', errors, firstInvalidControlId: errors[0].fieldId, steps };
@@ -68,22 +80,40 @@ function errorsForStep(
   ) => errors.push({ stepId, fieldId, message, code, href: `#${fieldId}` });
 
   if (stepId === 'contact') {
-    if (draft.contact.fullName.trim().length < 2)
+    if (
+      draft.contact.fullName.trim().length < definition.limits.nameMin ||
+      draft.contact.fullName.length > definition.limits.nameMax
+    )
       add('application-full-name', 'Enter your full name.');
-    if (draft.contact.nationality.trim().length < 2)
+    if (
+      draft.contact.nationality.trim().length < definition.limits.nameMin ||
+      draft.contact.nationality.length > definition.limits.nameMax
+    )
       add('application-nationality', 'Enter your nationality.');
-    if (!validEmail(draft.contact.email) && !validPhone(draft.contact.phone))
+    if (draft.contact.email && !validEmail(draft.contact.email, definition.limits.emailMax))
+      add('application-email', 'Enter a valid email address.', 'invalid');
+    if (draft.contact.phone && !validPhone(draft.contact.phone, definition.limits.phoneMax))
+      add('application-phone', 'Enter a valid phone number.', 'invalid');
+    if (
+      !validEmail(draft.contact.email, definition.limits.emailMax) &&
+      !validPhone(draft.contact.phone, definition.limits.phoneMax)
+    )
       add('application-contact-channel', 'Enter a valid email address or phone number.', 'invalid');
   }
 
   if (stepId === 'business') {
     if (!definition.activities.some((item) => item.id === draft.business.activityId))
       add('application-activity', 'Choose an available business activity.');
-    if (draft.business.preferredNames[0].trim().length < 2)
+    if (draft.business.preferredNames[0].trim().length < definition.limits.nameMin)
       add('application-company-name-1', 'Enter at least one preferred Company name.');
-    if (draft.business.preferredNames.some((name) => name.length > 120))
+    if (
+      draft.business.preferredNames.some((name) => name.length > definition.limits.companyNameMax)
+    )
       add('application-company-names', 'Company names must be 120 characters or fewer.', 'invalid');
-    if (draft.business.summary.trim().length < 10 || draft.business.summary.length > 2_000)
+    if (
+      draft.business.summary.trim().length < definition.limits.businessSummaryMin ||
+      draft.business.summary.length > definition.limits.businessSummaryMax
+    )
       add(
         'application-business-summary',
         'Enter a business summary of 10 to 2,000 characters.',
@@ -134,7 +164,7 @@ function errorsForStep(
     }
     if (!authority?.officeTypeIds.includes(draft.setup.officeTypeId!))
       add('application-office-type', 'Choose a compatible office option.', 'incompatible');
-    if (draft.setup.officeNotes.length > 1_000)
+    if (draft.setup.officeNotes.length > definition.limits.officeNotesMax)
       add('application-office-notes', 'Office notes must be 1,000 characters or fewer.', 'invalid');
     if (draft.setup.addOnIds.some((id) => !authority?.addOnIds.includes(id)))
       add('application-add-ons', 'Review the selected additional services.', 'incompatible');
@@ -156,7 +186,10 @@ function errorsForStep(
         add(`application-${row.id}-full-name`, 'Enter the shareholder full name.');
       if (row.nationality.trim().length < 2)
         add(`application-${row.id}-nationality`, 'Enter the shareholder nationality.');
-      const ownership = parseBasisPoints(row.ownershipBasisPoints);
+      const ownership = parseBasisPoints(
+        row.ownershipBasisPoints,
+        definition.limits.ownershipTotalBasisPoints,
+      );
       if (ownership === null) {
         everyOwnershipValid = false;
         add(
@@ -166,7 +199,7 @@ function errorsForStep(
         );
       } else ownershipTotal += ownership;
     }
-    if (everyOwnershipValid && ownershipTotal !== 10_000)
+    if (everyOwnershipValid && ownershipTotal !== definition.limits.ownershipTotalBasisPoints)
       add(
         'application-ownership-total',
         'Ownership must total exactly 100.00%.',
@@ -183,12 +216,52 @@ function errorsForStep(
   return errors;
 }
 
-function validEmail(value: string) {
-  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value);
+export type ApplicationCompletionPreparation =
+  | { status: 'ready'; value: ApplicationCompletionInput }
+  | { status: 'invalid'; validation: ApplicationValidation }
+  | { status: 'unavailable'; retryable: true; reason: 'invalid-definition' };
+
+export function prepareApplicationCompletion(
+  draft: ApplicationDraft,
+  definition: ApplicationDefinition,
+): ApplicationCompletionPreparation {
+  if (getApplicationDefinitionSource(definition).status !== 'ready') {
+    return { status: 'unavailable', retryable: true, reason: 'invalid-definition' };
+  }
+  const validation = validateApplication(draft, definition);
+  if (validation.status === 'invalid') return { status: 'invalid', validation };
+  const summary: ApplicationConfirmationSummary = {
+    jurisdiction: draft.setup.jurisdiction!,
+    authorityId: draft.setup.authorityId!,
+    activityId: draft.business.activityId!,
+    legalStructureId: draft.setup.legalStructureId!,
+    shareholderCount: draft.shareholders.length,
+    visaCount:
+      draft.visas.required === true
+        ? Number(draft.visas.investorCount) +
+          Number(draft.visas.employeeCount) +
+          Number(draft.visas.familyCount)
+        : 0,
+    officeTypeId: draft.setup.officeTypeId!,
+    addOnIds: [...draft.setup.addOnIds],
+    readyDocumentCount: Object.values(draft.documentReadiness).filter((value) => value === 'ready')
+      .length,
+  };
+  const value = summary as ApplicationCompletionInput;
+  validatedCompletions.add(value);
+  return { status: 'ready', value };
 }
 
-function validPhone(value: string) {
-  return value.length <= 32 && /^\+?[0-9 ()-]{7,32}$/u.test(value);
+export function isValidatedApplicationCompletion(input: ApplicationCompletionInput): boolean {
+  return typeof input === 'object' && input !== null && validatedCompletions.has(input);
+}
+
+function validEmail(value: string, max: number) {
+  return value.length <= max && /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value);
+}
+
+function validPhone(value: string, max: number) {
+  return value.length <= max && /^\+?[0-9 ()-]{7,32}$/u.test(value);
 }
 
 function parseWholeNumber(value: string) {
@@ -197,7 +270,25 @@ function parseWholeNumber(value: string) {
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
-function parseBasisPoints(value: string) {
+function parseBasisPoints(value: string, maximum: number) {
   const parsed = parseWholeNumber(value);
-  return parsed !== null && parsed <= 10_000 ? parsed : null;
+  return parsed !== null && parsed <= maximum ? parsed : null;
+}
+
+function sortErrors(
+  errors: ApplicationValidationError[],
+  definition: ApplicationDefinition,
+): ApplicationValidationError[] {
+  const ranks = new Map(definition.fields.map((field, index) => [field.id, index]));
+  const rank = (fieldId: string) => {
+    if (ranks.has(fieldId)) return ranks.get(fieldId)!;
+    if (/^application-shareholder-\d+-full-name$/u.test(fieldId))
+      return ranks.get('application-shareholder-full-name') ?? Number.MAX_SAFE_INTEGER;
+    if (/^application-shareholder-\d+-nationality$/u.test(fieldId))
+      return ranks.get('application-shareholder-nationality') ?? Number.MAX_SAFE_INTEGER;
+    if (/^application-shareholder-\d+-ownership$/u.test(fieldId))
+      return ranks.get('application-shareholder-ownership') ?? Number.MAX_SAFE_INTEGER;
+    return Number.MAX_SAFE_INTEGER;
+  };
+  return [...errors].sort((left, right) => rank(left.fieldId) - rank(right.fieldId));
 }

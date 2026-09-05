@@ -80,6 +80,21 @@ test('step validation is scoped and valid application passes', () => {
     APPLICATION_DEFINITION,
   );
   assert.ok(contact.errors.every((error) => error.stepId === 'contact'));
+  assert.deepEqual(contact.steps, {
+    contact: 'invalid',
+    business: 'incomplete',
+    setup: 'incomplete',
+    ownership: 'incomplete',
+    review: 'incomplete',
+  });
+  const setup = validateApplicationStep(validDraft, 'setup', APPLICATION_DEFINITION);
+  assert.deepEqual(setup.steps, {
+    contact: 'complete',
+    business: 'complete',
+    setup: 'complete',
+    ownership: 'incomplete',
+    review: 'incomplete',
+  });
   assert.deepEqual(validateApplication(validDraft, APPLICATION_DEFINITION), {
     status: 'valid',
     errors: [],
@@ -92,6 +107,36 @@ test('step validation is scoped and valid application passes', () => {
       review: 'complete',
     },
   });
+});
+
+test('each supplied contact channel is valid and errors retain per-control order', () => {
+  const badEmail = validateApplication(
+    {
+      ...validDraft,
+      contact: { ...validDraft.contact, email: 'not-an-email', phone: '+971501234567' },
+    },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(badEmail.status, 'invalid');
+  if (badEmail.status === 'invalid') {
+    assert.equal(badEmail.errors[0].fieldId, 'application-email');
+    assert.equal(badEmail.firstInvalidControlId, 'application-email');
+  }
+
+  const badBoth = validateApplication(
+    {
+      ...validDraft,
+      contact: { ...validDraft.contact, email: 'bad', phone: 'bad' },
+    },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(badBoth.status, 'invalid');
+  if (badBoth.status === 'invalid') {
+    assert.deepEqual(
+      badBoth.errors.slice(0, 2).map((error) => error.fieldId),
+      ['application-email', 'application-phone'],
+    );
+  }
 });
 
 test('shareholder ownership uses integer basis points and must total exactly 100 percent', () => {
