@@ -232,6 +232,7 @@ test('renewal workspace authorizes before its exact Company-scoped store read an
     {
       actorProfileId: 'pro-1',
       tenantSlug: 'acme',
+      companyId: 'company-1',
       search: parseRenewalWorkspaceSearch({ q: 'license', page: '2' }),
     },
     {
@@ -250,6 +251,7 @@ test('renewal workspace authorizes before its exact Company-scoped store read an
   const base = {
     actorProfileId: 'pro-1',
     tenantSlug: 'acme',
+    companyId: 'company-1',
     search: parseRenewalWorkspaceSearch({}),
   };
   const authorize = async () => ({ tenantId: 'tenant-1', companyId: 'company-1' });
@@ -298,12 +300,39 @@ test('renewal workspace never reaches the store when authorization fails', async
       {
         actorProfileId: 'pro-1',
         tenantSlug: 'acme',
+        companyId: 'company-1',
         search: parseRenewalWorkspaceSearch({}),
       },
       {
         authorize: async () => {
           throw new Error('ASSIGNED_COMPANY_MISMATCH');
         },
+        store: {
+          list: async () => {
+            queried = true;
+            return { data: [], count: 0, error: null };
+          },
+          total: async () => ({ count: 0, error: null }),
+        },
+      },
+    ),
+    /ASSIGNED_COMPANY_MISMATCH/u,
+  );
+  assert.equal(queried, false);
+});
+
+test('renewal workspace rejects a stale route assignment before store reads', async () => {
+  let queried = false;
+  await assert.rejects(
+    listProRenewalWorkspace(
+      {
+        actorProfileId: 'pro-1',
+        tenantSlug: 'acme',
+        companyId: 'stale-company',
+        search: parseRenewalWorkspaceSearch({}),
+      },
+      {
+        authorize: async () => ({ tenantId: 'tenant-1', companyId: 'company-1' }),
         store: {
           list: async () => {
             queried = true;

@@ -40,7 +40,12 @@ export default async function RenewalsPage({
   if (canonicalHref) redirect(canonicalHref);
 
   const [workspace, t, locale] = await Promise.all([
-    listProRenewalWorkspace({ actorProfileId: session.id, tenantSlug: slug, search }),
+    listProRenewalWorkspace({
+      actorProfileId: session.id,
+      tenantSlug: slug,
+      companyId: company.id,
+      search,
+    }),
     getTranslations('pro'),
     getLocale(),
   ]);

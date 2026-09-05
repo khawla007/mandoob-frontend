@@ -244,13 +244,21 @@ function toRenewalRow(row: RenewalWorkspaceDbRow, today: string): RenewalWorkspa
 
 /** The public renewal workspace read resolves active tenant and current Company ownership itself. */
 export async function listProRenewalWorkspace(
-  input: { actorProfileId: string; tenantSlug: string; search: RenewalWorkspaceSearch },
+  input: {
+    actorProfileId: string;
+    tenantSlug: string;
+    companyId: string;
+    search: RenewalWorkspaceSearch;
+  },
   dependencies: RenewalWorkspaceDependencies = {},
 ): Promise<RenewalWorkspaceResult> {
   const access = await (dependencies.authorize ?? authorizeRenewalWorkspaceRead)({
     actorProfileId: input.actorProfileId,
     tenantSlug: input.tenantSlug,
   });
+  if (access.companyId !== input.companyId) {
+    throw new Error('ASSIGNED_COMPANY_MISMATCH');
+  }
   const today = dependencies.today ?? signalBusinessDate();
   const store = dependencies.store ?? (await createSupabaseRenewalWorkspaceStore());
   const page = input.search.focus ? 1 : input.search.page;
