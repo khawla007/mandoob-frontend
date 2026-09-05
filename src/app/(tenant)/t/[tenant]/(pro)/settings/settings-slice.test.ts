@@ -42,6 +42,28 @@ test('billing has no local plan catalog, pricing, checkout, portal, or cancellat
   assert.match(billingPage, /getBillingSubscriptionSnapshot\(tenant.id\)/u);
 });
 
+test('billing localizes known plan and interval enums and hides unknown values', () => {
+  assert.match(billingPage, /billingPlanKey\(snapshot\.data\.plan\)/u);
+  assert.match(billingPage, /billingIntervalKey\(snapshot\.data\.interval\)/u);
+  assert.doesNotMatch(billingPage, /\{snapshot\.data\.plan\}/u);
+  assert.doesNotMatch(billingPage, /\{snapshot\.data\.interval\}/u);
+
+  for (const locale of ['en', 'ar']) {
+    const billing = JSON.parse(read(`src/messages/${locale}.json`)).pro.settings.billing;
+    for (const plan of ['starter', 'professional', 'enterprise']) {
+      assert.equal(typeof billing.plans?.[plan], 'string', `${locale}.${plan}`);
+      assert.notEqual(billing.plans[plan], plan, `${locale}.${plan}`);
+    }
+    for (const interval of ['month', 'year']) {
+      assert.equal(typeof billing.intervals?.[interval], 'string', `${locale}.${interval}`);
+      assert.notEqual(billing.intervals[interval], interval, `${locale}.${interval}`);
+    }
+    assert.equal(typeof billing.plans?.unknown, 'string', `${locale}.plans.unknown`);
+    assert.equal(typeof billing.intervals?.unknown, 'string', `${locale}.intervals.unknown`);
+  }
+  assert.match(billingPage, /:\s*'unknown'/u);
+});
+
 test('billing mutations are unavailable without a complete catalog and safe provider contract', () => {
   assert.doesNotMatch(
     billingActions,

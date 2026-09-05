@@ -1265,8 +1265,19 @@
         "providerUnavailable": "Subscription information is temporarily unavailable.",
         "noSubscription": "No current subscription is recorded.",
         "plan": "Plan",
+        "plans": {
+          "starter": "Starter",
+          "professional": "Professional",
+          "enterprise": "Enterprise",
+          "unknown": "Unavailable"
+        },
         "status": "Status",
         "amount": "Amount",
+        "intervals": {
+          "month": "Monthly",
+          "year": "Yearly",
+          "unknown": "Unavailable"
+        },
         "periodEnd": "Current period ends",
         "cancellation": "Cancellation",
         "notAvailable": "Not available",

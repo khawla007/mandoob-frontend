@@ -28,6 +28,21 @@ const STATUS_VARIANT = {
   unknown: 'secondary',
 } as const;
 
+const BILLING_PLAN_KEYS = ['starter', 'professional', 'enterprise'] as const;
+const BILLING_INTERVAL_KEYS = ['month', 'year'] as const;
+
+function billingPlanKey(plan: string): (typeof BILLING_PLAN_KEYS)[number] | 'unknown' {
+  return BILLING_PLAN_KEYS.includes(plan as (typeof BILLING_PLAN_KEYS)[number])
+    ? (plan as (typeof BILLING_PLAN_KEYS)[number])
+    : 'unknown';
+}
+
+function billingIntervalKey(interval: string): (typeof BILLING_INTERVAL_KEYS)[number] | 'unknown' {
+  return BILLING_INTERVAL_KEYS.includes(interval as (typeof BILLING_INTERVAL_KEYS)[number])
+    ? (interval as (typeof BILLING_INTERVAL_KEYS)[number])
+    : 'unknown';
+}
+
 export default async function BillingSettingsPage({
   params,
 }: {
@@ -72,7 +87,9 @@ export default async function BillingSettingsPage({
             <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted-foreground">{t('billing.plan')}</dt>
-                <dd className="mt-1 font-medium">{snapshot.data.plan}</dd>
+                <dd className="mt-1 font-medium">
+                  {t(`billing.plans.${billingPlanKey(snapshot.data.plan)}`)}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">{t('billing.status')}</dt>
@@ -86,7 +103,7 @@ export default async function BillingSettingsPage({
                 <dt className="text-muted-foreground">{t('billing.amount')}</dt>
                 <dd className="mt-1 font-medium">
                   {formatMoney(snapshot.data.unitAmountMinor, snapshot.data.currency, locale)} /{' '}
-                  {snapshot.data.interval}
+                  {t(`billing.intervals.${billingIntervalKey(snapshot.data.interval)}`)}
                 </dd>
               </div>
               <div>

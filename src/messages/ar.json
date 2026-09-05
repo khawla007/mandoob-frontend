@@ -1265,8 +1265,19 @@
         "providerUnavailable": "معلومات الاشتراك غير متاحة مؤقتًا.",
         "noSubscription": "لا يوجد اشتراك حالي مسجل.",
         "plan": "الخطة",
+        "plans": {
+          "starter": "المبتدئة",
+          "professional": "الاحترافية",
+          "enterprise": "المؤسسات",
+          "unknown": "غير متاح"
+        },
         "status": "الحالة",
         "amount": "المبلغ",
+        "intervals": {
+          "month": "شهريًا",
+          "year": "سنويًا",
+          "unknown": "غير متاح"
+        },
         "periodEnd": "انتهاء الفترة الحالية",
         "cancellation": "الإلغاء",
         "notAvailable": "غير متاح",
