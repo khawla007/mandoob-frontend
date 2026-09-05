@@ -53,6 +53,7 @@ test('Supabase overview store scopes every Company read and additionally scopes 
     store.documentRequests('tenant-1', 'company-1'),
     store.documents('tenant-1', 'company-1'),
     store.renewals('tenant-1', 'company-1'),
+    store.employeeCount('tenant-1', 'company-1'),
   ]);
 
   for (const trace of traces) {
@@ -87,6 +88,7 @@ test('query failures settle only their corresponding overview widgets as errors'
     documentRequests: async () => failed,
     documents: async () => ok,
     renewals: async () => failed,
+    employeeCount: async () => failed,
   };
 
   const result = await loadCustomerOverview(authorizedAccess(), { store });
@@ -95,6 +97,7 @@ test('query failures settle only their corresponding overview widgets as errors'
   assert.deepEqual(result.documents, { kind: 'empty', value: [] });
   assert.deepEqual(result.renewals, { kind: 'error' });
   assert.deepEqual(result.invoices, { kind: 'error' });
+  assert.deepEqual(result.employees, { kind: 'error' });
 });
 
 test('invalid invoice amounts settle the finance widget as an error', async () => {
@@ -120,8 +123,25 @@ test('invalid invoice amounts settle the finance widget as an error', async () =
     documentRequests: async () => ({ data: [], count: null, error: null }),
     documents: async () => ({ data: [], count: null, error: null }),
     renewals: async () => ({ data: [], count: null, error: null }),
+    employeeCount: async () => ({ data: [], count: 0, error: null }),
   };
 
   const result = await loadCustomerOverview(authorizedAccess(), { store });
   assert.deepEqual(result.invoices, { kind: 'error' });
+});
+
+test('employee overview exposes only the exact authorized Company count', async () => {
+  const empty = { data: [], count: 0, error: null };
+  const store: CustomerOverviewStore = {
+    invoiceOpenCount: async () => empty,
+    invoiceRecent: async () => empty,
+    invoiceOpenRows: async () => empty,
+    documentRequests: async () => empty,
+    documents: async () => empty,
+    renewals: async () => empty,
+    employeeCount: async () => ({ data: [], count: 17, error: null }),
+  };
+
+  const result = await loadCustomerOverview(authorizedAccess(), { store });
+  assert.deepEqual(result.employees, { kind: 'ready', value: 17 });
 });

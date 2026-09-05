@@ -144,9 +144,17 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
       )
     : ({ kind: 'unavailable' } as const);
 
+  const onboardingStatus = company
+    ? ['not_started', 'in_progress', 'ready_for_activation', 'completed', 'complete'].includes(
+        company.onboardingStatus,
+      )
+      ? t(`registration.onboardingValues.${company.onboardingStatus}` as never)
+      : t('states.unavailable')
+    : t('states.unavailable');
+
   function signalValue(signal: (typeof CUSTOMER_SIGNAL_ORDER)[number]) {
     if (!overview) return t('states.unavailable');
-    if (signal === 'registration') return t('registrationUnavailable');
+    if (signal === 'registration') return onboardingStatus;
     if (signal === 'documents') {
       const state = overview.documentRequests;
       return state.kind === 'ready' && requestSummary
@@ -249,7 +257,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                 <span className="text-muted-foreground text-xs">
                   {t('registration.legalProfile')}
                 </span>
-                <strong className="block">{t('registration.legalUnavailable')}</strong>
+                <strong className="block">{onboardingStatus}</strong>
               </div>
               <div>
                 <span className="text-muted-foreground text-xs">{t('registration.readiness')}</span>
@@ -381,7 +389,12 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                 <CardDescription>{t('employees.description')}</CardDescription>
               </CardHeader>
               <CardContent>
-                <PanelState state={{ kind: 'unavailable' }} t={t} />
+                {overview ? <PanelState state={overview.employees} t={t} /> : null}
+                {overview?.employees.kind === 'ready' ? (
+                  <p className="text-lg font-semibold">
+                    {t('employees.exactCount', { count: overview.employees.value })}
+                  </p>
+                ) : null}
                 <Link
                   className="text-primary mt-3 inline-block text-sm font-semibold"
                   href={href('employees')}

@@ -44,9 +44,9 @@ export default async function CustomerRenewalsPage({
       : workspace.state === 'no-results'
         ? (['noResults', 'noResultsDescription'] as const)
         : workspace.state === 'error'
-            ? (['error', 'errorDescription'] as const)
-            : workspace.state === 'partial'
-              ? (['partial', 'partialDescription'] as const)
+          ? (['error', 'errorDescription'] as const)
+          : workspace.state === 'partial'
+            ? (['partial', 'partialDescription'] as const)
             : workspace.state === 'unlinked'
               ? (['unlinked', 'unlinkedDescription'] as const)
               : workspace.state === 'permission'

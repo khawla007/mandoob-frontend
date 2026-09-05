@@ -66,6 +66,10 @@ export type CustomerOverviewStore = {
   ) => Promise<OverviewQueryResult<DocumentRequestRow>>;
   documents: (tenantId: string, companyId: string) => Promise<OverviewQueryResult<DocumentRow>>;
   renewals: (tenantId: string, companyId: string) => Promise<OverviewQueryResult<RenewalRow>>;
+  employeeCount: (
+    tenantId: string,
+    companyId: string,
+  ) => Promise<OverviewQueryResult<{ id: string }>>;
 };
 
 export function createCustomerOverviewSupabaseStore(
@@ -130,6 +134,12 @@ export function createCustomerOverviewSupabaseStore(
         .order('due_date', { ascending: true })
         .order('id', { ascending: true })
         .limit(ROW_LIMIT + 1),
+    employeeCount: async (tenantId, companyId) =>
+      await client
+        .from('employees')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('company_id', companyId),
   };
 }
 
@@ -212,6 +222,18 @@ async function loadCustomerOverviewRenewals(
   return { rows: (data ?? []).slice(0, ROW_LIMIT), hasMore: (data?.length ?? 0) > ROW_LIMIT };
 }
 
+async function loadCustomerOverviewEmployeeCount(
+  store: CustomerOverviewStore,
+  tenantId: string,
+  companyId: string,
+) {
+  const { count, error } = await store.employeeCount(tenantId, companyId);
+  if (error || count === null || !Number.isSafeInteger(count) || count < 0) {
+    throw new Error('CUSTOMER_EMPLOYEES_UNAVAILABLE');
+  }
+  return count;
+}
+
 export async function loadCustomerOverview(
   access: Extract<CustomerCompanyAccess, { kind: 'authorized' }>,
   dependencies: { store?: CustomerOverviewStore } = {},
@@ -225,7 +247,7 @@ export async function loadCustomerOverview(
     invoices: loadCustomerOverviewInvoices(store, tenant.id, company.id, session.id),
     assignment: null,
     communications: null,
-    employees: null,
+    employees: loadCustomerOverviewEmployeeCount(store, tenant.id, company.id),
     notifications: null,
   });
 }

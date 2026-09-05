@@ -40,6 +40,8 @@ test('Customer overview renders the nine reference hierarchy regions and exactly
 
 test('Customer overview owns no fake registration or P2.10 notification/task destination', () => {
   assert.match(page, /registrationUnavailable/u);
+  assert.match(page, /company\.onboardingStatus/u);
+  assert.match(page, /overview\.employees/u);
   assert.match(page, /notificationsUnavailable/u);
   assert.doesNotMatch(page, /\/notifications|\/tasks|registration.*percent|progress.*%/iu);
 });
@@ -122,8 +124,9 @@ test('invoice panel distinguishes an overdue open invoice from other bounded rec
   assert.ok(ar.customer.overview.invoices.status.overdue);
 });
 
-test('registration signal is typed unavailable while lifecycle remains separately labelled', () => {
-  assert.match(page, /signal === 'registration'\) return t\('registrationUnavailable'\)/u);
+test('registration signal uses authoritative onboarding state while detailed readiness stays unavailable', () => {
+  assert.match(page, /signal === 'registration'\) return onboardingStatus/u);
+  assert.match(page, /registration\.readinessUnavailable/u);
   assert.match(page, /registration\.lifecycle/u);
 });
 

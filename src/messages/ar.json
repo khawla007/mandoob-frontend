@@ -886,7 +886,13 @@
         "description": "تبقى تفاصيل التسجيل منفصلة عن الحقائق التشغيلية للشركة.",
         "lifecycle": "دورة حياة الشركة",
         "legalProfile": "اكتمال الملف القانوني",
-        "legalUnavailable": "غير متاح في هذه النظرة العامة",
+        "onboardingValues": {
+          "not_started": "لم يبدأ",
+          "in_progress": "قيد التقدم",
+          "ready_for_activation": "جاهز للتفعيل",
+          "completed": "مكتمل",
+          "complete": "مكتمل"
+        },
         "readiness": "جاهزية التفعيل",
         "readinessUnavailable": "غير متاح في هذه النظرة العامة"
       },
@@ -931,7 +937,11 @@
         "statusSummary": "{reviewed} مراجعة · {rejected} مرفوضة",
         "statusCountsUnavailable": "إجماليات المستندات المراجعة والمرفوضة غير متاحة في هذه النظرة العامة المحدودة."
       },
-      "employees": { "title": "الموظفون", "description": "ملخص سجل موظفي الشركة المصرح به." },
+      "employees": {
+        "title": "الموظفون",
+        "description": "الإجمالي الدقيق لسجل موظفي الشركة.",
+        "exactCount": "{count} موظفًا"
+      },
       "invoices": {
         "title": "الفواتير والمدفوعات",
         "description": "تبقى الأرصدة المفتوحة منفصلة حسب العملة.",

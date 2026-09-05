@@ -886,7 +886,13 @@
         "description": "Registration detail remains separate from Company operational facts.",
         "lifecycle": "Company lifecycle",
         "legalProfile": "Legal-profile completion",
-        "legalUnavailable": "Not available in this overview",
+        "onboardingValues": {
+          "not_started": "Not started",
+          "in_progress": "In progress",
+          "ready_for_activation": "Ready for activation",
+          "completed": "Completed",
+          "complete": "Completed"
+        },
         "readiness": "Activation readiness",
         "readinessUnavailable": "Not available in this overview"
       },
@@ -939,7 +945,8 @@
       },
       "employees": {
         "title": "Employees",
-        "description": "Authorized Company employee registry summary."
+        "description": "Exact Company-scoped registry total.",
+        "exactCount": "{count} employees"
       },
       "invoices": {
         "title": "Invoices and payments",
