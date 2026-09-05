@@ -170,6 +170,7 @@ export async function runCreateApplicationAction(
       parsed.data as CreateServiceCaseRawInput,
     );
     dependencies.revalidate(`/t/${slug}/applications`);
+    dependencies.revalidate(`/t/${slug}/company`);
     dependencies.revalidate(`/t/${slug}/dashboard`);
     return { ok: true, data: result };
   } catch (error) {
@@ -204,6 +205,7 @@ export async function runUpdateApplicationAction(
       parsed.data as UpdateServiceCaseRawInput,
     );
     dependencies.revalidate(`/t/${slug}/applications`);
+    dependencies.revalidate(`/t/${slug}/company`);
     dependencies.revalidate(`/t/${slug}/dashboard`);
     return { ok: true, data: undefined };
   } catch (error) {

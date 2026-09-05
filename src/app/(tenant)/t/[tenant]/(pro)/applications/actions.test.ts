@@ -275,6 +275,7 @@ test('create action authorizes, mutates, and revalidates applications plus dashb
     `company:${ACTOR_ID}:acme`,
     `create:${TENANT_ID}:${ACTOR_ID}:pro`,
     'revalidate:/t/acme/applications',
+    'revalidate:/t/acme/company',
     'revalidate:/t/acme/dashboard',
   ]);
 });
@@ -292,6 +293,7 @@ test('update action authorizes, mutates, and revalidates applications plus dashb
     `company:${ACTOR_ID}:acme`,
     `update:${TENANT_ID}:${COMPANY_ID}:${ACTOR_ID}:pro:${CASE_ID}`,
     'revalidate:/t/acme/applications',
+    'revalidate:/t/acme/company',
     'revalidate:/t/acme/dashboard',
   ]);
 });
