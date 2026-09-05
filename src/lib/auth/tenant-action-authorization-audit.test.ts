@@ -260,6 +260,13 @@ test('optional Customer authorization requires an authorized-kind check', () => 
       if (access.kind !== 'authorized') return;
     }
     mutate();`;
+  const siblingBranch = `if (flag) {
+      const access = await authorizeCustomerLinkedCompanyRead('acme');
+      if (access.kind !== 'authorized') return;
+      mutate();
+    } else {
+      mutate();
+    }`;
   const safe = `const access = await authorizeCustomerLinkedCompanyRead('acme');
     if (access.kind !== 'authorized') return;
     mutate();`;
@@ -268,11 +275,13 @@ test('optional Customer authorization requires an authorized-kind check', () => 
   assert.equal(hasCheckedCustomerAuthorization(late), false);
   assert.equal(hasCheckedCustomerAuthorization(nonTerminating), false);
   assert.equal(hasCheckedCustomerAuthorization(conditional), false);
+  assert.equal(hasCheckedCustomerAuthorization(siblingBranch), false);
   assert.equal(hasCheckedCustomerAuthorization(safe), true);
 
   const ast = ts.createSourceFile(
     'customer-authorization-actions.ts',
     `export async function optionalOnly() { ${unsafe} }
+     export async function branchBypass(flag: boolean) { ${siblingBranch} }
      export async function checked() { ${safe} }`,
     ts.ScriptTarget.Latest,
     true,
@@ -287,6 +296,11 @@ test('optional Customer authorization requires an authorized-kind check', () => 
   assert.equal(reachesGuard(functions.get('optionalOnly')!, functions, new Set()), false);
   assert.equal(
     privilegedCallBeforeGuard(functions.get('optionalOnly')!, functions, new Set()),
+    'mutate',
+  );
+  assert.equal(reachesGuard(functions.get('branchBypass')!, functions, new Set()), false);
+  assert.equal(
+    privilegedCallBeforeGuard(functions.get('branchBypass')!, functions, new Set()),
     'mutate',
   );
   assert.equal(reachesGuard(functions.get('checked')!, functions, new Set()), true);
@@ -329,17 +343,11 @@ function blockHasDominatingCustomerAuthorization(block: ts.Block): boolean {
   }
 
   for (let index = 0; index < block.statements.length; index += 1) {
-    let nestedGuard = false;
-    const visit = (node: ts.Node) => {
-      if (nestedGuard || ts.isFunctionLike(node)) return;
-      if (ts.isBlock(node) && blockHasDominatingCustomerAuthorization(node)) {
-        nestedGuard = true;
-        return;
-      }
-      ts.forEachChild(node, visit);
-    };
-    ts.forEachChild(block.statements[index], visit);
-    if (!nestedGuard) continue;
+    const statement = block.statements[index];
+    if (!ts.isTryStatement(statement)) continue;
+    if (!blockHasDominatingCustomerAuthorization(statement.tryBlock)) continue;
+    if (statement.catchClause && firstPrivilegedCall(statement.catchClause.block)) return false;
+    if (statement.finallyBlock && firstPrivilegedCall(statement.finallyBlock)) return false;
     for (let sibling = 0; sibling < block.statements.length; sibling += 1) {
       if (sibling !== index && firstPrivilegedCall(block.statements[sibling])) return false;
     }
