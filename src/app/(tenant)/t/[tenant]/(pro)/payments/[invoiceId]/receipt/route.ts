@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getReceiptPayloadForTenant } from '@/lib/data/invoices';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
@@ -10,6 +11,7 @@ export async function GET(
 ) {
   const { tenant: slug, invoiceId } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 

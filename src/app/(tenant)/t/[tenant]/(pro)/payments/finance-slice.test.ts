@@ -8,10 +8,16 @@ const base = 'src/app/(tenant)/t/[tenant]/(pro)/payments';
 test('PRO finance pages remain assigned-company scoped without a Company selector or column', () => {
   const list = read(`${base}/page.tsx`);
   const table = read('src/components/pro/InvoicesTable.tsx');
+  const detail = read(`${base}/[invoiceId]/page.tsx`);
   const analytics = read(`${base}/analytics/page.tsx`);
+  const receipt = read(`${base}/[invoiceId]/receipt/route.ts`);
 
-  for (const page of [list, analytics]) {
+  for (const page of [list, detail, analytics, receipt]) {
     assert.match(page, /requireProTenantRouteAccess\(slug\)/);
+    const accessAt = page.indexOf('requireProTenantRouteAccess(slug)');
+    const activeAt = page.indexOf('requireActiveTenant(tenant.id)');
+    const companyAt = page.indexOf('readAssignedCompanyForPro(session.id, slug)');
+    assert.ok(accessAt >= 0 && accessAt < activeAt && activeAt < companyAt);
     assert.match(page, /readAssignedCompanyForPro\(session\.id, slug\)/);
     assert.match(page, /company\.tenantId !== tenant\.id/);
   }
@@ -38,6 +44,10 @@ test('invoice detail does not expose raw provider, profile, or provider failure 
 
 test('verified payment mutations revalidate the exact invoice and assigned-company analytics route', () => {
   const actions = read(`${base}/actions.ts`);
+  const accessAt = actions.indexOf('requireProTenantRouteAccess(slug)');
+  const activeAt = actions.indexOf('requireActiveTenant(tenant.id)');
+  const headersAt = actions.indexOf('headers()');
+  assert.ok(accessAt >= 0 && accessAt < activeAt && activeAt < headersAt);
   assert.match(
     actions,
     /revalidatePath\(`\/t\/\$\{ctx\.tenantSlug\}\/payments\/\$\{parsed\.invoiceId\}`\)/,

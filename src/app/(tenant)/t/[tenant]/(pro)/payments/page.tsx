@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NewInvoiceDialog } from '@/components/pro/NewInvoiceDialog';
 import { InvoicesTable } from '@/components/pro/InvoicesTable';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { listInvoicesForPaymentView } from '@/lib/data/invoices';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
@@ -44,6 +45,7 @@ export default async function ProPaymentsPage({
   const { view, date, period } = parsePaymentSearch(search);
   const page = parsePaymentPage(search.page);
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
   const [t, locale] = await Promise.all([getTranslations('pro'), getLocale()]);

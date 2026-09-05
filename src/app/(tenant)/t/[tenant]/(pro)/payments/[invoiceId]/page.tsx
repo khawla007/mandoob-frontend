@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { InvoiceActions } from '@/components/pro/InvoiceActions';
 import { formatFinanceDate } from '@/lib/format/finance-date';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getInvoiceDetailForTenant } from '@/lib/data/invoices';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
@@ -28,6 +29,7 @@ export default async function ProInvoiceDetailPage({
 }) {
   const { tenant: slug, invoiceId } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 

@@ -4,6 +4,7 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { createInvoice } from '@/lib/data/invoices';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
@@ -43,6 +44,7 @@ async function resolveAssignedCompanyForCaller(ctx: CallerCtx) {
 
 async function resolveProCaller(slug: string): Promise<CallerCtx> {
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const hdr = await headers();
   return {
     callerId: session.id,

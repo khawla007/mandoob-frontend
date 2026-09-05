@@ -51,9 +51,10 @@ test('one-release legacy company deep link authorizes and preserves approved foc
 
 test('Assigned Company page directly authorizes before its service-role workspace read', () => {
   const authAt = page.indexOf('requireProTenantRouteAccess(');
+  const activeAt = page.indexOf('requireActiveTenant(tenant.id)');
   const readAt = page.indexOf('readAssignedCompanyForPro(');
   assert.notEqual(authAt, -1);
-  assert.ok(authAt < readAt);
+  assert.ok(authAt < activeAt && activeAt < readAt);
   assert.match(page, /readAssignedCompanyForPro\(session\.id, slug\)/);
   assert.match(page, /if \(!company\) notFound\(\)/);
 });

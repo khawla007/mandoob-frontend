@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowRight, Building2, CalendarDays, CheckCircle2, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AssignedCompanyTabs } from '@/components/pro/AssignedCompanyTabs';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { readCompanyOnboarding } from '@/lib/data/company-onboarding';
@@ -32,7 +33,8 @@ export default async function AssignedCompanyPage({
   searchParams: Promise<AssignedCompanySearchParams>;
 }) {
   const { tenant: slug } = await params;
-  const { session } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company) notFound();
 
