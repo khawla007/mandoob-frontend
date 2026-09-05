@@ -238,6 +238,10 @@ describe('public header navigation styling contract', () => {
       cssSource,
       /\.site-public\.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50[^}]*block-size:\s*96px[^}]*pointer-events:\s*none/u,
     );
+    assert.match(
+      cssSource,
+      /\.site-public\.public-header-frame\s*\{[^}]*background:\s*transparent/u,
+    );
     assert.doesNotMatch(
       cssSource,
       /\.site-public \.nav\s*\{[^}]*(?:position:\s*sticky|top:\s*0|z-index:\s*50)/u,
