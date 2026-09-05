@@ -44,7 +44,7 @@
   --public-cta-focus-background: #ff5722;
   --public-cta-disabled-background: #6f5b54;
   --public-cta-disabled-text: #fff;
-  --public-header-surface: rgba(255, 255, 255, 0.85);
+  --public-header-surface: var(--paper);
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #ff5722;
   --public-scrim: rgba(24, 18, 15, 0.72);
@@ -142,7 +142,7 @@
   --public-cta-focus-background: #ff5722;
   --public-cta-disabled-background: #a97868;
   --public-cta-disabled-text: #fff;
-  --public-header-surface: rgba(10, 10, 10, 0.85);
+  --public-header-surface: var(--paper);
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #ff5722;
   --public-scrim: rgba(5, 4, 3, 0.82);

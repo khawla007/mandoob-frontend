@@ -75,6 +75,14 @@ renderTest('public light and dark scopes expose the complete reusable semantic p
   }
 });
 
+renderTest('sticky public header surfaces are solid in light and dark themes', () => {
+  assert.equal(rawToken(declarations('.site-public'), 'public-header-surface'), 'var(--paper)');
+  assert.equal(
+    rawToken(declarations('.dark .site-public'), 'public-header-surface'),
+    'var(--paper)',
+  );
+});
+
 renderTest('public light tokens match the canonical design-4 palette and fonts', () => {
   const block = declarations('.site-public');
   const expected = {
@@ -138,10 +146,7 @@ renderTest('public dark theme preserves a dark accent surface for flow markers',
 });
 
 renderTest('mobile dialog inherits the canonical accent CTA token', () => {
-  assert.doesNotMatch(
-    declarations('.site-public.public-mobile-dialog'),
-    /--accent\s*:/u,
-  );
+  assert.doesNotMatch(declarations('.site-public.public-mobile-dialog'), /--accent\s*:/u);
   assert.match(declarations('.site-public .btn--accent'), /background:\s*var\(--accent\)/u);
 });
 
@@ -167,10 +172,7 @@ renderTest('accent buttons preserve the August 1 shared palette', () => {
   const button = declarations('.site-public .btn--accent');
   assert.match(button, /background:\s*var\(--accent\)/u);
   assert.match(button, /color:\s*#fff\b/iu);
-  assert.match(
-    css,
-    /\.site-public \.btn--accent:hover\s*\{[^}]*var\(--accent-hover\)/u,
-  );
+  assert.match(css, /\.site-public \.btn--accent:hover\s*\{[^}]*var\(--accent-hover\)/u);
   assert.match(
     css,
     /\.site-public \.btn--accent:disabled[^}]*var\(--public-cta-disabled-background\)/u,
