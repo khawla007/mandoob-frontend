@@ -245,7 +245,19 @@ describe('public header navigation styling contract', () => {
     );
     assert.match(
       cssSource,
-      /\.site-public \.language-switcher__trigger--public:hover,\s*\.site-public \.language-switcher__trigger--public\[data-state='open'\]\s*\{[^}]*background:\s*var\(--public-surface\)[^}]*color:\s*var\(--ink\)/u,
+      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*color:\s*var\(--zinc-600\)/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*background:\s*transparent/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public\s*\{[^}]*line-height:\s*1/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.language-switcher__trigger--public:hover,\s*\.site-public \.language-switcher__trigger--public\[data-state='open'\]\s*\{[^}]*border-color:\s*var\(--zinc-300\)[^}]*background:\s*var\(--public-surface\)[^}]*color:\s*var\(--ink\)/u,
     );
   });
 
@@ -272,6 +284,10 @@ describe('public header navigation styling contract', () => {
     assert.match(
       cssSource,
       /\.language-switcher__item--public\s*\{[^}]*min-block-size:\s*44px[^}]*font-size:\s*0\.875rem/u,
+    );
+    assert.match(
+      cssSource,
+      /\.language-switcher__item--public\s*\{[^}]*padding-inline:\s*12px 32px/u,
     );
     assert.match(
       cssSource,
