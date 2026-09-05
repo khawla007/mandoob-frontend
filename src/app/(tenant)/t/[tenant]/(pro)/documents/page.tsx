@@ -90,7 +90,6 @@ export default async function ProDocumentsPage({
     'documents.errors.tenantInactive': t('errors.tenantInactive'),
     'documents.errors.expiryExternallyManaged': t('errors.expiryExternallyManaged'),
     'documents.errors.openFailed': t('errors.openFailed'),
-    'documents.errors.phase3Unavailable': t('errors.phase3Unavailable'),
     'documents.errors.unexpected': t('errors.unexpected'),
     unexpected: t('errors.unexpected'),
   };
@@ -108,11 +107,6 @@ export default async function ProDocumentsPage({
     opening: t('actions.opening'),
     popupBlocked: t('actions.popupBlocked'),
     success: t('actions.success'),
-    unavailable: {
-      review: t('actions.reviewUnavailable'),
-      expiry: t('actions.expiryUnavailable'),
-      description: t('actions.phase3Unavailable'),
-    },
     request: {
       trigger: t('request.trigger'),
       title: t('request.title'),

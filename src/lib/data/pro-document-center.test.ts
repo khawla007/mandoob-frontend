@@ -498,7 +498,7 @@ test('setDocumentExpiry rejects an omitted expiry before any read or mutation', 
   const { setDocumentExpiry } = await load();
 
   await assert.rejects(() =>
-    setDocumentExpiry(expiryContext(), { document_id: DOCUMENT } as never),
+    setDocumentExpiry(CLIENT, expiryContext(), { document_id: DOCUMENT } as never),
   );
   assert.equal(calls.length, 0);
 });
@@ -507,13 +507,14 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
   const { setDocumentExpiry } = await load();
   for (const expiresOn of ['2027-08-13', null]) {
     const calls = captureFetch((call) => {
+      if (call.url.includes('/rest/v1/documents?')) return json(ownedHistoryDocument());
       if (call.url.includes('/rest/v1/rpc/set_pro_document_expiry')) {
         return json([{ document_id: DOCUMENT, company_id: CLIENT, expires_on: expiresOn }]);
       }
       return json([]);
     });
 
-    const result = await setDocumentExpiry(expiryContext(), {
+    const result = await setDocumentExpiry(CLIENT, expiryContext(), {
       document_id: DOCUMENT,
       expires_on: expiresOn,
     });
@@ -527,10 +528,7 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
       p_actor_id: ACTOR,
       p_expires_on: expiresOn,
     });
-    assert.equal(
-      calls.some((call) => call.url.includes('/rest/v1/documents?')),
-      false,
-    );
+    assert.match(calls[0].url, new RegExp(`company_id=eq\\.${CLIENT}`, 'u'));
     assert.equal(
       calls.some((call) => call.url.includes('/rest/v1/tenant_audit_log')),
       false,
@@ -548,12 +546,16 @@ test('setDocumentExpiry rejects empty and failed transactional RPCs without succ
     json({ message: 'private audit constraint detail', code: '23514' }, 500),
   ]) {
     const calls = captureFetch((call) =>
-      call.url.includes('/rest/v1/rpc/set_pro_document_expiry') ? response : json([]),
+      call.url.includes('/rest/v1/documents?')
+        ? json(ownedHistoryDocument())
+        : call.url.includes('/rest/v1/rpc/set_pro_document_expiry')
+          ? response
+          : json([]),
     );
 
     await assert.rejects(
       () =>
-        setDocumentExpiry(expiryContext(), {
+        setDocumentExpiry(CLIENT, expiryContext(), {
           document_id: DOCUMENT,
           expires_on: '2027-08-13',
         }),
@@ -562,7 +564,7 @@ test('setDocumentExpiry rejects empty and failed transactional RPCs without succ
         error.code === 'INTERNAL' &&
         error.message === 'Unable to update document expiry',
     );
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     assert.equal(
       calls.some((call) => call.url.includes('/rest/v1/auth_events')),
       false,
@@ -596,14 +598,16 @@ test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes dat
     },
   ]) {
     const calls = captureFetch((call) =>
-      call.url.includes('/rest/v1/rpc/set_pro_document_expiry')
-        ? json({ message: expected.dbMessage, code: expected.dbCode }, 400)
-        : json([]),
+      call.url.includes('/rest/v1/documents?')
+        ? json(ownedHistoryDocument())
+        : call.url.includes('/rest/v1/rpc/set_pro_document_expiry')
+          ? json({ message: expected.dbMessage, code: expected.dbCode }, 400)
+          : json([]),
     );
 
     await assert.rejects(
       () =>
-        setDocumentExpiry(expiryContext(), {
+        setDocumentExpiry(CLIENT, expiryContext(), {
           document_id: DOCUMENT,
           expires_on: '2027-08-13',
         }),
@@ -614,12 +618,59 @@ test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes dat
         error.status === expected.status &&
         !error.message.includes(expected.dbMessage),
     );
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     assert.equal(
       calls.some((call) => call.url.includes('/rest/v1/auth_events')),
       false,
     );
   }
+});
+
+test('setDocumentExpiry rejects a same-tenant foreign Company before the expiry RPC', async () => {
+  const foreignCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch(() =>
+    json(
+      ownedHistoryDocument({
+        company_id: foreignCompany,
+        company: { id: foreignCompany, tenant_id: TENANT },
+      }),
+    ),
+  );
+  const { setDocumentExpiry } = await load();
+
+  await assert.rejects(
+    () =>
+      setDocumentExpiry(CLIENT, expiryContext(), {
+        document_id: DOCUMENT,
+        expires_on: '2027-08-13',
+      }),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls.some((call) => call.url.includes('/rpc/set_pro_document_expiry')),
+    false,
+  );
+});
+
+test('setDocumentExpiry sanitizes assigned-company ownership read failures', async () => {
+  const calls = captureFetch(() =>
+    json({ code: 'XX000', message: 'private ownership detail' }, 500),
+  );
+  const { setDocumentExpiry } = await load();
+
+  await assert.rejects(
+    () =>
+      setDocumentExpiry(CLIENT, expiryContext(), {
+        document_id: DOCUMENT,
+        expires_on: '2027-08-13',
+      }),
+    (error) =>
+      error instanceof ApiError &&
+      error.code === 'INTERNAL' &&
+      !error.message.includes('private ownership detail'),
+  );
+  assert.equal(calls.length, 1);
 });
 
 test('Dubai helpers use inclusive today-through-30 and the Dubai midnight boundary', async () => {

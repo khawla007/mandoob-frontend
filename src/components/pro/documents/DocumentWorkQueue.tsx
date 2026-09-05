@@ -292,6 +292,8 @@ export function DocumentWorkQueue({
                         documentId: row.documentId,
                         versionId: row.versionId,
                         reviewStatus: row.reviewStatus,
+                        expirySource: row.expirySource,
+                        expiresOn: row.expiresOn,
                       }}
                       locale={locale}
                       labels={actionLabels}

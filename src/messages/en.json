@@ -369,9 +369,6 @@
       "opening": "Opening file…",
       "popupBlocked": "Allow pop-ups for Mandoob, then try opening the file again.",
       "success": "Document Center updated successfully.",
-      "reviewUnavailable": "Review unavailable",
-      "expiryUnavailable": "Expiry update unavailable",
-      "phase3Unavailable": "This action is unavailable until its company-scoped Phase 3 workflow is released.",
       "history": "Version history"
     },
     "request": {

@@ -48,6 +48,10 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
       calls.push(`request:${ctx.tenantId}:${ctx.actorId}:${ctx.role}`);
       return { id: REQUEST_ID, companyId: COMPANY_ID };
     },
+    reviewVersion: async (companyId, versionId, ctx) => {
+      calls.push(`review:${ctx.tenantId}:${companyId}:${versionId}`);
+      return { companyId: COMPANY_ID };
+    },
     openVersion: async (tenantId, companyId, versionId) => {
       calls.push(`open:${tenantId}:${companyId}:${versionId}`);
       return {
@@ -76,6 +80,10 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
           storagePath: `${tenantId}/private.pdf`,
         },
       ];
+    },
+    setExpiry: async (companyId, ctx, input) => {
+      calls.push(`expiry:${ctx.tenantId}:${companyId}:${input.document_id}`);
+      return { companyId: COMPANY_ID };
     },
     revalidate: (path) => calls.push(`revalidate:${path}`),
     rethrowNavigation: () => undefined,
@@ -254,7 +262,7 @@ test('firm actions module exports only the five public Server Actions', () => {
   assert.doesNotMatch(source, /export (?:type )?\{?[^\n]*(?:Dependencies|run[A-Z])/u);
 });
 
-test('review and expiry actions stop at the live company boundary until their RPCs accept it', async () => {
+test('review and expiry actions pass only the server-resolved assigned company to live mutations', async () => {
   for (const [invoke, mutation] of [
     [
       (deps: DocumentCenterActionDependencies) =>
@@ -269,22 +277,18 @@ test('review and expiry actions stop at the live company boundary until their RP
   ] as const) {
     const context = setup();
     const result = await invoke(context.dependencies);
-    assert.deepEqual(result, {
-      ok: false,
-      code: 'PHASE_3_UNAVAILABLE',
-      messageKey: 'documents.errors.phase3Unavailable',
-    });
-    assert.equal(
-      context.calls.some((call) => call.startsWith(mutation)),
-      false,
-    );
-    assert.deepEqual(context.calls, [
+    assert.equal(result.ok, true);
+    assert.deepEqual(context.calls.slice(0, 5), [
       'auth',
       'tenant:acme',
       `active:${TENANT_ID}`,
       'headers',
       `company:${ACTOR_ID}:acme`,
     ]);
+    assert.equal(
+      context.calls.some((call) => call.startsWith(`${mutation}${TENANT_ID}:${COMPANY_ID}:`)),
+      true,
+    );
   }
 });
 
@@ -412,7 +416,7 @@ test('request action uses first string values and rejects Blob values before DAL
   assert.equal(createCalls, 1);
 });
 
-test('unavailable review accepts no crafted form path to the mutation DAL', async () => {
+test('review rejects a blank rejection note and invalid IDs before the mutation DAL', async () => {
   const context = setup();
   const rejected = reviewForm();
   rejected.set('status', 'rejected');
@@ -433,7 +437,7 @@ test('unavailable review accepts no crafted form path to the mutation DAL', asyn
   );
 });
 
-test('request, open, and history errors are stable and sanitized while unavailable mutations expose no internals', async () => {
+test('request, review, open, history, and expiry errors are stable and sanitized', async () => {
   const raw = 'relation private_documents leaked storage/tenant/private.pdf';
   const operations = [
     () => {
@@ -460,8 +464,22 @@ test('request, open, and history errors are stable and sanitized while unavailab
       });
       return runLoadVersionHistoryAction('acme', DOCUMENT_ID, context.dependencies);
     },
-    () => runReviewDocumentCenterAction('acme', null, reviewForm(), setup().dependencies),
-    () => runSetDocumentExpiryAction('acme', null, expiryForm(), setup().dependencies),
+    () => {
+      const context = setup({
+        reviewVersion: async () => {
+          throw new ApiError('NOT_FOUND', raw, 404);
+        },
+      });
+      return runReviewDocumentCenterAction('acme', null, reviewForm(), context.dependencies);
+    },
+    () => {
+      const context = setup({
+        setExpiry: async () => {
+          throw new ApiError('EXPIRY_EXTERNALLY_MANAGED', raw, 409);
+        },
+      });
+      return runSetDocumentExpiryAction('acme', null, expiryForm(), context.dependencies);
+    },
   ];
 
   for (const operation of operations) {
@@ -471,19 +489,27 @@ test('request, open, and history errors are stable and sanitized while unavailab
   }
 });
 
-test('successful requests revalidate only the firm workspace routes', async () => {
-  const context = setup();
-  const result = await runRequestDocumentCenterAction(
-    'acme',
-    null,
-    requestForm(),
-    context.dependencies,
-  );
-  assert.equal(result.ok, true);
-  assert.deepEqual(
-    context.calls.filter((call) => call.startsWith('revalidate:')),
-    ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company'],
-  );
+test('successful request, review, and expiry revalidate only firm workspace routes', async () => {
+  for (const invoke of [
+    (deps: DocumentCenterActionDependencies) =>
+      runRequestDocumentCenterAction('acme', null, requestForm(), deps),
+    (deps: DocumentCenterActionDependencies) =>
+      runReviewDocumentCenterAction('acme', null, reviewForm(), deps),
+    (deps: DocumentCenterActionDependencies) =>
+      runSetDocumentExpiryAction('acme', null, expiryForm(), deps),
+  ]) {
+    const context = setup();
+    const result = await invoke(context.dependencies);
+    assert.equal(result.ok, true);
+    assert.deepEqual(
+      context.calls.filter((call) => call.startsWith('revalidate:')),
+      [
+        'revalidate:/t/acme/documents',
+        'revalidate:/t/acme/company',
+        'revalidate:/t/acme/dashboard',
+      ],
+    );
+  }
 });
 
 test('request ignores a spoofed company UUID and uses the server assignment', async () => {
@@ -501,18 +527,25 @@ test('request ignores a spoofed company UUID and uses the server assignment', as
   assert.equal(receivedCompanyId, COMPANY_ID);
   assert.deepEqual(
     context.calls.filter((call) => call.startsWith('revalidate:')),
-    ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company'],
+    ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company', 'revalidate:/t/acme/dashboard'],
   );
 });
 
-test('unavailable mutations never revalidate', async () => {
+test('failed mutations never revalidate', async () => {
   for (const invoke of [
     (deps: DocumentCenterActionDependencies) =>
       runReviewDocumentCenterAction('acme', null, reviewForm(), deps),
     (deps: DocumentCenterActionDependencies) =>
       runSetDocumentExpiryAction('acme', null, expiryForm(), deps),
   ]) {
-    const context = setup();
+    const context = setup({
+      reviewVersion: async () => {
+        throw new ApiError('NOT_FOUND', 'raw row detail', 404);
+      },
+      setExpiry: async () => {
+        throw new ApiError('NOT_FOUND', 'raw row detail', 404);
+      },
+    });
     await invoke(context.dependencies);
     assert.equal(
       context.calls.some((call) => call.startsWith('revalidate:')),
@@ -521,12 +554,15 @@ test('unavailable mutations never revalidate', async () => {
   }
 });
 
-test('open and history success results expose no storage path', async () => {
+test('open and history success results expose no storage path or actor UUIDs', async () => {
   const context = setup();
   const opened = await runOpenDocumentVersionAction('acme', VERSION_ID, context.dependencies);
   const history = await runLoadVersionHistoryAction('acme', DOCUMENT_ID, context.dependencies);
   assert.equal(opened.ok, true);
   assert.equal(history.ok, true);
   assert.doesNotMatch(JSON.stringify(opened), /storagePath|private\.pdf/u);
-  assert.doesNotMatch(JSON.stringify(history), /storagePath|private\.pdf/u);
+  assert.doesNotMatch(
+    JSON.stringify(history),
+    /storagePath|private\.pdf|uploadedBy|reviewedBy|33333333-3333-4333-8333-333333333333/u,
+  );
 });

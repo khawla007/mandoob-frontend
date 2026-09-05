@@ -168,10 +168,13 @@ test('client action islands keep React 19 and server-action boundaries explicit'
   assert.match(actions, /data-primary=/u);
   assert.match(actions, /openDocumentVersionWithPopup/u);
   assert.doesNotMatch(actions, /await openDocumentVersionAction[\s\S]*window\.open/u);
-  assert.doesNotMatch(
-    actions,
-    /reviewDocumentCenterAction|setDocumentExpiryAction|useActionState|<form action=/u,
-  );
+  assert.match(actions, /reviewDocumentCenterAction/u);
+  assert.match(actions, /setDocumentExpiryAction/u);
+  assert.match(actions, /useActionState/u);
+  assert.match(actions, /data-document-action="approve"/u);
+  assert.match(actions, /data-document-action="reject"/u);
+  assert.match(actions, /data-document-action="expiry"/u);
+  assert.doesNotMatch(actions, /data-document-action="(?:review|expiry)-unavailable"/u);
   assert.match(history, /loadVersionHistoryAction\(slug, documentId\)/u);
   assert.doesNotMatch(history, /versions !== null/u);
   assert.doesNotMatch(queue, /row=\{row\}/u);
@@ -229,6 +232,7 @@ test('route loading and error recovery are localized, semantic, and sanitized', 
 
 test('one-company Documents removes Company controls and presentation while keeping server scope', () => {
   assert.doesNotMatch(requestDialog, /DocumentCompanySearchField|name="company_id"/u);
+  assert.doesNotMatch(actions, /name="company_id"|row\.companyId/u);
   assert.doesNotMatch(page, /searchDocumentCenterCompanyOptions|getDocumentCenterCompanyOption/u);
   assert.doesNotMatch(queue, /labels\.company|row\.companyName|companyName/u);
   assert.match(page, /listProDocumentCenter\(tenant\.id, company\.id, query\)/u);

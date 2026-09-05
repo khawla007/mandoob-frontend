@@ -2,13 +2,22 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import type { CreateDocumentRequestCtx } from '@/lib/data/documents';
-import type { DocumentVersionHistoryEntry } from '@/lib/data/pro-document-center';
+import type { CreateDocumentRequestCtx, SetDocumentReviewCtx } from '@/lib/data/documents';
+import type {
+  DocumentVersionHistoryEntry,
+  SetDocumentExpiryContext,
+} from '@/lib/data/pro-document-center';
 import { ApiError } from '@/lib/errors';
 import {
   createDocumentRequestSchema,
+  documentReviewSchema,
   type CreateDocumentRequestInput,
+  type DocumentReviewInput,
 } from '@/lib/validation/document';
+import {
+  documentExpirySchema,
+  type DocumentExpiryInput,
+} from '@/lib/validation/pro-document-center';
 
 type MessageKey =
   | 'documents.errors.validation'
@@ -18,12 +27,16 @@ type MessageKey =
   | 'documents.errors.tenantInactive'
   | 'documents.errors.expiryExternallyManaged'
   | 'documents.errors.openFailed'
-  | 'documents.errors.phase3Unavailable'
   | 'documents.errors.unexpected';
 
 export type DocumentCenterActionResult<T = undefined> =
   | { ok: true; code: 'SUCCESS'; data: T }
   | { ok: false; code: string; messageKey: MessageKey };
+
+export type PublicDocumentVersionHistoryEntry = Omit<
+  DocumentVersionHistoryEntry,
+  'uploadedBy' | 'reviewedBy'
+>;
 
 type ProSession = { id: string; role: 'pro'; tenantId: string | null };
 type TenantIdentity = { id: string };
@@ -40,6 +53,12 @@ export type DocumentCenterActionDependencies = {
     ctx: CreateDocumentRequestCtx,
     input: CreateDocumentRequestInput,
   ): Promise<{ id: string; companyId: string }>;
+  reviewVersion(
+    companyId: string,
+    versionId: string,
+    ctx: SetDocumentReviewCtx,
+    input: DocumentReviewInput,
+  ): Promise<{ companyId: string }>;
   openVersion(
     tenantId: string,
     companyId: string,
@@ -50,6 +69,11 @@ export type DocumentCenterActionDependencies = {
     companyId: string,
     documentId: string,
   ): Promise<DocumentVersionHistoryEntry[]>;
+  setExpiry(
+    companyId: string,
+    ctx: SetDocumentExpiryContext,
+    input: DocumentExpiryInput,
+  ): Promise<{ companyId: string }>;
   revalidate(path: string): void;
   rethrowNavigation(error: unknown): void;
   logUnexpected(label: string, error: unknown): void;
@@ -66,6 +90,7 @@ const normalizedUuidSchema = z
   .uuid()
   .transform((value) => value.toLowerCase());
 const requestActionSchema = createDocumentRequestSchema.omit({ company_id: true });
+const expiryActionSchema = documentExpirySchema.extend({ document_id: normalizedUuidSchema });
 async function resolveAndAuthorize(
   slug: string,
   session: ProSession,
@@ -150,6 +175,7 @@ function revalidateDocumentRoutes(
 ) {
   actionDependencies.revalidate(`/t/${slug}/documents`);
   actionDependencies.revalidate(`/t/${slug}/company`);
+  actionDependencies.revalidate(`/t/${slug}/dashboard`);
 }
 
 export async function runRequestDocumentCenterAction(
@@ -185,12 +211,24 @@ export async function runReviewDocumentCenterAction(
 ): Promise<DocumentCenterActionResult> {
   try {
     const session = await actionDependencies.requirePro(slug);
-    await resolveAndAuthorize(slug, session, actionDependencies);
-    return {
-      ok: false,
-      code: 'PHASE_3_UNAVAILABLE',
-      messageKey: 'documents.errors.phase3Unavailable',
-    };
+    const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
+    const values = readFormStrings(formData, ['version_id', 'status', 'note'] as const);
+    if (!values) return validationFailure();
+    const versionId = normalizedUuidSchema.safeParse(values.version_id);
+    const review = documentReviewSchema.safeParse({ status: values.status, note: values.note });
+    if (!versionId.success || !review.success) return validationFailure();
+
+    const reviewed = await actionDependencies.reviewVersion(
+      authorization.company.id,
+      versionId.data,
+      authorization.actor,
+      review.data,
+    );
+    if (reviewed.companyId !== authorization.company.id) {
+      throw new ApiError('NOT_FOUND', 'Document version not found', 404);
+    }
+    revalidateDocumentRoutes(slug, actionDependencies);
+    return { ok: true, code: 'SUCCESS', data: undefined };
   } catch (error) {
     return errorResult(error, 'document_center.review', actionDependencies);
   }
@@ -225,7 +263,7 @@ export async function runLoadVersionHistoryAction(
   slug: string,
   documentId: string,
   actionDependencies: DocumentCenterActionDependencies,
-): Promise<DocumentCenterActionResult<DocumentVersionHistoryEntry[]>> {
+): Promise<DocumentCenterActionResult<PublicDocumentVersionHistoryEntry[]>> {
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
@@ -241,10 +279,8 @@ export async function runLoadVersionHistoryAction(
       versionNumber: version.versionNumber,
       current: version.current,
       uploadedAt: version.uploadedAt,
-      uploadedBy: version.uploadedBy,
       uploaderName: version.uploaderName,
       reviewStatus: version.reviewStatus,
-      reviewedBy: version.reviewedBy,
       reviewerName: version.reviewerName,
       reviewedAt: version.reviewedAt,
       reviewNote: version.reviewNote,
@@ -265,12 +301,25 @@ export async function runSetDocumentExpiryAction(
 ): Promise<DocumentCenterActionResult> {
   try {
     const session = await actionDependencies.requirePro(slug);
-    await resolveAndAuthorize(slug, session, actionDependencies);
-    return {
-      ok: false,
-      code: 'PHASE_3_UNAVAILABLE',
-      messageKey: 'documents.errors.phase3Unavailable',
-    };
+    const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
+    const values = readFormStrings(formData, ['document_id', 'expires_on'] as const);
+    if (!values) return validationFailure();
+    const expiry = expiryActionSchema.safeParse({
+      document_id: values.document_id,
+      expires_on: values.expires_on,
+    });
+    if (!expiry.success) return validationFailure();
+
+    const updated = await actionDependencies.setExpiry(
+      authorization.company.id,
+      authorization.actor,
+      expiry.data,
+    );
+    if (updated.companyId !== authorization.company.id) {
+      throw new ApiError('NOT_FOUND', 'Document not found', 404);
+    }
+    revalidateDocumentRoutes(slug, actionDependencies);
+    return { ok: true, code: 'SUCCESS', data: undefined };
   } catch (error) {
     return errorResult(error, 'document_center.expiry', actionDependencies);
   }

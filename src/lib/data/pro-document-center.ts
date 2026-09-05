@@ -421,15 +421,45 @@ export type SetDocumentExpiryContext = {
 };
 
 export async function setDocumentExpiry(
+  expectedCompanyId: string,
   ctx: SetDocumentExpiryContext,
   input: DocumentExpiryInput,
 ): Promise<{ companyId: string }> {
+  const validCompanyId = uuidSchema.parse(expectedCompanyId);
   const validContext = expiryContextSchema.parse(ctx);
   const validInput = documentExpirySchema.parse({
     ...input,
     expires_on: input.expires_on === null ? '' : input.expires_on,
   });
   const admin = createSupabaseServiceRoleClient();
+  const { data: document, error: ownershipError } = await admin
+    .from('documents')
+    .select(
+      'id, tenant_id, company_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id)',
+    )
+    .eq('id', validInput.document_id)
+    .eq('tenant_id', validContext.tenantId)
+    .eq('company_id', validCompanyId)
+    .maybeSingle();
+  const owned = document as {
+    id: string;
+    tenant_id: string;
+    company_id: string;
+    company: { id: string; tenant_id: string } | null;
+  } | null;
+  if (ownershipError) {
+    throw new ApiError('INTERNAL', 'Unable to verify document ownership', 500);
+  }
+  if (
+    !owned ||
+    owned.id !== validInput.document_id ||
+    owned.tenant_id !== validContext.tenantId ||
+    owned.company_id !== validCompanyId ||
+    owned.company?.id !== validCompanyId ||
+    owned.company.tenant_id !== validContext.tenantId
+  ) {
+    throw new ApiError('NOT_FOUND', 'Document not found', 404);
+  }
   const { data, error } = await admin.rpc(
     'set_pro_document_expiry' as never,
     {
@@ -454,7 +484,12 @@ export async function setDocumentExpiry(
       409,
     );
   }
-  if (error || updated?.document_id !== validInput.document_id || !updatedCompanyId.success) {
+  if (
+    error ||
+    updated?.document_id !== validInput.document_id ||
+    !updatedCompanyId.success ||
+    updatedCompanyId.data.toLowerCase() !== validCompanyId.toLowerCase()
+  ) {
     throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
   }
 
