@@ -4,6 +4,7 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { createInvoice } from '@/lib/data/invoices';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
@@ -43,6 +44,7 @@ async function resolveAssignedCompanyForCaller(ctx: CallerCtx) {
 
 async function resolveProCaller(slug: string): Promise<CallerCtx> {
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const hdr = await headers();
   return {
     callerId: session.id,
@@ -76,6 +78,8 @@ export async function createInvoiceAction(
     }
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/${result.data.id}`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/analytics`);
     revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { invoiceId: result.data.id } };
@@ -116,6 +120,9 @@ export async function markInvoicePaidAction(args: {
     }
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/${parsed.invoiceId}`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/analytics`);
+    revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { paymentId } };
   } catch (err) {
@@ -152,6 +159,9 @@ export async function voidInvoiceAction(args: {
     }
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/${parsed.invoiceId}`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/analytics`);
+    revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { invoiceId } };
   } catch (err) {
@@ -200,12 +210,15 @@ export async function issueRefundAction(args: {
     if (!result.ok) {
       return {
         ok: false,
-        error: result.error,
+        error: 'Refund could not be completed',
         code: result.retryable ? 'TAP_ERROR' : 'TAP_TERMINAL',
       };
     }
 
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/${parsed.invoiceId}`);
+    revalidatePath(`/t/${ctx.tenantSlug}/payments/analytics`);
+    revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return {
       ok: true,
@@ -305,8 +318,7 @@ async function reconcileRefundIntent(
 
 function mapError(err: unknown): { ok: false; error: string; code: string } {
   if (err instanceof ApiError) {
-    return { ok: false, error: err.message, code: err.code };
+    return { ok: false, error: 'Operation could not be completed', code: err.code };
   }
-  const message = err instanceof Error ? err.message : 'Unknown error';
-  return { ok: false, error: message, code: 'UNKNOWN' };
+  return { ok: false, error: 'Operation could not be completed', code: 'UNKNOWN' };
 }

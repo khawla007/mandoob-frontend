@@ -1,0 +1,138 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import test from 'node:test';
+
+const root = process.cwd();
+const pagePath = join(root, 'src/app/(tenant)/t/[tenant]/(pro)/renewals/page.tsx');
+const tablePath = join(root, 'src/components/pro/RenewalsTable.tsx');
+const workspacePath = join(root, 'src/lib/data/pro-renewal-workspace.ts');
+
+test('renewal page is an active-tenant, assigned-Company, server-paginated workspace', () => {
+  const page = readFileSync(pagePath, 'utf8');
+  const table = readFileSync(tablePath, 'utf8');
+  const workspace = readFileSync(workspacePath, 'utf8');
+
+  assert.match(page, /requireProTenantRouteAccess\(slug\)/u);
+  assert.match(page, /requireActiveTenant\(tenant\.id\)/u);
+  assert.match(page, /readAssignedCompanyForPro\(session\.id, slug\)/u);
+  assert.match(page, /listProRenewalWorkspace\(/u);
+  assert.match(page, /renewalWorkspaceCanonicalRedirect\(/u);
+  assert.match(page, /if \(canonicalHref\) redirect\(canonicalHref\)/u);
+  assert.match(page, /workspace\.total/u);
+  assert.match(page, /<nav[^>]+aria-label=/u);
+  assert.match(page, /renewalWorkspaceHref\(/u);
+  assert.match(page, /NewRenewalDialog/u);
+  assert.match(table, /RenewalRowActions/u);
+  assert.doesNotMatch(table, /CompanyLite|showCompanyColumn|companies: Map/u);
+  assert.match(workspace, /count: 'exact'/u);
+  assert.match(
+    workspace,
+    /\.order\('due_date', \{ ascending: true \}\)[\s\S]*?\.order\('id', \{ ascending: true \}\)/u,
+  );
+});
+
+test('renewal mutations reject inactive tenants before assignment and service-role work', () => {
+  const actions = readFileSync(
+    join(root, 'src/app/(tenant)/t/[tenant]/(pro)/renewals/actions.ts'),
+    'utf8',
+  );
+  const routeAt = actions.indexOf('requireProTenantRouteAccess(slug)');
+  const activeAt = actions.indexOf('requireActiveTenant(tenant.id)');
+  const assignmentAt = actions.indexOf('readAssignedCompanyForPro(session.id, slug)');
+  assert.ok(routeAt >= 0 && routeAt < activeAt && activeAt < assignmentAt);
+  for (const pattern of [
+    /revalidatePath\(`\/t\/\$\{slug\}\/renewals`\)/u,
+    /revalidatePath\(`\/t\/\$\{slug\}\/company`\)/u,
+    /revalidatePath\(`\/t\/\$\{slug\}\/dashboard`\)/u,
+  ]) {
+    assert.match(actions, pattern);
+  }
+  assert.equal(actions.match(/revalidateRenewalRoutes\(slug\)/gu)?.length, 4);
+  const data = readFileSync(join(root, 'src/lib/data/renewals.ts'), 'utf8');
+  assert.equal(data.match(/renewal_id: id,\s+company_id: ctx\.companyId/gu)?.length, 3);
+  const rowActions = readFileSync(join(root, 'src/components/pro/RenewalRowActions.tsx'), 'utf8');
+  const editDialog = readFileSync(join(root, 'src/components/pro/EditRenewalDialog.tsx'), 'utf8');
+  const newDialog = readFileSync(join(root, 'src/components/pro/NewRenewalDialog.tsx'), 'utf8');
+  assert.match(rowActions, /cancelConfirmationOpen/u);
+  for (const component of [rowActions, editDialog, newDialog]) {
+    assert.doesNotMatch(component, /result\.code|result\.error/u);
+  }
+  assert.doesNotMatch(actions.slice(actions.indexOf('function toResult')), /error: e\.message/u);
+});
+
+test('renewal page supports canonical Signal drilldowns, missing dates, and unavailable summaries', () => {
+  const page = readFileSync(pagePath, 'utf8');
+  const table = readFileSync(tablePath, 'utf8');
+  const workspace = readFileSync(workspacePath, 'utf8');
+  for (const name of ['tab', 'type', 'status', 'urgency', 'q', 'page', 'focus', 'due', 'renewal']) {
+    assert.match(workspace, new RegExp(`['\"]${name}['\"]`, 'u'));
+  }
+  assert.match(page, /name="type"/u);
+  assert.match(page, /name="status"/u);
+  assert.match(page, /renewalStatusActiveOnly/u);
+  assert.match(page, /name="urgency"/u);
+  assert.match(page, /name="due"/u);
+  assert.match(page, /workspace\.state === 'unavailable'/u);
+  assert.match(page, /summary\.value === null/u);
+  assert.match(table, /row\.dueDate[\s\S]*?labels\.missingDate/u);
+  assert.match(page, /name="q"/u);
+});
+
+test('renewal route supplies localized loading and sanitized retry geometry', () => {
+  const loading = readFileSync(
+    join(root, 'src/app/(tenant)/t/[tenant]/(pro)/renewals/loading.tsx'),
+    'utf8',
+  );
+  const error = readFileSync(
+    join(root, 'src/app/(tenant)/t/[tenant]/(pro)/renewals/error.tsx'),
+    'utf8',
+  );
+  assert.match(loading, /Skeleton/u);
+  assert.match(loading, /aria-busy/u);
+  assert.match(error, /'use client'/u);
+  assert.match(error, /unstable_retry|reset/u);
+  assert.doesNotMatch(error, /error\.message/u);
+});
+
+test('renewal copy stays in English-Arabic parity for unavailable actions and queue states', () => {
+  const en = JSON.parse(readFileSync(join(root, 'src/messages/en.json'), 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  const ar = JSON.parse(readFileSync(join(root, 'src/messages/ar.json'), 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  for (const key of [
+    'renewalMutationsUnavailable',
+    'renewalMutationsUnavailableDescription',
+    'renewalSummaryFiltered',
+    'renewalSummaryVisible',
+    'renewalSummaryMissingDates',
+    'renewalSummaryExact',
+    'renewalSummaryCurrentPage',
+    'renewalSummaryUnavailable',
+    'renewalValueUnavailable',
+    'renewalFilters',
+    'renewalSearch',
+    'renewalUrgency',
+    'renewalDateState',
+    'renewalAllDateStates',
+    'renewalRecordedDates',
+    'renewalMissingDates',
+    'renewalMissingDate',
+    'renewalNoResults',
+    'renewalNoResultsHint',
+    'renewalQueue',
+    'renewalTimeline',
+    'renewalPageSummary',
+    'renewalPaginationLabel',
+    'renewalPreviousPage',
+    'renewalNextPage',
+    'renewalPartial',
+    'renewalUnavailable',
+    'renewalRetry',
+  ]) {
+    assert.equal(typeof en.pro[key], 'string', `missing en ${key}`);
+    assert.equal(typeof ar.pro[key], 'string', `missing ar ${key}`);
+  }
+});

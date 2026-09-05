@@ -68,6 +68,7 @@ function ownedVersion(overrides: Record<string, unknown> = {}) {
       request_id: REQUEST,
       current_version_id: VERSION,
       company: { id: CLIENT, tenant_id: TENANT },
+      request: { id: REQUEST, tenant_id: TENANT, company_id: CLIENT },
     },
     ...overrides,
   };
@@ -183,16 +184,16 @@ test('uploadDocument returns SCANNER_UNAVAILABLE when provider fails closed', as
 
 test('getDocumentSignedUrl rejects invalid UUIDs and a missing version before signing', async () => {
   const calls = captureFetch(() => json(null));
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
   await assert.rejects(
-    () => getDocumentSignedUrl('not-a-uuid', VERSION),
+    () => getDocumentSignedUrl('not-a-uuid', CLIENT, VERSION),
     (err) => err instanceof ApiError && err.code === 'VALIDATION_FAILED',
   );
   assert.equal(calls.length, 0);
 
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
   );
   assert.equal(calls.length, 1);
@@ -204,10 +205,10 @@ test('getDocumentSignedUrl rejects invalid UUIDs and a missing version before si
 
 test('getDocumentSignedUrl pins the version FK and exact inner company ownership relation', async () => {
   const calls = captureFetch(() => json(null));
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
   );
 
@@ -218,15 +219,19 @@ test('getDocumentSignedUrl pins the version FK and exact inner company ownership
     select,
     /company:company_profiles!documents_company_tenant_fk!inner\(id,\s*tenant_id\)/u,
   );
+  assert.match(
+    select,
+    /request:document_requests!documents_request_id_fkey\(id,\s*tenant_id,\s*company_id\)/u,
+  );
 });
 
 test('getDocumentSignedUrl validates TTL before any database or storage I/O', async () => {
   const calls = captureFetch(() => json(null));
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
   for (const ttl of [-1, 0, 301, Number.POSITIVE_INFINITY, Number.NaN, 1.5]) {
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, VERSION, ttl),
+      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION, ttl),
       (err) => err instanceof ApiError && err.code === 'VALIDATION_FAILED',
     );
   }
@@ -252,15 +257,21 @@ test('getDocumentSignedUrl requires the full tenant-company-document-version own
         company: { id: CLIENT, tenant_id: foreignTenant },
       },
     }),
+    ownedVersion({
+      document: {
+        ...ownedVersion().document,
+        request: { id: REQUEST, tenant_id: TENANT, company_id: foreignTenant },
+      },
+    }),
   ];
   let index = 0;
   const calls = captureFetch(() => json(mismatches[index++]));
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
   for (const mismatch of mismatches) {
     void mismatch;
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, VERSION),
+      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
       (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
     );
   }
@@ -272,14 +283,41 @@ test('getDocumentSignedUrl requires the full tenant-company-document-version own
   );
 });
 
+test('getDocumentSignedUrl rejects a same-tenant version owned by another company before signing', async () => {
+  const foreignCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch(() =>
+    json(
+      ownedVersion({
+        document: {
+          ...ownedVersion().document,
+          company_id: foreignCompany,
+          company: { id: foreignCompany, tenant_id: TENANT },
+          request: { id: REQUEST, tenant_id: TENANT, company_id: foreignCompany },
+        },
+      }),
+    ),
+  );
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
+
+  await assert.rejects(
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
+    false,
+  );
+});
+
 test('getDocumentSignedUrl rejects a tampered storage prefix and signs only the stored path with TTL', async () => {
   const tamperedCalls = captureFetch(() =>
     json(ownedVersion({ storage_path: `${TENANT}/99999999-9999-4999-8999-999999999999/file.pdf` })),
   );
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION, 91),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION, 91),
     (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
   );
   assert.equal(tamperedCalls.length, 1);
@@ -295,7 +333,7 @@ test('getDocumentSignedUrl rejects a tampered storage prefix and signs only the 
     return json({ message: 'unexpected request' }, 500);
   });
   const before = Date.now();
-  const result = await getDocumentSignedUrl(TENANT, VERSION, 91);
+  const result = await getDocumentSignedUrl(TENANT, CLIENT, VERSION, 91);
 
   assert.deepEqual(Object.keys(result).sort(), ['expiresAt', 'url']);
   assert.equal(result.url, 'https://test.supabase.co/storage/v1/object/sign/private?token=test');
@@ -326,12 +364,12 @@ test('getDocumentSignedUrl rejects traversal, encoded separators, and malformed 
   ];
   let index = 0;
   const calls = captureFetch(() => json(ownedVersion({ storage_path: badPaths[index++] })));
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
   for (const badPath of badPaths) {
     void badPath;
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, VERSION),
+      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
       (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
     );
   }
@@ -351,9 +389,9 @@ test('getDocumentSignedUrl signs a contained legacy generated storage key', asyn
     }
     return json({ signedURL: '/object/sign/private?token=legacy' });
   });
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
-  const result = await getDocumentSignedUrl(TENANT, VERSION);
+  const result = await getDocumentSignedUrl(TENANT, CLIENT, VERSION);
 
   assert.match(result.url, /token=legacy/u);
   const signCall = calls.find((call) => call.url.includes('/storage/v1/object/sign/'));
@@ -367,9 +405,14 @@ test('getDocumentSignedUrl normalizes uppercase UUIDs before query, ownership ch
     if (call.url.includes('/rest/v1/document_versions')) return json(ownedVersion());
     return json({ signedURL: '/object/sign/private?token=normalized' });
   });
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
 
-  const result = await getDocumentSignedUrl(TENANT.toUpperCase(), VERSION.toUpperCase(), 45);
+  const result = await getDocumentSignedUrl(
+    TENANT.toUpperCase(),
+    CLIENT.toUpperCase(),
+    VERSION.toUpperCase(),
+    45,
+  );
 
   assert.match(result.url, /token=normalized/u);
   assert.equal(new URL(calls[0].url).searchParams.get('id'), `eq.${VERSION}`);
@@ -380,10 +423,10 @@ test('getDocumentSignedUrl normalizes uppercase UUIDs before query, ownership ch
 });
 
 test('getDocumentSignedUrl sanitizes database and storage failures', async () => {
-  const { getDocumentSignedUrl } = await load();
+  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
   captureFetch(() => json({ code: 'XX000', message: 'secret database detail' }, 500));
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) =>
       err instanceof ApiError &&
       err.code === 'INTERNAL' &&
@@ -396,7 +439,7 @@ test('getDocumentSignedUrl sanitizes database and storage failures', async () =>
       : json({ message: 'secret storage detail' }, 500),
   );
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, VERSION),
+    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
     (err) =>
       err instanceof ApiError &&
       err.code === 'STORAGE_SIGN_FAILED' &&
@@ -411,23 +454,27 @@ test('setDocumentReview validates role, UUID, and required rejection note before
   await assert.rejects(
     () =>
       setDocumentReview(
+        CLIENT,
         VERSION,
         { ...reviewCtx(), role: 'customer' as never },
         { status: 'approved' },
       ),
     (err) => err instanceof ApiError && err.code === 'FORBIDDEN',
   );
-  await assert.rejects(() => setDocumentReview('bad-id', reviewCtx(), { status: 'approved' }));
+  await assert.rejects(() =>
+    setDocumentReview(CLIENT, 'bad-id', reviewCtx(), { status: 'approved' }),
+  );
   for (const note of ['   ', '\u00a0', '\ufeff', '\u00a0\ufeff']) {
     await assert.rejects(() =>
-      setDocumentReview(VERSION, reviewCtx(), { status: 'rejected', note }),
+      setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'rejected', note }),
     );
   }
   assert.equal(calls.length, 0);
 });
 
-test('setDocumentReview uses one exact atomic RPC and emits auth telemetry only after success', async () => {
+test('setDocumentReview verifies assigned-company ownership before its atomic RPC and telemetry', async () => {
   const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/document_versions?')) return json(ownedVersion());
     if (call.url.endsWith('/rest/v1/rpc/review_document_version')) {
       return json({
         document_id: DOCUMENT,
@@ -441,28 +488,29 @@ test('setDocumentReview uses one exact atomic RPC and emits auth telemetry only 
   });
   const { setDocumentReview } = await load();
 
-  const result = await setDocumentReview(VERSION, reviewCtx(), {
+  const result = await setDocumentReview(CLIENT, VERSION, reviewCtx(), {
     status: 'approved',
     note: ' looks good ',
   });
 
   assert.deepEqual(result, { companyId: CLIENT });
 
-  assert.equal(calls.length, 2);
-  assert.match(calls[0].url, /\/rest\/v1\/rpc\/review_document_version$/u);
-  assert.deepEqual(calls[0].body, {
+  assert.equal(calls.length, 3);
+  assert.match(calls[0].url, /\/rest\/v1\/document_versions\?/u);
+  assert.match(calls[1].url, /\/rest\/v1\/rpc\/review_document_version$/u);
+  assert.deepEqual(calls[1].body, {
     p_tenant_id: TENANT,
     p_actor_id: ACTOR,
     p_version_id: VERSION,
     p_status: 'approved',
     p_note: 'looks good',
-    p_reviewed_at: (calls[0].body as Record<string, unknown>).p_reviewed_at,
+    p_reviewed_at: (calls[1].body as Record<string, unknown>).p_reviewed_at,
   });
   assert.equal(
-    Number.isNaN(Date.parse((calls[0].body as Record<string, string>).p_reviewed_at)),
+    Number.isNaN(Date.parse((calls[1].body as Record<string, string>).p_reviewed_at)),
     false,
   );
-  assert.match(calls[1].url, /\/rest\/v1\/auth_events$/u);
+  assert.match(calls[2].url, /\/rest\/v1\/auth_events$/u);
   assert.equal(
     calls.some((call) => call.url.includes('/tenant_audit_log')),
     false,
@@ -475,14 +523,12 @@ test('setDocumentReview uses one exact atomic RPC and emits auth telemetry only 
     calls.some((call) => call.url.includes('/rest/v1/document_requests')),
     false,
   );
-  assert.equal(
-    calls.some((call) => call.url.includes('/rest/v1/document_versions?')),
-    false,
-  );
+  assert.match(calls[0].url, new RegExp(`tenant_id=eq\\.${TENANT}`, 'u'));
 });
 
 test('setDocumentReview supports rejection through the RPC without fulfilling a request', async () => {
   const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/document_versions?')) return json(ownedVersion());
     if (call.url.endsWith('/rest/v1/rpc/review_document_version')) {
       return json({
         document_id: DOCUMENT,
@@ -495,10 +541,13 @@ test('setDocumentReview supports rejection through the RPC without fulfilling a 
   });
   const { setDocumentReview } = await load();
 
-  await setDocumentReview(VERSION, reviewCtx(), { status: 'rejected', note: 'Unreadable' });
+  await setDocumentReview(CLIENT, VERSION, reviewCtx(), {
+    status: 'rejected',
+    note: 'Unreadable',
+  });
 
-  assert.equal((calls[0].body as Record<string, unknown>).p_status, 'rejected');
-  assert.equal((calls[0].body as Record<string, unknown>).p_note, 'Unreadable');
+  assert.equal((calls[1].body as Record<string, unknown>).p_status, 'rejected');
+  assert.equal((calls[1].body as Record<string, unknown>).p_note, 'Unreadable');
   assert.equal(
     calls.some((call) => call.url.includes('/document_requests')),
     false,
@@ -507,6 +556,7 @@ test('setDocumentReview supports rejection through the RPC without fulfilling a 
 
 test('setDocumentReview normalizes uppercase UUIDs in the RPC and success telemetry', async () => {
   const calls = captureFetch((call) => {
+    if (call.url.includes('/rest/v1/document_versions?')) return json(ownedVersion());
     if (call.url.endsWith('/rest/v1/rpc/review_document_version')) {
       return json({
         document_id: DOCUMENT,
@@ -520,6 +570,7 @@ test('setDocumentReview normalizes uppercase UUIDs in the RPC and success teleme
   const { setDocumentReview } = await load();
 
   await setDocumentReview(
+    CLIENT,
     VERSION.toUpperCase(),
     {
       ...reviewCtx(),
@@ -531,15 +582,15 @@ test('setDocumentReview normalizes uppercase UUIDs in the RPC and success teleme
 
   assert.deepEqual(
     {
-      p_tenant_id: (calls[0].body as Record<string, unknown>).p_tenant_id,
-      p_actor_id: (calls[0].body as Record<string, unknown>).p_actor_id,
-      p_version_id: (calls[0].body as Record<string, unknown>).p_version_id,
+      p_tenant_id: (calls[1].body as Record<string, unknown>).p_tenant_id,
+      p_actor_id: (calls[1].body as Record<string, unknown>).p_actor_id,
+      p_version_id: (calls[1].body as Record<string, unknown>).p_version_id,
     },
     { p_tenant_id: TENANT, p_actor_id: ACTOR, p_version_id: VERSION },
   );
-  assert.equal((calls[1].body as Record<string, unknown>).actor_user_id, ACTOR);
-  assert.equal((calls[1].body as Record<string, unknown>).tenant_id, TENANT);
-  assert.deepEqual((calls[1].body as Record<string, unknown>).details, {
+  assert.equal((calls[2].body as Record<string, unknown>).actor_user_id, ACTOR);
+  assert.equal((calls[2].body as Record<string, unknown>).tenant_id, TENANT);
+  assert.deepEqual((calls[2].body as Record<string, unknown>).details, {
     entity: 'document',
     op: 'review',
     version_id: VERSION,
@@ -653,16 +704,20 @@ test('setDocumentReview maps controlled and zero-row RPC failures without teleme
   const { setDocumentReview } = await load();
 
   for (const scenario of scenarios) {
-    const calls = captureFetch(() => scenario.response.clone());
+    const calls = captureFetch((call) =>
+      call.url.includes('/rest/v1/document_versions?')
+        ? json(ownedVersion())
+        : scenario.response.clone(),
+    );
     await assert.rejects(
-      () => setDocumentReview(VERSION, reviewCtx(), { status: 'approved' }),
+      () => setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'approved' }),
       (err) =>
         err instanceof ApiError &&
         err.code === scenario.code &&
         err.status === scenario.status &&
         !err.message.includes('internal detail'),
     );
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     assert.equal(
       calls.some((call) => call.url.includes('/auth_events')),
       false,
@@ -672,4 +727,47 @@ test('setDocumentReview maps controlled and zero-row RPC failures without teleme
       false,
     );
   }
+});
+
+test('setDocumentReview rejects a same-tenant foreign Company before the review RPC', async () => {
+  const foreignCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch(() =>
+    json(
+      ownedVersion({
+        document: {
+          ...ownedVersion().document,
+          company_id: foreignCompany,
+          company: { id: foreignCompany, tenant_id: TENANT },
+          request: { id: REQUEST, tenant_id: TENANT, company_id: foreignCompany },
+        },
+      }),
+    ),
+  );
+  const { setDocumentReview } = await load();
+
+  await assert.rejects(
+    () => setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'approved' }),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls.some((call) => call.url.includes('/rpc/review_document_version')),
+    false,
+  );
+});
+
+test('setDocumentReview sanitizes assigned-company ownership read failures', async () => {
+  const calls = captureFetch(() =>
+    json({ code: 'XX000', message: 'private ownership detail' }, 500),
+  );
+  const { setDocumentReview } = await load();
+
+  await assert.rejects(
+    () => setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'approved' }),
+    (error) =>
+      error instanceof ApiError &&
+      error.code === 'INTERNAL' &&
+      !error.message.includes('private ownership detail'),
+  );
+  assert.equal(calls.length, 1);
 });

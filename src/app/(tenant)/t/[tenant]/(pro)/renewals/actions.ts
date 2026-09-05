@@ -3,6 +3,7 @@
 import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { ApiError } from '@/lib/errors';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   cancelRenewal,
@@ -19,10 +20,17 @@ export type ActionResult<T = void> =
   | { ok: true; data: T }
   | { ok: false; error: string; code: string };
 
+function revalidateRenewalRoutes(slug: string) {
+  revalidatePath(`/t/${slug}/renewals`);
+  revalidatePath(`/t/${slug}/company`);
+  revalidatePath(`/t/${slug}/dashboard`);
+}
+
 async function resolveAndAuthorize(
   slug: string,
 ): Promise<{ ctx: RenewalActorCtx; tenantId: string }> {
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) {
     throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
@@ -39,7 +47,16 @@ async function resolveAndAuthorize(
 }
 
 function toResult(e: unknown, fallback: string): ActionResult<never> {
-  if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+  if (e instanceof ApiError) {
+    if (e.code === 'INTERNAL') console.error(fallback, e);
+    const messages: Record<string, string> = {
+      FORBIDDEN: 'This renewal is outside your assigned Company.',
+      NOT_FOUND: 'The renewal is no longer available.',
+      RENEWAL_DUPLICATE: 'A matching renewal already exists.',
+      TENANT_INACTIVE: 'Renewal changes are unavailable while the workspace is inactive.',
+    };
+    return { ok: false, error: messages[e.code] ?? fallback, code: e.code };
+  }
   console.error(fallback, e);
   return { ok: false, error: fallback, code: 'INTERNAL' };
 }
@@ -55,8 +72,7 @@ export async function createRenewalAction(
     }
     const { ctx } = await resolveAndAuthorize(slug);
     const { id } = await createRenewal(ctx, { ...parsed.data, company_id: ctx.companyId });
-    revalidatePath(`/t/${slug}/renewals`);
-    revalidatePath(`/t/${slug}/company`);
+    revalidateRenewalRoutes(slug);
     return { ok: true, data: { id } };
   } catch (e) {
     return toResult(e, 'Could not create renewal');
@@ -75,7 +91,7 @@ export async function updateRenewalAction(
     }
     const { ctx } = await resolveAndAuthorize(slug);
     await updateRenewal(renewalId, ctx, parsed.data);
-    revalidatePath(`/t/${slug}/renewals`);
+    revalidateRenewalRoutes(slug);
     return { ok: true, data: undefined };
   } catch (e) {
     return toResult(e, 'Could not update renewal');
@@ -89,7 +105,7 @@ export async function completeRenewalAction(
   try {
     const { ctx } = await resolveAndAuthorize(slug);
     await markRenewalCompleted(renewalId, ctx);
-    revalidatePath(`/t/${slug}/renewals`);
+    revalidateRenewalRoutes(slug);
     return { ok: true, data: undefined };
   } catch (e) {
     return toResult(e, 'Could not mark renewal completed');
@@ -121,7 +137,7 @@ export async function cancelRenewalAction(
       };
     }
     await cancelRenewal(renewalId, ctx);
-    revalidatePath(`/t/${slug}/renewals`);
+    revalidateRenewalRoutes(slug);
     return { ok: true, data: undefined };
   } catch (e) {
     return toResult(e, 'Could not cancel renewal');

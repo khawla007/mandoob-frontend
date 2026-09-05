@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { Ban, CheckCircle2, Play, RotateCw } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
 import { BulkImportAutoRefresh } from '@/components/pro/BulkImportAutoRefresh';
+import { BulkImportJobActions } from '@/components/pro/BulkImportJobActions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
   safeImportErrorCode,
@@ -28,6 +30,7 @@ import { countDistinctImportErrorRows } from '@/lib/validation/bulk-import';
 import {
   cancelBulkImportAction,
   executeBulkImportAction,
+  type ActionResult,
   validateBulkImportAction,
 } from '../actions';
 
@@ -59,6 +62,7 @@ export default async function BulkImportJobPage({
 }) {
   const { tenant: slug, jobId } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
@@ -91,25 +95,41 @@ export default async function BulkImportJobPage({
     code: t(`errorCodeLabels.${safeImportErrorCode(error.code)}`),
   }));
 
-  async function validate() {
+  async function validate(_previous: ActionResult<unknown> | null, _formData: FormData) {
     'use server';
-    await validateBulkImportAction(slug, jobId);
+    void _previous;
+    void _formData;
+    return validateBulkImportAction(slug, jobId);
   }
 
-  async function execute(formData: FormData) {
+  async function execute(_previous: ActionResult<unknown> | null, formData: FormData) {
     'use server';
-    await executeBulkImportAction(slug, jobId, {
+    return executeBulkImportAction(slug, jobId, {
       skipExisting: formData.get('skip_existing') !== null,
     });
   }
 
-  async function cancel() {
+  async function cancel(_previous: ActionResult<unknown> | null, _formData: FormData) {
     'use server';
-    await cancelBulkImportAction(slug, jobId);
+    void _previous;
+    void _formData;
+    return cancelBulkImportAction(slug, jobId);
   }
 
   const processed = numberFormatter.format(job.processed_rows ?? 0);
   const errorCount = numberFormatter.format(job.error_rows ?? 0);
+  const stateMessage =
+    job.status === 'completed'
+      ? job.error_rows
+        ? t('state.partial')
+        : t('state.success')
+      : job.status === 'failed'
+        ? t('state.failure')
+        : job.status === 'cancelled'
+          ? t('state.cancel')
+          : job.status === 'validating' || job.status === 'importing'
+            ? t('state.parsing')
+            : t('state.pending');
 
   return (
     <div className="space-y-6">
@@ -143,45 +163,38 @@ export default async function BulkImportJobPage({
                 })
               : t('progressNoTotal', { processed, errors: errorCount })}
           </CardDescription>
+          <CardDescription>{stateMessage}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            {job.status === 'uploaded' ? (
-              <form action={validate}>
-                <Button type="submit">
-                  <CheckCircle2 className="me-2 size-4" aria-hidden />
-                  {t('validate')}
-                </Button>
-              </form>
-            ) : null}
-            {job.status === 'validated' ? (
-              <form action={execute} className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <input name="skip_existing" type="checkbox" defaultChecked className="size-4" />
-                  <span>{t('skipExisting')}</span>
-                </label>
-                <Button type="submit">
-                  <Play className="me-2 size-4" aria-hidden />
-                  {t('confirm')}
-                </Button>
-              </form>
-            ) : null}
-            {isImportJobCancellable(job.status) ? (
-              <form action={cancel}>
-                <Button type="submit" variant="outline">
-                  <Ban className="me-2 size-4" aria-hidden />
-                  {t('cancel')}
-                </Button>
-              </form>
-            ) : null}
+            <BulkImportJobActions
+              status={safeImportJobStatus(job.status)}
+              canCancel={isImportJobCancellable(job.status)}
+              validateAction={validate}
+              executeAction={execute}
+              cancelAction={cancel}
+              labels={{
+                validate: t('validate'),
+                skipExisting: t('skipExisting'),
+                confirm: t('confirm'),
+                cancel: t('cancel'),
+                cancelTitle: t('cancelTitle'),
+                cancelPrompt: t('cancelPrompt', {
+                  date: dateFormatter.format(new Date(job.created_at)),
+                }),
+                keep: t('keep'),
+                confirmCancel: t('confirmCancel'),
+                cannotCancel: t('cannotCancel'),
+                pending: t('pending'),
+                success: t('actionSuccess'),
+                error: t('actionError'),
+              }}
+            />
             {busy ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <RotateCw className="size-4 animate-spin" aria-hidden />
                 {t('refreshing')}
               </div>
-            ) : null}
-            {job.status === 'importing' ? (
-              <p className="text-muted-foreground text-sm">{t('cannotCancel')}</p>
             ) : null}
           </div>
         </CardContent>
@@ -231,6 +244,7 @@ export default async function BulkImportJobPage({
               />
             </div>
           ) : null}
+          <p className="text-muted-foreground mt-4 text-sm">{t('errorsDownloadUnavailable')}</p>
         </CardContent>
       </Card>
     </div>

@@ -28,12 +28,23 @@ const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), '
 test('dashboard shell exposes one top-level main landmark', () => {
   assert.match(layout, /<SidebarInset>[\s\S]*<div id="main-content"/);
   assert.doesNotMatch(layout, /<SidebarInset>[\s\S]*<main/);
+  assert.match(layout, /<DashboardSkipLink \/>/u);
 });
 
 test('dashboard shell exposes nav-kind hooks for PRO-only Signal Studio styling', () => {
   assert.match(layout, /className="dashboard-surface"/u);
   assert.match(layout, /<SidebarProvider[\s\S]{0,180}data-nav-kind=\{navKind\}/);
   assert.match(sidebar, /<Sidebar[^>]*data-nav-kind=\{navKind\}/);
+});
+
+test('all four role rails share near-black Signal shell geometry and warm canvases', () => {
+  assert.match(styles, /\.dashboard-surface,[\s\S]{0,500}--signal-canvas:\s*#f5f2ee/u);
+  assert.match(styles, /\.dark \.dashboard-surface,[\s\S]{0,500}--signal-canvas:\s*#141312/u);
+  assert.match(
+    styles,
+    /\[data-nav-kind\] \[data-slot='sidebar-inner'\][\s\S]{0,180}background:\s*#121110/u,
+  );
+  assert.match(styles, /\.dashboard-main[\s\S]{0,100}max-width:\s*96rem/u);
 });
 
 test('PRO shell expands to the Design B rail and collapses to its icon width', () => {
@@ -121,6 +132,23 @@ test('dashboard uses application fonts and lifecycle semantic surfaces in both t
 
 test('collapsed dashboard submenu applies inert alongside aria-hidden', () => {
   assert.match(sidebar, /aria-hidden=\{!open\}[\s\S]{0,80}inert=\{!open\}/u);
+});
+
+test('every active navigation link exposes aria-current page', () => {
+  assert.match(
+    sidebar,
+    /<Link href=\{item\.href\} aria-current=\{active \? 'page' : undefined\}>/u,
+  );
+  assert.match(sidebar, /aria-current=\{activeHref === child\.href \? 'page' : undefined\}/u);
+});
+
+test('topbar uses safe typed breadcrumbs and complete truthful utilities', () => {
+  assert.match(topbar, /buildShellBreadcrumbs/u);
+  assert.doesNotMatch(topbar, /pathname[\s\S]{0,120}split\('\/'\)/u);
+  assert.match(topbar, /<DashboardCommand/u);
+  assert.match(topbar, /<DashboardNotifications/u);
+  assert.match(topbar, /<DashboardAccountMenu/u);
+  assert.doesNotMatch(topbar, /<LogoutButton/u);
 });
 
 renderTest('collapsed dashboard submenus remove their links from keyboard focus', async () => {

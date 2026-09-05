@@ -107,6 +107,7 @@ export async function getTenantMrrRows(): Promise<TenantMrrRow[]> {
     .select(
       'tenant_id, plan, status, current_period_end, unit_amount_minor, interval, tenants(name)',
     )
+    .eq('status', 'active')
     .order('unit_amount_minor', { ascending: false })
     .limit(200);
 

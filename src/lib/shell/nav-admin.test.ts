@@ -18,7 +18,16 @@ function groupHrefs(labelKey: string) {
 
 describe('adminNav', () => {
   it('uses the approved CMS section order', () => {
-    const groupKeys = ['catalog', 'editorial', 'business', 'tenants', 'authSecurity', 'account'];
+    const groupKeys = [
+      'catalog',
+      'editorial',
+      'business',
+      'operations',
+      'platform',
+      'tenants',
+      'authSecurity',
+      'account',
+    ];
     const positions = groupKeys.map((key) => source.indexOf(`labelKey: '${key}'`));
 
     assert.ok(source.indexOf("labelKey: 'overview'") < positions[0]);
@@ -26,6 +35,24 @@ describe('adminNav', () => {
       positions,
       [...positions].sort((a, b) => a - b),
     );
+  });
+
+  it('exposes only the P2.04-owned oversight routes under Operations', () => {
+    assert.deepEqual(groupHrefs('operations'), [
+      '/admin/documents',
+      '/admin/employees',
+      '/admin/renewals',
+    ]);
+  });
+
+  it('exposes only the P2.04-owned platform design routes under Platform', () => {
+    assert.deepEqual(groupHrefs('platform'), [
+      '/admin/reports',
+      '/admin/compliance',
+      '/admin/system-status',
+      '/admin/questionnaire',
+      '/admin/plans',
+    ]);
   });
 
   it('keeps catalog, business, and authentication routes in their own sections', () => {

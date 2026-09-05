@@ -36,7 +36,6 @@ test('PRO navigation removes client directory, import, and team routes', () => {
     '/t/acme/dashboard',
     '/t/acme/company',
     '/t/acme/applications',
-    '/t/acme/leads',
     '/t/acme/meetings',
     '/t/acme/renewals',
     '/t/acme/documents',
@@ -44,6 +43,11 @@ test('PRO navigation removes client directory, import, and team routes', () => {
     '/t/acme/employees',
     '/t/acme/settings',
   ]);
+});
+
+test('PRO navigation excludes the Super Admin-owned Leads pipeline', () => {
+  const hrefs = hrefsFor('acme');
+  assert.doesNotMatch(hrefs.join('\n'), /\/leads(?:$|\?)/u);
 });
 
 test('PRO dashboard navigation is localized as Command Center', () => {

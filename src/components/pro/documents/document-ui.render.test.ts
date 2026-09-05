@@ -40,6 +40,9 @@ renderTest('loading skeleton renders localized busy semantics and stable geometr
   assert.match(html, /جارٍ تحميل المستندات/u);
   assert.equal((html.match(/document-center__skeleton-summary/gu) ?? []).length, 6);
   assert.equal((html.match(/document-center__skeleton-table-row/gu) ?? []).length, 5);
+  assert.match(html, /document-center__skeleton-company-context/u);
+  assert.match(html, /document-center__skeleton-actions/u);
+  assert.equal((html.match(/document-center__skeleton-action h-/gu) ?? []).length, 2);
   assert.match(html, /document-center__skeleton-filter/u);
   assert.match(html, /document-center__skeleton-table-head/u);
 });
@@ -123,7 +126,6 @@ renderTest(
       query: parseDocumentCenterSearch({
         q: 'stale',
         view: 'submitted',
-        company: '11111111-1111-4111-8111-111111111111',
         type: 'passport',
         window: 'custom',
         from: '2026-08-01',
@@ -261,7 +263,6 @@ const filterLabels: DocumentFilterLabels = {
   search: 'Search',
   searchPlaceholder: 'Find',
   view: 'View',
-  company: 'Company',
   type: 'Type',
   window: 'Window',
   from: 'From',

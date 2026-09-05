@@ -325,6 +325,7 @@ export async function updateRenewal(
   await logRenewalAudit(ctx.tenantId, ctx.actorId, 'updated', {
     op: 'update',
     renewal_id: id,
+    company_id: ctx.companyId,
     fields: Object.keys(patch),
     source: existing.source,
   });
@@ -366,6 +367,7 @@ export async function markRenewalCompleted(id: string, ctx: RenewalActorCtx): Pr
   await logRenewalAudit(ctx.tenantId, ctx.actorId, 'completed', {
     op: 'complete',
     renewal_id: id,
+    company_id: ctx.companyId,
     source: existing.source,
   });
 }
@@ -399,6 +401,7 @@ export async function cancelRenewal(id: string, ctx: RenewalActorCtx): Promise<v
   await logRenewalAudit(ctx.tenantId, ctx.actorId, 'cancelled', {
     op: 'cancel',
     renewal_id: id,
+    company_id: ctx.companyId,
     source: existing.source,
   });
 }

@@ -3,10 +3,12 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { runAuthorizedMutation } from '@/lib/auth/authorized-mutation';
 import { resolveImportCompany } from '@/lib/data/import-company-access';
+import { finalizeBulkImportSuccess } from '@/lib/data/import-audit';
+import { uploadAndCreateBulkImportJob } from '@/lib/data/import-upload';
 import {
   createSupabaseBulkImportStore,
   executeBulkImportRows,
@@ -33,17 +35,20 @@ export type ActionResult<T = void> =
 
 const IMPORT_LIMIT = { capacity: 5, refillPerSec: 5 / 3600 };
 const BUCKET = 'tenant-imports';
+const MAX_CSV_BYTES = 1_000_000;
+const ACCEPTED_CSV_TYPES = new Set(['', 'text/csv', 'application/csv']);
 
 async function requireTenantContext(tenantSlug: string) {
-  return await requireProTenantRouteAccess(tenantSlug);
+  const context = await requireProTenantRouteAccess(tenantSlug);
+  await requireActiveTenant(context.tenant.id);
+  return context;
 }
 
 export async function uploadBulkImportAction(
   tenantSlug: string,
   formData: FormData,
-): Promise<ActionResult<{ id: string }> | never> {
+): Promise<ActionResult<{ id: string }>> {
   const { session, tenant } = await requireTenantContext(tenantSlug);
-  let redirectTo: string | null = null;
   try {
     const ok = await consumeRateLimit({ key: `bulk_import:${tenant.id}`, ...IMPORT_LIMIT });
     if (!ok)
@@ -53,8 +58,14 @@ export async function uploadBulkImportAction(
     if (!(file instanceof File) || file.size === 0) {
       return { ok: false, error: 'Choose a CSV file to import', code: 'VALIDATION_FAILED' };
     }
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    if (
+      !file.name.toLowerCase().endsWith('.csv') ||
+      !ACCEPTED_CSV_TYPES.has(file.type.toLowerCase())
+    ) {
       return { ok: false, error: 'CSV files only for this import', code: 'VALIDATION_FAILED' };
+    }
+    if (file.size > MAX_CSV_BYTES) {
+      return { ok: false, error: 'CSV file is too large', code: 'VALIDATION_FAILED' };
     }
 
     const company = await resolveImportCompany(session.id, tenant.id, tenantSlug);
@@ -66,30 +77,35 @@ export async function uploadBulkImportAction(
     const storagePath = `${tenant.id}/${jobId}.csv`;
     const admin = createSupabaseServiceRoleClient();
     const bytes = Buffer.from(await file.arrayBuffer());
-    const upload = await admin.storage.from(BUCKET).upload(storagePath, bytes, {
-      contentType: 'text/csv',
-      upsert: false,
+    const artifact = await uploadAndCreateBulkImportJob({
+      storagePath,
+      upload: () =>
+        admin.storage.from(BUCKET).upload(storagePath, bytes, {
+          contentType: 'text/csv',
+          upsert: false,
+        }),
+      createJob: () =>
+        admin.from('bulk_import_jobs').insert({
+          id: jobId,
+          tenant_id: tenant.id,
+          created_by: session.id,
+          kind: 'employees',
+          company_id: company.id,
+          storage_path: storagePath,
+          status: 'uploaded',
+        }),
+      remove: (paths) => admin.storage.from(BUCKET).remove(paths),
+      logCleanupFailure: () => console.error('bulk-import.cleanup failed'),
     });
-    if (upload.error) {
+    if (artifact === 'upload_failed') {
       console.error('bulk-import.upload failed');
       return { ok: false, error: 'Could not upload CSV', code: 'INTERNAL' };
     }
-
-    const { error } = await admin.from('bulk_import_jobs').insert({
-      id: jobId,
-      tenant_id: tenant.id,
-      created_by: session.id,
-      kind: 'employees',
-      company_id: company.id,
-      storage_path: storagePath,
-      status: 'uploaded',
-    });
-    if (error) {
+    if (artifact === 'job_insert_failed') {
       console.error('bulk-import.job-insert failed');
       return { ok: false, error: 'Could not create import job', code: 'INTERNAL' };
     }
-
-    redirectTo = `/t/${tenantSlug}/imports/${jobId}`;
+    return { ok: true, data: { id: jobId } };
   } catch (error) {
     if (error instanceof Error && ['TENANT_NOT_FOUND', 'FORBIDDEN'].includes(error.message)) {
       return { ok: false, error: 'Tenant access denied', code: error.message };
@@ -97,7 +113,6 @@ export async function uploadBulkImportAction(
     console.error('bulk-import.upload unexpected');
     return { ok: false, error: 'Could not start import', code: 'INTERNAL' };
   }
-  redirect(redirectTo);
 }
 
 export async function validateBulkImportAction(
@@ -146,7 +161,6 @@ export async function validateBulkImportAction(
         },
         'validating',
       );
-
       revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
       return { ok: true, data: { totalRows: result.totalRows, errorRows: invalidRows } };
     },
@@ -224,28 +238,31 @@ export async function executeBulkImportAction(
         },
         'importing',
       );
-      await admin.from('tenant_audit_log').insert({
-        tenant_id: tenant.id,
-        actor_id: session.id,
-        action: 'bulk_imported',
-        source: 'self_serve',
-        details: {
-          kind: job.kind,
-          total: validation.totalRows,
-          succeeded: result.insertedRows,
-          skipped: result.skippedRows,
-          failed: countDistinctImportErrorRows(
-            allErrors.filter((rowError) => rowError.code !== 'DUPLICATE_SKIPPED'),
-          ),
+      const success = await finalizeBulkImportSuccess(
+        { ok: true as const, data: { processedRows: result.processedRows, errorRows } },
+        {
+          tenantId: tenant.id,
+          actorId: session.id,
+          companyId: company.id,
+          details: {
+            kind: job.kind,
+            total: validation.totalRows,
+            succeeded: result.insertedRows,
+            skipped: result.skippedRows,
+            failed: countDistinctImportErrorRows(
+              allErrors.filter((rowError) => rowError.code !== 'DUPLICATE_SKIPPED'),
+            ),
+          },
+          write: async (record) => {
+            const { error } = await admin.from('tenant_audit_log').insert(record);
+            if (error) throw error;
+          },
         },
-      });
+      );
 
       revalidatePath(`/t/${tenantSlug}/imports/${jobId}`);
       revalidatePath(`/t/${tenantSlug}/employees`);
-      return {
-        ok: true,
-        data: { processedRows: result.processedRows, errorRows },
-      };
+      return success;
     },
     compensate: async ({ tenant }, error) => {
       if (shouldCompensateImportFailure(error)) {
@@ -307,7 +324,7 @@ async function readJob(
 ) {
   const { data, error } = await admin
     .from('bulk_import_jobs')
-    .select('*')
+    .select('id, kind, status, company_id, storage_path, errors')
     .eq('tenant_id', tenantId)
     .eq('company_id', companyId)
     .eq('id', jobId)

@@ -131,5 +131,15 @@ test('production panel queries scope lists and exact focus lookups without clien
     /focusedRequestId[\s\S]*?\.eq\('tenant_id', tenantId\)[\s\S]*?\.eq\('company_id', companyId\)[\s\S]*?\.eq\('id', focusedRequestId\)/,
   );
   assert.match(source, /\.contains\('details', \{ company_id: companyId \}\)/);
+  const activityQuery = source.slice(source.indexOf('async function loadCompanyActivity'));
+  const allowlistAt = activityQuery.indexOf(".in('action', COMPANY_ACTIVITY_ACTIONS)");
+  const limitAt = activityQuery.indexOf('.limit(PANEL_LIMIT)');
+  assert.ok(allowlistAt >= 0 && allowlistAt < limitAt);
+  assert.match(source, /'invoice_created'/);
+  assert.match(source, /'service_case_updated'/);
+  assert.doesNotMatch(
+    source.slice(source.indexOf('const COMPANY_ACTIVITY_ACTIONS'), source.indexOf('] as const')),
+    /lead_|erasure_|session_|company_pro_|meeting_|whatsapp_|comms_/,
+  );
   assert.doesNotMatch(source, /client[_]id/);
 });

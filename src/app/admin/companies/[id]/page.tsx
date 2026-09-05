@@ -110,6 +110,60 @@ export default async function CompanyDetailPage({
         </div>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('detail.stateDefinitions.title')}</CardTitle>
+          <CardDescription>{t('detail.stateDefinitions.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div>
+              <dt className="text-muted-foreground text-xs">
+                {t('detail.stateDefinitions.legal')}
+              </dt>
+              <dd className="mt-1 font-medium">
+                {tOnboarding('overview.progress', {
+                  complete: Object.values(onboarding.sectionProgress).filter(
+                    ({ status }) => status === 'complete',
+                  ).length,
+                  total: Object.keys(onboarding.sectionProgress).length,
+                })}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">
+                {t('detail.stateDefinitions.activation')}
+              </dt>
+              <dd className="mt-1 font-medium">
+                {tOnboarding(`status.${onboarding.onboardingStatus}`)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">
+                {t('detail.stateDefinitions.registration')}
+              </dt>
+              <dd className="mt-1 font-medium">
+                {t('detail.stateDefinitions.registrationUnavailable')}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">
+                {t('detail.stateDefinitions.lifecycle')}
+              </dt>
+              <dd className="mt-1 font-medium">{t(`status.${company.companyStatus}`)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">
+                {t('detail.stateDefinitions.assignment')}
+              </dt>
+              <dd className="mt-1 font-medium">
+                {currentAssignment?.proFullName ?? t('table.unassigned')}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(19rem,0.8fr)]">
         <div className="min-w-0 space-y-6">
           <Card>

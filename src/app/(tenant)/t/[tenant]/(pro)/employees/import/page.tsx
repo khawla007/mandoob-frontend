@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { EmployeeImportForm } from '@/components/pro/EmployeeImportForm';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { uploadBulkImportAction } from '../../imports/actions';
 
@@ -18,14 +17,18 @@ export default async function EmployeeImportPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const { session } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
-  if (!company) notFound();
+  if (!company || company.tenantId !== tenant.id) notFound();
   const t = await getTranslations('pro.employeeImport');
 
-  async function upload(formData: FormData) {
+  async function upload(
+    _previous: Awaited<ReturnType<typeof uploadBulkImportAction>> | null,
+    formData: FormData,
+  ) {
     'use server';
-    await uploadBulkImportAction(slug, formData);
+    return uploadBulkImportAction(slug, formData);
   }
 
   return (
@@ -49,21 +52,21 @@ export default async function EmployeeImportPage({
           <CardDescription>{t('cardDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={upload} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="file">{t('file')}</Label>
-              <Input id="file" name="file" type="file" accept=".csv" required />
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" className="min-h-11 sm:min-h-9">
-                <Upload className="size-4" aria-hidden="true" />
-                {t('upload')}
-              </Button>
-              <Button variant="outline" asChild className="min-h-11 sm:min-h-9">
-                <Link href="/templates/employees-import-template.csv">{t('template')}</Link>
-              </Button>
-            </div>
-          </form>
+          <EmployeeImportForm
+            action={upload}
+            jobPath={`/t/${encodeURIComponent(slug)}/imports`}
+            labels={{
+              file: t('file'),
+              guidance: t('guidance'),
+              upload: t('upload'),
+              pending: t('pending'),
+              resultReady: t('resultReady'),
+              resultError: t('resultError'),
+            }}
+          />
+          <Button variant="outline" asChild className="mt-3 min-h-11 sm:min-h-9">
+            <Link href="/templates/employees-import-template.csv">{t('template')}</Link>
+          </Button>
         </CardContent>
       </Card>
     </main>

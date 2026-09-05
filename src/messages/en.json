@@ -257,7 +257,8 @@
     "heading": {
       "eyebrow": "PRO document operations",
       "title": "Document Center",
-      "subtitle": "Manage {tenant} documents, requests, reviews, and deadlines across {count, plural, one {# record} other {# records}}."
+      "subtitle": "Manage {tenant} documents, requests, reviews, and deadlines across {count, plural, one {# record} other {# records}}.",
+      "companyContext": "Assigned company: {company}"
     },
     "summary": {
       "awaitingUpload": {
@@ -384,6 +385,10 @@
       "success": "The document request was sent.",
       "error": "The request could not be sent. Review the fields and try again."
     },
+    "batch": {
+      "title": "Batch request unavailable",
+      "description": "Batch document requests are planned for Phase 3 and cannot be sent yet."
+    },
     "review": {
       "approve": "Approve",
       "reject": "Reject",
@@ -498,6 +503,7 @@
       "tenantInactive": "This company workspace is inactive. Contact an administrator before continuing.",
       "expiryExternallyManaged": "Update this expiry from its source record.",
       "openFailed": "The secure file link could not be created. Try again.",
+      "phase3Unavailable": "This action is unavailable until its company-scoped Phase 3 workflow is released.",
       "unexpected": "The action could not be completed safely. Try again."
     },
     "units": {
@@ -568,6 +574,16 @@
     "auth": "Auth",
     "authSecurity": "Auth & Security",
     "business": "Business",
+    "operations": "Operations",
+    "documentReview": "Document review",
+    "employeeOversight": "Employee oversight",
+    "renewalsCompliance": "Renewals & compliance",
+    "platform": "Platform",
+    "reports": "Reports",
+    "compliance": "Compliance",
+    "systemStatus": "System status",
+    "questionnaireBuilder": "Questionnaire builder",
+    "plans": "Plans & allowances",
     "users": "Users",
     "sessions": "Sessions",
     "mfaAndSecurity": "MFA & Security",
@@ -590,9 +606,28 @@
     "whatsappTemplates": "WhatsApp templates",
     "costData": "Cost data",
     "payments": "Payments",
+    "companyPortal": "Company portal",
+    "profile": "Profile",
+    "security": "Security",
+    "privacy": "Privacy and data erasure",
+    "terms": "Terms",
+    "navigation": "Navigation",
+    "findPage": "Find a page",
+    "findPageDescription": "Search the pages available in this workspace.",
+    "findPagePlaceholder": "Type a page name…",
+    "noPagesFound": "No available pages found.",
+    "notificationsUnavailable": "Notifications unavailable",
+    "accountMenu": "Account menu",
     "skipToContent": "Skip to content",
     "toggleSidebar": "Toggle sidebar",
     "breadcrumb": "Breadcrumb"
+  },
+  "dashboardStates": {
+    "loading": "Loading workspace",
+    "errorTitle": "This page could not be loaded",
+    "errorDescription": "Try loading this page again. No sensitive error details are shown here.",
+    "retry": "Try again",
+    "safeHome": "Return to a safe page"
   },
   "auth": {
     "email": "Email",
@@ -936,6 +971,19 @@
         "activity": "Activity"
       },
       "overviewDescription": "Verified legal and operational details for this company.",
+      "profile": {
+        "unavailableTitle": "Legal profile unavailable",
+        "unavailableDescription": "The legal profile could not be loaded. Documents, renewals, payments, and activity remain independently available.",
+        "legalCompleteness": "Legal-profile completeness",
+        "activationReadiness": "Activation readiness",
+        "activationUnavailable": "Activation readiness is temporarily unavailable.",
+        "activationReady": "Ready for activation",
+        "primaryActivity": "Primary",
+        "additionalActivity": "Additional",
+        "openSection": "Open setup section",
+        "address": "Office address",
+        "currency": "Account currency"
+      },
       "fields": {
         "companyName": "Company name",
         "status": "Status",
@@ -1052,6 +1100,71 @@
         }
       }
     },
+    "employeeRegistry": {
+      "eyebrow": "Company workforce",
+      "title": "Employees",
+      "description": "Read-only employee status and visa or Emirates ID expiry signals for your assigned company.",
+      "import": "Import CSV",
+      "notRecorded": "Not recorded",
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Name or email",
+        "status": "Employment status",
+        "risk": "Renewal risk",
+        "apply": "Apply",
+        "reset": "Reset",
+        "all": "All",
+        "any": "Any expiry state",
+        "visa": "Visa expiry",
+        "eid": "Emirates ID expiry",
+        "recordedExpiry": "Expiry recorded",
+        "missingExpiry": "Expiry not recorded"
+      },
+      "status": { "active": "Active", "inactive": "Inactive", "terminated": "Terminated" },
+      "identity": {
+        "missing": "Expiry not recorded",
+        "expired": "Expired",
+        "attention": "Due within 90 days",
+        "current": "Current",
+        "unavailableWithoutMaskedContract": "Identifier unavailable: no accepted masked/display contract exists."
+      },
+      "risk": { "attention": "Needs attention", "clear": "Clear", "unknown": "Not assessed" },
+      "signals": {
+        "total": "Matching employees",
+        "visible": "Visible on this page",
+        "page": "Page",
+        "unavailableValue": "Unavailable"
+      },
+      "table": {
+        "title": "Employee registry",
+        "description": "{count} exact matching employees.",
+        "label": "Employee registry",
+        "employee": "Employee",
+        "visa": "Visa expiry",
+        "eid": "Emirates ID expiry",
+        "risk": "Renewal risk",
+        "provenance": "Import provenance",
+        "phase3Unavailable": "Phase 3 unavailable",
+        "phase3Note": "Import provenance and document actions are unavailable until Phase 3.",
+        "identifierSurfaceUnavailable": "Visa and Emirates ID identifiers are unavailable because no accepted masked/display contract exists."
+      },
+      "pagination": {
+        "label": "Employee registry pages",
+        "previous": "Previous",
+        "next": "Next",
+        "pageCount": "Page {current} of {total}"
+      },
+      "states": {
+        "empty": "No employees are recorded for this assigned company.",
+        "emptyGuidance": "Import a CSV only when you have an approved employee source file.",
+        "emptyFiltered": "No employees match these filters.",
+        "emptyFilteredGuidance": "Reset or change the filters to view the registry.",
+        "unavailable": "Employee registry unavailable",
+        "partial": "The company total is temporarily unavailable. Matching employee rows remain available.",
+        "sanitizedError": "Please retry. No employee details are shown in this message.",
+        "retry": "Retry"
+      }
+    },
     "employeeImport": {
       "eyebrow": "Employee records",
       "title": "Import employees",
@@ -1061,7 +1174,11 @@
       "cardDescription": "Existing passport numbers for your assigned company are skipped by default.",
       "file": "CSV file",
       "upload": "Upload CSV",
-      "template": "Download template"
+      "template": "Download template",
+      "guidance": "CSV only. The upload is checked before validation; XLSX is not accepted.",
+      "pending": "Uploading CSV…",
+      "resultReady": "Upload ready. Opening the import job…",
+      "resultError": "The import could not be started."
     },
     "importJob": {
       "title": "Import job",
@@ -1084,8 +1201,24 @@
       "skipExisting": "Skip existing records",
       "confirm": "Confirm import",
       "cancel": "Cancel",
+      "cancelTitle": "Cancel import job",
+      "cancelPrompt": "Cancel the employee CSV import created {date}? This import job will move to its terminal cancelled state.",
+      "keep": "Keep import job",
+      "confirmCancel": "Confirm cancellation",
       "refreshing": "Refreshing every 3 seconds",
       "cannotCancel": "Import execution cannot be cancelled after it starts.",
+      "pending": "Working…",
+      "actionSuccess": "Import job updated.",
+      "actionError": "The import action could not be completed.",
+      "retry": "Retry",
+      "state": {
+        "pending": "Waiting for the next import step.",
+        "parsing": "The CSV is being processed.",
+        "partial": "Import completed with rows needing attention.",
+        "success": "Import completed.",
+        "failure": "Import failed safely.",
+        "cancel": "Import was cancelled."
+      },
       "errorsTitle": "Row errors",
       "errorsDescription": "Validation failures, skipped duplicates, and partial insert errors.",
       "noErrors": "No row errors reported.",
@@ -1096,6 +1229,7 @@
         "code": "Code"
       },
       "errorsCsv": "Errors CSV",
+      "errorsDownloadUnavailable": "A protected error-file download is not available for this job.",
       "emptyValue": "Not available",
       "fields": {
         "name": "Name",
@@ -1128,6 +1262,83 @@
       "csvHeader": "Row,Field,Message,Code"
     },
     "settings": {
+      "eyebrow": "Workspace controls",
+      "title": "Settings",
+      "description": "Verified workspace configuration for your assigned company.",
+      "sourceUnavailable": "This source is temporarily unavailable. Other settings remain available.",
+      "loadFailed": "Settings could not be loaded",
+      "retry": "Retry",
+      "loading": {
+        "settings": "Loading settings",
+        "billing": "Loading billing"
+      },
+      "actionErrors": {
+        "validation": "Check the entered details and try again.",
+        "unavailable": "This setting is temporarily unavailable. No changes were saved.",
+        "forbidden": "You no longer have access to this workspace.",
+        "saveFailed": "Could not save this setting.",
+        "credentialRequired": "Enter a credential before saving this configuration."
+      },
+      "context": {
+        "title": "Verified context",
+        "assignmentActive": "Live assignment",
+        "company": "Company: {company}",
+        "workspace": "PRO workspace: {workspace}"
+      },
+      "providerStatus": {
+        "not_configured": "Not configured",
+        "configured": "Configured",
+        "enabled": "Enabled",
+        "misconfigured": "Configuration needs attention",
+        "unavailable": "Provider state unavailable"
+      },
+      "billing": {
+        "eyebrow": "Billing",
+        "title": "Billing settings",
+        "description": "Current subscription information for this verified workspace.",
+        "currentSubscription": "Current subscription",
+        "readOnlyDescription": "Subscription changes are unavailable until the Phase 3 catalog and provider contracts are verified.",
+        "providerUnavailable": "Subscription information is temporarily unavailable.",
+        "noSubscription": "No current subscription is recorded.",
+        "plan": "Plan",
+        "plans": {
+          "starter": "Starter",
+          "professional": "Professional",
+          "enterprise": "Enterprise",
+          "unknown": "Unavailable"
+        },
+        "status": "Status",
+        "amount": "Amount",
+        "intervals": {
+          "month": "Monthly",
+          "year": "Yearly",
+          "unknown": "Unavailable"
+        },
+        "periodEnd": "Current period ends",
+        "cancellation": "Cancellation",
+        "notAvailable": "Not available",
+        "cancellationStates": {
+          "cancelled": "Cancelled",
+          "scheduled": "Cancellation scheduled at period end",
+          "not_scheduled": "Not scheduled"
+        },
+        "planSelectionUnavailable": "Plan selection unavailable — Phase 3 contract required",
+        "changePlan": "Change plan",
+        "manageBilling": "Manage billing",
+        "cancelSubscription": "Cancel subscription",
+        "statuses": {
+          "active": "Active",
+          "trialing": "Trialing",
+          "past_due": "Past due",
+          "incomplete": "Incomplete",
+          "incomplete_expired": "Incomplete expired",
+          "paused": "Paused",
+          "unpaid": "Unpaid",
+          "canceled": "Cancelled",
+          "cancelled": "Cancelled",
+          "unknown": "Status unavailable"
+        }
+      },
       "saving": "Saving…",
       "saved": "Saved",
       "couldNotSave": "Could not save",
@@ -1170,9 +1381,6 @@
         "title": "WhatsApp",
         "description": "Meta Cloud API credentials for company workspace messaging.",
         "savedDescription": "WhatsApp config updated.",
-        "statusConnected": "Connected",
-        "statusDisabled": "Disabled",
-        "statusNotConfigured": "Not configured",
         "phoneNumberId": "Phone number ID",
         "businessAccountId": "Business account ID",
         "accessToken": "Access token",
@@ -1183,6 +1391,7 @@
       "whiteLabel": {
         "title": "White-label setup",
         "description": "Subdomain, brand, sender, and comms readiness.",
+        "openWorkspace": "Open verified workspace",
         "ready": "{complete}/{total} ready",
         "items": {
           "branding": "Branding",
@@ -1226,27 +1435,20 @@
       },
       "signalStudio": {
         "title": "Command Center",
-        "subtitle": "{tenant} · live operational signals and next actions.",
+        "subtitle": "Assigned-Company status, obligations, and next actions.",
+        "companyFallback": "Assigned Company",
+        "companyUnavailable": "Company profile and readiness are temporarily unavailable. Independent operational panels remain available.",
         "masthead": "DXB / OPERATIONS SIGNAL",
-        "live": "LIVE",
+        "generatedAt": "Generated {date}",
         "eyebrow": "TODAY’S OPERATING PICTURE",
-        "headline": "Everything moving, at a glance.",
-        "prioritySignals": "Priority signals",
-        "operationsScore": "Operations score",
-        "openActionDeck": "Open action deck",
-        "assignWork": "Assign work",
-        "activeCompany": "Assigned company",
-        "openCases": "Open cases",
-        "renewalsDue": "Renewals due",
-        "collections": "Collections",
+        "headline": "{company}, at a glance.",
+        "priorityActions": "Priority actions",
         "caseVelocity": "Case velocity",
         "opened": "Opened",
         "completed": "Completed",
         "deadlineIntensity": "Deadline intensity",
         "collectionsWaterfall": "Collections waterfall",
         "renewalStreams": "Renewal streams",
-        "teamSignal": "Workload signal",
-        "actionDeck": "Action deck",
         "empty": "No signals need attention right now.",
         "loading": "Loading dashboard signal…",
         "retry": "Retry",
@@ -1256,28 +1458,47 @@
         "rangeLabel": "Dashboard date range",
         "daySuffix": "d",
         "date": "Date",
-        "hero": {
-          "actionSummary": "operational signals need attention now.",
-          "scoreAria": "Operations score {score} out of 100. Open score details.",
-          "scoreDetails": "Score inputs",
-          "openScoreDetails": "View score inputs",
-          "dialogTitle": "Operations score: {score}",
-          "dialogDescription": "A transparent view of the five inputs used to calculate operational health.",
-          "higherHealthier": "Higher is healthier",
-          "lowerHealthier": "Lower is healthier",
-          "velocity": "Live velocity",
-          "velocityAria": "Over {days} days, {opened} cases opened and {completed} completed.",
-          "overdueRatio": "Overdue case ratio",
-          "slaCompletionRate": "Completed within SLA",
-          "blockedRatio": "Cases blocked past threshold",
-          "reminderRate": "Renewal reminders sent on time",
-          "workloadBalance": "Workload balance"
+        "companyCommand": {
+          "assignedCompany": "Assigned Company",
+          "lifecycle": "Lifecycle",
+          "jurisdiction": "Jurisdiction",
+          "licenceExpiry": "Licence expiry",
+          "licenceMissing": "Not recorded",
+          "legalProfile": "Legal profile",
+          "profileSections": "{complete} of {total} legal sections complete",
+          "activationReadiness": "Activation readiness",
+          "ready": "Ready for activation",
+          "blockers": "Action required",
+          "registration": "Authority registration",
+          "registrationUnavailable": "Detailed progress unavailable — P2.09/Phase 3 contract required",
+          "openCompany": "Open assigned Company",
+          "lifecycleValues": {
+            "onboarding": "Onboarding",
+            "active": "Active",
+            "renewal_due": "Renewal due",
+            "renewal_overdue": "Renewal overdue",
+            "suspended": "Suspended",
+            "churned": "Churned"
+          },
+          "onboardingValues": {
+            "not_started": "Not started",
+            "in_progress": "In progress",
+            "ready_for_activation": "Ready for activation",
+            "completed": "Legal profile complete"
+          }
         },
-        "kpis": {
-          "activeCompanyHelper": "Current assignment state",
-          "openCasesHelper": "{moving} moving · {blocked} blocked",
-          "renewalsHelper": "{count} due within 7 days",
-          "collectionsHelper": "{rate}% of billed value collected"
+        "summary": {
+          "readiness": "Company readiness",
+          "ready": "Ready",
+          "actionRequired": "Action required",
+          "registration": "Registration state",
+          "unavailable": "Unavailable",
+          "documents": "Pending documents",
+          "priorityActions": "Priority actions",
+          "renewals": "Renewals due",
+          "renewalsPeriod": "Within 30 Dubai days",
+          "invoices": "Open invoices",
+          "outstanding": "Open and overdue value"
         },
         "caseVelocityLabels": {
           "empty": "No case activity in this period yet.",
@@ -1303,8 +1524,7 @@
           "empty": "No urgent cases or deadlines need action.",
           "reviewApplications": "Review applications",
           "description": "Highest-priority work ranked by deadline and blockage.",
-          "actionAria": "Open {title} for {company}. Owner: {owner}. Urgency: {urgency}. {countdown}. {absoluteDeadline}.",
-          "unassigned": "Unassigned",
+          "actionAria": "Open {title} for {company}. Urgency: {urgency}. {countdown}. {absoluteDeadline}.",
           "noDeadline": "No deadline",
           "absoluteDeadline": "Dubai deadline: {deadline}",
           "countdown": {
@@ -1350,15 +1570,41 @@
             "ejari": "Tenancy and lease documents"
           }
         },
-        "teamLabels": {
-          "empty": "No active assigned-company workload is available.",
-          "openApplications": "Open applications",
-          "description": "Open workload and remaining capacity in the assigned company.",
-          "unassignedCases": "Unassigned cases",
-          "activeCases": "{count} active cases",
-          "capacity": "Capacity for {name}",
-          "capacityValue": "{percent}% capacity"
+        "pendingDocuments": {
+          "title": "Pending documents",
+          "description": "Highest-priority assigned-Company document work.",
+          "empty": "No assigned-Company document work needs attention.",
+          "openDocuments": "Open documents",
+          "states": {
+            "awaitingUpload": "Awaiting upload",
+            "reviewPending": "Submitted · review pending",
+            "actionRequired": "Rejected · action required"
+          }
         },
+        "registration": {
+          "title": "Registration context",
+          "description": "Authority-stage history and evidence",
+          "stages": [
+            "Application Submitted",
+            "Initial Approval",
+            "Name Reservation",
+            "License Issuance",
+            "Visa Processing",
+            "Bank Account",
+            "Completed"
+          ]
+        },
+        "registrationUnavailable": "Detailed progress unavailable — P2.09/Phase 3 contract required",
+        "activity": {
+          "title": "Recent Company activity",
+          "description": "Authorized immutable operational history"
+        },
+        "activityUnavailable": "Recent activity unavailable — P2.10/Phase 3 contract required",
+        "notifications": {
+          "title": "Notifications",
+          "description": "Availability without unread or delivery claims"
+        },
+        "notificationsUnavailable": "Notifications unavailable — P2.10/Phase 3 contract required",
         "errors": {
           "identity": "Company information is temporarily unavailable.",
           "links": "Dashboard links are temporarily unavailable.",
@@ -1369,13 +1615,8 @@
         },
         "filters": {
           "toggle": "Filters",
-          "owner": "Case owner",
-          "allOwners": "All owners",
           "serviceType": "Service type",
           "allServices": "All services",
-          "branch": "Branch",
-          "allBranches": "All branches",
-          "branchUnavailable": "Branch filtering is unavailable because this workspace has no branch field.",
           "invalidNotice": "One or more filters were not available in this workspace and were ignored.",
           "pendingNotice": "Filters are preserved, but could not be verified while application data is unavailable.",
           "apply": "Apply filters"
@@ -1393,9 +1634,85 @@
     "dashboardSignalsSubtitle": "{tenant} · assigned company workspace signals.",
     "dashboardRecentLoginsDescription": "Latest authentication events for {tenant}.",
     "renewalsPageSubtitle": "License, visa, Emirates ID, and Ejari renewals across {tenant}.",
-    "renewalsEmptyActive": "No active renewals. Create one or wait for a license_expiry to seed an auto-row.",
+    "renewalsEmptyActive": "No active renewals.",
     "renewalsEmptyCompleted": "No completed renewals yet.",
     "renewalsEmptyCancelled": "No cancelled renewals.",
+    "renewalMutationsUnavailable": "Renewal changes are unavailable",
+    "renewalMutationsUnavailableDescription": "Creating, editing, completing, cancelling, costs, batch work, escalations, and reminder delivery are unavailable until the Phase 3/P2.10 contract provides active-workspace, atomic audit, and concurrency safeguards. A reminder schedule does not confirm delivery.",
+    "renewalSummaryFiltered": "Filtered renewals",
+    "renewalSummaryVisible": "Visible on this page",
+    "renewalSummaryOverdue": "Overdue on this page",
+    "renewalSummaryMissingDates": "Missing due dates on this page",
+    "renewalSummaryExact": "Exact filtered count",
+    "renewalSummaryCurrentPage": "Current page only",
+    "renewalSummaryUnavailable": "Count unavailable",
+    "renewalValueUnavailable": "Unavailable",
+    "renewalQueue": "Renewal queue",
+    "renewalTimeline": "Due-date list",
+    "renewalFilters": "Filter the assigned company renewal queue.",
+    "renewalType": "Type",
+    "renewalAllTypes": "All types",
+    "renewalStatus": "Status",
+    "renewalAllStatuses": "All active statuses",
+    "renewalStatusActiveOnly": "Status filtering is available on the active tab only.",
+    "renewalUrgency": "Due window",
+    "renewalUrgencyAll": "All due windows",
+    "renewalUrgencyOverdue": "Overdue",
+    "renewalUrgencyToday": "Due today",
+    "renewalUrgency7": "Due in 7 days",
+    "renewalUrgency30": "Due in 30 days",
+    "renewalUrgency60": "Due in 60 days",
+    "renewalUrgency90": "Due in 90 days",
+    "renewalUrgencyFuture": "Future (over 90 days)",
+    "renewalDateState": "Due-date state",
+    "renewalAllDateStates": "All due-date states",
+    "renewalRecordedDates": "Due date recorded",
+    "renewalMissingDates": "Due date missing",
+    "renewalSearch": "Search label",
+    "renewalApplyFilters": "Apply filters",
+    "renewalResetFilters": "Reset filters",
+    "renewalLabel": "Renewal",
+    "renewalDue": "Due date",
+    "renewalMissingDate": "Due date missing",
+    "renewalSource": "Source",
+    "renewalSourceManual": "Manual",
+    "renewalSourceAuto": "License backfill",
+    "renewalActionsUnavailable": "Actions unavailable",
+    "renewalDays": "days",
+    "renewalTypeLicense": "License",
+    "renewalTypeVisa": "Visa",
+    "renewalTypeEid": "Emirates ID",
+    "renewalTypeEjari": "Ejari",
+    "renewalStatusUpcoming": "Upcoming",
+    "renewalStatusDueSoon": "Due soon",
+    "renewalStatusOverdue": "Overdue",
+    "renewalStatusCompleted": "Completed",
+    "renewalStatusCancelled": "Cancelled",
+    "renewalActions": "Renewal actions",
+    "renewalEdit": "Edit renewal",
+    "renewalEditDescription": "Update the label, due date, or status. Reminder scheduling is recalculated when the due date changes.",
+    "renewalEditAutoDescription": "This licence renewal is synchronized from the assigned Company profile. Status changes are available; changing the licence expiry belongs in Company setup.",
+    "renewalAutoLockedHint": "Update the assigned Company licence expiry to reactivate this synchronized renewal.",
+    "renewalMarkCompleted": "Mark completed",
+    "renewalCancel": "Cancel renewal",
+    "renewalCancelPrompt": "Cancel this renewal? This changes its operational status.",
+    "renewalKeep": "Keep renewal",
+    "renewalConfirmCancel": "Confirm cancellation",
+    "renewalCompletedConfirmation": "Renewal marked completed.",
+    "renewalCancelledConfirmation": "Renewal cancelled.",
+    "renewalActionFailed": "The renewal change could not be completed.",
+    "renewalNoResults": "No renewals match these filters.",
+    "renewalNoResultsHint": "Reset filters to view the assigned company queue.",
+    "renewalEmptyHint": "No renewal records are available for the assigned company.",
+    "renewalPartial": "Some renewal context is unavailable.",
+    "renewalPartialDescription": "The queue is shown, but the overall company total could not be verified.",
+    "renewalUnavailable": "Renewal workspace unavailable",
+    "renewalUnavailableDescription": "We could not load renewal data safely. Try again.",
+    "renewalRetry": "Try again",
+    "renewalPageSummary": "Showing {from}–{to} of {total}",
+    "renewalPaginationLabel": "Renewal pages",
+    "renewalPreviousPage": "Previous",
+    "renewalNextPage": "Next",
     "paymentsPageSubtitle": "Issue invoices, track pending payments, and manage receipts.",
     "paymentAnalytics": "Analytics",
     "paymentViewAll": "All",
@@ -1411,13 +1728,126 @@
     "paymentPrevious": "Previous",
     "paymentNext": "Next",
     "paymentPageSummary": "{page} / {pages}",
+    "paymentBack": "Back to payments",
+    "paymentAnalyticsTitle": "Payment analytics",
+    "paymentAnalyticsSubtitle": "Assigned-company collections, receivables, and payment operations.",
+    "paymentCollectedRevenue": "Net collected this month",
+    "paymentOutstandingReceivables": "Outstanding receivables",
+    "paymentOpenInvoices": "Open invoices",
+    "paymentOverdueInvoices": "Overdue invoices",
+    "paymentCollectionRate": "Collection rate",
+    "paymentCollectionUnavailable": "Collection data is unavailable.",
+    "paymentPaymentActivityUnavailable": "Payment activity data is unavailable.",
+    "paymentDateUnavailable": "Unavailable",
+    "paymentValueUnavailable": "Unavailable",
+    "paymentMixedCurrencyNotice": "Values in {currencies} are excluded to avoid mixing currencies.",
+    "paymentInvoiceStatus": "Invoice status",
+    "paymentMethods": "Payment methods",
+    "paymentAttempts": "Recent failed and abandoned attempts",
+    "paymentAnalyticsEmpty": "No supported finance activity is available yet.",
+    "paymentAttemptsEmpty": "No failed or abandoned payment attempts are recorded.",
+    "paymentStatus": "Status",
+    "paymentCount": "Count",
+    "paymentAmount": "Amount",
+    "paymentMethod": "Method",
+    "paymentInvoice": "Invoice",
+    "paymentAttempted": "Attempted",
+    "paymentDetailsUnavailable": "This payment detail is unavailable.",
+    "paymentInvoiceDetails": "Invoice details",
+    "paymentInvoiceId": "Invoice ID",
+    "paymentCompany": "Company",
+    "paymentDueDate": "Due date",
+    "paymentPaidAt": "Paid at",
+    "paymentLinkedEntity": "Linked entity",
+    "paymentReceipt": "Receipt",
+    "paymentAttemptsTitle": "Payment attempts",
+    "paymentAttemptsNone": "No payment attempts recorded.",
+    "paymentReconciliation": "Reconciliation",
+    "paymentRefunds": "Refunds",
+    "paymentRefundsNone": "No refunds recorded.",
+    "paymentReason": "Reason",
+    "paymentCreated": "Created",
+    "paymentAudit": "Recent audit",
+    "paymentAuditNone": "No audit entries found.",
+    "paymentActions": "Actions",
+    "paymentDue": "Due",
+    "paymentMarkPaid": "Mark paid",
+    "paymentVoid": "Void",
+    "paymentRefund": "Refund",
+    "paymentRetryRefund": "Retry pending refund",
+    "paymentRefundReason": "Refund reason",
+    "paymentVoidNote": "Void note",
+    "paymentConfirmVoid": "Void invoice?",
+    "paymentConfirmRefund": "Confirm refund?",
+    "paymentConfirmVoidDescription": "Void invoice {invoice} for {amount}?",
+    "paymentConfirmRefundDescription": "Refund {amount} for invoice {invoice}? Remaining refundable amount: {remaining}.",
+    "paymentCloseDialog": "Close dialog",
+    "paymentCancel": "Cancel",
+    "paymentStatusDraft": "Draft",
+    "paymentStatusOpen": "Open",
+    "paymentStatusPaid": "Paid",
+    "paymentStatusVoid": "Void",
+    "paymentStatusSucceeded": "Succeeded",
+    "paymentStatusFailed": "Failed",
+    "paymentStatusAbandoned": "Abandoned",
+    "paymentStatusInitiated": "Initiated",
+    "paymentStatusPending": "Pending",
+    "paymentStatusRefunded": "Refunded",
+    "paymentStatusPartiallyRefunded": "Partially refunded",
+    "paymentMethodCard": "Card",
+    "paymentMethodCash": "Cash",
+    "paymentMethodBankTransfer": "Bank transfer",
+    "paymentMethodMada": "mada",
+    "paymentMethodApplePay": "Apple Pay",
+    "paymentMethodUnavailable": "Unavailable",
+    "paymentProviderTap": "Tap",
+    "paymentProviderManual": "Manual",
+    "paymentProviderUnavailable": "Unavailable",
+    "paymentAuditInvoiceCreated": "Invoice created",
+    "paymentAuditInvoiceVoided": "Invoice voided",
+    "paymentAuditInvoicePaid": "Invoice marked paid",
+    "paymentAuditRefundRequested": "Refund requested",
+    "paymentAuditRefundSucceeded": "Refund completed",
+    "paymentProvider": "Provider",
+    "paymentContext": "Attempt context",
+    "paymentAttemptsuccess": "Successful",
+    "paymentAttemptfailure": "Failed",
+    "paymentAttemptpending": "Pending",
+    "paymentAttemptrefunded": "Refunded",
+    "paymentAging": "Receivables aging",
+    "paymentAgingEmpty": "No eligible open receivables to age.",
+    "paymentAgingOverdue": "Overdue",
+    "paymentAgingDueToday": "Due today",
+    "paymentAgingWithin7": "Due within 7 days",
+    "paymentAgingWithin30": "Due within 30 days",
+    "paymentAgingFuture": "Due in more than 30 days",
+    "paymentAgingMissing": "Due date missing",
+    "paymentReconciliationUnavailable": "Reconciliation analysis is unavailable until the Phase 3 verified reconciliation contract is available.",
+    "paymentUpdated": "Updated",
+    "paymentRefundPending": "Refund pending",
+    "paymentDefaultVoidReason": "Voided by PRO",
+    "paymentDefaultRefundReason": "Refund requested",
     "leads": "Leads",
-    "applicationsPageSubtitle": "Service applications across {tenant}. Showing {count}.",
+    "applicationsPageSubtitle": "Service cases for {company}. Showing {count}.",
+    "applicationMutationsUnavailable": "Case updates are unavailable",
+    "applicationMutationsUnavailableDescription": "Creating and changing service cases will be available in Phase 3 after live assignment and concurrency safeguards are in place.",
+    "applicationSummaryFiltered": "Filtered cases",
+    "applicationSummaryVisible": "Visible on this page",
+    "applicationSummaryOpen": "Open on this page",
+    "applicationSummaryBlocked": "Blocked on this page",
+    "applicationSummaryExact": "Exact filtered count",
+    "applicationSummaryCurrentPage": "Current page only",
     "createApplication": "Create application",
     "applicationPipeline": "Application pipeline",
-    "applicationFilters": "Filter by lifecycle status or owner.",
+    "applicationFilters": "Filter this company’s service cases by status, service, or deadline.",
     "filterApplications": "Filter",
     "allApplicationStatuses": "All statuses",
+    "applicationDeadlineDate": "Deadline date",
+    "applicationDeadlinePeriod": "Deadline period",
+    "allApplicationDeadlinePeriods": "All periods",
+    "applicationDeadlineMorning": "Morning",
+    "applicationDeadlineAfternoon": "Afternoon",
+    "resetApplicationFilters": "Reset filters",
     "allApplicationOwners": "All owners",
     "applicationCompany": "Company",
     "selectApplicationCompany": "Select a company",
@@ -1426,6 +1856,9 @@
     "applicationServiceType": "Service type",
     "applicationStatus": "Status",
     "applicationPriority": "Priority",
+    "applicationBlockers": "Blockers",
+    "applicationNoBlocker": "None",
+    "applicationUpdatedAt": "Updated",
     "applicationOwner": "Owner",
     "applicationUnassigned": "Unassigned",
     "applicationUnknownCompany": "Unknown company",
@@ -1446,9 +1879,12 @@
     "applicationAction": "Action",
     "completeApplication": "Complete",
     "cancelApplication": "Cancel",
+    "cancelApplicationConfirm": "Confirm cancellation",
     "noApplicationAction": "No action",
     "applicationsEmpty": "No applications yet.",
-    "applicationsEmptyHint": "Create the first application above to start tracking its service lifecycle.",
+    "applicationsEmptyHint": "No service cases have been recorded for this company.",
+    "applicationNoResults": "No service cases match these filters.",
+    "applicationNoResultsHint": "Reset the filters to see this company’s full queue.",
     "applicationStatuses": {
       "draft": "Draft",
       "documents_pending": "Documents pending",
@@ -1823,7 +2259,10 @@
     },
     "admin": {
       "title": "Lead pipeline",
-      "subtitle": "Questionnaire leads across every company workspace. Showing {total}."
+      "subtitle": "Questionnaire leads across every company workspace. Showing {total}.",
+      "funnelTitle": "Filtered funnel",
+      "funnelScope": "Counts reflect only the currently filtered Kanban result.",
+      "scoringExplanation": "Lead scores use disclosed questionnaire and estimate inputs. They prioritize review; they do not predict conversion or replace operator judgment."
     },
     "pro": {
       "title": "Leads",
@@ -1831,7 +2270,163 @@
     }
   },
   "admin": {
+    "management": {
+      "documents": {
+        "eyebrow": "Operations · Documents",
+        "title": "Document review oversight",
+        "description": "Review cross-company document work while preserving company-scoped access.",
+        "summaries": { "submitted": "Submitted", "review": "Under review", "rejected": "Rejected" },
+        "filters": { "company": "Company", "status": "Review status", "type": "Document type" },
+        "queueTitle": "Document review queue",
+        "queueDescription": "Company and employee context, deadlines, current versions and review decisions will appear in this primary queue.",
+        "guidance": "The accepted workflow states are requested, submitted, under review, approved and rejected. No backlog is inferred from company-scoped sources.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted cross-company current-version review read exists on this base.",
+        "action": "Review document",
+        "actionExplanation": "Unavailable — Phase 3 mutation and ownership contract required."
+      },
+      "employees": {
+        "eyebrow": "Operations · Employees",
+        "title": "Employee oversight",
+        "description": "Inspect authorized cross-company visa, Emirates ID and renewal risk without exposing full identifiers.",
+        "summaries": {
+          "visaRisk": "Visa attention",
+          "eidRisk": "Emirates ID attention",
+          "renewalRisk": "Renewal risk"
+        },
+        "filters": { "search": "Search employee", "company": "Company", "risk": "Renewal risk" },
+        "queueTitle": "Employee oversight queue",
+        "queueDescription": "Employee, Company, visa, Emirates ID and renewal state belong in this primary queue with identifiers masked.",
+        "guidance": "Full passport, visa and Emirates ID numbers must never appear in collection rows. Exact detail links require an authorized Admin read contract.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted cross-company employee oversight read exists on this base.",
+        "action": "Open employee record",
+        "actionExplanation": "Unavailable — Phase 3 authorization and detail contract required."
+      },
+      "renewals": {
+        "eyebrow": "Operations · Compliance",
+        "title": "Renewals and compliance oversight",
+        "description": "Prioritize renewal risk across Companies using explicit urgency windows and truthful action availability.",
+        "summaries": { "overdue": "Overdue", "week": "Due this week", "days90": "Next 90 days" },
+        "filters": { "entity": "Entity", "type": "Renewal type", "status": "Workflow status" },
+        "queueTitle": "Renewal risk queue",
+        "queueDescription": "Urgency, entity, type, status, escalation and timeline context will appear in this primary queue.",
+        "guidance": "Accepted urgency groups are overdue, this week, this month and next 90 days. No reminders, batches or fines are inferred.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "Existing renewal reads are assigned-Company scoped; no accepted platform-wide read exists.",
+        "action": "Start renewal batch",
+        "actionExplanation": "Unavailable — Phase 3 batch, escalation and audit contract required."
+      },
+      "reports": {
+        "eyebrow": "Platform · Reporting",
+        "title": "Report catalog",
+        "intro": "Define report scope, period, format and delivery without pretending exports are operational.",
+        "catalog": "Report catalog",
+        "scope": "Scope",
+        "period": "Reporting period",
+        "format": "File format",
+        "delivery": "Delivery state",
+        "unavailable": "Contract unavailable",
+        "description": "Registration, renewal, finance, audit and compliance reports will be selected from this catalog.",
+        "guidance": "Every export requires an authorized source, exact definition, deterministic period, generated state and sanitized failure outcome.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted platform report catalog or export job contract exists on this base.",
+        "export": "Generate export",
+        "actionExplanation": "Unavailable — Phase 3 report, export-job and delivery contract required."
+      },
+      "compliance": {
+        "eyebrow": "Platform · Governance",
+        "title": "Compliance overview",
+        "intro": "Review control and evidence design without inferring compliance from security fragments.",
+        "overview": "Compliance evidence workspace",
+        "controls": "Controls",
+        "evidence": "Evidence",
+        "retention": "Retention",
+        "erasure": "Privacy erasure",
+        "unavailable": "Source unavailable",
+        "description": "Control ownership, evidence freshness, retention and privacy outcomes belong in this workspace.",
+        "guidance": "Audit logs and erasure requests remain available in their authorized modules; they are not relabelled as a complete compliance score.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted compliance aggregate or evidence catalog exists on this base.",
+        "openEvidence": "Open evidence",
+        "actionExplanation": "Unavailable — Phase 3 compliance evidence contract required."
+      },
+      "systemStatus": {
+        "eyebrow": "Platform · Operations",
+        "title": "System status",
+        "intro": "Present source health only when a tested monitoring contract establishes its freshness.",
+        "status": "System source status",
+        "generated": "Generated context",
+        "monitoring": "Monitoring contract",
+        "source": "Source ownership",
+        "unavailable": "Not monitored on this base",
+        "description": "Application, database, storage and provider status will remain independently isolated here.",
+        "guidance": "This page is not realtime and does not claim uptime, provider health or incident state without an accepted monitor.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted system-health monitoring or incident source exists on this base.",
+        "refresh": "Refresh status",
+        "actionExplanation": "Unavailable — Phase 3 monitoring and freshness contract required."
+      },
+      "plans": {
+        "eyebrow": "Platform · Subscriptions",
+        "title": "Plans, allowances and add-ons",
+        "intro": "Design subscription management without exposing page-local prices or unsupported saves.",
+        "comparison": "Plan comparison",
+        "cadence": "Monthly and annual cadence",
+        "allowances": "Communication and storage allowances",
+        "addOns": "Usage add-ons",
+        "enforcement": "Entitlement enforcement",
+        "unavailable": "Authoritative value unavailable",
+        "description": "Plan identity, billing cadence, feature access, allowances, add-ons and lifecycle effects belong in this workspace.",
+        "guidance": "Plan tiers never permit a PRO to manage multiple Companies. Prices, currencies and limits require an accepted product contract.",
+        "unavailableTitle": "Unavailable — Phase 3 contract required",
+        "unavailableDescription": "No accepted Admin plan read/write or allowance-enforcement contract exists on this base.",
+        "save": "Save plan",
+        "actionExplanation": "Unavailable — Phase 3 subscription plan and entitlement mutation contract required."
+      },
+      "questionnaire": {
+        "eyebrow": "Platform · Intake",
+        "title": "Questionnaire builder",
+        "intro": "Design ordered questionnaire versions while keeping unsupported persistence and publishing explicit.",
+        "sections": "Ordered sections and version status",
+        "sectionsDescription": "Draft, published and archived versions will organize ordered sections and questions here.",
+        "questionEditor": "Question configuration",
+        "editorDescription": "Configure each field's content, validation, visibility and legal context without creating production records.",
+        "fields": {
+          "questionType": "Question type",
+          "label": "Label",
+          "help": "Help text",
+          "required": "Required flag",
+          "options": "Options",
+          "validation": "Validation",
+          "conditional": "Conditional visibility",
+          "consent": "Consent and legal context"
+        },
+        "states": {
+          "dirty": "Dirty",
+          "validating": "Validating",
+          "pending": "Pending",
+          "success": "Success",
+          "conflict": "Conflict",
+          "unavailable": "Unavailable",
+          "error": "Sanitized error"
+        },
+        "actions": {
+          "add": "Add",
+          "reorder": "Reorder",
+          "edit": "Edit",
+          "duplicate": "Duplicate",
+          "archive": "Archive",
+          "preview": "Preview",
+          "publish": "Publish"
+        },
+        "actionExplanation": "Unavailable — Phase 3 questionnaire version, persistence, preview and publish contracts required."
+      }
+    },
     "user": {
+      "modeNavigation": "User management modes",
+      "modeAllUsers": "All users",
+      "modeProRegistry": "PRO registry",
       "createTitle": "Create user",
       "createIntro": "Sends a Supabase invite email and creates the matching profile.",
       "editTitle": "Edit user",
@@ -1944,6 +2539,9 @@
         "next": "Next"
       },
       "proRegistry": {
+        "modeNavigation": "User management modes",
+        "modeAllUsers": "All users",
+        "modeProRegistry": "PRO registry",
         "title": "PRO lifecycle registry",
         "create": "Create PRO",
         "resultCount": "{count, plural, one {# PRO} other {# PROs}}",
@@ -2379,7 +2977,11 @@
         "eyebrow": "Company operations",
         "title": "Companies",
         "intro": "Manage legal company workspaces and their one-to-one PRO assignments. Showing {count}.",
-        "createButton": "Create company"
+        "createButton": "Create company",
+        "pageScope": "Current page · {count} visible companies",
+        "summaryAssigned": "Assigned on this page",
+        "summaryUnassigned": "Unassigned on this page",
+        "summaryLifecycleAttention": "Lifecycle attention on this page"
       },
       "directory": {
         "title": "Company directory",
@@ -2452,7 +3054,17 @@
         "slug": "Workspace slug",
         "tradeLicense": "Trade licence",
         "jurisdiction": "Jurisdiction",
-        "notProvided": "Not provided"
+        "notProvided": "Not provided",
+        "stateDefinitions": {
+          "title": "Distinct operating states",
+          "description": "These states come from separate sources and are not interchangeable.",
+          "legal": "Legal file completion",
+          "activation": "Workspace activation",
+          "registration": "Authority registration",
+          "registrationUnavailable": "Not connected to an authority source",
+          "lifecycle": "Company lifecycle",
+          "assignment": "PRO assignment"
+        }
       },
       "assignment": {
         "assignTitle": "Assign a PRO",
@@ -2604,7 +3216,144 @@
     "dashboard": {
       "title": "Overview",
       "intro": "Cross-workspace authentication and identity signals.",
-      "lastDaysLive": "Last 30 days · live"
+      "lastDaysLive": "Last 30 days · live",
+      "command": {
+        "eyebrow": "Platform operations / Dubai",
+        "title": "Super Admin command dashboard",
+        "description": "Portfolio movement, assignment health, and operational attention across Mandoob.",
+        "period": {
+          "label": "Reporting period",
+          "days": "{days} days",
+          "range": "Reporting period · {range}",
+          "generatedAt": "Generated {timestamp}"
+        },
+        "actions": {
+          "leads": "Open leads",
+          "companies": "Open companies",
+          "openLeads": "Open leads",
+          "openAudit": "Open audit",
+          "openPros": "Open PROs",
+          "openFinance": "Open finance"
+        },
+        "kpis": {
+          "label": "Platform portfolio indicators",
+          "totalLeads": {
+            "label": "Total Leads",
+            "helper": "All questionnaire leads · point in time"
+          },
+          "totalPros": {
+            "label": "Total PROs",
+            "helper": "All registered PRO profiles · point in time"
+          },
+          "totalCompanies": {
+            "label": "Total Companies",
+            "helper": "Company records · point in time"
+          },
+          "activeAssignments": {
+            "label": "Active PRO–Company Assignments",
+            "helper": "Unique active assignment ledger"
+          },
+          "unassignedPros": {
+            "label": "Unassigned PROs",
+            "helper": "Active PROs without an active Company"
+          },
+          "unassignedCompanies": {
+            "label": "Unassigned Companies",
+            "helper": "Companies without an active PRO"
+          },
+          "activeRegistrations": {
+            "label": "Active Registrations",
+            "helper": "Selected reporting period"
+          },
+          "pendingRenewals": {
+            "label": "Pending Renewals",
+            "helper": "Due soon or overdue · point in time"
+          },
+          "pendingPayments": {
+            "label": "Pending Payments",
+            "helper": "Open invoices · point in time"
+          },
+          "documentsAwaitingReview": {
+            "label": "Documents Awaiting Review",
+            "helper": "Current document versions · point in time"
+          }
+        },
+        "unavailable": {
+          "title": "Unavailable",
+          "phase3": "Unavailable — Phase 3 contract required"
+        },
+        "error": {
+          "title": "This source could not be loaded",
+          "short": "Unavailable",
+          "description": "The issue is isolated; other dashboard sources remain available."
+        },
+        "panels": {
+          "registrationOverview": {
+            "title": "Registration Overview",
+            "description": "Registrations opened, active, and completed during the reporting period."
+          },
+          "leadFunnel": {
+            "title": "Lead Funnel",
+            "description": "Current platform lead stages from the accepted CRM contract.",
+            "denominator": "Percentages use all questionnaire leads as the denominator; an empty funnel is 0%."
+          },
+          "activity": {
+            "title": "Recent Activity",
+            "description": "Sanitized operational events in the reporting period.",
+            "empty": "No supported operational activity was recorded in this period."
+          },
+          "proHealth": {
+            "title": "PRO Operational Health",
+            "description": "Assignment state for active PROs; no ranking or composite score.",
+            "empty": "No active PRO profiles are available.",
+            "unnamed": "Unnamed PRO",
+            "notAssigned": "No Company assigned"
+          },
+          "revenue": {
+            "title": "Revenue Overview",
+            "description": "Collected revenue requires successful payments less valid refunds, by currency and period."
+          },
+          "registrationStages": {
+            "title": "Registrations by Stage",
+            "description": "Current registration-stage distribution with a defined denominator."
+          }
+        },
+        "table": {
+          "stage": "Stage",
+          "count": "Count",
+          "percentage": "Percentage",
+          "pro": "PRO",
+          "company": "Company",
+          "health": "Assignment"
+        },
+        "leadStages": {
+          "new": "New",
+          "contacted": "Contacted",
+          "qualified": "Qualified",
+          "won": "Won",
+          "lost": "Lost"
+        },
+        "proHealth": {
+          "assigned": "Assigned",
+          "unassigned": "Unassigned"
+        },
+        "activities": {
+          "platform": "Platform",
+          "lead_created": "Lead created",
+          "lead_assigned": "Lead assigned",
+          "lead_stage_changed": "Lead stage updated",
+          "invoice_created": "Invoice created",
+          "invoice_voided": "Invoice voided",
+          "invoice_marked_paid": "Invoice marked paid",
+          "payment_succeeded": "Payment received",
+          "refund_issued": "Refund issued",
+          "company_pro_assigned": "PRO assigned to Company",
+          "company_pro_released": "PRO released from Company",
+          "company_onboarding_submitted": "Company onboarding submitted",
+          "company_activation_attempted": "Company activation reviewed",
+          "company_activated": "Company activated"
+        }
+      }
     },
     "stats": {
       "totalUsers": "Total users",
@@ -2622,7 +3371,13 @@
     },
     "finance": {
       "title": "Finance",
-      "intro": "Stripe subscription revenue.",
+      "intro": "Active Stripe subscription recurring value; this is not collected revenue, accounting, or profit.",
+      "pointInTime": "Rendered at",
+      "currencyUsd": "Currency",
+      "includedActive": "Included",
+      "activeSubscriptionsOnly": "Active subscriptions only",
+      "excludedStatuses": "Excluded",
+      "nonActiveExcluded": "Trialing, past-due, canceled, unpaid, incomplete and paused subscriptions",
       "tenantMrr": "Workspace MRR",
       "table": {
         "tenant": "Company workspace",
@@ -2650,6 +3405,15 @@
         "incomplete": "Incomplete",
         "incomplete_expired": "Incomplete expired",
         "paused": "Paused"
+      },
+      "unsupported": {
+        "title": "Accounting, collections and reconciliation",
+        "description": "Collected revenue, expenses, compensation, aging and reconciliation require ledger and payment-source contracts that are not present.",
+        "unavailableTitle": "Unavailable — finance ledger contract required",
+        "unavailableDescription": "No authoritative accounting ledger or reconciled collections source is connected on this base.",
+        "guidance": "The recurring-value metrics above remain subscription projections and must not be treated as revenue recognition or profit-and-loss reporting.",
+        "export": "Export finance report",
+        "exportExplanation": "Unavailable — an authoritative report schema and export contract are required."
       }
     },
     "erasure": {
@@ -2749,6 +3513,8 @@
     "whatsapp": {
       "title": "WhatsApp templates",
       "intro": "Track Meta approval state before templates are allowed into the outbound queue.",
+      "providerCaveat": "Approval values are operator-maintained records; this page does not poll Meta or prove the current provider state.",
+      "providerAudit": "Submitted, checked and updated timestamps are audit fields entered through this workflow and should be verified against the provider before sending.",
       "tenantPlaceholder": "Company workspace UUID for overrides",
       "allStatuses": "All statuses",
       "allCategories": "All categories",

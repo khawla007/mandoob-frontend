@@ -14,14 +14,10 @@ import {
 } from '@/lib/actions/server-action-security';
 import {
   createDocumentRequest,
-  getDocumentSignedUrl,
+  getCompanyDocumentSignedUrl,
   setDocumentReview,
 } from '@/lib/data/documents';
-import {
-  listDocumentVersionHistory,
-  setDocumentExpiry,
-  type DocumentVersionHistoryEntry,
-} from '@/lib/data/pro-document-center';
+import { listDocumentVersionHistory, setDocumentExpiry } from '@/lib/data/pro-document-center';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
   runLoadVersionHistoryAction,
@@ -31,10 +27,11 @@ import {
   runSetDocumentExpiryAction,
   type DocumentCenterActionDependencies,
   type DocumentCenterActionResult,
+  type PublicDocumentVersionHistoryEntry,
 } from './action-logic';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 
-export type { DocumentCenterActionResult } from './action-logic';
+export type { DocumentCenterActionResult, PublicDocumentVersionHistoryEntry } from './action-logic';
 
 function dependencies(): DocumentCenterActionDependencies {
   return {
@@ -51,7 +48,7 @@ function dependencies(): DocumentCenterActionDependencies {
     },
     createRequest: createDocumentRequest,
     reviewVersion: setDocumentReview,
-    openVersion: getDocumentSignedUrl,
+    openVersion: getCompanyDocumentSignedUrl,
     loadHistory: listDocumentVersionHistory,
     setExpiry: setDocumentExpiry,
     revalidate: revalidatePath,
@@ -86,7 +83,7 @@ export async function openDocumentVersionAction(
 export async function loadVersionHistoryAction(
   slug: string,
   documentId: string,
-): Promise<DocumentCenterActionResult<DocumentVersionHistoryEntry[]>> {
+): Promise<DocumentCenterActionResult<PublicDocumentVersionHistoryEntry[]>> {
   return runLoadVersionHistoryAction(slug, documentId, dependencies());
 }
 

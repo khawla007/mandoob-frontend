@@ -22,9 +22,6 @@ export type DocumentCenterRow = {
   entityKind: 'request' | 'document';
   entityId: string;
   tenantId: string;
-  companyId: string;
-  companyName: string;
-  companyStatus: string;
   employeeId: string | null;
   employeeName: string | null;
   docType: DocType;
@@ -69,11 +66,6 @@ export type DocumentCenterSummary = {
   overdue: DocumentCenterSummaryResult;
 };
 
-export type DocumentCenterCompanyOption = {
-  id: string;
-  companyName: string;
-};
-
 type RpcRow = Record<string, unknown>;
 
 // PostgreSQL accepts the canonical 8-4-4-4-12 UUID text form without
@@ -82,12 +74,6 @@ type RpcRow = Record<string, unknown>;
 const uuidSchema = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
-const companyOptionRowSchema = z.object({
-  id: uuidSchema,
-  company_name: z.string().min(1),
-});
-const companyOptionSearchSchema = z.string().trim().max(100);
-const companyOptionLimitSchema = z.number().int().min(1).max(50);
 const expiryContextSchema = z.object({
   tenantId: uuidSchema,
   actorId: uuidSchema,
@@ -111,9 +97,6 @@ function mapRpcRow(row: RpcRow): DocumentCenterRow {
     entityKind: row.entity_kind as DocumentCenterRow['entityKind'],
     entityId: row.entity_id as string,
     tenantId: row.tenant_id as string,
-    companyId: row.company_id as string,
-    companyName: row.company_name as string,
-    companyStatus: row.company_status as string,
     employeeId: asNullableString(row.employee_id),
     employeeName: asNullableString(row.employee_name),
     docType: row.doc_type as DocType,
@@ -191,12 +174,12 @@ function dateArguments(input: DocumentCenterSearch): {
     : { p_due_from: null, p_due_to: null, p_expiry_from: from, p_expiry_to: to };
 }
 
-function rpcArguments(input: DocumentCenterSearch, tenantId: string) {
+function rpcArguments(input: DocumentCenterSearch, tenantId: string, companyId: string) {
   return {
     p_tenant_id: tenantId,
     p_view: input.view,
     p_search: input.search ?? null,
-    p_company_id: input.companyId ?? null,
+    p_company_id: companyId,
     p_doc_type: input.docType ?? null,
     ...dateArguments(input),
     p_sort: input.sort,
@@ -209,14 +192,16 @@ function rpcArguments(input: DocumentCenterSearch, tenantId: string) {
 
 export async function listProDocumentCenter(
   tenantId: string,
+  companyId: string,
   input: DocumentCenterQuery,
 ): Promise<DocumentCenterWorkspace> {
   const validTenantId = uuidSchema.parse(tenantId);
+  const validCompanyId = uuidSchema.parse(companyId);
   const validInput = documentCenterSearchSchema.parse(input);
   const admin = createSupabaseServiceRoleClient();
   const { data, error } = await admin.rpc(
     'list_pro_document_center' as never,
-    rpcArguments(validInput, validTenantId) as never,
+    rpcArguments(validInput, validTenantId, validCompanyId) as never,
   );
   if (error) {
     throw new ApiError('INTERNAL', 'Unable to load document center', 500);
@@ -231,56 +216,9 @@ export async function listProDocumentCenter(
   };
 }
 
-export async function searchDocumentCenterCompanyOptions(
-  tenantId: string,
-  query: string,
-  limit = 50,
-): Promise<DocumentCenterCompanyOption[]> {
-  const validTenantId = uuidSchema.parse(tenantId);
-  const validQuery = companyOptionSearchSchema.parse(query);
-  const validLimit = companyOptionLimitSchema.parse(limit);
-  const admin = createSupabaseServiceRoleClient();
-  let request = admin
-    .from('company_profiles')
-    .select('id, company_name')
-    .eq('tenant_id', validTenantId)
-    .order('company_name', { ascending: true })
-    .order('id', { ascending: true })
-    .limit(validLimit);
-  if (validQuery) {
-    request = request.ilike('company_name', `%${validQuery}%`);
-  }
-  const { data, error } = await request;
-  if (error) throw new ApiError('INTERNAL', 'Unable to search document center companies', 500);
-  const parsed = z.array(companyOptionRowSchema).safeParse(data ?? []);
-  if (!parsed.success)
-    throw new ApiError('INTERNAL', 'Unable to search document center companies', 500);
-  return parsed.data.map((row) => ({ id: row.id, companyName: row.company_name }));
-}
-
-export async function getDocumentCenterCompanyOption(
-  tenantId: string,
-  companyId: string,
-): Promise<DocumentCenterCompanyOption | null> {
-  const validTenantId = uuidSchema.parse(tenantId);
-  const validCompanyId = uuidSchema.parse(companyId);
-  const admin = createSupabaseServiceRoleClient();
-  const { data, error } = await admin
-    .from('company_profiles')
-    .select('id, company_name')
-    .eq('tenant_id', validTenantId)
-    .eq('id', validCompanyId)
-    .maybeSingle();
-  if (error) throw new ApiError('INTERNAL', 'Unable to load document center company', 500);
-  if (!data) return null;
-  const parsed = companyOptionRowSchema.safeParse(data);
-  if (!parsed.success)
-    throw new ApiError('INTERNAL', 'Unable to load document center company', 500);
-  return { id: parsed.data.id, companyName: parsed.data.company_name };
-}
-
 function summaryRpcArguments(
   tenantId: string,
+  companyId: string,
   view: DocumentCenterSearch['view'],
   todayDubai: string,
 ) {
@@ -288,7 +226,7 @@ function summaryRpcArguments(
     p_tenant_id: tenantId,
     p_view: view,
     p_search: null,
-    p_company_id: null,
+    p_company_id: companyId,
     p_doc_type: null,
     p_due_from: null,
     p_due_to: null,
@@ -304,6 +242,7 @@ function summaryRpcArguments(
 
 async function loadSummaryResult(
   tenantId: string,
+  companyId: string,
   view: DocumentCenterSearch['view'],
   todayDubai: string,
 ): Promise<DocumentCenterSummaryResult> {
@@ -311,7 +250,7 @@ async function loadSummaryResult(
     const admin = createSupabaseServiceRoleClient();
     const { data, error } = await admin.rpc(
       'list_pro_document_center' as never,
-      summaryRpcArguments(tenantId, view, todayDubai) as never,
+      summaryRpcArguments(tenantId, companyId, view, todayDubai) as never,
     );
     if (error) return { ok: false };
     const first = ((data ?? []) as RpcRow[])[0];
@@ -323,18 +262,20 @@ async function loadSummaryResult(
 
 export async function getDocumentCenterSummary(
   tenantId: string,
+  companyId: string,
   todayDubai: string,
 ): Promise<DocumentCenterSummary> {
   const validTenantId = uuidSchema.parse(tenantId);
+  const validCompanyId = uuidSchema.parse(companyId);
   const validToday = documentCenterIsoDateSchema.parse(todayDubai);
   const [awaitingUpload, awaitingReview, approved, rejected, expiring, overdue] = await Promise.all(
     [
-      loadSummaryResult(validTenantId, 'requested', validToday),
-      loadSummaryResult(validTenantId, 'submitted', validToday),
-      loadSummaryResult(validTenantId, 'approved', validToday),
-      loadSummaryResult(validTenantId, 'rejected', validToday),
-      loadSummaryResult(validTenantId, 'expiring', validToday),
-      loadSummaryResult(validTenantId, 'overdue', validToday),
+      loadSummaryResult(validTenantId, validCompanyId, 'requested', validToday),
+      loadSummaryResult(validTenantId, validCompanyId, 'submitted', validToday),
+      loadSummaryResult(validTenantId, validCompanyId, 'approved', validToday),
+      loadSummaryResult(validTenantId, validCompanyId, 'rejected', validToday),
+      loadSummaryResult(validTenantId, validCompanyId, 'expiring', validToday),
+      loadSummaryResult(validTenantId, validCompanyId, 'overdue', validToday),
     ],
   );
 
@@ -414,11 +355,48 @@ function isValidVersionSnapshot(
 
 export async function listDocumentVersionHistory(
   tenantId: string,
+  companyId: string,
   documentId: string,
 ): Promise<DocumentVersionHistoryEntry[]> {
   const validTenantId = uuidSchema.parse(tenantId);
+  const validCompanyId = uuidSchema.parse(companyId);
   const validDocumentId = uuidSchema.parse(documentId);
   const admin = createSupabaseServiceRoleClient();
+  const { data: ownedDocument, error: ownershipError } = await admin
+    .from('documents')
+    .select(
+      'id, tenant_id, company_id, request_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id)',
+    )
+    .eq('id', validDocumentId)
+    .eq('tenant_id', validTenantId)
+    .eq('company_id', validCompanyId)
+    .maybeSingle();
+  const owned = ownedDocument as {
+    id: string;
+    tenant_id: string;
+    company_id: string;
+    request_id: string | null;
+    company: { id: string; tenant_id: string } | null;
+    request: { id: string; tenant_id: string; company_id: string } | null;
+  } | null;
+  if (ownershipError) {
+    throw new ApiError('INTERNAL', 'Unable to load document history', 500);
+  }
+  if (
+    !owned ||
+    owned.id !== validDocumentId ||
+    owned.tenant_id !== validTenantId ||
+    owned.company_id !== validCompanyId ||
+    owned.company?.id !== validCompanyId ||
+    owned.company.tenant_id !== validTenantId ||
+    (owned.request_id !== null &&
+      (!owned.request ||
+        owned.request.id !== owned.request_id ||
+        owned.request.tenant_id !== validTenantId ||
+        owned.request.company_id !== validCompanyId))
+  ) {
+    throw new ApiError('NOT_FOUND', 'Document not found', 404);
+  }
   const { data, error } = await admin.rpc(
     'get_pro_document_version_history' as never,
     { p_tenant_id: validTenantId, p_document_id: validDocumentId } as never,
@@ -443,15 +421,45 @@ export type SetDocumentExpiryContext = {
 };
 
 export async function setDocumentExpiry(
+  expectedCompanyId: string,
   ctx: SetDocumentExpiryContext,
   input: DocumentExpiryInput,
 ): Promise<{ companyId: string }> {
+  const validCompanyId = uuidSchema.parse(expectedCompanyId);
   const validContext = expiryContextSchema.parse(ctx);
   const validInput = documentExpirySchema.parse({
     ...input,
     expires_on: input.expires_on === null ? '' : input.expires_on,
   });
   const admin = createSupabaseServiceRoleClient();
+  const { data: document, error: ownershipError } = await admin
+    .from('documents')
+    .select(
+      'id, tenant_id, company_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id)',
+    )
+    .eq('id', validInput.document_id)
+    .eq('tenant_id', validContext.tenantId)
+    .eq('company_id', validCompanyId)
+    .maybeSingle();
+  const owned = document as {
+    id: string;
+    tenant_id: string;
+    company_id: string;
+    company: { id: string; tenant_id: string } | null;
+  } | null;
+  if (ownershipError) {
+    throw new ApiError('INTERNAL', 'Unable to verify document ownership', 500);
+  }
+  if (
+    !owned ||
+    owned.id !== validInput.document_id ||
+    owned.tenant_id !== validContext.tenantId ||
+    owned.company_id !== validCompanyId ||
+    owned.company?.id !== validCompanyId ||
+    owned.company.tenant_id !== validContext.tenantId
+  ) {
+    throw new ApiError('NOT_FOUND', 'Document not found', 404);
+  }
   const { data, error } = await admin.rpc(
     'set_pro_document_expiry' as never,
     {
@@ -476,7 +484,12 @@ export async function setDocumentExpiry(
       409,
     );
   }
-  if (error || updated?.document_id !== validInput.document_id || !updatedCompanyId.success) {
+  if (
+    error ||
+    updated?.document_id !== validInput.document_id ||
+    !updatedCompanyId.success ||
+    updatedCompanyId.data.toLowerCase() !== validCompanyId.toLowerCase()
+  ) {
     throw new ApiError('INTERNAL', 'Unable to update document expiry', 500);
   }
 

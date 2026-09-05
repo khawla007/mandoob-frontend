@@ -10,7 +10,13 @@ export function ApplicationStatusActions({
   labels,
 }: {
   action: (previous: UpdateState, formData: FormData) => Promise<UpdateState>;
-  labels: { complete: string; cancel: string; pending: string; success: string };
+  labels: {
+    complete: string;
+    cancel: string;
+    cancelConfirm: string;
+    pending: string;
+    success: string;
+  };
 }) {
   const [state, formAction, pending] = useActionState(action, null);
 
@@ -26,21 +32,29 @@ export function ApplicationStatusActions({
         >
           {pending ? labels.pending : labels.complete}
         </button>
-        <button
-          type="submit"
-          name="status"
-          value="cancelled"
-          disabled={pending}
-          className="text-destructive hover:bg-destructive/10 focus-visible:ring-destructive rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
-        >
-          {labels.cancel}
-        </button>
+        <details className="relative">
+          <summary
+            aria-disabled={pending}
+            className="text-destructive hover:bg-destructive/10 focus-visible:ring-destructive cursor-pointer list-none rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          >
+            {labels.cancel}
+          </summary>
+          <button
+            type="submit"
+            name="status"
+            value="cancelled"
+            disabled={pending}
+            className="bg-destructive text-destructive-foreground focus-visible:ring-destructive mt-2 rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
+          >
+            {pending ? labels.pending : labels.cancelConfirm}
+          </button>
+        </details>
       </div>
       {state ? (
         <span
           role={state.ok ? 'status' : 'alert'}
           aria-live="polite"
-          className={state.ok ? 'text-xs text-green-700' : 'text-destructive text-xs'}
+          className={state.ok ? 'text-xs text-[var(--signal-success)]' : 'text-destructive text-xs'}
         >
           {state.ok ? labels.success : state.error}
         </span>

@@ -7,6 +7,8 @@ const root = process.cwd();
 const page = readFileSync(join(root, 'src/app/(tenant)/t/[tenant]/(pro)/company/page.tsx'), 'utf8');
 const legacyActionsPath = join(root, 'src/app/(tenant)/t/[tenant]/(pro)/company/actions.ts');
 const tabs = readFileSync(join(root, 'src/components/pro/AssignedCompanyTabs.tsx'), 'utf8');
+const overviewPath = join(root, 'src/components/pro/AssignedCompanyOverview.tsx');
+const overview = existsSync(overviewPath) ? readFileSync(overviewPath, 'utf8') : '';
 const companyProfile = readFileSync(join(root, 'src/lib/data/company-profile.ts'), 'utf8');
 const english = JSON.parse(readFileSync(join(root, 'src/messages/en.json'), 'utf8'));
 const arabic = JSON.parse(readFileSync(join(root, 'src/messages/ar.json'), 'utf8'));
@@ -38,14 +40,21 @@ test('one-release legacy company deep link authorizes and preserves approved foc
   assert.match(legacy, /query\.set\('document', focus\.documentId\)/u);
   assert.match(legacy, /query\.set\('request', focus\.requestId\)/u);
   assert.match(legacy, /`\/t\/\$\{encodeURIComponent\(slug\)\}\/company\?\$\{query\}`/u);
-  assert.doesNotMatch(legacy, /createSupabase|readAssignedCompany|ClientTabs|EditClientForm/u);
+  assert.match(legacy, /readAssignedCompanyForPro\(session\.id, slug\)/u);
+  assert.match(
+    legacy,
+    /company\.tenantId !== tenant\.id \|\| company\.id !== companyId\) notFound\(\)/u,
+  );
+  assert.ok(legacy.indexOf('company.id !== companyId') < redirectAt);
+  assert.doesNotMatch(legacy, /createSupabase|ClientTabs|EditClientForm/u);
 });
 
 test('Assigned Company page directly authorizes before its service-role workspace read', () => {
   const authAt = page.indexOf('requireProTenantRouteAccess(');
+  const activeAt = page.indexOf('requireActiveTenant(tenant.id)');
   const readAt = page.indexOf('readAssignedCompanyForPro(');
   assert.notEqual(authAt, -1);
-  assert.ok(authAt < readAt);
+  assert.ok(authAt < activeAt && activeAt < readAt);
   assert.match(page, /readAssignedCompanyForPro\(session\.id, slug\)/);
   assert.match(page, /if \(!company\) notFound\(\)/);
 });
@@ -82,6 +91,57 @@ test('Assigned Company page composes real isolated company workspace panels', ()
   assert.match(tabs, /formatCompanyMoney\(invoice\.amountMinor, invoice\.currency, locale\)/);
   assert.match(tabs, /if \(state\.status === 'unrequested'\) return null/);
   assert.match(tabs, /state\.status === 'error'/);
+});
+
+test('Assigned Company overview lazily loads its authorized legal snapshot alongside the active panel', () => {
+  assert.match(page, /readCompanyOnboarding/u);
+  assert.match(page, /focus\.tab === 'overview'/u);
+  assert.match(
+    page,
+    /actorProfileId: session\.id[\s\S]*tenantId: company\.tenantId[\s\S]*companyId: company\.id/u,
+  );
+  assert.match(
+    page,
+    /Promise\.all\([\s\S]*loadAssignedCompanyWorkspace\(company\.tenantId, company\.id, focus\)[\s\S]*readCompanyOnboarding/u,
+  );
+  assert.match(page, /profile=\{profile\}/u);
+  assert.match(tabs, /profile: CompanyPanelState<CompanyOnboardingSnapshot>/u);
+});
+
+test('Assigned Company legal overview exposes only source-backed, safely masked facts', () => {
+  for (const field of [
+    'displayName',
+    'jurisdictionType',
+    'licensingAuthority',
+    'legalStructure',
+    'tradeLicenseNo',
+    'licenseExpiry',
+    'shareholders',
+    'ownershipPercent',
+    'activities',
+    'isPrimary',
+    'office',
+    'establishmentCardMasked',
+    'establishmentCardExpiry',
+    'bank',
+    'ibanMasked',
+    'accountNumberMasked',
+  ]) {
+    assert.match(overview, new RegExp(`snapshot\\.${field}|${field}`, 'u'));
+  }
+  assert.doesNotMatch(overview, /passportMasked|swiftBicMasked|registration history|visa/iu);
+  assert.doesNotMatch(overview, /snapshot\.bank\.(?:iban(?!Masked)|accountNumber(?!Masked))/u);
+});
+
+test('legal completeness, activation readiness, and Company lifecycle remain distinct', () => {
+  assert.match(overview, /legalCompleteness/u);
+  assert.match(overview, /activationReadiness/u);
+  assert.match(overview, /lifecycle/u);
+  assert.match(overview, /snapshot\.requirements/u);
+  assert.match(overview, /snapshot\.sectionProgress/u);
+  assert.match(overview, /company\.status/u);
+  assert.match(overview, /sectionHrefs/u);
+  assert.match(page, /companyOnboardingSectionHref\(slug, section\)/u);
 });
 
 test('Assigned Company overview uses normalized onboarding summary fields only', () => {
@@ -166,6 +226,10 @@ test('Assigned Company operational labels have exact English and Arabic parity',
     assert.deepEqual(Object.keys(assigned.activity.actions).sort(), expected.auditActions);
     assert.deepEqual(Object.keys(assigned.activity.sources).sort(), expected.auditSources);
   }
+  assert.deepEqual(
+    Object.keys(english.pro.assignedCompany.profile).sort(),
+    Object.keys(arabic.pro.assignedCompany.profile).sort(),
+  );
 });
 
 test('overview replaces the legacy editor with lifecycle, progress, blockers, and one canonical CTA', () => {
@@ -177,6 +241,17 @@ test('overview replaces the legacy editor with lifecycle, progress, blockers, an
   assert.doesNotMatch(page, /CompanyProfileForm|updateAssignedCompanyProfile/u);
   assert.equal((page.match(/href=\{onboardingHref\}/gu) ?? []).length, 1);
   assert.equal(existsSync(legacyActionsPath), false);
+});
+
+test('compact setup summary does not present onboarding status as Company lifecycle', () => {
+  const summary = page.slice(page.indexOf('function CompanyOnboardingSummary'));
+  assert.doesNotMatch(
+    summary,
+    /labels\.lifecycle|labels\.status|company\.status|onboardingStatus/u,
+  );
+  assert.match(summary, /role="progressbar"[\s\S]*aria-label=\{labels\.progress\}/u);
+  assert.match(overview, /labels\.lifecycleValue/u);
+  assert.match(overview, /company\.status/u);
 });
 
 test('employee import no longer accepts company selection or a company identifier input', () => {

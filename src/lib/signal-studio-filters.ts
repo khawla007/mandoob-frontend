@@ -22,7 +22,7 @@ export type RenewalSignalFilter = {
   period?: 'morning' | 'afternoon';
 };
 export type PaymentSignalView = (typeof paymentSignalViews)[number];
-export type ApplicationScope = { ownerId?: string; serviceType?: string };
+export type ApplicationScope = { serviceType?: string };
 
 type Search = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
@@ -33,7 +33,8 @@ const isUuid = (value: string | undefined) =>
   );
 const isDate = (value: string | undefined) => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  return new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
 export function parseApplicationSignalFilter(search: Search): Partial<ApplicationSignalFilter> {
@@ -104,7 +105,6 @@ function href(slug: string, target: string, params: Record<string, string>): str
 
 function applicationScopeParams(scope: ApplicationScope): Record<string, string> {
   return {
-    ...(scope.ownerId ? { owner: scope.ownerId } : {}),
     ...(scope.serviceType ? { serviceType: scope.serviceType } : {}),
   };
 }
@@ -118,7 +118,7 @@ export function applicationSignalHref(
 }
 
 export function withApplicationScope(path: string, scope: ApplicationScope): string {
-  if (!scope.ownerId && !scope.serviceType) return path;
+  if (!scope.serviceType) return path;
   const url = new URL(path, 'https://mandoob.invalid');
   for (const [key, value] of Object.entries(applicationScopeParams(scope))) {
     url.searchParams.set(key, value);

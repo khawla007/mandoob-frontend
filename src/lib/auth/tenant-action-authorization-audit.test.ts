@@ -308,7 +308,6 @@ test('PRO self-service mutations use the PRO-only boundary and never fabricate a
     'applications/actions.ts',
     'documents/actions.ts',
     'company/setup/actions.ts',
-    'leads/actions.ts',
     'meetings/actions.ts',
     'payments/actions.ts',
     'renewals/actions.ts',

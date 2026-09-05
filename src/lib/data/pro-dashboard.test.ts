@@ -31,16 +31,6 @@ function baseInput(): ProDashboardInput {
       { id: 'client-3', tenant_id: TENANT, company_name: 'Dormant', status: 'suspended' },
       { id: 'client-x', tenant_id: 'tenant-b', company_name: 'Intruder', status: 'active' },
     ],
-    profiles: [
-      { id: 'pro-1', tenant_id: TENANT, full_name: 'Aisha', role: 'pro', status: 'active' },
-      {
-        id: 'pro-x',
-        tenant_id: 'tenant-b',
-        full_name: 'Other tenant',
-        role: 'pro',
-        status: 'active',
-      },
-    ],
     serviceCases: [
       caseRow({
         id: 'case-first-open',
@@ -190,7 +180,6 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   assert.equal(dashboard.totalPrioritySignals, 5);
   assert.equal(dashboard.kpis.activeCompany, 1);
   assert.equal(dashboard.kpis.openCases, 2);
-  assert.equal(dashboard.kpis.unassignedCases, 0);
   assert.equal(dashboard.kpis.renewalsDue30d, 1);
   assert.equal(dashboard.finance.overdueMinor, 7300);
   assert.deepEqual(
@@ -199,18 +188,57 @@ test('aggregates the tenant-scoped PRO operations contract', () => {
   );
   assert.deepEqual(dashboard.caseVelocity[0], { date: '2026-08-05', opened: 1, completed: 0 });
   assert.equal(dashboard.renewalStreams.license.d7, 1);
-  assert.ok(Object.values(dashboard.health).every((value) => value >= 0 && value <= 100));
-  assert.deepEqual(
-    dashboard.team.map((member) => member.profileId),
-    ['pro-1'],
+});
+
+test('returns bounded document work with distinct upload, review, and action-required states', () => {
+  const input = baseInput();
+  input.documents.push(
+    {
+      id: 'document-rejected',
+      tenant_id: TENANT,
+      company_id: 'client-1',
+      label: 'Rejected proof',
+      currentVersion: { tenant_id: TENANT, review_status: 'rejected' },
+    },
+    {
+      id: 'document-approved',
+      tenant_id: TENANT,
+      company_id: 'client-1',
+      label: 'Approved proof',
+      currentVersion: { tenant_id: TENANT, review_status: 'approved' },
+    },
   );
+
+  const dashboard = calculateProDashboard(input, NOW);
+  assert.deepEqual(
+    dashboard.pendingDocuments.map(({ id, state }) => ({ id, state })),
+    [
+      { id: 'document-rejected', state: 'action-required' },
+      { id: 'request-1', state: 'awaiting-upload' },
+    ],
+  );
+  assert.doesNotMatch(JSON.stringify(dashboard.pendingDocuments), /document-approved/u);
+  assert.ok(dashboard.pendingDocuments.length <= 5);
+});
+
+test('one-Company dashboard data exposes no team, owner, unassigned, or composite score contract', () => {
+  const dashboard = calculateProDashboard(baseInput(), NOW) as unknown as Record<string, unknown>;
+  const serialized = JSON.stringify(dashboard);
+  assert.equal('team' in dashboard, false);
+  assert.equal('health' in dashboard, false);
+  assert.doesNotMatch(serialized, /unassignedCases|workloadBalance|capacityPercent|owners/u);
+});
+
+test('dashboard loader does not query PRO profiles for team or owner presentation', () => {
+  const source = readFileSync(join(process.cwd(), 'src/lib/data/pro-dashboard.ts'), 'utf8');
+  assert.doesNotMatch(source, /load<ProfileInput>\('profiles'/u);
+  assert.doesNotMatch(source, /ACTIVE_CASE_UTILIZATION_TARGET|calculateWorkloadBalance/u);
 });
 
 test('returns zero-filled chart dates and empty collections for empty input', () => {
   const empty = baseInput();
   for (const key of [
     'companies',
-    'profiles',
     'serviceCases',
     'renewals',
     'documentRequests',
@@ -234,9 +262,7 @@ test('returns zero-filled chart dates and empty collections for empty input', ()
   ]);
   assert.deepEqual(dashboard.actionDeck, []);
   assert.equal(dashboard.totalPrioritySignals, 0);
-  assert.deepEqual(dashboard.team, []);
   assert.equal(dashboard.finance.currency, 'AED');
-  assert.equal(dashboard.health.score, 0);
 });
 
 test('uses current-month AED-first finance rules and never sums mixed currencies', () => {
@@ -510,82 +536,6 @@ test('keeps active overdue renewals in backlog horizons but excludes inactive li
   assert.equal(dashboard.kpis.renewalsDue30d, 2);
 });
 
-test('calculates all five transparent health inputs from actual timestamps', () => {
-  const input = emptyInput();
-  input.profiles = [
-    { id: 'pro-1', tenant_id: TENANT, full_name: 'Aisha', role: 'pro', status: 'active' },
-  ];
-  input.serviceCases = [
-    caseRow({ id: 'overdue', assigned_to: 'pro-1', sla_due_at: '2026-08-10T09:00:00Z' }),
-    caseRow({
-      id: 'old-blocked',
-      assigned_to: 'pro-1',
-      blocked_reason: 'Authority hold',
-      sla_due_at: null,
-      updated_at: '2026-08-07T09:59:59Z',
-    }),
-    caseRow({
-      id: 'recent-blocked',
-      assigned_to: 'pro-1',
-      blocked_reason: 'Customer reply',
-      sla_due_at: null,
-      updated_at: '2026-08-10T10:00:01Z',
-    }),
-    caseRow({ id: 'moving', assigned_to: 'pro-1', sla_due_at: null }),
-    caseRow({
-      id: 'completed-on-time',
-      status: 'completed',
-      completed_at: '2026-08-10T09:00:00Z',
-      sla_due_at: '2026-08-10T10:00:00Z',
-    }),
-    caseRow({
-      id: 'completed-late',
-      status: 'completed',
-      completed_at: '2026-08-10T11:00:00Z',
-      sla_due_at: '2026-08-10T10:00:00Z',
-    }),
-  ];
-  input.renewals = [
-    renewalRow({
-      id: 'reminded',
-      notify_at: ['2026-08-10T08:00:00Z'],
-      last_notified_at: '2026-08-10T09:00:00Z',
-    }),
-    renewalRow({ id: 'missed', notify_at: ['2026-08-10T08:00:00Z'], last_notified_at: null }),
-    renewalRow({
-      id: 'future-schedule',
-      notify_at: ['2026-08-12T08:00:00Z'],
-      last_notified_at: null,
-    }),
-    renewalRow({ id: 'no-schedule', notify_at: [], last_notified_at: null }),
-  ];
-
-  const dashboard = calculateProDashboard(input, NOW);
-  assert.equal(dashboard.health.overdueRatio, 25);
-  assert.equal(dashboard.health.slaCompletionRate, 50);
-  assert.equal(dashboard.health.blockedRatio, 25);
-  assert.equal(dashboard.health.reminderRate, 50);
-  assert.equal(dashboard.health.workloadBalance, 100);
-  assert.equal(dashboard.health.score, 70);
-});
-
-test('uses timestamp order rather than ISO text order for SLA health inputs', () => {
-  const input = emptyInput();
-  input.serviceCases = [
-    caseRow({ id: 'open-overdue-offset', sla_due_at: '2026-08-11T12:00:00+04:00' }),
-    caseRow({
-      id: 'completed-on-time-offset',
-      status: 'completed',
-      completed_at: '2026-08-11T12:30:00+04:00',
-      sla_due_at: '2026-08-11T09:00:00Z',
-    }),
-  ];
-
-  const dashboard = calculateProDashboard(input, NOW);
-  assert.equal(dashboard.health.overdueRatio, 100);
-  assert.equal(dashboard.health.slaCompletionRate, 100);
-});
-
 test('selects the globally highest-ranked five signals with tenant-safe hrefs', () => {
   const input = emptyInput();
   input.tenantSlug = 'safe-firm';
@@ -597,9 +547,6 @@ test('selects the globally highest-ranked five signals with tenant-safe hrefs', 
       status: 'active',
       created_at: '2026-08-01T00:00:00Z',
     },
-  ];
-  input.profiles = [
-    { id: 'pro-1', tenant_id: TENANT, full_name: 'Aisha', role: 'pro', status: 'active' },
   ];
   input.serviceCases = [
     caseRow({ id: 'manual-urgent', priority: 'urgent', sla_due_at: null }),
@@ -838,126 +785,6 @@ test('uses Dubai date and noon boundaries for deadline intensity event details',
   );
 });
 
-test('uses the schema-valid sole PRO owner and exposes overload beyond 100 percent', () => {
-  const input = emptyInput();
-  input.companies = [
-    {
-      id: 'client-1',
-      tenant_id: TENANT,
-      company_name: 'Current',
-      status: 'active',
-      created_at: '2026-08-02T00:00:00Z',
-    },
-  ];
-  input.profiles = [
-    { id: 'owner', tenant_id: TENANT, full_name: 'Owner', role: 'pro', status: 'active' },
-    {
-      id: 'employee',
-      tenant_id: TENANT,
-      full_name: 'Client employee',
-      role: 'employee',
-      status: 'active',
-    },
-    {
-      id: 'customer',
-      tenant_id: TENANT,
-      full_name: 'Customer',
-      role: 'customer',
-      status: 'active',
-    },
-    { id: 'admin', tenant_id: null, full_name: 'Platform admin', role: 'admin', status: 'active' },
-  ];
-  input.serviceCases = [
-    ...Array.from({ length: 30 }, (_, index) =>
-      caseRow({ id: `owner-${index}`, assigned_to: 'owner' }),
-    ),
-    caseRow({ id: 'blocked', assigned_to: null, blocked_reason: 'Hold' }),
-  ];
-  const dashboard = calculateProDashboard(input, NOW);
-  assert.equal(dashboard.kpis.activeCompany, 1);
-  assert.equal(dashboard.kpis.movingCases, 30);
-  assert.equal(dashboard.kpis.blockedCases, 1);
-  assert.equal(dashboard.kpis.unassignedCases, 1);
-  assert.deepEqual(
-    dashboard.team.map((member) => member.profileId),
-    ['owner'],
-  );
-  assert.equal(dashboard.team[0].capacityPercent, 300);
-  assert.equal(dashboard.health.workloadBalance, 3.3);
-});
-
-test('counts open workload assigned to a suspended former owner as unassigned', () => {
-  const input = emptyInput();
-  input.profiles = [
-    {
-      id: 'former-pro',
-      tenant_id: TENANT,
-      full_name: 'Former owner',
-      role: 'pro',
-      status: 'suspended',
-    },
-    { id: 'new-pro', tenant_id: TENANT, full_name: 'New owner', role: 'pro', status: 'active' },
-  ];
-  input.serviceCases = [
-    caseRow({ id: 'orphaned-open', assigned_to: 'former-pro' }),
-    caseRow({ id: 'current-open', assigned_to: 'new-pro' }),
-    caseRow({
-      id: 'historical',
-      assigned_to: 'former-pro',
-      status: 'completed',
-      completed_at: NOW.toISOString(),
-    }),
-  ];
-
-  const dashboard = calculateProDashboard(input, NOW);
-  assert.equal(dashboard.kpis.openCases, 2);
-  assert.equal(dashboard.kpis.unassignedCases, 1);
-  assert.deepEqual(
-    dashboard.team.map((member) => member.profileId),
-    ['new-pro'],
-  );
-  assert.equal(dashboard.health.workloadBalance, 100);
-});
-
-test('scores workload balance as unhealthy when unassigned work has no active PRO', () => {
-  const input = emptyInput();
-  input.profiles = [
-    {
-      id: 'former-pro',
-      tenant_id: TENANT,
-      full_name: 'Former owner',
-      role: 'pro',
-      status: 'suspended',
-    },
-  ];
-  input.serviceCases = [caseRow({ id: 'unowned-open', assigned_to: 'former-pro' })];
-
-  const dashboard = calculateProDashboard(input, NOW);
-  assert.deepEqual(dashboard.team, []);
-  assert.equal(dashboard.kpis.unassignedCases, 1);
-  assert.equal(dashboard.health.workloadBalance, 0);
-
-  input.serviceCases = [];
-  const neutral = calculateProDashboard(input, NOW);
-  assert.equal(neutral.kpis.unassignedCases, 0);
-  assert.equal(neutral.health.workloadBalance, 0);
-});
-
-test('replacement owner restores a measurable workload signal while unassigned work stays visible', () => {
-  const input = emptyInput();
-  input.profiles = [
-    { id: 'new-pro', tenant_id: TENANT, full_name: 'New owner', role: 'pro', status: 'active' },
-  ];
-  input.serviceCases = [
-    caseRow({ id: 'owned', assigned_to: 'new-pro' }),
-    caseRow({ id: 'unowned', assigned_to: null }),
-  ];
-
-  const dashboard = calculateProDashboard(input, NOW);
-  assert.equal(dashboard.kpis.unassignedCases, 1);
-  assert.equal(dashboard.health.workloadBalance, 100);
-});
-
 test('dashboard action hrefs use filters and entity routes consumed by destination contracts', () => {
   const input = baseInput();
   input.serviceCases[0].id = '77777777-7777-4777-8777-777777777777';
@@ -978,7 +805,6 @@ test('dashboard action hrefs use filters and entity routes consumed by destinati
   });
   assert.equal(caseFilters.id, input.serviceCases[0].id);
   assert.equal(caseFilters.status, undefined);
-  assert.equal(caseFilters.assigned_to, undefined);
 
   const renewalUrl = new URL(byKind.get('renewal')!.href, 'https://mandoob.test');
   assert.equal(renewalUrl.pathname, '/t/acme/renewals');
@@ -1124,7 +950,6 @@ test('uses a safe inert href when a tenant slug is unavailable', () => {
 function emptyInput(): ProDashboardInput {
   const input = baseInput();
   for (const key of [
-    'profiles',
     'serviceCases',
     'renewals',
     'documentRequests',
@@ -1221,7 +1046,7 @@ test('operation filters affect cases only and stay tenant isolated', () => {
   );
   const unfiltered = calculateProDashboard(input, NOW);
   const filtered = calculateProDashboard(
-    { ...input, filters: { ownerId: 'pro-1', serviceType: 'Golden visa' } },
+    { ...input, filters: { serviceType: 'Golden visa' } },
     NOW,
   );
   assert.equal(filtered.kpis.openCases, 1);
@@ -1229,21 +1054,9 @@ test('operation filters affect cases only and stay tenant isolated', () => {
   assert.equal(filtered.finance.billedMinor, unfiltered.finance.billedMinor);
 });
 
-test('operation filters ignore inactive, external, and unknown tenant options', () => {
+test('operation filters reject unknown assigned-Company service options', () => {
   const input = baseInput();
-  input.profiles.push({
-    id: 'suspended-pro',
-    tenant_id: TENANT,
-    full_name: 'Suspended',
-    role: 'pro',
-    status: 'suspended',
-  });
-  for (const filters of [
-    { ownerId: 'pro-x' },
-    { ownerId: 'suspended-pro' },
-    { ownerId: 'unknown-pro' },
-    { serviceType: 'Unknown service' },
-  ]) {
+  for (const filters of [{ serviceType: 'Unknown service' }]) {
     const dashboard = calculateProDashboard({ ...input, filters }, NOW);
     assert.deepEqual(dashboard.appliedFilters, {});
     assert.equal(dashboard.filtersRejected, true);
@@ -1251,12 +1064,12 @@ test('operation filters ignore inactive, external, and unknown tenant options', 
   }
 });
 
-test('operation filters apply only active tenant owners and existing tenant services', () => {
+test('operation filters apply only existing assigned-Company services', () => {
   const dashboard = calculateProDashboard(
-    { ...baseInput(), filters: { ownerId: 'pro-1', serviceType: 'License' } },
+    { ...baseInput(), filters: { serviceType: 'License' } },
     NOW,
   );
-  assert.deepEqual(dashboard.appliedFilters, { ownerId: 'pro-1', serviceType: 'License' });
+  assert.deepEqual(dashboard.appliedFilters, { serviceType: 'License' });
   assert.equal(dashboard.filtersRejected, false);
   assert.equal(dashboard.kpis.openCases, 2);
 });

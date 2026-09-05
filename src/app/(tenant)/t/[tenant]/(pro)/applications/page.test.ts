@@ -5,17 +5,18 @@ import { test } from 'node:test';
 
 import { ApiError } from '@/lib/errors';
 import { authorizeApplicationsRead } from './page-authorization';
-import { applicationPageHref, parseApplicationFilters, parseApplicationPage } from './page-logic';
+import {
+  applicationPageHref,
+  parseApplicationFilters,
+  parseApplicationPage,
+  type ApplicationSearchParams,
+} from './page-logic';
 
 const pagePath = join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/applications/page.tsx');
 const tablePath = join(process.cwd(), 'src/components/pro/applications/ApplicationsTable.tsx');
 const createFormPath = join(
   process.cwd(),
   'src/components/pro/applications/ApplicationCreateForm.tsx',
-);
-const statusActionsPath = join(
-  process.cwd(),
-  'src/components/pro/applications/ApplicationStatusActions.tsx',
 );
 const logicPath = join(
   process.cwd(),
@@ -33,7 +34,7 @@ test('applications page awaits route inputs, validates stable filters, and uses 
   assert.match(source, /await searchParams/);
   assert.match(logic, /serviceCaseFilterSchema\.safeParse/);
   assert.match(logic, /status[^\n]+split\(','\)/);
-  assert.match(logic, /assigned_to:\s*first\(search\.owner\)/);
+  assert.doesNotMatch(logic, /search\.owner|assigned_to/);
   assert.match(source, /listServiceCaseWorkspace\(/);
   assert.doesNotMatch(source, new RegExp(`listServiceCase${['Cli', 'ents'].join('')}\\(`, 'u'));
   assert.doesNotMatch(source, /listServiceCaseOwners\(/);
@@ -90,18 +91,25 @@ test('applications page invokes fresh authorization before service-role reads', 
   assert.ok(authorization < source.indexOf(read), `${read} must follow authorization`);
 });
 
-test('repeated status, owner, and service params choose the first value without throwing', () => {
+test('repeated status and service params choose the first value while owner params are ignored', () => {
   const parsed = parseApplicationFilters({
     status: ['documents_pending,submitted', 'cancelled'],
     owner: ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'],
     serviceType: ['Golden visa', 'License'],
-  });
+  } as ApplicationSearchParams & { owner: string[] });
   assert.deepEqual(parsed, {
     status: ['documents_pending', 'submitted'],
-    assigned_to: '11111111-1111-4111-8111-111111111111',
     service_type: 'Golden visa',
   });
-  assert.deepEqual(parseApplicationFilters({ status: ['bad', 'submitted'], owner: [] }), {});
+  assert.deepEqual(
+    parseApplicationFilters({
+      status: ['bad', 'submitted'],
+      owner: [],
+    } as ApplicationSearchParams & {
+      owner: string[];
+    }),
+    {},
+  );
 });
 
 test('dashboard application filters expand open status and preserve Dubai deadline period', () => {
@@ -110,7 +118,7 @@ test('dashboard application filters expand open status and preserve Dubai deadli
       view: 'open',
       owner: '11111111-1111-4111-8111-111111111111',
       serviceType: 'Golden visa',
-    }),
+    } as ApplicationSearchParams & { owner: string }),
     {
       status: [
         'documents_pending',
@@ -120,7 +128,6 @@ test('dashboard application filters expand open status and preserve Dubai deadli
         'authority_review',
         'approved',
       ],
-      assigned_to: '11111111-1111-4111-8111-111111111111',
       service_type: 'Golden visa',
     },
   );
@@ -153,34 +160,50 @@ test('application targeting accepts one UUID and resets targeted reads to the fi
   assert.match(source, /filters\.id\s*\?\s*1\s*:\s*parseApplicationPage/);
 });
 
+test('a valid explicit status remains in force with a valid deadline filter', () => {
+  assert.deepEqual(
+    parseApplicationFilters({
+      status: 'submitted',
+      date: '2026-08-12',
+      period: 'morning',
+      eventTypes: 'case',
+    }),
+    {
+      status: ['submitted'],
+      deadlineDate: '2026-08-12',
+      deadlinePeriod: 'morning',
+    },
+  );
+});
+
 test('application pagination normalizes repeated page params and preserves active filters', () => {
   assert.equal(parseApplicationPage(['2', '999']), 2);
   assert.equal(parseApplicationPage('0'), 1);
   assert.equal(parseApplicationPage('bad'), 1);
+  assert.equal(parseApplicationPage('2pages'), 1);
+  assert.equal(parseApplicationPage('9007199254740992'), 1);
   assert.equal(
     applicationPageHref(
       'acme',
       {
         status: ['documents_pending', 'submitted'],
-        assigned_to: '11111111-1111-4111-8111-111111111111',
         service_type: 'Golden visa',
       },
       3,
     ),
-    '/t/acme/applications?status=documents_pending%2Csubmitted&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa&page=3',
+    '/t/acme/applications?status=documents_pending%2Csubmitted&serviceType=Golden+visa&page=3',
   );
 });
 
-test('dashboard application metric round-trips owner and service filters', () => {
+test('dashboard application metric round-trips service filters without an owner scope', () => {
   const filters = parseApplicationFilters({
     view: 'open',
-    owner: '11111111-1111-4111-8111-111111111111',
     serviceType: 'Golden visa',
   });
   const href = applicationPageHref('acme', filters, 2);
   assert.equal(
     href,
-    '/t/acme/applications?status=documents_pending%2Cdraft%2Cready_to_submit%2Csubmitted%2Cauthority_review%2Capproved&owner=11111111-1111-4111-8111-111111111111&serviceType=Golden+visa&page=2',
+    '/t/acme/applications?status=documents_pending%2Cdraft%2Cready_to_submit%2Csubmitted%2Cauthority_review%2Capproved&serviceType=Golden+visa&page=2',
   );
   assert.deepEqual(
     parseApplicationFilters(Object.fromEntries(new URL(href, 'https://mandoob.test').searchParams)),
@@ -188,35 +211,43 @@ test('dashboard application metric round-trips owner and service filters', () =>
   );
 });
 
-test('applications workspace has the required table contract and Dubai date display', () => {
+test('applications workspace preserves safe one-company create and status actions', () => {
   const page = readFileSync(pagePath, 'utf8');
   const table = readFileSync(tablePath, 'utf8');
-  const statusActions = readFileSync(statusActionsPath, 'utf8');
   assert.match(page, /<form[^>]+method="get"/);
-  assert.match(page, /ApplicationCreateForm/);
-  for (const heading of ['company', 'service', 'status', 'owner', 'slaDue', 'action']) {
+  for (const heading of [
+    'title',
+    'service',
+    'priority',
+    'status',
+    'blockers',
+    'slaDue',
+    'updatedAt',
+    'action',
+  ]) {
     assert.match(table, new RegExp(`labels\\.${heading}`));
   }
-  assert.match(statusActions, /focus-visible:ring/);
-  assert.match(table, /updateApplicationFormAction\.bind/);
+  assert.match(table, /row\.blockedReason/);
+  assert.match(table, /row\.updatedAt/);
   assert.match(table, /timeZone:\s*'Asia\/Dubai'/);
   assert.match(table, /locale:\s*string/);
-  assert.doesNotMatch(table, /name="completed_at"/);
+  assert.match(page, /ApplicationCreateForm/);
+  assert.match(page, /createApplicationFormAction\.bind\(null, slug\)/);
+  assert.match(table, /ApplicationStatusActions/);
+  assert.match(table, /updateApplicationFormAction\.bind\(null, slug, row\.id\)/);
+  assert.match(page, /cancelConfirm:\s*t\('cancelApplicationConfirm'\)/);
+  assert.doesNotMatch(page, /applicationMutationsUnavailable/);
+  assert.doesNotMatch(table, /labels\.mutationsUnavailable/);
 });
 
-test('application mutation forms expose pending and accessible result feedback without casts', () => {
+test('applications presents truthful filtered and current-page counts with distinct no-results copy', () => {
   const page = readFileSync(pagePath, 'utf8');
-  const table = readFileSync(tablePath, 'utf8');
-  const createForm = readFileSync(createFormPath, 'utf8');
-  const statusActions = readFileSync(statusActionsPath, 'utf8');
-  for (const source of [createForm, statusActions]) {
-    assert.match(source, /^'use client';/);
-    assert.match(source, /useActionState/);
-    assert.match(source, /aria-live="polite"/);
-    assert.match(source, /disabled=\{pending\}/);
-  }
-  assert.match(table, /ApplicationStatusActions/);
-  assert.doesNotMatch([page, table, createForm, statusActions].join('\n'), /as never/);
+  assert.match(page, /workspace\.total/);
+  assert.match(page, /cases\.length/);
+  assert.match(page, /blockedReason/);
+  assert.match(page, /applicationNoResults/);
+  assert.match(page, /applicationsEmpty/);
+  assert.match(page, /resetApplicationFilters/);
 });
 
 test('application datetime labels explicitly identify Dubai time and UTC+04 in both locales', () => {
@@ -234,6 +265,23 @@ test('application datetime labels explicitly identify Dubai time and UTC+04 in b
   }
 });
 
+test('application cancellation uses an explicit localized confirmation control', () => {
+  const statusActions = readFileSync(
+    join(process.cwd(), 'src/components/pro/applications/ApplicationStatusActions.tsx'),
+    'utf8',
+  );
+  const english = JSON.parse(readFileSync(englishMessagesPath, 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  const arabic = JSON.parse(readFileSync(arabicMessagesPath, 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  assert.match(statusActions, /<details/);
+  assert.match(statusActions, /labels\.cancelConfirm/);
+  assert.equal(typeof english.pro.cancelApplicationConfirm, 'string');
+  assert.equal(typeof arabic.pro.cancelApplicationConfirm, 'string');
+});
+
 test('applications page exposes accessible bounded pagination using the DAL count', () => {
   const source = readFileSync(pagePath, 'utf8');
   assert.match(source, /requestedPage\s*=\s*filters\.id\s*\?\s*1\s*:\s*parseApplicationPage/);
@@ -243,4 +291,41 @@ test('applications page exposes accessible bounded pagination using the DAL coun
   assert.match(source, /applicationPageHref\(/);
   assert.match(source, /applicationPreviousPage/);
   assert.match(source, /applicationNextPage/);
+});
+
+test('assigned-company applications remove owner and company controls while retaining validated service case filters', () => {
+  const page = readFileSync(pagePath, 'utf8');
+  const logic = readFileSync(logicPath, 'utf8');
+  const table = readFileSync(tablePath, 'utf8');
+  const createForm = readFileSync(createFormPath, 'utf8');
+
+  for (const source of [page, logic, table, createForm]) {
+    assert.doesNotMatch(source, /applicationOwner|applicationUnassigned|allApplicationOwners/);
+    assert.doesNotMatch(source, /ownerName|assigned_to/);
+  }
+  assert.doesNotMatch([table, createForm].join('\n'), /companyName/);
+  assert.doesNotMatch(logic, /search\.owner|params\.set\('owner'/);
+  assert.match(logic, /serviceCaseFilterSchema\.safeParse/);
+  assert.match(logic, /service_type/);
+  assert.match(logic, /deadlineDate/);
+  assert.match(page, /requireActiveTenant\(tenant\.id\)/);
+});
+
+test('assigned-company queue focuses title, service, priority, status, blockers, deadlines, updated time, and actions', () => {
+  const table = readFileSync(tablePath, 'utf8');
+  for (const heading of [
+    'title',
+    'service',
+    'priority',
+    'status',
+    'blockers',
+    'slaDue',
+    'updatedAt',
+    'action',
+  ]) {
+    assert.match(table, new RegExp(`labels\\.${heading}`));
+  }
+  assert.match(table, /row\.blockedReason/);
+  assert.match(table, /row\.updatedAt/);
+  assert.doesNotMatch(table, /labels\.company|labels\.owner|labels\.unassigned/);
 });

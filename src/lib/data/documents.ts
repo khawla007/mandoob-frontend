@@ -458,14 +458,20 @@ export async function listDocumentsForCompany(
   }));
 }
 
-export async function getDocumentSignedUrl(
+async function createDocumentSignedUrl(
   tenantId: string,
   versionId: string,
+  expectedCompanyId: string | null,
   ttlSeconds = 60 * 5,
 ): Promise<{ url: string; expiresAt: string }> {
   const normalizedTenantId = normalizeUuid(tenantId);
+  const normalizedExpectedCompanyId = expectedCompanyId ? normalizeUuid(expectedCompanyId) : null;
   const normalizedVersionId = normalizeUuid(versionId);
-  if (!normalizedTenantId || !normalizedVersionId) {
+  if (
+    !normalizedTenantId ||
+    !normalizedVersionId ||
+    (expectedCompanyId !== null && !normalizedExpectedCompanyId)
+  ) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
   }
   if (!Number.isInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 300) {
@@ -476,7 +482,7 @@ export async function getDocumentSignedUrl(
   const { data: version, error: readErr } = await admin
     .from('document_versions')
     .select(
-      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id))',
+      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id))',
     )
     .eq('id', normalizedVersionId)
     .maybeSingle();
@@ -494,11 +500,13 @@ export async function getDocumentSignedUrl(
       request_id: string | null;
       current_version_id: string | null;
       company: { id: string; tenant_id: string } | null;
+      request: { id: string; tenant_id: string; company_id: string } | null;
     } | null;
   };
   const owned = version as unknown as OwnedVersionRow;
   const document = owned.document;
   const company = document?.company;
+  const request = document?.request;
   const normalizedCompanyId = company ? normalizeUuid(company.id) : null;
   if (
     owned.id !== normalizedVersionId ||
@@ -507,9 +515,15 @@ export async function getDocumentSignedUrl(
     document.tenant_id !== normalizedTenantId ||
     !company ||
     !normalizedCompanyId ||
+    (normalizedExpectedCompanyId !== null && normalizedCompanyId !== normalizedExpectedCompanyId) ||
     company.id !== normalizedCompanyId ||
     document.company_id !== normalizedCompanyId ||
     company.tenant_id !== normalizedTenantId ||
+    (document.request_id !== null &&
+      (!request ||
+        request.id !== document.request_id ||
+        request.tenant_id !== normalizedTenantId ||
+        request.company_id !== normalizedCompanyId)) ||
     typeof owned.storage_path !== 'string' ||
     !isGeneratedStoragePath(owned.storage_path, normalizedTenantId, normalizedCompanyId)
   ) {
@@ -525,6 +539,23 @@ export async function getDocumentSignedUrl(
 
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
   return { url: signed.signedUrl, expiresAt };
+}
+
+export async function getDocumentSignedUrl(
+  tenantId: string,
+  versionId: string,
+  ttlSeconds = 60 * 5,
+): Promise<{ url: string; expiresAt: string }> {
+  return createDocumentSignedUrl(tenantId, versionId, null, ttlSeconds);
+}
+
+export async function getCompanyDocumentSignedUrl(
+  tenantId: string,
+  companyId: string,
+  versionId: string,
+  ttlSeconds = 60 * 5,
+): Promise<{ url: string; expiresAt: string }> {
+  return createDocumentSignedUrl(tenantId, versionId, companyId, ttlSeconds);
 }
 
 export type SetDocumentReviewCtx = {
@@ -543,6 +574,7 @@ type DocumentReviewRpcResult = {
 };
 
 export async function setDocumentReview(
+  expectedCompanyId: string,
   versionId: string,
   ctx: SetDocumentReviewCtx,
   input: DocumentReviewInput,
@@ -553,12 +585,61 @@ export async function setDocumentReview(
   const normalizedVersionId = normalizeUuid(versionId);
   const normalizedTenantId = normalizeUuid(ctx.tenantId);
   const normalizedActorId = normalizeUuid(ctx.actorId);
-  if (!normalizedVersionId || !normalizedTenantId || !normalizedActorId) {
+  const normalizedExpectedCompanyId = normalizeUuid(expectedCompanyId);
+  if (
+    !normalizedVersionId ||
+    !normalizedTenantId ||
+    !normalizedActorId ||
+    !normalizedExpectedCompanyId
+  ) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
   }
   const review = documentReviewSchema.parse(input);
 
   const admin = createSupabaseServiceRoleClient();
+  const { data: version, error: ownershipError } = await admin
+    .from('document_versions')
+    .select(
+      'id, tenant_id, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id))',
+    )
+    .eq('id', normalizedVersionId)
+    .eq('tenant_id', normalizedTenantId)
+    .maybeSingle();
+  const owned = version as {
+    id: string;
+    tenant_id: string;
+    document: {
+      id: string;
+      tenant_id: string;
+      company_id: string;
+      request_id: string | null;
+      current_version_id: string | null;
+      company: { id: string; tenant_id: string } | null;
+      request: { id: string; tenant_id: string; company_id: string } | null;
+    } | null;
+  } | null;
+  const document = owned?.document;
+  if (ownershipError) {
+    throw new ApiError('INTERNAL', 'Could not verify document ownership', 500);
+  }
+  if (
+    !owned ||
+    owned.id !== normalizedVersionId ||
+    owned.tenant_id !== normalizedTenantId ||
+    !document ||
+    document.tenant_id !== normalizedTenantId ||
+    document.company_id !== normalizedExpectedCompanyId ||
+    document.company?.id !== normalizedExpectedCompanyId ||
+    document.company.tenant_id !== normalizedTenantId ||
+    document.current_version_id !== normalizedVersionId ||
+    (document.request_id !== null &&
+      (!document.request ||
+        document.request.id !== document.request_id ||
+        document.request.tenant_id !== normalizedTenantId ||
+        document.request.company_id !== normalizedExpectedCompanyId))
+  ) {
+    throw new ApiError('NOT_FOUND', 'document version not found', 404);
+  }
   const reviewedAt = new Date().toISOString();
   const { data: result, error: reviewErr } = await admin
     .rpc('review_document_version', {
@@ -588,7 +669,11 @@ export async function setDocumentReview(
   if (!result) throw new ApiError('NOT_FOUND', 'document version not found', 404);
   const reviewed = result as DocumentReviewRpcResult;
   const reviewedCompanyId = normalizeUuid(reviewed.company_id);
-  if (reviewed.review_status !== review.status || !reviewed.document_id || !reviewedCompanyId) {
+  if (
+    reviewed.review_status !== review.status ||
+    !reviewed.document_id ||
+    reviewedCompanyId !== normalizedExpectedCompanyId
+  ) {
     throw new ApiError('INTERNAL', 'Could not save document review', 500);
   }
 

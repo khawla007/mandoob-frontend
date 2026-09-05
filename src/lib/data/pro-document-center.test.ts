@@ -91,72 +91,15 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test('searchDocumentCenterCompanyOptions bounds a 1001-client firm to stable tenant-scoped matches', async () => {
-  const rows = Array.from({ length: 1001 }, (_, index) => ({
-    id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
-    company_name: `Client ${String(index).padStart(4, '0')}`,
-  }));
-  const calls = captureFetch(() => json(rows.slice(100, 150)));
-  const loaded = await load();
-  assert.equal(typeof loaded.searchDocumentCenterCompanyOptions, 'function');
-
-  const options = await loaded.searchDocumentCenterCompanyOptions(TENANT, ' Client 1 ', 50);
-
-  assert.equal(options.length, 50);
-  assert.deepEqual(options[0], { id: rows[100].id, companyName: rows[100].company_name });
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /select=id%2Ccompany_name/u);
-  assert.match(calls[0].url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
-  assert.match(calls[0].url, /company_name=ilike\.%25Client\+1%25/u);
-  assert.match(calls[0].url, /order=company_name\.asc%2Cid\.asc/u);
-  assert.match(calls[0].url, /limit=50/u);
-  assert.doesNotMatch(
-    readFileSync(new URL('./pro-document-center.ts', import.meta.url), 'utf8'),
-    /CLIENT_OPTION_BATCH_SIZE|\.range\(/u,
-  );
-});
-
-test('document client search validates query and limit before reading', async () => {
-  const calls = captureFetch(() => json([]));
-  const loaded = await load();
-  assert.equal(typeof loaded.searchDocumentCenterCompanyOptions, 'function');
-
-  await assert.rejects(() => loaded.searchDocumentCenterCompanyOptions('not-a-tenant', '', 50));
-  await assert.rejects(() =>
-    loaded.searchDocumentCenterCompanyOptions(TENANT, 'x'.repeat(101), 50),
-  );
-  await assert.rejects(() => loaded.searchDocumentCenterCompanyOptions(TENANT, '', 51));
-  assert.equal(calls.length, 0);
-});
-
-test('getDocumentCenterCompanyOption resolves one exact tenant-owned selected client', async () => {
-  const selected = {
-    id: '00000000-0000-4000-8000-000000000777',
-    company_name: 'Selected Client',
-  };
-  const calls = captureFetch(() => json(selected));
-  const loaded = await load();
-  assert.equal(typeof loaded.getDocumentCenterCompanyOption, 'function');
-
-  assert.deepEqual(await loaded.getDocumentCenterCompanyOption(TENANT, selected.id), {
-    id: selected.id,
-    companyName: selected.company_name,
-  });
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /tenant_id=eq\.11111111-1111-4111-8111-111111111111/u);
-  assert.match(calls[0].url, /id=eq\.00000000-0000-4000-8000-000000000777/u);
-});
-
-test('listProDocumentCenter sends exact validated filters to only the RPC and maps without storage paths', async () => {
+test('listProDocumentCenter binds the assigned company through the exact RPC filter without storage paths', async () => {
   const calls = captureFetch(() => json([rpcRow()]));
   const { listProDocumentCenter } = await load();
 
-  const result = await listProDocumentCenter(TENANT, {
+  const result = await listProDocumentCenter(TENANT, CLIENT, {
     view: 'submitted',
     sort: 'newest',
     window: 'all',
     search: 'passport',
-    companyId: CLIENT,
     docType: 'passport',
     from: '2026-08-01',
     to: '2026-08-31',
@@ -190,9 +133,6 @@ test('listProDocumentCenter sends exact validated filters to only the RPC and ma
     entityKind: 'document',
     entityId: DOCUMENT,
     tenantId: TENANT,
-    companyId: CLIENT,
-    companyName: 'Acme LLC',
-    companyStatus: 'active',
     employeeId: null,
     employeeName: null,
     docType: 'passport',
@@ -225,7 +165,7 @@ test('document center accepts canonical PostgreSQL UUIDs used by trusted tenant 
   const calls = captureFetch(() => json([]));
   const { listProDocumentCenter } = await load();
 
-  await listProDocumentCenter(POSTGRES_TENANT, {});
+  await listProDocumentCenter(POSTGRES_TENANT, CLIENT, {});
 
   assert.equal(calls.length, 1);
   assert.equal((calls[0].body as Record<string, unknown>).p_tenant_id, POSTGRES_TENANT);
@@ -241,7 +181,7 @@ test('listProDocumentCenter uses the RPC effective page with the exact total', a
   const calls = captureFetch(() => json(serverPage));
   const { listProDocumentCenter } = await load();
 
-  const result = await listProDocumentCenter(TENANT, { page: 1001 });
+  const result = await listProDocumentCenter(TENANT, CLIENT, { page: 1001 });
 
   assert.equal((calls[0].body as Record<string, unknown>).p_page, 1001);
   assert.equal((calls[0].body as Record<string, unknown>).p_page_size, 50);
@@ -254,7 +194,7 @@ test('listProDocumentCenter uses the RPC effective page with the exact total', a
 test('listProDocumentCenter returns total zero for an empty RPC result and sanitizes DB failures', async () => {
   const { listProDocumentCenter } = await load();
   captureFetch(() => json([]));
-  assert.deepEqual(await listProDocumentCenter(TENANT, {}), {
+  assert.deepEqual(await listProDocumentCenter(TENANT, CLIENT, {}), {
     rows: [],
     total: 0,
     page: 1,
@@ -263,7 +203,7 @@ test('listProDocumentCenter returns total zero for an empty RPC result and sanit
 
   captureFetch(() => json({ message: 'secret storage_path and SQL detail' }, 500));
   await assert.rejects(
-    () => listProDocumentCenter(TENANT, {}),
+    () => listProDocumentCenter(TENANT, CLIENT, {}),
     (error) =>
       error instanceof ApiError &&
       error.code === 'INTERNAL' &&
@@ -271,7 +211,7 @@ test('listProDocumentCenter returns total zero for an empty RPC result and sanit
   );
 });
 
-test('getDocumentCenterSummary isolates each RPC result when one source fails', async () => {
+test('getDocumentCenterSummary binds every count to the assigned company and isolates failures', async () => {
   const totals: Record<string, number> = {
     requested: 11,
     submitted: 12,
@@ -288,7 +228,7 @@ test('getDocumentCenterSummary isolates each RPC result when one source fails', 
   });
   const { getDocumentCenterSummary } = await load();
 
-  const result = await getDocumentCenterSummary(TENANT, '2026-08-13');
+  const result = await getDocumentCenterSummary(TENANT, CLIENT, '2026-08-13');
 
   assert.deepEqual(result, {
     awaitingUpload: { ok: true, value: 11 },
@@ -302,6 +242,7 @@ test('getDocumentCenterSummary isolates each RPC result when one source fails', 
   for (const call of calls) {
     const body = call.body as Record<string, unknown>;
     assert.equal(body.p_tenant_id, TENANT);
+    assert.equal(body.p_company_id, CLIENT);
     assert.equal(body.p_page, 1);
     assert.equal(body.p_page_size, 1);
   }
@@ -310,6 +251,21 @@ test('getDocumentCenterSummary isolates each RPC result when one source fails', 
   )!;
   assert.equal((expiring.body as Record<string, unknown>).p_expiry_from, '2026-08-13');
   assert.equal((expiring.body as Record<string, unknown>).p_expiry_to, '2026-09-12');
+});
+
+test('summary requests never reuse another company scope', async () => {
+  const otherCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch(() => json([]));
+  const { getDocumentCenterSummary } = await load();
+
+  await getDocumentCenterSummary(TENANT, CLIENT, '2026-08-13');
+  await getDocumentCenterSummary(TENANT, otherCompany, '2026-08-13');
+
+  assert.equal(calls.length, 12);
+  assert.deepEqual(
+    calls.map((call) => (call.body as Record<string, unknown>).p_company_id),
+    [...Array(6).fill(CLIENT), ...Array(6).fill(otherCompany)],
+  );
 });
 
 function historyVersion(overrides: Record<string, unknown> = {}) {
@@ -332,34 +288,51 @@ function historyVersion(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test('listDocumentVersionHistory makes one snapshot RPC and maps stable newest-first history', async () => {
-  const calls = captureFetch(() =>
-    json({
-      documentId: DOCUMENT,
-      currentVersionId: VERSION_2,
-      total: 2,
-      versions: [
-        historyVersion(),
-        historyVersion({
-          versionId: VERSION_1,
-          versionNumber: 1,
-          current: false,
-          uploadedAt: '2026-08-11T10:00:00.000Z',
-          reviewStatus: 'rejected',
-          reviewerName: 'Omar',
-          reviewNote: 'Blurred',
-          sizeBytes: 100,
-        }),
-      ],
-    }),
+function ownedHistoryDocument(overrides: Record<string, unknown> = {}) {
+  return {
+    id: DOCUMENT,
+    tenant_id: TENANT,
+    company_id: CLIENT,
+    request_id: null,
+    company: { id: CLIENT, tenant_id: TENANT },
+    request: null,
+    ...overrides,
+  };
+}
+
+function historyCalls(payload: unknown): FetchCall[] {
+  return captureFetch((call) =>
+    call.url.includes('/rest/v1/documents') ? json(ownedHistoryDocument()) : json(payload),
   );
+}
+
+test('listDocumentVersionHistory makes one snapshot RPC and maps stable newest-first history', async () => {
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: VERSION_2,
+    total: 2,
+    versions: [
+      historyVersion(),
+      historyVersion({
+        versionId: VERSION_1,
+        versionNumber: 1,
+        current: false,
+        uploadedAt: '2026-08-11T10:00:00.000Z',
+        reviewStatus: 'rejected',
+        reviewerName: 'Omar',
+        reviewNote: 'Blurred',
+        sizeBytes: 100,
+      }),
+    ],
+  });
   const { listDocumentVersionHistory } = await load();
 
-  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+  const result = await listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT);
 
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /\/rest\/v1\/rpc\/get_pro_document_version_history$/u);
-  assert.deepEqual(calls[0].body, { p_tenant_id: TENANT, p_document_id: DOCUMENT });
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].url, /\/rest\/v1\/documents/u);
+  assert.match(calls[1].url, /\/rest\/v1\/rpc\/get_pro_document_version_history$/u);
+  assert.deepEqual(calls[1].body, { p_tenant_id: TENANT, p_document_id: DOCUMENT });
   assert.deepEqual(
     result.map((row) => ({ id: row.versionId, version: row.versionNumber, current: row.current })),
     [
@@ -373,43 +346,39 @@ test('listDocumentVersionHistory makes one snapshot RPC and maps stable newest-f
 });
 
 test('listDocumentVersionHistory rejects malformed snapshot envelopes', async () => {
-  const calls = captureFetch(() =>
-    json({
-      documentId: DOCUMENT,
-      currentVersionId: VERSION_1,
-      total: 2,
-      versions: [historyVersion({ versionId: VERSION_1, versionNumber: 1 })],
-    }),
-  );
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: VERSION_1,
+    total: 2,
+    versions: [historyVersion({ versionId: VERSION_1, versionNumber: 1 })],
+  });
   const { listDocumentVersionHistory } = await load();
 
   await assert.rejects(
-    () => listDocumentVersionHistory(TENANT, DOCUMENT),
+    () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
     (error) => error instanceof ApiError && error.code === 'INTERNAL',
   );
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
 });
 
 test('listDocumentVersionHistory accepts retained versions when the document has no current head', async () => {
-  const calls = captureFetch(() =>
-    json({
-      documentId: DOCUMENT,
-      currentVersionId: null,
-      total: 1,
-      versions: [
-        historyVersion({
-          versionId: VERSION_1,
-          versionNumber: 1,
-          current: false,
-        }),
-      ],
-    }),
-  );
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: null,
+    total: 1,
+    versions: [
+      historyVersion({
+        versionId: VERSION_1,
+        versionNumber: 1,
+        current: false,
+      }),
+    ],
+  });
   const { listDocumentVersionHistory } = await load();
 
-  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+  const result = await listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT);
 
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
   assert.equal(result.length, 1);
   assert.equal(result[0].versionId, VERSION_1);
   assert.equal(result[0].current, false);
@@ -440,14 +409,17 @@ test('listDocumentVersionHistory returns every 1001+ version from one immutable 
     versionId: '99999999-9999-4999-8999-999999999999',
     uploadedAt: versions[500].uploadedAt,
   });
-  const calls = captureFetch(() =>
-    json({ documentId: DOCUMENT, currentVersionId: currentId, total, versions }),
-  );
+  const calls = historyCalls({
+    documentId: DOCUMENT,
+    currentVersionId: currentId,
+    total,
+    versions,
+  });
   const { listDocumentVersionHistory } = await load();
 
-  const result = await listDocumentVersionHistory(TENANT, DOCUMENT);
+  const result = await listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT);
 
-  assert.equal(calls.length, 1, 'a late below-cursor insert cannot enter a second read snapshot');
+  assert.equal(calls.length, 2, 'a late below-cursor insert cannot enter a second read snapshot');
   assert.equal(result.length, total);
   assert.equal(result[0].versionNumber, total);
   assert.equal(result.at(-1)?.versionNumber, 1);
@@ -464,7 +436,7 @@ test('listDocumentVersionHistory collapses missing and foreign ownership and san
   for (const response of [json(null), json(null)]) {
     const calls = captureFetch(() => response);
     await assert.rejects(
-      () => listDocumentVersionHistory(TENANT, DOCUMENT),
+      () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
       (error) =>
         error instanceof ApiError &&
         error.code === 'NOT_FOUND' &&
@@ -477,13 +449,38 @@ test('listDocumentVersionHistory collapses missing and foreign ownership and san
     json({ message: 'secret storage_path and ownership detail' }, 500),
   );
   await assert.rejects(
-    () => listDocumentVersionHistory(TENANT, DOCUMENT),
+    () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
     (error) =>
       error instanceof ApiError &&
       error.code === 'INTERNAL' &&
       error.message === 'Unable to load document history',
   );
   assert.equal(calls.length, 1);
+});
+
+test('listDocumentVersionHistory rejects a same-tenant foreign company before the history RPC', async () => {
+  const foreignCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch((call) =>
+    call.url.includes('/rest/v1/documents')
+      ? json(
+          ownedHistoryDocument({
+            company_id: foreignCompany,
+            company: { id: foreignCompany, tenant_id: TENANT },
+          }),
+        )
+      : json({ message: 'history RPC must not be called' }, 500),
+  );
+  const { listDocumentVersionHistory } = await load();
+
+  await assert.rejects(
+    () => listDocumentVersionHistory(TENANT, CLIENT, DOCUMENT),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls.some((call) => call.url.includes('/rpc/get_pro_document_version_history')),
+    false,
+  );
 });
 
 function expiryContext() {
@@ -501,7 +498,7 @@ test('setDocumentExpiry rejects an omitted expiry before any read or mutation', 
   const { setDocumentExpiry } = await load();
 
   await assert.rejects(() =>
-    setDocumentExpiry(expiryContext(), { document_id: DOCUMENT } as never),
+    setDocumentExpiry(CLIENT, expiryContext(), { document_id: DOCUMENT } as never),
   );
   assert.equal(calls.length, 0);
 });
@@ -510,13 +507,14 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
   const { setDocumentExpiry } = await load();
   for (const expiresOn of ['2027-08-13', null]) {
     const calls = captureFetch((call) => {
+      if (call.url.includes('/rest/v1/documents?')) return json(ownedHistoryDocument());
       if (call.url.includes('/rest/v1/rpc/set_pro_document_expiry')) {
         return json([{ document_id: DOCUMENT, company_id: CLIENT, expires_on: expiresOn }]);
       }
       return json([]);
     });
 
-    const result = await setDocumentExpiry(expiryContext(), {
+    const result = await setDocumentExpiry(CLIENT, expiryContext(), {
       document_id: DOCUMENT,
       expires_on: expiresOn,
     });
@@ -530,10 +528,7 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
       p_actor_id: ACTOR,
       p_expires_on: expiresOn,
     });
-    assert.equal(
-      calls.some((call) => call.url.includes('/rest/v1/documents?')),
-      false,
-    );
+    assert.match(calls[0].url, new RegExp(`company_id=eq\\.${CLIENT}`, 'u'));
     assert.equal(
       calls.some((call) => call.url.includes('/rest/v1/tenant_audit_log')),
       false,
@@ -551,12 +546,16 @@ test('setDocumentExpiry rejects empty and failed transactional RPCs without succ
     json({ message: 'private audit constraint detail', code: '23514' }, 500),
   ]) {
     const calls = captureFetch((call) =>
-      call.url.includes('/rest/v1/rpc/set_pro_document_expiry') ? response : json([]),
+      call.url.includes('/rest/v1/documents?')
+        ? json(ownedHistoryDocument())
+        : call.url.includes('/rest/v1/rpc/set_pro_document_expiry')
+          ? response
+          : json([]),
     );
 
     await assert.rejects(
       () =>
-        setDocumentExpiry(expiryContext(), {
+        setDocumentExpiry(CLIENT, expiryContext(), {
           document_id: DOCUMENT,
           expires_on: '2027-08-13',
         }),
@@ -565,7 +564,7 @@ test('setDocumentExpiry rejects empty and failed transactional RPCs without succ
         error.code === 'INTERNAL' &&
         error.message === 'Unable to update document expiry',
     );
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     assert.equal(
       calls.some((call) => call.url.includes('/rest/v1/auth_events')),
       false,
@@ -599,14 +598,16 @@ test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes dat
     },
   ]) {
     const calls = captureFetch((call) =>
-      call.url.includes('/rest/v1/rpc/set_pro_document_expiry')
-        ? json({ message: expected.dbMessage, code: expected.dbCode }, 400)
-        : json([]),
+      call.url.includes('/rest/v1/documents?')
+        ? json(ownedHistoryDocument())
+        : call.url.includes('/rest/v1/rpc/set_pro_document_expiry')
+          ? json({ message: expected.dbMessage, code: expected.dbCode }, 400)
+          : json([]),
     );
 
     await assert.rejects(
       () =>
-        setDocumentExpiry(expiryContext(), {
+        setDocumentExpiry(CLIENT, expiryContext(), {
           document_id: DOCUMENT,
           expires_on: '2027-08-13',
         }),
@@ -617,12 +618,59 @@ test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes dat
         error.status === expected.status &&
         !error.message.includes(expected.dbMessage),
     );
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
     assert.equal(
       calls.some((call) => call.url.includes('/rest/v1/auth_events')),
       false,
     );
   }
+});
+
+test('setDocumentExpiry rejects a same-tenant foreign Company before the expiry RPC', async () => {
+  const foreignCompany = '99999999-9999-4999-8999-999999999999';
+  const calls = captureFetch(() =>
+    json(
+      ownedHistoryDocument({
+        company_id: foreignCompany,
+        company: { id: foreignCompany, tenant_id: TENANT },
+      }),
+    ),
+  );
+  const { setDocumentExpiry } = await load();
+
+  await assert.rejects(
+    () =>
+      setDocumentExpiry(CLIENT, expiryContext(), {
+        document_id: DOCUMENT,
+        expires_on: '2027-08-13',
+      }),
+    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls.some((call) => call.url.includes('/rpc/set_pro_document_expiry')),
+    false,
+  );
+});
+
+test('setDocumentExpiry sanitizes assigned-company ownership read failures', async () => {
+  const calls = captureFetch(() =>
+    json({ code: 'XX000', message: 'private ownership detail' }, 500),
+  );
+  const { setDocumentExpiry } = await load();
+
+  await assert.rejects(
+    () =>
+      setDocumentExpiry(CLIENT, expiryContext(), {
+        document_id: DOCUMENT,
+        expires_on: '2027-08-13',
+      }),
+    (error) =>
+      error instanceof ApiError &&
+      error.code === 'INTERNAL' &&
+      !error.message.includes('private ownership detail'),
+  );
+  assert.equal(calls.length, 1);
 });
 
 test('Dubai helpers use inclusive today-through-30 and the Dubai midnight boundary', async () => {

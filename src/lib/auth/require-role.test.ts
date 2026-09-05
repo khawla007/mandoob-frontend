@@ -101,3 +101,51 @@ test('platform operator fails closed on query errors and malformed session IDs',
   await assert.rejects(() => requirePlatformOperator(malformed.deps), /DENIED/);
   assert.equal(malformed.calls.length, 0);
 });
+
+test('dashboard MFA guards preserve challenge and enrollment destinations', async () => {
+  const { requireAal2, requireMfaEnrolled } = await import('./require-role');
+  const base: SessionProfile = {
+    id: profileId,
+    email: 'operator@example.com',
+    role: 'super_admin',
+    tenantId: null,
+    aal: 'aal1',
+    mfaEnrolled: false,
+  };
+  const redirects: string[] = [];
+  const redirect = async (path: string): Promise<never> => {
+    redirects.push(path);
+    throw new Error('REDIRECTED');
+  };
+
+  await assert.rejects(() => requireAal2(base, { redirect }), /REDIRECTED/u);
+  await assert.rejects(() => requireMfaEnrolled(base, { redirect }), /REDIRECTED/u);
+  assert.deepEqual(redirects, ['/mfa/challenge', '/mfa/enroll']);
+});
+
+test('dashboard MFA guards accept AAL2 and enrolled sessions without redirecting', async () => {
+  const { requireAal2, requireMfaEnrolled } = await import('./require-role');
+  const redirects: string[] = [];
+  const session: SessionProfile = {
+    id: profileId,
+    email: 'operator@example.com',
+    role: 'pro',
+    tenantId: '22222222-2222-4222-8222-222222222222',
+    aal: 'aal2',
+    mfaEnrolled: true,
+  };
+
+  await requireAal2(session, {
+    redirect: async (path: string): Promise<never> => {
+      redirects.push(path);
+      throw new Error('UNEXPECTED_REDIRECT');
+    },
+  });
+  await requireMfaEnrolled(session, {
+    redirect: async (path: string): Promise<never> => {
+      redirects.push(path);
+      throw new Error('UNEXPECTED_REDIRECT');
+    },
+  });
+  assert.deepEqual(redirects, []);
+});

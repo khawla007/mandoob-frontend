@@ -1,4 +1,4 @@
-import { ArrowUpRight, CalendarClock, CircleAlert, UserRound } from 'lucide-react';
+import { ArrowUpRight, CalendarClock, CircleAlert } from 'lucide-react';
 import Link from 'next/link';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +31,6 @@ export type ActionDeckLabels = WidgetBaseLabels & {
   title: string;
   description: string;
   actionAria: string;
-  unassigned: string;
   noDeadline: string;
   urgency: Record<Action['urgency'], string>;
   countdown: ActionCountdownLabels;
@@ -112,7 +111,6 @@ export function ActionDeck(props: ActionDeckProps) {
               aria-label={signalLabel(labels.actionAria, {
                 title: action.title,
                 company: action.companyName,
-                owner: action.ownerName ?? labels.unassigned,
                 countdown,
                 absoluteDeadline,
                 urgency: labels.urgency[action.urgency],
@@ -140,10 +138,6 @@ export function ActionDeck(props: ActionDeckProps) {
                 />
               </span>
               <span className="signal-action-card__meta text-foreground/70 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                <span className="flex items-center gap-1.5">
-                  <UserRound aria-hidden="true" className="size-3.5" />
-                  {action.ownerName ?? labels.unassigned}
-                </span>
                 <span className="flex items-center gap-1.5">
                   <CalendarClock aria-hidden="true" className="size-3.5" />
                   <span

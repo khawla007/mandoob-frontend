@@ -45,13 +45,7 @@ import { RequestDocumentDialog } from './RequestDocumentDialog';
 type MutationState = DocumentCenterActionResult | null;
 type DocumentActionRow = Pick<
   DocumentCenterRow,
-  | 'entityKind'
-  | 'companyId'
-  | 'documentId'
-  | 'versionId'
-  | 'reviewStatus'
-  | 'expirySource'
-  | 'expiresOn'
+  'entityKind' | 'documentId' | 'versionId' | 'reviewStatus' | 'expirySource' | 'expiresOn'
 >;
 
 export type DocumentActionLabels = {
@@ -113,7 +107,7 @@ function ActionFeedback({ state, labels }: { state: MutationState; labels: Docum
     <p
       role={state?.ok ? 'status' : 'alert'}
       aria-live="polite"
-      className={state?.ok ? 'text-sm text-emerald-700' : 'text-destructive text-sm'}
+      className={state?.ok ? 'text-sm text-[var(--signal-success)]' : 'text-destructive text-sm'}
     >
       {message}
     </p>
@@ -232,7 +226,6 @@ function RowDocumentActions({
         {row.reviewStatus === 'pending' && versionId ? (
           <form action={reviewFormAction}>
             <input type="hidden" name="version_id" value={versionId} />
-            <input type="hidden" name="company_id" value={row.companyId} />
             <input type="hidden" name="status" value="approved" />
             <input type="hidden" name="note" value="" />
             <PendingButton
@@ -264,7 +257,6 @@ function RowDocumentActions({
               </DialogHeader>
               <form action={reviewFormAction} className="document-center-control grid gap-4">
                 <input type="hidden" name="version_id" value={versionId} />
-                <input type="hidden" name="company_id" value={row.companyId} />
                 <input type="hidden" name="status" value="rejected" />
                 <label className="grid gap-1.5 text-sm font-medium">
                   {labels.review.note}
@@ -347,7 +339,6 @@ function RowDocumentActions({
                 className="document-center-control grid gap-4"
               >
                 <input type="hidden" name="document_id" value={documentId} />
-                <input type="hidden" name="company_id" value={row.companyId} />
                 <label className="grid gap-1.5 text-sm font-medium">
                   {labels.expiry.date}
                   <input
@@ -364,7 +355,6 @@ function RowDocumentActions({
               <DialogFooter>
                 <form action={expiryFormAction} onSubmit={preventCompetingExpirySubmit}>
                   <input type="hidden" name="document_id" value={documentId} />
-                  <input type="hidden" name="company_id" value={row.companyId} />
                   <input type="hidden" name="expires_on" value="" />
                   <PendingButton pending={expiryPending} type="submit" variant="ghost">
                     {expiryPending ? labels.expiry.pending : labels.expiry.clear}

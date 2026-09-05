@@ -1,130 +1,102 @@
+import { Badge } from '@/components/ui/badge';
 import { RenewalRowActions } from '@/components/pro/RenewalRowActions';
-import {
-  RenewalSourceBadge,
-  RenewalStatusBadge,
-  RenewalTypeBadge,
-} from '@/components/pro/RenewalBadges';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { bucketRenewals } from '@/lib/data/renewal-buckets';
-import type { RenewalRow } from '@/lib/data/renewals';
+import type { RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import type { RenewalWorkspaceRow } from '@/lib/data/pro-renewal-workspace';
 
-export type CompanyLite = { id: string; company_name: string };
-
-export type RenewalsTableProps = {
-  rows: RenewalRow[];
-  companies: Map<string, CompanyLite>;
-  showCompanyColumn: boolean;
-  slug: string;
-  mode: 'bucketed' | 'flat';
-  emptyMessage?: string;
+export type RenewalsTableLabels = {
+  queue: string;
+  type: string;
+  label: string;
+  due: string;
+  status: string;
+  source: string;
+  actionsUnavailable: string;
+  today: string;
+  overdue: string;
+  days: string;
+  missingDate: string;
+  typeValues: Record<RenewalType, string>;
+  statusValues: Record<RenewalStatus, string>;
+  sourceValues: Record<RenewalWorkspaceRow['source'], string>;
 };
 
-function formatDays(daysOut: number, status: RenewalRow['status']): string {
-  if (status === 'completed' || status === 'cancelled') return '—';
-  if (daysOut < 0) return `${Math.abs(daysOut)}d overdue`;
-  if (daysOut === 0) return 'Due today';
-  if (daysOut === 1) return '1 day';
-  return `${daysOut} days`;
+function dueText(row: RenewalWorkspaceRow, labels: RenewalsTableLabels): string | null {
+  if (row.status === 'completed' || row.status === 'cancelled') return null;
+  if (row.daysOut === null) return null;
+  if (row.daysOut < 0) return `${Math.abs(row.daysOut)} ${labels.days} ${labels.overdue}`;
+  if (row.daysOut === 0) return labels.today;
+  return `${row.daysOut} ${labels.days}`;
 }
 
-export function RenewalsTable(props: RenewalsTableProps) {
-  if (props.rows.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed p-10 text-center">
-        <p className="text-muted-foreground text-sm">
-          {props.emptyMessage ?? 'No renewals to show.'}
-        </p>
-      </div>
-    );
-  }
-
-  if (props.mode === 'flat') {
-    return <FlatTable {...props} />;
-  }
-
-  const buckets = bucketRenewals(props.rows);
-  const sections: { key: string; title: string; rows: RenewalRow[] }[] = [
-    { key: 'd30', title: 'Due in 30 days', rows: buckets.d30 },
-    { key: 'd60', title: '31–60 days', rows: buckets.d60 },
-    { key: 'd90', title: '61–90 days', rows: buckets.d90 },
-    { key: 'later', title: 'Later (90d+)', rows: buckets.later },
-  ];
-
+export function RenewalsTable({
+  rows,
+  slug,
+  labels,
+  locale,
+}: {
+  rows: RenewalWorkspaceRow[];
+  slug: string;
+  labels: RenewalsTableLabels;
+  locale: string;
+}) {
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Dubai' });
   return (
-    <div className="space-y-6">
-      {sections.map((s) => (
-        <section key={s.key} className="space-y-2">
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-sm font-semibold">{s.title}</h3>
-            <span className="text-muted-foreground text-xs">{s.rows.length}</span>
-          </div>
-          {s.rows.length === 0 ? (
-            <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-3 text-xs">
-              No renewals in this bucket.
-            </p>
-          ) : (
-            <FlatTable {...props} rows={s.rows} />
-          )}
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function FlatTable(props: RenewalsTableProps) {
-  return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {props.showCompanyColumn && <TableHead>Company</TableHead>}
-            <TableHead>Type</TableHead>
-            <TableHead>Label</TableHead>
-            <TableHead>Due</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead className="w-12" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {props.rows.map((r) => {
-            const company = props.companies.get(r.companyId);
-            return (
-              <TableRow key={r.id}>
-                {props.showCompanyColumn && (
-                  <TableCell className="font-medium">{company?.company_name ?? '—'}</TableCell>
-                )}
-                <TableCell>
-                  <RenewalTypeBadge type={r.type} />
-                </TableCell>
-                <TableCell className="max-w-[24rem] truncate">{r.label}</TableCell>
-                <TableCell className="whitespace-nowrap">
-                  <div className="text-sm">{r.dueDate}</div>
-                  <div className="text-muted-foreground text-xs">
-                    {formatDays(r.daysOut, r.status)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <RenewalStatusBadge status={r.status} />
-                </TableCell>
-                <TableCell>
-                  <RenewalSourceBadge source={r.source} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <RenewalRowActions row={r} slug={props.slug} />
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+    <div className="overflow-x-auto rounded-lg border" role="region" aria-label={labels.queue}>
+      <table className="w-full min-w-[46rem] text-sm">
+        <thead className="bg-muted/40 border-b">
+          <tr>
+            <th scope="col" className="px-3 py-2.5 text-start font-medium">
+              {labels.type}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-start font-medium">
+              {labels.label}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-start font-medium">
+              {labels.due}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-start font-medium">
+              {labels.status}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-start font-medium">
+              {labels.source}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-end font-medium">
+              {labels.actionsUnavailable}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((row) => (
+            <tr key={row.id} className="hover:bg-muted/30 align-top transition-colors">
+              <td className="px-3 py-3">
+                <Badge variant="outline">{labels.typeValues[row.type]}</Badge>
+              </td>
+              <td className="max-w-[28rem] px-3 py-3 font-medium break-words">{row.label}</td>
+              <td className="px-3 py-3 whitespace-nowrap">
+                <div>
+                  {row.dueDate
+                    ? date.format(new Date(`${row.dueDate}T00:00:00Z`))
+                    : labels.missingDate}
+                </div>
+                {dueText(row, labels) ? (
+                  <div className="text-muted-foreground mt-0.5 text-xs">{dueText(row, labels)}</div>
+                ) : null}
+              </td>
+              <td className="px-3 py-3">
+                <Badge variant="secondary">{labels.statusValues[row.status]}</Badge>
+              </td>
+              <td className="px-3 py-3">
+                <span className="text-muted-foreground text-xs">
+                  {labels.sourceValues[row.source]}
+                </span>
+              </td>
+              <td className="px-3 py-3 text-end">
+                <RenewalRowActions row={row} slug={slug} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

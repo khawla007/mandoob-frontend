@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { updateWhatsAppAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/actions';
 import type { TenantWhatsAppRedacted } from '@/lib/data/tenant-settings';
+import { deriveProviderState } from '@/lib/settings/provider-state';
 
 export function SettingsWhatsAppCard({
   slug,
@@ -45,7 +46,7 @@ export function SettingsWhatsAppCard({
         has_existing_token: hasExistingToken,
       });
       if (!r.ok) {
-        setError(`${r.code}: ${r.error}`);
+        setError(t(`actionErrors.${r.errorKey}`));
         return;
       }
       setSaved(true);
@@ -54,18 +55,10 @@ export function SettingsWhatsAppCard({
     });
   }
 
-  const status =
-    initial?.enabled && initial.has_access_token
-      ? 'connected'
-      : initial
-        ? 'disabled'
-        : 'notConfigured';
-  const statusLabel =
-    status === 'connected'
-      ? t('whatsapp.statusConnected')
-      : status === 'disabled'
-        ? t('whatsapp.statusDisabled')
-        : t('whatsapp.statusNotConfigured');
+  const status = deriveProviderState({
+    status: 'ready',
+    data: initial && { enabled: initial.enabled, hasCredential: initial.has_access_token },
+  });
 
   return (
     <Card>
@@ -75,7 +68,9 @@ export function SettingsWhatsAppCard({
             <CardTitle className="text-lg">{t('whatsapp.title')}</CardTitle>
             <CardDescription>{t('whatsapp.description')}</CardDescription>
           </div>
-          <Badge variant={status === 'connected' ? 'default' : 'secondary'}>{statusLabel}</Badge>
+          <Badge variant={status === 'enabled' ? 'default' : 'secondary'}>
+            {t(`providerStatus.${status}`)}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent>

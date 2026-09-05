@@ -4,9 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AssignedCompanyProfile } from '@/lib/data/company-profile';
+import type { CompanyOnboardingSnapshot } from '@/lib/data/company-onboarding';
 import type { CompanyPanelState, CompanyWorkspace } from '@/lib/data/company-workspace';
+import type { CompanyReadinessSection } from '@/lib/company-onboarding/contracts';
 import type { AssignedCompanyTab } from '@/app/(tenant)/t/[tenant]/(pro)/company/page-logic';
 import { formatCompanyMoney, localizeOperationalValue } from './assigned-company-formatting';
+import { AssignedCompanyOverview } from './AssignedCompanyOverview';
 
 type Labels = {
   tabsLabel: string;
@@ -47,27 +50,32 @@ type Labels = {
   renewals: { title: string; description: string; open: string; empty: string };
   payments: { title: string; description: string; open: string; empty: string };
   activity: { title: string; description: string; empty: string };
+  profile: React.ComponentProps<typeof AssignedCompanyOverview>['labels'];
 };
 
 export function AssignedCompanyTabs({
   slug,
   company,
+  profile,
   workspace,
   activeTab,
   focusedDocumentId,
   focusedRequestId,
   locale,
   dateFormatter,
+  sectionHrefs,
   labels,
 }: {
   slug: string;
   company: AssignedCompanyProfile;
+  profile: CompanyPanelState<CompanyOnboardingSnapshot>;
   workspace: CompanyWorkspace;
   activeTab: AssignedCompanyTab;
   focusedDocumentId?: string;
   focusedRequestId?: string;
   locale: string;
   dateFormatter: Intl.DateTimeFormat;
+  sectionHrefs: Record<CompanyReadinessSection, string>;
   labels: Labels;
 }) {
   const base = `/t/${encodeURIComponent(slug)}/company`;
@@ -135,6 +143,16 @@ export function AssignedCompanyTabs({
               mono
             />
           </dl>
+          <div className="mt-6 border-t pt-6">
+            <AssignedCompanyOverview
+              company={company}
+              profile={profile}
+              locale={locale}
+              dateFormatter={dateFormatter}
+              sectionHrefs={sectionHrefs}
+              labels={labels.profile}
+            />
+          </div>
         </CardContent>
       ) : null}
 

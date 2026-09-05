@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const layout = readFileSync(new URL('./DashboardLayout.tsx', import.meta.url), 'utf8');
-const customerMain = readFileSync(
-  new URL('../customer/CustomerPortalMain.tsx', import.meta.url),
+const customerLayout = readFileSync(
+  new URL('../../app/(tenant)/t/[tenant]/(customer)/layout.tsx', import.meta.url),
   'utf8',
 );
 const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
@@ -24,7 +24,7 @@ function createClassRoot() {
 
 test('dashboard layouts mount the explicit portal token scope', () => {
   assert.match(layout, /<DashboardSurfaceScope\s*\/>/u);
-  assert.match(customerMain, /<DashboardSurfaceScope\s*\/>/u);
+  assert.match(customerLayout, /<DashboardLayout/u);
 });
 
 test('dashboard portal token CSS does not require selector :has support', () => {

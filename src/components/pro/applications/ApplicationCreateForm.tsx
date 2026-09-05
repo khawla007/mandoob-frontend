@@ -3,7 +3,6 @@
 import { useActionState } from 'react';
 import type { ApplicationActionResult } from '@/app/(tenant)/t/[tenant]/(pro)/applications/actions';
 
-type Option = { id: string; name: string };
 type CreateState = ApplicationActionResult<{ id: string }> | null;
 
 export type ApplicationCreateFormLabels = {
@@ -11,8 +10,6 @@ export type ApplicationCreateFormLabels = {
   serviceType: string;
   priority: string;
   priorities: Record<'low' | 'normal' | 'high' | 'urgent', string>;
-  owner: string;
-  unassigned: string;
   dueAt: string;
   slaDueAt: string;
   submit: string;
@@ -25,11 +22,9 @@ const fieldClass =
 
 export function ApplicationCreateForm({
   action,
-  owners,
   labels,
 }: {
   action: (previous: CreateState, formData: FormData) => Promise<CreateState>;
-  owners: Option[];
   labels: ApplicationCreateFormLabels;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
@@ -55,17 +50,6 @@ export function ApplicationCreateForm({
         </select>
       </label>
       <label className="grid gap-1.5 text-sm font-medium">
-        {labels.owner}
-        <select name="assigned_to" className={fieldClass}>
-          <option value="">{labels.unassigned}</option>
-          {owners.map((owner) => (
-            <option key={owner.id} value={owner.id}>
-              {owner.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1.5 text-sm font-medium">
         {labels.dueAt}
         <input type="datetime-local" name="due_at" className={fieldClass} />
       </label>
@@ -78,7 +62,9 @@ export function ApplicationCreateForm({
           <p
             role={state.ok ? 'status' : 'alert'}
             aria-live="polite"
-            className={state.ok ? 'text-sm text-green-700' : 'text-destructive text-sm'}
+            className={
+              state.ok ? 'text-sm text-[var(--signal-success)]' : 'text-destructive text-sm'
+            }
           >
             {state.ok ? labels.success : state.error}
           </p>

@@ -6,6 +6,7 @@ import { Clock3, ExternalLink } from 'lucide-react';
 import {
   loadVersionHistoryAction,
   openDocumentVersionAction,
+  type PublicDocumentVersionHistoryEntry,
 } from '@/app/(tenant)/t/[tenant]/(pro)/documents/actions';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import type { DocumentVersionHistoryEntry } from '@/lib/data/pro-document-center';
 import { openDocumentVersionWithPopup } from './document-open-controller';
 import { VersionHistoryFeedback } from './VersionHistoryFeedback';
 import {
@@ -45,7 +45,7 @@ export type VersionHistoryLabels = {
   unknownActor: string;
   dubaiTime: string;
   units: { bytes: string; kb: string; mb: string; gb: string };
-  statuses: Record<DocumentVersionHistoryEntry['reviewStatus'], string>;
+  statuses: Record<PublicDocumentVersionHistoryEntry['reviewStatus'], string>;
   errors: Record<string, string>;
 };
 
@@ -83,7 +83,7 @@ export function VersionHistoryDialog({
   labels: VersionHistoryLabels;
   primary?: boolean;
 }) {
-  const [versions, setVersions] = useState<DocumentVersionHistoryEntry[] | null>(null);
+  const [versions, setVersions] = useState<PublicDocumentVersionHistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -130,7 +130,7 @@ export function VersionHistoryDialog({
     void historyController.open();
   }
 
-  function openVersion(version: DocumentVersionHistoryEntry) {
+  function openVersion(version: PublicDocumentVersionHistoryEntry) {
     setOpeningId(version.versionId);
     setError(null);
     const request = openDocumentVersionWithPopup({

@@ -33,6 +33,11 @@ export type DocumentCenterActionResult<T = undefined> =
   | { ok: true; code: 'SUCCESS'; data: T }
   | { ok: false; code: string; messageKey: MessageKey };
 
+export type PublicDocumentVersionHistoryEntry = Omit<
+  DocumentVersionHistoryEntry,
+  'uploadedBy' | 'reviewedBy'
+>;
+
 type ProSession = { id: string; role: 'pro'; tenantId: string | null };
 type TenantIdentity = { id: string };
 type CompanyIdentity = { id: string; tenantId: string };
@@ -49,13 +54,23 @@ export type DocumentCenterActionDependencies = {
     input: CreateDocumentRequestInput,
   ): Promise<{ id: string; companyId: string }>;
   reviewVersion(
+    companyId: string,
     versionId: string,
     ctx: SetDocumentReviewCtx,
     input: DocumentReviewInput,
   ): Promise<{ companyId: string }>;
-  openVersion(tenantId: string, versionId: string): Promise<{ url: string; expiresAt: string }>;
-  loadHistory(tenantId: string, documentId: string): Promise<DocumentVersionHistoryEntry[]>;
+  openVersion(
+    tenantId: string,
+    companyId: string,
+    versionId: string,
+  ): Promise<{ url: string; expiresAt: string }>;
+  loadHistory(
+    tenantId: string,
+    companyId: string,
+    documentId: string,
+  ): Promise<DocumentVersionHistoryEntry[]>;
   setExpiry(
+    companyId: string,
     ctx: SetDocumentExpiryContext,
     input: DocumentExpiryInput,
   ): Promise<{ companyId: string }>;
@@ -66,6 +81,7 @@ export type DocumentCenterActionDependencies = {
 
 type AuthorizedContext = {
   tenant: TenantIdentity;
+  company: CompanyIdentity;
   actor: { tenantId: string; actorId: string; role: 'pro'; ip: string; userAgent: string | null };
 };
 
@@ -74,12 +90,7 @@ const normalizedUuidSchema = z
   .uuid()
   .transform((value) => value.toLowerCase());
 const requestActionSchema = createDocumentRequestSchema.omit({ company_id: true });
-const actionEntityIdsSchema = z.object({
-  company_id: normalizedUuidSchema,
-  entity_id: normalizedUuidSchema,
-});
 const expiryActionSchema = documentExpirySchema.extend({ document_id: normalizedUuidSchema });
-
 async function resolveAndAuthorize(
   slug: string,
   session: ProSession,
@@ -92,8 +103,13 @@ async function resolveAndAuthorize(
   }
   await actionDependencies.requireActive(tenant.id);
   const metadata = await actionDependencies.callerMetadata();
+  const company = await actionDependencies.resolveAssignedCompany(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) {
+    throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
+  }
   return {
     tenant,
+    company,
     actor: {
       tenantId: tenant.id,
       actorId: session.id,
@@ -155,11 +171,11 @@ function readFormStrings<K extends string>(
 
 function revalidateDocumentRoutes(
   slug: string,
-  companyId: string,
   actionDependencies: DocumentCenterActionDependencies,
 ) {
   actionDependencies.revalidate(`/t/${slug}/documents`);
   actionDependencies.revalidate(`/t/${slug}/company`);
+  actionDependencies.revalidate(`/t/${slug}/dashboard`);
 }
 
 export async function runRequestDocumentCenterAction(
@@ -171,10 +187,6 @@ export async function runRequestDocumentCenterAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const company = await actionDependencies.resolveAssignedCompany(session.id, slug);
-    if (!company || company.tenantId !== authorization.tenant.id) {
-      throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
-    }
     const values = readFormStrings(formData, ['doc_type', 'label', 'due_at', 'notes'] as const);
     if (!values) return validationFailure();
     const parsed = requestActionSchema.safeParse(values);
@@ -182,9 +194,9 @@ export async function runRequestDocumentCenterAction(
 
     const request = await actionDependencies.createRequest(authorization.actor, {
       ...parsed.data,
-      company_id: company.id,
+      company_id: authorization.company.id,
     });
-    revalidateDocumentRoutes(slug, request.companyId, actionDependencies);
+    revalidateDocumentRoutes(slug, actionDependencies);
     return { ok: true, code: 'SUCCESS', data: { requestId: request.id } };
   } catch (error) {
     return errorResult(error, 'document_center.request', actionDependencies);
@@ -200,26 +212,22 @@ export async function runReviewDocumentCenterAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, [
-      'version_id',
-      'company_id',
-      'status',
-      'note',
-    ] as const);
+    const values = readFormStrings(formData, ['version_id', 'status', 'note'] as const);
     if (!values) return validationFailure();
-    const ids = actionEntityIdsSchema.safeParse({
-      company_id: values.company_id,
-      entity_id: values.version_id,
-    });
+    const versionId = normalizedUuidSchema.safeParse(values.version_id);
     const review = documentReviewSchema.safeParse({ status: values.status, note: values.note });
-    if (!ids.success || !review.success) return validationFailure();
+    if (!versionId.success || !review.success) return validationFailure();
 
     const reviewed = await actionDependencies.reviewVersion(
-      ids.data.entity_id,
+      authorization.company.id,
+      versionId.data,
       authorization.actor,
       review.data,
     );
-    revalidateDocumentRoutes(slug, reviewed.companyId, actionDependencies);
+    if (reviewed.companyId !== authorization.company.id) {
+      throw new ApiError('NOT_FOUND', 'Document version not found', 404);
+    }
+    revalidateDocumentRoutes(slug, actionDependencies);
     return { ok: true, code: 'SUCCESS', data: undefined };
   } catch (error) {
     return errorResult(error, 'document_center.review', actionDependencies);
@@ -238,6 +246,7 @@ export async function runOpenDocumentVersionAction(
     if (!parsedVersionId.success) return validationFailure();
     const signed = await actionDependencies.openVersion(
       authorization.tenant.id,
+      authorization.company.id,
       parsedVersionId.data,
     );
     return {
@@ -254,7 +263,7 @@ export async function runLoadVersionHistoryAction(
   slug: string,
   documentId: string,
   actionDependencies: DocumentCenterActionDependencies,
-): Promise<DocumentCenterActionResult<DocumentVersionHistoryEntry[]>> {
+): Promise<DocumentCenterActionResult<PublicDocumentVersionHistoryEntry[]>> {
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
@@ -262,6 +271,7 @@ export async function runLoadVersionHistoryAction(
     if (!parsedDocumentId.success) return validationFailure();
     const history = await actionDependencies.loadHistory(
       authorization.tenant.id,
+      authorization.company.id,
       parsedDocumentId.data,
     );
     const sanitized = history.map((version) => ({
@@ -269,10 +279,8 @@ export async function runLoadVersionHistoryAction(
       versionNumber: version.versionNumber,
       current: version.current,
       uploadedAt: version.uploadedAt,
-      uploadedBy: version.uploadedBy,
       uploaderName: version.uploaderName,
       reviewStatus: version.reviewStatus,
-      reviewedBy: version.reviewedBy,
       reviewerName: version.reviewerName,
       reviewedAt: version.reviewedAt,
       reviewNote: version.reviewNote,
@@ -294,17 +302,23 @@ export async function runSetDocumentExpiryAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, ['document_id', 'company_id', 'expires_on'] as const);
+    const values = readFormStrings(formData, ['document_id', 'expires_on'] as const);
     if (!values) return validationFailure();
-    const companyId = normalizedUuidSchema.safeParse(values.company_id);
     const expiry = expiryActionSchema.safeParse({
       document_id: values.document_id,
       expires_on: values.expires_on,
     });
-    if (!companyId.success || !expiry.success) return validationFailure();
+    if (!expiry.success) return validationFailure();
 
-    const updated = await actionDependencies.setExpiry(authorization.actor, expiry.data);
-    revalidateDocumentRoutes(slug, updated.companyId, actionDependencies);
+    const updated = await actionDependencies.setExpiry(
+      authorization.company.id,
+      authorization.actor,
+      expiry.data,
+    );
+    if (updated.companyId !== authorization.company.id) {
+      throw new ApiError('NOT_FOUND', 'Document not found', 404);
+    }
+    revalidateDocumentRoutes(slug, actionDependencies);
     return { ok: true, code: 'SUCCESS', data: undefined };
   } catch (error) {
     return errorResult(error, 'document_center.expiry', actionDependencies);

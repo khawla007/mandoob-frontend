@@ -5,6 +5,8 @@ import { isReceiptEligible } from '@/lib/pdf/receipt';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { signalBusinessDate } from './signal-finance';
 import type { PaymentSignalView } from '@/lib/signal-studio-filters';
+import { remainingRefundableMinor, resolveInvoiceFinanceSections } from './invoice-finance-state';
+import { createInvoiceFailure } from './create-invoice-result';
 
 export type LinkedEntity = {
   type: 'renewal' | 'document_request' | 'manual';
@@ -41,6 +43,8 @@ export type ProInvoiceRow = {
   paidAt: string | null;
   createdAt: string;
   refundOperation: RefundOperationState | null;
+  remainingRefundableMinor: number | null;
+  refundAvailable: boolean;
 };
 
 export type RefundOperationState = {
@@ -163,6 +167,8 @@ export async function listInvoicesForPaymentView(
       paidAt: row.paid_at ?? null,
       createdAt: row.created_at,
       refundOperation: refundOperations.get(row.id) ?? null,
+      remainingRefundableMinor: null,
+      refundAvailable: false,
     })),
     total: result.total,
     page: result.page,
@@ -196,7 +202,8 @@ export type InvoiceDetail = ProInvoiceRow & {
     status: string;
     amount: string;
     receivedAt: string | null;
-    failureReason: string | null;
+    createdAt: string;
+    context: 'success' | 'failure' | 'pending' | 'refunded';
   }[];
   refunds: {
     id: string;
@@ -204,8 +211,15 @@ export type InvoiceDetail = ProInvoiceRow & {
     reason: string | null;
     status: string;
     createdAt: string;
+    currency: string;
   }[];
-  audit: { id: string; action: string; createdAt: string; details: unknown }[];
+  audit: { id: string; action: string; createdAt: string }[];
+  sections: {
+    payments: 'available' | 'unavailable';
+    refunds: 'available' | 'unavailable';
+    refundOperation: 'available' | 'unavailable';
+    audit: 'available' | 'unavailable';
+  };
 };
 
 export async function createInvoice(args: CreateInvoiceArgs): Promise<CreateInvoiceResult> {
@@ -239,7 +253,7 @@ export async function createInvoice(args: CreateInvoiceArgs): Promise<CreateInvo
   });
 
   if (error || !insertedId) {
-    return { ok: false, error: error?.message ?? 'insert failed', code: 'DB_INSERT_FAILED' };
+    return createInvoiceFailure(error);
   }
 
   const emailQueueId = await fanOutInvoiceDueEmail({
@@ -296,6 +310,8 @@ export async function listInvoicesForTenant(
     paidAt: (r.paid_at as string | null) ?? null,
     createdAt: r.created_at as string,
     refundOperation: refundOperations.get(r.id as string) ?? null,
+    remainingRefundableMinor: null,
+    refundAvailable: false,
   }));
 }
 
@@ -340,28 +356,57 @@ export async function getInvoiceDetailForTenant(
     getCompanyNames(admin, [invoice.company_id as string]),
     admin
       .from('payments')
-      .select('id, provider, method, status, amount_minor, currency, received_at, failure_reason')
+      .select('id, provider, method, status, amount_minor, currency, received_at, created_at')
       .eq('tenant_id', tenantId)
       .eq('invoice_id', invoiceId)
       .order('created_at', { ascending: false }),
     admin
       .from('tenant_audit_log')
-      .select('id, action, created_at, details')
+      .select('id, action, created_at')
       .eq('tenant_id', tenantId)
       .contains('details', { invoice_id: invoiceId })
       .order('created_at', { ascending: false })
       .limit(20),
   ]);
 
-  const paymentIds = (paymentsResult.data ?? []).map((p) => p.id as string);
-  const { data: refunds } = paymentIds.length
-    ? await admin
-        .from('refunds')
-        .select('id, payment_id, idempotency_key, status, amount_minor, reason, created_at')
-        .eq('tenant_id', tenantId)
-        .in('payment_id', paymentIds)
-        .order('created_at', { ascending: false })
-    : { data: [] };
+  const paymentIds = paymentsResult.error
+    ? []
+    : (paymentsResult.data ?? []).map((p) => p.id as string);
+  const refundsResult =
+    !paymentsResult.error && paymentIds.length
+      ? await admin
+          .from('refunds')
+          .select('id, payment_id, idempotency_key, status, amount_minor, reason, created_at')
+          .eq('tenant_id', tenantId)
+          .in('payment_id', paymentIds)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+  const refunds = refundsResult.data ?? [];
+  const sections = resolveInvoiceFinanceSections({
+    payments: !paymentsResult.error,
+    refunds: !refundsResult.error,
+    refundOperation: !refundsResult.error,
+    audit: !auditResult.error,
+  });
+  const invoiceCurrency = invoice.currency as string;
+  const remaining =
+    sections.refundOperation === 'available'
+      ? remainingRefundableMinor({
+          currency: invoiceCurrency,
+          payments: (paymentsResult.data ?? []).map((payment) => ({
+            id: payment.id as string,
+            amountMinor: payment.amount_minor as number,
+            currency: payment.currency as string,
+            status: payment.status as string,
+            createdAt: payment.created_at as string,
+          })),
+          refunds: refunds.map((refund) => ({
+            paymentId: refund.payment_id as string,
+            amountMinor: refund.amount_minor as number,
+            status: refund.status as string,
+          })),
+        })
+      : null;
 
   return {
     id: invoice.id as string,
@@ -371,22 +416,28 @@ export async function getInvoiceDetailForTenant(
     label: invoice.label as string,
     amount: formatMoney(invoice.amount_minor as number, invoice.currency as string),
     amountMinor: invoice.amount_minor as number,
-    currency: invoice.currency as string,
+    currency: invoiceCurrency,
     status: invoice.status as string,
     dueAt: (invoice.due_at as string | null) ?? null,
     paidAt: (invoice.paid_at as string | null) ?? null,
     createdAt: invoice.created_at as string,
-    refundOperation: mapRefundOperation((refunds ?? []).find((refund) => refund.idempotency_key)),
+    refundOperation:
+      sections.refundOperation === 'available'
+        ? mapRefundOperation(refunds.find((refund) => refund.idempotency_key))
+        : null,
+    remainingRefundableMinor: remaining,
+    refundAvailable: remaining !== null,
     linkedEntityType: (invoice.linked_entity_type as string | null) ?? null,
     linkedEntityId: (invoice.linked_entity_id as string | null) ?? null,
     payments: (paymentsResult.data ?? []).map((p) => ({
       id: p.id as string,
-      provider: p.provider as string,
+      provider: paymentProviderCode(p.provider as string),
       method: (p.method as string | null) ?? null,
       status: p.status as string,
       amount: formatMoney(p.amount_minor as number, p.currency as string),
       receivedAt: (p.received_at as string | null) ?? null,
-      failureReason: (p.failure_reason as string | null) ?? null,
+      createdAt: p.created_at as string,
+      context: paymentAttemptContext(p.status as string),
     })),
     refunds: (refunds ?? []).map((r) => ({
       id: r.id as string,
@@ -394,14 +445,26 @@ export async function getInvoiceDetailForTenant(
       reason: (r.reason as string | null) ?? null,
       status: r.status as string,
       createdAt: r.created_at as string,
+      currency: invoiceCurrency,
     })),
     audit: (auditResult.data ?? []).map((a) => ({
       id: String(a.id),
       action: a.action as string,
       createdAt: a.created_at as string,
-      details: a.details,
     })),
+    sections,
   };
+}
+
+function paymentAttemptContext(status: string): 'success' | 'failure' | 'pending' | 'refunded' {
+  if (status === 'succeeded') return 'success';
+  if (status === 'partially_refunded' || status === 'refunded') return 'refunded';
+  if (status === 'failed' || status === 'abandoned') return 'failure';
+  return 'pending';
+}
+
+function paymentProviderCode(provider: string): string {
+  return provider === 'tap' || provider === 'manual' ? provider : 'unknown';
 }
 
 export async function getReceiptPayloadForCustomer(

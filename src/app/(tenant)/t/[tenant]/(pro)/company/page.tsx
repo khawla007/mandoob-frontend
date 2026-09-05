@@ -4,9 +4,17 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowRight, Building2, CalendarDays, CheckCircle2, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AssignedCompanyTabs } from '@/components/pro/AssignedCompanyTabs';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
-import { loadAssignedCompanyWorkspace } from '@/lib/data/company-workspace';
+import { readCompanyOnboarding } from '@/lib/data/company-onboarding';
+import { loadAssignedCompanyWorkspace, type CompanyPanelState } from '@/lib/data/company-workspace';
+import {
+  COMPANY_ONBOARDING_READINESS_CODES,
+  COMPANY_ONBOARDING_SECTION_KEYS,
+  type CompanyReadinessCode,
+  type CompanyReadinessSection,
+} from '@/lib/company-onboarding/contracts';
 import { DOC_TYPES } from '@/lib/validation/document';
 import type { AssignedCompanyProfile } from '@/lib/data/company-profile';
 import {
@@ -25,7 +33,8 @@ export default async function AssignedCompanyPage({
   searchParams: Promise<AssignedCompanySearchParams>;
 }) {
   const { tenant: slug } = await params;
-  const { session } = await requireProTenantRouteAccess(slug);
+  const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company) notFound();
 
@@ -36,7 +45,32 @@ export default async function AssignedCompanyPage({
     getTranslations('proDocumentCenter.docTypes'),
     getLocale(),
   ]);
-  const workspace = await loadAssignedCompanyWorkspace(company.tenantId, company.id, focus);
+  const [workspace, snapshot] = await Promise.all([
+    loadAssignedCompanyWorkspace(company.tenantId, company.id, focus),
+    focus.tab === 'overview'
+      ? readCompanyOnboarding({
+          actorProfileId: session.id,
+          tenantId: company.tenantId,
+          companyId: company.id,
+        })
+      : Promise.resolve(null),
+  ]);
+  const profile: CompanyPanelState<NonNullable<typeof snapshot>> =
+    focus.tab !== 'overview'
+      ? { status: 'unrequested' }
+      : snapshot
+        ? { status: 'ready', data: snapshot }
+        : { status: 'error' };
+  const sectionHrefs = {
+    ...Object.fromEntries(
+      COMPANY_ONBOARDING_SECTION_KEYS.map((section) => [
+        section,
+        companyOnboardingSectionHref(slug, section),
+      ]),
+    ),
+    assignment: companyOnboardingSectionHref(slug, 'review'),
+    workspace: companyOnboardingSectionHref(slug, 'review'),
+  } as Record<CompanyReadinessSection, string>;
   const dateFormatter = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeZone: 'Asia/Dubai',
@@ -100,15 +134,16 @@ export default async function AssignedCompanyPage({
         labels={{
           title: tOnboarding('overview.title'),
           description: tOnboarding('overview.description'),
-          lifecycle: tOnboarding('overview.lifecycle'),
           progress: tOnboarding('overview.progress', {
             complete: Object.values(company.sectionProgress).filter(
               (status) => status === 'complete',
             ).length,
             total: Object.keys(company.sectionProgress).length,
           }),
-          blockers: tOnboarding('overview.blockers', { count: company.readinessCodes.length }),
-          status: tOnboarding(`status.${company.onboardingStatus}`),
+          readiness:
+            company.readinessState === 'data'
+              ? tOnboarding('overview.blockers', { count: company.readinessCodes.length })
+              : t('profile.activationUnavailable'),
           cta:
             company.onboardingStatus === 'not_started'
               ? tOnboarding('overview.setup')
@@ -121,6 +156,7 @@ export default async function AssignedCompanyPage({
       <AssignedCompanyTabs
         slug={slug}
         company={company}
+        profile={profile}
         workspace={workspace}
         activeTab={focus.tab}
         focusedDocumentId={
@@ -131,6 +167,7 @@ export default async function AssignedCompanyPage({
         }
         locale={locale}
         dateFormatter={dateFormatter}
+        sectionHrefs={sectionHrefs}
         labels={{
           tabsLabel: t('tabsLabel'),
           tabs: {
@@ -177,16 +214,6 @@ export default async function AssignedCompanyPage({
             partially_refunded: t('payments.statuses.partially_refunded'),
           },
           auditActions: {
-            created: t('activity.actions.created'),
-            approved: t('activity.actions.approved'),
-            rejected: t('activity.actions.rejected'),
-            suspended: t('activity.actions.suspended'),
-            reactivated: t('activity.actions.reactivated'),
-            updated: t('activity.actions.updated'),
-            completed: t('activity.actions.completed'),
-            cancelled: t('activity.actions.cancelled'),
-            unlocked: t('activity.actions.unlocked'),
-            session_revoked: t('activity.actions.session_revoked'),
             invoice_created: t('activity.actions.invoice_created'),
             invoice_voided: t('activity.actions.invoice_voided'),
             invoice_marked_paid: t('activity.actions.invoice_marked_paid'),
@@ -194,31 +221,10 @@ export default async function AssignedCompanyPage({
             payment_succeeded: t('activity.actions.payment_succeeded'),
             payment_failed: t('activity.actions.payment_failed'),
             refund_issued: t('activity.actions.refund_issued'),
-            infected_blocked: t('activity.actions.infected_blocked'),
             reconciled: t('activity.actions.reconciled'),
-            comms_skipped_opted_out: t('activity.actions.comms_skipped_opted_out'),
-            lead_created: t('activity.actions.lead_created'),
-            lead_assigned: t('activity.actions.lead_assigned'),
-            lead_stage_changed: t('activity.actions.lead_stage_changed'),
-            lead_note_added: t('activity.actions.lead_note_added'),
-            erasure_requested: t('activity.actions.erasure_requested'),
-            erasure_verified: t('activity.actions.erasure_verified'),
-            erasure_approved: t('activity.actions.erasure_approved'),
-            erasure_rejected: t('activity.actions.erasure_rejected'),
-            erasure_completed: t('activity.actions.erasure_completed'),
             bulk_imported: t('activity.actions.bulk_imported'),
-            meeting_slot_created: t('activity.actions.meeting_slot_created'),
-            meeting_scheduled: t('activity.actions.meeting_scheduled'),
-            meeting_cancelled: t('activity.actions.meeting_cancelled'),
-            meeting_completed: t('activity.actions.meeting_completed'),
-            meeting_recording_attached: t('activity.actions.meeting_recording_attached'),
-            whatsapp_template_status_updated: t(
-              'activity.actions.whatsapp_template_status_updated',
-            ),
             service_case_created: t('activity.actions.service_case_created'),
             service_case_updated: t('activity.actions.service_case_updated'),
-            company_pro_assigned: t('activity.actions.company_pro_assigned'),
-            company_pro_released: t('activity.actions.company_pro_released'),
           },
           auditSources: {
             self_serve: t('activity.sources.self_serve'),
@@ -261,6 +267,95 @@ export default async function AssignedCompanyPage({
             description: t('activity.description'),
             empty: t('activity.empty'),
           },
+          profile: {
+            unavailableTitle: t('profile.unavailableTitle'),
+            unavailableDescription: t('profile.unavailableDescription'),
+            emptyValue: t('emptyValue'),
+            legalCompleteness: t('profile.legalCompleteness'),
+            activationReadiness: t('profile.activationReadiness'),
+            lifecycle: tOnboarding('overview.lifecycle'),
+            lifecycleValue: t(`status.${company.status}`),
+            sectionsComplete:
+              profile.status === 'ready'
+                ? tOnboarding('overview.progress', {
+                    complete: Object.values(profile.data.sectionProgress).filter(
+                      ({ status }) => status === 'complete',
+                    ).length,
+                    total: Object.keys(profile.data.sectionProgress).length,
+                  })
+                : '',
+            activationReady: t('profile.activationReady'),
+            activationBlocked:
+              profile.status === 'ready'
+                ? tOnboarding('overview.blockers', { count: profile.data.requirements.length })
+                : '',
+            primaryActivity: t('profile.primaryActivity'),
+            additionalActivity: t('profile.additionalActivity'),
+            openSection: t('profile.openSection'),
+            sectionStatuses: {
+              complete: tOnboarding('shell.status.complete'),
+              incomplete: tOnboarding('shell.status.incomplete'),
+            },
+            sections: {
+              legal: tOnboarding('sections.legal.title'),
+              shareholders: tOnboarding('sections.shareholders.title'),
+              activities: tOnboarding('sections.activities.title'),
+              office: tOnboarding('sections.office.title'),
+              establishment: tOnboarding('sections.establishment.title'),
+              bank: tOnboarding('sections.bank.title'),
+            },
+            fields: {
+              registeredName: tOnboarding('sections.legal.fields.companyName'),
+              displayName: tOnboarding('sections.legal.fields.displayName'),
+              jurisdictionType: tOnboarding('sections.legal.fields.jurisdictionType'),
+              licensingAuthority: tOnboarding('sections.legal.fields.licensingAuthority'),
+              legalStructure: tOnboarding('sections.legal.fields.legalStructure'),
+              tradeLicense: tOnboarding('sections.legal.fields.tradeLicenseNo'),
+              licenseExpiry: tOnboarding('sections.legal.fields.licenseExpiry'),
+              shareholderType: tOnboarding('sections.shareholders.kindLegend'),
+              nationality: tOnboarding('sections.shareholders.fields.nationalityCode'),
+              incorporationCountry: tOnboarding(
+                'sections.shareholders.fields.countryOfIncorporation',
+              ),
+              registrationNumber: tOnboarding('sections.shareholders.fields.registrationNumber'),
+              ownershipPercent: tOnboarding('sections.shareholders.fields.ownershipPercent'),
+              activityCode: tOnboarding('sections.activities.fields.activityCode'),
+              authorityName: tOnboarding('sections.activities.fields.authorityName'),
+              officeType: tOnboarding('sections.office.officeTypeLegend'),
+              address: t('profile.address'),
+              providerName: tOnboarding('sections.office.fields.providerName'),
+              leaseReference: tOnboarding('sections.office.fields.leaseReference'),
+              leaseExpiry: tOnboarding('sections.office.fields.leaseExpiry'),
+              establishmentCard: tOnboarding('sections.establishment.maskedLabel'),
+              establishmentExpiry: tOnboarding('sections.establishment.cardExpiry'),
+              bankName: tOnboarding('sections.bank.fields.bankName'),
+              branchName: tOnboarding('sections.bank.fields.branchName'),
+              accountHolderName: tOnboarding('sections.bank.fields.accountHolderName'),
+              currency: t('profile.currency'),
+              iban: tOnboarding('sections.bank.fields.iban'),
+              accountNumber: tOnboarding('sections.bank.fields.accountNumber'),
+            },
+            jurisdictions: {
+              mainland: tOnboarding('sections.legal.jurisdictions.mainland'),
+              free_zone: tOnboarding('sections.legal.jurisdictions.free_zone'),
+              offshore: tOnboarding('sections.legal.jurisdictions.offshore'),
+            },
+            officeTypes: {
+              physical: tOnboarding('sections.office.types.physical'),
+              flexi_desk: tOnboarding('sections.office.types.flexi_desk'),
+              virtual: tOnboarding('sections.office.types.virtual'),
+            },
+            shareholderKinds: {
+              individual: tOnboarding('sections.shareholders.kinds.individual'),
+              company: tOnboarding('sections.shareholders.kinds.company'),
+            },
+            requirements: Object.fromEntries(
+              COMPANY_ONBOARDING_READINESS_CODES.map((code) => [
+                code,
+                tOnboarding(`requirements.${code}`),
+              ]),
+            ) as Record<CompanyReadinessCode, string>,
+          },
         }}
       />
     </div>
@@ -277,10 +372,8 @@ function CompanyOnboardingSummary({
   labels: {
     title: string;
     description: string;
-    lifecycle: string;
     progress: string;
-    blockers: string;
-    status: string;
+    readiness: string;
     cta: string;
   };
 }) {
@@ -303,14 +396,12 @@ function CompanyOnboardingSummary({
               <CheckCircle2 className="text-signal-success size-4" aria-hidden="true" />
               {labels.progress}
             </span>
-            <span>{labels.blockers}</span>
-            <span>
-              {labels.lifecycle}: {labels.status}
-            </span>
+            <span>{labels.readiness}</span>
           </div>
           <div
             className="bg-muted h-2 max-w-xl overflow-hidden rounded-full"
             role="progressbar"
+            aria-label={labels.progress}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={percent}

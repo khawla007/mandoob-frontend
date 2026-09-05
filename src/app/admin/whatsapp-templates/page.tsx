@@ -51,6 +51,12 @@ export default async function AdminWhatsAppTemplatesPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('whatsapp.title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('whatsapp.intro')}</p>
+        <p className="text-muted-foreground mt-2 max-w-3xl text-xs leading-5">
+          {t('whatsapp.providerCaveat')}
+        </p>
+        <p className="text-muted-foreground mt-1 max-w-3xl text-xs leading-5">
+          {t('whatsapp.providerAudit')}
+        </p>
       </div>
 
       <Card>

@@ -1,5 +1,8 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { AdminUnavailableAction } from '@/components/admin/management/AdminUnavailableAction';
+import { AdminUnavailableWorkspace } from '@/components/admin/management/AdminUnavailableWorkspace';
+import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -10,19 +13,42 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { getFinanceKpis, getTenantMrrRows } from '@/lib/data/finance';
+import { requirePlatformOperator } from '@/lib/auth/require-role';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminFinancePage() {
-  const t = await getTranslations('admin');
+  await requirePlatformOperator();
+  const [t, locale] = await Promise.all([getTranslations('admin'), getLocale()]);
   const [kpis, rows] = await Promise.all([getFinanceKpis(), getTenantMrrRows()]);
+  const pointInTime = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date());
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('finance.title')}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t('finance.intro')}</p>
-      </div>
+      <DashboardPageHeader title={t('finance.title')} description={t('finance.intro')} />
+
+      <Card>
+        <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <p>
+            <span className="text-muted-foreground">{t('finance.pointInTime')}:</span> {pointInTime}
+          </p>
+          <p>
+            <span className="text-muted-foreground">{t('finance.currencyUsd')}:</span> USD
+          </p>
+          <p>
+            <span className="text-muted-foreground">{t('finance.includedActive')}:</span>{' '}
+            {t('finance.activeSubscriptionsOnly')}
+          </p>
+          <p>
+            <span className="text-muted-foreground">{t('finance.excludedStatuses')}:</span>{' '}
+            {t('finance.nonActiveExcluded')}
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
@@ -77,9 +103,7 @@ export default async function AdminFinancePage() {
                       : row.status}
                   </TableCell>
                   <TableCell>
-                    {row.currentPeriodEnd
-                      ? new Date(row.currentPeriodEnd).toLocaleDateString('en-GB')
-                      : '—'}
+                    {row.currentPeriodEnd ? date.format(new Date(row.currentPeriodEnd)) : '—'}
                   </TableCell>
                   <TableCell className="text-right">{row.mrr}</TableCell>
                 </TableRow>
@@ -88,6 +112,18 @@ export default async function AdminFinancePage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AdminUnavailableWorkspace
+        title={t('finance.unsupported.title')}
+        description={t('finance.unsupported.description')}
+        unavailableTitle={t('finance.unsupported.unavailableTitle')}
+        unavailableDescription={t('finance.unsupported.unavailableDescription')}
+        guidance={t('finance.unsupported.guidance')}
+      />
+      <AdminUnavailableAction
+        label={t('finance.unsupported.export')}
+        explanation={t('finance.unsupported.exportExplanation')}
+      />
     </div>
   );
 }

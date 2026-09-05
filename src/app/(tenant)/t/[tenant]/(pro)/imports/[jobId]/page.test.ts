@@ -10,6 +10,7 @@ const page = readFileSync(
 );
 const en = JSON.parse(readFileSync(join(root, 'src/messages/en.json'), 'utf8'));
 const ar = JSON.parse(readFileSync(join(root, 'src/messages/ar.json'), 'utf8'));
+const actions = readFileSync(join(root, 'src/components/pro/BulkImportJobActions.tsx'), 'utf8');
 
 test('import job page scopes service-role reads through the live assigned company', () => {
   assert.match(page, /readAssignedCompanyForPro\(session\.id, slug\)/);
@@ -37,4 +38,19 @@ test('import job messages have exact English and Arabic parity', () => {
         )
       : [prefix];
   assert.deepEqual(leafPaths(ar.pro.importJob).sort(), leafPaths(en.pro.importJob).sort());
+});
+
+test('import cancellation identifies its target and requires explicit confirmation', () => {
+  assert.match(actions, /cancelConfirmationOpen/u);
+  assert.match(actions, /<Dialog/u);
+  assert.match(actions, /labels\.cancelPrompt/u);
+  assert.match(page, /cancelPrompt: t\('cancelPrompt'/u);
+  assert.doesNotMatch(actions, /text-emerald-/u);
+  assert.match(actions, /text-\[var\(--signal-success\)\]/u);
+  for (const key of ['cancelTitle', 'cancelPrompt', 'keep', 'confirmCancel']) {
+    assert.equal(typeof en.pro.importJob[key], 'string', `en.pro.importJob.${key}`);
+    assert.equal(typeof ar.pro.importJob[key], 'string', `ar.pro.importJob.${key}`);
+  }
+  assert.equal(en.proDocumentCenter.actions.cancelTitle, undefined);
+  assert.equal(ar.proDocumentCenter.actions.cancelTitle, undefined);
 });

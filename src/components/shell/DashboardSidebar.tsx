@@ -24,9 +24,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { resolveActiveShellHref, type ShellNavGroup } from '@/lib/shell/nav-config';
-import { adminNav } from '@/lib/shell/nav-admin';
-import { buildProNav } from '@/lib/shell/nav-pro';
-import { buildEmployeeNav } from '@/lib/shell/nav-employee';
+import { resolveDashboardNav, type DashboardNavKind } from '@/lib/shell/dashboard-navigation-model';
 
 export type DashboardSidebarUser = {
   email: string | null;
@@ -34,24 +32,13 @@ export type DashboardSidebarUser = {
   initials: string;
 };
 
-export type DashboardNavKind = 'admin' | 'pro' | 'employee';
+export type { DashboardNavKind } from '@/lib/shell/dashboard-navigation-model';
 
 const PRO_SIGNAL_LABEL_KEYS: Record<string, string> = {
   commandCenter: 'signalCommand',
   applications: 'signalCases',
   payments: 'signalFinance',
 };
-
-function resolveNav(kind: DashboardNavKind, slug?: string): ShellNavGroup[] {
-  switch (kind) {
-    case 'admin':
-      return adminNav;
-    case 'pro':
-      return buildProNav(slug ?? '');
-    case 'employee':
-      return buildEmployeeNav(slug ?? '');
-  }
-}
 
 export function DashboardSidebarNavItem({
   item,
@@ -97,7 +84,7 @@ export function DashboardSidebarNavItem({
             />
           </>
         ) : (
-          <Link href={item.href}>
+          <Link href={item.href} aria-current={active ? 'page' : undefined}>
             {Icon && <Icon className="size-4" />}
             <span>{label}</span>
             {item.badge !== undefined && (
@@ -164,7 +151,7 @@ export function DashboardSidebar({
   user: DashboardSidebarUser;
 }) {
   const pathname = usePathname();
-  const nav = resolveNav(navKind, navSlug);
+  const nav = resolveDashboardNav(navKind, navSlug);
   const activeHref = resolveActiveShellHref(nav, pathname);
   const t = useTranslations('shell');
   const locale = useLocale();

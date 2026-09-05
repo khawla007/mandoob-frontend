@@ -65,15 +65,13 @@ function timestampFormValue(form: FormData, key: string): string | null | undefi
 
 function normalizeCreateRaw(raw: unknown): unknown {
   if (!(raw instanceof FormData)) {
-    return raw && typeof raw === 'object' && !Array.isArray(raw)
-      ? { ...(raw as Record<string, unknown>) }
-      : {};
+    const candidate = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    return pickCreateFields(candidate as Record<string, unknown>);
   }
   return {
     title: optionalFormValue(raw, 'title') ?? '',
     service_type: optionalFormValue(raw, 'service_type') ?? '',
     priority: optionalFormValue(raw, 'priority') ?? undefined,
-    assigned_to: optionalFormValue(raw, 'assigned_to'),
     due_at: timestampFormValue(raw, 'due_at'),
     sla_due_at: timestampFormValue(raw, 'sla_due_at'),
     blocked_reason: optionalFormValue(raw, 'blocked_reason'),
@@ -86,19 +84,41 @@ function normalizeUpdateRaw(raw: unknown, now: Date): unknown {
       ? {
           status: optionalFormValue(raw, 'status') ?? undefined,
           priority: optionalFormValue(raw, 'priority') ?? undefined,
-          assigned_to: optionalFormValue(raw, 'assigned_to'),
           due_at: timestampFormValue(raw, 'due_at'),
           sla_due_at: timestampFormValue(raw, 'sla_due_at'),
           blocked_reason: optionalFormValue(raw, 'blocked_reason'),
         }
-      : raw && typeof raw === 'object' && !Array.isArray(raw)
-        ? { ...(raw as Record<string, unknown>) }
-        : {};
+      : pickUpdateFields(
+          raw && typeof raw === 'object' && !Array.isArray(raw)
+            ? (raw as Record<string, unknown>)
+            : {},
+        );
   delete candidate.completed_at;
   if (candidate.status !== undefined) {
     candidate.completed_at = candidate.status === 'completed' ? now.toISOString() : null;
   }
   return candidate;
+}
+
+function pickCreateFields(raw: Record<string, unknown>) {
+  return {
+    title: raw.title,
+    service_type: raw.service_type,
+    priority: raw.priority,
+    due_at: raw.due_at,
+    sla_due_at: raw.sla_due_at,
+    blocked_reason: raw.blocked_reason,
+  };
+}
+
+function pickUpdateFields(raw: Record<string, unknown>) {
+  return {
+    status: raw.status,
+    priority: raw.priority,
+    due_at: raw.due_at,
+    sla_due_at: raw.sla_due_at,
+    blocked_reason: raw.blocked_reason,
+  };
 }
 
 function errorResult(error: unknown, fallback: string): ApplicationActionResult<never> {
@@ -136,6 +156,7 @@ export async function runCreateApplicationAction(
     const parsed = createServiceCaseSchema.safeParse({
       ...(normalizeCreateRaw(raw) as Record<string, unknown>),
       company_id: company.id,
+      assigned_to: session.id,
     });
     if (!parsed.success) {
       return {
@@ -149,6 +170,7 @@ export async function runCreateApplicationAction(
       parsed.data as CreateServiceCaseRawInput,
     );
     dependencies.revalidate(`/t/${slug}/applications`);
+    dependencies.revalidate(`/t/${slug}/company`);
     dependencies.revalidate(`/t/${slug}/dashboard`);
     return { ok: true, data: result };
   } catch (error) {
@@ -183,6 +205,7 @@ export async function runUpdateApplicationAction(
       parsed.data as UpdateServiceCaseRawInput,
     );
     dependencies.revalidate(`/t/${slug}/applications`);
+    dependencies.revalidate(`/t/${slug}/company`);
     dependencies.revalidate(`/t/${slug}/dashboard`);
     return { ok: true, data: undefined };
   } catch (error) {

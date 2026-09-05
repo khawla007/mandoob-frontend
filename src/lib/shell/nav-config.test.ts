@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { resolveActiveShellHref, type ShellNavGroup } from '@/lib/shell/nav-config';
+import {
+  buildShellBreadcrumbs,
+  resolveActiveShellHref,
+  type ShellNavGroup,
+} from '@/lib/shell/nav-config';
 
 const groups: ShellNavGroup[] = [
   {
@@ -55,5 +59,31 @@ describe('resolveActiveShellHref', () => {
     assert.equal(resolveActiveShellHref(groups, '/admin/pages'), '/admin/pages');
     assert.equal(resolveActiveShellHref(groups, '/admin/pages/new'), '/admin/pages');
     assert.equal(resolveActiveShellHref(groups, '/admin/pages/page-id/edit'), '/admin/pages');
+  });
+});
+
+describe('buildShellBreadcrumbs', () => {
+  it('uses product labels and authorized links without exposing dynamic segments', () => {
+    const crumbs = buildShellBreadcrumbs(
+      groups,
+      '/admin/pages/550e8400-e29b-41d4-a716-446655440000/edit',
+      { label: 'Mandoob', href: '/admin' },
+      (_key, fallback) => fallback ?? '',
+    );
+
+    assert.deepEqual(crumbs, [{ label: 'Mandoob', href: '/admin' }, { label: 'Pages' }]);
+    assert.equal(JSON.stringify(crumbs).includes('550e8400'), false);
+  });
+
+  it('marks the role home as current text instead of linking it to itself', () => {
+    assert.deepEqual(
+      buildShellBreadcrumbs(
+        groups,
+        '/admin',
+        { label: 'Mandoob', href: '/admin' },
+        (_key, fallback) => fallback ?? '',
+      ),
+      [{ label: 'Mandoob' }],
+    );
   });
 });

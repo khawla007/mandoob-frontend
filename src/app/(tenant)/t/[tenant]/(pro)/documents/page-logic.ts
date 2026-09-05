@@ -12,6 +12,7 @@ export type DocumentCenterSearchParams = {
   view?: string | string[];
   sort?: string | string[];
   window?: string | string[];
+  // Legacy URLs may still contain this value; it is deliberately ignored.
   company?: string | string[];
   type?: string | string[];
   q?: string | string[];
@@ -51,7 +52,6 @@ export function parseDocumentCenterSearch(
   const sort = firstDocumentCenterValue(search.sort);
   const window = firstDocumentCenterValue(search.window);
   const parsedWindow = enumValue(window, ['all', 'overdue', '7', '30', '90']);
-  const companyId = uuidValue(firstDocumentCenterValue(search.company));
   const docType = docTypeSchema.safeParse(firstDocumentCenterValue(search.type));
   const searchTerm =
     normalizeDocumentCenterSearch(firstDocumentCenterValue(search.q)) ??
@@ -79,7 +79,6 @@ export function parseDocumentCenterSearch(
     ]),
     sort: enumValue(sort, ['urgency', 'newest', 'oldest', 'due_date', 'expiry_date']),
     window: parsedWindow,
-    ...(companyId ? { companyId } : {}),
     ...(docType.success ? { docType: docType.data } : {}),
     ...(searchTerm ? { search: searchTerm } : {}),
     ...(parsedWindow !== undefined && parsedWindow !== 'all'
@@ -90,6 +89,14 @@ export function parseDocumentCenterSearch(
     ...(focus ? { focus } : {}),
     page: focus ? 1 : pageValue(firstDocumentCenterValue(search.page)),
   });
+}
+
+export function legacyCompanyRedirectHref(
+  slug: string,
+  search: DocumentCenterSearchParams,
+  filters: DocumentCenterSearch,
+): string | null {
+  return search.company === undefined ? null : documentCenterHref(slug, filters);
 }
 
 export function documentCenterHref(
@@ -106,7 +113,6 @@ export function documentCenterHref(
   if (value.view !== 'all') params.set('view', value.view);
   if (value.sort !== 'urgency') params.set('sort', value.sort);
   if (value.window !== 'all') params.set('window', value.window);
-  if (value.companyId) params.set('company', value.companyId);
   if (value.docType) params.set('type', value.docType);
   if (value.search) params.set('q', value.search);
   if (value.from) params.set('from', value.from);

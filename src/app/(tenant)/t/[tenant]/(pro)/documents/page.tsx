@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import {
   DocumentActions,
   type DocumentActionLabels,
@@ -18,6 +19,7 @@ import {
   DocumentWorkQueue,
   type DocumentQueueLabels,
 } from '@/components/pro/documents/DocumentWorkQueue';
+import { DocumentBatchRequestUnavailable } from '@/components/pro/documents/DocumentBatchRequestUnavailable';
 import {
   dubaiToday,
   getDocumentCenterSummary,
@@ -32,6 +34,7 @@ import {
 } from '@/lib/validation/pro-document-center';
 import {
   documentCenterHref,
+  legacyCompanyRedirectHref,
   parseDocumentCenterSearch,
   type DocumentCenterSearchParams,
 } from './page-logic';
@@ -58,14 +61,17 @@ export default async function ProDocumentsPage({
 }) {
   const [{ tenant: slug }, search] = await Promise.all([params, searchParams]);
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
-  const query = { ...parseDocumentCenterSearch(search), companyId: company.id };
+  const query = parseDocumentCenterSearch(search);
+  const legacyCompanyRedirect = legacyCompanyRedirectHref(slug, search, query);
+  if (legacyCompanyRedirect) redirect(legacyCompanyRedirect);
   const requestedPage = query.page;
   const [workspace, summary, t, locale] = await Promise.all([
-    listProDocumentCenter(tenant.id, query),
-    getDocumentCenterSummary(tenant.id, dubaiToday()),
+    listProDocumentCenter(tenant.id, company.id, query),
+    getDocumentCenterSummary(tenant.id, company.id, dubaiToday()),
     getTranslations('proDocumentCenter'),
     getLocale(),
   ]);
@@ -190,7 +196,6 @@ export default async function ProDocumentsPage({
     search: t('filters.search'),
     searchPlaceholder: t('filters.searchPlaceholder'),
     view: t('filters.view'),
-    company: t('filters.company'),
     type: t('filters.type'),
     window: t('filters.window'),
     from: t('filters.from'),
@@ -216,7 +221,6 @@ export default async function ProDocumentsPage({
   const visibleTo = Math.min(workspace.page * workspace.pageSize, workspace.total);
   const queueLabels: DocumentQueueLabels = {
     region: t('queue.region'),
-    company: t('queue.company'),
     documentType: t('queue.documentType'),
     requestStatus: t('queue.requestStatus'),
     reviewStatus: t('queue.reviewStatus'),
@@ -268,8 +272,16 @@ export default async function ProDocumentsPage({
           <p className="text-foreground/70 mt-1 max-w-3xl text-sm">
             {t('heading.subtitle', { tenant: tenant.name, count: workspace.total })}
           </p>
+          <p className="text-muted-foreground mt-2 text-xs font-medium">
+            {t('heading.companyContext', { company: company.companyName })}
+          </p>
         </div>
-        <DocumentActions kind="request" slug={slug} labels={actionLabels} />
+        <div className="flex flex-wrap items-center gap-2">
+          <DocumentActions kind="request" slug={slug} labels={actionLabels} />
+          <DocumentBatchRequestUnavailable
+            labels={{ title: t('batch.title'), description: t('batch.description') }}
+          />
+        </div>
       </header>
 
       <DocumentSummaryGrid

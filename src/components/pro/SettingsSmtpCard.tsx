@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { updateSmtpAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/actions';
 import type { TenantSmtpRedacted } from '@/lib/data/tenant-settings';
+import { deriveProviderState } from '@/lib/settings/provider-state';
 
 export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: TenantSmtpRedacted }) {
   const t = useTranslations('pro.settings');
@@ -29,6 +31,10 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
   const passwordPlaceholder = initial?.has_password
     ? t('smtp.passwordKeepPlaceholder')
     : t('smtp.passwordPlaceholder');
+  const status = deriveProviderState({
+    status: 'ready',
+    data: initial && { enabled: initial.enabled, hasCredential: initial.has_password },
+  });
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +50,7 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
         enabled,
       });
       if (!r.ok) {
-        setError(`${r.code}: ${r.error}`);
+        setError(t(`actionErrors.${r.errorKey}`));
         return;
       }
       setSaved(true);
@@ -56,8 +62,15 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">{t('smtp.title')}</CardTitle>
-        <CardDescription>{t('smtp.description')}</CardDescription>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg">{t('smtp.title')}</CardTitle>
+            <CardDescription>{t('smtp.description')}</CardDescription>
+          </div>
+          <Badge variant={status === 'enabled' ? 'default' : 'secondary'}>
+            {t(`providerStatus.${status}`)}
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>

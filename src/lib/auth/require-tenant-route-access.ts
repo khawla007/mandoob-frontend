@@ -46,11 +46,39 @@ export async function requireProTenantRouteAccess(
   return { tenant, session };
 }
 
+export async function requireCustomerTenantRouteAccess(
+  slug: string,
+  deps: Dependencies = {},
+): Promise<{
+  tenant: Tenant;
+  session: SessionProfile &
+    ({ role: 'customer'; tenantId: string } | { role: 'admin' | 'super_admin' });
+}> {
+  const { tenant, session } = await requireTenantRouteAccess(
+    slug,
+    ['customer', 'super_admin'],
+    deps,
+  );
+  if (!isCustomerTenantSession(session, tenant.id)) return deny(deps);
+  return { tenant, session } as {
+    tenant: Tenant;
+    session: SessionProfile &
+      ({ role: 'customer'; tenantId: string } | { role: 'admin' | 'super_admin' });
+  };
+}
+
 function isProTenantSession(
   session: SessionProfile,
   tenantId: string,
 ): session is SessionProfile & { role: 'pro'; tenantId: string } {
   return session.role === 'pro' && session.tenantId === tenantId;
+}
+
+function isCustomerTenantSession(session: SessionProfile, tenantId: string): boolean {
+  return (
+    isPlatformOperatorRole(session.role) ||
+    (session.role === 'customer' && session.tenantId === tenantId)
+  );
 }
 
 const ROLES_WITH_TENANT_ACCESS: readonly Role[] = [
