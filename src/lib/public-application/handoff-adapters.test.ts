@@ -136,6 +136,46 @@ test('demo confirmation rejects arbitrary summaries and drafts without both cons
   );
 });
 
+test('validated completion is an immutable allowlisted snapshot', async () => {
+  const sourceDraft = structuredClone(validDraft);
+  const prepared = prepareApplicationCompletion(sourceDraft, APPLICATION_DEFINITION);
+  assert.equal(prepared.status, 'ready');
+  if (prepared.status !== 'ready') return;
+
+  const snapshot = prepared.value as unknown as Record<string, unknown>;
+  assert.equal(Object.isFrozen(snapshot), true);
+  assert.equal(Object.isFrozen(snapshot.addOnIds), true);
+  assert.throws(() => {
+    snapshot.authorityId = 'tampered-authority';
+  }, TypeError);
+  assert.throws(() => {
+    (snapshot.addOnIds as string[]).push('tampered-addon');
+  }, TypeError);
+  assert.throws(() => {
+    snapshot.fullName = 'Injected Person';
+  }, TypeError);
+
+  sourceDraft.setup.authorityId = 'tampered-after-validation';
+  sourceDraft.setup.addOnIds.push('tampered-after-validation');
+  const result = await createDemoApplicationAdapter('confirmed-preview').complete(prepared.value);
+  assert.equal(result.status, 'confirmed-preview');
+  if (result.status === 'confirmed-preview') {
+    assert.equal(result.confirmation.summary.authorityId, 'dmcc');
+    assert.deepEqual(result.confirmation.summary.addOnIds, ['bank-account-assistance']);
+    assert.deepEqual(Object.keys(result.confirmation.summary).sort(), [
+      'activityId',
+      'addOnIds',
+      'authorityId',
+      'jurisdiction',
+      'legalStructureId',
+      'officeTypeId',
+      'readyDocumentCount',
+      'shareholderCount',
+      'visaCount',
+    ]);
+  }
+});
+
 test('adapter graph is isolated from the preserved live questionnaire path and network calls', () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const sourceRoot = resolve(here, '../..');

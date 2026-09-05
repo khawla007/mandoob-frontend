@@ -230,7 +230,8 @@ export function prepareApplicationCompletion(
   }
   const validation = validateApplication(draft, definition);
   if (validation.status === 'invalid') return { status: 'invalid', validation };
-  const summary: ApplicationConfirmationSummary = {
+  const addOnIds = Object.freeze([...draft.setup.addOnIds]) as unknown as string[];
+  const summary = Object.freeze({
     jurisdiction: draft.setup.jurisdiction!,
     authorityId: draft.setup.authorityId!,
     activityId: draft.business.activityId!,
@@ -243,10 +244,10 @@ export function prepareApplicationCompletion(
           Number(draft.visas.familyCount)
         : 0,
     officeTypeId: draft.setup.officeTypeId!,
-    addOnIds: [...draft.setup.addOnIds],
+    addOnIds,
     readyDocumentCount: Object.values(draft.documentReadiness).filter((value) => value === 'ready')
       .length,
-  };
+  }) as ApplicationConfirmationSummary;
   const value = summary as ApplicationCompletionInput;
   validatedCompletions.add(value);
   return { status: 'ready', value };

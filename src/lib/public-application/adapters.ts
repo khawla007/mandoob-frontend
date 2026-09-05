@@ -49,10 +49,7 @@ function demoResult(
         sent: false,
         mode: 'local-preview',
         demoReference: demoReference(input),
-        summary: {
-          ...input,
-          addOnIds: [...input.addOnIds],
-        },
+        summary: safeConfirmationSummary(input),
       },
     };
   }
@@ -77,6 +74,21 @@ function demoResult(
     retryable: true,
     message: 'The local preview could not be completed. No application was sent.',
   };
+}
+
+function safeConfirmationSummary(input: ApplicationCompletionInput): ApplicationCompletionInput {
+  const addOnIds = Object.freeze([...input.addOnIds]) as unknown as string[];
+  return Object.freeze({
+    jurisdiction: input.jurisdiction,
+    authorityId: input.authorityId,
+    activityId: input.activityId,
+    legalStructureId: input.legalStructureId,
+    shareholderCount: input.shareholderCount,
+    visaCount: input.visaCount,
+    officeTypeId: input.officeTypeId,
+    addOnIds,
+    readyDocumentCount: input.readyDocumentCount,
+  }) as ApplicationCompletionInput;
 }
 
 function demoReference(input: ApplicationCompletionInput) {

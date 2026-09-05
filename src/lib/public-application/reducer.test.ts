@@ -240,3 +240,44 @@ test('document and other material edits always invalidate consent and confirmed 
   assert.equal(workspace.action.status, 'idle');
   assert.equal(workspace.draft.confirmations.informationIsTrue, false);
 });
+
+test('semantically unchanged reducer actions are identity-preserving no-ops', () => {
+  const actions = [
+    { type: 'set-add-ons', value: ['bank-account-assistance'] },
+    { type: 'set-shareholder-count', value: 1 },
+    {
+      type: 'set-shareholder-field',
+      shareholderId: 'shareholder-1',
+      field: 'fullName',
+      value: 'Example Person',
+    },
+    {
+      type: 'set-shareholder-field',
+      shareholderId: 'shareholder-999',
+      field: 'fullName',
+      value: 'Nobody',
+    },
+    {
+      type: 'set-document-readiness',
+      documentId: 'passport-copy:shareholder-1',
+      value: 'ready',
+    },
+  ] as const;
+
+  for (const action of actions) {
+    assert.equal(
+      reduceApplicationDraft(completedDraft, action, APPLICATION_DEFINITION),
+      completedDraft,
+      action.type,
+    );
+    const workspace = {
+      draft: completedDraft,
+      action: { status: 'pending' as const },
+    };
+    assert.equal(
+      reduceApplicationWorkspace(workspace, action, APPLICATION_DEFINITION),
+      workspace,
+      action.type,
+    );
+  }
+});

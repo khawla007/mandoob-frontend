@@ -25,7 +25,7 @@ export type ApplicationDraftAction =
     }
   | { type: 'set-office-type'; value: ApplicationDraft['setup']['officeTypeId'] }
   | { type: 'set-office-notes'; value: string }
-  | { type: 'set-add-ons'; value: string[] }
+  | { type: 'set-add-ons'; value: readonly string[] }
   | { type: 'set-shareholder-count'; value: number }
   | {
       type: 'set-shareholder-field';
@@ -218,17 +218,20 @@ export function reduceApplicationDraft(
       break;
     case 'set-add-ons': {
       const authority = selectedAuthority(draft, definition);
+      const addOnIds = action.value.filter((id) => authority?.addOnIds.includes(id));
+      if (sameStrings(draft.setup.addOnIds, addOnIds)) return draft;
       next = {
         ...draft,
         setup: {
           ...draft.setup,
-          addOnIds: action.value.filter((id) => authority?.addOnIds.includes(id)),
+          addOnIds,
         },
         documentReadiness: {},
       };
       break;
     }
     case 'set-shareholder-count': {
+      if (draft.shareholders.length === action.value) return draft;
       const authority = selectedAuthority(draft, definition);
       const allowed =
         Number.isInteger(action.value) &&
@@ -241,7 +244,9 @@ export function reduceApplicationDraft(
       next = { ...draft, shareholders, documentReadiness: {} };
       break;
     }
-    case 'set-shareholder-field':
+    case 'set-shareholder-field': {
+      const shareholder = draft.shareholders.find((row) => row.id === action.shareholderId);
+      if (!shareholder || shareholder[action.field] === action.value) return draft;
       next = {
         ...draft,
         shareholders: draft.shareholders.map((row) =>
@@ -250,7 +255,9 @@ export function reduceApplicationDraft(
         documentReadiness: {},
       };
       break;
+    }
     case 'set-document-readiness': {
+      if (draft.documentReadiness[action.documentId] === action.value) return draft;
       next = {
         ...draft,
         documentReadiness: { ...draft.documentReadiness, [action.documentId]: action.value },
@@ -274,6 +281,10 @@ export function reduceApplicationDraft(
     ...next,
     confirmations: { informationIsTrue: false, dataProcessingConsent: false },
   };
+}
+
+function sameStrings(left: readonly string[], right: readonly string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 export function reduceApplicationWorkspace(
