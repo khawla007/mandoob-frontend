@@ -66,6 +66,20 @@ export type OpenInvoiceInput = {
   currency: string;
 };
 
+export type CustomerInvoiceRow = OpenInvoiceInput & {
+  label: string;
+  dueDate: string | null;
+};
+
+export type CustomerInvoiceOverview = {
+  openCount: number;
+  totals:
+    | { kind: 'complete'; values: ReturnType<typeof summarizeOpenInvoices> }
+    | { kind: 'unavailable' };
+  recent: CustomerInvoiceRow[];
+  recentIsBounded: true;
+};
+
 export function summarizeOpenInvoices(invoices: readonly OpenInvoiceInput[]) {
   const totals = new Map<string, { currency: string; amountMinor: number; count: number }>();
   for (const invoice of invoices) {
@@ -79,20 +93,42 @@ export function summarizeOpenInvoices(invoices: readonly OpenInvoiceInput[]) {
   return [...totals.values()].sort((a, b) => a.currency.localeCompare(b.currency));
 }
 
+export function buildCustomerInvoiceOverview(
+  exactOpenCount: number,
+  openRows: readonly CustomerInvoiceRow[],
+  recent: readonly CustomerInvoiceRow[],
+): CustomerInvoiceOverview {
+  const complete = openRows.length === exactOpenCount;
+  return {
+    openCount: exactOpenCount,
+    totals: complete
+      ? { kind: 'complete', values: summarizeOpenInvoices(openRows) }
+      : { kind: 'unavailable' },
+    recent: recent.slice(0, 10),
+    recentIsBounded: true,
+  };
+}
+
 export type CustomerActionCandidate = {
   kind: 'document-request' | 'renewal' | 'invoice';
   id: string;
   href: string;
   dueDate: string | null;
   label?: string;
+  actionable: boolean;
+  status: string;
 };
 
 function actionPriority(action: CustomerActionCandidate, now: Date): number | null {
-  if (action.kind === 'document-request') return 0;
-  if (action.kind === 'invoice') return 3;
+  if (!action.actionable) return null;
+  if (action.kind === 'renewal' && ['completed', 'cancelled'].includes(action.status)) return null;
+  if (action.kind === 'invoice' && action.status !== 'open') return null;
   const urgency = customerDeadlineUrgency(action.dueDate, now);
-  if (urgency === 'overdue' || urgency === 'due-today') return 1;
+  if (urgency === 'overdue') return 0;
+  if (urgency === 'due-today') return 1;
   if (urgency === 'due-soon') return 2;
+  if (urgency === 'missing' && action.kind !== 'renewal') return 3;
+  if (urgency === 'future' && action.kind !== 'renewal') return 4;
   return null;
 }
 
@@ -117,6 +153,40 @@ export function rankCustomerActions(
     .map(({ action }) => action);
 }
 
+type ActionSources = {
+  documents: CustomerWidgetState<readonly CustomerActionCandidate[]>;
+  renewals: CustomerWidgetState<readonly CustomerActionCandidate[]>;
+  invoices: CustomerWidgetState<readonly CustomerActionCandidate[]>;
+};
+
+export type CustomerActionState =
+  | CustomerWidgetState<CustomerActionCandidate[]>
+  | {
+      kind: 'partial';
+      value: CustomerActionCandidate[];
+      sourceState: 'error' | 'unavailable';
+    };
+
+export function composeCustomerActions(
+  sources: ActionSources,
+  now = new Date(),
+  limit = 6,
+): CustomerActionState {
+  const states = Object.values(sources);
+  const candidates = states.flatMap((state) =>
+    state.kind === 'ready' || state.kind === 'empty' ? [...state.value] : [],
+  );
+  const ranked = rankCustomerActions(candidates, now, limit);
+  const sourceState = states.some((state) => state.kind === 'error')
+    ? 'error'
+    : states.some((state) => state.kind === 'unavailable')
+      ? 'unavailable'
+      : null;
+  if (sourceState && ranked.length > 0) return { kind: 'partial', value: ranked, sourceState };
+  if (sourceState) return { kind: sourceState };
+  return ranked.length === 0 ? { kind: 'empty', value: ranked } : { kind: 'ready', value: ranked };
+}
+
 export const CUSTOMER_SIGNAL_ORDER = [
   'registration',
   'documents',
@@ -125,28 +195,10 @@ export const CUSTOMER_SIGNAL_ORDER = [
   'notifications',
 ] as const;
 
-export type CustomerPortalRoute =
-  | 'overview'
-  | 'company'
-  | 'documents'
-  | 'employees'
-  | 'meetings'
-  | 'renewals'
-  | 'payments'
-  | 'pro'
-  | 'settings';
+export type CustomerPortalRoute = 'overview' | 'documents' | 'meetings' | 'renewals';
 
-export function buildCustomerPortalHref(
-  tenantSlug: string,
-  route: CustomerPortalRoute,
-  query?: Record<string, string | number | undefined>,
-): string {
+export function buildCustomerPortalHref(tenantSlug: string, route: CustomerPortalRoute): string {
   const base = `/t/${encodeURIComponent(tenantSlug)}/portal`;
   const pathname = route === 'overview' ? base : `${base}/${route}`;
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
-    if (value !== undefined) params.set(key, String(value));
-  }
-  const suffix = params.toString();
-  return suffix ? `${pathname}?${suffix}` : pathname;
+  return pathname;
 }

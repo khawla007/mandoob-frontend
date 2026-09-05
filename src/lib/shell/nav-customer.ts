@@ -1,13 +1,8 @@
 import {
-  Building2,
   CalendarClock,
-  CreditCard,
   FileText,
   LayoutDashboard,
-  Settings,
   ShieldAlert,
-  UserCheck,
-  Users,
   UserRound,
   Video,
 } from 'lucide-react';
@@ -33,22 +28,10 @@ export function buildCustomerNav(slug: string): ShellNavGroup[] {
       labelFallback: 'Company portal',
       items: [
         {
-          labelKey: 'company',
-          labelFallback: 'Company',
-          href: `${base}/company`,
-          icon: Building2,
-        },
-        {
           labelKey: 'documents',
           labelFallback: 'Documents',
           href: `${base}/documents`,
           icon: FileText,
-        },
-        {
-          labelKey: 'employees',
-          labelFallback: 'Employees',
-          href: `${base}/employees`,
-          icon: Users,
         },
         {
           labelKey: 'meetings',
@@ -61,24 +44,6 @@ export function buildCustomerNav(slug: string): ShellNavGroup[] {
           labelFallback: 'Renewals',
           href: `${base}/renewals`,
           icon: CalendarClock,
-        },
-        {
-          labelKey: 'payments',
-          labelFallback: 'Payments',
-          href: `${base}/payments`,
-          icon: CreditCard,
-        },
-        {
-          labelKey: 'assignedPro',
-          labelFallback: 'Assigned PRO',
-          href: `${base}/pro`,
-          icon: UserCheck,
-        },
-        {
-          labelKey: 'settings',
-          labelFallback: 'Settings',
-          href: `${base}/settings`,
-          icon: Settings,
         },
       ],
     },

@@ -13,11 +13,12 @@ const page = readFileSync(pagePath, 'utf8');
 const loader = readFileSync(loaderPath, 'utf8');
 const styles = readFileSync(stylesPath, 'utf8');
 
-test('Customer overview authorizes its exact actor and linked Company before scoped reads', () => {
-  const accessAt = page.indexOf('authorizeCustomerLinkedCompanyRead');
-  const dataAt = page.indexOf('loadCustomerOverview');
-  assert.ok(accessAt >= 0);
-  assert.ok(dataAt > accessAt);
+test('Customer overview only loads Company data from an authorized linked-Company result', () => {
+  assert.match(page, /const access = await authorizeCustomerLinkedCompanyRead\(slug\)/u);
+  assert.match(
+    page,
+    /access\.kind === 'authorized' \? await loadCustomerOverview\(access\) : null/u,
+  );
   assert.doesNotMatch(page, /requireTenantRouteAccess|readSelfCustomer/u);
 });
 
@@ -46,6 +47,12 @@ test('Customer overview owns no fake registration or P2.10 notification/task des
   assert.doesNotMatch(page, /\/notifications|\/tasks|registration.*percent|progress.*%/iu);
 });
 
+test('Customer overview emits no dead or context-unconsumed destinations', () => {
+  assert.doesNotMatch(page, /href\('(?:company|employees|payments|pro|settings)'/u);
+  assert.doesNotMatch(page, /requestId|invoiceId|\{ focus:/u);
+  assert.match(page, /aria-disabled="true"/u);
+});
+
 test('Customer overview catalogs preserve English and Arabic key parity', () => {
   assert.deepEqual(
     Object.keys(en.customer.overview).sort(),
@@ -59,6 +66,29 @@ test('Customer invoice overview read retains actor, tenant, and linked-Company o
   assert.match(loader, /\.eq\('tenant_id', tenantId\)/u);
   assert.match(loader, /\.eq\('company_id', companyId\)/u);
   assert.match(loader, /\.eq\('customer_profile_id', profileId\)/u);
+  assert.match(loader, /count:\s*'exact',\s*head:\s*true/u);
+  assert.match(loader, /\.limit\(10\)/u);
+});
+
+test('overview avoids unbounded list helpers and admin-only assignment reads', () => {
+  assert.doesNotMatch(
+    loader,
+    /listOpenRequestsForCompany|listDocumentsForCompany|listRenewalsForCompany|readCurrentCompanyAssignment/u,
+  );
+  assert.match(loader, /assignment:\s*null/u);
+  assert.match(loader, /\.order\('due_date',[\s\S]*?\.order\('id',[\s\S]*?\.limit\(/u);
+});
+
+test('invoice panel distinguishes an overdue open invoice from other bounded recent statuses', () => {
+  assert.match(page, /invoice\.status === 'open'/u);
+  assert.match(page, /customerDeadlineUrgency\(invoice\.dueDate, generatedAt\) === 'overdue'/u);
+  assert.equal(en.customer.overview.invoices.status.overdue, 'Overdue');
+  assert.ok(ar.customer.overview.invoices.status.overdue);
+});
+
+test('registration signal is typed unavailable while lifecycle remains separately labelled', () => {
+  assert.match(page, /signal === 'registration'\) return t\('registrationUnavailable'\)/u);
+  assert.match(page, /registration\.lifecycle/u);
 });
 
 test('Customer overview activates the existing Signal Studio semantic scale and surfaces', () => {

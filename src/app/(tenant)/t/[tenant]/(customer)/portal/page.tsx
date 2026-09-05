@@ -15,9 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   CUSTOMER_SIGNAL_ORDER,
   buildCustomerPortalHref,
+  composeCustomerActions,
   customerDeadlineUrgency,
-  rankCustomerActions,
-  summarizeOpenInvoices,
   type CustomerActionCandidate,
   type CustomerWidgetState,
 } from '@/lib/customer/customer-overview';
@@ -58,16 +57,34 @@ function PanelState({ state, t }: { state: CustomerWidgetState<unknown>; t: Tran
   );
 }
 
+function DisabledDestination({ label, unavailable }: { label: string; unavailable: string }) {
+  return (
+    <span
+      aria-disabled="true"
+      className="text-muted-foreground mt-3 inline-flex text-sm font-semibold"
+    >
+      {label} · {unavailable}
+    </span>
+  );
+}
+
+function mapActionState<T>(
+  state: CustomerWidgetState<T>,
+  map: (value: T) => CustomerActionCandidate[],
+): CustomerWidgetState<CustomerActionCandidate[]> {
+  if (state.kind === 'ready') return { kind: 'ready', value: map(state.value) };
+  if (state.kind === 'empty') return { kind: 'empty', value: [] };
+  return state;
+}
+
 export default async function CustomerPortal({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: slug } = await params;
   const access = await authorizeCustomerLinkedCompanyRead(slug);
   const [t, locale] = await Promise.all([getTranslations('customer.overview'), getLocale()]);
   const overview = access.kind === 'authorized' ? await loadCustomerOverview(access) : null;
   const company = access.kind === 'authorized' ? access.company : null;
-  const href = (
-    route: Parameters<typeof buildCustomerPortalHref>[1],
-    query?: Record<string, string>,
-  ) => buildCustomerPortalHref(access.tenant.slug, route, query);
+  const href = (route: Parameters<typeof buildCustomerPortalHref>[1]) =>
+    buildCustomerPortalHref(access.tenant.slug, route);
   const generatedAt = new Date();
   const generatedLabel = new Intl.DateTimeFormat(locale, {
     timeZone: 'Asia/Dubai',
@@ -75,72 +92,82 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
     timeStyle: 'short',
   }).format(generatedAt);
 
-  const requestRows =
-    overview?.documentRequests.kind === 'ready' ? overview.documentRequests.value : [];
-  const renewalRows = overview?.renewals.kind === 'ready' ? overview.renewals.value : [];
   const paymentData = overview?.invoices.kind === 'ready' ? overview.invoices.value : null;
-  const invoiceSummaries = summarizeOpenInvoices(
-    (paymentData?.pending ?? []).map((invoice) => ({ ...invoice, status: 'open' })),
-  );
-  const actionCandidates: CustomerActionCandidate[] = [
-    ...requestRows.map((request) => ({
-      kind: 'document-request' as const,
-      id: request.id,
-      label: request.label,
-      dueDate: dateOnly(request.dueAt),
-      href: href('documents', { requestId: request.id }),
-    })),
-    ...renewalRows.map((renewal) => ({
-      kind: 'renewal' as const,
-      id: renewal.id,
-      label: renewal.label,
-      dueDate: renewal.dueDate,
-      href: href('renewals', { focus: renewal.id }),
-    })),
-    ...(paymentData?.pending ?? []).map((invoice) => ({
-      kind: 'invoice' as const,
-      id: invoice.id,
-      label: invoice.label,
-      dueDate: dateOnly(invoice.dueDate),
-      href: href('payments', { invoiceId: invoice.id }),
-    })),
-  ];
-  const actions = rankCustomerActions(actionCandidates, generatedAt, 6);
+  const invoiceSummaries = paymentData?.totals.kind === 'complete' ? paymentData.totals.values : [];
+  const actionState = overview
+    ? composeCustomerActions(
+        {
+          documents: mapActionState(overview.documents, (value) =>
+            value.requests.map((request) => ({
+              kind: 'document-request',
+              id: request.id,
+              label: request.label,
+              dueDate: dateOnly(request.dueDate),
+              href: href('documents'),
+              actionable: request.status === 'pending',
+              status: request.status,
+            })),
+          ),
+          renewals: mapActionState(overview.renewals, (value) =>
+            value.rows.map((renewal) => ({
+              kind: 'renewal',
+              id: renewal.id,
+              label: renewal.label,
+              dueDate: renewal.due_date,
+              href: href('renewals'),
+              actionable: true,
+              status: renewal.status,
+            })),
+          ),
+          invoices: mapActionState(overview.invoices, (value) =>
+            value.recent.map((invoice) => ({
+              kind: 'invoice',
+              id: invoice.id,
+              label: invoice.label,
+              dueDate: dateOnly(invoice.dueDate),
+              href: '',
+              actionable: false,
+              status: invoice.status,
+            })),
+          ),
+        },
+        generatedAt,
+        6,
+      )
+    : ({ kind: 'unavailable' } as const);
 
   function signalValue(signal: (typeof CUSTOMER_SIGNAL_ORDER)[number]) {
     if (!overview) return t('states.unavailable');
-    if (signal === 'registration')
-      return company ? t(`lifecycle.${company.status}` as never) : t('states.unavailable');
+    if (signal === 'registration') return t('registrationUnavailable');
     if (signal === 'documents') {
-      const state = overview.documentRequests;
+      const state = overview.documents;
       return state.kind === 'ready' || state.kind === 'empty'
-        ? String(state.value.length)
+        ? t('boundedCount', {
+            count: state.value.summary.requested,
+            more: state.value.hasMore ? '+' : '',
+          })
         : stateText(state, t);
     }
     if (signal === 'renewals') {
       const state = overview.renewals;
       return state.kind === 'ready' || state.kind === 'empty'
-        ? String(
-            state.value.filter((row) => ['upcoming', 'due_soon', 'overdue'].includes(row.status))
-              .length,
-          )
+        ? t('boundedCount', {
+            count: state.value.rows.length,
+            more: state.value.hasMore ? '+' : '',
+          })
         : stateText(state, t);
     }
     if (signal === 'invoices') {
       if (overview.invoices.kind === 'error') return t('states.error');
-      if (invoiceSummaries.length === 0) return t('states.empty');
-      return invoiceSummaries
-        .map((summary) => formatMoney(summary.amountMinor, summary.currency, locale))
-        .join(' · ');
+      if (overview.invoices.kind === 'unavailable') return t('states.unavailable');
+      return t('invoices.exactOpenCount', { count: overview.invoices.value.openCount });
     }
     return t('notificationsUnavailable');
   }
 
   const signalHref: Partial<Record<(typeof CUSTOMER_SIGNAL_ORDER)[number], string>> = {
-    registration: href('company'),
     documents: href('documents'),
     renewals: href('renewals'),
-    invoices: href('payments'),
   };
   const signalIcons = {
     registration: Building2,
@@ -233,33 +260,40 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               <CardDescription>{t('actions.description')}</CardDescription>
             </CardHeader>
             <CardContent>
-              {!overview ? (
-                <PanelState state={{ kind: 'unavailable' }} t={t} />
-              ) : actions.length === 0 ? (
+              {actionState.kind === 'error' || actionState.kind === 'unavailable' ? (
+                <PanelState state={actionState} t={t} />
+              ) : actionState.kind === 'empty' ? (
                 <p className="text-muted-foreground text-sm">{t('actions.empty')}</p>
               ) : (
-                <ol className="divide-border divide-y">
-                  {actions.map((action) => (
-                    <li
-                      key={`${action.kind}:${action.id}`}
-                      className="flex min-w-0 items-center gap-3 py-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm">{action.label}</strong>
-                        <span className="text-muted-foreground text-xs">
-                          {t(`actions.kinds.${action.kind}`)} ·{' '}
-                          {t(`urgency.${customerDeadlineUrgency(action.dueDate, generatedAt)}`)}
-                        </span>
-                      </div>
-                      <Link
-                        className="text-primary text-sm font-semibold underline-offset-4 hover:underline"
-                        href={action.href}
+                <>
+                  {actionState.kind === 'partial' ? (
+                    <p role="status" className="text-muted-foreground mb-2 text-sm">
+                      {stateText({ kind: actionState.sourceState }, t)}
+                    </p>
+                  ) : null}
+                  <ol className="divide-border divide-y">
+                    {actionState.value.map((action) => (
+                      <li
+                        key={`${action.kind}:${action.id}`}
+                        className="flex min-w-0 items-center gap-3 py-3"
                       >
-                        {t('open')}
-                      </Link>
-                    </li>
-                  ))}
-                </ol>
+                        <div className="min-w-0 flex-1">
+                          <strong className="block truncate text-sm">{action.label}</strong>
+                          <span className="text-muted-foreground text-xs">
+                            {t(`actions.kinds.${action.kind}`)} ·{' '}
+                            {t(`urgency.${customerDeadlineUrgency(action.dueDate, generatedAt)}`)}
+                          </span>
+                        </div>
+                        <Link
+                          className="text-primary text-sm font-semibold underline-offset-4 hover:underline"
+                          href={action.href}
+                        >
+                          {t('open')}
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                </>
               )}
             </CardContent>
           </Card>
@@ -277,8 +311,11 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                     {overview.documents.kind === 'ready' || overview.documents.kind === 'empty' ? (
                       <p className="text-lg font-semibold">
                         {t('documents.summary', {
-                          submitted: overview.documents.value.length,
-                          requested: requestRows.length,
+                          submitted: overview.documents.value.summary.submitted,
+                          requested: overview.documents.value.summary.requested,
+                          reviewed: overview.documents.value.summary.reviewed,
+                          rejected: overview.documents.value.summary.rejected,
+                          more: overview.documents.value.hasMore ? '+' : '',
                         })}
                       </p>
                     ) : null}
@@ -301,12 +338,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               </CardHeader>
               <CardContent>
                 <PanelState state={{ kind: 'unavailable' }} t={t} />
-                <Link
-                  className="text-primary mt-3 inline-block text-sm font-semibold"
-                  href={href('employees')}
-                >
-                  {t('view')}
-                </Link>
+                <DisabledDestination label={t('view')} unavailable={t('states.unavailable')} />
               </CardContent>
             </Card>
             <Card className="signal-panel customer-overview__invoices">
@@ -318,6 +350,11 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                 {overview ? (
                   <>
                     <PanelState state={overview.invoices} t={t} />
+                    {overview.invoices.kind === 'ready' ? (
+                      <p className="text-sm font-semibold">
+                        {t('invoices.exactOpenCount', { count: overview.invoices.value.openCount })}
+                      </p>
+                    ) : null}
                     {invoiceSummaries.map((summary) => (
                       <p key={summary.currency} className="font-semibold">
                         {formatMoney(summary.amountMinor, summary.currency, locale)}{' '}
@@ -326,16 +363,34 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                         </span>
                       </p>
                     ))}
+                    {overview.invoices.kind === 'ready' &&
+                    overview.invoices.value.totals.kind === 'unavailable' ? (
+                      <p role="status" className="text-muted-foreground text-sm">
+                        {t('invoices.totalsUnavailable')}
+                      </p>
+                    ) : null}
+                    {overview.invoices.kind === 'ready' ? (
+                      <ul className="mt-3 space-y-1">
+                        {overview.invoices.value.recent.map((invoice) => (
+                          <li key={invoice.id} className="text-sm">
+                            {invoice.label} ·{' '}
+                            {t(
+                              `invoices.status.${
+                                invoice.status === 'open' &&
+                                customerDeadlineUrgency(invoice.dueDate, generatedAt) === 'overdue'
+                                  ? 'overdue'
+                                  : invoice.status
+                              }` as never,
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </>
                 ) : (
                   <PanelState state={{ kind: 'unavailable' }} t={t} />
                 )}
-                <Link
-                  className="text-primary mt-3 inline-block text-sm font-semibold"
-                  href={href('payments')}
-                >
-                  {t('view')}
-                </Link>
+                <DisabledDestination label={t('view')} unavailable={t('states.unavailable')} />
               </CardContent>
             </Card>
           </div>
@@ -386,23 +441,18 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                   <PanelState state={overview.renewals} t={t} />
                   {(overview.renewals.kind === 'ready' || overview.renewals.kind === 'empty') && (
                     <ul className="space-y-3">
-                      {overview.renewals.value
-                        .filter((row) => ['upcoming', 'due_soon', 'overdue'].includes(row.status))
-                        .slice(0, 5)
-                        .map((row) => (
-                          <li key={row.id}>
-                            <Link
-                              className="block rounded-lg border p-3"
-                              href={href('renewals', { focus: row.id })}
-                            >
-                              <strong className="block text-sm">{row.label}</strong>
-                              <span className="text-muted-foreground text-xs">
-                                {formatDate(row.dueDate, locale, t('dateUnavailable'))} ·{' '}
-                                {t(`urgency.${customerDeadlineUrgency(row.dueDate, generatedAt)}`)}
-                              </span>
-                            </Link>
-                          </li>
-                        ))}
+                      {overview.renewals.value.rows.slice(0, 5).map((row) => (
+                        <li key={row.id}>
+                          <Link className="block rounded-lg border p-3" href={href('renewals')}>
+                            <strong className="block text-sm">{row.label}</strong>
+                            <span className="text-muted-foreground text-xs">
+                              {t(`renewalTypes.${row.type}` as never)} ·{' '}
+                              {formatDate(row.due_date, locale, t('dateUnavailable'))} ·{' '}
+                              {t(`urgency.${customerDeadlineUrgency(row.due_date, generatedAt)}`)}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </>
@@ -432,26 +482,9 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               {!overview ? (
                 <PanelState state={{ kind: 'unavailable' }} t={t} />
               ) : (
-                <>
-                  <PanelState state={overview.assignment} t={t} />
-                  {overview.assignment.kind === 'ready' && overview.assignment.value ? (
-                    <>
-                      <strong className="block">
-                        {overview.assignment.value.proFullName ?? t('assignedPro.nameUnavailable')}
-                      </strong>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        {t('assignedPro.channelsUnavailable')}
-                      </p>
-                    </>
-                  ) : null}
-                </>
+                <PanelState state={overview.assignment} t={t} />
               )}
-              <Link
-                className="text-primary mt-3 inline-block text-sm font-semibold"
-                href={href('pro')}
-              >
-                {t('view')}
-              </Link>
+              <DisabledDestination label={t('view')} unavailable={t('states.unavailable')} />
             </CardContent>
           </Card>
           <Card className="signal-panel customer-overview__quick-actions">
@@ -464,11 +497,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                 {(
                   [
                     ['documents', FileText],
-                    ['payments', CircleDollarSign],
-                    ['employees', Users],
                     ['renewals', CalendarClock],
-                    ['pro', UserCheck],
-                    ['settings', Settings],
                   ] as const
                 ).map(([route, Icon]) => (
                   <Link
@@ -479,6 +508,23 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                     <Icon aria-hidden="true" className="size-4" />
                     {t(`quickActions.${route}`)}
                   </Link>
+                ))}
+                {(
+                  [
+                    ['payments', CircleDollarSign],
+                    ['employees', Users],
+                    ['pro', UserCheck],
+                    ['settings', Settings],
+                  ] as const
+                ).map(([route, Icon]) => (
+                  <span
+                    key={route}
+                    aria-disabled="true"
+                    className="text-muted-foreground flex min-h-11 items-center gap-2 rounded-lg border border-dashed px-3 text-sm font-medium"
+                  >
+                    <Icon aria-hidden="true" className="size-4" />
+                    {t(`quickActions.${route}`)} · {t('states.unavailable')}
+                  </span>
                 ))}
               </nav>
             </CardContent>

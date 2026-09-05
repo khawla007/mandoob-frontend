@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildCustomerInvoiceOverview,
   buildCustomerPortalHref,
+  composeCustomerActions,
   customerDeadlineUrgency,
   rankCustomerActions,
   settleCustomerWidgets,
@@ -52,34 +54,170 @@ test('open invoice summary never combines currencies and excludes non-open statu
 test('Customer action ranking is bounded, deterministic, and follows business priority', () => {
   const actions = rankCustomerActions(
     [
-      { kind: 'invoice', id: 'invoice-b', href: '/invoice-b', dueDate: '2026-09-01' },
-      { kind: 'renewal', id: 'renewal-soon', href: '/renewal-soon', dueDate: '2026-09-20' },
-      { kind: 'document-request', id: 'doc-b', href: '/doc-b', dueDate: null },
-      { kind: 'renewal', id: 'renewal-today', href: '/renewal-today', dueDate: '2026-09-06' },
-      { kind: 'document-request', id: 'doc-a', href: '/doc-a', dueDate: '2026-09-10' },
-      { kind: 'renewal', id: 'renewal-overdue', href: '/renewal-overdue', dueDate: '2026-09-05' },
-      { kind: 'invoice', id: 'invoice-a', href: '/invoice-a', dueDate: '2026-09-01' },
+      {
+        kind: 'invoice',
+        id: 'invoice-b',
+        href: '/payments',
+        dueDate: '2026-09-05',
+        actionable: true,
+        status: 'open',
+      },
+      {
+        kind: 'renewal',
+        id: 'renewal-soon',
+        href: '/renewals',
+        dueDate: '2026-09-20',
+        actionable: true,
+        status: 'due_soon',
+      },
+      {
+        kind: 'document-request',
+        id: 'doc-undated',
+        href: '/documents',
+        dueDate: null,
+        actionable: true,
+        status: 'pending',
+      },
+      {
+        kind: 'renewal',
+        id: 'renewal-today',
+        href: '/renewals',
+        dueDate: '2026-09-06',
+        actionable: true,
+        status: 'upcoming',
+      },
+      {
+        kind: 'document-request',
+        id: 'doc-soon',
+        href: '/documents',
+        dueDate: '2026-09-10',
+        actionable: true,
+        status: 'pending',
+      },
+      {
+        kind: 'renewal',
+        id: 'renewal-completed',
+        href: '/renewals',
+        dueDate: '2026-09-01',
+        actionable: true,
+        status: 'completed',
+      },
+      {
+        kind: 'renewal',
+        id: 'renewal-cancelled',
+        href: '/renewals',
+        dueDate: '2026-09-01',
+        actionable: true,
+        status: 'cancelled',
+      },
+      {
+        kind: 'invoice',
+        id: 'invoice-paid',
+        href: '/payments',
+        dueDate: '2026-09-01',
+        actionable: false,
+        status: 'paid',
+      },
+      {
+        kind: 'document-request',
+        id: 'doc-overdue',
+        href: '/documents',
+        dueDate: '2026-09-04',
+        actionable: true,
+        status: 'pending',
+      },
     ],
     new Date('2026-09-05T21:30:00.000Z'),
     6,
   );
   assert.deepEqual(
     actions.map(({ id }) => id),
-    ['doc-a', 'doc-b', 'renewal-overdue', 'renewal-today', 'renewal-soon', 'invoice-a'],
+    ['doc-overdue', 'invoice-b', 'renewal-today', 'doc-soon', 'renewal-soon', 'doc-undated'],
   );
 });
 
-test('exact Customer portal links encode tenant slugs, entity identifiers, and filters', () => {
+test('Customer portal links encode tenant slugs and only expose implemented generic routes', () => {
   assert.equal(
     buildCustomerPortalHref('company / دبي', 'overview'),
     '/t/company%20%2F%20%D8%AF%D8%A8%D9%8A/portal',
   );
   assert.equal(
-    buildCustomerPortalHref('company / دبي', 'documents', { requestId: 'request / 1' }),
-    '/t/company%20%2F%20%D8%AF%D8%A8%D9%8A/portal/documents?requestId=request+%2F+1',
+    buildCustomerPortalHref('company / دبي', 'documents'),
+    '/t/company%20%2F%20%D8%AF%D8%A8%D9%8A/portal/documents',
   );
-  assert.equal(
-    buildCustomerPortalHref('acme', 'renewals', { focus: 'renewal&1' }),
-    '/t/acme/portal/renewals?focus=renewal%261',
+  assert.equal(buildCustomerPortalHref('acme', 'renewals'), '/t/acme/portal/renewals');
+});
+
+test('composed actions preserve source error and unavailable truth instead of false empty', () => {
+  assert.deepEqual(
+    composeCustomerActions({
+      documents: { kind: 'error' },
+      renewals: { kind: 'empty', value: [] },
+      invoices: { kind: 'ready', value: [] },
+    }),
+    { kind: 'error' },
   );
+  assert.deepEqual(
+    composeCustomerActions({
+      documents: { kind: 'ready', value: [] },
+      renewals: { kind: 'unavailable' },
+      invoices: { kind: 'ready', value: [] },
+    }),
+    { kind: 'unavailable' },
+  );
+});
+
+test('composed actions keep actionable siblings while exposing a partial source failure', () => {
+  assert.deepEqual(
+    composeCustomerActions(
+      {
+        documents: { kind: 'error' },
+        renewals: {
+          kind: 'ready',
+          value: [
+            {
+              kind: 'renewal',
+              id: 'renewal-1',
+              href: '/t/acme/portal/renewals',
+              dueDate: '2026-03-09',
+              actionable: true,
+              status: 'pending',
+            },
+          ],
+        },
+        invoices: { kind: 'unavailable' },
+      },
+      new Date('2026-03-10T08:00:00+04:00'),
+    ),
+    {
+      kind: 'partial',
+      value: [
+        {
+          kind: 'renewal',
+          id: 'renewal-1',
+          href: '/t/acme/portal/renewals',
+          dueDate: '2026-03-09',
+          actionable: true,
+          status: 'pending',
+        },
+      ],
+      sourceState: 'error',
+    },
+  );
+});
+
+test('more than 100 open invoices keeps exact count but makes currency totals unavailable', () => {
+  const rows = Array.from({ length: 100 }, (_, index) => ({
+    id: `invoice-${index}`,
+    label: `Invoice ${index}`,
+    amountMinor: 100,
+    currency: index % 2 ? 'AED' : 'USD',
+    status: 'open',
+    dueDate: null,
+  }));
+  const result = buildCustomerInvoiceOverview(101, rows, rows.slice(0, 10));
+  assert.equal(result.openCount, 101);
+  assert.equal(result.totals.kind, 'unavailable');
+  assert.equal(result.recent.length, 10);
+  assert.equal(result.recentIsBounded, true);
 });

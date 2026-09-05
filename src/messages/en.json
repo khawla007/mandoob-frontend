@@ -912,6 +912,13 @@
       "open": "Open",
       "view": "View workspace",
       "dateUnavailable": "Date unavailable",
+      "boundedCount": "{count}{more} in this overview",
+      "renewalTypes": {
+        "license": "Trade license",
+        "visa": "Visa",
+        "eid": "Emirates ID",
+        "ejari": "Ejari"
+      },
       "renewals": {
         "title": "Upcoming renewals",
         "description": "Company deadlines shown in Dubai business time."
@@ -923,7 +930,7 @@
       "documents": {
         "title": "Documents",
         "description": "Requested and submitted Company documents.",
-        "summary": "{requested} requested · {submitted} submitted"
+        "summary": "{more}{requested} requested · {more}{submitted} submitted · {reviewed} reviewed · {rejected} rejected (bounded overview)"
       },
       "employees": {
         "title": "Employees",
@@ -932,7 +939,19 @@
       "invoices": {
         "title": "Invoices and payments",
         "description": "Open balances remain separated by currency.",
-        "openCount": "{count, plural, one {# open invoice} other {# open invoices}}"
+        "openCount": "{count, plural, one {# open invoice} other {# open invoices}}",
+        "exactOpenCount": "{count, plural, one {# open invoice} other {# open invoices}} (exact)",
+        "totalsUnavailable": "Currency totals require review in the payments module because the bounded overview is incomplete.",
+        "status": {
+          "draft": "Draft",
+          "open": "Open",
+          "overdue": "Overdue",
+          "paid": "Paid",
+          "void": "Void",
+          "cancelled": "Cancelled",
+          "refunded": "Refunded",
+          "partially_refunded": "Partially refunded"
+        }
       },
       "assignedPro": {
         "title": "Assigned PRO",

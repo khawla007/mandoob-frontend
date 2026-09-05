@@ -912,18 +912,37 @@
       "open": "فتح",
       "view": "عرض مساحة العمل",
       "dateUnavailable": "التاريخ غير متاح",
+      "boundedCount": "{count}{more} في هذه النظرة العامة",
+      "renewalTypes": {
+        "license": "الرخصة التجارية",
+        "visa": "التأشيرة",
+        "eid": "الهوية الإماراتية",
+        "ejari": "إيجاري"
+      },
       "renewals": { "title": "التجديدات القادمة", "description": "مواعيد الشركة بتوقيت عمل دبي." },
       "notifications": { "title": "الإشعارات الأخيرة", "description": "حالة إشعارات التطبيق فقط." },
       "documents": {
         "title": "المستندات",
         "description": "مستندات الشركة المطلوبة والمقدمة.",
-        "summary": "{requested} مطلوبة · {submitted} مقدمة"
+        "summary": "{more}{requested} مطلوبة · {more}{submitted} مقدمة · {reviewed} مراجعة · {rejected} مرفوضة (ملخص محدود)"
       },
       "employees": { "title": "الموظفون", "description": "ملخص سجل موظفي الشركة المصرح به." },
       "invoices": {
         "title": "الفواتير والمدفوعات",
         "description": "تبقى الأرصدة المفتوحة منفصلة حسب العملة.",
-        "openCount": "{count, plural, one {فاتورة مفتوحة واحدة} other {# فواتير مفتوحة}}"
+        "openCount": "{count, plural, one {فاتورة مفتوحة واحدة} other {# فواتير مفتوحة}}",
+        "exactOpenCount": "{count, plural, one {فاتورة مفتوحة واحدة} other {# فواتير مفتوحة}} (عدد دقيق)",
+        "totalsUnavailable": "تتطلب إجماليات العملات مراجعة وحدة المدفوعات لأن النظرة العامة المحدودة غير مكتملة.",
+        "status": {
+          "draft": "مسودة",
+          "open": "مفتوحة",
+          "overdue": "متأخرة",
+          "paid": "مدفوعة",
+          "void": "ملغاة",
+          "cancelled": "ملغاة",
+          "refunded": "مستردة",
+          "partially_refunded": "مستردة جزئيًا"
+        }
       },
       "assignedPro": {
         "title": "مندوب العلاقات الحكومية المعيّن",
