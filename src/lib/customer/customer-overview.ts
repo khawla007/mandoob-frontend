@@ -266,7 +266,9 @@ export type CustomerPortalRoute =
   | 'overview'
   | 'company'
   | 'documents'
+  | 'employees'
   | 'meetings'
+  | 'payments'
   | 'pro'
   | 'renewals'
   | 'settings';

@@ -62,17 +62,6 @@ function PanelState({ state, t }: { state: CustomerWidgetState<unknown>; t: Tran
   );
 }
 
-function DisabledDestination({ label, unavailable }: { label: string; unavailable: string }) {
-  return (
-    <span
-      aria-disabled="true"
-      className="text-muted-foreground mt-3 inline-flex text-sm font-semibold"
-    >
-      {label} · {unavailable}
-    </span>
-  );
-}
-
 function mapActionState<T>(
   state: CustomerWidgetState<T>,
   map: (value: T) => CustomerActionCandidate[],
@@ -131,7 +120,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               id: renewal.id,
               label: renewal.label,
               dueDate: renewal.due_date,
-              href: href('renewals'),
+              href: `${href('renewals')}?focus=${encodeURIComponent(renewal.id)}`,
               actionable: true,
               status: renewal.status,
             })),
@@ -142,7 +131,9 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               id: invoice.id,
               label: invoice.label,
               dueDate: dateOnly(invoice.dueDate),
-              href: '',
+              href: `${href('payments')}/${encodeURIComponent(invoice.id)}`,
+              // Viewing is safe, but payment is not actionable until an atomic initiation
+              // contract exists. The invoice remains available in the finance panel.
               actionable: false,
               status: invoice.status,
             })),
@@ -186,6 +177,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
     registration: href('company'),
     documents: href('documents'),
     renewals: href('renewals'),
+    invoices: href('payments'),
   };
   const signalIcons = {
     registration: Building2,
@@ -390,7 +382,12 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               </CardHeader>
               <CardContent>
                 <PanelState state={{ kind: 'unavailable' }} t={t} />
-                <DisabledDestination label={t('view')} unavailable={t('states.unavailable')} />
+                <Link
+                  className="text-primary mt-3 inline-block text-sm font-semibold"
+                  href={href('employees')}
+                >
+                  {t('view')}
+                </Link>
               </CardContent>
             </Card>
             <Card className="signal-panel customer-overview__invoices">
@@ -425,7 +422,13 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                       <ul className="mt-3 space-y-1">
                         {overview.invoices.value.recent.map((invoice) => (
                           <li key={invoice.id} className="text-sm">
-                            {invoice.label} ·{' '}
+                            <Link
+                              className="font-medium underline-offset-4 hover:underline focus-visible:ring-2"
+                              href={`${href('payments')}/${encodeURIComponent(invoice.id)}`}
+                            >
+                              {invoice.label}
+                            </Link>{' '}
+                            ·{' '}
                             {t(
                               `invoices.status.${
                                 invoice.status === 'open' &&
@@ -442,7 +445,12 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                 ) : (
                   <PanelState state={{ kind: 'unavailable' }} t={t} />
                 )}
-                <DisabledDestination label={t('view')} unavailable={t('states.unavailable')} />
+                <Link
+                  className="text-primary mt-3 inline-block text-sm font-semibold"
+                  href={href('payments')}
+                >
+                  {t('view')}
+                </Link>
               </CardContent>
             </Card>
           </div>
@@ -553,6 +561,8 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                 {(
                   [
                     ['documents', FileText],
+                    ['employees', Users],
+                    ['payments', CircleDollarSign],
                     ['renewals', CalendarClock],
                     ['pro', UserCheck],
                     ['settings', Settings],
@@ -566,21 +576,6 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                     <Icon aria-hidden="true" className="size-4" />
                     {t(`quickActions.${route}`)}
                   </Link>
-                ))}
-                {(
-                  [
-                    ['payments', CircleDollarSign],
-                    ['employees', Users],
-                  ] as const
-                ).map(([route, Icon]) => (
-                  <span
-                    key={route}
-                    aria-disabled="true"
-                    className="text-muted-foreground flex min-h-11 items-center gap-2 rounded-lg border border-dashed px-3 text-sm font-medium"
-                  >
-                    <Icon aria-hidden="true" className="size-4" />
-                    {t(`quickActions.${route}`)} · {t('states.unavailable')}
-                  </span>
                 ))}
               </nav>
             </CardContent>

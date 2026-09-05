@@ -251,6 +251,8 @@ test('Customer portal links encode tenant slugs and only expose implemented gene
   );
   assert.equal(buildCustomerPortalHref('acme', 'renewals'), '/t/acme/portal/renewals');
   assert.equal(buildCustomerPortalHref('acme', 'company'), '/t/acme/portal/company');
+  assert.equal(buildCustomerPortalHref('acme', 'employees'), '/t/acme/portal/employees');
+  assert.equal(buildCustomerPortalHref('acme', 'payments'), '/t/acme/portal/payments');
   assert.equal(buildCustomerPortalHref('acme', 'pro'), '/t/acme/portal/pro');
   assert.equal(buildCustomerPortalHref('acme', 'settings'), '/t/acme/portal/settings');
 });

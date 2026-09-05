@@ -45,12 +45,14 @@ test('Customer overview owns no fake registration or P2.10 notification/task des
 });
 
 test('Customer overview emits no dead or context-unconsumed destinations', () => {
-  for (const route of ['company', 'pro', 'settings']) {
+  for (const route of ['company', 'employees', 'payments', 'pro', 'settings']) {
     assert.match(page, new RegExp(`href\\('${route}'\\)`));
   }
-  assert.doesNotMatch(page, /href\('(?:employees|payments)'/u);
-  assert.doesNotMatch(page, /requestId|invoiceId|\{ focus:/u);
-  assert.match(page, /aria-disabled="true"/u);
+  assert.doesNotMatch(page, /requestId/u);
+  assert.match(page, /href\('renewals'\)[\s\S]*?focus=/u);
+  assert.match(page, /href\('payments'\)[\s\S]*?invoice\.id/u);
+  assert.match(page, /kind: 'invoice'[\s\S]*?actionable: false/u);
+  assert.doesNotMatch(page, /aria-disabled="true"/u);
 });
 
 test('Customer overview catalogs preserve English and Arabic key parity', () => {
