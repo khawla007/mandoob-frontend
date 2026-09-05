@@ -274,6 +274,10 @@ describe('public header navigation styling contract', () => {
       cssSource,
       /\.site-public \.language-switcher__trigger--public(?:\s|:hover)+svg:last-child\s*\{[^}]*transform:\s*rotate/u,
     );
+    assert.match(
+      cssSource,
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.language-switcher__trigger--public svg:last-child\s*\{[^}]*transition:\s*none/u,
+    );
   });
 
   it('sizes the portaled public language menu and keeps its indicator RTL-safe', () => {
@@ -281,6 +285,18 @@ describe('public header navigation styling contract', () => {
       cssSource,
       /\.language-switcher__content--public\s*\{[^}]*min-inline-size:\s*160px[^}]*padding:\s*4px/u,
     );
+    for (const token of [
+      /--popover:\s*oklch\(0\.205 0\.008 45\)/u,
+      /--popover-foreground:\s*oklch\(0\.967 0\.005 45\)/u,
+      /--accent:\s*oklch\(0\.268 0\.008 45\)/u,
+      /--accent-foreground:\s*oklch\(0\.967 0\.005 45\)/u,
+      /--border:\s*oklch\(1 0 0 \/ 12%\)/u,
+    ]) {
+      assert.match(
+        cssSource,
+        new RegExp(String.raw`\.language-switcher__content--public\s*\{[^}]*${token.source}`, 'u'),
+      );
+    }
     assert.match(
       cssSource,
       /\.language-switcher__item--public\s*\{[^}]*min-block-size:\s*44px[^}]*font-size:\s*0\.875rem/u,

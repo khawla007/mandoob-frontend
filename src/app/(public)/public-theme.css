@@ -513,7 +513,18 @@
 .site-public .language-switcher__trigger--public[data-state='open'] svg:last-child {
   transform: rotate(180deg);
 }
+@media (prefers-reduced-motion: reduce) {
+  .site-public .language-switcher__trigger--public svg:last-child {
+    transition: none;
+  }
+}
 .language-switcher__content--public {
+  --popover: oklch(0.205 0.008 45);
+  --popover-foreground: oklch(0.967 0.005 45);
+  --accent: oklch(0.268 0.008 45);
+  --accent-foreground: oklch(0.967 0.005 45);
+  --border: oklch(1 0 0 / 12%);
+
   min-inline-size: 160px;
   padding: 4px;
 }
@@ -534,7 +545,7 @@
   justify-content: center;
   color: var(--ink);
 }
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   .site-public .nav__links,
   .site-public .nav__cta {
     display: inline-flex;
