@@ -3,11 +3,13 @@ import { notFound, redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
+import { ApplicationCreateForm } from '@/components/pro/applications/ApplicationCreateForm';
 import { ApplicationsTable } from '@/components/pro/applications/ApplicationsTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { listServiceCaseWorkspace, type ServiceCaseStatus } from '@/lib/data/service-cases';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { serviceCaseStatuses } from '@/lib/validation/service-case';
+import { createApplicationFormAction } from './actions';
 import {
   applicationPageHref,
   parseApplicationFilters,
@@ -54,6 +56,7 @@ export default async function ApplicationsPage({
     redirect(applicationPageHref(slug, filters, totalPages));
   }
   const { cases } = workspace;
+  const create = createApplicationFormAction.bind(null, slug);
   const hasFilters = Boolean(
     filters.id || filters.status?.length || filters.service_type || filters.deadlineDate,
   );
@@ -93,12 +96,30 @@ export default async function ApplicationsPage({
         </p>
       </div>
 
-      <Card className="signal-panel border-dashed">
-        <CardHeader>
-          <CardTitle className="text-base">{t('applicationMutationsUnavailable')}</CardTitle>
-          <CardDescription>{t('applicationMutationsUnavailableDescription')}</CardDescription>
-        </CardHeader>
-      </Card>
+      <details className="signal-panel group rounded-xl border">
+        <summary className="hover:bg-muted/40 focus-visible:ring-ring cursor-pointer list-none rounded-xl px-5 py-4 font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset">
+          {t('createApplication')}
+        </summary>
+        <ApplicationCreateForm
+          action={create}
+          labels={{
+            title: t('applicationTitle'),
+            serviceType: t('applicationServiceType'),
+            priority: t('applicationPriority'),
+            priorities: {
+              low: t('applicationPriorities.low'),
+              normal: t('applicationPriorities.normal'),
+              high: t('applicationPriorities.high'),
+              urgent: t('applicationPriorities.urgent'),
+            },
+            dueAt: t('applicationDueAt'),
+            slaDueAt: t('applicationSlaDueAt'),
+            submit: t('createApplication'),
+            pending: t('applicationCreating'),
+            success: t('applicationCreated'),
+          }}
+        />
+      </details>
 
       <dl className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {summaries.map((summary) => (
@@ -184,6 +205,7 @@ export default async function ApplicationsPage({
         <CardContent className="space-y-4">
           <ApplicationsTable
             rows={cases}
+            slug={slug}
             locale={locale}
             labels={{
               title: t('applicationTitle'),
@@ -198,7 +220,12 @@ export default async function ApplicationsPage({
               slaPrefix: t('applicationSla'),
               duePrefix: t('applicationDue'),
               slaBreached: t('applicationSlaBreached'),
-              mutationsUnavailable: t('applicationMutationsUnavailable'),
+              complete: t('completeApplication'),
+              cancel: t('cancelApplication'),
+              cancelConfirm: t('cancelApplicationConfirm'),
+              updating: t('applicationUpdating'),
+              updated: t('applicationUpdated'),
+              noAction: t('noApplicationAction'),
               empty: hasFilters ? t('applicationNoResults') : t('applicationsEmpty'),
               emptyHint: hasFilters ? t('applicationNoResultsHint') : t('applicationsEmptyHint'),
               statuses: statusLabels,

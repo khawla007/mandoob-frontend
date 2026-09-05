@@ -211,7 +211,7 @@ test('dashboard application metric round-trips service filters without an owner 
   );
 });
 
-test('applications workspace has the required read-only queue contract and Dubai date display', () => {
+test('applications workspace preserves safe one-company create and status actions', () => {
   const page = readFileSync(pagePath, 'utf8');
   const table = readFileSync(tablePath, 'utf8');
   assert.match(page, /<form[^>]+method="get"/);
@@ -231,13 +231,13 @@ test('applications workspace has the required read-only queue contract and Dubai
   assert.match(table, /row\.updatedAt/);
   assert.match(table, /timeZone:\s*'Asia\/Dubai'/);
   assert.match(table, /locale:\s*string/);
-  assert.match(page, /applicationMutationsUnavailable/);
-  assert.match(table, /labels\.mutationsUnavailable/);
-  assert.doesNotMatch([page, table].join('\n'), /ApplicationCreateForm|ApplicationStatusActions/);
-  assert.doesNotMatch(
-    [page, table].join('\n'),
-    /useActionState|createApplicationFormAction|updateApplicationFormAction/,
-  );
+  assert.match(page, /ApplicationCreateForm/);
+  assert.match(page, /createApplicationFormAction\.bind\(null, slug\)/);
+  assert.match(table, /ApplicationStatusActions/);
+  assert.match(table, /updateApplicationFormAction\.bind\(null, slug, row\.id\)/);
+  assert.match(page, /cancelConfirm:\s*t\('cancelApplicationConfirm'\)/);
+  assert.doesNotMatch(page, /applicationMutationsUnavailable/);
+  assert.doesNotMatch(table, /labels\.mutationsUnavailable/);
 });
 
 test('applications presents truthful filtered and current-page counts with distinct no-results copy', () => {
@@ -263,6 +263,23 @@ test('application datetime labels explicitly identify Dubai time and UTC+04 in b
     assert.match(arabic.pro[key], /دبي/);
     assert.match(arabic.pro[key], /UTC\+04/);
   }
+});
+
+test('application cancellation uses an explicit localized confirmation control', () => {
+  const statusActions = readFileSync(
+    join(process.cwd(), 'src/components/pro/applications/ApplicationStatusActions.tsx'),
+    'utf8',
+  );
+  const english = JSON.parse(readFileSync(englishMessagesPath, 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  const arabic = JSON.parse(readFileSync(arabicMessagesPath, 'utf8')) as {
+    pro: Record<string, string>;
+  };
+  assert.match(statusActions, /<details/);
+  assert.match(statusActions, /labels\.cancelConfirm/);
+  assert.equal(typeof english.pro.cancelApplicationConfirm, 'string');
+  assert.equal(typeof arabic.pro.cancelApplicationConfirm, 'string');
 });
 
 test('applications page exposes accessible bounded pagination using the DAL count', () => {

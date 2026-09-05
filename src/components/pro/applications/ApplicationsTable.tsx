@@ -1,4 +1,6 @@
+import { updateApplicationFormAction } from '@/app/(tenant)/t/[tenant]/(pro)/applications/actions';
 import type { ServiceCase, ServiceCaseQueueItem } from '@/lib/data/service-cases';
+import { ApplicationStatusActions } from './ApplicationStatusActions';
 
 export type ApplicationsTableLabels = {
   title: string;
@@ -13,7 +15,12 @@ export type ApplicationsTableLabels = {
   slaPrefix: string;
   duePrefix: string;
   slaBreached: string;
-  mutationsUnavailable: string;
+  complete: string;
+  cancel: string;
+  cancelConfirm: string;
+  updating: string;
+  updated: string;
+  noAction: string;
   empty: string;
   emptyHint: string;
   statuses: Record<ServiceCase['status'], string>;
@@ -40,10 +47,12 @@ function isSlaBreached(row: ServiceCaseQueueItem): boolean {
 
 export function ApplicationsTable({
   rows,
+  slug,
   labels,
   locale,
 }: {
   rows: ServiceCaseQueueItem[];
+  slug: string;
   labels: ApplicationsTableLabels;
   locale: string;
 }) {
@@ -90,6 +99,7 @@ export function ApplicationsTable({
         <tbody className="divide-y">
           {rows.map((row) => {
             const breached = isSlaBreached(row);
+            const update = updateApplicationFormAction.bind(null, slug, row.id);
             return (
               <tr key={row.id} className="hover:bg-muted/30 align-top transition-colors">
                 <td className="px-3 py-3 font-medium">{row.title}</td>
@@ -120,9 +130,22 @@ export function ApplicationsTable({
                   {formatTimestamp(row.updatedAt, locale)}
                 </td>
                 <td className="px-3 py-3">
-                  <span className="text-muted-foreground block text-end text-xs">
-                    {labels.mutationsUnavailable}
-                  </span>
+                  {row.status === 'completed' || row.status === 'cancelled' ? (
+                    <span className="text-muted-foreground block text-end text-xs">
+                      {labels.noAction}
+                    </span>
+                  ) : (
+                    <ApplicationStatusActions
+                      action={update}
+                      labels={{
+                        complete: labels.complete,
+                        cancel: labels.cancel,
+                        cancelConfirm: labels.cancelConfirm,
+                        pending: labels.updating,
+                        success: labels.updated,
+                      }}
+                    />
+                  )}
                 </td>
               </tr>
             );

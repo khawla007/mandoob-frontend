@@ -1830,6 +1830,7 @@
     "applicationAction": "الإجراء",
     "completeApplication": "إكمال",
     "cancelApplication": "إلغاء",
+    "cancelApplicationConfirm": "تأكيد الإلغاء",
     "noApplicationAction": "لا إجراء",
     "applicationsEmpty": "لا توجد طلبات بعد.",
     "applicationsEmptyHint": "لم تُسجَّل حالات خدمة لهذه الشركة.",

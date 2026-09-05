@@ -1830,6 +1830,7 @@
     "applicationAction": "Action",
     "completeApplication": "Complete",
     "cancelApplication": "Cancel",
+    "cancelApplicationConfirm": "Confirm cancellation",
     "noApplicationAction": "No action",
     "applicationsEmpty": "No applications yet.",
     "applicationsEmptyHint": "No service cases have been recorded for this company.",
