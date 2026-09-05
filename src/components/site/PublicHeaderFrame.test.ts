@@ -13,6 +13,10 @@ test('resolves collapse state using hysteresis thresholds', () => {
   assert.equal(resolveHeaderCollapsed(12, true), false);
 });
 
+test('owns the public styling scope on the header frame root', () => {
+  assert.match(source, /<header className="site-public public-header-frame"/u);
+});
+
 test('installs one passive scroll listener and batches updates through animation frames', () => {
   assert.match(
     source,

@@ -128,6 +128,10 @@ describe('SiteHeader responsive navigation integration', () => {
     ] as const) {
       assert.equal(typeof messages.site.contactEmailLabel, 'string', `${locale} email label`);
       assert.equal(typeof messages.site.contactPhoneLabel, 'string', `${locale} phone label`);
+      assert.notEqual(messages.site.contactEmailLabel.trim(), '', `${locale} email label`);
+      assert.notEqual(messages.site.contactPhoneLabel.trim(), '', `${locale} phone label`);
+      assert.match(messages.site.contactEmailLabel, /\{email\}/u, `${locale} email placeholder`);
+      assert.match(messages.site.contactPhoneLabel, /\{phone\}/u, `${locale} phone placeholder`);
     }
   });
 

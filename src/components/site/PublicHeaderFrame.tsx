@@ -38,7 +38,7 @@ export function PublicHeaderFrame({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <header className="public-header-frame" data-collapsed={collapsed} role="banner">
+    <header className="site-public public-header-frame" data-collapsed={collapsed} role="banner">
       {children}
     </header>
   );
