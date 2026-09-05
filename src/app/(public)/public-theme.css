@@ -827,7 +827,7 @@
 }
 .site-public .pricing-tier-card__index {
   flex: 0 0 auto;
-  color: var(--zinc-400);
+  color: var(--public-text-muted);
   font-family: var(--mono-font);
   font-size: var(--fs-13);
 }
@@ -1037,7 +1037,7 @@
   border-block-start: 1px solid var(--public-border-subtle);
 }
 .site-public .pricing-cost-panel__index {
-  color: var(--zinc-400);
+  color: var(--public-text-muted);
   font-family: var(--mono-font);
   font-size: var(--fs-12);
 }
@@ -1113,7 +1113,7 @@
 .site-public .pricing-process__number {
   display: block;
   margin-block-end: 34px;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-family: var(--mono-font);
   font-size: var(--fs-12);
 }
@@ -1381,6 +1381,10 @@
   line-height: 1.3;
 }
 
+.site-public .hero--pro + .stats-band .hero__statL {
+  color: var(--public-text-muted);
+}
+
 .site-public .pro-fit,
 .site-public .pro-capabilities,
 .site-public .pro-process {
@@ -1487,8 +1491,12 @@
   margin-block-start: auto;
   padding-block-start: 12px;
   border-block-start: 1px solid var(--public-border-subtle);
-  color: var(--zinc-500);
+  color: var(--public-text-muted);
   font-size: var(--fs-13);
+}
+
+.site-public .pro-capabilities__mosaic .cell__mark--plat {
+  color: var(--accent-ink);
 }
 
 .site-public .pro-process__list .pro-process__qualification {
@@ -1561,6 +1569,10 @@
 .dark .site-public .pro-process__icon,
 .dark .site-public .pro-process__availability {
   border-color: var(--public-border-strong);
+  background: var(--public-surface-elevated);
+}
+
+.dark .site-public .pro-capabilities__mosaic {
   background: var(--public-surface-elevated);
 }
 
@@ -1682,6 +1694,10 @@
 
 .site-public .frame--pro [data-source-state='unavailable'] {
   color: var(--zinc-400);
+}
+
+.site-public .frame--pro .ffeed__label {
+  color: var(--ink-inv);
 }
 
 .site-public .pro-bento {

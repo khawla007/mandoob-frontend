@@ -82,6 +82,21 @@ if (reactServer) {
 }
 
 describe('pricing comparison contract', () => {
+  it('uses AA text tokens for compact pricing indices in both themes', () => {
+    assert.match(
+      pricingCss,
+      /\.site-public \.pricing-tier-card__index\s*\{[^}]*color:\s*var\(--public-text-muted\)/u,
+    );
+    assert.match(
+      pricingCss,
+      /\.site-public \.pricing-cost-panel__index\s*\{[^}]*color:\s*var\(--public-text-muted\)/u,
+    );
+    assert.match(
+      pricingCss,
+      /\.site-public \.pricing-process__number\s*\{[^}]*color:\s*var\(--accent-ink\)/u,
+    );
+  });
+
   it('centralizes exactly three tier columns and all required capability groups', () => {
     assert.equal('tierIds' in PUBLIC_PRICING_CONTRACT.comparison, false);
     const tierIds = PUBLIC_PRICING_CONTRACT.tiers.map((tier) => tier.id);

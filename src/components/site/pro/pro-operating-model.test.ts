@@ -115,6 +115,29 @@ if (reactServer) {
 }
 
 describe('centralized PRO content contract', () => {
+  it('keeps compact and dark PRO content on AA text/surface tokens', () => {
+    assert.match(
+      proCss,
+      /\.site-public \.hero--pro \+ \.stats-band \.hero__statL\s*\{[^}]*color:\s*var\(--public-text-muted\)/u,
+    );
+    assert.match(
+      proCss,
+      /\.site-public \.pro-capabilities__mosaic \.cell > p\[data-source-state='unavailable'\]\s*\{[^}]*color:\s*var\(--public-text-muted\)/u,
+    );
+    assert.match(
+      proCss,
+      /\.site-public \.pro-capabilities__mosaic \.cell__mark--plat\s*\{[^}]*color:\s*var\(--accent-ink\)/u,
+    );
+    assert.match(
+      proCss,
+      /\.dark \.site-public \.pro-capabilities__mosaic\s*\{[^}]*background:\s*var\(--public-surface-elevated\)/u,
+    );
+    assert.match(
+      proCss,
+      /\.site-public \.frame--pro \.ffeed__label\s*\{[^}]*color:\s*var\(--ink-inv\)/u,
+    );
+  });
+
   it('types affirmative fields as approved facts and rejects unavailable substitutions', () => {
     assert.deepEqual(affirmativeCompileContract, [true, true]);
     assert.ok(
