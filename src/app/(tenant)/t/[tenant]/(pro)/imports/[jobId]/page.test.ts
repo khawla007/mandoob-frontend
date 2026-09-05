@@ -47,4 +47,10 @@ test('import cancellation identifies its target and requires explicit confirmati
   assert.match(page, /cancelPrompt: t\('cancelPrompt'/u);
   assert.doesNotMatch(actions, /text-emerald-/u);
   assert.match(actions, /text-\[var\(--signal-success\)\]/u);
+  for (const key of ['cancelTitle', 'cancelPrompt', 'keep', 'confirmCancel']) {
+    assert.equal(typeof en.pro.importJob[key], 'string', `en.pro.importJob.${key}`);
+    assert.equal(typeof ar.pro.importJob[key], 'string', `ar.pro.importJob.${key}`);
+  }
+  assert.equal(en.proDocumentCenter.actions.cancelTitle, undefined);
+  assert.equal(ar.proDocumentCenter.actions.cancelTitle, undefined);
 });
