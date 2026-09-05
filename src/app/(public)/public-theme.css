@@ -422,8 +422,7 @@
   background: transparent;
   pointer-events: none;
 }
-.site-public .public-topbar,
-.site-public .nav {
+.site-public .public-topbar {
   pointer-events: auto;
 }
 .site-public .public-topbar {
@@ -490,6 +489,7 @@
   transform: translateY(-100%);
 }
 .site-public .nav {
+  pointer-events: auto;
   background: var(--public-header-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);

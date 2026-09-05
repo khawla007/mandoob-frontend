@@ -246,10 +246,8 @@ describe('public header navigation styling contract', () => {
       cssSource,
       /\.site-public \.nav\s*\{[^}]*(?:position:\s*sticky|top:\s*0|z-index:\s*50)/u,
     );
-    assert.match(
-      cssSource,
-      /\.site-public \.public-topbar,\s*\.site-public \.nav\s*\{[^}]*pointer-events:\s*auto/u,
-    );
+    assert.match(cssSource, /\.site-public \.public-topbar\s*\{[^}]*pointer-events:\s*auto/u);
+    assert.match(cssSource, /\.site-public \.nav\s*\{[^}]*pointer-events:\s*auto/u);
   });
 
   it('animates the contact bar closed as a clipped grid row', () => {
