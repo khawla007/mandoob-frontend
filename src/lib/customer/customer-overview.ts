@@ -23,6 +23,41 @@ export async function settleCustomerWidgets<T extends Record<string, WidgetSourc
   ) as { [K in keyof T]: CustomerWidgetState<Awaited<Exclude<T[K], null>>> };
 }
 
+export type CustomerBoundedCount = {
+  value: number;
+  completeness: 'exact' | 'at-least';
+};
+
+function boundedCount(value: number, overflow: boolean): CustomerBoundedCount {
+  return { value, completeness: overflow ? 'at-least' : 'exact' };
+}
+
+export function summarizeCustomerRequests<T>(rows: readonly T[], limit: number) {
+  const visible = rows.slice(0, Math.max(0, limit));
+  return {
+    rows: visible,
+    count: boundedCount(visible.length, rows.length > visible.length),
+  };
+}
+
+export function summarizeCustomerDocuments<T extends { reviewStatus: string }>(
+  rows: readonly T[],
+  limit: number,
+) {
+  const visible = rows.slice(0, Math.max(0, limit));
+  const overflow = rows.length > visible.length;
+  const reviewed = visible.filter(({ reviewStatus }) =>
+    ['approved', 'rejected'].includes(reviewStatus),
+  ).length;
+  const rejected = visible.filter(({ reviewStatus }) => reviewStatus === 'rejected').length;
+  return {
+    rows: visible,
+    submitted: boundedCount(visible.length, overflow),
+    reviewed: boundedCount(reviewed, overflow),
+    rejected: boundedCount(rejected, overflow),
+  };
+}
+
 export type CustomerDeadlineUrgency = 'missing' | 'overdue' | 'due-today' | 'due-soon' | 'future';
 
 function dubaiBusinessDate(now: Date): string {

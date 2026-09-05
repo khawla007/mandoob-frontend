@@ -17,6 +17,8 @@ import {
   buildCustomerPortalHref,
   composeCustomerActions,
   customerDeadlineUrgency,
+  summarizeCustomerDocuments,
+  summarizeCustomerRequests,
   type CustomerActionCandidate,
   type CustomerWidgetState,
 } from '@/lib/customer/customer-overview';
@@ -27,6 +29,7 @@ import { formatMoney } from '@/lib/format/money';
 export const dynamic = 'force-dynamic';
 
 type Translator = Awaited<ReturnType<typeof getTranslations<'customer.overview'>>>;
+const OVERVIEW_ROW_LIMIT = 6;
 
 function stateText<T>(state: CustomerWidgetState<T>, t: Translator): string {
   if (state.kind === 'error') return t('states.error');
@@ -94,11 +97,19 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
 
   const paymentData = overview?.invoices.kind === 'ready' ? overview.invoices.value : null;
   const invoiceSummaries = paymentData?.totals.kind === 'complete' ? paymentData.totals.values : [];
+  const requestSummary =
+    overview?.documentRequests.kind === 'ready'
+      ? summarizeCustomerRequests(overview.documentRequests.value, OVERVIEW_ROW_LIMIT)
+      : null;
+  const documentSummary =
+    overview?.documents.kind === 'ready'
+      ? summarizeCustomerDocuments(overview.documents.value, OVERVIEW_ROW_LIMIT)
+      : null;
   const actionState = overview
     ? composeCustomerActions(
         {
-          documents: mapActionState(overview.documents, (value) =>
-            value.requests.map((request) => ({
+          documents: mapActionState(overview.documentRequests, (value) =>
+            summarizeCustomerRequests(value, OVERVIEW_ROW_LIMIT).rows.map((request) => ({
               kind: 'document-request',
               id: request.id,
               label: request.label,
@@ -140,11 +151,11 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
     if (!overview) return t('states.unavailable');
     if (signal === 'registration') return t('registrationUnavailable');
     if (signal === 'documents') {
-      const state = overview.documents;
-      return state.kind === 'ready' || state.kind === 'empty'
+      const state = overview.documentRequests;
+      return state.kind === 'ready' && requestSummary
         ? t('boundedCount', {
-            count: state.value.summary.requested,
-            more: state.value.hasMore ? '+' : '',
+            count: requestSummary.count.value,
+            more: requestSummary.count.completeness === 'at-least' ? '+' : '',
           })
         : stateText(state, t);
     }
@@ -307,18 +318,41 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               <CardContent>
                 {overview ? (
                   <>
-                    <PanelState state={overview.documents} t={t} />
-                    {overview.documents.kind === 'ready' || overview.documents.kind === 'empty' ? (
-                      <p className="text-lg font-semibold">
-                        {t('documents.summary', {
-                          submitted: overview.documents.value.summary.submitted,
-                          requested: overview.documents.value.summary.requested,
-                          reviewed: overview.documents.value.summary.reviewed,
-                          rejected: overview.documents.value.summary.rejected,
-                          more: overview.documents.value.hasMore ? '+' : '',
-                        })}
+                    <div>
+                      <p className="mb-1 text-xs font-semibold tracking-wide uppercase">
+                        {t('documents.requested')}
                       </p>
-                    ) : null}
+                      <PanelState state={overview.documentRequests} t={t} />
+                      {requestSummary ? (
+                        <p className="text-lg font-semibold">
+                          {t('documents.requestedCount', {
+                            count: requestSummary.count.value,
+                            more: requestSummary.count.completeness === 'at-least' ? '+' : '',
+                          })}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="mt-4">
+                      <p className="mb-1 text-xs font-semibold tracking-wide uppercase">
+                        {t('documents.submitted')}
+                      </p>
+                      <PanelState state={overview.documents} t={t} />
+                      {documentSummary ? (
+                        <p className="text-lg font-semibold">
+                          {t('documents.submittedSummary', {
+                            submitted: documentSummary.submitted.value,
+                            submittedMore:
+                              documentSummary.submitted.completeness === 'at-least' ? '+' : '',
+                            reviewed: documentSummary.reviewed.value,
+                            reviewedMore:
+                              documentSummary.reviewed.completeness === 'at-least' ? '+' : '',
+                            rejected: documentSummary.rejected.value,
+                            rejectedMore:
+                              documentSummary.rejected.completeness === 'at-least' ? '+' : '',
+                          })}
+                        </p>
+                      ) : null}
+                    </div>
                   </>
                 ) : (
                   <PanelState state={{ kind: 'unavailable' }} t={t} />
@@ -404,24 +438,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               {!overview ? (
                 <PanelState state={{ kind: 'unavailable' }} t={t} />
               ) : (
-                <>
-                  <PanelState state={overview.communications} t={t} />
-                  {overview.communications.kind === 'ready' ? (
-                    <ul className="space-y-2">
-                      {overview.communications.value.map((row) => (
-                        <li key={row.id} className="text-sm">
-                          <strong>{row.subject ?? row.preview}</strong>
-                          <time
-                            className="text-muted-foreground ms-2 text-xs"
-                            dateTime={row.timestamp}
-                          >
-                            {formatDate(row.timestamp, locale, t('dateUnavailable'))}
-                          </time>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </>
+                <PanelState state={overview.communications} t={t} />
               )}
             </CardContent>
           </Card>

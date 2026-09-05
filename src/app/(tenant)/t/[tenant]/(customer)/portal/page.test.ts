@@ -76,7 +76,22 @@ test('overview avoids unbounded list helpers and admin-only assignment reads', (
     /listOpenRequestsForCompany|listDocumentsForCompany|listRenewalsForCompany|readCurrentCompanyAssignment/u,
   );
   assert.match(loader, /assignment:\s*null/u);
+  assert.match(loader, /communications:\s*null/u);
+  assert.doesNotMatch(loader, /getCommsForCustomer/u);
   assert.match(loader, /\.order\('due_date',[\s\S]*?\.order\('id',[\s\S]*?\.limit\(/u);
+});
+
+test('requested and submitted documents settle and render independently', () => {
+  assert.match(loader, /documentRequests:\s*loadCustomerOverviewDocumentRequests/u);
+  assert.match(loader, /documents:\s*loadCustomerOverviewDocuments/u);
+  assert.match(page, /PanelState state=\{overview\.documentRequests\}/u);
+  assert.match(page, /PanelState state=\{overview\.documents\}/u);
+  assert.doesNotMatch(loader, /hasMore:[\s\S]*?requests[\s\S]*?documents/u);
+});
+
+test('communications slot is explicitly unavailable rather than a false empty history', () => {
+  assert.match(page, /PanelState state=\{overview\.communications\}/u);
+  assert.doesNotMatch(page, /overview\.communications\.value\.map/u);
 });
 
 test('invoice panel distinguishes an overdue open invoice from other bounded recent statuses', () => {

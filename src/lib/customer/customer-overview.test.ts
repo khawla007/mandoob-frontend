@@ -8,6 +8,8 @@ import {
   customerDeadlineUrgency,
   rankCustomerActions,
   settleCustomerWidgets,
+  summarizeCustomerDocuments,
+  summarizeCustomerRequests,
   summarizeOpenInvoices,
 } from './customer-overview';
 
@@ -24,6 +26,55 @@ test('independent Customer widgets preserve ready, empty, error, and unavailable
     invoices: { kind: 'error' },
     notifications: { kind: 'unavailable' },
   });
+});
+
+test('submitted-document failure does not erase ready requested-document state', async () => {
+  const widgets = await settleCustomerWidgets({
+    documentRequests: Promise.resolve([{ id: 'request-1' }]),
+    documents: Promise.reject(new Error('documents unavailable')),
+  });
+
+  assert.deepEqual(widgets.documentRequests, { kind: 'ready', value: [{ id: 'request-1' }] });
+  assert.deepEqual(widgets.documents, { kind: 'error' });
+});
+
+test('requested-document failure does not erase ready submitted-document state', async () => {
+  const widgets = await settleCustomerWidgets({
+    documentRequests: Promise.reject(new Error('requests unavailable')),
+    documents: Promise.resolve([{ id: 'document-1', reviewStatus: 'submitted' }]),
+  });
+
+  assert.deepEqual(widgets.documentRequests, { kind: 'error' });
+  assert.deepEqual(widgets.documents, {
+    kind: 'ready',
+    value: [{ id: 'document-1', reviewStatus: 'submitted' }],
+  });
+});
+
+test('seven requests and zero documents retain independent bounds without false submitted suffix', () => {
+  const requests = summarizeCustomerRequests(
+    Array.from({ length: 7 }, (_, index) => ({ id: `request-${index}` })),
+    6,
+  );
+  const documents = summarizeCustomerDocuments([], 6);
+
+  assert.deepEqual(requests.count, { value: 6, completeness: 'at-least' });
+  assert.deepEqual(documents.submitted, { value: 0, completeness: 'exact' });
+  assert.deepEqual(documents.reviewed, { value: 0, completeness: 'exact' });
+  assert.deepEqual(documents.rejected, { value: 0, completeness: 'exact' });
+});
+
+test('seven submitted documents expose their own lower bounds and reviewed/rejected mix', () => {
+  const documents = summarizeCustomerDocuments(
+    ['approved', 'rejected', 'submitted', 'approved', 'rejected', 'submitted', 'approved'].map(
+      (reviewStatus, index) => ({ id: `document-${index}`, reviewStatus }),
+    ),
+    6,
+  );
+
+  assert.deepEqual(documents.submitted, { value: 6, completeness: 'at-least' });
+  assert.deepEqual(documents.reviewed, { value: 4, completeness: 'at-least' });
+  assert.deepEqual(documents.rejected, { value: 2, completeness: 'at-least' });
 });
 
 test('Dubai business-date urgency distinguishes missing, overdue, today, due soon, and future', () => {

@@ -924,7 +924,10 @@
       "documents": {
         "title": "المستندات",
         "description": "مستندات الشركة المطلوبة والمقدمة.",
-        "summary": "{more}{requested} مطلوبة · {more}{submitted} مقدمة · {reviewed} مراجعة · {rejected} مرفوضة (ملخص محدود)"
+        "requested": "المستندات المطلوبة",
+        "submitted": "المستندات المقدمة",
+        "requestedCount": "{count}{more} مطلوبة في هذه النظرة العامة",
+        "submittedSummary": "{submitted}{submittedMore} مقدمة · {reviewed}{reviewedMore} مراجعة · {rejected}{rejectedMore} مرفوضة في هذه النظرة العامة"
       },
       "employees": { "title": "الموظفون", "description": "ملخص سجل موظفي الشركة المصرح به." },
       "invoices": {

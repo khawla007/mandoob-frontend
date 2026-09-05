@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { buildCustomerInvoiceOverview } from '@/lib/customer/customer-overview';
-import { getCommsForCustomer } from './comms';
 import type { CustomerCompanyAccess } from './customer-company-access';
 import { getProfileCard } from './profile';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
@@ -80,49 +79,40 @@ async function loadCustomerOverviewInvoices(
   );
 }
 
+async function loadCustomerOverviewDocumentRequests(tenantId: string, companyId: string) {
+  const { data, error } = await createSupabaseServiceRoleClient()
+    .from('document_requests')
+    .select('id, label, due_at, status')
+    .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
+    .eq('status', 'pending')
+    .order('due_at', { ascending: true, nullsFirst: false })
+    .order('id', { ascending: true })
+    .limit(ROW_LIMIT + 1);
+  if (error) throw new Error('CUSTOMER_DOCUMENT_REQUESTS_UNAVAILABLE');
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    label: row.label,
+    dueDate: row.due_at,
+    status: row.status,
+  }));
+}
+
 async function loadCustomerOverviewDocuments(tenantId: string, companyId: string) {
-  const admin = createSupabaseServiceRoleClient();
-  const [requests, documents] = await Promise.all([
-    admin
-      .from('document_requests')
-      .select('id, label, due_at, status')
-      .eq('tenant_id', tenantId)
-      .eq('company_id', companyId)
-      .eq('status', 'pending')
-      .order('due_at', { ascending: true, nullsFirst: false })
-      .order('id', { ascending: true })
-      .limit(ROW_LIMIT + 1),
-    admin
-      .from('documents')
-      .select('id, currentVersion:document_versions!documents_current_version_fk(review_status)')
-      .eq('tenant_id', tenantId)
-      .eq('company_id', companyId)
-      .order('updated_at', { ascending: false })
-      .order('id', { ascending: true })
-      .limit(ROW_LIMIT + 1),
-  ]);
-  if (requests.error || documents.error) throw new Error('CUSTOMER_DOCUMENTS_UNAVAILABLE');
+  const { data, error } = await createSupabaseServiceRoleClient()
+    .from('documents')
+    .select('id, currentVersion:document_versions!documents_current_version_fk(review_status)')
+    .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
+    .order('updated_at', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(ROW_LIMIT + 1);
+  if (error) throw new Error('CUSTOMER_DOCUMENTS_UNAVAILABLE');
   type Document = { id: string; currentVersion: { review_status: string } | null };
-  const requestRows = (requests.data ?? []).slice(0, ROW_LIMIT);
-  const documentRows = ((documents.data ?? []) as unknown as Document[]).slice(0, ROW_LIMIT);
-  const statuses = documentRows.map((row) => row.currentVersion?.review_status ?? 'submitted');
-  return {
-    requests: requestRows.map((row) => ({
-      id: row.id,
-      label: row.label,
-      dueDate: row.due_at,
-      status: row.status,
-    })),
-    recent: documentRows,
-    summary: {
-      kind: 'bounded' as const,
-      requested: requestRows.length,
-      submitted: documentRows.length,
-      reviewed: statuses.filter((status) => status === 'approved' || status === 'rejected').length,
-      rejected: statuses.filter((status) => status === 'rejected').length,
-    },
-    hasMore: (requests.data?.length ?? 0) > ROW_LIMIT || (documents.data?.length ?? 0) > ROW_LIMIT,
-  };
+  return ((data ?? []) as unknown as Document[]).map((row) => ({
+    id: row.id,
+    reviewStatus: row.currentVersion?.review_status ?? 'submitted',
+  }));
 }
 
 async function loadCustomerOverviewRenewals(tenantId: string, companyId: string) {
@@ -145,11 +135,12 @@ export async function loadCustomerOverview(
   const { tenant, session, company } = access;
   return settleCustomerWidgets({
     profile: getProfileCard(session.id),
+    documentRequests: loadCustomerOverviewDocumentRequests(tenant.id, company.id),
     documents: loadCustomerOverviewDocuments(tenant.id, company.id),
     renewals: loadCustomerOverviewRenewals(tenant.id, company.id),
     invoices: loadCustomerOverviewInvoices(tenant.id, company.id, session.id),
     assignment: null,
-    communications: getCommsForCustomer(session.id, { limit: 5 }),
+    communications: null,
     employees: null,
     notifications: null,
   });

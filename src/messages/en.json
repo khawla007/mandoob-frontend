@@ -930,7 +930,10 @@
       "documents": {
         "title": "Documents",
         "description": "Requested and submitted Company documents.",
-        "summary": "{more}{requested} requested · {more}{submitted} submitted · {reviewed} reviewed · {rejected} rejected (bounded overview)"
+        "requested": "Requested documents",
+        "submitted": "Submitted documents",
+        "requestedCount": "{count}{more} requested in this overview",
+        "submittedSummary": "{submitted}{submittedMore} submitted · {reviewed}{reviewedMore} reviewed · {rejected}{rejectedMore} rejected in this overview"
       },
       "employees": {
         "title": "Employees",
