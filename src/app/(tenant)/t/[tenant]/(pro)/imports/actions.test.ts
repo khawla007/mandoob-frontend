@@ -32,4 +32,6 @@ test('upload accepts only bounded CSV files and retained audit is constraint-saf
   assert.match(auditSource, /action:\s*'bulk_imported'/u);
   assert.match(auditSource, /details:\s*\{ company_id: input\.companyId/u);
   assert.doesNotMatch(source, /\.xlsx|application\/vnd\.openxmlformats/u);
+  assert.match(source, /\.select\('id, kind, status, company_id, storage_path, errors'\)/u);
+  assert.doesNotMatch(source, /\.select\('\*'\)/u);
 });
