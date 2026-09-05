@@ -81,6 +81,119 @@ test('Supabase document store binds every query to the authorized tenant and Com
         ),
       ),
   );
+  const requestTrace = traces.find(
+    (trace) =>
+      trace.table === 'document_requests' && trace.calls.some((call) => call[0] === 'limit'),
+  );
+  assert.ok(requestTrace);
+  assert.ok(
+    requestTrace.calls.some(
+      (call) =>
+        call[0] === 'select' && String(call[1]).includes('documents!documents_request_id_fkey'),
+    ),
+  );
+  assert.ok(
+    requestTrace.calls.some(
+      (call) => call[0] === 'eq' && call[1] === 'documents.tenant_id' && call[2] === 'tenant-1',
+    ),
+  );
+  assert.ok(
+    requestTrace.calls.some(
+      (call) => call[0] === 'eq' && call[1] === 'documents.company_id' && call[2] === 'company-1',
+    ),
+  );
+});
+
+test('requested queue carries its own authoritative rejected current head', async () => {
+  const store: CustomerDocumentCenterStore = {
+    awaitingCount: async () => ({ data: null, count: 1, error: null }),
+    reviewCount: async () => ({ data: null, count: 0, error: null }),
+    requests: async () => ({
+      count: null,
+      error: null,
+      data: [
+        {
+          id: 'request-1',
+          doc_type: 'passport',
+          label: 'Passport',
+          notes: 'Use the photo page',
+          due_at: null,
+          created_at: '2026-09-01T10:00:00Z',
+          documents: [
+            {
+              id: 'document-1',
+              tenant_id: 'tenant-1',
+              company_id: 'company-1',
+              current_version_id: 'version-1',
+              currentVersion: {
+                id: 'version-1',
+                review_status: 'rejected',
+                review_note: 'Corners are cropped',
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    documents: async () => ({ data: [], count: null, error: null }),
+  };
+
+  const result = await loadCustomerDocumentCenter(access, { store });
+  assert.equal(result.requests.kind, 'ready');
+  if (result.requests.kind !== 'ready') return;
+  assert.deepEqual(result.requests.value[0].submission, {
+    kind: 'current',
+    documentId: 'document-1',
+    versionId: 'version-1',
+    reviewStatus: 'rejected',
+    rejectionReason: 'Corners are cropped',
+  });
+});
+
+test('requested queue marks an incomplete joined head unavailable without affecting documents', async () => {
+  const store: CustomerDocumentCenterStore = {
+    awaitingCount: async () => ({ data: null, count: 1, error: null }),
+    reviewCount: async () => ({ data: null, count: 0, error: null }),
+    requests: async () => ({
+      count: null,
+      error: null,
+      data: [
+        {
+          id: 'request-1',
+          doc_type: 'passport',
+          label: 'Passport',
+          notes: null,
+          due_at: null,
+          created_at: '2026-09-01T10:00:00Z',
+          documents: [
+            {
+              id: 'document-1',
+              tenant_id: 'tenant-1',
+              company_id: 'company-1',
+              current_version_id: 'version-1',
+              currentVersion: null,
+            },
+          ],
+        },
+        {
+          id: 'request-2',
+          doc_type: 'visa',
+          label: 'Visa',
+          notes: null,
+          due_at: null,
+          created_at: '2026-09-01T10:00:00Z',
+          documents: null,
+        },
+      ],
+    }),
+    documents: async () => ({ data: [], count: null, error: null }),
+  };
+  const result = await loadCustomerDocumentCenter(access, { store });
+  assert.equal(result.requests.kind, 'ready');
+  if (result.requests.kind !== 'ready') return;
+  assert.deepEqual(result.requests.value[0].submission, { kind: 'unavailable' });
+  assert.deepEqual(result.requests.value[1].submission, { kind: 'unavailable' });
+  assert.deepEqual(result.documents, { kind: 'empty', value: [], hasMore: false });
 });
 
 test('document sources settle independently and preserve exact zero counts', async () => {

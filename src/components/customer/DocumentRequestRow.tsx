@@ -29,6 +29,9 @@ export async function DocumentRequestRow(props: Props) {
 
   if (props.variant === 'request') {
     const { request, slug } = props;
+    const currentSubmission = request.submission.kind === 'current' ? request.submission : null;
+    const rejected = currentSubmission?.reviewStatus === 'rejected';
+    const canUpload = request.submission.kind === 'none' || rejected;
     return (
       <li className="flex min-w-0 flex-wrap items-start justify-between gap-4 py-4 first:pt-0">
         <div className="max-w-2xl min-w-0">
@@ -42,15 +45,29 @@ export async function DocumentRequestRow(props: Props) {
           <p className="text-muted-foreground mt-2 text-sm">
             {request.instructions ?? t('instructionsUnavailable')}
           </p>
+          {rejected ? (
+            <div className="border-destructive/40 bg-destructive/5 text-destructive mt-3 rounded-md border p-2 text-sm">
+              <span className="font-medium">{t('rejectionReason')}</span>{' '}
+              {currentSubmission?.rejectionReason ?? t('rejectionReasonUnavailable')}
+            </div>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="secondary">{t('uploadRequired')}</Badge>
-          <UploadDocumentDialog
-            slug={slug}
-            docType={request.docType}
-            requestId={request.id}
-            label={request.label}
-          />
+          <Badge variant={rejected ? 'destructive' : 'secondary'}>
+            {request.submission.kind === 'unavailable'
+              ? t('sourceError')
+              : currentSubmission
+                ? t(`reviewStatus.${currentSubmission.reviewStatus}`)
+                : t('uploadRequired')}
+          </Badge>
+          {canUpload ? (
+            <UploadDocumentDialog
+              slug={slug}
+              docType={request.docType}
+              requestId={request.id}
+              label={request.label}
+            />
+          ) : null}
         </div>
       </li>
     );

@@ -51,7 +51,10 @@ test('request and submitted rows expose safe workflow states without private fie
   assert.match(row, /sizeBytes/u);
   assert.match(row, /rejectionReason/u);
   assert.doesNotMatch(page, /rejectionByRequest/u);
-  assert.doesNotMatch(row, /rejectionReason:\s*string \| null \| undefined/u);
+  assert.match(row, /request\.submission\.kind === 'current'/u);
+  assert.match(row, /currentSubmission\?\.rejectionReason/u);
+  assert.match(row, /currentSubmission\?\.reviewStatus === 'rejected'/u);
+  assert.match(row, /request\.submission\.kind === 'unavailable'/u);
   assert.match(row, /UploadDocumentDialog/u);
   assert.match(row, /OpenSignedUrlButton/u);
   assert.doesNotMatch(row, /storagePath|sha256|reviewedBy|uploadedBy|VersionHistory/u);

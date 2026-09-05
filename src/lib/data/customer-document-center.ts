@@ -17,6 +17,16 @@ type RequestRow = {
   notes: string | null;
   due_at: string | null;
   created_at: string;
+  documents: Array<{
+    id: string;
+    tenant_id: string;
+    company_id: string;
+    current_version_id: string | null;
+    currentVersion:
+      | Pick<VersionRow, 'id' | 'review_status' | 'review_note'>
+      | Array<Pick<VersionRow, 'id' | 'review_status' | 'review_note'>>
+      | null;
+  }> | null;
 };
 
 type VersionRow = {
@@ -63,6 +73,16 @@ export type CustomerDocumentRequest = {
   instructions: string | null;
   dueAt: string | null;
   createdAt: string;
+  submission:
+    | { kind: 'none' }
+    | { kind: 'unavailable' }
+    | {
+        kind: 'current';
+        documentId: string;
+        versionId: string;
+        reviewStatus: ReviewStatus;
+        rejectionReason: string | null;
+      };
 };
 
 export type CustomerSubmittedDocument = {
@@ -120,9 +140,13 @@ export function createCustomerDocumentCenterSupabaseStore(
     requests: async (tenantId, companyId) =>
       await client
         .from('document_requests')
-        .select('id, doc_type, label, notes, due_at, created_at')
+        .select(
+          'id, doc_type, label, notes, due_at, created_at, documents:documents!documents_request_id_fkey(id, tenant_id, company_id, current_version_id, currentVersion:document_versions!documents_current_version_fk(id, review_status, review_note))',
+        )
         .eq('tenant_id', tenantId)
         .eq('company_id', companyId)
+        .eq('documents.tenant_id', tenantId)
+        .eq('documents.company_id', companyId)
         .eq('status', 'pending')
         .order('due_at', { ascending: true, nullsFirst: false })
         .order('id', { ascending: true })
@@ -190,14 +214,44 @@ export async function loadCustomerDocumentCenter(
     settleCount(store.reviewCount(...args, 'pending')),
     settleCount(store.reviewCount(...args, 'approved')),
     settleCount(store.reviewCount(...args, 'rejected')),
-    settleList(store.requests(...args), (row) => ({
-      id: row.id,
-      docType: row.doc_type,
-      label: row.label,
-      instructions: row.notes,
-      dueAt: row.due_at,
-      createdAt: row.created_at,
-    })),
+    settleList(store.requests(...args), (row) => {
+      const joinedHeadsAvailable = row.documents !== null;
+      const heads = row.documents ?? [];
+      const head = heads.length === 1 ? heads[0] : null;
+      const joinedVersion = head
+        ? Array.isArray(head.currentVersion)
+          ? head.currentVersion[0]
+          : head.currentVersion
+        : null;
+      const scopedHead =
+        head?.tenant_id === tenant.id && head.company_id === company.id ? head : null;
+      const version =
+        scopedHead?.current_version_id && joinedVersion?.id === scopedHead.current_version_id
+          ? joinedVersion
+          : null;
+      const submission: CustomerDocumentRequest['submission'] = !joinedHeadsAvailable
+        ? { kind: 'unavailable' }
+        : heads.length === 0
+          ? { kind: 'none' }
+          : heads.length !== 1 || !scopedHead || !version
+            ? { kind: 'unavailable' }
+            : {
+                kind: 'current',
+                documentId: scopedHead.id,
+                versionId: version.id,
+                reviewStatus: version.review_status,
+                rejectionReason: version.review_status === 'rejected' ? version.review_note : null,
+              };
+      return {
+        id: row.id,
+        docType: row.doc_type,
+        label: row.label,
+        instructions: row.notes,
+        dueAt: row.due_at,
+        createdAt: row.created_at,
+        submission,
+      };
+    }),
     settleList(store.documents(...args), (row) => {
       const version = Array.isArray(row.currentVersion)
         ? row.currentVersion[0]
