@@ -236,11 +236,15 @@ describe('public header navigation styling contract', () => {
   it('keeps the complete public header frame sticky above page content', () => {
     assert.match(
       cssSource,
-      /\.site-public\.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50/u,
+      /\.site-public\.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50[^}]*block-size:\s*96px[^}]*pointer-events:\s*none/u,
     );
     assert.doesNotMatch(
       cssSource,
       /\.site-public \.nav\s*\{[^}]*(?:position:\s*sticky|top:\s*0|z-index:\s*50)/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public \.public-topbar,\s*\.site-public \.nav\s*\{[^}]*pointer-events:\s*auto/u,
     );
   });
 

@@ -418,6 +418,12 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  block-size: 96px;
+  pointer-events: none;
+}
+.site-public .public-topbar,
+.site-public .nav {
+  pointer-events: auto;
 }
 .site-public .public-topbar {
   display: grid;

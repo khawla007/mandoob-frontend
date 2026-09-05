@@ -13,8 +13,14 @@ test('resolves collapse state using hysteresis thresholds', () => {
   assert.equal(resolveHeaderCollapsed(12, true), false);
 });
 
+test('keeps the header expanded while focus is inside the contact bar', () => {
+  assert.equal(resolveHeaderCollapsed(100, false, true), false);
+  assert.equal(resolveHeaderCollapsed(100, true, true), false);
+  assert.equal(resolveHeaderCollapsed(100, false, false), true);
+});
+
 test('owns the public styling scope on the header frame root', () => {
-  assert.match(source, /<header className="site-public public-header-frame"/u);
+  assert.match(source, /<header[^>]*className="site-public public-header-frame"/u);
 });
 
 test('installs one passive scroll listener and batches updates through animation frames', () => {
@@ -23,6 +29,17 @@ test('installs one passive scroll listener and batches updates through animation
     /window\.addEventListener\('scroll',\s*handleScroll,\s*\{ passive: true \}\)/u,
   );
   assert.match(source, /requestAnimationFrame\(handleScrollUpdate\)/u);
+});
+
+test('checks topbar focus before collapsing and renders hidden-state semantics declaratively', () => {
+  assert.match(source, /const frameRef = useRef<HTMLElement>\(null\)/u);
+  assert.match(source, /ref=\{frameRef\}/u);
+  assert.match(
+    source,
+    /frameRef\.current\?\.querySelector\(['"]\.public-topbar['"]\)\?\.contains\(document\.activeElement\)/u,
+  );
+  assert.match(source, /inert:\s*collapsed/u);
+  assert.match(source, /'aria-hidden':\s*collapsed/u);
 });
 
 test('cancels pending frames and removes the scroll listener on cleanup', () => {
