@@ -198,6 +198,7 @@ function RenewalList({
         <thead className="bg-muted/40 border-b">
           <tr>
             <th className="px-3 py-2 text-start">{t('item')}</th>
+            <th className="px-3 py-2 text-start">{t('entity')}</th>
             <th className="px-3 py-2 text-start">{t('type')}</th>
             <th className="px-3 py-2 text-start">{t('due')}</th>
             <th className="px-3 py-2 text-start">{t('status')}</th>
@@ -213,6 +214,16 @@ function RenewalList({
                 >
                   {row.label}
                 </Link>
+              </td>
+              <td className="px-3 py-3">
+                <Badge variant="outline">
+                  {t(row.entityKind === 'employee' ? 'employeeEntity' : 'companyEntity')}
+                </Badge>
+                <p className="mt-1 font-medium">
+                  {row.entityLabelState === 'ready' && row.entityLabel
+                    ? row.entityLabel
+                    : t('entityUnavailable')}
+                </p>
               </td>
               <td className="px-3 py-3">{t(row.type)}</td>
               <td className="px-3 py-3">

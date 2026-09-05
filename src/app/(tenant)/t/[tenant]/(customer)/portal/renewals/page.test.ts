@@ -36,6 +36,13 @@ test('Customer renewal presentation exposes authoritative summaries and unavaila
   assert.doesNotMatch(page, /fee|auto-renew|reminder sent/iu);
 });
 
+test('Customer renewal rows distinguish Company and employee entities with unavailable label truth', () => {
+  assert.match(page, /entityKind/u);
+  assert.match(page, /entityLabel/u);
+  assert.match(page, /entityLabelState/u);
+  assert.match(page, /entityUnavailable/u);
+});
+
 test('Customer renewal route includes loading, empty, no-results, missing-date, error, partial, unlinked, and permission truth', () => {
   for (const key of [
     'empty',

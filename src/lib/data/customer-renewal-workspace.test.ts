@@ -64,6 +64,134 @@ test('Dubai renewal buckets separate overdue, today/due-soon, upcoming, complete
   assert.equal(classifyCustomerRenewalBucket('2026-09-01', 'cancelled', today), 'cancelled');
 });
 
+test('terminal renewal rows never expose an active day offset', async () => {
+  for (const status of ['completed', 'cancelled'] as const) {
+    const result = await listCustomerRenewals(
+      { tenantSlug: 'acme', search: parseCustomerRenewalSearch({ bucket: status }) },
+      {
+        authorize: async () => authorized,
+        today: '2026-09-05',
+        store: {
+          list: async () => ({
+            data: [
+              {
+                id: status,
+                tenant_id: 'tenant-1',
+                company_id: 'company-1',
+                employee_id: null,
+                type: 'license',
+                label: 'Trade licence',
+                due_date: '2026-08-01',
+                status,
+                source: 'manual',
+                completed_at: status === 'completed' ? '2026-08-01T00:00:00Z' : null,
+              },
+            ],
+            count: 1,
+            error: null,
+          }),
+          total: async () => ({ count: 1, error: null }),
+          bucketCount: async () => ({ count: 1, error: null }),
+        },
+      },
+    );
+    assert.equal(result.rows[0]?.daysOut, null);
+  }
+});
+
+test('employee renewals resolve an approved label through exact tenant and Company scope', async () => {
+  const employeeCalls: Array<Record<string, unknown>> = [];
+  const result = await listCustomerRenewals(
+    { tenantSlug: 'acme', search: parseCustomerRenewalSearch({}) },
+    {
+      authorize: async () => authorized,
+      today: '2026-09-05',
+      store: {
+        list: async () => ({
+          data: [
+            {
+              id: 'renewal-1',
+              tenant_id: 'tenant-1',
+              company_id: 'company-1',
+              employee_id: 'employee-1',
+              type: 'visa',
+              label: 'Visa renewal',
+              due_date: '2026-10-01',
+              status: 'due_soon',
+              source: 'manual',
+              completed_at: null,
+            },
+          ],
+          count: 1,
+          error: null,
+        }),
+        total: async () => ({ count: 1, error: null }),
+        bucketCount: async () => ({ count: 1, error: null }),
+        employees: async (input) => {
+          employeeCalls.push(input);
+          return {
+            data: [
+              {
+                id: 'employee-1',
+                tenant_id: 'tenant-1',
+                company_id: 'company-1',
+                name: 'Noor Ahmed',
+              },
+            ],
+            error: null,
+          };
+        },
+      },
+    },
+  );
+  assert.deepEqual(employeeCalls, [
+    { tenantId: 'tenant-1', companyId: 'company-1', ids: ['employee-1'] },
+  ]);
+  assert.equal(result.rows[0]?.entityKind, 'employee');
+  assert.equal(result.rows[0]?.entityLabel, 'Noor Ahmed');
+  assert.equal(result.rows[0]?.entityLabelState, 'ready');
+});
+
+test('employee renewal resolution fails closed on a cross-Company employee row', async () => {
+  const result = await listCustomerRenewals(
+    { tenantSlug: 'acme', search: parseCustomerRenewalSearch({}) },
+    {
+      authorize: async () => authorized,
+      today: '2026-09-05',
+      store: {
+        list: async () => ({
+          data: [
+            {
+              id: 'renewal-1',
+              tenant_id: 'tenant-1',
+              company_id: 'company-1',
+              employee_id: 'employee-1',
+              type: 'visa',
+              label: 'Visa renewal',
+              due_date: '2026-10-01',
+              status: 'due_soon',
+              source: 'manual',
+              completed_at: null,
+            },
+          ],
+          count: 1,
+          error: null,
+        }),
+        total: async () => ({ count: 1, error: null }),
+        bucketCount: async () => ({ count: 1, error: null }),
+        employees: async () => ({
+          data: [
+            { id: 'employee-1', tenant_id: 'tenant-1', company_id: 'company-2', name: 'Foreign' },
+          ],
+          error: null,
+        }),
+      },
+    },
+  );
+  assert.equal(result.state, 'error');
+  assert.equal(result.rows.length, 0);
+});
+
 test('renewal loader authorizes directly and never reads for unlinked or operator preview', async () => {
   let queried = false;
   const store: CustomerRenewalStore = {
@@ -283,6 +411,7 @@ test('renewal adapter scopes every list/count/bucket query and uses stable due-d
   });
   await store.total(access);
   await store.bucketCount({ ...access, bucket: 'overdue', today: '2026-09-05' });
+  await store.employees?.({ ...access, ids: ['employee-1'] });
   for (const trace of traces) {
     assert.ok(
       trace.calls.some(
@@ -300,4 +429,16 @@ test('renewal adapter scopes every list/count/bucket query and uses stable due-d
   assert.ok(
     traces[0]?.calls.some((call) => call[0] === 'range' && call[1] === 0 && call[2] === 24),
   );
+  const employeeTrace = traces.find((trace) => trace.table === 'employees');
+  assert.ok(
+    employeeTrace?.calls.some(
+      (call) => call[0] === 'eq' && call[1] === 'tenant_id' && call[2] === 'tenant-1',
+    ),
+  );
+  assert.ok(
+    employeeTrace?.calls.some(
+      (call) => call[0] === 'eq' && call[1] === 'company_id' && call[2] === 'company-1',
+    ),
+  );
+  assert.ok(employeeTrace?.calls.some((call) => call[0] === 'in' && call[1] === 'id'));
 });

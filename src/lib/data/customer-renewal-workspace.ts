@@ -40,6 +40,7 @@ export type CustomerRenewalDbRow = {
   id: string;
   tenant_id: string;
   company_id: string;
+  employee_id?: string | null;
   type: RenewalType;
   label: string;
   due_date: string | null;
@@ -58,6 +59,15 @@ export type CustomerRenewalRow = {
   bucket: Exclude<CustomerRenewalBucket, 'active'>;
   daysOut: number | null;
   href: string;
+  entityKind: 'company' | 'employee';
+  entityLabel: string | null;
+  entityLabelState: 'ready' | 'unavailable';
+};
+type CustomerRenewalEmployeeDbRow = {
+  id: string;
+  tenant_id: string;
+  company_id: string;
+  name: string;
 };
 type Scope = { tenantId: string; companyId: string };
 type SummaryBucket = 'overdue' | 'due-soon' | 'upcoming' | 'completed';
@@ -73,6 +83,9 @@ export type CustomerRenewalStore = {
   bucketCount: (
     input: Scope & { bucket: SummaryBucket; today: string },
   ) => Promise<{ count: number | null; error: unknown | null }>;
+  employees?: (
+    input: Scope & { ids: string[] },
+  ) => Promise<{ data: CustomerRenewalEmployeeDbRow[] | null; error: unknown | null }>;
 };
 type Summaries = Record<SummaryBucket, number | null>;
 type Base = {
@@ -121,7 +134,9 @@ export type CustomerRenewalQuery = PromiseLike<unknown> & {
   ) => CustomerRenewalQuery;
   range: (from: number, to: number) => CustomerRenewalQuery;
 };
-export type CustomerRenewalClient = { from: (table: 'renewals') => CustomerRenewalQuery };
+export type CustomerRenewalClient = {
+  from: (table: 'renewals' | 'employees') => CustomerRenewalQuery;
+};
 
 function first(input: Record<string, string | string[] | undefined>, key: string) {
   const value = input[key];
@@ -240,8 +255,35 @@ export async function listCustomerRenewals(
   ) {
     return { ...unavailable, summaries, state: 'error' };
   }
+  const employeeIds = Array.from(
+    new Set((listed.data ?? []).flatMap((row) => (row.employee_id ? [row.employee_id] : []))),
+  );
+  const employeeResult = employeeIds.length
+    ? await (
+        store.employees?.({ ...scope, ids: employeeIds }) ??
+        Promise.resolve({ data: null, error: 'sanitized' })
+      ).catch(() => ({
+        data: null,
+        error: 'sanitized',
+      }))
+    : { data: [] as CustomerRenewalEmployeeDbRow[], error: null };
+  const requestedEmployeeIds = new Set(employeeIds);
+  if (
+    (employeeResult.data ?? []).some(
+      (employee) =>
+        employee.tenant_id !== scope.tenantId ||
+        employee.company_id !== scope.companyId ||
+        !requestedEmployeeIds.has(employee.id),
+    )
+  ) {
+    return { ...unavailable, summaries, state: 'error' };
+  }
+  const employees = new Map((employeeResult.data ?? []).map((employee) => [employee.id, employee]));
   const rows = (listed.data ?? []).map((row) => {
     const dueDate = isStrictDate(row.due_date) ? row.due_date : null;
+    const employee = row.employee_id ? employees.get(row.employee_id) : null;
+    const employeeLabel = employee?.name.trim() || null;
+    const terminal = row.status === 'completed' || row.status === 'cancelled';
     return {
       id: row.id,
       type: row.type,
@@ -251,7 +293,7 @@ export async function listCustomerRenewals(
       source: row.source,
       completedAt: row.completed_at,
       bucket: classifyCustomerRenewalBucket(dueDate, row.status, today),
-      daysOut: dueDate ? signalDaysBetween(today, dueDate) : null,
+      daysOut: dueDate && !terminal ? signalDaysBetween(today, dueDate) : null,
       href: customerRenewalHref(access.tenant.slug, {
         bucket: input.search.bucket,
         type: input.search.type,
@@ -259,6 +301,10 @@ export async function listCustomerRenewals(
         page: 1,
         focus: row.id,
       }),
+      entityKind: row.employee_id ? ('employee' as const) : ('company' as const),
+      entityLabel: row.employee_id ? employeeLabel : access.company.companyName,
+      entityLabelState:
+        row.employee_id && !employeeLabel ? ('unavailable' as const) : ('ready' as const),
     };
   });
   const canonicalPage = Math.min(
@@ -278,7 +324,8 @@ export async function listCustomerRenewals(
   if (
     total.error ||
     total.count === null ||
-    Object.values(summaries).some((value) => value === null)
+    Object.values(summaries).some((value) => value === null) ||
+    employeeResult.error
   )
     return { ...base, state: 'partial' };
   if (listed.count === 0) return { ...base, state: total.count === 0 ? 'empty' : 'no-results' };
@@ -316,7 +363,7 @@ export function createCustomerRenewalSupabaseStore(
           client
             .from('renewals')
             .select(
-              'id, tenant_id, company_id, type, label, due_date, status, source, completed_at',
+              'id, tenant_id, company_id, employee_id, type, label, due_date, status, source, completed_at',
               { count: 'exact' },
             ),
           { tenantId, companyId },
@@ -351,5 +398,15 @@ export function createCustomerRenewalSupabaseStore(
         bucket,
         today,
       )) as unknown as { count: number | null; error: unknown | null },
+    employees: async ({ tenantId, companyId, ids }) =>
+      (await client
+        .from('employees')
+        .select('id, tenant_id, company_id, name')
+        .eq('tenant_id', tenantId)
+        .eq('company_id', companyId)
+        .in('id', ids)) as unknown as {
+        data: CustomerRenewalEmployeeDbRow[] | null;
+        error: unknown | null;
+      },
   };
 }
