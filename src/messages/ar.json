@@ -568,6 +568,8 @@
     "renewals": "التجديدات",
     "documents": "المستندات",
     "employees": "الموظفون",
+    "company": "الشركة",
+    "assignedPro": "مندوب العلاقات الحكومية المعيّن",
     "settings": "الإعدادات",
     "myRecords": "سجلاتي",
     "visaAndEid": "التأشيرة والهوية الإماراتية",
@@ -848,6 +850,103 @@
     }
   },
   "customer": {
+    "overview": {
+      "masthead": "استوديو إشارات الشركة",
+      "generatedAt": "تم الإنشاء في {date}",
+      "eyebrow": "بوابة الشركة",
+      "title": "نظرة عامة على {company}",
+      "titleUnavailable": "نظرة عامة على الشركة",
+      "subtitle": "إجراءات الشركة الحالية والمواعيد والسجلات والمدفوعات.",
+      "unlinked": "هذا الحساب غير مرتبط بشركة.",
+      "signalsLabel": "إشارات قرارات الشركة",
+      "signals": {
+        "registration": "دورة التسجيل",
+        "documents": "المستندات المطلوبة",
+        "renewals": "التجديدات",
+        "invoices": "الفواتير المفتوحة",
+        "notifications": "الإشعارات"
+      },
+      "states": {
+        "ready": "متاح",
+        "empty": "لا يوجد",
+        "error": "غير متاح مؤقتًا",
+        "unavailable": "غير متاح"
+      },
+      "lifecycle": {
+        "onboarding": "قيد الإعداد",
+        "active": "نشطة",
+        "renewal_due": "التجديد مستحق",
+        "renewal_overdue": "التجديد متأخر",
+        "suspended": "معلّقة",
+        "churned": "مغلقة",
+        "unknown": "غير متاح"
+      },
+      "registration": {
+        "title": "تقدم التسجيل",
+        "description": "تبقى تفاصيل التسجيل منفصلة عن الحقائق التشغيلية للشركة.",
+        "lifecycle": "دورة حياة الشركة",
+        "legalProfile": "اكتمال الملف القانوني",
+        "legalUnavailable": "غير متاح في هذه النظرة العامة",
+        "readiness": "جاهزية التفعيل",
+        "readinessUnavailable": "غير متاح في هذه النظرة العامة"
+      },
+      "registrationUnavailable": "مراحل التسجيل التفصيلية غير متاحة حتى مساحة تسجيل P2.09.",
+      "notificationsUnavailable": "إشعارات التطبيق غير متاحة حتى مساحة إشعارات P2.10.",
+      "actions": {
+        "title": "الإجراءات ذات الأولوية",
+        "description": "قائمة محدودة مرتبة حسب إجراء العميل والموعد بتوقيت دبي.",
+        "empty": "لا توجد إجراءات حالية تتطلب الانتباه.",
+        "kinds": {
+          "document-request": "مستند مطلوب",
+          "renewal": "تجديد",
+          "invoice": "فاتورة قابلة للدفع"
+        }
+      },
+      "urgency": {
+        "missing": "دون موعد",
+        "overdue": "متأخر",
+        "due-today": "مستحق اليوم",
+        "due-soon": "مستحق قريبًا",
+        "future": "قادم"
+      },
+      "open": "فتح",
+      "view": "عرض مساحة العمل",
+      "dateUnavailable": "التاريخ غير متاح",
+      "renewals": { "title": "التجديدات القادمة", "description": "مواعيد الشركة بتوقيت عمل دبي." },
+      "notifications": { "title": "الإشعارات الأخيرة", "description": "حالة إشعارات التطبيق فقط." },
+      "documents": {
+        "title": "المستندات",
+        "description": "مستندات الشركة المطلوبة والمقدمة.",
+        "summary": "{requested} مطلوبة · {submitted} مقدمة"
+      },
+      "employees": { "title": "الموظفون", "description": "ملخص سجل موظفي الشركة المصرح به." },
+      "invoices": {
+        "title": "الفواتير والمدفوعات",
+        "description": "تبقى الأرصدة المفتوحة منفصلة حسب العملة.",
+        "openCount": "{count, plural, one {فاتورة مفتوحة واحدة} other {# فواتير مفتوحة}}"
+      },
+      "assignedPro": {
+        "title": "مندوب العلاقات الحكومية المعيّن",
+        "description": "التعيين النشط الوحيد لهذه الشركة.",
+        "nameUnavailable": "الاسم غير متاح",
+        "channelsUnavailable": "قنوات التواصل الموثقة غير متاحة."
+      },
+      "communications": {
+        "title": "المراسلات الأخيرة",
+        "description": "سجل مراسلات مستقل وليس إشعارات."
+      },
+      "quickActions": {
+        "title": "إجراءات سريعة",
+        "description": "افتح مساحة عمل محددة للشركة.",
+        "label": "إجراءات الشركة السريعة",
+        "documents": "رفع مستند مطلوب",
+        "payments": "عرض الفواتير والمدفوعات",
+        "employees": "عرض الموظفين",
+        "renewals": "عرض التجديدات",
+        "pro": "عرض المندوب المعيّن",
+        "settings": "فتح الإعدادات"
+      }
+    },
     "portalLabel": "بوابة الشركة",
     "welcome": "مرحبًا",
     "registrationProgress": "تقدم التسجيل",

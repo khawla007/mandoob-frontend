@@ -568,6 +568,8 @@
     "renewals": "Renewals",
     "documents": "Documents",
     "employees": "Employees",
+    "company": "Company",
+    "assignedPro": "Assigned PRO",
     "settings": "Settings",
     "myRecords": "My records",
     "visaAndEid": "Visa & EID",
@@ -848,6 +850,112 @@
     }
   },
   "customer": {
+    "overview": {
+      "masthead": "Company signal studio",
+      "generatedAt": "Generated {date}",
+      "eyebrow": "Company portal",
+      "title": "{company} overview",
+      "titleUnavailable": "Company overview",
+      "subtitle": "Current Company actions, deadlines, records, and payments.",
+      "unlinked": "This account is not linked to a Company.",
+      "signalsLabel": "Company decision signals",
+      "signals": {
+        "registration": "Registration lifecycle",
+        "documents": "Requested documents",
+        "renewals": "Renewals",
+        "invoices": "Open invoices",
+        "notifications": "Notifications"
+      },
+      "states": {
+        "ready": "Available",
+        "empty": "None",
+        "error": "Temporarily unavailable",
+        "unavailable": "Unavailable"
+      },
+      "lifecycle": {
+        "onboarding": "Onboarding",
+        "active": "Active",
+        "renewal_due": "Renewal due",
+        "renewal_overdue": "Renewal overdue",
+        "suspended": "Suspended",
+        "churned": "Closed",
+        "unknown": "Unavailable"
+      },
+      "registration": {
+        "title": "Registration progress",
+        "description": "Registration detail remains separate from Company operational facts.",
+        "lifecycle": "Company lifecycle",
+        "legalProfile": "Legal-profile completion",
+        "legalUnavailable": "Not available in this overview",
+        "readiness": "Activation readiness",
+        "readinessUnavailable": "Not available in this overview"
+      },
+      "registrationUnavailable": "Detailed registration stages are unavailable until the P2.09 registration workspace.",
+      "notificationsUnavailable": "In-app notifications are unavailable until the P2.10 notifications workspace.",
+      "actions": {
+        "title": "Priority actions",
+        "description": "A bounded queue ranked by Customer action and Dubai deadline.",
+        "empty": "No current actions require attention.",
+        "kinds": {
+          "document-request": "Document requested",
+          "renewal": "Renewal",
+          "invoice": "Payable invoice"
+        }
+      },
+      "urgency": {
+        "missing": "No deadline",
+        "overdue": "Overdue",
+        "due-today": "Due today",
+        "due-soon": "Due soon",
+        "future": "Upcoming"
+      },
+      "open": "Open",
+      "view": "View workspace",
+      "dateUnavailable": "Date unavailable",
+      "renewals": {
+        "title": "Upcoming renewals",
+        "description": "Company deadlines shown in Dubai business time."
+      },
+      "notifications": {
+        "title": "Recent notifications",
+        "description": "In-app notification status only."
+      },
+      "documents": {
+        "title": "Documents",
+        "description": "Requested and submitted Company documents.",
+        "summary": "{requested} requested · {submitted} submitted"
+      },
+      "employees": {
+        "title": "Employees",
+        "description": "Authorized Company employee registry summary."
+      },
+      "invoices": {
+        "title": "Invoices and payments",
+        "description": "Open balances remain separated by currency.",
+        "openCount": "{count, plural, one {# open invoice} other {# open invoices}}"
+      },
+      "assignedPro": {
+        "title": "Assigned PRO",
+        "description": "The one active PRO assignment for this Company.",
+        "nameUnavailable": "Name unavailable",
+        "channelsUnavailable": "Verified contact channels are unavailable."
+      },
+      "communications": {
+        "title": "Recent communications",
+        "description": "Separately sourced communication history; not notifications."
+      },
+      "quickActions": {
+        "title": "Quick actions",
+        "description": "Open an exact Company workspace.",
+        "label": "Company quick actions",
+        "documents": "Upload a requested document",
+        "payments": "View invoices and payments",
+        "employees": "View employees",
+        "renewals": "View renewals",
+        "pro": "View assigned PRO",
+        "settings": "Open settings"
+      }
+    },
     "portalLabel": "Customer portal",
     "welcome": "Welcome",
     "registrationProgress": "Registration progress",

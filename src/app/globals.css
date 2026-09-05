@@ -368,6 +368,31 @@ body.dashboard-surface-active {
     background-position-x: var(--stream-offset, 0);
   }
 
+  [data-nav-kind='customer'] {
+    --signal-scale: 2;
+    --signal-canvas: #f5f2ee;
+    --signal-panel-surface: #fffdfa;
+    --signal-capacity: #171615;
+    --signal-blue-soft: #e7f1f4;
+    --signal-mint-soft: #e7f4ed;
+    --signal-sand-soft: #f8eed7;
+    --signal-coral-soft: #fff0e8;
+  }
+
+  .dark [data-nav-kind='customer'] {
+    --signal-canvas: #141312;
+    --signal-panel-surface: #201e1c;
+    --signal-capacity: #080807;
+    --signal-blue-soft: #1a2a2e;
+    --signal-mint-soft: #192924;
+    --signal-sand-soft: #2a2418;
+    --signal-coral-soft: #2c1d19;
+  }
+
+  [data-nav-kind='customer'] :is([data-slot='sidebar-inset'], .dashboard-main) {
+    background-color: var(--signal-canvas);
+  }
+
   /* Design B · Signal Studio. Scoped to the authenticated PRO shell so the
      admin, employee, and public surfaces retain their established systems. */
   [data-nav-kind='pro'] {
