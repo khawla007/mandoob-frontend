@@ -82,7 +82,7 @@ test('public routes use the legal CMS policy without hardcoded documents or root
     readFile(new URL('../../app/(public)/[slug]/page.tsx', import.meta.url), 'utf8'),
   ]);
 
-  assert.match(legalRoute, /resolveLegalCmsPage/);
+  assert.match(legalRoute, /resolveLegalPageState/);
   assert.match(legalRoute, /PublicCmsPage/);
   assert.doesNotMatch(legalRoute, /const DOCS|type LegalDoc|This Privacy Policy explains/);
   assert.match(rootRoute, /isLegalCmsPageSlug/);

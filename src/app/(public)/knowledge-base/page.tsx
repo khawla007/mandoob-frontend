@@ -1,189 +1,129 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import {
-  getArticlesByCategory,
-  knowledgeBaseArticles,
-  type KnowledgeBaseArticle,
-} from '@/lib/knowledge-base';
+
+import { KnowledgeBaseExplorer } from '@/components/knowledge-base/KnowledgeBaseExplorer';
+import { KnowledgeBaseNewsletter } from '@/components/knowledge-base/KnowledgeBaseNewsletter';
+import { KNOWLEDGE_BASE_CATEGORIES, knowledgeBaseArticles } from '@/lib/knowledge-base';
+
+type SearchParams = Record<string, string | string[] | undefined>;
 
 export const metadata: Metadata = {
   title: 'UAE Company Setup Knowledge Base | Mandoob',
   description:
-    'Browse practical UAE company setup guides covering free zones, mainland licensing, documents, timelines, visas, costs, and compliance.',
-  alternates: {
-    canonical: '/knowledge-base',
-  },
+    'Browse practical UAE company setup guidance for jurisdictions, documents, indicative timelines, visas, costs, and compliance.',
+  alternates: { canonical: '/knowledge-base' },
 };
 
-export default function KnowledgeBasePage() {
-  const articles = knowledgeBaseArticles;
-  const groupedArticles = getArticlesByCategory();
-  const featured = articles.slice(0, 3);
-  const faqHighlights = articles.flatMap((article) => article.faq).slice(0, 4);
+export default async function KnowledgeBasePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const query = firstValue(params.q);
+  const category = firstValue(params.category);
+  const faqHighlights = knowledgeBaseArticles.flatMap((article) => article.faq).slice(0, 6);
 
   return (
     <>
-      {/* ============ HERO ============ */}
-      <section className="hero hero--knowledge-base" aria-labelledby="kb-h">
-        <div className="hero__overlay" aria-hidden="true" />
-        <div className="container">
-          <span className="eyebrow">Knowledge Base</span>
-          <h1 id="kb-h" className="display">
-            UAE company setup, <span className="u-accent">decoded.</span>
-          </h1>
-          <p className="lede">
-            Compare setup paths, required documents, timelines, cost assumptions, and compliance
-            steps before moving into an indicative estimate.
-          </p>
-          <div className="cta-row">
-            <Link className="btn btn--accent" href="/estimate">
-              Estimate setup cost
-            </Link>
-            <a className="btn btn--outline" href="#topics">
-              Browse topics
-            </a>
-          </div>
-        </div>
-        <div className="hero__rule" aria-hidden="true" />
-        <div className="container">
-          <div className="hero__metrics">
-            <div>
-              <span className="mono hero__metric">{articles.length}</span>
-              <span className="hero__metricL">guides</span>
-            </div>
-            <div>
-              <span className="mono hero__metric">{groupedArticles.length}</span>
-              <span className="hero__metricL">topics</span>
-            </div>
-            <div>
-              <span className="mono hero__metric u-accent">45+</span>
-              <span className="hero__metricL">free zones</span>
-            </div>
-            <div>
-              <span className="mono hero__metric">Monthly</span>
-              <span className="hero__metricL">updates</span>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* KB-REGION-1: hero, search, and suggested searches */}
+      <KnowledgeBaseExplorer
+        articles={knowledgeBaseArticles}
+        categories={KNOWLEDGE_BASE_CATEGORIES}
+        query={query}
+        category={category}
+      />
 
-      {/* ============ FEATURED ============ */}
-      <section className="section" aria-labelledby="kb-featured-h">
-        <div className="container">
-          <header className="section__head">
-            <span className="eyebrow">01 · Featured</span>
-            <h2 id="kb-featured-h" className="h2">
-              Start here.
-            </h2>
-          </header>
-        </div>
-        <div className="container">
-          <div className="cell-row">
-            {featured.map((article) => (
-              <ArticleCell key={article.slug} article={article} />
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* KB-REGION-2: browse by category is rendered by KnowledgeBaseExplorer */}
+      {/* KB-REGION-3: Start here guides are rendered by KnowledgeBaseExplorer */}
 
-      {/* ============ TOPICS ============ */}
-      <section id="topics" className="section" aria-labelledby="kb-topics-h">
-        <div className="container">
-          <header className="section__head">
-            <span className="eyebrow">02 · Topics</span>
-            <h2 id="kb-topics-h" className="h2">
-              Guidance by topic.
-            </h2>
-          </header>
-          <div className="kb-cats">
-            {groupedArticles.map((group) => (
-              <a
-                key={group.category.id}
-                className="btn btn--outline btn--sm"
-                href={`#${group.category.id}`}
-              >
-                {group.category.label}
+      {/* KB-REGION-4: FAQ and support rail */}
+      <section id="faqs" className="kb-reference-section kb-faq-support" aria-labelledby="kb-faq-h">
+        <div className="kb-faq-support__grid container">
+          <div>
+            <header className="kb-section-row">
+              <div>
+                <h2 id="kb-faq-h">Frequently asked questions</h2>
+                <p>Quick answers drawn from the reviewed Knowledge Base catalog.</p>
+              </div>
+              <a className="kb-text-link" href="#faqs">
+                All FAQs in this section
               </a>
-            ))}
+            </header>
+            <div className="kb-faq-list">
+              {faqHighlights.map((item, index) => (
+                <details key={item.question} open={index === 0}>
+                  <summary>{item.question}</summary>
+                  <div>
+                    <p>{item.answer}</p>
+                  </div>
+                </details>
+              ))}
+            </div>
           </div>
+          <aside
+            className="kb-support-rail"
+            aria-label="Knowledge Base support options"
+            role="region"
+          >
+            <div className="kb-support-card">
+              <span className="eyebrow">Need another route?</span>
+              <h3>Contact Mandoob</h3>
+              <p>Use the accepted no-write contact experience to review your question.</p>
+              <Link className="btn btn--outline" href="/contact">
+                Open contact options
+              </Link>
+            </div>
+            <div className="kb-support-card kb-support-card--unavailable">
+              <span className="eyebrow">WhatsApp · Unavailable</span>
+              <h3>Messaging is not enabled</h3>
+              <p>
+                No verified WhatsApp destination or delivery contract is available in this phase.
+              </p>
+              <span className="kb-unavailable-label">Unavailable</span>
+            </div>
+          </aside>
         </div>
+      </section>
+
+      {/* KB-REGION-5: newsletter no-write demonstration */}
+      <section
+        className="kb-reference-section kb-newsletter-section"
+        aria-labelledby="kb-newsletter-h"
+      >
         <div className="container">
-          {groupedArticles.map((group) => (
-            <section key={group.category.id} id={group.category.id} className="kb-cat">
-              <div className="kb-cat__head">
-                <div>
-                  <h3>{group.category.label}</h3>
-                  <p>{group.category.description}</p>
-                </div>
-                <span className="kb-cat__count mono">{group.articles.length} guides</span>
+          <KnowledgeBaseNewsletter />
+        </div>
+      </section>
+
+      {/* KB-REGION-6: trust and information strip */}
+      <section className="kb-information-strip" aria-label="Knowledge Base information qualities">
+        <div className="kb-information-strip__grid container">
+          {[
+            ['Structured guidance', 'Topics follow the reviewed static catalog.'],
+            ['Source-qualified', 'Variable rules remain subject to the current authority.'],
+            ['Fast navigation', 'Search, filters, and direct guide links stay shareable.'],
+            [
+              'Visible context',
+              'Dates and reading time appear only when the catalog supplies them.',
+            ],
+          ].map(([title, description], index) => (
+            <div key={title}>
+              <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h2>{title}</h2>
+                <p>{description}</p>
               </div>
-              <div className="kb-grid kb-grid--3">
-                {group.articles.map((article) => (
-                  <ArticleCell key={article.slug} article={article} />
-                ))}
-              </div>
-            </section>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ============ FAQ ============ */}
-      {faqHighlights.length > 0 ? (
-        <section className="section" aria-labelledby="kb-faq-h">
-          <div className="container">
-            <header className="section__head">
-              <span className="eyebrow">03 · FAQ</span>
-              <h2 id="kb-faq-h" className="h2">
-                Common setup questions.
-              </h2>
-            </header>
-          </div>
-          <div className="container">
-            <div className="kb-grid kb-faq">
-              {faqHighlights.map((item) => (
-                <div key={item.question} className="cell">
-                  <h4>{item.question}</h4>
-                  <p>{item.answer}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* ============ CTA ============ */}
-      <section className="cta-section" aria-labelledby="kb-cta-h">
-        <div className="cta-section__inner container">
-          <span className="eyebrow">Get started</span>
-          <h2 id="kb-cta-h" className="display display--cta">
-            Run your free UAE setup estimate.
-          </h2>
-          <Link className="btn btn--accent btn--lg" href="/estimate">
-            Start Estimate
-          </Link>
-          <p className="micro mono">No card. No call. 90 seconds.</p>
-        </div>
-      </section>
+      {/* KB-REGION-7: accepted shared footer follows from the public layout */}
     </>
   );
 }
 
-function ArticleCell({ article }: { article: KnowledgeBaseArticle }) {
-  const readingTime = `${article.readingTimeMinutes} min read`;
-
-  return (
-    <article className="cell cell--svc">
-      <div className="kb-meta">
-        <span className="eyebrow">{article.category}</span>
-        <span className="cell__sub mono">{readingTime}</span>
-      </div>
-      <h3>
-        <Link href={`/knowledge-base/${article.slug}`} className="kb-card__title">
-          {article.title}
-        </Link>
-      </h3>
-      <p>{article.description}</p>
-      <p className="cell__sub mono kb-card__updated">Updated {article.updatedAt}</p>
-    </article>
-  );
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }

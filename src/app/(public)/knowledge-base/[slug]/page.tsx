@@ -10,6 +10,8 @@ import {
   SITE_ORIGIN,
   type KnowledgeBaseArticle,
 } from '@/lib/knowledge-base';
+import { headingAnchor, shouldShowTableOfContents } from '@/lib/public-content/headings';
+import { serializeJsonLd } from '@/lib/public-content/json-ld';
 
 type Params = { slug: string };
 
@@ -57,14 +59,22 @@ export default async function KnowledgeBaseArticlePage({ params }: { params: Pro
   const faqJsonLd = article.faq.length ? buildFaqJsonLd(article.faq) : null;
   const estimateHref = buildEstimateHref(article);
   const readingTime = `${article.readingTimeMinutes} min read`;
+  const headings = article.sections.map((section) => section.heading);
 
   return (
     <article>
       <JsonLd data={articleJsonLd} />
       {faqJsonLd ? <JsonLd data={faqJsonLd} /> : null}
 
-      <section className="section" aria-labelledby="kb-article-h">
+      <section className="kb-editorial-hero" aria-labelledby="kb-article-h">
         <div className="container">
+          <nav className="kb-editorial-breadcrumb" aria-label="Breadcrumb">
+            <Link href="/">Home</Link>
+            <span aria-hidden="true">/</span>
+            <Link href="/knowledge-base">Knowledge Base</Link>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{article.title}</span>
+          </nav>
           <div className="kb-article__meta">
             <span className="eyebrow">{article.category}</span>
             <span className="mono">{readingTime}</span>
@@ -81,11 +91,23 @@ export default async function KnowledgeBaseArticlePage({ params }: { params: Pro
         <div className="container">
           <div className="kb-article">
             <div className="kb-article__main">
+              {shouldShowTableOfContents(headings) ? (
+                <nav className="kb-table-of-contents cell" aria-label="On this page">
+                  <h2>On this page</h2>
+                  <ol>
+                    {headings.map((heading) => (
+                      <li key={heading}>
+                        <a href={`#${headingAnchor(heading)}`}>{heading}</a>
+                      </li>
+                    ))}
+                  </ol>
+                </nav>
+              ) : null}
               {article.sections.map((section) => (
-                <article key={section.heading} className="cell">
-                  <h2>{section.heading}</h2>
+                <section key={section.heading} className="cell">
+                  <h2 id={headingAnchor(section.heading)}>{section.heading}</h2>
                   <SectionBody section={section} />
-                </article>
+                </section>
               ))}
 
               {article.faq.length ? (
@@ -103,7 +125,7 @@ export default async function KnowledgeBaseArticlePage({ params }: { params: Pro
               ) : null}
             </div>
 
-            <aside className="kb-article__aside">
+            <aside className="kb-article__aside" aria-label="Article resources" role="region">
               <div className="cell">
                 <span className="eyebrow">Estimate</span>
                 <h3>Estimate your setup</h3>
@@ -111,6 +133,16 @@ export default async function KnowledgeBaseArticlePage({ params }: { params: Pro
                 <Link className="btn btn--accent" href={estimateHref}>
                   {article.cta.label ?? 'Open estimator'}
                 </Link>
+              </div>
+
+              <div className="cell kb-guidance-note">
+                <span className="eyebrow">Information boundary</span>
+                <h3>Confirm current requirements</h3>
+                <p>
+                  Costs, timing, approvals, tax, ownership, immigration, and compliance depend on
+                  current authority rules and your circumstances. This guide is general information,
+                  not legal, tax, immigration, or financial advice.
+                </p>
               </div>
 
               {relatedArticles.length > 0 ? (
@@ -159,8 +191,7 @@ function JsonLd({ data }: { data: unknown }) {
   return (
     <script
       type="application/ld+json"
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
     />
   );
 }
