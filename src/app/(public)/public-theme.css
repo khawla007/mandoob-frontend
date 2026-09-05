@@ -486,6 +486,10 @@
   min-inline-size: 44px;
   min-block-size: 44px;
 }
+.site-public .nav__cta > .link-muted {
+  display: inline-flex;
+  align-items: center;
+}
 .site-public .nav__menu {
   display: inline-flex;
   min-inline-size: 44px;

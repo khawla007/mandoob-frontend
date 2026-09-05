@@ -222,4 +222,11 @@ describe('public header navigation styling contract', () => {
       /\.site-public \.nav__menu\s*\{[^}]*min-inline-size:\s*44px[^}]*min-block-size:\s*44px/u,
     );
   });
+
+  it('vertically centers the desktop sign-in link with the other header controls', () => {
+    assert.match(
+      cssSource,
+      /\.site-public \.nav__cta > \.link-muted\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center/u,
+    );
+  });
 });
