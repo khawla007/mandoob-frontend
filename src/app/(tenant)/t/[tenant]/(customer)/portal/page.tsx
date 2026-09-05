@@ -17,6 +17,7 @@ import {
   buildCustomerPortalHref,
   composeCustomerActions,
   customerDeadlineUrgency,
+  customerDubaiDate,
   summarizeCustomerDocuments,
   summarizeCustomerRequests,
   type CustomerActionCandidate,
@@ -113,7 +114,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               kind: 'document-request',
               id: request.id,
               label: request.label,
-              dueDate: dateOnly(request.dueDate),
+              dueDate: customerDubaiDate(request.dueDate),
               href: href('documents'),
               actionable: request.status === 'pending',
               status: request.status,
@@ -343,13 +344,21 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                             submitted: documentSummary.submitted.value,
                             submittedMore:
                               documentSummary.submitted.completeness === 'at-least' ? '+' : '',
-                            reviewed: documentSummary.reviewed.value,
-                            reviewedMore:
-                              documentSummary.reviewed.completeness === 'at-least' ? '+' : '',
-                            rejected: documentSummary.rejected.value,
-                            rejectedMore:
-                              documentSummary.rejected.completeness === 'at-least' ? '+' : '',
                           })}
+                        </p>
+                      ) : null}
+                      {documentSummary &&
+                      documentSummary.reviewed.kind === 'complete' &&
+                      documentSummary.rejected.kind === 'complete' ? (
+                        <p className="text-muted-foreground text-sm">
+                          {t('documents.statusSummary', {
+                            reviewed: documentSummary.reviewed.value,
+                            rejected: documentSummary.rejected.value,
+                          })}
+                        </p>
+                      ) : documentSummary ? (
+                        <p role="status" className="text-muted-foreground text-sm">
+                          {t('documents.statusCountsUnavailable')}
                         </p>
                       ) : null}
                     </div>

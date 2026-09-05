@@ -5,6 +5,7 @@ import {
   buildCustomerInvoiceOverview,
   buildCustomerPortalHref,
   composeCustomerActions,
+  customerDubaiDate,
   customerDeadlineUrgency,
   rankCustomerActions,
   settleCustomerWidgets,
@@ -60,8 +61,8 @@ test('seven requests and zero documents retain independent bounds without false 
 
   assert.deepEqual(requests.count, { value: 6, completeness: 'at-least' });
   assert.deepEqual(documents.submitted, { value: 0, completeness: 'exact' });
-  assert.deepEqual(documents.reviewed, { value: 0, completeness: 'exact' });
-  assert.deepEqual(documents.rejected, { value: 0, completeness: 'exact' });
+  assert.deepEqual(documents.reviewed, { kind: 'complete', value: 0 });
+  assert.deepEqual(documents.rejected, { kind: 'complete', value: 0 });
 });
 
 test('seven submitted documents expose their own lower bounds and reviewed/rejected mix', () => {
@@ -73,8 +74,30 @@ test('seven submitted documents expose their own lower bounds and reviewed/rejec
   );
 
   assert.deepEqual(documents.submitted, { value: 6, completeness: 'at-least' });
-  assert.deepEqual(documents.reviewed, { value: 4, completeness: 'at-least' });
-  assert.deepEqual(documents.rejected, { value: 2, completeness: 'at-least' });
+  assert.deepEqual(documents.reviewed, { kind: 'unavailable' });
+  assert.deepEqual(documents.rejected, { kind: 'unavailable' });
+});
+
+test('an unseen seventh approved document never implies exact or zero-plus status subtotals', () => {
+  const documents = summarizeCustomerDocuments(
+    [
+      ...Array.from({ length: 6 }, (_, index) => ({
+        id: `document-${index}`,
+        reviewStatus: 'submitted',
+      })),
+      { id: 'document-6', reviewStatus: 'approved' },
+    ],
+    6,
+  );
+
+  assert.deepEqual(documents.reviewed, { kind: 'unavailable' });
+  assert.deepEqual(documents.rejected, { kind: 'unavailable' });
+});
+
+test('Dubai deadline conversion handles UTC timestamps that cross local midnight', () => {
+  assert.equal(customerDubaiDate('2026-09-05T19:59:59.000Z'), '2026-09-05');
+  assert.equal(customerDubaiDate('2026-09-05T20:00:00.000Z'), '2026-09-06');
+  assert.equal(customerDubaiDate('not-a-date'), null);
 });
 
 test('Dubai business-date urgency distinguishes missing, overdue, today, due soon, and future', () => {
@@ -99,6 +122,36 @@ test('open invoice summary never combines currencies and excludes non-open statu
       { currency: 'AED', amountMinor: 2000, count: 2 },
       { currency: 'USD', amountMinor: 500, count: 1 },
     ],
+  );
+});
+
+test('invoice summaries reject unsafe, negative, and fractional minor-unit amounts', () => {
+  for (const amountMinor of [Number.MAX_SAFE_INTEGER + 1, -1, 1.5, Number.NaN]) {
+    assert.throws(
+      () => summarizeOpenInvoices([{ id: 'unsafe', status: 'open', amountMinor, currency: 'AED' }]),
+      /CUSTOMER_INVOICE_AMOUNT_INVALID/u,
+    );
+  }
+});
+
+test('invoice overview rejects unsafe recent amounts even when currency totals are unavailable', () => {
+  assert.throws(
+    () =>
+      buildCustomerInvoiceOverview(
+        101,
+        [],
+        [
+          {
+            id: 'unsafe',
+            label: 'Unsafe invoice',
+            status: 'open',
+            amountMinor: Number.MAX_SAFE_INTEGER + 1,
+            currency: 'AED',
+            dueDate: null,
+          },
+        ],
+      ),
+    /CUSTOMER_INVOICE_AMOUNT_INVALID/u,
   );
 });
 

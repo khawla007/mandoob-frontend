@@ -62,7 +62,10 @@ test('Customer overview catalogs preserve English and Arabic key parity', () => 
 
 test('Customer invoice overview read retains actor, tenant, and linked-Company ownership', () => {
   assert.doesNotMatch(loader, /getInvoicesForCustomer/u);
-  assert.match(loader, /loadCustomerOverviewInvoices\(tenant\.id, company\.id, session\.id\)/u);
+  assert.match(
+    loader,
+    /loadCustomerOverviewInvoices\(store, tenant\.id, company\.id, session\.id\)/u,
+  );
   assert.match(loader, /\.eq\('tenant_id', tenantId\)/u);
   assert.match(loader, /\.eq\('company_id', companyId\)/u);
   assert.match(loader, /\.eq\('customer_profile_id', profileId\)/u);
@@ -89,9 +92,24 @@ test('requested and submitted documents settle and render independently', () => 
   assert.doesNotMatch(loader, /hasMore:[\s\S]*?requests[\s\S]*?documents/u);
 });
 
+test('request actions convert timestamptz deadlines through Dubai business date', () => {
+  assert.match(page, /dueDate:\s*customerDubaiDate\(request\.dueDate\)/u);
+  assert.doesNotMatch(page, /dueDate:\s*dateOnly\(request\.dueDate\)/u);
+});
+
+test('overflowed document status subtotals render typed unavailable, never zero-plus', () => {
+  assert.match(page, /documentSummary\.reviewed\.kind === 'complete'/u);
+  assert.match(page, /documents\.statusCountsUnavailable/u);
+  assert.doesNotMatch(page, /reviewedMore|rejectedMore/u);
+});
+
 test('communications slot is explicitly unavailable rather than a false empty history', () => {
   assert.match(page, /PanelState state=\{overview\.communications\}/u);
   assert.doesNotMatch(page, /overview\.communications\.value\.map/u);
+});
+
+test('overview performs no unused profile read', () => {
+  assert.doesNotMatch(loader, /getProfileCard|profile:/u);
 });
 
 test('invoice panel distinguishes an overdue open invoice from other bounded recent statuses', () => {

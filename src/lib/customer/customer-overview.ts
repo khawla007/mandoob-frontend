@@ -53,9 +53,31 @@ export function summarizeCustomerDocuments<T extends { reviewStatus: string }>(
   return {
     rows: visible,
     submitted: boundedCount(visible.length, overflow),
-    reviewed: boundedCount(reviewed, overflow),
-    rejected: boundedCount(rejected, overflow),
+    reviewed: overflow
+      ? ({ kind: 'unavailable' } as const)
+      : ({ kind: 'complete', value: reviewed } as const),
+    rejected: overflow
+      ? ({ kind: 'unavailable' } as const)
+      : ({ kind: 'complete', value: rejected } as const),
   };
+}
+
+export function customerDubaiDate(value: string | null): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Dubai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(parsed);
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value;
+  const year = read('year');
+  const month = read('month');
+  const day = read('day');
+  return year && month && day ? `${year}-${month}-${day}` : null;
 }
 
 export type CustomerDeadlineUrgency = 'missing' | 'overdue' | 'due-today' | 'due-soon' | 'future';
@@ -119,13 +141,22 @@ export function summarizeOpenInvoices(invoices: readonly OpenInvoiceInput[]) {
   const totals = new Map<string, { currency: string; amountMinor: number; count: number }>();
   for (const invoice of invoices) {
     if (invoice.status !== 'open') continue;
+    assertCustomerAmountMinor(invoice.amountMinor);
     const currency = invoice.currency.toUpperCase();
     const current = totals.get(currency) ?? { currency, amountMinor: 0, count: 0 };
-    current.amountMinor += invoice.amountMinor;
+    const total = current.amountMinor + invoice.amountMinor;
+    assertCustomerAmountMinor(total);
+    current.amountMinor = total;
     current.count += 1;
     totals.set(currency, current);
   }
   return [...totals.values()].sort((a, b) => a.currency.localeCompare(b.currency));
+}
+
+function assertCustomerAmountMinor(value: number): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error('CUSTOMER_INVOICE_AMOUNT_INVALID');
+  }
 }
 
 export function buildCustomerInvoiceOverview(
@@ -133,6 +164,7 @@ export function buildCustomerInvoiceOverview(
   openRows: readonly CustomerInvoiceRow[],
   recent: readonly CustomerInvoiceRow[],
 ): CustomerInvoiceOverview {
+  for (const invoice of [...openRows, ...recent]) assertCustomerAmountMinor(invoice.amountMinor);
   const complete = openRows.length === exactOpenCount;
   return {
     openCount: exactOpenCount,

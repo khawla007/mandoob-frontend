@@ -927,7 +927,9 @@
         "requested": "المستندات المطلوبة",
         "submitted": "المستندات المقدمة",
         "requestedCount": "{count}{more} مطلوبة في هذه النظرة العامة",
-        "submittedSummary": "{submitted}{submittedMore} مقدمة · {reviewed}{reviewedMore} مراجعة · {rejected}{rejectedMore} مرفوضة في هذه النظرة العامة"
+        "submittedSummary": "{submitted}{submittedMore} مقدمة في هذه النظرة العامة",
+        "statusSummary": "{reviewed} مراجعة · {rejected} مرفوضة",
+        "statusCountsUnavailable": "إجماليات المستندات المراجعة والمرفوضة غير متاحة في هذه النظرة العامة المحدودة."
       },
       "employees": { "title": "الموظفون", "description": "ملخص سجل موظفي الشركة المصرح به." },
       "invoices": {
