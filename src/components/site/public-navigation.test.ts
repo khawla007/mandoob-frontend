@@ -233,6 +233,46 @@ describe('public header dropdown focus contract', () => {
 });
 
 describe('public header navigation styling contract', () => {
+  it('keeps the complete public header frame sticky above page content', () => {
+    assert.match(
+      cssSource,
+      /\.site-public\.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50/u,
+    );
+    assert.doesNotMatch(
+      cssSource,
+      /\.site-public \.nav\s*\{[^}]*(?:position:\s*sticky|top:\s*0|z-index:\s*50)/u,
+    );
+  });
+
+  it('animates the contact bar closed as a clipped grid row', () => {
+    assert.match(
+      cssSource,
+      /\.site-public \.public-topbar\s*\{[^}]*display:\s*grid[^}]*grid-template-rows:\s*1fr[^}]*transition:[^}]*grid-template-rows 420ms/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*grid-template-rows:\s*0fr[^}]*opacity:\s*0/u,
+    );
+    assert.match(
+      cssSource,
+      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar__inner\s*\{[^}]*transform:\s*translateY\(-100%\)/u,
+    );
+  });
+
+  it('keeps the mobile contact row compact by hiding its tagline', () => {
+    assert.match(
+      cssSource,
+      /@media\s*\(max-width:\s*767px\)[^]*\.site-public \.public-topbar__tagline\s*\{[^}]*display:\s*none/u,
+    );
+  });
+
+  it('disables contact bar movement when reduced motion is requested', () => {
+    assert.match(
+      cssSource,
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.public-topbar,\s*\.site-public \.public-topbar__inner\s*\{[^}]*transition:\s*none/u,
+    );
+  });
+
   it('gives desktop links a contrast-safe current state distinct from hover and focus', () => {
     assert.match(
       cssSource,

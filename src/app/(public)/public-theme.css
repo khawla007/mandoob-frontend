@@ -414,10 +414,75 @@
 }
 
 /* ---------- 4. NAV ---------- */
-.site-public .nav {
+.site-public.public-header-frame {
   position: sticky;
   top: 0;
   z-index: 50;
+}
+.site-public .public-topbar {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: clip;
+  border-block-end: 1px solid rgb(255 255 255 / 10%);
+  color: #d4d4d8;
+  background: #11100f;
+  opacity: 1;
+  transition:
+    grid-template-rows 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 300ms ease-out;
+}
+.site-public .public-topbar__clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.site-public .public-topbar__inner {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  transform: translateY(0);
+  transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.site-public .public-topbar__tagline {
+  margin: 0;
+  color: #a1a1aa;
+  font-size: 12px;
+  line-height: 1;
+}
+.site-public .public-topbar__contacts {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-style: normal;
+}
+.site-public .public-topbar__contacts a {
+  display: inline-flex;
+  min-block-size: 28px;
+  align-items: center;
+  gap: 6px;
+  color: #d4d4d8;
+  font-size: 12px;
+  line-height: 1;
+  transition: color var(--dur) var(--ease);
+}
+.site-public .public-topbar__contacts a:hover {
+  color: #fff;
+}
+.site-public .public-topbar__separator {
+  inline-size: 1px;
+  block-size: 12px;
+  background: rgb(255 255 255 / 18%);
+}
+.site-public.public-header-frame[data-collapsed='true'] .public-topbar {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.site-public.public-header-frame[data-collapsed='true'] .public-topbar__inner {
+  transform: translateY(-100%);
+}
+.site-public .nav {
   background: var(--public-header-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -518,6 +583,10 @@
   transform: rotate(180deg);
 }
 @media (prefers-reduced-motion: reduce) {
+  .site-public .public-topbar,
+  .site-public .public-topbar__inner {
+    transition: none;
+  }
   .site-public .language-switcher__trigger--public svg:last-child {
     transition: none;
   }
@@ -548,6 +617,21 @@
   align-items: center;
   justify-content: center;
   color: var(--ink);
+}
+@media (max-width: 767px) {
+  .site-public .public-topbar__inner {
+    justify-content: center;
+    gap: 0;
+  }
+  .site-public .public-topbar__tagline {
+    display: none;
+  }
+  .site-public .public-topbar__contacts {
+    gap: 10px;
+  }
+  .site-public .public-topbar__contacts a {
+    font-size: 0.6875rem;
+  }
 }
 @media (min-width: 1200px) {
   .site-public .nav__links,
