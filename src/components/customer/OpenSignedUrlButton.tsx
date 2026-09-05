@@ -7,6 +7,7 @@ import { getCustomerDocumentSignedUrlAction } from '@/app/(tenant)/t/[tenant]/(c
 
 export function OpenSignedUrlButton({ slug, versionId }: { slug: string; versionId: string }) {
   const tCommon = useTranslations('common');
+  const tDocument = useTranslations('customer.documentCenter');
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -15,7 +16,7 @@ export function OpenSignedUrlButton({ slug, versionId }: { slug: string; version
     startTransition(async () => {
       const result = await getCustomerDocumentSignedUrlAction(slug, versionId);
       if (!result.ok) {
-        setError(`${result.code}: ${result.error}`);
+        setError(tDocument(`errors.${result.code}`));
         return;
       }
       window.open(result.data.url, '_blank', 'noopener,noreferrer');

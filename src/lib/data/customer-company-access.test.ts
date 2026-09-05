@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { SessionProfile } from '@/lib/auth/require-user';
-import { authorizeCustomerLinkedCompanyRead } from './customer-company-access';
+import {
+  authorizeCustomerLinkedCompanyRead,
+  requireAuthorizedCustomerLinkedCompanyRead,
+} from './customer-company-access';
 
 const tenant = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -178,5 +181,26 @@ test('keeps platform operator preview but never widens it into Customer Company 
     const result = await authorizeCustomerLinkedCompanyRead('acme', actorId, deps);
     assert.equal(result.kind, 'operator-preview');
     assert.deepEqual(calls, ['route', `active:${tenant.id}`]);
+  }
+});
+
+test('required Customer Company access rejects unlinked and operator-preview states', async () => {
+  for (const access of [
+    { kind: 'unlinked' as const, tenant, session: customerSession() },
+    {
+      kind: 'operator-preview' as const,
+      tenant,
+      session: customerSession({ role: 'admin', tenantId: null }),
+    },
+  ]) {
+    await assert.rejects(
+      requireAuthorizedCustomerLinkedCompanyRead('acme', undefined, {
+        authorize: async () => access as never,
+        deny: () => {
+          throw new Error('DENIED');
+        },
+      }),
+      /DENIED/u,
+    );
   }
 });

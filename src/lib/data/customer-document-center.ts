@@ -75,7 +75,7 @@ export type CustomerSubmittedDocument = {
     id: string;
     mimeType: string;
     sizeBytes: number;
-    scanStatus: 'passed';
+    scanStatus: 'unavailable';
     reviewStatus: ReviewStatus;
     rejectionReason: string | null;
     reviewedAt: string | null;
@@ -213,7 +213,7 @@ export async function loadCustomerDocumentCenter(
               id: version.id,
               mimeType: version.mime_type,
               sizeBytes: version.size_bytes,
-              scanStatus: 'passed' as const,
+              scanStatus: 'unavailable' as const,
               reviewStatus: version.review_status,
               rejectionReason: version.review_status === 'rejected' ? version.review_note : null,
               reviewedAt: version.reviewed_at,

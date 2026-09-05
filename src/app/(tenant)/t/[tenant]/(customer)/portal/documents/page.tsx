@@ -69,14 +69,6 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
     workspace.documents.kind === 'ready'
       ? groupCustomerSubmittedDocuments(workspace.documents.value)
       : [];
-  const rejectionByRequest = new Map<string, string | null>();
-  if (workspace.documents.kind === 'ready') {
-    for (const document of workspace.documents.value) {
-      if (document.requestId && document.currentVersion?.reviewStatus === 'rejected') {
-        rejectionByRequest.set(document.requestId, document.currentVersion.rejectionReason);
-      }
-    }
-  }
 
   return (
     <div className="document-center grid min-w-0 gap-6">
@@ -124,7 +116,6 @@ export default async function DocumentsPage({ params }: { params: Promise<{ tena
                   variant="request"
                   slug={slug}
                   request={request}
-                  rejectionReason={rejectionByRequest.get(request.id)}
                 />
               ))}
             </ul>

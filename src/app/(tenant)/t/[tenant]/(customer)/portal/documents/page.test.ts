@@ -50,8 +50,8 @@ test('request and submitted rows expose safe workflow states without private fie
   assert.match(row, /mimeType/u);
   assert.match(row, /sizeBytes/u);
   assert.match(row, /rejectionReason/u);
-  assert.match(page, /rejectionByRequest/u);
-  assert.match(row, /reUploadRequired/u);
+  assert.doesNotMatch(page, /rejectionByRequest/u);
+  assert.doesNotMatch(row, /rejectionReason:\s*string \| null \| undefined/u);
   assert.match(row, /UploadDocumentDialog/u);
   assert.match(row, /OpenSignedUrlButton/u);
   assert.doesNotMatch(row, /storagePath|sha256|reviewedBy|uploadedBy|VersionHistory/u);

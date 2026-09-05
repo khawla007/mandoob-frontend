@@ -4,14 +4,25 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
-import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
+import { requireAuthorizedCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
 import { getCompanyDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
 import { customerUploadActionSchema } from '@/lib/validation/document';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
-  | { ok: false; error: string; code: string };
+  | { ok: false; code: CustomerDocumentActionCode };
+
+export type CustomerDocumentActionCode =
+  | 'VALIDATION_FAILED'
+  | 'PAYLOAD_EMPTY'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'PAYLOAD_TOO_LARGE'
+  | 'FILE_REJECTED_BY_SCAN'
+  | 'SCANNER_UNAVAILABLE'
+  | 'DOCUMENT_UNAVAILABLE'
+  | 'UPLOAD_FAILED'
+  | 'OPEN_FAILED';
 
 type CustomerCallerCtx = {
   caller: { id: string; tenantId: string };
@@ -22,10 +33,7 @@ type CustomerCallerCtx = {
 };
 
 async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx> {
-  const access = await authorizeCustomerLinkedCompanyRead(slug);
-  if (access.kind !== 'authorized') {
-    throw new ApiError('FORBIDDEN', 'Company document access denied', 403);
-  }
+  const access = await requireAuthorizedCustomerLinkedCompanyRead(slug);
 
   const hdr = await headers();
   const ip = hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
@@ -40,19 +48,22 @@ async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx
   };
 }
 
-function safeCustomerDocumentError(error: ApiError, fallback: string): ActionResult<never> {
-  const safeMessages: Record<string, string> = {
-    VALIDATION_FAILED: 'The document request is invalid.',
-    PAYLOAD_EMPTY: 'Choose a file to upload.',
-    UNSUPPORTED_MEDIA_TYPE: 'This file type is not allowed.',
-    PAYLOAD_TOO_LARGE: 'The file is too large.',
-    FILE_REJECTED_BY_SCAN: 'The file did not pass the security scan.',
-    SCANNER_UNAVAILABLE: 'The security scan is temporarily unavailable. Try again.',
-    FORBIDDEN: 'The document is not available.',
-    NOT_FOUND: 'The document is not available.',
-    NO_LINKED_COMPANY: 'The Company account is not linked.',
+function safeCustomerDocumentError(
+  error: ApiError,
+  fallback: 'UPLOAD_FAILED' | 'OPEN_FAILED',
+): ActionResult<never> {
+  const safeCodes: Partial<Record<string, CustomerDocumentActionCode>> = {
+    VALIDATION_FAILED: 'VALIDATION_FAILED',
+    PAYLOAD_EMPTY: 'PAYLOAD_EMPTY',
+    UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
+    PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
+    FILE_REJECTED_BY_SCAN: 'FILE_REJECTED_BY_SCAN',
+    SCANNER_UNAVAILABLE: 'SCANNER_UNAVAILABLE',
+    FORBIDDEN: 'DOCUMENT_UNAVAILABLE',
+    NOT_FOUND: 'DOCUMENT_UNAVAILABLE',
+    NO_LINKED_COMPANY: 'DOCUMENT_UNAVAILABLE',
   };
-  return { ok: false, error: safeMessages[error.code] ?? fallback, code: error.code };
+  return { ok: false, code: safeCodes[error.code] ?? fallback };
 }
 
 async function assertRequestBelongsToCompany(args: {
@@ -88,7 +99,7 @@ export async function uploadDocumentAction(
     const ctx = await resolveCustomerCallerCtx(slug);
     const file = formData.get('file');
     if (!(file instanceof File)) {
-      return { ok: false, error: 'File missing from upload', code: 'PAYLOAD_EMPTY' };
+      return { ok: false, code: 'PAYLOAD_EMPTY' };
     }
 
     const parsed = customerUploadActionSchema.safeParse({
@@ -97,7 +108,7 @@ export async function uploadDocumentAction(
       label: formData.get('label') ?? undefined,
     });
     if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
+      return { ok: false, code: 'VALIDATION_FAILED' };
     }
 
     if (parsed.data.request_id) {
@@ -137,9 +148,9 @@ export async function uploadDocumentAction(
       data: { documentId: result.documentId, versionId: result.versionId },
     };
   } catch (e) {
-    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'Could not upload document');
+    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'UPLOAD_FAILED');
     console.error('uploadDocumentAction unexpected error', e);
-    return { ok: false, error: 'Could not upload document', code: 'INTERNAL' };
+    return { ok: false, code: 'UPLOAD_FAILED' };
   }
 }
 
@@ -182,8 +193,8 @@ export async function getCustomerDocumentSignedUrlAction(
     const signed = await getCompanyDocumentSignedUrl(ctx.tenant.id, ctx.linkedCompanyId, versionId);
     return { ok: true, data: signed };
   } catch (e) {
-    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'Could not open document');
+    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'OPEN_FAILED');
     console.error('getCustomerDocumentSignedUrlAction unexpected error', e);
-    return { ok: false, error: 'Could not sign URL', code: 'INTERNAL' };
+    return { ok: false, code: 'OPEN_FAILED' };
   }
 }

@@ -9,8 +9,7 @@ const source = readFileSync(
 );
 
 test('customer signing uses the exact version relation and linked-company scope regardless of uploader', () => {
-  assert.match(source, /authorizeCustomerLinkedCompanyRead\(slug\)/u);
-  assert.match(source, /access\.kind !== 'authorized'/u);
+  assert.match(source, /requireAuthorizedCustomerLinkedCompanyRead\(slug\)/u);
   assert.match(
     source,
     /document:documents!document_versions_document_id_fkey!inner\(id, tenant_id, company_id\)/u,
@@ -30,6 +29,8 @@ test('customer signing uses the exact version relation and linked-company scope 
 test('upload and download actions return sanitized Customer-safe errors', () => {
   assert.match(source, /safeCustomerDocumentError/u);
   assert.doesNotMatch(source, /error: e\.message/u);
+  assert.match(source, /code: CustomerDocumentActionCode/u);
+  assert.doesNotMatch(source, /\| \{ ok: false; error: string; code: string \}/u);
 });
 
 test('upload authorizes before validating or reading attacker-controlled form data', () => {

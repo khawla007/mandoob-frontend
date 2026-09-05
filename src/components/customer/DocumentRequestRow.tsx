@@ -13,7 +13,6 @@ type Props =
       variant: 'request';
       slug: string;
       request: CustomerDocumentRequest;
-      rejectionReason: string | null | undefined;
     }
   | { variant: 'submitted'; slug: string; document: CustomerSubmittedDocument };
 
@@ -29,7 +28,7 @@ export async function DocumentRequestRow(props: Props) {
   });
 
   if (props.variant === 'request') {
-    const { request, slug, rejectionReason } = props;
+    const { request, slug } = props;
     return (
       <li className="flex min-w-0 flex-wrap items-start justify-between gap-4 py-4 first:pt-0">
         <div className="max-w-2xl min-w-0">
@@ -43,17 +42,9 @@ export async function DocumentRequestRow(props: Props) {
           <p className="text-muted-foreground mt-2 text-sm">
             {request.instructions ?? t('instructionsUnavailable')}
           </p>
-          {rejectionReason !== undefined ? (
-            <div className="border-destructive/40 bg-destructive/5 text-destructive mt-3 rounded-md border p-2 text-sm">
-              <span className="font-medium">{t('rejectionReason')}</span>{' '}
-              {rejectionReason ?? t('rejectionReasonUnavailable')}
-            </div>
-          ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={rejectionReason !== undefined ? 'destructive' : 'secondary'}>
-            {rejectionReason !== undefined ? t('reUploadRequired') : t('uploadRequired')}
-          </Badge>
+          <Badge variant="secondary">{t('uploadRequired')}</Badge>
           <UploadDocumentDialog
             slug={slug}
             docType={request.docType}

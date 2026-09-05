@@ -114,7 +114,7 @@ test('invalid negative provider counts fail closed', async () => {
   assert.deepEqual(result.summary.awaiting, { kind: 'error' });
 });
 
-test('document center bounds deterministic queues and exposes no storage or reviewer identity', async () => {
+test('document center bounds deterministic queues and does not fabricate unavailable scan truth', async () => {
   const rows = Array.from({ length: 51 }, (_, index) => ({
     id: `doc-${index}`,
     doc_type: 'passport' as const,
@@ -144,4 +144,6 @@ test('document center bounds deterministic queues and exposes no storage or revi
   assert.equal(result.documents.value.length, 50);
   assert.equal(result.documents.hasMore, true);
   assert.doesNotMatch(JSON.stringify(result), /storage_path|sha256|reviewed_by|uploaded_by/u);
+  assert.match(JSON.stringify(result), /"scanStatus":"unavailable"/u);
+  assert.doesNotMatch(JSON.stringify(result), /"scanStatus":"passed"/u);
 });

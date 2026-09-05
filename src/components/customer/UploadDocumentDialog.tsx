@@ -17,7 +17,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { uploadDocumentAction } from '@/app/(tenant)/t/[tenant]/(customer)/portal/documents/actions';
-import { uploadErrorMessage } from '@/lib/documents/upload-errors';
 import type { DocType } from '@/lib/validation/document';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -41,6 +40,7 @@ export function UploadDocumentDialog(props: {
   const t = useTranslations('customer');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
+  const tDocument = useTranslations('customer.documentCenter');
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export function UploadDocumentDialog(props: {
     startTransition(async () => {
       const result = await uploadDocumentAction(slug, formData);
       if (!result.ok) {
-        setError(uploadErrorMessage(result.code, result.error));
+        setError(tDocument(`errors.${result.code}`));
         return;
       }
       setOpen(false);

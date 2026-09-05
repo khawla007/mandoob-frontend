@@ -39,6 +39,10 @@ export type CustomerCompanyAccessDependencies = {
   deny?: () => never;
 };
 
+type RequiredCustomerCompanyAccessDependencies = CustomerCompanyAccessDependencies & {
+  authorize?: (tenantSlug: string, expectedActorId?: string) => Promise<CustomerCompanyAccess>;
+};
+
 async function deny(dependencies: CustomerCompanyAccessDependencies): Promise<never> {
   if (dependencies.deny) return dependencies.deny();
   const { notFound } = await import('next/navigation');
@@ -127,4 +131,17 @@ export async function authorizeCustomerLinkedCompanyRead(
     return deny(dependencies);
   }
   return { kind: 'authorized', tenant, session: customerSession, company };
+}
+
+export async function requireAuthorizedCustomerLinkedCompanyRead(
+  tenantSlug: string,
+  expectedActorId?: string,
+  dependencies: RequiredCustomerCompanyAccessDependencies = {},
+): Promise<Extract<CustomerCompanyAccess, { kind: 'authorized' }>> {
+  const access = await (dependencies.authorize ?? authorizeCustomerLinkedCompanyRead)(
+    tenantSlug,
+    expectedActorId,
+  );
+  if (access.kind !== 'authorized') return deny(dependencies);
+  return access;
 }

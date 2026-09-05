@@ -59,7 +59,8 @@ function reachesGuard(
         name === 'requireRole' ||
         name === 'requireTenantRouteAccess' ||
         name === 'requireProTenantRouteAccess' ||
-        name === 'authorizeCustomerLinkedCompanyRead'
+        name === 'authorizeCustomerLinkedCompanyRead' ||
+        name === 'requireAuthorizedCustomerLinkedCompanyRead'
       ) {
         guarded = true;
         return;
@@ -205,7 +206,8 @@ function isGuardCall(name: string): boolean {
     name === 'requireRole' ||
     name === 'requireTenantRouteAccess' ||
     name === 'requireProTenantRouteAccess' ||
-    name === 'authorizeCustomerLinkedCompanyRead'
+    name === 'authorizeCustomerLinkedCompanyRead' ||
+    name === 'requireAuthorizedCustomerLinkedCompanyRead'
   );
 }
 
@@ -242,6 +244,28 @@ test('per-export audit detects a later unguarded server mutation', () => {
     'mutate',
   );
 });
+
+test('optional Customer authorization requires an authorized-kind check', () => {
+  const unsafe = `const access = await authorizeCustomerLinkedCompanyRead('acme'); mutate();`;
+  const safe = `const access = await authorizeCustomerLinkedCompanyRead('acme');
+    if (access.kind !== 'authorized') return;
+    mutate();`;
+  assert.equal(hasCheckedCustomerAuthorization(unsafe), false);
+  assert.equal(hasCheckedCustomerAuthorization(safe), true);
+});
+
+function hasCheckedCustomerAuthorization(source: string): boolean {
+  if (source.includes('requireAuthorizedCustomerLinkedCompanyRead(')) return true;
+  const authorization = source.match(
+    /const\s+(\w+)\s*=\s*await\s+authorizeCustomerLinkedCompanyRead\([^;]+\);/u,
+  );
+  if (!authorization || authorization.index === undefined) return false;
+  const remainder = source.slice(authorization.index + authorization[0].length);
+  return new RegExp(
+    `(?:${authorization[1]}\\.kind\\s*!==\\s*['\"]authorized['\"]|${authorization[1]}\\.kind\\s*===\\s*['\"]authorized['\"])`,
+    'u',
+  ).test(remainder);
+}
 
 test('guard must dominate mutation while a guarded helper path succeeds', () => {
   const ast = ts.createSourceFile(
@@ -362,6 +386,36 @@ test('every tenant page or route using a DAL declares an authoritative boundary'
   }
 });
 
+test('Customer document pages check the authorized Company state before direct loader reads', () => {
+  const customerRoot = join(root, '(customer)');
+  const files = filesUnder(customerRoot).filter((file) => {
+    if (!file.endsWith('/page.tsx')) return false;
+    const source = readFileSync(file, 'utf8');
+    return (
+      source.includes('authorizeCustomerLinkedCompanyRead') &&
+      source.includes('loadCustomerDocumentCenter')
+    );
+  });
+  assert.ok(files.length > 0);
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    const load = source.indexOf('loadCustomerDocumentCenter', source.indexOf('export default'));
+    const beforeLoad = source.slice(0, load);
+    assert.equal(hasCheckedCustomerAuthorization(beforeLoad), true, file);
+  }
+});
+
+test('Customer actions check optional Company authorization before privileged work', () => {
+  const customerRoot = join(root, '(customer)');
+  const files = filesUnder(customerRoot).filter((file) => {
+    if (!file.endsWith('/actions.ts')) return false;
+    return readFileSync(file, 'utf8').includes('authorizeCustomerLinkedCompanyRead');
+  });
+  for (const file of files) {
+    assert.equal(hasCheckedCustomerAuthorization(readFileSync(file, 'utf8')), true, file);
+  }
+});
+
 test('PRO workspace pages are gated as PRO-only before rendering mutation controls', () => {
   const proRoot = join(root, '(pro)');
   const files = filesUnder(proRoot).filter(
@@ -395,7 +449,11 @@ test('sensitive indirect DAL and inline-action pages declare their own tenant bo
   ];
   for (const relative of relativeFiles) {
     const source = readFileSync(join(root, relative), 'utf8');
-    assert.match(source, /await require(?:Pro)?TenantRouteAccess\(/u, relative);
+    assert.match(
+      source,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead)\(/u,
+      relative,
+    );
   }
 });
 
