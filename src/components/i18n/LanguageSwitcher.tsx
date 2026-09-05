@@ -15,13 +15,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Languages } from 'lucide-react';
+import { ChevronDown, Languages } from 'lucide-react';
 
 type LanguageSwitcherProps = {
   pathToRevalidate?: string;
   failureMessage?: string;
   pendingLabel?: string;
   className?: string;
+  variant?: 'default' | 'public';
 };
 
 export function LanguageSwitcher({
@@ -29,6 +30,7 @@ export function LanguageSwitcher({
   failureMessage,
   pendingLabel,
   className,
+  variant = 'default',
 }: LanguageSwitcherProps) {
   const current = useLocale() as Locale;
   const t = useTranslations('common');
@@ -39,6 +41,7 @@ export function LanguageSwitcher({
   const pointerDismissedRef = useRef(false);
   const resolvedFailureMessage = failureMessage ?? tSite('languageChangeFailed');
   const resolvedPendingLabel = pendingLabel ?? tSite('languageChanging');
+  const isPublic = variant === 'public';
 
   const onSelect = (next: Locale) => {
     if (next === current || submittingRef.current) return;
@@ -70,16 +73,23 @@ export function LanguageSwitcher({
           }
           aria-busy={pending}
           disabled={pending}
-          className={cn('gap-2', className)}
+          className={cn(
+            'gap-2',
+            isPublic && 'language-switcher__trigger--public',
+            className,
+          )}
         >
           <Languages className="size-4" />
-          <span className="hidden sm:inline">
+          <span className={cn(!isPublic && 'hidden sm:inline')}>
             {pending ? resolvedPendingLabel : localeLabels[current]}
           </span>
+          {isPublic && <ChevronDown className="size-3.5" aria-hidden />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
+        sideOffset={isPublic ? 8 : undefined}
+        className={cn(isPublic && 'language-switcher__content--public')}
         onPointerDownOutside={() => {
           pointerDismissedRef.current = true;
         }}
@@ -98,7 +108,10 @@ export function LanguageSwitcher({
               onSelect={() => onSelect(loc)}
               disabled={pending}
               data-active={loc === current}
-              className="cursor-pointer"
+              className={cn(
+                'cursor-pointer',
+                isPublic && 'language-switcher__item--public',
+              )}
             >
               {localeLabels[loc]}
             </DropdownMenuRadioItem>

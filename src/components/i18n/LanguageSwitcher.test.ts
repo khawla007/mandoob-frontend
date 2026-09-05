@@ -36,7 +36,7 @@ Module._load = function (request, parent, isMain) {
   if (request === '@/components/ui/dropdown-menu') return {
     DropdownMenu: ({children}) => React.createElement('div', null, children),
     DropdownMenuTrigger: ({children}) => children,
-    DropdownMenuContent: ({children}) => React.createElement('div', null, children),
+    DropdownMenuContent: ({children, ...props}) => React.createElement('div', props, children),
     DropdownMenuItem: ({children, onSelect, ...props}) =>
       React.createElement('button', {...props, role: 'menuitem', type: 'button', onClick: onSelect}, children),
     DropdownMenuRadioGroup: ({children, value}) =>
@@ -129,6 +129,49 @@ Module._load = function (request, parent, isMain) {
     assert.equal(arabic.getAttribute('aria-checked'), 'false');
     await act(() => english.click());
     assert.equal(calls, 0);
+    await act(() => root.unmount());
+    container.remove();
+  });
+
+  test('public variant exposes a persistent label, dropdown chevron, and public menu hooks', async () => {
+    runtimeGlobals.__locale = 'en';
+    runtimeGlobals.__setLocaleAction = async () => undefined;
+    runtimeGlobals.__toastErrors = [];
+    const { act, container, root } = await renderSwitcher({ variant: 'public' });
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label]')!;
+    const label = [...trigger.querySelectorAll('span')].find(
+      (element) => element.textContent === 'English',
+    )!;
+    const content = container.querySelector<HTMLDivElement>(
+      '.language-switcher__content--public',
+    )!;
+
+    assert.match(trigger.className, /language-switcher__trigger--public/u);
+    assert.equal(label.textContent, 'English');
+    assert.doesNotMatch(label.className, /\bhidden\b/u);
+    assert.equal(trigger.querySelectorAll('svg').length, 2);
+    assert.ok(content);
+    assert.equal(
+      content.querySelectorAll('.language-switcher__item--public').length,
+      2,
+    );
+    await act(() => root.unmount());
+    container.remove();
+  });
+
+  test('default variant retains its compact responsive label treatment', async () => {
+    runtimeGlobals.__locale = 'en';
+    runtimeGlobals.__setLocaleAction = async () => undefined;
+    runtimeGlobals.__toastErrors = [];
+    const { act, container, root } = await renderSwitcher();
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label]')!;
+    const label = [...trigger.querySelectorAll('span')].find(
+      (element) => element.textContent === 'English',
+    )!;
+
+    assert.match(label.className, /hidden sm:inline/u);
+    assert.equal(trigger.querySelectorAll('svg').length, 1);
+    assert.equal(container.querySelector('.language-switcher__content--public'), null);
     await act(() => root.unmount());
     container.remove();
   });
