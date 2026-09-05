@@ -54,7 +54,7 @@ export function ApplicationStatusActions({
         <span
           role={state.ok ? 'status' : 'alert'}
           aria-live="polite"
-          className={state.ok ? 'text-xs text-green-700' : 'text-destructive text-xs'}
+          className={state.ok ? 'text-xs text-[var(--signal-success)]' : 'text-destructive text-xs'}
         >
           {state.ok ? labels.success : state.error}
         </span>

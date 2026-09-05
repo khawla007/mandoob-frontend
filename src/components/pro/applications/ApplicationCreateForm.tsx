@@ -62,7 +62,9 @@ export function ApplicationCreateForm({
           <p
             role={state.ok ? 'status' : 'alert'}
             aria-live="polite"
-            className={state.ok ? 'text-sm text-green-700' : 'text-destructive text-sm'}
+            className={
+              state.ok ? 'text-sm text-[var(--signal-success)]' : 'text-destructive text-sm'
+            }
           >
             {state.ok ? labels.success : state.error}
           </p>
