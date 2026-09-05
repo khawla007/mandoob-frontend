@@ -49,7 +49,7 @@ export default defineConfig({
     },
     {
       name: 'public-shell',
-      testMatch: /a11y\/public-shell\.spec\.ts/,
+      testMatch: /a11y\/(?:public-shell|cost-estimator)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     {
