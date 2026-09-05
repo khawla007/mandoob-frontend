@@ -1,124 +1,183 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { readSelfCustomer } from '@/lib/data/account-self';
-import { listDocumentsForCompany, listOpenRequestsForCompany } from '@/lib/data/documents';
+
 import { DocumentRequestRow } from '@/components/customer/DocumentRequestRow';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
+import {
+  groupCustomerSubmittedDocuments,
+  loadCustomerDocumentCenter,
+} from '@/lib/data/customer-document-center';
 
 export const dynamic = 'force-dynamic';
 
-// TODO Step 18: send customer email/in-app notification when a PRO inserts a
-// document_requests row (template lives in the comms engine, not here).
 export default async function DocumentsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: slug } = await params;
-  const { tenant } = await requireTenantRouteAccess(slug, ['customer', 'admin', 'super_admin']);
+  const access = await authorizeCustomerLinkedCompanyRead(slug);
+  const [t, tDocTypes] = await Promise.all([
+    getTranslations('customer.documentCenter'),
+    getTranslations('customer.docTypeLabels'),
+  ]);
+  const workspace = access.kind === 'authorized' ? await loadCustomerDocumentCenter(access) : null;
+  const heading = (
+    <header className="document-center__heading">
+      <p className="text-foreground/70 font-mono text-xs font-medium tracking-wider uppercase">
+        {t('eyebrow')}
+      </p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('title')}</h1>
+      <p className="text-muted-foreground mt-1 max-w-3xl text-sm">{t('description')}</p>
+      {access.kind === 'authorized' ? (
+        <p className="text-muted-foreground mt-2 text-xs font-medium">
+          {access.company.companyName}
+        </p>
+      ) : null}
+    </header>
+  );
 
-  const t = await getTranslations('customer');
-
-  const customer = await readSelfCustomer();
-  const linkedCompanyId = customer.linkedCompanyId;
-
-  if (!linkedCompanyId) {
+  if (!workspace || access.kind !== 'authorized') {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('documents')}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">{t('longCopy.documentsIntro')}</p>
-        </div>
-        <Card>
+      <div className="document-center grid min-w-0 gap-6">
+        {heading}
+        <Card className="signal-panel">
           <CardHeader>
-            <CardTitle className="text-lg">{t('accountNotLinked')}</CardTitle>
+            <CardTitle>
+              {access.kind === 'unlinked' ? t('unlinkedTitle') : t('unavailableTitle')}
+            </CardTitle>
             <CardDescription>
-              {t('longCopy.accountNotLinkedNote')}{' '}
-              <Link
-                href={`/t/${tenant.slug}/account`}
-                className="hover:text-foreground underline-offset-4 hover:underline"
-              >
-                {t('reviewAccountDetails')}
-              </Link>
-              .
+              {access.kind === 'unlinked' ? t('unlinkedDescription') : t('unavailableDescription')}
             </CardDescription>
           </CardHeader>
+          {access.kind === 'unlinked' ? (
+            <CardContent>
+              <Link className="underline underline-offset-4" href="/account">
+                {t('reviewAccount')}
+              </Link>
+            </CardContent>
+          ) : null}
         </Card>
       </div>
     );
   }
 
-  const [docs, openRequests] = await Promise.all([
-    listDocumentsForCompany(tenant.id, linkedCompanyId),
-    listOpenRequestsForCompany(tenant.id, linkedCompanyId),
-  ]);
-
-  // Map the latest rejection note onto each open request so the row can show
-  // the reviewer's reason above the upload button.
-  const rejectionByRequest = new Map<string, { note: string | null; reviewedAt: string }>();
-  for (const d of docs) {
-    if (d.request && d.currentVersion?.reviewStatus === 'rejected') {
-      rejectionByRequest.set(d.request.id, {
-        note: d.currentVersion.reviewNote,
-        reviewedAt: d.currentVersion.reviewedAt ?? d.currentVersion.createdAt,
-      });
+  const summaries = [
+    ['awaiting', workspace.summary.awaiting, 'info'],
+    ['underReview', workspace.summary.underReview, 'review'],
+    ['approved', workspace.summary.approved, 'success'],
+    ['rejected', workspace.summary.rejected, 'urgent'],
+  ] as const;
+  const submittedGroups =
+    workspace.documents.kind === 'ready'
+      ? groupCustomerSubmittedDocuments(workspace.documents.value)
+      : [];
+  const rejectionByRequest = new Map<string, string | null>();
+  if (workspace.documents.kind === 'ready') {
+    for (const document of workspace.documents.value) {
+      if (document.requestId && document.currentVersion?.reviewStatus === 'rejected') {
+        rejectionByRequest.set(document.requestId, document.currentVersion.rejectionReason);
+      }
     }
   }
 
-  const submitted = docs.filter((d) => d.currentVersion);
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('documents')}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t('longCopy.documentsIntro')}</p>
-      </div>
+    <div className="document-center grid min-w-0 gap-6">
+      {heading}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('awaitingYourAction')}</CardTitle>
-          <CardDescription>{t('longCopy.awaitingDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {openRequests.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">{t('allCaughtUp')}</p>
-          ) : (
-            <ul className="divide-border/60 divide-y">
-              {openRequests.map((req) => (
-                <DocumentRequestRow
-                  key={req.id}
-                  variant="awaiting"
-                  slug={tenant.slug}
-                  request={req}
-                  rejection={rejectionByRequest.get(req.id) ?? null}
-                />
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <section className="document-center__summary-grid grid gap-3" aria-label={t('summaryLabel')}>
+        {summaries.map(([key, summary, variant]) => (
+          <article
+            key={key}
+            className={`document-center__summary document-center__summary--${variant} relative min-w-0 overflow-hidden rounded-2xl border p-4`}
+          >
+            <div className="document-center__summary-pattern absolute inset-0" aria-hidden="true" />
+            <div className="relative">
+              <p className="text-muted-foreground text-xs font-medium">{t(`summary.${key}`)}</p>
+              <p className="mt-2 font-mono text-3xl font-semibold tabular-nums">
+                {summary.kind === 'ready' ? summary.value : '—'}
+              </p>
+              {summary.kind === 'error' ? (
+                <p className="text-destructive mt-1 text-xs">{t('sourceError')}</p>
+              ) : null}
+            </div>
+          </article>
+        ))}
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('submitted')}</CardTitle>
-          <CardDescription>{t('longCopy.submittedDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {submitted.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">
-              {t('noSubmittedDocuments')}
+      <section className="signal-panel rounded-2xl border p-4 sm:p-5">
+        <header>
+          <h2 className="text-lg font-semibold">{t('requestedTitle')}</h2>
+          <p className="text-muted-foreground mt-1 text-sm">{t('requestedDescription')}</p>
+        </header>
+        <div className="mt-4">
+          {workspace.requests.kind === 'error' ? (
+            <p role="alert" className="text-destructive text-sm">
+              {t('queueError')}
             </p>
-          ) : (
+          ) : null}
+          {workspace.requests.kind === 'empty' ? (
+            <p className="text-muted-foreground py-6 text-center text-sm">{t('requestedEmpty')}</p>
+          ) : null}
+          {workspace.requests.kind === 'ready' ? (
             <ul className="divide-border/60 divide-y">
-              {submitted.map((doc) => (
+              {workspace.requests.value.map((request) => (
                 <DocumentRequestRow
-                  key={doc.documentId}
-                  variant="submitted"
-                  slug={tenant.slug}
-                  doc={doc}
+                  key={request.id}
+                  variant="request"
+                  slug={slug}
+                  request={request}
+                  rejectionReason={rejectionByRequest.get(request.id)}
                 />
               ))}
             </ul>
-          )}
-        </CardContent>
-      </Card>
+          ) : null}
+          {workspace.requests.kind === 'ready' && workspace.requests.hasMore ? (
+            <p className="text-muted-foreground mt-3 text-xs">{t('boundedNotice')}</p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="signal-panel rounded-2xl border p-4 sm:p-5">
+        <header>
+          <h2 className="text-lg font-semibold">{t('submittedTitle')}</h2>
+          <p className="text-muted-foreground mt-1 text-sm">{t('submittedDescription')}</p>
+        </header>
+        <div className="mt-4">
+          {workspace.documents.kind === 'error' ? (
+            <p role="alert" className="text-destructive text-sm">
+              {t('queueError')}
+            </p>
+          ) : null}
+          {workspace.documents.kind === 'empty' ? (
+            <p className="text-muted-foreground py-6 text-center text-sm">{t('submittedEmpty')}</p>
+          ) : null}
+          {workspace.documents.kind === 'ready' ? (
+            <div className="grid gap-5">
+              {submittedGroups.map((group) => (
+                <section key={group.docType} aria-labelledby={`document-group-${group.docType}`}>
+                  <h3
+                    id={`document-group-${group.docType}`}
+                    className="text-muted-foreground mb-2 font-mono text-xs font-medium tracking-wider uppercase"
+                  >
+                    {tDocTypes(group.docType)}
+                  </h3>
+                  <ul className="divide-border/60 divide-y">
+                    {group.documents.map((document) => (
+                      <DocumentRequestRow
+                        key={document.id}
+                        variant="submitted"
+                        slug={slug}
+                        document={document}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : null}
+          {workspace.documents.kind === 'ready' && workspace.documents.hasMore ? (
+            <p className="text-muted-foreground mt-3 text-xs">{t('boundedNotice')}</p>
+          ) : null}
+        </div>
+      </section>
     </div>
   );
 }

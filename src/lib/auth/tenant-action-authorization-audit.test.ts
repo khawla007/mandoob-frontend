@@ -58,7 +58,8 @@ function reachesGuard(
       if (
         name === 'requireRole' ||
         name === 'requireTenantRouteAccess' ||
-        name === 'requireProTenantRouteAccess'
+        name === 'requireProTenantRouteAccess' ||
+        name === 'authorizeCustomerLinkedCompanyRead'
       ) {
         guarded = true;
         return;
@@ -203,7 +204,8 @@ function isGuardCall(name: string): boolean {
   return (
     name === 'requireRole' ||
     name === 'requireTenantRouteAccess' ||
-    name === 'requireProTenantRouteAccess'
+    name === 'requireProTenantRouteAccess' ||
+    name === 'authorizeCustomerLinkedCompanyRead'
   );
 }
 
@@ -331,7 +333,11 @@ test('every direct service-role page and route enters through the tenant route b
   assert.ok(files.length > 0);
   for (const file of files) {
     const source = readFileSync(file, 'utf8');
-    assert.match(source, /await require(?:Pro)?TenantRouteAccess\(/u, file);
+    assert.match(
+      source,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead)\(/u,
+      file,
+    );
   }
 });
 
@@ -348,7 +354,11 @@ test('every tenant page or route using a DAL declares an authoritative boundary'
       assert.doesNotMatch(source, /createSupabaseServiceRoleClient/u);
       continue;
     }
-    assert.match(source, /await require(?:Pro)?TenantRouteAccess\(/u, file);
+    assert.match(
+      source,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead)\(/u,
+      file,
+    );
   }
 });
 

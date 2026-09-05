@@ -4,11 +4,8 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
-import { requireRole } from '@/lib/auth/require-role';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
-import { readSelfCustomer } from '@/lib/data/account-self';
-import { getDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
+import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
+import { getCompanyDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
 import { customerUploadActionSchema } from '@/lib/validation/document';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -25,24 +22,9 @@ type CustomerCallerCtx = {
 };
 
 async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx> {
-  const session = await requireRole('customer');
-  if (!session.tenantId) {
-    throw new ApiError('FORBIDDEN', 'Session missing tenant binding', 403);
-  }
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (session.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  }
-  await requireActiveTenant(tenant.id);
-
-  const customer = await readSelfCustomer();
-  if (!customer.linkedCompanyId) {
-    throw new ApiError(
-      'NO_LINKED_COMPANY',
-      'Account is not linked to a company. Contact Mandoob support to link it.',
-      403,
-    );
+  const access = await authorizeCustomerLinkedCompanyRead(slug);
+  if (access.kind !== 'authorized') {
+    throw new ApiError('FORBIDDEN', 'Company document access denied', 403);
   }
 
   const hdr = await headers();
@@ -50,12 +32,27 @@ async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx
   const userAgent = hdr.get('user-agent') ?? null;
 
   return {
-    caller: { id: session.id, tenantId: session.tenantId },
-    tenant: { id: tenant.id, slug: tenant.slug },
-    linkedCompanyId: customer.linkedCompanyId,
+    caller: { id: access.session.id, tenantId: access.tenant.id },
+    tenant: { id: access.tenant.id, slug: access.tenant.slug },
+    linkedCompanyId: access.company.id,
     ip,
     userAgent,
   };
+}
+
+function safeCustomerDocumentError(error: ApiError, fallback: string): ActionResult<never> {
+  const safeMessages: Record<string, string> = {
+    VALIDATION_FAILED: 'The document request is invalid.',
+    PAYLOAD_EMPTY: 'Choose a file to upload.',
+    UNSUPPORTED_MEDIA_TYPE: 'This file type is not allowed.',
+    PAYLOAD_TOO_LARGE: 'The file is too large.',
+    FILE_REJECTED_BY_SCAN: 'The file did not pass the security scan.',
+    SCANNER_UNAVAILABLE: 'The security scan is temporarily unavailable. Try again.',
+    FORBIDDEN: 'The document is not available.',
+    NOT_FOUND: 'The document is not available.',
+    NO_LINKED_COMPANY: 'The Company account is not linked.',
+  };
+  return { ok: false, error: safeMessages[error.code] ?? fallback, code: error.code };
 }
 
 async function assertRequestBelongsToCompany(args: {
@@ -78,8 +75,8 @@ async function assertRequestBelongsToCompany(args: {
   if (!data) {
     throw new ApiError('FORBIDDEN', 'Request not found for this company', 403);
   }
-  if (data.status === 'cancelled') {
-    throw new ApiError('FORBIDDEN', 'Request has been cancelled', 403);
+  if (data.status !== 'pending') {
+    throw new ApiError('FORBIDDEN', 'Request is not awaiting upload', 403);
   }
 }
 
@@ -88,6 +85,7 @@ export async function uploadDocumentAction(
   formData: FormData,
 ): Promise<ActionResult<{ documentId: string; versionId: string }>> {
   try {
+    const ctx = await resolveCustomerCallerCtx(slug);
     const file = formData.get('file');
     if (!(file instanceof File)) {
       return { ok: false, error: 'File missing from upload', code: 'PAYLOAD_EMPTY' };
@@ -101,8 +99,6 @@ export async function uploadDocumentAction(
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
     }
-
-    const ctx = await resolveCustomerCallerCtx(slug);
 
     if (parsed.data.request_id) {
       await assertRequestBelongsToCompany({
@@ -141,7 +137,7 @@ export async function uploadDocumentAction(
       data: { documentId: result.documentId, versionId: result.versionId },
     };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'Could not upload document');
     console.error('uploadDocumentAction unexpected error', e);
     return { ok: false, error: 'Could not upload document', code: 'INTERNAL' };
   }
@@ -183,10 +179,10 @@ export async function getCustomerDocumentSignedUrlAction(
       throw new ApiError('FORBIDDEN', 'Version not accessible', 403);
     }
 
-    const signed = await getDocumentSignedUrl(ctx.tenant.id, versionId);
+    const signed = await getCompanyDocumentSignedUrl(ctx.tenant.id, ctx.linkedCompanyId, versionId);
     return { ok: true, data: signed };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'Could not open document');
     console.error('getCustomerDocumentSignedUrlAction unexpected error', e);
     return { ok: false, error: 'Could not sign URL', code: 'INTERNAL' };
   }
