@@ -6,21 +6,22 @@ import {
   FileText,
   History,
   ImageIcon,
+  type LucideIcon,
   Users,
 } from 'lucide-react';
 
-import { PUBLIC_PRO_CONTENT } from '@/lib/pro/public-pro';
+import { PUBLIC_PRO_CONTENT, type PublicProPreviewTileId } from '@/lib/pro/public-pro';
 
-const proBentoClasses = [
-  'bento-tile--feature',
-  'bento-tile--renewals',
-  'bento-tile--docs',
-  'bento-tile--tenant',
-  'bento-tile--audit',
-  'bento-tile--pay',
-] as const;
+type ProBentoPresentation = Readonly<{ className: string; Icon: LucideIcon }>;
 
-const proBentoIcons = [Building2, BellRing, FileText, Building2, History, CreditCard] as const;
+const proBentoPresentation = {
+  'company-readiness': { className: 'bento-tile--feature', Icon: Building2 },
+  'renewal-context': { className: 'bento-tile--renewals', Icon: BellRing },
+  'document-context': { className: 'bento-tile--docs', Icon: FileText },
+  'assigned-company': { className: 'bento-tile--tenant', Icon: Building2 },
+  'activity-context': { className: 'bento-tile--audit', Icon: History },
+  'invoice-context': { className: 'bento-tile--pay', Icon: CreditCard },
+} satisfies Record<PublicProPreviewTileId, ProBentoPresentation>;
 
 function ProBentoGridSection() {
   const { label, bento } = PUBLIC_PRO_CONTENT.preview;
@@ -47,12 +48,12 @@ function ProBentoGridSection() {
           aria-label="Illustrative one-Company capability preview"
           data-reveal-cards
         >
-          {bento.tiles.map((tile, index) => {
-            const Icon = proBentoIcons[index];
+          {bento.tiles.map((tile) => {
+            const { className, Icon } = proBentoPresentation[tile.id];
             return (
               <li
                 key={tile.id}
-                className={`bento-tile ${proBentoClasses[index]} reveal`}
+                className={`bento-tile ${className} reveal`}
                 data-pro-bento-tile={tile.id}
               >
                 <div className="bento-tile__head">

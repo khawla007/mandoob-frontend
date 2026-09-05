@@ -17,6 +17,14 @@ const dashboardSource = readFileSync(
   'utf8',
 );
 const previewSource = readFileSync(new URL('../DashboardPreview.tsx', import.meta.url), 'utf8');
+const proDashboardSectionSource = readFileSync(
+  new URL('./ProDashboardSection.tsx', import.meta.url),
+  'utf8',
+);
+const proDashboardPreviewSource = readFileSync(
+  new URL('./ProDashboardPreview.tsx', import.meta.url),
+  'utf8',
+);
 const bentoSource = readFileSync(new URL('../home/BentoGridSection.tsx', import.meta.url), 'utf8');
 const finalCtaSource = readFileSync(new URL('./ProFinalCtaSection.tsx', import.meta.url), 'utf8');
 const cssSource = readFileSync(
@@ -150,8 +158,8 @@ describe('PRO-specific dashboard and bento previews', () => {
   renderIt(
     'renders a meaningful, explicitly illustrative, noninteractive dashboard figure',
     async () => {
-      const { DashboardPreview } = await import('@/components/site/DashboardPreview');
-      const html = await render(DashboardPreview({ variant: 'pro' }));
+      const { ProDashboardPreview } = await import('./ProDashboardPreview');
+      const html = await render(React.createElement(ProDashboardPreview));
 
       assert.match(html, /<figure[^>]*data-preview-interaction="none"/u);
       assert.match(html, /aria-labelledby="pro-preview-label"/u);
@@ -166,17 +174,42 @@ describe('PRO-specific dashboard and bento previews', () => {
   );
 
   renderIt(
-    'keeps the default dashboard preview identical to its explicit homepage variant',
+    'preserves the exact legacy homepage dashboard fixture and parent composition',
     async () => {
       const { DashboardPreview } = await import('@/components/site/DashboardPreview');
-      const defaultHtml = await render(DashboardPreview());
-      const homeHtml = await render(DashboardPreview({ variant: 'home' }));
+      const html = await render(DashboardPreview());
 
-      assert.equal(defaultHtml, homeHtml);
-      assert.match(defaultHtml, /role="tablist"/u);
-      assert.match(defaultHtml, /Asia\/Dubai · live/u);
+      assert.match(html, /role="tablist"/u);
+      assert.match(html, /Asia\/Dubai · live/u);
+      assert.match(html, /COMPANY<\/p><p class="fkpiV mono">ACTIVE/u);
+      assert.match(html, /Visa stamped · Reem A\.<\/span><span class="mono ffeed__meta">12:42/u);
+      assert.match(
+        dashboardSource,
+        /import \{ DashboardPreview \} from '@\/components\/site\/DashboardPreview';/u,
+      );
+      assert.match(
+        dashboardSource,
+        /<section id="dashboard" className="showcase" aria-labelledby="show-h">/u,
+      );
+      assert.match(dashboardSource, /<DashboardPreview \/>/u);
+      assert.match(dashboardSource, /<h3 id="ff-alerts">Live renewal alerts<\/h3>/u);
+      assert.match(dashboardSource, /<h3 id="ff-audit">Audit-ready<\/h3>/u);
+      assert.match(dashboardSource, /<h3 id="ff-whitelabel">White-label<\/h3>/u);
+      assert.doesNotMatch(dashboardSource, /PUBLIC_PRO_CONTENT|variant=['"]pro['"]/u);
     },
   );
+
+  renderIt('renders the preview description and each workspace area state only once', async () => {
+    const { ProDashboardSection } = await import('./ProDashboardSection');
+    const html = await render(React.createElement(ProDashboardSection));
+
+    assert.equal((html.match(/A noninteractive workspace illustration/gu) ?? []).length, 1);
+    for (const area of PUBLIC_PRO_CONTENT.preview.dashboard.areas) {
+      assert.equal((html.match(new RegExp(area.label.text, 'gu')) ?? []).length, 1);
+    }
+    assert.equal((html.match(/Illustrative workspace area/gu) ?? []).length, 2);
+    assert.equal((html.match(/Provider and transaction data unavailable/gu) ?? []).length, 1);
+  });
 
   renderIt(
     'renders a six-tile one-Company bento with readiness replacing the lead board',
@@ -262,12 +295,33 @@ describe('Slice 7 composition and source boundaries', () => {
   );
 
   it('uses closed PRO variants and centralized content without altering default branches', () => {
-    assert.match(pageSource, /<DashboardSection variant="pro" \/>/u);
+    assert.match(
+      pageSource,
+      /import \{ ProDashboardSection \} from '@\/components\/site\/pro\/ProDashboardSection';/u,
+    );
+    assert.match(pageSource, /<ProDashboardSection \/>/u);
     assert.match(pageSource, /<BentoGridSection variant="pro" \/>/u);
     assert.match(pageSource, /<ProBenefitsFaqSection \/>/u);
-    assert.match(dashboardSource, /DashboardPreview variant="pro"/u);
-    assert.match(previewSource, /variant = 'home'/u);
+    assert.doesNotMatch(pageSource, /DashboardPreview|home\/DashboardSection/u);
+    assert.match(
+      proDashboardSectionSource,
+      /import \{ ProDashboardPreview \} from '.\/ProDashboardPreview';/u,
+    );
+    assert.match(proDashboardSectionSource, /<ProDashboardPreview \/>/u);
+    assert.doesNotMatch(
+      proDashboardSectionSource,
+      /@\/components\/site\/DashboardPreview|<DashboardPreview\b|home\/DashboardSection/u,
+    );
+    assert.doesNotMatch(
+      `${proDashboardSectionSource}\n${proDashboardPreviewSource}`,
+      /['"]use client['"]|\buse[A-Z]\w*\s*\(|\b(?:NAV|PANELS)\b/u,
+    );
+    assert.doesNotMatch(proDashboardPreviewSource, forbiddenPreviewCopy);
+    assert.doesNotMatch(previewSource, /PUBLIC_PRO_CONTENT|variant/u);
     assert.match(bentoSource, /variant = 'home'/u);
+    assert.match(bentoSource, /satisfies Record<PublicProPreviewTileId, ProBentoPresentation>/u);
+    assert.match(bentoSource, /proBentoPresentation\[tile\.id\]/u);
+    assert.doesNotMatch(bentoSource, /proBento(?:Classes|Icons)\[index\]/u);
     assert.match(finalCtaSource, /finalCta \} = PUBLIC_PRO_CONTENT/u);
   });
 

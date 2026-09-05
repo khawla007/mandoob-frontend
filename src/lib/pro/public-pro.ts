@@ -48,6 +48,14 @@ export type PublicProProcessId =
   | 'configured-communication'
   | 'authorization-audit';
 
+export type PublicProPreviewTileId =
+  | 'company-readiness'
+  | 'renewal-context'
+  | 'document-context'
+  | 'assigned-company'
+  | 'activity-context'
+  | 'invoice-context';
+
 export type PublicProFaqId =
   | 'eligibility'
   | 'assignment'
@@ -130,7 +138,7 @@ type PublicProContent = DeepReadonly<{
       title: ApprovedPublicProFact;
       description: ApprovedPublicProFact;
       tiles: readonly {
-        id: string;
+        id: PublicProPreviewTileId;
         eyebrow: ApprovedPublicProFact;
         title: ApprovedPublicProFact;
         preview: IllustrativePublicProFact | UnavailablePublicProFact;
