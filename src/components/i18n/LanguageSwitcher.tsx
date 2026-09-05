@@ -73,11 +73,7 @@ export function LanguageSwitcher({
           }
           aria-busy={pending}
           disabled={pending}
-          className={cn(
-            'gap-2',
-            isPublic && 'language-switcher__trigger--public',
-            className,
-          )}
+          className={cn('gap-2', isPublic && 'language-switcher__trigger--public', className)}
         >
           <Languages className="size-4" />
           <span className={cn(!isPublic && 'hidden sm:inline')}>
@@ -108,10 +104,7 @@ export function LanguageSwitcher({
               onSelect={() => onSelect(loc)}
               disabled={pending}
               data-active={loc === current}
-              className={cn(
-                'cursor-pointer',
-                isPublic && 'language-switcher__item--public',
-              )}
+              className={cn('cursor-pointer', isPublic && 'language-switcher__item--public')}
             >
               {localeLabels[loc]}
             </DropdownMenuRadioItem>

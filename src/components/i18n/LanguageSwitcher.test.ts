@@ -142,19 +142,14 @@ Module._load = function (request, parent, isMain) {
     const label = [...trigger.querySelectorAll('span')].find(
       (element) => element.textContent === 'English',
     )!;
-    const content = container.querySelector<HTMLDivElement>(
-      '.language-switcher__content--public',
-    )!;
+    const content = container.querySelector<HTMLDivElement>('.language-switcher__content--public')!;
 
     assert.match(trigger.className, /language-switcher__trigger--public/u);
     assert.equal(label.textContent, 'English');
     assert.doesNotMatch(label.className, /\bhidden\b/u);
     assert.equal(trigger.querySelectorAll('svg').length, 2);
     assert.ok(content);
-    assert.equal(
-      content.querySelectorAll('.language-switcher__item--public').length,
-      2,
-    );
+    assert.equal(content.querySelectorAll('.language-switcher__item--public').length, 2);
     await act(() => root.unmount());
     container.remove();
   });
