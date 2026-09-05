@@ -1,8 +1,15 @@
-import { FileText, IdCard, LayoutDashboard, Settings } from 'lucide-react';
+import {
+  CalendarClock,
+  FileText,
+  IdCard,
+  LayoutDashboard,
+  Settings,
+  UserRound,
+} from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
 export function buildEmployeeNav(slug: string): ShellNavGroup[] {
-  const base = `/t/${slug}/employee`;
+  const base = `/t/${encodeURIComponent(slug)}/employee`;
   return [
     {
       items: [
@@ -11,6 +18,12 @@ export function buildEmployeeNav(slug: string): ShellNavGroup[] {
           labelFallback: 'Overview',
           href: `${base}/dashboard`,
           icon: LayoutDashboard,
+        },
+        {
+          labelKey: 'profile',
+          labelFallback: 'My profile',
+          href: `${base}/profile`,
+          icon: UserRound,
         },
       ],
     },
@@ -29,6 +42,12 @@ export function buildEmployeeNav(slug: string): ShellNavGroup[] {
           labelFallback: 'Documents',
           href: `${base}/documents`,
           icon: FileText,
+        },
+        {
+          labelKey: 'renewals',
+          labelFallback: 'Renewals',
+          href: `${base}/renewals`,
+          icon: CalendarClock,
         },
       ],
     },

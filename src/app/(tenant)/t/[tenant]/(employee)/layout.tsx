@@ -3,6 +3,8 @@ import { requireRole } from '@/lib/auth/require-role';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import { DashboardLayout } from '@/components/shell/DashboardLayout';
+import { getTranslations } from 'next-intl/server';
+import { employeePortalHref } from '@/lib/data/employee-portal-workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,18 +22,17 @@ export default async function EmployeeLayout({
   if (!tenant) notFound();
   if (session.tenantId !== tenant.id) notFound();
   await requireActiveTenant(tenant.id);
-
-  const initials = (session.email ?? 'E').slice(0, 1).toUpperCase();
+  const t = await getTranslations('employee');
 
   return (
     <DashboardLayout
       navKind="employee"
       navSlug={tenant.slug}
       brand={tenant.name}
-      brandSubtitle="Employee portal"
-      brandHref={`/t/${tenant.slug}/employee/dashboard`}
+      brandSubtitle={t('portalLabel')}
+      brandHref={employeePortalHref(tenant.slug, 'dashboard')}
       brandInitial={tenant.name.slice(0, 1).toUpperCase()}
-      user={{ email: session.email, role: 'employee', initials }}
+      user={{ email: t('common.accountLabel'), role: 'employee', initials: 'E' }}
     >
       {children}
     </DashboardLayout>

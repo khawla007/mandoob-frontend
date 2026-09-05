@@ -59,7 +59,8 @@ function reachesGuard(
         name === 'requireRole' ||
         name === 'requireTenantRouteAccess' ||
         name === 'requireProTenantRouteAccess' ||
-        name === 'requireAuthorizedCustomerLinkedCompanyRead'
+        name === 'requireAuthorizedCustomerLinkedCompanyRead' ||
+        name === 'authorizeEmployeePortalRead'
       ) {
         guarded = true;
         return;
@@ -206,7 +207,8 @@ function isGuardCall(name: string): boolean {
     name === 'requireRole' ||
     name === 'requireTenantRouteAccess' ||
     name === 'requireProTenantRouteAccess' ||
-    name === 'requireAuthorizedCustomerLinkedCompanyRead'
+    name === 'requireAuthorizedCustomerLinkedCompanyRead' ||
+    name === 'authorizeEmployeePortalRead'
   );
 }
 
@@ -508,7 +510,7 @@ test('every direct service-role page and route enters through the tenant route b
     const source = readFileSync(file, 'utf8');
     assert.match(
       source,
-      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead)\(/u,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead|authorizeEmployeePortalRead)\(/u,
       file,
     );
   }
@@ -529,7 +531,7 @@ test('every tenant page or route using a DAL declares an authoritative boundary'
     }
     assert.match(
       source,
-      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead)\(/u,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead|authorizeEmployeePortalRead)\(/u,
       file,
     );
   }

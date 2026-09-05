@@ -19,8 +19,6 @@ export type EmployeeOwnerRow = {
 type EmployeeRow = EmployeeOwnerRow & {
   company_id: string;
   name: string;
-  email: string | null;
-  phone: string | null;
   nationality: string | null;
   passport_no_encrypted: string | null;
   visa_no_encrypted: string | null;
@@ -73,7 +71,7 @@ export type EmployeePortalSummary = {
   eidBucket: ExpiryBucket;
   documentCount: number;
   approvedDocumentCount: number;
-  renewalRemindersEnabled: boolean;
+  renewalRemindersEnabled: boolean | null;
 };
 
 export type EmployeeIdentity = {
@@ -81,16 +79,21 @@ export type EmployeeIdentity = {
   employeeName: string;
   companyName: string | null;
   nationality: string | null;
-  passportNo: string | null;
-  visaNo: string | null;
+  passportMasked: string | null;
+  visaMasked: string | null;
   visaExpiry: string | null;
   visaDaysOut: number | null;
   visaBucket: ExpiryBucket;
-  emiratesId: string | null;
+  emiratesIdMasked: string | null;
   eidExpiry: string | null;
   eidDaysOut: number | null;
   eidBucket: ExpiryBucket;
 };
+
+function maskEmployeeIdentifier(value: string | null): string | null {
+  const normalized = value?.replace(/[^\p{L}\p{N}]/gu, '').trim();
+  return normalized ? `•••• ${normalized.slice(-4)}` : null;
+}
 
 export type EmployeeDocument = {
   id: string;
@@ -151,7 +154,7 @@ async function getOwnedEmployee(actorProfileId: string, tenantId: string): Promi
   const { data, error } = await admin
     .from('employees')
     .select(
-      'id, tenant_id, company_id, profile_id, name, email, phone, nationality, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry, status, company:company_profiles!employees_company_tenant_fk(company_name)',
+      'id, tenant_id, company_id, profile_id, name, nationality, passport_no_encrypted, visa_no_encrypted, visa_expiry, emirates_id_encrypted, eid_expiry, status, company:company_profiles!employees_company_tenant_fk(company_name)',
     )
     .eq('profile_id', actorProfileId)
     .eq('tenant_id', tenantId)
@@ -161,7 +164,7 @@ async function getOwnedEmployee(actorProfileId: string, tenantId: string): Promi
   return data as EmployeeRow;
 }
 
-async function getPreference(employee: EmployeeRow): Promise<boolean> {
+async function getPreference(employee: EmployeeRow): Promise<boolean | null> {
   const admin = createSupabaseServiceRoleClient();
   const { data, error } = await admin
     .from('employee_notification_preferences')
@@ -169,7 +172,7 @@ async function getPreference(employee: EmployeeRow): Promise<boolean> {
     .eq('employee_id', employee.id)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
-  return (data?.renewal_reminders_enabled as boolean | null) ?? true;
+  return (data?.renewal_reminders_enabled as boolean | null) ?? null;
 }
 
 export async function getEmployeePortalSummary(
@@ -234,12 +237,12 @@ export async function getEmployeeIdentity(
     employeeName: employee.name,
     companyName: companyName(employee),
     nationality: employee.nationality,
-    passportNo: decryptOptional(employee.passport_no_encrypted),
-    visaNo: decryptOptional(employee.visa_no_encrypted),
+    passportMasked: maskEmployeeIdentifier(decryptOptional(employee.passport_no_encrypted)),
+    visaMasked: maskEmployeeIdentifier(decryptOptional(employee.visa_no_encrypted)),
     visaExpiry: employee.visa_expiry,
     visaDaysOut,
     visaBucket: expiryBucket(visaDaysOut),
-    emiratesId: decryptOptional(employee.emirates_id_encrypted),
+    emiratesIdMasked: maskEmployeeIdentifier(decryptOptional(employee.emirates_id_encrypted)),
     eidExpiry: employee.eid_expiry,
     eidDaysOut,
     eidBucket: expiryBucket(eidDaysOut),
@@ -323,7 +326,7 @@ export async function getEmployeeDocumentSignedUrl(
 export async function getEmployeeNotificationPreferences(
   actorProfileId: string,
   tenantId: string,
-): Promise<{ renewalRemindersEnabled: boolean }> {
+): Promise<{ renewalRemindersEnabled: boolean | null }> {
   const employee = await getOwnedEmployee(actorProfileId, tenantId);
   return { renewalRemindersEnabled: await getPreference(employee) };
 }
