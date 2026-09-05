@@ -262,7 +262,14 @@ export const CUSTOMER_SIGNAL_ORDER = [
   'notifications',
 ] as const;
 
-export type CustomerPortalRoute = 'overview' | 'documents' | 'meetings' | 'renewals';
+export type CustomerPortalRoute =
+  | 'overview'
+  | 'company'
+  | 'documents'
+  | 'meetings'
+  | 'pro'
+  | 'renewals'
+  | 'settings';
 
 export function buildCustomerPortalHref(tenantSlug: string, route: CustomerPortalRoute): string {
   const base = `/t/${encodeURIComponent(tenantSlug)}/portal`;

@@ -24,6 +24,7 @@ import {
   type CustomerWidgetState,
 } from '@/lib/customer/customer-overview';
 import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
+import { loadCustomerAssignedPro } from '@/lib/data/customer-assigned-pro-loader';
 import { loadCustomerOverview } from '@/lib/data/customer-overview-loader';
 import { formatMoney } from '@/lib/format/money';
 
@@ -85,10 +86,14 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
   const { tenant: slug } = await params;
   const access = await authorizeCustomerLinkedCompanyRead(slug);
   const [t, locale] = await Promise.all([getTranslations('customer.overview'), getLocale()]);
-  const overview = access.kind === 'authorized' ? await loadCustomerOverview(access) : null;
+  const [overview, assignment] =
+    access.kind === 'authorized'
+      ? await Promise.all([loadCustomerOverview(access), loadCustomerAssignedPro(access)])
+      : [null, null];
   const company = access.kind === 'authorized' ? access.company : null;
   const href = (route: Parameters<typeof buildCustomerPortalHref>[1]) =>
     buildCustomerPortalHref(access.tenant.slug, route);
+  const settingsHref = href('settings');
   const generatedAt = new Date();
   const generatedLabel = new Intl.DateTimeFormat(locale, {
     timeZone: 'Asia/Dubai',
@@ -178,6 +183,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
   }
 
   const signalHref: Partial<Record<(typeof CUSTOMER_SIGNAL_ORDER)[number], string>> = {
+    registration: href('company'),
     documents: href('documents'),
     renewals: href('renewals'),
   };
@@ -263,6 +269,9 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               >
                 {t('registrationUnavailable')}
               </p>
+              <Link className="text-primary text-sm font-semibold" href={href('company')}>
+                {t('view')}
+              </Link>
             </CardContent>
           </Card>
 
@@ -505,12 +514,33 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               <CardDescription>{t('assignedPro.description')}</CardDescription>
             </CardHeader>
             <CardContent>
-              {!overview ? (
+              {!assignment ? (
                 <PanelState state={{ kind: 'unavailable' }} t={t} />
+              ) : assignment.kind === 'active' ? (
+                <div className="space-y-2">
+                  <strong className="block">
+                    {assignment.value.fullName ?? t('assignedPro.nameUnavailable')}
+                  </strong>
+                  {assignment.value.title ? (
+                    <span className="text-muted-foreground block text-sm">
+                      {assignment.value.title}
+                    </span>
+                  ) : null}
+                  <p role="status" className="text-muted-foreground text-sm">
+                    {t('assignedPro.channelsUnavailable')}
+                  </p>
+                </div>
               ) : (
-                <PanelState state={overview.assignment} t={t} />
+                <p role="status" className="text-muted-foreground text-sm">
+                  {t(`assignedPro.${assignment.kind}`)}
+                </p>
               )}
-              <DisabledDestination label={t('view')} unavailable={t('states.unavailable')} />
+              <Link
+                className="text-primary mt-3 inline-block text-sm font-semibold"
+                href={href('pro')}
+              >
+                {t('view')}
+              </Link>
             </CardContent>
           </Card>
           <Card className="signal-panel customer-overview__quick-actions">
@@ -524,11 +554,13 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                   [
                     ['documents', FileText],
                     ['renewals', CalendarClock],
+                    ['pro', UserCheck],
+                    ['settings', Settings],
                   ] as const
                 ).map(([route, Icon]) => (
                   <Link
                     key={route}
-                    href={href(route)}
+                    href={route === 'settings' ? settingsHref : href(route)}
                     className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium"
                   >
                     <Icon aria-hidden="true" className="size-4" />
@@ -539,8 +571,6 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
                   [
                     ['payments', CircleDollarSign],
                     ['employees', Users],
-                    ['pro', UserCheck],
-                    ['settings', Settings],
                   ] as const
                 ).map(([route, Icon]) => (
                   <span

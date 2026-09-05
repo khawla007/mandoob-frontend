@@ -250,6 +250,9 @@ test('Customer portal links encode tenant slugs and only expose implemented gene
     '/t/company%20%2F%20%D8%AF%D8%A8%D9%8A/portal/documents',
   );
   assert.equal(buildCustomerPortalHref('acme', 'renewals'), '/t/acme/portal/renewals');
+  assert.equal(buildCustomerPortalHref('acme', 'company'), '/t/acme/portal/company');
+  assert.equal(buildCustomerPortalHref('acme', 'pro'), '/t/acme/portal/pro');
+  assert.equal(buildCustomerPortalHref('acme', 'settings'), '/t/acme/portal/settings');
 });
 
 test('composed actions preserve source error and unavailable truth instead of false empty', () => {

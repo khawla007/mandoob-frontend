@@ -15,10 +15,7 @@ const styles = readFileSync(stylesPath, 'utf8');
 
 test('Customer overview only loads Company data from an authorized linked-Company result', () => {
   assert.match(page, /const access = await authorizeCustomerLinkedCompanyRead\(slug\)/u);
-  assert.match(
-    page,
-    /access\.kind === 'authorized' \? await loadCustomerOverview\(access\) : null/u,
-  );
+  assert.match(page, /access\.kind === 'authorized'[\s\S]*?loadCustomerOverview\(access\)/u);
   assert.doesNotMatch(page, /requireTenantRouteAccess|readSelfCustomer/u);
 });
 
@@ -48,7 +45,10 @@ test('Customer overview owns no fake registration or P2.10 notification/task des
 });
 
 test('Customer overview emits no dead or context-unconsumed destinations', () => {
-  assert.doesNotMatch(page, /href\('(?:company|employees|payments|pro|settings)'/u);
+  for (const route of ['company', 'pro', 'settings']) {
+    assert.match(page, new RegExp(`href\\('${route}'\\)`));
+  }
+  assert.doesNotMatch(page, /href\('(?:employees|payments)'/u);
   assert.doesNotMatch(page, /requestId|invoiceId|\{ focus:/u);
   assert.match(page, /aria-disabled="true"/u);
 });
@@ -79,6 +79,7 @@ test('overview avoids unbounded list helpers and admin-only assignment reads', (
     /listOpenRequestsForCompany|listDocumentsForCompany|listRenewalsForCompany|readCurrentCompanyAssignment/u,
   );
   assert.match(loader, /assignment:\s*null/u);
+  assert.match(page, /loadCustomerAssignedPro\(access\)/u);
   assert.match(loader, /communications:\s*null/u);
   assert.doesNotMatch(loader, /getCommsForCustomer/u);
   assert.match(loader, /\.order\('due_date',[\s\S]*?\.order\('id',[\s\S]*?\.limit\(/u);
