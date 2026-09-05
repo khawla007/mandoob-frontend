@@ -533,6 +533,8 @@
     "themeUseDark": "Use dark theme",
     "languageChanging": "Changing language…",
     "languageChangeFailed": "Language could not be changed. Try again.",
+    "contactEmailLabel": "Email Mandoob at {email}",
+    "contactPhoneLabel": "Call Mandoob at {phone}",
     "footer": {
       "product": "Product",
       "company": "Company",

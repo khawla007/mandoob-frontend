@@ -533,6 +533,8 @@
     "themeUseDark": "استخدام المظهر الداكن",
     "languageChanging": "جارٍ تغيير اللغة…",
     "languageChangeFailed": "تعذّر تغيير اللغة. حاول مجددًا.",
+    "contactEmailLabel": "راسل مندوب عبر البريد الإلكتروني {email}",
+    "contactPhoneLabel": "اتصل بمندوب على الرقم {phone}",
     "footer": {
       "product": "المنتج",
       "company": "الشركة",

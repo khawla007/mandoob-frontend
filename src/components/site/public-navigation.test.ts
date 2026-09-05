@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
+import ar from '@/messages/ar.json';
+import en from '@/messages/en.json';
 import { PUBLIC_NAV_ITEMS, isPublicNavCurrent } from './public-navigation';
 
 const rendererSource = readFileSync(new URL('./PublicNavLinks.tsx', import.meta.url), 'utf8');
@@ -94,6 +96,41 @@ describe('PublicNavLinks renderer contract', () => {
 });
 
 describe('SiteHeader responsive navigation integration', () => {
+  it('renders the shared header frame with a localized contact bar', () => {
+    assert.match(
+      headerSource,
+      /import \{ PublicHeaderFrame \} from ['"]\.\/PublicHeaderFrame['"]/u,
+    );
+    assert.match(headerSource, /<PublicHeaderFrame>/u);
+    assert.match(headerSource, /<div className="public-topbar">/u);
+    assert.match(headerSource, /tSite\('footer\.description'\)/u);
+    assert.match(headerSource, /href="mailto:hello@mandoob\.ae"/u);
+    assert.match(headerSource, /href="tel:\+97145550123"/u);
+    assert.match(headerSource, /<bdi>hello@mandoob\.ae<\/bdi>/u);
+    assert.match(headerSource, /<bdi>\+971 4 555 0123<\/bdi>/u);
+    assert.match(headerSource, /className="public-topbar__separator" aria-hidden="true"/u);
+    assert.match(
+      headerSource,
+      /aria-label=\{tSite\('contactEmailLabel', \{ email: 'hello@mandoob\.ae' \}\)\}/u,
+    );
+    assert.match(
+      headerSource,
+      /aria-label=\{tSite\('contactPhoneLabel', \{ phone: '\+971 4 555 0123' \}\)\}/u,
+    );
+    assert.match(headerSource, /<div className="nav" data-route-progress-anchor>/u);
+    assert.doesNotMatch(headerSource, /<header\b/u);
+  });
+
+  it('localizes the native contact link labels in both message catalogs', () => {
+    for (const [locale, messages] of [
+      ['en', en],
+      ['ar', ar],
+    ] as const) {
+      assert.equal(typeof messages.site.contactEmailLabel, 'string', `${locale} email label`);
+      assert.equal(typeof messages.site.contactPhoneLabel, 'string', `${locale} phone label`);
+    }
+  });
+
   it('maps the shared model exactly once into one localized link array', () => {
     assert.match(
       headerSource,
