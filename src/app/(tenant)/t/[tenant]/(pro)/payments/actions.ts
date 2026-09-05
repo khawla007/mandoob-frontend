@@ -122,6 +122,7 @@ export async function markInvoicePaidAction(args: {
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
     revalidatePath(`/t/${ctx.tenantSlug}/payments/${parsed.invoiceId}`);
     revalidatePath(`/t/${ctx.tenantSlug}/payments/analytics`);
+    revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { paymentId } };
   } catch (err) {
@@ -160,6 +161,7 @@ export async function voidInvoiceAction(args: {
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
     revalidatePath(`/t/${ctx.tenantSlug}/payments/${parsed.invoiceId}`);
     revalidatePath(`/t/${ctx.tenantSlug}/payments/analytics`);
+    revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return { ok: true, data: { invoiceId } };
   } catch (err) {
@@ -216,6 +218,7 @@ export async function issueRefundAction(args: {
     revalidatePath(`/t/${ctx.tenantSlug}/payments`);
     revalidatePath(`/t/${ctx.tenantSlug}/payments/${parsed.invoiceId}`);
     revalidatePath(`/t/${ctx.tenantSlug}/payments/analytics`);
+    revalidatePath(`/t/${ctx.tenantSlug}/company`);
     revalidatePath(`/t/${ctx.tenantSlug}/dashboard`);
     return {
       ok: true,

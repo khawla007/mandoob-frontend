@@ -36,10 +36,13 @@ test('finance analytics only renders evidence-backed assigned-company operationa
 
 test('invoice detail does not expose raw provider, profile, or provider failure identifiers', () => {
   const detail = read(`${base}/[invoiceId]/page.tsx`);
+  const invoices = read('src/lib/data/invoices.ts');
   assert.doesNotMatch(detail, /Customer profile/);
   assert.doesNotMatch(detail, /payment\.failureReason/);
   assert.match(detail, /paymentAttempt\$\{payment\.context\}/);
   assert.match(detail, /formatInvoiceDate/);
+  assert.doesNotMatch(invoices, /select\('id, action, created_at, details'\)/u);
+  assert.doesNotMatch(invoices, /details: a\.details/u);
 });
 
 test('verified payment mutations revalidate the exact invoice and assigned-company analytics route', () => {
@@ -53,6 +56,10 @@ test('verified payment mutations revalidate the exact invoice and assigned-compa
     /revalidatePath\(`\/t\/\$\{ctx\.tenantSlug\}\/payments\/\$\{parsed\.invoiceId\}`\)/,
   );
   assert.match(actions, /revalidatePath\(`\/t\/\$\{ctx\.tenantSlug\}\/payments\/analytics`\)/);
+  assert.equal(
+    actions.match(/revalidatePath\(`\/t\/\$\{ctx\.tenantSlug\}\/company`\)/gu)?.length,
+    4,
+  );
 });
 
 test('payment actions never return raw provider or database exception text', () => {

@@ -61,7 +61,7 @@ export function NewRenewalDialog({ slug, triggerLabel }: { slug: string; trigger
         due_date: dueDate,
       });
       if (!result.ok) {
-        setError(`${result.code}: ${result.error}`);
+        setError(t('renewalActionFailed'));
         return;
       }
       reset();

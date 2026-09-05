@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 
 import { RenewalsTable } from '@/components/pro/RenewalsTable';
 import { RenewalsTimeline } from '@/components/pro/RenewalsTimeline';
+import { NewRenewalDialog } from '@/components/pro/NewRenewalDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
@@ -115,19 +116,15 @@ export default async function RenewalsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('renewals')}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {t('renewalsPageSubtitle', { tenant: company.companyName })}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('renewals')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t('renewalsPageSubtitle', { tenant: company.companyName })}
+          </p>
+        </div>
+        <NewRenewalDialog slug={slug} />
       </div>
-
-      <Card className="signal-panel border-dashed">
-        <CardHeader>
-          <CardTitle className="text-base">{t('renewalMutationsUnavailable')}</CardTitle>
-          <CardDescription>{t('renewalMutationsUnavailableDescription')}</CardDescription>
-        </CardHeader>
-      </Card>
 
       <dl className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {summaries.map((summary) => (
@@ -285,6 +282,7 @@ export default async function RenewalsPage({
           {workspace.rows.length > 0 ? (
             <RenewalsTable
               rows={workspace.rows}
+              slug={slug}
               locale={locale}
               labels={{
                 queue: t('renewalQueue'),

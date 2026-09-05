@@ -90,7 +90,7 @@ export default async function ProPaymentAnalyticsPage({
       </div>
 
       {dashboard.hasMixedCurrencies ? (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+        <p className="rounded-md border border-[var(--signal-warning)]/40 bg-[var(--signal-sand-soft)] px-3 py-2 text-sm">
           {t('paymentMixedCurrencyNotice', {
             currencies: dashboard.excludedCurrencyCodes.join(', '),
           })}

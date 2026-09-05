@@ -2,6 +2,19 @@ import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 const PANEL_LIMIT = 50;
+const COMPANY_ACTIVITY_ACTIONS = [
+  'invoice_created',
+  'invoice_voided',
+  'invoice_marked_paid',
+  'payment_initiated',
+  'payment_succeeded',
+  'payment_failed',
+  'refund_issued',
+  'reconciled',
+  'bulk_imported',
+  'service_case_created',
+  'service_case_updated',
+] as const;
 
 export type CompanyDocumentRow = {
   id: string;
@@ -295,6 +308,7 @@ async function loadCompanyActivity(
     .select('id, action, source, created_at')
     .eq('tenant_id', tenantId)
     .contains('details', { company_id: companyId })
+    .in('action', COMPANY_ACTIVITY_ACTIONS)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(PANEL_LIMIT);

@@ -54,6 +54,7 @@ async function resolveAndAuthorize(slug: string) {
       ...request,
     },
     tenant,
+    companyId: company.id,
   };
 }
 
@@ -66,6 +67,7 @@ function emptyToNull(v: string | undefined | null): string | null {
 async function logSettingsUpdate(
   ctx: { caller: { id: string }; ip: string; userAgent: string | null },
   tenantId: string,
+  companyId: string,
   section: 'branding' | 'contact' | 'smtp' | 'whatsapp',
   changedFields: string[],
 ) {
@@ -75,7 +77,7 @@ async function logSettingsUpdate(
     actor_id: ctx.caller.id,
     action: 'updated',
     source: 'self_serve',
-    details: { section, changed_fields: changedFields },
+    details: { company_id: companyId, section, changed_fields: changedFields },
   });
   await recordAuthEvent({
     kind: 'tenant_self_updated',
@@ -83,7 +85,7 @@ async function logSettingsUpdate(
     tenantId,
     ip: ctx.ip,
     userAgent: ctx.userAgent,
-    details: { section, changed_fields: changedFields },
+    details: { company_id: companyId, section, changed_fields: changedFields },
   }).catch((err) => console.error('recordAuthEvent failed', err));
 }
 
@@ -109,7 +111,7 @@ export async function updateBrandingAction(
     if (!parsed.success) {
       return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
-    const { ctx, tenant } = await resolveAndAuthorize(slug);
+    const { ctx, tenant, companyId } = await resolveAndAuthorize(slug);
     const input: BrandingInput = parsed.data;
 
     const patch: Record<string, string | null> = {
@@ -127,8 +129,9 @@ export async function updateBrandingAction(
       return { ok: false, errorKey: 'saveFailed', code: 'INTERNAL' };
     }
 
-    await logSettingsUpdate(ctx, tenant.id, 'branding', Object.keys(patch));
+    await logSettingsUpdate(ctx, tenant.id, companyId, 'branding', Object.keys(patch));
     revalidatePath(`/t/${slug}/settings`);
+    revalidatePath(`/t/${slug}`, 'layout');
     return { ok: true, data: undefined };
   } catch (e) {
     return actionFailure(e, 'saveFailed');
@@ -141,7 +144,7 @@ export async function updateContactAction(slug: string, raw: unknown): Promise<A
     if (!parsed.success) {
       return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
-    const { ctx, tenant } = await resolveAndAuthorize(slug);
+    const { ctx, tenant, companyId } = await resolveAndAuthorize(slug);
     const input: ContactInput = parsed.data;
 
     const patch = {
@@ -158,8 +161,9 @@ export async function updateContactAction(slug: string, raw: unknown): Promise<A
       return { ok: false, errorKey: 'saveFailed', code: 'INTERNAL' };
     }
 
-    await logSettingsUpdate(ctx, tenant.id, 'contact', Object.keys(patch));
+    await logSettingsUpdate(ctx, tenant.id, companyId, 'contact', Object.keys(patch));
     revalidatePath(`/t/${slug}/settings`);
+    revalidatePath(`/t/${slug}`, 'layout');
     return { ok: true, data: undefined };
   } catch (e) {
     return actionFailure(e, 'saveFailed');
@@ -172,7 +176,7 @@ export async function updateSmtpAction(slug: string, raw: unknown): Promise<Acti
     if (!parsed.success) {
       return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
-    const { ctx, tenant } = await resolveAndAuthorize(slug);
+    const { ctx, tenant, companyId } = await resolveAndAuthorize(slug);
     const input: SmtpInput = parsed.data;
 
     const admin = createSupabaseServiceRoleClient();
@@ -216,8 +220,9 @@ export async function updateSmtpAction(slug: string, raw: unknown): Promise<Acti
 
     const changed = ['host', 'port', 'username', 'from_address', 'enabled'];
     if (input.password?.trim()) changed.push('password');
-    await logSettingsUpdate(ctx, tenant.id, 'smtp', changed);
+    await logSettingsUpdate(ctx, tenant.id, companyId, 'smtp', changed);
     revalidatePath(`/t/${slug}/settings`);
+    revalidatePath(`/t/${slug}`, 'layout');
     return { ok: true, data: undefined };
   } catch (e) {
     return actionFailure(e, 'saveFailed');
@@ -233,7 +238,7 @@ export async function updateWhatsAppAction(
     if (!parsed.success) {
       return { ok: false, errorKey: 'validation', code: 'VALIDATION_FAILED' };
     }
-    const { ctx, tenant } = await resolveAndAuthorize(slug);
+    const { ctx, tenant, companyId } = await resolveAndAuthorize(slug);
     const input: WhatsAppInput = parsed.data;
 
     const admin = createSupabaseServiceRoleClient();
@@ -275,8 +280,9 @@ export async function updateWhatsAppAction(
 
     const changed = ['business_account_id', 'phone_number_id', 'enabled'];
     if (input.access_token?.trim()) changed.push('access_token');
-    await logSettingsUpdate(ctx, tenant.id, 'whatsapp', changed);
+    await logSettingsUpdate(ctx, tenant.id, companyId, 'whatsapp', changed);
     revalidatePath(`/t/${slug}/settings`);
+    revalidatePath(`/t/${slug}`, 'layout');
     return { ok: true, data: undefined };
   } catch (e) {
     return actionFailure(e, 'saveFailed');

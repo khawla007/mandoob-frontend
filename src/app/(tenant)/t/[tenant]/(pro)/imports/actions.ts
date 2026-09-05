@@ -324,7 +324,7 @@ async function readJob(
 ) {
   const { data, error } = await admin
     .from('bulk_import_jobs')
-    .select('*')
+    .select('id, kind, status, company_id, storage_path, errors')
     .eq('tenant_id', tenantId)
     .eq('company_id', companyId)
     .eq('id', jobId)

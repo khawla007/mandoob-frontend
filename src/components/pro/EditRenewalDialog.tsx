@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { updateRenewalAction } from '@/app/(tenant)/t/[tenant]/(pro)/renewals/actions';
-import type { RenewalRow, RenewalStatus } from '@/lib/data/renewals';
+import type { RenewalStatus } from '@/lib/data/renewals';
+import type { RenewalWorkspaceRow } from '@/lib/data/pro-renewal-workspace';
 
 const EDITABLE_STATUSES: RenewalStatus[] = [
   'upcoming',
@@ -32,14 +34,6 @@ const EDITABLE_STATUSES: RenewalStatus[] = [
   'cancelled',
 ];
 
-const STATUS_LABEL: Record<RenewalStatus, string> = {
-  upcoming: 'Upcoming',
-  due_soon: 'Due soon',
-  overdue: 'Overdue',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};
-
 export function EditRenewalDialog({
   slug,
   row,
@@ -47,7 +41,7 @@ export function EditRenewalDialog({
   onOpenChange,
 }: {
   slug: string;
-  row: RenewalRow;
+  row: RenewalWorkspaceRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -68,15 +62,17 @@ function EditRenewalForm({
   onClose,
 }: {
   slug: string;
-  row: RenewalRow;
+  row: RenewalWorkspaceRow;
   onClose: () => void;
 }) {
   const router = useRouter();
+  const t = useTranslations('pro');
+  const common = useTranslations('common');
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   const [label, setLabel] = useState(row.label);
-  const [dueDate, setDueDate] = useState(row.dueDate);
+  const [dueDate, setDueDate] = useState(row.dueDate ?? '');
   const [status, setStatus] = useState<RenewalStatus>(row.status);
 
   const isLockedAutoCancelled = row.source === 'license_backfill' && row.status === 'cancelled';
@@ -95,7 +91,7 @@ function EditRenewalForm({
     startTransition(async () => {
       const result = await updateRenewalAction(slug, row.id, patch);
       if (!result.ok) {
-        setError(`${result.code}: ${result.error}`);
+        setError(t('renewalActionFailed'));
         return;
       }
       onClose();
@@ -106,24 +102,24 @@ function EditRenewalForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Edit renewal</DialogTitle>
+        <DialogTitle>{t('renewalEdit')}</DialogTitle>
         <DialogDescription>
           {row.source === 'license_backfill'
-            ? 'Auto-row from company_profiles.license_expiry. Status edits are allowed but clearing license_expiry on the company profile will resurrect this row.'
-            : 'Update label, due date, or status. Notification schedule recomputes if the due date changes.'}
+            ? t('renewalEditAutoDescription')
+            : t('renewalEditDescription')}
         </DialogDescription>
       </DialogHeader>
 
       <form className="space-y-4" onSubmit={onSubmit}>
         {error && (
           <Alert variant="destructive">
-            <AlertTitle>Could not save</AlertTitle>
+            <AlertTitle>{t('renewalActionFailed')}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         <div className="grid gap-2">
-          <Label htmlFor="edit-label">Label</Label>
+          <Label htmlFor="edit-label">{t('renewalLabel')}</Label>
           <Input
             id="edit-label"
             required
@@ -135,7 +131,7 @@ function EditRenewalForm({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="edit-due">Due date</Label>
+          <Label htmlFor="edit-due">{t('renewalDue')}</Label>
           <Input
             id="edit-due"
             type="date"
@@ -146,7 +142,7 @@ function EditRenewalForm({
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="edit-status">Status</Label>
+          <Label htmlFor="edit-status">{t('renewalStatus')}</Label>
           <Select
             value={status}
             onValueChange={(v) => setStatus(v as RenewalStatus)}
@@ -158,27 +154,29 @@ function EditRenewalForm({
             <SelectContent>
               {EDITABLE_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {STATUS_LABEL[s]}
+                  {t(`renewalStatus${statusKeySuffix(s)}`)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {isLockedAutoCancelled && (
-            <p className="text-muted-foreground text-xs">
-              Re-set the company profile&apos;s license_expiry to reactivate this renewal.
-            </p>
+            <p className="text-muted-foreground text-xs">{t('renewalAutoLockedHint')}</p>
           )}
         </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
+            {common('cancel')}
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save changes'}
+            {pending ? common('saving') : common('save')}
           </Button>
         </DialogFooter>
       </form>
     </>
   );
+}
+
+function statusKeySuffix(status: RenewalStatus) {
+  return status === 'due_soon' ? 'DueSoon' : `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 }

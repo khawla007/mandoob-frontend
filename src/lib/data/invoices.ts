@@ -213,7 +213,7 @@ export type InvoiceDetail = ProInvoiceRow & {
     createdAt: string;
     currency: string;
   }[];
-  audit: { id: string; action: string; createdAt: string; details: unknown }[];
+  audit: { id: string; action: string; createdAt: string }[];
   sections: {
     payments: 'available' | 'unavailable';
     refunds: 'available' | 'unavailable';
@@ -362,7 +362,7 @@ export async function getInvoiceDetailForTenant(
       .order('created_at', { ascending: false }),
     admin
       .from('tenant_audit_log')
-      .select('id, action, created_at, details')
+      .select('id, action, created_at')
       .eq('tenant_id', tenantId)
       .contains('details', { invoice_id: invoiceId })
       .order('created_at', { ascending: false })
@@ -451,7 +451,6 @@ export async function getInvoiceDetailForTenant(
       id: String(a.id),
       action: a.action as string,
       createdAt: a.created_at as string,
-      details: a.details,
     })),
     sections,
   };

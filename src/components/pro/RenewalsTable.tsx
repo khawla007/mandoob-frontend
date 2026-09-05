@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { RenewalRowActions } from '@/components/pro/RenewalRowActions';
 import type { RenewalStatus, RenewalType } from '@/lib/data/renewals';
 import type { RenewalWorkspaceRow } from '@/lib/data/pro-renewal-workspace';
 
@@ -29,10 +30,12 @@ function dueText(row: RenewalWorkspaceRow, labels: RenewalsTableLabels): string 
 
 export function RenewalsTable({
   rows,
+  slug,
   labels,
   locale,
 }: {
   rows: RenewalWorkspaceRow[];
+  slug: string;
   labels: RenewalsTableLabels;
   locale: string;
 }) {
@@ -87,8 +90,8 @@ export function RenewalsTable({
                   {labels.sourceValues[row.source]}
                 </span>
               </td>
-              <td className="text-muted-foreground px-3 py-3 text-end text-xs">
-                {labels.actionsUnavailable}
+              <td className="px-3 py-3 text-end">
+                <RenewalRowActions row={row} slug={slug} />
               </td>
             </tr>
           ))}

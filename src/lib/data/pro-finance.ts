@@ -199,6 +199,7 @@ export function calculateProFinanceDashboard(args: {
   const currentMonthNetCollectedMinor = currentMonthPaymentsMinor - currentMonthRefundsMinor;
 
   const reportingInvoices = eligibleInvoices.filter((row) => row.currency === currency);
+  const reportingStatusInvoices = invoices.filter((row) => row.currency === currency);
   const reportingPayments = payments.filter(
     (row) =>
       row.currency === currency && invoiceById.get(row.invoice_id)?.currency === row.currency,
@@ -307,7 +308,7 @@ export function calculateProFinanceDashboard(args: {
     });
 
   const invoiceStatus = breakdown(
-    reportingInvoices,
+    reportingStatusInvoices,
     (invoice) => invoice.status,
     (invoice) => invoice.amount_minor,
     currency,

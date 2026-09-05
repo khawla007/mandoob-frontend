@@ -81,6 +81,16 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
         created_at: '2026-05-04T08:00:00.000Z',
       },
       {
+        id: 'invoice-draft',
+        tenant_id: tenantId,
+        company_id: 'client-1',
+        amount_minor: 88_000,
+        currency: 'AED',
+        status: 'draft',
+        due_at: null,
+        created_at: '2026-05-04T09:00:00.000Z',
+      },
+      {
         id: 'invoice-other',
         tenant_id: 'tenant-b',
         company_id: 'client-other',
@@ -236,6 +246,15 @@ test('calculateProFinanceDashboard excludes cross-tenant rows and computes PRO f
   assert.equal(dashboard.collectionRate, 76.66666666666667);
   assert.equal(dashboard.totalRevenueCollected, 'AED\u00a0115.00');
   assert.equal(dashboard.outstandingReceivables, 'AED\u00a050.00');
+  assert.deepEqual(
+    dashboard.invoiceStatus
+      .filter((row) => row.key === 'draft' || row.key === 'void')
+      .map((row) => ({ key: row.key, count: row.count, amountMinor: row.amountMinor })),
+    [
+      { key: 'draft', count: 1, amountMinor: 88_000 },
+      { key: 'void', count: 1, amountMinor: 99_000 },
+    ],
+  );
 
   assert.deepEqual(
     dashboard.companyRevenue.map((row) => ({

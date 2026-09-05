@@ -28,6 +28,11 @@ test('settings mutations verify the active assigned company before service-role 
   assert.ok(authorization >= 0 && authorization < active);
   assert.ok(active < assignment);
   assert.ok(assignment < serviceRole);
+  assert.match(
+    settingsActions,
+    /details: \{ company_id: companyId, section, changed_fields: changedFields \}/u,
+  );
+  assert.equal(settingsActions.match(/revalidatePath\(`\/t\/\$\{slug\}`, 'layout'\)/gu)?.length, 4);
 });
 
 test('billing has no local plan catalog, pricing, checkout, portal, or cancellation controls', () => {
