@@ -114,6 +114,15 @@ if (reactServer) {
   });
 }
 
+describe('PRO route metadata', () => {
+  it('publishes a route-specific title, description, and canonical URL', () => {
+    assert.match(pageSource, /export const metadata: Metadata = \{/u);
+    assert.match(pageSource, /title: 'Mandoob for PROs'/u);
+    assert.match(pageSource, /description:\s*'[^']*one assigned Company[^']*'/u);
+    assert.match(pageSource, /alternates: \{ canonical: 'https:\/\/mandoob\.ae\/pro' \}/u);
+  });
+});
+
 describe('centralized PRO content contract', () => {
   it('keeps compact and dark PRO content on AA text/surface tokens', () => {
     assert.match(

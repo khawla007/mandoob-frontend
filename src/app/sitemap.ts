@@ -52,6 +52,7 @@ export function buildPublicSitemap({
     '/estimate',
     '/apply',
     '/pricing',
+    '/pro',
     '/knowledge-base',
     '/blog',
     '/mainland',

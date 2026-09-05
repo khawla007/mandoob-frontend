@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { PublicConversionBand } from '@/components/site/about-contact/PublicConversionBand';
@@ -6,6 +7,12 @@ import {
   formatPublicPrice,
   resolvePublicComparisonStatus,
 } from '@/lib/pricing/public-pricing';
+
+export const metadata: Metadata = {
+  title: 'Mandoob Pricing',
+  description: 'Compare Mandoob workspace plan concepts for a PRO operating one assigned Company.',
+  alternates: { canonical: 'https://mandoob.ae/pricing' },
+};
 
 const cadenceLabel = (cadence: 'monthly' | 'annual') =>
   `${cadence.charAt(0).toUpperCase()}${cadence.slice(1)}`;

@@ -49,6 +49,13 @@ if (reactServer) {
 }
 
 describe('pricing hero and tier cards', () => {
+  it('publishes route-specific title, description, and canonical metadata', () => {
+    assert.match(pageSource, /export const metadata: Metadata = \{/u);
+    assert.match(pageSource, /title: 'Mandoob Pricing'/u);
+    assert.match(pageSource, /description: '[^']*one assigned Company[^']*'/u);
+    assert.match(pageSource, /alternates: \{ canonical: 'https:\/\/mandoob\.ae\/pricing' \}/u);
+  });
+
   renderIt(
     'renders one breadcrumb hero with the exact truthful actions and billing context',
     async () => {

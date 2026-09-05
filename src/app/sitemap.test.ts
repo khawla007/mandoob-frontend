@@ -21,6 +21,7 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
       '/estimate',
       '/apply',
       '/pricing',
+      '/pro',
       '/knowledge-base',
       '/blog',
       '/mainland',
