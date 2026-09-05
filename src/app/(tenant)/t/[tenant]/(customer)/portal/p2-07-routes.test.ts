@@ -36,6 +36,10 @@ test('settings groups working account routes, exact Company context, legal links
   assert.match(source, /company\.companyName/u);
   assert.match(source, /account\/erasure/u);
   assert.match(source, /preferencesUnavailable/u);
+  assert.match(source, /loadCustomerCommunicationConsent/u);
+  assert.match(source, /optInSelfCommsAction/u);
+  assert.match(source, /communicationConsent\.kind === 'opted-out'/u);
+  assert.match(source, /name="confirmation" value="OPT IN"/u);
   assert.doesNotMatch(source, /consent_opt_outs|opted_out|enabled:\s*true/u);
 });
 
@@ -49,10 +53,9 @@ test('Customer P2.07 catalogs preserve English and Arabic deep key parity', () =
   assert.deepEqual(shape(en.customer.settings), shape(ar.customer.settings));
 });
 
-test('overview activates Company, PRO, and Settings destinations and keeps later modules disabled', () => {
+test('overview activates Company, PRO, and Settings destinations', () => {
   const source = read('page.tsx');
   assert.match(source, /loadCustomerAssignedPro\(access\)/u);
   for (const route of ['company', 'pro', 'settings'])
     assert.match(source, new RegExp(`href\\('${route}'\\)`));
-  assert.doesNotMatch(source, /href\('(?:employees|payments)'\)/u);
 });

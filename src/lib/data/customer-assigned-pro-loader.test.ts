@@ -65,6 +65,7 @@ test('active assignment exposes only identity and keeps contact unavailable with
           id: 'pro-1',
           tenant_id: 'tenant-1',
           role: 'pro',
+          status: 'active',
           full_name: 'A PRO',
           title: 'Advisor',
         },
@@ -76,6 +77,31 @@ test('active assignment exposes only identity and keeps contact unavailable with
     kind: 'active',
     value: { fullName: 'A PRO', title: 'Advisor', contact: { kind: 'unavailable' } },
   });
+});
+
+test('inactive and suspended assigned profiles fail closed', async () => {
+  for (const status of ['inactive', 'suspended']) {
+    const value = await loadCustomerAssignedPro(access, {
+      store: store({
+        activeAssignments: async () => ({
+          data: [{ id: 'assignment-1', pro_profile_id: 'pro-1' }],
+          error: null,
+        }),
+        assignedProfile: async () => ({
+          data: {
+            id: 'pro-1',
+            tenant_id: 'tenant-1',
+            role: 'pro',
+            status,
+            full_name: 'Unavailable PRO',
+            title: 'Advisor',
+          },
+          error: null,
+        }),
+      }),
+    });
+    assert.deepEqual(value, { kind: 'error' });
+  }
 });
 
 test('assignment store scopes reads and detects duplicate active rows deterministically without admin RPC', async () => {
@@ -117,5 +143,9 @@ test('assignment store scopes reads and detects duplicate active rows determinis
   assert.ok(assignment.calls.some((call) => call[0] === 'order' && call[1] === 'id'));
   assert.ok(assignment.calls.some((call) => call[0] === 'limit' && call[1] === 2));
   const profileProjection = String(traces.at(-1)?.calls.find((call) => call[0] === 'select')?.[1]);
-  assert.equal(profileProjection, 'id, tenant_id, role, full_name, title');
+  assert.equal(profileProjection, 'id, tenant_id, role, status, full_name, title');
+  const profile = traces.at(-1)!;
+  assert.ok(
+    profile.calls.some((call) => call[0] === 'eq' && call[1] === 'status' && call[2] === 'active'),
+  );
 });

@@ -7,6 +7,8 @@ import type { CustomerCompanyAccess } from './customer-company-access';
 
 type QueryResult<T> = { data: T | null; error: unknown };
 
+export const CUSTOMER_COMPANY_COLLECTION_LIMIT = 100;
+
 type LegalRow = {
   company_name: string;
   display_name: string | null;
@@ -97,7 +99,8 @@ export function createCustomerCompanyDisplaySupabaseStore(
         .eq('tenant_id', tenantId)
         .eq('company_id', companyId)
         .order('sort_order', { ascending: true })
-        .order('id', { ascending: true }),
+        .order('id', { ascending: true })
+        .limit(CUSTOMER_COMPANY_COLLECTION_LIMIT + 1),
     activities: async (tenantId, companyId) =>
       await client
         .from('company_registered_activities')
@@ -105,7 +108,8 @@ export function createCustomerCompanyDisplaySupabaseStore(
         .eq('tenant_id', tenantId)
         .eq('company_id', companyId)
         .order('sort_order', { ascending: true })
-        .order('id', { ascending: true }),
+        .order('id', { ascending: true })
+        .limit(CUSTOMER_COMPANY_COLLECTION_LIMIT + 1),
     office: async (tenantId, companyId) =>
       await client
         .from('company_office_details')
@@ -151,6 +155,25 @@ async function state<T, U>(
   }
 }
 
+async function boundedCollectionState<T, U>(
+  source: Promise<QueryResult<T[]>>,
+  map: (value: T[]) => U,
+): Promise<CustomerWidgetState<U>> {
+  try {
+    const result = await source;
+    if (result.error) return { kind: 'error' };
+    if (!result.data) return { kind: 'empty', value: map([]) };
+    if (result.data.length > CUSTOMER_COMPANY_COLLECTION_LIMIT) {
+      return { kind: 'unavailable' };
+    }
+    return result.data.length === 0
+      ? { kind: 'empty', value: map([]) }
+      : { kind: 'ready', value: map(result.data) };
+  } catch {
+    return { kind: 'error' };
+  }
+}
+
 export async function loadCustomerCompanyDisplay(
   access: Extract<CustomerCompanyAccess, { kind: 'authorized' }>,
   dependencies: { store?: CustomerCompanyDisplayStore } = {},
@@ -177,7 +200,7 @@ export async function loadCustomerCompanyDisplay(
       tradeLicenseNumber: row.trade_license_no,
       licenseExpiry: row.license_expiry,
     })),
-    state(store.shareholders(tenantId, companyId), (rows) =>
+    boundedCollectionState(store.shareholders(tenantId, companyId), (rows) =>
       rows.map((row) => ({
         id: row.id,
         kind: row.kind,
@@ -190,7 +213,7 @@ export async function loadCustomerCompanyDisplay(
         ),
       })),
     ),
-    state(store.activities(tenantId, companyId), (rows) =>
+    boundedCollectionState(store.activities(tenantId, companyId), (rows) =>
       rows.map((row) => ({
         id: row.id,
         code: row.activity_code,

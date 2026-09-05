@@ -10,6 +10,7 @@ type ProfileRow = {
   id: string;
   tenant_id: string | null;
   role: string;
+  status: string;
   full_name: string | null;
   title: string | null;
 };
@@ -61,10 +62,11 @@ export function createCustomerAssignedProSupabaseStore(
     assignedProfile: async (tenantId, profileId) =>
       await client
         .from('profiles')
-        .select('id, tenant_id, role, full_name, title')
+        .select('id, tenant_id, role, status, full_name, title')
         .eq('tenant_id', tenantId)
         .eq('id', profileId)
         .eq('role', 'pro')
+        .eq('status', 'active')
         .maybeSingle(),
   } as CustomerAssignedProStore;
 }
@@ -92,7 +94,8 @@ export async function loadCustomerAssignedPro(
       !profile.data ||
       profile.data.id !== assignment.pro_profile_id ||
       profile.data.tenant_id !== tenantId ||
-      profile.data.role !== 'pro'
+      profile.data.role !== 'pro' ||
+      profile.data.status !== 'active'
     ) {
       return { kind: 'error' };
     }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  CUSTOMER_COMPANY_COLLECTION_LIMIT,
   createCustomerCompanyDisplaySupabaseStore,
   loadCustomerCompanyDisplay,
   type CustomerCompanyDisplayStore,
@@ -86,6 +87,48 @@ test('Company display sources settle independently and mask only accepted last-f
   assert.deepEqual(display.readiness, { kind: 'unavailable' });
 });
 
+test('Company collections fail closed when the bounded read proves overflow', async () => {
+  const shareholder = (index: number) => ({
+    id: `shareholder-${index}`,
+    kind: 'individual' as const,
+    full_name: `Person ${index}`,
+    legal_name: null,
+    nationality_code: 'AE',
+    country_of_incorporation: null,
+    ownership_percent: 1,
+    passport_no_last4: null,
+    registration_no_last4: null,
+  });
+  const activity = (index: number) => ({
+    id: `activity-${index}`,
+    activity_code: String(index),
+    activity_name: `Activity ${index}`,
+    authority_name: 'Authority',
+    is_primary: index === 0,
+  });
+  const display = await loadCustomerCompanyDisplay(access, {
+    store: {
+      legalIdentity: async () => result(null),
+      shareholders: async () =>
+        result(
+          Array.from({ length: CUSTOMER_COMPANY_COLLECTION_LIMIT + 1 }, (_, i) => shareholder(i)),
+        ),
+      activities: async () =>
+        result(
+          Array.from({ length: CUSTOMER_COMPANY_COLLECTION_LIMIT + 1 }, (_, i) => activity(i)),
+        ),
+      office: async () => result(null),
+      establishment: async () => result(null),
+      bank: async () => result(null),
+      lifecycle: async () => result(null),
+      onboarding: async () => result(null),
+    },
+  });
+
+  assert.deepEqual(display.shareholders, { kind: 'unavailable' });
+  assert.deepEqual(display.activities, { kind: 'unavailable' });
+});
+
 test('every Company display query binds tenant and Company with safe projections', async () => {
   const traces: Array<{ table: string; calls: Array<[string, ...unknown[]]> }> = [];
   const client = {
@@ -132,6 +175,21 @@ test('every Company display query binds tenant and Company with safe projections
     assert.doesNotMatch(
       projection,
       /encrypted|hash|swift_bic(?:,|$)|passport_no(?!_last4)|registration_no(?!_last4)|account_number(?!_last4)|iban(?!_last4)/u,
+    );
+  }
+  for (const table of ['company_shareholders', 'company_registered_activities']) {
+    const trace = traces.find((candidate) => candidate.table === table)!;
+    assert.deepEqual(
+      trace.calls.filter((call) => call[0] === 'order'),
+      [
+        ['order', 'sort_order', { ascending: true }],
+        ['order', 'id', { ascending: true }],
+      ],
+    );
+    assert.ok(
+      trace.calls.some(
+        (call) => call[0] === 'limit' && call[1] === CUSTOMER_COMPANY_COLLECTION_LIMIT + 1,
+      ),
     );
   }
 });
