@@ -119,8 +119,9 @@ describe('SiteHeader responsive navigation integration', () => {
     assert.match(headerSource, /export async function SiteHeader/u);
     assert.match(headerSource, /<PublicThemeToggle\s*\/>/u);
     assert.doesNotMatch(headerSource, /components\/admin\/ThemeToggle|<ThemeToggle/u);
+    assert.match(headerSource, /getAuthoritativeSessionProfile/u);
+    assert.doesNotMatch(headerSource, /\bgetSessionProfile\b/u);
     for (const behavior of [
-      'getSessionProfile',
       'getDisplayName',
       'getCustomerWorkspaceSlug',
       'resolveRoleHome',

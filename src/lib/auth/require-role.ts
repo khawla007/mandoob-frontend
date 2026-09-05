@@ -20,6 +20,11 @@ type PlatformClient = {
     args: { p_actor_id: string },
   ): Promise<{ data: string | null; error: { message?: string } | null }>;
 };
+type AuthoritativeSessionDeps = {
+  getSession?: () => Promise<SessionProfile | null>;
+  supabase?: PlatformClient;
+  allowedRoles?: Role[];
+};
 type PlatformOperatorDeps = {
   requireSession?: () => Promise<SessionProfile>;
   supabase?: PlatformClient;
@@ -46,12 +51,12 @@ export async function requireSession(): Promise<SessionProfile> {
   return session;
 }
 
-export async function resolveAuthoritativeRole(
-  roles: Role[],
-  deps: RoleGuardDeps = {},
-): Promise<SessionProfile> {
-  const session = await (deps.requireSession ?? requireSession)();
-  if (!z.string().uuid().safeParse(session.id).success) return denyPlatformAccess(deps);
+export async function getAuthoritativeSessionProfile(
+  deps: AuthoritativeSessionDeps = {},
+): Promise<SessionProfile | null> {
+  const session = await (deps.getSession ?? getSessionProfile)();
+  if (!session || !z.string().uuid().safeParse(session.id).success) return null;
+
   const admin = deps.supabase ?? (createSupabaseServiceRoleClient() as unknown as PlatformClient);
   const { data: profile, error } = await admin
     .from('profiles')
@@ -59,35 +64,49 @@ export async function resolveAuthoritativeRole(
     .eq('id', session.id)
     .maybeSingle();
   if (error || !profile || profile.status !== 'active' || typeof profile.role !== 'string') {
-    return denyPlatformAccess(deps);
+    return null;
   }
 
-  const allowed = new Set<string>(roles);
-  if (allowed.has('admin') || allowed.has('super_admin')) {
-    allowed.add('admin');
-    allowed.add('super_admin');
+  if (deps.allowedRoles) {
+    const allowed = new Set<string>(deps.allowedRoles);
+    if (allowed.has('admin') || allowed.has('super_admin')) {
+      allowed.add('admin');
+      allowed.add('super_admin');
+    }
+    if (!allowed.has(profile.role)) return null;
   }
-  if (!allowed.has(profile.role)) return denyPlatformAccess(deps);
 
   if (profile.role === 'admin' || profile.role === 'super_admin') {
-    if (profile.tenant_id !== null) return denyPlatformAccess(deps);
-    return { ...session, role: profile.role, tenantId: null };
+    return profile.tenant_id === null ? { ...session, role: profile.role, tenantId: null } : null;
   }
   if (profile.role === 'customer' || profile.role === 'employee') {
-    if (!z.string().uuid().safeParse(profile.tenant_id).success) return denyPlatformAccess(deps);
-    return { ...session, role: profile.role, tenantId: profile.tenant_id as string };
+    return z.string().uuid().safeParse(profile.tenant_id).success
+      ? { ...session, role: profile.role, tenantId: profile.tenant_id as string }
+      : null;
   }
   if (profile.role === 'pro') {
     const { data: tenantId, error: liveProError } = await admin.rpc(
       'read_authoritative_pro_tenant',
       { p_actor_id: session.id },
     );
-    if (liveProError || !z.string().uuid().safeParse(tenantId).success) {
-      return denyPlatformAccess(deps);
-    }
-    return { ...session, role: 'pro', tenantId: tenantId as string };
+    return !liveProError && z.string().uuid().safeParse(tenantId).success
+      ? { ...session, role: 'pro', tenantId: tenantId as string }
+      : null;
   }
-  return denyPlatformAccess(deps);
+  return null;
+}
+
+export async function resolveAuthoritativeRole(
+  roles: Role[],
+  deps: RoleGuardDeps = {},
+): Promise<SessionProfile> {
+  const session = await getAuthoritativeSessionProfile({
+    getSession: deps.requireSession ?? requireSession,
+    supabase: deps.supabase,
+    allowedRoles: roles,
+  });
+  if (!session) return denyPlatformAccess(deps);
+  return session;
 }
 
 export async function requireRole(...roles: Role[]): Promise<SessionProfile> {

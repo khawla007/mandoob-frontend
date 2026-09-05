@@ -1,7 +1,7 @@
 import 'server-only';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { getSessionProfile } from '@/lib/auth/require-user';
+import { getAuthoritativeSessionProfile } from '@/lib/auth/require-role';
 import { resolveRoleHome } from '@/lib/auth/role-home';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
@@ -52,7 +52,7 @@ async function getCustomerWorkspaceSlug(tenantId: string | null): Promise<string
 
 export async function SiteHeader() {
   const [session, tAuth, tSite] = await Promise.all([
-    getSessionProfile(),
+    getAuthoritativeSessionProfile(),
     getTranslations('auth'),
     getTranslations('site'),
   ]);

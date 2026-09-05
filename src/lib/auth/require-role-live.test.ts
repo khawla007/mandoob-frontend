@@ -123,3 +123,36 @@ test('customer and employee require active authoritative tenant state', async ()
     await assert.rejects(() => resolveAuthoritativeRole([role], inactive.deps), /DENIED/);
   }
 });
+
+test('public session resolver returns the live active account role', async () => {
+  const { getAuthoritativeSessionProfile } = await import('./require-role');
+  const auth = guardDeps(session('admin'), [
+    { data: { role: 'super_admin', status: 'active', tenant_id: null }, error: null },
+  ]);
+
+  const result = await getAuthoritativeSessionProfile({
+    getSession: async () => session('admin'),
+    supabase: auth.deps.supabase,
+  });
+
+  assert.equal(result?.role, 'super_admin');
+  assert.equal(result?.tenantId, null);
+});
+
+test('public session resolver returns null for stale or invalid live accounts', async () => {
+  const { getAuthoritativeSessionProfile } = await import('./require-role');
+  for (const profile of [
+    null,
+    { role: 'admin', status: 'suspended', tenant_id: null },
+    { role: 'admin', status: 'active', tenant_id: tenantId },
+  ]) {
+    const auth = guardDeps(session('admin'), [{ data: profile, error: null }]);
+    assert.equal(
+      await getAuthoritativeSessionProfile({
+        getSession: async () => session('admin'),
+        supabase: auth.deps.supabase,
+      }),
+      null,
+    );
+  }
+});
