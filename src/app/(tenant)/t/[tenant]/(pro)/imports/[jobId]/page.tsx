@@ -178,6 +178,12 @@ export default async function BulkImportJobPage({
                 skipExisting: t('skipExisting'),
                 confirm: t('confirm'),
                 cancel: t('cancel'),
+                cancelTitle: t('cancelTitle'),
+                cancelPrompt: t('cancelPrompt', {
+                  date: dateFormatter.format(new Date(job.created_at)),
+                }),
+                keep: t('keep'),
+                confirmCancel: t('confirmCancel'),
                 cannotCancel: t('cannotCancel'),
                 pending: t('pending'),
                 success: t('actionSuccess'),

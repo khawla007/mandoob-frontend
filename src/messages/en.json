@@ -364,6 +364,10 @@
     "actions": {
       "close": "Close",
       "cancel": "Cancel",
+      "cancelTitle": "Cancel import job",
+      "cancelPrompt": "Cancel the employee CSV import created {date}? This import job will move to its terminal cancelled state.",
+      "keep": "Keep import job",
+      "confirmCancel": "Confirm cancellation",
       "companyProfile": "Open company profile",
       "open": "Open file",
       "opening": "Opening file…",

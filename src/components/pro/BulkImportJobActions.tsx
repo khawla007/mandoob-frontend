@@ -1,8 +1,16 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { Ban, CheckCircle2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 type Result = { ok: true; data: unknown } | { ok: false; error: string; code: string };
 type Action = (state: Result | null, formData: FormData) => Promise<Result>;
@@ -18,9 +26,7 @@ function ActionFeedback({
   return (
     <p
       aria-live="polite"
-      className={
-        state.ok ? 'text-sm text-emerald-700 dark:text-emerald-300' : 'text-destructive text-sm'
-      }
+      className={state.ok ? 'text-sm text-[var(--signal-success)]' : 'text-destructive text-sm'}
     >
       {state.ok ? labels.success : labels.error}
     </p>
@@ -45,6 +51,7 @@ export function BulkImportJobActions({
   const [validation, validate, validating] = useActionState(validateAction, null);
   const [execution, execute, executing] = useActionState(executeAction, null);
   const [cancellation, cancel, cancelling] = useActionState(cancelAction, null);
+  const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-3">
       {status === 'uploaded' ? (
@@ -70,13 +77,41 @@ export function BulkImportJobActions({
         </form>
       ) : null}
       {canCancel ? (
-        <form action={cancel} className="flex items-center gap-2">
-          <Button disabled={cancelling} type="submit" variant="outline">
+        <>
+          <Button
+            disabled={cancelling}
+            type="button"
+            variant="outline"
+            onClick={() => setCancelConfirmationOpen(true)}
+          >
             <Ban className="me-2 size-4" aria-hidden />
             {cancelling ? labels.pending : labels.cancel}
           </Button>
-          <ActionFeedback state={cancellation} labels={labels} />
-        </form>
+          <Dialog open={cancelConfirmationOpen} onOpenChange={setCancelConfirmationOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{labels.cancelTitle}</DialogTitle>
+                <DialogDescription>{labels.cancelPrompt}</DialogDescription>
+              </DialogHeader>
+              <form action={cancel}>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCancelConfirmationOpen(false)}
+                    disabled={cancelling}
+                  >
+                    {labels.keep}
+                  </Button>
+                  <Button type="submit" variant="destructive" disabled={cancelling}>
+                    {cancelling ? labels.pending : labels.confirmCancel}
+                  </Button>
+                </DialogFooter>
+              </form>
+              <ActionFeedback state={cancellation} labels={labels} />
+            </DialogContent>
+          </Dialog>
+        </>
       ) : null}
       {status === 'importing' ? (
         <p className="text-muted-foreground text-sm">{labels.cannotCancel}</p>
