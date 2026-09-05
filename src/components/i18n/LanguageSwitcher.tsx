@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
 import { setLocaleAction } from '@/lib/i18n/actions';
-import { locales, localeLabels, type Locale } from '@/lib/i18n/config';
+import { dirOf, locales, localeLabels, type Locale } from '@/lib/i18n/config';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,7 +62,7 @@ export function LanguageSwitcher({
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu dir={dirOf(current)}>
       <DropdownMenuTrigger asChild>
         <Button
           ref={triggerRef}

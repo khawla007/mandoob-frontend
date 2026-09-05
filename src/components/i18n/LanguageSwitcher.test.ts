@@ -34,7 +34,7 @@ Module._load = function (request, parent, isMain) {
     toast: {error: (message) => globalThis.__toastErrors.push(message)},
   };
   if (request === '@/components/ui/dropdown-menu') return {
-    DropdownMenu: ({children}) => React.createElement('div', null, children),
+    DropdownMenu: ({children, ...props}) => React.createElement('div', props, children),
     DropdownMenuTrigger: ({children}) => children,
     DropdownMenuContent: ({children, ...props}) => React.createElement('div', props, children),
     DropdownMenuItem: ({children, onSelect, ...props}) =>
@@ -174,6 +174,22 @@ Module._load = function (request, parent, isMain) {
     assert.equal(container.querySelector('.language-switcher__content--public'), null);
     await act(() => root.unmount());
     container.remove();
+  });
+
+  test('menu direction follows the active locale', async () => {
+    runtimeGlobals.__locale = 'ar';
+    runtimeGlobals.__setLocaleAction = async () => undefined;
+    runtimeGlobals.__toastErrors = [];
+    const arabic = await renderSwitcher();
+    assert.equal(arabic.container.firstElementChild?.getAttribute('dir'), 'rtl');
+    await arabic.act(() => arabic.root.unmount());
+    arabic.container.remove();
+
+    runtimeGlobals.__locale = 'en';
+    const english = await renderSwitcher();
+    assert.equal(english.container.firstElementChild?.getAttribute('dir'), 'ltr');
+    await english.act(() => english.root.unmount());
+    english.container.remove();
   });
 
   test('pending selection is guarded, disabled, busy, and reloads only after success', async () => {
