@@ -107,13 +107,25 @@ test('demo and production adapters return truthful no-write discriminated result
     message: 'Online submission is not connected yet. No application was sent.',
   });
 
-  const demo = await createDemoApplicationAdapter('confirmed-preview').complete(prepared.value);
+  const demoPromise = createDemoApplicationAdapter('confirmed-preview').complete(prepared.value);
+  assert.equal(
+    await Promise.race([demoPromise.then(() => false), Promise.resolve(true)]),
+    true,
+    'the local adapter must yield so the pending UI can render',
+  );
+  const demo = await demoPromise;
   assert.equal(demo.status, 'confirmed-preview');
   if (demo.status === 'confirmed-preview') {
     assert.equal(demo.confirmation.sent, false);
     assert.equal(demo.confirmation.mode, 'local-preview');
     assert.match(demo.confirmation.demoReference ?? '', /^DEMO-[A-Z0-9]{10}$/u);
     assert.equal(JSON.stringify(demo.confirmation).includes('Example Person'), false);
+  }
+
+  for (const outcome of ['duplicate', 'rate-limited'] as const) {
+    const result = await createDemoApplicationAdapter(outcome).complete(prepared.value);
+    assert.equal(result.status, outcome);
+    if (result.status === outcome) assert.equal(result.retryable, true);
   }
 });
 

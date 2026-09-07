@@ -144,7 +144,10 @@ test('all contact and business material edits clear consent and confirmed state'
     { type: 'set-preferred-name', index: 0, value: 'Changed Company' },
   ] as const) {
     const state = reduceApplicationWorkspace(
-      { draft: completedDraft, action: { status: 'duplicate', message: 'Synthetic state.' } },
+      {
+        draft: completedDraft,
+        action: { status: 'duplicate', retryable: true, message: 'Synthetic state.' },
+      },
       action,
       APPLICATION_DEFINITION,
     );

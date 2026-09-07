@@ -25,6 +25,7 @@ export const productionApplicationAdapter: ApplicationAdapter = {
 export function createDemoApplicationAdapter(outcome: DemoApplicationOutcome): ApplicationAdapter {
   return {
     async complete(input) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return demoResult(outcome, input);
     },
   };
@@ -56,11 +57,13 @@ function demoResult(
   if (outcome === 'duplicate')
     return {
       status: 'duplicate',
+      retryable: true,
       message: 'Synthetic duplicate preview only. No application was sent.',
     };
   if (outcome === 'rate-limited')
     return {
       status: 'rate-limited',
+      retryable: true,
       message: 'Synthetic rate-limit preview only. No application was sent.',
     };
   if (outcome === 'unavailable')

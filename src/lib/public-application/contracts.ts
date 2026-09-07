@@ -173,8 +173,8 @@ export type ApplicationActionState =
       status: 'confirmed-preview';
       confirmation: Extract<ApplicationConfirmation, { status: 'confirmed-preview' }>;
     }
-  | { status: 'duplicate'; message: string }
-  | { status: 'rate-limited'; message: string }
+  | { status: 'duplicate'; retryable: true; message: string }
+  | { status: 'rate-limited'; retryable: true; message: string }
   | { status: 'unavailable'; retryable: boolean; message: string }
   | { status: 'error'; retryable: boolean; message: string };
 
