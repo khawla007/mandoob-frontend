@@ -12,8 +12,7 @@ const TYPE_LABEL: Record<Renewal['type'], string> = {
 
 function chipColor(daysOut: number): string {
   if (daysOut <= 30) return 'bg-destructive/10 text-destructive border-destructive/40';
-  if (daysOut <= 90)
-    return 'bg-amber-500/10 text-amber-700 border-amber-500/40 dark:text-amber-400';
+  if (daysOut <= 90) return 'signal-status signal-status--warning';
   return 'bg-muted text-muted-foreground border-border';
 }
 

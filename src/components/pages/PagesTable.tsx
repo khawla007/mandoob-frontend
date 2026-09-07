@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { Pencil, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { deleteCmsPageAction } from '@/app/admin/pages/actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,16 +11,21 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableCaption,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatAdminDateTime } from '@/lib/format/date';
+import { formatDateTime } from '@/lib/i18n/format';
 import type { CmsPageListItem } from '@/lib/data/pages';
 import { dialogTabDestination } from './admin-page-state';
 export { clampAdminPage, pageHref } from './admin-page-state';
 
 export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
+  const t = useTranslations('admin.cms.pages.table');
+  const locale = useLocale();
+  const dialogTitleId = useId();
+  const dialogDescriptionId = useId();
   const [target, setTarget] = useState<CmsPageListItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -66,7 +72,7 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
     startTransition(async () => {
       const result = await deleteCmsPageAction(target.id);
       if (!result.ok) {
-        setError(result.error);
+        setError(t('deleteError'));
         return;
       }
       setTarget(null);
@@ -76,14 +82,15 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
   return (
     <>
       <Table>
+        <TableCaption className="sr-only">{t('caption')}</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Slug</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Published</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('title')}</TableHead>
+            <TableHead>{t('slug')}</TableHead>
+            <TableHead>{t('status')}</TableHead>
+            <TableHead>{t('published')}</TableHead>
+            <TableHead>{t('updated')}</TableHead>
+            <TableHead className="text-right">{t('actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -102,19 +109,22 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
                   }
                   className="capitalize"
                 >
-                  {page.status}
+                  {t(`statuses.${page.status}`)}
                 </Badge>
               </TableCell>
               <TableCell className="text-muted-foreground text-xs tabular-nums">
-                {page.publishedAt ? formatAdminDateTime(page.publishedAt) : '—'}
+                {page.publishedAt ? formatDateTime(page.publishedAt, locale) : '—'}
               </TableCell>
               <TableCell className="text-muted-foreground text-xs tabular-nums">
-                {formatAdminDateTime(page.updatedAt)}
+                {formatDateTime(page.updatedAt, locale)}
               </TableCell>
               <TableCell>
                 <div className="flex justify-end gap-1">
                   <Button asChild variant="ghost" size="icon-sm">
-                    <Link href={`/admin/pages/${page.id}`} aria-label={`Edit ${page.title}`}>
+                    <Link
+                      href={`/admin/pages/${page.id}`}
+                      aria-label={t('edit', { title: page.title })}
+                    >
                       <Pencil />
                     </Link>
                   </Button>
@@ -122,7 +132,7 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Delete ${page.title}`}
+                    aria-label={t('delete', { title: page.title })}
                     onClick={(event) => {
                       invokerRef.current = event.currentTarget;
                       setError(null);
@@ -139,7 +149,7 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
       </Table>
       {target ? (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
+          className="bg-foreground/40 fixed inset-0 z-50 grid place-items-center p-4"
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget && !pending) setTarget(null);
@@ -150,16 +160,15 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
             tabIndex={-1}
             role="alertdialog"
             aria-modal="true"
-            aria-labelledby="delete-page-title"
-            aria-describedby="delete-page-description"
+            aria-labelledby={dialogTitleId}
+            aria-describedby={dialogDescriptionId}
             className="bg-background w-full max-w-md rounded-xl border p-6 shadow-2xl outline-none"
           >
-            <h2 id="delete-page-title" className="text-lg font-semibold">
-              Delete page?
+            <h2 id={dialogTitleId} className="text-lg font-semibold">
+              {t('deleteTitle')}
             </h2>
-            <p id="delete-page-description" className="text-muted-foreground mt-2 text-sm">
-              “{target.title}” will be removed from the page library. This action cannot be undone
-              here.
+            <p id={dialogDescriptionId} className="text-muted-foreground mt-2 text-sm">
+              {t('deleteDescription', { title: target.title })}
             </p>
             {error ? (
               <p role="alert" className="text-destructive mt-3 text-sm">
@@ -174,10 +183,10 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
                 disabled={pending}
                 onClick={() => setTarget(null)}
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="button" variant="destructive" disabled={pending} onClick={remove}>
-                {pending ? 'Deleting…' : 'Delete page'}
+                {pending ? t('deleting') : t('deleteAction')}
               </Button>
             </div>
           </section>

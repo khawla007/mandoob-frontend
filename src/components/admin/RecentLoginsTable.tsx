@@ -68,7 +68,7 @@ export async function RecentLoginsTable({
                       className={cn(
                         'font-mono text-xs',
                         roleBadgeVariant[r.role] === 'destructive' &&
-                          'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200',
+                          'signal-status signal-status--urgent',
                       )}
                     >
                       {t(`enums.role.${r.role}`)}
@@ -83,9 +83,7 @@ export async function RecentLoginsTable({
                   <Badge
                     variant={r.status === 'success' ? 'outline' : 'destructive'}
                     className={
-                      r.status === 'success'
-                        ? undefined
-                        : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200'
+                      r.status === 'success' ? undefined : 'signal-status signal-status--urgent'
                     }
                   >
                     {t(`user.recentLogins.loginStatus.${r.status}`)}

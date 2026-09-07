@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { saveBlogTermAction, deleteBlogTermAction } from '@/app/admin/blog/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -11,12 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { BlogTerm } from '@/lib/data/blog';
 import type { BlogTermKind } from '@/lib/validation/blog';
-
-const kindLabels: Record<BlogTermKind, string> = {
-  category: 'Category',
-  attribute: 'Attribute',
-  tag: 'Tag',
-};
 
 type BlogTaxonomyManagerProps = {
   kind: BlogTermKind;
@@ -30,11 +25,11 @@ type StatusMessage = {
 };
 
 export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
+  const t = useTranslations('admin.cms.taxonomy.manager');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<StatusMessage | null>(null);
-  const label = kindLabels[kind];
-  const emptyLabel = label.toLowerCase();
+  const label = t(`termKinds.${kind}`);
 
   function submitSave(id: string | null, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,8 +42,8 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
       if (!result.ok) {
         setMessage({
           type: 'error',
-          title: `Could not save ${emptyLabel}`,
-          description: `${result.code}: ${result.error}`,
+          title: t('saveErrorTitle', { kind: label }),
+          description: t('saveErrorDescription'),
         });
         return;
       }
@@ -56,8 +51,10 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
       if (!id) form.reset();
       setMessage({
         type: 'success',
-        title: id ? `${label} saved` : `${label} added`,
-        description: id ? `${emptyLabel} changes were saved.` : `The new ${emptyLabel} was added.`,
+        title: id ? t('savedTitle', { kind: label }) : t('addedTitle', { kind: label }),
+        description: id
+          ? t('savedDescription', { kind: label })
+          : t('addedDescription', { kind: label }),
       });
       router.refresh();
     });
@@ -65,9 +62,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
 
   function submitDelete(term: BlogTerm, event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const confirmed = window.confirm(
-      `Delete "${term.name}"? This removes the ${emptyLabel} from any associated blog posts.`,
-    );
+    const confirmed = window.confirm(t('deleteConfirm', { name: term.name, kind: label }));
     if (!confirmed) return;
 
     setMessage(null);
@@ -76,16 +71,16 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
       if (!result.ok) {
         setMessage({
           type: 'error',
-          title: `Could not delete ${emptyLabel}`,
-          description: `${result.code}: ${result.error}`,
+          title: t('deleteErrorTitle', { kind: label }),
+          description: t('deleteErrorDescription'),
         });
         return;
       }
 
       setMessage({
         type: 'success',
-        title: `${label} deleted`,
-        description: `"${term.name}" was deleted.`,
+        title: t('deletedTitle', { kind: label }),
+        description: t('deletedDescription', { name: term.name }),
       });
       router.refresh();
     });
@@ -103,10 +98,8 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add {emptyLabel}</CardTitle>
-          <CardDescription>
-            Slugs are optional and will be generated from the name when left empty.
-          </CardDescription>
+          <CardTitle>{t('addTitle', { kind: label })}</CardTitle>
+          <CardDescription>{t('addDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -116,13 +109,13 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
             <input type="hidden" name="kind" value={kind} />
             <div className="space-y-1.5 lg:col-span-3">
               <label className="text-sm font-medium" htmlFor={`${kind}-new-name`}>
-                Name
+                {t('name')}
               </label>
               <Input id={`${kind}-new-name`} name="name" required maxLength={80} />
             </div>
             <div className="space-y-1.5 lg:col-span-3">
               <label className="text-sm font-medium" htmlFor={`${kind}-new-slug`}>
-                Slug
+                {t('slug')}
               </label>
               <Input
                 id={`${kind}-new-slug`}
@@ -133,7 +126,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
             </div>
             <div className="space-y-1.5 lg:col-span-2">
               <label className="text-sm font-medium" htmlFor={`${kind}-new-sort-order`}>
-                Sort order
+                {t('sortOrder')}
               </label>
               <Input
                 id={`${kind}-new-sort-order`}
@@ -146,7 +139,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
             </div>
             <div className="space-y-1.5 lg:col-span-4">
               <label className="text-sm font-medium" htmlFor={`${kind}-new-description`}>
-                Description
+                {t('description')}
               </label>
               <Textarea
                 id={`${kind}-new-description`}
@@ -158,7 +151,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
             <div className="lg:col-span-12">
               <Button type="submit" disabled={pending}>
                 <Plus />
-                Add {emptyLabel}
+                {t('addAction', { kind: label })}
               </Button>
             </div>
           </form>
@@ -167,12 +160,14 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{label}s</CardTitle>
-          <CardDescription>{terms.length} total terms</CardDescription>
+          <CardTitle>{t('collectionTitle', { kind: label })}</CardTitle>
+          <CardDescription>{t('total', { count: terms.length })}</CardDescription>
         </CardHeader>
         <CardContent>
           {terms.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">No {emptyLabel}s yet.</p>
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              {t('empty', { kind: label })}
+            </p>
           ) : (
             <div className="border-border/60 divide-border/60 overflow-hidden rounded-lg border">
               {terms.map((term) => (
@@ -184,13 +179,13 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
                     <input type="hidden" name="kind" value={kind} />
                     <div className="space-y-1 lg:col-span-3">
                       <label className="text-muted-foreground text-xs" htmlFor={`${term.id}-name`}>
-                        Name
+                        {t('name')}
                       </label>
                       <Input id={`${term.id}-name`} name="name" defaultValue={term.name} required />
                     </div>
                     <div className="space-y-1 lg:col-span-3">
                       <label className="text-muted-foreground text-xs" htmlFor={`${term.id}-slug`}>
-                        Slug
+                        {t('slug')}
                       </label>
                       <Input id={`${term.id}-slug`} name="slug" defaultValue={term.slug} />
                     </div>
@@ -199,7 +194,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
                         className="text-muted-foreground text-xs"
                         htmlFor={`${term.id}-sort-order`}
                       >
-                        Sort order
+                        {t('sortOrder')}
                       </label>
                       <Input
                         id={`${term.id}-sort-order`}
@@ -215,7 +210,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
                         className="text-muted-foreground text-xs"
                         htmlFor={`${term.id}-description`}
                       >
-                        Description
+                        {t('description')}
                       </label>
                       <Textarea
                         id={`${term.id}-description`}
@@ -231,7 +226,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
                         size="icon-sm"
                         variant="outline"
                         disabled={pending}
-                        aria-label={`Save ${term.name}`}
+                        aria-label={t('saveNamed', { name: term.name })}
                       >
                         <Pencil />
                       </Button>
@@ -244,10 +239,10 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
                         size="sm"
                         variant="destructive"
                         disabled={pending}
-                        aria-label={`Delete ${term.name}`}
+                        aria-label={t('deleteNamed', { name: term.name })}
                       >
                         <Trash2 />
-                        Delete
+                        {t('delete')}
                       </Button>
                     </form>
                   </div>

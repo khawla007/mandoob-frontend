@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Mail, MessageCircle, MessageSquare, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,12 +15,7 @@ const ICONS: Record<CommChannel, React.ComponentType<{ className?: string }>> = 
   in_app: Bell,
 };
 
-const CHANNELS: Array<{ key: CommChannel | 'all'; label: string }> = [
-  { key: 'all', label: 'All' },
-  { key: 'email', label: 'Email' },
-  { key: 'whatsapp', label: 'WhatsApp' },
-  { key: 'sms', label: 'SMS' },
-];
+const CHANNELS: Array<CommChannel | 'all'> = ['all', 'email', 'whatsapp', 'sms'];
 
 export type CommsThreadProps = {
   initialRows: CommRow[];
@@ -28,6 +24,8 @@ export type CommsThreadProps = {
 };
 
 export function CommsThread({ initialRows, loadOlder, pageSize = 25 }: CommsThreadProps) {
+  const t = useTranslations('pro.communications');
+  const locale = useLocale();
   const [rows, setRows] = useState<CommRow[]>(initialRows);
   const [filter, setFilter] = useState<CommChannel | 'all'>('all');
   const [hasMore, setHasMore] = useState<boolean>(initialRows.length >= pageSize);
@@ -57,24 +55,24 @@ export function CommsThread({ initialRows, loadOlder, pageSize = 25 }: CommsThre
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Communications</CardTitle>
+        <CardTitle className="text-lg">{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          {CHANNELS.map((c) => (
+          {CHANNELS.map((channel) => (
             <Button
-              key={c.key}
-              variant={filter === c.key ? 'default' : 'outline'}
+              key={channel}
+              variant={filter === channel ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setFilter(c.key)}
+              onClick={() => setFilter(channel)}
             >
-              {c.label}
+              {t(`channels.${channel}`)}
             </Button>
           ))}
         </div>
 
         {visible.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">No communications yet.</p>
+          <p className="text-muted-foreground py-6 text-center text-sm">{t('empty')}</p>
         ) : (
           <ul className="divide-border divide-y">
             {visible.map((r) => {
@@ -88,18 +86,24 @@ export function CommsThread({ initialRows, loadOlder, pageSize = 25 }: CommsThre
                     <div className="flex items-center justify-between gap-2">
                       <div className="truncate font-medium">{r.subject ?? r.preview}</div>
                       <span className="text-muted-foreground text-xs whitespace-nowrap">
-                        {new Date(r.timestamp).toLocaleString()}
+                        {new Intl.DateTimeFormat(locale, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                          timeZone: 'Asia/Dubai',
+                        }).format(new Date(r.timestamp))}
                       </span>
                     </div>
                     {r.subject && r.preview ? (
                       <div className="text-muted-foreground truncate text-xs">{r.preview}</div>
                     ) : null}
                     <div className="mt-1 flex items-center gap-2 text-xs">
-                      <Badge variant="secondary">{r.channel}</Badge>
+                      <Badge variant="secondary">{t(`channels.${r.channel}`)}</Badge>
+                      <Badge variant="outline">{t(`directions.${r.direction}`)}</Badge>
                       <Badge variant="outline">
-                        {r.direction === 'in' ? 'Inbound' : 'Outbound'}
+                        {t.has(`statuses.${r.status}`)
+                          ? t(`statuses.${r.status}`)
+                          : t('statusUnavailable')}
                       </Badge>
-                      <Badge variant="outline">{r.status}</Badge>
                       <span className="text-muted-foreground truncate">{r.recipient}</span>
                     </div>
                   </div>
@@ -112,7 +116,7 @@ export function CommsThread({ initialRows, loadOlder, pageSize = 25 }: CommsThre
         {hasMore ? (
           <div className="flex justify-center">
             <Button variant="outline" size="sm" onClick={onLoadOlder} disabled={pending}>
-              {pending ? 'Loading…' : 'Load older'}
+              {pending ? t('loading') : t('loadOlder')}
             </Button>
           </div>
         ) : null}

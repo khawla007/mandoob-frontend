@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { uploadBlogMediaAction } from '@/app/admin/blog/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ export function PageHeroMediaPicker({
   media: HeroMedia;
   onChange: (media: HeroMedia) => void;
 }) {
+  const t = useTranslations('admin.cms.media');
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -29,7 +31,7 @@ export function PageHeroMediaPicker({
         return uploadBlogMediaAction(data);
       });
       if (!result.ok) {
-        setError(result.error);
+        setError(t('uploadError'));
         return;
       }
       onChange({ id: result.data.id, previewUrl: result.data.publicUrl });
@@ -42,7 +44,7 @@ export function PageHeroMediaPicker({
         <div className="bg-muted relative overflow-hidden rounded-lg border">
           <Image
             src={media.previewUrl}
-            alt="Hero background preview"
+            alt={t('heroPreview')}
             width={960}
             height={480}
             unoptimized
@@ -53,7 +55,7 @@ export function PageHeroMediaPicker({
             variant="secondary"
             size="icon-sm"
             className="absolute top-2 right-2"
-            aria-label="Remove hero background image"
+            aria-label={t('removeHero')}
             onClick={() => onChange({ id: null, previewUrl: null })}
           >
             <X />
@@ -63,7 +65,7 @@ export function PageHeroMediaPicker({
       <div className="flex gap-2">
         <Input
           ref={inputRef}
-          aria-label="Hero background image"
+          aria-label={t('heroInput')}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/avif"
           disabled={pending}
@@ -74,10 +76,14 @@ export function PageHeroMediaPicker({
           variant="outline"
           size="icon"
           disabled={pending}
-          aria-label="Upload hero background image"
+          aria-label={t('uploadHero')}
           onClick={() => inputRef.current?.click()}
         >
-          {pending ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+          {pending ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" />
+          ) : (
+            <ImagePlus />
+          )}
         </Button>
       </div>
       {error ? (

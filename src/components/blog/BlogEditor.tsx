@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +38,7 @@ function defaultPublishedAt(post: BlogPost | null): string {
 }
 
 export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: BlogTerm[] }) {
+  const t = useTranslations('admin.cms.blog.editor');
   const router = useRouter();
   const [status, setStatus] = useState<BlogPostStatus>(post?.status ?? 'draft');
   const [message, setMessage] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
     startTransition(async () => {
       const result = await saveBlogPostAction(post?.id ?? null, formData);
       if (!result.ok) {
-        setMessage(result.error);
+        setMessage(t('saveError'));
         return;
       }
       router.push(`/admin/blog/${result.data.id}`);
@@ -69,13 +71,13 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Post</CardTitle>
+            <CardTitle>{t('post')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Field label="Title" htmlFor="title">
+            <Field label={t('title')} htmlFor="title">
               <Input id="title" name="title" required defaultValue={post?.title ?? ''} />
             </Field>
-            <Field label="Slug" htmlFor="slug">
+            <Field label={t('slug')} htmlFor="slug">
               <Input
                 id="slug"
                 name="slug"
@@ -83,7 +85,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
                 defaultValue={post?.slug ?? ''}
               />
             </Field>
-            <Field label="Excerpt" htmlFor="excerpt">
+            <Field label={t('excerpt')} htmlFor="excerpt">
               <Textarea
                 id="excerpt"
                 name="excerpt"
@@ -92,7 +94,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
                 defaultValue={post?.excerpt ?? ''}
               />
             </Field>
-            <Field label="Content">
+            <Field label={t('content')}>
               <BlogEditorContent initialContent={post?.contentJson ?? null} />
             </Field>
           </CardContent>
@@ -100,7 +102,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
 
         <Card>
           <CardHeader>
-            <CardTitle>Gallery</CardTitle>
+            <CardTitle>{t('gallery')}</CardTitle>
           </CardHeader>
           <CardContent>
             <BlogGalleryManager initialMediaIds={post?.galleryMediaIds ?? []} />
@@ -111,10 +113,10 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Publish</CardTitle>
+            <CardTitle>{t('publish')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Field label="Status" htmlFor="status">
+            <Field label={t('status')} htmlFor="status">
               <select
                 id="status"
                 name="status"
@@ -124,12 +126,12 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
               >
                 {statusOptions.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {t(`statuses.${option}`)}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Published at" htmlFor="publishedAt">
+            <Field label={t('publishedAt')} htmlFor="publishedAt">
               <Input
                 id="publishedAt"
                 name="publishedAt"
@@ -138,7 +140,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
                 required={status === 'published'}
               />
             </Field>
-            <Field label="Scheduled for" htmlFor="scheduledFor">
+            <Field label={t('scheduledFor')} htmlFor="scheduledFor">
               <Input
                 id="scheduledFor"
                 name="scheduledFor"
@@ -150,14 +152,14 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
             {message ? <p className="text-destructive text-sm">{message}</p> : null}
             <Button type="submit" className="w-full" disabled={isPending}>
               <Save />
-              {isPending ? 'Saving...' : 'Save post'}
+              {isPending ? t('saving') : t('save')}
             </Button>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Featured image</CardTitle>
+            <CardTitle>{t('featuredImage')}</CardTitle>
           </CardHeader>
           <CardContent>
             <BlogMediaPanel initialMediaId={post?.featuredMediaId ?? null} />
@@ -166,14 +168,16 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
 
         <Card>
           <CardHeader>
-            <CardTitle>Taxonomy</CardTitle>
+            <CardTitle>{t('taxonomy')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {termKinds.map((kind) => (
               <div key={kind} className="space-y-2">
-                <div className="text-sm font-medium capitalize">{kind}</div>
+                <div className="text-sm font-medium">{t(`termKinds.${kind}`)}</div>
                 {groupedTerms[kind].length === 0 ? (
-                  <p className="text-muted-foreground text-xs">No {kind} terms yet.</p>
+                  <p className="text-muted-foreground text-xs">
+                    {t('noTerms', { kind: t(`termKinds.${kind}`) })}
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {groupedTerms[kind].map((term) => (
@@ -197,10 +201,10 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
 
         <Card>
           <CardHeader>
-            <CardTitle>SEO</CardTitle>
+            <CardTitle>{t('seo')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Field label="Meta title" htmlFor="metaTitle">
+            <Field label={t('metaTitle')} htmlFor="metaTitle">
               <Input
                 id="metaTitle"
                 name="metaTitle"
@@ -208,7 +212,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
                 defaultValue={post?.metaTitle ?? ''}
               />
             </Field>
-            <Field label="Meta description" htmlFor="metaDescription">
+            <Field label={t('metaDescription')} htmlFor="metaDescription">
               <Textarea
                 id="metaDescription"
                 name="metaDescription"
@@ -217,7 +221,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
                 defaultValue={post?.metaDescription ?? ''}
               />
             </Field>
-            <Field label="Canonical URL" htmlFor="canonicalUrl">
+            <Field label={t('canonicalUrl')} htmlFor="canonicalUrl">
               <Input
                 id="canonicalUrl"
                 name="canonicalUrl"
@@ -232,7 +236,7 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
                 defaultChecked={post?.noindex ?? false}
                 className="border-input size-4 rounded"
               />
-              <span>Noindex this post</span>
+              <span>{t('noindex')}</span>
             </label>
           </CardContent>
         </Card>

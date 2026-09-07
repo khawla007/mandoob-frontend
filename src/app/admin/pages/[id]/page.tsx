@@ -6,10 +6,12 @@ import { PageEditor } from '@/components/pages/PageEditor';
 import { Button } from '@/components/ui/button';
 import { requireRole } from '@/lib/auth/require-role';
 import { getAdminCmsPage } from '@/lib/data/pages';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 export default async function EditAdminPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole('super_admin', 'admin');
+  const t = await getTranslations('admin.cms.pages');
   const parsed = z
     .string()
     .uuid()
@@ -23,11 +25,11 @@ export default async function EditAdminPage({ params }: { params: Promise<{ id: 
         <Button asChild variant="ghost" size="sm" className="mb-3 -ml-3">
           <Link href="/admin/pages">
             <ArrowLeft />
-            Page library
+            {t('library')}
           </Link>
         </Button>
         <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-          Editing page
+          {t('editing')}
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{page.title}</h1>
         <p className="text-muted-foreground mt-1 font-mono text-xs">/{page.slug}</p>

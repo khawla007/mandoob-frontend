@@ -3,6 +3,7 @@
 import { Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { saveCmsPageAction } from '@/app/admin/pages/actions';
 import { BlogEditorContent } from '@/components/blog/BlogEditorContent';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ const localDate = (value: string | null | undefined) => {
 };
 
 export function PageEditor({ page }: { page: CmsPage | null }) {
+  const t = useTranslations('admin.cms.pages.editor');
   const router = useRouter();
   const [status, setStatus] = useState<PageStatus>(page?.status ?? 'draft');
   const [hero, setHero] = useState(() =>
@@ -41,7 +43,7 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
     startTransition(async () => {
       const result = await saveCmsPageAction(page?.id ?? null, data);
       if (!result.ok) {
-        setError(result.error);
+        setError(t('saveError'));
         return;
       }
       router.push(`/admin/pages/${result.data.id}`);
@@ -53,10 +55,10 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Page content</CardTitle>
+            <CardTitle>{t('pageContent')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <F label="Title" id="title">
+            <F label={t('title')} id="title">
               <Input
                 id="title"
                 name="title"
@@ -65,7 +67,7 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                 defaultValue={page?.title ?? ''}
               />
             </F>
-            <F label="Slug" id="slug">
+            <F label={t('slug')} id="slug">
               <Input
                 id="slug"
                 name="slug"
@@ -73,14 +75,14 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                 defaultValue={page?.slug ?? ''}
               />
             </F>
-            <F label="Content" id="content-editor">
+            <F label={t('content')} id="content-editor">
               <BlogEditorContent initialContent={page?.contentJson ?? null} />
             </F>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Hero Section</CardTitle>
+            <CardTitle>{t('heroSection')}</CardTitle>
           </CardHeader>
           <CardContent>
             <PageHeroSettings state={hero} onChange={setHero} />
@@ -88,10 +90,10 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>SEO &amp; Schema</CardTitle>
+            <CardTitle>{t('seoSchema')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <F label="Meta title" id="metaTitle">
+            <F label={t('metaTitle')} id="metaTitle">
               <Input
                 id="metaTitle"
                 name="metaTitle"
@@ -99,7 +101,7 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                 defaultValue={page?.metaTitle ?? ''}
               />
             </F>
-            <F label="Canonical URL" id="canonicalUrl">
+            <F label={t('canonicalUrl')} id="canonicalUrl">
               <Input
                 id="canonicalUrl"
                 name="canonicalUrl"
@@ -107,7 +109,7 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                 defaultValue={page?.canonicalUrl ?? ''}
               />
             </F>
-            <F label="Schema markup (JSON object)" id="schemaMarkup">
+            <F label={t('schemaMarkup')} id="schemaMarkup">
               <Textarea
                 id="schemaMarkup"
                 name="schemaMarkup"
@@ -123,12 +125,14 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                 defaultChecked={page?.noindex ?? false}
                 className="border-input size-4 rounded"
               />
-              Noindex this page
+              {t('noindex')}
             </label>
             <details className="rounded-lg border p-4">
-              <summary className="cursor-pointer text-sm font-medium">Advanced scripts</summary>
+              <summary className="cursor-pointer text-sm font-medium">
+                {t('advancedScripts')}
+              </summary>
               <div className="mt-4 space-y-4">
-                <F label="Head script" id="scriptHead">
+                <F label={t('headScript')} id="scriptHead">
                   <Textarea
                     id="scriptHead"
                     name="scriptHead"
@@ -136,7 +140,7 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                     defaultValue={page?.scriptHead ?? ''}
                   />
                 </F>
-                <F label="Body start script" id="scriptBodyStart">
+                <F label={t('bodyStartScript')} id="scriptBodyStart">
                   <Textarea
                     id="scriptBodyStart"
                     name="scriptBodyStart"
@@ -144,7 +148,7 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                     defaultValue={page?.scriptBodyStart ?? ''}
                   />
                 </F>
-                <F label="Body end script" id="scriptBodyEnd">
+                <F label={t('bodyEndScript')} id="scriptBodyEnd">
                   <Textarea
                     id="scriptBodyEnd"
                     name="scriptBodyEnd"
@@ -160,10 +164,10 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
       <aside className="space-y-6 xl:sticky xl:top-6">
         <Card>
           <CardHeader>
-            <CardTitle>Publishing</CardTitle>
+            <CardTitle>{t('publishing')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <F label="Status" id="status">
+            <F label={t('status')} id="status">
               <select
                 id="status"
                 name="status"
@@ -172,11 +176,13 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                 className="border-input bg-background h-9 w-full rounded-lg border px-3 text-sm"
               >
                 {statuses.map((value) => (
-                  <option key={value}>{value}</option>
+                  <option key={value} value={value}>
+                    {t(`statuses.${value}`)}
+                  </option>
                 ))}
               </select>
             </F>
-            <F label="Published at" id="publishedAt">
+            <F label={t('publishedAt')} id="publishedAt">
               <Input
                 id="publishedAt"
                 name="publishedAt"
@@ -185,7 +191,7 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
                 defaultValue={localDate(page?.publishedAt)}
               />
             </F>
-            <F label="Scheduled for" id="scheduledFor">
+            <F label={t('scheduledFor')} id="scheduledFor">
               <Input
                 id="scheduledFor"
                 name="scheduledFor"
@@ -201,16 +207,16 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
             ) : null}
             <Button type="submit" disabled={pending} className="w-full">
               <Save />
-              {pending ? 'Saving…' : 'Save page'}
+              {pending ? t('saving') : t('save')}
             </Button>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Excerpt</CardTitle>
+            <CardTitle>{t('excerpt')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <F label="Search and share description" id="metaDescription">
+            <F label={t('metaDescription')} id="metaDescription">
               <Textarea
                 id="metaDescription"
                 name="metaDescription"
