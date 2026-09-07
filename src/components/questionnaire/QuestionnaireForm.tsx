@@ -98,7 +98,6 @@ export function QuestionnaireForm({
   const availableSessionAt = useRef<string | null>(null);
   const availableLocalAt = useRef<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const summaryRef = useRef<HTMLDivElement>(null);
   const resetReturnFocus = useRef<HTMLElement | null>(null);
   const saveReturnFocus = useRef<HTMLElement | null>(null);
   const current = STEPS[stepIndex];
@@ -257,7 +256,6 @@ export function QuestionnaireForm({
       if (prepared.status === 'invalid') {
         setAttempted(true);
         setCompletionErrors(true);
-        requestAnimationFrame(() => summaryRef.current?.focus());
       } else
         setAction({
           status: 'unavailable',
@@ -574,35 +572,9 @@ export function QuestionnaireForm({
             <p>{stepDescription(current.id)}</p>
           </header>
           {completionErrors && validation.status === 'invalid' ? (
-            <div
-              ref={summaryRef}
-              id="application-error-summary"
-              tabIndex={-1}
-              className="application-errors"
-              role="alert"
-            >
-              <AlertCircle aria-hidden />
-              <div>
-                <strong>Complete all required information</strong>
-                <ul>
-                  {validation.errors.map((error) => (
-                    <li key={`${error.stepId}-${error.fieldId}`}>
-                      <a
-                        href={error.href}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          focusError(error);
-                        }}
-                      >
-                        {error.message}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+            <ApplicationErrorSummary errors={validation.errors} onActivate={focusError} />
           ) : null}
-          {errors.length ? (
+          {!completionErrors && errors.length ? (
             <div className="application-errors" role="alert">
               <AlertCircle aria-hidden />
               <div>
@@ -714,6 +686,47 @@ export function QuestionnaireForm({
 }
 
 type Errors = ReturnType<typeof validateApplication>['errors'];
+export function ApplicationErrorSummary({
+  errors,
+  onActivate,
+}: {
+  errors: readonly ApplicationValidationError[];
+  onActivate: (error: ApplicationValidationError) => void;
+}) {
+  const summaryRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    summaryRef.current?.focus();
+  }, []);
+  return (
+    <div
+      ref={summaryRef}
+      id="application-error-summary"
+      tabIndex={-1}
+      className="application-errors"
+      role="alert"
+    >
+      <AlertCircle aria-hidden />
+      <div>
+        <strong>Complete all required information</strong>
+        <ul>
+          {errors.map((error) => (
+            <li key={`${error.stepId}-${error.fieldId}`}>
+              <a
+                href={error.href}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onActivate(error);
+                }}
+              >
+                {error.message}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 type StepProps = {
   draft: ApplicationDraft;
   update: (a: ApplicationDraftAction) => void;

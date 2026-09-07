@@ -34,11 +34,12 @@ if (reactServer) {
       IS_REACT_ACT_ENVIRONMENT: true,
     });
     Object.defineProperty(browser, 'scrollTo', { value: () => undefined });
-    const [{ act, createElement }, { createRoot }, { QuestionnaireForm }] = await Promise.all([
-      import('react'),
-      import('react-dom/client'),
-      import('./QuestionnaireForm'),
-    ]);
+    const [{ act, createElement }, { createRoot }, { QuestionnaireForm, ApplicationErrorSummary }] =
+      await Promise.all([
+        import('react'),
+        import('react-dom/client'),
+        import('./QuestionnaireForm'),
+      ]);
     const container = document.createElement('div');
     document.body.append(container);
     let root = createRoot(container);
@@ -161,5 +162,27 @@ if (reactServer) {
     await act(() => new Promise((resolve) => setTimeout(resolve, 1)));
     assert.equal(document.activeElement, reset);
     await act(() => root.unmount());
+
+    const summaryContainer = document.createElement('div');
+    document.body.append(summaryContainer);
+    const summaryRoot = createRoot(summaryContainer);
+    await act(() =>
+      summaryRoot.render(
+        createElement(ApplicationErrorSummary, {
+          errors: [
+            {
+              stepId: 'review',
+              fieldId: 'application-data-consent',
+              code: 'required',
+              message: 'Consent is required.',
+              href: '#application-data-consent',
+            },
+          ],
+          onActivate: () => undefined,
+        }),
+      ),
+    );
+    assert.equal(document.activeElement?.id, 'application-error-summary');
+    await act(() => summaryRoot.unmount());
   });
 }

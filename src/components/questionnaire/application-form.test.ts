@@ -51,6 +51,7 @@ test('visa choice is a required radio group and completion summary focuses befor
   assert.match(source, /aria-required/);
   assert.match(source, /application-error-summary/);
   assert.match(source, /summaryRef\.current\?\.focus/);
+  assert.match(source, /!completionErrors && errors\.length/);
 });
 
 test('review and confirmation keep the required visual order without unsupported claims', () => {
