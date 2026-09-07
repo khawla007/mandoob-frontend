@@ -1,26 +1,24 @@
-import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+
+import {
+  OperationalMeetingList,
+  type OperationalMeetingDisplay,
+} from '@/components/operations/OperationalMeetingList';
+import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { readSelfCustomer } from '@/lib/data/account-self';
+import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
 import {
-  getMeetingRecordingSignedUrl,
-  listMeetingsForCustomer,
+  getCustomerCompanyMeetingRecordingSignedUrl,
+  listMeetingsForCustomerCompany,
   listOpenMeetingSlots,
   type MeetingActor,
 } from '@/lib/data/meetings';
-import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { safeExternalMeetingHref } from '@/lib/operations/meeting-presentation';
 import { bookMeetingSlotAction } from './actions';
 
 export const dynamic = 'force-dynamic';
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-AE', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dubai',
-  }).format(new Date(value));
-}
 
 export default async function CustomerMeetingsPage({
   params,
@@ -28,127 +26,106 @@ export default async function CustomerMeetingsPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const { tenant, session } = await requireTenantRouteAccess(slug, ['customer']);
-
-  const customer = await readSelfCustomer().catch(() => ({ linkedCompanyId: null }));
-  const actor: MeetingActor = { id: session.id, role: 'customer', tenantId: tenant.id };
+  const access = await authorizeCustomerLinkedCompanyRead(slug);
+  if (access.kind !== 'authorized') notFound();
+  const [t, locale] = await Promise.all([getTranslations('meetingOperations'), getLocale()]);
+  const actor: MeetingActor = {
+    id: access.session.id,
+    role: 'customer',
+    tenantId: access.tenant.id,
+  };
   const now = new Date();
   const slotWindowEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const [meetings, openSlots] = await Promise.all([
-    listMeetingsForCustomer(session.id),
-    listOpenMeetingSlots(tenant.id, now.toISOString(), slotWindowEnd.toISOString()),
+    listMeetingsForCustomerCompany(access.session.id, access.company.id, actor),
+    listOpenMeetingSlots(access.tenant.id, now.toISOString(), slotWindowEnd.toISOString()),
   ]);
   const recordingPairs = await Promise.all(
     meetings
       .filter((meeting) => meeting.recordingStoragePath)
       .map(
         async (meeting) =>
-          [meeting.id, await getMeetingRecordingSignedUrl(meeting.id, actor)] as const,
+          [
+            meeting.id,
+            await getCustomerCompanyMeetingRecordingSignedUrl(meeting.id, access.company.id, actor),
+          ] as const,
       ),
   );
   const recordingUrls = new Map(
     recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])),
   );
+  const date = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Dubai',
+  });
+  const display: OperationalMeetingDisplay[] = meetings.map((meeting) => ({
+    id: meeting.id,
+    title: meeting.title,
+    status: meeting.status,
+    statusLabel: t(`statuses.${meeting.status}`),
+    whenLabel: date.format(new Date(meeting.scheduledAt)),
+    durationLabel: t('duration', { minutes: meeting.durationMinutes }),
+    meetingUrl: safeExternalMeetingHref(meeting.meetingUrl),
+    recordingUrl: safeExternalMeetingHref(recordingUrls.get(meeting.id) ?? null),
+  }));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Meetings</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Book consultation slots, join calls, and review recordings attached to your file.
-        </p>
-      </div>
-
-      <Card>
+    <div className="signal-dashboard min-w-0 space-y-5">
+      <DashboardPageHeader
+        eyebrow={t('customer.eyebrow')}
+        title={t('title')}
+        description={t('customer.description', { company: access.company.companyName })}
+      />
+      <Card className="signal-panel">
         <CardHeader>
-          <CardTitle className="text-lg">Available slots</CardTitle>
-          <CardDescription>
-            Meetings may be recorded and attached to your customer file for follow-up.
-          </CardDescription>
+          <CardTitle>{t('availableSlots')}</CardTitle>
+          <CardDescription>{t('customer.slotDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          {customer.linkedCompanyId ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {openSlots.length ? (
-                openSlots.map((slot) => (
-                  <div key={slot.id} className="border-border rounded-md border p-4">
-                    <div className="font-medium">{formatDate(slot.startsAt)}</div>
-                    <div className="text-muted-foreground mt-1 text-sm">{slot.timezone}</div>
-                    <form
-                      className="mt-4"
-                      action={async () => {
-                        'use server';
-                        await bookMeetingSlotAction(slug, slot.id);
-                      }}
-                    >
-                      <Button type="submit" size="sm">
-                        Book
-                      </Button>
-                    </form>
-                  </div>
-                ))
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  No consultation slots are open right now.
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Your account is not linked to a company file yet. Contact Mandoob support to link your
-              profile before booking.
-            </p>
-          )}
+          <ul className="grid gap-3 md:grid-cols-2">
+            {openSlots.length ? (
+              openSlots.map((slot) => (
+                <li key={slot.id} className="rounded-lg border p-4">
+                  <p className="font-medium">{date.format(new Date(slot.startsAt))}</p>
+                  <p className="text-muted-foreground mt-1 text-sm">{slot.timezone}</p>
+                  <form
+                    className="mt-4"
+                    action={async () => {
+                      'use server';
+                      await bookMeetingSlotAction(slug, slot.id);
+                    }}
+                  >
+                    <Button type="submit" size="sm">
+                      {t('book')}
+                    </Button>
+                  </form>
+                </li>
+              ))
+            ) : (
+              <li className="text-muted-foreground text-sm">{t('noOpenSlots')}</li>
+            )}
+          </ul>
         </CardContent>
       </Card>
-
-      <Card>
+      <Card className="signal-panel">
         <CardHeader>
-          <CardTitle className="text-lg">Your meetings</CardTitle>
+          <CardTitle>{t('yourMeetings')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {meetings.length ? (
-            <div className="divide-border divide-y">
-              {meetings.map((meeting) => {
-                const recordingUrl = recordingUrls.get(meeting.id);
-                return (
-                  <div
-                    key={meeting.id}
-                    className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{meeting.title}</p>
-                        <Badge
-                          variant={meeting.status === 'recording_ready' ? 'default' : 'secondary'}
-                        >
-                          {meeting.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        {formatDate(meeting.scheduledAt)} · {meeting.durationMinutes} min
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {meeting.meetingUrl ? (
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={meeting.meetingUrl}>Join</Link>
-                        </Button>
-                      ) : null}
-                      {recordingUrl ? (
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={recordingUrl}>Recording</Link>
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">No meetings booked yet.</p>
-          )}
+          <OperationalMeetingList
+            meetings={display}
+            emptyLabel={t('noCustomerMeetings')}
+            joinLabel={t('join')}
+            recordingLabel={t('recording')}
+          />
         </CardContent>
+      </Card>
+      <Card className="signal-panel">
+        <CardHeader>
+          <CardTitle>{t('consentTitle')}</CardTitle>
+          <CardDescription>{t('consentUnavailable')}</CardDescription>
+        </CardHeader>
       </Card>
     </div>
   );

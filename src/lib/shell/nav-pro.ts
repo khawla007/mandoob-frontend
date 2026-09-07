@@ -8,6 +8,10 @@ import {
   LayoutDashboard,
   Settings,
   Route,
+  ListTodo,
+  CalendarDays,
+  MessagesSquare,
+  Bell,
 } from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
@@ -46,6 +50,13 @@ export function buildProNav(slug: string): ShellNavGroup[] {
           href: `${base}/applications/registration`,
           icon: Route,
         },
+        { labelKey: 'tasks', labelFallback: 'Tasks', href: `${base}/tasks`, icon: ListTodo },
+        {
+          labelKey: 'calendar',
+          labelFallback: 'Calendar',
+          href: `${base}/calendar`,
+          icon: CalendarDays,
+        },
         {
           labelKey: 'meetings',
           labelFallback: 'Meetings',
@@ -75,6 +86,18 @@ export function buildProNav(slug: string): ShellNavGroup[] {
           labelFallback: 'Employees',
           href: `${base}/employees`,
           icon: BadgeCheck,
+        },
+        {
+          labelKey: 'communications',
+          labelFallback: 'Communications',
+          href: `${base}/communications`,
+          icon: MessagesSquare,
+        },
+        {
+          labelKey: 'notifications',
+          labelFallback: 'Notifications',
+          href: `${base}/notifications`,
+          icon: Bell,
         },
       ],
     },

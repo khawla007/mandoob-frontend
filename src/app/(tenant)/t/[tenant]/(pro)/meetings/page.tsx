@@ -1,129 +1,43 @@
-import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { getLocale, getTranslations } from 'next-intl/server';
+
+import {
+  OperationalMeetingList,
+  type OperationalMeetingDisplay,
+} from '@/components/operations/OperationalMeetingList';
+import { MeetingAiSummaryCard } from '@/components/pro/MeetingAiSummaryCard';
+import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { MeetingAiSummaryCard } from '@/components/pro/MeetingAiSummaryCard';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
-  getMeetingRecordingSignedUrl,
-  listMeetingsForTenant,
+  getCompanyMeetingRecordingSignedUrl,
+  listMeetingsForCompany,
   listOpenMeetingSlots,
   type Meeting,
   type MeetingActor,
 } from '@/lib/data/meetings';
-import {
-  listMeetingAiSummariesForMeetings,
-  type MeetingAiSummary,
-} from '@/lib/data/meeting-ai-summaries';
+import { listMeetingAiSummariesForMeetings } from '@/lib/data/meeting-ai-summaries';
+import { partitionMeetings, safeExternalMeetingHref } from '@/lib/operations/meeting-presentation';
 import { cancelMeetingAction, createMeetingSlotAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-AE', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dubai',
-  }).format(new Date(value));
-}
-
-function splitMeetings(rows: Meeting[]) {
-  const now = Date.now();
-  return {
-    upcoming: rows.filter(
-      (row) => row.status === 'scheduled' && new Date(row.scheduledAt).getTime() >= now,
-    ),
-    past: rows.filter(
-      (row) => row.status !== 'scheduled' || new Date(row.scheduledAt).getTime() < now,
-    ),
-  };
-}
-
-async function MeetingList({
-  meetings,
-  slug,
-  recordingUrls,
-  summaries,
-}: {
-  meetings: Meeting[];
-  slug: string;
-  recordingUrls: Map<string, string>;
-  summaries: Map<string, MeetingAiSummary>;
-}) {
-  if (!meetings.length) {
-    return <p className="text-muted-foreground text-sm">No meetings in this list.</p>;
-  }
-
-  return (
-    <div className="divide-border divide-y">
-      {meetings.map((meeting) => {
-        const recordingUrl = recordingUrls.get(meeting.id);
-        return (
-          <div key={meeting.id} className="py-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{meeting.title}</p>
-                  <Badge variant={meeting.status === 'recording_ready' ? 'default' : 'secondary'}>
-                    {meeting.status.replace('_', ' ')}
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {formatDate(meeting.scheduledAt)} · {meeting.durationMinutes} min
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {meeting.meetingUrl ? (
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={meeting.meetingUrl}>Join</Link>
-                  </Button>
-                ) : null}
-                {recordingUrl ? (
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={recordingUrl}>Recording</Link>
-                  </Button>
-                ) : null}
-                {meeting.status === 'scheduled' ? (
-                  <form
-                    action={async () => {
-                      'use server';
-                      await cancelMeetingAction(slug, meeting.id);
-                    }}
-                  >
-                    <Button type="submit" size="sm" variant="ghost">
-                      Cancel
-                    </Button>
-                  </form>
-                ) : null}
-              </div>
-            </div>
-            <MeetingAiSummaryCard
-              meetingId={meeting.id}
-              slug={slug}
-              summary={summaries.get(meeting.id) ?? null}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default async function ProMeetingsPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant: slug } = await params;
   const { tenant, session } = await requireProTenantRouteAccess(slug);
+  const company = await readAssignedCompanyForPro(session.id, slug);
+  if (!company || company.tenantId !== tenant.id) notFound();
 
-  const actor: MeetingActor = {
-    id: session.id,
-    role: session.role,
-    tenantId: tenant.id,
-  };
+  const [t, locale] = await Promise.all([getTranslations('meetingOperations'), getLocale()]);
+  const actor: MeetingActor = { id: session.id, role: 'pro', tenantId: tenant.id };
   const now = new Date();
   const slotWindowEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const [meetings, openSlots] = await Promise.all([
-    listMeetingsForTenant(tenant.id, actor),
+    listMeetingsForCompany(company.id, actor),
     listOpenMeetingSlots(tenant.id, now.toISOString(), slotWindowEnd.toISOString()),
   ]);
   const recordingPairs = await Promise.all(
@@ -131,46 +45,90 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
       .filter((meeting) => meeting.recordingStoragePath)
       .map(
         async (meeting) =>
-          [meeting.id, await getMeetingRecordingSignedUrl(meeting.id, actor)] as const,
+          [
+            meeting.id,
+            await getCompanyMeetingRecordingSignedUrl(meeting.id, company.id, actor),
+          ] as const,
       ),
   );
   const recordingUrls = new Map(
     recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])),
   );
   const summaries = await listMeetingAiSummariesForMeetings(
-    meetings.map((meeting) => meeting.id),
+    meetings.map(({ id }) => id),
     actor,
   );
-  const { upcoming, past } = splitMeetings(meetings);
+  const { upcoming, past } = partitionMeetings(meetings, now);
+  const date = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Dubai',
+  });
+  const display = (rows: Meeting[]): OperationalMeetingDisplay[] =>
+    rows.map((meeting) => ({
+      id: meeting.id,
+      title: meeting.title,
+      status: meeting.status,
+      statusLabel: t(`statuses.${meeting.status}`),
+      whenLabel: date.format(new Date(meeting.scheduledAt)),
+      durationLabel: t('duration', { minutes: meeting.durationMinutes }),
+      meetingUrl: safeExternalMeetingHref(meeting.meetingUrl),
+      recordingUrl: safeExternalMeetingHref(recordingUrls.get(meeting.id) ?? null),
+    }));
+  const details = Object.fromEntries(
+    meetings.map((meeting) => [
+      meeting.id,
+      <MeetingAiSummaryCard
+        key={meeting.id}
+        meetingId={meeting.id}
+        slug={slug}
+        summary={summaries.get(meeting.id) ?? null}
+      />,
+    ]),
+  );
+  const cancellation = Object.fromEntries(
+    upcoming.map((meeting) => [
+      meeting.id,
+      <form
+        key={meeting.id}
+        action={async () => {
+          'use server';
+          await cancelMeetingAction(slug, meeting.id);
+        }}
+      >
+        <Button type="submit" size="sm" variant="ghost">
+          {t('cancel')}
+        </Button>
+      </form>,
+    ]),
+  );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Meetings</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Publish consultation slots, join Daily.co rooms, and access private recordings.
-        </p>
-      </div>
-
-      <Card>
+    <div className="signal-dashboard min-w-0 space-y-5">
+      <DashboardPageHeader
+        eyebrow={t('pro.eyebrow')}
+        title={t('title')}
+        description={t('pro.description', { company: company.companyName })}
+      />
+      <Card className="signal-panel">
         <CardHeader>
-          <CardTitle className="text-lg">Create slot</CardTitle>
-          <CardDescription>Slots appear in the customer portal for booking.</CardDescription>
+          <CardTitle>{t('pro.createTitle')}</CardTitle>
+          <CardDescription>{t('pro.createDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
-            className="grid gap-4 md:grid-cols-[1fr_160px_160px_auto] md:items-end"
+            className="grid gap-4 md:grid-cols-[1fr_10rem_10rem_auto] md:items-end"
             action={async (formData) => {
               'use server';
               await createMeetingSlotAction(slug, formData);
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor="starts_at">Start</Label>
+              <Label htmlFor="starts_at">{t('start')}</Label>
               <Input id="starts_at" name="starts_at" type="datetime-local" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="duration_minutes">Duration</Label>
+              <Label htmlFor="duration_minutes">{t('durationLabel')}</Label>
               <Input
                 id="duration_minutes"
                 name="duration_minutes"
@@ -181,60 +139,68 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Input id="timezone" name="timezone" defaultValue="Asia/Dubai" />
+              <Label htmlFor="timezone">{t('timezone')}</Label>
+              <Input id="timezone" name="timezone" value="Asia/Dubai" readOnly />
             </div>
-            <Button type="submit">Create</Button>
+            <Button type="submit">{t('create')}</Button>
           </form>
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
+      <div className="grid min-w-0 gap-5 xl:grid-cols-3">
+        <Card className="signal-panel min-w-0">
           <CardHeader>
-            <CardTitle className="text-lg">Open slots</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {openSlots.length ? (
-              openSlots.map((slot) => (
-                <div key={slot.id} className="border-border rounded-md border p-3 text-sm">
-                  <div className="font-medium">{formatDate(slot.startsAt)}</div>
-                  <div className="text-muted-foreground">{slot.timezone}</div>
-                </div>
-              ))
-            ) : (
-              <p className="text-muted-foreground text-sm">No open slots in the next 30 days.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Upcoming</CardTitle>
+            <CardTitle>{t('openSlots')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <MeetingList
-              meetings={upcoming}
-              slug={slug}
-              recordingUrls={recordingUrls}
-              summaries={summaries}
+            <ul className="space-y-3">
+              {openSlots.length ? (
+                openSlots.map((slot) => (
+                  <li key={slot.id} className="rounded-lg border p-3 text-sm">
+                    <p className="font-medium">{date.format(new Date(slot.startsAt))}</p>
+                    <p className="text-muted-foreground">{slot.timezone}</p>
+                  </li>
+                ))
+              ) : (
+                <li className="text-muted-foreground text-sm">{t('noOpenSlots')}</li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+        <Card className="signal-panel min-w-0 xl:col-span-2">
+          <CardHeader>
+            <CardTitle>{t('upcoming')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OperationalMeetingList
+              meetings={display(upcoming)}
+              emptyLabel={t('noUpcoming')}
+              joinLabel={t('join')}
+              recordingLabel={t('recording')}
+              actions={cancellation}
+              details={details}
             />
           </CardContent>
         </Card>
       </div>
-
-      <Card>
+      <Card className="signal-panel">
         <CardHeader>
-          <CardTitle className="text-lg">Past and recordings</CardTitle>
+          <CardTitle>{t('past')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <MeetingList
-            meetings={past}
-            slug={slug}
-            recordingUrls={recordingUrls}
-            summaries={summaries}
+          <OperationalMeetingList
+            meetings={display(past)}
+            emptyLabel={t('noPast')}
+            joinLabel={t('join')}
+            recordingLabel={t('recording')}
+            details={details}
           />
         </CardContent>
+      </Card>
+      <Card className="signal-panel">
+        <CardHeader>
+          <CardTitle>{t('unavailableTitle')}</CardTitle>
+          <CardDescription>{t('unavailableDescription')}</CardDescription>
+        </CardHeader>
       </Card>
     </div>
   );

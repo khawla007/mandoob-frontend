@@ -5,6 +5,11 @@ import {
   LayoutDashboard,
   Settings,
   UserRound,
+  ListTodo,
+  CalendarDays,
+  MessagesSquare,
+  Bell,
+  Activity,
 } from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
@@ -24,6 +29,13 @@ export function buildEmployeeNav(slug: string): ShellNavGroup[] {
           labelFallback: 'My profile',
           href: `${base}/profile`,
           icon: UserRound,
+        },
+        { labelKey: 'tasks', labelFallback: 'Tasks', href: `${base}/tasks`, icon: ListTodo },
+        {
+          labelKey: 'calendar',
+          labelFallback: 'Calendar',
+          href: `${base}/calendar`,
+          icon: CalendarDays,
         },
       ],
     },
@@ -48,6 +60,24 @@ export function buildEmployeeNav(slug: string): ShellNavGroup[] {
           labelFallback: 'Renewals',
           href: `${base}/renewals`,
           icon: CalendarClock,
+        },
+        {
+          labelKey: 'communications',
+          labelFallback: 'Communications',
+          href: `${base}/communications`,
+          icon: MessagesSquare,
+        },
+        {
+          labelKey: 'notifications',
+          labelFallback: 'Notifications',
+          href: `${base}/notifications`,
+          icon: Bell,
+        },
+        {
+          labelKey: 'activity',
+          labelFallback: 'Activity',
+          href: `${base}/activity`,
+          icon: Activity,
         },
       ],
     },

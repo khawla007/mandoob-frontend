@@ -40,9 +40,14 @@ describe('adminNav', () => {
   it('adds the P2.09 registration workspace to the existing Operations routes', () => {
     assert.deepEqual(groupHrefs('operations'), [
       '/admin/registrations',
+      '/admin/tasks',
+      '/admin/calendar',
       '/admin/documents',
       '/admin/employees',
       '/admin/renewals',
+      '/admin/meetings',
+      '/admin/communications',
+      '/admin/notifications',
     ]);
   });
 

@@ -33,11 +33,16 @@ clientTest(
         '/t/acme/portal',
         '/t/acme/portal/company',
         '/t/acme/portal/registration',
+        '/t/acme/portal/tasks',
+        '/t/acme/portal/calendar',
         '/t/acme/portal/documents',
         '/t/acme/portal/employees',
         '/t/acme/portal/meetings',
         '/t/acme/portal/payments',
         '/t/acme/portal/renewals',
+        '/t/acme/portal/communications',
+        '/t/acme/portal/notifications',
+        '/t/acme/portal/activity',
         '/t/acme/portal/pro',
         '/t/acme/portal/settings',
         '/account',
@@ -54,7 +59,7 @@ clientTest(
     );
     assert.equal(
       items.some((item) => /notifications|tasks/iu.test(item.href)),
-      false,
+      true,
     );
   },
 );

@@ -42,12 +42,23 @@ test('overview keeps the eight reference regions and exact four-signal order', (
   assert.match(source, /renewals\?\.kind === 'error'/u);
 });
 
-test('Employee navigation exposes profile, identity, documents, renewals and settings without P2.10 routes', () => {
+test('Employee navigation exposes own-record and truthful P2.10 operational routes', () => {
   const source = readFileSync(join(process.cwd(), 'src/lib/shell/nav-employee.ts'), 'utf8');
-  for (const segment of ['/profile', '/identity', '/documents', '/renewals', '/settings']) {
+  for (const segment of [
+    '/profile',
+    '/identity',
+    '/documents',
+    '/renewals',
+    '/tasks',
+    '/calendar',
+    '/communications',
+    '/notifications',
+    '/activity',
+    '/settings',
+  ]) {
     assert.match(source, new RegExp(segment.replace('/', '\\/'), 'u'));
   }
-  assert.doesNotMatch(source, /\/notifications|\/messages/u);
+  assert.doesNotMatch(source, /\/payments|\/finance|\/meetings/u);
   assert.match(source, /encodeURIComponent\(slug\)/u);
 });
 

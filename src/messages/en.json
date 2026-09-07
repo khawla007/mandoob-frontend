@@ -1,4 +1,174 @@
 {
+  "operations": {
+    "eyebrow": "{scope} operations",
+    "roles": {
+      "admin": "Platform",
+      "pro": "Assigned Company",
+      "customer": "Company",
+      "employee": "Personal"
+    },
+    "scopes": {
+      "admin": "Platform-authorized records only",
+      "pro": "The one actively assigned Company only",
+      "customer": "Your linked Company only",
+      "employee": "Your own Employee records only"
+    },
+    "summary": {
+      "source": "Production source",
+      "scope": "Data scope",
+      "owner": "Implementation owner"
+    },
+    "phase3": "Phase 3 API and security contracts",
+    "unavailableTitle": "Production data unavailable",
+    "boundariesTitle": "Operational contract",
+    "boundariesDescription": "These boundaries remain visible so a missing backend contract is never mistaken for an empty or successful workflow.",
+    "filters": {
+      "label": "Validated route context",
+      "reset": "Reset filters",
+      "notSet": "Not set",
+      "domain": "Domain",
+      "priority": "Priority",
+      "status": "Status",
+      "page": "Page",
+      "view": "View",
+      "date": "Date",
+      "type": "Type"
+    },
+    "filterValues": {
+      "all": "All",
+      "document": "Documents",
+      "renewal": "Renewals",
+      "invoice": "Invoices",
+      "meeting": "Meetings",
+      "onboarding": "Onboarding",
+      "registration": "Registration",
+      "urgent": "Urgent",
+      "warning": "Warning",
+      "active": "Active",
+      "informational": "Informational",
+      "completed": "Completed",
+      "open": "Open",
+      "blocked": "Blocked",
+      "list": "List",
+      "month": "Month",
+      "day": "Day",
+      "scheduled": "Scheduled",
+      "due": "Due",
+      "overdue": "Overdue",
+      "cancelled": "Cancelled"
+    },
+    "modules": {
+      "tasks": {
+        "title": "Tasks and actions",
+        "description": "Review {scope} work without inventing assignments or generic completion.",
+        "source": "No accepted persistent task or combined derived-work adapter",
+        "unavailable": "Task records and a directly authorized cross-domain projection are not available on the accepted base.",
+        "boundaries": [
+          "Derived work must retain its exact domain action.",
+          "Create, assign, comment, and generic completion remain unavailable.",
+          "Empty and no-results require an authoritative ready source."
+        ]
+      },
+      "calendar": {
+        "title": "Operational calendar",
+        "description": "Review {scope} dated work in Dubai business time.",
+        "source": "No accepted normalized cross-domain calendar adapter",
+        "unavailable": "A directly authorized calendar projection is not available on the accepted base.",
+        "boundaries": [
+          "Date-only deadlines and timestamp events remain distinct.",
+          "List view is the required accessible alternative.",
+          "Creation, drag-and-drop, recurrence, reminders, and external sync remain unavailable."
+        ]
+      },
+      "communications": {
+        "title": "Communications",
+        "description": "Review {scope} communication content separately from delivery systems.",
+        "source": "No accepted user-facing inbox or thread contract",
+        "unavailable": "Templates, provider configuration, and delivery queues do not prove a message was received or read.",
+        "boundaries": [
+          "Content and threads are separate from delivery attempts.",
+          "Recipient details, provider data, and raw message bodies stay private.",
+          "Compose, send, reply, attachments, and retry remain unavailable."
+        ]
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Review {scope} persistent alerts and read state when an authorized source exists.",
+        "source": "No accepted persistent notification or read-state contract",
+        "unavailable": "Preferences and queued templates do not establish a notification, unread count, delivery, or read state.",
+        "boundaries": [
+          "Notifications remain distinct from communications.",
+          "Consent and channel preferences do not prove delivery.",
+          "Unread counts, links, and read mutations remain unavailable."
+        ]
+      },
+      "activity": {
+        "title": "Activity",
+        "description": "Review {scope} domain events only after server-side filtering and redaction.",
+        "source": "No accepted role-visible domain-event adapter",
+        "unavailable": "Privileged audit rows are not automatically safe activity events for this role.",
+        "boundaries": [
+          "Registration, onboarding, and assignment histories stay distinct.",
+          "Raw metadata, identifiers, network data, and internal notes stay private.",
+          "Activity has no edit or delete control."
+        ]
+      },
+      "meetings": {
+        "title": "Meetings",
+        "description": "Review {scope} meeting operations only through directly authorized records.",
+        "source": "No accepted Platform meeting workspace adapter",
+        "unavailable": "Platform meeting oversight is unavailable until its target and privacy contract is approved.",
+        "boundaries": [
+          "Slots, bookings, rooms, recordings, summaries, and consent remain distinct.",
+          "Meeting and recording links require exact target authorization.",
+          "Invitations, rescheduling, reminders, notes, and action items remain unavailable."
+        ]
+      }
+    }
+  },
+  "meetingOperations": {
+    "title": "Meetings",
+    "pro": {
+      "eyebrow": "Assigned Company schedule",
+      "description": "Create consultation availability and manage directly authorized meetings for {company}.",
+      "createTitle": "Create consultation slot",
+      "createDescription": "Available slots are shown to the linked Customer. Invitations and reminders remain unavailable."
+    },
+    "customer": {
+      "eyebrow": "Company consultations",
+      "description": "Book and review directly authorized meetings for {company}.",
+      "slotDescription": "Booking creates a meeting record. Invitation delivery and reminders remain unavailable."
+    },
+    "start": "Start in Dubai time",
+    "durationLabel": "Duration",
+    "duration": "{minutes} min",
+    "timezone": "Timezone",
+    "create": "Create slot",
+    "cancel": "Cancel",
+    "book": "Book",
+    "join": "Join securely",
+    "recording": "Open recording",
+    "openSlots": "Open slots",
+    "availableSlots": "Available slots",
+    "upcoming": "Upcoming meetings",
+    "past": "Past meetings and recordings",
+    "yourMeetings": "Your meetings",
+    "noOpenSlots": "No open slots in the next 30 days.",
+    "noUpcoming": "No upcoming meetings.",
+    "noPast": "No past meetings or recordings.",
+    "noCustomerMeetings": "No meetings are booked yet.",
+    "unavailableTitle": "Meeting workflow boundaries",
+    "unavailableDescription": "Invitations, rescheduling, calendar sync, scheduled reminders, full consent records, notes, and action items remain unavailable until Phase 3.",
+    "consentTitle": "Recording and consent",
+    "consentUnavailable": "A recording link appears only after direct authorization. The accepted base does not prove full recording-consent workflow or invitation delivery.",
+    "statuses": {
+      "scheduled": "Scheduled",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "no_show": "No show",
+      "recording_ready": "Recording ready"
+    }
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -596,6 +766,11 @@
     "tenants": "Company workspaces",
     "companies": "Companies",
     "meetings": "Meetings",
+    "tasks": "Tasks",
+    "calendar": "Calendar",
+    "communications": "Communications",
+    "notifications": "Notifications",
+    "activity": "Activity",
     "erasure": "Erasure",
     "erasureRequests": "Erasure requests",
     "finance": "Finance",
