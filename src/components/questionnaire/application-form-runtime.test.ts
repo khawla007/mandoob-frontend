@@ -169,6 +169,7 @@ if (reactServer) {
     await act(() =>
       summaryRoot.render(
         createElement(ApplicationErrorSummary, {
+          focusKey: 1,
           errors: [
             {
               stepId: 'review',
@@ -182,7 +183,31 @@ if (reactServer) {
         }),
       ),
     );
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     assert.equal(document.activeElement?.id, 'application-error-summary');
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    outside.focus();
+    await act(() =>
+      summaryRoot.render(
+        createElement(ApplicationErrorSummary, {
+          focusKey: 2,
+          errors: [
+            {
+              stepId: 'review',
+              fieldId: 'application-data-consent',
+              code: 'required',
+              message: 'Consent is required.',
+              href: '#application-data-consent',
+            },
+          ],
+          onActivate: () => undefined,
+        }),
+      ),
+    );
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    assert.equal(document.activeElement?.id, 'application-error-summary');
+    outside.remove();
     await act(() => summaryRoot.unmount());
   });
 }

@@ -87,6 +87,7 @@ export function QuestionnaireForm({
   const [resetOpen, setResetOpen] = useState(false);
   const [maxReached, setMaxReached] = useState(0);
   const [completionErrors, setCompletionErrors] = useState(false);
+  const [completionAttempt, setCompletionAttempt] = useState(0);
   const [setupSubstep, setSetupSubstep] = useState(0);
   const [setupUnlocked, setSetupUnlocked] = useState(0);
   const hydrated = useRef(false);
@@ -256,6 +257,7 @@ export function QuestionnaireForm({
       if (prepared.status === 'invalid') {
         setAttempted(true);
         setCompletionErrors(true);
+        setCompletionAttempt((value) => value + 1);
       } else
         setAction({
           status: 'unavailable',
@@ -572,7 +574,11 @@ export function QuestionnaireForm({
             <p>{stepDescription(current.id)}</p>
           </header>
           {completionErrors && validation.status === 'invalid' ? (
-            <ApplicationErrorSummary errors={validation.errors} onActivate={focusError} />
+            <ApplicationErrorSummary
+              errors={validation.errors}
+              focusKey={completionAttempt}
+              onActivate={focusError}
+            />
           ) : null}
           {!completionErrors && errors.length ? (
             <div className="application-errors" role="alert">
@@ -688,15 +694,18 @@ export function QuestionnaireForm({
 type Errors = ReturnType<typeof validateApplication>['errors'];
 export function ApplicationErrorSummary({
   errors,
+  focusKey,
   onActivate,
 }: {
   errors: readonly ApplicationValidationError[];
+  focusKey?: number;
   onActivate: (error: ApplicationValidationError) => void;
 }) {
   const summaryRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    summaryRef.current?.focus();
-  }, []);
+    const frame = requestAnimationFrame(() => summaryRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [focusKey]);
   return (
     <div
       ref={summaryRef}
