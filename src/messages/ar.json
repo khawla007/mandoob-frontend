@@ -3071,6 +3071,11 @@
       "proCta": "اطّلع على مساحة الشركة المخصّصة"
     }
   },
+  "application": {
+    "privacyMode": "مساحة عمل خاصة للطلب",
+    "localPreview": "لم يتم إرسال أي طلب إلى مندوب.",
+    "localSave": "احفظ على هذا الجهاز لمدة سبعة أيام"
+  },
   "marketing": {
     "estimatorPreview": {
       "tablistLabel": "الولاية",

@@ -3071,6 +3071,11 @@
       "proCta": "See the assigned-company workspace"
     }
   },
+  "application": {
+    "privacyMode": "Private application workspace",
+    "localPreview": "No application was sent to Mandoob.",
+    "localSave": "Save on this device for seven days"
+  },
   "marketing": {
     "estimatorPreview": {
       "tablistLabel": "Jurisdiction",
