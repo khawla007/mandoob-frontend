@@ -755,6 +755,33 @@
   border-radius: var(--r-md) var(--r-md) 0 0;
   background: var(--public-surface-soft);
 }
+.site-public .application-restore {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--public-accent);
+  background: color-mix(in srgb, var(--public-accent) 7%, var(--public-surface-elevated));
+}
+.site-public .application-restore p {
+  margin-block-start: 4px;
+  color: var(--public-text-muted);
+  font-size: var(--fs-12);
+}
+.site-public .application-restore > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.site-public .application-restore button {
+  min-block-size: 40px;
+  padding: 7px 11px;
+  border: 1px solid var(--public-border-strong);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-12);
+  font-weight: 750;
+}
 .site-public .application-storage > svg {
   inline-size: 22px;
   color: var(--public-accent);
@@ -921,6 +948,22 @@
   font-size: 11px;
   font-weight: 700;
 }
+.site-public .application-substeps button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--r-sm);
+}
+.site-public .application-substeps button[aria-current='step'] {
+  color: var(--public-text);
+}
+.site-public .application-substeps button.is-invalid {
+  color: var(--public-danger);
+}
+.site-public .application-substeps button:disabled {
+  opacity: 0.6;
+}
 .site-public .application-substeps li:not(:last-child)::after {
   content: '›';
   margin-inline-start: 2px;
@@ -1050,6 +1093,23 @@
   inline-size: 1px;
   block-size: 1px;
   opacity: 0;
+}
+.site-public .application-file-button:focus-within {
+  outline: 3px solid var(--public-focus-ring);
+  outline-offset: 3px;
+}
+.site-public .application-document__status {
+  font-size: 11px;
+  font-weight: 750;
+}
+.site-public .application-document > button {
+  color: var(--public-danger);
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: underline;
+}
+.site-public .application-document > .application-field__error {
+  grid-column: 2/-1;
 }
 .site-public .application-consents {
   display: grid;
@@ -1260,6 +1320,10 @@
   .site-public .application-storage {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+  .site-public .application-restore {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .site-public .application-workspace__header {
     display: grid;
