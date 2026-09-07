@@ -64,6 +64,59 @@ test('definition source accepts only the exact reviewed contract and fails close
     retryable: true,
     reason: 'invalid-definition',
   });
+
+  const reordered = Object.fromEntries(Object.entries(clone).reverse());
+  assert.deepEqual(getApplicationDefinitionSource(reordered), {
+    status: 'ready',
+    definition: APPLICATION_DEFINITION,
+  });
+
+  const nestedUnknown = structuredClone(clone);
+  Object.assign(nestedUnknown.authorities[0], { injected: 'unknown' });
+  assert.equal(getApplicationDefinitionSource(nestedUnknown).status, 'unavailable');
+
+  const missingNested = structuredClone(clone);
+  delete (missingNested.authorities[0] as Partial<(typeof missingNested.authorities)[number]>)
+    .label;
+  assert.equal(getApplicationDefinitionSource(missingNested).status, 'unavailable');
+
+  const withSerializationHook = structuredClone(clone) as typeof clone & {
+    toJSON?: () => typeof clone;
+  };
+  Object.defineProperty(withSerializationHook, 'toJSON', {
+    enumerable: false,
+    value: () => clone,
+  });
+  assert.equal(getApplicationDefinitionSource(withSerializationHook).status, 'unavailable');
+
+  const withGetter = structuredClone(clone);
+  let getterCalled = false;
+  Object.defineProperty(withGetter, 'version', {
+    enumerable: true,
+    get() {
+      getterCalled = true;
+      return APPLICATION_DEFINITION_VERSION;
+    },
+  });
+  assert.equal(getApplicationDefinitionSource(withGetter).status, 'unavailable');
+  assert.equal(getterCalled, false);
+
+  const throwingProxy = new Proxy(clone, {
+    ownKeys() {
+      throw new Error('untrusted proxy');
+    },
+  });
+  assert.equal(getApplicationDefinitionSource(throwingProxy).status, 'unavailable');
+});
+
+test('the canonical reviewed definition is deeply immutable', () => {
+  assert.equal(Object.isFrozen(APPLICATION_DEFINITION), true);
+  assert.equal(Object.isFrozen(APPLICATION_DEFINITION.authorities), true);
+  assert.equal(Object.isFrozen(APPLICATION_DEFINITION.authorities[0]), true);
+  assert.equal(Object.isFrozen(APPLICATION_DEFINITION.authorities[0].activityIds), true);
+  assert.throws(() => {
+    (APPLICATION_DEFINITION.authorities[0].activityIds as string[]).push('injected');
+  }, TypeError);
 });
 
 test('definition choices use only P1.08 catalog IDs and preserve compatibility relations', () => {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
@@ -183,6 +183,18 @@ test('adapter graph is isolated from the preserved live questionnaire path and n
   assert.ok(readFileSync(join(sourceRoot, 'lib/data/leads.ts'), 'utf8'));
 
   const visited = new Set<string>();
+  const resolveModule = (file: string, specifier: string) => {
+    if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return null;
+    const target = specifier.startsWith('@/')
+      ? resolve(sourceRoot, specifier.slice(2))
+      : resolve(dirname(file), specifier);
+    return [
+      `${target}.ts`,
+      `${target}.tsx`,
+      join(target, 'index.ts'),
+      join(target, 'index.tsx'),
+    ].find(existsSync);
+  };
   const visit = (file: string) => {
     if (visited.has(file)) return;
     visited.add(file);
@@ -191,21 +203,25 @@ test('adapter graph is isolated from the preserved live questionnaire path and n
       source,
       /\/api\/v1\/public\/questionnaire|\bfetch\s*\(|createLeadFromQuestionnaire|service-role|supabase/iu,
     );
-    for (const match of source.matchAll(/from\s+['"](\.\.?\/[^'"]+)['"]/gu)) {
-      const target = resolve(dirname(file), match[1]);
-      for (const candidate of [`${target}.ts`, join(target, 'index.ts')]) {
-        try {
-          visit(candidate);
-          break;
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-        }
-      }
+    const specifiers = [
+      ...source.matchAll(/(?:import|export)\s+(?!type\b)[^;]*?from\s+['"]([^'"]+)['"]/gu),
+      ...source.matchAll(/import\s*\(\s*['"]([^'"]+)['"]\s*\)/gu),
+      ...source.matchAll(/import\s+['"]([^'"]+)['"]/gu),
+    ].map((match) => match[1]);
+    for (const specifier of specifiers) {
+      const target = resolveModule(file, specifier);
+      if (target) visit(target);
     }
   };
 
   visit(join(here, 'adapters.ts'));
   assert.ok(
-    [...visited].every((file) => relative(sourceRoot, file).startsWith('lib/public-application/')),
+    [...visited].every((file) => {
+      const path = relative(sourceRoot, file);
+      return (
+        path.startsWith('lib/public-application/') ||
+        path === 'lib/estimator/public-demo-catalog.ts'
+      );
+    }),
   );
 });

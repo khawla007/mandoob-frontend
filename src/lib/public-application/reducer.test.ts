@@ -241,6 +241,52 @@ test('document and other material edits always invalidate consent and confirmed 
   assert.equal(workspace.draft.confirmations.informationIsTrue, false);
 });
 
+test('document readiness rejects keys outside the current definition and shareholder rows', () => {
+  for (const documentId of [
+    'passport-copy:shareholder-999',
+    'unknown-document:shareholder-1',
+    'passport-copy:business',
+  ]) {
+    assert.equal(
+      reduceApplicationDraft(
+        completedDraft,
+        { type: 'set-document-readiness', value: 'ready', documentId },
+        APPLICATION_DEFINITION,
+      ),
+      completedDraft,
+      documentId,
+    );
+  }
+
+  const accepted = reduceApplicationDraft(
+    completedDraft,
+    {
+      type: 'set-document-readiness',
+      value: 'ready',
+      documentId: 'activity-summary:business',
+    },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(accepted.documentReadiness['activity-summary:business'], 'ready');
+
+  const sanitized = reduceApplicationDraft(
+    {
+      ...completedDraft,
+      documentReadiness: {
+        ...completedDraft.documentReadiness,
+        'unknown-document:contact': 'ready',
+      },
+    },
+    {
+      type: 'set-document-readiness',
+      value: 'not-ready',
+      documentId: 'passport-copy:contact',
+    },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal('unknown-document:contact' in sanitized.documentReadiness, false);
+});
+
 test('semantically unchanged reducer actions are identity-preserving no-ops', () => {
   const actions = [
     { type: 'set-add-ons', value: ['bank-account-assistance'] },

@@ -4,6 +4,7 @@ import type {
   ApplicationWorkspaceState,
 } from './contracts';
 import { emptyShareholder } from './definition';
+import { applicationDocumentReadinessKeys } from './document-readiness';
 
 export type ApplicationDraftAction =
   | {
@@ -257,10 +258,19 @@ export function reduceApplicationDraft(
       break;
     }
     case 'set-document-readiness': {
-      if (draft.documentReadiness[action.documentId] === action.value) return draft;
+      const allowedKeys = applicationDocumentReadinessKeys(draft, definition);
+      if (!allowedKeys.has(action.documentId)) return draft;
+      const documentReadiness = Object.fromEntries(
+        Object.entries(draft.documentReadiness).filter(([key]) => allowedKeys.has(key)),
+      );
+      if (
+        draft.documentReadiness[action.documentId] === action.value &&
+        Object.keys(documentReadiness).length === Object.keys(draft.documentReadiness).length
+      )
+        return draft;
       next = {
         ...draft,
-        documentReadiness: { ...draft.documentReadiness, [action.documentId]: action.value },
+        documentReadiness: { ...documentReadiness, [action.documentId]: action.value },
       };
       break;
     }

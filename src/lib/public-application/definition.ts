@@ -3,7 +3,7 @@ import type { ApplicationDefinition, ApplicationDraft } from './contracts';
 
 export const APPLICATION_DEFINITION_VERSION = 'p1.09-reviewed-2026-09-05';
 
-export const APPLICATION_DEFINITION: ApplicationDefinition = {
+export const APPLICATION_DEFINITION: ApplicationDefinition = deepFreeze({
   id: 'mandoob-public-company-application',
   version: APPLICATION_DEFINITION_VERSION,
   steps: [
@@ -136,7 +136,7 @@ export const APPLICATION_DEFINITION: ApplicationDefinition = {
     notSent: 'No application was sent to Mandoob.',
   },
   legalLinks: { privacy: '/legal/privacy', terms: '/legal/terms' },
-};
+});
 
 export type ApplicationDefinitionSource =
   | { status: 'ready'; definition: ApplicationDefinition }
@@ -144,13 +144,57 @@ export type ApplicationDefinitionSource =
 
 export function getApplicationDefinitionSource(input: unknown): ApplicationDefinitionSource {
   try {
-    if (JSON.stringify(input) === JSON.stringify(APPLICATION_DEFINITION)) {
-      return { status: 'ready', definition: input as ApplicationDefinition };
-    }
+    if (matchesCanonicalValue(input, APPLICATION_DEFINITION))
+      return { status: 'ready', definition: APPLICATION_DEFINITION };
   } catch {
-    // Cyclic and non-serializable sources are unsupported.
+    // Untrusted proxy traps and malformed object graphs fail closed.
   }
   return { status: 'unavailable', retryable: true, reason: 'invalid-definition' };
+}
+
+function matchesCanonicalValue(
+  input: unknown,
+  canonical: unknown,
+  visited = new WeakMap<object, object>(),
+): boolean {
+  if (Object.is(input, canonical)) return true;
+  if (typeof input !== 'object' || input === null) return false;
+  if (typeof canonical !== 'object' || canonical === null) return false;
+  if (Array.isArray(input) !== Array.isArray(canonical)) return false;
+  if (
+    !Array.isArray(input) &&
+    Object.getPrototypeOf(input) !== Object.prototype &&
+    Object.getPrototypeOf(input) !== null
+  )
+    return false;
+  const previousCanonical = visited.get(input);
+  if (previousCanonical) return previousCanonical === canonical;
+  visited.set(input, canonical);
+
+  const inputKeys = Reflect.ownKeys(input);
+  const canonicalKeys = Reflect.ownKeys(canonical);
+  if (inputKeys.length !== canonicalKeys.length) return false;
+  return canonicalKeys.every((key) => {
+    if (!inputKeys.includes(key)) return false;
+    const inputDescriptor = Object.getOwnPropertyDescriptor(input, key);
+    const canonicalDescriptor = Object.getOwnPropertyDescriptor(canonical, key);
+    return (
+      inputDescriptor !== undefined &&
+      canonicalDescriptor !== undefined &&
+      'value' in inputDescriptor &&
+      'value' in canonicalDescriptor &&
+      inputDescriptor.enumerable === canonicalDescriptor.enumerable &&
+      matchesCanonicalValue(inputDescriptor.value, canonicalDescriptor.value, visited)
+    );
+  });
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value;
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze((value as Record<PropertyKey, unknown>)[key]);
+  }
+  return Object.freeze(value);
 }
 
 export const EMPTY_APPLICATION_DRAFT: ApplicationDraft = {

@@ -5,6 +5,7 @@ import {
   EMPTY_APPLICATION_DRAFT,
   validateApplication,
   validateApplicationStep,
+  prepareApplicationCompletion,
   type ApplicationDraft,
 } from './index';
 
@@ -137,6 +138,48 @@ test('each supplied contact channel is valid and errors retain per-control order
       ['application-email', 'application-phone'],
     );
   }
+});
+
+test('phone validation requires a sensible normalized digit count', () => {
+  for (const phone of ['       ', '() -- ()', '+( ) -  ', '+1 (23) 45']) {
+    const result = validateApplication(
+      {
+        ...validDraft,
+        contact: { ...validDraft.contact, email: '', phone },
+      },
+      APPLICATION_DEFINITION,
+    );
+    assert.equal(result.status, 'invalid', JSON.stringify(phone));
+  }
+
+  assert.equal(
+    validateApplication(
+      {
+        ...validDraft,
+        contact: { ...validDraft.contact, email: '', phone: '+971 (50) 123-4567' },
+      },
+      APPLICATION_DEFINITION,
+    ).status,
+    'valid',
+  );
+});
+
+test('completion counts only document-readiness keys allowed for current owners', () => {
+  const prepared = prepareApplicationCompletion(
+    {
+      ...validDraft,
+      documentReadiness: {
+        'passport-copy:contact': 'ready',
+        'activity-summary:business': 'ready',
+        'passport-copy:shareholder-1': 'ready',
+        'passport-copy:shareholder-999': 'ready',
+        'unknown-document:contact': 'ready',
+      },
+    },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(prepared.status, 'ready');
+  if (prepared.status === 'ready') assert.equal(prepared.value.readyDocumentCount, 3);
 });
 
 test('shareholder ownership uses integer basis points and must total exactly 100 percent', () => {

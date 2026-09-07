@@ -9,6 +9,7 @@ import type {
   ApplicationConfirmationSummary,
 } from './contracts';
 import { getApplicationDefinitionSource } from './definition';
+import { applicationDocumentReadinessKeys } from './document-readiness';
 
 const validatedCompletions = new WeakSet<object>();
 
@@ -231,6 +232,7 @@ export function prepareApplicationCompletion(
   const validation = validateApplication(draft, definition);
   if (validation.status === 'invalid') return { status: 'invalid', validation };
   const addOnIds = Object.freeze([...draft.setup.addOnIds]) as unknown as string[];
+  const allowedDocumentKeys = applicationDocumentReadinessKeys(draft, definition);
   const summary = Object.freeze({
     jurisdiction: draft.setup.jurisdiction!,
     authorityId: draft.setup.authorityId!,
@@ -245,8 +247,9 @@ export function prepareApplicationCompletion(
         : 0,
     officeTypeId: draft.setup.officeTypeId!,
     addOnIds,
-    readyDocumentCount: Object.values(draft.documentReadiness).filter((value) => value === 'ready')
-      .length,
+    readyDocumentCount: Object.entries(draft.documentReadiness).filter(
+      ([key, value]) => allowedDocumentKeys.has(key) && value === 'ready',
+    ).length,
   }) as ApplicationConfirmationSummary;
   const value = summary as ApplicationCompletionInput;
   validatedCompletions.add(value);
@@ -262,7 +265,9 @@ function validEmail(value: string, max: number) {
 }
 
 function validPhone(value: string, max: number) {
-  return value.length <= max && /^\+?[0-9 ()-]{7,32}$/u.test(value);
+  if (value.length > max || !/^\+?[0-9 ()-]+$/u.test(value)) return false;
+  const digitCount = value.replace(/\D/gu, '').length;
+  return digitCount >= 7 && digitCount <= 15;
 }
 
 function parseWholeNumber(value: string) {
