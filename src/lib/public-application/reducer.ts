@@ -159,11 +159,15 @@ export function reduceApplicationDraft(
     case 'set-activity': {
       if (draft.business.activityId === action.value) return draft;
       const authority = selectedAuthority(draft, definition);
+      const canonical = definition.activities.some((activity) => activity.id === action.value);
       next = {
         ...draft,
         business: {
           ...draft.business,
-          activityId: authority?.activityIds.includes(action.value ?? '') ? action.value : null,
+          activityId:
+            canonical && (!authority || authority.activityIds.includes(action.value ?? ''))
+              ? action.value
+              : null,
         },
         documentReadiness: {},
       };

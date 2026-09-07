@@ -40,6 +40,10 @@ test('restore, history, file reconciliation, retry and copy contracts are wired'
   ])
     assert.match(source, new RegExp(contract));
   assert.doesNotMatch(source, /<main\b|role="status"[^>]*>[\s\S]{0,500}<input/u);
+  assert.match(source, /expectedSavedAt/);
+  assert.match(source, /unencrypted in this browser on this device/);
+  assert.match(source, /not synced or submitted/);
+  assert.match(source, /Files and file names are excluded/);
 });
 
 test('visa choice is a required radio group and completion summary focuses before linked errors', () => {
@@ -67,6 +71,9 @@ test('review and confirmation keep the required visual order without unsupported
     source,
     /application (?:was|has been) (?:received|submitted)|client dashboard/iu,
   );
+  assert.match(source, /Preview complete/);
+  assert.match(source, /Selected locally before preview \/ will require secure upload/);
+  assert.doesNotMatch(source, /\/estimate#estimate-/u);
 });
 
 test('application message additions preserve recursive English and Arabic key parity', () => {

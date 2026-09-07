@@ -41,7 +41,7 @@ if (reactServer) {
     ]);
     const container = document.createElement('div');
     document.body.append(container);
-    const root = createRoot(container);
+    let root = createRoot(container);
     await act(() =>
       root.render(
         createElement(QuestionnaireForm, {
@@ -60,6 +60,52 @@ if (reactServer) {
     ];
     assert.equal(stageButtons.length, 5);
     assert.equal(stageButtons[1].disabled, true, 'future stage is gated');
+
+    const save = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+      button.textContent?.includes('Save on this device'),
+    )!;
+    await act(() => save.click());
+    const disclosure = container.querySelector<HTMLElement>('.application-save-disclosure')!;
+    assert.match(disclosure.textContent ?? '', /unencrypted/i);
+    assert.match(disclosure.textContent ?? '', /not synced or submitted/i);
+    const confirmSave = [...disclosure.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.includes('Confirm seven-day save'),
+    )!;
+    await act(() => confirmSave.click());
+    assert.equal(browser.localStorage.length, 1, 'explicit save works before material edits');
+
+    await act(() => root.unmount());
+    const localEnvelope = JSON.parse(
+      browser.localStorage.getItem('mandoob:p109:application-local')!,
+    );
+    const sessionSaved = new Date(Date.parse(localEnvelope.savedAt) + 1000);
+    browser.sessionStorage.setItem(
+      'mandoob:p109:application-session',
+      JSON.stringify({
+        ...localEnvelope,
+        storage: 'session',
+        savedAt: sessionSaved.toISOString(),
+        expiresAt: new Date(sessionSaved.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    );
+    container.replaceChildren();
+    root = createRoot(container);
+    await act(() =>
+      root.render(
+        createElement(QuestionnaireForm, {
+          handoff: { status: 'rejected', reason: 'invalid-estimator-handoff' },
+          demoOutcome: 'confirmed-preview',
+        }),
+      ),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1)));
+    const restore = container.querySelector<HTMLElement>('.application-restore')!;
+    assert.match(restore.textContent ?? '', /Newest session copy/);
+    assert.ok(
+      [...restore.querySelectorAll('button')].some(
+        (button) => button.textContent === 'Resume saved draft',
+      ),
+    );
 
     const reset = [...container.querySelectorAll<HTMLButtonElement>('button')].find(
       (button) => button.textContent?.trim() === 'Reset',

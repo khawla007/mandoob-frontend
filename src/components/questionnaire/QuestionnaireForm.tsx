@@ -36,6 +36,7 @@ import {
   type ApplicationDraft,
   type ApplicationDraftAction,
   type ApplicationStepId,
+  type ApplicationValidationError,
   type DemoApplicationOutcome,
   type EstimatorHandoffResult,
 } from '@/lib/public-application';
@@ -77,16 +78,24 @@ export function QuestionnaireForm({
   const [files, setFiles] = useState<FilePreviewState>({});
   const [notice, setNotice] = useState('Session draft is kept on this device for up to 24 hours.');
   const [localSave, setLocalSave] = useState(false);
-  const [savedLocal, setSavedLocal] = useState<{ draft: ApplicationDraft; savedAt: string } | null>(
-    null,
-  );
+  const [saveDisclosureOpen, setSaveDisclosureOpen] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<{
+    draft: ApplicationDraft;
+    savedAt: string;
+    tier: 'session' | 'local';
+  } | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [maxReached, setMaxReached] = useState(0);
   const [completionErrors, setCompletionErrors] = useState(false);
   const [setupSubstep, setSetupSubstep] = useState(0);
+  const [setupUnlocked, setSetupUnlocked] = useState(0);
   const hydrated = useRef(false);
   const dirty = useRef(false);
   const pending = useRef(false);
+  const sessionSavedAt = useRef<string | null>(null);
+  const localSavedAt = useRef<string | null>(null);
+  const availableSessionAt = useRef<string | null>(null);
+  const availableLocalAt = useRef<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const resetReturnFocus = useRef<HTMLElement | null>(null);
@@ -107,20 +116,20 @@ export function QuestionnaireForm({
       tier: 'session',
       definition: APPLICATION_DEFINITION,
     });
-    if (session.status === 'loaded') {
-      queueMicrotask(() => {
-        setDraft({
-          ...session.draft,
-          documentReadiness: {},
-          confirmations: { informationIsTrue: false, dataProcessingConsent: false },
-        });
-        setNotice(
-          `Resumed this tab's session draft from ${new Date(session.savedAt).toLocaleString()}. Confirmations must be renewed.`,
-        );
-      });
-    } else if (local.status === 'loaded') {
-      queueMicrotask(() => setSavedLocal({ draft: local.draft, savedAt: local.savedAt }));
-    }
+    const candidates = [
+      ...(session.status === 'loaded' ? [{ ...session, tier: 'session' as const }] : []),
+      ...(local.status === 'loaded' ? [{ ...local, tier: 'local' as const }] : []),
+    ].sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt));
+    availableSessionAt.current = session.status === 'loaded' ? session.savedAt : null;
+    availableLocalAt.current = local.status === 'loaded' ? local.savedAt : null;
+    if (candidates[0])
+      queueMicrotask(() =>
+        setSavedDraft({
+          draft: candidates[0].draft,
+          savedAt: candidates[0].savedAt,
+          tier: candidates[0].tier,
+        }),
+      );
     if (session.status === 'unavailable' || local.status === 'unavailable') {
       queueMicrotask(() =>
         setNotice('Browser storage is unavailable. Changes remain only while this page is open.'),
@@ -142,7 +151,15 @@ export function QuestionnaireForm({
       tier: 'session',
       draft: clean,
       definition: APPLICATION_DEFINITION,
+      expectedSavedAt: sessionSavedAt.current,
     });
+    if (session.status === 'saved') sessionSavedAt.current = session.savedAt;
+    if (session.status === 'conflict')
+      queueMicrotask(() =>
+        setNotice(
+          `Session draft conflict: another copy was saved at ${session.storedSavedAt || 'an unknown time'}. Choose Resume or Start over.`,
+        ),
+      );
     if (session.status === 'unavailable')
       queueMicrotask(() =>
         setNotice('Session save is unavailable. Changes remain only on this page.'),
@@ -154,7 +171,15 @@ export function QuestionnaireForm({
         tier: 'local',
         draft: clean,
         definition: APPLICATION_DEFINITION,
+        expectedSavedAt: localSavedAt.current,
       });
+      if (local.status === 'saved') localSavedAt.current = local.savedAt;
+      if (local.status === 'conflict')
+        queueMicrotask(() =>
+          setNotice(
+            `Local draft conflict: another copy was saved at ${local.storedSavedAt || 'an unknown time'}.`,
+          ),
+        );
       if (local.status === 'unavailable')
         queueMicrotask(() => setNotice('Seven-day local save is unavailable in this browser.'));
     }
@@ -261,21 +286,54 @@ export function QuestionnaireForm({
     setResetOpen(false);
     requestAnimationFrame(() => resetReturnFocus.current?.focus());
   }
-  function resumeLocal() {
-    if (!savedLocal) return;
+  function resumeSaved() {
+    if (!savedDraft) return;
     setDraft({
-      ...savedLocal.draft,
+      ...savedDraft.draft,
       documentReadiness: {},
       confirmations: { informationIsTrue: false, dataProcessingConsent: false },
     });
-    setLocalSave(true);
-    setSavedLocal(null);
-    setNotice(`Resumed local draft from ${new Date(savedLocal.savedAt).toLocaleString()}.`);
+    sessionSavedAt.current = availableSessionAt.current;
+    localSavedAt.current = availableLocalAt.current;
+    if (savedDraft.tier === 'local') setLocalSave(true);
+    setSavedDraft(null);
+    setNotice(
+      `Resumed ${savedDraft.tier} draft from ${new Date(savedDraft.savedAt).toLocaleString()}. Confirmations must be renewed.`,
+    );
   }
-  function clearSavedLocal() {
+  function clearSaved() {
+    if (!savedDraft) return;
     clearApplicationDraft(window.localStorage, LOCAL_KEY);
-    setSavedLocal(null);
-    setNotice('Saved local draft cleared.');
+    clearApplicationDraft(window.sessionStorage, SESSION_KEY);
+    availableSessionAt.current = null;
+    availableLocalAt.current = null;
+    setSavedDraft(null);
+    setNotice('Saved session and local drafts cleared.');
+  }
+  function confirmLocalSave() {
+    const result = saveApplicationDraft({
+      storage: window.localStorage,
+      key: LOCAL_KEY,
+      tier: 'local',
+      draft: {
+        ...draft,
+        confirmations: { informationIsTrue: false, dataProcessingConsent: false },
+      },
+      definition: APPLICATION_DEFINITION,
+      expectedSavedAt: localSavedAt.current,
+    });
+    setSaveDisclosureOpen(false);
+    if (result.status === 'saved') {
+      localSavedAt.current = result.savedAt;
+      setLocalSave(true);
+      setNotice(`Saved on this browser until ${new Date(result.expiresAt).toLocaleString()}.`);
+    } else if (result.status === 'conflict') {
+      setNotice(
+        `Local save conflict: another copy was saved at ${result.storedSavedAt || 'an unknown time'}.`,
+      );
+    } else {
+      setNotice(`Local save failed: ${result.status}. Your draft was not saved for seven days.`);
+    }
   }
   function advanceSetup() {
     const groups = [
@@ -304,6 +362,38 @@ export function QuestionnaireForm({
     setAttempted(false);
     focusSetupSubstep(Math.min(4, setupSubstep + 1));
   }
+  function focusError(error: ApplicationValidationError) {
+    const stage = STEPS.findIndex((step) => step.id === error.stepId);
+    if (error.stepId === 'setup') {
+      const groups = [
+        ['application-jurisdiction'],
+        [
+          'application-authority',
+          'application-legal-structure',
+          'application-activity-compatibility',
+        ],
+        [
+          'application-visas-required',
+          'application-investor-visas',
+          'application-employee-visas',
+          'application-family-visas',
+          'application-visa-total',
+        ],
+        ['application-office-type', 'application-office-notes'],
+        ['application-add-ons'],
+      ];
+      const substep = groups.findIndex((group) => group.includes(error.fieldId));
+      if (substep >= 0) {
+        setSetupSubstep(substep);
+        setSetupUnlocked((value) => Math.max(value, substep));
+      }
+    }
+    setStepIndex(stage);
+    window.history.pushState(null, '', `#application-${error.stepId}`);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => document.getElementById(error.fieldId)?.focus()),
+    );
+  }
   function focusSetupSubstep(index: number) {
     const targets = [
       'application-jurisdiction',
@@ -313,6 +403,7 @@ export function QuestionnaireForm({
       'application-add-ons',
     ];
     setSetupSubstep(index);
+    setSetupUnlocked((value) => Math.max(value, index));
     requestAnimationFrame(() => document.getElementById(targets[index])?.focus());
   }
   function reset() {
@@ -324,12 +415,24 @@ export function QuestionnaireForm({
     setStepIndex(0);
     setMaxReached(0);
     setSetupSubstep(0);
+    setSetupUnlocked(0);
     setCompletionErrors(false);
-    setSavedLocal(null);
+    setSavedDraft(null);
+    sessionSavedAt.current = null;
+    localSavedAt.current = null;
+    availableSessionAt.current = null;
+    availableLocalAt.current = null;
     dirty.current = false;
     setLocalSave(false);
     setResetOpen(false);
     setNotice('Draft cleared from this device.');
+  }
+  function editFromConfirmation() {
+    setAction({ status: 'idle' });
+    setStepIndex(4);
+    setMaxReached(4);
+    window.history.pushState(null, '', '#application-review');
+    requestAnimationFrame(() => requestAnimationFrame(() => headingRef.current?.focus()));
   }
 
   if (action.status === 'confirmed-preview')
@@ -337,7 +440,7 @@ export function QuestionnaireForm({
       <Confirmation
         action={action}
         handoff={handoff}
-        onEdit={() => setAction({ status: 'idle' })}
+        onEdit={editFromConfirmation}
         onReset={openReset}
         resetOpen={resetOpen}
         closeReset={closeReset}
@@ -360,23 +463,23 @@ export function QuestionnaireForm({
           <RotateCcw aria-hidden /> Reset
         </button>
       </header>
-      {savedLocal ? (
+      {savedDraft ? (
         <section className="application-restore" aria-labelledby="saved-draft-title">
           <div>
             <strong id="saved-draft-title">Resume saved draft?</strong>
             <p>
-              Saved locally {new Date(savedLocal.savedAt).toLocaleString()}. Confirmations and file
-              previews are not restored.
+              Newest {savedDraft.tier} copy saved {new Date(savedDraft.savedAt).toLocaleString()}.
+              Confirmations and file previews are not restored.
             </p>
           </div>
           <div>
-            <button type="button" onClick={resumeLocal}>
+            <button type="button" onClick={resumeSaved}>
               Resume saved draft
             </button>
             <button type="button" onClick={reset}>
               Start over
             </button>
-            <button type="button" onClick={clearSavedLocal}>
+            <button type="button" onClick={clearSaved}>
               Clear saved draft
             </button>
           </div>
@@ -388,23 +491,36 @@ export function QuestionnaireForm({
           <strong>Your privacy, your choice</strong>
           <p aria-live="polite">{notice} File names and file contents are never saved.</p>
         </div>
-        <label>
-          <input
-            type="checkbox"
-            checked={localSave}
-            onChange={(e) => {
-              setLocalSave(e.target.checked);
-              if (e.target.checked)
-                setNotice('Private local save is on. This draft expires after seven days.');
-              if (!e.target.checked) {
-                clearApplicationDraft(window.localStorage, LOCAL_KEY);
-                setNotice('Seven-day local save is off and its copy has been cleared.');
-              }
-            }}
-          />{' '}
-          Save on this device for seven days
-        </label>
+        <button
+          className="application-tool"
+          type="button"
+          onClick={() => setSaveDisclosureOpen(true)}
+        >
+          {localSave ? 'Update local save' : 'Save on this device'}
+        </button>
       </div>
+      {saveDisclosureOpen ? (
+        <section
+          className="application-save-disclosure"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="local-save-title"
+        >
+          <h2 id="local-save-title">Confirm local browser save</h2>
+          <p>
+            Your contact and application data remains unencrypted in this browser on this device for
+            up to seven days. It is not synced or submitted. Files and file names are excluded.
+          </p>
+          <div>
+            <button type="button" onClick={() => setSaveDisclosureOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" onClick={confirmLocalSave}>
+              Confirm seven-day save
+            </button>
+          </div>
+        </section>
+      ) : null}
       {handoff.status === 'accepted' ? (
         <p className="application-handoff">
           Estimator choices applied · Reference {handoff.value.reference}
@@ -470,10 +586,7 @@ export function QuestionnaireForm({
                         href={error.href}
                         onClick={(event) => {
                           event.preventDefault();
-                          setStepIndex(STEPS.findIndex((step) => step.id === error.stepId));
-                          requestAnimationFrame(() =>
-                            document.getElementById(error.fieldId)?.focus(),
-                          );
+                          focusError(error);
                         }}
                       >
                         {error.message}
@@ -490,9 +603,17 @@ export function QuestionnaireForm({
               <div>
                 <strong>Check the highlighted information</strong>
                 <ul>
-                  {errors.map((e) => (
-                    <li key={e.fieldId}>
-                      <a href={e.href}>{e.message}</a>
+                  {errors.map((error) => (
+                    <li key={error.fieldId}>
+                      <a
+                        href={error.href}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          focusError(error);
+                        }}
+                      >
+                        {error.message}
+                      </a>
                     </li>
                   ))}
                 </ul>
@@ -511,7 +632,8 @@ export function QuestionnaireForm({
               update={update}
               errors={errors}
               substep={setupSubstep}
-              setSubstep={setSetupSubstep}
+              unlocked={setupUnlocked}
+              setSubstep={focusSetupSubstep}
             />
           ) : null}
           {current.id === 'ownership' ? (
@@ -532,9 +654,11 @@ export function QuestionnaireForm({
               <AlertCircle aria-hidden />
               <div>
                 <p>{'message' in action ? action.message : ''}</p>
-                <button type="button" onClick={() => void runCompletion()}>
-                  Retry preview
-                </button>
+                {'retryable' in action && action.retryable ? (
+                  <button type="button" onClick={() => void runCompletion()}>
+                    Retry preview
+                  </button>
+                ) : null}
                 <button type="button" onClick={() => setAction({ status: 'idle' })}>
                   Edit application
                 </button>
@@ -616,7 +740,10 @@ function Field({
     [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
   return (
     <div className="application-field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>
+        {label}{' '}
+        <span className="application-requirement">{required ? 'Required' : 'Optional'}</span>
+      </label>
       {hint ? <p id={`${id}-hint`}>{hint}</p> : null}
       <FieldContext.Provider value={{ id, describedBy, invalid: Boolean(error), required }}>
         {children}
@@ -754,13 +881,15 @@ function BusinessStep({ draft, update, errors }: StepProps) {
           <option value="">Select an activity</option>
           {APPLICATION_DEFINITION.activities.map((x) => (
             <option key={x.id} value={x.id}>
-              {x.label}
+              {x.id === 'review' ? 'Preview complete' : x.label}
             </option>
           ))}
         </NativeSelect>
       </Field>
       <fieldset>
-        <legend>Preferred Company names</legend>
+        <legend>
+          Preferred Company names <span className="application-requirement">One required</span>
+        </legend>
         <p>Enter up to three choices, in preference order.</p>
         <div className="application-fields application-fields--three">
           {draft.business.preferredNames.map((name, index) => (
@@ -807,8 +936,9 @@ function SetupStep({
   update,
   errors,
   substep,
+  unlocked,
   setSubstep,
-}: StepProps & { substep: number; setSubstep: (value: number) => void }) {
+}: StepProps & { substep: number; unlocked: number; setSubstep: (value: number) => void }) {
   const authorities = APPLICATION_DEFINITION.authorities.filter(
     (x) => x.jurisdiction === draft.setup.jurisdiction,
   );
@@ -848,8 +978,8 @@ function SetupStep({
               type="button"
               className={substepHasError(i) ? 'is-invalid' : i < substep ? 'is-complete' : ''}
               aria-current={i === substep ? 'step' : undefined}
-              onClick={() => i <= substep && setSubstep(i)}
-              disabled={i > substep}
+              onClick={() => i <= unlocked && setSubstep(i)}
+              disabled={i > unlocked}
             >
               <span>{i < substep ? <Check aria-hidden /> : i + 1}</span>
               {x}
@@ -931,7 +1061,9 @@ function SetupStep({
       {substep === 2 ? (
         <>
           <fieldset id="application-visas-required" tabIndex={-1}>
-            <legend>Are visas required?</legend>
+            <legend>
+              Are visas required? <span className="application-requirement">Required</span>
+            </legend>
             <div
               className="application-choice-row"
               role="radiogroup"
@@ -1032,7 +1164,9 @@ function SetupStep({
       ) : null}
       {substep === 4 ? (
         <fieldset id="application-add-ons" tabIndex={-1}>
-          <legend>Additional services</legend>
+          <legend>
+            Additional services <span className="application-requirement">Optional</span>
+          </legend>
           <div className="application-card-grid">
             {APPLICATION_DEFINITION.addOns
               .filter((x) => authority?.addOnIds.includes(x.id))
@@ -1152,7 +1286,9 @@ function OwnershipStep({ draft, update, errors }: StepProps) {
       </Field>
       {draft.shareholders.map((row, index) => (
         <fieldset className="application-shareholder" key={row.id}>
-          <legend>Shareholder {index + 1}</legend>
+          <legend>
+            Shareholder {index + 1} <span className="application-requirement">Required</span>
+          </legend>
           <div className="application-fields application-fields--three">
             <Field
               id={`application-${row.id}-full-name`}
@@ -1292,11 +1428,13 @@ function ReviewStep({
       };
       setFileErrors((value) => ({ ...value, [id]: messages[result.status] }));
     }
+    e.target.value = '';
   };
   const remove = (id: string) => {
     setFiles(removePreviewFile(files, id));
     setFileErrors((value) => ({ ...value, [id]: '' }));
     update({ type: 'set-document-readiness', documentId: id, value: 'not-ready' });
+    requestAnimationFrame(() => document.getElementById(`${safeId(id)}-file`)?.focus());
   };
   return (
     <div className="application-review">
@@ -1347,6 +1485,7 @@ function ReviewStep({
             <label className="application-file-button">
               {files[doc.id] ? 'Reselect file' : 'Preview file'}
               <input
+                id={`${safeId(doc.id)}-file`}
                 type="file"
                 accept="application/pdf,image/jpeg,image/png"
                 aria-describedby={`${safeId(doc.id)}-file-help${fileErrors[doc.id] ? ` ${safeId(doc.id)}-file-error` : ''}`}
@@ -1375,7 +1514,10 @@ function ReviewStep({
         ))}
       </section>
       <fieldset className="application-consents">
-        <legend>Confirm before completing the preview</legend>
+        <legend>
+          Confirm before completing the preview{' '}
+          <span className="application-requirement">Required</span>
+        </legend>
         <div id="application-information-confirmation" tabIndex={-1}>
           <Choice
             checked={draft.confirmations.informationIsTrue}
@@ -1519,23 +1661,23 @@ function Confirmation({
           <ol>
             <li>
               <span>1</span>
-              <strong>Review this preview</strong>
-              <p>Available now on this device.</p>
+              <strong>Approved Phase 3 connection</strong>
+              <p>Online sending remains unavailable until that connection is approved.</p>
             </li>
             <li>
               <span>2</span>
-              <strong>Prepare documents</strong>
-              <p>Use the local checklist now.</p>
+              <strong>Mandoob review</strong>
+              <p>Starts only after Mandoob actually receives a future submission.</p>
             </li>
             <li>
               <span>3</span>
-              <strong>Online submission</strong>
-              <p>Planned for Phase 3; unavailable now.</p>
+              <strong>Approved secure document transfer</strong>
+              <p>Files will require the approved Phase 3 upload connection.</p>
             </li>
             <li>
               <span>4</span>
-              <strong>Mandoob follow-up</strong>
-              <p>Begins only after a future successful submission.</p>
+              <strong>Authenticated tracking</strong>
+              <p>Available when an authenticated tracking workspace is connected.</p>
             </li>
           </ol>
         </section>
@@ -1583,7 +1725,7 @@ function Confirmation({
             <dd>{s.visaCount}</dd>
           </div>
           <div>
-            <dt>Documents ready</dt>
+            <dt>Selected locally before preview / will require secure upload</dt>
             <dd>{s.readyDocumentCount}</dd>
           </div>
           <div>
@@ -1596,10 +1738,7 @@ function Confirmation({
           </div>
         </dl>
         {handoff.status === 'accepted' ? (
-          <Link
-            className="application-estimator-return"
-            href={`/estimate#estimate-${handoff.value.reference}`}
-          >
+          <Link className="application-estimator-return" href="/estimate">
             Return to validated estimator reference {handoff.value.reference}
           </Link>
         ) : null}

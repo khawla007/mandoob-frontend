@@ -49,6 +49,28 @@ const completedDraft: ApplicationDraft = {
   confirmations: { informationIsTrue: true, dataProcessingConsent: true },
 };
 
+test('clean application flow can choose a canonical activity before setup authority', () => {
+  const businessFirst = reduceApplicationDraft(
+    EMPTY_APPLICATION_DRAFT,
+    { type: 'set-activity', value: 'professional-services' },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(businessFirst.business.activityId, 'professional-services');
+
+  const jurisdiction = reduceApplicationDraft(
+    businessFirst,
+    { type: 'set-jurisdiction', value: 'free_zone' },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(jurisdiction.business.activityId, 'professional-services');
+  const incompatibleJurisdiction = reduceApplicationDraft(
+    jurisdiction,
+    { type: 'set-jurisdiction', value: 'offshore' },
+    APPLICATION_DEFINITION,
+  );
+  assert.equal(incompatibleJurisdiction.business.activityId, null);
+});
+
 test('jurisdiction and authority changes clear incompatible dependants and stale review state', () => {
   assert.equal(
     reduceApplicationDraft(
