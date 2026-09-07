@@ -124,6 +124,101 @@ test('loads a valid allowlisted draft without adding persisted metadata', () => 
   assert.doesNotMatch(storage.getItem(key)!, /file(name|type|size)|objectURL|bytes/i);
 });
 
+test('serializes a fresh deep allowlist snapshot before invoking any inherited serialization hooks', () => {
+  const storage = new MemoryStorage();
+  let serializationHookCalled = false;
+  const draft = completeDraft();
+  const hostilePrototype = {
+    toJSON() {
+      serializationHookCalled = true;
+      return { uploadFilename: 'secret-passport.pdf' };
+    },
+    inheritedFilename: 'secret-passport.pdf',
+  };
+  Object.setPrototypeOf(draft, hostilePrototype);
+  Object.defineProperty(draft, 'nonEnumerableFilename', {
+    value: 'secret-passport.pdf',
+    enumerable: false,
+  });
+  Object.setPrototypeOf(draft.contact, hostilePrototype);
+
+  const result = saveApplicationDraft({
+    storage,
+    key,
+    tier: 'session',
+    draft,
+    definition: APPLICATION_DEFINITION,
+    now,
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(serializationHookCalled, false);
+  const raw = storage.getItem(key)!;
+  assert.doesNotMatch(raw, /secret-passport|filename/i);
+  const parsed = JSON.parse(raw);
+  assert.deepEqual(Object.keys(parsed.draft).sort(), [
+    'business',
+    'confirmations',
+    'contact',
+    'documentReadiness',
+    'setup',
+    'shareholders',
+    'visas',
+  ]);
+});
+
+test('stored drafts force consent confirmations false and cannot restore stale consent', () => {
+  const storage = new MemoryStorage();
+  const draft = {
+    ...completeDraft(),
+    confirmations: { informationIsTrue: true, dataProcessingConsent: true },
+  };
+  assert.equal(
+    saveApplicationDraft({
+      storage,
+      key,
+      tier: 'local',
+      draft,
+      definition: APPLICATION_DEFINITION,
+      now,
+    }).status,
+    'saved',
+  );
+
+  const persisted = JSON.parse(storage.getItem(key)!);
+  assert.deepEqual(persisted.draft.confirmations, {
+    informationIsTrue: false,
+    dataProcessingConsent: false,
+  });
+  const loaded = loadApplicationDraft({
+    storage,
+    key,
+    tier: 'local',
+    definition: APPLICATION_DEFINITION,
+    now: new Date(now.getTime() + 1),
+  });
+  assert.equal(loaded.status, 'loaded');
+  if (loaded.status === 'loaded') {
+    assert.deepEqual(loaded.draft.confirmations, {
+      informationIsTrue: false,
+      dataProcessingConsent: false,
+    });
+  }
+
+  persisted.draft.confirmations.informationIsTrue = true;
+  storage.setItem(key, JSON.stringify(persisted));
+  assert.deepEqual(
+    loadApplicationDraft({
+      storage,
+      key,
+      tier: 'local',
+      definition: APPLICATION_DEFINITION,
+      now: new Date(now.getTime() + 1),
+    }),
+    { status: 'discarded', reason: 'invalid-draft', cleared: true },
+  );
+});
+
 test('rejects and clears corrupt, expired, future, schema, definition and unknown-field envelopes', () => {
   const validStorage = new MemoryStorage();
   saveApplicationDraft({
@@ -196,6 +291,10 @@ test('rejects invalid draft values and document keys outside definition/sharehol
 
 test('enforces a strict maximum serialized size on save and load', () => {
   const storage = new MemoryStorage();
+  const largeTestDefinition = {
+    ...APPLICATION_DEFINITION,
+    limits: { ...APPLICATION_DEFINITION.limits, businessSummaryMax: 250_000 },
+  } as never;
   const result = saveApplicationDraft({
     storage,
     key,
@@ -204,7 +303,7 @@ test('enforces a strict maximum serialized size on save and load', () => {
       ...completeDraft(),
       business: { ...completeDraft().business, summary: 'x'.repeat(200_000) },
     },
-    definition: APPLICATION_DEFINITION,
+    definition: largeTestDefinition,
     now,
   });
   assert.equal(result.status, 'too-large');
@@ -285,6 +384,62 @@ test('does not overwrite storage changed after the caller last observed it', () 
     storedSavedAt: newer.toISOString(),
   });
   assert.equal(storage.getItem(key), before);
+});
+
+test('expectedSavedAt fails closed on malformed storage and distinguishes exact absence', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(key, '{malformed');
+  const malformed = saveApplicationDraft({
+    storage,
+    key,
+    tier: 'session',
+    draft: completeDraft(),
+    definition: APPLICATION_DEFINITION,
+    now,
+    expectedSavedAt: null,
+  });
+  assert.deepEqual(malformed, { status: 'conflict', storedSavedAt: null });
+  assert.equal(storage.getItem(key), '{malformed');
+
+  const incomplete = JSON.stringify({ savedAt: now.toISOString() });
+  storage.setItem(key, incomplete);
+  assert.deepEqual(
+    saveApplicationDraft({
+      storage,
+      key,
+      tier: 'session',
+      draft: completeDraft(),
+      definition: APPLICATION_DEFINITION,
+      now,
+      expectedSavedAt: now.toISOString(),
+    }),
+    { status: 'conflict', storedSavedAt: null },
+  );
+  assert.equal(storage.getItem(key), incomplete);
+
+  storage.removeItem(key);
+  const absent = saveApplicationDraft({
+    storage,
+    key,
+    tier: 'session',
+    draft: completeDraft(),
+    definition: APPLICATION_DEFINITION,
+    now,
+    expectedSavedAt: null,
+  });
+  assert.equal(absent.status, 'saved');
+
+  storage.removeItem(key);
+  const unexpectedlyAbsent = saveApplicationDraft({
+    storage,
+    key,
+    tier: 'session',
+    draft: completeDraft(),
+    definition: APPLICATION_DEFINITION,
+    now,
+    expectedSavedAt: now.toISOString(),
+  });
+  assert.deepEqual(unexpectedlyAbsent, { status: 'conflict', storedSavedAt: null });
 });
 
 test('does not replace a newer in-memory draft with an older stored draft', () => {

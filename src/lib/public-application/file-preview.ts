@@ -70,12 +70,15 @@ export function selectPreviewFile(input: SelectPreviewFileInput): SelectPreviewF
     typeof file.name !== 'string' ||
     sanitizedDisplayName(file.name) === '' ||
     !Number.isSafeInteger(file.size) ||
-    file.size < 0
+    file.size <= 0
   ) {
     return { status: 'invalid-file', state };
   }
   if (!ALLOWED_MEDIA_TYPES.has(file.type as FilePreviewMediaType)) {
     return { status: 'unsupported-type', state };
+  }
+  if (!hasCompatibleExtension(sanitizedDisplayName(file.name), file.type as FilePreviewMediaType)) {
+    return { status: 'invalid-file', state };
   }
   if (file.size > APPLICATION_FILE_SIZE_LIMIT_BYTES) return { status: 'too-large', state };
 
@@ -99,6 +102,17 @@ export function removePreviewFile(state: FilePreviewState, controlId: string): F
   return next;
 }
 
+export function reconcileFilePreviews(
+  state: FilePreviewState,
+  definition: ApplicationDefinition,
+  draft: Pick<ApplicationDraft, 'shareholders'>,
+): FilePreviewState {
+  const allowed = new Set(getAllowedDocumentControlIds(definition, draft));
+  const retained = Object.entries(state).filter(([controlId]) => allowed.has(controlId));
+  if (retained.length === Object.keys(state).length) return state;
+  return Object.fromEntries(retained);
+}
+
 export function clearFilePreviewsAfterRefresh(state: FilePreviewState): FilePreviewState {
   void state;
   return {};
@@ -120,4 +134,11 @@ function sanitizedDisplayName(name: string) {
     .replace(/[\u0000-\u001f\u007f]/g, '')
     .trim()
     .slice(0, 180);
+}
+
+function hasCompatibleExtension(name: string, type: FilePreviewMediaType) {
+  const normalized = name.toLowerCase();
+  if (type === 'application/pdf') return normalized.endsWith('.pdf');
+  if (type === 'image/jpeg') return normalized.endsWith('.jpg') || normalized.endsWith('.jpeg');
+  return normalized.endsWith('.png');
 }

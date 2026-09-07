@@ -7,6 +7,7 @@ import {
   clearFilePreviewsAfterReset,
   clearFilePreviewsAfterSuccess,
   getAllowedDocumentControlIds,
+  reconcileFilePreviews,
   removePreviewFile,
   selectPreviewFile,
   type FilePreviewState,
@@ -113,8 +114,11 @@ test('rejects malformed display metadata without touching existing state', () =>
   };
   for (const file of [
     { name: '', type: 'application/pdf', size: 1 },
+    { name: 'empty.pdf', type: 'application/pdf', size: 0 },
     { name: 'x.pdf', type: 'application/pdf', size: -1 },
     { name: 'x.pdf', type: 'application/pdf', size: Number.NaN },
+    { name: 'disguised.png', type: 'application/pdf', size: 1 },
+    { name: 'disguised.pdf', type: 'image/png', size: 1 },
   ]) {
     const result = selectPreviewFile({
       state,
@@ -125,6 +129,27 @@ test('rejects malformed display metadata without touching existing state', () =>
     });
     assert.equal(result.status, 'invalid-file');
     assert.equal(result.state, state);
+  }
+});
+
+test('accepts case-insensitive MIME-compatible PDF, JPG, JPEG and PNG extensions', () => {
+  const cases = [
+    { name: 'document.PDF', type: 'application/pdf' },
+    { name: 'photo.JPG', type: 'image/jpeg' },
+    { name: 'photo.jpeg', type: 'image/jpeg' },
+    { name: 'scan.PnG', type: 'image/png' },
+  ];
+  for (const file of cases) {
+    assert.equal(
+      selectPreviewFile({
+        state: {},
+        controlId: allowed[0],
+        files: [{ ...file, size: 1 }],
+        definition: APPLICATION_DEFINITION,
+        draft: EMPTY_APPLICATION_DRAFT,
+      }).status,
+      'accepted',
+    );
   }
 });
 
@@ -158,6 +183,35 @@ test('refresh, reset and success discard every in-memory preview', () => {
   assert.deepEqual(clearFilePreviewsAfterRefresh(state), {});
   assert.deepEqual(clearFilePreviewsAfterReset(state), {});
   assert.deepEqual(clearFilePreviewsAfterSuccess(state), {});
+});
+
+test('reconciles previews to document controls valid for the current shareholder context', () => {
+  const state: FilePreviewState = {
+    'passport-copy:contact': {
+      displayName: 'contact.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 1,
+    },
+    'passport-copy:shareholder-1': {
+      displayName: 'owner.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 1,
+    },
+    'passport-copy:shareholder-2': {
+      displayName: 'stale.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 1,
+    },
+    'unknown:business': {
+      displayName: 'unknown.pdf',
+      mediaType: 'application/pdf',
+      sizeBytes: 1,
+    },
+  };
+  assert.deepEqual(reconcileFilePreviews(state, APPLICATION_DEFINITION, EMPTY_APPLICATION_DRAFT), {
+    'passport-copy:contact': state['passport-copy:contact'],
+    'passport-copy:shareholder-1': state['passport-copy:shareholder-1'],
+  });
 });
 
 test('file preview source has no byte reads, hashes, object URLs, network or persistence calls', async () => {

@@ -14,7 +14,7 @@ export type DraftStorageTier = 'session' | 'local';
 
 export type SaveApplicationDraftResult =
   | { status: 'saved'; savedAt: string; expiresAt: string }
-  | { status: 'conflict'; storedSavedAt: string }
+  | { status: 'conflict'; storedSavedAt: string | null }
   | { status: 'invalid-draft' | 'too-large' | 'unavailable' };
 
 export type LoadApplicationDraftResult =
@@ -74,6 +74,8 @@ export function saveApplicationDraft({
   now = new Date(),
   expectedSavedAt,
 }: SaveApplicationDraftInput): SaveApplicationDraftResult {
+  if (!isValidApplicationDraft(draft, definition)) return { status: 'invalid-draft' };
+
   const savedAt = now.toISOString();
   const retention =
     tier === 'local' ? APPLICATION_LOCAL_RETENTION_MS : APPLICATION_SESSION_RETENTION_MS;
@@ -84,7 +86,7 @@ export function saveApplicationDraft({
     savedAt,
     expiresAt,
     storage: tier,
-    draft,
+    draft: snapshotApplicationDraft(draft),
   };
 
   let serialized: string;
@@ -96,18 +98,20 @@ export function saveApplicationDraft({
   if (serializedByteLength(serialized) > APPLICATION_STORAGE_MAX_BYTES) {
     return { status: 'too-large' };
   }
-  if (!isValidApplicationDraft(draft, definition)) return { status: 'invalid-draft' };
+  if (!isSerializedEnvelopeValid(serialized, envelope, definition)) {
+    return { status: 'invalid-draft' };
+  }
 
   try {
     if (expectedSavedAt !== undefined) {
       const current = storage.getItem(key);
       if (current !== null) {
-        const storedSavedAt = readSavedAt(current);
-        if (storedSavedAt !== null && storedSavedAt !== expectedSavedAt) {
+        const storedSavedAt = readComparableSavedAt(current, tier, definition, now);
+        if (storedSavedAt === null || storedSavedAt !== expectedSavedAt) {
           return { status: 'conflict', storedSavedAt };
         }
       } else if (expectedSavedAt !== null) {
-        return { status: 'conflict', storedSavedAt: '' };
+        return { status: 'conflict', storedSavedAt: null };
       }
     }
     storage.setItem(key, serialized);
@@ -178,6 +182,12 @@ export function loadApplicationDraft({
     return discard(storage, key, 'invalid-draft');
   }
   if (
+    parsed.draft.confirmations.informationIsTrue ||
+    parsed.draft.confirmations.dataProcessingConsent
+  ) {
+    return discard(storage, key, 'invalid-draft');
+  }
+  if (
     newerInMemorySavedAt &&
     isExactIsoDate(newerInMemorySavedAt) &&
     Date.parse(newerInMemorySavedAt) > savedTime
@@ -232,12 +242,114 @@ function serializedByteLength(value: string) {
   return new TextEncoder().encode(value).byteLength;
 }
 
-function readSavedAt(raw: string): string | null {
+function readComparableSavedAt(
+  raw: string,
+  tier: DraftStorageTier,
+  definition: ApplicationDefinition,
+  now: Date,
+): string | null {
+  if (serializedByteLength(raw) > APPLICATION_STORAGE_MAX_BYTES) return null;
   try {
     const parsed: unknown = JSON.parse(raw);
-    return isRecord(parsed) && typeof parsed.savedAt === 'string' ? parsed.savedAt : null;
+    if (
+      !isRecord(parsed) ||
+      !hasExactKeys(parsed, ENVELOPE_KEYS) ||
+      parsed.schemaVersion !== APPLICATION_STORAGE_SCHEMA_VERSION ||
+      parsed.definitionVersion !== definition.version ||
+      parsed.storage !== tier ||
+      typeof parsed.savedAt !== 'string' ||
+      typeof parsed.expiresAt !== 'string' ||
+      !isExactIsoDate(parsed.savedAt) ||
+      !isExactIsoDate(parsed.expiresAt) ||
+      !isValidApplicationDraft(parsed.draft, definition) ||
+      parsed.draft.confirmations.informationIsTrue ||
+      parsed.draft.confirmations.dataProcessingConsent
+    ) {
+      return null;
+    }
+    const savedTime = Date.parse(parsed.savedAt);
+    const expiresTime = Date.parse(parsed.expiresAt);
+    if (
+      savedTime > now.getTime() + 30_000 ||
+      expiresTime <= now.getTime() ||
+      expiresTime <= savedTime ||
+      expiresTime - savedTime > retentionFor(tier)
+    ) {
+      return null;
+    }
+    return parsed.savedAt;
   } catch {
     return null;
+  }
+}
+
+function snapshotApplicationDraft(draft: ApplicationDraft): ApplicationDraft {
+  return {
+    contact: {
+      fullName: draft.contact.fullName,
+      nationality: draft.contact.nationality,
+      email: draft.contact.email,
+      phone: draft.contact.phone,
+    },
+    business: {
+      activityId: draft.business.activityId,
+      preferredNames: [
+        draft.business.preferredNames[0],
+        draft.business.preferredNames[1],
+        draft.business.preferredNames[2],
+      ],
+      summary: draft.business.summary,
+    },
+    setup: {
+      jurisdiction: draft.setup.jurisdiction,
+      authorityId: draft.setup.authorityId,
+      legalStructureId: draft.setup.legalStructureId,
+      officeTypeId: draft.setup.officeTypeId,
+      officeNotes: draft.setup.officeNotes,
+      addOnIds: draft.setup.addOnIds.map((id) => id),
+    },
+    visas: {
+      required: draft.visas.required,
+      investorCount: draft.visas.investorCount,
+      employeeCount: draft.visas.employeeCount,
+      familyCount: draft.visas.familyCount,
+      estimatorTotalSuggestion: draft.visas.estimatorTotalSuggestion,
+    },
+    shareholders: draft.shareholders.map((shareholder) => ({
+      id: shareholder.id,
+      kind: 'individual',
+      fullName: shareholder.fullName,
+      nationality: shareholder.nationality,
+      ownershipBasisPoints: shareholder.ownershipBasisPoints,
+    })),
+    documentReadiness: Object.fromEntries(
+      Object.entries(draft.documentReadiness).map(([id, readiness]) => [id, readiness]),
+    ),
+    confirmations: { informationIsTrue: false, dataProcessingConsent: false },
+  };
+}
+
+function isSerializedEnvelopeValid(
+  serialized: string,
+  expected: ApplicationDraftEnvelope,
+  definition: ApplicationDefinition,
+) {
+  try {
+    const parsed: unknown = JSON.parse(serialized);
+    return (
+      isRecord(parsed) &&
+      hasExactKeys(parsed, ENVELOPE_KEYS) &&
+      parsed.schemaVersion === expected.schemaVersion &&
+      parsed.definitionVersion === expected.definitionVersion &&
+      parsed.savedAt === expected.savedAt &&
+      parsed.expiresAt === expected.expiresAt &&
+      parsed.storage === expected.storage &&
+      isValidApplicationDraft(parsed.draft, definition) &&
+      parsed.draft.confirmations.informationIsTrue === false &&
+      parsed.draft.confirmations.dataProcessingConsent === false
+    );
+  } catch {
+    return false;
   }
 }
 
