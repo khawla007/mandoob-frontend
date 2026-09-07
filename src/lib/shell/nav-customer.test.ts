@@ -32,6 +32,7 @@ clientTest(
       [
         '/t/acme/portal',
         '/t/acme/portal/company',
+        '/t/acme/portal/registration',
         '/t/acme/portal/documents',
         '/t/acme/portal/employees',
         '/t/acme/portal/meetings',

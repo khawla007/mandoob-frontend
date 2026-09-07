@@ -565,6 +565,8 @@
     "companies": "الشركات",
     "assignedCompany": "الشركة المعيّنة",
     "applications": "الطلبات",
+    "registration": "التسجيل",
+    "registrations": "التسجيلات",
     "renewals": "التجديدات",
     "documents": "المستندات",
     "employees": "الموظفون",
@@ -4640,6 +4642,129 @@
           ]
         }
       }
+    }
+  },
+  "registration": {
+    "admin": {
+      "eyebrow": "العمليات",
+      "title": "تسجيل الشركات",
+      "description": "تصفية ومراجعة مسار التسجيل لدى الجهات دون خلطه بإعداد الشركة أو حالات الخدمة.",
+      "detailEyebrow": "تسجيل الشركة",
+      "detailTitle": "تفاصيل التسجيل",
+      "detailDescription": "مراحل التسجيل والمستندات والعوائق والخطوات التالية.",
+      "detailUnavailable": "لن يظهر سياق الشركة والتعيين إلا بعد ربط عقد موثوق لهوية التسجيل."
+    },
+    "pro": {
+      "eyebrow": "الشركة المعيّنة",
+      "title": "التسجيل",
+      "description": "مسار التسجيل لدى الجهات للشركة الوحيدة المعيّنة لك. تبقى حالات الخدمة العامة منفصلة."
+    },
+    "customer": {
+      "eyebrow": "بوابة الشركة",
+      "title": "التسجيل",
+      "description": "عرض للقراءة فقط لتقدم تسجيل شركتك المرتبطة.",
+      "companyUnavailable": "الشركة المرتبطة غير متاحة"
+    },
+    "employee": {
+      "title": "مسار التأشيرة",
+      "description": "مسار تأشيرتك الخاص المكوّن من ست مراحل. تواريخ انتهاء الهوية أعلاه مؤشرات منفصلة."
+    },
+    "filters": {
+      "company": "الشركة",
+      "pro": "المندوب المعيّن",
+      "stage": "المرحلة",
+      "status": "الحالة",
+      "all": "الكل",
+      "apply": "تطبيق الفلاتر"
+    },
+    "pagination": {
+      "label": "صفحات التسجيل",
+      "previous": "السابق",
+      "next": "التالي",
+      "page": "الصفحة {page}"
+    },
+    "context": {
+      "title": "سياق حالة الشركة",
+      "proDescription": "تبقى أبعاد إعداد الشركة المباشرة منفصلة عن التسجيل لدى الجهات.",
+      "customerDescription": "يبقى سياق دورة حياة شركتك الآمن منفصلاً عن تقدم التسجيل.",
+      "legal": "الأقسام القانونية",
+      "legalProgress": "اكتمل {complete} من {total}",
+      "onboarding": "دورة حياة الإعداد",
+      "readiness": "جاهزية التفعيل",
+      "readinessItems": "{count, plural, =0 {لا توجد متطلبات جاهزية} one {متطلب جاهزية واحد} two {متطلبا جاهزية} few {# متطلبات جاهزية} many {# متطلب جاهزية} other {# متطلب جاهزية}}",
+      "operational": "دورة الحياة التشغيلية",
+      "onboardingStatuses": {
+        "not_started": "لم يبدأ",
+        "in_progress": "قيد التنفيذ",
+        "ready_for_activation": "جاهز للتفعيل",
+        "completed": "مفعّل"
+      },
+      "operationalStatuses": {
+        "onboarding": "قيد الإعداد",
+        "active": "نشط",
+        "renewal_due": "التجديد مستحق",
+        "renewal_overdue": "التجديد متأخر",
+        "suspended": "موقوف",
+        "churned": "منتهي"
+      }
+    },
+    "workspace": {
+      "stagesTitle": "مراحل التسجيل",
+      "stagesDescription": "سبع مراحل مرتبة للتسجيل لدى الجهات. لا تتقدم إلا ببيانات مسار محفوظة.",
+      "visaTitle": "معالجة التأشيرات",
+      "visaDescription": "تفاصيل مراحل كل شخص، منفصلة عن مرحلة الشركة.",
+      "blockerTitle": "العائق الحالي",
+      "nextActionTitle": "الإجراء التالي",
+      "documentsTitle": "مستندات التسجيل",
+      "historyTitle": "سجل التسجيل",
+      "stageCount": "اكتملت {completed} من {total} مراحل"
+    },
+    "states": {
+      "unavailable": "بيانات التسجيل غير متاحة",
+      "unavailableDescription": "لا يوجد عقد بيانات مقبول لمسار التسجيل في هذا الإصدار. لا يتم استنتاج التقدم أو العوائق أو الإجراءات أو المستندات أو السجل.",
+      "indexUnavailable": "لا يمكن تعبئة قائمة التسجيل حتى اعتماد مخطط التسجيل وعقد القراءة.",
+      "visaUnavailable": "لا يوجد عقد بيانات مقبول لمسار التأشيرة في هذا الإصدار. لا تُستنتج المراحل من حقول الهوية أو الانتهاء.",
+      "actionUnavailable": "الإجراء غير متاح",
+      "empty": "لا يوجد سجل تسجيل.",
+      "partial": "بعض أقسام التسجيل غير متاحة.",
+      "noBlocker": "لا يوجد عائق مسجل.",
+      "noNextAction": "لا يوجد إجراء تالٍ مسجل.",
+      "noDocuments": "لا توجد مستندات تسجيل.",
+      "noVisaPeople": "لا يوجد أشخاص في مسار التأشيرة.",
+      "noHistory": "لا يوجد سجل تسجيل."
+    },
+    "stages": {
+      "application_submitted": "تقديم الطلب",
+      "initial_approval": "الموافقة المبدئية",
+      "name_reservation": "حجز الاسم",
+      "license_issuance": "إصدار الرخصة",
+      "visa_processing": "معالجة التأشيرة",
+      "bank_account": "الحساب البنكي",
+      "completed": "مكتمل"
+    },
+    "statuses": {
+      "not_started": "لم يبدأ",
+      "in_progress": "قيد التنفيذ",
+      "blocked": "متعطل",
+      "completed": "مكتمل",
+      "skipped": "تم التخطي",
+      "unavailable": "غير متاح"
+    },
+    "visa": {
+      "documents_ready": "المستندات جاهزة",
+      "entry_permit": "إذن الدخول",
+      "status_adjustment": "تعديل الوضع",
+      "medical_fitness": "الفحص الطبي",
+      "emirates_id": "الهوية الإماراتية",
+      "residency_issued": "إصدار الإقامة"
+    },
+    "visaStatuses": {
+      "not_started": "لم يبدأ",
+      "active": "نشط",
+      "blocked": "متعطل",
+      "completed": "مكتمل",
+      "unavailable": "غير متاح",
+      "cancelled": "ملغى"
     }
   }
 }

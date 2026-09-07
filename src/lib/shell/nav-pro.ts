@@ -7,6 +7,7 @@ import {
   FileText,
   LayoutDashboard,
   Settings,
+  Route,
 } from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
@@ -38,6 +39,12 @@ export function buildProNav(slug: string): ShellNavGroup[] {
           labelFallback: 'Applications',
           href: `${base}/applications`,
           icon: ClipboardList,
+        },
+        {
+          labelKey: 'registration',
+          labelFallback: 'Registration',
+          href: `${base}/applications/registration`,
+          icon: Route,
         },
         {
           labelKey: 'meetings',

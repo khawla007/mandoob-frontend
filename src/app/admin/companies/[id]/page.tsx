@@ -54,11 +54,12 @@ export default async function CompanyDetailPage({
   searchParams: Promise<{ created?: string }>;
 }) {
   const operator = await requirePlatformOperator();
-  const [{ id }, sp, t, tOnboarding, locale] = await Promise.all([
+  const [{ id }, sp, t, tOnboarding, tRegistration, locale] = await Promise.all([
     params,
     searchParams,
     getTranslations('admin.companies'),
     getTranslations('companyOnboarding'),
+    getTranslations('registration'),
     getLocale(),
   ]);
   if (!idSchema.safeParse(id).success) notFound();
@@ -238,6 +239,21 @@ export default async function CompanyDetailPage({
                   : tOnboarding('overview.resume'),
             }}
           />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{tRegistration('admin.detailEyebrow')}</CardTitle>
+              <CardDescription>{tRegistration('admin.detailDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href={`/admin/registrations?company=${encodeURIComponent(company.companyName)}`}
+                className="text-primary text-sm font-semibold underline underline-offset-4"
+              >
+                {tRegistration('admin.detailEyebrow')}
+              </Link>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

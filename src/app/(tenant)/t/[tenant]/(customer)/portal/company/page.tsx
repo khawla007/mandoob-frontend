@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,7 +51,11 @@ export default async function CustomerCompanyPage({
 }) {
   const { tenant: slug } = await params;
   const access = await authorizeCustomerLinkedCompanyRead(slug);
-  const [t, locale] = await Promise.all([getTranslations('customer.company'), getLocale()]);
+  const [t, tRegistration, locale] = await Promise.all([
+    getTranslations('customer.company'),
+    getTranslations('registration'),
+    getLocale(),
+  ]);
   const company = access.kind === 'authorized' ? await loadCustomerCompanyDisplay(access) : null;
 
   return (
@@ -312,6 +317,20 @@ export default async function CustomerCompanyPage({
               >
                 {t('deepUnavailable')}
               </p>
+            </CardContent>
+          </Card>
+          <Card className="signal-panel xl:col-span-2">
+            <CardHeader>
+              <CardTitle>{tRegistration('customer.title')}</CardTitle>
+              <CardDescription>{tRegistration('customer.description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                className="text-primary text-sm font-semibold underline underline-offset-4"
+                href={`/t/${encodeURIComponent(slug)}/portal/registration`}
+              >
+                {tRegistration('customer.title')}
+              </Link>
             </CardContent>
           </Card>
         </div>

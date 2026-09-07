@@ -10,6 +10,7 @@ import {
   UserRound,
   Users,
   Video,
+  Route,
 } from 'lucide-react';
 
 import type { ShellNavGroup } from './nav-config';
@@ -37,6 +38,12 @@ export function buildCustomerNav(slug: string): ShellNavGroup[] {
           labelFallback: 'Company',
           href: `${base}/company`,
           icon: Building2,
+        },
+        {
+          labelKey: 'registration',
+          labelFallback: 'Registration',
+          href: `${base}/registration`,
+          icon: Route,
         },
         {
           labelKey: 'documents',

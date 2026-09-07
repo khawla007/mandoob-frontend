@@ -50,6 +50,7 @@ clientTest('command entries reuse visible role navigation labels and groups only
     [
       { label: 'Overview', group: '', href: '/t/acme/portal' },
       { label: 'Company', group: 'Company portal', href: '/t/acme/portal/company' },
+      { label: 'Registration', group: 'Company portal', href: '/t/acme/portal/registration' },
       { label: 'Documents', group: 'Company portal', href: '/t/acme/portal/documents' },
       { label: 'Employees', group: 'Company portal', href: '/t/acme/portal/employees' },
       { label: 'Meetings', group: 'Company portal', href: '/t/acme/portal/meetings' },

@@ -269,7 +269,7 @@ export default async function CustomerPortal({ params }: { params: Promise<{ ten
               >
                 {t('registrationUnavailable')}
               </p>
-              <Link className="text-primary text-sm font-semibold" href={href('company')}>
+              <Link className="text-primary text-sm font-semibold" href={href('registration')}>
                 {t('view')}
               </Link>
             </CardContent>

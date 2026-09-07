@@ -20,6 +20,7 @@ import {
   CalendarClock,
   Activity,
   ClipboardList,
+  Route,
   ListChecks,
   Layers3,
   FileBarChart,
@@ -116,6 +117,12 @@ export const adminNav: ShellNavGroup[] = [
     labelKey: 'operations',
     labelFallback: 'Operations',
     items: [
+      {
+        labelKey: 'registrations',
+        labelFallback: 'Registrations',
+        href: '/admin/registrations',
+        icon: Route,
+      },
       {
         labelKey: 'documentReview',
         labelFallback: 'Document review',

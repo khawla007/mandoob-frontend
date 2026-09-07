@@ -3,6 +3,9 @@ import { IdCard, Landmark, ShieldCheck } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { VisaProcessWorkspace } from '@/components/registration/VisaProcessWorkspace';
+import { VISA_MILESTONE_CODES, type VisaMilestoneCode } from '@/lib/registration/contracts';
+import { loadVisaPresentation } from '@/lib/registration/unavailable-adapter';
 import {
   authorizeEmployeePortalRead,
   classifyEmployeeDeadline,
@@ -88,11 +91,13 @@ export default async function EmployeeIdentityPage({
 }) {
   const { tenant: slug } = await params;
   const access = await authorizeEmployeePortalRead(slug);
-  const [t, tCommon, tDeadline, locale] = await Promise.all([
+  const [t, tCommon, tDeadline, tRegistration, locale, visaState] = await Promise.all([
     getTranslations('employee.identity'),
     getTranslations('employee.common'),
     getTranslations('employee.deadline'),
+    getTranslations('registration'),
     getLocale(),
+    loadVisaPresentation(),
   ]);
   const visaDeadline = classifyEmployeeDeadline(access.employee.visaExpiry, 'identity-date');
   const eidDeadline = classifyEmployeeDeadline(access.employee.eidExpiry, 'identity-date');
@@ -163,6 +168,21 @@ export default async function EmployeeIdentityPage({
           </dl>
         </CardContent>
       </Card>
+      <VisaProcessWorkspace
+        state={visaState}
+        labels={{
+          title: tRegistration('employee.title'),
+          description: tRegistration('employee.description'),
+          unavailable: tRegistration('states.visaUnavailable'),
+          blocker: tRegistration('workspace.blockerTitle'),
+          nextAction: tRegistration('workspace.nextActionTitle'),
+          documents: tRegistration('workspace.documentsTitle'),
+          history: tRegistration('workspace.historyTitle'),
+          milestones: Object.fromEntries(
+            VISA_MILESTONE_CODES.map((code) => [code, tRegistration(`visa.${code}`)]),
+          ) as Record<VisaMilestoneCode, string>,
+        }}
+      />
     </div>
   );
 }

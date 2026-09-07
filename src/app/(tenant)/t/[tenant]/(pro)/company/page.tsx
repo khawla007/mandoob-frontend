@@ -38,10 +38,11 @@ export default async function AssignedCompanyPage({
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company) notFound();
 
-  const [focus, t, tOnboarding, tDocumentTypes, locale] = await Promise.all([
+  const [focus, t, tOnboarding, tRegistration, tDocumentTypes, locale] = await Promise.all([
     searchParams.then(parseAssignedCompanySearch),
     getTranslations('pro.assignedCompany'),
     getTranslations('companyOnboarding'),
+    getTranslations('registration'),
     getTranslations('proDocumentCenter.docTypes'),
     getLocale(),
   ]);
@@ -152,6 +153,19 @@ export default async function AssignedCompanyPage({
                 : tOnboarding('overview.resume'),
         }}
       />
+
+      <section className="signal-panel rounded-xl border p-5" aria-labelledby="registration-title">
+        <h2 id="registration-title" className="text-lg font-semibold">
+          {tRegistration('pro.title')}
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">{tRegistration('pro.description')}</p>
+        <Link
+          href={`/t/${encodeURIComponent(slug)}/applications/registration`}
+          className="text-primary mt-4 inline-flex text-sm font-semibold underline underline-offset-4"
+        >
+          {tRegistration('pro.title')}
+        </Link>
+      </section>
 
       <AssignedCompanyTabs
         slug={slug}

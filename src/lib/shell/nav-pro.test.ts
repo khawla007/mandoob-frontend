@@ -36,6 +36,7 @@ test('PRO navigation removes client directory, import, and team routes', () => {
     '/t/acme/dashboard',
     '/t/acme/company',
     '/t/acme/applications',
+    '/t/acme/applications/registration',
     '/t/acme/meetings',
     '/t/acme/renewals',
     '/t/acme/documents',

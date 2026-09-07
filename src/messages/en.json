@@ -565,6 +565,8 @@
     "companies": "Companies",
     "assignedCompany": "Assigned Company",
     "applications": "Applications",
+    "registration": "Registration",
+    "registrations": "Registrations",
     "renewals": "Renewals",
     "documents": "Documents",
     "employees": "Employees",
@@ -4664,6 +4666,129 @@
           ]
         }
       }
+    }
+  },
+  "registration": {
+    "admin": {
+      "eyebrow": "Operations",
+      "title": "Company registrations",
+      "description": "Filter and review the authority-registration queue without conflating it with Company onboarding or service cases.",
+      "detailEyebrow": "Company registration",
+      "detailTitle": "Registration detail",
+      "detailDescription": "Authority-stage progress, evidence, blockers and next actions.",
+      "detailUnavailable": "Company and assignment context will appear only after an accepted registration identity contract is connected."
+    },
+    "pro": {
+      "eyebrow": "Assigned Company",
+      "title": "Registration",
+      "description": "The authority-registration workflow for your one assigned Company. Generic service cases remain separate."
+    },
+    "customer": {
+      "eyebrow": "Company portal",
+      "title": "Registration",
+      "description": "Read-only authority-registration progress for your linked Company.",
+      "companyUnavailable": "Linked Company unavailable"
+    },
+    "employee": {
+      "title": "Visa process",
+      "description": "Your private six-milestone visa process. Identity expiry dates above are separate signals."
+    },
+    "filters": {
+      "company": "Company",
+      "pro": "Assigned PRO",
+      "stage": "Stage",
+      "status": "Status",
+      "all": "All",
+      "apply": "Apply filters"
+    },
+    "pagination": {
+      "label": "Registration pages",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page}"
+    },
+    "context": {
+      "title": "Company state context",
+      "proDescription": "Live Company setup dimensions remain separate from authority registration.",
+      "customerDescription": "Your safe Company lifecycle context remains separate from registration progress.",
+      "legal": "Legal sections",
+      "legalProgress": "{complete} of {total} complete",
+      "onboarding": "Onboarding lifecycle",
+      "readiness": "Activation readiness",
+      "readinessItems": "{count, plural, =0 {No readiness items} one {# readiness item} other {# readiness items}}",
+      "operational": "Operational lifecycle",
+      "onboardingStatuses": {
+        "not_started": "Not started",
+        "in_progress": "In progress",
+        "ready_for_activation": "Ready for activation",
+        "completed": "Activated"
+      },
+      "operationalStatuses": {
+        "onboarding": "Onboarding",
+        "active": "Active",
+        "renewal_due": "Renewal due",
+        "renewal_overdue": "Renewal overdue",
+        "suspended": "Suspended",
+        "churned": "Churned"
+      }
+    },
+    "workspace": {
+      "stagesTitle": "Registration stages",
+      "stagesDescription": "Seven ordered authority-registration stages. Only persisted workflow facts can advance them.",
+      "visaTitle": "Visa processing",
+      "visaDescription": "Per-person milestone detail, separate from the Company stage.",
+      "blockerTitle": "Current blocker",
+      "nextActionTitle": "Next action",
+      "documentsTitle": "Registration documents",
+      "historyTitle": "Registration history",
+      "stageCount": "{completed} of {total} stages complete"
+    },
+    "states": {
+      "unavailable": "Registration data unavailable",
+      "unavailableDescription": "No accepted registration workflow contract exists in this release. Progress, blockers, actions, documents and history are not inferred.",
+      "indexUnavailable": "The registration index cannot be populated until the registration schema and read contract are accepted.",
+      "visaUnavailable": "No accepted visa workflow contract exists in this release. These milestones are not inferred from identity or expiry fields.",
+      "actionUnavailable": "Action unavailable",
+      "empty": "No registration record exists.",
+      "partial": "Some registration regions are unavailable.",
+      "noBlocker": "No blocker is recorded.",
+      "noNextAction": "No next action is recorded.",
+      "noDocuments": "No registration documents are recorded.",
+      "noVisaPeople": "No visa people are recorded.",
+      "noHistory": "No registration history is recorded."
+    },
+    "stages": {
+      "application_submitted": "Application submitted",
+      "initial_approval": "Initial approval",
+      "name_reservation": "Name reservation",
+      "license_issuance": "License issuance",
+      "visa_processing": "Visa processing",
+      "bank_account": "Bank account",
+      "completed": "Completed"
+    },
+    "statuses": {
+      "not_started": "Not started",
+      "in_progress": "In progress",
+      "blocked": "Blocked",
+      "completed": "Completed",
+      "skipped": "Skipped",
+      "unavailable": "Unavailable"
+    },
+    "visa": {
+      "documents_ready": "Documents ready",
+      "entry_permit": "Entry permit",
+      "status_adjustment": "Status adjustment",
+      "medical_fitness": "Medical fitness",
+      "emirates_id": "Emirates ID",
+      "residency_issued": "Residency issued"
+    },
+    "visaStatuses": {
+      "not_started": "Not started",
+      "active": "Active",
+      "blocked": "Blocked",
+      "completed": "Completed",
+      "unavailable": "Unavailable",
+      "cancelled": "Cancelled"
     }
   }
 }

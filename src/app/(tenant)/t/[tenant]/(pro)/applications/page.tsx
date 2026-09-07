@@ -38,7 +38,7 @@ export default async function ApplicationsPage({
 
   const filters = parseApplicationFilters(search);
   const requestedPage = filters.id ? 1 : parseApplicationPage(search.page);
-  const [workspace, t, locale] = await Promise.all([
+  const [workspace, t, tRegistration, locale] = await Promise.all([
     listServiceCaseWorkspace(tenant.id, {
       status: filters.status,
       companyId: company.id,
@@ -49,6 +49,7 @@ export default async function ApplicationsPage({
       page: requestedPage,
     }),
     getTranslations('pro'),
+    getTranslations('registration'),
     getLocale(),
   ]);
   const totalPages = Math.max(1, Math.ceil(workspace.total / workspace.pageSize));
@@ -88,13 +89,28 @@ export default async function ApplicationsPage({
   ) as Record<ServiceCaseStatus, string>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-service-case-workspace>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('applications')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           {t('applicationsPageSubtitle', { company: company.companyName, count: workspace.total })}
         </p>
       </div>
+
+      <Card className="signal-panel">
+        <CardHeader>
+          <CardTitle>{tRegistration('pro.title')}</CardTitle>
+          <CardDescription>{tRegistration('pro.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            className="text-primary text-sm font-semibold underline underline-offset-4"
+            href={`/t/${encodeURIComponent(slug)}/applications/registration`}
+          >
+            {tRegistration('pro.title')}
+          </Link>
+        </CardContent>
+      </Card>
 
       <details className="signal-panel group rounded-xl border">
         <summary className="hover:bg-muted/40 focus-visible:ring-ring cursor-pointer list-none rounded-xl px-5 py-4 font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset">

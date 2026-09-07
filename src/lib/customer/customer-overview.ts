@@ -265,6 +265,7 @@ export const CUSTOMER_SIGNAL_ORDER = [
 export type CustomerPortalRoute =
   | 'overview'
   | 'company'
+  | 'registration'
   | 'documents'
   | 'employees'
   | 'meetings'

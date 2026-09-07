@@ -29,6 +29,13 @@ test('independent Customer widgets preserve ready, empty, error, and unavailable
   });
 });
 
+test('Customer portal route builder includes the registration workspace', () => {
+  assert.equal(
+    buildCustomerPortalHref('acme & co', 'registration'),
+    '/t/acme%20%26%20co/portal/registration',
+  );
+});
+
 test('submitted-document failure does not erase ready requested-document state', async () => {
   const widgets = await settleCustomerWidgets({
     documentRequests: Promise.resolve([{ id: 'request-1' }]),
