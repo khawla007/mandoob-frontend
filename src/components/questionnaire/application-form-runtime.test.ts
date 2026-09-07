@@ -64,15 +64,52 @@ if (reactServer) {
     const save = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
       button.textContent?.includes('Save on this device'),
     )!;
+    save.focus();
     await act(() => save.click());
-    const disclosure = container.querySelector<HTMLElement>('.application-save-disclosure')!;
+    let disclosure = container.querySelector<HTMLElement>('.application-save-disclosure')!;
     assert.match(disclosure.textContent ?? '', /unencrypted/i);
     assert.match(disclosure.textContent ?? '', /not synced or submitted/i);
+    assert.equal((document.activeElement as HTMLElement).textContent, 'Cancel');
+    await act(() =>
+      disclosure.dispatchEvent(
+        new browser.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }) as unknown as Event,
+      ),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1)));
+    assert.equal(document.activeElement, save);
+    await act(() => save.click());
+    disclosure = container.querySelector<HTMLElement>('.application-save-disclosure')!;
     const confirmSave = [...disclosure.querySelectorAll<HTMLButtonElement>('button')].find(
       (button) => button.textContent?.includes('Confirm seven-day save'),
     )!;
     await act(() => confirmSave.click());
     assert.equal(browser.localStorage.length, 1, 'explicit save works before material edits');
+
+    const conflicting = JSON.parse(browser.localStorage.getItem('mandoob:p109:application-local')!);
+    const conflictSavedAt = new Date(Date.parse(conflicting.savedAt) + 1000);
+    browser.localStorage.setItem(
+      'mandoob:p109:application-local',
+      JSON.stringify({
+        ...conflicting,
+        savedAt: conflictSavedAt.toISOString(),
+        expiresAt: new Date(conflictSavedAt.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    );
+    const updateSave = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+      button.textContent?.includes('Update local save'),
+    )!;
+    await act(() => updateSave.click());
+    const conflictDialog = container.querySelector<HTMLElement>('.application-save-disclosure')!;
+    const confirmConflict = [...conflictDialog.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.includes('Confirm seven-day save'),
+    )!;
+    await act(() => confirmConflict.click());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1)));
+    assert.match(
+      container.querySelector('.application-restore')?.textContent ?? '',
+      /Resume saved draft/,
+    );
+    assert.match(container.textContent ?? '', /Local draft conflict/);
 
     await act(() => root.unmount());
     const localEnvelope = JSON.parse(

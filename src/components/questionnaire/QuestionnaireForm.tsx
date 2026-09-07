@@ -92,6 +92,7 @@ export function QuestionnaireForm({
   const hydrated = useRef(false);
   const dirty = useRef(false);
   const pending = useRef(false);
+  const storageBlocked = useRef(false);
   const sessionSavedAt = useRef<string | null>(null);
   const localSavedAt = useRef<string | null>(null);
   const availableSessionAt = useRef<string | null>(null);
@@ -99,6 +100,7 @@ export function QuestionnaireForm({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const resetReturnFocus = useRef<HTMLElement | null>(null);
+  const saveReturnFocus = useRef<HTMLElement | null>(null);
   const current = STEPS[stepIndex];
   const validation = useMemo(() => validateApplication(draft, APPLICATION_DEFINITION), [draft]);
   const errors = attempted ? validation.errors.filter((e) => e.stepId === current.id) : [];
@@ -140,7 +142,13 @@ export function QuestionnaireForm({
     hydrated.current = true;
   }, []);
   useEffect(() => {
-    if (!hydrated.current || !dirty.current || action.status === 'confirmed-preview') return;
+    if (
+      !hydrated.current ||
+      !dirty.current ||
+      storageBlocked.current ||
+      action.status === 'confirmed-preview'
+    )
+      return;
     const clean = {
       ...draft,
       confirmations: { informationIsTrue: false, dataProcessingConsent: false },
@@ -154,12 +162,7 @@ export function QuestionnaireForm({
       expectedSavedAt: sessionSavedAt.current,
     });
     if (session.status === 'saved') sessionSavedAt.current = session.savedAt;
-    if (session.status === 'conflict')
-      queueMicrotask(() =>
-        setNotice(
-          `Session draft conflict: another copy was saved at ${session.storedSavedAt || 'an unknown time'}. Choose Resume or Start over.`,
-        ),
-      );
+    if (session.status === 'conflict') offerConflict('session', session.storedSavedAt);
     if (session.status === 'unavailable')
       queueMicrotask(() =>
         setNotice('Session save is unavailable. Changes remain only on this page.'),
@@ -174,16 +177,29 @@ export function QuestionnaireForm({
         expectedSavedAt: localSavedAt.current,
       });
       if (local.status === 'saved') localSavedAt.current = local.savedAt;
-      if (local.status === 'conflict')
-        queueMicrotask(() =>
-          setNotice(
-            `Local draft conflict: another copy was saved at ${local.storedSavedAt || 'an unknown time'}.`,
-          ),
-        );
+      if (local.status === 'conflict') offerConflict('local', local.storedSavedAt);
       if (local.status === 'unavailable')
         queueMicrotask(() => setNotice('Seven-day local save is unavailable in this browser.'));
     }
   }, [draft, localSave, action.status]);
+
+  function offerConflict(tier: 'session' | 'local', storedSavedAt: string | null) {
+    storageBlocked.current = true;
+    dirty.current = false;
+    const result = loadApplicationDraft({
+      storage: tier === 'session' ? window.sessionStorage : window.localStorage,
+      key: tier === 'session' ? SESSION_KEY : LOCAL_KEY,
+      tier,
+      definition: APPLICATION_DEFINITION,
+    });
+    queueMicrotask(() => {
+      if (result.status === 'loaded')
+        setSavedDraft({ draft: result.draft, savedAt: result.savedAt, tier });
+      setNotice(
+        `${tier === 'session' ? 'Session' : 'Local'} draft conflict: another copy was saved at ${storedSavedAt || 'an unknown time'}. Choose Resume, Start over, or Clear saved draft.`,
+      );
+    });
+  }
 
   function update(change: ApplicationDraftAction) {
     dirty.current = true;
@@ -286,6 +302,14 @@ export function QuestionnaireForm({
     setResetOpen(false);
     requestAnimationFrame(() => resetReturnFocus.current?.focus());
   }
+  function openSaveDisclosure() {
+    saveReturnFocus.current = document.activeElement as HTMLElement;
+    setSaveDisclosureOpen(true);
+  }
+  function closeSaveDisclosure() {
+    setSaveDisclosureOpen(false);
+    requestAnimationFrame(() => saveReturnFocus.current?.focus());
+  }
   function resumeSaved() {
     if (!savedDraft) return;
     setDraft({
@@ -296,6 +320,7 @@ export function QuestionnaireForm({
     sessionSavedAt.current = availableSessionAt.current;
     localSavedAt.current = availableLocalAt.current;
     if (savedDraft.tier === 'local') setLocalSave(true);
+    storageBlocked.current = false;
     setSavedDraft(null);
     setNotice(
       `Resumed ${savedDraft.tier} draft from ${new Date(savedDraft.savedAt).toLocaleString()}. Confirmations must be renewed.`,
@@ -307,6 +332,7 @@ export function QuestionnaireForm({
     clearApplicationDraft(window.sessionStorage, SESSION_KEY);
     availableSessionAt.current = null;
     availableLocalAt.current = null;
+    storageBlocked.current = false;
     setSavedDraft(null);
     setNotice('Saved session and local drafts cleared.');
   }
@@ -322,12 +348,13 @@ export function QuestionnaireForm({
       definition: APPLICATION_DEFINITION,
       expectedSavedAt: localSavedAt.current,
     });
-    setSaveDisclosureOpen(false);
+    closeSaveDisclosure();
     if (result.status === 'saved') {
       localSavedAt.current = result.savedAt;
       setLocalSave(true);
       setNotice(`Saved on this browser until ${new Date(result.expiresAt).toLocaleString()}.`);
     } else if (result.status === 'conflict') {
+      offerConflict('local', result.storedSavedAt);
       setNotice(
         `Local save conflict: another copy was saved at ${result.storedSavedAt || 'an unknown time'}.`,
       );
@@ -422,6 +449,7 @@ export function QuestionnaireForm({
     localSavedAt.current = null;
     availableSessionAt.current = null;
     availableLocalAt.current = null;
+    storageBlocked.current = false;
     dirty.current = false;
     setLocalSave(false);
     setResetOpen(false);
@@ -491,35 +519,12 @@ export function QuestionnaireForm({
           <strong>Your privacy, your choice</strong>
           <p aria-live="polite">{notice} File names and file contents are never saved.</p>
         </div>
-        <button
-          className="application-tool"
-          type="button"
-          onClick={() => setSaveDisclosureOpen(true)}
-        >
+        <button className="application-tool" type="button" onClick={openSaveDisclosure}>
           {localSave ? 'Update local save' : 'Save on this device'}
         </button>
       </div>
       {saveDisclosureOpen ? (
-        <section
-          className="application-save-disclosure"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="local-save-title"
-        >
-          <h2 id="local-save-title">Confirm local browser save</h2>
-          <p>
-            Your contact and application data remains unencrypted in this browser on this device for
-            up to seven days. It is not synced or submitted. Files and file names are excluded.
-          </p>
-          <div>
-            <button type="button" onClick={() => setSaveDisclosureOpen(false)}>
-              Cancel
-            </button>
-            <button type="button" onClick={confirmLocalSave}>
-              Confirm seven-day save
-            </button>
-          </div>
-        </section>
+        <SaveDisclosure close={closeSaveDisclosure} confirm={confirmLocalSave} />
       ) : null}
       {handoff.status === 'accepted' ? (
         <p className="application-handoff">
@@ -881,7 +886,7 @@ function BusinessStep({ draft, update, errors }: StepProps) {
           <option value="">Select an activity</option>
           {APPLICATION_DEFINITION.activities.map((x) => (
             <option key={x.id} value={x.id}>
-              {x.id === 'review' ? 'Preview complete' : x.label}
+              {x.label}
             </option>
           ))}
         </NativeSelect>
@@ -1398,14 +1403,26 @@ function ReviewStep({
   const activity = APPLICATION_DEFINITION.activities.find(
     (x) => x.id === draft.business.activityId,
   );
-  const docs = [
-    { id: 'passport-copy:contact', label: 'Contact passport copy' },
-    { id: 'activity-summary:business', label: 'Business plan or activity summary' },
-    ...draft.shareholders.map((row, i) => ({
-      id: `passport-copy:${row.id}`,
-      label: `Shareholder ${i + 1} passport copy`,
-    })),
-  ];
+  const docs = APPLICATION_DEFINITION.documentRules.flatMap((rule) => {
+    const documentLabel =
+      APPLICATION_DEFINITION.documents.find((document) => document.id === rule.documentId)?.label ??
+      rule.documentId;
+    if (rule.owner === 'contact')
+      return [
+        {
+          id: `${rule.documentId}:contact`,
+          label: `Contact ${documentLabel}`,
+          required: rule.required,
+        },
+      ];
+    if (rule.owner === 'business')
+      return [{ id: `${rule.documentId}:business`, label: documentLabel, required: rule.required }];
+    return draft.shareholders.map((row, index) => ({
+      id: `${rule.documentId}:${row.id}`,
+      label: `Shareholder ${index + 1} ${documentLabel}`,
+      required: rule.required,
+    }));
+  });
   const pick = (id: string, e: ChangeEvent<HTMLInputElement>) => {
     const result = selectPreviewFile({
       state: files,
@@ -1470,6 +1487,9 @@ function ReviewStep({
             <FileText aria-hidden />
             <div>
               <strong>{doc.label}</strong>
+              <span className="application-requirement">
+                {doc.required ? 'Required for review' : 'Optional'}
+              </span>
               {files[doc.id] ? (
                 <small>
                   {files[doc.id].displayName} · {(files[doc.id].sizeBytes / 1024).toFixed(0)} KB ·
@@ -1633,7 +1653,7 @@ function Confirmation({
           {STEPS.map((x) => (
             <li key={x.id}>
               <Check aria-hidden />
-              {x.label}
+              {x.id === 'review' ? 'Preview complete' : x.label}
             </li>
           ))}
         </ol>
@@ -1747,6 +1767,69 @@ function Confirmation({
     </section>
   );
 }
+function SaveDisclosure({ close, confirm }: { close: () => void; confirm: () => void }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const initialRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    initialRef.current?.focus();
+  }, []);
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== 'Tab' || !dialogRef.current) return;
+    const controls = [
+      ...dialogRef.current.querySelectorAll<HTMLElement>(
+        'button,a[href],input,select,textarea,[tabindex]:not([tabindex="-1"])',
+      ),
+    ];
+    if (!controls.length) return;
+    const first = controls[0],
+      last = controls.at(-1)!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+  return (
+    <div
+      className="application-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <section
+        ref={dialogRef}
+        className="application-dialog application-save-disclosure"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="local-save-title"
+        onKeyDown={onKeyDown}
+      >
+        <h2 id="local-save-title">Confirm local browser save</h2>
+        <p>
+          Your contact and application data remains unencrypted in this browser on this device for
+          up to seven days. It is not synced or submitted. Files and file names are excluded.
+        </p>
+        <div>
+          <button ref={initialRef} type="button" onClick={close}>
+            Cancel
+          </button>
+          <button type="button" onClick={confirm}>
+            Confirm seven-day save
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ResetDialog({ close, reset }: { close: () => void; reset: () => void }) {
   const dialogRef = useRef<HTMLElement>(null);
   const initialRef = useRef<HTMLButtonElement>(null);

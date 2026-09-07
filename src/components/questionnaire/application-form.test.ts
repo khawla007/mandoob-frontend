@@ -74,6 +74,10 @@ test('review and confirmation keep the required visual order without unsupported
   assert.match(source, /Preview complete/);
   assert.match(source, /Selected locally before preview \/ will require secure upload/);
   assert.doesNotMatch(source, /\/estimate#estimate-/u);
+  assert.match(source, /function SaveDisclosure/);
+  assert.match(source, /APPLICATION_DEFINITION\.documentRules\.flatMap/);
+  assert.match(source, /x\.id === 'review' \? 'Preview complete' : x\.label/);
+  assert.doesNotMatch(source, /APPLICATION_DEFINITION\.activities[\s\S]{0,300}Preview complete/u);
 });
 
 test('application message additions preserve recursive English and Arabic key parity', () => {
