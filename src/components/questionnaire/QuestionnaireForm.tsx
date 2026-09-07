@@ -703,8 +703,8 @@ export function ApplicationErrorSummary({
 }) {
   const summaryRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const frame = requestAnimationFrame(() => summaryRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
+    const frame = window.requestAnimationFrame(() => summaryRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
   }, [focusKey]);
   return (
     <div
