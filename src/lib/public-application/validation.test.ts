@@ -213,6 +213,81 @@ test('shareholder ownership uses integer basis points and must total exactly 100
   }
 });
 
+test('shareholder names and nationalities use the definition name boundaries', () => {
+  const boundedDefinition = {
+    ...APPLICATION_DEFINITION,
+    limits: { ...APPLICATION_DEFINITION.limits, nameMin: 3, nameMax: 5 },
+  } as never;
+  const cases = [
+    {
+      field: 'fullName' as const,
+      value: 'ab',
+      fieldId: 'application-shareholder-1-full-name',
+      message: 'Shareholder full name must be 3 to 5 characters.',
+    },
+    {
+      field: 'fullName' as const,
+      value: 'abcdef',
+      fieldId: 'application-shareholder-1-full-name',
+      message: 'Shareholder full name must be 3 to 5 characters.',
+    },
+    {
+      field: 'nationality' as const,
+      value: 'ab',
+      fieldId: 'application-shareholder-1-nationality',
+      message: 'Shareholder nationality must be 3 to 5 characters.',
+    },
+    {
+      field: 'nationality' as const,
+      value: 'abcdef',
+      fieldId: 'application-shareholder-1-nationality',
+      message: 'Shareholder nationality must be 3 to 5 characters.',
+    },
+  ];
+
+  for (const item of cases) {
+    const result = validateApplication(
+      {
+        ...validDraft,
+        shareholders: validDraft.shareholders.map((row, index) => ({
+          ...row,
+          fullName: 'Owner',
+          nationality: 'Emiri',
+          ...(index === 0 ? { [item.field]: item.value } : {}),
+        })),
+      },
+      boundedDefinition,
+    );
+    assert.equal(result.status, 'invalid');
+    if (result.status === 'invalid') {
+      const error = result.errors.find(({ fieldId }) => fieldId === item.fieldId);
+      assert.equal(error?.message, item.message);
+      assert.equal(error?.code, 'invalid');
+    }
+  }
+
+  const boundaries = validateApplication(
+    {
+      ...validDraft,
+      shareholders: validDraft.shareholders.map((row, index) => ({
+        ...row,
+        fullName: index === 0 ? 'Abc' : 'Owner',
+        nationality: index === 0 ? 'UAE' : 'Emiri',
+      })),
+    },
+    boundedDefinition,
+  );
+  if (boundaries.status === 'invalid') {
+    assert.ok(
+      boundaries.errors.every(
+        ({ fieldId }) =>
+          !fieldId.startsWith('application-shareholder-') ||
+          (!fieldId.endsWith('-full-name') && !fieldId.endsWith('-nationality')),
+      ),
+    );
+  }
+});
+
 test('visa suggestion is not treated as an allocated category count', () => {
   const result = validateApplication(
     {

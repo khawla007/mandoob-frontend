@@ -183,10 +183,24 @@ function errorsForStep(
     let ownershipTotal = 0;
     let everyOwnershipValid = true;
     for (const row of draft.shareholders) {
-      if (row.fullName.trim().length < 2)
-        add(`application-${row.id}-full-name`, 'Enter the shareholder full name.');
-      if (row.nationality.trim().length < 2)
-        add(`application-${row.id}-nationality`, 'Enter the shareholder nationality.');
+      if (
+        row.fullName.trim().length < definition.limits.nameMin ||
+        row.fullName.length > definition.limits.nameMax
+      )
+        add(
+          `application-${row.id}-full-name`,
+          `Shareholder full name must be ${definition.limits.nameMin} to ${definition.limits.nameMax} characters.`,
+          'invalid',
+        );
+      if (
+        row.nationality.trim().length < definition.limits.nameMin ||
+        row.nationality.length > definition.limits.nameMax
+      )
+        add(
+          `application-${row.id}-nationality`,
+          `Shareholder nationality must be ${definition.limits.nameMin} to ${definition.limits.nameMax} characters.`,
+          'invalid',
+        );
       const ownership = parseBasisPoints(
         row.ownershipBasisPoints,
         definition.limits.ownershipTotalBasisPoints,
