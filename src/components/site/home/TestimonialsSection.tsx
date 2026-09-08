@@ -16,7 +16,11 @@ const WORKFLOW_ITEMS = [
 ] as const;
 
 export async function TestimonialsSection() {
-  const [t, locale] = await Promise.all([getTranslations('home.testimonials'), getLocale()]);
+  const [t, controls, locale] = await Promise.all([
+    getTranslations('home.testimonials'),
+    getTranslations('publicPolish.carousel'),
+    getLocale(),
+  ]);
   const items: WorkflowCapability[] = WORKFLOW_ITEMS.map(({ key, marker }) => ({
     id: key,
     marker,
@@ -38,6 +42,9 @@ export async function TestimonialsSection() {
         <TestimonialsCarousel
           items={items}
           carouselLabel={t('carouselLabel')}
+          previousLabel={controls('previousLabel')}
+          nextLabel={controls('nextLabel')}
+          positionLabel={controls('positionLabel')}
           direction={direction}
         />
       </div>

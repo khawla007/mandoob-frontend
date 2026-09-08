@@ -36,7 +36,19 @@ describe('company setup discovery page contracts', () => {
       assert.match(page, new RegExp(term));
     }
     assert.match(directory, /^'use client';/u);
-    for (const term of ['filterFreeZones', 'Search by name', 'Apply filters', 'Clear', '<table']) {
+    for (const term of [
+      'filterFreeZones',
+      'Search by name',
+      'type="search"',
+      'Apply filters',
+      'Clear filters',
+      'aria-label="Free Zone comparison results"',
+      'tabIndex={0}',
+      '<caption',
+      'formatFreeZoneResultCount',
+      'filtersAreApplied',
+      '<table',
+    ]) {
       assert.match(directory, new RegExp(term));
     }
   });

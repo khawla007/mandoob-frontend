@@ -4228,11 +4228,26 @@
 
 .site-public .home-testimonials-carousel .swiper-wrapper {
   align-items: stretch;
-  transition-timing-function: linear !important;
 }
 
 .site-public .home-testimonials-carousel .swiper-slide {
   height: auto;
+}
+
+.site-public .home-testimonials-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.site-public .home-testimonials-controls p {
+  min-width: 14ch;
+  margin: 0;
+  color: var(--zinc-600);
+  font-size: var(--fs-12);
+  text-align: center;
 }
 
 .site-public .home-testimonial-card {
@@ -9486,6 +9501,10 @@
   border: 1px solid var(--pb-border);
   border-radius: var(--r-md);
   background: var(--paper);
+}
+.site-public .setup-directory__table-wrap:focus-visible {
+  outline: 3px solid color-mix(in oklch, var(--public-focus-ring) 42%, transparent);
+  outline-offset: 2px;
 }
 .site-public .setup-directory table {
   width: 100%;

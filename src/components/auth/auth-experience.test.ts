@@ -44,6 +44,11 @@ describe('reference-family authentication shell', () => {
     assert.match(layout, /<SiteFooter\s*\/>/u);
     assert.equal(layout.match(/<main\b/gu)?.length, 1);
     assert.doesNotMatch(experience, /<main\b|<h1\b/u);
+    assert.doesNotMatch(experience, /<aside\b/u);
+    assert.match(
+      experience,
+      /<section className="auth-experience__narrative" aria-labelledby="auth-narrative-title">/u,
+    );
     assert.ok(
       experience.indexOf('auth-experience__form-column') <
         experience.indexOf('auth-experience__narrative'),

@@ -3248,6 +3248,19 @@
       }
     }
   },
+  "publicPolish": {
+    "carousel": {
+      "previousLabel": "Show the previous workflow item",
+      "nextLabel": "Show the next workflow item",
+      "positionLabel": "Current workflow item"
+    },
+    "error": {
+      "eyebrow": "Temporary error",
+      "title": "This page could not be loaded.",
+      "description": "Try loading it again. No information you entered has been submitted by this page.",
+      "retry": "Try again"
+    }
+  },
   "home": {
     "hero": {
       "eyebrow": ".AE · UAE Business Platform",

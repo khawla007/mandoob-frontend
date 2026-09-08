@@ -6,6 +6,7 @@ import {
   type ProRegistrationReviewLabels,
 } from '@/components/auth/ProRegistrationReview';
 import { resolveProRegistrationState } from '@/components/auth/pro-registration-state';
+import { buildAuthMetadata } from '@/lib/public-metadata';
 
 import styles from '@/components/auth/pro-registration-review.module.css';
 
@@ -15,7 +16,11 @@ type RegisterProPageProps = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.metadata.proRegister');
-  return { title: t('title'), description: t('description') };
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('description'),
+    canonical: '/register/pro',
+  });
 }
 
 export default async function RegisterProPage({ searchParams }: RegisterProPageProps) {

@@ -5,13 +5,15 @@ import {
   parseEstimatorApplicationHandoff,
   type DemoApplicationOutcome,
 } from '@/lib/public-application';
+import { buildAuthMetadata } from '@/lib/public-metadata';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildAuthMetadata({
   title: 'Company Setup Application | Mandoob',
   description: 'Prepare your UAE company setup application in a private local preview.',
-};
+  canonical: '/apply',
+});
 
 export default async function ApplyPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = toUrlSearchParams(await searchParams);

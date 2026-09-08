@@ -1,5 +1,17 @@
+import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { MfaEnrollCard } from '@/components/auth/MfaEnrollCard';
+import { buildAuthMetadata } from '@/lib/public-metadata';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.mfa.enroll');
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('intro'),
+    canonical: '/mfa/enroll',
+    referrer: 'no-referrer',
+  });
+}
 
 export default async function MfaEnrollPage() {
   const t = await getTranslations('auth.mfa.enroll');

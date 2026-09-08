@@ -19,7 +19,6 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
     [
       '/',
       '/estimate',
-      '/apply',
       '/pricing',
       '/pro',
       '/knowledge-base',
@@ -32,6 +31,7 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
     ].filter((path) => !paths(entries).includes(path)),
     [],
   );
+  assert.equal(paths(entries).includes('/apply'), false, 'private application must stay noindex');
   assert.ok(paths(entries).includes('/knowledge-base/mainland-vs-free-zone'));
   assert.ok(paths(entries).includes('/knowledge-base/uae-company-documents'));
 });

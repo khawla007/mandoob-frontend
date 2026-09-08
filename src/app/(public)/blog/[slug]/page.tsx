@@ -11,6 +11,7 @@ import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { getPublishedBlogPostBySlug } from '@/lib/data/blog';
 import { withDevelopmentItemEvidence } from '@/lib/public-content/development-evidence';
 import { serializeJsonLd } from '@/lib/public-content/json-ld';
+import { buildUnavailableMetadata } from '@/lib/public-metadata';
 
 type Params = { slug: string };
 const SITE_ORIGIN = 'https://mandoob.ae';
@@ -24,7 +25,13 @@ const getCachedPost = cache(
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
   const state = await resolveBlogDetail(slug, getCachedPost);
-  if (state.status !== 'ready') return {};
+  if (state.status !== 'ready') {
+    return buildUnavailableMetadata({
+      title: 'Blog article unavailable',
+      description: 'This published Blog article is not available.',
+      canonical: `/blog/${slug}`,
+    });
+  }
   const post = state.data;
   const description = post.metaDescription ?? post.excerpt ?? undefined;
   const canonical = post.canonicalUrl ?? `/blog/${post.slug}`;

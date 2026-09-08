@@ -2,10 +2,16 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { InviteAcceptForm } from '@/components/auth/InviteAcceptForm';
 import { isAcceptedInviteToken } from '@/components/auth/auth-recovery-state';
+import { buildAuthMetadata } from '@/lib/public-metadata';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.recovery.metadata.invite');
-  return { title: t('title'), description: t('description'), referrer: 'no-referrer' };
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('description'),
+    canonical: '/invite',
+    referrer: 'no-referrer',
+  });
 }
 
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {

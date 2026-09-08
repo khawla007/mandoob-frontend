@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Autoplay } from 'swiper/modules';
+import { useEffect, useId, useState } from 'react';
+import type { Swiper as SwiperInstance } from 'swiper';
 import { Swiper, SwiperSlide } from 'swiper/react';
 
 import 'swiper/css';
@@ -17,14 +17,23 @@ export interface WorkflowCapability {
 interface TestimonialsCarouselProps {
   items: WorkflowCapability[];
   carouselLabel: string;
+  previousLabel: string;
+  nextLabel: string;
+  positionLabel: string;
   direction: 'ltr' | 'rtl';
 }
 
 export function TestimonialsCarousel({
   items,
   carouselLabel,
+  previousLabel,
+  nextLabel,
+  positionLabel,
   direction,
 }: TestimonialsCarouselProps) {
+  const carouselId = useId();
+  const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(
     () =>
       typeof window !== 'undefined' &&
@@ -38,14 +47,6 @@ export function TestimonialsCarousel({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  const autoplayConfig = reducedMotion
-    ? false
-    : {
-        delay: 0,
-        disableOnInteraction: true,
-        pauseOnMouseEnter: true,
-      };
-
   return (
     <div
       className="home-testimonials-carousel testimonial-slider"
@@ -55,11 +56,12 @@ export function TestimonialsCarousel({
       dir={direction}
     >
       <Swiper
-        modules={[Autoplay]}
-        autoplay={autoplayConfig}
-        speed={reducedMotion ? 0 : 8000}
+        id={carouselId}
+        speed={reducedMotion ? 0 : 350}
         spaceBetween={20}
-        loop={items.length > 4}
+        rewind={items.length > 4}
+        onSwiper={setSwiper}
+        onSlideChange={(instance) => setActiveIndex(instance.realIndex)}
         breakpoints={{
           450: { slidesPerView: 1, spaceBetween: 10 },
           640: { slidesPerView: 2, spaceBetween: 15 },
@@ -84,6 +86,29 @@ export function TestimonialsCarousel({
           </SwiperSlide>
         ))}
       </Swiper>
+      <div className="home-testimonials-controls">
+        <button
+          className="btn btn--outline btn--sm"
+          type="button"
+          aria-label={previousLabel}
+          aria-controls={carouselId}
+          onClick={() => swiper?.slidePrev()}
+        >
+          <span aria-hidden="true">←</span>
+        </button>
+        <p aria-live="polite" aria-atomic="true">
+          {positionLabel}: {activeIndex + 1} of {items.length}
+        </p>
+        <button
+          className="btn btn--outline btn--sm"
+          type="button"
+          aria-label={nextLabel}
+          aria-controls={carouselId}
+          onClick={() => swiper?.slideNext()}
+        >
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
     </div>
   );
 }

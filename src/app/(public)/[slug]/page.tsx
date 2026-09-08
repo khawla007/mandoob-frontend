@@ -10,6 +10,7 @@ import { resolveGenericPageState } from '@/lib/pages/public-presentation';
 import { DEVELOPMENT_CMS_EVIDENCE_PAGE } from '@/lib/public-content/development-cms-fixture';
 import { withDevelopmentItemEvidence } from '@/lib/public-content/development-evidence';
 import { serializeJsonLd } from '@/lib/public-content/json-ld';
+import { buildUnavailableMetadata } from '@/lib/public-metadata';
 
 type PageProps = { params: Promise<{ slug: string }> };
 const getCachedPublishedPage = cache(
@@ -24,7 +25,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   if (isLegalCmsPageSlug(slug)) return {};
   const state = await resolveGenericPageState(slug, getCachedPublishedPage);
-  return buildCmsPageMetadata(state.status === 'ready' ? state.data : null);
+  return state.status === 'ready'
+    ? buildCmsPageMetadata(state.data)
+    : buildUnavailableMetadata({
+        title: 'Page unavailable',
+        description: 'This published public page is not available.',
+        canonical: `/${slug}`,
+      });
 }
 
 export default async function CmsPageRoute({ params }: PageProps) {

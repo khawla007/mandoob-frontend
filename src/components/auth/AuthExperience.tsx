@@ -72,7 +72,7 @@ export function AuthExperience({ children, variant }: AuthExperienceProps) {
           <div className="auth-experience__card">{children}</div>
         </div>
 
-        <aside className="auth-experience__narrative" aria-labelledby="auth-narrative-title">
+        <section className="auth-experience__narrative" aria-labelledby="auth-narrative-title">
           <Image
             className="auth-experience__skyline"
             src="/hero/skyline.webp"
@@ -110,7 +110,7 @@ export function AuthExperience({ children, variant }: AuthExperienceProps) {
               </span>
             </p>
           </div>
-        </aside>
+        </section>
       </section>
 
       <section className="auth-support" aria-labelledby="auth-support-title">

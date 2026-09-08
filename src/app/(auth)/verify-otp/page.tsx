@@ -3,11 +3,17 @@ import { getTranslations } from 'next-intl/server';
 import { OtpForm } from '@/components/auth/OtpForm';
 import { maskEmailAddress } from '@/components/auth/auth-form-state';
 import { isAcceptedEmailContext } from '@/components/auth/auth-recovery-state';
+import { buildAuthMetadata } from '@/lib/public-metadata';
 
 export const dynamic = 'force-dynamic';
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.recovery.metadata.otp');
-  return { title: t('title'), description: t('description'), referrer: 'no-referrer' };
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('description'),
+    canonical: '/verify-otp',
+    referrer: 'no-referrer',
+  });
 }
 
 export default async function VerifyOtpPage({

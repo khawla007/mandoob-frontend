@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { cache } from 'react';
 
 import { PublicContentState } from '@/components/public-content/PublicContentState';
 import { getBlogCoverImage } from '@/lib/blog/cover-image';
@@ -13,20 +14,29 @@ import {
 } from '@/lib/blog/public-presentation';
 import { listPublishedBlogPosts, type BlogPost } from '@/lib/data/blog';
 import { withDevelopmentCollectionEvidence } from '@/lib/public-content/development-evidence';
+import { buildPublicMetadata, buildUnavailableMetadata } from '@/lib/public-metadata';
 
 const BLOG_POSTS_PER_PAGE = 12;
-const loadPublishedBlogPosts = withDevelopmentCollectionEvidence(listPublishedBlogPosts, {
-  nodeEnv: process.env.NODE_ENV,
-  mode: process.env.P107_BLOG_INDEX_EVIDENCE_STATE,
-});
+const loadPublishedBlogPosts = cache(
+  withDevelopmentCollectionEvidence(listPublishedBlogPosts, {
+    nodeEnv: process.env.NODE_ENV,
+    mode: process.env.P107_BLOG_INDEX_EVIDENCE_STATE,
+  }),
+);
 type SearchParams = Record<string, string | string[] | undefined>;
 
-export const metadata: Metadata = {
-  title: 'UAE Business Blog | Mandoob',
-  description:
-    'Published guidance for UAE company setup, licensing, renewals, compliance, and PRO operations.',
-  alternates: { canonical: '/blog' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const state = await resolveBlogIndex(loadPublishedBlogPosts);
+  const input = {
+    title: 'UAE Business Blog',
+    description:
+      'Published guidance for UAE Company setup, licensing, renewals, compliance, and PRO operations.',
+    canonical: '/blog',
+  };
+  return state.status === 'unavailable'
+    ? buildUnavailableMetadata({ ...input, title: 'Blog unavailable' })
+    : buildPublicMetadata(input);
+}
 
 export default async function BlogPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;

@@ -50,7 +50,6 @@ export function buildPublicSitemap({
   const staticPaths = [
     '/',
     '/estimate',
-    '/apply',
     '/pricing',
     '/pro',
     '/knowledge-base',

@@ -1,5 +1,17 @@
+import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { MfaChallengeForm } from '@/components/auth/MfaChallengeForm';
+import { buildAuthMetadata } from '@/lib/public-metadata';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.mfa.challenge');
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('intro'),
+    canonical: '/mfa/challenge',
+    referrer: 'no-referrer',
+  });
+}
 
 export default async function MfaChallengePage() {
   const t = await getTranslations('auth.mfa.challenge');

@@ -8,6 +8,7 @@ import { getPublishedCmsPageBySlug } from '@/lib/data/pages';
 import { resolveLegalPageState } from '@/lib/pages/public-presentation';
 import { withDevelopmentItemEvidence } from '@/lib/public-content/development-evidence';
 import { serializeJsonLd } from '@/lib/public-content/json-ld';
+import { buildUnavailableMetadata } from '@/lib/public-metadata';
 
 type PageProps = { params: Promise<{ slug: string }> };
 const getCachedPublishedPage = cache(
@@ -20,7 +21,13 @@ const getCachedPublishedPage = cache(
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const state = await resolveLegalPageState(slug, getCachedPublishedPage);
-  return buildCmsPageMetadata(state.status === 'ready' ? state.data : null);
+  return state.status === 'ready'
+    ? buildCmsPageMetadata(state.data)
+    : buildUnavailableMetadata({
+        title: 'Legal page unavailable',
+        description: 'This published legal page is not available.',
+        canonical: `/legal/${slug}`,
+      });
 }
 
 export default async function LegalCmsPageRoute({ params }: PageProps) {

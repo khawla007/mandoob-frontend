@@ -8,10 +8,16 @@ import {
   isValidRecoveryContextValue,
   RECOVERY_CONTEXT_COOKIE_NAME,
 } from '@/lib/auth/recovery-context';
+import { buildAuthMetadata } from '@/lib/public-metadata';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.recovery.metadata.reset');
-  return { title: t('title'), description: t('description'), referrer: 'no-referrer' };
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('description'),
+    canonical: '/reset-password',
+    referrer: 'no-referrer',
+  });
 }
 
 export default async function ResetPasswordPage() {

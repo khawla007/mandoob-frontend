@@ -8,6 +8,18 @@ import type {
 } from '@/lib/public-company-setup/contracts';
 import { EMPTY_FILTERS, filterFreeZones } from '@/lib/public-company-setup/filter';
 
+export function filtersAreApplied(filters: SetupDirectoryFilters): boolean {
+  return Object.keys(EMPTY_FILTERS).some(
+    (key) =>
+      filters[key as keyof SetupDirectoryFilters] !==
+      EMPTY_FILTERS[key as keyof SetupDirectoryFilters],
+  );
+}
+
+export function formatFreeZoneResultCount(count: number): string {
+  return `${count} matching Free ${count === 1 ? 'Zone' : 'Zones'}`;
+}
+
 export function FreeZoneDirectory({ rows }: { rows: readonly FreeZoneDirectoryItem[] }) {
   const [draft, setDraft] = useState<SetupDirectoryFilters>(EMPTY_FILTERS);
   const [filters, setFilters] = useState<SetupDirectoryFilters>(EMPTY_FILTERS);
@@ -27,7 +39,12 @@ export function FreeZoneDirectory({ rows }: { rows: readonly FreeZoneDirectoryIt
         <h3>Filter Free Zones</h3>
         <label>
           Search by name
-          <input value={draft.query} onChange={(event) => update('query', event.target.value)} />
+          <input
+            type="search"
+            autoComplete="off"
+            value={draft.query}
+            onChange={(event) => update('query', event.target.value)}
+          />
         </label>
         <label>
           Emirate
@@ -97,17 +114,27 @@ export function FreeZoneDirectory({ rows }: { rows: readonly FreeZoneDirectoryIt
               setFilters(EMPTY_FILTERS);
             }}
           >
-            Clear
+            Clear filters
           </button>
         </div>
       </form>
       <div className="setup-directory">
-        <p className="setup-directory__count" aria-live="polite">
-          {results.length} matching Free Zones
+        <p className="setup-directory__count" aria-live="polite" aria-atomic="true">
+          {formatFreeZoneResultCount(results.length)}
+          {filtersAreApplied(filters) ? ' with filters applied.' : '.'}
         </p>
-        <div className="setup-directory__table-wrap">
+        <div
+          className="setup-directory__table-wrap"
+          role="region"
+          aria-label="Free Zone comparison results"
+          tabIndex={0}
+        >
           {results.length ? (
             <table>
+              <caption className="sr-only">
+                Free Zone comparison results by authority, Emirate, business type, ownership,
+                indicative cost, and timeline
+              </caption>
               <thead>
                 <tr>
                   <th scope="col">Authority</th>

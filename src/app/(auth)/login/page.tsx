@@ -3,10 +3,15 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { AuthProviders } from '@/components/auth/AuthProviders';
+import { buildAuthMetadata } from '@/lib/public-metadata';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.metadata.login');
-  return { title: t('title'), description: t('description') };
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('description'),
+    canonical: '/login',
+  });
 }
 
 export default async function LoginPage() {
