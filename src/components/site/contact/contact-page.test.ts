@@ -116,7 +116,10 @@ describe('strict-parity Contact page', () => {
     assert.match(route, /demoDelayMs=\{demoMode\?\.delayMs\}/u);
     assert.match(body, /demoOutcome\?: SyntheticContactOutcome/u);
     assert.match(body, /demoDelayMs\?: number/u);
-    assert.match(body, /<ContactForm demoOutcome=\{demoOutcome\} demoDelayMs=\{demoDelayMs\} \/>/u);
+    assert.match(
+      body,
+      /<ContactForm[\s\S]*?demoOutcome=\{demoOutcome\}[\s\S]*?demoDelayMs=\{demoDelayMs\}[\s\S]*?initialTopic=\{proInterest \? 'pro-interest' : undefined\}[\s\S]*?\/>/u,
+    );
   });
 
   it('keeps WhatsApp unavailable and limits Quick Links to working safe routes', () => {

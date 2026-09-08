@@ -119,6 +119,14 @@ if (existsSync(componentPath)) {
     setControlValue(container.querySelector<HTMLInputElement>('#contact-consent')!, true);
   }
 
+  test('PRO interest handoff preselects Other and explains fail-closed delivery', async () => {
+    const { act, container, root } = await renderForm({ initialTopic: 'pro-interest' });
+    assert.equal(container.querySelector<HTMLSelectElement>('#contact-subject')?.value, 'other');
+    assert.match(container.textContent ?? '', /PRO interest.*delivery.*unavailable/iu);
+    await act(() => root.unmount());
+    container.remove();
+  });
+
   test('renders labelled fields, valid legal links, cues, and focus styling hooks', async () => {
     const { act, container, root } = await renderForm();
     for (const id of ['fullName', 'email', 'phone', 'subject', 'message', 'consent']) {

@@ -557,8 +557,8 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
       },
     ],
     registration: unavailablePublicationFact(
-      'PRO registration is unavailable in this phase and remains owned by P1.10.',
-      'The P1.10 PRO registration frontend is not implemented',
+      'The PRO review presentation is available; production submission and delivery remain unavailable pending Phase 3.',
+      'PRO review presentation is available while production submission and delivery remain Phase 3 capabilities',
     ),
     checkout: unavailablePublicationFact(
       'Checkout and billing provider access are unavailable in this phase and remain owned by Phase 3.',

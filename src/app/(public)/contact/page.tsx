@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { ContactPageBody } from '@/components/site/contact/ContactPageBody';
 import { resolveContactDemoMode } from '@/lib/public-contact/demo-mode';
+import { resolveContactTopic } from '@/lib/public-contact/contact-topic';
 
 export const metadata: Metadata = {
   title: 'Contact Mandoob',
@@ -11,16 +12,18 @@ export const metadata: Metadata = {
 };
 
 type ContactPageProps = {
-  searchParams: Promise<{ demo?: string | string[] }>;
+  searchParams: Promise<{ demo?: string | string[]; topic?: string | string[] }>;
 };
 
 export default async function ContactPage({ searchParams }: ContactPageProps) {
   const tContact = await getTranslations('contact');
   const tSite = await getTranslations('site');
+  const query = await searchParams;
   const demoMode =
     process.env.NODE_ENV === 'development'
-      ? resolveContactDemoMode((await searchParams).demo, process.env.NODE_ENV)
+      ? resolveContactDemoMode(query.demo, process.env.NODE_ENV)
       : undefined;
+  const topic = resolveContactTopic(query.topic);
 
   return (
     <ContactPageBody
@@ -31,6 +34,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       }}
       demoOutcome={demoMode?.outcome}
       demoDelayMs={demoMode?.delayMs}
+      proInterest={topic === 'pro-interest'}
     />
   );
 }

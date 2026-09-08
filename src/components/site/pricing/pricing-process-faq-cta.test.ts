@@ -74,7 +74,10 @@ describe('pricing process, FAQ, and final CTA contract', () => {
     );
     assert.ok(accessProcess.steps.every((step) => step.source.state === 'approved-static'));
     assert.equal(accessProcess.registration.source.state, 'unavailable');
-    assert.match(accessProcess.registration.text, /PRO registration.*unavailable.*P1\.10/iu);
+    assert.match(
+      accessProcess.registration.text,
+      /PRO review presentation.*available.*production submission.*unavailable.*Phase 3/iu,
+    );
     assert.equal(accessProcess.checkout.source.state, 'unavailable');
     assert.match(accessProcess.checkout.text, /checkout.*provider.*unavailable.*Phase 3/iu);
     assert.equal('href' in accessProcess.registration, false);
@@ -211,7 +214,10 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
       assert.match(section, /<h3 id="pricing-unavailable-title">Unavailable plan actions<\/h3>/u);
       assert.match(section, /<ul/u);
       assert.equal((section.match(/<li>/gu) ?? []).length, 2);
-      assert.match(section, /PRO registration is unavailable[\s\S]*P1\.10/iu);
+      assert.match(
+        section,
+        /PRO review presentation is available[\s\S]*production submission[\s\S]*Phase 3/iu,
+      );
       assert.match(section, /checkout and billing provider access are unavailable[\s\S]*Phase 3/iu);
       assert.doesNotMatch(section, /href="\/register\/pro(?:"|[/?#])/u);
       assert.doesNotMatch(section, /href="[^"]*(?:checkout|stripe|payment)[^"]*"/iu);

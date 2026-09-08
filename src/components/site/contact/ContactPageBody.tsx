@@ -128,9 +128,15 @@ type ContactPageBodyProps = {
   };
   demoOutcome?: SyntheticContactOutcome;
   demoDelayMs?: number;
+  proInterest?: boolean;
 };
 
-export function ContactPageBody({ heroCopy, demoOutcome, demoDelayMs }: ContactPageBodyProps) {
+export function ContactPageBody({
+  heroCopy,
+  demoOutcome,
+  demoDelayMs,
+  proInterest = false,
+}: ContactPageBodyProps) {
   return (
     <>
       <PageScenicHero
@@ -175,7 +181,11 @@ export function ContactPageBody({ heroCopy, demoOutcome, demoDelayMs }: ContactP
       <section className="contact-page__workspace" aria-label="Send a message and help topics">
         <div className="contact-page__workspace-grid container">
           <div className="contact-page__form-panel">
-            <ContactForm demoOutcome={demoOutcome} demoDelayMs={demoDelayMs} />
+            <ContactForm
+              demoOutcome={demoOutcome}
+              demoDelayMs={demoDelayMs}
+              initialTopic={proInterest ? 'pro-interest' : undefined}
+            />
           </div>
 
           <aside className="contact-page__help" aria-labelledby="contact-help-title">

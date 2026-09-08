@@ -1,1 +1,1 @@
-export { default } from '../login/page';
+export { default, generateMetadata } from '../login/page';

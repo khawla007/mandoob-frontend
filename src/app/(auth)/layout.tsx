@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { SiteHeader } from '@/components/site/SiteHeader';
 import { SiteFooter } from '@/components/site/SiteFooter';
+import { AuthExperience } from '@/components/auth/AuthExperience';
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations('site');
@@ -11,14 +12,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         {t('skipToMain')}
       </a>
       <SiteHeader />
-      <main id="main" className="flex flex-1 items-center justify-center">
-        <section className="section section--flush w-full">
-          <div className="container">
-            <div className="auth-shell">
-              <div className="auth-card">{children}</div>
-            </div>
-          </div>
-        </section>
+      <main id="main" tabIndex={-1} className="flex-1">
+        <AuthExperience>{children}</AuthExperience>
       </main>
       <SiteFooter />
     </div>

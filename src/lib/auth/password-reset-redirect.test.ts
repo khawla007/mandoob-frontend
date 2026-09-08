@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
+import { sharedSafeDestination } from './safe-redirect';
 
 test('password reset emails return through the existing callback route', async () => {
   const route = await readFile(
@@ -11,4 +12,9 @@ test('password reset emails return through the existing callback route', async (
 
   assert.match(route, /\/callback\?next=\/reset-password/);
   assert.doesNotMatch(route, /\/auth\/callback\?next=\/reset-password/);
+
+  const producedNext = route.match(/\/callback\?next=(\/reset-password)/u)?.[1];
+  assert.equal(sharedSafeDestination(producedNext), '/reset-password');
+  assert.match(route, /trustedApplicationUrl\('\/callback\?next=\/reset-password'\)/u);
+  assert.doesNotMatch(route, /headers\.get\(['"](?:host|x-forwarded-proto)['"]\)/u);
 });

@@ -18,6 +18,7 @@ import { validateContactSubmission } from '@/lib/public-contact/validation';
 type ContactFormProps = {
   demoOutcome?: SyntheticContactOutcome;
   demoDelayMs?: number;
+  initialTopic?: 'pro-interest';
 };
 
 type ContactValues = {
@@ -56,13 +57,19 @@ const RESULT_HEADINGS: Record<ContactSubmissionResult['status'], string> = {
   unavailable: 'Message delivery is unavailable',
 };
 
-export function ContactForm({ demoOutcome, demoDelayMs = 0 }: ContactFormProps) {
+export function ContactForm({ demoOutcome, demoDelayMs = 0, initialTopic }: ContactFormProps) {
   const developmentDemo = process.env.NODE_ENV === 'development' && demoOutcome;
   const adapter = developmentDemo
     ? createDevelopmentContactAdapter(developmentDemo)
     : productionContactAdapter;
 
-  return <ContactFormRuntime adapter={adapter} delayMs={developmentDemo ? demoDelayMs : 0} />;
+  return (
+    <ContactFormRuntime
+      adapter={adapter}
+      delayMs={developmentDemo ? demoDelayMs : 0}
+      initialTopic={initialTopic}
+    />
+  );
 }
 
 function createDevelopmentContactAdapter(outcome: SyntheticContactOutcome): ContactAdapter {
@@ -95,13 +102,16 @@ export function ContactFormTestHarness({
 function ContactFormRuntime({
   adapter,
   delayMs,
+  initialTopic,
   onResultCommitted,
 }: {
   adapter: ContactAdapter;
   delayMs: number;
+  initialTopic?: 'pro-interest';
   onResultCommitted?: (result: ContactSubmissionResult) => void;
 }) {
-  const [values, setValues] = useState<ContactValues>(INITIAL_VALUES);
+  const initialValues = initialTopic ? { ...INITIAL_VALUES, subject: 'other' } : INITIAL_VALUES;
+  const [values, setValues] = useState<ContactValues>(initialValues);
   const [errors, setErrors] = useState<ContactFieldError[]>([]);
   const [invalidAttempt, setInvalidAttempt] = useState(0);
   const [pending, setPending] = useState(false);
@@ -196,7 +206,7 @@ function ContactFormRuntime({
   };
 
   const resetForm = () => {
-    setValues(INITIAL_VALUES);
+    setValues(initialValues);
     setErrors([]);
     setResult(null);
     fullNameRef.current?.focus();
@@ -218,6 +228,12 @@ function ContactFormRuntime({
         <p className="eyebrow">Send Us a Message</p>
         <h2>Tell us how we can help</h2>
         <p>All fields are required. Phase 1 previews do not send messages.</p>
+        {initialTopic === 'pro-interest' ? (
+          <p role="status">
+            You arrived from the PRO interest review. Message delivery remains unavailable, so
+            submitting this form does not deliver a request or indicate approval.
+          </p>
+        ) : null}
       </div>
 
       {errors.length > 0 ? (
