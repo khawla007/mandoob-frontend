@@ -58,5 +58,18 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
     },
+    {
+      name: 'p2-acceptance',
+      testMatch: /p2-acceptance\/authenticated-desktop\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'p2-auth-strict',
+      testMatch: /p2-acceptance\/auth-strict\.spec\.ts/,
+      retries: 0,
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+    },
   ],
 });

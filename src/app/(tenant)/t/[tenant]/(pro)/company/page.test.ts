@@ -37,9 +37,7 @@ test('one-release legacy company deep link authorizes and preserves approved foc
   assert.ok(authAt < redirectAt);
   assert.match(legacy, /params: Promise<\{ tenant: string; companyId: string \}>/u);
   assert.match(legacy, /parseAssignedCompanySearch\(await searchParams\)/u);
-  assert.match(legacy, /query\.set\('document', focus\.documentId\)/u);
-  assert.match(legacy, /query\.set\('request', focus\.requestId\)/u);
-  assert.match(legacy, /`\/t\/\$\{encodeURIComponent\(slug\)\}\/company\?\$\{query\}`/u);
+  assert.match(legacy, /buildAssignedCompanyHref\(slug, focus\)/u);
   assert.match(legacy, /readAssignedCompanyForPro\(session\.id, slug\)/u);
   assert.match(
     legacy,

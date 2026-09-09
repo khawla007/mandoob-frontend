@@ -55,7 +55,7 @@ export async function UsersTable({
 }) {
   const t = await getTranslations('admin');
   return (
-    <Table>
+    <Table scrollAreaLabel={t('user.table.scrollAreaLabel')}>
       <TableHeader>
         <TableRow>
           <TableHead>

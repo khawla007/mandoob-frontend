@@ -78,6 +78,7 @@ export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | n
         <Input
           ref={inputRef}
           type="file"
+          aria-label={t('uploadFeatured')}
           accept="image/jpeg,image/png,image/webp,image/avif"
           disabled={isPending}
           onChange={(event) => upload(event.currentTarget.files?.[0] ?? null)}

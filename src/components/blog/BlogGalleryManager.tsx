@@ -61,6 +61,7 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
         <Input
           ref={inputRef}
           type="file"
+          aria-label={t('uploadGallery')}
           accept="image/jpeg,image/png,image/webp,image/avif"
           disabled={isPending}
           onChange={(event) => upload(event.currentTarget.files)}

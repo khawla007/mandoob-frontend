@@ -67,9 +67,9 @@ export default async function BillingSettingsPage({
         <p className="text-signal-accent-copy font-mono text-xs tracking-[0.14em] uppercase">
           {t('billing.eyebrow')}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
           {t('billing.title')}
-        </h1>
+        </h2>
         <p className="text-muted-foreground mt-1 max-w-2xl text-sm">{t('billing.description')}</p>
       </header>
 

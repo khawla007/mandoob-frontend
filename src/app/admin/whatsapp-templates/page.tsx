@@ -72,6 +72,7 @@ export default async function AdminWhatsAppTemplatesPage({
             />
             <select
               name="status"
+              aria-label={t('whatsapp.allStatuses')}
               defaultValue={filters.status ?? 'all'}
               className="border-input bg-background h-9 rounded-md border px-3 text-sm"
             >
@@ -85,6 +86,7 @@ export default async function AdminWhatsAppTemplatesPage({
             </select>
             <select
               name="category"
+              aria-label={t('whatsapp.allCategories')}
               defaultValue={filters.category ?? 'all'}
               className="border-input bg-background h-9 rounded-md border px-3 text-sm"
             >
@@ -197,6 +199,7 @@ function ApprovalForm({
       <div className="grid gap-2 sm:grid-cols-2">
         <select
           name="status"
+          aria-label={t('whatsapp.status')}
           defaultValue={row.status === 'missing' ? 'pending' : row.status}
           className="border-input bg-background h-9 rounded-md border px-3 text-sm"
         >

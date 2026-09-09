@@ -123,12 +123,14 @@ export function ActionDeck(props: ActionDeckProps) {
               <span className="signal-action-card__top flex items-start justify-between gap-3">
                 <span className="signal-action-card__body min-w-0">
                   <span className="signal-action-card__heading flex flex-wrap items-center">
-                    <span className="text-foreground truncate font-semibold">{action.title}</span>
+                    <span className="signal-action-card__title truncate font-semibold">
+                      {action.title}
+                    </span>
                     <span className="signal-action-card__urgency rounded-full border border-current/20 text-[10px] font-bold tracking-wide uppercase">
                       {labels.urgency[action.urgency]}
                     </span>
                   </span>
-                  <span className="signal-action-card__detail text-foreground/70 block truncate text-xs">
+                  <span className="signal-action-card__detail block truncate text-xs">
                     {action.companyName} · {action.detail}
                   </span>
                 </span>
@@ -137,7 +139,7 @@ export function ActionDeck(props: ActionDeckProps) {
                   className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transform-none"
                 />
               </span>
-              <span className="signal-action-card__meta text-foreground/70 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              <span className="signal-action-card__meta flex flex-wrap gap-x-4 gap-y-1 text-xs">
                 <span className="flex items-center gap-1.5">
                   <CalendarClock aria-hidden="true" className="size-3.5" />
                   <span

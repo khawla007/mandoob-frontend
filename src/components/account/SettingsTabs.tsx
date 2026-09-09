@@ -9,7 +9,7 @@ export type SettingsTab = { href: string; label: string };
 export function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
   const pathname = usePathname();
   return (
-    <nav role="tablist" aria-label="Settings sections" className="border-b">
+    <nav aria-label="Settings sections" className="border-b">
       <ul className="-mb-px flex flex-wrap gap-1">
         {tabs.map((t) => {
           // Pick the longest matching tab href so a child route doesn't
@@ -22,8 +22,7 @@ export function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
           return (
             <li key={t.href}>
               <Link
-                role="tab"
-                aria-selected={active}
+                aria-current={active ? 'page' : undefined}
                 href={t.href}
                 className={cn(
                   'inline-block border-b-2 px-3 py-2 text-sm font-medium transition-colors',

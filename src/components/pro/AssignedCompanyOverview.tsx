@@ -135,7 +135,7 @@ export function AssignedCompanyOverview({
               <li key={requirement.code}>
                 <Link
                   href={sectionHrefs[requirement.section]}
-                  className="text-primary inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+                  className="text-signal-warning-foreground inline-flex min-h-11 items-center text-sm underline underline-offset-4"
                 >
                   {labels.requirements[requirement.code]}
                 </Link>

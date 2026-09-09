@@ -38,3 +38,15 @@ export function parseAssignedCompanySearch(search: AssignedCompanySearchParams):
     requestId: uuid(first(search.request)),
   };
 }
+
+export function buildAssignedCompanyHref(
+  slug: string,
+  focus: ReturnType<typeof parseAssignedCompanySearch>,
+): string {
+  const href = `/t/${encodeURIComponent(slug)}/company`;
+  const query = new URLSearchParams();
+  if (focus.tab !== 'overview') query.set('tab', focus.tab);
+  if (focus.documentId) query.set('document', focus.documentId);
+  else if (focus.requestId) query.set('request', focus.requestId);
+  return query.size > 0 ? `${href}?${query}` : href;
+}

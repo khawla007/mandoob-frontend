@@ -1,91 +1,294 @@
 'use client';
 import { postJson } from '@/lib/http/post';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import Link from 'next/link';
-import { useEffect, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
+import { useRef, useState } from 'react';
 
-type Enroll = { factorId: string; qrCode: string; uri: string; secret: string };
+type Enroll = { factorId: string; qrCode: string; secret: string };
+type BusyState = 'starting' | 'verifying' | 'cancelling' | null;
 
-export function MfaEnrollCard() {
+function enrollmentErrorKey(code: unknown): string {
+  if (code === 'RATE_LIMITED') return 'mfaEnrollmentRateLimited';
+  return 'mfaEnrollmentFailed';
+}
+
+export function MfaEnrollCard({
+  challengeRequired = false,
+  enrollmentUnavailable = false,
+}: {
+  challengeRequired?: boolean;
+  enrollmentUnavailable?: boolean;
+}) {
+  const t = useTranslations('auth');
+  const tErrors = useTranslations('errors');
+  const inFlight = useRef(false);
   const [enroll, setEnroll] = useState<Enroll | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState<BusyState>(null);
+  const [needsChallenge, setNeedsChallenge] = useState(challengeRequired);
+  const [cleanupBlocked, setCleanupBlocked] = useState(false);
 
-  useEffect(() => {
-    (async () => {
+  async function cleanupFactor(factorId: string): Promise<boolean> {
+    try {
+      const { error: cleanupError } = await getSupabaseBrowserClient().auth.mfa.unenroll({
+        factorId,
+      });
+      return !cleanupError;
+    } catch {
+      return false;
+    }
+  }
+
+  async function startEnrollment() {
+    if (inFlight.current || cleanupBlocked || needsChallenge) return;
+    inFlight.current = true;
+    setBusy('starting');
+    setError(null);
+    setNotice(null);
+    try {
       const res = await postJson('/api/v1/auth/mfa/enroll', {});
+      const data = (await res.json().catch(() => null)) as {
+        code?: unknown;
+        factorId?: unknown;
+        qrCode?: unknown;
+        secret?: unknown;
+      } | null;
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? 'Could not start enrollment');
+        if (data?.code === 'AAL2_REQUIRED' || data?.code === 'MFA_ALREADY_ENROLLED') {
+          setNeedsChallenge(true);
+          return;
+        }
+        setError(tErrors(enrollmentErrorKey(data?.code)));
         return;
       }
-      setEnroll(await res.json());
-    })();
-  }, []);
+      if (
+        typeof data?.factorId !== 'string' ||
+        data.factorId.length === 0 ||
+        typeof data.qrCode !== 'string' ||
+        typeof data.secret !== 'string'
+      ) {
+        if (typeof data?.factorId !== 'string' || data.factorId.length === 0) {
+          setCleanupBlocked(true);
+          setError(tErrors('mfaEnrollmentStateUncertain'));
+          return;
+        }
+        if (!(await cleanupFactor(data.factorId))) {
+          setCleanupBlocked(true);
+          setError(tErrors('mfaEnrollmentCleanupFailed'));
+          return;
+        }
+        setError(tErrors('mfaEnrollmentFailed'));
+        return;
+      }
+      setEnroll({ factorId: data.factorId, qrCode: data.qrCode, secret: data.secret });
+    } catch {
+      setCleanupBlocked(true);
+      setError(tErrors('mfaEnrollmentStateUncertain'));
+    } finally {
+      setBusy(null);
+      inFlight.current = false;
+    }
+  }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     const code = new FormData(e.currentTarget).get('code');
     if (!enroll) return;
-    start(async () => {
-      const res = await postJson('/api/v1/auth/mfa/verify', {
-        factorId: enroll.factorId,
-        code,
-        context: 'enroll',
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? 'Verification failed');
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy('verifying');
+    (async () => {
+      try {
+        const res = await postJson('/api/v1/auth/mfa/verify', {
+          factorId: enroll.factorId,
+          code,
+          context: 'enroll',
+        });
+        const data = (await res.json().catch(() => null)) as {
+          code?: unknown;
+          recoveryCodes?: unknown;
+        } | null;
+        if (!res.ok) {
+          if (data?.code === 'AAL2_REQUIRED') {
+            if (!(await cleanupFactor(enroll.factorId))) {
+              setCleanupBlocked(true);
+              setError(tErrors('mfaEnrollmentCleanupFailed'));
+              return;
+            }
+            setEnroll(null);
+            setNeedsChallenge(true);
+            return;
+          }
+          if (data?.code === 'MFA_CHALLENGE_FAILED') {
+            if (!(await cleanupFactor(enroll.factorId))) {
+              setCleanupBlocked(true);
+              setError(tErrors('mfaEnrollmentCleanupFailed'));
+              return;
+            }
+            setEnroll(null);
+            setError(tErrors('mfaEnrollmentFailed'));
+            return;
+          }
+          setError(tErrors('verificationFailed'));
+          return;
+        }
+        if (
+          !Array.isArray(data?.recoveryCodes) ||
+          data.recoveryCodes.length === 0 ||
+          !data.recoveryCodes.every((item) => typeof item === 'string')
+        ) {
+          setCleanupBlocked(true);
+          setError(tErrors('mfaEnrollmentStateUncertain'));
+          return;
+        }
+        setEnroll(null);
+        setRecoveryCodes(data.recoveryCodes);
+      } catch {
+        setCleanupBlocked(true);
+        setError(tErrors('mfaEnrollmentStateUncertain'));
+      } finally {
+        setBusy(null);
+        inFlight.current = false;
+      }
+    })();
+  }
+
+  async function cancelEnrollment() {
+    if (!enroll || inFlight.current) return;
+    inFlight.current = true;
+    setBusy('cancelling');
+    setError(null);
+    try {
+      if (!(await cleanupFactor(enroll.factorId))) {
+        setCleanupBlocked(true);
+        setError(tErrors('mfaEnrollmentCleanupFailed'));
         return;
       }
-      const data = await res.json();
-      setRecoveryCodes(data.recoveryCodes as string[]);
-    });
+      setEnroll(null);
+      setNotice(t('mfaEnrollmentCancelled'));
+    } finally {
+      setBusy(null);
+      inFlight.current = false;
+    }
   }
 
   if (recoveryCodes) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-zinc-600">
-          Save these recovery codes somewhere safe. Each works once.
-        </p>
-        <pre className="rounded bg-zinc-100 p-3 font-mono text-sm">{recoveryCodes.join('\n')}</pre>
+        <p className="text-muted-foreground text-sm">{t('longCopy.recoveryCodesIntro')}</p>
+        <pre className="bg-muted text-foreground rounded p-3 font-mono text-sm">
+          {recoveryCodes.join('\n')}
+        </pre>
         <Link href="/" className="block text-center text-sm underline">
-          I&apos;ve saved them — continue
+          {t('recoveryCodesSaved')}
         </Link>
       </div>
     );
   }
 
-  if (!enroll) return <p className="text-sm text-zinc-600">Loading…</p>;
+  if (cleanupBlocked) {
+    return (
+      <p role="alert" className="text-destructive text-sm">
+        {error ?? tErrors('mfaEnrollmentStateUncertain')}
+      </p>
+    );
+  }
+
+  if (!enroll) {
+    if (enrollmentUnavailable) {
+      return (
+        <p role="alert" className="text-muted-foreground text-sm">
+          {t('mfaEnrollmentUnavailable')}
+        </p>
+      );
+    }
+    if (needsChallenge) {
+      return (
+        <div className="space-y-3">
+          <p role="alert" className="text-muted-foreground text-sm">
+            {t('mfaChallengeRequired')}
+          </p>
+          <Link
+            href="/mfa/challenge"
+            className="btn btn--authenticated-accent w-full justify-center"
+          >
+            {t('completeMfaChallenge')}
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        <p className="text-muted-foreground text-sm">{t('mfaEnrollmentReady')}</p>
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p role="status" className="text-muted-foreground text-sm">
+            {notice}
+          </p>
+        )}
+        {!cleanupBlocked && (
+          <button
+            type="button"
+            disabled={busy === 'starting'}
+            aria-busy={busy === 'starting'}
+            onClick={startEnrollment}
+            className="bg-primary text-primary-foreground focus-visible:ring-ring min-h-11 w-full rounded-lg px-3 text-sm font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+          >
+            {busy === 'starting' ? t('startingMfaSetup') : t('startMfaSetup')}
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       {/* Supabase returns the QR as an SVG data URL */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={enroll.qrCode} alt="TOTP QR" className="mx-auto h-44 w-44" />
-      <details className="text-xs text-zinc-500">
-        <summary>Can&apos;t scan? Enter secret manually</summary>
+      <img src={enroll.qrCode} alt={t('totpQrAlt')} className="mx-auto h-44 w-44" />
+      <details className="text-muted-foreground text-xs">
+        <summary>{t('cannotScan')}</summary>
         <code className="mt-1 block break-all">{enroll.secret}</code>
       </details>
       <form onSubmit={onSubmit} className="space-y-3">
         <label className="block space-y-1">
-          <span className="text-sm font-medium">6-digit code</span>
+          <span className="text-sm font-medium">{t('twoFactorCode')}</span>
           <input
             name="code"
             inputMode="numeric"
             required
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-black focus:outline-none"
+            className="focus-visible:border-ring focus-visible:ring-ring min-h-11 w-full rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
           />
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
         <button
           type="submit"
-          disabled={pending}
-          className="w-full rounded-lg bg-black py-2.5 text-sm font-medium text-white disabled:opacity-50"
+          disabled={busy !== null}
+          aria-busy={busy === 'verifying'}
+          className="btn btn--accent w-full justify-center disabled:opacity-50"
         >
-          {pending ? 'Verifying…' : 'Enable two-factor'}
+          {busy === 'verifying' ? t('verifying') : t('enableTwoFactor')}
+        </button>
+        <button
+          type="button"
+          disabled={busy !== null}
+          aria-busy={busy === 'cancelling'}
+          onClick={cancelEnrollment}
+          className="btn btn--secondary w-full justify-center"
+        >
+          {busy === 'cancelling' ? t('cancellingMfaSetup') : t('cancelMfaSetup')}
         </button>
       </form>
     </div>

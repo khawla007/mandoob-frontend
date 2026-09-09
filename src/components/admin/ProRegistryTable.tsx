@@ -36,109 +36,106 @@ export async function ProRegistryTable({
   const t = await getTranslations('admin.user.proRegistry');
   const locale = await getLocale();
   return (
-    <div
-      role="region"
-      aria-label={t('tableScrollLabel')}
-      tabIndex={0}
-      className="border-border/60 overflow-x-auto rounded-lg border"
+    <Table
+      scrollAreaLabel={t('tableScrollLabel')}
+      containerClassName="border-border/60 rounded-lg border"
+      className="min-w-[64rem]"
     >
-      <Table className="min-w-[64rem]">
-        <TableHeader>
-          <TableRow>
-            {sortable.map(([sort, label]) => {
-              const active = filters.sort === sort;
-              const direction = active && filters.direction === 'asc' ? 'desc' : 'asc';
-              const Icon = !active
-                ? ChevronsUpDown
-                : filters.direction === 'asc'
-                  ? ArrowUp
-                  : ArrowDown;
-              return (
-                <TableHead
-                  key={sort}
-                  aria-sort={
-                    active ? (filters.direction === 'asc' ? 'ascending' : 'descending') : 'none'
-                  }
-                >
-                  <Link
-                    className="focus-visible:ring-ring inline-flex min-h-11 items-center gap-1 rounded-md hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                    href={buildProRegistryHref(filters, { sort, direction })}
-                  >
-                    {t(`table.${label}`)} <Icon aria-hidden className="size-3" />
-                  </Link>
-                </TableHead>
-              );
-            })}
-            <TableHead>{t('table.account')}</TableHead>
-            <TableHead>{t('table.eligibility')}</TableHead>
-            <TableHead>{t('table.assignment')}</TableHead>
-            <TableHead>{t('table.action')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>
-                <div className="font-medium">{row.fullName ?? t('unnamed')}</div>
-                <div className="text-muted-foreground text-xs">
-                  {row.emailUnavailable ? t('emailUnavailable') : row.email}
-                </div>
-              </TableCell>
-              <TableCell>
-                {row.credentialState ? (
-                  <ProCredentialStatusBadge
-                    state={row.credentialState}
-                    label={t(`credential.${row.credentialState}`)}
-                  />
-                ) : (
-                  <Badge variant="outline">
-                    <CircleX aria-hidden />
-                    {t('notAvailable')}
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell className="font-mono text-xs" dir="ltr">
-                {row.credentialExpiry
-                  ? formatProRegistryDate(row.credentialExpiry, locale)
-                  : t('notAvailable')}
-              </TableCell>
-              <TableCell className="font-mono text-xs" dir="ltr">
-                {formatProRegistryDate(row.createdAt, locale)}
-              </TableCell>
-              <TableCell>
-                <ProAccountStatusBadge
-                  status={row.accountStatus}
-                  label={t(`account.${row.accountStatus}`)}
-                />
-              </TableCell>
-              <TableCell>
-                <span className="inline-flex items-center gap-1">
-                  {row.eligible ? (
-                    <CircleCheck aria-hidden className="size-4" />
-                  ) : (
-                    <CircleX aria-hidden className="size-4" />
-                  )}
-                  {row.eligible ? t('eligible.eligible') : t('eligible.ineligible')}
-                </span>
-              </TableCell>
-              <TableCell>
-                <span className="inline-flex items-center gap-1">
-                  <Building2 aria-hidden className="size-4" />
-                  {row.companyName ?? t('unassigned')}
-                </span>
-              </TableCell>
-              <TableCell>
+      <TableHeader>
+        <TableRow>
+          {sortable.map(([sort, label]) => {
+            const active = filters.sort === sort;
+            const direction = active && filters.direction === 'asc' ? 'desc' : 'asc';
+            const Icon = !active
+              ? ChevronsUpDown
+              : filters.direction === 'asc'
+                ? ArrowUp
+                : ArrowDown;
+            return (
+              <TableHead
+                key={sort}
+                aria-sort={
+                  active ? (filters.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+                }
+              >
                 <Link
-                  className="text-primary focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                  href={`/admin/users/${row.id}`}
+                  className="focus-visible:ring-ring inline-flex min-h-11 items-center gap-1 rounded-md hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                  href={buildProRegistryHref(filters, { sort, direction })}
                 >
-                  {t('open')}
+                  {t(`table.${label}`)} <Icon aria-hidden className="size-3" />
                 </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+              </TableHead>
+            );
+          })}
+          <TableHead>{t('table.account')}</TableHead>
+          <TableHead>{t('table.eligibility')}</TableHead>
+          <TableHead>{t('table.assignment')}</TableHead>
+          <TableHead>{t('table.action')}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.id}>
+            <TableCell>
+              <div className="font-medium">{row.fullName ?? t('unnamed')}</div>
+              <div className="text-muted-foreground text-xs">
+                {row.emailUnavailable ? t('emailUnavailable') : row.email}
+              </div>
+            </TableCell>
+            <TableCell>
+              {row.credentialState ? (
+                <ProCredentialStatusBadge
+                  state={row.credentialState}
+                  label={t(`credential.${row.credentialState}`)}
+                />
+              ) : (
+                <Badge variant="outline">
+                  <CircleX aria-hidden />
+                  {t('notAvailable')}
+                </Badge>
+              )}
+            </TableCell>
+            <TableCell className="font-mono text-xs" dir="ltr">
+              {row.credentialExpiry
+                ? formatProRegistryDate(row.credentialExpiry, locale)
+                : t('notAvailable')}
+            </TableCell>
+            <TableCell className="font-mono text-xs" dir="ltr">
+              {formatProRegistryDate(row.createdAt, locale)}
+            </TableCell>
+            <TableCell>
+              <ProAccountStatusBadge
+                status={row.accountStatus}
+                label={t(`account.${row.accountStatus}`)}
+              />
+            </TableCell>
+            <TableCell>
+              <span className="inline-flex items-center gap-1">
+                {row.eligible ? (
+                  <CircleCheck aria-hidden className="size-4" />
+                ) : (
+                  <CircleX aria-hidden className="size-4" />
+                )}
+                {row.eligible ? t('eligible.eligible') : t('eligible.ineligible')}
+              </span>
+            </TableCell>
+            <TableCell>
+              <span className="inline-flex items-center gap-1">
+                <Building2 aria-hidden className="size-4" />
+                {row.companyName ?? t('unassigned')}
+              </span>
+            </TableCell>
+            <TableCell>
+              <Link
+                className="text-primary focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                href={`/admin/users/${row.id}`}
+              >
+                {t('open')}
+              </Link>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

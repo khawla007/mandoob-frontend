@@ -50,7 +50,11 @@ async function getCustomerWorkspaceSlug(tenantId: string | null): Promise<string
   return slug && slug !== 'pub' ? slug : null;
 }
 
-export async function SiteHeader() {
+type SiteHeaderProps = {
+  contrastMode?: 'public' | 'authenticated';
+};
+
+export async function SiteHeader({ contrastMode = 'public' }: SiteHeaderProps = {}) {
   const [session, tAuth, tSite] = await Promise.all([
     getAuthoritativeSessionProfile(),
     getTranslations('auth'),
@@ -103,7 +107,12 @@ export async function SiteHeader() {
                 {tAuth('signIn')}
               </Link>
             )}
-            <Link className="btn btn--accent btn--sm" href="/estimate">
+            <Link
+              className={`btn btn--accent btn--sm ${
+                contrastMode === 'authenticated' && session ? 'btn--authenticated-accent' : ''
+              }`}
+              href="/estimate"
+            >
               {tSite('getEstimate')}
             </Link>
           </div>

@@ -75,7 +75,7 @@ export function DashboardLayout({
           notifications={notifications}
           search={search}
         />
-        <div id="main-content" className="dashboard-main flex-1 p-6 md:p-8">
+        <div id="main-content" tabIndex={-1} className="dashboard-main flex-1 p-6 md:p-8">
           {children}
         </div>
       </SidebarInset>

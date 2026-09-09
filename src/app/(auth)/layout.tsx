@@ -10,7 +10,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       <a href="#main" className="skip-link">
         {t('skipToMain')}
       </a>
-      <SiteHeader />
+      <SiteHeader contrastMode="authenticated" />
       <main id="main" className="flex flex-1 items-center justify-center">
         <section className="section section--flush w-full">
           <div className="container">

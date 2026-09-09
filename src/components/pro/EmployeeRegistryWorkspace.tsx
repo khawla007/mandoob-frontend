@@ -191,12 +191,8 @@ export function EmployeeRegistryTable({
     <div className="space-y-2">
       <p className="text-muted-foreground text-sm">{labels.identifierSurfaceUnavailable}</p>
       <p className="text-muted-foreground text-sm">{labels.phase3Note}</p>
-      <div
-        className="border-border/60 overflow-x-auto rounded-lg border"
-        role="region"
-        aria-label={labels.table}
-      >
-        <Table>
+      <div className="border-border/60 rounded-lg border">
+        <Table scrollAreaLabel={labels.table}>
           <TableHeader>
             <TableRow>
               <TableHead>{labels.employee}</TableHead>

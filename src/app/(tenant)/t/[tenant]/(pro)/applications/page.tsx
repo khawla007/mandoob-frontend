@@ -142,7 +142,7 @@ export default async function ApplicationsPage({
           <div key={summary.label} className="signal-kpi signal-kpi--info">
             <dt className="signal-kpi__label">{summary.label}</dt>
             <dd className="signal-kpi__value">{number.format(summary.value)}</dd>
-            <p className="signal-kpi__helper">{summary.hint}</p>
+            <dd className="signal-kpi__helper">{summary.hint}</dd>
           </div>
         ))}
       </dl>

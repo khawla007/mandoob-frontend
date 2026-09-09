@@ -26,11 +26,17 @@ export function MfaChallengeForm() {
     if (!factorId) return;
     const code = new FormData(e.currentTarget).get('code');
     start(async () => {
-      const res = await postJson('/api/v1/auth/mfa/verify', {
+      if (typeof code !== 'string') return;
+      const supabase = getSupabaseBrowserClient();
+      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
         factorId,
         code,
-        context: 'challenge',
       });
+      if (verifyError) {
+        setError(tErrors('verificationFailed'));
+        return;
+      }
+      const res = await postJson('/api/v1/auth/mfa/verify', { context: 'challenge_confirmed' });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         setError(data?.error ?? tErrors('verificationFailed'));
@@ -41,7 +47,7 @@ export function MfaChallengeForm() {
     });
   }
 
-  if (!factorId) return <p className="text-sm text-zinc-600">{t('noFactorFound')}</p>;
+  if (!factorId) return <p className="text-muted-foreground text-sm">{t('noFactorFound')}</p>;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">

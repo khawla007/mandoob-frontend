@@ -2,6 +2,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
+  buildAssignedCompanyHref,
   parseAssignedCompanySearch,
   type AssignedCompanySearchParams,
 } from '../../company/page-logic';
@@ -21,9 +22,5 @@ export default async function LegacyCompanyDetailPage({
   if (!company || company.tenantId !== tenant.id || company.id !== companyId) notFound();
 
   const focus = parseAssignedCompanySearch(await searchParams);
-  const query = new URLSearchParams({ tab: focus.tab });
-  if (focus.documentId) query.set('document', focus.documentId);
-  else if (focus.requestId) query.set('request', focus.requestId);
-
-  permanentRedirect(`/t/${encodeURIComponent(slug)}/company?${query}`);
+  permanentRedirect(buildAssignedCompanyHref(slug, focus));
 }

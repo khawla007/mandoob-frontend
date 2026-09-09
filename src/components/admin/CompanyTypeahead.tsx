@@ -129,7 +129,7 @@ export function CompanyTypeahead({
           aria-labelledby={ariaLabelledBy}
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
-          aria-required={required}
+          data-required={required || undefined}
           className="w-full justify-between"
         >
           {selected ? selected.company_name : resolvedPlaceholder}
