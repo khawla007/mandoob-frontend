@@ -86,7 +86,12 @@ test('strict storage state is serially replaced, runtime-checked, and cleaned up
   assert.match(fixture, /\['admin', 'pro', 'customer', 'employee'\] as const/u);
   assert.match(fixture, /resolve\(`tests\/\.auth\/\$\{role\}\.json`\)/u);
   assert.match(fixture, /await unlink\(file\)\.catch/u);
-  assert.match(fixture, /teardown invariant failed/u);
+  const teardown = fixture.slice(fixture.indexOf("if (action === 'teardown')"));
+  assert.ok(teardown.indexOf('assertReusableFixture(') < teardown.indexOf("runSupabase(['stop'"));
+  assert.ok(
+    teardown.indexOf('assertReusableFixtureSnapshot(') < teardown.indexOf("runSupabase(['stop'"),
+  );
+  assert.match(teardown, /removeAcceptanceWorkdir\(\)/u);
   assert.match(read('.gitignore'), /tests\/\.auth\/\*\*/u);
 });
 
