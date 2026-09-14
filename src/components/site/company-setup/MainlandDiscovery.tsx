@@ -42,7 +42,7 @@ const activities = [
 
 export function MainlandDiscovery() {
   return (
-    <main className="setup-page">
+    <div className="setup-page">
       <section id="setup-hero" className="setup-hero" aria-labelledby="mainland-title">
         <SetupHero
           headingId="mainland-title"
@@ -258,6 +258,6 @@ export function MainlandDiscovery() {
           estimateHref="/estimate?jurisdiction=mainland"
         />
       </section>
-    </main>
+    </div>
   );
 }

@@ -3,13 +3,17 @@ import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
 import { PublicCmsPage, buildCmsPageMetadata } from '@/components/pages/PublicCmsPage';
+import { DevelopmentRouteErrorEvidence } from '@/components/public-content/DevelopmentRouteErrorEvidence';
 import { PublicContentState } from '@/components/public-content/PublicContentState';
 import { getPublishedCmsPageBySlug } from '@/lib/data/pages';
 import { isLegalCmsPageSlug } from '@/lib/pages/legal';
 import { resolveGenericPageState } from '@/lib/pages/public-presentation';
 import { DEVELOPMENT_CMS_EVIDENCE_PAGE } from '@/lib/public-content/development-cms-fixture';
-import { withDevelopmentItemEvidence } from '@/lib/public-content/development-evidence';
-import { serializeJsonLd } from '@/lib/public-content/json-ld';
+import {
+  isDevelopmentRouteErrorEvidence,
+  withDevelopmentItemEvidence,
+} from '@/lib/public-content/development-evidence';
+import { hasJsonLdContent, serializeJsonLd } from '@/lib/public-content/json-ld';
 import { buildUnavailableMetadata } from '@/lib/public-metadata';
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -38,6 +42,13 @@ export default async function CmsPageRoute({ params }: PageProps) {
   const { slug } = await params;
   if (isLegalCmsPageSlug(slug)) notFound();
   const state = await resolveGenericPageState(slug, getCachedPublishedPage);
+  const routeErrorEvidence =
+    slug === DEVELOPMENT_CMS_EVIDENCE_PAGE.slug &&
+    isDevelopmentRouteErrorEvidence({
+      nodeEnv: process.env.NODE_ENV,
+      fixtureMode: process.env.P107_CMS_EVIDENCE_STATE,
+      mode: process.env.P112_ROUTE_ERROR_EVIDENCE_STATE,
+    });
   if (state.status === 'missing') notFound();
   if (state.status === 'unavailable') {
     return (
@@ -55,8 +66,9 @@ export default async function CmsPageRoute({ params }: PageProps) {
   if (state.status !== 'ready') notFound();
   return (
     <>
+      <DevelopmentRouteErrorEvidence enabled={routeErrorEvidence} />
       <PublicCmsPage page={state.data} />
-      {state.data.schemaMarkup ? (
+      {hasJsonLdContent(state.data.schemaMarkup) ? (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(state.data.schemaMarkup) }}

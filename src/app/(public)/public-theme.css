@@ -26,7 +26,7 @@
 
   --accent: var(--public-accent-decoration); /* UAE-saffron warm red, used <8% */
   --accent-hover: oklch(0.585 0.195 38); /* darker saffron for :hover */
-  --accent-ink: oklch(0.57 0.19 38); /* accent as text on light paper, ~4.7:1 WCAG AA */
+  --accent-ink: oklch(0.56 0.19 38); /* accent text stays AA-safe on light gradient surfaces */
   --accent-soft: oklch(0.96 0.02 40);
 
   /* Public semantic roles. CTA colors are resolved so every state can be
@@ -433,13 +433,13 @@
 }
 .site-public .btn--accent-outline {
   background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--public-cta-background);
+  border: 1px solid var(--public-cta-background);
 }
 .site-public .btn--accent-outline:hover {
   background: var(--paper);
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--public-cta-background);
+  border-color: var(--public-cta-background);
 }
 
 /* ---------- 4. NAV ---------- */
@@ -504,6 +504,21 @@
 .site-public .nav__links a[aria-current='page'] {
   border-inline-start: 2px solid var(--accent);
   color: var(--public-cta-background);
+}
+.site-public .public-link-pending {
+  display: inline-flex;
+  min-inline-size: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: 4px;
+}
+.site-public .public-link-pending__spinner {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 .site-public .nav__cta {
   display: none;
@@ -1626,6 +1641,9 @@
   display: block;
   block-size: 170px;
   overflow: hidden;
+}
+.site-public .kb-guide-card__media:focus-visible {
+  outline-offset: -3px;
 }
 .site-public .kb-guide-card__media img {
   object-fit: cover;
@@ -2891,6 +2909,7 @@
 .site-public .pro-bento {
   padding-block: clamp(56px, 7vw, 96px);
   border-block-end: 1px solid var(--public-border-subtle);
+  background: var(--public-surface-elevated);
 }
 
 .site-public .pro-bento .section__head > p {
@@ -4135,7 +4154,7 @@
 
 .site-public .home-estimate-card__note {
   margin-top: 9px;
-  color: var(--zinc-500);
+  color: var(--public-text-muted);
   font-size: 0.68rem;
   line-height: 1.4;
 }
@@ -4219,7 +4238,7 @@
 }
 
 .site-public .home-testimonials-carousel {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .site-public .home-testimonials-carousel .swiper {
@@ -4797,8 +4816,9 @@
       90deg,
       var(--blog-hero-paper) 0%,
       color-mix(in oklch, var(--blog-hero-paper) 94%, white) 42%,
-      color-mix(in oklch, var(--accent-soft) 76%, white) 100%
+      color-mix(in oklch, var(--accent-soft) 18%, white) 100%
     );
+  background-color: var(--blog-hero-paper);
 }
 .site-public .blog-hero::before {
   content: '';
@@ -4828,6 +4848,10 @@
 }
 .site-public .blog-hero__copy .eyebrow {
   margin-bottom: var(--sp-4);
+  color: var(--blog-hero-muted);
+}
+.site-public .blog-hero .kb-editorial-breadcrumb,
+.site-public .blog-hero .kb-editorial-breadcrumb a {
   color: var(--blog-hero-muted);
 }
 .site-public .blog-hero__copy .display {
@@ -6809,7 +6833,7 @@
   background-size: auto 100%;
   isolation: isolate;
   overflow: hidden;
-  color: oklch(0.18 0.01 45);
+  color: oklch(0.12 0.01 45);
 }
 .site-public .fabric-background {
   position: absolute;
@@ -7850,10 +7874,15 @@
   justify-content: center;
 }
 .site-public button[role='checkbox'] {
+  inline-size: 24px;
+  block-size: 24px;
   border-width: 1.5px !important;
   border-style: solid !important;
   border-color: var(--zinc-500) !important;
   background: var(--paper) !important;
+}
+.site-public button[role='checkbox']::after {
+  inset: 0 !important;
 }
 .site-public button[role='checkbox']:hover {
   border-color: var(--zinc-700) !important;
@@ -8874,7 +8903,7 @@
   --zinc-950: #09090b;
   --accent: #ff5722;
   --accent-hover: #e64a19;
-  --accent-ink: #ff5722;
+  --accent-ink: #b9380f;
   --accent-soft: #fff1ed;
   --pb-border: #e4e4e7;
   --pb-border-dark: #27272a;
@@ -8886,11 +8915,11 @@
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
   --public-accent-decoration: #ff5722;
-  --public-cta-background: #ff5722;
-  --public-cta-text: #fff;
-  --public-cta-hover-background: #e64a19;
-  --public-cta-active-background: #e64a19;
-  --public-cta-focus-background: #ff5722;
+  --public-cta-background: #b9380f;
+  --public-cta-text: #fff8f4;
+  --public-cta-hover-background: #9f2e0b;
+  --public-cta-active-background: #872508;
+  --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #a1a1aa;
   --public-cta-disabled-text: #fff;
   --public-header-surface: rgb(255 255 255 / 85%);
@@ -8927,11 +8956,11 @@
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
   --public-accent-decoration: #ff5722;
-  --public-cta-background: #ff5722;
-  --public-cta-text: #fff;
-  --public-cta-hover-background: #e64a19;
-  --public-cta-active-background: #e64a19;
-  --public-cta-focus-background: #ff5722;
+  --public-cta-background: #ff7043;
+  --public-cta-text: #21120d;
+  --public-cta-hover-background: #ff865f;
+  --public-cta-active-background: #e55c32;
+  --public-cta-focus-background: #ff7043;
   --public-cta-disabled-background: #52525b;
   --public-cta-disabled-text: #fff;
   --public-header-surface: rgb(24 24 27 / 85%);
@@ -9991,6 +10020,9 @@
   position: relative;
   min-block-size: 340px;
 }
+.site-public .blog-featured-card__media:focus-visible {
+  outline-offset: -3px;
+}
 .site-public .blog-featured-card__media img {
   object-fit: cover;
 }
@@ -10034,6 +10066,11 @@
   flex-direction: column;
   justify-content: center;
   padding-block: clamp(54px, 7vw, 92px);
+}
+.site-public
+  .cms-editorial-hero__content
+  :is(.kb-editorial-breadcrumb, .kb-editorial-breadcrumb a, .eyebrow, .display, .lede) {
+  color: inherit;
 }
 .site-public .cms-editorial-hero__action {
   display: flex;
@@ -10225,7 +10262,7 @@
   block-size: 34px;
   place-items: center;
   border-radius: var(--r-pill);
-  color: var(--accent-ink);
+  color: var(--public-cta-background);
   background: var(--accent-soft);
   font-family: var(--mono-font);
   font-size: 0.65rem;
@@ -11058,7 +11095,7 @@
   margin: 0 auto 10px;
   place-items: center;
   border-radius: var(--r-pill);
-  color: var(--accent-ink);
+  color: var(--public-cta-background);
   background: var(--accent-soft);
   font-family: var(--mono-font);
   font-size: 0.68rem;

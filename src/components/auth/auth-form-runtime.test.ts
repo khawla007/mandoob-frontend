@@ -71,6 +71,11 @@ if (process.env.AUTH_FORM_RUNTIME_CHILD === '1') {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     assert.equal(container.querySelector('[role="alert"]')?.textContent, 'invalidCredentials');
+    assert.equal(
+      document.activeElement,
+      container.querySelector('[role="alert"]'),
+      'HTTP failure feedback must receive focus after it is committed',
+    );
     await act(async () => {
       submit();
       await new Promise((resolve) => setTimeout(resolve, 0));

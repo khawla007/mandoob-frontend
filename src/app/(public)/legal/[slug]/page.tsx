@@ -7,7 +7,7 @@ import { PublicContentState } from '@/components/public-content/PublicContentSta
 import { getPublishedCmsPageBySlug } from '@/lib/data/pages';
 import { resolveLegalPageState } from '@/lib/pages/public-presentation';
 import { withDevelopmentItemEvidence } from '@/lib/public-content/development-evidence';
-import { serializeJsonLd } from '@/lib/public-content/json-ld';
+import { hasJsonLdContent, serializeJsonLd } from '@/lib/public-content/json-ld';
 import { buildUnavailableMetadata } from '@/lib/public-metadata';
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -51,7 +51,7 @@ export default async function LegalCmsPageRoute({ params }: PageProps) {
   return (
     <>
       <PublicCmsPage page={state.data} kind="legal" />
-      {state.data.schemaMarkup ? (
+      {hasJsonLdContent(state.data.schemaMarkup) ? (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(state.data.schemaMarkup) }}

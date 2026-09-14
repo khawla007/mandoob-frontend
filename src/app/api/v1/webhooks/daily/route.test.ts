@@ -6,7 +6,7 @@ test('Daily recording webhook carries tenant and company ownership into attachme
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'placeholder-anon-key-000000000000';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'placeholder-service-key-000000000';
   process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'example.com';
-  const { handleDailyWebhook } = await import('./route');
+  const { handleDailyWebhook } = await import('./route-handler');
   const attachments: Array<{ meetingId: string; storagePath: string }> = [];
   const response = await handleDailyWebhook(new Request('https://mandoob.test/webhook'), {
     verify: async () => ({

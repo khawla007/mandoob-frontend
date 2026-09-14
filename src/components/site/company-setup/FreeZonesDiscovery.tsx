@@ -21,7 +21,7 @@ import { SetupProcess } from './SetupProcess';
 
 export function FreeZonesDiscovery() {
   return (
-    <main className="setup-page">
+    <div className="setup-page">
       <section id="setup-hero" className="setup-hero" aria-labelledby="free-zones-title">
         <SetupHero
           headingId="free-zones-title"
@@ -295,6 +295,6 @@ export function FreeZonesDiscovery() {
           estimateHref="/estimate?jurisdiction=free_zone"
         />
       </section>
-    </main>
+    </div>
   );
 }

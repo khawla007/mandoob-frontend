@@ -618,6 +618,7 @@ function StepContent(props: StepContentProps) {
     return (
       <fieldset
         id="estimate-jurisdiction"
+        tabIndex={-1}
         className="estimator-choice-fieldset"
         aria-describedby="estimate-jurisdiction-help estimate-jurisdiction-error"
         aria-invalid={hasError(errors, 'estimate-jurisdiction')}

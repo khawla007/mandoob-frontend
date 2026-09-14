@@ -66,6 +66,7 @@ test('public estimator uses only the coherent local source and truthful action s
   assert.match(component, /role="dialog"/u);
   assert.match(component, /event\.key === 'Escape'/u);
   assert.match(component, /resetTriggerRef\.current\?\.focus/u);
+  assert.match(component, /id="estimate-jurisdiction"[\s\S]*?tabIndex=\{-1\}/u);
 });
 
 test('estimate page removes unsafe reference claims and contact proof', async () => {
@@ -92,6 +93,7 @@ test('estimate page removes unsafe reference claims and contact proof', async ()
 
 test('estimate CSS preserves reference desktop proportions, themes, focus, reduced motion, and overflow safety', async () => {
   const css = await read('../public-theme.css');
+  assert.match(css, /--accent-ink:\s*oklch\(0\.56 0\.19 38\)/u);
   assert.match(css, /\.site-public \.estimator-workspace__grid/u);
   assert.match(
     css,
@@ -101,4 +103,12 @@ test('estimate CSS preserves reference desktop proportions, themes, focus, reduc
   assert.match(css, /\.estimator[\s\S]*:focus-visible/u);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(css, /overflow-wrap:\s*anywhere/u);
+  assert.match(
+    css,
+    /\.site-public \.estimator-hero__expectations li > span\s*\{[^}]*color:\s*var\(--public-cta-background\)/u,
+  );
+  assert.match(
+    css,
+    /\.site-public \.estimator-benefits li > span\s*\{[^}]*color:\s*var\(--public-cta-background\)/u,
+  );
 });

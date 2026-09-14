@@ -61,6 +61,42 @@ test('builds a sanitized public view from validated hero values', () => {
   assert.deepEqual(view.hero?.button, { href: '/about', label: 'Learn more', external: false });
 });
 
+test('chooses a readable CMS hero foreground and applies it to all hero copy', () => {
+  const dark = getPublicCmsPageView(
+    cmsPage({
+      heroSettings: {
+        ...cmsPage().heroSettings,
+        backgroundColor: '#211d1b',
+        overlayColor: '#000000',
+        overlayOpacity: 0,
+        backgroundImageUrl: null,
+      },
+    }),
+  );
+  assert.equal(dark.hero?.contentStyle.color, '#ffffff');
+
+  const css = readFileSync(new URL('../../app/(public)/public-theme.css', import.meta.url), 'utf8');
+  assert.match(css, /\.cms-editorial-hero__content\s+:is\(/u);
+  assert.ok(css.includes('color: inherit;'));
+});
+
+test('uses a contrast-safe opaque treatment for an untrusted hero image', () => {
+  const view = getPublicCmsPageView(
+    cmsPage({
+      heroSettings: {
+        ...cmsPage().heroSettings,
+        backgroundColor: '#ffffff',
+        overlayColor: '#ffffff',
+        overlayOpacity: 0,
+        backgroundImageUrl: 'https://cdn.example.com/unmeasured-image.jpg',
+      },
+    }),
+  );
+
+  assert.equal(view.hero?.contentStyle.color, '#ffffff');
+  assert.deepEqual(view.hero?.overlayStyle, { backgroundColor: '#000000', opacity: 0.6 });
+});
+
 test('omits an empty hero and requires both safe button fields', () => {
   const view = getPublicCmsPageView(
     cmsPage({

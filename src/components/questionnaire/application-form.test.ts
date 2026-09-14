@@ -25,6 +25,7 @@ test('form exposes local storage disclosure, consent, reset and document preview
   assert.match(source, /Privacy Notice/);
   assert.match(source, /Start over/);
   assert.match(source, /accept="application\/pdf,image\/jpeg,image\/png"/);
+  assert.doesNotMatch(source, /<\/?footer\b/u);
 });
 
 test('restore, history, file reconciliation, retry and copy contracts are wired', () => {

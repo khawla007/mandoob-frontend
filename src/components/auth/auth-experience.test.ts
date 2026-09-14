@@ -144,6 +144,15 @@ describe('reference-family authentication shell', () => {
     assert.match(css, /\.dark \.site-public \.auth-experience/u);
     assert.match(css, /\.site-public \.auth-provider\[aria-disabled='true'\]/u);
     assert.doesNotMatch(css, /\.site-public \.auth-provider:focus-visible/u);
+    assert.match(
+      css,
+      /\.site-public \.btn--accent-outline\s*\{[^}]*color:\s*var\(--public-cta-background\)/u,
+    );
+    assert.match(
+      css,
+      /button\[role='checkbox'\]\s*\{[\s\S]*?inline-size:\s*24px;[\s\S]*?block-size:\s*24px;/u,
+    );
+    assert.match(css, /button\[role='checkbox'\]::after\s*\{[\s\S]*?inset:\s*0/u);
     assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/u);
   });
 });

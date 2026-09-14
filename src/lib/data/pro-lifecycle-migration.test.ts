@@ -1161,7 +1161,7 @@ test('audit and term producers structurally cannot accept protected payload chan
   assert.match(credentialDal, /createBlindIndex\([^;]*parsed\.identifier/u);
   assert.doesNotMatch(credentialDal, /p_identifier(?:\W|$)/u);
   const downloadRoute = readFileSync(
-    'src/app/api/v1/account/pro/credentials/evidence/download/route.ts',
+    'src/app/api/v1/account/pro/credentials/evidence/download/route-handler.ts',
     'utf8',
   );
   assert.doesNotMatch(downloadRoute, /signedUrl|signed_url|createSignedUrl/iu);

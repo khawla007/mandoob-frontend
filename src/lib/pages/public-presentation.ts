@@ -7,6 +7,34 @@ import { missingState, readyState, unavailableState } from '@/lib/public-content
 
 type Loader = (slug: string) => Promise<CmsPage | null>;
 
+const TRUST_COPY_REPLACEMENTS = [
+  ['per-tenant isolation via Postgres row-level security', 'per-tenant isolation controls'],
+  ['Certifications', 'Security assurance'],
+  [
+    'PDPL aligned · ISO 27001 · TLS 1.3 · SOC 2 in progress.',
+    'Security controls and independent assurance status are reviewed before publication. Contact security@mandoob.ae for current information.',
+  ],
+] as const;
+
+function replaceTrustClaims(value: string): string {
+  return TRUST_COPY_REPLACEMENTS.reduce(
+    (result, [claim, replacement]) => result.replaceAll(claim, replacement),
+    value,
+  );
+}
+
+function projectLegalPage(page: CmsPage): CmsPage {
+  if (page.slug !== 'trust') return page;
+  return {
+    ...page,
+    contentHtml: replaceTrustClaims(page.contentHtml),
+    contentJson: JSON.parse(replaceTrustClaims(JSON.stringify(page.contentJson))) as Record<
+      string,
+      unknown
+    >,
+  };
+}
+
 export async function resolveLegalPageState(
   slug: string,
   load: Loader,
@@ -14,7 +42,7 @@ export async function resolveLegalPageState(
 ): Promise<PublicReadState<CmsPage>> {
   try {
     const page = await resolveLegalCmsPage(slug, load, now);
-    return page ? readyState(page) : missingState();
+    return page ? readyState(projectLegalPage(page)) : missingState();
   } catch {
     return unavailableState();
   }

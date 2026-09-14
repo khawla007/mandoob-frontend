@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { isPublicNavCurrent, type PublicNavLink } from './public-navigation';
+import { PublicLinkPendingIndicator } from './PublicLinkPendingIndicator';
 
 type PublicNavLinksProps = {
   links: readonly PublicNavLink[];
@@ -23,6 +24,7 @@ export function PublicNavLinks({ links, className, onNavigate }: PublicNavLinksP
           onClick={() => onNavigate?.()}
         >
           {link.label}
+          <PublicLinkPendingIndicator />
         </Link>
       ))}
     </div>

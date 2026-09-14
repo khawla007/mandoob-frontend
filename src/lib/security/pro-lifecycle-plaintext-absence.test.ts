@@ -313,7 +313,7 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
   test('actual route, action, log, and URL boundaries exclude protected producer inputs', async () => {
     const [{ createAdminCredentialPostHandler }, routes, actions, companyActions] =
       await Promise.all([
-        import('@/app/api/v1/admin/users/[id]/credentials/route'),
+        import('@/app/api/v1/admin/users/[id]/credentials/route-handler'),
         import('@/app/api/v1/_shared/pro-lifecycle-routes'),
         import('@/lib/actions/server-action-security'),
         import('@/app/admin/companies/action-logic'),

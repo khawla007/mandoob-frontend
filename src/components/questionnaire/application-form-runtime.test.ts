@@ -55,6 +55,7 @@ if (reactServer) {
 
     assert.equal(container.querySelectorAll('main').length, 0);
     assert.equal(container.querySelectorAll('h1').length, 1);
+    assert.equal(browser.location.href, 'https://example.test/apply');
     assert.equal(browser.sessionStorage.length, 0, 'hydration must not autosave');
     const stageButtons = [
       ...container.querySelectorAll<HTMLButtonElement>('.application-rail button'),

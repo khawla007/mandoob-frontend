@@ -20,3 +20,7 @@ test('Knowledge Base detail keeps true missing semantics and safely serializes J
   assert.equal(source.match(/type="application\/ld\+json"/gu)?.length, 1);
   assert.doesNotMatch(source, /JSON\.stringify\(data\)/u);
 });
+
+test('marks a missing knowledge-base article noindex and nofollow', () => {
+  assert.match(source, /robots:\s*\{\s*index:\s*false,\s*follow:\s*false\s*\}/u);
+});

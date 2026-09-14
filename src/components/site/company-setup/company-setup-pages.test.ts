@@ -8,6 +8,16 @@ const source = (name: string) =>
   readFileSync(join(root, 'src/components/site/company-setup', name), 'utf8');
 
 describe('company setup discovery page contracts', () => {
+  it('does not nest a second main landmark inside the public layout', () => {
+    for (const name of [
+      'MainlandDiscovery.tsx',
+      'FreeZonesDiscovery.tsx',
+      'OffshoreDiscovery.tsx',
+    ]) {
+      assert.doesNotMatch(source(name), /<main\b/u, name);
+    }
+  });
+
   it('renders mainland emirates, activities, cost guidance, documents, timeline, and CTAs', () => {
     const page = source('MainlandDiscovery.tsx');
     for (const term of [

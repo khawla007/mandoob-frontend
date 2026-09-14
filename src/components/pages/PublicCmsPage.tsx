@@ -78,6 +78,33 @@ function cssUrl(url: string): string {
   return `url(${JSON.stringify(url)})`;
 }
 
+function rgb(hex: string): [number, number, number] {
+  const value = hex.slice(1);
+  const expanded = value.length === 3 ? [...value].map((part) => `${part}${part}`).join('') : value;
+  return [0, 2, 4].map((offset) => Number.parseInt(expanded.slice(offset, offset + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
+}
+
+function readableForeground(
+  background: string,
+  overlay: string,
+  opacity: number,
+): '#000000' | '#ffffff' {
+  const base = rgb(background);
+  const cover = rgb(overlay);
+  const composited = base.map((channel, index) =>
+    Math.round(cover[index]! * opacity + channel * (1 - opacity)),
+  );
+  const luminance = composited
+    .map((channel) => channel / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
+    .reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index]!, 0);
+  return (luminance + 0.05) / 0.05 >= 4.5 ? '#000000' : '#ffffff';
+}
+
 export function getPublicCmsPageView(page: CmsPage): PublicCmsPageView {
   const sanitizedBody = sanitizeBlogHtml(page.contentHtml)
     .replace(/<h1(\s|>)/gi, '<h2$1')
@@ -102,6 +129,11 @@ export function getPublicCmsPageView(page: CmsPage): PublicCmsPageView {
     settings.backgroundImageUrl && isSecureExternalUrl(settings.backgroundImageUrl)
       ? cssUrl(settings.backgroundImageUrl)
       : undefined;
+  // Remote image pixels are not part of the validated CMS settings. A fixed dark
+  // scrim makes the worst-case (solid white) image safe for white foreground copy.
+  const imageOverlay = backgroundImage
+    ? { backgroundColor: '#000000', opacity: 0.6 }
+    : { backgroundColor: settings.overlayColor, opacity: settings.overlayOpacity };
   return {
     bodyHtml,
     bodyHeadings,
@@ -121,8 +153,18 @@ export function getPublicCmsPageView(page: CmsPage): PublicCmsPageView {
         minHeight: settings.minHeight,
         margin: settings.margin,
       },
-      contentStyle: { maxWidth: settings.maxWidth, padding: settings.padding },
-      overlayStyle: { backgroundColor: settings.overlayColor, opacity: settings.overlayOpacity },
+      contentStyle: {
+        maxWidth: settings.maxWidth,
+        padding: settings.padding,
+        color: backgroundImage
+          ? '#ffffff'
+          : readableForeground(
+              settings.backgroundColor,
+              settings.overlayColor,
+              settings.overlayOpacity,
+            ),
+      },
+      overlayStyle: imageOverlay,
     },
   };
 }

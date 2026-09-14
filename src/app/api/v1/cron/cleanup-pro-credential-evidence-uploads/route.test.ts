@@ -7,7 +7,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
 process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 
 test('credential upload cleanup cron requires the configured secret before work', async () => {
-  const { createCleanupRouteHandler } = await import('./route');
+  const { createCleanupRouteHandler } = await import('./route-handler');
   let runs = 0;
   const handler = createCleanupRouteHandler({
     secret: () => 'cron-secret',
@@ -26,7 +26,7 @@ test('credential upload cleanup cron requires the configured secret before work'
 });
 
 test('credential upload cleanup cron returns only bounded aggregate counts', async () => {
-  const { createCleanupRouteHandler } = await import('./route');
+  const { createCleanupRouteHandler } = await import('./route-handler');
   const handler = createCleanupRouteHandler({
     secret: () => 'cron-secret',
     run: async () => ({ claimed: 4, quiescing: 1, cleaned: 1, referenced: 1, retryable: 1 }),
@@ -49,7 +49,7 @@ test('credential upload cleanup cron returns only bounded aggregate counts', asy
 });
 
 test('credential upload cleanup cron sanitizes worker failures', async () => {
-  const { createCleanupRouteHandler } = await import('./route');
+  const { createCleanupRouteHandler } = await import('./route-handler');
   const handler = createCleanupRouteHandler({
     secret: () => 'cron-secret',
     run: async () => {

@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const article = getArticleBySlug(slug);
 
   if (!article) {
-    return {};
+    return { robots: { index: false, follow: false } };
   }
 
   return {

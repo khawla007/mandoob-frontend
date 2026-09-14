@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -65,6 +65,10 @@ export function LoginForm() {
     defaultValues: { email: '', password: '', rememberMe: false },
   });
 
+  useEffect(() => {
+    if (feedback?.tone === 'error') errorSummaryRef.current?.focus();
+  }, [feedback]);
+
   function safeLoginError(code: string | undefined): string {
     switch (loginFailureCategory(code)) {
       case 'validation':
@@ -84,7 +88,6 @@ export function LoginForm() {
 
   function showError(message: string) {
     setFeedback({ tone: 'error', message });
-    requestAnimationFrame(() => errorSummaryRef.current?.focus());
   }
 
   async function onSubmit(values: FormInput) {

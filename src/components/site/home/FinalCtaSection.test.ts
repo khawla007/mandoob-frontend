@@ -37,6 +37,12 @@ describe('FinalCtaSection background interaction', () => {
     assert.match(publicThemeSource, /\.site-public \.display--cta\s*\{[^}]*max-width:\s*18ch/u);
   });
 
+  it('keeps the intentionally light CTA surface on a fixed readable foreground', () => {
+    const ctaBlock = publicThemeSource.match(/\.site-public \.cta-section\s*\{[^}]*\}/u)?.[0];
+    assert.ok(ctaBlock);
+    assert.match(ctaBlock, /color:\s*oklch\(0\.12 0\.01 45\);\s*\}$/u);
+  });
+
   it('uses a compact, restrained fabric bump', () => {
     assert.match(
       componentSource,

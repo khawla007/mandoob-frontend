@@ -21,7 +21,7 @@ import { SetupProcess } from './SetupProcess';
 
 export function OffshoreDiscovery() {
   return (
-    <main className="setup-page">
+    <div className="setup-page">
       <section id="setup-hero" className="setup-hero" aria-labelledby="offshore-title">
         <SetupHero
           headingId="offshore-title"
@@ -293,6 +293,6 @@ export function OffshoreDiscovery() {
           estimateHref="/estimate?jurisdiction=offshore"
         />
       </section>
-    </main>
+    </div>
   );
 }

@@ -247,9 +247,6 @@ export function QuestionnaireForm({
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [moveTo, stepIndex]);
-  useEffect(() => {
-    window.history.replaceState(null, '', '#application-contact');
-  }, []);
   async function runCompletion() {
     if (pending.current) return;
     const prepared = prepareApplicationCompletion(draft, APPLICATION_DEFINITION);
@@ -648,7 +645,7 @@ export function QuestionnaireForm({
               </div>
             </div>
           ) : null}
-          <footer className="application-actions">
+          <div className="application-actions">
             <button
               type="button"
               className="application-button application-button--secondary"
@@ -683,7 +680,7 @@ export function QuestionnaireForm({
                 <CheckCircle2 aria-hidden />
               </button>
             )}
-          </footer>
+          </div>
         </form>
       </div>
       {resetOpen ? <ResetDialog close={closeReset} reset={reset} /> : null}

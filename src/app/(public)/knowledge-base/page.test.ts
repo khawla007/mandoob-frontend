@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../public-theme.css', import.meta.url), 'utf8');
 
 test('Knowledge Base renders the seven reference regions in exact order', () => {
   const markers = [
@@ -31,5 +32,12 @@ test('Knowledge Base uses real discovery, native FAQ, safe support, and no-write
   assert.doesNotMatch(
     source,
     /45\+|Monthly|90 seconds|Popular Guides|Expert Support|Always Updated/u,
+  );
+});
+
+test('Knowledge Base guide media keeps its focus ring inside the clipped card', () => {
+  assert.match(
+    css,
+    /\.site-public \.kb-guide-card__media:focus-visible\s*\{[^}]*outline-offset:\s*-3px/u,
   );
 });

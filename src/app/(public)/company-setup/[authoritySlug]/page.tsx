@@ -1,14 +1,19 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { PublicContentState } from '@/components/public-content/PublicContentState';
 import {
   authoritySetupPages,
   buildFaqJsonLd,
   getAuthorityPageBySlug,
   type AuthorityPageData,
 } from '@/lib/knowledge-base';
+import { resolveAuthoritySourcePresentation } from '@/lib/public-content/development-evidence';
+import { buildUnavailableMetadata } from '@/lib/public-metadata';
 
 type Params = { authoritySlug: string };
+
+export const dynamicParams = false;
 
 const DOCUMENT_LABELS: Record<string, string> = {
   attested_documents: 'Attested corporate documents',
@@ -28,8 +33,10 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { authoritySlug } = await params;
   const page = getAuthorityPageBySlug(authoritySlug);
+  const presentation = authorityPresentation(authoritySlug, Boolean(page));
 
-  if (!page) return {};
+  if (!page || presentation.status === 'missing') notFound();
+  if (presentation.status === 'unavailable') return buildUnavailableMetadata(presentation.metadata);
 
   return {
     title: `${page.authority} Company Setup Cost Guide | Mandoob`,
@@ -50,8 +57,22 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function AuthoritySetupPage({ params }: { params: Promise<Params> }) {
   const { authoritySlug } = await params;
   const page = getAuthorityPageBySlug(authoritySlug);
+  const presentation = authorityPresentation(authoritySlug, Boolean(page));
 
-  if (!page) notFound();
+  if (!page || presentation.status === 'missing') notFound();
+  if (presentation.status === 'unavailable') {
+    return (
+      <PublicContentState
+        eyebrow="Authority guide unavailable"
+        title="This authority setup guide could not be loaded."
+        description="The public authority source is temporarily unavailable. No estimated fees, timeline, documents, or internal error details are being shown."
+        recoveryHref={`/company-setup/${encodeURIComponent(authoritySlug)}`}
+        recoveryLabel="Try again"
+        retry
+        headingLevel="h1"
+      />
+    );
+  }
 
   const faq = buildAuthorityFaq(page);
   const faqJsonLd = buildFaqJsonLd(faq);
@@ -223,6 +244,15 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
       </section>
     </>
   );
+}
+
+function authorityPresentation(authoritySlug: string, pageExists: boolean) {
+  return resolveAuthoritySourcePresentation({
+    authoritySlug,
+    pageExists,
+    nodeEnv: process.env.NODE_ENV,
+    mode: process.env.P112_AUTHORITY_EVIDENCE_STATE,
+  });
 }
 
 function buildAuthorityFaq(page: AuthorityPageData) {

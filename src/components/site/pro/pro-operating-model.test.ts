@@ -478,6 +478,10 @@ describe('PRO composition and scoped theme contract', () => {
     assert.match(proCss, /\.site-public \.pro-capabilities__mosaic/u);
     assert.doesNotMatch(proCss, /\.site-public \.pro-capabilities__grid/u);
     assert.match(proCss, /\.site-public \.pro-process__list/u);
+    assert.match(
+      proCss,
+      /\.site-public \.pro-bento\s*\{[^}]*background:\s*var\(--public-surface-elevated\)/u,
+    );
     assert.match(proCss, /\.dark \.site-public \.pro-/u);
     assert.match(proCss, /@media \(max-width: 899px\)/u);
     assert.match(

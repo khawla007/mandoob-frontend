@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { Geist, Geist_Mono, Noto_Kufi_Arabic } from 'next/font/google';
+import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -13,9 +13,29 @@ import './globals.css';
 // affects the shared SiteHeader/SiteFooter chrome and public pages, never dashboards.
 import './(public)/public-theme.css';
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
-const notoKufiArabic = Noto_Kufi_Arabic({ variable: '--font-arabic', subsets: ['arabic'] });
+const geistSans = localFont({
+  src: './fonts/Geist-Variable.ttf',
+  variable: '--font-geist-sans',
+  weight: '100 900',
+  style: 'normal',
+  display: 'swap',
+});
+
+const geistMono = localFont({
+  src: './fonts/GeistMono-Variable.ttf',
+  variable: '--font-geist-mono',
+  weight: '100 900',
+  style: 'normal',
+  display: 'swap',
+});
+
+const notoKufiArabic = localFont({
+  src: './fonts/NotoKufiArabic-Variable.ttf',
+  variable: '--font-arabic',
+  weight: '100 900',
+  style: 'normal',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   metadataBase: PUBLIC_SITE_ORIGIN,
