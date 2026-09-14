@@ -34,13 +34,13 @@ const licenseLedger = [
   {
     file: 'Geist-OFL-1.1.txt',
     copyright: 'Copyright 2024 The Geist Project Authors',
-    sha256: 'c683bfbcc7e087f5d37a54ef628f10387c451a83ddc459b151403a164ac46c90',
+    sha256: '942560b236adfa83745b2c64e5fc09ebaf91cb331751b1157eb92187e5d6e930',
     url: 'https://github.com/vercel/geist-font/blob/10dc7658f13c38a474cde201bb09a4617267545b/OFL.txt',
   },
   {
     file: 'NotoKufiArabic-OFL-1.1.txt',
     copyright: 'Copyright 2022 The Noto Project Authors',
-    sha256: '07fc70bfeb985cc1a87a8587d0a0c80bab11c86c9dc3fd95b6f0cb332f983e96',
+    sha256: 'df5143cdf3380169f2d03bf6d2cd243e85621fd097e608c3607cf7f9c9884ae6',
     url: 'https://github.com/google/fonts/blob/0cf764bb712367b6079cbb4fd2353e6f54ec6850/ofl/notokufiarabic/OFL.txt',
   },
 ] as const;

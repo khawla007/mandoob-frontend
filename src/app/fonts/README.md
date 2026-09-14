@@ -12,7 +12,7 @@ These variable fonts are bundled through `next/font/local`. Builds and browsers 
 
 ## License provenance
 
-- `Geist-OFL-1.1.txt` is the exact [`OFL.txt`](https://github.com/vercel/geist-font/blob/10dc7658f13c38a474cde201bb09a4617267545b/OFL.txt) from Vercel commit `10dc7658f13c38a474cde201bb09a4617267545b`; SHA-256 `c683bfbcc7e087f5d37a54ef628f10387c451a83ddc459b151403a164ac46c90`.
-- `NotoKufiArabic-OFL-1.1.txt` is the exact [`ofl/notokufiarabic/OFL.txt`](https://github.com/google/fonts/blob/0cf764bb712367b6079cbb4fd2353e6f54ec6850/ofl/notokufiarabic/OFL.txt) from Google Fonts commit `0cf764bb712367b6079cbb4fd2353e6f54ec6850`; SHA-256 `07fc70bfeb985cc1a87a8587d0a0c80bab11c86c9dc3fd95b6f0cb332f983e96`.
+- `Geist-OFL-1.1.txt` is the accepted normalized [`OFL.txt`](https://github.com/vercel/geist-font/blob/10dc7658f13c38a474cde201bb09a4617267545b/OFL.txt) from Vercel commit `10dc7658f13c38a474cde201bb09a4617267545b`; SHA-256 `942560b236adfa83745b2c64e5fc09ebaf91cb331751b1157eb92187e5d6e930`.
+- `NotoKufiArabic-OFL-1.1.txt` is the accepted normalized [`ofl/notokufiarabic/OFL.txt`](https://github.com/google/fonts/blob/0cf764bb712367b6079cbb4fd2353e6f54ec6850/ofl/notokufiarabic/OFL.txt) from Google Fonts commit `0cf764bb712367b6079cbb4fd2353e6f54ec6850`; SHA-256 `df5143cdf3380169f2d03bf6d2cd243e85621fd097e608c3607cf7f9c9884ae6`.
 
 All three font binaries are unmodified and licensed under the SIL Open Font License 1.1.

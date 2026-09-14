@@ -20,6 +20,7 @@ test('public missing boundary preserves HTTP status while shared links own pendi
   );
   assert.doesNotMatch(missing, /window\.|document\.|fetch\(/);
   assert.match(pending, /useLinkStatus/u);
+  assert.match(pending, /useTranslations\('site'\)/u);
   assert.match(pending, /role="status"/u);
-  assert.match(pending, /Loading page/u);
+  assert.match(pending, /pending\s*\?\s*t\('loadingPage'\)/u);
 });

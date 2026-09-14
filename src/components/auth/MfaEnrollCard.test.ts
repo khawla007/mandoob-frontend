@@ -61,6 +61,7 @@ Module._load = function (request, parent, isMain) {
     Event: browser.Event,
     MouseEvent: browser.MouseEvent,
     FormData: browser.FormData,
+    requestAnimationFrame: browser.requestAnimationFrame.bind(browser),
     IS_REACT_ACT_ENVIRONMENT: true,
     __messages: {
       'auth.startMfaSetup': 'Start setup',
@@ -114,6 +115,14 @@ Module._load = function (request, parent, isMain) {
     const root = createRoot(container);
     await act(() => root.render(createElement(MfaEnrollCard, props)));
     return { act, container, root };
+  }
+
+  async function assertFeedbackFocused(
+    act: (callback: () => void | Promise<void>) => Promise<void>,
+    container: HTMLElement,
+  ) {
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    assert.equal(document.activeElement, container.querySelector('[role=alert]'));
   }
 
   test('mount is non-mutating and presents an explicit enrollment action', async () => {
@@ -185,6 +194,7 @@ Module._load = function (request, parent, isMain) {
       container.querySelector('[role=alert]')?.textContent,
       'Could not start enrollment',
     );
+    await assertFeedbackFocused(act, container);
     assert.doesNotMatch(container.textContent ?? '', /private provider diagnostic/u);
     const button = container.querySelector<HTMLButtonElement>('button')!;
     assert.equal(button.disabled, false);
@@ -242,6 +252,7 @@ Module._load = function (request, parent, isMain) {
       transport.container.querySelector('[role=alert]')?.textContent,
       'Setup status could not be confirmed. Refresh before retrying.',
     );
+    await assertFeedbackFocused(transport.act, transport.container);
     assert.equal(transport.container.querySelector('button'), null);
     assert.doesNotMatch(transport.container.textContent ?? '', /private transport diagnostic/u);
     await transport.act(() => transport.root.unmount());
@@ -405,6 +416,7 @@ Module._load = function (request, parent, isMain) {
       rendered.container.querySelector('[role=alert]')?.textContent,
       'Verification failed',
     );
+    await assertFeedbackFocused(rendered.act, rendered.container);
     assert.doesNotMatch(rendered.container.textContent ?? '', /private verification diagnostic/u);
     assert.ok(rendered.container.querySelector('img'));
     await rendered.act(() => rendered.root.unmount());
@@ -428,6 +440,7 @@ Module._load = function (request, parent, isMain) {
         rendered.container.querySelector('[role=alert]')?.textContent,
         'Setup status could not be confirmed. Refresh before retrying.',
       );
+      await assertFeedbackFocused(rendered.act, rendered.container);
       assert.equal(rendered.container.querySelector('img'), null);
       assert.equal(rendered.container.querySelector('button'), null);
       await rendered.act(() => rendered.root.unmount());

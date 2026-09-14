@@ -39,7 +39,7 @@ test('consent links resolve through the published legal CMS route', () => {
   assert.match(contactFormSource, /<Link href="\/legal\/privacy"/u);
   assert.match(contactFormSource, /<Link href="\/legal\/terms"/u);
   assert.doesNotMatch(contactFormSource, /<Link href="\/(?:privacy|terms)"/u);
-  assert.match(legalRouteSource, /resolveLegalCmsPage/u);
+  assert.match(legalRouteSource, /resolveLegalPageState/u);
   assert.match(legalRouteSource, /getPublishedCmsPageBySlug/u);
 });
 

@@ -40,6 +40,15 @@ export function MfaEnrollCard({
     'repairRequired' | 'cleanRollback' | null
   >(null);
 
+  function focusFeedback() {
+    requestAnimationFrame(() => feedbackRef.current?.focus());
+  }
+
+  function announceError(message: string) {
+    setError(message);
+    focusFeedback();
+  }
+
   async function cleanupFactor(factorId: string): Promise<boolean> {
     try {
       const { error: cleanupError } = await getSupabaseBrowserClient().auth.mfa.unenroll({
@@ -68,9 +77,10 @@ export function MfaEnrollCard({
       if (!res.ok) {
         if (data?.code === 'AAL2_REQUIRED' || data?.code === 'MFA_ALREADY_ENROLLED') {
           setNeedsChallenge(true);
+          focusFeedback();
           return;
         }
-        setError(tErrors(enrollmentErrorKey(data?.code)));
+        announceError(tErrors(enrollmentErrorKey(data?.code)));
         return;
       }
       if (
@@ -81,21 +91,21 @@ export function MfaEnrollCard({
       ) {
         if (typeof data?.factorId !== 'string' || data.factorId.length === 0) {
           setCleanupBlocked(true);
-          setError(tErrors('mfaEnrollmentStateUncertain'));
+          announceError(tErrors('mfaEnrollmentStateUncertain'));
           return;
         }
         if (!(await cleanupFactor(data.factorId))) {
           setCleanupBlocked(true);
-          setError(tErrors('mfaEnrollmentCleanupFailed'));
+          announceError(tErrors('mfaEnrollmentCleanupFailed'));
           return;
         }
-        setError(tErrors('mfaEnrollmentFailed'));
+        announceError(tErrors('mfaEnrollmentFailed'));
         return;
       }
       setEnroll({ factorId: data.factorId, qrCode: data.qrCode, secret: data.secret });
     } catch {
       setCleanupBlocked(true);
-      setError(tErrors('mfaEnrollmentStateUncertain'));
+      announceError(tErrors('mfaEnrollmentStateUncertain'));
     } finally {
       setBusy(null);
       inFlight.current = false;
@@ -128,8 +138,7 @@ export function MfaEnrollCard({
       (e.currentTarget.elements.namedItem('code') as HTMLInputElement | null)?.value ?? code,
     );
     if (submittedCode.length < 6) {
-      setError(tEnrollment('states.invalidOrExpired'));
-      requestAnimationFrame(() => feedbackRef.current?.focus());
+      announceError(tEnrollment('states.invalidOrExpired'));
       return;
     }
     if (inFlight.current) return;
@@ -150,34 +159,37 @@ export function MfaEnrollCard({
           if (data?.code === 'MFA_ENROLL_REPAIR_REQUIRED') {
             setEnroll(null);
             setFinalizationFailure('repairRequired');
+            focusFeedback();
             return;
           }
           if (data?.code === 'MFA_ENROLL_FINALIZATION_FAILED') {
             setEnroll(null);
             setFinalizationFailure('cleanRollback');
+            focusFeedback();
             return;
           }
           if (data?.code === 'AAL2_REQUIRED') {
             if (!(await cleanupFactor(enroll.factorId))) {
               setCleanupBlocked(true);
-              setError(tErrors('mfaEnrollmentCleanupFailed'));
+              announceError(tErrors('mfaEnrollmentCleanupFailed'));
               return;
             }
             setEnroll(null);
             setNeedsChallenge(true);
+            focusFeedback();
             return;
           }
           if (data?.code === 'MFA_CHALLENGE_FAILED') {
             if (!(await cleanupFactor(enroll.factorId))) {
               setCleanupBlocked(true);
-              setError(tErrors('mfaEnrollmentCleanupFailed'));
+              announceError(tErrors('mfaEnrollmentCleanupFailed'));
               return;
             }
             setEnroll(null);
-            setError(tErrors('mfaEnrollmentFailed'));
+            announceError(tErrors('mfaEnrollmentFailed'));
             return;
           }
-          setError(tErrors('verificationFailed'));
+          announceError(tErrors('verificationFailed'));
           return;
         }
         if (
@@ -186,7 +198,7 @@ export function MfaEnrollCard({
           !data.recoveryCodes.every((item) => typeof item === 'string')
         ) {
           setCleanupBlocked(true);
-          setError(tErrors('mfaEnrollmentStateUncertain'));
+          announceError(tErrors('mfaEnrollmentStateUncertain'));
           return;
         }
         setEnroll(null);
@@ -194,7 +206,7 @@ export function MfaEnrollCard({
         setRecoveryCodes(data.recoveryCodes);
       } catch {
         setCleanupBlocked(true);
-        setError(tErrors('mfaEnrollmentStateUncertain'));
+        announceError(tErrors('mfaEnrollmentStateUncertain'));
       } finally {
         setBusy(null);
         inFlight.current = false;
@@ -210,7 +222,7 @@ export function MfaEnrollCard({
     try {
       if (!(await cleanupFactor(enroll.factorId))) {
         setCleanupBlocked(true);
-        setError(tErrors('mfaEnrollmentCleanupFailed'));
+        announceError(tErrors('mfaEnrollmentCleanupFailed'));
         return;
       }
       setEnroll(null);
@@ -260,7 +272,7 @@ export function MfaEnrollCard({
 
   if (cleanupBlocked) {
     return (
-      <p role="alert" className="text-destructive text-sm">
+      <p ref={feedbackRef} role="alert" tabIndex={-1} className="text-destructive text-sm">
         {error ?? tErrors('mfaEnrollmentStateUncertain')}
       </p>
     );
@@ -269,7 +281,7 @@ export function MfaEnrollCard({
   if (finalizationFailure) {
     return (
       <div className="space-y-3">
-        <p role="alert" className="text-destructive text-sm">
+        <p ref={feedbackRef} role="alert" tabIndex={-1} className="text-destructive text-sm">
           {tEnrollment(`states.${finalizationFailure}` as never)}
         </p>
         <Link href="/login" className="btn btn--secondary w-full justify-center">
@@ -295,7 +307,7 @@ export function MfaEnrollCard({
     if (needsChallenge) {
       return (
         <div className="space-y-3">
-          <p role="alert" className="text-muted-foreground text-sm">
+          <p ref={feedbackRef} role="alert" tabIndex={-1} className="text-muted-foreground text-sm">
             {tEnrollment('states.challengeRequired')}
           </p>
           <Link

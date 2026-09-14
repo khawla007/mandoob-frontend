@@ -1,5 +1,6 @@
 import { execFileSync, type ExecFileSyncOptionsWithStringEncoding } from 'node:child_process';
-import { lstat, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { lstat, mkdir, open, readFile, readlink, rm, symlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 export const ACCEPTANCE_PROJECT_ID = 'mandoob-p2-12-acceptance';
@@ -36,29 +37,112 @@ export function buildAcceptanceConfig(base: string): string {
   return config;
 }
 
-export async function prepareAcceptanceWorkdir(): Promise<void> {
-  if (process.env.P2_ACCEPTANCE_LOCAL_ONLY !== '1') {
-    throw new Error('P2_CLI: explicit local-only opt-in is required');
+type AcceptancePaths = {
+  workdir?: string;
+  baseConfig?: string;
+  migrationsSource?: string;
+};
+
+function isMissing(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
+}
+
+async function assertPrivateOwnedDirectory(path: string): Promise<void> {
+  const metadata = await lstat(path);
+  if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+    throw new Error(`P2_CLI: unsafe runtime directory ${path}`);
   }
-  const supabaseDirectory = dirname(ACCEPTANCE_CONFIG);
-  await mkdir(supabaseDirectory, { recursive: true, mode: 0o700 });
-  const base = await readFile(resolve('supabase/config.toml'), 'utf8');
-  await writeFile(ACCEPTANCE_CONFIG, buildAcceptanceConfig(base), { mode: 0o600 });
-  await writeFile(
-    resolve(supabaseDirectory, 'seed.sql'),
-    '-- Intentionally empty P2 acceptance seed.\n',
-    {
-      mode: 0o600,
-    },
+  if ((metadata.mode & 0o777) !== 0o700) {
+    throw new Error(`P2_CLI: runtime directory must have mode 0700 ${path}`);
+  }
+  if (typeof process.getuid === 'function' && metadata.uid !== process.getuid()) {
+    throw new Error(`P2_CLI: runtime directory ownership mismatch ${path}`);
+  }
+}
+
+async function createPrivateDirectory(path: string): Promise<void> {
+  try {
+    await mkdir(path, { mode: 0o700 });
+  } catch (error) {
+    if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) throw error;
+  }
+  await assertPrivateOwnedDirectory(path);
+}
+
+async function writeExclusivePrivateFile(path: string, contents: string): Promise<void> {
+  const handle = await open(
+    path,
+    constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW,
+    0o600,
   );
-  const migrations = resolve(supabaseDirectory, 'migrations');
+  try {
+    await handle.writeFile(contents, 'utf8');
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+async function ensurePrivateFile(path: string, contents: string): Promise<void> {
+  try {
+    await writeExclusivePrivateFile(path, contents);
+    return;
+  } catch (error) {
+    if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) throw error;
+  }
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const metadata = await handle.stat();
+    if (!metadata.isFile() || (metadata.mode & 0o777) !== 0o600) {
+      throw new Error(`P2_CLI: unsafe runtime file ${path}`);
+    }
+    if (typeof process.getuid === 'function' && metadata.uid !== process.getuid()) {
+      throw new Error(`P2_CLI: runtime file ownership mismatch ${path}`);
+    }
+    if ((await handle.readFile('utf8')) !== contents) {
+      throw new Error(`P2_CLI: runtime file contents mismatch ${path}`);
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
+async function ensureMigrationLink(migrations: string, migrationsSource: string): Promise<void> {
   try {
     const metadata = await lstat(migrations);
     if (!metadata.isSymbolicLink()) throw new Error('P2_CLI: migrations path is not isolated');
+    if (typeof process.getuid === 'function' && metadata.uid !== process.getuid()) {
+      throw new Error('P2_CLI: migrations link ownership mismatch');
+    }
+    const currentTarget = resolve(dirname(migrations), await readlink(migrations));
+    if (currentTarget !== migrationsSource) {
+      throw new Error('P2_CLI: migrations link target mismatch');
+    }
   } catch (error) {
-    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
-    await symlink(resolve('supabase/migrations'), migrations, 'dir');
+    if (!isMissing(error)) throw error;
+    await symlink(migrationsSource, migrations, 'dir');
   }
+}
+
+export async function prepareAcceptanceWorkdir(paths: AcceptancePaths = {}): Promise<void> {
+  if (process.env.P2_ACCEPTANCE_LOCAL_ONLY !== '1') {
+    throw new Error('P2_CLI: explicit local-only opt-in is required');
+  }
+  const workdir = resolve(paths.workdir ?? ACCEPTANCE_WORKDIR);
+  const supabaseDirectory = resolve(workdir, 'supabase');
+  const acceptanceConfig = resolve(supabaseDirectory, 'config.toml');
+  const seed = resolve(supabaseDirectory, 'seed.sql');
+  const migrationsSource = resolve(paths.migrationsSource ?? 'supabase/migrations');
+  const sourceMetadata = await lstat(migrationsSource);
+  if (!sourceMetadata.isDirectory() || sourceMetadata.isSymbolicLink()) {
+    throw new Error('P2_CLI: migration source must be a real directory');
+  }
+  await createPrivateDirectory(workdir);
+  await createPrivateDirectory(supabaseDirectory);
+  await ensureMigrationLink(resolve(supabaseDirectory, 'migrations'), migrationsSource);
+  const base = await readFile(resolve(paths.baseConfig ?? 'supabase/config.toml'), 'utf8');
+  await ensurePrivateFile(acceptanceConfig, buildAcceptanceConfig(base));
+  await ensurePrivateFile(seed, '-- Intentionally empty P2 acceptance seed.\n');
 }
 
 export function runSupabase(
