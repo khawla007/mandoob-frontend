@@ -21,7 +21,6 @@ if (process.env.MFA_RUNTIME_CHILD === '1') {
   });
 
   const globals = globalThis as typeof globalThis & {
-    __mfaListFactorsResult: unknown;
     __mfaRoutes: string[];
   };
   const setValue = (input: HTMLInputElement, value: string) => {
@@ -66,17 +65,16 @@ if (process.env.MFA_RUNTIME_CHILD === '1') {
       import('react-dom/client'),
       import('./MfaChallengeForm'),
     ]);
-    for (const [result, expected] of [
-      [{ data: { totp: [{ id: 'factor-1', status: 'verified' }] }, error: null }, 'instructions'],
-      [{ data: { totp: [] }, error: null }, 'noFactor'],
-      [{ data: null, error: { status: 503 } }, 'states.failure'],
-      [{ data: null, error: { status: 401 } }, 'states.sessionExpired'],
+    for (const [props, expected] of [
+      [{ initialFactorId: 'factor-1' }, 'instructions'],
+      [{}, 'noFactor'],
+      [{ initialDiscoveryError: 'failure' }, 'states.failure'],
+      [{ initialDiscoveryError: 'sessionExpired' }, 'states.sessionExpired'],
     ] as const) {
-      globals.__mfaListFactorsResult = result;
       const container = document.createElement('div');
       document.body.append(container);
       const root = createRoot(container);
-      await act(() => root.render(createElement(MfaChallengeForm)));
+      await act(() => root.render(createElement(MfaChallengeForm, props)));
       await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
       assert.match(container.textContent ?? '', new RegExp(expected.replace('.', '\\.')));
       if (expected === 'noFactor') {
@@ -102,16 +100,14 @@ if (process.env.MFA_RUNTIME_CHILD === '1') {
       import('react-dom/client'),
       import('./MfaChallengeForm'),
     ]);
-    globals.__mfaListFactorsResult = {
-      data: { totp: [{ id: 'factor-1', status: 'verified' }] },
-      error: null,
-    };
     const render = async (url: string) => {
       browser.history.replaceState(null, '', url);
       const container = document.createElement('div');
       document.body.append(container);
       const root = createRoot(container);
-      await act(() => root.render(createElement(MfaChallengeForm)));
+      await act(() =>
+        root.render(createElement(MfaChallengeForm, { initialFactorId: 'factor-1' })),
+      );
       await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
       return { container, root };
     };

@@ -42,11 +42,14 @@ test('MFA enrollment route cleans abandoned factors, sanitizes failures, and aud
 
 test('MFA challenge discovers factors and offers the accepted masked recovery flow', () => {
   const source = read('src/components/auth/MfaChallengeForm.tsx');
-  assert.match(source, /listFactors\(\)/u);
-  assert.match(source, /status === 'verified'/u);
+  const page = read('src/app/(auth)/mfa/challenge/page.tsx');
+  assert.match(page, /requireUser\(\)/u);
+  assert.match(page, /listFactors\(\)/u);
+  assert.match(page, /status === 'verified'/u);
+  assert.match(page, /initialFactorId=\{factorId\}/u);
+  assert.match(page, /mfaFactorDiscoveryCategory\(factorError\)/u);
   assert.match(source, /\/api\/v1\/auth\/mfa\/recovery/u);
   assert.match(source, /mode === 'recovery' \? 'password' : 'text'/u);
-  assert.match(source, /mfaFactorDiscoveryCategory\(error\)/u);
   assert.match(source, /mfaSuccessDestination\(mode, rawNext\)/u);
   assert.match(source, /href="\/login"/u);
   assert.doesNotMatch(source, /data\?\.error/u, 'server error messages must not be rendered');

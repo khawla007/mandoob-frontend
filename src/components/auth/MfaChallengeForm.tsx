@@ -1,67 +1,35 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { postJson } from '@/lib/http/post';
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
-import {
-  mfaFactorDiscoveryCategory,
-  mfaFailureCategory,
-  mfaSuccessDestination,
-  sanitizeMfaCode,
-} from './mfa-state';
+import { mfaFailureCategory, mfaSuccessDestination, sanitizeMfaCode } from './mfa-state';
 
-type State = 'loading' | 'noFactor' | 'ready' | 'pending' | 'failure' | 'repair' | 'complete';
+type State = 'noFactor' | 'ready' | 'pending' | 'failure' | 'repair' | 'complete';
 
-export function MfaChallengeForm() {
+export function MfaChallengeForm({
+  initialFactorId = null,
+  initialDiscoveryError = null,
+}: {
+  initialFactorId?: string | null;
+  initialDiscoveryError?: 'sessionExpired' | 'failure' | null;
+}) {
   const router = useRouter();
   const t = useTranslations('auth.mfa.challenge');
   const inFlight = useRef(false);
   const feedbackRef = useRef<HTMLDivElement>(null);
-  const [factorId, setFactorId] = useState<string | null>(null);
-  const [state, setState] = useState<State>('loading');
+  const [factorId] = useState<string | null>(initialFactorId);
+  const [state, setState] = useState<State>(
+    initialDiscoveryError ? 'failure' : initialFactorId ? 'ready' : 'noFactor',
+  );
   const [mode, setMode] = useState<'totp' | 'recovery'>('totp');
   const [code, setCode] = useState('');
-  const [messageKey, setMessageKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void getSupabaseBrowserClient()
-      .auth.mfa.listFactors()
-      .then(
-        (result: {
-          data?: { totp?: Array<{ id: string; status: string }> } | null;
-          error?: unknown;
-        }) => {
-          const { data, error } = result;
-          if (!active) return;
-          if (error) {
-            setState('failure');
-            setMessageKey(`states.${mfaFactorDiscoveryCategory(error)}`);
-            return;
-          }
-          const factor = data?.totp?.find((item: { status: string }) => item.status === 'verified');
-          if (!factor) {
-            setState('noFactor');
-            return;
-          }
-          setFactorId(factor.id);
-          setState('ready');
-        },
-      )
-      .catch(() => {
-        if (active) {
-          setState('failure');
-          setMessageKey('states.failure');
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [messageKey, setMessageKey] = useState<string | null>(
+    initialDiscoveryError ? `states.${initialDiscoveryError}` : null,
+  );
 
   function showFailure(key: string) {
     setState('failure');
@@ -107,12 +75,6 @@ export function MfaChallengeForm() {
     }
   }
 
-  if (state === 'loading')
-    return (
-      <p role="status" aria-live="polite" className="text-muted-foreground text-sm">
-        {t('loading')}
-      </p>
-    );
   if (state === 'repair')
     return (
       <div className="space-y-4" data-auth-state={state}>
