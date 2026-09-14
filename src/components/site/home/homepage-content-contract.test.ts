@@ -57,11 +57,11 @@ describe('homepage claims and CTA contract', () => {
   });
 
   it('uses the canonical design-4 eyebrow and inline-link treatment', () => {
-    assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
+    assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--accent-ink\)/u);
     const homeLink = declarations('.site-public .home-text-link');
     assert.match(homeLink, /color:\s*var\(--accent-ink\)/u);
-    assert.match(homeLink, /font-size:\s*var\(--fs-14\)/u);
-    assert.match(homeLink, /font-weight:\s*600\b/u);
+    assert.match(homeLink, /font-size:\s*var\(--fs-13\)/u);
+    assert.match(homeLink, /font-weight:\s*700\b/u);
   });
 
   it('keeps the testimonial heading visible without waiting for a reveal observer', () => {

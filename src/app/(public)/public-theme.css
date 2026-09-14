@@ -44,7 +44,7 @@
   --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #6f5b54;
   --public-cta-disabled-text: #fff8f4;
-  --public-header-surface: var(--paper);
+  --public-header-surface: rgba(255, 255, 255, 0.85);
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #b9380f;
   --public-danger: #8f1d14;
@@ -147,7 +147,7 @@
   --public-cta-focus-background: #ff7043;
   --public-cta-disabled-background: #a97868;
   --public-cta-disabled-text: #1d100c;
-  --public-header-surface: var(--paper);
+  --public-header-surface: rgba(10, 10, 10, 0.85);
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #ff865f;
   --public-danger: #ffb4a8;
@@ -285,13 +285,13 @@
   font-size: var(--fs-13);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--zinc-500);
+  color: var(--zinc-600);
 }
 .site-public .eyebrow--inv {
   color: var(--zinc-400);
 }
 .site-public .eyebrow--accent {
-  color: var(--zinc-500);
+  color: var(--accent-ink);
 }
 .site-public .mono {
   font-family: var(--mono-font);
@@ -547,8 +547,8 @@
   min-inline-size: 44px;
   min-block-size: 44px;
   align-items: center;
-  border-bottom: 2px solid transparent;
-  padding-inline: 8px;
+  border-inline-start: 2px solid transparent;
+  padding-inline: 10px 8px;
   font-size: var(--fs-14);
   font-weight: 500;
   color: var(--zinc-600);
@@ -565,7 +565,7 @@
   color: var(--ink);
 }
 .site-public .nav__links a[aria-current='page'] {
-  border-bottom: 2px solid var(--accent);
+  border-inline-start: 2px solid var(--accent);
   color: var(--public-cta-background);
 }
 .site-public .public-link-pending {
@@ -722,6 +722,7 @@
   --public-surface: var(--zinc-100);
   --popover: oklch(0.205 0.008 45);
   --popover-foreground: var(--ink);
+  --accent: oklch(0.31 0.04 38);
   --accent-foreground: var(--ink);
   --border: oklch(1 0 0 / 12%);
   --tw-translate-x: 0px !important;
@@ -4114,8 +4115,8 @@
   gap: 6px;
   min-height: 44px;
   color: var(--accent-ink);
-  font-size: var(--fs-14);
-  font-weight: 600;
+  font-size: var(--fs-13);
+  font-weight: 700;
 }
 
 .site-public .home-text-link span {
@@ -5585,6 +5586,12 @@
 }
 .site-public .cell--estmain {
   padding: 0;
+}
+.site-public #estimator .eyebrow {
+  color: var(--zinc-600);
+}
+.site-public #estimator .eyebrow--accent {
+  color: var(--accent-ink);
 }
 .site-public .est__tabs {
   display: flex;

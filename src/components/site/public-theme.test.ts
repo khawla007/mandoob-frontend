@@ -92,11 +92,14 @@ renderTest('public light and dark scopes expose the complete reusable semantic p
   }
 });
 
-renderTest('sticky public header surfaces are solid in light and dark themes', () => {
-  assert.equal(rawToken(declarations('.site-public'), 'public-header-surface'), 'var(--paper)');
+renderTest('sticky public header surfaces retain the accepted translucent treatment', () => {
+  assert.equal(
+    rawToken(declarations('.site-public'), 'public-header-surface'),
+    'rgba(255, 255, 255, 0.85)',
+  );
   assert.equal(
     rawToken(declarations('.dark .site-public'), 'public-header-surface'),
-    'var(--paper)',
+    'rgba(10, 10, 10, 0.85)',
   );
 });
 
@@ -143,8 +146,11 @@ renderTest('public dark theme preserves a dark accent surface for flow markers',
   );
 });
 
-renderTest('mobile dialog inherits the semantic CTA token', () => {
-  assert.doesNotMatch(declarations('.site-public.public-mobile-dialog'), /--accent\s*:/u);
+renderTest('mobile dialog keeps its accepted dark accent token', () => {
+  assert.match(
+    declarations('.site-public.public-mobile-dialog'),
+    /--accent:\s*oklch\(0\.31 0\.04 38\)/u,
+  );
   assert.match(
     declarations('.site-public .btn--accent'),
     /background:\s*var\(--public-cta-background\)/u,
@@ -160,13 +166,13 @@ renderTest('design-4 component colors and weights are preserved', () => {
     declarations('.site-public .btn--accent:hover'),
     /background:\s*var\(--public-cta-hover-background\)/u,
   );
-  assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-500\)/u);
-  assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
+  assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-600\)/u);
+  assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--accent-ink\)/u);
   assert.match(declarations('.site-public .cell__link'), /color:\s*var\(--accent-ink\)/u);
   const homeLink = declarations('.site-public .home-text-link');
   assert.match(homeLink, /color:\s*var\(--accent-ink\)/u);
-  assert.match(homeLink, /font-size:\s*var\(--fs-14\)/u);
-  assert.match(homeLink, /font-weight:\s*600\b/u);
+  assert.match(homeLink, /font-size:\s*var\(--fs-13\)/u);
+  assert.match(homeLink, /font-weight:\s*700\b/u);
 });
 
 renderTest('accent buttons consume semantic state tokens', () => {
