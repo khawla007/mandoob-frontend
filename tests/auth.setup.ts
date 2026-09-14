@@ -184,7 +184,9 @@ for (const cfg of ROLES) {
             waitUntil: 'networkidle',
           });
         }
-        await page.getByLabel(/6-digit code/i).fill(generateTotp(strict.totpSecret));
+        await page
+          .getByRole('textbox', { name: /^authenticator code$/i })
+          .fill(generateTotp(strict.totpSecret));
         await page.getByRole('button', { name: /continue/i }).click();
         await page.waitForURL((url) => url.pathname === home, { waitUntil: 'networkidle' });
         await page.waitForTimeout(250);

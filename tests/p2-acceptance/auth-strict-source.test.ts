@@ -26,7 +26,10 @@ test('strict auth uses pre-enrolled fixture secrets with visible login and chall
   assert.match(setup, /getByLabel\(\/\^password\/i\)\.fill\(password\)/u);
   assert.match(setup, /getByRole\('button', \{ name: \/\^sign in\$\/i \}\)\.click\(\)/u);
   assert.match(setup, /page\.goto\(`\/mfa\/challenge\?next=/u);
-  assert.match(setup, /getByLabel\(\/6-digit code\/i\)\.fill\(generateTotp/u);
+  assert.match(
+    setup,
+    /getByRole\('textbox', \{ name: \/\^authenticator code\$\/i \}\)[\s\S]*\.fill\(generateTotp/u,
+  );
   assert.match(setup, /getByRole\('button', \{ name: \/continue\/i \}\)\.click\(\)/u);
 
   assert.match(setup, /totpSecret/u);
