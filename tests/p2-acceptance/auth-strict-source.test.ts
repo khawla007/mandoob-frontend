@@ -22,7 +22,7 @@ test('strict auth uses pre-enrolled fixture secrets with visible login and chall
     assert.match(setup, new RegExp(`role: '${role}'`, 'u'));
   }
   assert.match(setup, /page\.goto\('\/login'/u);
-  assert.match(setup, /getByLabel\(\/email\/i\)\.fill\(email\)/u);
+  assert.match(setup, /getByRole\('textbox', \{ name: \/\^email\$\/i \}\)\.fill\(email\)/u);
   assert.match(setup, /getByLabel\(\/\^password\/i\)\.fill\(password\)/u);
   assert.match(setup, /getByRole\('button', \{ name: \/\^sign in\$\/i \}\)\.click\(\)/u);
   assert.match(setup, /page\.goto\(`\/mfa\/challenge\?next=/u);

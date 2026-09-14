@@ -170,7 +170,7 @@ for (const cfg of ROLES) {
       if (STRICT && strict) {
         const page = await context.newPage();
         await page.goto('/login', { waitUntil: 'networkidle' });
-        await page.getByLabel(/email/i).fill(email);
+        await page.getByRole('textbox', { name: /^email$/i }).fill(email);
         await page.getByLabel(/^password/i).fill(password);
         await page.getByRole('button', { name: /^sign in$/i }).click();
         const home = expectedHome(cfg.role, strict.tenantSlug);
