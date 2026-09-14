@@ -96,7 +96,7 @@ test.describe('P2.12 Tier C authorization and safe authentication states', () =>
       try {
         await noSecretOrExistenceLeak(page);
         const body = await page.locator('body').innerText();
-        expect(body).not.toMatch(/otpauth:\/\/|[A-Z2-7]{32,}|recovery code/iu);
+        expect(body).not.toMatch(/otpauth:\/\/|[A-Z2-7]{32,}|\b[a-z0-9_-]{5}-[a-z0-9_-]{5}\b/iu);
         expect(new URL(page.url()).origin).toBe(fixture.origin);
       } finally {
         mutationAudit.assertZero();
