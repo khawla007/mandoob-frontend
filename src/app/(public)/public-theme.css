@@ -506,6 +506,7 @@
 }
 .site-public.public-header-frame[data-collapsed='true'] .public-topbar {
   grid-template-rows: 0fr;
+  visibility: hidden;
 }
 .site-public .nav {
   pointer-events: auto;
