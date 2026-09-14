@@ -11,6 +11,13 @@ function isLoopbackHostname(hostname: string): boolean {
   );
 }
 
+function isExplicitLocalAcceptanceOrigin(configured: string): boolean {
+  return (
+    (process.env.P112_ACCEPTANCE_LOCAL_ONLY === '1' && configured === 'http://127.0.0.1:3001') ||
+    (process.env.P2_ACCEPTANCE_LOCAL_ONLY === '1' && configured === 'http://127.0.0.1:3100')
+  );
+}
+
 function trustedApplicationOrigin(): string {
   const configured = process.env.NEXT_PUBLIC_APP_URL;
   if (!configured) {
@@ -24,6 +31,7 @@ function trustedApplicationOrigin(): string {
     const url = new URL(configured);
     const isAllowedProtocol =
       url.protocol === 'https:' ||
+      isExplicitLocalAcceptanceOrigin(configured) ||
       (process.env.NODE_ENV !== 'production' &&
         url.protocol === 'http:' &&
         isLoopbackHostname(url.hostname));
