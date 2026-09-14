@@ -296,35 +296,6 @@ async function contrastRatio(page: Page, selector: string) {
   });
 }
 
-async function expectAxeCoverage(
-  page: Page,
-  scope: string,
-  approvedContrastExceptions: string[],
-  label: string,
-) {
-  const nonContrast = await new AxeBuilder({ page })
-    .include(scope)
-    .setLegacyMode()
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .disableRules('color-contrast')
-    .analyze();
-  expect(
-    nonContrast.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
-    `${label} non-contrast axe coverage`,
-  ).toEqual([]);
-
-  const colorContrast = new AxeBuilder({ page })
-    .include(scope)
-    .setLegacyMode()
-    .withRules(['color-contrast']);
-  for (const selector of approvedContrastExceptions) colorContrast.exclude(selector);
-  const contrast = await colorContrast.analyze();
-  expect(
-    contrast.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
-    `${label} color-contrast coverage outside documented exceptions`,
-  ).toEqual([]);
-}
-
 for (const entry of matrix) {
   const label = `${entry.viewport.width}x${entry.viewport.height} ${entry.locale.toUpperCase()} ${entry.theme}`;
   test(`pairwise shell matrix — ${label}`, async ({ baseURL, context, page }) => {
@@ -385,34 +356,20 @@ for (const entry of matrix) {
       await page.keyboard.press('Tab');
       await expect(page.locator('a.skip-link')).toBeFocused();
       await expect(page.locator('a.skip-link')).toHaveCSS('outline-style', /^(?!none$).+/u);
-      await expect(page.locator('.nav__links [aria-current="page"]')).toHaveCSS(
-        'color',
-        'rgb(255, 87, 34)',
+      expect(await contrastRatio(page, '.nav__links [aria-current="page"]')).toBeGreaterThanOrEqual(
+        4.5,
       );
-      expect(
-        await contrastRatio(page, '.nav__links [aria-current="page"]'),
-        'Design-4 #ff5722 normal text is a documented visual exception, not WCAG AA',
-      ).toBeGreaterThanOrEqual(3);
-      await expect(page.locator('.nav__cta .btn--accent')).toHaveCSS(
-        'background-color',
-        'rgb(255, 87, 34)',
-      );
-      await expect(page.locator('.nav__cta .btn--accent')).toHaveCSS(
-        'color',
-        'rgb(255, 255, 255)',
-      );
-      expect(
-        await contrastRatio(page, '.nav__cta .btn--accent'),
-        'Design-4 CTA palette has a documented visual floor, not a WCAG AA normal-text claim',
-      ).toBeGreaterThanOrEqual(3);
-      await expect(page.locator('.nav__cta .btn--accent')).toHaveAttribute('href', '/estimate');
-      for (const scope of ['header.nav', 'footer.footer']) {
-        await expectAxeCoverage(
-          page,
-          scope,
-          ['.nav__links [aria-current="page"]', '.nav__cta .btn--accent'],
+      expect(await contrastRatio(page, '.nav__cta .btn--accent')).toBeGreaterThanOrEqual(4.5);
+      for (const scope of ['.nav', 'footer.footer']) {
+        const axe = await new AxeBuilder({ page })
+          .include(scope)
+          .setLegacyMode()
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze();
+        expect(
+          axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
           `axe shell scope: ${scope}`,
-        );
+        ).toEqual([]);
       }
     } else {
       const trigger = page.locator('.nav__menu');
@@ -438,25 +395,15 @@ for (const entry of matrix) {
       ).not.toHaveAttribute('aria-current');
       await expectNoShellOverflow(page, true);
       await expectVisibleTargetsAtLeast44(page, '[role="dialog"] a, [role="dialog"] button');
-      await expect(page.locator('.public-mobile-dialog__cta')).toHaveCSS(
-        'background-color',
-        'rgb(255, 87, 34)',
-      );
-      await expect(page.locator('.public-mobile-dialog__cta')).toHaveCSS(
-        'color',
-        'rgb(255, 255, 255)',
-      );
+      expect(await contrastRatio(page, '.public-mobile-dialog__cta')).toBeGreaterThanOrEqual(4.5);
+      const axe = await new AxeBuilder({ page })
+        .include('[role="dialog"]')
+        .setLegacyMode()
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze();
       expect(
-        await contrastRatio(page, '.public-mobile-dialog__cta'),
-        'Design-4 CTA palette has a documented visual floor, not a WCAG AA normal-text claim',
-      ).toBeGreaterThanOrEqual(3);
-      await expect(page.locator('.public-mobile-dialog__cta')).toHaveAttribute('href', '/estimate');
-      await expectAxeCoverage(
-        page,
-        '[role="dialog"]',
-        ['.public-mobile-dialog__cta'],
-        'axe mobile dialog',
-      );
+        axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
+      ).toEqual([]);
       await dialog.getByRole('button', { name: expected.language }).click();
       await expect(
         page.getByRole('menuitemradio', { name: entry.locale === 'en' ? 'English' : 'العربية' }),

@@ -485,7 +485,7 @@
 }
 .site-public .public-topbar__contacts a {
   display: inline-flex;
-  min-block-size: 28px;
+  min-block-size: 44px;
   align-items: center;
   gap: 6px;
   color: #d4d4d8;
@@ -670,7 +670,7 @@
     font-size: 0.6875rem;
   }
 }
-@media (min-width: 1200px) {
+@media (min-width: 1024px) {
   .site-public .nav__links,
   .site-public .nav__cta {
     display: inline-flex;
