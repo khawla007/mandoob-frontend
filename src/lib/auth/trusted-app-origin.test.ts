@@ -92,4 +92,7 @@ test('documents and validates the configured application origin', () => {
 
   assert.match(example, /^NEXT_PUBLIC_APP_URL=/mu);
   assert.match(envContract, /NEXT_PUBLIC_APP_URL:/u);
+  assert.match(envContract, /process\.env\.NODE_ENV === 'production'/u);
+  assert.match(envContract, /productionAppUrl/u);
+  assert.match(envContract, /must use HTTPS in production/u);
 });

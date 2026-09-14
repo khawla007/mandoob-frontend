@@ -13,6 +13,14 @@ const optionalUrl = z.preprocess(
   (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
   z.string().url().optional(),
 );
+const productionAppUrl = z
+  .string()
+  .url()
+  .refine((value) => new URL(value).protocol === 'https:', 'must use HTTPS in production');
+const appUrlSchema =
+  process.env.NODE_ENV === 'production' && process.env.P2_ACCEPTANCE_LOCAL_ONLY !== '1'
+    ? productionAppUrl
+    : optionalUrl;
 const optionalPort = z.preprocess(
   (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
   z.coerce.number().int().positive().max(65_535).optional(),
@@ -23,7 +31,7 @@ const schema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
   NEXT_PUBLIC_ROOT_DOMAIN: z.string().min(3),
-  NEXT_PUBLIC_APP_URL: optionalUrl,
+  NEXT_PUBLIC_APP_URL: appUrlSchema,
 
   RESEND_API_KEY: optionalStr,
   RESEND_FROM_EMAIL: optionalEmail,

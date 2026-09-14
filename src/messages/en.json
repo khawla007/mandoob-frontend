@@ -716,6 +716,7 @@
     "themeUseDark": "Use dark theme",
     "languageChanging": "Changing language…",
     "languageChangeFailed": "Language could not be changed. Try again.",
+    "loadingPage": "Loading page",
     "contactEmailLabel": "Email Mandoob at {email}",
     "contactPhoneLabel": "Call Mandoob at {phone}",
     "footer": {

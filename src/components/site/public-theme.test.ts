@@ -162,9 +162,9 @@ renderTest('design-4 component colors and weights are preserved', () => {
   );
   assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-500\)/u);
   assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
-  assert.match(declarations('.site-public .cell__link'), /color:\s*var\(--accent\)/u);
+  assert.match(declarations('.site-public .cell__link'), /color:\s*var\(--accent-ink\)/u);
   const homeLink = declarations('.site-public .home-text-link');
-  assert.match(homeLink, /color:\s*var\(--accent\)/u);
+  assert.match(homeLink, /color:\s*var\(--accent-ink\)/u);
   assert.match(homeLink, /font-size:\s*var\(--fs-14\)/u);
   assert.match(homeLink, /font-weight:\s*600\b/u);
 });

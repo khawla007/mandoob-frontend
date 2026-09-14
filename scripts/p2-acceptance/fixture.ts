@@ -1,6 +1,5 @@
 #!/usr/bin/env tsx
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { constants } from 'node:fs';
 import { link, lstat, mkdir, open, readFile, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -15,11 +14,17 @@ import {
   parseSupabaseStatus,
 } from './local-target';
 import { generateTotp } from './totp';
+import {
+  ACCEPTANCE_CONFIG,
+  ACCEPTANCE_PROJECT_ID,
+  prepareAcceptanceWorkdir,
+  removeAcceptanceWorkdir,
+  runSupabase,
+} from './supabase-cli';
 
 export const FIXTURE_PREFIX = 'P2.12 Local Acceptance';
-const PROJECT_ID = 'mandoob-p2-12-acceptance';
+const PROJECT_ID = ACCEPTANCE_PROJECT_ID;
 const FIXTURE_DOMAIN = 'p2-12.local';
-const CLI = '/home/ashish-khawla/.npm/_npx/9bc4605d2fcd4ce9/node_modules/supabase/bin/supabase';
 const SECRET_PATH = resolve('tests/.auth/p2-credentials.json');
 
 type Role = 'super_admin' | 'pro' | 'customer' | 'employee';
@@ -660,15 +665,15 @@ async function main() {
   const action = process.argv[2] ?? 'setup';
   if (!['setup', 'verify', 'teardown'].includes(action))
     throw new Error('P2_FIXTURE: expected setup, verify, or teardown');
-  const status = parseSupabaseStatus(
-    execFileSync(CLI, ['status', '-o', 'json'], { encoding: 'utf8' }),
-  );
+  await prepareAcceptanceWorkdir();
+  if (action === 'setup') runSupabase(['start']);
+  const status = parseSupabaseStatus(runSupabase(['status', '-o', 'json']));
   const apiUrl = requiredStatusValue(status, 'API_URL');
   const dbUrl = requiredStatusValue(status, 'DB_URL');
   const storageUrl = requiredStatusValue(status, 'STORAGE_S3_URL');
   const serviceKey = requiredStatusValue(status, 'SERVICE_ROLE_KEY');
   const anonKey = requiredStatusValue(status, 'ANON_KEY');
-  const config = await readFile(resolve('supabase/config.toml'), 'utf8');
+  const config = await readFile(ACCEPTANCE_CONFIG, 'utf8');
   const actualProjectId = /^project_id\s*=\s*"([^"]+)"/mu.exec(config)?.[1] ?? '';
   const { admin, existingUsers } = await runAfterLocalPreflight(
     () =>
@@ -697,7 +702,13 @@ async function main() {
   assertLocalAcceptanceIdentitySet(unexpected.length);
 
   if (action === 'teardown') {
-    execFileSync(CLI, ['db', 'reset'], { stdio: ['ignore', 'ignore', 'ignore'] });
+    const secrets = await readReusableFixtureSecrets(SECRET_PATH);
+    assertReusableFixture(await verifyFixture(admin, secrets.roles), existingUsers, secrets);
+    assertReusableFixtureSnapshot(
+      await readReusableFixtureSnapshot(admin, existingUsers, secrets),
+      secrets,
+    );
+    runSupabase(['stop', '--no-backup']);
     for (const file of [
       SECRET_PATH,
       ...(['admin', 'pro', 'customer', 'employee'] as const).map((role) =>
@@ -708,15 +719,7 @@ async function main() {
         if (error.code !== 'ENOENT') throw error;
       });
     }
-    const resetAdmin = createClient(apiUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    if (
-      (await listAllUsers(resetAdmin)).length !== 0 ||
-      (await count(resetAdmin, 'tenants')) !== 0
-    ) {
-      throw new Error('P2_FIXTURE: teardown invariant failed');
-    }
+    await removeAcceptanceWorkdir();
     process.stdout.write(
       'P2 fixture teardown verified: identities, Company data, and secret artifacts removed.\n',
     );

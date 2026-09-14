@@ -102,7 +102,10 @@ describe('PublicNavLinks renderer contract', () => {
     assert.match(rendererSource, /<PublicLinkPendingIndicator\s*\/>/u);
     assert.match(pendingSource, /useLinkStatus/u);
     assert.match(pendingSource, /role="status"/u);
-    assert.match(pendingSource, /pending\s*\?\s*'Loading page'/u);
+    assert.match(pendingSource, /useTranslations\('site'\)/u);
+    assert.match(pendingSource, /pending\s*\?\s*t\('loadingPage'\)/u);
+    assert.equal(en.site.loadingPage, 'Loading page');
+    assert.equal(ar.site.loadingPage, 'جارٍ تحميل الصفحة');
     assert.match(cssSource, /\.site-public \.public-link-pending__spinner/u);
   });
 });

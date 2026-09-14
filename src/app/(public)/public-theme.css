@@ -406,6 +406,19 @@
   color: var(--public-cta-disabled-text);
   transform: none;
 }
+.site-public .hero__estimate-cta {
+  background: #ff7043;
+  color: #21120d;
+}
+.site-public .hero__estimate-cta:hover {
+  background: #ff865f;
+}
+.site-public .hero__estimate-cta:active {
+  background: #e55c32;
+}
+.site-public .hero__estimate-cta:focus-visible {
+  background: #ff7043;
+}
 .site-public .btn--outline {
   background: var(--paper);
   color: var(--ink);
@@ -4096,7 +4109,7 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: var(--fs-14);
   font-weight: 600;
 }
@@ -5547,7 +5560,7 @@
   align-self: flex-start;
   font-size: var(--fs-14);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .site-public .cell__link span {
   display: inline-block;

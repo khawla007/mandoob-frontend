@@ -712,6 +712,7 @@
     "themeUseDark": "استخدام المظهر الداكن",
     "languageChanging": "جارٍ تغيير اللغة…",
     "languageChangeFailed": "تعذّر تغيير اللغة. حاول مجددًا.",
+    "loadingPage": "جارٍ تحميل الصفحة",
     "contactEmailLabel": "راسل مندوب عبر البريد الإلكتروني {email}",
     "contactPhoneLabel": "اتصل بمندوب على الرقم {phone}",
     "footer": {

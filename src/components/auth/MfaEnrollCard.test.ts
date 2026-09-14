@@ -67,6 +67,8 @@ Module._load = function (request, parent, isMain) {
       'auth.startingMfaSetup': 'Starting…',
       'auth.mfaEnrollmentReady': 'No security change happens until you start setup.',
       'auth.mfaChallengeRequired': 'Confirm your existing authenticator before changing MFA setup.',
+      'auth.mfa.enroll.states.challengeRequired':
+        'Confirm your existing authenticator before changing MFA setup.',
       'auth.completeMfaChallenge': 'Complete MFA challenge',
       'auth.mfaEnrollmentUnavailable':
         'Setup availability could not be confirmed. Refresh before continuing.',

@@ -1,6 +1,7 @@
 'use client';
 import { postJson } from '@/lib/http/post';
 import { sharedSafeDestination } from '@/lib/auth/safe-redirect';
+import { sanitizeMfaCode } from './mfa-state';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -25,6 +26,7 @@ export function MfaEnrollCard({
   const tEnrollment = useTranslations('auth.mfa.enroll');
   const tErrors = useTranslations('errors');
   const inFlight = useRef(false);
+  const feedbackRef = useRef<HTMLParagraphElement>(null);
   const [enroll, setEnroll] = useState<Enroll | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export function MfaEnrollCard({
   const [needsChallenge, setNeedsChallenge] = useState(challengeRequired);
   const [cleanupBlocked, setCleanupBlocked] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [code, setCode] = useState('');
   const [finalizationFailure, setFinalizationFailure] = useState<
     'repairRequired' | 'cleanRollback' | null
   >(null);
@@ -120,8 +123,15 @@ export function MfaEnrollCard({
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const code = new FormData(e.currentTarget).get('code');
     if (!enroll) return;
+    const submittedCode = sanitizeMfaCode(
+      (e.currentTarget.elements.namedItem('code') as HTMLInputElement | null)?.value ?? code,
+    );
+    if (submittedCode.length < 6) {
+      setError(tEnrollment('states.invalidOrExpired'));
+      requestAnimationFrame(() => feedbackRef.current?.focus());
+      return;
+    }
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy('verifying');
@@ -129,7 +139,7 @@ export function MfaEnrollCard({
       try {
         const res = await postJson('/api/v1/auth/mfa/verify', {
           factorId: enroll.factorId,
-          code,
+          code: submittedCode,
           context: 'enroll',
         });
         const data = (await res.json().catch(() => null)) as {
@@ -180,6 +190,7 @@ export function MfaEnrollCard({
           return;
         }
         setEnroll(null);
+        setCode('');
         setRecoveryCodes(data.recoveryCodes);
       } catch {
         setCleanupBlocked(true);
@@ -285,7 +296,7 @@ export function MfaEnrollCard({
       return (
         <div className="space-y-3">
           <p role="alert" className="text-muted-foreground text-sm">
-            {t('mfaChallengeRequired')}
+            {tEnrollment('states.challengeRequired')}
           </p>
           <Link
             href="/mfa/challenge"
@@ -300,7 +311,7 @@ export function MfaEnrollCard({
       <div className="space-y-3">
         <p className="text-muted-foreground text-sm">{t('mfaEnrollmentReady')}</p>
         {error && (
-          <p role="alert" className="text-destructive text-sm">
+          <p ref={feedbackRef} role="alert" tabIndex={-1} className="text-destructive text-sm">
             {error}
           </p>
         )}
@@ -337,14 +348,27 @@ export function MfaEnrollCard({
         <label className="block space-y-1">
           <span className="text-sm font-medium">{t('twoFactorCode')}</span>
           <input
+            id="mfa-enroll-code"
             name="code"
             inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            onChange={(event) => setCode(sanitizeMfaCode(event.currentTarget.value))}
             required
+            minLength={6}
+            maxLength={8}
+            aria-describedby={error ? 'mfa-enroll-feedback' : undefined}
             className="focus-visible:border-ring focus-visible:ring-ring min-h-11 w-full rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
           />
         </label>
         {error && (
-          <p role="alert" className="text-destructive text-sm">
+          <p
+            id="mfa-enroll-feedback"
+            ref={feedbackRef}
+            role="alert"
+            tabIndex={-1}
+            className="text-destructive text-sm"
+          >
             {error}
           </p>
         )}
