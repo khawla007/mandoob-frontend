@@ -6,6 +6,7 @@ import { PagesTable } from '@/components/pages/PagesTable';
 import { clampAdminPage, pageHref } from '@/components/pages/admin-page-state';
 import { requireRole } from '@/lib/auth/require-role';
 import { listAdminCmsPages } from '@/lib/data/pages';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -16,6 +17,7 @@ export default async function AdminPagesPage({
   searchParams: Promise<SearchParams>;
 }) {
   await requireRole('super_admin', 'admin');
+  const t = await getTranslations('admin.cms');
   const rawPage = (await searchParams).page;
   const rawValue = Array.isArray(rawPage) ? rawPage[0] : rawPage;
   const parsed = Number.parseInt(rawValue ?? '1', 10);
@@ -31,29 +33,25 @@ export default async function AdminPagesPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-            Content library
+            {t('pages.eyebrow')}
           </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Pages</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Compose standalone editorial pages, hero treatments, and search metadata.
-          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('pages.title')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('pages.description')}</p>
         </div>
         <Button asChild>
-          <Link href="/admin/pages/new">New page</Link>
+          <Link href="/admin/pages/new">{t('pages.new')}</Link>
         </Button>
       </header>
       <Card>
         <CardHeader>
-          <CardTitle>Page library</CardTitle>
-          <CardDescription>{result.total} total pages · 8 per page</CardDescription>
+          <CardTitle>{t('pages.library')}</CardTitle>
+          <CardDescription>{t('pages.total', { count: result.total, perPage: 8 })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {result.total === 0 ? (
             <div className="rounded-lg border border-dashed py-12 text-center">
-              <p className="font-medium">No pages yet</p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Create the first page to begin the library.
-              </p>
+              <p className="font-medium">{t('pages.empty')}</p>
+              <p className="text-muted-foreground mt-1 text-sm">{t('pages.emptyDescription')}</p>
             </div>
           ) : (
             <>
@@ -62,10 +60,13 @@ export default async function AdminPagesPage({
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-muted-foreground text-sm">
-                  Showing {start + 1}–{Math.min(start + result.pageSize, result.total)} of{' '}
-                  {result.total}
+                  {t('showing', {
+                    from: start + 1,
+                    to: Math.min(start + result.pageSize, result.total),
+                    total: result.total,
+                  })}
                 </p>
-                <nav aria-label="Page library pagination" className="flex gap-2">
+                <nav aria-label={t('pages.pagination')} className="flex gap-2">
                   <Button
                     asChild={currentPage > 1}
                     variant="outline"
@@ -75,12 +76,12 @@ export default async function AdminPagesPage({
                     {currentPage > 1 ? (
                       <Link href={pageHref(currentPage - 1)}>
                         <ChevronLeft />
-                        Previous
+                        {t('previous')}
                       </Link>
                     ) : (
                       <span>
                         <ChevronLeft />
-                        Previous
+                        {t('previous')}
                       </span>
                     )}
                   </Button>
@@ -95,12 +96,12 @@ export default async function AdminPagesPage({
                   >
                     {currentPage < totalPages ? (
                       <Link href={pageHref(currentPage + 1)}>
-                        Next
+                        {t('next')}
                         <ChevronRight />
                       </Link>
                     ) : (
                       <span>
-                        Next
+                        {t('next')}
                         <ChevronRight />
                       </span>
                     )}

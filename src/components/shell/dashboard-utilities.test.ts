@@ -20,6 +20,14 @@ test('account menu keeps identity, role-aware links, and keyboard-managed logout
   assert.match(source, /<LogoutMenuItem/u);
 });
 
+test('account menu trigger has an opaque focus ring and a 44px minimum target', () => {
+  const source = readFileSync(new URL('./DashboardAccountMenu.tsx', import.meta.url), 'utf8');
+  assert.match(source, /className="[^"]*min-h-11[^"]*"/u);
+  assert.match(source, /className="[^"]*min-w-11[^"]*"/u);
+  assert.match(source, /className="[^"]*focus-visible:ring-ring[^"]*"/u);
+  assert.doesNotMatch(source, /focus-visible:ring-ring\/50/u);
+});
+
 test('each role account model points only to an existing settings or account route', async () => {
   const { buildDashboardAccountLinks } = await import('@/lib/shell/dashboard-account-model');
   assert.deepEqual(

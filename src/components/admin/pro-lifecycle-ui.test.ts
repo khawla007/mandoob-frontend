@@ -49,12 +49,14 @@ test('PRO registry dates use explicit locale and Dubai timezone', () => {
 
 test('PRO registry table links to detail and exposes semantic sorting plus narrow scroll', () => {
   const table = read('src/components/admin/ProRegistryTable.tsx');
+  const tablePrimitive = read('src/components/ui/table.tsx');
   assert.match(table, /aria-sort/u);
   assert.match(table, /\/admin\/users\/\$\{row\.id\}/u);
   assert.doesNotMatch(table, /\/edit/u);
-  assert.match(table, /role="region"/u);
-  assert.match(table, /aria-label/u);
-  assert.match(table, /overflow-x-auto/u);
+  assert.match(table, /scrollAreaLabel=\{t\('tableScrollLabel'\)\}/u);
+  assert.doesNotMatch(table, /role="region"/u);
+  assert.match(tablePrimitive, /role=\{scrollAreaLabel \? 'region' : undefined\}/u);
+  assert.match(tablePrimitive, /className=\{cn\([\s\S]*overflow-x-auto/u);
 });
 
 test('generic user rows retain edit links while PRO rows never paginate in client memory', () => {

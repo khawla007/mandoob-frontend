@@ -1,12 +1,13 @@
-import { ProfileTab } from '@/components/account/ProfileTab';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
+
+import { EmployeeReminderPreferenceForm } from '@/components/employee/EmployeeReminderPreferenceForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getEmployeeNotificationPreferences } from '@/lib/data/employee-portal';
-import { updateEmployeeReminderPreferenceAction } from './actions';
+import {
+  authorizeEmployeePortalRead,
+  employeePortalHref,
+} from '@/lib/data/employee-portal-workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,47 +17,51 @@ export default async function EmployeeSettingsPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const { tenant, session } = await requireTenantRouteAccess(slug, ['employee']);
-
-  const prefs = await getEmployeeNotificationPreferences(session.id, tenant.id);
-  const action = updateEmployeeReminderPreferenceAction.bind(null, tenant.slug);
-
+  const access = await authorizeEmployeePortalRead(slug);
+  const [prefs, t] = await Promise.all([
+    getEmployeeNotificationPreferences(access.session.id, access.tenant.id),
+    getTranslations('employee.settings'),
+  ]);
   return (
-    <div className="space-y-6">
-      <ProfileTab />
-
-      <Card>
+    <div className="space-y-5">
+      <Card className="signal-panel">
         <CardHeader>
-          <CardTitle className="text-lg">Renewal reminders</CardTitle>
-          <CardDescription>
-            Visa and Emirates ID reminders for your own employee file.
-          </CardDescription>
+          <CardTitle>{t('accountTitle')}</CardTitle>
+          <CardDescription>{t('accountDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            action={action}
-            className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          <Link
+            className="text-primary text-sm font-semibold"
+            href={employeePortalHref(access.tenant.slug, 'profile')}
           >
-            <div className="flex items-start gap-3">
-              <Checkbox
-                id="renewal_reminders_enabled"
-                name="renewal_reminders_enabled"
-                defaultChecked={prefs.renewalRemindersEnabled}
-              />
-              <div className="grid gap-1">
-                <Label htmlFor="renewal_reminders_enabled">Send renewal reminders</Label>
-                <p className="text-muted-foreground text-sm">
-                  Stored for employee renewal notification delivery.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant={prefs.renewalRemindersEnabled ? 'default' : 'secondary'}>
-                {prefs.renewalRemindersEnabled ? 'Enabled' : 'Disabled'}
-              </Badge>
-              <Button type="submit">Save</Button>
-            </div>
-          </form>
+            {t('openProfile')}
+          </Link>
+        </CardContent>
+      </Card>
+      <Card className="signal-panel">
+        <CardHeader>
+          <CardTitle>{t('remindersTitle')}</CardTitle>
+          <CardDescription>{t('remindersDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EmployeeReminderPreferenceForm
+            slug={access.tenant.slug}
+            enabled={prefs.renewalRemindersEnabled}
+          />
+        </CardContent>
+      </Card>
+      <Card className="signal-panel">
+        <CardHeader>
+          <CardTitle>{t('privacyTitle')}</CardTitle>
+          <CardDescription>{t('privacyDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            className="text-primary text-sm font-semibold"
+            href={employeePortalHref(access.tenant.slug, 'security')}
+          >
+            {t('openSecurity')}
+          </Link>
         </CardContent>
       </Card>
     </div>

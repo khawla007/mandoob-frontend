@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { Mark, mergeAttributes } from '@tiptap/core';
@@ -77,31 +78,33 @@ const InlineHeading = Mark.create({
   },
 });
 
-const extensions = [
-  StarterKit.configure({
-    heading: {
-      levels: [1, 2, 3, 4],
-    },
-  }),
-  Link.configure({
-    openOnClick: false,
-    HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
-  }),
-  Image,
-  Table.configure({ resizable: true }),
-  TableRow,
-  TableHeader,
-  TableCell,
-  InlineHeading,
-  TextAlign.configure({
-    types: ['heading', 'paragraph'],
-    alignments: ['left', 'center', 'right'],
-  }),
-  Underline,
-  TaskList,
-  TaskItem.configure({ nested: true }),
-  Placeholder.configure({ placeholder: 'Write the post content...' }),
-];
+function createExtensions(placeholder: string) {
+  return [
+    StarterKit.configure({
+      heading: {
+        levels: [1, 2, 3, 4],
+      },
+    }),
+    Link.configure({
+      openOnClick: false,
+      HTMLAttributes: { rel: 'noopener noreferrer nofollow' },
+    }),
+    Image,
+    Table.configure({ resizable: true }),
+    TableRow,
+    TableHeader,
+    TableCell,
+    InlineHeading,
+    TextAlign.configure({
+      types: ['heading', 'paragraph'],
+      alignments: ['left', 'center', 'right'],
+    }),
+    Underline,
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    Placeholder.configure({ placeholder }),
+  ];
+}
 
 function contentOrEmpty(content: JsonContent | null | undefined): JsonContent {
   return content && Object.keys(content).length > 0 ? content : emptyContent;
@@ -117,8 +120,13 @@ function toggleInlineHeading(editor: Editor | null, level: 1 | 2 | 3 | 4): void 
 }
 
 export function BlogEditorContent({ initialContent }: { initialContent?: JsonContent | null }) {
+  const t = useTranslations('admin.cms.editorToolbar');
+  const extensions = useMemo(() => createExtensions(t('placeholder')), [t]);
   const initialJson = useMemo(() => contentOrEmpty(initialContent), [initialContent]);
-  const initialHtml = useMemo(() => generateHTML(initialJson, extensions), [initialJson]);
+  const initialHtml = useMemo(
+    () => generateHTML(initialJson, extensions),
+    [extensions, initialJson],
+  );
   const [contentState, setContentState] = useState(() => ({
     json: initialJson,
     html: initialHtml,
@@ -158,7 +166,7 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
   function setLink() {
     if (!editor) return;
     const previousUrl = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('Link URL', previousUrl ?? '');
+    const url = window.prompt(t('linkUrl'), previousUrl ?? '');
     if (url === null) return;
     if (!url.trim()) {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
@@ -169,7 +177,7 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
 
   function addImage() {
     if (!editor) return;
-    const url = window.prompt('Image URL');
+    const url = window.prompt(t('imageUrl'));
     if (!url?.trim()) return;
     editor.chain().focus().setImage({ src: url.trim() }).run();
   }
@@ -180,148 +188,148 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
     <div className="space-y-3">
       <input type="hidden" name="contentJson" value={JSON.stringify(contentState.json)} readOnly />
       <input type="hidden" name="contentHtml" value={contentState.html} readOnly />
-      <div className="border-border/70 overflow-hidden rounded-lg border">
+      <div className="border-border/70 focus-within:ring-ring overflow-hidden rounded-lg border focus-within:ring-2">
         <div className="bg-muted/40 flex flex-wrap gap-1 border-b p-2">
           <ToolbarButton
-            label="Bold"
+            label={t('bold')}
             active={hasTextSelection && editor?.isActive('bold')}
             onClick={() => editor?.chain().focus().toggleBold().run()}
           >
             <Bold />
           </ToolbarButton>
           <ToolbarButton
-            label="Italic"
+            label={t('italic')}
             active={hasTextSelection && editor?.isActive('italic')}
             onClick={() => editor?.chain().focus().toggleItalic().run()}
           >
             <Italic />
           </ToolbarButton>
           <ToolbarButton
-            label="Underline"
+            label={t('underline')}
             active={hasTextSelection && editor?.isActive('underline')}
             onClick={() => editor?.chain().focus().toggleUnderline().run()}
           >
             <UnderlineIcon />
           </ToolbarButton>
           <ToolbarButton
-            label="Strikethrough"
+            label={t('strikethrough')}
             active={hasTextSelection && editor?.isActive('strike')}
             onClick={() => editor?.chain().focus().toggleStrike().run()}
           >
             <Strikethrough />
           </ToolbarButton>
           <ToolbarButton
-            label="Heading 1"
+            label={t('heading1')}
             active={hasTextSelection && editor?.isActive('inlineHeading', { level: 1 })}
             onClick={() => toggleInlineHeading(editor, 1)}
           >
             <Heading1 />
           </ToolbarButton>
           <ToolbarButton
-            label="Heading 2"
+            label={t('heading2')}
             active={hasTextSelection && editor?.isActive('inlineHeading', { level: 2 })}
             onClick={() => toggleInlineHeading(editor, 2)}
           >
             <Heading2 />
           </ToolbarButton>
           <ToolbarButton
-            label="Heading 3"
+            label={t('heading3')}
             active={hasTextSelection && editor?.isActive('inlineHeading', { level: 3 })}
             onClick={() => toggleInlineHeading(editor, 3)}
           >
             <Heading3 />
           </ToolbarButton>
           <ToolbarButton
-            label="Heading 4"
+            label={t('heading4')}
             active={hasTextSelection && editor?.isActive('inlineHeading', { level: 4 })}
             onClick={() => toggleInlineHeading(editor, 4)}
           >
             <Heading4 />
           </ToolbarButton>
           <ToolbarButton
-            label="Align left"
+            label={t('alignLeft')}
             active={hasTextSelection && editor?.isActive({ textAlign: 'left' })}
             onClick={() => editor?.chain().focus().setTextAlign('left').run()}
           >
             <AlignLeft />
           </ToolbarButton>
           <ToolbarButton
-            label="Align center"
+            label={t('alignCenter')}
             active={hasTextSelection && editor?.isActive({ textAlign: 'center' })}
             onClick={() => editor?.chain().focus().setTextAlign('center').run()}
           >
             <AlignCenter />
           </ToolbarButton>
           <ToolbarButton
-            label="Align right"
+            label={t('alignRight')}
             active={hasTextSelection && editor?.isActive({ textAlign: 'right' })}
             onClick={() => editor?.chain().focus().setTextAlign('right').run()}
           >
             <AlignRight />
           </ToolbarButton>
           <ToolbarButton
-            label="Bullet list"
+            label={t('bulletList')}
             active={hasTextSelection && editor?.isActive('bulletList')}
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
           >
             <List />
           </ToolbarButton>
           <ToolbarButton
-            label="Ordered list"
+            label={t('orderedList')}
             active={hasTextSelection && editor?.isActive('orderedList')}
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
           >
             <ListOrdered />
           </ToolbarButton>
           <ToolbarButton
-            label="Task list"
+            label={t('taskList')}
             active={hasTextSelection && editor?.isActive('taskList')}
             onClick={() => editor?.chain().focus().toggleTaskList().run()}
           >
             <ListChecks />
           </ToolbarButton>
           <ToolbarButton
-            label="Quote"
+            label={t('quote')}
             active={hasTextSelection && editor?.isActive('blockquote')}
             onClick={() => editor?.chain().focus().toggleBlockquote().run()}
           >
             <Quote />
           </ToolbarButton>
           <ToolbarButton
-            label="Code block"
+            label={t('codeBlock')}
             active={hasTextSelection && editor?.isActive('codeBlock')}
             onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
           >
             <Code2 />
           </ToolbarButton>
           <ToolbarButton
-            label="Divider"
+            label={t('divider')}
             onClick={() => editor?.chain().focus().setHorizontalRule().run()}
           >
             <Minus />
           </ToolbarButton>
           <ToolbarButton
-            label="Link"
+            label={t('link')}
             active={hasTextSelection && editor?.isActive('link')}
             onClick={setLink}
           >
             <LinkIcon />
           </ToolbarButton>
-          <ToolbarButton label="Image URL" onClick={addImage}>
+          <ToolbarButton label={t('imageUrl')} onClick={addImage}>
             <ImageIcon />
           </ToolbarButton>
           <ToolbarButton
-            label="Insert table"
+            label={t('insertTable')}
             onClick={() =>
               editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
             }
           >
             <Table2 />
           </ToolbarButton>
-          <ToolbarButton label="Undo" onClick={() => editor?.chain().focus().undo().run()}>
+          <ToolbarButton label={t('undo')} onClick={() => editor?.chain().focus().undo().run()}>
             <Undo2 />
           </ToolbarButton>
-          <ToolbarButton label="Redo" onClick={() => editor?.chain().focus().redo().run()}>
+          <ToolbarButton label={t('redo')} onClick={() => editor?.chain().focus().redo().run()}>
             <Redo2 />
           </ToolbarButton>
         </div>

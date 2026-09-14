@@ -31,6 +31,10 @@ test('dashboard shell exposes one top-level main landmark', () => {
   assert.match(layout, /<DashboardSkipLink \/>/u);
 });
 
+test('dashboard skip-link target receives programmatic focus without entering the tab order', () => {
+  assert.match(layout, /<div id="main-content" tabIndex=\{-1\}/u);
+});
+
 test('dashboard shell exposes nav-kind hooks for PRO-only Signal Studio styling', () => {
   assert.match(layout, /className="dashboard-surface"/u);
   assert.match(layout, /<SidebarProvider[\s\S]{0,180}data-nav-kind=\{navKind\}/);

@@ -2,12 +2,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { MeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 import { retryMeetingSummaryAction } from '@/app/(tenant)/t/[tenant]/(pro)/meetings/actions';
+import { getTranslations } from 'next-intl/server';
 
-function statusLabel(status: MeetingAiSummary['status']) {
-  return status.replace('_', ' ');
-}
-
-export function MeetingAiSummaryCard({
+export async function MeetingAiSummaryCard({
   meetingId,
   slug,
   summary,
@@ -20,19 +17,18 @@ export function MeetingAiSummaryCard({
     return null;
   }
 
+  const t = await getTranslations('meetingOperations.summary');
+
   const canRetry = summary.status === 'failed' || summary.status === 'completed';
 
   return (
     <div className="border-border bg-muted/20 mt-3 rounded-md border p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="font-medium">AI summary</span>
+          <span className="font-medium">{t('title')}</span>
           <Badge variant={summary.status === 'completed' ? 'default' : 'secondary'}>
-            {statusLabel(summary.status)}
+            {t(`statuses.${summary.status}`)}
           </Badge>
-          {summary.errorCode ? (
-            <span className="text-muted-foreground text-xs">{summary.errorCode}</span>
-          ) : null}
         </div>
         {canRetry ? (
           <form
@@ -42,7 +38,7 @@ export function MeetingAiSummaryCard({
             }}
           >
             <Button type="submit" size="sm" variant="ghost">
-              {summary.status === 'completed' ? 'Regenerate' : 'Retry'}
+              {summary.status === 'completed' ? t('regenerate') : t('retry')}
             </Button>
           </form>
         ) : null}
@@ -59,10 +55,10 @@ export function MeetingAiSummaryCard({
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{item.title}</span>
-                <Badge variant="outline">{item.priority}</Badge>
+                <Badge variant="outline">{t(`priorities.${item.priority}`)}</Badge>
               </div>
               <div className="text-muted-foreground mt-1 text-xs">
-                {item.owner_label ?? 'Unassigned'}
+                {item.owner_label ?? t('unassigned')}
                 {item.due_date ? ` · ${item.due_date}` : ''}
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +15,9 @@ type MediaPreview = {
 };
 
 export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | null }) {
+  const t = useTranslations('admin.cms.media');
   const [media, setMedia] = useState<MediaPreview | null>(
-    initialMediaId ? { id: initialMediaId, url: null, name: 'Existing featured image' } : null,
+    initialMediaId ? { id: initialMediaId, url: null, name: null } : null,
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -29,7 +31,7 @@ export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | n
     startTransition(async () => {
       const result = await uploadBlogMediaAction(formData);
       if (!result.ok) {
-        setError(result.error);
+        setError(t('uploadError'));
         return;
       }
       setMedia({ id: result.data.id, url: result.data.publicUrl, name: file.name });
@@ -53,17 +55,19 @@ export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | n
             />
           ) : (
             <div className="bg-muted text-muted-foreground flex aspect-video items-center justify-center text-sm">
-              Featured media set
+              {t('featuredSet')}
             </div>
           )}
           <div className="flex items-center justify-between gap-2 p-2">
-            <span className="text-muted-foreground truncate text-xs">{media.name ?? media.id}</span>
+            <span className="text-muted-foreground truncate text-xs">
+              {media.name ?? t('existingFeatured')}
+            </span>
             <Button
               type="button"
               size="icon-xs"
               variant="ghost"
               onClick={() => setMedia(null)}
-              aria-label="Remove featured image"
+              aria-label={t('removeFeatured')}
             >
               <X />
             </Button>
@@ -74,6 +78,7 @@ export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | n
         <Input
           ref={inputRef}
           type="file"
+          aria-label={t('uploadFeatured')}
           accept="image/jpeg,image/png,image/webp,image/avif"
           disabled={isPending}
           onChange={(event) => upload(event.currentTarget.files?.[0] ?? null)}
@@ -84,9 +89,13 @@ export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | n
           variant="outline"
           disabled={isPending}
           onClick={() => inputRef.current?.click()}
-          aria-label="Upload featured image"
+          aria-label={t('uploadFeatured')}
         >
-          {isPending ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+          {isPending ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" />
+          ) : (
+            <ImagePlus />
+          )}
         </Button>
       </div>
       {error ? <p className="text-destructive text-xs">{error}</p> : null}

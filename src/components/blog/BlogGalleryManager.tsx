@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useRef, useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowDown, ArrowUp, ImagePlus, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,8 +24,9 @@ function moveItem(items: GalleryItem[], from: number, to: number): GalleryItem[]
 }
 
 export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?: string[] }) {
+  const t = useTranslations('admin.cms.media');
   const [items, setItems] = useState<GalleryItem[]>(
-    initialMediaIds.map((id) => ({ id, url: null, name: 'Existing gallery image' })),
+    initialMediaIds.map((id) => ({ id, url: null, name: null })),
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -39,7 +41,7 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
     startTransition(async () => {
       const result = await uploadBlogMediaAction(formData);
       if (!result.ok) {
-        setError(result.error);
+        setError(t('uploadError'));
         return;
       }
       setItems((current) => [
@@ -59,6 +61,7 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
         <Input
           ref={inputRef}
           type="file"
+          aria-label={t('uploadGallery')}
           accept="image/jpeg,image/png,image/webp,image/avif"
           disabled={isPending}
           onChange={(event) => upload(event.currentTarget.files)}
@@ -69,15 +72,19 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
           variant="outline"
           disabled={isPending}
           onClick={() => inputRef.current?.click()}
-          aria-label="Upload gallery image"
+          aria-label={t('uploadGallery')}
         >
-          {isPending ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+          {isPending ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" />
+          ) : (
+            <ImagePlus />
+          )}
         </Button>
       </div>
       {error ? <p className="text-destructive text-xs">{error}</p> : null}
       {items.length === 0 ? (
         <div className="border-border/70 text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
-          No gallery images yet.
+          {t('galleryEmpty')}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,11 +101,13 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
                 />
               ) : (
                 <div className="bg-muted text-muted-foreground flex aspect-[3/2] items-center justify-center text-xs">
-                  Gallery media set
+                  {t('gallerySet')}
                 </div>
               )}
               <div className="space-y-2 p-2">
-                <div className="text-muted-foreground truncate text-xs">{item.name ?? item.id}</div>
+                <div className="text-muted-foreground truncate text-xs">
+                  {item.name ?? t('existingGallery')}
+                </div>
                 <div className="flex justify-between gap-1">
                   <div className="flex gap-1">
                     <Button
@@ -107,7 +116,7 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
                       variant="ghost"
                       disabled={index === 0}
                       onClick={() => setItems((current) => moveItem(current, index, index - 1))}
-                      aria-label="Move image up"
+                      aria-label={t('moveUp')}
                     >
                       <ArrowUp />
                     </Button>
@@ -117,7 +126,7 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
                       variant="ghost"
                       disabled={index === items.length - 1}
                       onClick={() => setItems((current) => moveItem(current, index, index + 1))}
-                      aria-label="Move image down"
+                      aria-label={t('moveDown')}
                     >
                       <ArrowDown />
                     </Button>
@@ -129,7 +138,7 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
                     onClick={() =>
                       setItems((current) => current.filter((row) => row.id !== item.id))
                     }
-                    aria-label="Remove image"
+                    aria-label={t('removeImage')}
                   >
                     <X />
                   </Button>

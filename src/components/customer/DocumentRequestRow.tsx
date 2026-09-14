@@ -1,108 +1,125 @@
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+
 import { Badge } from '@/components/ui/badge';
-import { UploadDocumentDialog } from './UploadDocumentDialog';
+import type {
+  CustomerDocumentRequest,
+  CustomerSubmittedDocument,
+} from '@/lib/data/customer-document-center';
 import { OpenSignedUrlButton } from './OpenSignedUrlButton';
-import type { DocumentListEntry, OpenRequestEntry } from '@/lib/data/documents';
+import { UploadDocumentDialog } from './UploadDocumentDialog';
 
-type ReviewStatus = NonNullable<DocumentListEntry['currentVersion']>['reviewStatus'];
+type Props =
+  | {
+      variant: 'request';
+      slug: string;
+      request: CustomerDocumentRequest;
+    }
+  | { variant: 'submitted'; slug: string; document: CustomerSubmittedDocument };
 
-function reviewBadgeFor(
-  status: ReviewStatus,
-  labels: { pending: string; approved: string; rejected: string },
-): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
-  if (status === 'pending') return { label: labels.pending, variant: 'secondary' };
-  if (status === 'approved') return { label: labels.approved, variant: 'default' };
-  return { label: labels.rejected, variant: 'destructive' };
-}
+export async function DocumentRequestRow(props: Props) {
+  const [t, docTypes, locale] = await Promise.all([
+    getTranslations('customer.documentCenter'),
+    getTranslations('customer.docTypeLabels'),
+    getLocale(),
+  ]);
+  const timestamp = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeZone: 'Asia/Dubai',
+  });
 
-function dueLine(iso: string | null): string | null {
-  if (!iso) return null;
-  const days = Math.round((new Date(iso).getTime() - Date.now()) / 864e5);
-  if (days < 0) return `${Math.abs(days)} days overdue`;
-  if (days === 0) return 'Due today';
-  if (days === 1) return 'Due tomorrow';
-  return `Due in ${days} days · ${iso.slice(0, 10)}`;
-}
-
-type AwaitingProps = {
-  variant: 'awaiting';
-  slug: string;
-  request: OpenRequestEntry;
-  rejection: { note: string | null; reviewedAt: string } | null;
-};
-
-type SubmittedProps = {
-  variant: 'submitted';
-  slug: string;
-  doc: DocumentListEntry;
-};
-
-export async function DocumentRequestRow(props: AwaitingProps | SubmittedProps) {
-  const t = await getTranslations('customer');
-  const tDocTypes = await getTranslations('customer.docTypeLabels');
-  const reviewLabels = {
-    pending: t('pendingReview'),
-    approved: t('approved'),
-    rejected: t('rejected'),
-  };
-  if (props.variant === 'awaiting') {
-    const { slug, request, rejection } = props;
-    const due = dueLine(request.dueAt);
+  if (props.variant === 'request') {
+    const { request, slug } = props;
+    const currentSubmission = request.submission.kind === 'current' ? request.submission : null;
+    const rejected = currentSubmission?.reviewStatus === 'rejected';
+    const canUpload = request.submission.kind === 'none' || rejected;
     return (
-      <li className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0">
-        <div className="min-w-0">
-          <div className="text-sm font-medium">{request.label}</div>
-          <div className="text-muted-foreground mt-0.5 text-xs">
-            {tDocTypes(request.docType)}
-            {due && <> · {due}</>}
-          </div>
-          {request.notes && (
-            <div className="text-muted-foreground mt-1 text-xs">{request.notes}</div>
-          )}
-          {rejection && (
-            <div className="border-destructive/40 bg-destructive/5 text-destructive mt-2 rounded-md border px-2 py-1.5 text-xs">
-              <span className="font-medium">{t('reviewerNote')}</span>{' '}
-              {rejection.note ?? t('pleaseReupload')}
+      <li className="flex min-w-0 flex-wrap items-start justify-between gap-4 py-4 first:pt-0">
+        <div className="max-w-2xl min-w-0">
+          <p className="font-medium">{request.label}</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            {docTypes(request.docType)} ·{' '}
+            {request.dueAt
+              ? t('due', { date: timestamp.format(new Date(request.dueAt)) })
+              : t('noDueDate')}
+          </p>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {request.instructions ?? t('instructionsUnavailable')}
+          </p>
+          {rejected ? (
+            <div className="border-destructive/40 bg-destructive/5 text-destructive mt-3 rounded-md border p-2 text-sm">
+              <span className="font-medium">{t('rejectionReason')}</span>{' '}
+              {currentSubmission?.rejectionReason ?? t('rejectionReasonUnavailable')}
             </div>
-          )}
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={rejection ? 'destructive' : 'secondary'}>
-            {rejection ? t('reUploadNeeded') : t('requested')}
+          <Badge variant={rejected ? 'destructive' : 'secondary'}>
+            {request.submission.kind === 'unavailable'
+              ? t('sourceError')
+              : currentSubmission
+                ? t(`reviewStatus.${currentSubmission.reviewStatus}`)
+                : t('uploadRequired')}
           </Badge>
-          <UploadDocumentDialog
-            slug={slug}
-            docType={request.docType}
-            requestId={request.id}
-            label={request.label}
-          />
+          {canUpload ? (
+            <UploadDocumentDialog
+              slug={slug}
+              docType={request.docType}
+              requestId={request.id}
+              label={request.label}
+            />
+          ) : null}
         </div>
       </li>
     );
   }
 
-  const { slug, doc } = props;
-  const version = doc.currentVersion;
-  const badge = version ? reviewBadgeFor(version.reviewStatus, reviewLabels) : null;
-  const title = doc.label ?? tDocTypes(doc.docType);
-
+  const { document, slug } = props;
+  const version = document.currentVersion;
+  const title = document.label ?? docTypes(document.docType);
   return (
-    <li className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0">
-      <div className="min-w-0">
-        <div className="text-sm font-medium">{title}</div>
-        <div className="text-muted-foreground mt-0.5 text-xs">
-          {tDocTypes(doc.docType)}
-          {version && <> · uploaded {new Date(version.createdAt).toLocaleDateString()}</>}
-        </div>
-        {version?.reviewNote && version.reviewStatus === 'rejected' && (
-          <div className="border-destructive/40 bg-destructive/5 text-destructive mt-2 rounded-md border px-2 py-1.5 text-xs">
-            <span className="font-medium">{t('reviewerNote')}</span> {version.reviewNote}
+    <li className="flex min-w-0 flex-wrap items-start justify-between gap-4 py-4 first:pt-0">
+      <div className="max-w-2xl min-w-0">
+        <p className="font-medium">{title}</p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          {docTypes(document.docType)}
+          {version
+            ? ` · ${t('uploaded', { date: timestamp.format(new Date(version.uploadedAt)) })}`
+            : ''}
+        </p>
+        {version ? (
+          <>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {t('fileMeta', {
+                mime: version.mimeType,
+                size: Math.ceil(version.sizeBytes / 1024),
+              })}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Badge variant="outline">{t('currentVersion')}</Badge>
+              <Badge variant="outline">{t(`scanStatus.${version.scanStatus}`)}</Badge>
+              <Badge variant={version.reviewStatus === 'rejected' ? 'destructive' : 'secondary'}>
+                {t(`reviewStatus.${version.reviewStatus}`)}
+              </Badge>
+            </div>
+          </>
+        ) : null}
+        {version?.reviewStatus === 'rejected' ? (
+          <div className="border-destructive/40 bg-destructive/5 text-destructive mt-3 rounded-md border p-2 text-sm">
+            <span className="font-medium">{t('rejectionReason')}</span>{' '}
+            {version.rejectionReason ?? t('rejectionReasonUnavailable')}
           </div>
-        )}
+        ) : null}
       </div>
       <div className="flex items-center gap-2">
-        {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
-        {version && <OpenSignedUrlButton slug={slug} versionId={version.id} />}
+        {version?.reviewStatus === 'rejected' && document.requestId ? (
+          <UploadDocumentDialog
+            slug={slug}
+            docType={document.docType}
+            requestId={document.requestId}
+            label={title}
+          />
+        ) : null}
+        {version ? <OpenSignedUrlButton slug={slug} versionId={version.id} /> : null}
       </div>
     </li>
   );

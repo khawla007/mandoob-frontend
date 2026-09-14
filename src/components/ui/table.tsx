@@ -4,9 +4,25 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-function Table({ className, ...props }: React.ComponentProps<'table'>) {
+type TableProps = React.ComponentProps<'table'> & {
+  containerClassName?: string;
+  scrollAreaLabel?: string;
+};
+
+function Table({ className, containerClassName, scrollAreaLabel, ...props }: TableProps) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div
+      data-slot="table-container"
+      className={cn(
+        'relative w-full overflow-x-auto',
+        containerClassName,
+        scrollAreaLabel &&
+          'focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
+      )}
+      role={scrollAreaLabel ? 'region' : undefined}
+      aria-label={scrollAreaLabel}
+      tabIndex={scrollAreaLabel ? 0 : undefined}
+    >
       <table
         data-slot="table"
         className={cn('w-full caption-bottom text-sm', className)}

@@ -46,7 +46,8 @@ next-env.d.ts
 .claude/
 
 # playwright storage states (per-role auth for the launch a11y gate)
-tests/.auth/*.json
+tests/.auth/**
+!tests/.auth/
 !tests/.auth/.gitkeep
 
 # playwright artifacts

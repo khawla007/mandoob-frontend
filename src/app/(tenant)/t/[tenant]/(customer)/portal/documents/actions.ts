@@ -4,17 +4,25 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { ApiError } from '@/lib/errors';
-import { requireRole } from '@/lib/auth/require-role';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
-import { resolveTenantBySlug } from '@/lib/data/tenant';
-import { readSelfCustomer } from '@/lib/data/account-self';
-import { getDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
+import { requireAuthorizedCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
+import { getCompanyDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
 import { customerUploadActionSchema } from '@/lib/validation/document';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
-  | { ok: false; error: string; code: string };
+  | { ok: false; code: CustomerDocumentActionCode };
+
+export type CustomerDocumentActionCode =
+  | 'VALIDATION_FAILED'
+  | 'PAYLOAD_EMPTY'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'PAYLOAD_TOO_LARGE'
+  | 'FILE_REJECTED_BY_SCAN'
+  | 'SCANNER_UNAVAILABLE'
+  | 'DOCUMENT_UNAVAILABLE'
+  | 'UPLOAD_FAILED'
+  | 'OPEN_FAILED';
 
 type CustomerCallerCtx = {
   caller: { id: string; tenantId: string };
@@ -25,37 +33,37 @@ type CustomerCallerCtx = {
 };
 
 async function resolveCustomerCallerCtx(slug: string): Promise<CustomerCallerCtx> {
-  const session = await requireRole('customer');
-  if (!session.tenantId) {
-    throw new ApiError('FORBIDDEN', 'Session missing tenant binding', 403);
-  }
-  const tenant = await resolveTenantBySlug(slug);
-  if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
-  if (session.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'Cross-tenant access denied', 403);
-  }
-  await requireActiveTenant(tenant.id);
-
-  const customer = await readSelfCustomer();
-  if (!customer.linkedCompanyId) {
-    throw new ApiError(
-      'NO_LINKED_COMPANY',
-      'Account is not linked to a company. Contact Mandoob support to link it.',
-      403,
-    );
-  }
+  const access = await requireAuthorizedCustomerLinkedCompanyRead(slug);
 
   const hdr = await headers();
   const ip = hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const userAgent = hdr.get('user-agent') ?? null;
 
   return {
-    caller: { id: session.id, tenantId: session.tenantId },
-    tenant: { id: tenant.id, slug: tenant.slug },
-    linkedCompanyId: customer.linkedCompanyId,
+    caller: { id: access.session.id, tenantId: access.tenant.id },
+    tenant: { id: access.tenant.id, slug: access.tenant.slug },
+    linkedCompanyId: access.company.id,
     ip,
     userAgent,
   };
+}
+
+function safeCustomerDocumentError(
+  error: ApiError,
+  fallback: 'UPLOAD_FAILED' | 'OPEN_FAILED',
+): ActionResult<never> {
+  const safeCodes: Partial<Record<string, CustomerDocumentActionCode>> = {
+    VALIDATION_FAILED: 'VALIDATION_FAILED',
+    PAYLOAD_EMPTY: 'PAYLOAD_EMPTY',
+    UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
+    PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
+    FILE_REJECTED_BY_SCAN: 'FILE_REJECTED_BY_SCAN',
+    SCANNER_UNAVAILABLE: 'SCANNER_UNAVAILABLE',
+    FORBIDDEN: 'DOCUMENT_UNAVAILABLE',
+    NOT_FOUND: 'DOCUMENT_UNAVAILABLE',
+    NO_LINKED_COMPANY: 'DOCUMENT_UNAVAILABLE',
+  };
+  return { ok: false, code: safeCodes[error.code] ?? fallback };
 }
 
 async function assertRequestBelongsToCompany(args: {
@@ -78,8 +86,8 @@ async function assertRequestBelongsToCompany(args: {
   if (!data) {
     throw new ApiError('FORBIDDEN', 'Request not found for this company', 403);
   }
-  if (data.status === 'cancelled') {
-    throw new ApiError('FORBIDDEN', 'Request has been cancelled', 403);
+  if (data.status !== 'pending') {
+    throw new ApiError('FORBIDDEN', 'Request is not awaiting upload', 403);
   }
 }
 
@@ -88,9 +96,10 @@ export async function uploadDocumentAction(
   formData: FormData,
 ): Promise<ActionResult<{ documentId: string; versionId: string }>> {
   try {
+    const ctx = await resolveCustomerCallerCtx(slug);
     const file = formData.get('file');
     if (!(file instanceof File)) {
-      return { ok: false, error: 'File missing from upload', code: 'PAYLOAD_EMPTY' };
+      return { ok: false, code: 'PAYLOAD_EMPTY' };
     }
 
     const parsed = customerUploadActionSchema.safeParse({
@@ -99,10 +108,8 @@ export async function uploadDocumentAction(
       label: formData.get('label') ?? undefined,
     });
     if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'VALIDATION_FAILED' };
+      return { ok: false, code: 'VALIDATION_FAILED' };
     }
-
-    const ctx = await resolveCustomerCallerCtx(slug);
 
     if (parsed.data.request_id) {
       await assertRequestBelongsToCompany({
@@ -141,9 +148,9 @@ export async function uploadDocumentAction(
       data: { documentId: result.documentId, versionId: result.versionId },
     };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'UPLOAD_FAILED');
     console.error('uploadDocumentAction unexpected error', e);
-    return { ok: false, error: 'Could not upload document', code: 'INTERNAL' };
+    return { ok: false, code: 'UPLOAD_FAILED' };
   }
 }
 
@@ -183,11 +190,11 @@ export async function getCustomerDocumentSignedUrlAction(
       throw new ApiError('FORBIDDEN', 'Version not accessible', 403);
     }
 
-    const signed = await getDocumentSignedUrl(ctx.tenant.id, versionId);
+    const signed = await getCompanyDocumentSignedUrl(ctx.tenant.id, ctx.linkedCompanyId, versionId);
     return { ok: true, data: signed };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, error: e.message, code: e.code };
+    if (e instanceof ApiError) return safeCustomerDocumentError(e, 'OPEN_FAILED');
     console.error('getCustomerDocumentSignedUrlAction unexpected error', e);
-    return { ok: false, error: 'Could not sign URL', code: 'INTERNAL' };
+    return { ok: false, code: 'OPEN_FAILED' };
   }
 }

@@ -14,7 +14,7 @@ export function AccountTabs({ role }: { role: Role }) {
   const tAccount = useTranslations('account');
   const tabs = visibleTabs(role);
   return (
-    <nav role="tablist" aria-label={tAccount('tablistLabel')} className="border-b">
+    <nav aria-label={tAccount('tablistLabel')} className="border-b">
       <ul className="-mb-px flex flex-wrap gap-1">
         {tabs.map((tab) => {
           const active = pathname === tab.href;
@@ -22,8 +22,7 @@ export function AccountTabs({ role }: { role: Role }) {
           return (
             <li key={tab.href}>
               <Link
-                role="tab"
-                aria-selected={active}
+                aria-current={active ? 'page' : undefined}
                 href={tab.href}
                 className={cn(
                   'inline-block border-b-2 px-3 py-2 text-sm font-medium transition-colors',

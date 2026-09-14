@@ -184,9 +184,13 @@ describe('SiteHeader responsive navigation integration', () => {
     assert.match(headerSource, /href="\/login"[^>]*>\s*\{tAuth\('signIn'\)\}/u);
     assert.match(
       headerSource,
-      /\{session \? \([^]*<UserMenu[^]*\) : \([^]*href="\/login"[^]*\)\}\s*<Link className="btn btn--accent btn--sm" href="\/estimate">\s*\{tSite\('getEstimate'\)\}/u,
+      /\{session \? \([^]*<UserMenu[^]*\) : \([^]*href="\/login"[^]*\)\}/u,
     );
-    assert.equal(headerSource.match(/className="btn btn--accent btn--sm"/gu)?.length, 1);
+    assert.equal(headerSource.match(/href="\/estimate"/gu)?.length, 1);
+    assert.match(
+      headerSource,
+      /contrastMode === 'authenticated' && session \? 'btn--authenticated-accent' : ''/u,
+    );
     assert.doesNotMatch(headerSource, /tCommon\('getStarted'\)/u);
   });
 

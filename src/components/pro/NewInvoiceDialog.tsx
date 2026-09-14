@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,13 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createInvoiceAction } from '@/app/(tenant)/t/[tenant]/(pro)/payments/actions';
 
-export function NewInvoiceDialog({
-  slug,
-  triggerLabel = 'New invoice',
-}: {
-  slug: string;
-  triggerLabel?: string;
-}) {
+export function NewInvoiceDialog({ slug, triggerLabel }: { slug: string; triggerLabel?: string }) {
+  const t = useTranslations('pro');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -45,7 +41,7 @@ export function NewInvoiceDialog({
     startTransition(async () => {
       const result = await createInvoiceAction(slug, { label, amount, dueAt });
       if (!result.ok) {
-        setError(`${result.code}: ${result.error}`);
+        setError(t('invoiceCreateErrorDescription'));
         return;
       }
       reset();
@@ -63,37 +59,35 @@ export function NewInvoiceDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button>{triggerLabel}</Button>
+        <Button>{triggerLabel ?? t('invoiceNew')}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New invoice</DialogTitle>
-          <DialogDescription>
-            Issue an AED invoice and notify the linked customer.
-          </DialogDescription>
+          <DialogTitle>{t('invoiceNew')}</DialogTitle>
+          <DialogDescription>{t('invoiceCreateDescription')}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={onSubmit}>
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Could not create invoice</AlertTitle>
+              <AlertTitle>{t('invoiceCreateErrorTitle')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           <div className="grid gap-2">
-            <Label htmlFor="invoice-label">Label</Label>
+            <Label htmlFor="invoice-label">{t('invoiceLabel')}</Label>
             <Input
               id="invoice-label"
               required
               maxLength={160}
-              placeholder="Trade license renewal"
+              placeholder={t('invoiceLabelPlaceholder')}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="invoice-amount">Amount AED</Label>
+            <Label htmlFor="invoice-amount">{t('invoiceAmountAed')}</Label>
             <Input
               id="invoice-amount"
               required
@@ -105,7 +99,7 @@ export function NewInvoiceDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="invoice-due">Due date</Label>
+            <Label htmlFor="invoice-due">{t('invoiceDueDate')}</Label>
             <Input
               id="invoice-due"
               type="date"
@@ -116,7 +110,7 @@ export function NewInvoiceDialog({
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Issuing…' : 'Issue invoice'}
+              {pending ? t('invoiceIssuing') : t('invoiceIssue')}
             </Button>
           </DialogFooter>
         </form>

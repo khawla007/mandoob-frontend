@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
 import { getReceiptPayloadForCustomer } from '@/lib/data/invoices';
 import { generateReceiptPdf, receiptFilename } from '@/lib/pdf/receipt';
 
@@ -8,9 +8,15 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string; invoiceId: string }> },
 ) {
   const { tenant: slug, invoiceId } = await params;
-  const { tenant, session } = await requireTenantRouteAccess(slug, ['customer']);
+  const access = await authorizeCustomerLinkedCompanyRead(slug);
+  if (access.kind !== 'authorized') notFound();
 
-  const receipt = await getReceiptPayloadForCustomer(tenant.id, invoiceId, session.id);
+  const receipt = await getReceiptPayloadForCustomer(
+    access.tenant.id,
+    access.company.id,
+    invoiceId,
+    access.session.id,
+  );
   if (!receipt) notFound();
 
   const pdf = await generateReceiptPdf(receipt);

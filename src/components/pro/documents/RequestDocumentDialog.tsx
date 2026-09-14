@@ -86,7 +86,11 @@ export function RequestDocumentDialog({
             <p
               role={state?.ok ? 'status' : 'alert'}
               aria-live="polite"
-              className={state?.ok ? 'text-sm text-emerald-700' : 'text-destructive text-sm'}
+              className={
+                state?.ok
+                  ? 'text-sm text-[var(--signal-success-foreground)]'
+                  : 'text-destructive text-sm'
+              }
             >
               {message}
             </p>

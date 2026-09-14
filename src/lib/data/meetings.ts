@@ -325,6 +325,26 @@ export async function listMeetingsForCustomer(
   return ((data as MeetingRow[] | null) ?? []).map(toMeeting);
 }
 
+export async function listMeetingsForCustomerCompany(
+  profileId: string,
+  companyId: string,
+  actor: MeetingActor,
+  deps: MeetingDeps = {},
+): Promise<Meeting[]> {
+  if (actor.role !== 'customer' || actor.id !== profileId || !actor.tenantId) {
+    throw new ApiError('FORBIDDEN', 'Meeting list is not accessible', 403);
+  }
+  const { data, error } = await client(deps)
+    .from('meetings')
+    .select(MEETING_COLUMNS)
+    .eq('tenant_id', actor.tenantId)
+    .eq('company_id', companyId)
+    .eq('customer_profile_id', profileId)
+    .order('scheduled_at', { ascending: false });
+  if (error) throw new ApiError('INTERNAL', error.message, 500);
+  return ((data as MeetingRow[] | null) ?? []).map(toMeeting);
+}
+
 export async function listMeetingsForTenant(
   tenantId: string,
   actor: MeetingActor,
@@ -354,6 +374,31 @@ export async function cancelMeeting(
     .from('meetings')
     .update({ status: 'cancelled' })
     .eq('id', meetingId);
+  if (error) throw new ApiError('INTERNAL', error.message, 500);
+  await recordAudit(admin, meeting.tenant_id, actor.id, 'meeting_cancelled', {
+    meeting_id: meetingId,
+  });
+}
+
+export async function cancelCompanyMeeting(
+  meetingId: string,
+  companyId: string,
+  actor: MeetingActor,
+  deps: MeetingDeps = {},
+): Promise<void> {
+  const admin = client(deps);
+  const meeting = await readMeeting(admin, meetingId);
+  authorizeTenant(actor, meeting.tenant_id);
+  if (meeting.company_id !== companyId) {
+    throw new ApiError('FORBIDDEN', 'Meeting is not accessible', 403);
+  }
+  if (meeting.status === 'cancelled') return;
+  const { error } = await admin
+    .from('meetings')
+    .update({ status: 'cancelled' })
+    .eq('id', meetingId)
+    .eq('tenant_id', meeting.tenant_id)
+    .eq('company_id', companyId);
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   await recordAudit(admin, meeting.tenant_id, actor.id, 'meeting_cancelled', {
     meeting_id: meetingId,
@@ -421,6 +466,57 @@ export async function getMeetingRecordingSignedUrl(
     throw new ApiError('FORBIDDEN', 'Recording path is not accessible', 403);
   }
 
+  const { data, error } = await admin.storage
+    .from('tenant-meetings')
+    .createSignedUrl(meeting.recording_storage_path, 300);
+  if (error) throw new ApiError('STORAGE_SIGN_FAILED', error.message, 502);
+  return data.signedUrl;
+}
+
+export async function getCompanyMeetingRecordingSignedUrl(
+  meetingId: string,
+  companyId: string,
+  actor: MeetingActor,
+  deps: MeetingDeps = {},
+): Promise<string | null> {
+  const admin = client(deps);
+  const meeting = await readMeeting(admin, meetingId);
+  authorizeTenant(actor, meeting.tenant_id);
+  if (meeting.company_id !== companyId) {
+    throw new ApiError('FORBIDDEN', 'Meeting is not accessible', 403);
+  }
+  if (!meeting.recording_storage_path) return null;
+  if (!isNormalizedOwnedStoragePath(meeting.recording_storage_path, meeting.tenant_id, companyId)) {
+    throw new ApiError('FORBIDDEN', 'Recording path is not accessible', 403);
+  }
+  const { data, error } = await admin.storage
+    .from('tenant-meetings')
+    .createSignedUrl(meeting.recording_storage_path, 300);
+  if (error) throw new ApiError('STORAGE_SIGN_FAILED', error.message, 502);
+  return data.signedUrl;
+}
+
+export async function getCustomerCompanyMeetingRecordingSignedUrl(
+  meetingId: string,
+  companyId: string,
+  actor: MeetingActor,
+  deps: MeetingDeps = {},
+): Promise<string | null> {
+  const admin = client(deps);
+  const meeting = await readMeeting(admin, meetingId);
+  if (
+    actor.role !== 'customer' ||
+    !actor.tenantId ||
+    actor.tenantId !== meeting.tenant_id ||
+    actor.id !== meeting.customer_profile_id ||
+    companyId !== meeting.company_id
+  ) {
+    throw new ApiError('FORBIDDEN', 'Meeting is not accessible', 403);
+  }
+  if (!meeting.recording_storage_path) return null;
+  if (!isNormalizedOwnedStoragePath(meeting.recording_storage_path, meeting.tenant_id, companyId)) {
+    throw new ApiError('FORBIDDEN', 'Recording path is not accessible', 403);
+  }
   const { data, error } = await admin.storage
     .from('tenant-meetings')
     .createSignedUrl(meeting.recording_storage_path, 300);

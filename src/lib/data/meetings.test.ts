@@ -234,13 +234,14 @@ test('booking rejects an already booked slot', async () => {
   );
 });
 
-test('customer meeting list only returns their own meetings', async () => {
-  const { listMeetingsForCustomer } = await loadMeetings();
+test('customer Company meeting list excludes another Company even for the same profile', async () => {
+  const { listMeetingsForCustomerCompany } = await loadMeetings();
   const supabase = createSupabaseStub({
     meetings: [
       {
         id: 'meeting-1',
         tenant_id: 'tenant-1',
+        company_id: 'company-1',
         customer_profile_id: 'customer-1',
         scheduled_at: '2026-05-11T08:00:00.000Z',
         title: 'Mine',
@@ -249,7 +250,8 @@ test('customer meeting list only returns their own meetings', async () => {
       {
         id: 'meeting-2',
         tenant_id: 'tenant-1',
-        customer_profile_id: 'customer-2',
+        company_id: 'company-2',
+        customer_profile_id: 'customer-1',
         scheduled_at: '2026-05-11T09:00:00.000Z',
         title: 'Other',
         status: 'scheduled',
@@ -257,12 +259,39 @@ test('customer meeting list only returns their own meetings', async () => {
     ],
   });
 
-  const meetings = await listMeetingsForCustomer('customer-1', { supabase: supabase as never });
+  const meetings = await listMeetingsForCustomerCompany('customer-1', 'company-1', customerActor, {
+    supabase: supabase as never,
+  });
 
   assert.deepEqual(
     meetings.map((meeting) => meeting.id),
     ['meeting-1'],
   );
+});
+
+test('customer Company recording signing rejects another Company before storage access', async () => {
+  const { getCustomerCompanyMeetingRecordingSignedUrl } = await loadMeetings();
+  const supabase = createSupabaseStub({
+    meetings: [
+      {
+        id: 'meeting-2',
+        tenant_id: 'tenant-1',
+        company_id: 'company-2',
+        customer_profile_id: 'customer-1',
+        status: 'recording_ready',
+        recording_storage_path: 'tenant-1/company-2/meetings/meeting-2/recording.mp4',
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () =>
+      getCustomerCompanyMeetingRecordingSignedUrl('meeting-2', 'company-1', customerActor, {
+        supabase: supabase as never,
+      }),
+    /not accessible/u,
+  );
+  assert.deepEqual(supabase.signedPaths, []);
 });
 
 test('PRO company meeting list excludes another company in the same tenant', async () => {
@@ -296,6 +325,53 @@ test('PRO company meeting list excludes another company in the same tenant', asy
     meetings.map((meeting) => meeting.id),
     ['assigned-company-meeting'],
   );
+});
+
+test('PRO company cancellation rejects a meeting from another Company in the same tenant', async () => {
+  const { cancelCompanyMeeting } = await loadMeetings();
+  const supabase = createSupabaseStub({
+    meetings: [
+      {
+        id: 'meeting-2',
+        tenant_id: 'tenant-1',
+        company_id: 'company-2',
+        status: 'scheduled',
+        scheduled_at: '2026-05-11T08:00:00.000Z',
+        title: 'Other Company',
+      },
+    ],
+    tenant_audit_log: [],
+  });
+
+  await assert.rejects(
+    () => cancelCompanyMeeting('meeting-2', 'company-1', proActor, { supabase: supabase as never }),
+    /not accessible/u,
+  );
+  assert.deepEqual(supabase.updates, []);
+});
+
+test('PRO company recording signing rejects another Company before storage access', async () => {
+  const { getCompanyMeetingRecordingSignedUrl } = await loadMeetings();
+  const supabase = createSupabaseStub({
+    meetings: [
+      {
+        id: 'meeting-2',
+        tenant_id: 'tenant-1',
+        company_id: 'company-2',
+        status: 'recording_ready',
+        recording_storage_path: 'tenant-1/company-2/meetings/meeting-2/recording.mp4',
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () =>
+      getCompanyMeetingRecordingSignedUrl('meeting-2', 'company-1', proActor, {
+        supabase: supabase as never,
+      }),
+    /not accessible/u,
+  );
+  assert.deepEqual(supabase.signedPaths, []);
 });
 
 test('PRO cancels own-tenant meeting and attaches recording metadata', async () => {

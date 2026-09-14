@@ -1,33 +1,86 @@
-import { ShieldCheck } from 'lucide-react';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { IdCard, Landmark, ShieldCheck } from 'lucide-react';
+
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requireTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { getEmployeeIdentity, type ExpiryBucket } from '@/lib/data/employee-portal';
+import { VisaProcessWorkspace } from '@/components/registration/VisaProcessWorkspace';
+import { VISA_MILESTONE_CODES, type VisaMilestoneCode } from '@/lib/registration/contracts';
+import { loadVisaPresentation } from '@/lib/registration/unavailable-adapter';
+import {
+  authorizeEmployeePortalRead,
+  classifyEmployeeDeadline,
+  type EmployeeDeadline,
+} from '@/lib/data/employee-portal-workspace';
 
 export const dynamic = 'force-dynamic';
 
-function bucketVariant(bucket: ExpiryBucket): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (bucket === 'expired' || bucket === 'critical') return 'destructive';
-  if (bucket === 'soon') return 'secondary';
-  if (bucket === 'missing') return 'outline';
-  return 'default';
+function formatDate(value: string | null, locale: string, fallback: string) {
+  if (!value) return fallback;
+  return new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Dubai', dateStyle: 'long' }).format(
+    new Date(`${value}T12:00:00.000Z`),
+  );
 }
 
-function masked(value: string | null) {
-  if (!value) return 'Not recorded';
-  if (value.length <= 4) return value;
-  return `${'*'.repeat(Math.max(0, value.length - 4))}${value.slice(-4)}`;
-}
-
-function Row({ label, value, badge }: { label: string; value: string; badge?: React.ReactNode }) {
+function IdentityPanel({
+  id,
+  title,
+  description,
+  masked,
+  expiry,
+  deadline,
+  locale,
+  labels,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  masked: string | null;
+  expiry: string | null;
+  deadline: EmployeeDeadline;
+  locale: string;
+  labels: {
+    identifier: string;
+    expiry: string;
+    missing: string;
+    lifecycle: string;
+    deadline: string;
+  };
+}) {
   return (
-    <div className="flex flex-col gap-1 border-b py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
-      <dt className="text-muted-foreground text-sm">{label}</dt>
-      <dd className="flex items-center gap-2 text-sm font-medium">
-        <span>{value}</span>
-        {badge}
-      </dd>
-    </div>
+    <Card id={id} className="signal-panel min-w-0 scroll-mt-24">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <IdCard aria-hidden="true" className="size-5" /> {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <dl className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <dt className="text-muted-foreground text-xs">{labels.identifier}</dt>
+            <dd className="mt-1 font-mono text-lg font-semibold">{masked ?? labels.missing}</dd>
+            <dd className="mt-3">
+              <Badge variant="outline">{labels.lifecycle}</Badge>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground text-xs">{labels.expiry}</dt>
+            <dd className="mt-1 font-medium">{formatDate(expiry, locale, labels.missing)}</dd>
+            <dd className="mt-3">
+              <Badge
+                variant={
+                  deadline.kind === 'overdue' || deadline.kind === 'status-conflict'
+                    ? 'destructive'
+                    : 'secondary'
+                }
+              >
+                {labels.deadline}
+              </Badge>
+            </dd>
+          </div>
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -37,57 +90,99 @@ export default async function EmployeeIdentityPage({
   params: Promise<{ tenant: string }>;
 }) {
   const { tenant: slug } = await params;
-  const { tenant, session } = await requireTenantRouteAccess(slug, ['employee']);
-
-  const identity = await getEmployeeIdentity(session.id, tenant.id);
+  const access = await authorizeEmployeePortalRead(slug);
+  const [t, tCommon, tDeadline, tRegistration, locale, visaState] = await Promise.all([
+    getTranslations('employee.identity'),
+    getTranslations('employee.common'),
+    getTranslations('employee.deadline'),
+    getTranslations('registration'),
+    getLocale(),
+    loadVisaPresentation(),
+  ]);
+  const visaDeadline = classifyEmployeeDeadline(access.employee.visaExpiry, 'identity-date');
+  const eidDeadline = classifyEmployeeDeadline(access.employee.eidExpiry, 'identity-date');
+  const deadline = (value: EmployeeDeadline) =>
+    tDeadline(value.kind, { count: Math.abs(value.daysOut ?? 0) });
+  const labels = (value: EmployeeDeadline) => ({
+    identifier: tCommon('identifier'),
+    expiry: tCommon('expiry'),
+    missing: tCommon('notRecorded'),
+    lifecycle: tCommon('lifecycleUnavailable'),
+    deadline: deadline(value),
+  });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Visa & Emirates ID</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Read-only identity records maintained by your assigned PRO.
-        </p>
+    <div className="signal-dashboard space-y-5">
+      <header className="signal-dashboard__heading">
+        <p className="signal-dashboard__eyebrow">{t('eyebrow')}</p>
+        <h1>{t('title')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('subtitle')}</p>
+      </header>
+      <div className="bg-muted/40 flex gap-3 rounded-xl border p-4 text-sm leading-6">
+        <ShieldCheck aria-hidden="true" className="text-primary mt-0.5 size-5 shrink-0" />
+        <p>{t('privacy')}</p>
       </div>
-
-      <Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <IdentityPanel
+          id="visa"
+          title={t('visaTitle')}
+          description={t('visaDescription')}
+          masked={access.employee.visaMasked}
+          expiry={access.employee.visaExpiry}
+          deadline={visaDeadline}
+          locale={locale}
+          labels={labels(visaDeadline)}
+        />
+        <IdentityPanel
+          id="emirates-id"
+          title={t('eidTitle')}
+          description={t('eidDescription')}
+          masked={access.employee.emiratesIdMasked}
+          expiry={access.employee.eidExpiry}
+          deadline={eidDeadline}
+          locale={locale}
+          labels={labels(eidDeadline)}
+        />
+      </div>
+      <Card id="passport" className="signal-panel scroll-mt-24">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ShieldCheck className="size-5" />
-            Identity file
+          <CardTitle className="flex items-center gap-2">
+            <Landmark aria-hidden="true" className="size-5" /> {t('passportTitle')}
           </CardTitle>
-          <CardDescription>
-            Sensitive numbers are masked here. Contact Mandoob support to correct official document
-            values.
-          </CardDescription>
+          <CardDescription>{t('passportDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <dl>
-            <Row label="Employee" value={identity.employeeName} />
-            <Row label="Company" value={identity.companyName ?? 'Not linked'} />
-            <Row label="Nationality" value={identity.nationality ?? 'Not recorded'} />
-            <Row label="Passport number" value={masked(identity.passportNo)} />
-            <Row
-              label="Visa number"
-              value={masked(identity.visaNo)}
-              badge={
-                <Badge variant={bucketVariant(identity.visaBucket)}>
-                  {identity.visaExpiry ?? 'Missing'}
-                </Badge>
-              }
-            />
-            <Row
-              label="Emirates ID"
-              value={masked(identity.emiratesId)}
-              badge={
-                <Badge variant={bucketVariant(identity.eidBucket)}>
-                  {identity.eidExpiry ?? 'Missing'}
-                </Badge>
-              }
-            />
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-muted-foreground text-xs">{tCommon('identifier')}</dt>
+              <dd className="mt-1 font-mono font-semibold">
+                {access.employee.passportMasked ?? tCommon('notRecorded')}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">{t('nationality')}</dt>
+              <dd className="mt-1 font-medium">
+                {access.employee.nationality ?? tCommon('notRecorded')}
+              </dd>
+            </div>
           </dl>
         </CardContent>
       </Card>
+      <VisaProcessWorkspace
+        state={visaState}
+        labels={{
+          title: tRegistration('employee.title'),
+          description: tRegistration('employee.description'),
+          unavailable: tRegistration('states.visaUnavailable'),
+          blocker: tRegistration('workspace.blockerTitle'),
+          nextAction: tRegistration('workspace.nextActionTitle'),
+          documents: tRegistration('workspace.documentsTitle'),
+          history: tRegistration('workspace.historyTitle'),
+          milestones: Object.fromEntries(
+            VISA_MILESTONE_CODES.map((code) => [code, tRegistration(`visa.${code}`)]),
+          ) as Record<VisaMilestoneCode, string>,
+        }}
+      />
     </div>
   );
 }

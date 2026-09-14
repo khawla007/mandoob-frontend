@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useId } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,14 +12,18 @@ type SharedStateProps = {
   className?: string;
 };
 
+type ContentStateProps = SharedStateProps & {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+};
+
 type DashboardRouteStateProps =
   | (SharedStateProps & { state: 'loading'; label: string })
-  | (SharedStateProps & {
-      state: 'empty';
-      title: string;
-      description: string;
-      action?: React.ReactNode;
-    })
+  | (ContentStateProps & { state: 'empty' })
+  | (ContentStateProps & { state: 'no-results' })
+  | (ContentStateProps & { state: 'partial' })
+  | (ContentStateProps & { state: 'blocked' })
   | (SharedStateProps & {
       state: 'error';
       title: string;
@@ -43,6 +48,7 @@ type DashboardRouteStateProps =
 
 export function DashboardRouteState(props: DashboardRouteStateProps) {
   const { state, variant = 'page', className } = props;
+  const headingId = useId();
   const frameClassName = cn(
     'border-border bg-card text-card-foreground rounded-xl border',
     variant === 'page' ? 'min-h-64 p-6 sm:p-8' : 'p-5',
@@ -75,9 +81,9 @@ export function DashboardRouteState(props: DashboardRouteStateProps) {
   const action = state === 'error' ? null : props.action;
 
   return (
-    <section className={frameClassName} aria-labelledby={`dashboard-${state}-title`}>
+    <section className={frameClassName} aria-labelledby={headingId}>
       <div className="max-w-xl space-y-3">
-        <h2 id={`dashboard-${state}-title`} className="text-xl font-semibold tracking-tight">
+        <h2 id={headingId} className="text-xl font-semibold tracking-tight">
           {props.title}
         </h2>
         <p className="text-muted-foreground text-sm leading-6">{description}</p>

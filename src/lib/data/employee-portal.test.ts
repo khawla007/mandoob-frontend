@@ -23,6 +23,26 @@ test('employee portal joins the exact company relation and exposes company-named
   assert.doesNotMatch(source, /row\.clients|clients\?:/u);
 });
 
+test('legacy Employee identity loader masks decrypted identifiers before returning its display contract', () => {
+  const source = readFileSync(new URL('./employee-portal.ts', import.meta.url), 'utf8');
+  assert.match(source, /passportMasked:\s*maskEmployeeIdentifier/u);
+  assert.match(source, /visaMasked:\s*maskEmployeeIdentifier/u);
+  assert.match(source, /emiratesIdMasked:\s*maskEmployeeIdentifier/u);
+  assert.doesNotMatch(
+    source,
+    /passportNo:\s*decryptOptional|visaNo:\s*decryptOptional|emiratesId:\s*decryptOptional/u,
+  );
+});
+
+test('legacy Employee loader does not request phone or email for portal display', () => {
+  const source = readFileSync(new URL('./employee-portal.ts', import.meta.url), 'utf8');
+  const employeeSelect = source.slice(
+    source.indexOf(".from('employees')"),
+    source.indexOf('.maybeSingle()', source.indexOf(".from('employees')")),
+  );
+  assert.doesNotMatch(employeeSelect, /\bemail\b|\bphone\b/u);
+});
+
 test('employee portal binds document reads through tenant, company, employee, and version', () => {
   const source = readFileSync(new URL('./employee-portal.ts', import.meta.url), 'utf8');
   assert.match(

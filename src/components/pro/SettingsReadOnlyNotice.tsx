@@ -1,13 +1,12 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getTranslations } from 'next-intl/server';
 
-export function SettingsReadOnlyNotice() {
+export async function SettingsReadOnlyNotice() {
+  const t = await getTranslations('pro.settings.readOnly');
   return (
     <Alert>
-      <AlertTitle>Read-only view</AlertTitle>
-      <AlertDescription>
-        Only platform administrators can change these company settings. Contact Mandoob support if
-        an update is required.
-      </AlertDescription>
+      <AlertTitle>{t('title')}</AlertTitle>
+      <AlertDescription>{t('description')}</AlertDescription>
     </Alert>
   );
 }

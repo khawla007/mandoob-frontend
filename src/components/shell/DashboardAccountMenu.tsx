@@ -38,7 +38,12 @@ export function DashboardAccountMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="min-w-9 gap-2" aria-label={t('accountMenu')}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="focus-visible:ring-ring min-h-11 min-w-11 gap-2"
+          aria-label={t('accountMenu')}
+        >
           <Avatar className="size-7">
             <AvatarFallback>{user.initials}</AvatarFallback>
           </Avatar>

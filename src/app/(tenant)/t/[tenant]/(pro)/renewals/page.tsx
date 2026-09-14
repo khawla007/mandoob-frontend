@@ -133,7 +133,7 @@ export default async function RenewalsPage({
             <dd className="signal-kpi__value">
               {summary.value === null ? t('renewalValueUnavailable') : number.format(summary.value)}
             </dd>
-            <p className="signal-kpi__helper">{summary.hint}</p>
+            <dd className="signal-kpi__helper">{summary.hint}</dd>
           </div>
         ))}
       </dl>

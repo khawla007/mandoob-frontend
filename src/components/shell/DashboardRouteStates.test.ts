@@ -4,13 +4,23 @@ import test from 'node:test';
 
 const source = readFileSync(new URL('./DashboardRouteStates.tsx', import.meta.url), 'utf8');
 
-test('route states provide honest loading, empty, error, permission, and unavailable variants', () => {
-  for (const state of ['loading', 'empty', 'error', 'permission', 'unavailable']) {
+test('route states provide the complete shared presentation vocabulary', () => {
+  for (const state of [
+    'loading',
+    'empty',
+    'no-results',
+    'partial',
+    'blocked',
+    'error',
+    'permission',
+    'unavailable',
+  ]) {
     assert.match(source, new RegExp(`state: '${state}'`));
   }
   assert.match(source, /role="status"/u);
   assert.match(source, /aria-busy="true"/u);
   assert.match(source, /<h2/u);
+  assert.match(source, /useId/u);
 });
 
 test('error state accepts sanitized copy and recovery controls, never a raw Error', () => {

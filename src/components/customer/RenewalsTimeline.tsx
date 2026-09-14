@@ -3,7 +3,7 @@ import type { PastRenewal, Renewal } from '@/lib/types/renewals-ui';
 
 function urgencyColor(daysOut: number): string {
   if (daysOut <= 30) return 'bg-destructive border-destructive';
-  if (daysOut <= 90) return 'bg-amber-500 border-amber-500';
+  if (daysOut <= 90) return 'bg-[var(--signal-warning)] border-[var(--signal-warning)]';
   return 'bg-primary border-primary';
 }
 

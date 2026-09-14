@@ -13,11 +13,23 @@
 //     missing (`docs/step-30b-prompt.md` §locked #5).
 //   - One setup project, four storage files (`docs/step-30b-prompt.md` §locked #2, #3).
 
-import { test as setup } from '@playwright/test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { test as setup, type BrowserContext } from '@playwright/test';
+import { chmod, mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+import { generateTotp } from '../scripts/p2-acceptance/totp';
+
 type Role = 'admin' | 'pro' | 'customer' | 'employee';
+
+type P2Secrets = {
+  tenantSlug: string;
+  roles: Array<{
+    role: 'super_admin' | 'pro' | 'customer' | 'employee';
+    email: string;
+    password: string;
+    totpSecret?: string;
+  }>;
+};
 
 interface RoleConfig {
   role: Role;
@@ -27,6 +39,43 @@ interface RoleConfig {
 }
 
 const AUTH_DIR = 'tests/.auth';
+const STRICT = process.env.P2_ACCEPTANCE_STRICT === '1';
+const P2_SECRET_PATH = `${AUTH_DIR}/p2-credentials.json`;
+
+async function strictCredentials(role: Role): Promise<{
+  email: string;
+  password: string;
+  totpSecret: string;
+  tenantSlug: string;
+}> {
+  const mode = (await stat(P2_SECRET_PATH)).mode & 0o777;
+  if (mode !== 0o600) throw new Error(`[auth.setup] strict secret file must be mode 0600`);
+  const parsed = JSON.parse(await readFile(P2_SECRET_PATH, 'utf8')) as P2Secrets;
+  const fixtureRole = role === 'admin' ? 'super_admin' : role;
+  const credential = parsed.roles.find((candidate) => candidate.role === fixtureRole);
+  if (!credential?.email || !credential.password || !credential.totpSecret || !parsed.tenantSlug) {
+    throw new Error(`[auth.setup] strict fixture credential is incomplete for ${role}`);
+  }
+  return {
+    email: credential.email,
+    password: credential.password,
+    totpSecret: credential.totpSecret,
+    tenantSlug: parsed.tenantSlug,
+  };
+}
+
+function expectedHome(role: Role, tenantSlug: string) {
+  if (role === 'admin') return '/admin';
+  if (role === 'pro') return `/t/${tenantSlug}/dashboard`;
+  if (role === 'customer') return `/t/${tenantSlug}/portal`;
+  return `/t/${tenantSlug}/employee/dashboard`;
+}
+
+function acceptedLoginDestination(role: Role, tenantSlug: string) {
+  if (role === 'customer') return '/account';
+  if (role === 'employee') return `/t/${tenantSlug}/me`;
+  return expectedHome(role, tenantSlug);
+}
 
 const ROLES: ReadonlyArray<RoleConfig> = [
   {
@@ -55,10 +104,41 @@ const ROLES: ReadonlyArray<RoleConfig> = [
   },
 ];
 
+async function removeStrictStorageStates(): Promise<void> {
+  await Promise.all(
+    ROLES.map(({ storagePath }) =>
+      unlink(storagePath).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ENOENT') throw error;
+      }),
+    ),
+  );
+}
+
+async function assertStrictStoragePermissions(storagePath: string): Promise<void> {
+  const directoryMode = (await stat(dirname(storagePath))).mode & 0o777;
+  const fileMode = (await stat(storagePath)).mode & 0o777;
+  if (directoryMode !== 0o700 || fileMode !== 0o600) {
+    throw new Error('[auth.setup] strict storage state permissions are not owner-only');
+  }
+}
+
+setup.describe.configure({ mode: 'serial' });
+setup.beforeAll(async () => {
+  if (STRICT) await removeStrictStorageStates();
+});
+
 for (const cfg of ROLES) {
   setup(`auth: sign in as ${cfg.role}`, async ({ browser, baseURL }, testInfo) => {
-    const email = process.env[cfg.emailEnv];
-    const password = process.env[cfg.passwordEnv];
+    setup.setTimeout(60_000);
+    let strict: Awaited<ReturnType<typeof strictCredentials>> | null = null;
+    try {
+      strict = STRICT ? await strictCredentials(cfg.role) : null;
+    } catch (error) {
+      await removeStrictStorageStates();
+      throw error;
+    }
+    const email = strict?.email ?? process.env[cfg.emailEnv];
+    const password = strict?.password ?? process.env[cfg.passwordEnv];
 
     if (!email || !password) {
       const reason =
@@ -67,17 +147,60 @@ for (const cfg of ROLES) {
       // Visible in CI output without failing the suite.
 
       console.warn(`[auth.setup] SKIP ${cfg.role}: ${reason}`);
+      if (STRICT) {
+        await removeStrictStorageStates();
+        throw new Error(reason);
+      }
       testInfo.skip(true, reason);
       return;
     }
 
     if (!baseURL) {
+      if (STRICT) {
+        await removeStrictStorageStates();
+        throw new Error('baseURL not configured; cannot perform strict auth setup');
+      }
       testInfo.skip(true, 'baseURL not configured; cannot perform auth setup');
       return;
     }
 
-    const context = await browser.newContext({ baseURL });
+    let context: BrowserContext | null = null;
     try {
+      context = await browser.newContext({ baseURL });
+      if (STRICT && strict) {
+        const page = await context.newPage();
+        await page.goto('/login', { waitUntil: 'networkidle' });
+        await page.getByLabel(/email/i).fill(email);
+        await page.getByLabel(/^password/i).fill(password);
+        await page.getByRole('button', { name: /^sign in$/i }).click();
+        const home = expectedHome(cfg.role, strict.tenantSlug);
+        await page.waitForURL((url) =>
+          ['/mfa/challenge', home, acceptedLoginDestination(cfg.role, strict.tenantSlug)].includes(
+            url.pathname,
+          ),
+        );
+        if (new URL(page.url()).pathname !== '/mfa/challenge') {
+          await page.goto(`/mfa/challenge?next=${encodeURIComponent(home)}`, {
+            waitUntil: 'networkidle',
+          });
+        }
+        await page.getByLabel(/6-digit code/i).fill(generateTotp(strict.totpSecret));
+        await page.getByRole('button', { name: /continue/i }).click();
+        await page.waitForURL((url) => url.pathname === home, { waitUntil: 'networkidle' });
+        await page.waitForTimeout(250);
+        if (new URL(page.url()).pathname !== home) {
+          throw new Error(`[auth.setup] ${cfg.role} did not retain its AAL2 role home`);
+        }
+        await mkdir(dirname(cfg.storagePath), { recursive: true, mode: 0o700 });
+        await chmod(dirname(cfg.storagePath), 0o700);
+        await writeFile(cfg.storagePath, JSON.stringify(await context.storageState(), null, 2), {
+          encoding: 'utf8',
+          mode: 0o600,
+        });
+        await chmod(cfg.storagePath, 0o600);
+        await assertStrictStoragePermissions(cfg.storagePath);
+        return;
+      }
       // 1. Acquire a CSRF cookie + token. The login route requires both via
       //    a double-submit pattern (cookie `mandoob-csrf`, header
       //    `x-mandoob-csrf`).
@@ -118,8 +241,11 @@ for (const cfg of ROLES) {
       await mkdir(dirname(cfg.storagePath), { recursive: true });
       const state = await context.storageState();
       await writeFile(cfg.storagePath, JSON.stringify(state, null, 2), 'utf8');
+    } catch (error) {
+      if (STRICT) await removeStrictStorageStates();
+      throw error;
     } finally {
-      await context.close();
+      if (context) await context.close();
     }
   });
 }

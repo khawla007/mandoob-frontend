@@ -469,18 +469,21 @@ function paymentProviderCode(provider: string): string {
 
 export async function getReceiptPayloadForCustomer(
   tenantId: string,
+  companyId: string,
   invoiceId: string,
   profileId: string,
+  adminOverride?: Admin,
 ): Promise<ReceiptPayload | null> {
-  const admin = createSupabaseServiceRoleClient();
-  const { data: invoice } = await admin
+  const admin = adminOverride ?? createSupabaseServiceRoleClient();
+  const { data: invoice, error } = await admin
     .from('invoices')
     .select('customer_profile_id')
     .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
     .eq('id', invoiceId)
     .maybeSingle();
-  if (!invoice || invoice.customer_profile_id !== profileId) return null;
-  return loadReceiptPayload(admin, tenantId, invoiceId);
+  if (error || !invoice || invoice.customer_profile_id !== profileId) return null;
+  return loadReceiptPayload(admin, tenantId, invoiceId, companyId);
 }
 
 type Admin = ReturnType<typeof createSupabaseServiceRoleClient>;
@@ -575,11 +578,17 @@ async function loadReceiptPayload(
     .eq('tenant_id', tenantId)
     .eq('id', invoiceId);
   if (companyId) invoiceQuery = invoiceQuery.eq('company_id', companyId);
-  const { data: invoice } = await invoiceQuery.maybeSingle();
-  if (!invoice) return null;
+  const { data: invoice, error: invoiceError } = await invoiceQuery.maybeSingle();
+  if (invoiceError || !invoice) return null;
   if (!isReceiptEligible(invoice.status as string)) return null;
+  if (
+    !Number.isSafeInteger(invoice.amount_minor) ||
+    (invoice.amount_minor as number) < 0 ||
+    !/^[A-Z]{3}$/u.test(invoice.currency as string)
+  )
+    return null;
 
-  const [{ data: tenant }, { data: company }, { data: payment }] = await Promise.all([
+  const [tenantResult, companyResult, paymentResult] = await Promise.all([
     admin.from('tenants').select('name, primary_color').eq('id', tenantId).maybeSingle(),
     admin
       .from('company_profiles')
@@ -597,38 +606,61 @@ async function loadReceiptPayload(
       .limit(1)
       .maybeSingle(),
   ]);
+  if (
+    tenantResult.error ||
+    companyResult.error ||
+    paymentResult.error ||
+    !tenantResult.data?.name ||
+    !companyResult.data?.company_name ||
+    !paymentResult.data
+  )
+    return null;
+  const tenant = tenantResult.data;
+  const company = companyResult.data;
+  const payment = paymentResult.data;
 
-  const { data: refunds } = payment?.id
+  const { data: refunds, error: refundsError } = payment?.id
     ? await admin
         .from('refunds')
         .select('amount_minor, reason, status')
         .eq('tenant_id', tenantId)
         .eq('payment_id', payment.id as string)
         .order('created_at', { ascending: false })
-    : { data: [] };
+        .limit(101)
+    : { data: [], error: null };
+  if (
+    refundsError ||
+    (refunds?.length ?? 0) > 100 ||
+    (refunds ?? []).some(
+      (refund) => !Number.isSafeInteger(refund.amount_minor) || (refund.amount_minor as number) < 0,
+    )
+  )
+    return null;
 
   let customerName: string | null = null;
   if (invoice.customer_profile_id) {
-    const { data: profile } = await admin
+    const { data: profile, error: profileError } = await admin
       .from('profiles')
-      .select('full_name')
+      .select('full_name, tenant_id')
+      .eq('tenant_id', tenantId)
       .eq('id', invoice.customer_profile_id as string)
       .maybeSingle();
+    if (profileError || !profile || profile.tenant_id !== tenantId) return null;
     customerName = (profile?.full_name as string | null) ?? null;
   }
 
   return {
-    tenantName: (tenant?.name as string | null) ?? 'Mandoob',
-    tenantColor: (tenant?.primary_color as string | null) ?? null,
-    companyName: (company?.company_name as string | null) ?? 'Unknown company',
+    tenantName: tenant.name as string,
+    tenantColor: (tenant.primary_color as string | null) ?? null,
+    companyName: company.company_name as string,
     customerName,
     invoiceId: invoice.id as string,
     label: invoice.label as string,
     amount: formatMoney(invoice.amount_minor as number, invoice.currency as string),
     status: invoice.status as string,
-    paidAt: (invoice.paid_at as string | null) ?? (payment?.received_at as string | null) ?? null,
-    paymentMethod: (payment?.method as string | null) ?? null,
-    paymentProvider: (payment?.provider as string | null) ?? null,
+    paidAt: (invoice.paid_at as string | null) ?? (payment.received_at as string | null) ?? null,
+    paymentMethod: (payment.method as string | null) ?? null,
+    paymentProvider: payment.provider as string,
     refunds: (refunds ?? []).map((r) => ({
       amount: formatMoney(r.amount_minor as number, invoice.currency as string),
       reason: (r.reason as string | null) ?? null,

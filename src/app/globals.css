@@ -57,7 +57,7 @@
   --primary-foreground: oklch(1 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: oklch(0.5 0.205 27.325);
   --ring: var(--brand-accent);
   --chart-1: var(--brand-accent);
   --chart-2: oklch(0.68 0.14 195);
@@ -80,6 +80,17 @@
   --signal-warning: oklch(0.66 0.14 76);
   --signal-info: oklch(0.55 0.09 220);
   --signal-success: oklch(0.53 0.12 155);
+  --signal-warning-foreground: oklch(0.37 0.1 70);
+  --signal-success-foreground: oklch(0.34 0.1 155);
+  --signal-urgent-foreground: oklch(0.42 0.16 28);
+  --signal-waterfall-success-start: oklch(0.72 0.1 155);
+  --signal-waterfall-success-end: oklch(0.48 0.12 155);
+  --signal-waterfall-coral-start: oklch(0.76 0.14 35);
+  --signal-waterfall-coral-end: var(--brand-accent);
+  --signal-waterfall-warning-start: oklch(0.82 0.12 80);
+  --signal-waterfall-warning-end: oklch(0.55 0.13 70);
+  --signal-waterfall-urgent-start: oklch(0.72 0.14 28);
+  --signal-waterfall-urgent-end: var(--signal-urgent);
   --signal-orange-soft: color-mix(in oklch, var(--brand-accent) 11%, var(--card));
   --lifecycle-surface: color-mix(in oklch, var(--card) 94%, var(--signal-info));
   --lifecycle-subtle: color-mix(in oklch, var(--card) 92%, var(--brand-accent));
@@ -106,7 +117,7 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.53 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
 }
@@ -147,6 +158,17 @@
   --signal-warning: oklch(0.78 0.13 76);
   --signal-info: oklch(0.72 0.1 220);
   --signal-success: oklch(0.7 0.12 155);
+  --signal-warning-foreground: oklch(0.88 0.1 80);
+  --signal-success-foreground: oklch(0.84 0.1 155);
+  --signal-urgent-foreground: oklch(0.86 0.1 28);
+  --signal-waterfall-success-start: oklch(0.76 0.1 155);
+  --signal-waterfall-success-end: oklch(0.55 0.11 155);
+  --signal-waterfall-coral-start: oklch(0.78 0.13 35);
+  --signal-waterfall-coral-end: oklch(0.65 0.18 35);
+  --signal-waterfall-warning-start: oklch(0.84 0.11 80);
+  --signal-waterfall-warning-end: oklch(0.63 0.12 70);
+  --signal-waterfall-urgent-start: oklch(0.78 0.13 28);
+  --signal-waterfall-urgent-end: oklch(0.62 0.16 28);
   --signal-orange-soft: color-mix(in oklch, var(--brand-accent) 15%, var(--card));
   --lifecycle-surface: color-mix(in oklch, var(--card) 90%, var(--signal-info));
   --lifecycle-subtle: color-mix(in oklch, var(--card) 88%, var(--brand-accent));
@@ -156,6 +178,23 @@
     transparent 0 12px,
     color-mix(in oklch, var(--brand-accent) 13%, transparent) 12px 13px
   );
+}
+
+.signal-status {
+  border-color: color-mix(in oklch, currentColor 42%, transparent);
+  background: color-mix(in oklch, currentColor 12%, var(--card));
+}
+
+.signal-status--warning {
+  color: var(--signal-warning-foreground);
+}
+
+.signal-status--success {
+  color: var(--signal-success-foreground);
+}
+
+.signal-status--urgent {
+  color: var(--signal-urgent-foreground);
 }
 
 /* Authenticated surfaces need a darker control fill for white-label contrast.
@@ -170,6 +209,20 @@ body.dashboard-surface-active {
   background: var(--signal-canvas);
 }
 
+.authenticated-shared-surface {
+  --primary: #c2410c;
+  --primary-foreground: #ffffff;
+}
+
+.site-public .btn.btn--authenticated-accent {
+  background: #c2410c;
+  color: #ffffff;
+}
+
+.site-public .btn.btn--authenticated-accent:hover {
+  background: #9a3412;
+}
+
 .dark .dashboard-surface,
 .dark body.dashboard-surface-active {
   --primary: #ff8a65;
@@ -177,6 +230,11 @@ body.dashboard-surface-active {
   --signal-accent-copy: #ff8a65;
   --signal-canvas: #141312;
   --signal-panel-surface: #201e1c;
+}
+
+.dark .authenticated-shared-surface {
+  --primary: #ff8a65;
+  --primary-foreground: #141312;
 }
 
 .dashboard-surface [data-slot='sidebar-inset'] {
@@ -206,8 +264,18 @@ body.dashboard-surface-active {
   color: #b8b0aa;
 }
 
+[data-nav-kind] [data-slot='sidebar-menu-sub-button'] {
+  color: #b8b0aa;
+}
+
 [data-nav-kind] [data-slot='sidebar-menu-button']:is(:hover, :focus-visible),
 [data-nav-kind] [data-slot='sidebar-menu-button'][data-active='true'] {
+  color: #ffffff;
+  background: #292421;
+}
+
+[data-nav-kind] [data-slot='sidebar-menu-sub-button']:is(:hover, :focus-visible),
+[data-nav-kind] [data-slot='sidebar-menu-sub-button'][data-active='true'] {
   color: #ffffff;
   background: #292421;
 }
@@ -306,6 +374,7 @@ body.dashboard-surface-active {
   }
 
   .signal-kpi {
+    position: relative;
     background-color: var(--card);
     background-image:
       linear-gradient(135deg, transparent 58%, color-mix(in oklch, currentColor 5%, transparent)),
@@ -319,10 +388,10 @@ body.dashboard-surface-active {
 
   .signal-kpi::after {
     position: absolute;
-    inset-inline-end: -1.5rem;
-    inset-block-end: -2.4rem;
-    width: 7rem;
-    height: 7rem;
+    inset-inline-end: 1.25rem;
+    inset-block-end: 1.25rem;
+    width: 5rem;
+    height: 5rem;
     pointer-events: none;
     content: '';
     border: 1px solid color-mix(in oklch, var(--signal-kpi-color) 22%, transparent);
@@ -366,6 +435,31 @@ body.dashboard-surface-active {
       ),
       linear-gradient(90deg, var(--signal-info), var(--brand-accent));
     background-position-x: var(--stream-offset, 0);
+  }
+
+  [data-nav-kind='customer'] {
+    --signal-scale: 2;
+    --signal-canvas: #f5f2ee;
+    --signal-panel-surface: #fffdfa;
+    --signal-capacity: #171615;
+    --signal-blue-soft: #e7f1f4;
+    --signal-mint-soft: #e7f4ed;
+    --signal-sand-soft: #f8eed7;
+    --signal-coral-soft: #fff0e8;
+  }
+
+  .dark [data-nav-kind='customer'] {
+    --signal-canvas: #141312;
+    --signal-panel-surface: #201e1c;
+    --signal-capacity: #080807;
+    --signal-blue-soft: #1a2a2e;
+    --signal-mint-soft: #192924;
+    --signal-sand-soft: #2a2418;
+    --signal-coral-soft: #2c1d19;
+  }
+
+  [data-nav-kind='customer'] :is([data-slot='sidebar-inset'], .dashboard-main) {
+    background-color: var(--signal-canvas);
   }
 
   /* Design B · Signal Studio. Scoped to the authenticated PRO shell so the
@@ -669,6 +763,7 @@ body.dashboard-surface-active {
   .signal-dashboard__operations,
   .signal-dashboard__rail {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     min-width: 0;
     gap: calc(7px * var(--signal-scale));
   }
@@ -835,36 +930,12 @@ body.dashboard-surface-active {
   }
 
   .signal-kpi::after {
-    inset-inline-end: calc(-34px * var(--signal-scale));
-    inset-block: calc(-35px * var(--signal-scale)) auto;
+    inset-inline-end: calc(14px * var(--signal-scale));
+    inset-block: calc(14px * var(--signal-scale)) auto;
     width: calc(65px * var(--signal-scale));
     height: calc(65px * var(--signal-scale));
     border: 0;
     background: color-mix(in oklch, var(--signal-kpi-color) 14%, transparent);
-  }
-
-  .signal-kpi::before {
-    position: absolute;
-    z-index: 2;
-    inset-block: -40%;
-    inset-inline-start: -42%;
-    width: 24%;
-    pointer-events: none;
-    content: '';
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgb(255 255 255 / 24%),
-      rgb(255 255 255 / 88%),
-      rgb(255 255 255 / 24%),
-      transparent
-    );
-    transform: translateX(0) skewX(-18deg);
-    transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .signal-kpi:is(:hover, :focus-visible)::before {
-    transform: translateX(700%) skewX(-18deg);
   }
 
   .signal-kpi__bars {
@@ -993,6 +1064,24 @@ body.dashboard-surface-active {
     background-image: none;
   }
 
+  .signal-action-card {
+    --signal-action-title: var(--foreground);
+    --signal-action-secondary: color-mix(in oklab, var(--foreground) 70%, transparent);
+  }
+
+  .signal-action-card__title {
+    color: var(--signal-action-title);
+  }
+
+  .signal-action-card__detail,
+  .signal-action-card__meta {
+    color: var(--signal-action-secondary);
+  }
+
+  .signal-action-card__urgency {
+    color: var(--signal-action-title);
+  }
+
   .signal-action-card::before {
     position: absolute;
     z-index: 2;
@@ -1035,19 +1124,22 @@ body.dashboard-surface-active {
 
   .signal-action-card--coral {
     --signal-action-color: #ca4d43;
-    border-color: color-mix(in srgb, #ca4d43 17%, transparent) !important;
+    --signal-action-border: #ca4d43;
+    border-color: var(--signal-action-border) !important;
     background: linear-gradient(145deg, #fff0e8, #fffdfa) !important;
   }
 
   .signal-action-card--sand {
     --signal-action-color: #efb64b;
-    border-color: color-mix(in srgb, #efb64b 17%, transparent) !important;
+    --signal-action-border: #ad7f1a;
+    border-color: var(--signal-action-border) !important;
     background: linear-gradient(145deg, #f8eed7, #fffdfa) !important;
   }
 
   .signal-action-card--blue {
     --signal-action-color: #4d86a0;
-    border-color: color-mix(in srgb, #4d86a0 17%, transparent) !important;
+    --signal-action-border: #4d86a0;
+    border-color: var(--signal-action-border) !important;
     background: linear-gradient(145deg, #e7f1f4, #fffdfa) !important;
   }
 
@@ -1203,6 +1295,60 @@ body.dashboard-surface-active {
   .dark .signal-kpi {
     border-color: rgb(255 255 255 / 10%);
     box-shadow: 0 18px 42px -32px rgb(0 0 0 / 92%);
+  }
+
+  .dark .signal-action-card {
+    --signal-action-title: #f5f1ea;
+    --signal-action-secondary: #c7bfb8;
+  }
+
+  .dark .signal-action-card__urgency {
+    color: var(--signal-action-color);
+  }
+
+  .dark .signal-action-card--coral {
+    --signal-action-color: #ff8a65;
+    --signal-action-surface: #2c1d19;
+    border-color: color-mix(
+      in srgb,
+      var(--signal-action-color) 60%,
+      var(--signal-action-surface)
+    ) !important;
+    background: linear-gradient(
+      145deg,
+      var(--signal-action-surface),
+      var(--signal-panel-surface)
+    ) !important;
+  }
+
+  .dark .signal-action-card--sand {
+    --signal-action-color: #efb64b;
+    --signal-action-surface: #2a2418;
+    border-color: color-mix(
+      in srgb,
+      var(--signal-action-color) 60%,
+      var(--signal-action-surface)
+    ) !important;
+    background: linear-gradient(
+      145deg,
+      var(--signal-action-surface),
+      var(--signal-panel-surface)
+    ) !important;
+  }
+
+  .dark .signal-action-card--blue {
+    --signal-action-color: #6daac4;
+    --signal-action-surface: #1a2a2e;
+    border-color: color-mix(
+      in srgb,
+      var(--signal-action-color) 60%,
+      var(--signal-action-surface)
+    ) !important;
+    background: linear-gradient(
+      145deg,
+      var(--signal-action-surface),
+      var(--signal-panel-surface)
+    ) !important;
   }
 
   @media (max-width: 74rem) {
@@ -1408,10 +1554,6 @@ body.dashboard-surface-active {
   }
 
   .signal-action-card::before {
-    transition: none !important;
-  }
-
-  .signal-kpi::before {
     transition: none !important;
   }
 }

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BlogPostsTable } from '@/components/blog/BlogPostsTable';
 import { requireRole } from '@/lib/auth/require-role';
 import { listAdminBlogPosts } from '@/lib/data/blog';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,7 @@ export default async function AdminBlogPage({
   searchParams: Promise<SearchParams>;
 }) {
   await requireRole('super_admin', 'admin');
+  const t = await getTranslations('admin.cms');
   const sp = await searchParams;
   const posts = await listAdminBlogPosts();
   const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
@@ -40,26 +42,24 @@ export default async function AdminBlogPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Blog</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage platform articles, publishing status, SEO, images, and galleries.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('blog.title')}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t('blog.description')}</p>
         </div>
         <Button asChild>
-          <Link href="/admin/blog/new">New post</Link>
+          <Link href="/admin/blog/new">{t('blog.new')}</Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Posts</CardTitle>
+          <CardTitle>{t('blog.posts')}</CardTitle>
           <CardDescription>
-            {posts.length} total posts · {POSTS_PER_PAGE} per page
+            {t('blog.total', { count: posts.length, perPage: POSTS_PER_PAGE })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {posts.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">No blog posts yet.</p>
+            <p className="text-muted-foreground py-8 text-center text-sm">{t('blog.empty')}</p>
           ) : (
             <>
               <div className="border-border/60 overflow-hidden rounded-lg border">
@@ -67,21 +67,24 @@ export default async function AdminBlogPage({
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-muted-foreground text-sm">
-                  Showing {start + 1}-{Math.min(start + POSTS_PER_PAGE, posts.length)} of{' '}
-                  {posts.length}
+                  {t('showing', {
+                    from: start + 1,
+                    to: Math.min(start + POSTS_PER_PAGE, posts.length),
+                    total: posts.length,
+                  })}
                 </p>
                 <div className="flex items-center gap-1.5">
                   {currentPage > 1 ? (
                     <Button asChild variant="outline" size="sm">
                       <Link href={pageHref(currentPage - 1)}>
                         <ChevronLeft className="size-3.5" />
-                        Previous
+                        {t('previous')}
                       </Link>
                     </Button>
                   ) : (
                     <Button variant="outline" size="sm" disabled>
                       <ChevronLeft className="size-3.5" />
-                      Previous
+                      {t('previous')}
                     </Button>
                   )}
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
@@ -90,7 +93,7 @@ export default async function AdminBlogPage({
                       asChild={page !== currentPage}
                       variant={page === currentPage ? 'default' : 'outline'}
                       size="icon-sm"
-                      aria-label={`Page ${page}`}
+                      aria-label={t('pageNumber', { page })}
                     >
                       {page === currentPage ? (
                         <span>{page}</span>
@@ -102,13 +105,13 @@ export default async function AdminBlogPage({
                   {currentPage < totalPages ? (
                     <Button asChild variant="outline" size="sm">
                       <Link href={pageHref(currentPage + 1)}>
-                        Next
+                        {t('next')}
                         <ChevronRight className="size-3.5" />
                       </Link>
                     </Button>
                   ) : (
                     <Button variant="outline" size="sm" disabled>
-                      Next
+                      {t('next')}
                       <ChevronRight className="size-3.5" />
                     </Button>
                   )}

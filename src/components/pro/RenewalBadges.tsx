@@ -18,7 +18,7 @@ export function RenewalTypeBadge({ type }: { type: RenewalType }) {
 
 export function RenewalStatusBadge({ status }: { status: RenewalStatus }) {
   const variant = RENEWAL_STATUS_VARIANT[status];
-  const className = status === 'due_soon' ? 'bg-amber-500 text-white hover:bg-amber-500' : '';
+  const className = status === 'due_soon' ? 'signal-status signal-status--warning' : '';
   return (
     <Badge variant={variant} className={className}>
       {RENEWAL_STATUS_LABEL[status]}

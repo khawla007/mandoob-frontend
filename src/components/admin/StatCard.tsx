@@ -26,7 +26,9 @@ export function StatCard({
         <div
           className={cn(
             'flex items-center gap-1 text-xs font-medium',
-            up ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400',
+            up
+              ? 'text-[var(--signal-success-foreground)]'
+              : 'text-[var(--signal-urgent-foreground)]',
           )}
         >
           {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}

@@ -87,6 +87,7 @@ export default async function AdminLeadsPage({
             />
             <select
               name="assigned"
+              aria-label={t('filters.allAssignments')}
               defaultValue={filters.assigned}
               className="border-input bg-background h-9 rounded-md border px-3 text-sm"
             >
@@ -100,6 +101,7 @@ export default async function AdminLeadsPage({
             </select>
             <select
               name="stage"
+              aria-label={t('filters.allStages')}
               defaultValue={filters.stage}
               className="border-input bg-background h-9 rounded-md border px-3 text-sm"
             >

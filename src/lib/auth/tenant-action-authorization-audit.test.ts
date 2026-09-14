@@ -58,7 +58,9 @@ function reachesGuard(
       if (
         name === 'requireRole' ||
         name === 'requireTenantRouteAccess' ||
-        name === 'requireProTenantRouteAccess'
+        name === 'requireProTenantRouteAccess' ||
+        name === 'requireAuthorizedCustomerLinkedCompanyRead' ||
+        name === 'authorizeEmployeePortalRead'
       ) {
         guarded = true;
         return;
@@ -72,7 +74,7 @@ function reachesGuard(
     if (!guarded) ts.forEachChild(node, visit);
   };
   if (fn.body) visit(fn.body);
-  return guarded;
+  return guarded || optionalCustomerAuthorizationDominates(fn);
 }
 
 function privilegedCallBeforeGuard(
@@ -82,6 +84,7 @@ function privilegedCallBeforeGuard(
   initiallyGuarded = false,
 ): string | null {
   if (!fn.body) return null;
+  if (optionalCustomerAuthorizationDominates(fn)) return null;
   return scanNode(fn.body, functions, seen, initiallyGuarded).violation;
 }
 
@@ -203,7 +206,9 @@ function isGuardCall(name: string): boolean {
   return (
     name === 'requireRole' ||
     name === 'requireTenantRouteAccess' ||
-    name === 'requireProTenantRouteAccess'
+    name === 'requireProTenantRouteAccess' ||
+    name === 'requireAuthorizedCustomerLinkedCompanyRead' ||
+    name === 'authorizeEmployeePortalRead'
   );
 }
 
@@ -240,6 +245,178 @@ test('per-export audit detects a later unguarded server mutation', () => {
     'mutate',
   );
 });
+
+test('optional Customer authorization requires an authorized-kind check', () => {
+  const unsafe = `const access = await authorizeCustomerLinkedCompanyRead('acme'); mutate();`;
+  const beforeAuthorization = `mutate();
+    const access = await authorizeCustomerLinkedCompanyRead('acme');
+    if (access.kind !== 'authorized') return;`;
+  const late = `const access = await authorizeCustomerLinkedCompanyRead('acme');
+    mutate();
+    if (access.kind !== 'authorized') return;`;
+  const nonTerminating = `const access = await authorizeCustomerLinkedCompanyRead('acme');
+    if (access.kind !== 'authorized') logDenied();
+    mutate();`;
+  const conditional = `if (flag) {
+      const access = await authorizeCustomerLinkedCompanyRead('acme');
+      if (access.kind !== 'authorized') return;
+    }
+    mutate();`;
+  const siblingBranch = `if (flag) {
+      const access = await authorizeCustomerLinkedCompanyRead('acme');
+      if (access.kind !== 'authorized') return;
+      mutate();
+    } else {
+      mutate();
+    }`;
+  const safe = `const access = await authorizeCustomerLinkedCompanyRead('acme');
+    if (access.kind !== 'authorized') return;
+    mutate();`;
+  assert.equal(hasCheckedCustomerAuthorization(unsafe), false);
+  assert.equal(hasCheckedCustomerAuthorization(beforeAuthorization), false);
+  assert.equal(hasCheckedCustomerAuthorization(late), false);
+  assert.equal(hasCheckedCustomerAuthorization(nonTerminating), false);
+  assert.equal(hasCheckedCustomerAuthorization(conditional), false);
+  assert.equal(hasCheckedCustomerAuthorization(siblingBranch), false);
+  assert.equal(hasCheckedCustomerAuthorization(safe), true);
+
+  const ast = ts.createSourceFile(
+    'customer-authorization-actions.ts',
+    `export async function optionalOnly() { ${unsafe} }
+     export async function branchBypass(flag: boolean) { ${siblingBranch} }
+     export async function checked() { ${safe} }`,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const functions = new Map<string, ts.FunctionLikeDeclaration>();
+  for (const statement of ast.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name) {
+      functions.set(statement.name.text, statement);
+    }
+  }
+  assert.equal(reachesGuard(functions.get('optionalOnly')!, functions, new Set()), false);
+  assert.equal(
+    privilegedCallBeforeGuard(functions.get('optionalOnly')!, functions, new Set()),
+    'mutate',
+  );
+  assert.equal(reachesGuard(functions.get('branchBypass')!, functions, new Set()), false);
+  assert.equal(
+    privilegedCallBeforeGuard(functions.get('branchBypass')!, functions, new Set()),
+    'mutate',
+  );
+  assert.equal(reachesGuard(functions.get('checked')!, functions, new Set()), true);
+  assert.equal(privilegedCallBeforeGuard(functions.get('checked')!, functions, new Set()), null);
+});
+
+function hasCheckedCustomerAuthorization(source: string): boolean {
+  const ast = ts.createSourceFile(
+    'customer-authorization-fixture.ts',
+    `async function fixture() { ${source} }`,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const fixture = ast.statements.find(ts.isFunctionDeclaration);
+  return fixture ? optionalCustomerAuthorizationDominates(fixture) : false;
+}
+
+function optionalCustomerAuthorizationDominates(fn: ts.FunctionLikeDeclaration): boolean {
+  if (!fn.body || !ts.isBlock(fn.body)) return false;
+  return blockHasDominatingCustomerAuthorization(fn.body);
+}
+
+function blockHasDominatingCustomerAuthorization(block: ts.Block): boolean {
+  for (let index = 0; index < block.statements.length; index += 1) {
+    const accessName = optionalCustomerAccessName(block.statements[index]);
+    if (!accessName) continue;
+    for (let before = 0; before < index; before += 1) {
+      if (firstPrivilegedCall(block.statements[before])) return false;
+    }
+    for (let guardIndex = index + 1; guardIndex < block.statements.length; guardIndex += 1) {
+      const statement = block.statements[guardIndex];
+      if (!isRejectingCustomerGuard(statement, accessName)) continue;
+      for (let between = index + 1; between < guardIndex; between += 1) {
+        if (firstPrivilegedCall(block.statements[between])) return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  for (let index = 0; index < block.statements.length; index += 1) {
+    const statement = block.statements[index];
+    if (!ts.isTryStatement(statement)) continue;
+    if (!blockHasDominatingCustomerAuthorization(statement.tryBlock)) continue;
+    if (statement.catchClause && firstPrivilegedCall(statement.catchClause.block)) return false;
+    if (statement.finallyBlock && firstPrivilegedCall(statement.finallyBlock)) return false;
+    for (let sibling = 0; sibling < block.statements.length; sibling += 1) {
+      if (sibling !== index && firstPrivilegedCall(block.statements[sibling])) return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+function optionalCustomerAccessName(statement: ts.Statement): string | null {
+  if (!ts.isVariableStatement(statement)) return null;
+  for (const declaration of statement.declarationList.declarations) {
+    if (!ts.isIdentifier(declaration.name) || !declaration.initializer) continue;
+    const initializer = ts.isAwaitExpression(declaration.initializer)
+      ? declaration.initializer.expression
+      : declaration.initializer;
+    if (
+      ts.isCallExpression(initializer) &&
+      ts.isIdentifier(initializer.expression) &&
+      initializer.expression.text === 'authorizeCustomerLinkedCompanyRead'
+    ) {
+      return declaration.name.text;
+    }
+  }
+  return null;
+}
+
+function isRejectingCustomerGuard(statement: ts.Statement, accessName: string): boolean {
+  if (!ts.isIfStatement(statement)) return false;
+  const condition = statement.expression;
+  if (
+    !ts.isBinaryExpression(condition) ||
+    condition.operatorToken.kind !== ts.SyntaxKind.ExclamationEqualsEqualsToken ||
+    !ts.isPropertyAccessExpression(condition.left) ||
+    !ts.isIdentifier(condition.left.expression) ||
+    condition.left.expression.text !== accessName ||
+    condition.left.name.text !== 'kind' ||
+    !ts.isStringLiteral(condition.right) ||
+    condition.right.text !== 'authorized'
+  ) {
+    return false;
+  }
+  return statementTerminates(statement.thenStatement);
+}
+
+function statementTerminates(statement: ts.Statement): boolean {
+  if (ts.isReturnStatement(statement) || ts.isThrowStatement(statement)) return true;
+  if (!ts.isBlock(statement)) return false;
+  return statement.statements.some(statementTerminates);
+}
+
+function firstPrivilegedCall(node: ts.Node): string | null {
+  let violation: string | null = null;
+  const visit = (child: ts.Node) => {
+    if (violation || ts.isFunctionLike(child)) return;
+    if (
+      ts.isCallExpression(child) &&
+      ts.isIdentifier(child.expression) &&
+      isPrivilegedCall(child.expression.text)
+    ) {
+      violation = child.expression.text;
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return violation;
+}
 
 test('guard must dominate mutation while a guarded helper path succeeds', () => {
   const ast = ts.createSourceFile(
@@ -331,7 +508,11 @@ test('every direct service-role page and route enters through the tenant route b
   assert.ok(files.length > 0);
   for (const file of files) {
     const source = readFileSync(file, 'utf8');
-    assert.match(source, /await require(?:Pro)?TenantRouteAccess\(/u, file);
+    assert.match(
+      source,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead|authorizeEmployeePortalRead)\(/u,
+      file,
+    );
   }
 });
 
@@ -348,7 +529,51 @@ test('every tenant page or route using a DAL declares an authoritative boundary'
       assert.doesNotMatch(source, /createSupabaseServiceRoleClient/u);
       continue;
     }
-    assert.match(source, /await require(?:Pro)?TenantRouteAccess\(/u, file);
+    assert.match(
+      source,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead|authorizeEmployeePortalRead)\(/u,
+      file,
+    );
+  }
+});
+
+test('Customer document pages check the authorized Company state before direct loader reads', () => {
+  const customerRoot = join(root, '(customer)');
+  const files = filesUnder(customerRoot).filter((file) => {
+    if (!file.endsWith('/page.tsx')) return false;
+    const source = readFileSync(file, 'utf8');
+    return (
+      source.includes('authorizeCustomerLinkedCompanyRead') &&
+      source.includes('loadCustomerDocumentCenter')
+    );
+  });
+  assert.ok(files.length > 0);
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    const authorization = source.indexOf("access.kind === 'authorized'");
+    const load = source.indexOf('loadCustomerDocumentCenter', source.indexOf('export default'));
+    assert.ok(authorization !== -1 && authorization < load, file);
+  }
+});
+
+test('Customer actions check optional Company authorization before privileged work', () => {
+  const customerRoot = join(root, '(customer)');
+  const files = filesUnder(customerRoot).filter((file) => {
+    if (!file.endsWith('/actions.ts')) return false;
+    return readFileSync(file, 'utf8').includes('authorizeCustomerLinkedCompanyRead');
+  });
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const optionalCallers = ast.statements.filter(
+      (statement): statement is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(statement) &&
+        statement.getText(ast).includes('authorizeCustomerLinkedCompanyRead('),
+    );
+    assert.ok(optionalCallers.length > 0, file);
+    for (const fn of optionalCallers) {
+      assert.equal(optionalCustomerAuthorizationDominates(fn), true, `${file}:${fn.name?.text}`);
+    }
   }
 });
 
@@ -385,7 +610,11 @@ test('sensitive indirect DAL and inline-action pages declare their own tenant bo
   ];
   for (const relative of relativeFiles) {
     const source = readFileSync(join(root, relative), 'utf8');
-    assert.match(source, /await require(?:Pro)?TenantRouteAccess\(/u, relative);
+    assert.match(
+      source,
+      /await (?:require(?:Pro)?TenantRouteAccess|authorizeCustomerLinkedCompanyRead)\(/u,
+      relative,
+    );
   }
 });
 

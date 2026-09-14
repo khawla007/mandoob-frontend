@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { requestErasureAction } from './actions';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export default async function CustomerErasurePage({
     'admin',
     'super_admin',
   ]);
+  const t = await getTranslations('customer.erasure');
 
   const active = await getActiveErasureRequestForSubject(session.id);
   const submitted = sp.verified === '1';
@@ -32,23 +34,21 @@ export default async function CustomerErasurePage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Data erasure</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Request deletion of direct personal data from your customer account.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('description')}</p>
       </div>
 
       {submitted && (
-        <Card className="border-emerald-200 bg-emerald-50">
-          <CardContent className="py-4 text-sm text-emerald-900">
-            Your request was verified and sent for admin review.
+        <Card className="signal-status signal-status--success">
+          <CardContent className="py-4 text-sm" role="status">
+            {t('verified')}
           </CardContent>
         </Card>
       )}
       {verifyFailed && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="text-destructive py-4 text-sm">
-            The verification link is invalid or expired.
+            {t('verificationFailed')}
           </CardContent>
         </Card>
       )}
@@ -57,27 +57,25 @@ export default async function CustomerErasurePage({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <ShieldAlert className="size-5" />
-            What happens after approval
+            {t('afterApproval')}
           </CardTitle>
-          <CardDescription>
-            Mandoob removes direct personal identifiers while preserving legal records.
-          </CardDescription>
+          <CardDescription>{t('afterApprovalDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
-            <h2 className="text-sm font-medium">Erased or anonymized</h2>
+            <h2 className="text-sm font-medium">{t('erasedTitle')}</h2>
             <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5 text-sm">
-              <li>Name, phone, username, and profile details</li>
-              <li>Passport and identity-number fields</li>
-              <li>Uploaded passport, visa, Emirates ID, and shareholder ID documents</li>
+              <li>{t('erasedProfile')}</li>
+              <li>{t('erasedIdentity')}</li>
+              <li>{t('erasedDocuments')}</li>
             </ul>
           </div>
           <div>
-            <h2 className="text-sm font-medium">Retained</h2>
+            <h2 className="text-sm font-medium">{t('retainedTitle')}</h2>
             <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5 text-sm">
-              <li>Invoices, payments, and legally required business records</li>
-              <li>Audit-log events under platform administrator lock</li>
-              <li>Non-PII company registration history</li>
+              <li>{t('retainedFinance')}</li>
+              <li>{t('retainedAudit')}</li>
+              <li>{t('retainedRegistration')}</li>
             </ul>
           </div>
         </CardContent>
@@ -85,15 +83,13 @@ export default async function CustomerErasurePage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Submit erasure request</CardTitle>
-          <CardDescription>
-            A verification email is sent before administrators can review the request.
-          </CardDescription>
+          <CardTitle className="text-lg">{t('submitTitle')}</CardTitle>
+          <CardDescription>{t('submitDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           {active ? (
             <div className="text-sm">
-              Active request {active.id} is currently {active.status.replaceAll('_', ' ')}.
+              {t('activeRequest', { status: t(`statuses.${active.status}`) })}
             </div>
           ) : (
             <form
@@ -104,7 +100,7 @@ export default async function CustomerErasurePage({
               }}
             >
               <div className="space-y-2">
-                <Label htmlFor="recoveryEmail">Recovery email</Label>
+                <Label htmlFor="recoveryEmail">{t('recoveryEmail')}</Label>
                 <Input
                   id="recoveryEmail"
                   name="recoveryEmail"
@@ -114,16 +110,16 @@ export default async function CustomerErasurePage({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="reason">Reason</Label>
+                <Label htmlFor="reason">{t('reason')}</Label>
                 <Textarea
                   id="reason"
                   name="reason"
                   maxLength={1000}
-                  placeholder="Optional"
+                  placeholder={t('optional')}
                   rows={4}
                 />
               </div>
-              <Button type="submit">Send verification email</Button>
+              <Button type="submit">{t('sendVerification')}</Button>
             </form>
           )}
         </CardContent>

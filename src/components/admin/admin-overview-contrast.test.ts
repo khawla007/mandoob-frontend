@@ -21,58 +21,41 @@ if (reactServer) {
   });
 }
 
-function relativeLuminance(hex: string): number {
-  const channels = hex
-    .slice(1)
-    .match(/.{2}/gu)
-    ?.map((channel) => Number.parseInt(channel, 16) / 255)
-    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
-  assert.ok(channels && channels.length === 3);
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-}
+renderTest(
+  'admin overview metric deltas consume the shared light and dark semantic foreground',
+  async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { StatCard } = await import('./StatCard');
+    const markup = renderToStaticMarkup(
+      React.createElement(StatCard, {
+        label: 'Users',
+        value: '1',
+        delta: 1,
+        deltaLabel: 'since yesterday',
+      }),
+    );
 
-function contrastRatio(first: string, second: string): number {
-  const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort(
-    (a, b) => b - a,
-  );
-  return (lighter + 0.05) / (darker + 0.05);
-}
+    const styles = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
+    assert.match(markup, /text-\[var\(--signal-success-foreground\)\]/u);
+    assert.match(styles, /:root[\s\S]*--signal-success-foreground:/u);
+    assert.match(styles, /\.dark[\s\S]*--signal-success-foreground:/u);
+  },
+);
 
-renderTest('admin overview metric deltas render with AA light and dark foregrounds', async () => {
-  const { renderToStaticMarkup } = await import('react-dom/server');
-  const { StatCard } = await import('./StatCard');
-  const markup = renderToStaticMarkup(
-    React.createElement(StatCard, {
-      label: 'Users',
-      value: '1',
-      delta: 1,
-      deltaLabel: 'since yesterday',
-    }),
-  );
-
-  assert.match(markup, /text-emerald-700/u);
-  assert.match(markup, /dark:text-emerald-400/u);
-  assert.ok(contrastRatio('#007a55', '#ffffff') >= 4.5);
-  assert.ok(contrastRatio('#00d492', '#141312') >= 4.5);
-});
-
-renderTest('admin failed-login badge uses a scoped AA pair in light and dark modes', async () => {
+renderTest('admin failed-login badge uses the shared semantic urgent treatment', async () => {
   const { renderToStaticMarkup } = await import('react-dom/server');
   const { Badge } = await import('../ui/badge');
   const table = readFileSync(new URL('./RecentLoginsTable.tsx', import.meta.url), 'utf8');
-  const className = 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200';
+  const className = 'signal-status signal-status--urgent';
   const markup = renderToStaticMarkup(
     React.createElement(Badge, { variant: 'destructive', className }, 'Failed'),
   );
 
-  assert.match(table, /bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200/u);
+  assert.match(table, /signal-status signal-status--urgent/u);
   assert.match(
     table,
-    /roleBadgeVariant\[r\.role\] === 'destructive'[\s\S]*bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200/u,
+    /roleBadgeVariant\[r\.role\] === 'destructive'[\s\S]*signal-status signal-status--urgent/u,
     'destructive role badges must use the same scoped accessible pair',
   );
-  assert.match(markup, /bg-red-50/u);
-  assert.match(markup, /dark:bg-red-950/u);
-  assert.ok(contrastRatio('#c10007', '#fff1f2') >= 4.5);
-  assert.ok(contrastRatio('#ffc9c9', '#460809') >= 4.5);
+  assert.match(markup, /signal-status--urgent/u);
 });

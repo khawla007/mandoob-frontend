@@ -6,13 +6,15 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableCaption,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
 import { deleteBlogPostAction } from '@/app/admin/blog/actions';
-import { formatAdminDateTime } from '@/lib/format/date';
+import { formatDateTime } from '@/lib/i18n/format';
 import type { BlogPost } from '@/lib/data/blog';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 async function deletePost(id: string): Promise<void> {
   'use server';
@@ -25,16 +27,18 @@ function statusVariant(status: BlogPost['status']): 'default' | 'secondary' | 'o
   return 'outline';
 }
 
-export function BlogPostsTable({ posts }: { posts: BlogPost[] }) {
+export async function BlogPostsTable({ posts }: { posts: BlogPost[] }) {
+  const [t, locale] = await Promise.all([getTranslations('admin.cms.blog.table'), getLocale()]);
   return (
     <Table>
+      <TableCaption className="sr-only">{t('caption')}</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>Title</TableHead>
-          <TableHead>Slug</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Published</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+          <TableHead>{t('title')}</TableHead>
+          <TableHead>{t('slug')}</TableHead>
+          <TableHead>{t('status')}</TableHead>
+          <TableHead>{t('published')}</TableHead>
+          <TableHead className="text-right">{t('actions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -51,21 +55,31 @@ export function BlogPostsTable({ posts }: { posts: BlogPost[] }) {
             <TableCell className="text-muted-foreground font-mono text-xs">{post.slug}</TableCell>
             <TableCell>
               <Badge variant={statusVariant(post.status)} className="capitalize">
-                {post.status}
+                {t(`statuses.${post.status}`)}
               </Badge>
             </TableCell>
             <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
-              {post.publishedAt ? formatAdminDateTime(post.publishedAt) : '—'}
+              {post.publishedAt ? formatDateTime(post.publishedAt, locale) : '—'}
             </TableCell>
             <TableCell>
               <div className="flex justify-end gap-1.5">
-                <Button asChild size="icon-sm" variant="ghost" aria-label={`Edit ${post.title}`}>
+                <Button
+                  asChild
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={t('edit', { title: post.title })}
+                >
                   <Link href={`/admin/blog/${post.id}`}>
                     <Pencil />
                   </Link>
                 </Button>
                 {post.status === 'published' ? (
-                  <Button asChild size="icon-sm" variant="ghost" aria-label={`View ${post.title}`}>
+                  <Button
+                    asChild
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={t('view', { title: post.title })}
+                  >
                     <Link href={`/blog/${post.slug}`} target="_blank">
                       <Eye />
                     </Link>
@@ -76,7 +90,7 @@ export function BlogPostsTable({ posts }: { posts: BlogPost[] }) {
                     type="submit"
                     size="icon-sm"
                     variant="destructive"
-                    aria-label={`Delete ${post.title}`}
+                    aria-label={t('delete', { title: post.title })}
                   >
                     <Trash2 />
                   </Button>

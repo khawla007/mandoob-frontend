@@ -20,9 +20,13 @@ import {
   CalendarClock,
   Activity,
   ClipboardList,
+  Route,
   ListChecks,
   Layers3,
   FileBarChart,
+  ListTodo,
+  CalendarDays,
+  Bell,
 } from 'lucide-react';
 import type { ShellNavGroup } from './nav-config';
 
@@ -117,6 +121,19 @@ export const adminNav: ShellNavGroup[] = [
     labelFallback: 'Operations',
     items: [
       {
+        labelKey: 'registrations',
+        labelFallback: 'Registrations',
+        href: '/admin/registrations',
+        icon: Route,
+      },
+      { labelKey: 'tasks', labelFallback: 'Tasks', href: '/admin/tasks', icon: ListTodo },
+      {
+        labelKey: 'calendar',
+        labelFallback: 'Calendar',
+        href: '/admin/calendar',
+        icon: CalendarDays,
+      },
+      {
         labelKey: 'documentReview',
         labelFallback: 'Document review',
         href: '/admin/documents',
@@ -133,6 +150,24 @@ export const adminNav: ShellNavGroup[] = [
         labelFallback: 'Renewals & compliance',
         href: '/admin/renewals',
         icon: CalendarClock,
+      },
+      {
+        labelKey: 'meetings',
+        labelFallback: 'Meetings',
+        href: '/admin/meetings',
+        icon: CalendarClock,
+      },
+      {
+        labelKey: 'communications',
+        labelFallback: 'Communications',
+        href: '/admin/communications',
+        icon: MessagesSquare,
+      },
+      {
+        labelKey: 'notifications',
+        labelFallback: 'Notifications',
+        href: '/admin/notifications',
+        icon: Bell,
       },
     ],
   },
