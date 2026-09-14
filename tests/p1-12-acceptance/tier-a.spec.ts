@@ -275,6 +275,9 @@ async function expectNoOverflowOrBrokenImages(page: Page): Promise<void> {
     window.scrollTo(0, 0);
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   });
+  // Resetting scroll expands the integrated topbar over 420 ms. Audit the
+  // stable layout rather than treating an in-flight transition as overlap.
+  await page.waitForTimeout(450);
 
   const overlaps = await page
     .locator('a[href]:visible, button:visible, input:visible, select:visible, textarea:visible')
