@@ -6,6 +6,8 @@ import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { pageHeroSettingsSchema } from '@/lib/validation/pages';
 import { RESERVED_PAGE_SLUGS } from '@/lib/pages/slug';
 import { isCmsPagePublic } from '@/lib/pages/visibility';
+import { headingAnchor, shouldShowTableOfContents } from '@/lib/public-content/headings';
+import { serializeJsonLd } from '@/lib/public-content/json-ld';
 
 const ALIGN_TEXT = { left: 'text-left', center: 'text-center', right: 'text-right' } as const;
 const ALIGN_FLEX = {
@@ -27,7 +29,11 @@ type PublicHero = {
   overlayStyle: CSSProperties;
 };
 
-export type PublicCmsPageView = { bodyHtml: string; hero: PublicHero | null };
+export type PublicCmsPageView = {
+  bodyHtml: string;
+  bodyHeadings: Array<{ id: string; label: string }>;
+  hero: PublicHero | null;
+};
 type CmsPageLoader = (slug: string) => Promise<CmsPage | null>;
 
 export async function resolvePublicCmsPage(
@@ -60,7 +66,7 @@ export function buildCmsPageMetadata(page: CmsPage | null): Metadata {
 }
 
 export function serializeSchema(schema: Record<string, unknown>): string {
-  return JSON.stringify(schema).replace(/</g, '\\u003c');
+  return serializeJsonLd(schema);
 }
 
 function clean(value: string | null | undefined): string | null {
@@ -72,29 +78,65 @@ function cssUrl(url: string): string {
   return `url(${JSON.stringify(url)})`;
 }
 
+function rgb(hex: string): [number, number, number] {
+  const value = hex.slice(1);
+  const expanded = value.length === 3 ? [...value].map((part) => `${part}${part}`).join('') : value;
+  return [0, 2, 4].map((offset) => Number.parseInt(expanded.slice(offset, offset + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
+}
+
+function readableForeground(
+  background: string,
+  overlay: string,
+  opacity: number,
+): '#000000' | '#ffffff' {
+  const base = rgb(background);
+  const cover = rgb(overlay);
+  const composited = base.map((channel, index) =>
+    Math.round(cover[index]! * opacity + channel * (1 - opacity)),
+  );
+  const luminance = composited
+    .map((channel) => channel / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
+    .reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index]!, 0);
+  return (luminance + 0.05) / 0.05 >= 4.5 ? '#000000' : '#ffffff';
+}
+
 export function getPublicCmsPageView(page: CmsPage): PublicCmsPageView {
-  const bodyHtml = sanitizeBlogHtml(page.contentHtml)
+  const sanitizedBody = sanitizeBlogHtml(page.contentHtml)
     .replace(/<h1(\s|>)/gi, '<h2$1')
     .replace(/<\/h1>/gi, '</h2>');
+  const { html: bodyHtml, headings: bodyHeadings } = addBodyHeadingAnchors(sanitizedBody);
   const parsed = pageHeroSettingsSchema.safeParse(page.heroSettings);
-  if (!parsed.success) return { bodyHtml, hero: null };
+  if (!parsed.success) return { bodyHtml, bodyHeadings, hero: null };
 
   const settings = parsed.data;
   const heading = clean(settings.heading);
   const text = clean(settings.text);
   const buttonLabel = clean(settings.buttonLabel);
   const buttonHref = clean(settings.buttonHref);
+  const safeButtonHref = buttonHref && isSafePublicHref(buttonHref) ? buttonHref : null;
   const button =
-    buttonLabel && buttonHref
-      ? { href: buttonHref, label: buttonLabel, external: /^https?:\/\//i.test(buttonHref) }
+    buttonLabel && safeButtonHref
+      ? { href: safeButtonHref, label: buttonLabel, external: /^https:\/\//i.test(safeButtonHref) }
       : null;
-  if (!heading && !text && !button) return { bodyHtml, hero: null };
+  if (!heading && !text && !button) return { bodyHtml, bodyHeadings, hero: null };
 
-  const backgroundImage = settings.backgroundImageUrl
-    ? cssUrl(settings.backgroundImageUrl)
-    : undefined;
+  const backgroundImage =
+    settings.backgroundImageUrl && isSecureExternalUrl(settings.backgroundImageUrl)
+      ? cssUrl(settings.backgroundImageUrl)
+      : undefined;
+  // Remote image pixels are not part of the validated CMS settings. A fixed dark
+  // scrim makes the worst-case (solid white) image safe for white foreground copy.
+  const imageOverlay = backgroundImage
+    ? { backgroundColor: '#000000', opacity: 0.6 }
+    : { backgroundColor: settings.overlayColor, opacity: settings.overlayOpacity };
   return {
     bodyHtml,
+    bodyHeadings,
     hero: {
       heading: heading ?? page.title,
       text,
@@ -111,32 +153,42 @@ export function getPublicCmsPageView(page: CmsPage): PublicCmsPageView {
         minHeight: settings.minHeight,
         margin: settings.margin,
       },
-      contentStyle: { maxWidth: settings.maxWidth, padding: settings.padding },
-      overlayStyle: { backgroundColor: settings.overlayColor, opacity: settings.overlayOpacity },
+      contentStyle: {
+        maxWidth: settings.maxWidth,
+        padding: settings.padding,
+        color: backgroundImage
+          ? '#ffffff'
+          : readableForeground(
+              settings.backgroundColor,
+              settings.overlayColor,
+              settings.overlayOpacity,
+            ),
+      },
+      overlayStyle: imageOverlay,
     },
   };
 }
 
-export function PublicCmsPage({ page }: { page: CmsPage }) {
+export function PublicCmsPage({ page, kind = 'page' }: { page: CmsPage; kind?: 'page' | 'legal' }) {
   const view = getPublicCmsPageView(page);
   return (
-    <article>
+    <article className="cms-editorial-page">
       {view.hero ? (
-        <header
-          className="relative flex items-center overflow-hidden"
-          style={view.hero.sectionStyle}
-        >
-          <div aria-hidden="true" className="absolute inset-0" style={view.hero.overlayStyle} />
+        <header className="cms-editorial-hero" style={view.hero.sectionStyle}>
           <div
-            className="relative z-10 container w-full py-16 sm:py-24"
-            style={view.hero.contentStyle}
-          >
-            <h1 className={`h2 ${view.hero.headingClassName}`}>{view.hero.heading}</h1>
+            aria-hidden="true"
+            className="cms-editorial-hero__overlay"
+            style={view.hero.overlayStyle}
+          />
+          <div className="cms-editorial-hero__content container" style={view.hero.contentStyle}>
+            <CmsBreadcrumb kind={kind} title={page.title} />
+            <span className="eyebrow">{kind === 'legal' ? 'Legal' : 'Information'}</span>
+            <h1 className={`display ${view.hero.headingClassName}`}>{view.hero.heading}</h1>
             {view.hero.text ? (
-              <p className={`mt-5 text-lg ${view.hero.textClassName}`}>{view.hero.text}</p>
+              <p className={`lede ${view.hero.textClassName}`}>{view.hero.text}</p>
             ) : null}
             {view.hero.button ? (
-              <div className={`mt-8 flex ${view.hero.buttonClassName}`}>
+              <div className={`cms-editorial-hero__action ${view.hero.buttonClassName}`}>
                 <a
                   className="btn btn--accent"
                   href={view.hero.button.href}
@@ -151,17 +203,85 @@ export function PublicCmsPage({ page }: { page: CmsPage }) {
           </div>
         </header>
       ) : (
-        <header className="section cms-page__title-section">
+        <header className="section cms-page__title-section kb-editorial-hero">
           <div className="container">
-            <h1 className="h2">{page.title}</h1>
+            <CmsBreadcrumb kind={kind} title={page.title} />
+            <span className="eyebrow">{kind === 'legal' ? 'Legal' : 'Information'}</span>
+            <h1 className="display">{page.title}</h1>
           </div>
         </header>
       )}
       <section className="section" aria-label={`${page.title} content`}>
         <div className="container">
-          <div className="prose-doc" dangerouslySetInnerHTML={{ __html: view.bodyHtml }} />
+          <div className="cms-editorial-layout">
+            <div
+              className="prose-doc kb-prose"
+              dangerouslySetInnerHTML={{ __html: view.bodyHtml }}
+            />
+            {shouldShowTableOfContents(view.bodyHeadings.map((heading) => heading.label)) ? (
+              <aside className="cms-editorial-toc" aria-label="On this page" role="region">
+                <h2>On this page</h2>
+                <ol>
+                  {view.bodyHeadings.map((heading) => (
+                    <li key={heading.id}>
+                      <a href={`#${heading.id}`}>{heading.label}</a>
+                    </li>
+                  ))}
+                </ol>
+              </aside>
+            ) : null}
+          </div>
         </div>
       </section>
     </article>
+  );
+}
+
+function addBodyHeadingAnchors(html: string) {
+  const headings: Array<{ id: string; label: string }> = [];
+  const seen = new Map<string, number>();
+  const anchored = html.replace(/<h2(?:\s[^>]*)?>([\s\S]*?)<\/h2>/gi, (_match, content: string) => {
+    const label = content
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!label) return `<h2>${content}</h2>`;
+    const base = headingAnchor(label);
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    const id = count === 1 ? base : `${base}-${count}`;
+    headings.push({ id, label });
+    return `<h2 id="${id}">${content}</h2>`;
+  });
+  return { html: anchored, headings };
+}
+
+function isSecureExternalUrl(value: string) {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function isSafePublicHref(value: string) {
+  return (value.startsWith('/') && !value.startsWith('//')) || isSecureExternalUrl(value);
+}
+
+function CmsBreadcrumb({ kind, title }: { kind: 'page' | 'legal'; title: string }) {
+  return (
+    <nav className="kb-editorial-breadcrumb" aria-label="Breadcrumb">
+      {/* A native anchor keeps this server-only CMS renderer testable without a router context. */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+      <a href="/">Home</a>
+      <span aria-hidden="true">/</span>
+      {kind === 'legal' ? (
+        <>
+          <span>Legal</span>
+          <span aria-hidden="true">/</span>
+        </>
+      ) : null}
+      <span aria-current="page">{title}</span>
+    </nav>
   );
 }

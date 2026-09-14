@@ -1,6 +1,99 @@
-import { BellRing, IdCard, ScrollText, ShieldCheck, Stamp } from 'lucide-react';
+import {
+  BellRing,
+  Building2,
+  CreditCard,
+  Files,
+  IdCard,
+  ScrollText,
+  ShieldCheck,
+  Stamp,
+  UsersRound,
+} from 'lucide-react';
 
-export function ProSuiteSection() {
+import { PUBLIC_PRO_CONTENT } from '@/lib/pro/public-pro';
+import type { PublicProCapabilityId } from '@/lib/pro/public-pro';
+
+type ProSuiteSectionProps = {
+  variant?: 'home' | 'pro';
+};
+
+const proCapabilityPresentation = {
+  'company-foundations': { className: 'cell--table', icon: Building2 },
+  'workforce-portals': { className: 'cell--log', icon: UsersRound },
+  'records-audit': { className: 'cell--visas', icon: Files },
+  renewals: { className: 'cell--eid', icon: BellRing },
+  'invoices-payments': { className: 'cell--renewals', icon: CreditCard },
+} as const satisfies Record<PublicProCapabilityId, { className: string; icon: typeof Building2 }>;
+
+function PublicProSuite() {
+  const capabilities = PUBLIC_PRO_CONTENT.capabilities;
+
+  return (
+    <section
+      id="pro-capabilities"
+      className="section pro-capabilities"
+      aria-labelledby="pro-capabilities-title"
+    >
+      <div className="container">
+        <header className="section__head reveal">
+          <span className="eyebrow">{capabilities.eyebrow.text}</span>
+          <h2 id="pro-capabilities-title" className="h2">
+            {capabilities.title.text}
+          </h2>
+          <p>{capabilities.description.text}</p>
+        </header>
+      </div>
+      <div className="container">
+        <ul
+          className="mosaic pro-capabilities__mosaic"
+          role="list"
+          aria-label="PRO operational capabilities"
+          data-reveal-cards
+        >
+          {capabilities.items.map((item, index) => {
+            const presentation = proCapabilityPresentation[item.id];
+            const Icon = presentation.icon;
+            return (
+              <li
+                className={`cell ${presentation.className} reveal`}
+                data-pro-capability={item.id}
+                key={item.id}
+              >
+                <span className="cell__mark--plat" aria-hidden="true">
+                  P·{String(index + 1).padStart(2, '0')}
+                </span>
+                <div className="cell__head">
+                  <span className="cell__icon" aria-hidden="true">
+                    <Icon size={16} strokeWidth={1.75} />
+                  </span>
+                  <span className="eyebrow">{item.title.text}</span>
+                </div>
+                <h3 data-source-state={item.summary.source.state}>{item.summary.text}</h3>
+                {item.facts.map((fact) => (
+                  <p data-source-state={fact.source.state} key={fact.text}>
+                    {fact.text}
+                  </p>
+                ))}
+                {item.availability ? (
+                  <p
+                    className="pro-capabilities__qualification"
+                    data-source-state={item.availability.source.state}
+                  >
+                    {item.availability.text}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+export function ProSuiteSection({ variant = 'home' }: ProSuiteSectionProps = {}) {
+  if (variant === 'pro') return <PublicProSuite />;
+
   return (
     <section id="pro-suite" className="section" aria-labelledby="suite-h">
       <div className="container">

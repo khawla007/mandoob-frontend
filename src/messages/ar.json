@@ -517,11 +517,11 @@
       "expiry_date": "تاريخ الانتهاء"
     },
     "windows": {
-      "all": "أي موعد",
-      "overdue": "متأخر",
       "7": "الأيام السبعة المقبلة",
       "30": "الثلاثون يومًا المقبلة",
-      "90": "التسعون يومًا المقبلة"
+      "90": "التسعون يومًا المقبلة",
+      "all": "أي موعد",
+      "overdue": "متأخر"
     },
     "docTypes": {
       "passport": "جواز السفر",
@@ -775,7 +775,6 @@
     "mfaAndSecurity": "المصادقة الثنائية والأمان",
     "auditLogs": "سجلات التدقيق",
     "tenants": "مساحات عمل الشركات",
-    "companies": "الشركات",
     "meetings": "الاجتماعات",
     "tasks": "المهام",
     "calendar": "التقويم",
@@ -846,6 +845,21 @@
     "verifying": "جارٍ التحقق…",
     "verified": "تم التحقق",
     "signingIn": "جارٍ تسجيل الدخول…",
+    "signInMethod": "Sign-in method",
+    "emailMethod": "Email",
+    "mobileMethod": "Mobile",
+    "unavailable": "Unavailable",
+    "mobileUnavailableDescription": "Mobile sign-in is not available yet. Use email and password.",
+    "newToMandoob": "New to Mandoob?",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "invalidCredentials": "The email or password is incorrect.",
+    "verifyEmailToContinue": "Verify your email to continue.",
+    "authorizationUnavailable": "Account access is temporarily unavailable. Please try again.",
+    "sessionRefreshRequired": "Your session could not be verified. Refresh the page and try again.",
+    "humanVerificationFailed": "Human verification could not be completed. Please try again.",
+    "registrationDuplicateSafe": "We could not create this account. If you may already have one, sign in or reset your password.",
+    "verificationDeliveryFailed": "Your account could not be handed off to email verification. Please try again.",
     "createAccount": "إنشاء حساب",
     "creating": "جارٍ الإنشاء…",
     "rememberMeOnDevice": "تذكرني على هذا الجهاز",
@@ -893,8 +907,221 @@
     "pwRuleLowercase": "حرف صغير واحد",
     "pwRuleSpecial": "رمز خاص واحد",
     "passwordRequirements": "متطلبات كلمة المرور",
+    "passwordRequirementsMet": "All requirements met",
+    "passwordRequirementsPending": "Complete every requirement",
     "dismissPasswordRequirements": "إغلاق متطلبات كلمة المرور",
+    "consentLabel": "Accept the Terms of Service and Privacy notice",
+    "consentPrefix": "I agree to the",
+    "termsOfService": "Terms of Service",
+    "consentAnd": "and acknowledge the",
+    "privacyNotice": "Privacy notice",
+    "consentSuffix": ".",
+    "validation": {
+      "fullNameRequired": "Enter your full name",
+      "invalidEmail": "Enter a valid email address",
+      "invalidPhone": "Use international format, for example +971501234567",
+      "passwordRequired": "Enter your password",
+      "passwordLength": "Use at least 8 characters",
+      "passwordUppercase": "Add an uppercase letter",
+      "passwordLowercase": "Add a lowercase letter",
+      "passwordSpecial": "Add a special character",
+      "confirmPasswordRequired": "Confirm your password",
+      "passwordMismatch": "Passwords do not match",
+      "consentRequired": "Accept the Terms of Service and Privacy notice to continue"
+    },
     "plan": "الباقة",
+    "accountEyebrow": "Mandoob · Account",
+    "requirementMet": "Met",
+    "requirementNotMet": "Not met",
+    "verificationHandoff": "Account created. Continue with email verification.",
+    "metadata": {
+      "login": {
+        "title": "Sign in | Mandoob",
+        "description": "Sign in to your Mandoob account."
+      },
+      "register": {
+        "title": "Create an account | Mandoob",
+        "description": "Create a Mandoob Customer or company account."
+      },
+      "proRegister": {
+        "title": "PRO registration review | Mandoob",
+        "description": "Review eligibility and the current interest path for a verified Mandoob PRO."
+      }
+    },
+    "proReview": {
+      "eyebrow": "Mandoob · PRO interest",
+      "title": "Request a PRO eligibility review",
+      "description": "Mandoob reviews interest from individual professionals before any PRO account path becomes available.",
+      "eligibilityTitle": "Who this path is for",
+      "eligibility": {
+        "verified": "A professional whose identity and relevant details can be verified.",
+        "company": "One individual PRO who may be assigned to one Company workspace under Mandoob's operating policy.",
+        "review": "Someone prepared to complete eligibility and invitation checks before account access."
+      },
+      "policyTitle": "One PRO, one Company",
+      "policyNote": "This is a Mandoob platform policy, not a statement of universal law. An accepted PRO account may be assigned to one Company workspace.",
+      "reviewNotApproval": "An eligibility review is not approval and does not create an account, Company assignment, or credential.",
+      "processTitle": "What happens next",
+      "process": {
+        "interest": "Share your interest through the public Contact journey.",
+        "eligibility": "Mandoob may review the information available for eligibility.",
+        "invitation": "If an approved account path becomes available, Mandoob will provide the appropriate next step."
+      },
+      "submissionUnavailable": "Direct PRO registration is not available on this page. No information is submitted here.",
+      "contactCta": "Contact Mandoob about PRO interest",
+      "contactHandoff": "The Contact journey will show its current availability. Opening or completing it does not guarantee delivery, eligibility, or approval.",
+      "customerCta": "Create a Customer or company account instead",
+      "presentationOnly": "Development preview only: this state does not record interest, create an account, or indicate approval.",
+      "stateLabel": "PRO interest status",
+      "states": {
+        "ready": {
+          "title": "Ready to review the requirements",
+          "body": "Check the eligibility and policy notes before choosing the Contact journey."
+        },
+        "unavailable": {
+          "title": "Direct submission unavailable",
+          "body": "This page cannot accept or deliver a PRO registration request."
+        },
+        "validation": {
+          "title": "Details need attention",
+          "body": "Presentation preview only. No details were validated or submitted."
+        },
+        "pending": {
+          "title": "Review request pending",
+          "body": "Presentation preview only. No request is being processed."
+        },
+        "review": {
+          "title": "Eligibility review",
+          "body": "Presentation preview only. No review has started and no decision has been made."
+        },
+        "duplicate": {
+          "title": "Request already received",
+          "body": "Presentation preview only. This does not reveal whether a person or request exists."
+        },
+        "rate": {
+          "title": "Please wait before trying again",
+          "body": "Presentation preview only. No rate limit was applied by this page."
+        },
+        "error": {
+          "title": "Request could not continue",
+          "body": "Presentation preview only. No request failed because this page performs no submission."
+        },
+        "success": {
+          "title": "Interest recorded",
+          "body": "Presentation preview only. No interest was recorded, and no account or approval exists."
+        }
+      }
+    },
+    "providers": {
+      "heading": "Other sign-in methods",
+      "unavailableDescription": "Provider sign-in is currently unavailable. Use email and password instead.",
+      "listLabel": "Unavailable sign-in providers",
+      "providerUnavailableLabel": "{provider} sign-in unavailable",
+      "unavailable": "Unavailable",
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "apple": "Apple"
+    },
+    "experience": {
+      "stageLabel": "Mandoob account access",
+      "benefitsLabel": "Account journey benefits",
+      "privacyLink": "Read the Privacy notice.",
+      "supportLabel": "Account help and next steps",
+      "login": {
+        "eyebrow": "Account access",
+        "title": "Welcome back to Mandoob.",
+        "description": "Sign in to continue to the account and workspace available to you.",
+        "privacyNote": "Your sign-in details are used to authenticate you and operate your account.",
+        "benefits": {
+          "1": {
+            "title": "Continue your work",
+            "body": "Return to the next available account step."
+          },
+          "2": {
+            "title": "Review information",
+            "body": "Access information already available in your workspace."
+          },
+          "3": {
+            "title": "One account",
+            "body": "Use the account method supported by Mandoob."
+          },
+          "4": {
+            "title": "Find support",
+            "body": "Reach the support journey when you need help."
+          }
+        }
+      },
+      "register": {
+        "eyebrow": "Create an account",
+        "title": "Start with one Mandoob account.",
+        "description": "Create your Customer or company account using the details requested in the form.",
+        "privacyNote": "Review how Mandoob handles account information before you continue.",
+        "benefits": {
+          "1": {
+            "title": "Create your profile",
+            "body": "Provide only the account details required here."
+          },
+          "2": {
+            "title": "Continue in stages",
+            "body": "Move to the next available step after verification."
+          },
+          "3": {
+            "title": "Clear requirements",
+            "body": "See validation and consent requirements before submitting."
+          },
+          "4": {
+            "title": "Support nearby",
+            "body": "Use the Contact journey if you need assistance."
+          }
+        }
+      },
+      "sensitive": {
+        "eyebrow": "Account security",
+        "title": "Complete this account step.",
+        "description": "Follow the instructions in the card to continue safely.",
+        "privacyNote": "Do not share passwords, verification codes, or recovery details.",
+        "benefits": {
+          "1": {
+            "title": "Stay on Mandoob",
+            "body": "Complete this step only on a Mandoob page."
+          },
+          "2": {
+            "title": "Keep codes private",
+            "body": "Never share passwords or verification details."
+          },
+          "3": {
+            "title": "Check the current state",
+            "body": "Time-bound links and codes may expire."
+          },
+          "4": {
+            "title": "Need help?",
+            "body": "Use the Contact journey if you cannot continue."
+          }
+        }
+      },
+      "support": {
+        "register": {
+          "title": "New to Mandoob?",
+          "body": "Create a Customer or company account.",
+          "label": "Create account"
+        },
+        "estimate": {
+          "title": "Planning costs?",
+          "body": "Build a non-binding planning estimate.",
+          "label": "Try the estimator"
+        },
+        "knowledge": {
+          "title": "Looking for guidance?",
+          "body": "Browse Mandoob knowledge resources.",
+          "label": "Explore resources"
+        },
+        "contact": {
+          "title": "Need help?",
+          "body": "Use the public Contact journey.",
+          "label": "Contact Mandoob"
+        }
+      }
+    },
     "longCopy": {
       "mfaInstructions": "Open your authenticator app and enter the 6-digit code shown for Mandoob.",
       "recoveryCodesIntro": "Save these one-time recovery codes somewhere safe. Each works exactly once if you lose your authenticator.",
@@ -904,6 +1131,180 @@
       "ifAccountExists": "If an account exists for that email, we sent a reset link. Check your inbox.",
       "scanQrIntro": "Scan the QR with an authenticator app, then enter the 6-digit code.",
       "consentPdpl": "I agree to the privacy policy and consent to processing of my personal data per UAE PDPL."
+    },
+    "recovery": {
+      "eyebrow": "Mandoob · Account security",
+      "metadata": {
+        "invite": {
+          "title": "Accept invitation | Mandoob",
+          "description": "Review and complete a Mandoob invitation."
+        },
+        "otp": {
+          "title": "Verify email | Mandoob",
+          "description": "Enter the email verification code for your Mandoob account."
+        },
+        "forgot": {
+          "title": "Reset password | Mandoob",
+          "description": "Request a password-reset link for a Mandoob account."
+        },
+        "reset": {
+          "title": "Choose a new password | Mandoob",
+          "description": "Choose a new password for your Mandoob account."
+        }
+      },
+      "invite": {
+        "title": "Accept invitation",
+        "intro": "Complete this invitation step without sharing the link or your password.",
+        "fullName": "Full name",
+        "phoneOptional": "Phone (optional)",
+        "password": "Password",
+        "passwordPolicy": "Use 8–200 characters with uppercase, lowercase, and a special character.",
+        "consent": "I agree to the Privacy notice and its personal-data processing terms.",
+        "submit": "Accept and continue",
+        "pending": "Setting up…",
+        "signIn": "Return to sign in",
+        "contactSupport": "Contact support",
+        "completeChallenge": "Complete MFA challenge",
+        "states": {
+          "invalid": "This invitation cannot be used. It may be invalid, already used, or revoked.",
+          "expired": "This invitation has expired. Request a new invitation from its sender.",
+          "validation": "Check the requested details and try again.",
+          "rateLimited": "Too many attempts. Wait before trying again.",
+          "sessionRefreshRequired": "Refresh this page and try again.",
+          "failure": "The invitation could not be completed. Try again.",
+          "success": "Invitation accepted. Continuing to your account."
+        }
+      },
+      "otp": {
+        "title": "Verify your email",
+        "sentTo": "Enter the six-digit code sent to {email}.",
+        "missingContext": "This verification page is missing valid email context. Start again from registration.",
+        "returnToRegistration": "Return to registration",
+        "codeGroupLabel": "Six-digit verification code",
+        "digitLabel": "Digit {number}",
+        "help": "Paste or type the six-digit code. Codes are time-limited.",
+        "verify": "Verify code",
+        "verifying": "Verifying…",
+        "verified": "Verified",
+        "resend": "Resend code",
+        "resending": "Resending…",
+        "resendCooldown": "Resend available in {seconds}s",
+        "states": {
+          "incomplete": "Enter all six digits.",
+          "verifying": "Verifying the code.",
+          "invalidOrExpired": "That code is invalid or expired. Request a new code and try again.",
+          "rateLimited": "Too many attempts. Wait before trying again.",
+          "locked": "Verification is unavailable for this account state.",
+          "sessionRefreshRequired": "Refresh this page and try again.",
+          "resendPending": "Requesting a new code.",
+          "resendSuccess": "If verification is still available, a new code has been sent.",
+          "resendFailure": "A new code could not be requested. Try again.",
+          "failure": "Verification could not be completed. Try again.",
+          "success": "Email verified. Continuing to your account."
+        }
+      },
+      "forgot": {
+        "title": "Reset your password",
+        "intro": "Enter your email to request a one-time password-reset link.",
+        "email": "Email",
+        "submit": "Send reset link",
+        "pending": "Sending…",
+        "completion": "If an account exists for that email, a reset link has been sent.",
+        "rateLimited": "Too many requests. Wait before trying again.",
+        "sessionRefreshRequired": "Refresh this page and try again.",
+        "transport": "The request could not be completed. Check your connection and try again.",
+        "validation": {
+          "invalidEmail": "Enter a valid email address."
+        }
+      },
+      "reset": {
+        "title": "Choose a new password",
+        "intro": "Use the reset link you received, then choose a password you do not use elsewhere.",
+        "newPassword": "New password",
+        "confirmPassword": "Confirm new password",
+        "passwordPolicy": "Use 8–200 characters with uppercase, lowercase, and a special character.",
+        "submit": "Set new password",
+        "pending": "Saving…",
+        "requestAnother": "Request another reset link",
+        "signIn": "Sign in",
+        "validation": {
+          "passwordPolicy": "Your password does not meet every requirement.",
+          "passwordMismatch": "The passwords do not match."
+        },
+        "states": {
+          "invalid": "This reset link is invalid, expired, or already used. Request another link.",
+          "rateLimited": "Too many attempts. Wait before trying again.",
+          "sessionRefreshRequired": "Refresh this page and try again.",
+          "failure": "The password could not be updated. Try again.",
+          "success": "Your password has been updated."
+        }
+      }
+    },
+    "mfa": {
+      "enroll": {
+        "title": "Set up two-factor authentication",
+        "intro": "Start when you are ready to connect an authenticator app.",
+        "ready": "No security change happens until you start setup.",
+        "start": "Start setup",
+        "starting": "Starting secure setup…",
+        "retry": "Retry setup",
+        "signIn": "Return to sign in",
+        "scan": "Scan this QR code in your authenticator app, then enter the code it shows.",
+        "qrAlt": "Authenticator setup QR code",
+        "manual": "Cannot scan? Show the manual secret",
+        "code": "Authenticator code",
+        "verify": "Verify and enable",
+        "verifying": "Verifying…",
+        "cancel": "Cancel setup",
+        "cancelling": "Cancelling…",
+        "recoveryIntro": "Save these one-time recovery codes now. They will not be shown again.",
+        "recoveryListLabel": "One-time recovery codes",
+        "copy": "Copy recovery codes",
+        "acknowledge": "I saved these recovery codes in a private place.",
+        "continue": "Continue",
+        "completing": "Continuing…",
+        "states": {
+          "invalidOrExpired": "That code is invalid or expired. Check the current code and try again.",
+          "expired": "This setup expired. Cancel it and start again.",
+          "rateLimited": "Too many attempts. Wait before trying again.",
+          "sessionExpired": "Your session expired. Sign in again before continuing.",
+          "repairRequired": "Setup could not be repaired safely. Sign in again or contact support before continuing.",
+          "cleanRollback": "Setup could not finish. Your session was ended safely; sign in again to restart MFA setup.",
+          "challengeRequired": "Confirm your existing authenticator before changing MFA setup.",
+          "failure": "Setup could not continue. Try again.",
+          "cleanupFailure": "Setup could not be cancelled safely. Refresh the page before retrying.",
+          "cancelled": "Setup was cancelled and the unverified factor was removed.",
+          "copied": "Recovery codes copied. Keep them private.",
+          "copyFailure": "Recovery codes could not be copied. Select and copy them manually."
+        }
+      },
+      "challenge": {
+        "title": "Confirm it is you",
+        "intro": "Use your authenticator or a saved recovery code to continue.",
+        "loading": "Checking available authentication factors…",
+        "signIn": "Return to sign in",
+        "retryDiscovery": "Check again",
+        "contactSupport": "Contact support",
+        "noFactor": "No verified authenticator is available for this session.",
+        "instructions": "Enter the current code from your authenticator app.",
+        "recoveryInstructions": "Enter one unused recovery code. It stays masked and is never shown back to you.",
+        "code": "Authenticator code",
+        "recoveryCode": "Recovery code",
+        "continue": "Continue",
+        "pending": "Verifying…",
+        "completing": "Continuing…",
+        "useRecovery": "Use a recovery code",
+        "useAuthenticator": "Use authenticator instead",
+        "states": {
+          "invalidOrExpired": "That authenticator code is invalid or expired.",
+          "invalidRecovery": "That recovery code is invalid or has already been used.",
+          "expired": "The authentication challenge expired. Try again.",
+          "rateLimited": "Too many attempts. Wait before trying again.",
+          "sessionExpired": "Your session expired. Sign in again before continuing.",
+          "repairRequired": "Recovery could not finish safely. Sign in again or contact support before continuing.",
+          "failure": "Authentication could not be completed. Try again."
+        }
+      }
     }
   },
   "account": {
@@ -3578,7 +3979,11 @@
           "assignment": "التعيين",
           "expiryWindow": "فترة الانتهاء"
         },
-        "accountStatus": { "active": "نشط", "invited": "مدعو", "inactive": "غير نشط" },
+        "accountStatus": {
+          "active": "نشط",
+          "invited": "مدعو",
+          "inactive": "غير نشط"
+        },
         "credentialState": {
           "draft": "مسودة",
           "submitted": "مُرسَل",
@@ -3588,8 +3993,14 @@
           "expired": "منتهي",
           "revoked": "ملغى"
         },
-        "eligibility": { "eligible": "مؤهل", "ineligible": "غير مؤهل" },
-        "assignment": { "assigned": "مُعيّن", "unassigned": "غير مُعيّن" },
+        "eligibility": {
+          "eligible": "مؤهل",
+          "ineligible": "غير مؤهل"
+        },
+        "assignment": {
+          "assigned": "مُعيّن",
+          "unassigned": "غير مُعيّن"
+        },
         "expiryWindow": {
           "expired": "منتهي",
           "30_days": "خلال 30 يومًا",
@@ -3612,7 +4023,10 @@
           "expired": "منتهي",
           "revoked": "ملغى"
         },
-        "eligible": { "eligible": "مؤهل", "ineligible": "غير مؤهل" },
+        "eligible": {
+          "eligible": "مؤهل",
+          "ineligible": "غير مؤهل"
+        },
         "table": {
           "name": "PRO",
           "credential": "بيانات الاعتماد",
@@ -3716,7 +4130,10 @@
           "effectiveFrom": "ساري من",
           "effectivePeriod": "فترة السريان",
           "interval": "الفترة",
-          "intervals": { "monthly": "شهري", "annual": "سنوي" },
+          "intervals": {
+            "monthly": "شهري",
+            "annual": "سنوي"
+          },
           "version": "الإصدار",
           "ongoing": "مستمر",
           "notApplicable": "لا ينطبق",
@@ -3726,9 +4143,19 @@
           "retryFormLabel": "إعادة محاولة تحميل الشروط التجارية لـ PRO",
           "historyLabel": "سجل الشروط التجارية",
           "kind": "نوع الشرط",
-          "kinds": { "pricing": "سعر الخدمة", "compensation": "التعويض" },
-          "models": { "per_registration": "لكل تسجيل", "retainer": "أتعاب دورية" },
-          "statuses": { "draft": "مسودة", "active": "نشط", "ended": "منتهي" },
+          "kinds": {
+            "pricing": "سعر الخدمة",
+            "compensation": "التعويض"
+          },
+          "models": {
+            "per_registration": "لكل تسجيل",
+            "retainer": "أتعاب دورية"
+          },
+          "statuses": {
+            "draft": "مسودة",
+            "active": "نشط",
+            "ended": "منتهي"
+          },
           "form": {
             "legends": {
               "create": "إنشاء مسودة شرط",
@@ -3736,17 +4163,27 @@
               "end": "إنهاء هذا الشرط النشط"
             },
             "model": "النموذج التجاري",
-            "models": { "per_registration": "لكل تسجيل", "retainer": "أتعاب دورية" },
+            "models": {
+              "per_registration": "لكل تسجيل",
+              "retainer": "أتعاب دورية"
+            },
             "amount": "المبلغ بالدرهم",
             "amountPlaceholder": "0.00",
             "amountHelp": "أدخل مبلغًا موجبًا بالدرهم. يُخزن بالوحدات الصغرى.",
             "interval": "فترة الأتعاب",
-            "intervals": { "monthly": "شهري", "annual": "سنوي" },
+            "intervals": {
+              "monthly": "شهري",
+              "annual": "سنوي"
+            },
             "effectiveFrom": "تاريخ بدء السريان",
             "effectiveTo": "تاريخ انتهاء السريان",
             "required": "أدخل مبلغًا موجبًا وتاريخ بدء السريان.",
             "endRequired": "اختر تاريخ انتهاء السريان.",
-            "actions": { "create": "حفظ المسودة", "activate": "تفعيل الشرط", "end": "إنهاء الشرط" },
+            "actions": {
+              "create": "حفظ المسودة",
+              "activate": "تفعيل الشرط",
+              "end": "إنهاء الشرط"
+            },
             "pending": "جارٍ الحفظ…",
             "saved": "تم حفظ الشرط التجاري.",
             "errorTitle": "لم يُحفظ الشرط",
@@ -4806,6 +5243,19 @@
       }
     }
   },
+  "publicPolish": {
+    "carousel": {
+      "previousLabel": "Show the previous workflow item",
+      "nextLabel": "Show the next workflow item",
+      "positionLabel": "Current workflow item"
+    },
+    "error": {
+      "eyebrow": "Temporary error",
+      "title": "This page could not be loaded.",
+      "description": "Try loading it again. No information you entered has been submitted by this page.",
+      "retry": "Try again"
+    }
+  },
   "home": {
     "hero": {
       "eyebrow": ".AE · منصة أعمال في دولة الإمارات",
@@ -5065,6 +5515,11 @@
       "proPrompt": "هل أنت مندوب علاقات عامة؟",
       "proCta": "اطّلع على مساحة الشركة المخصّصة"
     }
+  },
+  "application": {
+    "privacyMode": "مساحة عمل خاصة للطلب",
+    "localPreview": "لم يتم إرسال أي طلب إلى مندوب.",
+    "localSave": "احفظ على هذا الجهاز لمدة سبعة أيام"
   },
   "marketing": {
     "estimatorPreview": {

@@ -100,22 +100,26 @@ describe('homepage claims and CTA contract', () => {
     assert.equal(testimonials.match(/key: 'item(?:10|[1-9])'/gu)?.length, 10);
     assert.match(testimonials, /t\('carouselLabel'\)/u);
     assert.doesNotMatch(testimonials, /CLIENTS|client\d+(?:Name|Role|Quote)|fiveStars/u);
-    assert.doesNotMatch(testimonials, /previousLabel|nextLabel|positionLabels/u);
+    assert.match(testimonials, /previousLabel/u);
+    assert.match(testimonials, /nextLabel/u);
+    assert.match(testimonials, /positionLabel/u);
     assert.match(carousel, /from 'swiper\/react'/u);
-    assert.match(carousel, /from 'swiper\/modules'/u);
-    assert.match(carousel, /modules=\{\[Autoplay\]\}/u);
-    assert.match(carousel, /delay:\s*0/u);
-    assert.match(carousel, /disableOnInteraction:\s*true/u);
-    assert.match(carousel, /pauseOnMouseEnter:\s*true/u);
-    assert.match(carousel, /speed=\{reducedMotion \? 0 : 8000\}/u);
-    assert.match(carousel, /loop=\{items\.length > 4\}/u);
+    assert.doesNotMatch(carousel, /Autoplay|autoplay=|delay:\s*0/u);
+    assert.match(carousel, /type="button"/u);
+    assert.match(carousel, /aria-label=\{previousLabel\}/u);
+    assert.match(carousel, /aria-label=\{nextLabel\}/u);
+    assert.match(carousel, /aria-live="polite"/u);
+    assert.match(carousel, /slidePrev\(\)/u);
+    assert.match(carousel, /slideNext\(\)/u);
+    assert.match(carousel, /speed=\{reducedMotion \? 0 : 350\}/u);
+    assert.match(carousel, /rewind=\{items\.length > 4\}/u);
     assert.doesNotMatch(carousel, /blockquote|ratingLabel|★/u);
     assert.match(carousel, /450:\s*\{ slidesPerView: 1, spaceBetween: 10 \}/u);
     assert.match(carousel, /640:\s*\{ slidesPerView: 2, spaceBetween: 15 \}/u);
     assert.match(carousel, /768:\s*\{ slidesPerView: 3, spaceBetween: 15 \}/u);
     assert.match(carousel, /1024:\s*\{ slidesPerView: 4, spaceBetween: 20 \}/u);
     assert.doesNotMatch(carousel, /onPointerDown|onTransitionEnd|CLONE_COUNT/u);
-    assert.doesNotMatch(carousel, /home-testimonials-arrow/u);
+    assert.match(carousel, /home-testimonials-controls/u);
   });
 
   it('uses explicit catalog suffixes for setup-card facts', () => {

@@ -6,6 +6,10 @@ import en from '@/messages/en.json';
 import { PUBLIC_NAV_ITEMS, isPublicNavCurrent } from './public-navigation';
 
 const rendererSource = readFileSync(new URL('./PublicNavLinks.tsx', import.meta.url), 'utf8');
+const pendingSource = readFileSync(
+  new URL('./PublicLinkPendingIndicator.tsx', import.meta.url),
+  'utf8',
+);
 const headerSource = readFileSync(new URL('./SiteHeader.tsx', import.meta.url), 'utf8');
 const mobileSource = readFileSync(new URL('./MobileNav.tsx', import.meta.url), 'utf8');
 const userMenuSource = readFileSync(new URL('./UserMenu.tsx', import.meta.url), 'utf8');
@@ -92,6 +96,14 @@ describe('PublicNavLinks renderer contract', () => {
   it('supports an optional navigation callback', () => {
     assert.match(rendererSource, /onNavigate\?/);
     assert.match(rendererSource, /onNavigate\?\.\(\)/);
+  });
+
+  it('renders a real status-safe pending presentation inside each shared navigation link', () => {
+    assert.match(rendererSource, /<PublicLinkPendingIndicator\s*\/>/u);
+    assert.match(pendingSource, /useLinkStatus/u);
+    assert.match(pendingSource, /role="status"/u);
+    assert.match(pendingSource, /pending\s*\?\s*'Loading page'/u);
+    assert.match(cssSource, /\.site-public \.public-link-pending__spinner/u);
   });
 });
 

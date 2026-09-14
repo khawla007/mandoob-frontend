@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { guardCsrf } from '@/lib/auth/csrf-guard';
+import { trustedApplicationUrl } from '@/lib/auth/trusted-app-origin';
 import { forgotPasswordSchema } from '@/lib/validation/auth';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
@@ -28,9 +29,7 @@ export async function POST(request: NextRequest) {
   const { email } = parsed.data;
 
   const supabase = await createSupabaseServerClient();
-  const host = request.headers.get('host') ?? process.env.NEXT_PUBLIC_ROOT_DOMAIN;
-  const protocol = request.headers.get('x-forwarded-proto') ?? 'https';
-  const redirectTo = `${protocol}://${host}/callback?next=/reset-password`;
+  const redirectTo = trustedApplicationUrl('/callback?next=/reset-password').toString();
 
   // Supabase returns success regardless of whether the email exists.
   // We mirror that: always return ok to prevent user enumeration.

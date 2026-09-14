@@ -55,6 +55,9 @@ tests/.auth/**
 /playwright-report/
 /playwright/.cache/
 
+# disposable local-only P1.12 fixture project, credentials, and browser state
+/.p1-12-acceptance-runtime/
+
 # graphify
 /graphify-out/
 

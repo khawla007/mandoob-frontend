@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { createCredentialPostHandler } from '@/app/api/v1/account/pro/credentials/route';
-import { createEvidenceGetHandler } from '@/app/api/v1/account/pro/credentials/evidence/[evidenceId]/route';
+import { createCredentialPostHandler } from '@/app/api/v1/account/pro/credentials/route-handler';
+import { createEvidenceGetHandler } from '@/app/api/v1/account/pro/credentials/evidence/[evidenceId]/route-handler';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
 const CREDENTIAL = '22222222-2222-4222-8222-222222222222';

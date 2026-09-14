@@ -2,35 +2,44 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
+
+import { PublicContentState } from '@/components/public-content/PublicContentState';
 import { getBlogCoverImage } from '@/lib/blog/cover-image';
+import { buildBlogArticleJsonLd, resolveBlogDetail } from '@/lib/blog/public-presentation';
 import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { getPublishedBlogPostBySlug } from '@/lib/data/blog';
+import { withDevelopmentItemEvidence } from '@/lib/public-content/development-evidence';
+import { serializeJsonLd } from '@/lib/public-content/json-ld';
+import { buildUnavailableMetadata } from '@/lib/public-metadata';
 
 type Params = { slug: string };
+const SITE_ORIGIN = 'https://mandoob.ae';
+const getCachedPost = cache(
+  withDevelopmentItemEvidence(getPublishedBlogPostBySlug, {
+    nodeEnv: process.env.NODE_ENV,
+    mode: process.env.P107_BLOG_DETAIL_EVIDENCE_STATE,
+  }),
+);
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
-  let post = null;
-  try {
-    post = await getPublishedBlogPostBySlug(slug);
-  } catch (error) {
-    console.warn('Could not load blog post metadata', error);
+  const state = await resolveBlogDetail(slug, getCachedPost);
+  if (state.status !== 'ready') {
+    return buildUnavailableMetadata({
+      title: 'Blog article unavailable',
+      description: 'This published Blog article is not available.',
+      canonical: `/blog/${slug}`,
+    });
   }
-
-  if (!post) {
-    return {};
-  }
-
+  const post = state.data;
   const description = post.metaDescription ?? post.excerpt ?? undefined;
   const canonical = post.canonicalUrl ?? `/blog/${post.slug}`;
   const cover = getBlogCoverImage(post.title, post.slug);
-
   return {
     title: post.metaTitle ?? `${post.title} | Mandoob Blog`,
     description,
-    alternates: {
-      canonical,
-    },
+    alternates: { canonical },
     robots: post.noindex ? { index: false, follow: false } : undefined,
     openGraph: {
       title: post.metaTitle ?? post.title,
@@ -46,25 +55,48 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function BlogPostPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  let post = null;
-  try {
-    post = await getPublishedBlogPostBySlug(slug);
-  } catch (error) {
-    console.warn('Could not load public blog post', error);
+  const state = await resolveBlogDetail(slug, getCachedPost);
+  if (state.status === 'missing') notFound();
+  if (state.status === 'unavailable') {
+    return (
+      <PublicContentState
+        eyebrow="Temporarily unavailable"
+        title="This Blog article could not be loaded."
+        description="The public source is temporarily unavailable. No draft content or internal error details were shown."
+        recoveryHref={`/blog/${encodeURIComponent(slug)}`}
+        recoveryLabel="Try again"
+        retry
+        headingLevel="h1"
+      />
+    );
   }
+  if (state.status !== 'ready') notFound();
 
-  if (!post) notFound();
-
+  const post = state.data;
   const html = sanitizeBlogHtml(post.contentHtml);
   const cover = getBlogCoverImage(post.title, post.slug);
+  const jsonLd = buildBlogArticleJsonLd(post, SITE_ORIGIN);
 
   return (
     <article>
-      <section className="section" aria-labelledby="blog-article-h">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+      />
+      <section className="kb-editorial-hero blog-editorial-hero" aria-labelledby="blog-article-h">
         <div className="container">
+          <nav className="kb-editorial-breadcrumb" aria-label="Breadcrumb">
+            <Link href="/">Home</Link>
+            <span aria-hidden="true">/</span>
+            <Link href="/blog">Blog</Link>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{post.title}</span>
+          </nav>
           <div className="kb-article__meta">
             <span className="eyebrow">Blog</span>
-            {post.publishedAt ? <span className="mono">{formatDate(post.publishedAt)}</span> : null}
+            {post.publishedAt ? (
+              <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+            ) : null}
           </div>
           <h1 id="blog-article-h" className="display">
             {post.title}
@@ -75,7 +107,6 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
           </div>
         </div>
       </section>
-
       <section className="section" aria-label="Article body">
         <div className="container">
           <div className="kb-article">
@@ -84,20 +115,22 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
                 <div className="kb-prose" dangerouslySetInnerHTML={{ __html: html }} />
               </article>
             </div>
-
-            <aside className="kb-article__aside">
+            <aside className="kb-article__aside" aria-label="Article resources" role="region">
               <div className="cell">
-                <span className="eyebrow">Mandoob</span>
-                <h3>Estimate your setup</h3>
-                <p>Turn this guidance into an indicative UAE company setup estimate.</p>
+                <span className="eyebrow">Planning tool</span>
+                <h2>Estimate your setup</h2>
+                <p>
+                  Use an indicative estimate, then confirm current authority fees, timing,
+                  approvals, and requirements.
+                </p>
                 <Link className="btn btn--accent" href="/estimate">
                   Open estimator
                 </Link>
               </div>
               <div className="cell">
                 <span className="eyebrow">More guidance</span>
-                <h3>Browse the blog</h3>
-                <p>Read the latest Mandoob notes on UAE setup, licensing, and compliance.</p>
+                <h2>Browse the Blog</h2>
+                <p>Return to all currently published public articles.</p>
                 <Link className="btn btn--outline" href="/blog">
                   All articles
                 </Link>
@@ -111,9 +144,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(
+    new Date(value),
+  );
 }

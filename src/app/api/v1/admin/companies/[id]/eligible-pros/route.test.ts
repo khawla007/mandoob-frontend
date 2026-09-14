@@ -6,7 +6,7 @@ const ACTOR = '22222222-2222-4222-8222-222222222222';
 const PRO = '33333333-3333-4333-8333-333333333333';
 
 test('lookup authorizes AAL2, target, fail-closed limit, and query before data', async () => {
-  const { createEligibleProsGetHandler } = await import('./route');
+  const { createEligibleProsGetHandler } = await import('./route-handler');
   for (const stop of ['auth', 'aal', 'target', 'limit', 'query'] as const) {
     const calls: string[] = [];
     const handler = createEligibleProsGetHandler({
@@ -45,7 +45,7 @@ test('lookup authorizes AAL2, target, fail-closed limit, and query before data',
 });
 
 test('lookup makes one bounded company-aware query and strips lifecycle ids', async () => {
-  const { createEligibleProsGetHandler } = await import('./route');
+  const { createEligibleProsGetHandler } = await import('./route-handler');
   const calls: unknown[] = [];
   const handler = createEligibleProsGetHandler({
     requireOperator: async () => ({
@@ -89,7 +89,7 @@ test('lookup makes one bounded company-aware query and strips lifecycle ids', as
 });
 
 test('lookup fails closed with a sanitized response when the limiter is unavailable', async () => {
-  const { createEligibleProsGetHandler } = await import('./route');
+  const { createEligibleProsGetHandler } = await import('./route-handler');
   const handler = createEligibleProsGetHandler({
     requireOperator: async () => ({
       id: ACTOR,
@@ -115,7 +115,7 @@ test('lookup fails closed with a sanitized response when the limiter is unavaila
 });
 
 test('lookup sanitizes company resolution failures before limiter and list', async () => {
-  const { createEligibleProsGetHandler } = await import('./route');
+  const { createEligibleProsGetHandler } = await import('./route-handler');
   const calls: string[] = [];
   const handler = createEligibleProsGetHandler({
     requireOperator: async () => ({

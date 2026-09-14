@@ -15,13 +15,14 @@ test('legacy public PRO registration cannot create a company or user', async () 
   });
 });
 
-test('legacy public PRO registration UI redirects to the localized contact page', () => {
+test('public PRO registration renders a no-write review surface', () => {
   const page = readFileSync(
     join(process.cwd(), 'src/app/(auth)/register/pro/page.tsx'),
     'utf8',
   );
-  assert.match(page, /redirect\('\/contact'\)/u);
-  assert.doesNotMatch(page, /invite|email|RegisterProForm/iu);
+  assert.doesNotMatch(page, /redirect\s*\(/u);
+  assert.match(page, /ProRegistrationReview/u);
+  assert.doesNotMatch(page, /fetch\s*\(|register-pro/iu);
   assert.equal(existsSync(join(process.cwd(), 'src/components/auth/RegisterProForm.tsx')), false);
 });
 

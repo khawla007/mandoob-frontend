@@ -136,6 +136,10 @@ describe('homepage responsive and accessibility contract', () => {
       css,
       /\.site-public \.home-testimonial-card__marker\s*\{[^}]*color:\s*var\(--ink\)/u,
     );
+    assert.match(
+      css,
+      /\.site-public \.home-estimate-card__note\s*\{[^}]*color:\s*var\(--public-text-muted\)/u,
+    );
   });
 
   it('uses the defined public focus token for FAQ keyboard focus', () => {
@@ -155,7 +159,11 @@ describe('homepage responsive and accessibility contract', () => {
       css,
       /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-estimator-band\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
     );
-    assert.match(css, /\.site-public \.home-testimonials-carousel\s*\{[^}]*overflow:\s*hidden/u);
+    assert.match(css, /\.site-public \.home-testimonials-carousel\s*\{[^}]*overflow:\s*visible/u);
+    assert.match(
+      css,
+      /\.site-public \.home-testimonials-carousel \.swiper\s*\{[^}]*overflow:\s*hidden/u,
+    );
     assert.doesNotMatch(css, /home-testimonials-arrow/u);
   });
 });

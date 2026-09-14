@@ -1,24 +1,46 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { Geist, Geist_Mono, Noto_Kufi_Arabic } from 'next/font/google';
+import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { RouteProgress } from '@/components/navigation/RouteProgress';
 import { coerceLocale, dirOf } from '@/lib/i18n/config';
+import { PUBLIC_SITE_ORIGIN } from '@/lib/public-metadata';
 import './globals.css';
 // design-4 marketing theme — fully namespaced under .site-public, so it only
 // affects the shared SiteHeader/SiteFooter chrome and public pages, never dashboards.
 import './(public)/public-theme.css';
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
-const notoKufiArabic = Noto_Kufi_Arabic({ variable: '--font-arabic', subsets: ['arabic'] });
+const geistSans = localFont({
+  src: './fonts/Geist-Variable.ttf',
+  variable: '--font-geist-sans',
+  weight: '100 900',
+  style: 'normal',
+  display: 'swap',
+});
+
+const geistMono = localFont({
+  src: './fonts/GeistMono-Variable.ttf',
+  variable: '--font-geist-mono',
+  weight: '100 900',
+  style: 'normal',
+  display: 'swap',
+});
+
+const notoKufiArabic = localFont({
+  src: './fonts/NotoKufiArabic-Variable.ttf',
+  variable: '--font-arabic',
+  weight: '100 900',
+  style: 'normal',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'Mandoob',
-  description: 'UAE Business Registration & PRO Management Platform',
+  metadataBase: PUBLIC_SITE_ORIGIN,
+  title: 'Mandoob | UAE Company Setup and PRO Support',
+  description: 'Explore UAE Company setup paths and prepare for ongoing PRO support.',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

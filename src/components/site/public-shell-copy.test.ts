@@ -147,6 +147,9 @@ describe('public-facing layout copy', () => {
       assert.match(source, /\{t\('skipToMain'\)\}/u);
       assert.equal(source.match(/className="skip-link"/gu)?.length, 1);
       assert.equal(source.match(/<main\b/gu)?.length, 1);
+      if (layout.includes('(public)')) {
+        assert.match(source, /<main id="main" tabIndex=\{-1\}/u);
+      }
     });
   }
 });

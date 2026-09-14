@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSON_BODY_MAX_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { ApiError } from '@/lib/errors';
-import { createAdminEvidenceRecoveryPostHandler } from './route';
+import { createAdminEvidenceRecoveryPostHandler } from './route-handler';
 
 const ACTOR = '10000000-0000-4000-8000-000000000001';
 const PRO = '20000000-0000-4000-8000-000000000002';

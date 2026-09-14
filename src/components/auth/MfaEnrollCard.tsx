@@ -1,5 +1,6 @@
 'use client';
 import { postJson } from '@/lib/http/post';
+import { sharedSafeDestination } from '@/lib/auth/safe-redirect';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -21,6 +22,7 @@ export function MfaEnrollCard({
   enrollmentUnavailable?: boolean;
 }) {
   const t = useTranslations('auth');
+  const tEnrollment = useTranslations('auth.mfa.enroll');
   const tErrors = useTranslations('errors');
   const inFlight = useRef(false);
   const [enroll, setEnroll] = useState<Enroll | null>(null);
@@ -30,11 +32,15 @@ export function MfaEnrollCard({
   const [busy, setBusy] = useState<BusyState>(null);
   const [needsChallenge, setNeedsChallenge] = useState(challengeRequired);
   const [cleanupBlocked, setCleanupBlocked] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [finalizationFailure, setFinalizationFailure] = useState<
+    'repairRequired' | 'cleanRollback' | null
+  >(null);
 
   async function cleanupFactor(factorId: string): Promise<boolean> {
     try {
       const { error: cleanupError } = await getSupabaseBrowserClient().auth.mfa.unenroll({
-        factorId,
+        factorId: factorId,
       });
       return !cleanupError;
     } catch {
@@ -42,7 +48,7 @@ export function MfaEnrollCard({
     }
   }
 
-  async function startEnrollment() {
+  async function onStartEnrollment() {
     if (inFlight.current || cleanupBlocked || needsChallenge) return;
     inFlight.current = true;
     setBusy('starting');
@@ -93,6 +99,24 @@ export function MfaEnrollCard({
     }
   }
 
+  const startEnrollment = onStartEnrollment;
+
+  async function copyRecoveryCodes() {
+    if (!recoveryCodes) return;
+    try {
+      await navigator.clipboard.writeText(recoveryCodes.join('\n'));
+      setNotice(tEnrollment('states.copied'));
+    } catch {
+      setNotice(tEnrollment('states.copyFailure'));
+    }
+  }
+
+  function continueAfterRecovery() {
+    if (!acknowledged) return;
+    const rawNext = new URLSearchParams(window.location.search).get('next');
+    window.location.assign(sharedSafeDestination(rawNext));
+  }
+
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -113,6 +137,16 @@ export function MfaEnrollCard({
           recoveryCodes?: unknown;
         } | null;
         if (!res.ok) {
+          if (data?.code === 'MFA_ENROLL_REPAIR_REQUIRED') {
+            setEnroll(null);
+            setFinalizationFailure('repairRequired');
+            return;
+          }
+          if (data?.code === 'MFA_ENROLL_FINALIZATION_FAILED') {
+            setEnroll(null);
+            setFinalizationFailure('cleanRollback');
+            return;
+          }
           if (data?.code === 'AAL2_REQUIRED') {
             if (!(await cleanupFactor(enroll.factorId))) {
               setCleanupBlocked(true);
@@ -183,9 +217,32 @@ export function MfaEnrollCard({
         <pre className="bg-muted text-foreground rounded p-3 font-mono text-sm">
           {recoveryCodes.join('\n')}
         </pre>
-        <Link href="/" className="block text-center text-sm underline">
+        <button
+          type="button"
+          onClick={copyRecoveryCodes}
+          className="btn btn--secondary w-full justify-center"
+        >
+          {tEnrollment('copy')}
+        </button>
+        <p role="status" aria-live="polite" className="text-muted-foreground text-sm">
+          {notice}
+        </p>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={acknowledged}
+            onChange={(event) => setAcknowledged(event.currentTarget.checked)}
+          />
+          <span>{tEnrollment('acknowledge')}</span>
+        </label>
+        <button
+          type="button"
+          disabled={!acknowledged}
+          onClick={continueAfterRecovery}
+          className="btn btn--accent w-full justify-center"
+        >
           {t('recoveryCodesSaved')}
-        </Link>
+        </button>
       </div>
     );
   }
@@ -195,6 +252,24 @@ export function MfaEnrollCard({
       <p role="alert" className="text-destructive text-sm">
         {error ?? tErrors('mfaEnrollmentStateUncertain')}
       </p>
+    );
+  }
+
+  if (finalizationFailure) {
+    return (
+      <div className="space-y-3">
+        <p role="alert" className="text-destructive text-sm">
+          {tEnrollment(`states.${finalizationFailure}` as never)}
+        </p>
+        <Link href="/login" className="btn btn--secondary w-full justify-center">
+          {tEnrollment('signIn')}
+        </Link>
+        {finalizationFailure === 'repairRequired' ? (
+          <Link href="/contact" className="btn btn--secondary w-full justify-center">
+            {tEnrollment('contactSupport')}
+          </Link>
+        ) : null}
+      </div>
     );
   }
 

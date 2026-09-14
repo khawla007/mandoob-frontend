@@ -113,7 +113,7 @@ test('decision reason guard source confines ciphertext and decrypt to transient 
   assert.doesNotMatch(source, /console\.|unstable_cache|revalidate|jsonOk|Response/u);
   assert.doesNotMatch(source, /return\s+(?:identifier|plaintext|decrypted)/u);
   for (const path of [
-    'src/app/api/v1/admin/users/[id]/credentials/route.ts',
+    'src/app/api/v1/admin/users/[id]/credentials/route-handler.ts',
     'src/app/api/v1/_shared/pro-lifecycle-routes.ts',
     'src/lib/data/pro-credentials.ts',
     'src/lib/validation/pro-lifecycle.ts',
@@ -121,7 +121,7 @@ test('decision reason guard source confines ciphertext and decrypt to transient 
     assert.doesNotMatch(readFileSync(path, 'utf8'), /\bdecrypt\b/u, path);
   }
   assert.doesNotMatch(
-    readFileSync('src/app/api/v1/admin/users/[id]/credentials/route.ts', 'utf8'),
+    readFileSync('src/app/api/v1/admin/users/[id]/credentials/route-handler.ts', 'utf8'),
     /identifier_ciphertext/u,
   );
 });

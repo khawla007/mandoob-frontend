@@ -1,195 +1,258 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
-import { postJson } from '@/lib/http/post';
 import { startRouteProgress } from '@/components/navigation/RouteProgress';
+import { postJson } from '@/lib/http/post';
+import { sharedSafeDestination } from '@/lib/auth/safe-redirect';
 import { cn } from '@/lib/utils';
+import { claimAuthSubmission, releaseAuthSubmission } from './auth-form-state';
+import { otpFailureCategory, sanitizeOtpDigits } from './auth-recovery-state';
 
-const RESEND_COOLDOWN_SEC = 60;
 const CODE_LEN = 6;
+const RESEND_COOLDOWN_SECONDS = 60;
 
-export function OtpForm({ email }: { email: string }) {
-  const t = useTranslations('auth');
-  const tErrors = useTranslations('errors');
+type Props = { email?: string; contextState?: 'ready' | 'missing' };
+
+export function OtpForm({ email, contextState = 'ready' }: Props) {
+  const t = useTranslations('auth.recovery.otp');
   const router = useRouter();
-  const [digits, setDigits] = useState<string[]>(() => Array(CODE_LEN).fill(''));
-  const [error, setError] = useState<string | null>(null);
-  const [succeeded, setSucceeded] = useState(false);
-  const [pending, start] = useTransition();
-  const [resendPending, startResend] = useTransition();
-  const [cooldown, setCooldown] = useState(0);
+  const operationLatch = useRef(false);
   const refs = useRef<Array<HTMLInputElement | null>>(Array(CODE_LEN).fill(null));
-  const submittingRef = useRef(false);
+  const [digits, setDigits] = useState<string[]>(() => Array(CODE_LEN).fill(''));
+  const [state, setState] = useState<
+    'idle' | 'incomplete' | 'verifying' | 'failure' | 'resendPending' | 'resendSuccess' | 'success'
+  >('idle');
+  const [message, setMessage] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
-    refs.current[0]?.focus();
-  }, []);
+    if (contextState === 'ready') refs.current[0]?.focus();
+  }, [contextState]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const id = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
-    return () => clearInterval(id);
+    const id = window.setInterval(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(id);
   }, [cooldown]);
 
-  const code = digits.join('');
-  const complete = code.length === CODE_LEN && digits.every((d) => /\d/.test(d));
-
-  function submitCode(full: string) {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
-    setError(null);
-    start(async () => {
-      const res = await postJson('/api/v1/auth/verify-otp', { email, token: full });
-      const data = (await res.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-        redirectTo?: string;
-      } | null;
-      if (!res.ok || !data?.ok) {
-        setError(data?.error ?? tErrors('verificationFailed'));
-        setDigits(Array(CODE_LEN).fill(''));
-        refs.current[0]?.focus();
-        submittingRef.current = false;
-        return;
-      }
-      setSucceeded(true);
-      startRouteProgress();
-      router.replace(data.redirectTo ?? '/');
-    });
+  if (contextState !== 'ready' || !email) {
+    return (
+      <div className="space-y-4" data-auth-state="missing-context">
+        <p role="alert" className="text-destructive text-sm">
+          {t('missingContext')}
+        </p>
+        <Link href="/register" className="btn btn--accent w-full justify-center">
+          {t('returnToRegistration')}
+        </Link>
+      </div>
+    );
   }
 
-  function setAt(idx: number, val: string) {
-    const clean = val.replace(/\D/g, '');
+  const code = digits.join('');
+
+  function updateDigits(start: number, raw: string) {
+    const clean = sanitizeOtpDigits(raw);
+    const next = [...digits];
     if (!clean) {
-      setDigits((prev) => {
-        const next = [...prev];
-        next[idx] = '';
-        return next;
-      });
+      next[start] = '';
+      setDigits(next);
+      setMessage(null);
+      setState('idle');
       return;
     }
-    const next = [...digits];
-    let cursor = idx;
-    for (const ch of clean) {
-      if (cursor >= CODE_LEN) break;
-      next[cursor] = ch;
-      cursor += 1;
+    for (let offset = 0; offset < clean.length && start + offset < CODE_LEN; offset += 1) {
+      next[start + offset] = clean[offset]!;
     }
     setDigits(next);
-    const focusAt = Math.min(cursor, CODE_LEN - 1);
-    refs.current[focusAt]?.focus();
-    const full = next.join('');
-    if (full.length === CODE_LEN && /^\d{6}$/.test(full)) {
-      submitCode(full);
+    setMessage(null);
+    setState('idle');
+    refs.current[Math.min(start + Math.max(clean.length, 1), CODE_LEN - 1)]?.focus();
+  }
+
+  function onPaste(event: React.ClipboardEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const pasted = sanitizeOtpDigits(event.clipboardData.getData('text'));
+    if (!pasted) return;
+    const next = Array(CODE_LEN).fill('');
+    for (let index = 0; index < pasted.length; index += 1) next[index] = pasted[index]!;
+    setDigits(next);
+    setMessage(null);
+    setState('idle');
+    refs.current[Math.min(pasted.length, CODE_LEN) - 1]?.focus();
+  }
+
+  function onKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Backspace' && !digits[index] && index > 0) {
+      event.preventDefault();
+      const next = [...digits];
+      next[index - 1] = '';
+      setDigits(next);
+      refs.current[index - 1]?.focus();
+    } else if (event.key === 'ArrowLeft' && index > 0) {
+      event.preventDefault();
+      refs.current[index - 1]?.focus();
+    } else if (event.key === 'ArrowRight' && index < CODE_LEN - 1) {
+      event.preventDefault();
+      refs.current[index + 1]?.focus();
     }
   }
 
-  function onKeyDown(idx: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Backspace' && !digits[idx] && idx > 0) {
-      e.preventDefault();
-      refs.current[idx - 1]?.focus();
-      setDigits((prev) => {
-        const next = [...prev];
-        next[idx - 1] = '';
-        return next;
-      });
-    } else if (e.key === 'ArrowLeft' && idx > 0) {
-      e.preventDefault();
-      refs.current[idx - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && idx < CODE_LEN - 1) {
-      e.preventDefault();
-      refs.current[idx + 1]?.focus();
+  async function submitCode() {
+    if (!/^\d{6}$/u.test(code)) {
+      setState('incomplete');
+      setMessage(t('states.incomplete'));
+      return;
     }
-  }
-
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!complete) return;
-    submitCode(code);
-  }
-
-  function onResend() {
-    if (cooldown > 0) return;
-    startResend(async () => {
-      const res = await postJson('/api/v1/auth/resend-otp', { email });
-      if (!res.ok) {
-        toast.error(tErrors('couldNotResend'));
+    if (!claimAuthSubmission(operationLatch)) return;
+    setState('verifying');
+    setMessage(t('states.verifying'));
+    try {
+      const response = await postJson('/api/v1/auth/verify-otp', { email, token: code });
+      const data = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        code?: string;
+        redirectTo?: string;
+      } | null;
+      if (!response.ok || !data?.ok) {
+        const category = otpFailureCategory(data?.code);
+        setState(category === 'incomplete' ? 'incomplete' : 'failure');
+        setMessage(
+          category === 'invalidOrExpired'
+            ? t('states.invalidOrExpired')
+            : category === 'rateLimited'
+              ? t('states.rateLimited')
+              : category === 'locked'
+                ? t('states.locked')
+                : category === 'sessionRefreshRequired'
+                  ? t('states.sessionRefreshRequired')
+                  : category === 'incomplete'
+                    ? t('states.incomplete')
+                    : t('states.failure'),
+        );
+        setDigits(Array(CODE_LEN).fill(''));
+        refs.current[0]?.focus();
+        releaseAuthSubmission(operationLatch);
         return;
       }
-      toast.success(tErrors('newCodeSent'));
+      setState('success');
+      setMessage(t('states.success'));
+      startRouteProgress();
+      router.replace(sharedSafeDestination(data.redirectTo));
+    } catch {
+      setState('failure');
+      setMessage(t('states.failure'));
+      releaseAuthSubmission(operationLatch);
+    }
+  }
+
+  async function resendCode() {
+    if (cooldown > 0 || !claimAuthSubmission(operationLatch)) return;
+    setState('resendPending');
+    setMessage(t('states.resendPending'));
+    try {
+      const response = await postJson('/api/v1/auth/resend-otp', { email });
+      const data = (await response.json().catch(() => null)) as { code?: string } | null;
+      if (!response.ok) {
+        const category = otpFailureCategory(data?.code);
+        setState('failure');
+        setMessage(
+          category === 'rateLimited' ? t('states.rateLimited') : t('states.resendFailure'),
+        );
+        releaseAuthSubmission(operationLatch);
+        return;
+      }
       setDigits(Array(CODE_LEN).fill(''));
-      setError(null);
-      submittingRef.current = false;
+      releaseAuthSubmission(operationLatch);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      setState('resendSuccess');
+      setMessage(t('states.resendSuccess'));
       refs.current[0]?.focus();
-      setCooldown(RESEND_COOLDOWN_SEC);
-    });
+    } catch {
+      setState('failure');
+      setMessage(t('states.resendFailure'));
+      releaseAuthSubmission(operationLatch);
+    }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex justify-center gap-2">
-          {digits.map((d, i) => (
-            <input
-              key={i}
-              ref={(el) => {
-                refs.current[i] = el;
-              }}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              aria-label={`Digit ${i + 1}`}
-              maxLength={1}
-              value={d}
-              onChange={(e) => setAt(i, e.target.value)}
-              onKeyDown={(e) => onKeyDown(i, e)}
-              onFocus={(e) => e.currentTarget.select()}
-              className={cn(
-                'border-input bg-background focus-visible:ring-ring size-12 rounded-md border text-center font-mono text-xl font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none',
-                error && 'border-destructive',
-              )}
-            />
-          ))}
-        </div>
-        <p className="text-muted-foreground text-center text-xs">{t('longCopy.checkInbox')}</p>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submitCode();
+      }}
+      className="space-y-4"
+      noValidate
+      data-auth-state={state}
+    >
+      <div
+        role="group"
+        aria-label={t('codeGroupLabel')}
+        aria-describedby="otp-help otp-status"
+        onPaste={onPaste}
+        className="flex justify-center gap-2"
+      >
+        {digits.map((digit, index) => (
+          <input
+            key={index}
+            ref={(element) => {
+              refs.current[index] = element;
+            }}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="one-time-code"
+            aria-label={t('digitLabel', { number: index + 1 })}
+            aria-invalid={state === 'failure' || state === 'incomplete'}
+            maxLength={1}
+            value={digit}
+            onChange={(event) => updateDigits(index, event.currentTarget.value)}
+            onKeyDown={(event) => onKeyDown(index, event)}
+            onFocus={(event) => event.currentTarget.select()}
+            className={cn(
+              'border-input bg-background focus-visible:ring-ring size-12 rounded-md border text-center font-mono text-xl font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none',
+              (state === 'failure' || state === 'incomplete') && 'border-destructive',
+            )}
+          />
+        ))}
       </div>
-      {error && <p className="text-destructive text-center text-sm">{error}</p>}
+      <p id="otp-help" className="text-muted-foreground text-center text-xs">
+        {t('help')}
+      </p>
+      <p
+        id="otp-status"
+        role={state === 'failure' || state === 'incomplete' ? 'alert' : 'status'}
+        aria-live="polite"
+        className={cn(
+          'min-h-5 text-center text-sm',
+          (state === 'failure' || state === 'incomplete') && 'text-destructive',
+        )}
+      >
+        {message}
+      </p>
       <button
         type="submit"
+        disabled={state === 'verifying' || state === 'resendPending' || state === 'success'}
+        aria-busy={state === 'verifying'}
         className="btn btn--accent w-full justify-center"
-        disabled={pending || succeeded || !complete}
-        aria-busy={pending}
-        aria-live="polite"
       >
-        {succeeded ? (
-          <>
-            <Check className="size-4" />
-            {t('verified')}
-          </>
-        ) : pending ? (
-          <>
-            <Loader2 className="size-4 animate-spin" />
-            {t('verifying')}
-          </>
-        ) : (
-          t('verify')
-        )}
+        {state === 'verifying' ? t('verifying') : state === 'success' ? t('verified') : t('verify')}
       </button>
       <button
         type="button"
-        onClick={onResend}
-        disabled={cooldown > 0 || resendPending || succeeded}
-        className="text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground w-full text-center text-xs underline-offset-4 hover:underline disabled:cursor-not-allowed"
+        onClick={() => void resendCode()}
+        disabled={
+          cooldown > 0 || state === 'verifying' || state === 'resendPending' || state === 'success'
+        }
+        className="text-muted-foreground hover:text-foreground w-full text-center text-xs underline-offset-4 hover:underline disabled:cursor-not-allowed"
       >
         {cooldown > 0
-          ? t('resendIn', { seconds: cooldown })
-          : resendPending
+          ? t('resendCooldown', { seconds: cooldown })
+          : state === 'resendPending'
             ? t('resending')
-            : t('resendCode')}
+            : t('resend')}
       </button>
     </form>
   );

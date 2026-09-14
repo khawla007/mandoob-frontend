@@ -44,6 +44,23 @@ function token(block: string, name: string): string {
   return value;
 }
 
+function relativeLuminance(hex: string): number {
+  const channels = hex
+    .slice(1)
+    .match(/.{2}/gu)
+    ?.map((channel) => Number.parseInt(channel, 16) / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+  assert.ok(channels && channels.length === 3);
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(first: string, second: string): number {
+  const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort(
+    (a, b) => b - a,
+  );
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 const semanticRoles = [
   'public-canvas',
   'public-surface',
@@ -83,58 +100,39 @@ renderTest('sticky public header surfaces are solid in light and dark themes', (
   );
 });
 
-renderTest('public light tokens match the canonical design-4 palette and fonts', () => {
+renderTest('public light tokens retain the accepted warm palette and fonts', () => {
   const block = declarations('.site-public');
-  const expected = {
-    paper: '#FFFFFF',
-    ink: '#000000',
-    'zinc-50': '#FAFAFA',
-    'zinc-100': '#F4F4F5',
-    'zinc-200': '#E4E4E7',
-    'zinc-300': '#D4D4D8',
-    'zinc-400': '#A1A1AA',
-    'zinc-500': '#71717A',
-    'zinc-600': '#52525B',
-    'zinc-700': '#3F3F46',
-    'zinc-900': '#18181B',
-    'zinc-950': '#09090B',
-    accent: '#FF5722',
-    'accent-hover': '#E64A19',
-    'accent-soft': '#FFF1ED',
-    'pb-border': '#E4E4E7',
-    'pb-border-dark': '#27272A',
-  } as const;
-  for (const [name, value] of Object.entries(expected)) {
-    assert.equal(rawToken(block, name).toUpperCase(), value);
+  for (const name of ['paper', 'ink', 'zinc-50', 'zinc-500', 'zinc-950']) {
+    assert.match(rawToken(block, name), /^oklch\(/u);
   }
+  assert.equal(rawToken(block, 'accent'), 'var(--public-accent-decoration)');
+  assert.equal(rawToken(block, 'public-accent-decoration'), 'var(--brand-accent)');
   assert.match(rawToken(block, 'font'), /^var\(--font-geist-sans\)(?:,|$)/u);
   assert.match(rawToken(block, 'mono-font'), /^var\(--font-geist-mono\)(?:,|$)/u);
 });
 
-renderTest('public dark tokens retain accent CTA colors and invert the neutral ramp', () => {
+renderTest('public dark tokens retain the warm inverted ramp', () => {
   const block = declarations('.dark .site-public');
-  const expected = {
-    paper: '#18181B',
-    ink: '#FAFAFA',
-    'zinc-50': '#09090B',
-    'zinc-100': '#18181B',
-    'zinc-200': '#27272A',
-    'zinc-300': '#3F3F46',
-    'zinc-400': '#52525B',
-    'zinc-500': '#71717A',
-    'zinc-600': '#A1A1AA',
-    'zinc-700': '#D4D4D8',
-    'zinc-900': '#E4E4E7',
-    'zinc-950': '#F4F4F5',
-    'pb-border': '#27272A',
-    'pb-border-dark': '#3F3F46',
-    accent: '#FF5722',
-    'accent-hover': '#E64A19',
-  } as const;
-  for (const [name, value] of Object.entries(expected)) {
-    assert.equal(rawToken(block, name).toUpperCase(), value);
+  for (const name of ['paper', 'ink', 'zinc-50', 'zinc-500', 'zinc-950']) {
+    assert.match(rawToken(block, name), /^oklch\(/u);
   }
-  assert.match(declarations('.site-public .btn--accent'), /color:\s*#fff\b/iu);
+  assert.match(declarations('.site-public .btn--accent'), /color:\s*var\(--public-cta-text\)/u);
+});
+
+renderTest('every public CTA state meets WCAG AA in both themes', () => {
+  const pairs = [
+    ['public-cta-background', 'public-cta-text'],
+    ['public-cta-hover-background', 'public-cta-text'],
+    ['public-cta-active-background', 'public-cta-text'],
+    ['public-cta-focus-background', 'public-cta-text'],
+    ['public-cta-disabled-background', 'public-cta-disabled-text'],
+  ] as const;
+  for (const selector of ['.site-public', '.dark .site-public']) {
+    const block = declarations(selector);
+    for (const [background, foreground] of pairs) {
+      assert.ok(contrastRatio(token(block, background), token(block, foreground)) >= 4.5);
+    }
+  }
 });
 
 renderTest('public dark theme preserves a dark accent surface for flow markers', () => {
@@ -145,19 +143,22 @@ renderTest('public dark theme preserves a dark accent surface for flow markers',
   );
 });
 
-renderTest('mobile dialog inherits the canonical accent CTA token', () => {
+renderTest('mobile dialog inherits the semantic CTA token', () => {
   assert.doesNotMatch(declarations('.site-public.public-mobile-dialog'), /--accent\s*:/u);
-  assert.match(declarations('.site-public .btn--accent'), /background:\s*var\(--accent\)/u);
+  assert.match(
+    declarations('.site-public .btn--accent'),
+    /background:\s*var\(--public-cta-background\)/u,
+  );
 });
 
 renderTest('design-4 component colors and weights are preserved', () => {
   assert.match(
     declarations('.site-public .btn--accent'),
-    /background:\s*var\(--accent\)[\s\S]*color:\s*#fff/iu,
+    /background:\s*var\(--public-cta-background\)[\s\S]*color:\s*var\(--public-cta-text\)/u,
   );
   assert.match(
     declarations('.site-public .btn--accent:hover'),
-    /background:\s*var\(--accent-hover\)/u,
+    /background:\s*var\(--public-cta-hover-background\)/u,
   );
   assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-500\)/u);
   assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
@@ -168,30 +169,37 @@ renderTest('design-4 component colors and weights are preserved', () => {
   assert.match(homeLink, /font-weight:\s*600\b/u);
 });
 
-renderTest('accent buttons preserve the August 1 shared palette', () => {
+renderTest('accent buttons consume semantic state tokens', () => {
   const button = declarations('.site-public .btn--accent');
-  assert.match(button, /background:\s*var\(--accent\)/u);
-  assert.match(button, /color:\s*#fff\b/iu);
-  assert.match(css, /\.site-public \.btn--accent:hover\s*\{[^}]*var\(--accent-hover\)/u);
+  assert.match(button, /background:\s*var\(--public-cta-background\)/u);
+  assert.match(button, /color:\s*var\(--public-cta-text\)/u);
+  assert.match(
+    css,
+    /\.site-public \.btn--accent:hover\s*\{[^}]*var\(--public-cta-hover-background\)/u,
+  );
   assert.match(
     css,
     /\.site-public \.btn--accent:disabled[^}]*var\(--public-cta-disabled-background\)/u,
   );
 });
 
-renderTest('accent-button overrides do not replace the August 1 base palette', () => {
+renderTest('accent-button overrides use the matching semantic states', () => {
   const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].filter(
     ([, selector, body]) =>
       /\.btn--accent(?![-\w])/u.test(selector) && /(?:^|;)\s*background\s*:/u.test(body),
   );
-  assert.ok(rules.length >= 3, 'expected base, hover, and disabled accent-button rules');
+  assert.ok(rules.length >= 5, 'expected every base interactive accent-button rule');
 
   for (const [, selector, body] of rules) {
     const expected = selector.includes(':hover')
-      ? '--accent-hover'
-      : selector.includes(':disabled') || selector.includes("[aria-disabled='true']")
-        ? '--public-cta-disabled-background'
-        : '--accent';
+      ? '--public-cta-hover-background'
+      : selector.includes(':active')
+        ? '--public-cta-active-background'
+        : selector.includes(':focus-visible')
+          ? '--public-cta-focus-background'
+          : selector.includes(':disabled') || selector.includes("[aria-disabled='true']")
+            ? '--public-cta-disabled-background'
+            : '--public-cta-background';
     assert.match(
       body,
       new RegExp(`background:\\s*var\\(${expected}\\)`, 'u'),
@@ -200,7 +208,7 @@ renderTest('accent-button overrides do not replace the August 1 base palette', (
   }
 });
 
-renderTest('accent-button color overrides preserve the shared white CTA text', () => {
+renderTest('accent-button color overrides preserve semantic CTA text', () => {
   const colorRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].filter(
     ([, selector, body]) =>
       /\.btn--accent(?![-\w])/u.test(selector) &&
@@ -211,8 +219,8 @@ renderTest('accent-button color overrides preserve the shared white CTA text', (
   for (const [, selector, body] of colorRules) {
     assert.match(
       body,
-      /color:\s*#fff\b/iu,
-      `${selector.trim()} overrides the shared white CTA text`,
+      /color:\s*var\(--public-cta-text\)/u,
+      `${selector.trim()} bypasses the semantic CTA text`,
     );
   }
 });

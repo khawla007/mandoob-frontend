@@ -99,7 +99,7 @@ const PANELS: Record<Nav, Panel> = {
   },
 };
 
-export function DashboardPreview() {
+function InteractiveDashboardPreview() {
   const [active, setActive] = useState<Nav>('Overview');
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const panel = PANELS[active];
@@ -203,4 +203,8 @@ export function DashboardPreview() {
       </div>
     </figure>
   );
+}
+
+export function DashboardPreview() {
+  return <InteractiveDashboardPreview />;
 }

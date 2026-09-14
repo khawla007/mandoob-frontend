@@ -125,7 +125,8 @@ test('dashboard inset may shrink beside the tablet sidebar without page overflow
 
 test('dashboard uses application fonts and lifecycle semantic surfaces in both themes', () => {
   const rootLayout = readFileSync(new URL('../../app/layout.tsx', import.meta.url), 'utf8');
-  assert.match(rootLayout, /Noto_Kufi_Arabic/u);
+  assert.match(rootLayout, /next\/font\/local/u);
+  assert.match(rootLayout, /NotoKufiArabic-Variable\.ttf/u);
   assert.match(rootLayout, /--font-arabic/u);
   assert.match(styles, /\[dir='rtl'\][\s\S]*font-family:\s*var\(--font-arabic\)/u);
   for (const token of ['lifecycle-surface', 'lifecycle-subtle', 'lifecycle-border']) {

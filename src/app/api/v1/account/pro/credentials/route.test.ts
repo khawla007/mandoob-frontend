@@ -8,7 +8,7 @@ import {
   requireLiveProAccount,
 } from '@/app/api/v1/_shared/pro-lifecycle-routes';
 import { JSON_BODY_MAX_BYTES } from '@/app/api/v1/_shared/bounded-body';
-import { createCredentialPostHandler } from './route';
+import { createCredentialPostHandler } from './route-handler';
 
 const ACTOR = '10000000-0000-4000-8000-000000000001';
 const CREDENTIAL = '20000000-0000-4000-8000-000000000002';

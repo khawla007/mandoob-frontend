@@ -63,7 +63,18 @@ export function sanitizeBlogHtml(html: string): string {
     allowedSchemesAppliedToAttributes: ['href', 'src'],
     allowProtocolRelative: false,
     transformTags: {
-      a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, true),
+      a: (tagName, attribs) => {
+        const href = attribs.href ?? '';
+        const external = /^https?:\/\//iu.test(href);
+        return {
+          tagName,
+          attribs: {
+            ...(href ? { href } : {}),
+            ...(attribs.name ? { name: attribs.name } : {}),
+            ...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+          },
+        };
+      },
       img: sanitizeHtml.simpleTransform('img', { loading: 'lazy' }, true),
     },
   });

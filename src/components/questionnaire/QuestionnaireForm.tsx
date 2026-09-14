@@ -1,672 +1,1983 @@
 'use client';
 
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import {
   AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Building2,
+  Check,
   CheckCircle2,
-  ClipboardList,
-  FileCheck2,
-  Loader2,
-  Users,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  RotateCcw,
+  Save,
 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import type { QuestionnaireAnswers } from '@/lib/questionnaire';
+  APPLICATION_DEFINITION,
+  EMPTY_APPLICATION_DRAFT,
+  createDemoApplicationAdapter,
+  prepareApplicationCompletion,
+  productionApplicationAdapter,
+  reduceApplicationDraft,
+  validateApplication,
+  validateApplicationStep,
+  type ApplicationActionState,
+  type ApplicationDraft,
+  type ApplicationDraftAction,
+  type ApplicationStepId,
+  type ApplicationValidationError,
+  type DemoApplicationOutcome,
+  type EstimatorHandoffResult,
+} from '@/lib/public-application';
 import {
-  buildQuestionnaireSubmission,
-  createQuestionnaireDefaults,
-  type QuestionnaireFieldErrors,
-  type QuestionnaireFormAnswers,
-} from './payload';
+  clearApplicationDraft,
+  loadApplicationDraft,
+  saveApplicationDraft,
+} from '@/lib/public-application/storage';
+import {
+  clearFilePreviewsAfterReset,
+  reconcileFilePreviews,
+  removePreviewFile,
+  selectPreviewFile,
+  type FilePreviewState,
+} from '@/lib/public-application/file-preview';
 
-type StepId = 'contact' | 'business' | 'setup' | 'details' | 'review';
-type SubmissionSuccess = { leadId: string; stage: string; assignedTenantId: string | null };
-
-const STEPS: {
-  id: StepId;
-  icon: typeof ClipboardList;
-  fields: (keyof QuestionnaireAnswers)[];
-}[] = [
-  { id: 'contact', icon: ClipboardList, fields: ['fullName', 'email', 'phone', 'nationality'] },
-  { id: 'business', icon: Building2, fields: ['activity', 'preferredNames', 'businessSummary'] },
-  {
-    id: 'setup',
-    icon: FileCheck2,
-    fields: ['jurisdiction', 'authority', 'addOns', 'documentReadiness'],
-  },
-  {
-    id: 'details',
-    icon: Users,
-    fields: [
-      'shareholderCount',
-      'shareholderSplitSummary',
-      'investorVisaCount',
-      'employeeVisaCount',
-      'familyVisaCount',
-      'officeType',
-      'officeAreaNotes',
-    ],
-  },
-  { id: 'review', icon: CheckCircle2, fields: ['notes'] },
-];
-
-const JURISDICTION_OPTIONS = [
-  { value: 'mainland' },
-  { value: 'free_zone' },
-  { value: 'offshore' },
+const SESSION_KEY = 'mandoob:p109:application-session';
+const LOCAL_KEY = 'mandoob:p109:application-local';
+const STEPS = [
+  { id: 'contact', label: 'Contact' },
+  { id: 'business', label: 'Business Details' },
+  { id: 'setup', label: 'Setup' },
+  { id: 'ownership', label: 'Ownership' },
+  { id: 'review', label: 'Review' },
 ] as const;
-
-const OFFICE_OPTIONS = [
-  { value: 'none' },
-  { value: 'flexi' },
-  { value: 'physical' },
-  { value: 'virtual' },
-] as const;
-
-const DOCUMENT_OPTIONS = [
-  { value: 'ready' },
-  { value: 'partial' },
-  { value: 'not_ready' },
-] as const;
-
-const ADD_ONS = [
-  { value: 'bank_account' },
-  { value: 'tax_registration' },
-  { value: 'document_attestation' },
-  { value: 'pro_services' },
-] as const;
+const SETUP_SUBSTEPS = ['Jurisdiction', 'Authority', 'Visas', 'Office', 'Services'] as const;
 
 export function QuestionnaireForm({
-  initialAnswers,
-  estimateData,
+  handoff,
+  demoOutcome,
 }: {
-  initialAnswers: Partial<QuestionnaireAnswers>;
-  estimateData: Record<string, unknown>;
+  handoff: EstimatorHandoffResult;
+  demoOutcome: DemoApplicationOutcome | null;
 }) {
-  const tErrors = useTranslations('errors');
-  const t = useTranslations('questionnaire');
-  const tCommon = useTranslations('common');
-  const [answers, setAnswers] = useState<QuestionnaireFormAnswers>(() =>
-    createQuestionnaireDefaults(initialAnswers),
-  );
+  const [draft, setDraft] = useState<ApplicationDraft>(() => draftFromHandoff(handoff));
   const [stepIndex, setStepIndex] = useState(0);
-  const [fieldErrors, setFieldErrors] = useState<QuestionnaireFieldErrors>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState<SubmissionSuccess | null>(null);
-  const [showVisaInputs, setShowVisaInputs] = useState(
-    () => requestedVisaCount(createQuestionnaireDefaults(initialAnswers)) > 0,
-  );
+  const [attempted, setAttempted] = useState(false);
+  const [action, setAction] = useState<ApplicationActionState>({ status: 'idle' });
+  const [files, setFiles] = useState<FilePreviewState>({});
+  const [notice, setNotice] = useState('Session draft is kept on this device for up to 24 hours.');
+  const [localSave, setLocalSave] = useState(false);
+  const [saveDisclosureOpen, setSaveDisclosureOpen] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<{
+    draft: ApplicationDraft;
+    savedAt: string;
+    tier: 'session' | 'local';
+  } | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [maxReached, setMaxReached] = useState(0);
+  const [completionErrors, setCompletionErrors] = useState(false);
+  const [completionAttempt, setCompletionAttempt] = useState(0);
+  const [setupSubstep, setSetupSubstep] = useState(0);
+  const [setupUnlocked, setSetupUnlocked] = useState(0);
+  const hydrated = useRef(false);
+  const dirty = useRef(false);
+  const pending = useRef(false);
+  const storageBlocked = useRef(false);
+  const sessionSavedAt = useRef<string | null>(null);
+  const localSavedAt = useRef<string | null>(null);
+  const availableSessionAt = useRef<string | null>(null);
+  const availableLocalAt = useRef<string | null>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const resetReturnFocus = useRef<HTMLElement | null>(null);
+  const saveReturnFocus = useRef<HTMLElement | null>(null);
+  const current = STEPS[stepIndex];
+  const validation = useMemo(() => validateApplication(draft, APPLICATION_DEFINITION), [draft]);
+  const errors = attempted ? validation.errors.filter((e) => e.stepId === current.id) : [];
 
-  const currentStep = STEPS[stepIndex];
-  const progress = Math.round(((stepIndex + 1) / STEPS.length) * 100);
-  const hasEstimate = Object.keys(estimateData).length > 0;
-
-  const reviewRows = useMemo(
-    () => [
-      [
-        t('review.contact'),
-        [answers.fullName, answers.email || answers.phone].filter(Boolean).join(' / '),
-      ],
-      [
-        t('review.business'),
-        `${answers.activity || t('review.notSet')} · ${answers.preferredNames.filter(Boolean).join(', ') || t('review.noNamesYet')}`,
-      ],
-      [
-        t('review.setup'),
-        `${t(`jurisdiction.${answers.jurisdiction}`)} · ${answers.authority || t('review.authorityPending')}`,
-      ],
-      [t('review.ownership'), t('review.shareholders', { count: answers.shareholderCount })],
-      [t('review.visas'), t('review.visasRequested', { count: requestedVisaCount(answers) })],
-      [t('review.office'), t(`office.${answers.officeType}`)],
-    ],
-    [answers, t],
-  );
-
-  function patch(next: Partial<QuestionnaireFormAnswers>) {
-    setFieldErrors({});
-    setAnswers((current) => ({ ...current, ...next }));
-  }
-
-  function setPreferredName(index: number, value: string) {
-    const preferredNames = [...answers.preferredNames];
-    preferredNames[index] = value;
-    patch({ preferredNames });
-  }
-
-  function toggleAddOn(addOn: QuestionnaireAnswers['addOns'][number]) {
-    const next = new Set(answers.addOns);
-    if (next.has(addOn)) next.delete(addOn);
-    else next.add(addOn);
-    patch({ addOns: [...next] });
-  }
-
-  function validateCurrentStep(): boolean {
-    const result = buildQuestionnaireSubmission(answers, estimateData);
-    if (result.ok) {
-      setFieldErrors({});
-      return true;
+  useEffect(() => {
+    const local = loadApplicationDraft({
+      storage: window.localStorage,
+      key: LOCAL_KEY,
+      tier: 'local',
+      definition: APPLICATION_DEFINITION,
+    });
+    const session = loadApplicationDraft({
+      storage: window.sessionStorage,
+      key: SESSION_KEY,
+      tier: 'session',
+      definition: APPLICATION_DEFINITION,
+    });
+    const candidates = [
+      ...(session.status === 'loaded' ? [{ ...session, tier: 'session' as const }] : []),
+      ...(local.status === 'loaded' ? [{ ...local, tier: 'local' as const }] : []),
+    ].sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt));
+    availableSessionAt.current = session.status === 'loaded' ? session.savedAt : null;
+    availableLocalAt.current = local.status === 'loaded' ? local.savedAt : null;
+    if (candidates[0])
+      queueMicrotask(() =>
+        setSavedDraft({
+          draft: candidates[0].draft,
+          savedAt: candidates[0].savedAt,
+          tier: candidates[0].tier,
+        }),
+      );
+    if (session.status === 'unavailable' || local.status === 'unavailable') {
+      queueMicrotask(() =>
+        setNotice('Browser storage is unavailable. Changes remain only while this page is open.'),
+      );
+    } else if (session.status === 'discarded' || local.status === 'discarded') {
+      queueMicrotask(() => setNotice('An invalid or expired saved draft was safely cleared.'));
     }
-    const errors = pickStepErrors(result.fieldErrors, currentStep.fields);
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  }
-
-  function goNext() {
-    if (!validateCurrentStep()) return;
-    setStepIndex((current) => Math.min(current + 1, STEPS.length - 1));
-  }
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const payload = buildQuestionnaireSubmission(answers, estimateData);
-    if (!payload.ok) {
-      setFieldErrors({
-        ...payload.fieldErrors,
-        form: tErrors('fixHighlighted'),
+    hydrated.current = true;
+  }, []);
+  useEffect(() => {
+    if (
+      !hydrated.current ||
+      !dirty.current ||
+      storageBlocked.current ||
+      action.status === 'confirmed-preview'
+    )
+      return;
+    const clean = {
+      ...draft,
+      confirmations: { informationIsTrue: false, dataProcessingConsent: false },
+    };
+    const session = saveApplicationDraft({
+      storage: window.sessionStorage,
+      key: SESSION_KEY,
+      tier: 'session',
+      draft: clean,
+      definition: APPLICATION_DEFINITION,
+      expectedSavedAt: sessionSavedAt.current,
+    });
+    if (session.status === 'saved') sessionSavedAt.current = session.savedAt;
+    if (session.status === 'conflict') offerConflict('session', session.storedSavedAt);
+    if (session.status === 'unavailable')
+      queueMicrotask(() =>
+        setNotice('Session save is unavailable. Changes remain only on this page.'),
+      );
+    if (localSave) {
+      const local = saveApplicationDraft({
+        storage: window.localStorage,
+        key: LOCAL_KEY,
+        tier: 'local',
+        draft: clean,
+        definition: APPLICATION_DEFINITION,
+        expectedSavedAt: localSavedAt.current,
       });
-      setStepIndex(firstStepWithError(payload.fieldErrors));
+      if (local.status === 'saved') localSavedAt.current = local.savedAt;
+      if (local.status === 'conflict') offerConflict('local', local.storedSavedAt);
+      if (local.status === 'unavailable')
+        queueMicrotask(() => setNotice('Seven-day local save is unavailable in this browser.'));
+    }
+  }, [draft, localSave, action.status]);
+
+  function offerConflict(tier: 'session' | 'local', storedSavedAt: string | null) {
+    storageBlocked.current = true;
+    dirty.current = false;
+    const result = loadApplicationDraft({
+      storage: tier === 'session' ? window.sessionStorage : window.localStorage,
+      key: tier === 'session' ? SESSION_KEY : LOCAL_KEY,
+      tier,
+      definition: APPLICATION_DEFINITION,
+    });
+    queueMicrotask(() => {
+      if (result.status === 'loaded')
+        setSavedDraft({ draft: result.draft, savedAt: result.savedAt, tier });
+      setNotice(
+        `${tier === 'session' ? 'Session' : 'Local'} draft conflict: another copy was saved at ${storedSavedAt || 'an unknown time'}. Choose Resume, Start over, or Clear saved draft.`,
+      );
+    });
+  }
+
+  function update(change: ApplicationDraftAction) {
+    dirty.current = true;
+    const next = reduceApplicationDraft(draft, change, APPLICATION_DEFINITION);
+    setDraft(next);
+    setFiles((value) => reconcileFilePreviews(value, APPLICATION_DEFINITION, next));
+    setAction({ status: 'idle' });
+    setAttempted(false);
+    setCompletionErrors(false);
+  }
+  const moveTo = useCallback(
+    (index: number, mode: 'push' | 'replace' = 'push') => {
+      if (index < 0 || index >= STEPS.length) return false;
+      if (index > stepIndex) {
+        const check = validateApplicationStep(draft, STEPS[index - 1].id, APPLICATION_DEFINITION);
+        if (check.status === 'invalid') {
+          setAttempted(true);
+          requestAnimationFrame(() =>
+            document.getElementById(check.firstInvalidControlId)?.focus(),
+          );
+          return false;
+        }
+      }
+      setAttempted(false);
+      setCompletionErrors(false);
+      setStepIndex(index);
+      setMaxReached((value) => Math.max(value, index));
+      window.history[mode === 'push' ? 'pushState' : 'replaceState'](
+        null,
+        '',
+        `#application-${STEPS[index].id}`,
+      );
+      requestAnimationFrame(() => headingRef.current?.focus());
+      return true;
+    },
+    [draft, stepIndex],
+  );
+  useEffect(() => {
+    const onPop = () => {
+      const id = window.location.hash.replace('#application-', '') as ApplicationStepId;
+      const index = STEPS.findIndex((step) => step.id === id);
+      if (index >= 0 && !moveTo(index, 'replace'))
+        window.history.replaceState(null, '', `#application-${STEPS[stepIndex].id}`);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [moveTo, stepIndex]);
+  async function runCompletion() {
+    if (pending.current) return;
+    const prepared = prepareApplicationCompletion(draft, APPLICATION_DEFINITION);
+    if (prepared.status !== 'ready') {
+      if (prepared.status === 'invalid') {
+        setAttempted(true);
+        setCompletionErrors(true);
+        setCompletionAttempt((value) => value + 1);
+      } else
+        setAction({
+          status: 'unavailable',
+          retryable: true,
+          message: 'The application definition is unavailable. No application was sent.',
+        });
       return;
     }
-
-    setSubmitting(true);
-    setFieldErrors({});
+    pending.current = true;
+    setAction({ status: 'pending' });
+    const adapter = demoOutcome
+      ? createDemoApplicationAdapter(demoOutcome)
+      : productionApplicationAdapter;
     try {
-      const response = await fetch('/api/v1/public/questionnaire', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload.submission),
-      });
-      const body = await response.json().catch(() => null);
-      if (!response.ok) {
-        setFieldErrors(apiErrorsToFieldErrors(body, tErrors('questionnaireSubmitFailed')));
-        return;
+      const result = await adapter.complete(prepared.value);
+      setAction(result);
+      if (result.status === 'confirmed-preview') {
+        clearApplicationDraft(window.sessionStorage, SESSION_KEY);
+        clearApplicationDraft(window.localStorage, LOCAL_KEY);
+        setFiles({});
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-      setSuccess(body as SubmissionSuccess);
     } catch {
-      setFieldErrors({
-        form: tErrors('questionnaireSubmitFailed'),
+      setAction({
+        status: 'error',
+        retryable: true,
+        message: 'The local preview failed. No application was sent.',
       });
     } finally {
-      setSubmitting(false);
+      pending.current = false;
     }
   }
-
-  if (success) {
-    return (
-      <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="bg-background rounded-lg border p-5 shadow-sm">
-          <div className="mb-4 inline-flex rounded-md bg-emerald-500/10 p-2 text-emerald-700 dark:text-emerald-300">
-            <CheckCircle2 className="size-5" aria-hidden />
-          </div>
-          <p className="eyebrow">{t('success.eyebrow')}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {t('success.leadReference', { leadId: success.leadId })}
-          </h1>
-          <p className="text-muted-foreground mt-3 text-sm leading-6">
-            {t('success.queued', { stage: success.stage })}
-          </p>
-        </div>
-      </section>
+  async function complete(event: FormEvent) {
+    event.preventDefault();
+    await runCompletion();
+  }
+  function openReset() {
+    resetReturnFocus.current = document.activeElement as HTMLElement;
+    setResetOpen(true);
+  }
+  function closeReset() {
+    setResetOpen(false);
+    requestAnimationFrame(() => resetReturnFocus.current?.focus());
+  }
+  function openSaveDisclosure() {
+    saveReturnFocus.current = document.activeElement as HTMLElement;
+    setSaveDisclosureOpen(true);
+  }
+  function closeSaveDisclosure() {
+    setSaveDisclosureOpen(false);
+    requestAnimationFrame(() => saveReturnFocus.current?.focus());
+  }
+  function resumeSaved() {
+    if (!savedDraft) return;
+    setDraft({
+      ...savedDraft.draft,
+      documentReadiness: {},
+      confirmations: { informationIsTrue: false, dataProcessingConsent: false },
+    });
+    sessionSavedAt.current = availableSessionAt.current;
+    localSavedAt.current = availableLocalAt.current;
+    if (savedDraft.tier === 'local') setLocalSave(true);
+    storageBlocked.current = false;
+    setSavedDraft(null);
+    setNotice(
+      `Resumed ${savedDraft.tier} draft from ${new Date(savedDraft.savedAt).toLocaleString()}. Confirmations must be renewed.`,
     );
   }
+  function clearSaved() {
+    if (!savedDraft) return;
+    clearApplicationDraft(window.localStorage, LOCAL_KEY);
+    clearApplicationDraft(window.sessionStorage, SESSION_KEY);
+    availableSessionAt.current = null;
+    availableLocalAt.current = null;
+    storageBlocked.current = false;
+    setSavedDraft(null);
+    setNotice('Saved session and local drafts cleared.');
+  }
+  function confirmLocalSave() {
+    const result = saveApplicationDraft({
+      storage: window.localStorage,
+      key: LOCAL_KEY,
+      tier: 'local',
+      draft: {
+        ...draft,
+        confirmations: { informationIsTrue: false, dataProcessingConsent: false },
+      },
+      definition: APPLICATION_DEFINITION,
+      expectedSavedAt: localSavedAt.current,
+    });
+    closeSaveDisclosure();
+    if (result.status === 'saved') {
+      localSavedAt.current = result.savedAt;
+      setLocalSave(true);
+      setNotice(`Saved on this browser until ${new Date(result.expiresAt).toLocaleString()}.`);
+    } else if (result.status === 'conflict') {
+      offerConflict('local', result.storedSavedAt);
+      setNotice(
+        `Local save conflict: another copy was saved at ${result.storedSavedAt || 'an unknown time'}.`,
+      );
+    } else {
+      setNotice(`Local save failed: ${result.status}. Your draft was not saved for seven days.`);
+    }
+  }
+  function advanceSetup() {
+    const groups = [
+      ['application-jurisdiction'],
+      [
+        'application-authority',
+        'application-legal-structure',
+        'application-activity-compatibility',
+      ],
+      [
+        'application-visas-required',
+        'application-investor-visas',
+        'application-employee-visas',
+        'application-family-visas',
+        'application-visa-total',
+      ],
+      ['application-office-type', 'application-office-notes'],
+    ];
+    const setupErrors = validateApplication(draft, APPLICATION_DEFINITION).errors;
+    const first = setupErrors.find((error) => groups[setupSubstep]?.includes(error.fieldId));
+    if (first) {
+      setAttempted(true);
+      requestAnimationFrame(() => document.getElementById(first.fieldId)?.focus());
+      return;
+    }
+    setAttempted(false);
+    focusSetupSubstep(Math.min(4, setupSubstep + 1));
+  }
+  function focusError(error: ApplicationValidationError) {
+    const stage = STEPS.findIndex((step) => step.id === error.stepId);
+    if (error.stepId === 'setup') {
+      const groups = [
+        ['application-jurisdiction'],
+        [
+          'application-authority',
+          'application-legal-structure',
+          'application-activity-compatibility',
+        ],
+        [
+          'application-visas-required',
+          'application-investor-visas',
+          'application-employee-visas',
+          'application-family-visas',
+          'application-visa-total',
+        ],
+        ['application-office-type', 'application-office-notes'],
+        ['application-add-ons'],
+      ];
+      const substep = groups.findIndex((group) => group.includes(error.fieldId));
+      if (substep >= 0) {
+        setSetupSubstep(substep);
+        setSetupUnlocked((value) => Math.max(value, substep));
+      }
+    }
+    setStepIndex(stage);
+    window.history.pushState(null, '', `#application-${error.stepId}`);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => document.getElementById(error.fieldId)?.focus()),
+    );
+  }
+  function focusSetupSubstep(index: number) {
+    const targets = [
+      'application-jurisdiction',
+      'application-authority',
+      'application-visas-required',
+      'application-office-type',
+      'application-add-ons',
+    ];
+    setSetupSubstep(index);
+    setSetupUnlocked((value) => Math.max(value, index));
+    requestAnimationFrame(() => document.getElementById(targets[index])?.focus());
+  }
+  function reset() {
+    clearApplicationDraft(window.sessionStorage, SESSION_KEY);
+    clearApplicationDraft(window.localStorage, LOCAL_KEY);
+    setDraft(draftFromHandoff(handoff));
+    setFiles(clearFilePreviewsAfterReset(files));
+    setAction({ status: 'idle' });
+    setStepIndex(0);
+    setMaxReached(0);
+    setSetupSubstep(0);
+    setSetupUnlocked(0);
+    setCompletionErrors(false);
+    setSavedDraft(null);
+    sessionSavedAt.current = null;
+    localSavedAt.current = null;
+    availableSessionAt.current = null;
+    availableLocalAt.current = null;
+    storageBlocked.current = false;
+    dirty.current = false;
+    setLocalSave(false);
+    setResetOpen(false);
+    setNotice('Draft cleared from this device.');
+  }
+  function editFromConfirmation() {
+    setAction({ status: 'idle' });
+    setStepIndex(4);
+    setMaxReached(4);
+    window.history.pushState(null, '', '#application-review');
+    requestAnimationFrame(() => requestAnimationFrame(() => headingRef.current?.focus()));
+  }
 
+  if (action.status === 'confirmed-preview')
+    return (
+      <Confirmation
+        action={action}
+        handoff={handoff}
+        onEdit={editFromConfirmation}
+        onReset={openReset}
+        resetOpen={resetOpen}
+        closeReset={closeReset}
+        reset={reset}
+      />
+    );
   return (
-    <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
-      <aside className="bg-background rounded-lg border p-4 shadow-sm">
-        <div className="mb-5 flex items-start justify-between gap-4">
+    <section
+      className="application-workspace"
+      id="application-workspace"
+      aria-labelledby="application-title"
+    >
+      <header className="application-workspace__header">
+        <div>
+          <p className="eyebrow">Private application workspace</p>
+          <h1 id="application-title">Prepare your Company setup application</h1>
+          <p>Complete a local preview before online submission is connected.</p>
+        </div>
+        <button className="application-tool" type="button" onClick={openReset}>
+          <RotateCcw aria-hidden /> Reset
+        </button>
+      </header>
+      {savedDraft ? (
+        <section className="application-restore" aria-labelledby="saved-draft-title">
           <div>
-            <p className="eyebrow">{t('asideEyebrow')}</p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight">{t('asideTitle')}</h1>
+            <strong id="saved-draft-title">Resume saved draft?</strong>
+            <p>
+              Newest {savedDraft.tier} copy saved {new Date(savedDraft.savedAt).toLocaleString()}.
+              Confirmations and file previews are not restored.
+            </p>
           </div>
-          <div className="bg-primary/10 text-primary rounded-md p-2">
-            <ClipboardList className="size-5" aria-hidden />
+          <div>
+            <button type="button" onClick={resumeSaved}>
+              Resume saved draft
+            </button>
+            <button type="button" onClick={reset}>
+              Start over
+            </button>
+            <button type="button" onClick={clearSaved}>
+              Clear saved draft
+            </button>
           </div>
+        </section>
+      ) : null}
+      <div className="application-storage">
+        <Save aria-hidden />
+        <div>
+          <strong>Your privacy, your choice</strong>
+          <p aria-live="polite">{notice} File names and file contents are never saved.</p>
         </div>
-
-        <div className="bg-muted mb-4 h-2 overflow-hidden rounded-full">
-          <div className="bg-primary h-full transition-all" style={{ width: `${progress}%` }} />
-        </div>
-        <div className="space-y-2">
-          {STEPS.map((step, index) => {
-            const Icon = step.icon;
-            const active = index === stepIndex;
-            return (
-              <button
-                key={step.id}
-                type="button"
-                onClick={() => index < stepIndex && setStepIndex(index)}
-                className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition ${
-                  active
-                    ? 'border-primary bg-primary/5 text-foreground'
-                    : 'bg-background text-muted-foreground'
-                }`}
-              >
-                <Icon className="size-4" aria-hidden />
-                <span className="font-medium">{t(`steps.${step.id}`)}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {hasEstimate ? (
-          <div className="border-border bg-card text-muted-foreground mt-5 rounded-md border p-3 text-xs leading-5">
-            <div className="text-foreground font-medium">{t('estimatorHandoff')}</div>
-            <div className="mt-1">
-              {t('reference', { value: String(estimateData.reference ?? t('notProvided')) })}
-            </div>
-          </div>
-        ) : null}
-      </aside>
-
-      <form onSubmit={submit} className="bg-background rounded-lg border p-4 shadow-sm sm:p-5">
-        {fieldErrors.form ? (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="size-4" aria-hidden />
-            <AlertTitle>{t('submissionIssue')}</AlertTitle>
-            <AlertDescription>{fieldErrors.form}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {currentStep.id === 'contact' ? (
-          <StepSection title={t('sections.contactTitle')} description={t('sections.contactDesc')}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t('fields.fullName')} error={fieldErrors.fullName}>
-                <Input
-                  value={answers.fullName}
-                  onChange={(event) => patch({ fullName: event.target.value })}
-                  autoComplete="name"
-                />
-              </Field>
-              <Field label={t('fields.nationality')} error={fieldErrors.nationality}>
-                <Input
-                  value={answers.nationality}
-                  onChange={(event) => patch({ nationality: event.target.value })}
-                  autoComplete="country-name"
-                />
-              </Field>
-              <Field label={t('fields.email')} error={fieldErrors.email}>
-                <Input
-                  type="email"
-                  value={answers.email}
-                  onChange={(event) => patch({ email: event.target.value })}
-                  autoComplete="email"
-                />
-              </Field>
-              <Field label={t('fields.phone')} error={fieldErrors.phone}>
-                <Input
-                  value={answers.phone}
-                  onChange={(event) => patch({ phone: event.target.value })}
-                  autoComplete="tel"
-                />
-              </Field>
-            </div>
-          </StepSection>
-        ) : null}
-
-        {currentStep.id === 'business' ? (
-          <StepSection title={t('sections.businessTitle')} description={t('sections.businessDesc')}>
-            <div className="grid gap-4">
-              <Field label={t('fields.activity')} error={fieldErrors.activity}>
-                <Input
-                  value={answers.activity}
-                  onChange={(event) => patch({ activity: event.target.value })}
-                />
-              </Field>
-              <Field label={t('fields.preferredNames')} error={fieldErrors.preferredNames}>
-                <div className="grid gap-2">
-                  {answers.preferredNames.map((name, index) => (
-                    <div key={index} className="grid gap-2">
-                      <Label className="text-muted-foreground text-xs">
-                        {t('fields.nameOption', { index: index + 1 })}
-                      </Label>
-                      <Input
-                        value={name}
-                        onChange={(event) => setPreferredName(index, event.target.value)}
-                      />
-                    </div>
+        <button className="application-tool" type="button" onClick={openSaveDisclosure}>
+          {localSave ? 'Update local save' : 'Save on this device'}
+        </button>
+      </div>
+      {saveDisclosureOpen ? (
+        <SaveDisclosure close={closeSaveDisclosure} confirm={confirmLocalSave} />
+      ) : null}
+      {handoff.status === 'accepted' ? (
+        <p className="application-handoff">
+          Estimator choices applied · Reference {handoff.value.reference}
+        </p>
+      ) : null}
+      <div className="application-workspace__grid">
+        <nav className="application-rail" aria-label="Application stages">
+          <ol>
+            {STEPS.map((step, index) => {
+              const active = index === stepIndex;
+              const status = index > maxReached ? 'incomplete' : validation.steps[step.id];
+              return (
+                <li key={step.id}>
+                  <button
+                    type="button"
+                    onClick={() => moveTo(index)}
+                    disabled={index > maxReached}
+                    aria-current={active ? 'step' : undefined}
+                  >
+                    <span>{status === 'complete' ? <Check aria-hidden /> : index + 1}</span>
+                    <span>
+                      <strong>{step.label}</strong>
+                      <small>
+                        {active
+                          ? 'Current stage'
+                          : status === 'complete'
+                            ? 'Complete'
+                            : status === 'invalid'
+                              ? 'Needs attention'
+                              : 'Not started'}
+                      </small>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <p>No application is sent from this preview.</p>
+        </nav>
+        <form className="application-panel" onSubmit={complete} noValidate>
+          <header id={`application-${current.id}`}>
+            <p className="eyebrow">Stage {stepIndex + 1} of 5</p>
+            <h2 ref={headingRef} tabIndex={-1}>
+              {current.label}
+            </h2>
+            <p>{stepDescription(current.id)}</p>
+          </header>
+          {completionErrors && validation.status === 'invalid' ? (
+            <ApplicationErrorSummary
+              errors={validation.errors}
+              focusKey={completionAttempt}
+              onActivate={focusError}
+            />
+          ) : null}
+          {!completionErrors && errors.length ? (
+            <div className="application-errors" role="alert">
+              <AlertCircle aria-hidden />
+              <div>
+                <strong>Check the highlighted information</strong>
+                <ul>
+                  {errors.map((error) => (
+                    <li key={error.fieldId}>
+                      <a
+                        href={error.href}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          focusError(error);
+                        }}
+                      >
+                        {error.message}
+                      </a>
+                    </li>
                   ))}
-                </div>
-              </Field>
-              <Field label={t('fields.businessSummary')} error={fieldErrors.businessSummary}>
-                <Textarea
-                  value={answers.businessSummary}
-                  onChange={(event) => patch({ businessSummary: event.target.value })}
-                  rows={4}
-                />
-              </Field>
-            </div>
-          </StepSection>
-        ) : null}
-
-        {currentStep.id === 'setup' ? (
-          <StepSection title={t('sections.setupTitle')} description={t('sections.setupDesc')}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t('fields.jurisdiction')} error={fieldErrors.jurisdiction}>
-                <Select
-                  value={answers.jurisdiction}
-                  onValueChange={(value) =>
-                    patch({ jurisdiction: value as QuestionnaireAnswers['jurisdiction'] })
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {JURISDICTION_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(`jurisdiction.${item.value}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label={t('fields.authority')} error={fieldErrors.authority}>
-                <Input
-                  value={answers.authority}
-                  onChange={(event) => patch({ authority: event.target.value })}
-                />
-              </Field>
-              <Field label={t('fields.documentReadiness')} error={fieldErrors.documentReadiness}>
-                <Select
-                  value={answers.documentReadiness}
-                  onValueChange={(value) =>
-                    patch({ documentReadiness: value as QuestionnaireAnswers['documentReadiness'] })
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DOCUMENT_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(`documentReadiness.${item.value}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-            <div className="border-border bg-card mt-4 rounded-md border p-3">
-              <Label className="text-sm font-medium">{t('fields.addOns')}</Label>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {ADD_ONS.map((addOn) => (
-                  <label key={addOn.value} className="flex items-center gap-3 text-sm">
-                    <Checkbox
-                      checked={answers.addOns.includes(addOn.value)}
-                      onCheckedChange={() => toggleAddOn(addOn.value)}
-                    />
-                    {t(`addOns.${addOn.value}`)}
-                  </label>
-                ))}
+                </ul>
               </div>
             </div>
-          </StepSection>
-        ) : null}
-
-        {currentStep.id === 'details' ? (
-          <StepSection title={t('sections.detailsTitle')} description={t('sections.detailsDesc')}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t('fields.shareholderCount')} error={fieldErrors.shareholderCount}>
-                <Input
-                  min={1}
-                  max={50}
-                  type="number"
-                  value={answers.shareholderCount}
-                  onChange={(event) => patch({ shareholderCount: Number(event.target.value) })}
-                />
-              </Field>
-              <Field label={t('fields.officeType')} error={fieldErrors.officeType}>
-                <Select
-                  value={answers.officeType}
-                  onValueChange={(value) =>
-                    patch({ officeType: value as QuestionnaireAnswers['officeType'] })
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OFFICE_OPTIONS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {t(`office.${item.value}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-
-            {answers.shareholderCount > 1 ? (
-              <Field
-                label={t('fields.shareholderSplit')}
-                error={fieldErrors.shareholderSplitSummary}
-                className="mt-4"
-              >
-                <Textarea
-                  value={answers.shareholderSplitSummary}
-                  onChange={(event) => patch({ shareholderSplitSummary: event.target.value })}
-                  rows={3}
-                />
-              </Field>
-            ) : null}
-
-            <label className="border-border bg-card mt-4 flex items-center gap-3 rounded-md border p-3 text-sm">
-              <Checkbox
-                checked={showVisaInputs}
-                onCheckedChange={(checked) => {
-                  setShowVisaInputs(Boolean(checked));
-                  if (!checked)
-                    patch({ investorVisaCount: 0, employeeVisaCount: 0, familyVisaCount: 0 });
-                }}
-              />
-              {t('fields.addVisas')}
-            </label>
-
-            {showVisaInputs ? (
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <Field label={t('fields.investorVisas')} error={fieldErrors.investorVisaCount}>
-                  <Input
-                    min={0}
-                    max={200}
-                    type="number"
-                    value={answers.investorVisaCount}
-                    onChange={(event) => patch({ investorVisaCount: Number(event.target.value) })}
-                  />
-                </Field>
-                <Field label={t('fields.employeeVisas')} error={fieldErrors.employeeVisaCount}>
-                  <Input
-                    min={0}
-                    max={200}
-                    type="number"
-                    value={answers.employeeVisaCount}
-                    onChange={(event) => patch({ employeeVisaCount: Number(event.target.value) })}
-                  />
-                </Field>
-                <Field label={t('fields.familyVisas')} error={fieldErrors.familyVisaCount}>
-                  <Input
-                    min={0}
-                    max={200}
-                    type="number"
-                    value={answers.familyVisaCount}
-                    onChange={(event) => patch({ familyVisaCount: Number(event.target.value) })}
-                  />
-                </Field>
+          ) : null}
+          {current.id === 'contact' ? (
+            <ContactStep draft={draft} update={update} errors={errors} />
+          ) : null}
+          {current.id === 'business' ? (
+            <BusinessStep draft={draft} update={update} errors={errors} />
+          ) : null}
+          {current.id === 'setup' ? (
+            <SetupStep
+              draft={draft}
+              update={update}
+              errors={errors}
+              substep={setupSubstep}
+              unlocked={setupUnlocked}
+              setSubstep={focusSetupSubstep}
+            />
+          ) : null}
+          {current.id === 'ownership' ? (
+            <OwnershipStep draft={draft} update={update} errors={errors} />
+          ) : null}
+          {current.id === 'review' ? (
+            <ReviewStep
+              draft={draft}
+              update={update}
+              errors={errors}
+              files={files}
+              setFiles={setFiles}
+              onEdit={(id) => moveTo(STEPS.findIndex((s) => s.id === id))}
+            />
+          ) : null}
+          {['duplicate', 'rate-limited', 'unavailable', 'error'].includes(action.status) ? (
+            <div className="application-outcome" role="alert">
+              <AlertCircle aria-hidden />
+              <div>
+                <p>{'message' in action ? action.message : ''}</p>
+                {'retryable' in action && action.retryable ? (
+                  <button type="button" onClick={() => void runCompletion()}>
+                    Retry preview
+                  </button>
+                ) : null}
+                <button type="button" onClick={() => setAction({ status: 'idle' })}>
+                  Edit application
+                </button>
               </div>
-            ) : null}
-
-            {answers.officeType !== 'none' ? (
-              <Field
-                label={t('fields.officeNotes')}
-                error={fieldErrors.officeAreaNotes}
-                className="mt-4"
-              >
-                <Textarea
-                  value={answers.officeAreaNotes}
-                  onChange={(event) => patch({ officeAreaNotes: event.target.value })}
-                  rows={3}
-                />
-              </Field>
-            ) : null}
-          </StepSection>
-        ) : null}
-
-        {currentStep.id === 'review' ? (
-          <StepSection title={t('sections.reviewTitle')} description={t('sections.reviewDesc')}>
-            <div className="overflow-hidden rounded-md border">
-              {reviewRows.map(([label, value]) => (
-                <div
-                  key={label}
-                  className="grid gap-1 border-b px-3 py-3 text-sm last:border-b-0 sm:grid-cols-[150px_1fr]"
-                >
-                  <div className="text-muted-foreground">{label}</div>
-                  <div className="font-medium">{value}</div>
-                </div>
-              ))}
             </div>
-            <Field label={t('fields.additionalNotes')} error={fieldErrors.notes} className="mt-4">
-              <Textarea
-                value={answers.notes}
-                onChange={(event) => patch({ notes: event.target.value })}
-                rows={4}
-              />
-            </Field>
-          </StepSection>
-        ) : null}
-
-        <div className="mt-6 flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setStepIndex((current) => Math.max(0, current - 1))}
-            disabled={stepIndex === 0 || submitting}
-          >
-            <ArrowLeft aria-hidden />
-            {tCommon('back')}
-          </Button>
-          {currentStep.id === 'review' ? (
-            <Button type="submit" disabled={submitting}>
-              {submitting ? (
-                <Loader2 className="animate-spin" aria-hidden />
-              ) : (
+          ) : null}
+          <div className="application-actions">
+            <button
+              type="button"
+              className="application-button application-button--secondary"
+              disabled={stepIndex === 0 || action.status === 'pending'}
+              onClick={() =>
+                current.id === 'setup' && setupSubstep > 0
+                  ? focusSetupSubstep(setupSubstep - 1)
+                  : moveTo(stepIndex - 1)
+              }
+            >
+              <ChevronLeft aria-hidden /> Back
+            </button>
+            {stepIndex < 4 ? (
+              <button
+                type="button"
+                className="application-button"
+                onClick={() =>
+                  current.id === 'setup' && setupSubstep < 4
+                    ? advanceSetup()
+                    : moveTo(stepIndex + 1)
+                }
+              >
+                Continue <ChevronRight aria-hidden />
+              </button>
+            ) : (
+              <button
+                className="application-button"
+                type="submit"
+                disabled={action.status === 'pending'}
+              >
+                {action.status === 'pending' ? 'Preparing preview…' : 'Complete local preview'}{' '}
                 <CheckCircle2 aria-hidden />
-              )}
-              {submitting ? t('submitting') : t('submit')}
-            </Button>
-          ) : (
-            <Button type="button" onClick={goNext}>
-              {t('continue')}
-              <ArrowRight aria-hidden />
-            </Button>
-          )}
-        </div>
-      </form>
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+      {resetOpen ? <ResetDialog close={closeReset} reset={reset} /> : null}
     </section>
   );
 }
 
-function StepSection({
-  title,
+type Errors = ReturnType<typeof validateApplication>['errors'];
+export function ApplicationErrorSummary({
+  errors,
+  focusKey,
+  onActivate,
+}: {
+  errors: readonly ApplicationValidationError[];
+  focusKey?: number;
+  onActivate: (error: ApplicationValidationError) => void;
+}) {
+  const summaryRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => summaryRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusKey]);
+  return (
+    <div
+      ref={summaryRef}
+      id="application-error-summary"
+      tabIndex={-1}
+      className="application-errors"
+      role="alert"
+    >
+      <AlertCircle aria-hidden />
+      <div>
+        <strong>Complete all required information</strong>
+        <ul>
+          {errors.map((error) => (
+            <li key={`${error.stepId}-${error.fieldId}`}>
+              <a
+                href={error.href}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onActivate(error);
+                }}
+              >
+                {error.message}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+type StepProps = {
+  draft: ApplicationDraft;
+  update: (a: ApplicationDraftAction) => void;
+  errors: Errors;
+};
+const errorFor = (errors: Errors, id: string) => errors.find((e) => e.fieldId === id)?.message;
+const FieldContext = createContext({
+  id: '',
+  describedBy: undefined as string | undefined,
+  invalid: false,
+  required: false,
+});
+function Field({
+  id,
+  label,
+  hint,
+  error,
+  children,
+  required = true,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  children: ReactNode;
+  required?: boolean;
+}) {
+  const describedBy =
+    [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
+  return (
+    <div className="application-field">
+      <label htmlFor={id}>
+        {label}{' '}
+        <span className="application-requirement">{required ? 'Required' : 'Optional'}</span>
+      </label>
+      {hint ? <p id={`${id}-hint`}>{hint}</p> : null}
+      <FieldContext.Provider value={{ id, describedBy, invalid: Boolean(error), required }}>
+        {children}
+      </FieldContext.Provider>
+      {error ? (
+        <p className="application-field__error" id={`${id}-error`}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  const a = useContext(FieldContext);
+  return (
+    <input
+      {...props}
+      id={a.id}
+      required={a.required}
+      aria-required={a.required || undefined}
+      aria-describedby={a.describedBy}
+      aria-invalid={a.invalid || undefined}
+    />
+  );
+}
+function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const a = useContext(FieldContext);
+  return (
+    <textarea
+      {...props}
+      id={a.id}
+      required={a.required}
+      aria-required={a.required || undefined}
+      aria-describedby={a.describedBy}
+      aria-invalid={a.invalid || undefined}
+    />
+  );
+}
+function NativeSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  const a = useContext(FieldContext);
+  return (
+    <select
+      {...props}
+      id={a.id}
+      required={a.required}
+      aria-required={a.required || undefined}
+      aria-describedby={a.describedBy}
+      aria-invalid={a.invalid || undefined}
+    />
+  );
+}
+
+function ContactStep({ draft, update, errors }: StepProps) {
+  return (
+    <div className="application-fields application-fields--two">
+      <span id="application-contact-channel" tabIndex={-1} className="sr-only">
+        Provide a valid email address or phone number.
+      </span>
+      <Field
+        id="application-full-name"
+        label="Full name"
+        hint="As shown on your passport."
+        error={errorFor(errors, 'application-full-name')}
+      >
+        <TextInput
+          autoComplete="name"
+          value={draft.contact.fullName}
+          onChange={(e) =>
+            update({ type: 'set-contact-field', field: 'fullName', value: e.target.value })
+          }
+        />
+      </Field>
+      <Field
+        id="application-nationality"
+        label="Nationality"
+        error={errorFor(errors, 'application-nationality')}
+      >
+        <TextInput
+          autoComplete="country-name"
+          value={draft.contact.nationality}
+          onChange={(e) =>
+            update({ type: 'set-contact-field', field: 'nationality', value: e.target.value })
+          }
+        />
+      </Field>
+      <Field
+        id="application-email"
+        label="Email address"
+        required={false}
+        hint="Provide email or phone."
+        error={
+          errorFor(errors, 'application-email') ?? errorFor(errors, 'application-contact-channel')
+        }
+      >
+        <TextInput
+          type="email"
+          autoComplete="email"
+          value={draft.contact.email}
+          onChange={(e) =>
+            update({ type: 'set-contact-field', field: 'email', value: e.target.value })
+          }
+        />
+      </Field>
+      <Field
+        id="application-phone"
+        label="Phone number"
+        required={false}
+        hint="Include the country code."
+        error={errorFor(errors, 'application-phone')}
+      >
+        <TextInput
+          type="tel"
+          autoComplete="tel"
+          value={draft.contact.phone}
+          onChange={(e) =>
+            update({ type: 'set-contact-field', field: 'phone', value: e.target.value })
+          }
+        />
+      </Field>
+    </div>
+  );
+}
+function BusinessStep({ draft, update, errors }: StepProps) {
+  return (
+    <div className="application-fields">
+      <Field
+        id="application-activity"
+        label="Business activity"
+        error={errorFor(errors, 'application-activity')}
+      >
+        <NativeSelect
+          value={draft.business.activityId ?? ''}
+          onChange={(e) => update({ type: 'set-activity', value: e.target.value || null })}
+        >
+          <option value="">Select an activity</option>
+          {APPLICATION_DEFINITION.activities.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.label}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
+      <fieldset>
+        <legend>
+          Preferred Company names <span className="application-requirement">One required</span>
+        </legend>
+        <p>Enter up to three choices, in preference order.</p>
+        <div className="application-fields application-fields--three">
+          {draft.business.preferredNames.map((name, index) => (
+            <Field
+              key={index}
+              id={`application-company-name-${index + 1}`}
+              label={`Choice ${index + 1}`}
+              required={index === 0}
+              error={index === 0 ? errorFor(errors, 'application-company-name-1') : undefined}
+            >
+              <TextInput
+                autoComplete="off"
+                value={name}
+                onChange={(e) =>
+                  update({
+                    type: 'set-preferred-name',
+                    index: index as 0 | 1 | 2,
+                    value: e.target.value,
+                  })
+                }
+              />
+            </Field>
+          ))}
+        </div>
+      </fieldset>
+      <Field
+        id="application-business-summary"
+        label="Business summary"
+        hint="10–2,000 characters."
+        error={errorFor(errors, 'application-business-summary')}
+      >
+        <TextArea
+          rows={5}
+          value={draft.business.summary}
+          onChange={(e) => update({ type: 'set-business-summary', value: e.target.value })}
+        />
+      </Field>
+    </div>
+  );
+}
+
+function SetupStep({
+  draft,
+  update,
+  errors,
+  substep,
+  unlocked,
+  setSubstep,
+}: StepProps & { substep: number; unlocked: number; setSubstep: (value: number) => void }) {
+  const authorities = APPLICATION_DEFINITION.authorities.filter(
+    (x) => x.jurisdiction === draft.setup.jurisdiction,
+  );
+  const authority = authorities.find((x) => x.id === draft.setup.authorityId);
+  const substepHasError = (index: number) =>
+    errors.some((error) =>
+      [
+        ['application-jurisdiction'],
+        [
+          'application-authority',
+          'application-legal-structure',
+          'application-activity-compatibility',
+        ],
+        [
+          'application-visas-required',
+          'application-investor-visas',
+          'application-employee-visas',
+          'application-family-visas',
+          'application-visa-total',
+        ],
+        ['application-office-type', 'application-office-notes'],
+        ['application-add-ons'],
+      ][index].includes(error.fieldId),
+    );
+  return (
+    <div className="application-setup">
+      <span id="application-activity-compatibility" tabIndex={-1} className="sr-only">
+        Business activity compatibility
+      </span>
+      <span id="application-visa-total" tabIndex={-1} className="sr-only">
+        Visa total
+      </span>
+      <ol className="application-substeps" aria-label="Setup details">
+        {SETUP_SUBSTEPS.map((x, i) => (
+          <li key={x}>
+            <button
+              type="button"
+              className={substepHasError(i) ? 'is-invalid' : i < substep ? 'is-complete' : ''}
+              aria-current={i === substep ? 'step' : undefined}
+              onClick={() => i <= unlocked && setSubstep(i)}
+              disabled={i > unlocked}
+            >
+              <span>{i < substep ? <Check aria-hidden /> : i + 1}</span>
+              {x}
+            </button>
+          </li>
+        ))}
+      </ol>
+      {substep === 0 ? (
+        <Field
+          id="application-jurisdiction"
+          label="Jurisdiction"
+          error={errorFor(errors, 'application-jurisdiction')}
+        >
+          <NativeSelect
+            value={draft.setup.jurisdiction ?? ''}
+            onChange={(e) =>
+              update({
+                type: 'set-jurisdiction',
+                value: (e.target.value || null) as ApplicationDraft['setup']['jurisdiction'],
+              })
+            }
+          >
+            <option value="">Select a jurisdiction</option>
+            {APPLICATION_DEFINITION.jurisdictions.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      ) : null}
+      {substep === 1 ? (
+        <>
+          <Field
+            id="application-authority"
+            label="Authority"
+            error={errorFor(errors, 'application-authority')}
+          >
+            <NativeSelect
+              disabled={!draft.setup.jurisdiction}
+              value={draft.setup.authorityId ?? ''}
+              onChange={(e) => update({ type: 'set-authority', value: e.target.value || null })}
+            >
+              <option value="">Select an authority</option>
+              {authorities.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.label}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <Field
+            id="application-legal-structure"
+            label="Legal structure"
+            error={errorFor(errors, 'application-legal-structure')}
+          >
+            <NativeSelect
+              disabled={!authority}
+              value={draft.setup.legalStructureId ?? ''}
+              onChange={(e) =>
+                update({
+                  type: 'set-legal-structure',
+                  value: (e.target.value || null) as ApplicationDraft['setup']['legalStructureId'],
+                })
+              }
+            >
+              <option value="">Select a structure</option>
+              {APPLICATION_DEFINITION.legalStructures
+                .filter((x) => authority?.legalStructureIds.includes(x.id))
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.label}
+                  </option>
+                ))}
+            </NativeSelect>
+          </Field>
+        </>
+      ) : null}
+      {substep === 2 ? (
+        <>
+          <fieldset id="application-visas-required" tabIndex={-1}>
+            <legend>
+              Are visas required? <span className="application-requirement">Required</span>
+            </legend>
+            <div
+              className="application-choice-row"
+              role="radiogroup"
+              aria-required="true"
+              aria-invalid={Boolean(errorFor(errors, 'application-visas-required')) || undefined}
+              aria-describedby={
+                errorFor(errors, 'application-visas-required')
+                  ? 'application-visas-required-error'
+                  : undefined
+              }
+            >
+              <RadioChoice
+                name="visas-required"
+                checked={draft.visas.required === true}
+                label="Yes"
+                onChange={() => update({ type: 'set-visas-required', value: true })}
+              />
+              <RadioChoice
+                name="visas-required"
+                checked={draft.visas.required === false}
+                label="No"
+                onChange={() => update({ type: 'set-visas-required', value: false })}
+              />
+            </div>
+            {errorFor(errors, 'application-visas-required') ? (
+              <p id="application-visas-required-error" className="application-field__error">
+                {errorFor(errors, 'application-visas-required')}
+              </p>
+            ) : null}
+          </fieldset>
+          {draft.visas.required ? (
+            <div className="application-fields application-fields--three">
+              {(['investorCount', 'employeeCount', 'familyCount'] as const).map((field) => {
+                const id = `application-${field.replace('Count', '-visas')}`;
+                return (
+                  <Field
+                    key={field}
+                    id={id}
+                    label={field.replace('Count', ' visas')}
+                    error={errorFor(errors, id)}
+                  >
+                    <TextInput
+                      inputMode="numeric"
+                      value={draft.visas[field]}
+                      onChange={(e) =>
+                        update({ type: 'set-visa-count', field, value: e.target.value })
+                      }
+                    />
+                  </Field>
+                );
+              })}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {substep === 3 ? (
+        <>
+          <Field
+            id="application-office-type"
+            label="Office requirement"
+            error={errorFor(errors, 'application-office-type')}
+          >
+            <NativeSelect
+              disabled={!authority}
+              value={draft.setup.officeTypeId ?? ''}
+              onChange={(e) =>
+                update({
+                  type: 'set-office-type',
+                  value: (e.target.value || null) as ApplicationDraft['setup']['officeTypeId'],
+                })
+              }
+            >
+              <option value="">Select an office option</option>
+              {APPLICATION_DEFINITION.officeTypes
+                .filter((x) => authority?.officeTypeIds.includes(x.id))
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.label}
+                  </option>
+                ))}
+            </NativeSelect>
+          </Field>
+          {draft.setup.officeTypeId && draft.setup.officeTypeId !== 'none' ? (
+            <Field
+              id="application-office-notes"
+              label="Office notes"
+              required={false}
+              error={errorFor(errors, 'application-office-notes')}
+            >
+              <TextArea
+                rows={3}
+                value={draft.setup.officeNotes}
+                onChange={(e) => update({ type: 'set-office-notes', value: e.target.value })}
+              />
+            </Field>
+          ) : null}
+        </>
+      ) : null}
+      {substep === 4 ? (
+        <fieldset id="application-add-ons" tabIndex={-1}>
+          <legend>
+            Additional services <span className="application-requirement">Optional</span>
+          </legend>
+          <div className="application-card-grid">
+            {APPLICATION_DEFINITION.addOns
+              .filter((x) => authority?.addOnIds.includes(x.id))
+              .map((x) => (
+                <Choice
+                  key={x.id}
+                  checked={draft.setup.addOnIds.includes(x.id)}
+                  label={x.label}
+                  description={x.description}
+                  onChange={() =>
+                    update({
+                      type: 'set-add-ons',
+                      value: draft.setup.addOnIds.includes(x.id)
+                        ? draft.setup.addOnIds.filter((id) => id !== x.id)
+                        : [...draft.setup.addOnIds, x.id],
+                    })
+                  }
+                />
+              ))}
+          </div>
+        </fieldset>
+      ) : null}
+    </div>
+  );
+}
+function Choice({
+  checked,
+  label,
   description,
+  onChange,
+  errorId,
+  required = false,
+}: {
+  checked: boolean;
+  label: string;
+  description?: string;
+  onChange: () => void;
+  errorId?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="application-choice">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        required={required}
+        aria-required={required || undefined}
+        aria-invalid={Boolean(errorId) || undefined}
+        aria-describedby={errorId}
+      />
+      <span>
+        <strong>{label}</strong>
+        {description ? <small>{description}</small> : null}
+      </span>
+    </label>
+  );
+}
+function RadioChoice({
+  name,
+  checked,
+  label,
+  onChange,
+}: {
+  name: string;
+  checked: boolean;
+  label: string;
+  onChange: () => void;
+}) {
+  return (
+    <label className="application-choice">
+      <input type="radio" name={name} checked={checked} onChange={onChange} required />
+      <span>
+        <strong>{label}</strong>
+      </span>
+    </label>
+  );
+}
+
+function OwnershipStep({ draft, update, errors }: StepProps) {
+  const authority = APPLICATION_DEFINITION.authorities.find(
+    (x) => x.id === draft.setup.authorityId,
+  );
+  const total = draft.shareholders.reduce(
+    (sum, row) => sum + (Number(row.ownershipBasisPoints) || 0),
+    0,
+  );
+  const previousCount = useRef(draft.shareholders.length);
+  useEffect(() => {
+    if (draft.shareholders.length !== previousCount.current) {
+      const target = draft.shareholders[Math.max(0, draft.shareholders.length - 1)];
+      requestAnimationFrame(() =>
+        document.getElementById(`application-${target.id}-full-name`)?.focus(),
+      );
+      previousCount.current = draft.shareholders.length;
+    }
+  }, [draft.shareholders]);
+  return (
+    <div className="application-fields">
+      <Field
+        id="application-shareholder-count"
+        label="Number of shareholders"
+        hint={
+          authority
+            ? `Allowed: ${authority.shareholderRange.min}–${authority.shareholderRange.max}`
+            : undefined
+        }
+        error={errorFor(errors, 'application-shareholder-count')}
+      >
+        <TextInput
+          type="number"
+          min={authority?.shareholderRange.min ?? 1}
+          max={authority?.shareholderRange.max ?? 10}
+          value={draft.shareholders.length}
+          onChange={(e) => update({ type: 'set-shareholder-count', value: Number(e.target.value) })}
+        />
+      </Field>
+      {draft.shareholders.map((row, index) => (
+        <fieldset className="application-shareholder" key={row.id}>
+          <legend>
+            Shareholder {index + 1} <span className="application-requirement">Required</span>
+          </legend>
+          <div className="application-fields application-fields--three">
+            <Field
+              id={`application-${row.id}-full-name`}
+              label="Full name"
+              error={errorFor(errors, `application-${row.id}-full-name`)}
+            >
+              <TextInput
+                autoComplete="name"
+                value={row.fullName}
+                onChange={(e) =>
+                  update({
+                    type: 'set-shareholder-field',
+                    shareholderId: row.id,
+                    field: 'fullName',
+                    value: e.target.value,
+                  })
+                }
+              />
+            </Field>
+            <Field
+              id={`application-${row.id}-nationality`}
+              label="Nationality"
+              error={errorFor(errors, `application-${row.id}-nationality`)}
+            >
+              <TextInput
+                autoComplete="country-name"
+                value={row.nationality}
+                onChange={(e) =>
+                  update({
+                    type: 'set-shareholder-field',
+                    shareholderId: row.id,
+                    field: 'nationality',
+                    value: e.target.value,
+                  })
+                }
+              />
+            </Field>
+            <Field
+              id={`application-${row.id}-ownership`}
+              label="Ownership percentage"
+              hint="For example, 50.00"
+              error={errorFor(errors, `application-${row.id}-ownership`)}
+            >
+              <OwnershipInput
+                key={`${row.id}-${row.ownershipBasisPoints}`}
+                row={row}
+                update={update}
+              />
+            </Field>
+          </div>
+        </fieldset>
+      ))}
+      <div
+        id="application-ownership-total"
+        tabIndex={-1}
+        className={`application-total ${total === 10000 ? 'is-complete' : ''}`}
+      >
+        <span>Ownership total</span>
+        <strong>{(total / 100).toFixed(2)}%</strong>
+        <p>{total === 10000 ? 'Complete' : 'Must equal exactly 100.00%'}</p>
+      </div>
+    </div>
+  );
+}
+
+function OwnershipInput({
+  row,
+  update,
+}: {
+  row: ApplicationDraft['shareholders'][number];
+  update: StepProps['update'];
+}) {
+  const [value, setValue] = useState(() => basisPointsToPercent(row.ownershipBasisPoints));
+  return (
+    <TextInput
+      inputMode="decimal"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={() =>
+        update({
+          type: 'set-shareholder-field',
+          shareholderId: row.id,
+          field: 'ownershipBasisPoints',
+          value: percentToBasisPoints(value),
+        })
+      }
+    />
+  );
+}
+
+function ReviewStep({
+  draft,
+  update,
+  errors,
+  files,
+  setFiles,
+  onEdit,
+}: StepProps & {
+  files: FilePreviewState;
+  setFiles: (x: FilePreviewState) => void;
+  onEdit: (id: ApplicationStepId) => void;
+}) {
+  const [fileErrors, setFileErrors] = useState<Record<string, string>>({});
+  const authority = APPLICATION_DEFINITION.authorities.find(
+    (x) => x.id === draft.setup.authorityId,
+  );
+  const activity = APPLICATION_DEFINITION.activities.find(
+    (x) => x.id === draft.business.activityId,
+  );
+  const docs = APPLICATION_DEFINITION.documentRules.flatMap((rule) => {
+    const documentLabel =
+      APPLICATION_DEFINITION.documents.find((document) => document.id === rule.documentId)?.label ??
+      rule.documentId;
+    if (rule.owner === 'contact')
+      return [
+        {
+          id: `${rule.documentId}:contact`,
+          label: `Contact ${documentLabel}`,
+          required: rule.required,
+        },
+      ];
+    if (rule.owner === 'business')
+      return [{ id: `${rule.documentId}:business`, label: documentLabel, required: rule.required }];
+    return draft.shareholders.map((row, index) => ({
+      id: `${rule.documentId}:${row.id}`,
+      label: `Shareholder ${index + 1} ${documentLabel}`,
+      required: rule.required,
+    }));
+  });
+  const pick = (id: string, e: ChangeEvent<HTMLInputElement>) => {
+    const result = selectPreviewFile({
+      state: files,
+      controlId: id,
+      files: [...(e.target.files ?? [])],
+      definition: APPLICATION_DEFINITION,
+      draft,
+    });
+    if (result.status === 'accepted') {
+      setFiles(result.state);
+      setFileErrors((value) => ({ ...value, [id]: '' }));
+      update({ type: 'set-document-readiness', documentId: id, value: 'ready' });
+    } else {
+      const messages = {
+        'invalid-control': 'This document slot is no longer available.',
+        'multiple-files': 'Select one file only.',
+        'unsupported-type': 'Choose a PDF, JPG or PNG file.',
+        'too-large': 'Choose a file no larger than 10 MB.',
+        'invalid-file': 'Choose a non-empty file whose extension matches its format.',
+      };
+      setFileErrors((value) => ({ ...value, [id]: messages[result.status] }));
+    }
+    e.target.value = '';
+  };
+  const remove = (id: string) => {
+    setFiles(removePreviewFile(files, id));
+    setFileErrors((value) => ({ ...value, [id]: '' }));
+    update({ type: 'set-document-readiness', documentId: id, value: 'not-ready' });
+    requestAnimationFrame(() => document.getElementById(`${safeId(id)}-file`)?.focus());
+  };
+  return (
+    <div className="application-review">
+      <ReviewCard title="Personal" onEdit={() => onEdit('contact')}>
+        <p>
+          {draft.contact.fullName} · {draft.contact.nationality}
+        </p>
+        <p>{draft.contact.email || draft.contact.phone}</p>
+      </ReviewCard>
+      <ReviewCard title="Business" onEdit={() => onEdit('business')}>
+        <p>{activity?.label}</p>
+        <p>{draft.business.preferredNames.filter(Boolean).join(' · ')}</p>
+      </ReviewCard>
+      <ReviewCard title="Setup" onEdit={() => onEdit('setup')}>
+        <p>
+          {authority?.label} · {draft.setup.legalStructureId} · {draft.setup.officeTypeId}
+        </p>
+      </ReviewCard>
+      <ReviewCard title="Additional services" onEdit={() => onEdit('setup')}>
+        <p>{draft.setup.addOnIds.join(', ') || 'None selected'}</p>
+      </ReviewCard>
+      <ReviewCard title="Ownership" onEdit={() => onEdit('ownership')}>
+        <p>{draft.shareholders.length} shareholder(s) · 100.00% required</p>
+      </ReviewCard>
+      <section className="application-documents">
+        <h3>Document readiness</h3>
+        <p>
+          Selecting a file only validates its name, format and size in memory. It is not read,
+          uploaded or saved.
+        </p>
+        {docs.map((doc) => (
+          <div key={doc.id} className="application-document">
+            <FileText aria-hidden />
+            <div>
+              <strong>{doc.label}</strong>
+              <span className="application-requirement">
+                {doc.required ? 'Required for review' : 'Optional'}
+              </span>
+              {files[doc.id] ? (
+                <small>
+                  {files[doc.id].displayName} · {(files[doc.id].sizeBytes / 1024).toFixed(0)} KB ·
+                  cleared on refresh
+                </small>
+              ) : (
+                <small>PDF, JPG or PNG · maximum 10 MB</small>
+              )}
+            </div>
+            <span className="application-document__status">
+              {files[doc.id] ? 'Selected locally' : 'Not selected'}
+            </span>
+            <label className="application-file-button">
+              {files[doc.id] ? 'Reselect file' : 'Preview file'}
+              <input
+                id={`${safeId(doc.id)}-file`}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png"
+                aria-describedby={`${safeId(doc.id)}-file-help${fileErrors[doc.id] ? ` ${safeId(doc.id)}-file-error` : ''}`}
+                aria-invalid={Boolean(fileErrors[doc.id]) || undefined}
+                onChange={(e) => pick(doc.id, e)}
+              />
+            </label>
+            <span id={`${safeId(doc.id)}-file-help`} className="sr-only">
+              One local PDF, JPG or PNG file, maximum 10 MB. It is not uploaded or saved.
+            </span>
+            {files[doc.id] ? (
+              <button type="button" onClick={() => remove(doc.id)}>
+                Remove
+              </button>
+            ) : null}
+            {fileErrors[doc.id] ? (
+              <p
+                id={`${safeId(doc.id)}-file-error`}
+                className="application-field__error"
+                role="alert"
+              >
+                {fileErrors[doc.id]}
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </section>
+      <fieldset className="application-consents">
+        <legend>
+          Confirm before completing the preview{' '}
+          <span className="application-requirement">Required</span>
+        </legend>
+        <div id="application-information-confirmation" tabIndex={-1}>
+          <Choice
+            checked={draft.confirmations.informationIsTrue}
+            label="I confirm the information above is true and accurate."
+            required
+            errorId={
+              errorFor(errors, 'application-information-confirmation')
+                ? 'application-information-confirmation-error'
+                : undefined
+            }
+            onChange={() =>
+              update({
+                type: 'set-confirmation',
+                field: 'informationIsTrue',
+                value: !draft.confirmations.informationIsTrue,
+              })
+            }
+          />
+        </div>
+        {errorFor(errors, 'application-information-confirmation') ? (
+          <p id="application-information-confirmation-error" className="application-field__error">
+            {errorFor(errors, 'application-information-confirmation')}
+          </p>
+        ) : null}
+        <div id="application-data-consent" tabIndex={-1}>
+          <Choice
+            checked={draft.confirmations.dataProcessingConsent}
+            label="I consent to Mandoob processing this information for the application preview."
+            required
+            errorId={
+              errorFor(errors, 'application-data-consent')
+                ? 'application-data-consent-error'
+                : undefined
+            }
+            onChange={() =>
+              update({
+                type: 'set-confirmation',
+                field: 'dataProcessingConsent',
+                value: !draft.confirmations.dataProcessingConsent,
+              })
+            }
+          />
+        </div>
+        {errorFor(errors, 'application-data-consent') ? (
+          <p id="application-data-consent-error" className="application-field__error">
+            {errorFor(errors, 'application-data-consent')}
+          </p>
+        ) : null}
+        <p>
+          Read the <Link href={APPLICATION_DEFINITION.legalLinks.privacy}>Privacy Notice</Link> and{' '}
+          <Link href={APPLICATION_DEFINITION.legalLinks.terms}>Terms of Use</Link>.
+        </p>
+      </fieldset>
+    </div>
+  );
+}
+function ReviewCard({
+  title,
+  onEdit,
   children,
 }: {
   title: string;
-  description: string;
+  onEdit: () => void;
   children: ReactNode;
 }) {
-  const t = useTranslations('questionnaire');
   return (
-    <div>
-      <div className="mb-5">
-        <p className="eyebrow">{t('eyebrow')}</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h2>
-        <p className="text-muted-foreground mt-2 text-sm">{description}</p>
-      </div>
+    <section className="application-review-card">
+      <header>
+        <h3>{title}</h3>
+        <button type="button" onClick={onEdit}>
+          Edit <span className="sr-only">{title}</span>
+        </button>
+      </header>
       {children}
-    </div>
+    </section>
   );
 }
-
-function Field({
-  label,
-  error,
-  className,
-  children,
+function Confirmation({
+  action,
+  handoff,
+  onEdit,
+  onReset,
+  resetOpen,
+  closeReset,
+  reset,
 }: {
-  label: string;
-  error?: string;
-  className?: string;
-  children: ReactNode;
+  action: Extract<ApplicationActionState, { status: 'confirmed-preview' }>;
+  handoff: EstimatorHandoffResult;
+  onEdit: () => void;
+  onReset: () => void;
+  resetOpen: boolean;
+  closeReset: () => void;
+  reset: () => void;
 }) {
+  const s = action.confirmation.summary;
+  const [copyStatus, setCopyStatus] = useState('');
+  const reference = action.confirmation.demoReference ?? 'Local preview';
+  async function copyReference() {
+    try {
+      await navigator.clipboard.writeText(reference);
+      setCopyStatus('Demo reference copied.');
+    } catch {
+      setCopyStatus('Could not copy the Demo reference. Select and copy it manually.');
+    }
+  }
   return (
-    <div className={`grid gap-2 ${className ?? ''}`}>
-      <Label>{label}</Label>
-      {children}
-      {error ? <p className="text-destructive text-xs">{error}</p> : null}
+    <section className="application-confirmation" aria-labelledby="application-confirmation-title">
+      <aside>
+        <CheckCircle2 aria-hidden />
+        <p className="eyebrow">Local preview</p>
+        <h2>Application stages complete</h2>
+        <ol>
+          {STEPS.map((x) => (
+            <li key={x.id}>
+              <Check aria-hidden />
+              {x.id === 'review' ? 'Preview complete' : x.label}
+            </li>
+          ))}
+        </ol>
+      </aside>
+      <section className="application-confirmation__main">
+        <div className="application-success-card">
+          <CheckCircle2 aria-hidden />
+          <p className="eyebrow">Preview ready</p>
+          <h1 id="application-confirmation-title">Application preview complete</h1>
+          <p>
+            <span className="sr-only">Demo reference: </span>
+            <code className="application-reference">{reference}</code>
+          </p>
+          <button type="button" className="application-tool" onClick={() => void copyReference()}>
+            Copy Demo reference
+          </button>
+          <p aria-live="polite">{copyStatus}</p>
+          <strong>No application was sent to Mandoob.</strong>
+          <p>
+            Your information remains on this device only. Online submission is not connected yet.
+          </p>
+        </div>
+        <section className="application-next">
+          <h2>What happens next</h2>
+          <ol>
+            <li>
+              <span>1</span>
+              <strong>Approved Phase 3 connection</strong>
+              <p>Online sending remains unavailable until that connection is approved.</p>
+            </li>
+            <li>
+              <span>2</span>
+              <strong>Mandoob review</strong>
+              <p>Starts only after Mandoob actually receives a future submission.</p>
+            </li>
+            <li>
+              <span>3</span>
+              <strong>Approved secure document transfer</strong>
+              <p>Files will require the approved Phase 3 upload connection.</p>
+            </li>
+            <li>
+              <span>4</span>
+              <strong>Authenticated tracking</strong>
+              <p>Available when an authenticated tracking workspace is connected.</p>
+            </li>
+          </ol>
+        </section>
+        <div className="application-actions">
+          <button
+            className="application-button application-button--secondary"
+            type="button"
+            onClick={onEdit}
+          >
+            Edit application
+          </button>
+          <button className="application-button" type="button" onClick={onReset}>
+            Start over
+          </button>
+          <Link href={APPLICATION_DEFINITION.legalLinks.privacy}>Privacy Notice</Link>
+          <Link href="/company-setup">Company setup</Link>
+        </div>
+      </section>
+      <aside className="application-confirmation__summary">
+        <p className="eyebrow">Derived summary</p>
+        <h2>Your setup</h2>
+        <dl>
+          <div>
+            <dt>Jurisdiction</dt>
+            <dd>{s.jurisdiction}</dd>
+          </div>
+          <div>
+            <dt>Authority</dt>
+            <dd>{s.authorityId}</dd>
+          </div>
+          <div>
+            <dt>Activity</dt>
+            <dd>{s.activityId}</dd>
+          </div>
+          <div>
+            <dt>Structure</dt>
+            <dd>{s.legalStructureId}</dd>
+          </div>
+          <div>
+            <dt>Shareholders</dt>
+            <dd>{s.shareholderCount}</dd>
+          </div>
+          <div>
+            <dt>Visas</dt>
+            <dd>{s.visaCount}</dd>
+          </div>
+          <div>
+            <dt>Selected locally before preview / will require secure upload</dt>
+            <dd>{s.readyDocumentCount}</dd>
+          </div>
+          <div>
+            <dt>Office</dt>
+            <dd>{s.officeTypeId}</dd>
+          </div>
+          <div>
+            <dt>Add-ons</dt>
+            <dd>{s.addOnIds.length ? s.addOnIds.join(', ') : 'None selected'}</dd>
+          </div>
+        </dl>
+        {handoff.status === 'accepted' ? (
+          <Link className="application-estimator-return" href="/estimate">
+            Return to validated estimator reference {handoff.value.reference}
+          </Link>
+        ) : null}
+      </aside>
+      {resetOpen ? <ResetDialog close={closeReset} reset={reset} /> : null}
+    </section>
+  );
+}
+function SaveDisclosure({ close, confirm }: { close: () => void; confirm: () => void }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const initialRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    initialRef.current?.focus();
+  }, []);
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== 'Tab' || !dialogRef.current) return;
+    const controls = [
+      ...dialogRef.current.querySelectorAll<HTMLElement>(
+        'button,a[href],input,select,textarea,[tabindex]:not([tabindex="-1"])',
+      ),
+    ];
+    if (!controls.length) return;
+    const first = controls[0],
+      last = controls.at(-1)!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+  return (
+    <div
+      className="application-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <section
+        ref={dialogRef}
+        className="application-dialog application-save-disclosure"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="local-save-title"
+        onKeyDown={onKeyDown}
+      >
+        <h2 id="local-save-title">Confirm local browser save</h2>
+        <p>
+          Your contact and application data remains unencrypted in this browser on this device for
+          up to seven days. It is not synced or submitted. Files and file names are excluded.
+        </p>
+        <div>
+          <button ref={initialRef} type="button" onClick={close}>
+            Cancel
+          </button>
+          <button type="button" onClick={confirm}>
+            Confirm seven-day save
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
 
-function requestedVisaCount(
-  answers: Pick<
-    QuestionnaireFormAnswers,
-    'investorVisaCount' | 'employeeVisaCount' | 'familyVisaCount'
-  >,
-): number {
+function ResetDialog({ close, reset }: { close: () => void; reset: () => void }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const initialRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    initialRef.current?.focus();
+  }, []);
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== 'Tab' || !dialogRef.current) return;
+    const controls = [
+      ...dialogRef.current.querySelectorAll<HTMLElement>(
+        'button,a[href],input,select,textarea,[tabindex]:not([tabindex="-1"])',
+      ),
+    ];
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls.at(-1)!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
   return (
-    Number(answers.investorVisaCount) +
-    Number(answers.employeeVisaCount) +
-    Number(answers.familyVisaCount)
+    <div
+      className="application-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+    >
+      <section
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="application-reset-title"
+        className="application-dialog"
+        onKeyDown={onKeyDown}
+      >
+        <h2 id="application-reset-title">Start over?</h2>
+        <p>
+          This clears the session draft, seven-day local draft, and all in-memory file previews from
+          this device.
+        </p>
+        <div>
+          <button
+            ref={initialRef}
+            className="application-button application-button--secondary"
+            type="button"
+            onClick={close}
+          >
+            Keep draft
+          </button>
+          <button className="application-button" type="button" onClick={reset}>
+            Start over
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
-function pickStepErrors(
-  errors: QuestionnaireFieldErrors,
-  fields: (keyof QuestionnaireAnswers)[],
-): QuestionnaireFieldErrors {
-  return fields.reduce<QuestionnaireFieldErrors>((acc, field) => {
-    if (errors[field]) acc[field] = errors[field];
-    return acc;
-  }, {});
+function draftFromHandoff(handoff: EstimatorHandoffResult): ApplicationDraft {
+  let draft = structuredClone(EMPTY_APPLICATION_DRAFT);
+  if (handoff.status === 'rejected') return draft;
+  const h = handoff.value;
+  draft = reduceApplicationDraft(
+    draft,
+    { type: 'set-jurisdiction', value: h.jurisdiction },
+    APPLICATION_DEFINITION,
+  );
+  draft = reduceApplicationDraft(
+    draft,
+    { type: 'set-authority', value: h.authorityId },
+    APPLICATION_DEFINITION,
+  );
+  draft = reduceApplicationDraft(
+    draft,
+    { type: 'set-activity', value: h.activityId },
+    APPLICATION_DEFINITION,
+  );
+  draft = reduceApplicationDraft(
+    draft,
+    { type: 'set-legal-structure', value: h.legalStructureId },
+    APPLICATION_DEFINITION,
+  );
+  draft = reduceApplicationDraft(
+    draft,
+    { type: 'set-office-type', value: h.officeTypeId },
+    APPLICATION_DEFINITION,
+  );
+  draft = reduceApplicationDraft(
+    draft,
+    { type: 'set-add-ons', value: h.addOnIds },
+    APPLICATION_DEFINITION,
+  );
+  draft = reduceApplicationDraft(
+    draft,
+    { type: 'set-shareholder-count', value: h.shareholderCount },
+    APPLICATION_DEFINITION,
+  );
+  return { ...draft, visas: { ...draft.visas, estimatorTotalSuggestion: h.visaTotalSuggestion } };
 }
-
-function firstStepWithError(errors: QuestionnaireFieldErrors): number {
-  const index = STEPS.findIndex((step) => step.fields.some((field) => errors[field]));
-  return index === -1 ? STEPS.length - 1 : index;
+function stepDescription(id: ApplicationStepId) {
+  return {
+    contact: 'How may Mandoob identify and contact you?',
+    business: 'Tell us what the Company will do and its preferred names.',
+    setup: 'Choose compatible setup details in order.',
+    ownership: 'Add each individual shareholder and allocate exactly 100.00%.',
+    review: 'Review every section, preview document readiness, and confirm your choices.',
+  }[id];
 }
-
-function apiErrorsToFieldErrors(body: unknown, fallback: string): QuestionnaireFieldErrors {
-  if (!body || typeof body !== 'object') return { form: fallback };
-  const record = body as {
-    message?: unknown;
-    details?: { issues?: { path?: unknown[]; message?: unknown }[] };
-  };
-  const issues = record.details?.issues;
-  if (!Array.isArray(issues)) {
-    return {
-      form: typeof record.message === 'string' ? record.message : fallback,
-    };
-  }
-  return issues.reduce<QuestionnaireFieldErrors>((acc, issue) => {
-    const path = issue.path ?? [];
-    const field = path[0] === 'answers' ? path[1] : path[0];
-    if (typeof field === 'string' && typeof issue.message === 'string') {
-      acc[field as keyof QuestionnaireAnswers] = issue.message;
-    }
-    return acc;
-  }, {});
+function percentToBasisPoints(value: string) {
+  if (!/^\d{0,3}(?:\.\d{0,2})?$/.test(value)) return value;
+  if (value === '') return '';
+  const n = Number(value);
+  return Number.isFinite(n) ? String(Math.round(n * 100)) : value;
+}
+function basisPointsToPercent(value: string) {
+  if (value === '') return '';
+  const n = Number(value);
+  return Number.isFinite(n) ? (n / 100).toFixed(2).replace(/\.00$/, '') : value;
+}
+function safeId(value: string) {
+  return value.replace(/[^a-z0-9_-]/giu, '-');
 }

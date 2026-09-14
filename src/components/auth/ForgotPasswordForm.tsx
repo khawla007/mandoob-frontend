@@ -1,44 +1,108 @@
 'use client';
-import { postJson } from '@/lib/http/post';
-import { useState, useTransition } from 'react';
+
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
-export function ForgotPasswordForm() {
-  const t = useTranslations('auth');
-  const [sent, setSent] = useState(false);
-  const [pending, start] = useTransition();
+import { Input } from '@/components/ui/input';
+import { postJson } from '@/lib/http/post';
+import { claimAuthSubmission, releaseAuthSubmission } from './auth-form-state';
+import { forgotPasswordFailureCategory, isAcceptedEmailContext } from './auth-recovery-state';
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const email = new FormData(e.currentTarget).get('email');
-    start(async () => {
-      await postJson('/api/v1/auth/forgot-password', { email });
-      setSent(true);
-    });
+export function ForgotPasswordForm() {
+  const t = useTranslations('auth.recovery.forgot');
+  const latch = useRef(false);
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<'idle' | 'validation' | 'pending' | 'complete' | 'failure'>(
+    'idle',
+  );
+  const [message, setMessage] = useState<string | null>(null);
+
+  function showFailure(nextMessage: string, nextState: 'validation' | 'failure' = 'failure') {
+    setState(nextState);
+    setMessage(nextMessage);
+    requestAnimationFrame(() => feedbackRef.current?.focus());
   }
 
-  if (sent) {
-    return <p className="text-sm text-zinc-600">{t('longCopy.ifAccountExists')}</p>;
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!claimAuthSubmission(latch)) return;
+    const normalizedEmail = email.trim();
+    if (!isAcceptedEmailContext(normalizedEmail)) {
+      releaseAuthSubmission(latch);
+      setState('validation');
+      setMessage(t('validation.invalidEmail'));
+      requestAnimationFrame(() => feedbackRef.current?.focus());
+      return;
+    }
+    setState('pending');
+    setMessage(null);
+    try {
+      const response = await postJson('/api/v1/auth/forgot-password', { email: normalizedEmail });
+      const data = (await response.json().catch(() => null)) as { code?: string } | null;
+      if (!response.ok) {
+        const category = forgotPasswordFailureCategory(data?.code);
+        if (category === 'validation') {
+          showFailure(t('validation.invalidEmail'), 'validation');
+        } else {
+          showFailure(
+            category === 'rateLimited'
+              ? t('rateLimited')
+              : category === 'sessionRefreshRequired'
+                ? t('sessionRefreshRequired')
+                : t('transport'),
+          );
+        }
+        releaseAuthSubmission(latch);
+        return;
+      }
+      setState('complete');
+      setMessage(t('completion'));
+    } catch {
+      showFailure(t('transport'));
+      releaseAuthSubmission(latch);
+    }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <label className="block space-y-1">
-        <span className="text-sm font-medium">{t('email')}</span>
-        <input
-          name="email"
-          type="email"
-          required
-          className="w-full rounded-lg border px-3 py-2 text-sm focus:border-black focus:outline-none"
-        />
-      </label>
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-black py-2.5 text-sm font-medium text-white disabled:opacity-50"
-      >
-        {pending ? t('sending') : t('sendResetLink')}
-      </button>
+    <form onSubmit={onSubmit} className="space-y-4" noValidate data-auth-state={state}>
+      {message ? (
+        <div
+          id="forgot-feedback"
+          ref={feedbackRef}
+          role={state === 'complete' ? 'status' : 'alert'}
+          aria-live={state === 'complete' ? 'polite' : 'assertive'}
+          tabIndex={-1}
+          className={state === 'complete' ? 'text-sm' : 'text-destructive text-sm'}
+        >
+          {message}
+        </div>
+      ) : null}
+      {state !== 'complete' ? (
+        <>
+          <label className="block space-y-1" htmlFor="forgot-email">
+            <span className="text-sm font-medium">{t('email')}</span>
+            <Input
+              id="forgot-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.currentTarget.value)}
+              aria-invalid={state === 'validation'}
+              aria-describedby={state === 'validation' ? 'forgot-feedback' : undefined}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={state === 'pending'}
+            aria-busy={state === 'pending'}
+            className="btn btn--accent w-full justify-center"
+          >
+            {state === 'pending' ? t('pending') : t('submit')}
+          </button>
+        </>
+      ) : null}
     </form>
   );
 }

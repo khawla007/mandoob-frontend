@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Check, Circle, Loader2, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { Check, Circle, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
@@ -17,36 +16,29 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
+import {
+  claimAuthSubmission,
+  registrationFailureCategory,
+  releaseAuthSubmission,
+  createRegistrationFormSchema,
+  buildRegistrationPayload,
+} from '@/components/auth/auth-form-state';
 
-const POLICY_VERSION = 'v1';
-
-const schema = z
-  .object({
-    fullName: z.string().min(1, 'Full name is required'),
-    email: z.string().email('Enter a valid email'),
-    phone: z.string().optional().or(z.literal('')),
-    password: z
-      .string()
-      .min(8, 'At least 8 characters')
-      .regex(/[A-Z]/, 'Must include an uppercase letter')
-      .regex(/[a-z]/, 'Must include a lowercase letter')
-      .regex(/[^A-Za-z0-9]/, 'Must include a special character'),
-    confirmPassword: z.string(),
-    consentAccepted: z.boolean().refine((v) => v === true, { message: 'Consent is required' }),
-  })
-  .refine((v) => v.password === v.confirmPassword, {
-    path: ['confirmPassword'],
-    message: 'Passwords do not match',
-  });
-
-type FormInput = z.input<typeof schema>;
-type FormOutput = z.output<typeof schema>;
+type FormInput = {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  consentAccepted: boolean;
+};
 
 type PasswordRule = { id: string; labelKey: string; passed: boolean };
 
@@ -63,8 +55,30 @@ export function RegisterForm() {
   const t = useTranslations('auth');
   const tErrors = useTranslations('errors');
   const router = useRouter();
+  const submissionLatch = useRef(false);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState(false);
-  const form = useForm<FormInput, unknown, FormOutput>({
+  const [feedback, setFeedback] = useState<{ tone: 'error' | 'status'; message: string } | null>(
+    null,
+  );
+  const schema = useMemo(
+    () =>
+      createRegistrationFormSchema({
+        fullNameRequired: t('validation.fullNameRequired'),
+        invalidEmail: t('validation.invalidEmail'),
+        invalidPhone: t('validation.invalidPhone'),
+        passwordRequired: t('validation.passwordRequired'),
+        passwordLength: t('validation.passwordLength'),
+        passwordUppercase: t('validation.passwordUppercase'),
+        passwordLowercase: t('validation.passwordLowercase'),
+        passwordSpecial: t('validation.passwordSpecial'),
+        confirmPasswordRequired: t('validation.confirmPasswordRequired'),
+        passwordMismatch: t('validation.passwordMismatch'),
+        consentRequired: t('validation.consentRequired'),
+      }),
+    [t],
+  );
+  const form = useForm<FormInput>({
     resolver: zodResolver(schema),
     mode: 'onTouched',
     defaultValues: {
@@ -84,33 +98,34 @@ export function RegisterForm() {
   const allRulesPassed = rules.every((r) => r.passed);
   const confirmMatches = (confirmPassword?.length ?? 0) > 0 && confirmPassword === password;
 
-  const [pwFocused, setPwFocused] = useState(false);
-  const [pwDismissed, setPwDismissed] = useState(false);
-  const [lingerOpen, setLingerOpen] = useState(false);
-  const prevAllPassed = useRef(false);
-
-  useEffect(() => {
-    if (allRulesPassed && !prevAllPassed.current && pwFocused && !pwDismissed) {
-      setLingerOpen(true);
-      const t = setTimeout(() => setLingerOpen(false), 2000);
-      prevAllPassed.current = true;
-      return () => clearTimeout(t);
+  function safeRegistrationError(code: string | undefined): string {
+    switch (registrationFailureCategory(code)) {
+      case 'validation':
+        return tErrors('fixHighlighted');
+      case 'rateLimited':
+        return tErrors('longCopy.rateLimited');
+      case 'sessionRefreshRequired':
+        return t('sessionRefreshRequired');
+      case 'humanVerificationFailed':
+        return t('humanVerificationFailed');
+      case 'duplicateSafe':
+        return t('registrationDuplicateSafe');
+      case 'verificationDeliveryFailed':
+        return t('verificationDeliveryFailed');
+      default:
+        return tErrors('registrationFailed');
     }
-    prevAllPassed.current = allRulesPassed;
-  }, [allRulesPassed, pwFocused, pwDismissed]);
+  }
 
-  const showRules = pwFocused && !pwDismissed && (!allRulesPassed || lingerOpen);
+  function showError(message: string) {
+    setFeedback({ tone: 'error', message });
+    requestAnimationFrame(() => errorSummaryRef.current?.focus());
+  }
 
-  async function onSubmit(values: FormOutput) {
-    const payload = {
-      email: values.email,
-      password: values.password,
-      confirmPassword: values.confirmPassword,
-      fullName: values.fullName,
-      phone: values.phone || undefined,
-      consentAccepted: values.consentAccepted,
-      policyVersion: POLICY_VERSION,
-    };
+  async function onSubmit(values: FormInput) {
+    if (!claimAuthSubmission(submissionLatch)) return;
+    setFeedback(null);
+    const payload = buildRegistrationPayload(values);
     setPending(true);
     try {
       const res = await postJson('/api/v1/auth/register', payload);
@@ -119,53 +134,73 @@ export function RegisterForm() {
           error?: string;
           code?: string;
         } | null;
-        toast.error(data?.error ?? tErrors('registrationFailed'));
+        showError(safeRegistrationError(data?.code));
+        releaseAuthSubmission(submissionLatch);
         setPending(false);
         return;
       }
+      setFeedback({ tone: 'status', message: t('verificationHandoff') });
       startRouteProgress();
       router.replace(`/verify-otp?email=${encodeURIComponent(values.email)}`);
     } catch {
-      toast.error(tErrors('registrationFailed'));
+      showError(tErrors('networkError'));
+      releaseAuthSubmission(submissionLatch);
       setPending(false);
     }
   }
 
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    void form.handleSubmit(onSubmit, () => showError(tErrors('fixHighlighted')))(event);
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="fullName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('fullName')}</FormLabel>
-              <FormControl>
-                <Input autoComplete="name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        {feedback ? (
+          <div
+            ref={errorSummaryRef}
+            role={feedback.tone === 'error' ? 'alert' : 'status'}
+            aria-live={feedback.tone === 'error' ? 'assertive' : 'polite'}
+            tabIndex={-1}
+            className={feedback.tone === 'error' ? 'text-destructive text-sm' : 'text-sm'}
+          >
+            {feedback.message}
+          </div>
+        ) : null}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('fullName')}</FormLabel>
+                <FormControl>
+                  <Input autoComplete="name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('email')}</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  autoComplete="email"
-                  placeholder={t('emailPlaceholder')}
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('email')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    placeholder={t('emailPlaceholder')}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -187,28 +222,12 @@ export function RegisterForm() {
           control={form.control}
           name="password"
           render={({ field }) => (
-            <FormItem className="relative pb-4">
+            <FormItem>
               <FormLabel>{t('password')}</FormLabel>
               <FormControl>
-                <PasswordInput
-                  autoComplete="new-password"
-                  {...field}
-                  onFocus={() => {
-                    setPwFocused(true);
-                    setPwDismissed(false);
-                  }}
-                  onBlur={() => {
-                    field.onBlur();
-                    setPwFocused(false);
-                  }}
-                />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
-              {showRules && (
-                <PasswordRulesPopover rules={rules} onDismiss={() => setPwDismissed(true)} t={t} />
-              )}
-              <p className="text-destructive absolute top-[80%] left-0 mt-1 text-xs">
-                {form.formState.errors.password?.message as string | undefined}
-              </p>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -217,14 +236,15 @@ export function RegisterForm() {
           control={form.control}
           name="confirmPassword"
           render={({ field }) => (
-            <FormItem className="relative pb-4">
+            <FormItem>
               <FormLabel>{t('confirmPassword')}</FormLabel>
               <FormControl>
                 <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
               <p
+                role="status"
                 className={cn(
-                  'absolute top-[80%] left-0 mt-1 text-xs',
+                  'text-xs',
                   confirmPassword
                     ? confirmMatches
                       ? 'text-emerald-600'
@@ -238,9 +258,12 @@ export function RegisterForm() {
                     : tErrors('passwordMismatch')
                   : ''}
               </p>
+              <FormMessage />
             </FormItem>
           )}
         />
+
+        <PasswordRequirements rules={rules} allPassed={allRulesPassed} t={t} />
 
         <FormField
           control={form.control}
@@ -252,12 +275,22 @@ export function RegisterForm() {
                   checked={field.value}
                   onCheckedChange={(v) => field.onChange(v === true)}
                   className="mt-0.5"
+                  aria-label={t('consentLabel')}
                 />
               </FormControl>
               <div className="space-y-1">
-                <FormLabel className="leading-snug font-normal">
-                  {t('longCopy.consentPdpl')}
-                </FormLabel>
+                <FormLabel className="leading-snug font-normal">{t('consentLabel')}</FormLabel>
+                <FormDescription>
+                  {t('consentPrefix')}{' '}
+                  <Link href="/legal/terms" className="underline underline-offset-2">
+                    {t('termsOfService')}
+                  </Link>{' '}
+                  {t('consentAnd')}{' '}
+                  <Link href="/legal/privacy" className="underline underline-offset-2">
+                    {t('privacyNotice')}
+                  </Link>
+                  {t('consentSuffix')}
+                </FormDescription>
                 <FormMessage />
               </div>
             </FormItem>
@@ -284,33 +317,25 @@ export function RegisterForm() {
   );
 }
 
-function PasswordRulesPopover({
+function PasswordRequirements({
   rules,
-  onDismiss,
+  allPassed,
   t,
 }: {
   rules: PasswordRule[];
-  onDismiss: () => void;
+  allPassed: boolean;
   t: ReturnType<typeof useTranslations<'auth'>>;
 }) {
   return (
     <div
-      role="status"
-      aria-live="polite"
-      // onMouseDown preventDefault stops blur on click inside popover
-      onMouseDown={(e) => e.preventDefault()}
-      className="bg-popover text-popover-foreground border-border absolute top-[80%] left-0 z-20 mt-1 w-full max-w-sm rounded-md border p-3 shadow-md"
+      className="bg-muted/40 border-border rounded-md border p-3"
+      aria-labelledby="password-requirements-title"
     >
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label={t('dismissPasswordRequirements')}
-        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-1.5 right-1.5 rounded-sm p-0.5 focus-visible:ring-2 focus-visible:outline-none"
-      >
-        <X className="size-3.5" />
-      </button>
       <div className="text-muted-foreground mb-2 text-[11px] font-medium tracking-wide uppercase">
-        {t('passwordRequirements')}
+        <span id="password-requirements-title">{t('passwordRequirements')}</span>
+        <span className="ms-2 normal-case" role="status" aria-live="polite">
+          {allPassed ? t('passwordRequirementsMet') : t('passwordRequirementsPending')}
+        </span>
       </div>
       <ul className="space-y-1">
         {rules.map((r) => (
@@ -327,6 +352,9 @@ function PasswordRulesPopover({
               <Circle className="size-3.5" aria-hidden />
             )}
             <span>{t(r.labelKey as Parameters<typeof t>[0])}</span>
+            <span className="visually-hidden">
+              {r.passed ? t('requirementMet') : t('requirementNotMet')}
+            </span>
           </li>
         ))}
       </ul>

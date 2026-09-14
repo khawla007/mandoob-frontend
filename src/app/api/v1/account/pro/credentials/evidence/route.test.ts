@@ -4,7 +4,7 @@ import test from 'node:test';
 import { MULTIPART_BODY_ENVELOPE_BYTES } from '@/app/api/v1/_shared/bounded-body';
 import { PRO_CREDENTIAL_EVIDENCE_MAX_BYTES } from '@/lib/validation/pro-lifecycle';
 import { ApiError } from '@/lib/errors';
-import { createEvidencePostHandler } from './route';
+import { createEvidencePostHandler } from './route-handler';
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon_key_for_tests_padded_to_min_';
@@ -17,7 +17,10 @@ test('Next proxy preserves the full 10 MiB evidence file plus multipart envelope
 });
 
 test('credential evidence route is statically pinned to the private-only scanner', () => {
-  const source = readFileSync('src/app/api/v1/account/pro/credentials/evidence/route.ts', 'utf8');
+  const source = readFileSync(
+    'src/app/api/v1/account/pro/credentials/evidence/route-handler.ts',
+    'utf8',
+  );
   assert.match(source, /scanFilePrivate/u);
   assert.doesNotMatch(source, /\.scanFile\(bytes/u);
 });

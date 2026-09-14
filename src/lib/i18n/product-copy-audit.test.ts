@@ -166,7 +166,8 @@ test('active documentation excludes stale client ownership contracts', () => {
 
 test('assignment copy identifies one-to-one ownership as Mandoob policy', () => {
   assert.match(source('src/components/site/home/ProSuiteSection.tsx'), /Mandoob platform policy/iu);
-  assert.match(source('src/components/site/pro/ProHeroSection.tsx'), /Mandoob platform policy/iu);
+  assert.match(source('src/lib/pro/public-pro.ts'), /Mandoob platform policy/iu);
+  assert.match(source('src/components/site/pro/ProHeroSection.tsx'), /PUBLIC_PRO_CONTENT\.policy/u);
   assert.match(en.admin.companies.assignment.proDescription, /Mandoob platform policy/iu);
   assert.match(en.admin.companies.assignment.proDescription, /one active company assignment/iu);
   assert.match(ar.admin.companies.assignment.proDescription, /سياسة منصة مندوب/u);

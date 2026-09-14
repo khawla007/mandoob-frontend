@@ -1,8 +1,20 @@
+import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+import { redirect } from 'next/navigation';
 import { MfaEnrollCard } from '@/components/auth/MfaEnrollCard';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/auth/require-user';
-import { redirect } from 'next/navigation';
+import { buildAuthMetadata } from '@/lib/public-metadata';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.mfa.enroll');
+  return buildAuthMetadata({
+    title: t('title'),
+    description: t('intro'),
+    canonical: '/mfa/enroll',
+    referrer: 'no-referrer',
+  });
+}
 
 export default async function MfaEnrollPage() {
   try {
@@ -11,7 +23,11 @@ export default async function MfaEnrollPage() {
     if (error instanceof Error && error.message === 'UNAUTHENTICATED') redirect('/login');
     throw error;
   }
-  const [t, supabase] = await Promise.all([getTranslations('auth'), createSupabaseServerClient()]);
+  const [t, tEnrollment, supabase] = await Promise.all([
+    getTranslations('auth'),
+    getTranslations('auth.mfa.enroll'),
+    createSupabaseServerClient(),
+  ]);
   const { data: factors, error: factorError } = await supabase.auth.mfa.listFactors();
   const enrollmentUnavailable = Boolean(factorError) || !factors;
   const challengeRequired =
@@ -20,7 +36,7 @@ export default async function MfaEnrollPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">{t('enableTwoFactor')}</h1>
+        <h1 className="text-2xl font-semibold">{tEnrollment('title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('mfaEnrollmentIntro')}</p>
       </div>
       <MfaEnrollCard

@@ -47,7 +47,19 @@ export function buildPublicSitemap({
   cmsPages = [],
 }: SitemapInput = {}): MetadataRoute.Sitemap {
   const base = origin.replace(/\/+$/, '');
-  const staticPaths = ['/', '/estimate', '/apply', '/pricing', '/knowledge-base', '/blog'];
+  const staticPaths = [
+    '/',
+    '/estimate',
+    '/pricing',
+    '/pro',
+    '/knowledge-base',
+    '/blog',
+    '/mainland',
+    '/free-zones',
+    '/offshore',
+    '/about',
+    '/contact',
+  ];
   const articlePaths = knowledgeBaseArticleSlugs.map((slug) => `/knowledge-base/${slug}`);
   const authorityPaths = getAuthoritySlugs().map((slug) => `/company-setup/${slug}`);
   const staticEntries = [...staticPaths, ...articlePaths, ...authorityPaths].map((path) => ({

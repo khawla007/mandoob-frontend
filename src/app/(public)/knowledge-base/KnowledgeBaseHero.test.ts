@@ -1,67 +1,41 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import test from 'node:test';
 
-const root = process.cwd();
-const page = readFileSync(join(root, 'src/app/(public)/knowledge-base/page.tsx'), 'utf8');
-const css = readFileSync(join(root, 'src/app/(public)/public-theme.css'), 'utf8');
+const page = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
+const explorer = readFileSync(
+  new URL('../../../components/knowledge-base/KnowledgeBaseExplorer.tsx', import.meta.url),
+  'utf8',
+);
+const css = readFileSync(new URL('../public-theme.css', import.meta.url), 'utf8');
 
-test('Knowledge Base hero uses its own modifier, overlay, and background asset', () => {
-  assert.match(page, /className="hero hero--knowledge-base"/);
-  assert.match(page, /className="hero__overlay" aria-hidden="true"/);
-  assert.match(css, /url\('\/hero\/knowledge-base-research\.webp'\)/);
+test('Knowledge Base hero uses the approved local asset and search-first reference hierarchy', () => {
+  assert.match(page, /KnowledgeBaseExplorer/u);
+  assert.match(explorer, /className="kb-reference-hero"/u);
+  assert.match(explorer, /\/hero\/knowledge-base-research\.webp/u);
+  assert.match(explorer, /<h1[\s\S]*<form[\s\S]*role="search"[\s\S]*Suggested searches/u);
 });
 
-test('Knowledge Base hero preserves CTAs and ordered in-hero metrics', () => {
-  const hero = page.slice(
-    page.indexOf('{/* ============ HERO'),
-    page.indexOf('{/* ============ FEATURED'),
-  );
-  assert.match(
-    hero,
-    /Estimate setup cost[\s\S]*Browse topics[\s\S]*hero__rule[\s\S]*hero__metrics/,
-  );
-
-  const metrics = hero.slice(hero.indexOf('hero__metrics'));
-  const labels = ['guides', 'topics', 'free zones', 'updates'];
-  let priorIndex = -1;
-  for (const label of labels) {
-    const index = metrics.indexOf(label);
-    assert.ok(index > priorIndex, `${label} must remain present and ordered`);
-    priorIndex = index;
-  }
+test('Knowledge Base search is labelled, URL-backed, and restores active values', () => {
+  assert.match(explorer, /label htmlFor="knowledge-query"/u);
+  assert.match(explorer, /name="q"/u);
+  assert.match(explorer, /defaultValue=\{normalizedQuery\}/u);
+  assert.match(explorer, /new URLSearchParams/u);
+  assert.match(explorer, /aria-live="polite"/u);
 });
 
-test('Knowledge Base hero has scoped natural-height responsive rules', () => {
-  const desktopBlock = css.match(/\.site-public \.hero--knowledge-base\s*\{[^}]*\}/)?.[0];
-  assert.ok(desktopBlock, 'desktop Knowledge Base hero block must exist');
-  assert.match(desktopBlock, /padding-block:\s*98px/);
-  assert.doesNotMatch(desktopBlock, /(?:height|max-height):/);
-
-  const desktopIndex = css.indexOf(desktopBlock);
-  const mobileCss = css.slice(
-    css.indexOf('@media (max-width: 767px)', desktopIndex + desktopBlock.length),
-  );
-  const mobileBlock = mobileCss.match(/\.site-public \.hero--knowledge-base\s*\{[^}]*\}/)?.[0];
-  assert.ok(mobileBlock, 'mobile Knowledge Base hero block must exist');
-  assert.match(mobileBlock, /padding-block:\s*var\(--sp-5\)/);
-  assert.doesNotMatch(mobileBlock, /(?:height|max-height):/);
+test('Knowledge Base hero has scoped natural-height desktop and preserved narrow rules', () => {
+  const desktop = css.match(/\.site-public \.kb-reference-hero__inner\s*\{[^}]*\}/u)?.[0];
+  assert.ok(desktop);
+  assert.match(desktop, /min-block-size:\s*500px/u);
+  assert.doesNotMatch(desktop, /height:/u);
+  assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.kb-reference-hero__copy/u);
 });
 
-test('Knowledge Base hero inherits the shared design-4 accent CTA colors', () => {
-  const hero = page.slice(
-    page.indexOf('{/* ============ HERO'),
-    page.indexOf('{/* ============ FEATURED'),
-  );
-  assert.match(hero, /className="btn btn--accent"/);
+test('Knowledge Base primary CTA inherits accessible shared button colors', () => {
   assert.match(
     css,
-    /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--accent\);[^}]*color:\s*#fff;/,
+    /\.site-public \.btn--accent\s*\{[^}]*background:\s*var\(--public-cta-background\)/u,
   );
-  assert.match(
-    css,
-    /\.site-public \.btn--accent:hover\s*\{[^}]*background:\s*var\(--accent-hover\)/,
-  );
-  assert.doesNotMatch(css, /\.site-public \.hero--knowledge-base \.btn--accent(?::hover)?\s*\{/);
+  assert.doesNotMatch(css, /\.site-public \.kb-reference-hero \.btn--accent(?::hover)?\s*\{/u);
 });
