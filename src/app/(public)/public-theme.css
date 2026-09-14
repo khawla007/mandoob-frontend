@@ -496,6 +496,9 @@
 .site-public .public-topbar__contacts a:hover {
   color: #fff;
 }
+.site-public .public-topbar__contacts a:focus-visible {
+  outline-offset: -2px;
+}
 .site-public .public-topbar__separator {
   inline-size: 1px;
   block-size: 12px;
