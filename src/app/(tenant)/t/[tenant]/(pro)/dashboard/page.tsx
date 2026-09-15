@@ -6,7 +6,7 @@ import {
   ActionDeck,
   CaseVelocityChart,
   CollectionsWaterfall,
-  CompanyCommand,
+  CompanySignalHero,
   CompanySummaryDeck,
   DashboardUnavailablePanel,
   DeadlineHeatmap,
@@ -15,7 +15,7 @@ import {
   type ActionDeckLabels,
   type CaseVelocityChartLabels,
   type CollectionsWaterfallLabels,
-  type CompanyCommandLabels,
+  type CompanySignalHeroLabels,
   type CompanySummaryDeckLabels,
   type DeadlineHeatmapLabels,
   type PendingDocumentsLabels,
@@ -89,8 +89,20 @@ export default async function ProDashboard({
     dashboardWidgetState(dashboard.errors, groups, errorMessages, retryHref);
   const baseLabels = { loading: t('loading'), retry: t('retry') };
 
-  const companyLabels = {
-    assignedCompany: t('companyCommand.assignedCompany'),
+  const priorityAvailable = (
+    ['identity', 'links', 'operations', 'renewals', 'documents', 'finance'] as const
+  ).every((group) => dashboard.errors[group] === undefined);
+  const velocityAvailable = dashboard.errors.operations === undefined;
+  const heroLabels = {
+    companyFallback: t('companyFallback'),
+    prioritySignals: t('hero.prioritySignals'),
+    actionSummary: t('hero.actionSummary'),
+    openActionDeck: t('hero.openActionDeck'),
+    actionRequired: t('hero.actionRequired'),
+    unavailable: t('hero.unavailable'),
+    velocityAria: t.raw('hero.velocityAria'),
+    velocityUnavailable: t('hero.velocityUnavailable'),
+    readinessItems: t.raw('hero.readinessItems'),
     lifecycle: t('companyCommand.lifecycle'),
     jurisdiction: t('companyCommand.jurisdiction'),
     licenceExpiry: t('companyCommand.licenceExpiry'),
@@ -99,9 +111,8 @@ export default async function ProDashboard({
     profileSections: t.raw('companyCommand.profileSections'),
     activationReadiness: t('companyCommand.activationReadiness'),
     ready: t('companyCommand.ready'),
-    blockers: t('companyCommand.blockers'),
     registration: t('companyCommand.registration'),
-    registrationUnavailable: t('companyCommand.registrationUnavailable'),
+    registrationUnavailable: t('hero.registrationUnavailable'),
     openCompany: t('companyCommand.openCompany'),
     lifecycleValue: company
       ? t(`companyCommand.lifecycleValues.${company.status}`)
@@ -109,15 +120,13 @@ export default async function ProDashboard({
     onboardingValue: company
       ? t(`companyCommand.onboardingValues.${company.onboardingStatus}`)
       : t('summary.unavailable'),
-  } satisfies CompanyCommandLabels;
+  } satisfies CompanySignalHeroLabels;
   const summaryLabels = {
     readiness: t('summary.readiness'),
     ready: t('summary.ready'),
     actionRequired: t('summary.actionRequired'),
-    registration: t('summary.registration'),
     unavailable: t('summary.unavailable'),
     documents: t('summary.documents'),
-    priorityActions: t('summary.priorityActions'),
     renewals: t('summary.renewals'),
     renewalsPeriod: t('summary.renewalsPeriod'),
     invoices: t('summary.invoices'),
@@ -294,39 +303,37 @@ export default async function ProDashboard({
         </div>
       </header>
 
-      {company &&
-      companyContext.profileState === 'data' &&
-      companyContext.readinessState === 'data' ? (
-        <CompanyCommand
+      <div className="signal-dashboard__hero">
+        <CompanySignalHero
           company={company}
+          dashboard={dashboard}
           tenantSlug={tenant.slug}
           locale={locale}
-          labels={companyLabels}
+          filters={filters}
+          readinessAvailable={companyContext.readinessState === 'data'}
+          priorityAvailable={priorityAvailable}
+          velocityAvailable={velocityAvailable}
+          labels={heroLabels}
         />
-      ) : (
-        <DashboardUnavailablePanel
-          title={t('companyCommand.assignedCompany')}
-          description={t('companyCommand.activationReadiness')}
-          unavailable={t('companyUnavailable')}
+      </div>
+      <div className="signal-dashboard__kpis">
+        <CompanySummaryDeck
+          company={company}
+          dashboard={dashboard}
+          tenantSlug={tenant.slug}
+          locale={locale}
+          labels={summaryLabels}
+          states={{
+            readiness:
+              companyContext.profileState === 'data' && companyContext.readinessState === 'data'
+                ? undefined
+                : { kind: 'error', message: t('companyUnavailable') },
+            documents: stateFor(['documents']),
+            renewals: stateFor(['renewals']),
+            finance: stateFor(['finance']),
+          }}
         />
-      )}
-      <CompanySummaryDeck
-        company={company}
-        dashboard={dashboard}
-        tenantSlug={tenant.slug}
-        locale={locale}
-        labels={summaryLabels}
-        states={{
-          readiness:
-            companyContext.profileState === 'data' && companyContext.readinessState === 'data'
-              ? undefined
-              : { kind: 'error', message: t('companyUnavailable') },
-          documents: stateFor(['documents']),
-          actions: stateFor(['operations', 'renewals', 'documents', 'finance']),
-          renewals: stateFor(['renewals']),
-          finance: stateFor(['finance']),
-        }}
-      />
+      </div>
 
       <div className="signal-dashboard__layout">
         <div className="signal-dashboard__operations">

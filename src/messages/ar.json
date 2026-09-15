@@ -2844,7 +2844,8 @@
           "registration": "التسجيل لدى الجهة",
           "registrationUnavailable": "التقدم التفصيلي غير متاح",
           "velocityAria": "فُتحت {opened} معاملات واكتملت {completed} خلال {days} يومًا.",
-          "velocityUnavailable": "وتيرة المعاملات غير متاحة مؤقتًا."
+          "velocityUnavailable": "وتيرة المعاملات غير متاحة مؤقتًا.",
+          "readinessItems": "عناصر الجاهزية: {count}"
         },
         "companyCommand": {
           "assignedCompany": "الشركة المعيّنة",

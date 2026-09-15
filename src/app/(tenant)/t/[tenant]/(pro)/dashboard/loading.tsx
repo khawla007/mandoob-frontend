@@ -1,8 +1,13 @@
+import { getTranslations } from 'next-intl/server';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function DashboardLoading() {
+export default async function DashboardLoading() {
+  const t = await getTranslations('pro.dashboard.signalStudio');
   return (
-    <div className="signal-dashboard space-y-4" aria-busy="true">
+    <div className="signal-dashboard" aria-busy="true">
+      <span role="status" className="sr-only">
+        {t('loading')}
+      </span>
       <div className="signal-dashboard__masthead">
         <Skeleton className="h-3 w-44" />
         <Skeleton className="h-2 w-10" />
@@ -15,12 +20,31 @@ export default function DashboardLoading() {
         </div>
         <Skeleton className="h-8 w-52 max-w-full" />
       </div>
-      <Skeleton className="h-16 rounded-xl" />
-      <Skeleton className="h-56 rounded-2xl" />
-      <div className="signal-dashboard__kpis grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="h-28 rounded-xl" />
-        ))}
+      <div className="signal-dashboard__hero" aria-hidden="true">
+        <div className="signal-hero relative isolate overflow-hidden text-white">
+          <div className="signal-hero__content space-y-3">
+            <Skeleton className="h-6 w-44 max-w-full bg-white/15" />
+            <Skeleton className="h-8 w-72 max-w-full bg-white/15" />
+            <Skeleton className="h-4 w-52 max-w-full bg-white/15" />
+            <div className="signal-hero__facts">
+              {Array.from({ length: 6 }, (_, index) => (
+                <Skeleton key={index} className="h-10 bg-white/15" />
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-11 w-32 bg-white/15" />
+              <Skeleton className="h-11 w-32 bg-white/15" />
+            </div>
+          </div>
+          <Skeleton className="signal-hero__chart bg-white/10" />
+        </div>
+      </div>
+      <div className="signal-dashboard__kpis" aria-hidden="true">
+        <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="signal-kpi rounded-xl" />
+          ))}
+        </div>
       </div>
       <div className="signal-dashboard__layout">
         <div className="signal-dashboard__operations">

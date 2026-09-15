@@ -10,10 +10,8 @@ export type CompanySummaryDeckLabels = {
   readiness: string;
   ready: string;
   actionRequired: string;
-  registration: string;
   unavailable: string;
   documents: string;
-  priorityActions: string;
   renewals: string;
   renewalsPeriod: string;
   invoices: string;
@@ -33,9 +31,7 @@ export function CompanySummaryDeck({
   tenantSlug: string;
   locale: string;
   labels: CompanySummaryDeckLabels;
-  states?: Partial<
-    Record<'readiness' | 'documents' | 'actions' | 'renewals' | 'finance', SummaryState>
-  >;
+  states?: Partial<Record<'readiness' | 'documents' | 'renewals' | 'finance', SummaryState>>;
 }) {
   const number = new Intl.NumberFormat(locale);
   const money = new Intl.NumberFormat(locale, {

@@ -22,6 +22,15 @@ export type CompanySignalHeroLabels = {
   registrationUnavailable: string;
   velocityAria: string;
   velocityUnavailable: string;
+  lifecycle: string;
+  lifecycleValue: string;
+  jurisdiction: string;
+  licenceExpiry: string;
+  licenceMissing: string;
+  legalProfile: string;
+  onboardingValue: string;
+  profileSections: string;
+  readinessItems: string;
 };
 
 export type CompanySignalHeroProps = {
@@ -55,6 +64,15 @@ export function CompanySignalHero({
   labels,
 }: CompanySignalHeroProps) {
   const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Dubai' });
+  const profileSections = company
+    ? signalLabel(labels.profileSections, {
+        complete: integer.format(
+          Object.values(company.sectionProgress).filter((status) => status === 'complete').length,
+        ),
+        total: integer.format(Object.keys(company.sectionProgress).length),
+      })
+    : labels.unavailable;
   const graphData = dashboard.caseVelocity.slice(-14);
   const opened = graphData.reduce((sum, point) => sum + point.opened, 0);
   const completed = graphData.reduce((sum, point) => sum + point.completed, 0);
@@ -94,8 +112,49 @@ export function CompanySignalHero({
         <h2>{company?.companyName ?? labels.companyFallback}</h2>
         <p>
           {labels.activationReadiness}: {readiness}
+          {company && readinessAvailable ? (
+            <span className="signal-hero__readiness-items">
+              {' · '}
+              {signalLabel(labels.readinessItems, {
+                count: integer.format(company.readinessCodes.length),
+              })}
+            </span>
+          ) : null}
         </p>
         <dl className="signal-hero__facts">
+          <div>
+            <dt>{labels.lifecycle}</dt>
+            <dd>{company ? labels.lifecycleValue : labels.unavailable}</dd>
+          </div>
+          <div>
+            <dt>{labels.jurisdiction}</dt>
+            <dd>
+              {company ? (company.jurisdiction ?? labels.licenceMissing) : labels.unavailable}
+            </dd>
+          </div>
+          <div>
+            <dt>{labels.licenceExpiry}</dt>
+            <dd>
+              {!company
+                ? labels.unavailable
+                : company.licenseExpiry
+                  ? date.format(new Date(`${company.licenseExpiry}T00:00:00+04:00`))
+                  : labels.licenceMissing}
+            </dd>
+          </div>
+          <div>
+            <dt>{labels.legalProfile}</dt>
+            <dd>
+              {company ? (
+                <>
+                  {labels.onboardingValue}
+                  <span className="signal-hero__profile-sections">{profileSections}</span>
+                </>
+              ) : (
+                labels.unavailable
+              )}
+            </dd>
+          </div>
           <div>
             <dt>{labels.registration}</dt>
             <dd>{labels.registrationUnavailable}</dd>

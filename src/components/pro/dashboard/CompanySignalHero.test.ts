@@ -75,6 +75,15 @@ const labels = {
   registrationUnavailable: 'Registration unavailable',
   velocityAria: '{opened} opened, {completed} completed over {days} days',
   velocityUnavailable: 'Case velocity unavailable',
+  lifecycle: 'Company lifecycle',
+  lifecycleValue: 'Active',
+  jurisdiction: 'Jurisdiction',
+  licenceExpiry: 'Licence expiry',
+  licenceMissing: 'Not recorded',
+  legalProfile: 'Legal profile',
+  onboardingValue: 'Completed',
+  profileSections: '{complete} of {total} legal sections complete',
+  readinessItems: 'Readiness items: {count}',
 };
 
 renderTest('Company hero availability labels have English and Arabic parity', () => {
@@ -90,7 +99,13 @@ renderTest('Company hero availability labels have English and Arabic parity', ()
 type HeroOverrides = Partial<
   Pick<
     CompanySignalHeroProps,
-    'company' | 'dashboard' | 'readinessAvailable' | 'priorityAvailable' | 'velocityAvailable'
+    | 'company'
+    | 'dashboard'
+    | 'readinessAvailable'
+    | 'priorityAvailable'
+    | 'velocityAvailable'
+    | 'locale'
+    | 'labels'
   >
 >;
 
@@ -157,3 +172,50 @@ renderTest('empty available velocity remains accessible without empty data shape
   assert.match(html, /<svg/u);
   assert.doesNotMatch(html, /<polygon|<polyline/u);
 });
+
+renderTest(
+  'compact hero retains all Company facts independently of authority registration',
+  async () => {
+    const html = await render({
+      company: { ...company, readinessCodes: ['TRADE_LICENSE_MISSING'] },
+    });
+    assert.match(html, /<h2[^>]*>Acme Trading LLC<\/h2>/u);
+    assert.doesNotMatch(html, /<h1|<h3/u);
+    assert.match(html, /<dt>Company lifecycle<\/dt><dd>Active<\/dd>/u);
+    assert.match(html, /<dt>Jurisdiction<\/dt><dd>Dubai Mainland<\/dd>/u);
+    assert.match(html, /<dt>Licence expiry<\/dt><dd>Aug 17, 2027<\/dd>/u);
+    assert.match(html, /<dt>Legal profile<\/dt><dd>Completed/u);
+    assert.match(html, /6 of 6 legal sections complete/u);
+    assert.match(html, /Activation readiness: Action required/u);
+    assert.match(html, /Readiness items: 1/u);
+    assert.match(html, /<dt>Authority registration<\/dt><dd>Registration unavailable<\/dd>/u);
+    assert.doesNotMatch(html, /registrationPercent|progressbar|LIVE/u);
+  },
+);
+
+renderTest('hero formats real section completion and UAE licence date for Arabic', async () => {
+  const html = await render({
+    locale: 'ar',
+    company: { ...company, sectionProgress: { ...company.sectionProgress, legal: 'incomplete' } },
+  });
+  const date = new Intl.DateTimeFormat('ar', { dateStyle: 'medium', timeZone: 'Asia/Dubai' });
+  assert.ok(html.includes(date.format(new Date('2027-08-17T00:00:00+04:00'))));
+  const number = new Intl.NumberFormat('ar');
+  assert.ok(html.includes(`${number.format(5)} of ${number.format(6)} legal sections complete`));
+});
+
+renderTest(
+  'missing Company fields and unavailable sources never fabricate completion or blockers',
+  async () => {
+    const missing = await render({
+      company: { ...company, jurisdiction: null, licenseExpiry: null },
+    });
+    assert.match(missing, /<dt>Jurisdiction<\/dt><dd>Not recorded<\/dd>/u);
+    assert.match(missing, /<dt>Licence expiry<\/dt><dd>Not recorded<\/dd>/u);
+    const unavailable = await render({ readinessAvailable: false });
+    assert.doesNotMatch(unavailable, /Readiness items: 0/u);
+    const absent = await render({ company: null });
+    assert.match(absent, /<dt>Legal profile<\/dt><dd>Unavailable<\/dd>/u);
+    assert.doesNotMatch(absent, /0 of 0|6 of 6|Readiness items: 0/u);
+  },
+);

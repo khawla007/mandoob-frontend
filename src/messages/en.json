@@ -2860,7 +2860,8 @@
           "registration": "Authority registration",
           "registrationUnavailable": "Detailed progress unavailable",
           "velocityAria": "{opened} cases opened and {completed} completed over {days} days.",
-          "velocityUnavailable": "Case velocity is temporarily unavailable."
+          "velocityUnavailable": "Case velocity is temporarily unavailable.",
+          "readinessItems": "Readiness items: {count}"
         },
         "companyCommand": {
           "assignedCompany": "Assigned Company",

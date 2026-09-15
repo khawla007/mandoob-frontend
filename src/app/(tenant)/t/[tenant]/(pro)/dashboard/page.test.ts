@@ -239,7 +239,7 @@ test('dashboard labels its snapshot as generated and keeps registration, activit
 test('dashboard keeps readiness, lifecycle, and registration as distinct concepts', () => {
   const source = readFileSync(pagePath, 'utf8');
   const command = readFileSync(
-    join(process.cwd(), 'src/components/pro/dashboard/CompanyCommand.tsx'),
+    join(process.cwd(), 'src/components/pro/dashboard/CompanySignalHero.tsx'),
     'utf8',
   );
   assert.match(source, /company\.onboardingStatus/u);
@@ -289,7 +289,7 @@ test('dashboard route exposes shape-matched loading and localized safe error bou
   assert.match(loading, /signal-dashboard/);
   assert.match(loading, /signal-dashboard__masthead/);
   assert.match(loading, /signal-dashboard__layout/);
-  assert.match(loading, /rounded-2xl/);
+  assert.match(loading, /signal-hero/);
   assert.match(loading, /Array\.from\(\{ length: 4 \}/);
   assert.match(loading, /flex-col/);
   assert.match(loading, /sm:flex-row/);
@@ -298,6 +298,41 @@ test('dashboard route exposes shape-matched loading and localized safe error bou
   assert.match(error, /useTranslations\('pro\.dashboard\.signalStudio'\)/);
   assert.match(error, /signal-dashboard__state/);
   assert.doesNotMatch(error, /error\.message/);
+  assert.match(error, /onClick=\{reset\}/);
+  assert.match(loading, /getTranslations\('pro\.dashboard\.signalStudio'\)/);
+  assert.match(loading, /role="status"/);
+  assert.match(loading, /aria-busy="true"/);
+  assert.match(loading, /\{t\('loading'\)\}/);
+  assert.equal((loading.match(/className="signal-dashboard__hero"/gu) ?? []).length, 1);
+  assert.match(loading, /signal-kpi/);
+  assert.doesNotMatch(loading, /h-16 rounded-xl|h-56 rounded-2xl/);
+});
+
+test('hero receives independent authoritative availability and replaces the standalone Company panel', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.doesNotMatch(source, /CompanyCommand/);
+  assert.match(
+    source,
+    /const priorityAvailable = \([\s\S]*?\['identity', 'links', 'operations', 'renewals', 'documents', 'finance'\][\s\S]*?\.every\(\(group\) => dashboard\.errors\[group\] === undefined\)/,
+  );
+  assert.match(source, /const velocityAvailable = dashboard\.errors\.operations === undefined/);
+  assert.match(source, /readinessAvailable=\{companyContext\.readinessState === 'data'\}/);
+  assert.match(source, /priorityAvailable=\{priorityAvailable\}/);
+  assert.match(source, /velocityAvailable=\{velocityAvailable\}/);
+  assert.ok(source.indexOf('<CompanySignalHero') < source.indexOf('<CompanySummaryDeck'));
+  assert.ok(
+    source.indexOf('<CompanySummaryDeck') < source.indexOf('className="signal-dashboard__layout"'),
+  );
+  for (const key of [
+    'lifecycle',
+    'jurisdiction',
+    'licenceExpiry',
+    'licenceMissing',
+    'legalProfile',
+  ]) {
+    assert.ok(source.includes(`t('companyCommand.${key}')`));
+  }
+  assert.match(source, /t\.raw\('companyCommand\.profileSections'\)/);
 });
 
 test('Signal Studio translations have complete English and Arabic route label parity', () => {

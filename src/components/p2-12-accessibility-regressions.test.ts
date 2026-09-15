@@ -126,8 +126,13 @@ test('Signal Studio grid tracks and KPI decorations stay within their cards with
     sharedKpi,
     /\.signal-kpi::after \{[^}]*inset-inline-end: 1\.25rem;[^}]*inset-block-end: 1\.25rem;[^}]*width: 5rem;[^}]*height: 5rem;/u,
   );
-  assert.doesNotMatch(value, /\.signal-kpi::before/u);
-  assert.doesNotMatch(value, /\.signal-kpi:is\(:hover, :focus-visible\)::before/u);
+  assert.doesNotMatch(value, /^\s*\.signal-kpi::before/mu);
+  assert.doesNotMatch(value, /^\s*\.signal-kpi:is\(:hover, :focus-visible\)::before/mu);
+  assert.match(value, /\.signal-dashboard__kpis \.signal-kpi \{[^}]*overflow: hidden;/u);
+  assert.match(
+    value,
+    /\.signal-dashboard__kpis \.signal-kpi::before \{[^}]*pointer-events: none;/u,
+  );
 });
 
 test('application and renewal KPI definition lists contain only definition terms and details', () => {
