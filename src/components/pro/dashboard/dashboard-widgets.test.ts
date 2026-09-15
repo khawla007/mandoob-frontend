@@ -24,6 +24,8 @@ describe('one-Company PRO dashboard widget contracts', () => {
     for (const key of ['companyName', 'readinessCodes', 'totalPrioritySignals', 'caseVelocity'])
       assert.match(hero, new RegExp(key));
     assert.match(hero, /signal-hero__chart/u);
+    assert.match(hero, /!readinessAvailable[\s\S]*readinessCodes\.length === 0/u);
+    assert.match(hero, /\{openedPoints \? \([\s\S]*<polygon[\s\S]*<polyline[\s\S]*<polyline/u);
     assert.doesNotMatch(hero, /activeClients|TeamSignal|ownerName|health\.score|assignWork/u);
   });
 

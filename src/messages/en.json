@@ -2849,6 +2849,17 @@
         "rangeLabel": "Dashboard date range",
         "daySuffix": "d",
         "date": "Date",
+        "hero": {
+          "prioritySignals": "priority signals",
+          "actionSummary": "actions need attention",
+          "openActionDeck": "Open action deck",
+          "activationReadiness": "Activation readiness",
+          "ready": "Ready for activation",
+          "actionRequired": "Action required",
+          "registration": "Authority registration",
+          "registrationUnavailable": "Detailed progress unavailable",
+          "velocityAria": "{opened} cases opened and {completed} completed over {days} days."
+        },
         "companyCommand": {
           "assignedCompany": "Assigned Company",
           "lifecycle": "Lifecycle",

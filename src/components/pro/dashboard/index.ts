@@ -20,6 +20,7 @@ export {
   type RenewalStreamsProps,
 } from './RenewalStreams';
 export { CompanyCommand, type CompanyCommandLabels } from './CompanyCommand';
+export { CompanySignalHero, type CompanySignalHeroLabels } from './CompanySignalHero';
 export { CompanySummaryDeck, type CompanySummaryDeckLabels } from './CompanySummaryDeck';
 export { PendingDocuments, type PendingDocumentsLabels } from './PendingDocuments';
 export { DashboardUnavailablePanel } from './DashboardUnavailablePanel';
