@@ -9,11 +9,18 @@ const proLayout = readFileSync(
 );
 
 test('Admin shell propagates AAL enforcement failures before rendering protected children', () => {
+  assert.match(adminLayout, /requireMfaEnrolled/u);
+  assert.match(adminLayout, /await requireMfaEnrolled\(session\);/u);
   assert.match(adminLayout, /await requireAal2\(session\);/u);
   assert.doesNotMatch(adminLayout, /requireAal2\(session\)\.catch/u);
   assert.ok(
     adminLayout.indexOf('await requireAal2(session);') < adminLayout.indexOf('return ('),
     'AAL enforcement must complete before protected shell rendering',
+  );
+  assert.ok(
+    adminLayout.indexOf('await requireMfaEnrolled(session);') <
+      adminLayout.indexOf('await requireAal2(session);'),
+    'MFA enrollment must be enforced before an AAL2 challenge is required',
   );
 });
 
