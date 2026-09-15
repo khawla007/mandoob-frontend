@@ -91,7 +91,7 @@ export function MobileNav({
   }, [pathname]);
 
   useEffect(() => {
-    const desktopQuery = window.matchMedia('(min-width: 1200px)');
+    const desktopQuery = window.matchMedia('(min-width: 1024px)');
     const handleBreakpointChange = (event: MediaQueryListEvent) => {
       if (event.matches) setOpen(false);
     };

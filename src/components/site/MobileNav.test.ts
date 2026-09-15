@@ -32,7 +32,7 @@ test('mobile navigation is controlled and closes for selection or pathname chang
 });
 
 test('desktop breakpoint listener closes and cleans up through the modern matchMedia API', () => {
-  assert.match(source, /matchMedia\('\(min-width: 1200px\)'\)/u);
+  assert.match(source, /matchMedia\('\(min-width: 1024px\)'\)/u);
   assert.match(source, /addEventListener\('change',\s*handleBreakpointChange\)/u);
   assert.match(source, /removeEventListener\('change',\s*handleBreakpointChange\)/u);
   assert.match(source, /handleBreakpointChange[^]*event\.matches[^]*setOpen\(false\)/u);
@@ -53,7 +53,7 @@ test('the portalled dialog has a full-screen, dark, logical, responsive contract
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*public-mobile-dialog/u);
   assert.match(
     css,
-    /@media\s*\(min-width:\s*1200px\)[^]*\.site-public \.nav__menu\s*\{[^}]*display:\s*none/u,
+    /@media\s*\(min-width:\s*1024px\)[^]*\.site-public \.nav__menu\s*\{[^}]*display:\s*none/u,
   );
   assert.match(
     css,
