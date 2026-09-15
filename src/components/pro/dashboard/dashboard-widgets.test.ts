@@ -19,13 +19,20 @@ describe('one-Company PRO dashboard widget contracts', () => {
     assert.match(finance, /aria-label=\{item\.accessibleLabel\}/);
   });
 
-  it('renders one assigned Company command and six distinct summary instruments', () => {
-    const command = source('CompanyCommand');
-    for (const key of ['companyName', 'readinessCodes', 'sectionProgress', 'profileSections'])
-      assert.match(command, new RegExp(key));
+  it('uses a Company-only Design B hero', () => {
+    const hero = source('CompanySignalHero');
+    for (const key of ['companyName', 'readinessCodes', 'totalPrioritySignals', 'caseVelocity'])
+      assert.match(hero, new RegExp(key));
+    assert.match(hero, /signal-hero__chart/u);
+    assert.doesNotMatch(hero, /activeClients|TeamSignal|ownerName|health\.score|assignWork/u);
+  });
+
+  it('renders four non-duplicated decision instruments', () => {
     const summary = source('CompanySummaryDeck');
-    for (const key of ['readiness', 'registration', 'documents', 'actions', 'renewals', 'finance'])
+    for (const key of ['readiness', 'documents', 'renewals', 'finance'])
       assert.match(summary, new RegExp(`key: '${key}'`));
+    assert.doesNotMatch(summary, /key: 'registration'|key: 'actions'/u);
+    assert.match(summary, /xl:grid-cols-\[1\.15fr_0\.85fr_0\.85fr_1fr\]/u);
   });
 
   it('keeps pending-document states distinct and bounded', () => {

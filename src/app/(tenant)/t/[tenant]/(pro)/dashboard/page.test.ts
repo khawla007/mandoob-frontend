@@ -188,7 +188,6 @@ test('optional Company command failures do not erase independent dashboard group
 test('dashboard has one responsive composition and moves Action Deck before charts below lg', () => {
   const source = readFileSync(pagePath, 'utf8');
   for (const component of [
-    'CompanyCommand',
     'CompanySummaryDeck',
     'CaseVelocityChart',
     'CollectionsWaterfall',
@@ -205,13 +204,25 @@ test('dashboard has one responsive composition and moves Action Deck before char
 
 test('dashboard composes a one-Company command surface without team, score, or owner controls', () => {
   const source = readFileSync(pagePath, 'utf8');
-  assert.match(source, /<CompanyCommand\b/u);
+  assert.match(source, /<CompanySignalHero\b/u);
   assert.match(source, /<CompanySummaryDeck\b/u);
   assert.match(source, /<PendingDocuments\b/u);
   assert.match(source, /<DashboardUnavailablePanel\b/u);
   assert.doesNotMatch(source, /SignalHero|TeamSignal|canViewTeam|TeamSignalLabels/u);
   assert.doesNotMatch(source, /name="owner"|filters\.owner|allOwners/u);
   assert.doesNotMatch(source, /operationsScore|health|workloadBalance|assignWork/u);
+});
+
+test('dashboard restores Design B with Company-only semantics', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /<CompanySignalHero\b/u);
+  assert.match(source, /signal-dashboard__hero/u);
+  assert.match(source, /signal-dashboard__kpis/u);
+  assert.match(source, /signal-dashboard__layout/u);
+  assert.match(source, /order-1[^"']*lg:order-2[\s\S]*<ActionDeck/u);
+  assert.match(source, /order-2[^"']*lg:order-1[\s\S]*<CaseVelocityChart/u);
+  assert.doesNotMatch(source, /SignalHero|SignalKpis|TeamSignal|canViewTeam/u);
+  assert.doesNotMatch(source, /name="owner"|activeClients|assignWork|operationsScore/u);
 });
 
 test('dashboard labels its snapshot as generated and keeps registration, activity, and notifications truthful', () => {
