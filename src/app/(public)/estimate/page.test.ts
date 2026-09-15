@@ -93,7 +93,12 @@ test('estimate page removes unsafe reference claims and contact proof', async ()
 
 test('estimate CSS preserves reference desktop proportions, themes, focus, reduced motion, and overflow safety', async () => {
   const css = await read('../public-theme.css');
-  assert.match(css, /--accent-ink:\s*oklch\(0\.56 0\.19 38\)/u);
+  assert.match(css, /--accent-ink:\s*var\(--accent\)/u);
+  assert.match(css, /\.site-public #estimator \.eyebrow\s*\{[^}]*color:\s*var\(--zinc-500\)/u);
+  assert.match(
+    css,
+    /\.site-public #estimator \.eyebrow--accent\s*\{[^}]*color:\s*var\(--zinc-500\)/u,
+  );
   assert.match(css, /\.site-public \.estimator-workspace__grid/u);
   assert.match(
     css,

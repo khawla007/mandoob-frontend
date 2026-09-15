@@ -321,14 +321,18 @@ describe('public header navigation styling contract', () => {
     );
   });
 
-  it('gives desktop links a contrast-safe current state distinct from hover and focus', () => {
+  it('gives desktop links a bottom-border current state without lateral shift', () => {
     assert.match(
       cssSource,
-      /\.site-public \.nav__links a\s*\{[^}]*border-inline-start:\s*2px solid transparent/u,
+      /\.site-public \.nav__links a\s*\{[^}]*border-bottom:\s*2px solid transparent[^}]*padding-inline:\s*8px/u,
     );
     assert.match(
       cssSource,
-      /\.site-public \.nav__links a\[aria-current='page'\]\s*\{[^}]*border-inline-start:\s*2px solid var\(--accent\)[^}]*color:\s*var\(--public-cta-background\)/u,
+      /\.site-public \.nav__links a\[aria-current='page'\]\s*\{[^}]*border-bottom:\s*2px solid var\(--accent\)[^}]*color:\s*var\(--accent\)/u,
+    );
+    assert.doesNotMatch(
+      cssSource,
+      /\.site-public \.nav__links a(?:\[aria-current='page'\])?\s*\{[^}]*border-inline-start/u,
     );
     assert.match(cssSource, /\.site-public \.nav__links a:hover\s*\{[^}]*color:\s*var\(--ink\)/u);
     assert.match(

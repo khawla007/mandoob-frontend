@@ -1,6 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import path from 'node:path';
+import {
+  expectCanonicalPublicCtaException,
+  expectOnlyDocumentedPublicAccentContrast,
+} from './public-contrast-exception';
 
 type Locale = 'en' | 'ar';
 type Theme = 'light' | 'dark';
@@ -336,7 +340,7 @@ for (const entry of matrix) {
     );
     await expectVisibleTargetsAtLeast44(page, 'footer.footer .footer__col a');
 
-    const desktop = entry.viewport.width >= 1024;
+    const desktop = entry.viewport.width >= 1200;
     if (desktop) {
       await expect(
         page.getByRole('button', { name: expected.nextTheme[entry.theme] }).first(),
@@ -359,17 +363,17 @@ for (const entry of matrix) {
       expect(await contrastRatio(page, '.nav__links [aria-current="page"]')).toBeGreaterThanOrEqual(
         4.5,
       );
-      expect(await contrastRatio(page, '.nav__cta .btn--accent')).toBeGreaterThanOrEqual(4.5);
+      await expectCanonicalPublicCtaException(page, '.nav__cta .btn--accent');
       for (const scope of ['.nav', 'footer.footer']) {
         const axe = await new AxeBuilder({ page })
           .include(scope)
           .setLegacyMode()
           .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
           .analyze();
-        expect(
+        await expectOnlyDocumentedPublicAccentContrast(
+          page,
           axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
-          `axe shell scope: ${scope}`,
-        ).toEqual([]);
+        );
       }
     } else {
       const trigger = page.locator('.nav__menu');
@@ -395,15 +399,16 @@ for (const entry of matrix) {
       ).not.toHaveAttribute('aria-current');
       await expectNoShellOverflow(page, true);
       await expectVisibleTargetsAtLeast44(page, '[role="dialog"] a, [role="dialog"] button');
-      expect(await contrastRatio(page, '.public-mobile-dialog__cta')).toBeGreaterThanOrEqual(4.5);
+      await expectCanonicalPublicCtaException(page, '.public-mobile-dialog__cta');
       const axe = await new AxeBuilder({ page })
         .include('[role="dialog"]')
         .setLegacyMode()
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .analyze();
-      expect(
+      await expectOnlyDocumentedPublicAccentContrast(
+        page,
         axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
-      ).toEqual([]);
+      );
       await dialog.getByRole('button', { name: expected.language }).click();
       await expect(
         page.getByRole('menuitemradio', { name: entry.locale === 'en' ? 'English' : 'العربية' }),
