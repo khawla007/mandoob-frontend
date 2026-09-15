@@ -110,13 +110,12 @@ Expected: tests fail because the new hero/composition is absent, then the failin
 - Modify: `src/components/pro/dashboard/index.ts`
 - Modify: `src/messages/en.json`
 - Modify: `src/messages/ar.json`
+- Test: `src/components/pro/dashboard/CompanySignalHero.test.ts`
 - Test: `src/components/pro/dashboard/dashboard-widgets.test.ts`
 
 - [ ] **Step 1: Define the public contract and graph helper**
 
 ```tsx
-'use client';
-
 import Link from 'next/link';
 import type { AssignedCompanyProfile } from '@/lib/data/company-profile';
 import type { ProDashboardData } from '@/lib/data/pro-dashboard';
@@ -134,9 +133,11 @@ export type CompanySignalHeroLabels = {
   activationReadiness: string;
   ready: string;
   actionRequired: string;
+  unavailable: string;
   registration: string;
   registrationUnavailable: string;
   velocityAria: string;
+  velocityUnavailable: string;
 };
 
 export type CompanySignalHeroProps = {
@@ -146,6 +147,8 @@ export type CompanySignalHeroProps = {
   locale: string;
   filters: ApplicationScope;
   readinessAvailable: boolean;
+  priorityAvailable: boolean;
+  velocityAvailable: boolean;
   labels: CompanySignalHeroLabels;
 };
 
@@ -162,11 +165,12 @@ function velocityPoints(data: Velocity, key: 'opened' | 'completed', maximum: nu
 Use the exact `signal-hero` DOM and SVG structure from `git show 4fbd79c:src/components/pro/dashboard/SignalHero.tsx`. Replace its retired score and Assign Work UI with:
 
 ```tsx
-const readiness = !readinessAvailable
-  ? labels.actionRequired
-  : company?.readinessCodes.length === 0
-    ? labels.ready
-    : labels.actionRequired;
+const readiness =
+  !company || !readinessAvailable
+    ? labels.unavailable
+    : company.readinessCodes.length === 0
+      ? labels.ready
+      : labels.actionRequired;
 const applicationsHref = applicationSignalHref(tenantSlug, { view: 'open' }, filters);
 const companyHref = `/t/${encodeURIComponent(tenantSlug)}/company`;
 
@@ -175,7 +179,10 @@ return (
     <div aria-hidden="true" className="signal-hero__orb" />
     <div className="signal-hero__content">
       <p className="signal-hero__tag">
-        ● {integer.format(dashboard.totalPrioritySignals)} {labels.prioritySignals}
+        ●{' '}
+        {priorityAvailable
+          ? `${integer.format(dashboard.totalPrioritySignals)} ${labels.prioritySignals}`
+          : `${labels.prioritySignals}: ${labels.unavailable}`}
       </p>
       <h2>{company?.companyName ?? labels.companyFallback}</h2>
       <p>
@@ -189,7 +196,9 @@ return (
         <div>
           <dt className="sr-only">{labels.prioritySignals}</dt>
           <dd>
-            {integer.format(dashboard.totalPrioritySignals)} {labels.actionSummary}
+            {priorityAvailable
+              ? `${integer.format(dashboard.totalPrioritySignals)} ${labels.actionSummary}`
+              : labels.unavailable}
           </dd>
         </div>
       </dl>
@@ -202,41 +211,51 @@ return (
         </Link>
       </div>
     </div>
-    <div
-      role="img"
-      aria-label={signalLabel(labels.velocityAria, velocityValues)}
-      className="signal-hero__chart"
-    >
-      <svg aria-hidden="true" viewBox="0 0 100 44" preserveAspectRatio="none">
-        <path
-          d="M0 10H100M0 25H100M0 40H100"
-          stroke="currentColor"
-          strokeOpacity="0.1"
-          strokeWidth="0.4"
-        />
-        <polygon points={`${openedPoints} 100,44 0,44`} fill="white" fillOpacity="0.22" />
-        <polyline
-          points={openedPoints}
-          fill="none"
-          stroke="white"
-          strokeWidth="1.2"
-          vectorEffect="non-scaling-stroke"
-        />
-        <polyline
-          points={completedPoints}
-          fill="none"
-          stroke="#ffb176"
-          strokeWidth="1.2"
-          strokeDasharray="3 2"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-    </div>
+    {velocityAvailable ? (
+      <div
+        role="img"
+        aria-label={signalLabel(labels.velocityAria, velocityValues)}
+        className="signal-hero__chart"
+      >
+        <svg aria-hidden="true" viewBox="0 0 100 44" preserveAspectRatio="none">
+          <path
+            d="M0 10H100M0 25H100M0 40H100"
+            stroke="currentColor"
+            strokeOpacity="0.1"
+            strokeWidth="0.4"
+          />
+          {openedPoints ? (
+            <>
+              <polygon points={`${openedPoints} 100,44 0,44`} fill="white" fillOpacity="0.22" />
+              <polyline
+                points={openedPoints}
+                fill="none"
+                stroke="white"
+                strokeWidth="1.2"
+                vectorEffect="non-scaling-stroke"
+              />
+              <polyline
+                points={completedPoints}
+                fill="none"
+                stroke="#ffb176"
+                strokeWidth="1.2"
+                strokeDasharray="3 2"
+                vectorEffect="non-scaling-stroke"
+              />
+            </>
+          ) : null}
+        </svg>
+      </div>
+    ) : (
+      <div role="status" className="signal-hero__chart">
+        <p>{labels.velocityUnavailable}</p>
+      </div>
+    )}
   </section>
 );
 ```
 
-Define `integer`, `opened`, `completed`, `maximum`, `openedPoints`, `completedPoints`, and `velocityValues` directly above the return from current `dashboard.caseVelocity`; render an empty polygon only when points exist.
+Define `integer`, `opened`, `completed`, `maximum`, `openedPoints`, `completedPoints`, and `velocityValues` directly above the return from the last 14 current `dashboard.caseVelocity` points. Render polygon and polylines only when points exist. When velocity is unavailable, render only the localized status message—no SVG or numeric accessible claim.
 
 - [ ] **Step 3: Export and translate**
 
@@ -244,13 +263,13 @@ Define `integer`, `opened`, `completed`, `maximum`, `openedPoints`, `completedPo
 export { CompanySignalHero, type CompanySignalHeroLabels } from './CompanySignalHero';
 ```
 
-Add matching English and natural Arabic `hero` keys: `prioritySignals`, `actionSummary`, `openActionDeck`, `activationReadiness`, `ready`, `actionRequired`, `registration`, `registrationUnavailable`, and `velocityAria`. Preserve all existing keys.
+Add matching English and natural Arabic `hero` keys: `prioritySignals`, `actionSummary`, `openActionDeck`, `activationReadiness`, `ready`, `actionRequired`, `unavailable`, `registration`, `registrationUnavailable`, `velocityAria`, and `velocityUnavailable`. Preserve all existing keys.
 
 - [ ] **Step 4: Run tests and commit**
 
 ```bash
-npm test -- src/components/pro/dashboard/dashboard-widgets.test.ts
-git add src/components/pro/dashboard/CompanySignalHero.tsx src/components/pro/dashboard/index.ts src/components/pro/dashboard/dashboard-widgets.test.ts src/messages/en.json src/messages/ar.json
+npm test -- src/components/pro/dashboard/CompanySignalHero.test.ts src/components/pro/dashboard/dashboard-widgets.test.ts
+git add docs/superpowers/plans/2026-09-15-pro-dashboard-signal-studio-restoration.md src/components/pro/dashboard/CompanySignalHero.tsx src/components/pro/dashboard/CompanySignalHero.test.ts src/components/pro/dashboard/index.ts src/components/pro/dashboard/dashboard-widgets.test.ts src/messages/en.json src/messages/ar.json
 git commit -m "feat: add Company Signal Studio hero"
 ```
 
@@ -328,9 +347,14 @@ Expected: widget tests pass.
 
 - [ ] **Step 1: Replace `CompanyCommand` with `CompanySignalHero`**
 
-Build `heroLabels` from existing Company/summary labels plus the new `hero` translations. Render the hero inside `signal-dashboard__hero`, render the summary deck inside `signal-dashboard__kpis`, and leave the operational grid and current props unchanged.
+Build `heroLabels` from existing Company/summary labels plus the new `hero` translations. Compute priority availability only when all contributing dashboard groups (`identity`, `links`, `operations`, `renewals`, `documents`, and `finance`) succeeded; compute velocity availability from the `operations` group. Render the hero inside `signal-dashboard__hero`, render the summary deck inside `signal-dashboard__kpis`, and leave the operational grid and current props unchanged.
 
 ```tsx
+const priorityAvailable = (
+  ['identity', 'links', 'operations', 'renewals', 'documents', 'finance'] as const
+).every((group) => !dashboard.errors[group]);
+const velocityAvailable = !dashboard.errors.operations;
+
 <div className="signal-dashboard__hero">
   <CompanySignalHero
     company={company}
@@ -339,6 +363,8 @@ Build `heroLabels` from existing Company/summary labels plus the new `hero` tran
     locale={locale}
     filters={filters}
     readinessAvailable={companyContext.readinessState === 'data'}
+    priorityAvailable={priorityAvailable}
+    velocityAvailable={velocityAvailable}
     labels={heroLabels}
   />
 </div>

@@ -17,9 +17,11 @@ export type CompanySignalHeroLabels = {
   activationReadiness: string;
   ready: string;
   actionRequired: string;
+  unavailable: string;
   registration: string;
   registrationUnavailable: string;
   velocityAria: string;
+  velocityUnavailable: string;
 };
 
 export type CompanySignalHeroProps = {
@@ -29,6 +31,8 @@ export type CompanySignalHeroProps = {
   locale: string;
   filters: ApplicationScope;
   readinessAvailable: boolean;
+  priorityAvailable: boolean;
+  velocityAvailable: boolean;
   labels: CompanySignalHeroLabels;
 };
 
@@ -46,6 +50,8 @@ export function CompanySignalHero({
   locale,
   filters,
   readinessAvailable,
+  priorityAvailable,
+  velocityAvailable,
   labels,
 }: CompanySignalHeroProps) {
   const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
@@ -60,11 +66,12 @@ export function CompanySignalHero({
     completed: integer.format(completed),
     days: integer.format(graphData.length),
   };
-  const readiness = !readinessAvailable
-    ? labels.actionRequired
-    : company?.readinessCodes.length === 0
-      ? labels.ready
-      : labels.actionRequired;
+  const readiness =
+    !company || !readinessAvailable
+      ? labels.unavailable
+      : company.readinessCodes.length === 0
+        ? labels.ready
+        : labels.actionRequired;
   const applicationsHref = applicationSignalHref(tenantSlug, { view: 'open' }, filters);
   const companyHref = `/t/${encodeURIComponent(tenantSlug)}/company`;
 
@@ -73,8 +80,16 @@ export function CompanySignalHero({
       <div aria-hidden="true" className="signal-hero__orb" />
       <div className="signal-hero__content">
         <p className="signal-hero__tag">
-          <span aria-hidden="true">●</span> {integer.format(dashboard.totalPrioritySignals)}{' '}
-          {labels.prioritySignals}
+          <span aria-hidden="true">●</span>{' '}
+          {priorityAvailable ? (
+            <>
+              {integer.format(dashboard.totalPrioritySignals)} {labels.prioritySignals}
+            </>
+          ) : (
+            <>
+              {labels.prioritySignals}: {labels.unavailable}
+            </>
+          )}
         </p>
         <h2>{company?.companyName ?? labels.companyFallback}</h2>
         <p>
@@ -88,7 +103,13 @@ export function CompanySignalHero({
           <div>
             <dt className="sr-only">{labels.prioritySignals}</dt>
             <dd>
-              {integer.format(dashboard.totalPrioritySignals)} {labels.actionSummary}
+              {priorityAvailable ? (
+                <>
+                  {integer.format(dashboard.totalPrioritySignals)} {labels.actionSummary}
+                </>
+              ) : (
+                labels.unavailable
+              )}
             </dd>
           </div>
         </dl>
@@ -102,40 +123,46 @@ export function CompanySignalHero({
         </div>
       </div>
 
-      <div
-        role="img"
-        aria-label={signalLabel(labels.velocityAria, velocityValues)}
-        className="signal-hero__chart"
-      >
-        <svg aria-hidden="true" viewBox="0 0 100 44" preserveAspectRatio="none">
-          <path
-            d="M0 10H100M0 25H100M0 40H100"
-            stroke="currentColor"
-            strokeOpacity="0.1"
-            strokeWidth="0.4"
-          />
-          {openedPoints ? (
-            <>
-              <polygon points={`${openedPoints} 100,44 0,44`} fill="white" fillOpacity="0.22" />
-              <polyline
-                points={openedPoints}
-                fill="none"
-                stroke="white"
-                strokeWidth="1.2"
-                vectorEffect="non-scaling-stroke"
-              />
-              <polyline
-                points={completedPoints}
-                fill="none"
-                stroke="#ffb176"
-                strokeWidth="1.2"
-                strokeDasharray="3 2"
-                vectorEffect="non-scaling-stroke"
-              />
-            </>
-          ) : null}
-        </svg>
-      </div>
+      {velocityAvailable ? (
+        <div
+          role="img"
+          aria-label={signalLabel(labels.velocityAria, velocityValues)}
+          className="signal-hero__chart"
+        >
+          <svg aria-hidden="true" viewBox="0 0 100 44" preserveAspectRatio="none">
+            <path
+              d="M0 10H100M0 25H100M0 40H100"
+              stroke="currentColor"
+              strokeOpacity="0.1"
+              strokeWidth="0.4"
+            />
+            {openedPoints ? (
+              <>
+                <polygon points={`${openedPoints} 100,44 0,44`} fill="white" fillOpacity="0.22" />
+                <polyline
+                  points={openedPoints}
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="1.2"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <polyline
+                  points={completedPoints}
+                  fill="none"
+                  stroke="#ffb176"
+                  strokeWidth="1.2"
+                  strokeDasharray="3 2"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </>
+            ) : null}
+          </svg>
+        </div>
+      ) : (
+        <div role="status" className="signal-hero__chart">
+          <p>{labels.velocityUnavailable}</p>
+        </div>
+      )}
     </section>
   );
 }

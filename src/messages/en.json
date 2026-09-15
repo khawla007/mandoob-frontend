@@ -2856,9 +2856,11 @@
           "activationReadiness": "Activation readiness",
           "ready": "Ready for activation",
           "actionRequired": "Action required",
+          "unavailable": "Unavailable",
           "registration": "Authority registration",
           "registrationUnavailable": "Detailed progress unavailable",
-          "velocityAria": "{opened} cases opened and {completed} completed over {days} days."
+          "velocityAria": "{opened} cases opened and {completed} completed over {days} days.",
+          "velocityUnavailable": "Case velocity is temporarily unavailable."
         },
         "companyCommand": {
           "assignedCompany": "Assigned Company",
