@@ -310,6 +310,8 @@ export function isP112ExpectedClientNavigationAbort(
   );
 }
 
+const PUBLISHED_CORPORATE_PHONE = /\+971(?: 4 555 0123|45550123)(?![\s()-]*\d)/gu;
+
 const PRIVACY_PATTERNS: readonly [RegExp, string][] = [
   [/(?:otpauth:\/\/|\bmanual secret\b|\brecovery codes?\s*[=:])/iu, 'MFA secret material'],
   [/[?&](?:token|code|email|password|otp|pkce|secret)=[^&#\s]+/iu, 'secret URL parameter'],
@@ -356,7 +358,10 @@ const PRIVACY_PATTERNS: readonly [RegExp, string][] = [
 
 /** Returns only a safe category; the matched value is deliberately never retained. */
 export function findPrivacyLeak(value: string): string | null {
-  return PRIVACY_PATTERNS.find(([pattern]) => pattern.test(value))?.[1] ?? null;
+  const valueWithoutPublishedPhone = value.replace(PUBLISHED_CORPORATE_PHONE, '');
+  return (
+    PRIVACY_PATTERNS.find(([pattern]) => pattern.test(valueWithoutPublishedPhone))?.[1] ?? null
+  );
 }
 
 export function parseP112RobotsDirective(value: string): { index: boolean; follow: boolean } {

@@ -436,6 +436,9 @@ test('detects retained credential-shaped values without flagging public fixture 
   assert.equal(findPrivacyLeak('postgres connection refused'), 'internal provider detail');
   assert.equal(findPrivacyLeak('Guaranteed government approval'), 'unsupported guarantee');
   assert.equal(findPrivacyLeak('otpauth://totp/Mandoob?secret=ABC123'), 'MFA secret material');
+  assert.equal(findPrivacyLeak('+971 4 555 0123'), null);
+  assert.equal(findPrivacyLeak('tel:+97145550123'), null);
+  assert.equal(findPrivacyLeak('tel:+971501234567'), 'phone number');
   assert.equal(findPrivacyLeak('Call +971 50 123 4567'), 'phone number');
   assert.equal(findPrivacyLeak('passport-copy.pdf'), 'private document name');
   assert.equal(
