@@ -108,7 +108,7 @@ export function CompanySummaryDeck({
   ] as const;
 
   return (
-    <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
+    <div className="signal-kpis-grid grid gap-2 md:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
       {definitions.map((item) => {
         const trend = item.trend.filter((value) => value > 0);
         const trendMaximum = Math.max(1, ...trend);

@@ -40,7 +40,7 @@ export default async function DashboardLoading() {
         </div>
       </div>
       <div className="signal-dashboard__kpis" aria-hidden="true">
-        <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
+        <div className="signal-kpis-grid grid gap-2 md:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
           {Array.from({ length: 4 }, (_, index) => (
             <Skeleton key={index} className="signal-kpi rounded-xl" />
           ))}

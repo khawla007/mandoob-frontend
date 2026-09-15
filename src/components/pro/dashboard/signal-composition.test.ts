@@ -84,6 +84,18 @@ test('restoration supports logical RTL placement, focus, dark surfaces, and redu
   assert.doesNotMatch(css, /signal-hero__score/);
 });
 
+test('dashboard cards and loading keep one column until the 768px breakpoint', () => {
+  for (const path of [
+    'src/components/pro/dashboard/CompanySummaryDeck.tsx',
+    'src/app/(tenant)/t/[tenant]/(pro)/dashboard/loading.tsx',
+  ]) {
+    const source = readFileSync(join(process.cwd(), path), 'utf8');
+    const grid = source.match(/className="signal-kpis-grid[^"]*"/u)?.[0] ?? '';
+    assert.doesNotMatch(grid, /\bsm:grid-cols-2\b/u, path);
+    assert.match(grid, /\bmd:grid-cols-2\b/u, path);
+  }
+});
+
 test('restored summary sizing and wrapping do not change module summary layouts', () => {
   assert.equal(value('.signal-kpi', 'height'), 'calc(102px * var(--signal-scale))');
   assert.equal(value('.signal-dashboard__kpis .signal-kpi', 'height'), 'auto');
