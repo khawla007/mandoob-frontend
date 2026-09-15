@@ -459,6 +459,14 @@ test('detects retained credential-shaped values without flagging public fixture 
   assert.equal(findPrivacyLeak('Timelines must be confirmed with the authority.'), null);
 });
 
+test('detects a sensitive token query containing the published tel-format phone', () => {
+  assert.equal(findPrivacyLeak('?token=+97145550123'), 'secret URL parameter');
+});
+
+test('detects a sensitive code query containing the published display phone', () => {
+  assert.equal(findPrivacyLeak('?code=+971 4 555 0123'), 'secret URL parameter');
+});
+
 test('requires explicit exact index/follow robot pairs', () => {
   assert.deepEqual(parseP112RobotsDirective('index, follow'), { index: true, follow: true });
   assert.deepEqual(parseP112RobotsDirective('NOINDEX, NOFOLLOW'), {

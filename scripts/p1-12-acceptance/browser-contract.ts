@@ -360,7 +360,9 @@ const PRIVACY_PATTERNS: readonly [RegExp, string][] = [
 export function findPrivacyLeak(value: string): string | null {
   const valueWithoutPublishedPhone = value.replace(PUBLISHED_CORPORATE_PHONE, '');
   return (
-    PRIVACY_PATTERNS.find(([pattern]) => pattern.test(valueWithoutPublishedPhone))?.[1] ?? null
+    PRIVACY_PATTERNS.find(([pattern, category]) =>
+      pattern.test(category === 'phone number' ? valueWithoutPublishedPhone : value),
+    )?.[1] ?? null
   );
 }
 
