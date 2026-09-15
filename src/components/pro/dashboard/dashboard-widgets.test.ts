@@ -36,6 +36,39 @@ describe('one-Company PRO dashboard widget contracts', () => {
     assert.match(summary, /xl:grid-cols-\[1\.15fr_0\.85fr_0\.85fr_1fr\]/u);
   });
 
+  it('derives bounded decorative trends from each decision source', () => {
+    const summary = source('CompanySummaryDeck');
+    assert.match(
+      summary,
+      /Object\.values\(company\.sectionProgress\)[\s\S]*status === 'complete' \? 1 : 0/u,
+    );
+    assert.match(summary, /dashboard\.pendingDocuments\.slice\(0, 5\)[\s\S]*index \+ 1/u);
+    assert.match(
+      summary,
+      /trend:\s*renewalsUnavailable[\s\S]*?\[dashboard\.kpis\.renewalsDue7d, dashboard\.kpis\.renewalsDue30d\]/u,
+    );
+    assert.match(
+      summary,
+      /trend:\s*financeUnavailable[\s\S]*?\[dashboard\.finance\.dueSoonMinor, dashboard\.finance\.overdueMinor\]/u,
+    );
+    assert.match(summary, /const trendMaximum = Math\.max\(1,[\s\S]*Math\.max\(0, value\)/u);
+    assert.match(summary, /aria-hidden="true" className="signal-kpi__bars"/u);
+    assert.match(summary, /Math\.max\(16, \(Math\.max\(0, value\) \/ trendMaximum\) \* 100\)/u);
+  });
+
+  it('suppresses numeric values and trends for independently unavailable sources', () => {
+    const summary = source('CompanySummaryDeck');
+    for (const key of ['readiness', 'documents', 'renewals', 'finance']) {
+      assert.match(summary, new RegExp(`const ${key}Unavailable =`));
+      assert.match(
+        summary,
+        new RegExp(`value:\\s*${key}Unavailable\\s*\\?\\s*labels\\.unavailable`),
+      );
+      assert.match(summary, new RegExp(`trend:\\s*${key}Unavailable\\s*\\?\\s*\\[\\]`));
+      assert.match(summary, new RegExp(`states\\?\\.${key}\\?\\.message`));
+    }
+  });
+
   it('keeps pending-document states distinct and bounded', () => {
     const pending = source('PendingDocuments');
     assert.match(pending, /labels\.states\[document\.state\]/);

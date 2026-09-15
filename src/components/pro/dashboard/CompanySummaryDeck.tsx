@@ -44,87 +44,114 @@ export function CompanySummaryDeck({
     maximumFractionDigits: 0,
   });
   const base = `/t/${encodeURIComponent(tenantSlug)}`;
+  const readinessUnavailable = company === null || states?.readiness !== undefined;
+  const documentsUnavailable = states?.documents !== undefined;
+  const renewalsUnavailable = states?.renewals !== undefined;
+  const financeUnavailable = states?.finance !== undefined;
   const definitions = [
     {
       key: 'readiness',
       label: labels.readiness,
-      value:
-        company && !states?.readiness
-          ? company.readinessCodes.length === 0
-            ? labels.ready
-            : labels.actionRequired
-          : labels.unavailable,
-      helper:
-        company && !states?.readiness
-          ? number.format(company.readinessCodes.length)
-          : (states?.readiness?.message ?? labels.unavailable),
+      value: readinessUnavailable
+        ? labels.unavailable
+        : company.readinessCodes.length === 0
+          ? labels.ready
+          : labels.actionRequired,
+      helper: readinessUnavailable
+        ? (states?.readiness?.message ?? labels.unavailable)
+        : number.format(company.readinessCodes.length),
       href: `${base}/company`,
       tone: 'signal-kpi--orange',
-    },
-    {
-      key: 'registration',
-      label: labels.registration,
-      value: labels.unavailable,
-      helper: labels.unavailable,
-      href: `${base}/applications`,
-      tone: 'signal-kpi--info',
+      trend: readinessUnavailable
+        ? []
+        : Object.values(company.sectionProgress).map((status) => (status === 'complete' ? 1 : 0)),
     },
     {
       key: 'documents',
       label: labels.documents,
-      value: number.format(dashboard.pendingDocuments.length),
-      helper: states?.documents?.message ?? labels.documents,
+      value: documentsUnavailable
+        ? labels.unavailable
+        : number.format(dashboard.pendingDocuments.length),
+      helper: documentsUnavailable
+        ? (states?.documents?.message ?? labels.unavailable)
+        : labels.documents,
       href: `${base}/documents`,
       tone: 'signal-kpi--urgent',
-    },
-    {
-      key: 'actions',
-      label: labels.priorityActions,
-      value: number.format(dashboard.totalPrioritySignals),
-      helper: states?.actions?.message ?? labels.priorityActions,
-      href: `${base}/applications`,
-      tone: 'signal-kpi--info',
+      trend: documentsUnavailable
+        ? []
+        : dashboard.pendingDocuments.slice(0, 5).map((_, index) => index + 1),
     },
     {
       key: 'renewals',
       label: labels.renewals,
-      value: number.format(dashboard.kpis.renewalsDue30d),
-      helper: states?.renewals?.message ?? labels.renewalsPeriod,
+      value: renewalsUnavailable
+        ? labels.unavailable
+        : number.format(dashboard.kpis.renewalsDue30d),
+      helper: renewalsUnavailable
+        ? (states?.renewals?.message ?? labels.unavailable)
+        : labels.renewalsPeriod,
       href: `${base}/renewals?tab=active&days=30`,
       tone: 'signal-kpi--warning',
+      trend: renewalsUnavailable
+        ? []
+        : [dashboard.kpis.renewalsDue7d, dashboard.kpis.renewalsDue30d],
     },
     {
       key: 'finance',
       label: labels.invoices,
-      value: money.format((dashboard.finance.dueSoonMinor + dashboard.finance.overdueMinor) / 100),
-      helper: states?.finance?.message ?? labels.outstanding,
+      value: financeUnavailable
+        ? labels.unavailable
+        : money.format((dashboard.finance.dueSoonMinor + dashboard.finance.overdueMinor) / 100),
+      helper: financeUnavailable
+        ? (states?.finance?.message ?? labels.unavailable)
+        : labels.outstanding,
       href: `${base}/payments?view=overdue`,
       tone: 'signal-kpi--success',
+      trend: financeUnavailable
+        ? []
+        : [dashboard.finance.dueSoonMinor, dashboard.finance.overdueMinor],
     },
   ] as const;
 
   return (
-    <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
-      {definitions.map((item) => (
-        <Link
-          key={item.key}
-          href={item.href}
-          className={cn(
-            'signal-kpi group relative min-h-[92px] overflow-hidden rounded-[9px] border p-[10px] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
-            item.tone,
-          )}
-        >
-          <span className="signal-kpi__content">
-            <span className="text-muted-foreground block font-semibold tracking-[0.08em] uppercase">
-              {item.label}
+    <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
+      {definitions.map((item) => {
+        const trendMaximum = Math.max(1, ...item.trend.map((value) => Math.max(0, value)));
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={cn(
+              'signal-kpi group relative min-h-[77px] overflow-hidden rounded-[9px] border p-[9px] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+              item.tone,
+            )}
+          >
+            <span className="signal-kpi__content">
+              <span className="text-muted-foreground block font-semibold tracking-[0.08em] uppercase">
+                {item.label}
+              </span>
+              <strong className="block font-mono leading-none font-semibold tracking-tight tabular-nums">
+                {item.value}
+              </strong>
+              <span className="signal-kpi__helper block max-w-[80%] truncate font-semibold">
+                {item.helper}
+              </span>
             </span>
-            <strong className="block font-mono leading-none font-semibold tracking-tight tabular-nums">
-              {item.value}
-            </strong>
-            <span className="signal-kpi__helper block truncate font-semibold">{item.helper}</span>
-          </span>
-        </Link>
-      ))}
+            {item.trend.length > 0 ? (
+              <span aria-hidden="true" className="signal-kpi__bars">
+                {item.trend.map((value, index) => (
+                  <i
+                    key={index}
+                    style={{
+                      height: `${Math.max(16, (Math.max(0, value) / trendMaximum) * 100)}%`,
+                    }}
+                  />
+                ))}
+              </span>
+            ) : null}
+          </Link>
+        );
+      })}
     </div>
   );
 }
