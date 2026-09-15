@@ -197,7 +197,7 @@ renderTest(
     const finance = linkedCard(html, '/t/acme%20workspace/payments?view=overdue');
 
     assert.match(documents, /<strong[^>]*>2<\/strong>/u);
-    assert.equal((documents.match(/<i style="height:100%"><\/i>/gu) ?? []).length, 2);
+    assert.equal((documents.match(/<i style="height:100%;min-height:0"><\/i>/gu) ?? []).length, 2);
     assert.match(renewals, /Unavailable/u);
     assert.match(renewals, /Renewals temporarily unavailable/u);
     assert.doesNotMatch(renewals, /signal-kpi__bars|<i\b|<strong[^>]*>5<\/strong>/u);

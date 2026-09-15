@@ -55,6 +55,7 @@ describe('one-Company PRO dashboard widget contracts', () => {
     assert.match(summary, /const trendMaximum = Math\.max\(1, \.\.\.trend\)/u);
     assert.match(summary, /aria-hidden="true" className="signal-kpi__bars"/u);
     assert.match(summary, /height: `\$\{\(value \/ trendMaximum\) \* 100\}%`/u);
+    assert.match(summary, /minHeight: 0/u);
     assert.doesNotMatch(summary, /Math\.max\(16/u);
   });
 

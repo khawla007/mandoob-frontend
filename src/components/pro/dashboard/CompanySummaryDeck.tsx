@@ -143,6 +143,7 @@ export function CompanySummaryDeck({
                     key={index}
                     style={{
                       height: `${(value / trendMaximum) * 100}%`,
+                      minHeight: 0,
                     }}
                   />
                 ))}
