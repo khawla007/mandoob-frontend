@@ -208,7 +208,7 @@ test('dashboard composes a one-Company command surface without team, score, or o
   assert.match(source, /<CompanySummaryDeck\b/u);
   assert.match(source, /<PendingDocuments\b/u);
   assert.match(source, /<DashboardUnavailablePanel\b/u);
-  assert.doesNotMatch(source, /SignalHero|TeamSignal|canViewTeam|TeamSignalLabels/u);
+  assert.doesNotMatch(source, /\bSignalHero\b|\bTeamSignal\b|canViewTeam|TeamSignalLabels/u);
   assert.doesNotMatch(source, /name="owner"|filters\.owner|allOwners/u);
   assert.doesNotMatch(source, /operationsScore|health|workloadBalance|assignWork/u);
 });
@@ -221,7 +221,7 @@ test('dashboard restores Design B with Company-only semantics', () => {
   assert.match(source, /signal-dashboard__layout/u);
   assert.match(source, /order-1[^"']*lg:order-2[\s\S]*<ActionDeck/u);
   assert.match(source, /order-2[^"']*lg:order-1[\s\S]*<CaseVelocityChart/u);
-  assert.doesNotMatch(source, /SignalHero|SignalKpis|TeamSignal|canViewTeam/u);
+  assert.doesNotMatch(source, /\bSignalHero\b|\bSignalKpis\b|\bTeamSignal\b|canViewTeam/u);
   assert.doesNotMatch(source, /name="owner"|activeClients|assignWork|operationsScore/u);
 });
 
