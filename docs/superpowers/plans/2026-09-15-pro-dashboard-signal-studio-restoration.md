@@ -280,18 +280,20 @@ Expected: hero contract passes; page integration remains red.
 **Files:**
 
 - Modify: `src/components/pro/dashboard/CompanySummaryDeck.tsx`
+- Test: `src/components/pro/dashboard/CompanySummaryDeck.test.ts`
 - Test: `src/components/pro/dashboard/dashboard-widgets.test.ts`
 
 - [ ] **Step 1: Keep four primary definitions**
 
-Retain exact current values, states, and hrefs for `readiness`, `documents`, `renewals`, and `finance`; remove only the duplicated `registration` and `actions` definitions. Add a `trend: number[]` to each definition using legal-section completion, pending-document indices, 7/30-day renewal totals, and due/overdue finance totals respectively.
+Retain exact current values, states, and hrefs for `readiness`, `documents`, `renewals`, and `finance`; remove only the duplicated `registration` and `actions` definitions. Add a `trend: number[]` to each definition using section completion, equal-height marks for each bounded pending document, 7/30-day renewal totals, and due/overdue finance totals respectively. Filter readiness, renewal, and finance trends to positive values so zero data never creates a mark. Do not apply a fabricated minimum height; omit the bar region when no positive values remain.
 
 - [ ] **Step 2: Restore Design B card geometry and bars**
 
 ```tsx
 <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
   {definitions.map((item) => {
-    const trendMaximum = Math.max(1, ...item.trend.map((value) => Math.max(0, value)));
+    const trend = item.trend.filter((value) => value > 0);
+    const trendMaximum = Math.max(1, ...trend);
     return (
       <Link
         key={item.key}
@@ -312,14 +314,13 @@ Retain exact current values, states, and hrefs for `readiness`, `documents`, `re
             {item.helper}
           </span>
         </span>
-        <span aria-hidden="true" className="signal-kpi__bars">
-          {item.trend.map((value, index) => (
-            <i
-              key={index}
-              style={{ height: `${Math.max(16, (Math.max(0, value) / trendMaximum) * 100)}%` }}
-            />
-          ))}
-        </span>
+        {trend.length > 0 ? (
+          <span aria-hidden="true" className="signal-kpi__bars">
+            {trend.map((value, index) => (
+              <i key={index} style={{ height: `${(value / trendMaximum) * 100}%` }} />
+            ))}
+          </span>
+        ) : null}
       </Link>
     );
   })}
@@ -329,8 +330,8 @@ Retain exact current values, states, and hrefs for `readiness`, `documents`, `re
 - [ ] **Step 3: Verify and commit**
 
 ```bash
-npm test -- src/components/pro/dashboard/dashboard-widgets.test.ts
-git add src/components/pro/dashboard/CompanySummaryDeck.tsx src/components/pro/dashboard/dashboard-widgets.test.ts
+node --import tsx --conditions=react-server --test --test-concurrency=1 src/components/pro/dashboard/CompanySummaryDeck.test.ts src/components/pro/dashboard/dashboard-widgets.test.ts
+git add docs/superpowers/plans/2026-09-15-pro-dashboard-signal-studio-restoration.md src/components/pro/dashboard/CompanySummaryDeck.tsx src/components/pro/dashboard/CompanySummaryDeck.test.ts src/components/pro/dashboard/dashboard-widgets.test.ts
 git commit -m "feat: restore Signal Studio decision cards"
 ```
 

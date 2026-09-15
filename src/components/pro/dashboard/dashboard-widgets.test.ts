@@ -42,7 +42,7 @@ describe('one-Company PRO dashboard widget contracts', () => {
       summary,
       /Object\.values\(company\.sectionProgress\)[\s\S]*status === 'complete' \? 1 : 0/u,
     );
-    assert.match(summary, /dashboard\.pendingDocuments\.slice\(0, 5\)[\s\S]*index \+ 1/u);
+    assert.match(summary, /dashboard\.pendingDocuments\.slice\(0, 5\)\.map\(\(\) => 1\)/u);
     assert.match(
       summary,
       /trend:\s*renewalsUnavailable[\s\S]*?\[dashboard\.kpis\.renewalsDue7d, dashboard\.kpis\.renewalsDue30d\]/u,
@@ -51,9 +51,11 @@ describe('one-Company PRO dashboard widget contracts', () => {
       summary,
       /trend:\s*financeUnavailable[\s\S]*?\[dashboard\.finance\.dueSoonMinor, dashboard\.finance\.overdueMinor\]/u,
     );
-    assert.match(summary, /const trendMaximum = Math\.max\(1,[\s\S]*Math\.max\(0, value\)/u);
+    assert.match(summary, /item\.trend\.filter\(\(value\) => value > 0\)/u);
+    assert.match(summary, /const trendMaximum = Math\.max\(1, \.\.\.trend\)/u);
     assert.match(summary, /aria-hidden="true" className="signal-kpi__bars"/u);
-    assert.match(summary, /Math\.max\(16, \(Math\.max\(0, value\) \/ trendMaximum\) \* 100\)/u);
+    assert.match(summary, /height: `\$\{\(value \/ trendMaximum\) \* 100\}%`/u);
+    assert.doesNotMatch(summary, /Math\.max\(16/u);
   });
 
   it('suppresses numeric values and trends for independently unavailable sources', () => {

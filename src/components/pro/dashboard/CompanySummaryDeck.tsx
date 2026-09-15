@@ -77,9 +77,7 @@ export function CompanySummaryDeck({
         : labels.documents,
       href: `${base}/documents`,
       tone: 'signal-kpi--urgent',
-      trend: documentsUnavailable
-        ? []
-        : dashboard.pendingDocuments.slice(0, 5).map((_, index) => index + 1),
+      trend: documentsUnavailable ? [] : dashboard.pendingDocuments.slice(0, 5).map(() => 1),
     },
     {
       key: 'renewals',
@@ -116,7 +114,8 @@ export function CompanySummaryDeck({
   return (
     <div className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr_0.85fr_1fr]">
       {definitions.map((item) => {
-        const trendMaximum = Math.max(1, ...item.trend.map((value) => Math.max(0, value)));
+        const trend = item.trend.filter((value) => value > 0);
+        const trendMaximum = Math.max(1, ...trend);
         return (
           <Link
             key={item.key}
@@ -137,13 +136,13 @@ export function CompanySummaryDeck({
                 {item.helper}
               </span>
             </span>
-            {item.trend.length > 0 ? (
+            {trend.length > 0 ? (
               <span aria-hidden="true" className="signal-kpi__bars">
-                {item.trend.map((value, index) => (
+                {trend.map((value, index) => (
                   <i
                     key={index}
                     style={{
-                      height: `${Math.max(16, (Math.max(0, value) / trendMaximum) * 100)}%`,
+                      height: `${(value / trendMaximum) * 100}%`,
                     }}
                   />
                 ))}
