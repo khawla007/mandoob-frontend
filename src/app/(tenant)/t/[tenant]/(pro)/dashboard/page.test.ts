@@ -188,6 +188,7 @@ test('optional Company command failures do not erase independent dashboard group
 test('dashboard has one responsive composition and moves Action Deck before charts below lg', () => {
   const source = readFileSync(pagePath, 'utf8');
   for (const component of [
+    'CompanySignalHero',
     'CompanySummaryDeck',
     'CaseVelocityChart',
     'CollectionsWaterfall',
@@ -329,7 +330,7 @@ test('Signal Studio translations have complete English and Arabic route label pa
 test('dashboard reads parameterized widget labels as raw templates', () => {
   const source = readFileSync(pagePath, 'utf8');
   const templateKeys = [
-    'companyCommand.profileSections',
+    'hero.velocityAria',
     'caseVelocityLabels.summary',
     'collectionsLabels.barLabel',
     'collectionsLabels.summary',

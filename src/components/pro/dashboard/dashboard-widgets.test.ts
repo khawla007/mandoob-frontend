@@ -29,9 +29,8 @@ describe('one-Company PRO dashboard widget contracts', () => {
 
   it('renders four non-duplicated decision instruments', () => {
     const summary = source('CompanySummaryDeck');
-    for (const key of ['readiness', 'documents', 'renewals', 'finance'])
-      assert.match(summary, new RegExp(`key: '${key}'`));
-    assert.doesNotMatch(summary, /key: 'registration'|key: 'actions'/u);
+    const definitionKeys = [...summary.matchAll(/key:\s*'([^']+)'/g)].map(([, key]) => key);
+    assert.deepEqual(definitionKeys, ['readiness', 'documents', 'renewals', 'finance']);
     assert.match(summary, /xl:grid-cols-\[1\.15fr_0\.85fr_0\.85fr_1fr\]/u);
   });
 
