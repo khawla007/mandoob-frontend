@@ -276,6 +276,17 @@ test('dashboard keeps functional filters in a compact disclosure instead of a la
   assert.match(source, /<form[\s\S]*className="signal-dashboard__filters/);
 });
 
+test('dashboard keeps heading tools and filter fields stacked through the mobile CSS breakpoint', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  const header = source.match(/<header\b[\s\S]*?<\/header>/u)?.[0] ?? '';
+
+  assert.match(header, /\bmd:flex-row\b/u);
+  assert.match(header, /\bmd:items-end\b/u);
+  assert.match(header, /\bmd:grid-cols-\[1fr_auto\]/u);
+  assert.match(header, /\bmd:col-span-2\b/u);
+  assert.doesNotMatch(header, /\bsm:(?:flex-row|items-end|grid-cols-\[1fr_auto\]|col-span-2)/u);
+});
+
 test('dashboard filter and error retry controls enforce mobile touch height in markup', () => {
   const source = readFileSync(pagePath, 'utf8');
   const error = readFileSync(errorPath, 'utf8');
@@ -304,7 +315,8 @@ test('dashboard route exposes shape-matched loading and localized safe error bou
   assert.match(loading, /signal-hero/);
   assert.match(loading, /Array\.from\(\{ length: 4 \}/);
   assert.match(loading, /flex-col/);
-  assert.match(loading, /sm:flex-row/);
+  assert.match(loading, /md:flex-row/);
+  assert.doesNotMatch(loading, /sm:flex-row/);
   assert.match(loading, /max-w-full/);
   assert.match(error, /'use client'/);
   assert.match(error, /useTranslations\('pro\.dashboard\.signalStudio'\)/);

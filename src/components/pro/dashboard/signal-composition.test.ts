@@ -6,6 +6,10 @@ import postcss from 'postcss';
 
 const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
 const styles = postcss.parse(css);
+const page = readFileSync(
+  join(process.cwd(), 'src/app/(tenant)/t/[tenant]/(pro)/dashboard/page.tsx'),
+  'utf8',
+);
 
 function value(selector: string, property: string, media?: string) {
   let result: string | undefined;
@@ -41,6 +45,8 @@ test('restored hero and four-card row retain Design B geometry and folded decora
 });
 
 test('hero, cards and filters wrap on mobile and tablet without clipping current Company facts', () => {
+  const heading = page.match(/<header\b[\s\S]*?<\/header>/u)?.[0] ?? '';
+
   assert.equal(value('.signal-hero', 'height'), 'auto');
   assert.equal(value('.signal-hero__content', 'width', '(max-width: 63.99rem)'), '100%');
   assert.equal(value('.signal-hero__chart', 'position', '(max-width: 63.99rem)'), 'relative');
@@ -54,6 +60,10 @@ test('hero, cards and filters wrap on mobile and tablet without clipping current
     'minmax(0, 1fr)',
   );
   assert.equal(value('.signal-dashboard__filters', 'position', '(max-width: 47.99rem)'), 'static');
+  assert.match(heading, /signal-dashboard__heading[^"\n]*\bmd:flex-row\b[^"\n]*\bmd:items-end\b/u);
+  assert.match(heading, /signal-dashboard__filters[^"\n]*\bmd:grid-cols-\[1fr_auto\]/u);
+  assert.match(heading, /text-muted-foreground text-sm md:col-span-2/u);
+  assert.doesNotMatch(heading, /\bsm:(?:flex-row|items-end|grid-cols-\[1fr_auto\]|col-span-2)/u);
   assert.equal(value('.signal-hero__actions a', 'min-height'), '2.75rem');
   assert.equal(value('.signal-dashboard__kpis .signal-kpi__helper', 'white-space'), 'normal');
 });

@@ -237,7 +237,7 @@ export default async function ProDashboard({
         <strong>{t('masthead')}</strong>
         <time dateTime={dashboard.generatedAt}>{t('generatedAt', { date: generatedAt })}</time>
       </div>
-      <header className="signal-dashboard__heading relative flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <header className="signal-dashboard__heading relative flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div className="min-w-0">
           <p className="signal-dashboard__eyebrow">{t('eyebrow')}</p>
           <h1>{t('headline', { company: company?.companyName ?? t('companyFallback') })}</h1>
@@ -265,7 +265,7 @@ export default async function ProDashboard({
             <summary>{t('filters.toggle')}</summary>
             <form
               method="get"
-              className="signal-dashboard__filters grid gap-3 rounded-xl border p-4 sm:grid-cols-[1fr_auto]"
+              className="signal-dashboard__filters grid gap-3 rounded-xl border p-4 md:grid-cols-[1fr_auto]"
             >
               <input type="hidden" name="range" value={range} />
               <label className="text-sm font-medium">
@@ -290,7 +290,7 @@ export default async function ProDashboard({
                 {t('filters.apply')}
               </button>
               {filterState.notice ? (
-                <p role="status" className="text-muted-foreground text-sm sm:col-span-2">
+                <p role="status" className="text-muted-foreground text-sm md:col-span-2">
                   {t(
                     filterState.notice === 'pending'
                       ? 'filters.pendingNotice'

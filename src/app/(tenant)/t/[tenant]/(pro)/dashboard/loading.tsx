@@ -12,7 +12,7 @@ export default async function DashboardLoading() {
         <Skeleton className="h-3 w-44" />
         <Skeleton className="h-2 w-10" />
       </div>
-      <div className="signal-dashboard__heading flex flex-col justify-between gap-4 sm:flex-row">
+      <div className="signal-dashboard__heading flex flex-col justify-between gap-4 md:flex-row">
         <div className="max-w-full space-y-2">
           <Skeleton className="h-3 w-40" />
           <Skeleton className="h-8 w-52" />
