@@ -1,14 +1,82 @@
 -- Rebase tenant ownership around one legal company and an assignment ledger.
 begin;
 
+-- Freeze legacy ownership inputs while the rebase validates and copies them.
+-- This migration is intentionally fail-closed: unsupported legacy shapes must be
+-- reconciled explicitly instead of being discarded during the schema change.
+lock table public.clients, public.bulk_import_jobs in share row exclusive mode;
+lock table public.profiles in share row exclusive mode;
+
+do $company_workspace_rebase_preflight$
+begin
+  if exists (
+    select tenant_id
+    from public.clients
+    group by tenant_id
+    having count(*) > 1
+  ) then
+    raise exception using
+      errcode = 'P0001',
+      message = 'COMPANY_WORKSPACE_REBASE_MULTIPLE_COMPANIES_PER_TENANT';
+  end if;
+
+  if exists (
+    select 1
+    from public.clients as company
+    left join public.profiles as pro on pro.id = company.assigned_pro_profile_id
+    where company.assigned_pro_profile_id is not null
+      and (
+        pro.id is null
+        or pro.role::text <> 'pro'
+        or pro.status::text <> 'active'
+        or pro.tenant_id is distinct from company.tenant_id
+      )
+  ) then
+    raise exception using
+      errcode = 'P0001',
+      message = 'COMPANY_WORKSPACE_REBASE_INVALID_PRO_ASSIGNEE';
+  end if;
+
+  if exists (
+    select assigned_pro_profile_id
+    from public.clients
+    where assigned_pro_profile_id is not null
+    group by assigned_pro_profile_id
+    having count(*) > 1
+  ) then
+    raise exception using
+      errcode = 'P0001',
+      message = 'COMPANY_WORKSPACE_REBASE_PRO_ASSIGNED_MULTIPLE_COMPANIES';
+  end if;
+
+  if exists (
+    select 1
+    from public.bulk_import_jobs
+    where kind::text = 'clients'
+  ) then
+    raise exception using
+      errcode = 'P0001',
+      message = 'COMPANY_WORKSPACE_REBASE_CLIENT_IMPORT_JOBS_PRESENT';
+  end if;
+
+  if exists (
+    select 1 from public.clients where assigned_pro_profile_id is not null
+  ) and not exists (
+    select 1
+    from public.profiles
+    where role::text in ('admin', 'super_admin')
+      and status::text = 'active'
+      and tenant_id is null
+  ) then
+    raise exception using
+      errcode = 'P0001',
+      message = 'COMPANY_WORKSPACE_REBASE_MISSING_PLATFORM_OPERATOR';
+  end if;
+end;
+$company_workspace_rebase_preflight$;
+
 alter type public.client_status rename to company_status;
 alter table public.clients rename to company_profiles;
--- Approved development-only clean rebase: never reuse this TRUNCATE in a
--- production migration that must preserve existing data.
--- CASCADE clears every dependent ownership row before the one-company constraint,
--- avoiding orphaned foreign keys and enum-cast failures from legacy client jobs.
-truncate table public.company_profiles cascade;
-alter table public.company_profiles drop column assigned_pro_profile_id;
 alter table public.company_profiles
   add constraint company_profiles_one_per_tenant unique (tenant_id);
 
@@ -67,6 +135,74 @@ create unique index pro_company_assignments_one_active_pro
 create index pro_company_assignments_history
   on public.pro_company_assignments(company_id, assigned_at desc, id desc);
 
+-- Preserve legacy assignments with a deterministic active platform operator as
+-- the historical actor. The preflight guarantees the scalar actor exists whenever
+-- an assignment needs to be copied.
+insert into public.pro_company_assignments (
+  tenant_id,
+  company_id,
+  pro_profile_id,
+  status,
+  assigned_at,
+  assigned_by,
+  created_at,
+  updated_at
+)
+select
+  company.tenant_id,
+  company.id,
+  company.assigned_pro_profile_id,
+  'active',
+  transaction_timestamp(),
+  (
+    select operator.id
+    from public.profiles as operator
+    where operator.role::text in ('admin', 'super_admin')
+      and operator.status::text = 'active'
+      and operator.tenant_id is null
+    order by operator.created_at, operator.id
+    limit 1
+  ),
+  transaction_timestamp(),
+  transaction_timestamp()
+from public.company_profiles as company
+where company.assigned_pro_profile_id is not null;
+
+do $company_workspace_rebase_assignment_verification$
+begin
+  if (
+    select count(*) from public.company_profiles
+    where assigned_pro_profile_id is not null
+  ) <> (
+    select count(*) from public.pro_company_assignments
+  ) or exists (
+    select 1
+    from public.company_profiles as company
+    left join public.pro_company_assignments as assignment
+      on assignment.tenant_id = company.tenant_id
+      and assignment.company_id = company.id
+      and assignment.pro_profile_id = company.assigned_pro_profile_id
+      and assignment.status = 'active'
+    where company.assigned_pro_profile_id is not null
+      and assignment.id is null
+  ) or exists (
+    select 1
+    from public.pro_company_assignments as assignment
+    left join public.company_profiles as company
+      on company.tenant_id = assignment.tenant_id
+      and company.id = assignment.company_id
+      and company.assigned_pro_profile_id = assignment.pro_profile_id
+    where company.id is null
+  ) then
+    raise exception using
+      errcode = 'P0001',
+      message = 'COMPANY_WORKSPACE_REBASE_ASSIGNMENT_MISMATCH';
+  end if;
+end;
+$company_workspace_rebase_assignment_verification$;
+
+alter table public.company_profiles drop column assigned_pro_profile_id;
+
 alter table public.pro_company_assignments enable row level security;
 revoke update, delete on public.pro_company_assignments from public, anon, authenticated;
 
@@ -108,8 +244,8 @@ create trigger profiles_guard_active_company_assignment
   for each row
   execute function public.guard_active_pro_company_assignment_transition();
 
--- Development seed data is disposable. Only employee imports survive the rebase.
-delete from public.bulk_import_jobs where kind = 'clients';
+-- The preflight rejected incompatible client imports, so narrowing the enum cannot
+-- remove or reinterpret an existing job.
 alter table public.bulk_import_jobs
   drop constraint bulk_import_jobs_parent_client_required;
 alter type public.bulk_import_kind rename to bulk_import_kind_old;
