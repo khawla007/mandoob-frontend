@@ -171,11 +171,13 @@ test('company workspace migration establishes one-to-one ownership', () => {
     companyWorkspaceSql,
     /alter\s+table\s+public\.clients\s+rename\s+to\s+company_profiles/,
   );
-  assert.match(companyWorkspaceSql, /truncate\s+table\s+public\.company_profiles\s+cascade\s*;/);
-  assert.ok(
-    companyWorkspaceSql.indexOf('truncate table public.company_profiles cascade') <
-      companyWorkspaceSql.indexOf('company_profiles_one_per_tenant unique'),
-    'development ownership reset must run before the one-company constraint',
+  assert.doesNotMatch(
+    companyWorkspaceSql,
+    /truncate\s+table\s+public\.(?:clients|company_profiles)\b/,
+  );
+  assert.doesNotMatch(
+    companyWorkspaceSql,
+    /delete\s+from\s+public\.(?:clients|company_profiles|bulk_import_jobs)\b/,
   );
   assert.match(
     companyWorkspaceSql,
@@ -197,6 +199,44 @@ test('company workspace migration establishes one-to-one ownership', () => {
     companyWorkspaceSql,
     /alter\s+table\s+public\.(?:clients|company_profiles)\s+drop\s+column(?:\s+if\s+exists)?\s+assigned_pro_profile_id/,
   );
+
+  const assignmentInsert = companyWorkspaceSql.indexOf(
+    'insert into public.pro_company_assignments',
+  );
+  const assignmentVerification = companyWorkspaceSql.indexOf(
+    'company_workspace_rebase_assignment_mismatch',
+  );
+  const legacyColumnDrop = companyWorkspaceSql.indexOf(
+    'drop column assigned_pro_profile_id',
+  );
+  assert.ok(assignmentInsert >= 0, 'legacy company assignments must be backfilled');
+  assert.ok(
+    assignmentInsert < assignmentVerification && assignmentVerification < legacyColumnDrop,
+    'assignment backfill and identity verification must happen before the legacy column is dropped',
+  );
+});
+
+test('company workspace migration fails closed before mutating incompatible legacy data', () => {
+  const companyWorkspaceSql = normalizeSql(
+    readMigration('20260817090000_0059_company_workspace_rebase.sql'),
+  );
+  const firstMutation = companyWorkspaceSql.indexOf('alter type public.client_status');
+
+  assert.match(
+    companyWorkspaceSql,
+    /lock\s+table\s+public\.clients\s*,\s*public\.bulk_import_jobs\s+in\s+share\s+row\s+exclusive\s+mode/,
+  );
+  for (const invariant of [
+    'company_workspace_rebase_multiple_companies_per_tenant',
+    'company_workspace_rebase_invalid_pro_assignee',
+    'company_workspace_rebase_pro_assigned_multiple_companies',
+    'company_workspace_rebase_client_import_jobs_present',
+    'company_workspace_rebase_missing_platform_operator',
+  ]) {
+    const invariantCheck = companyWorkspaceSql.indexOf(invariant);
+    assert.ok(invariantCheck >= 0, `${invariant} preflight is missing`);
+    assert.ok(invariantCheck < firstMutation, `${invariant} must be checked before schema mutation`);
+  }
 });
 
 test('company workspace migration recreates every current ownership function', () => {
