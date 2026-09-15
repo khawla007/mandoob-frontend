@@ -28,13 +28,10 @@ function declarations(selector: string): string {
 }
 
 describe('homepage claims and CTA contract', () => {
-  it('keeps the hero estimate button on the dark-mode palette in both themes', () => {
+  it('keeps the hero estimate button on the shared CTA palette in both themes', () => {
     const hero = componentSources.find(({ file }) => file === 'HeroSection.tsx')?.source ?? '';
     assert.match(hero, /btn btn--accent hero__estimate-cta/u);
-    assert.match(
-      publicTheme,
-      /\.site-public \.hero__estimate-cta\s*\{[^}]*background:\s*#ff7043;[^}]*color:\s*#21120d;/u,
-    );
+    assert.doesNotMatch(publicTheme, /\.site-public \.hero__estimate-cta(?:[:\s,{])/u);
   });
 
   it('uses the shared eyebrow treatment on major homepage sections', () => {
@@ -57,11 +54,11 @@ describe('homepage claims and CTA contract', () => {
   });
 
   it('uses the canonical design-4 eyebrow and inline-link treatment', () => {
-    assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--accent-ink\)/u);
+    assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
     const homeLink = declarations('.site-public .home-text-link');
-    assert.match(homeLink, /color:\s*var\(--accent-ink\)/u);
+    assert.match(homeLink, /color:\s*var\(--accent\)/u);
     assert.match(homeLink, /font-size:\s*var\(--fs-13\)/u);
-    assert.match(homeLink, /font-weight:\s*700\b/u);
+    assert.match(homeLink, /font-weight:\s*600\b/u);
   });
 
   it('keeps the testimonial heading visible without waiting for a reveal observer', () => {

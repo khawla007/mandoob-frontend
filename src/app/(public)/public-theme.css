@@ -7,28 +7,29 @@
 
 /* ---------- 1. Tokens (scoped) ---------- */
 .site-public {
-  --paper: oklch(0.995 0.004 45);
-  --ink: oklch(0.18 0.01 45);
-  --ink-inv: oklch(0.99 0.004 45);
-  --zinc-50: oklch(0.985 0.004 45);
-  --zinc-100: oklch(0.967 0.005 45);
-  --zinc-200: oklch(0.918 0.006 45);
-  --zinc-300: oklch(0.872 0.007 45);
-  --zinc-400: oklch(0.714 0.009 45);
-  --zinc-500: oklch(0.553 0.011 45);
-  --zinc-600: oklch(0.435 0.011 45);
-  --zinc-700: oklch(0.357 0.01 45);
-  --zinc-900: oklch(0.227 0.008 45);
-  --zinc-950: oklch(0.157 0.007 45);
+  --paper: #fff;
+  --ink: #000;
+  --ink-inv: #fafafa;
+  --zinc-50: #fafafa;
+  --zinc-100: #f4f4f5;
+  --zinc-200: #e4e4e7;
+  --zinc-300: #d4d4d8;
+  --zinc-400: #a1a1aa;
+  --zinc-500: #71717a;
+  --zinc-600: #52525b;
+  --zinc-700: #3f3f46;
+  --zinc-900: #18181b;
+  --zinc-950: #09090b;
 
-  --accent: var(--public-accent-decoration); /* UAE-saffron warm red, used <8% */
-  --accent-hover: oklch(0.585 0.195 38); /* darker saffron for :hover */
-  --accent-ink: oklch(0.56 0.19 38); /* accent text stays AA-safe on light gradient surfaces */
-  --accent-soft: oklch(0.96 0.02 40);
+  --accent: #ff5722;
+  --accent-hover: #e64a19;
+  --accent-ink: var(--accent);
+  --accent-soft: #fff1ed;
 
   /* Public semantic roles retain the canonical design-4 CTA palette. The
      #ff5722 normal-text treatment is a documented visual exception, not a
-     WCAG AA normal-text contrast claim. */
+     WCAG AA normal-text contrast claim. Active, focus, and disabled surfaces
+     stay darker so those interaction states remain distinct and AA-readable. */
   --public-canvas: var(--paper);
   --public-surface: var(--zinc-50);
   --public-surface-elevated: var(--paper);
@@ -36,14 +37,14 @@
   --public-text-muted: var(--zinc-600);
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
-  --public-accent-decoration: var(--brand-accent);
-  --public-cta-background: #b9380f;
-  --public-cta-text: #fff8f4;
-  --public-cta-hover-background: #9f2e0b;
+  --public-accent-decoration: var(--accent);
+  --public-cta-background: #ff5722;
+  --public-cta-text: #ffffff;
+  --public-cta-hover-background: #e64a19;
   --public-cta-active-background: #872508;
   --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #6f5b54;
-  --public-cta-disabled-text: #fff8f4;
+  --public-cta-disabled-text: #ffffff;
   --public-header-surface: rgba(255, 255, 255, 0.85);
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #b9380f;
@@ -53,12 +54,14 @@
   /* Editorial aliases keep the P1.07 content system on the shared public roles. */
   --public-ink: var(--public-text-primary);
   --public-muted: var(--public-text-muted);
-  --public-link: var(--accent-ink);
+  --public-link: var(--accent);
   --public-surface-raised: var(--public-surface-elevated);
+  --public-accent: var(--accent);
+  --public-accent-ink: var(--public-cta-text);
   --font-geist-mono: var(--mono-font);
 
-  --pb-border: oklch(0.918 0.006 45);
-  --pb-border-dark: oklch(0.268 0.008 45);
+  --pb-border: #e4e4e7;
+  --pb-border-dark: #27272a;
 
   /* Geist is already loaded app-wide via globals.css */
   --font: var(--font-geist-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -114,23 +117,25 @@
    The .showcase block below re-pins the always-dark "terminal" mock so the
    inverted ramp does not turn it light. */
 .dark .site-public {
-  --paper: oklch(0.17 0.008 45);
-  --ink: oklch(0.985 0.004 45);
+  --paper: #18181b;
+  --ink: #fafafa;
 
-  --zinc-50: oklch(0.157 0.007 45);
-  --zinc-100: oklch(0.227 0.008 45);
-  --zinc-200: oklch(0.268 0.008 45);
-  --zinc-300: oklch(0.357 0.01 45);
-  --zinc-400: oklch(0.435 0.011 45);
-  --zinc-500: oklch(0.553 0.011 45);
-  --zinc-600: oklch(0.714 0.009 45);
-  --zinc-700: oklch(0.872 0.007 45);
-  --zinc-900: oklch(0.918 0.006 45);
-  --zinc-950: oklch(0.967 0.005 45);
+  --zinc-50: #09090b;
+  --zinc-100: #18181b;
+  --zinc-200: #27272a;
+  --zinc-300: #3f3f46;
+  --zinc-400: #52525b;
+  --zinc-500: #71717a;
+  --zinc-600: #a1a1aa;
+  --zinc-700: #d4d4d8;
+  --zinc-900: #e4e4e7;
+  --zinc-950: #f4f4f5;
+  --accent: #ff5722;
+  --accent-hover: #e64a19;
   --accent-ink: var(--accent);
   --accent-soft: oklch(0.22 0.04 38);
-  --pb-border: oklch(0.268 0.008 45);
-  --pb-border-dark: oklch(0.357 0.01 45);
+  --pb-border: #27272a;
+  --pb-border-dark: #3f3f46;
 
   --public-canvas: var(--paper);
   --public-surface: var(--zinc-100);
@@ -139,17 +144,17 @@
   --public-text-muted: var(--zinc-600);
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
-  --public-accent-decoration: var(--brand-accent);
-  --public-cta-background: #ff7043;
-  --public-cta-text: #21120d;
-  --public-cta-hover-background: #ff865f;
-  --public-cta-active-background: #e55c32;
-  --public-cta-focus-background: #ff7043;
-  --public-cta-disabled-background: #a97868;
-  --public-cta-disabled-text: #1d100c;
+  --public-accent-decoration: var(--accent);
+  --public-cta-background: #ff5722;
+  --public-cta-text: #ffffff;
+  --public-cta-hover-background: #e64a19;
+  --public-cta-active-background: #872508;
+  --public-cta-focus-background: #b9380f;
+  --public-cta-disabled-background: #6f5b54;
+  --public-cta-disabled-text: #ffffff;
   --public-header-surface: rgba(10, 10, 10, 0.85);
   --public-mobile-dialog-surface: #181614;
-  --public-focus-ring: #ff865f;
+  --public-focus-ring: #ff5722;
   --public-danger: #ffb4a8;
   --public-scrim: rgba(5, 4, 3, 0.82);
 
@@ -285,13 +290,13 @@
   font-size: var(--fs-13);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--zinc-600);
+  color: var(--zinc-500);
 }
 .site-public .eyebrow--inv {
   color: var(--zinc-400);
 }
 .site-public .eyebrow--accent {
-  color: var(--accent-ink);
+  color: var(--zinc-500);
 }
 .site-public .mono {
   font-family: var(--mono-font);
@@ -405,19 +410,6 @@
   background: var(--public-cta-disabled-background);
   color: var(--public-cta-disabled-text);
   transform: none;
-}
-.site-public .hero__estimate-cta {
-  background: #ff7043;
-  color: #21120d;
-}
-.site-public .hero__estimate-cta:hover {
-  background: #ff865f;
-}
-.site-public .hero__estimate-cta:active {
-  background: #e55c32;
-}
-.site-public .hero__estimate-cta:focus-visible {
-  background: #ff7043;
 }
 .site-public .btn--outline {
   background: var(--paper);
@@ -547,8 +539,8 @@
   min-inline-size: 44px;
   min-block-size: 44px;
   align-items: center;
-  border-inline-start: 2px solid transparent;
-  padding-inline: 10px 8px;
+  border-bottom: 2px solid transparent;
+  padding-inline: 8px;
   font-size: var(--fs-14);
   font-weight: 500;
   color: var(--zinc-600);
@@ -565,8 +557,8 @@
   color: var(--ink);
 }
 .site-public .nav__links a[aria-current='page'] {
-  border-inline-start: 2px solid var(--accent);
-  color: var(--public-cta-background);
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
 }
 .site-public .public-link-pending {
   display: inline-flex;
@@ -886,6 +878,11 @@
   background: var(--public-accent);
   color: var(--public-accent-ink);
   font-weight: 750;
+}
+.site-public .application-button:not(.application-button--secondary):not(:disabled):hover,
+.site-public .application-file-button:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
 }
 .site-public .application-tool {
   border-color: var(--public-border-strong);
@@ -4114,9 +4111,9 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  color: var(--accent-ink);
+  color: var(--accent);
   font-size: var(--fs-13);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .site-public .home-text-link span {
@@ -5565,7 +5562,7 @@
   align-self: flex-start;
   font-size: var(--fs-14);
   font-weight: 600;
-  color: var(--accent-ink);
+  color: var(--accent);
 }
 .site-public .cell__link span {
   display: inline-block;
@@ -5588,10 +5585,10 @@
   padding: 0;
 }
 .site-public #estimator .eyebrow {
-  color: var(--zinc-600);
+  color: var(--zinc-500);
 }
 .site-public #estimator .eyebrow--accent {
-  color: var(--accent-ink);
+  color: var(--zinc-500);
 }
 .site-public .est__tabs {
   display: flex;
@@ -9039,7 +9036,7 @@
   --zinc-950: #09090b;
   --accent: #ff5722;
   --accent-hover: #e64a19;
-  --accent-ink: #b9380f;
+  --accent-ink: var(--accent);
   --accent-soft: #fff1ed;
   --pb-border: #e4e4e7;
   --pb-border-dark: #27272a;
@@ -9051,13 +9048,13 @@
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
   --public-accent-decoration: #ff5722;
-  --public-cta-background: #b9380f;
-  --public-cta-text: #fff8f4;
-  --public-cta-hover-background: #9f2e0b;
+  --public-cta-background: #ff5722;
+  --public-cta-text: #ffffff;
+  --public-cta-hover-background: #e64a19;
   --public-cta-active-background: #872508;
   --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #a1a1aa;
-  --public-cta-disabled-text: #fff;
+  --public-cta-disabled-text: #ffffff;
   --public-header-surface: rgb(255 255 255 / 85%);
   --public-mobile-dialog-surface: #09090b;
   --public-focus-ring: #ff5722;
@@ -9092,13 +9089,13 @@
   --public-border-subtle: var(--zinc-200);
   --public-border-strong: var(--zinc-400);
   --public-accent-decoration: #ff5722;
-  --public-cta-background: #ff7043;
-  --public-cta-text: #21120d;
-  --public-cta-hover-background: #ff865f;
-  --public-cta-active-background: #e55c32;
-  --public-cta-focus-background: #ff7043;
-  --public-cta-disabled-background: #52525b;
-  --public-cta-disabled-text: #fff;
+  --public-cta-background: #ff5722;
+  --public-cta-text: #ffffff;
+  --public-cta-hover-background: #e64a19;
+  --public-cta-active-background: #872508;
+  --public-cta-focus-background: #b9380f;
+  --public-cta-disabled-background: #6f5b54;
+  --public-cta-disabled-text: #ffffff;
   --public-header-surface: rgb(24 24 27 / 85%);
   --public-mobile-dialog-surface: #09090b;
   --public-focus-ring: #ff5722;

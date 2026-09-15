@@ -39,7 +39,7 @@ function rawToken(block: string, name: string): string {
 }
 
 function token(block: string, name: string): string {
-  const value = block.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'iu'))?.[1];
+  const value = block.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{3}(?:[0-9a-f]{3})?)`, 'iu'))?.[1];
   assert.ok(value, `missing resolved --${name}`);
   return value;
 }
@@ -103,38 +103,80 @@ renderTest('sticky public header surfaces retain the accepted translucent treatm
   );
 });
 
-renderTest('public light tokens retain the accepted warm palette and fonts', () => {
+renderTest('public light tokens match the canonical design-4 neutral palette and fonts', () => {
   const block = declarations('.site-public');
-  for (const name of ['paper', 'ink', 'zinc-50', 'zinc-500', 'zinc-950']) {
-    assert.match(rawToken(block, name), /^oklch\(/u);
+  const palette = {
+    paper: '#fff',
+    ink: '#000',
+    'zinc-50': '#fafafa',
+    'zinc-100': '#f4f4f5',
+    'zinc-200': '#e4e4e7',
+    'zinc-300': '#d4d4d8',
+    'zinc-400': '#a1a1aa',
+    'zinc-500': '#71717a',
+    'zinc-600': '#52525b',
+    'zinc-700': '#3f3f46',
+    'zinc-900': '#18181b',
+    'zinc-950': '#09090b',
+  } as const;
+  for (const [name, value] of Object.entries(palette)) {
+    assert.equal(rawToken(block, name), value);
   }
-  assert.equal(rawToken(block, 'accent'), 'var(--public-accent-decoration)');
-  assert.equal(rawToken(block, 'public-accent-decoration'), 'var(--brand-accent)');
+  assert.equal(rawToken(block, 'accent'), '#ff5722');
+  assert.equal(rawToken(block, 'accent-hover'), '#e64a19');
+  assert.equal(rawToken(block, 'accent-ink'), 'var(--accent)');
+  assert.equal(rawToken(block, 'public-accent-decoration'), 'var(--accent)');
   assert.match(rawToken(block, 'font'), /^var\(--font-geist-sans\)(?:,|$)/u);
   assert.match(rawToken(block, 'mono-font'), /^var\(--font-geist-mono\)(?:,|$)/u);
 });
 
-renderTest('public dark tokens retain the warm inverted ramp', () => {
+renderTest('public dark tokens match the canonical design-4 inverted neutral ramp', () => {
   const block = declarations('.dark .site-public');
-  for (const name of ['paper', 'ink', 'zinc-50', 'zinc-500', 'zinc-950']) {
-    assert.match(rawToken(block, name), /^oklch\(/u);
+  const palette = {
+    paper: '#18181b',
+    ink: '#fafafa',
+    'zinc-50': '#09090b',
+    'zinc-100': '#18181b',
+    'zinc-200': '#27272a',
+    'zinc-300': '#3f3f46',
+    'zinc-400': '#52525b',
+    'zinc-500': '#71717a',
+    'zinc-600': '#a1a1aa',
+    'zinc-700': '#d4d4d8',
+    'zinc-900': '#e4e4e7',
+    'zinc-950': '#f4f4f5',
+  } as const;
+  for (const [name, value] of Object.entries(palette)) {
+    assert.equal(rawToken(block, name), value);
   }
+  assert.equal(rawToken(block, 'accent'), '#ff5722');
+  assert.equal(rawToken(block, 'accent-hover'), '#e64a19');
   assert.match(declarations('.site-public .btn--accent'), /color:\s*var\(--public-cta-text\)/u);
 });
 
-renderTest('every public CTA state meets WCAG AA in both themes', () => {
-  const pairs = [
-    ['public-cta-background', 'public-cta-text'],
-    ['public-cta-hover-background', 'public-cta-text'],
+renderTest('public CTA keeps exact canonical normal and hover colors in both themes', () => {
+  const acceptedVisualExceptions = [
+    ['public-cta-background', '#ff5722', 3.16],
+    ['public-cta-hover-background', '#e64a19', 3.92],
+  ] as const;
+  const aaPairs = [
     ['public-cta-active-background', 'public-cta-text'],
     ['public-cta-focus-background', 'public-cta-text'],
     ['public-cta-disabled-background', 'public-cta-disabled-text'],
   ] as const;
   for (const selector of ['.site-public', '.dark .site-public']) {
     const block = declarations(selector);
-    for (const [background, foreground] of pairs) {
+    assert.equal(token(block, 'public-cta-text'), '#ffffff');
+    for (const [background, expected, documentedRatio] of acceptedVisualExceptions) {
+      assert.equal(token(block, background), expected);
+      assert.equal(Number(contrastRatio(expected, '#ffffff').toFixed(2)), documentedRatio);
+    }
+    for (const [background, foreground] of aaPairs) {
       assert.ok(contrastRatio(token(block, background), token(block, foreground)) >= 4.5);
     }
+    assert.notEqual(token(block, 'public-cta-active-background'), '#ff5722');
+    assert.notEqual(token(block, 'public-cta-focus-background'), '#ff5722');
+    assert.notEqual(token(block, 'public-cta-disabled-background'), '#ff5722');
   }
 });
 
@@ -166,13 +208,13 @@ renderTest('design-4 component colors and weights are preserved', () => {
     declarations('.site-public .btn--accent:hover'),
     /background:\s*var\(--public-cta-hover-background\)/u,
   );
-  assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-600\)/u);
-  assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--accent-ink\)/u);
-  assert.match(declarations('.site-public .cell__link'), /color:\s*var\(--accent-ink\)/u);
+  assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-500\)/u);
+  assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
+  assert.match(declarations('.site-public .cell__link'), /color:\s*var\(--accent\)/u);
   const homeLink = declarations('.site-public .home-text-link');
-  assert.match(homeLink, /color:\s*var\(--accent-ink\)/u);
+  assert.match(homeLink, /color:\s*var\(--accent\)/u);
   assert.match(homeLink, /font-size:\s*var\(--fs-13\)/u);
-  assert.match(homeLink, /font-weight:\s*700\b/u);
+  assert.match(homeLink, /font-weight:\s*600\b/u);
 });
 
 renderTest('accent buttons consume semantic state tokens', () => {
@@ -186,6 +228,21 @@ renderTest('accent buttons consume semantic state tokens', () => {
   assert.match(
     css,
     /\.site-public \.btn--accent:disabled[^}]*var\(--public-cta-disabled-background\)/u,
+  );
+});
+
+renderTest('application primary actions bridge to the canonical public accent tokens', () => {
+  const block = declarations('.site-public');
+  assert.equal(rawToken(block, 'public-accent'), 'var(--accent)');
+  assert.equal(rawToken(block, 'public-accent-ink'), 'var(--public-cta-text)');
+  const actions = declarations(
+    '.site-public .application-tool,\n.site-public .application-button,\n.site-public .application-file-button',
+  );
+  assert.match(actions, /background:\s*var\(--public-accent\)/u);
+  assert.match(actions, /color:\s*var\(--public-accent-ink\)/u);
+  assert.match(
+    css,
+    /\.site-public \.application-button:not\(\.application-button--secondary\):not\(:disabled\):hover,[^}]*background:\s*var\(--accent-hover\)/u,
   );
 });
 
@@ -244,7 +301,7 @@ renderTest('shell focus and sticky header consume roles while the dialog token s
 renderTest('current navigation and footer muted copy use design-4 semantic colors', () => {
   assert.match(
     declarations(".site-public .nav__links a[aria-current='page']"),
-    /color:\s*var\(--public-cta-background\)/u,
+    /color:\s*var\(--accent\)/u,
   );
   for (const selector of [
     '.site-public .footer__tag',

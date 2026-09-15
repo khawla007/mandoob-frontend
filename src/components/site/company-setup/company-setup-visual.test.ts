@@ -58,11 +58,11 @@ describe('company setup visual contract', () => {
   it('locks P1.04 to the authoritative public light and dark palettes', () => {
     assert.match(
       css,
-      /\.site-public:has\(\.setup-page\)\s*\{[\s\S]*?--paper:\s*#fff;[\s\S]*?--ink:\s*#000;[\s\S]*?--accent:\s*#ff5722;[\s\S]*?--accent-hover:\s*#e64a19;[\s\S]*?--accent-ink:\s*#b9380f;[\s\S]*?--public-cta-background:\s*#b9380f;[\s\S]*?--public-cta-text:\s*#fff8f4;/u,
+      /\.site-public:has\(\.setup-page\)\s*\{[\s\S]*?--paper:\s*#fff;[\s\S]*?--ink:\s*#000;[\s\S]*?--accent:\s*#ff5722;[\s\S]*?--accent-hover:\s*#e64a19;[\s\S]*?--accent-ink:\s*var\(--accent\);[\s\S]*?--public-cta-background:\s*#ff5722;[\s\S]*?--public-cta-text:\s*#ffffff;/u,
     );
     assert.match(
       css,
-      /\.dark \.site-public:has\(\.setup-page\)\s*\{[\s\S]*?--paper:\s*#18181b;[\s\S]*?--ink:\s*#fafafa;[\s\S]*?--zinc-950:\s*#f4f4f5;[\s\S]*?--accent:\s*#ff5722;[\s\S]*?--public-cta-background:\s*#ff7043;[\s\S]*?--public-cta-text:\s*#21120d;/u,
+      /\.dark \.site-public:has\(\.setup-page\)\s*\{[\s\S]*?--paper:\s*#18181b;[\s\S]*?--ink:\s*#fafafa;[\s\S]*?--zinc-950:\s*#f4f4f5;[\s\S]*?--accent:\s*#ff5722;[\s\S]*?--public-cta-background:\s*#ff5722;[\s\S]*?--public-cta-text:\s*#ffffff;/u,
     );
     assert.match(
       css,

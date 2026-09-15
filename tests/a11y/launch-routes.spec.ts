@@ -7,6 +7,7 @@
 
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { expectOnlyDocumentedPublicAccentContrast } from './public-contrast-exception';
 
 type PublicRoute = {
   name: string;
@@ -20,12 +21,12 @@ const routes: PublicRoute[] = [
 ];
 
 for (const route of routes) {
-  test(`${route.name} has no detectable axe violations`, async ({ page }) => {
+  test(`${route.name} has no unexpected axe violations`, async ({ page }) => {
     await page.goto(route.path, { waitUntil: 'networkidle' });
     await expect(page.locator('body')).toBeVisible();
 
     const results = await new AxeBuilder({ page }).analyze();
-    expect(results.violations).toEqual([]);
+    await expectOnlyDocumentedPublicAccentContrast(page, results.violations);
   });
 }
 
