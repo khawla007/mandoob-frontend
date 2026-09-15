@@ -10,6 +10,7 @@ import {
 } from '@/lib/company-onboarding/contracts';
 import { parseCompanyReadinessRequirements } from '@/lib/company-onboarding/readiness';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { UUID_RE } from '@/lib/util/uuid';
 import type { Database } from '@/lib/db/database.types';
 
 type CompanyStatus = Database['public']['Enums']['company_status'];
@@ -53,7 +54,7 @@ export type AssignedCompanyDashboardContext = {
   readinessState: 'data' | 'unavailable';
 };
 
-const uuidSchema = z.string().uuid();
+const uuidSchema = z.string().regex(UUID_RE);
 const companyRowSchema = z.object({
   id: uuidSchema,
   tenant_id: uuidSchema,

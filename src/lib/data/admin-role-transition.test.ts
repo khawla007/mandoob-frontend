@@ -489,7 +489,7 @@ test('pending transitions are denied by session loading and password login even 
   );
   assert.match(
     login,
-    /if \(appMeta\.mandoob_role_transition === 'pending' \|\| !appMeta\.mandoob_role\)[\s\S]*auth\.signOut\(\)[\s\S]*AUTHORIZATION_UNAVAILABLE/,
+    /getAuthoritativeSessionProfile\(\)[\s\S]*if \(!authoritative\?\.role\)[\s\S]*auth\.signOut\(\)[\s\S]*AUTHORIZATION_UNAVAILABLE/,
   );
 });
 

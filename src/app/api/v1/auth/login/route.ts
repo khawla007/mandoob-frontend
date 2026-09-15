@@ -9,6 +9,7 @@ import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveRoleHome } from '@/lib/auth/role-home';
 import type { Role } from '@/lib/auth/roles';
+import { getAuthoritativeSessionProfile } from '@/lib/auth/require-role';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       kind: 'login_failure',
       ip,
       userAgent,
-      details: { email, reason: `lockout:${lockout.reason}` },
+      details: { reason: `lockout:${lockout.reason}` },
     });
     return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password', 401);
   }
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       kind: 'login_failure',
       ip,
       userAgent,
-      details: { email, reason: error?.message ?? 'unknown' },
+      details: { reason: 'credentials_rejected' },
     });
     return errorResponse('INVALID_CREDENTIALS', 'Invalid email or password', 401);
   }
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       actorUserId: data.user.id,
       ip,
       userAgent,
-      details: { email, reason: 'email_not_verified' },
+      details: { reason: 'email_not_verified' },
     });
     return errorResponse(
       'EMAIL_NOT_VERIFIED',
@@ -78,19 +79,15 @@ export async function POST(request: NextRequest) {
 
   await clearFailures(email);
 
-  const appMeta = (data.user.app_metadata ?? {}) as {
-    mandoob_role?: Role | null;
-    tenant_id?: string | null;
-    mandoob_role_transition?: 'pending' | null;
-  };
-  if (appMeta.mandoob_role_transition === 'pending' || !appMeta.mandoob_role) {
+  const authoritative = await getAuthoritativeSessionProfile();
+  if (!authoritative?.role) {
     await supabase.auth.signOut();
     await recordAuthEvent({
       kind: 'login_failure',
       actorUserId: data.user.id,
       ip,
       userAgent,
-      details: { email, reason: 'authorization_unavailable' },
+      details: { reason: 'authorization_unavailable' },
     });
     return errorResponse(
       'AUTHORIZATION_UNAVAILABLE',
@@ -99,17 +96,16 @@ export async function POST(request: NextRequest) {
     );
   }
   const redirectTo = await resolveRoleHome({
-    role: appMeta.mandoob_role ?? null,
-    tenantId: appMeta.tenant_id ?? null,
+    role: authoritative.role as Role,
+    tenantId: authoritative.tenantId,
   });
 
   await recordAuthEvent({
     kind: 'login_success',
     actorUserId: data.user.id,
-    tenantId: appMeta.tenant_id ?? null,
+    tenantId: authoritative.tenantId,
     ip,
     userAgent,
-    details: { email },
   });
 
   return jsonOk({ ok: true, userId: data.user.id, redirectTo });

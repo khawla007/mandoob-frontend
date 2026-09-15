@@ -35,7 +35,7 @@ async function getActionContext(): Promise<{ ip: string | null; userAgent: strin
 
 function fail(e: unknown): ActionResult {
   if (e instanceof ApiError) return { ok: false, error: { code: e.code, message: e.message } };
-  console.error('account action failed', e);
+  console.error('account-action.failed');
   return { ok: false, error: { code: 'INTERNAL', message: 'Unexpected error' } };
 }
 
@@ -104,7 +104,10 @@ export async function changePasswordAction(formInput: unknown): Promise<ActionRe
 
     const { error: updateErr } = await supabase.auth.updateUser({ password: parsed.new_password });
     if (updateErr) {
-      return { ok: false, error: { code: 'PASSWORD_UPDATE_FAILED', message: updateErr.message } };
+      return {
+        ok: false,
+        error: { code: 'PASSWORD_UPDATE_FAILED', message: 'Could not update password' },
+      };
     }
 
     const ctx = await getActionContext();
@@ -131,7 +134,7 @@ export async function enrollMfaAction(): Promise<
     if (error || !data) {
       return {
         ok: false,
-        error: { code: 'MFA_ENROLL_FAILED', message: error?.message ?? 'enroll failed' },
+        error: { code: 'MFA_ENROLL_FAILED', message: 'Could not start MFA enrollment' },
       };
     }
     return {
@@ -158,7 +161,7 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
     if (chErr || !challenge) {
       return {
         ok: false,
-        error: { code: 'MFA_CHALLENGE_FAILED', message: chErr?.message ?? 'challenge failed' },
+        error: { code: 'MFA_CHALLENGE_FAILED', message: 'Could not start MFA verification' },
       };
     }
     const { error: vErr } = await supabase.auth.mfa.verify({
@@ -166,7 +169,12 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
       challengeId: challenge.id,
       code: parsed.code,
     });
-    if (vErr) return { ok: false, error: { code: 'MFA_VERIFY_FAILED', message: vErr.message } };
+    if (vErr) {
+      return {
+        ok: false,
+        error: { code: 'MFA_VERIFY_FAILED', message: 'MFA code was not accepted' },
+      };
+    }
 
     const ctx = await getActionContext();
     await recordAuthEvent({
@@ -175,7 +183,6 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
       tenantId: session.tenantId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      details: { factor_id: parsed.factor_id },
     });
     return { ok: true };
   } catch (e) {
@@ -208,7 +215,7 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
         },
         unenroll: async (id) => {
           const { error } = await supabase.auth.mfa.unenroll({ factorId: id });
-          if (error) throw new ApiError('MFA_REMOVE_FAILED', error.message, 502);
+          if (error) throw new ApiError('MFA_REMOVE_FAILED', 'Could not remove MFA factor', 502);
         },
       },
     );
@@ -219,7 +226,6 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
       tenantId: session.tenantId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      details: { factor_id: factorId },
     });
     return { ok: true };
   } catch (e) {
@@ -279,7 +285,7 @@ export async function optInSelfCommsAction(formInput: FormData): Promise<ActionR
       .select('phone')
       .eq('id', session.id)
       .maybeSingle();
-    if (error) throw new ApiError('INTERNAL', error.message, 500);
+    if (error) throw new ApiError('INTERNAL', 'Could not load communication settings', 500);
     const phone = (profile?.phone as string | null) ?? null;
     if (!phone) throw new ApiError('VALIDATION_FAILED', 'No phone number on profile', 400);
 
@@ -325,7 +331,7 @@ export async function revokeMySessionAction(sessionId: string): Promise<ActionRe
       tenantId: session.tenantId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      details: { session_id: sessionId, scope: 'one' },
+      details: { scope: 'one' },
     });
     revalidatePath('/account/sessions');
     return { ok: true };

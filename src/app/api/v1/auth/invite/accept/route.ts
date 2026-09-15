@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     tenantId: invite.tenant_id as string,
     ip,
     userAgent,
-    details: { email: invite.email, role: invite.role },
+    details: { role: invite.role },
   });
 
   return jsonOk({ ok: true, userId: created.user.id });

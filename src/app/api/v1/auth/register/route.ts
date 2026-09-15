@@ -33,7 +33,7 @@ async function getOrCreatePubTenant(): Promise<string> {
     })
     .select('id')
     .single();
-  if (error || !created) throw new Error(`failed to provision pub tenant: ${error?.message}`);
+  if (error || !created) throw new Error('public-signup-tenant.unavailable');
   return created.id as string;
 }
 
@@ -61,12 +61,8 @@ export async function POST(request: NextRequest) {
   let username: string;
   try {
     username = await generateUniqueUsername(admin, fullName);
-  } catch (err) {
-    return errorResponse(
-      'USERNAME_GENERATION_FAILED',
-      err instanceof Error ? err.message : 'Could not generate username',
-      500,
-    );
+  } catch {
+    return errorResponse('USERNAME_GENERATION_FAILED', 'Could not prepare account', 500);
   }
 
   const tenantId = await getOrCreatePubTenant();
@@ -83,11 +79,7 @@ export async function POST(request: NextRequest) {
     },
   });
   if (createErr || !created?.user) {
-    return errorResponse(
-      'REGISTRATION_FAILED',
-      createErr?.message ?? 'Could not create account',
-      400,
-    );
+    return errorResponse('REGISTRATION_FAILED', 'Could not create account', 400);
   }
   const userId = created.user.id;
 
@@ -112,7 +104,6 @@ export async function POST(request: NextRequest) {
       taken ? 'USERNAME_TAKEN' : 'REGISTRATION_FAILED',
       taken ? 'That username is already taken' : 'Could not finalize registration',
       taken ? 409 : 500,
-      { reason: profileErr.message },
     );
   }
 
@@ -125,22 +116,14 @@ export async function POST(request: NextRequest) {
   });
   if (linkErr || !linkData.properties?.email_otp) {
     await admin.auth.admin.deleteUser(userId).catch(() => {});
-    return errorResponse(
-      'OTP_GENERATION_FAILED',
-      linkErr?.message ?? 'Could not generate verification code',
-      500,
-    );
+    return errorResponse('OTP_GENERATION_FAILED', 'Could not generate verification code', 500);
   }
 
   try {
     await sendOtpEmail({ to: email, code: linkData.properties.email_otp });
-  } catch (err) {
+  } catch {
     await admin.auth.admin.deleteUser(userId).catch(() => {});
-    return errorResponse(
-      'EMAIL_SEND_FAILED',
-      err instanceof Error ? err.message : 'Could not send verification email',
-      500,
-    );
+    return errorResponse('EMAIL_SEND_FAILED', 'Could not send verification email', 500);
   }
 
   await recordAuthEvent({
@@ -149,7 +132,7 @@ export async function POST(request: NextRequest) {
     tenantId,
     ip,
     userAgent,
-    details: { email, via: 'self_signup' },
+    details: { via: 'self_signup' },
   });
 
   return jsonOk({ ok: true, email }, { status: 201 });

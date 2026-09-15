@@ -156,3 +156,56 @@ test('public session resolver returns null for stale or invalid live accounts', 
     );
   }
 });
+
+test('privileged sessions require both enrolled MFA and AAL2 at direct boundaries', async () => {
+  const { enforcePrivilegedSession } = await import('./require-role');
+  for (const role of ['super_admin', 'admin', 'pro'] as const) {
+    const redirects: string[] = [];
+    await assert.rejects(
+      () =>
+        enforcePrivilegedSession(
+          { ...session(role), mfaEnrolled: false, aal: 'aal1' },
+          {
+            redirect: (path) => {
+              redirects.push(path);
+              throw new Error('REDIRECT');
+            },
+          },
+        ),
+      /REDIRECT/u,
+    );
+    assert.deepEqual(redirects, ['/mfa/enroll']);
+    redirects.length = 0;
+    await assert.rejects(
+      () =>
+        enforcePrivilegedSession(
+          { ...session(role), mfaEnrolled: true, aal: 'aal1' },
+          {
+            redirect: (path) => {
+              redirects.push(path);
+              throw new Error('REDIRECT');
+            },
+          },
+        ),
+      /REDIRECT/u,
+    );
+    assert.deepEqual(redirects, ['/mfa/challenge']);
+  }
+});
+
+test('customer and employee sessions do not receive the privileged MFA gate', async () => {
+  const { enforcePrivilegedSession } = await import('./require-role');
+  for (const role of ['customer', 'employee'] as const) {
+    const redirects: string[] = [];
+    await enforcePrivilegedSession(
+      { ...session(role), mfaEnrolled: false, aal: 'aal1' },
+      {
+        redirect: (path) => {
+          redirects.push(path);
+          throw new Error('REDIRECT');
+        },
+      },
+    );
+    assert.deepEqual(redirects, []);
+  }
+});
