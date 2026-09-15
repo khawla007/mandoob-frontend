@@ -8,6 +8,8 @@ import { ApiError } from '@/lib/errors';
 import {
   createBlogTerm,
   getAdminBlogPost,
+  listAdminBlogPostsPage,
+  listPublishedBlogPostsPage,
   mapBlogMediaRow,
   mapBlogPostRow,
   mapBlogTermRow,
@@ -400,6 +402,75 @@ test('mapBlogPostRow converts database fields to blog post shape', () => {
       createdAt: '2026-07-01T07:00:00.000Z',
       updatedAt: '2026-07-01T09:00:00.000Z',
     },
+  );
+});
+
+test('blog list pages apply bounded database pagination, search, count, and stable ordering', async () => {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  const row = {
+    id: '00000000-0000-4000-8000-000000000020',
+    slug: 'mainland-setup-guide',
+    title: 'Mainland setup guide',
+    excerpt: 'Setup overview',
+    content_json: { type: 'doc' },
+    content_html: '<p>Setup overview</p>',
+    status: 'published',
+    published_at: '2026-07-01T08:00:00.000Z',
+    scheduled_for: null,
+    meta_title: null,
+    meta_description: null,
+    canonical_url: null,
+    noindex: false,
+    featured_media_id: null,
+    author_id: null,
+    created_by: null,
+    updated_by: null,
+    deleted_at: null,
+    created_at: '2026-07-01T07:00:00.000Z',
+    updated_at: '2026-07-01T09:00:00.000Z',
+  };
+  const builder: Record<string, unknown> = {};
+  for (const method of ['select', 'eq', 'is', 'not', 'lte', 'order', 'or', 'range']) {
+    builder[method] = (...args: unknown[]) => {
+      calls.push({ method, args });
+      return builder;
+    };
+  }
+  builder.then = (resolve: (value: unknown) => void) =>
+    resolve({ data: [row], error: null, count: 37 });
+  const supabase = { from: () => builder };
+
+  const published = await listPublishedBlogPostsPage(
+    { page: 2, pageSize: 12, q: ' Setup%,_ ' },
+    { supabase: supabase as never, now: new Date('2026-07-02T00:00:00.000Z') },
+  );
+  assert.equal(published.total, 37);
+  assert.equal(published.items[0]?.slug, 'mainland-setup-guide');
+  assert.ok(calls.some((call) => call.method === 'select' && call.args[1] != null));
+  assert.ok(
+    calls.some(
+      (call) =>
+        call.method === 'or' && call.args[0] === 'title.ilike.%setup%,excerpt.ilike.%setup%',
+    ),
+  );
+  assert.deepEqual(
+    calls.filter((call) => call.method === 'order').map((call) => call.args[0]),
+    ['published_at', 'id'],
+  );
+  assert.ok(
+    calls.some((call) => call.method === 'range' && call.args[0] === 12 && call.args[1] === 23),
+  );
+
+  calls.length = 0;
+  await listAdminBlogPostsPage({ page: 999, pageSize: 500 }, { supabase: supabase as never });
+  assert.deepEqual(
+    calls.filter((call) => call.method === 'order').map((call) => call.args[0]),
+    ['updated_at', 'id'],
+  );
+  assert.ok(
+    calls.some(
+      (call) => call.method === 'range' && Number(call.args[1]) - Number(call.args[0]) === 99,
+    ),
   );
 });
 

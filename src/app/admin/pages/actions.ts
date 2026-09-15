@@ -4,7 +4,7 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
-import { requireRole } from '@/lib/auth/require-role';
+import { requireAal2, requireRole } from '@/lib/auth/require-role';
 import { getAdminCmsPage, softDeleteCmsPage, upsertCmsPage } from '@/lib/data/pages';
 import {
   runDeleteCmsPageAction,
@@ -18,6 +18,7 @@ export type { ActionResult } from './action-logic';
 
 async function requireCmsPageAdminActor(): Promise<CmsPageAdminActor> {
   const session = await requireRole('super_admin', 'admin');
+  await requireAal2(session);
   return { id: session.id, role: session.role as CmsPageAdminActor['role'] };
 }
 

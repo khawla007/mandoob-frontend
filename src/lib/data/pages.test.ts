@@ -562,6 +562,11 @@ test('published sitemap list returns only public columns in deterministic order'
   assert.ok(
     db.calls.some((c) => c.method === 'select' && c.args[0] === 'slug, updated_at, noindex'),
   );
+  assert.deepEqual(
+    db.calls.filter((call) => call.method === 'order').map((call) => call.args[0]),
+    ['updated_at', 'slug'],
+  );
+  assert.ok(db.calls.some((call) => call.method === 'range' && call.args[0] === 0));
 });
 
 test('published sitemap list rejects malformed projection rows', async () => {

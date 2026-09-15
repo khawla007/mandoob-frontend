@@ -386,16 +386,24 @@ export async function listPublishedCmsPages(
 ): Promise<Array<{ slug: string; updatedAt: string; noindex: boolean }>> {
   const db = await getSupabase(deps);
   const now = (deps.now ?? new Date()).toISOString();
-  const { data, error } = await db
-    .from('cms_pages')
-    .select('slug, updated_at, noindex')
-    .eq('status', 'published')
-    .is('deleted_at', null)
-    .lte('published_at', now)
-    .order('updated_at', { ascending: false })
-    .order('slug', { ascending: true });
-  throwQueryError(error, 'Unable to list published CMS pages');
-  return ((data ?? []) as unknown[]).flatMap((value) => {
+  const values: unknown[] = [];
+  const batchSize = 1_000;
+  for (let from = 0; from < 10_000_000; from += batchSize) {
+    const { data, error, count } = await db
+      .from('cms_pages')
+      .select('slug, updated_at, noindex', { count: 'exact' })
+      .eq('status', 'published')
+      .is('deleted_at', null)
+      .lte('published_at', now)
+      .order('updated_at', { ascending: false })
+      .order('slug', { ascending: true })
+      .range(from, from + batchSize - 1);
+    throwQueryError(error, 'Unable to list published CMS pages');
+    const batch = (data ?? []) as unknown[];
+    values.push(...batch);
+    if (batch.length < batchSize || (count != null && values.length >= count)) break;
+  }
+  return values.flatMap((value) => {
     const parsed = sitemapRowSchema.safeParse(value);
     if (!parsed.success) throw new ApiError('INVALID_DATA', 'CMS sitemap data is malformed', 500);
     try {

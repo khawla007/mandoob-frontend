@@ -5,35 +5,30 @@ import { cache } from 'react';
 
 import { PublicContentState } from '@/components/public-content/PublicContentState';
 import { getBlogCoverImage } from '@/lib/blog/cover-image';
-import {
-  blogPageHref,
-  filterBlogPosts,
-  normalizeBlogQuery,
-  parseBlogPage,
-  resolveBlogIndex,
-} from '@/lib/blog/public-presentation';
-import { listPublishedBlogPosts, type BlogPost } from '@/lib/data/blog';
-import { withDevelopmentCollectionEvidence } from '@/lib/public-content/development-evidence';
+import { blogPageHref, normalizeBlogQuery, parseBlogPage } from '@/lib/blog/public-presentation';
+import { listPublishedBlogPostsPage, type BlogListPage, type BlogPost } from '@/lib/data/blog';
 import { buildPublicMetadata, buildUnavailableMetadata } from '@/lib/public-metadata';
 
 const BLOG_POSTS_PER_PAGE = 12;
-const loadPublishedBlogPosts = cache(
-  withDevelopmentCollectionEvidence(listPublishedBlogPosts, {
-    nodeEnv: process.env.NODE_ENV,
-    mode: process.env.P107_BLOG_INDEX_EVIDENCE_STATE,
-  }),
+const loadPublishedBlogPostsPage = cache((page: number, q: string) =>
+  listPublishedBlogPostsPage({ page, pageSize: BLOG_POSTS_PER_PAGE, q }),
 );
 type SearchParams = Record<string, string | string[] | undefined>;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const state = await resolveBlogIndex(loadPublishedBlogPosts);
+  let available = true;
+  try {
+    await loadPublishedBlogPostsPage(1, '');
+  } catch {
+    available = false;
+  }
   const input = {
     title: 'UAE Business Blog',
     description:
       'Published guidance for UAE Company setup, licensing, renewals, compliance, and PRO operations.',
     canonical: '/blog',
   };
-  return state.status === 'unavailable'
+  return !available
     ? buildUnavailableMetadata({ ...input, title: 'Blog unavailable' })
     : buildPublicMetadata(input);
 }
@@ -41,21 +36,21 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function BlogPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const query = normalizeBlogQuery(firstValue(params.q));
-  const state = await resolveBlogIndex(loadPublishedBlogPosts);
-
-  let filteredPosts: BlogPost[] = [];
-  let currentPage = 1;
-  let totalPages = 1;
-  let pagePosts: BlogPost[] = [];
-  if (state.status === 'ready') {
-    filteredPosts = filterBlogPosts(state.data, query);
-    totalPages = Math.max(1, Math.ceil(filteredPosts.length / BLOG_POSTS_PER_PAGE));
-    currentPage = parseBlogPage(params.page, totalPages);
-    pagePosts = filteredPosts.slice(
-      (currentPage - 1) * BLOG_POSTS_PER_PAGE,
-      currentPage * BLOG_POSTS_PER_PAGE,
-    );
+  const requestedPage = parseBlogPage(params.page, 10_000);
+  let result: BlogListPage | null = null;
+  try {
+    result = await loadPublishedBlogPostsPage(requestedPage, query);
+    const availablePages = Math.max(1, Math.ceil(result.total / BLOG_POSTS_PER_PAGE));
+    if (requestedPage > availablePages) {
+      result = await loadPublishedBlogPostsPage(availablePages, query);
+    }
+  } catch {
+    result = null;
   }
+  const total = result?.total ?? 0;
+  const currentPage = result?.page ?? 1;
+  const totalPages = Math.max(1, Math.ceil(total / BLOG_POSTS_PER_PAGE));
+  const pagePosts = result?.items ?? [];
 
   return (
     <>
@@ -91,7 +86,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
                 </button>
               </div>
               <p id="blog-search-help" className="micro">
-                Search uses only the currently loaded public article titles and summaries.
+                Search is applied to all published article titles and summaries.
               </p>
             </form>
           </div>
@@ -111,13 +106,13 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
               </Link>
             ) : null}
           </div>
-          {state.status === 'ready' ? (
+          {result ? (
             <p id="blog-search-status" className="sr-only" aria-live="polite">
-              {filteredPosts.length} {filteredPosts.length === 1 ? 'article' : 'articles'} found.
+              {total} {total === 1 ? 'article' : 'articles'} found.
             </p>
           ) : null}
 
-          {state.status === 'unavailable' ? (
+          {!result ? (
             <PublicContentState
               eyebrow="Temporarily unavailable"
               title="The Blog could not be loaded."
@@ -127,7 +122,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
               retry
             />
           ) : null}
-          {state.status === 'empty' ? (
+          {result && total === 0 && !query ? (
             <PublicContentState
               eyebrow="No published articles"
               title="There are no public Blog articles yet."
@@ -136,7 +131,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
               recoveryLabel="Browse the Knowledge Base"
             />
           ) : null}
-          {state.status === 'ready' && filteredPosts.length === 0 ? (
+          {result && total === 0 && query ? (
             <PublicContentState
               eyebrow="No matching articles"
               title="No matching articles were found."
@@ -145,7 +140,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
               recoveryLabel="Clear search"
             />
           ) : null}
-          {state.status === 'ready' && pagePosts.length > 0 ? (
+          {result && pagePosts.length > 0 ? (
             <>
               <FeaturedPost post={pagePosts[0]!} />
               {pagePosts.length > 1 ? (

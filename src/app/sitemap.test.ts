@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import sitemap, { buildPublicSitemap, getAuthoritySlugs, loadSitemapContent } from './sitemap';
-import { seededCostDataRows } from '@/lib/estimator/seed-data';
+import sitemap, { buildPublicSitemap, loadSitemapContent } from './sitemap';
 
 const origin = 'https://mandoob.test';
 
@@ -181,11 +180,13 @@ test('sitemap content loads blog and CMS sources independently and logs sanitize
     listCmsPages: async () => [
       { slug: 'about-weelp', updatedAt: '2026-07-08T09:15:00.000Z', noindex: false },
     ],
+    listAuthoritySlugs: async () => ['dmcc'],
     warn: (...args: unknown[]) => warnings.push(args),
   });
 
   assert.deepEqual(result.blogPosts, []);
   assert.equal(result.cmsPages[0]?.slug, 'about-weelp');
+  assert.deepEqual(result.authoritySlugs, ['dmcc']);
   assert.deepEqual(warnings, [['Could not load blog posts for sitemap']]);
 });
 
@@ -195,6 +196,7 @@ test('sitemap content preserves blog posts when CMS loading fails', async () => 
     listCmsPages: async () => {
       throw new Error('secret database details');
     },
+    listAuthoritySlugs: async () => [],
     warn: () => undefined,
   });
 
@@ -202,21 +204,38 @@ test('sitemap content preserves blog posts when CMS loading fails', async () => 
   assert.deepEqual(result.cmsPages, []);
 });
 
-test('public sitemap covers every estimator authority company setup page', () => {
-  const authoritySlugs = getAuthoritySlugs(seededCostDataRows);
-  const entries = buildPublicSitemap({ origin, knowledgeBaseArticleSlugs: [] });
+test('public sitemap includes only approved catalog authority slugs', () => {
+  const entries = buildPublicSitemap({
+    origin,
+    knowledgeBaseArticleSlugs: [],
+    authoritySlugs: ['dmcc', 'dubai-ded'],
+  });
   const sitemapPaths = paths(entries);
 
-  assert.equal(
-    sitemapPaths.filter((path) => path.startsWith('/company-setup/')).length,
-    authoritySlugs.length,
-  );
+  assert.equal(sitemapPaths.filter((path) => path.startsWith('/company-setup/')).length, 2);
   assert.ok(sitemapPaths.includes('/company-setup/dmcc'));
   assert.ok(sitemapPaths.includes('/company-setup/dubai-ded'));
-  assert.deepEqual(
-    authoritySlugs
-      .map((slug) => `/company-setup/${slug}`)
-      .filter((path) => !sitemapPaths.includes(path)),
-    [],
+});
+
+test('public sitemap exposes no estimator-seed authority routes when catalog is empty', () => {
+  const entries = buildPublicSitemap({ origin, knowledgeBaseArticleSlugs: [] });
+  assert.equal(
+    paths(entries).some((path) => path.startsWith('/company-setup/')),
+    false,
   );
+});
+
+test('sitemap catalog failure is isolated and warning omits exception details', async () => {
+  const warnings: unknown[][] = [];
+  const result = await loadSitemapContent({
+    listBlogPosts: async () => [],
+    listCmsPages: async () => [],
+    listAuthoritySlugs: async () => {
+      throw new Error('secret catalog connection string');
+    },
+    warn: (...args: unknown[]) => warnings.push(args),
+  });
+
+  assert.deepEqual(result.authoritySlugs, []);
+  assert.deepEqual(warnings, [['Could not load public catalog authorities for sitemap']]);
 });

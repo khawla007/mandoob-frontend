@@ -4,7 +4,7 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { z, ZodError } from 'zod';
 import { normalizeBlogSlug } from '@/lib/blog/slug';
-import { requireRole } from '@/lib/auth/require-role';
+import { requireAal2, requireRole } from '@/lib/auth/require-role';
 import {
   createBlogTerm,
   deleteBlogTerm,
@@ -92,6 +92,7 @@ function parseContentJson(formData: FormData): Record<string, unknown> {
 
 async function requireBlogAdminActor(): Promise<BlogAdminActor> {
   const session = await requireRole('super_admin', 'admin');
+  await requireAal2(session);
   return {
     id: session.id,
     role: session.role as 'super_admin' | 'admin',

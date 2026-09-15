@@ -88,7 +88,7 @@ export default async function CostDataPage({
             renderActions={(row) => (
               <div className="flex justify-end gap-2">
                 <CostDataDialog mode="edit" row={row} />
-                <CostDataStatusButton id={row.id} active={row.active} />
+                <CostDataStatusButton id={row.id} active={row.active} rowVersion={row.rowVersion} />
               </div>
             )}
           />

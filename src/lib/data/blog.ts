@@ -43,6 +43,7 @@ type SupabaseLike = {
 type SupabaseQueryResult = {
   data: unknown;
   error: { message: string } | null;
+  count?: number | null;
 };
 
 type SupabaseQueryLike = PromiseLike<SupabaseQueryResult> & {
@@ -52,6 +53,8 @@ type SupabaseQueryLike = PromiseLike<SupabaseQueryResult> & {
   is: (column: string, value: unknown) => SupabaseQueryLike;
   not: (column: string, operator: string, value: unknown) => SupabaseQueryLike;
   lte: (column: string, value: unknown) => SupabaseQueryLike;
+  or: (filters: string) => SupabaseQueryLike;
+  range: (from: number, to: number) => SupabaseQueryLike;
   maybeSingle: () => Promise<SupabaseQueryResult>;
   single: () => Promise<SupabaseQueryResult>;
   insert: (payload: unknown) => SupabaseQueryLike;
@@ -195,6 +198,14 @@ type BlogPostGalleryItemRow = {
 
 type Deps = {
   supabase?: SupabaseLike;
+  now?: Date;
+};
+
+export type BlogListPage = {
+  items: BlogPost[];
+  page: number;
+  pageSize: number;
+  total: number;
 };
 
 type UploadDeps = Deps & {
@@ -431,15 +442,60 @@ export async function deleteBlogTerm(id: string, actor: BlogActor, deps: Deps = 
   handleError(error, 'Could not delete blog term');
 }
 
-export async function listAdminBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+function normalizeBlogListInput(input: { page?: number; pageSize?: number; q?: string }) {
+  const page =
+    Number.isInteger(input.page) && Number(input.page) > 0
+      ? Math.min(Number(input.page), 10_000)
+      : 1;
+  const pageSize =
+    Number.isInteger(input.pageSize) && Number(input.pageSize) > 0
+      ? Math.min(Number(input.pageSize), 100)
+      : 24;
+  const q = (input.q ?? '')
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/[%_,]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+    .trim();
+  return { page, pageSize, q };
+}
+
+export async function listAdminBlogPostsPage(
+  input: { page?: number; pageSize?: number; q?: string } = {},
+  deps: Deps = {},
+): Promise<BlogListPage> {
+  const normalized = normalizeBlogListInput(input);
   const supabase = await getSupabase(deps);
-  const { data, error } = await supabase
+  let query = supabase
     .from('blog_posts')
-    .select(BLOG_POST_COLUMNS)
+    .select(BLOG_POST_COLUMNS, { count: 'exact' })
     .is('deleted_at', null)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .order('id', { ascending: true });
+  if (normalized.q)
+    query = query.or(`title.ilike.%${normalized.q}%,excerpt.ilike.%${normalized.q}%`);
+  const from = (normalized.page - 1) * normalized.pageSize;
+  const { data, error, count } = await query.range(from, from + normalized.pageSize - 1);
   handleError(error, 'Could not list blog posts');
-  return ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow);
+  return {
+    items: ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow),
+    page: normalized.page,
+    pageSize: normalized.pageSize,
+    total: Math.max(0, count ?? 0),
+  };
+}
+
+export async function listAdminBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+  const result: BlogPost[] = [];
+  for (let page = 1; page <= 10_000; page += 1) {
+    const batch = await listAdminBlogPostsPage({ page, pageSize: 100 }, deps);
+    result.push(...batch.items);
+    if (page * batch.pageSize >= batch.total) break;
+  }
+  return result;
 }
 
 export async function getAdminBlogPost(id: string, deps: Deps = {}): Promise<BlogPost | null> {
@@ -606,18 +662,42 @@ export async function softDeleteBlogPost(
   handleError(error, 'Could not delete blog post');
 }
 
-export async function listPublishedBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+export async function listPublishedBlogPostsPage(
+  input: { page?: number; pageSize?: number; q?: string } = {},
+  deps: Deps = {},
+): Promise<BlogListPage> {
+  const normalized = normalizeBlogListInput(input);
   const supabase = await getSupabase(deps);
-  const { data, error } = await supabase
+  let query = supabase
     .from('blog_posts')
-    .select(BLOG_POST_COLUMNS)
+    .select(BLOG_POST_COLUMNS, { count: 'exact' })
     .eq('status', 'published')
     .is('deleted_at', null)
     .not('published_at', 'is', null)
-    .lte('published_at', new Date().toISOString())
-    .order('published_at', { ascending: false });
+    .lte('published_at', (deps.now ?? new Date()).toISOString())
+    .order('published_at', { ascending: false })
+    .order('id', { ascending: true });
+  if (normalized.q)
+    query = query.or(`title.ilike.%${normalized.q}%,excerpt.ilike.%${normalized.q}%`);
+  const from = (normalized.page - 1) * normalized.pageSize;
+  const { data, error, count } = await query.range(from, from + normalized.pageSize - 1);
   handleError(error, 'Could not list published blog posts');
-  return ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow);
+  return {
+    items: ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow),
+    page: normalized.page,
+    pageSize: normalized.pageSize,
+    total: Math.max(0, count ?? 0),
+  };
+}
+
+export async function listPublishedBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+  const result: BlogPost[] = [];
+  for (let page = 1; page <= 10_000; page += 1) {
+    const batch = await listPublishedBlogPostsPage({ page, pageSize: 100 }, deps);
+    result.push(...batch.items);
+    if (page * batch.pageSize >= batch.total) break;
+  }
+  return result;
 }
 
 export async function getPublishedBlogPostBySlug(

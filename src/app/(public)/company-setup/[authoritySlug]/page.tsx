@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { PublicContentState } from '@/components/public-content/PublicContentState';
 import {
   authoritySetupPages,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/knowledge-base';
 import { resolveAuthoritySourcePresentation } from '@/lib/public-content/development-evidence';
 import { buildUnavailableMetadata } from '@/lib/public-metadata';
+import { listPublicCatalog } from '@/lib/data/public-catalog';
 
 type Params = { authoritySlug: string };
 
@@ -37,6 +39,20 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
   if (!page || presentation.status === 'missing') notFound();
   if (presentation.status === 'unavailable') return buildUnavailableMetadata(presentation.metadata);
+  const catalog = await loadAuthorityCatalog(authoritySlug);
+  const catalogAuthority = catalog.state === 'ready' ? catalog.items[0] : null;
+  if (
+    catalog.state !== 'ready' ||
+    !catalogAuthority ||
+    catalogAuthority.name !== page.authority ||
+    catalogAuthority.jurisdiction !== page.jurisdiction
+  ) {
+    return buildUnavailableMetadata({
+      title: 'Authority guide unavailable',
+      description: 'This authority setup guide is temporarily unavailable.',
+      canonical: `/company-setup/${authoritySlug}`,
+    });
+  }
 
   return {
     title: `${page.authority} Company Setup Cost Guide | Mandoob`,
@@ -61,6 +77,26 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
 
   if (!page || presentation.status === 'missing') notFound();
   if (presentation.status === 'unavailable') {
+    return (
+      <PublicContentState
+        eyebrow="Authority guide unavailable"
+        title="This authority setup guide could not be loaded."
+        description="The public authority source is temporarily unavailable. No estimated fees, timeline, documents, or internal error details are being shown."
+        recoveryHref={`/company-setup/${encodeURIComponent(authoritySlug)}`}
+        recoveryLabel="Try again"
+        retry
+        headingLevel="h1"
+      />
+    );
+  }
+  const catalog = await loadAuthorityCatalog(authoritySlug);
+  const catalogAuthority = catalog.state === 'ready' ? catalog.items[0] : null;
+  if (
+    catalog.state !== 'ready' ||
+    !catalogAuthority ||
+    catalogAuthority.name !== page.authority ||
+    catalogAuthority.jurisdiction !== page.jurisdiction
+  ) {
     return (
       <PublicContentState
         eyebrow="Authority guide unavailable"
@@ -245,6 +281,10 @@ export default async function AuthoritySetupPage({ params }: { params: Promise<P
     </>
   );
 }
+
+const loadAuthorityCatalog = cache((authoritySlug: string) =>
+  listPublicCatalog('authorities', { authoritySlug, page: 1, pageSize: 1 }),
+);
 
 function authorityPresentation(authoritySlug: string, pageExists: boolean) {
   return resolveAuthoritySourcePresentation({

@@ -38,10 +38,16 @@ test('parseAedToMinor converts AED strings to minor units', () => {
 });
 
 test('createCostDataSchema normalizes optional fields and document keys', () => {
-  const parsed = createCostDataSchema.parse(validInput);
+  const parsed = createCostDataSchema.parse({
+    ...validInput,
+    sourceId: '20000000-0000-4000-8000-000000000001',
+    catalogVersionId: '20000000-0000-4000-8000-000000000002',
+    catalogAuthorityId: '20000000-0000-4000-8000-000000000003',
+  });
   assert.equal(parsed.amount, 125050);
   assert.equal(parsed.validTo, null);
   assert.deepEqual(parsed.requiredDocumentKeys, ['passport', 'trade_name']);
+  assert.equal(parsed.catalogVersionId, '20000000-0000-4000-8000-000000000002');
 });
 
 test('createCostDataSchema preserves false boolean strings', () => {
@@ -73,6 +79,41 @@ test('parseCostDataCsv reports row-numbered validation errors', () => {
   );
   assert.equal(result.ok, false);
   if (!result.ok) assert.match(result.errors[0], /Row 2/);
+});
+
+test('parseCostDataCsv rejects oversized, formula, duplicate, and unexpected-column imports', () => {
+  const header =
+    'jurisdiction,authority,fee_type,label,amount_aed,currency,recurrence,min_shareholders,max_shareholders,min_visas,max_visas,timeline_min_days,timeline_max_days,valid_from';
+  const row = 'free_zone,DMCC,license,License,0,AED,one_time,1,50,0,2,1,3,2026-01-01';
+
+  const oversized = parseCostDataCsv(`${header}\n${'a'.repeat(1_048_577)}`);
+  assert.equal(oversized.ok, false);
+  if (!oversized.ok) assert.match(oversized.errors[0] ?? '', /size limit/i);
+
+  const formula = parseCostDataCsv(`${header}\n${row.replace('DMCC', '=HYPERLINK("bad")')}`);
+  assert.equal(formula.ok, false);
+  if (!formula.ok) assert.match(formula.errors[0] ?? '', /formula/i);
+
+  const duplicate = parseCostDataCsv(`${header}\n${row}\n${row}`);
+  assert.equal(duplicate.ok, false);
+  if (!duplicate.ok) assert.match(duplicate.errors[0] ?? '', /duplicate/i);
+
+  const unexpected = parseCostDataCsv(`${header},internal_note\n${row},secret`);
+  assert.equal(unexpected.ok, false);
+  if (!unexpected.ok) assert.match(unexpected.errors[0] ?? '', /header/i);
+});
+
+test('parseCostDataCsv rejects imports above the deterministic row limit', () => {
+  const header =
+    'jurisdiction,authority,fee_type,label,amount_aed,currency,recurrence,min_shareholders,max_shareholders,min_visas,max_visas,timeline_min_days,timeline_max_days,valid_from';
+  const rows = Array.from(
+    { length: 1001 },
+    (_, index) =>
+      `free_zone,Authority ${index},license,License,0,AED,one_time,1,50,0,2,1,3,2026-01-01`,
+  );
+  const result = parseCostDataCsv([header, ...rows].join('\n'));
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.errors[0] ?? '', /row limit/i);
 });
 
 test('costDataRowsToCsv exports escaped AED rows', () => {

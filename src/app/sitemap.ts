@@ -1,8 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { listPublishedBlogPosts } from '@/lib/data/blog';
 import { listPublishedCmsPages } from '@/lib/data/pages';
-import { seededCostDataRows } from '@/lib/estimator/seed-data';
-import { authoritySlugFor, knowledgeBaseArticles } from '@/lib/knowledge-base';
+import { listPublicCatalog } from '@/lib/data/public-catalog';
+import { knowledgeBaseArticles } from '@/lib/knowledge-base';
 import { legalCmsPagePath } from '@/lib/pages/legal';
 import { assertPageSlugAvailable, normalizePageSlug } from '@/lib/pages/slug';
 
@@ -25,10 +25,20 @@ type SitemapInput = {
   knowledgeBaseArticleSlugs?: string[];
   blogPosts?: SitemapBlogPost[];
   cmsPages?: SitemapCmsPage[];
+  authoritySlugs?: string[];
 };
 
-export function getAuthoritySlugs(rows = seededCostDataRows): string[] {
-  return [...new Set(rows.map((row) => authoritySlugFor(row.authority)))].sort();
+async function listPublishedAuthoritySlugs(): Promise<string[]> {
+  const slugs: string[] = [];
+  let page = 1;
+  while (true) {
+    const result = await listPublicCatalog('authorities', { page, pageSize: 100 });
+    if (result.state !== 'ready') return [];
+    slugs.push(...result.items.map((row) => row.slug));
+    if (page * result.pageSize >= result.total) break;
+    page += 1;
+  }
+  return [...new Set(slugs)].sort();
 }
 
 function canonicalCmsSlug(slug: string): string | null {
@@ -45,6 +55,7 @@ export function buildPublicSitemap({
   knowledgeBaseArticleSlugs = knowledgeBaseArticles.map((article) => article.slug),
   blogPosts = [],
   cmsPages = [],
+  authoritySlugs = [],
 }: SitemapInput = {}): MetadataRoute.Sitemap {
   const base = origin.replace(/\/+$/, '');
   const staticPaths = [
@@ -61,7 +72,7 @@ export function buildPublicSitemap({
     '/contact',
   ];
   const articlePaths = knowledgeBaseArticleSlugs.map((slug) => `/knowledge-base/${slug}`);
-  const authorityPaths = getAuthoritySlugs().map((slug) => `/company-setup/${slug}`);
+  const authorityPaths = authoritySlugs.map((slug) => `/company-setup/${slug}`);
   const staticEntries = [...staticPaths, ...articlePaths, ...authorityPaths].map((path) => ({
     url: `${base}${path}`,
     lastModified: new Date('2026-05-08'),
@@ -109,14 +120,20 @@ export function buildPublicSitemap({
 type SitemapLoaders = {
   listBlogPosts?: () => Promise<SitemapBlogPost[]>;
   listCmsPages?: () => Promise<SitemapCmsPage[]>;
+  listAuthoritySlugs?: () => Promise<string[]>;
   warn?: (...args: unknown[]) => void;
 };
 
 export async function loadSitemapContent({
   listBlogPosts = listPublishedBlogPosts,
   listCmsPages = listPublishedCmsPages,
+  listAuthoritySlugs = listPublishedAuthoritySlugs,
   warn = console.warn,
-}: SitemapLoaders = {}): Promise<{ blogPosts: SitemapBlogPost[]; cmsPages: SitemapCmsPage[] }> {
+}: SitemapLoaders = {}): Promise<{
+  blogPosts: SitemapBlogPost[];
+  cmsPages: SitemapCmsPage[];
+  authoritySlugs: string[];
+}> {
   let blogPosts: SitemapBlogPost[] = [];
   try {
     blogPosts = await listBlogPosts();
@@ -131,7 +148,14 @@ export async function loadSitemapContent({
     warn('Could not load CMS pages for sitemap');
   }
 
-  return { blogPosts, cmsPages };
+  let authoritySlugs: string[] = [];
+  try {
+    authoritySlugs = await listAuthoritySlugs();
+  } catch {
+    warn('Could not load public catalog authorities for sitemap');
+  }
+
+  return { blogPosts, cmsPages, authoritySlugs };
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

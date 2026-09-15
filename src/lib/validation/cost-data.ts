@@ -22,6 +22,10 @@ const nullableText = z
   .transform((value) => (value.length === 0 ? null : value))
   .nullable()
   .optional();
+const nullableUuid = z
+  .union([z.string().uuid(), z.literal(''), z.null()])
+  .optional()
+  .transform((value) => value || null);
 
 export function parseAedToMinor(value: string | number): number {
   if (typeof value === 'number') {
@@ -93,6 +97,9 @@ export const costDataBaseSchema = z
       .union([dateSchema, z.literal(''), z.null()])
       .optional()
       .transform((value) => value || null),
+    sourceId: nullableUuid,
+    catalogVersionId: nullableUuid,
+    catalogAuthorityId: nullableUuid,
   })
   .superRefine((value, ctx) => {
     if (value.minShareholders > value.maxShareholders) {
@@ -123,6 +130,14 @@ export const costDataBaseSchema = z
         message: 'Valid to must be on or after valid from',
       });
     }
+    const provenance = [value.sourceId, value.catalogVersionId, value.catalogAuthorityId];
+    if (provenance.some(Boolean) && !provenance.every(Boolean)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['sourceId'],
+        message: 'Source, catalog version, and catalog authority IDs must be supplied together',
+      });
+    }
   });
 
 export const createCostDataSchema = costDataBaseSchema;
@@ -135,6 +150,48 @@ export type ParsedCostDataInput = z.output<typeof createCostDataSchema>;
 export type CostDataCsvParseResult =
   | { ok: true; rows: ParsedCostDataInput[] }
   | { ok: false; errors: string[] };
+
+export const MAX_COST_DATA_CSV_BYTES = 1_048_576;
+export const MAX_COST_DATA_CSV_ROWS = 1_000;
+const COST_DATA_CSV_HEADERS = [
+  'jurisdiction',
+  'authority',
+  'emirate',
+  'activity_key',
+  'fee_type',
+  'label',
+  'amount_aed',
+  'currency',
+  'recurrence',
+  'min_shareholders',
+  'max_shareholders',
+  'min_visas',
+  'max_visas',
+  'timeline_min_days',
+  'timeline_max_days',
+  'required_document_keys',
+  'estimate_grade',
+  'active',
+  'valid_from',
+  'valid_to',
+  'source_id',
+  'catalog_version_id',
+  'catalog_authority_id',
+] as const;
+const REQUIRED_COST_DATA_CSV_HEADERS = COST_DATA_CSV_HEADERS.filter(
+  (header) =>
+    ![
+      'emirate',
+      'activity_key',
+      'required_document_keys',
+      'estimate_grade',
+      'active',
+      'valid_to',
+      'source_id',
+      'catalog_version_id',
+      'catalog_authority_id',
+    ].includes(header),
+);
 
 export type CostDataCsvExportRow = {
   id: string;
@@ -158,22 +215,49 @@ export type CostDataCsvExportRow = {
   active: boolean;
   validFrom: string;
   validTo: string | null;
+  sourceId?: string | null;
+  catalogVersionId?: string | null;
+  catalogAuthorityId?: string | null;
 };
 
 export function parseCostDataCsv(text: string): CostDataCsvParseResult {
+  if (new TextEncoder().encode(text).byteLength > MAX_COST_DATA_CSV_BYTES) {
+    return { ok: false, errors: [`CSV exceeds the ${MAX_COST_DATA_CSV_BYTES}-byte size limit`] };
+  }
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
   if (lines.length < 2)
     return { ok: false, errors: ['CSV must include a header and at least one row'] };
+  if (lines.length - 1 > MAX_COST_DATA_CSV_ROWS) {
+    return { ok: false, errors: [`CSV exceeds the ${MAX_COST_DATA_CSV_ROWS}-row limit`] };
+  }
 
   const headers = splitCsvLine(lines[0]).map((header) => header.trim());
+  const unexpected = headers.filter(
+    (header, index) =>
+      !COST_DATA_CSV_HEADERS.includes(header as (typeof COST_DATA_CSV_HEADERS)[number]) ||
+      headers.indexOf(header) !== index,
+  );
+  const missing = REQUIRED_COST_DATA_CSV_HEADERS.filter((header) => !headers.includes(header));
+  if (unexpected.length || missing.length) {
+    return { ok: false, errors: ['CSV header is invalid or incomplete'] };
+  }
   const rows: ParsedCostDataInput[] = [];
   const errors: string[] = [];
+  const logicalKeys = new Set<string>();
 
   for (const [index, line] of lines.slice(1).entries()) {
     const values = splitCsvLine(line);
+    if (values.length !== headers.length) {
+      errors.push(`Row ${index + 2}: column count does not match header`);
+      continue;
+    }
+    if (values.some((value) => /^[\s]*[=+\-@]/u.test(value))) {
+      errors.push(`Row ${index + 2}: spreadsheet formula values are not allowed`);
+      continue;
+    }
     const raw = Object.fromEntries(
       headers.map((header, valueIndex) => [header, values[valueIndex] ?? '']),
     );
@@ -198,9 +282,25 @@ export function parseCostDataCsv(text: string): CostDataCsvParseResult {
       active: raw.active || 'true',
       validFrom: raw.valid_from,
       validTo: raw.valid_to,
+      sourceId: raw.source_id,
+      catalogVersionId: raw.catalog_version_id,
+      catalogAuthorityId: raw.catalog_authority_id,
     });
     if (parsed.success) {
-      rows.push(parsed.data);
+      const key = [
+        parsed.data.jurisdiction,
+        parsed.data.authority.toLocaleLowerCase('en'),
+        parsed.data.emirate ?? '',
+        parsed.data.activityKey ?? '',
+        parsed.data.feeType,
+        parsed.data.validFrom,
+      ].join('\u0000');
+      if (logicalKeys.has(key)) {
+        errors.push(`Row ${index + 2}: duplicate logical cost-data row`);
+      } else {
+        logicalKeys.add(key);
+        rows.push(parsed.data);
+      }
     } else {
       errors.push(`Row ${index + 2}: ${parsed.error.issues[0].message}`);
     }
@@ -256,6 +356,9 @@ export function costDataRowsToCsv(rows: CostDataCsvExportRow[]): string {
     'active',
     'valid_from',
     'valid_to',
+    'source_id',
+    'catalog_version_id',
+    'catalog_authority_id',
   ];
   const lines = rows.map((row) =>
     [
@@ -280,6 +383,9 @@ export function costDataRowsToCsv(rows: CostDataCsvExportRow[]): string {
       row.active,
       row.validFrom,
       row.validTo ?? '',
+      row.sourceId ?? '',
+      row.catalogVersionId ?? '',
+      row.catalogAuthorityId ?? '',
     ]
       .map(csvEscape)
       .join(','),
