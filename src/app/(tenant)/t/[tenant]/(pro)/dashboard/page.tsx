@@ -285,7 +285,7 @@ export default async function ProDashboard({
               </label>
               <button
                 type="submit"
-                className="bg-primary text-primary-foreground min-h-9 self-end rounded-md px-4 text-sm font-semibold"
+                className="bg-primary text-primary-foreground min-h-11 self-end rounded-md px-4 text-sm font-semibold"
               >
                 {t('filters.apply')}
               </button>

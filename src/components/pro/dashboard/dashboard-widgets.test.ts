@@ -36,6 +36,17 @@ describe('one-Company PRO dashboard widget contracts', () => {
     assert.match(summary, /xl:grid-cols-\[1\.15fr_0\.85fr_0\.85fr_1fr\]/u);
   });
 
+  it('keeps summary helpers wrapping at full width without clipping utilities', () => {
+    const summary = source('CompanySummaryDeck');
+    const helper = summary.match(/<span className="signal-kpi__helper[^"]*"/u)?.[0] ?? '';
+
+    assert.match(helper, /\bw-full\b/u);
+    assert.match(helper, /\bwhitespace-normal\b/u);
+    assert.match(helper, /\bbreak-words\b/u);
+    assert.doesNotMatch(helper, /\btruncate\b/u);
+    assert.doesNotMatch(helper, /max-w-\[80%\]/u);
+  });
+
   it('derives bounded decorative trends from each decision source', () => {
     const summary = source('CompanySummaryDeck');
     assert.match(

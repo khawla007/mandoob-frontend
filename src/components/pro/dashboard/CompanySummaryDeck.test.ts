@@ -162,6 +162,8 @@ renderTest(
 renderTest(
   'one failed source hides its value and bars while healthy siblings remain truthful',
   async () => {
+    const unavailableMessage =
+      'Renewals are temporarily unavailable while the secure source reconnects';
     const html = await render({
       company: {
         ...company,
@@ -188,7 +190,7 @@ renderTest(
           },
         ],
       },
-      states: { renewals: { kind: 'error', message: 'Renewals temporarily unavailable' } },
+      states: { renewals: { kind: 'error', message: unavailableMessage } },
     });
     const documents = linkedCard(html, '/t/acme%20workspace/documents');
     const renewals = linkedCard(html, '/t/acme%20workspace/renewals?tab=active&amp;days=30');
@@ -197,7 +199,12 @@ renderTest(
     assert.match(documents, /<strong[^>]*>2<\/strong>/u);
     assert.equal((documents.match(/<i style="height:100%;min-height:0"><\/i>/gu) ?? []).length, 2);
     assert.match(renewals, /Unavailable/u);
-    assert.match(renewals, /Renewals temporarily unavailable/u);
+    assert.match(renewals, new RegExp(unavailableMessage, 'u'));
+    const helperClass = renewals.match(/class="(signal-kpi__helper[^"]*)"/u)?.[1] ?? '';
+    assert.match(helperClass, /\bw-full\b/u);
+    assert.match(helperClass, /\bwhitespace-normal\b/u);
+    assert.match(helperClass, /\bbreak-words\b/u);
+    assert.doesNotMatch(helperClass, /\btruncate\b|max-w-\[80%\]/u);
     assert.doesNotMatch(renewals, /signal-kpi__bars|<i\b|<strong[^>]*>5<\/strong>/u);
     assert.match(finance, /<strong[^>]*>AED(?:\u00a0| )3<\/strong>/u);
   },

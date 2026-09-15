@@ -276,6 +276,18 @@ test('dashboard keeps functional filters in a compact disclosure instead of a la
   assert.match(source, /<form[\s\S]*className="signal-dashboard__filters/);
 });
 
+test('dashboard filter and error retry controls enforce mobile touch height in markup', () => {
+  const source = readFileSync(pagePath, 'utf8');
+  const error = readFileSync(errorPath, 'utf8');
+  const applyButton = source.match(/<button\s+[\s\S]*?type="submit"[\s\S]*?<\/button>/u)?.[0] ?? '';
+  const retryButton = error.match(/<Button\b[\s\S]*?<\/Button>/u)?.[0] ?? '';
+
+  assert.match(applyButton, /className="[^"]*\bmin-h-11\b[^"]*"/u);
+  assert.doesNotMatch(applyButton, /\bmin-h-9\b/u);
+  assert.match(retryButton, /className="[^"]*\bmin-h-11\b[^"]*"/u);
+  assert.match(retryButton, /onClick=\{reset\}/u);
+});
+
 test('dashboard passes normalized service filters to application drilldown widgets', () => {
   const source = readFileSync(pagePath, 'utf8');
   for (const component of ['ActionDeck', 'DeadlineHeatmap']) {

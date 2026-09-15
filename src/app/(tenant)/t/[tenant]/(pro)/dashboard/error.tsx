@@ -19,7 +19,7 @@ export default function DashboardError({
     <div role="alert" className="signal-dashboard__state rounded-2xl border p-8 text-center">
       <h1 className="text-xl font-semibold">{t('errorBoundary.title')}</h1>
       <p className="text-muted-foreground mt-2 text-sm">{t('errorBoundary.description')}</p>
-      <Button className="mt-5" onClick={reset}>
+      <Button className="mt-5 min-h-11" onClick={reset}>
         {t('retry')}
       </Button>
     </div>

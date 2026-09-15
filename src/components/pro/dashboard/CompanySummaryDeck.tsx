@@ -128,7 +128,7 @@ export function CompanySummaryDeck({
               <strong className="block font-mono leading-none font-semibold tracking-tight tabular-nums">
                 {item.value}
               </strong>
-              <span className="signal-kpi__helper block max-w-[80%] truncate font-semibold">
+              <span className="signal-kpi__helper block w-full font-semibold break-words whitespace-normal">
                 {item.helper}
               </span>
             </span>
