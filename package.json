@@ -10,7 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed:blog-samples": "tsx scripts/seed-blog-samples.ts",
-    "test": "node --import tsx --conditions=react-server --test 'src/**/*.test.ts'",
+    "test": "node scripts/run-source-tests.mjs",
     "test:a11y": "playwright test tests/a11y",
     "lighthouse": "npm run build && lhci autorun"
   },

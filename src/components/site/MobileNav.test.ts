@@ -32,7 +32,7 @@ test('mobile navigation is controlled and closes for selection or pathname chang
 });
 
 test('desktop breakpoint listener closes and cleans up through the modern matchMedia API', () => {
-  assert.match(source, /matchMedia\('\(min-width: 1024px\)'\)/u);
+  assert.match(source, /matchMedia\('\(min-width: 1200px\)'\)/u);
   assert.match(source, /addEventListener\('change',\s*handleBreakpointChange\)/u);
   assert.match(source, /removeEventListener\('change',\s*handleBreakpointChange\)/u);
   assert.match(source, /handleBreakpointChange[^]*event\.matches[^]*setOpen\(false\)/u);
@@ -53,7 +53,7 @@ test('the portalled dialog has a full-screen, dark, logical, responsive contract
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*public-mobile-dialog/u);
   assert.match(
     css,
-    /@media\s*\(min-width:\s*1024px\)[^]*\.site-public \.nav__menu\s*\{[^}]*display:\s*none/u,
+    /@media\s*\(min-width:\s*1200px\)[^]*\.site-public \.nav__menu\s*\{[^}]*display:\s*none/u,
   );
   assert.match(
     css,
@@ -133,10 +133,12 @@ Module._load = function (request, parent, isMain) {
   const breakpointListeners = new Set<(event: MediaQueryListEvent) => void>();
   let breakpointListenerAdds = 0;
   let breakpointListenerRemoves = 0;
+  const breakpointQueries: string[] = [];
   Object.defineProperty(browser, 'matchMedia', {
     configurable: true,
-    value: (query: string) =>
-      ({
+    value: (query: string) => {
+      breakpointQueries.push(query);
+      return {
         matches: false,
         media: query,
         onchange: null,
@@ -148,7 +150,8 @@ Module._load = function (request, parent, isMain) {
           breakpointListenerRemoves += 1;
           breakpointListeners.delete(listener);
         },
-      }) as unknown as MediaQueryList,
+      } as unknown as MediaQueryList;
+    },
   });
 
   test('trigger, immediate selection, pathname closure, and account actions work at runtime', async () => {
@@ -174,6 +177,7 @@ Module._load = function (request, parent, isMain) {
     await act(() => root.render(createElement(MobileNav, props)));
     await act(() => new Promise((resolve) => setTimeout(resolve, 1)));
     assert.equal(breakpointListenerAdds, 1);
+    assert.deepEqual(breakpointQueries, ['(min-width: 1200px)']);
     const trigger = container.querySelector<HTMLButtonElement>('.nav__menu')!;
     assert.equal(trigger.getAttribute('aria-expanded'), 'false');
     assert.equal(trigger.getAttribute('aria-label'), 'Open menu');

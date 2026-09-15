@@ -674,7 +674,7 @@
     font-size: 0.6875rem;
   }
 }
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   .site-public .nav__links,
   .site-public .nav__cta {
     display: inline-flex;
