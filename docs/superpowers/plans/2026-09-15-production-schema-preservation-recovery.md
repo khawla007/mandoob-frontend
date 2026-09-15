@@ -128,7 +128,7 @@
 **Files:**
 - No source changes expected
 
-1. Verify `/api/v1/public/health` succeeds on `https://mandoob-app.netlify.app`.
+1. Verify `/api/v1/public/health` succeeds on the configured production origin.
 2. Confirm the current Netlify production deploy is ready and points to the expected `main` commit; deploy the preservation commit only if the migration-test source change requires the repository to match production operations.
 3. Perform a fresh Firm PRO browser login and confirm navigation reaches `/t/<tenant>` rather than returning to `/login`.
 4. Confirm expected MFA-enrollment behavior remains intact after authorization.
