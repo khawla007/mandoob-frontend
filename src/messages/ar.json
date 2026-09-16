@@ -5040,6 +5040,7 @@
       "pageNumber": "Page {page}",
       "showing": "Showing {from}–{to} of {total}",
       "blog": {
+        "eyebrow": "مساحة إدارة المحتوى",
         "title": "Blog",
         "description": "Manage platform articles, publishing status, search metadata, images, and galleries.",
         "new": "New post",

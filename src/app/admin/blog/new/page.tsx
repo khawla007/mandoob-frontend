@@ -11,8 +11,9 @@ export default async function NewAdminBlogPostPage() {
   const terms = await listBlogTerms();
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="admin-management-signal blog-management-workspace">
+      <div className="blog-management-heading">
+        <p className="blog-management-eyebrow">{t('eyebrow')}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{t('newTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('newDescription')}</p>
       </div>

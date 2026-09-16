@@ -119,7 +119,13 @@ function toggleInlineHeading(editor: Editor | null, level: 1 | 2 | 3 | 4): void 
   editor.chain().focus().unsetMark('inlineHeading').setMark('inlineHeading', { level }).run();
 }
 
-export function BlogEditorContent({ initialContent }: { initialContent?: JsonContent | null }) {
+export function BlogEditorContent({
+  initialContent,
+  contentLabel,
+}: {
+  initialContent?: JsonContent | null;
+  contentLabel?: string;
+}) {
   const t = useTranslations('admin.cms.editorToolbar');
   const extensions = useMemo(() => createExtensions(t('placeholder')), [t]);
   const initialJson = useMemo(() => contentOrEmpty(initialContent), [initialContent]);
@@ -159,6 +165,13 @@ export function BlogEditorContent({ initialContent }: { initialContent?: JsonCon
     editorProps: {
       attributes: {
         class: 'blog-editor-content min-h-96 px-4 py-3 focus:outline-none',
+        ...(contentLabel
+          ? {
+              role: 'textbox',
+              'aria-label': contentLabel,
+              'aria-multiline': 'true',
+            }
+          : {}),
       },
     },
   });

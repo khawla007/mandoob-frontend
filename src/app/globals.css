@@ -3047,3 +3047,110 @@ body.dashboard-surface-active {
     color: color-mix(in oklch, var(--destructive) 65%, white);
   }
 }
+
+/* Blog listing and editors: presentation is limited to these inspected routes. */
+@layer utilities {
+  .blog-management-workspace {
+    display: grid;
+    min-width: 0;
+    gap: 1.5rem;
+  }
+  .blog-management-workspace > *,
+  .blog-management-workspace form > *,
+  .blog-management-workspace [data-slot='card-content'] > * {
+    min-width: 0;
+  }
+  .blog-management-heading {
+    padding-block-end: 1.25rem;
+    border-bottom: 1px solid color-mix(in oklch, var(--brand-accent) 20%, var(--border));
+  }
+  .blog-management-heading :is(h1, p) {
+    overflow-wrap: anywhere;
+  }
+  .blog-management-eyebrow {
+    margin-block-end: 0.5rem;
+    color: var(--signal-accent-copy);
+    font: 600 0.6875rem/1.4 var(--font-geist-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  [dir='rtl'] .blog-management-eyebrow {
+    letter-spacing: normal;
+  }
+  .blog-management-workspace [data-slot='card'] {
+    min-width: 0;
+    gap: 0;
+    padding-block: 0;
+    background: var(--signal-panel-surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    box-shadow: none;
+  }
+  .blog-management-workspace [data-slot='card-header'] {
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .blog-management-workspace [data-slot='card-content'] {
+    padding: 1.25rem;
+  }
+  .blog-management-workspace [data-slot='card-title'] {
+    font-size: 1.125rem;
+    line-height: 1.5;
+  }
+  .blog-management-workspace
+    :is(
+      button,
+      a[data-slot='button'],
+      select,
+      input:not([type='checkbox']):not([type='radio']),
+      textarea
+    ) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .blog-management-workspace input[type='file'] {
+    max-width: 100%;
+  }
+  .blog-management-workspace label:has(input[type='checkbox']) {
+    min-height: 2.75rem;
+    overflow-wrap: anywhere;
+  }
+  .blog-management-workspace label:has(input[type='checkbox']) input {
+    flex-shrink: 0;
+  }
+  .blog-management-workspace [data-slot='table'] {
+    min-width: 48rem;
+  }
+  .blog-management-workspace [data-slot='table-container'] {
+    scroll-padding-inline: 0.75rem;
+  }
+  .blog-management-workspace [data-slot='table-container']:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+  .blog-management-workspace .blog-editor-content {
+    min-width: 0;
+    overflow-x: auto;
+    overflow-wrap: anywhere;
+  }
+  .blog-management-workspace .blog-editor-content img {
+    max-width: 100%;
+    height: auto;
+  }
+  .blog-management-workspace .blog-editor-content .tableWrapper {
+    overflow-x: auto;
+  }
+  .blog-management-workspace :is(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .dark .blog-management-workspace button[data-variant='destructive'] {
+    color: color-mix(in oklch, var(--destructive) 65%, white);
+  }
+  @media (max-width: 47.999rem) {
+    .blog-management-workspace :is([data-slot='card-header'], [data-slot='card-content']) {
+      padding: 1rem;
+    }
+  }
+}
