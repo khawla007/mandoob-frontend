@@ -11,17 +11,25 @@ export function DashboardKpiCard({
   icon: Icon,
   locale,
   t,
+  priority,
 }: {
   definition: KpiDefinition;
   state: WidgetState<KpiDatum>;
   icon: LucideIcon;
   locale: string;
   t: Translate;
+  priority: 'primary' | 'secondary';
 }) {
   const label = t(`dashboard.command.kpis.${definition.id}.label`);
+  const markValue =
+    (state.state === 'data' || state.state === 'empty') && state.data.value > 0
+      ? Math.min(100, 24 + Math.log10(state.data.value + 1) * 34)
+      : null;
   return (
     <article
       data-kpi={definition.id}
+      data-kpi-priority={priority}
+      data-widget-state={state.state}
       className={cn(
         'signal-kpi relative min-h-32 min-w-0 overflow-hidden rounded-xl border p-4',
         `signal-kpi--${definition.tone}`,
@@ -60,6 +68,14 @@ export function DashboardKpiCard({
             ? t('dashboard.command.error.description')
             : t(`dashboard.command.kpis.${definition.id}.helper`)}
       </p>
+      {markValue !== null ? (
+        <span
+          aria-hidden="true"
+          data-kpi-mark
+          className="admin-signal-kpi__mark"
+          style={{ height: `${markValue}%` }}
+        />
+      ) : null}
     </article>
   );
 }

@@ -78,7 +78,15 @@ renderTest(
     const html = renderToStaticMarkup(<CommandDashboard dashboard={dashboard} locale="en" t={t} />);
     assert.equal((html.match(/<h1/g) ?? []).length, 1);
     assert.equal((html.match(/data-kpi=/g) ?? []).length, 10);
+    assert.equal((html.match(/data-kpi-priority="primary"/g) ?? []).length, 4);
+    assert.equal((html.match(/data-kpi-priority="secondary"/g) ?? []).length, 6);
     assert.equal((html.match(/data-dashboard-panel=/g) ?? []).length, 6);
+    assert.equal((html.match(/data-kpi-mark=/g) ?? []).length, 6);
+    assert.match(html, /data-widget-state="error"/u);
+    assert.match(html, /data-widget-state="unavailable"/u);
+    assert.match(html, /data-platform-signal/u);
+    assert.match(html, /admin-signal-dashboard__main/u);
+    assert.match(html, /admin-signal-dashboard__rail/u);
     assert.match(html, />0</u);
     assert.match(html, /unavailable\.phase3/u);
     assert.match(html, /period\.range/u);

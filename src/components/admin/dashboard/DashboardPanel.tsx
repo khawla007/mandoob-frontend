@@ -18,7 +18,10 @@ export function DashboardPanel({
   className?: string;
 }) {
   return (
-    <Card data-dashboard-panel className={`signal-panel min-w-0 overflow-hidden ${className}`}>
+    <Card
+      data-dashboard-panel
+      className={`signal-panel admin-signal-panel min-w-0 overflow-hidden ${className}`}
+    >
       <CardHeader className="relative flex-row items-start justify-between gap-4 space-y-0 border-b pb-3">
         <div className="min-w-0">
           <CardTitle className="text-sm font-semibold">{title}</CardTitle>

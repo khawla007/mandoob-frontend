@@ -4702,6 +4702,12 @@
         "eyebrow": "Platform operations / Dubai",
         "title": "Super Admin command dashboard",
         "description": "Portfolio movement, assignment health, and operational attention across Mandoob.",
+        "hero": {
+          "tag": "Platform Signal",
+          "title": "Portfolio operating signal",
+          "description": "Independent cross-platform queues and movement, generated from the current command-dashboard sources.",
+          "funnel": "Lead funnel signal"
+        },
         "period": {
           "label": "Reporting period",
           "days": "{days} days",
@@ -4718,6 +4724,7 @@
         },
         "kpis": {
           "label": "Platform portfolio indicators",
+          "secondaryLabel": "Supporting platform indicators",
           "totalLeads": {
             "label": "Total Leads",
             "helper": "All questionnaire leads · point in time"
@@ -4769,6 +4776,7 @@
           "description": "The issue is isolated; other dashboard sources remain available."
         },
         "panels": {
+          "railLabel": "Supporting operational instruments",
           "registrationOverview": {
             "title": "Registration Overview",
             "description": "Registrations opened, active, and completed during the reporting period."
