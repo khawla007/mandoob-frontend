@@ -127,6 +127,7 @@ export type Database = {
           mime_type: string;
           original_name: string;
           public_url: string;
+          row_version: number;
           sha256: string;
           size_bytes: number;
           storage_path: string;
@@ -143,6 +144,7 @@ export type Database = {
           mime_type: string;
           original_name: string;
           public_url: string;
+          row_version?: number;
           sha256: string;
           size_bytes: number;
           storage_path: string;
@@ -159,6 +161,7 @@ export type Database = {
           mime_type?: string;
           original_name?: string;
           public_url?: string;
+          row_version?: number;
           sha256?: string;
           size_bytes?: number;
           storage_path?: string;
@@ -321,6 +324,7 @@ export type Database = {
           meta_title: string | null;
           noindex: boolean;
           published_at: string | null;
+          row_version: number;
           scheduled_for: string | null;
           slug: string;
           status: string;
@@ -343,6 +347,7 @@ export type Database = {
           meta_title?: string | null;
           noindex?: boolean;
           published_at?: string | null;
+          row_version?: number;
           scheduled_for?: string | null;
           slug: string;
           status?: string;
@@ -365,6 +370,7 @@ export type Database = {
           meta_title?: string | null;
           noindex?: boolean;
           published_at?: string | null;
+          row_version?: number;
           scheduled_for?: string | null;
           slug?: string;
           status?: string;
@@ -412,6 +418,7 @@ export type Database = {
           kind: string;
           name: string;
           parent_id: string | null;
+          row_version: number;
           slug: string;
           sort_order: number;
           updated_at: string;
@@ -424,6 +431,7 @@ export type Database = {
           kind: string;
           name: string;
           parent_id?: string | null;
+          row_version?: number;
           slug: string;
           sort_order?: number;
           updated_at?: string;
@@ -436,6 +444,7 @@ export type Database = {
           kind?: string;
           name?: string;
           parent_id?: string | null;
+          row_version?: number;
           slug?: string;
           sort_order?: number;
           updated_at?: string;
@@ -543,6 +552,472 @@ export type Database = {
           },
         ];
       };
+      catalog_activities: {
+        Row: {
+          availability: string;
+          catalog_version_id: string;
+          category: string | null;
+          code: string | null;
+          created_at: string;
+          id: string;
+          name: string;
+          slug: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          availability?: string;
+          catalog_version_id: string;
+          category?: string | null;
+          code?: string | null;
+          created_at?: string;
+          id?: string;
+          name: string;
+          slug: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          availability?: string;
+          catalog_version_id?: string;
+          category?: string | null;
+          code?: string | null;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          slug?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_activities_catalog_version_id_fkey';
+            columns: ['catalog_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      catalog_authorities: {
+        Row: {
+          availability: string;
+          catalog_version_id: string;
+          created_at: string;
+          emirate: string | null;
+          id: string;
+          jurisdiction: string;
+          name: string;
+          official_url: string | null;
+          slug: string;
+          sort_order: number;
+          summary: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          availability?: string;
+          catalog_version_id: string;
+          created_at?: string;
+          emirate?: string | null;
+          id?: string;
+          jurisdiction: string;
+          name: string;
+          official_url?: string | null;
+          slug: string;
+          sort_order?: number;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          availability?: string;
+          catalog_version_id?: string;
+          created_at?: string;
+          emirate?: string | null;
+          id?: string;
+          jurisdiction?: string;
+          name?: string;
+          official_url?: string | null;
+          slug?: string;
+          sort_order?: number;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_authorities_catalog_version_id_fkey';
+            columns: ['catalog_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      catalog_authority_activities: {
+        Row: {
+          activity_id: string;
+          authority_id: string;
+          catalog_version_id: string;
+          created_at: string;
+          eligibility_note: string | null;
+          eligibility_state: string;
+          id: string;
+          licence_type_id: string | null;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          activity_id: string;
+          authority_id: string;
+          catalog_version_id: string;
+          created_at?: string;
+          eligibility_note?: string | null;
+          eligibility_state: string;
+          id?: string;
+          licence_type_id?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          activity_id?: string;
+          authority_id?: string;
+          catalog_version_id?: string;
+          created_at?: string;
+          eligibility_note?: string | null;
+          eligibility_state?: string;
+          id?: string;
+          licence_type_id?: string | null;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_authority_activities_activity_id_fkey';
+            columns: ['activity_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_activities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_authority_activities_authority_id_fkey';
+            columns: ['authority_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_authorities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_authority_activities_catalog_version_id_fkey';
+            columns: ['catalog_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_authority_activities_licence_type_id_fkey';
+            columns: ['licence_type_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_licence_types';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      catalog_licence_types: {
+        Row: {
+          availability: string;
+          catalog_version_id: string;
+          created_at: string;
+          description: string | null;
+          id: string;
+          name: string;
+          slug: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          availability?: string;
+          catalog_version_id: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          name: string;
+          slug: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          availability?: string;
+          catalog_version_id?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          name?: string;
+          slug?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_licence_types_catalog_version_id_fkey';
+            columns: ['catalog_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      catalog_package_prices: {
+        Row: {
+          amount_minor: number | null;
+          catalog_version_id: string;
+          created_at: string;
+          currency: string;
+          effective_from: string;
+          effective_to: string | null;
+          exclusions: string[];
+          id: string;
+          inclusions: string[];
+          package_id: string;
+          price_state: string;
+          recurrence: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          amount_minor?: number | null;
+          catalog_version_id: string;
+          created_at?: string;
+          currency?: string;
+          effective_from: string;
+          effective_to?: string | null;
+          exclusions?: string[];
+          id?: string;
+          inclusions?: string[];
+          package_id: string;
+          price_state: string;
+          recurrence: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          amount_minor?: number | null;
+          catalog_version_id?: string;
+          created_at?: string;
+          currency?: string;
+          effective_from?: string;
+          effective_to?: string | null;
+          exclusions?: string[];
+          id?: string;
+          inclusions?: string[];
+          package_id?: string;
+          price_state?: string;
+          recurrence?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_package_prices_catalog_version_id_fkey';
+            columns: ['catalog_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_package_prices_package_id_fkey';
+            columns: ['package_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_packages';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      catalog_packages: {
+        Row: {
+          authority_id: string;
+          availability: string;
+          catalog_version_id: string;
+          created_at: string;
+          id: string;
+          licence_type_id: string | null;
+          name: string;
+          slug: string;
+          sort_order: number;
+          summary: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          authority_id: string;
+          availability?: string;
+          catalog_version_id: string;
+          created_at?: string;
+          id?: string;
+          licence_type_id?: string | null;
+          name: string;
+          slug: string;
+          sort_order?: number;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          authority_id?: string;
+          availability?: string;
+          catalog_version_id?: string;
+          created_at?: string;
+          id?: string;
+          licence_type_id?: string | null;
+          name?: string;
+          slug?: string;
+          sort_order?: number;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_packages_authority_id_fkey';
+            columns: ['authority_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_authorities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_packages_catalog_version_id_fkey';
+            columns: ['catalog_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_packages_licence_type_id_fkey';
+            columns: ['licence_type_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_licence_types';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      catalog_sources: {
+        Row: {
+          approved_at: string | null;
+          approved_by: string | null;
+          code: string;
+          created_at: string;
+          id: string;
+          name: string;
+          source_owner: string;
+          source_url: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          code: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          source_owner: string;
+          source_url?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          code?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          source_owner?: string;
+          source_url?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_sources_approved_by_fkey';
+            columns: ['approved_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      catalog_versions: {
+        Row: {
+          approved_at: string | null;
+          approved_by: string | null;
+          created_at: string;
+          created_by: string | null;
+          effective_from: string;
+          effective_to: string | null;
+          id: string;
+          published_at: string | null;
+          source_id: string;
+          status: string;
+          supersedes_id: string | null;
+          updated_at: string;
+          version_key: string;
+          version_number: number;
+        };
+        Insert: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          effective_from: string;
+          effective_to?: string | null;
+          id?: string;
+          published_at?: string | null;
+          source_id: string;
+          status?: string;
+          supersedes_id?: string | null;
+          updated_at?: string;
+          version_key: string;
+          version_number: number;
+        };
+        Update: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          effective_from?: string;
+          effective_to?: string | null;
+          id?: string;
+          published_at?: string | null;
+          source_id?: string;
+          status?: string;
+          supersedes_id?: string | null;
+          updated_at?: string;
+          version_key?: string;
+          version_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'catalog_versions_approved_by_fkey';
+            columns: ['approved_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_versions_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_versions_source_id_fkey';
+            columns: ['source_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_sources';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'catalog_versions_supersedes_id_fkey';
+            columns: ['supersedes_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       cms_pages: {
         Row: {
           background_image_media_id: string | null;
@@ -559,6 +1034,7 @@ export type Database = {
           meta_title: string | null;
           noindex: boolean;
           published_at: string | null;
+          row_version: number;
           scheduled_for: string | null;
           schema_markup: Json;
           script_body_end: string | null;
@@ -585,6 +1061,7 @@ export type Database = {
           meta_title?: string | null;
           noindex?: boolean;
           published_at?: string | null;
+          row_version?: number;
           scheduled_for?: string | null;
           schema_markup?: Json;
           script_body_end?: string | null;
@@ -611,6 +1088,7 @@ export type Database = {
           meta_title?: string | null;
           noindex?: boolean;
           published_at?: string | null;
+          row_version?: number;
           scheduled_for?: string | null;
           schema_markup?: Json;
           script_body_end?: string | null;
@@ -1181,12 +1659,105 @@ export type Database = {
         };
         Relationships: [];
       };
+      content_audit_events: {
+        Row: {
+          action: string;
+          actor_id: string;
+          created_at: string;
+          entity_id: string | null;
+          entity_type: string;
+          id: string;
+          metadata: Json;
+          next_version: number | null;
+          operation_id: string;
+          previous_version: number | null;
+        };
+        Insert: {
+          action: string;
+          actor_id: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type: string;
+          id?: string;
+          metadata?: Json;
+          next_version?: number | null;
+          operation_id: string;
+          previous_version?: number | null;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string;
+          id?: string;
+          metadata?: Json;
+          next_version?: number | null;
+          operation_id?: string;
+          previous_version?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'content_audit_events_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      content_operation_receipts: {
+        Row: {
+          actor_id: string;
+          created_at: string;
+          entity_id: string | null;
+          entity_type: string;
+          id: string;
+          operation_id: string;
+          operation_kind: string;
+          request_hash: string;
+          result: Json;
+        };
+        Insert: {
+          actor_id: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type: string;
+          id?: string;
+          operation_id: string;
+          operation_kind: string;
+          request_hash: string;
+          result?: Json;
+        };
+        Update: {
+          actor_id?: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string;
+          id?: string;
+          operation_id?: string;
+          operation_kind?: string;
+          request_hash?: string;
+          result?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'content_operation_receipts_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       cost_data: {
         Row: {
           active: boolean;
           activity_key: string | null;
           amount_minor: number;
           authority: string;
+          catalog_authority_id: string | null;
+          catalog_version_id: string | null;
           created_at: string;
           currency: string;
           emirate: string | null;
@@ -1201,6 +1772,8 @@ export type Database = {
           min_visas: number;
           recurrence: string;
           required_document_keys: string[];
+          row_version: number;
+          source_id: string | null;
           timeline_max_days: number;
           timeline_min_days: number;
           updated_at: string;
@@ -1212,6 +1785,8 @@ export type Database = {
           activity_key?: string | null;
           amount_minor: number;
           authority: string;
+          catalog_authority_id?: string | null;
+          catalog_version_id?: string | null;
           created_at?: string;
           currency?: string;
           emirate?: string | null;
@@ -1226,6 +1801,8 @@ export type Database = {
           min_visas?: number;
           recurrence: string;
           required_document_keys?: string[];
+          row_version?: number;
+          source_id?: string | null;
           timeline_max_days?: number;
           timeline_min_days?: number;
           updated_at?: string;
@@ -1237,6 +1814,8 @@ export type Database = {
           activity_key?: string | null;
           amount_minor?: number;
           authority?: string;
+          catalog_authority_id?: string | null;
+          catalog_version_id?: string | null;
           created_at?: string;
           currency?: string;
           emirate?: string | null;
@@ -1251,13 +1830,37 @@ export type Database = {
           min_visas?: number;
           recurrence?: string;
           required_document_keys?: string[];
+          row_version?: number;
+          source_id?: string | null;
           timeline_max_days?: number;
           timeline_min_days?: number;
           updated_at?: string;
           valid_from?: string;
           valid_to?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'cost_data_catalog_authority_id_fkey';
+            columns: ['catalog_authority_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_authorities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'cost_data_catalog_version_id_fkey';
+            columns: ['catalog_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_versions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'cost_data_source_id_fkey';
+            columns: ['source_id'];
+            isOneToOne: false;
+            referencedRelation: 'catalog_sources';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       customer_profiles: {
         Row: {
@@ -2308,27 +2911,6 @@ export type Database = {
           },
         ];
       };
-      mfa_factor_removal_reservations: {
-        Row: {
-          created_at: string;
-          factor_id: string;
-          operation_id: string;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          factor_id: string;
-          operation_id: string;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string;
-          factor_id?: string;
-          operation_id?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
       meetings: {
         Row: {
           company_id: string | null;
@@ -2453,6 +3035,27 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      mfa_factor_removal_reservations: {
+        Row: {
+          created_at: string;
+          factor_id: string;
+          operation_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          factor_id: string;
+          operation_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          factor_id?: string;
+          operation_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
       };
       outbound_emails: {
         Row: {
@@ -3109,6 +3712,95 @@ export type Database = {
           {
             foreignKeyName: 'pro_credential_evidence_uploaded_by_fkey';
             columns: ['uploaded_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pro_credential_evidence_removals: {
+        Row: {
+          actor_id: string;
+          cancelled_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          credential_id: string;
+          evidence_id: string;
+          expected_version: number;
+          id: string;
+          lease_expires_at: string;
+          operation_id: string;
+          payload_hash: string;
+          pro_profile_id: string;
+          recovery_actor_id: string | null;
+          recovery_operation_id: string | null;
+          sanitized_result: Json | null;
+          status: string;
+          storage_path: string | null;
+        };
+        Insert: {
+          actor_id: string;
+          cancelled_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          credential_id: string;
+          evidence_id: string;
+          expected_version: number;
+          id?: string;
+          lease_expires_at?: string;
+          operation_id: string;
+          payload_hash: string;
+          pro_profile_id: string;
+          recovery_actor_id?: string | null;
+          recovery_operation_id?: string | null;
+          sanitized_result?: Json | null;
+          status?: string;
+          storage_path?: string | null;
+        };
+        Update: {
+          actor_id?: string;
+          cancelled_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          credential_id?: string;
+          evidence_id?: string;
+          expected_version?: number;
+          id?: string;
+          lease_expires_at?: string;
+          operation_id?: string;
+          payload_hash?: string;
+          pro_profile_id?: string;
+          recovery_actor_id?: string | null;
+          recovery_operation_id?: string | null;
+          sanitized_result?: Json | null;
+          status?: string;
+          storage_path?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pro_credential_evidence_removals_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_credential_evidence_removals_credential_id_fkey';
+            columns: ['credential_id'];
+            isOneToOne: false;
+            referencedRelation: 'pro_credentials';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_credential_evidence_removals_pro_profile_id_fkey';
+            columns: ['pro_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pro_credential_evidence_removals_recovery_actor_id_fkey';
+            columns: ['recovery_actor_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
@@ -4405,7 +5097,22 @@ export type Database = {
         Args: { p_reason: string; p_reason_code: string };
         Returns: undefined;
       };
+      assert_safe_pro_lifecycle_result: {
+        Args: {
+          p_entity_kind: Database['public']['Enums']['pro_lifecycle_operation_kind'];
+          p_result: Json;
+        };
+        Returns: undefined;
+      };
       assign_pro_to_company: {
+        Args: {
+          p_actor_profile_id: string;
+          p_company_id: string;
+          p_pro_profile_id: string;
+        };
+        Returns: Json;
+      };
+      assign_pro_to_company_with_context: {
         Args: {
           p_actor_profile_id: string;
           p_company_id: string;
@@ -4435,7 +5142,30 @@ export type Database = {
         };
         Returns: Json;
       };
+      catalog_version_is_public: {
+        Args: { p_version_id: string };
+        Returns: boolean;
+      };
+      claim_pro_credential_evidence_removal_recovery: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_pro_profile_id: string;
+          p_recovery_operation_id: string;
+        };
+        Returns: Json;
+      };
+      claim_pro_credential_evidence_upload_cleanup: {
+        Args: { p_limit: number; p_recovery_operation_id: string };
+        Returns: Json;
+      };
       cleanup_company_onboarding_operations: { Args: never; Returns: number };
+      cleanup_finalized_pro_credential_evidence_upload_reservations: {
+        Args: never;
+        Returns: number;
+      };
+      cleanup_pro_credential_evidence_removals: { Args: never; Returns: number };
       cleanup_pro_lifecycle_operation_receipts: { Args: never; Returns: number };
       clear_company_bank_identifier: {
         Args: {
@@ -4456,6 +5186,14 @@ export type Database = {
       compute_notify_at: {
         Args: { due: string; renewal_type: string };
         Returns: string[];
+      };
+      cost_data_version_is_public: {
+        Args: {
+          p_authority_id: string;
+          p_source_id: string;
+          p_version_id: string;
+        };
+        Returns: boolean;
       };
       create_company_invoice: {
         Args: {
@@ -4541,8 +5279,59 @@ export type Database = {
           state: string;
         }[];
       };
+      evaluate_company_assignment_eligibility: {
+        Args: {
+          p_company_id: string;
+          p_expected_assignment_id?: string;
+          p_pro_profile_id: string;
+        };
+        Returns: Json;
+      };
       evaluate_pro_assignment_eligibility: {
         Args: { p_company_id?: string; p_pro_profile_id: string };
+        Returns: Json;
+      };
+      finalize_pro_credential_evidence_removal: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+        };
+        Returns: Json;
+      };
+      finalize_pro_credential_evidence_removal_recovery: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_pro_profile_id: string;
+          p_recovery_operation_id: string;
+        };
+        Returns: Json;
+      };
+      finalize_pro_credential_evidence_upload: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_original_name_safe: string;
+          p_payload_hash: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+        };
+        Returns: Json;
+      };
+      finalize_pro_credential_evidence_upload_cleanup: {
+        Args: { p_recovery_operation_id: string; p_reservation_id: string };
         Returns: Json;
       };
       get_pro_document_version_history: {
@@ -4557,6 +5346,10 @@ export type Database = {
       has_current_pro_credential: {
         Args: { p_pro_profile_id: string };
         Returns: boolean;
+      };
+      import_cost_data: {
+        Args: { p_actor_id: string; p_operation_id: string; p_rows: Json };
+        Returns: Json;
       };
       list_company_payment_invoices: {
         Args: {
@@ -4664,6 +5457,29 @@ export type Database = {
         Returns: undefined;
       };
       materialize_expired_pro_credentials: { Args: never; Returns: number };
+      mutate_cost_data: {
+        Args: {
+          p_action: string;
+          p_actor_id: string;
+          p_entity_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload: Json;
+        };
+        Returns: Json;
+      };
+      mutate_editorial_content: {
+        Args: {
+          p_action: string;
+          p_actor_id: string;
+          p_entity_id: string;
+          p_entity_type: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload: Json;
+        };
+        Returns: Json;
+      };
       open_pro_credential_evidence_metadata: {
         Args: { p_actor_id: string; p_evidence_id: string };
         Returns: {
@@ -4726,6 +5542,35 @@ export type Database = {
           subject_kind: string;
         }[];
       };
+      prepare_pro_credential_evidence_removal: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_payload_hash: string;
+        };
+        Returns: Json;
+      };
+      prepare_pro_credential_evidence_upload: {
+        Args: {
+          p_actor_id: string;
+          p_credential_id: string;
+          p_evidence_id: string;
+          p_expected_version: number;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_original_name_safe: string;
+          p_payload_hash: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+        };
+        Returns: Json;
+      };
       pro_credential_masked_result: {
         Args: { p_credential_id: string };
         Returns: Json;
@@ -4769,11 +5614,35 @@ export type Database = {
         Args: { p_actor_id: string; p_company_id: string; p_tenant_id: string };
         Returns: Json;
       };
+      read_current_company_assignment_summary: {
+        Args: { p_actor_id: string; p_company_id: string };
+        Returns: Json;
+      };
       read_pro_commercial_terms: {
         Args: { p_actor_id: string; p_pro_profile_id: string };
         Returns: Json;
       };
       read_pro_credential_snapshot: {
+        Args: { p_actor_id: string; p_pro_profile_id: string };
+        Returns: Json;
+      };
+      read_pro_lifecycle_detail: {
+        Args: {
+          p_actor_id: string;
+          p_pro_profile_id: string;
+          p_timeline_limit?: number;
+        };
+        Returns: Json;
+      };
+      read_pro_lifecycle_detail_without_reasons_0076: {
+        Args: {
+          p_actor_id: string;
+          p_pro_profile_id: string;
+          p_timeline_limit?: number;
+        };
+        Returns: Json;
+      };
+      read_pro_lifecycle_identity: {
         Args: { p_actor_id: string; p_pro_profile_id: string };
         Returns: Json;
       };
@@ -4787,7 +5656,33 @@ export type Database = {
         };
         Returns: Json;
       };
+      read_pro_registry: {
+        Args: {
+          p_account_status?: string;
+          p_actor_id: string;
+          p_assignment?: string;
+          p_credential_state?: string;
+          p_direction?: string;
+          p_eligibility?: string;
+          p_expiry_window?: string;
+          p_page?: number;
+          p_page_size?: number;
+          p_query?: string;
+          p_sort?: string;
+        };
+        Returns: Json;
+      };
       reassign_company_pro: {
+        Args: {
+          p_actor_profile_id: string;
+          p_company_id: string;
+          p_expected_assignment_id: string;
+          p_reason: string;
+          p_replacement_pro_profile_id: string;
+        };
+        Returns: Json;
+      };
+      reassign_company_pro_with_context: {
         Args: {
           p_actor_profile_id: string;
           p_company_id: string;
@@ -4844,68 +5739,6 @@ export type Database = {
         };
         Returns: Json;
       };
-      reserve_mfa_factor_removal: {
-        Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
-        Returns: boolean;
-      };
-      release_mfa_factor_removal: {
-        Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
-        Returns: boolean;
-      };
-      prepare_pro_credential_evidence_upload: {
-        Args: {
-          p_actor_id: string;
-          p_credential_id: string;
-          p_evidence_id: string;
-          p_expected_version: number;
-          p_mime_type: string;
-          p_operation_id: string;
-          p_original_name_safe: string;
-          p_payload_hash: string;
-          p_scan_completed_at: string;
-          p_scan_provider: string;
-          p_sha256: string;
-          p_size_bytes: number;
-          p_storage_path: string;
-        };
-        Returns: Json;
-      };
-      claim_pro_credential_evidence_upload_cleanup: {
-        Args: {
-          p_limit: number;
-          p_recovery_operation_id: string;
-        };
-        Returns: Json;
-      };
-      finalize_pro_credential_evidence_upload_cleanup: {
-        Args: {
-          p_recovery_operation_id: string;
-          p_reservation_id: string;
-        };
-        Returns: Json;
-      };
-      cleanup_finalized_pro_credential_evidence_upload_reservations: {
-        Args: never;
-        Returns: number;
-      };
-      finalize_pro_credential_evidence_upload: {
-        Args: {
-          p_actor_id: string;
-          p_credential_id: string;
-          p_evidence_id: string;
-          p_expected_version: number;
-          p_mime_type: string;
-          p_operation_id: string;
-          p_original_name_safe: string;
-          p_payload_hash: string;
-          p_scan_completed_at: string;
-          p_scan_provider: string;
-          p_sha256: string;
-          p_size_bytes: number;
-          p_storage_path: string;
-        };
-        Returns: Json;
-      };
       reject_pro_credential: {
         Args: {
           p_actor_id: string;
@@ -4926,6 +5759,19 @@ export type Database = {
           p_reason: string;
         };
         Returns: string;
+      };
+      release_company_pro_with_context: {
+        Args: {
+          p_actor_profile_id: string;
+          p_company_id: string;
+          p_expected_assignment_id: string;
+          p_reason: string;
+        };
+        Returns: Json;
+      };
+      release_mfa_factor_removal: {
+        Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
+        Returns: boolean;
       };
       remove_pro_credential_evidence: {
         Args: {
@@ -4950,6 +5796,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      reserve_mfa_factor_removal: {
+        Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
+        Returns: boolean;
+      };
       review_document_version: {
         Args: {
           p_actor_id: string;
@@ -4966,6 +5816,10 @@ export type Database = {
           review_status: string;
         }[];
       };
+      revoke_all_user_auth_sessions: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
       revoke_pro_credential: {
         Args: {
           p_actor_id: string;
@@ -4977,6 +5831,10 @@ export type Database = {
           p_reason_code: string;
         };
         Returns: Json;
+      };
+      revoke_user_auth_session: {
+        Args: { p_session_id: string; p_user_id: string };
+        Returns: boolean;
       };
       save_company_activities_section: {
         Args: {
@@ -5069,9 +5927,9 @@ export type Database = {
           p_credential_id: string;
           p_expected_version: number;
           p_expiry_date: string;
-          p_identifier_ciphertext: string | null;
-          p_identifier_hash: string | null;
-          p_identifier_last4: string | null;
+          p_identifier_ciphertext: string;
+          p_identifier_hash: string;
+          p_identifier_last4: string;
           p_issue_date: string;
           p_issuing_authority: string;
           p_operation_id: string;
@@ -5237,7 +6095,8 @@ export type Database = {
         | 'tenant_suspended'
         | 'tenant_reactivated'
         | 'tenant_self_updated'
-        | 'pro_lifecycle_changed';
+        | 'pro_lifecycle_changed'
+        | 'profile_self_edited';
       bulk_import_kind: 'employees';
       bulk_import_status:
         | 'uploaded'
@@ -5472,6 +6331,7 @@ export const Constants = {
         'tenant_reactivated',
         'tenant_self_updated',
         'pro_lifecycle_changed',
+        'profile_self_edited',
       ],
       bulk_import_kind: ['employees'],
       bulk_import_status: [
