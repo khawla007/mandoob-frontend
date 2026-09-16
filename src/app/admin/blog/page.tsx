@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BlogPostsTable } from '@/components/blog/BlogPostsTable';
 import { requireRole } from '@/lib/auth/require-role';
-import { listAdminBlogPosts } from '@/lib/data/blog';
+import { listAdminBlogPostsPage } from '@/lib/data/blog';
 import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
@@ -32,11 +32,15 @@ export default async function AdminBlogPage({
   await requireRole('super_admin', 'admin');
   const t = await getTranslations('admin.cms');
   const sp = await searchParams;
-  const posts = await listAdminBlogPosts();
-  const totalPages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
-  const currentPage = Math.min(readPage(sp), totalPages);
+  const requestedPage = readPage(sp);
+  let result = await listAdminBlogPostsPage({ page: requestedPage, pageSize: POSTS_PER_PAGE });
+  const totalPages = Math.max(1, Math.ceil(result.total / POSTS_PER_PAGE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  if (currentPage !== requestedPage) {
+    result = await listAdminBlogPostsPage({ page: currentPage, pageSize: POSTS_PER_PAGE });
+  }
+  const posts = result.items;
   const start = (currentPage - 1) * POSTS_PER_PAGE;
-  const paginatedPosts = posts.slice(start, start + POSTS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -54,7 +58,7 @@ export default async function AdminBlogPage({
         <CardHeader>
           <CardTitle>{t('blog.posts')}</CardTitle>
           <CardDescription>
-            {t('blog.total', { count: posts.length, perPage: POSTS_PER_PAGE })}
+            {t('blog.total', { count: result.total, perPage: POSTS_PER_PAGE })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -63,14 +67,14 @@ export default async function AdminBlogPage({
           ) : (
             <>
               <div className="border-border/60 overflow-hidden rounded-lg border">
-                <BlogPostsTable posts={paginatedPosts} />
+                <BlogPostsTable posts={posts} />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-muted-foreground text-sm">
                   {t('showing', {
                     from: start + 1,
-                    to: Math.min(start + POSTS_PER_PAGE, posts.length),
-                    total: posts.length,
+                    to: Math.min(start + POSTS_PER_PAGE, result.total),
+                    total: result.total,
                   })}
                 </p>
                 <div className="flex items-center gap-1.5">

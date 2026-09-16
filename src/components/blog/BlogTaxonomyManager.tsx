@@ -35,6 +35,9 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    formData.set('operationId', crypto.randomUUID());
+    const current = id ? terms.find((term) => term.id === id) : null;
+    if (current) formData.set('expectedVersion', String(current.rowVersion ?? 1));
     setMessage(null);
 
     startTransition(async () => {
@@ -67,7 +70,7 @@ export function BlogTaxonomyManager({ kind, terms }: BlogTaxonomyManagerProps) {
 
     setMessage(null);
     startTransition(async () => {
-      const result = await deleteBlogTermAction(term.id);
+      const result = await deleteBlogTermAction(term.id, crypto.randomUUID(), term.rowVersion ?? 1);
       if (!result.ok) {
         setMessage({
           type: 'error',

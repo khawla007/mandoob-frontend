@@ -27,6 +27,7 @@ export function PageHeroMediaPicker({
     startTransition(async () => {
       const result = await runHeroUpload(file, async (validatedFile) => {
         const data = new FormData();
+        data.set('operationId', crypto.randomUUID());
         data.append('file', validatedFile as File);
         return uploadBlogMediaAction(data);
       });

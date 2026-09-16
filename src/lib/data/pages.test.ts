@@ -50,6 +50,7 @@ const pageRow = (overrides: Row = {}): Row => ({
   deleted_at: null,
   created_at: '2026-07-01T00:00:00.000Z',
   updated_at: '2026-07-02T00:00:00.000Z',
+  row_version: 1,
   ...overrides,
 });
 
@@ -562,6 +563,11 @@ test('published sitemap list returns only public columns in deterministic order'
   assert.ok(
     db.calls.some((c) => c.method === 'select' && c.args[0] === 'slug, updated_at, noindex'),
   );
+  assert.deepEqual(
+    db.calls.filter((call) => call.method === 'order').map((call) => call.args[0]),
+    ['updated_at', 'slug'],
+  );
+  assert.ok(db.calls.some((call) => call.method === 'range' && call.args[0] === 0));
 });
 
 test('published sitemap list rejects malformed projection rows', async () => {

@@ -13,16 +13,22 @@ export type ParsedCmsPageFormData = ParsedPageInput & {
 };
 export type CmsPageActionDependencies = {
   requireActor: () => Promise<CmsPageAdminActor>;
-  getPage: (id: string) => Promise<{ slug: string } | null>;
+  getPage: (id: string) => Promise<{ slug: string; rowVersion: number } | null>;
   upsertPage: (
     input: ParsedCmsPageFormData & { id?: string },
     actor: CmsPageAdminActor,
+    durable: { operationId: string; expectedVersion: number | null },
   ) => Promise<{ id: string; slug: string }>;
-  deletePage: (id: string, actor: CmsPageAdminActor) => Promise<void>;
+  deletePage: (
+    id: string,
+    actor: CmsPageAdminActor,
+    durable: { operationId: string; expectedVersion: number },
+  ) => Promise<void>;
   revalidate: (path: string) => void;
 };
 
 const idSchema = z.string().uuid();
+const versionSchema = z.coerce.number().int().positive();
 const formString = (data: FormData, key: string): string =>
   typeof data.get(key) === 'string' ? (data.get(key) as string) : '';
 const optionalString = (data: FormData, key: string): string | null =>
@@ -101,7 +107,11 @@ function failure(error: unknown, fallback: string): ActionResult<never> {
   if (error instanceof ApiError) {
     if (error.code === 'DUPLICATE_SLUG')
       return { ok: false, error: 'A CMS page with this slug already exists', code: error.code };
-    if (['INVALID_INPUT', 'INVALID_MEDIA', 'NOT_FOUND'].includes(error.code))
+    if (
+      ['INVALID_INPUT', 'INVALID_MEDIA', 'NOT_FOUND', 'CONFLICT', 'OPERATION_ID_CONFLICT'].includes(
+        error.code,
+      )
+    )
       return { ok: false, error: error.message, code: error.code };
   }
   console.error(fallback, error);
@@ -122,10 +132,15 @@ export async function runSaveCmsPageAction(
     const parsedId = id ? idSchema.safeParse(id) : null;
     if (parsedId && !parsedId.success) return invalidId();
     const input = parseCmsPageFormData(data);
+    const operationId = idSchema.parse(formString(data, 'operationId'));
     const previous = parsedId?.success ? await deps.getPage(parsedId.data) : null;
+    const expectedVersion = parsedId?.success
+      ? versionSchema.parse(formString(data, 'expectedVersion'))
+      : null;
     const page = await deps.upsertPage(
       parsedId?.success ? { ...input, id: parsedId.data } : input,
       actor,
+      { operationId, expectedVersion },
     );
     indexes(deps);
     if (previous?.slug && previous.slug !== page.slug) deps.revalidate(`/${previous.slug}`);
@@ -138,14 +153,21 @@ export async function runSaveCmsPageAction(
 
 export async function runDeleteCmsPageAction(
   id: string,
+  operationId: string,
+  expectedVersion: number,
   deps: CmsPageActionDependencies,
 ): Promise<ActionResult> {
   try {
     const actor = await deps.requireActor();
     const parsedId = idSchema.safeParse(id);
     if (!parsedId.success) return invalidId();
+    const parsedOperationId = idSchema.parse(operationId);
+    const parsedVersion = versionSchema.parse(expectedVersion);
     const previous = await deps.getPage(parsedId.data);
-    await deps.deletePage(parsedId.data, actor);
+    await deps.deletePage(parsedId.data, actor, {
+      operationId: parsedOperationId,
+      expectedVersion: parsedVersion,
+    });
     indexes(deps);
     if (previous?.slug) deps.revalidate(`/${previous.slug}`);
     return { ok: true, data: undefined };

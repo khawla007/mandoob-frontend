@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { randomUUID } from 'node:crypto';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,9 @@ import { formatDateTime } from '@/lib/i18n/format';
 import type { BlogPost } from '@/lib/data/blog';
 import { getLocale, getTranslations } from 'next-intl/server';
 
-async function deletePost(id: string): Promise<void> {
+async function deletePost(id: string, operationId: string, expectedVersion: number): Promise<void> {
   'use server';
-  await deleteBlogPostAction(id);
+  await deleteBlogPostAction(id, operationId, expectedVersion);
 }
 
 function statusVariant(status: BlogPost['status']): 'default' | 'secondary' | 'outline' {
@@ -85,7 +86,7 @@ export async function BlogPostsTable({ posts }: { posts: BlogPost[] }) {
                     </Link>
                   </Button>
                 ) : null}
-                <form action={deletePost.bind(null, post.id)}>
+                <form action={deletePost.bind(null, post.id, randomUUID(), post.rowVersion ?? 1)}>
                   <Button
                     type="submit"
                     size="icon-sm"

@@ -4420,7 +4420,11 @@
         "feeRows": "صفوف الرسوم",
         "filterAll": "الكل",
         "filterActive": "نشط",
-        "filterInactive": "غير نشط"
+        "filterInactive": "غير نشط",
+        "paginationLabel": "صفحات بيانات التكلفة",
+        "paginationSummary": "الصفحة {page} من {pageCount} · {total} صفًا",
+        "previous": "السابق",
+        "next": "التالي"
       }
     },
     "companies": {

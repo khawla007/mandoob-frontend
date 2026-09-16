@@ -70,7 +70,11 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
     if (!target) return;
     setError(null);
     startTransition(async () => {
-      const result = await deleteCmsPageAction(target.id);
+      const result = await deleteCmsPageAction(
+        target.id,
+        crypto.randomUUID(),
+        target.rowVersion ?? 1,
+      );
       if (!result.ok) {
         setError(t('deleteError'));
         return;

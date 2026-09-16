@@ -88,3 +88,11 @@ test('authority unavailable body is distinct, safe, retryable, and emitted befor
     /<PublicContentState[\s\S]*eyebrow="Authority guide unavailable"[\s\S]*title="This authority setup guide could not be loaded\."[\s\S]*No estimated fees, timeline, documents, or internal error details are being shown\.[\s\S]*recoveryHref=\{`\/company-setup\/\$\{encodeURIComponent\(authoritySlug\)\}`\}[\s\S]*recoveryLabel="Try again"[\s\S]*retry[\s\S]*headingLevel="h1"/u,
   );
 });
+
+test('authority facts render only after an approved catalog match', () => {
+  assert.match(source, /listPublicCatalog\('authorities'/u);
+  assert.match(source, /catalog\.state !== 'ready'/u);
+  assert.match(source, /catalogAuthority\.name !== page\.authority/u);
+  assert.match(source, /catalogAuthority\.jurisdiction !== page\.jurisdiction/u);
+  assert.doesNotMatch(source, /catalog\.reason/u);
+});

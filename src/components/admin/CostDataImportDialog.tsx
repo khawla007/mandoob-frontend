@@ -29,7 +29,7 @@ export function CostDataImportDialog() {
     event.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const result = await importCostDataCsvAction({ csv });
+      const result = await importCostDataCsvAction({ csv, operationId: crypto.randomUUID() });
       if (!result.ok) {
         setMessage(`${result.code}: ${result.error}`);
         return;
