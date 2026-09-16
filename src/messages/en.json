@@ -4379,6 +4379,7 @@
       }
     },
     "costData": {
+      "close": "Close",
       "newRow": "New row",
       "edit": "Edit",
       "createTitle": "New cost row",
@@ -4407,6 +4408,7 @@
         "requiredDocumentKeys": "Required document keys"
       },
       "import": {
+        "csvLabel": "CSV content",
         "trigger": "Import CSV",
         "title": "Import cost data",
         "description": "Paste CSV exported from this page, then import validated rows.",
@@ -4439,6 +4441,8 @@
         "openEnded": "open-ended"
       },
       "page": {
+        "eyebrow": "Catalog operations",
+        "statusFilter": "Fee status",
         "title": "Cost data",
         "intro": "Manage estimator fee rows used by public setup quotes.",
         "exportCsv": "Export CSV",

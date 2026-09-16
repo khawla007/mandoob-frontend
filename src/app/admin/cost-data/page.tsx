@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
-import { Badge } from '@/components/ui/badge';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { CostDataSummaryCard as SummaryCard } from '@/components/admin/CostDataSummaryCard';
 import { CostDataDialog } from '@/components/admin/CostDataDialog';
 import { CostDataImportDialog } from '@/components/admin/CostDataImportDialog';
 import { CostDataStatusButton } from '@/components/admin/CostDataStatusButton';
@@ -27,6 +27,7 @@ export default async function CostDataPage({
 }) {
   await requireRole('super_admin', 'admin');
   const t = await getTranslations('admin');
+  const number = new Intl.NumberFormat(await getLocale());
   const sp = await searchParams;
   const filters: CostDataFilters = {
     jurisdiction: sp.jurisdiction ?? 'all',
@@ -39,13 +40,14 @@ export default async function CostDataPage({
   const exportHref = `/admin/cost-data/export?${new URLSearchParams(cleanParams(sp)).toString()}`;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="admin-management-signal cost-data-workspace">
+      <div className="cost-data-heading">
         <div>
+          <p className="cost-data-eyebrow">{t('costData.page.eyebrow')}</p>
           <h1 className="text-2xl font-semibold tracking-tight">{t('costData.page.title')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('costData.page.intro')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="cost-data-heading__actions">
           <CostDataImportDialog />
           <Button asChild variant="outline">
             <Link href={exportHref}>{t('costData.page.exportCsv')}</Link>
@@ -54,26 +56,37 @@ export default async function CostDataPage({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <SummaryCard label={t('costData.page.summaryRows')} value={summary.totalRows} />
-        <SummaryCard label={t('costData.page.summaryActive')} value={summary.activeRows} />
+      <div className="cost-data-summary">
+        <SummaryCard
+          label={t('costData.page.summaryRows')}
+          value={number.format(summary.totalRows)}
+          tone="info"
+        />
+        <SummaryCard
+          label={t('costData.page.summaryActive')}
+          value={number.format(summary.activeRows)}
+          tone="success"
+        />
         <SummaryCard
           label={t('costData.page.summaryEstimateGrade')}
-          value={summary.estimateGradeRows}
+          value={number.format(summary.estimateGradeRows)}
+          tone="orange"
         />
         <SummaryCard
           label={t('costData.page.summaryAuthorities')}
-          value={summary.uniqueAuthorities}
+          value={number.format(summary.uniqueAuthorities)}
+          tone="info"
           badge={t('costData.page.summaryExpired', { count: summary.staleRows })}
         />
       </div>
 
-      <Card>
+      <Card className="cost-data-panel">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle className="text-lg">{t('costData.page.feeRows')}</CardTitle>
+            <h2 className="text-lg font-semibold">{t('costData.page.feeRows')}</h2>
             <FilterLinks
               filters={filters}
+              label={t('costData.page.statusFilter')}
               labels={{
                 all: t('costData.page.filterAll'),
                 active: t('costData.page.filterActive'),
@@ -98,48 +111,33 @@ export default async function CostDataPage({
   );
 }
 
-function SummaryCard({ label, value, badge }: { label: string; value: number; badge?: string }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-muted-foreground text-sm font-medium">{label}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex items-center justify-between">
-        <div className="text-2xl font-semibold">{value}</div>
-        {badge ? <Badge variant="secondary">{badge}</Badge> : null}
-      </CardContent>
-    </Card>
-  );
-}
-
 function FilterLinks({
   filters,
+  label,
   labels,
 }: {
   filters: CostDataFilters;
+  label: string;
   labels: { all: string; active: string; inactive: string };
 }) {
   return (
-    <div className="text-muted-foreground flex flex-wrap gap-2 text-sm">
-      <Link
-        className={filters.active === 'all' ? 'text-foreground font-medium' : ''}
-        href="/admin/cost-data"
-      >
+    <nav aria-label={label} className="cost-data-filters">
+      <Link aria-current={filters.active === 'all' ? 'page' : undefined} href="/admin/cost-data">
         {labels.all}
       </Link>
       <Link
-        className={filters.active === 'active' ? 'text-foreground font-medium' : ''}
+        aria-current={filters.active === 'active' ? 'page' : undefined}
         href="/admin/cost-data?active=active"
       >
         {labels.active}
       </Link>
       <Link
-        className={filters.active === 'inactive' ? 'text-foreground font-medium' : ''}
+        aria-current={filters.active === 'inactive' ? 'page' : undefined}
         href="/admin/cost-data?active=inactive"
       >
         {labels.inactive}
       </Link>
-    </div>
+    </nav>
   );
 }
 
