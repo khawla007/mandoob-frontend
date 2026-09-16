@@ -2972,3 +2972,78 @@ body.dashboard-surface-active {
     }
   }
 }
+
+/* Categories only: subsequent taxonomies must pass their own module gates. */
+@layer utilities {
+  .taxonomy-categories-workspace {
+    display: grid;
+    min-width: 0;
+    gap: 1.5rem;
+  }
+  .taxonomy-categories-workspace > *,
+  .taxonomy-categories-workspace form > * {
+    min-width: 0;
+  }
+  .taxonomy-categories-heading {
+    padding-block-end: 1.25rem;
+    border-bottom: 1px solid color-mix(in oklch, var(--brand-accent) 20%, var(--border));
+  }
+  .taxonomy-categories-eyebrow {
+    margin-block-end: 0.5rem;
+    color: var(--signal-accent-copy);
+    font: 600 0.6875rem/1.4 var(--font-geist-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  [dir='rtl'] .taxonomy-categories-eyebrow {
+    letter-spacing: normal;
+  }
+  .taxonomy-categories-workspace [data-slot='card'] {
+    gap: 0;
+    padding-block: 0;
+    background: var(--signal-panel-surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    box-shadow: none;
+  }
+  .taxonomy-categories-workspace [data-slot='card-header'] {
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .taxonomy-categories-workspace [data-slot='card-content'] {
+    padding: 1.25rem;
+  }
+  .taxonomy-categories-workspace [data-slot='card-title'] {
+    font-size: 1.125rem;
+    line-height: 1.5;
+  }
+  .taxonomy-categories-workspace :is(input, textarea, button) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .taxonomy-categories-workspace textarea {
+    min-height: 5rem;
+  }
+  .taxonomy-categories-workspace form {
+    min-width: 0;
+  }
+  .taxonomy-categories-workspace :is(label, [data-slot='alert-description']) {
+    overflow-wrap: anywhere;
+  }
+  .taxonomy-categories-workspace :is(input, textarea, button):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (max-width: 47.999rem) {
+    .taxonomy-categories-workspace :is([data-slot='card-header'], [data-slot='card-content']) {
+      padding: 1rem;
+    }
+  }
+}
+
+@layer utilities {
+  .dark .taxonomy-categories-workspace button[data-variant='destructive'] {
+    color: color-mix(in oklch, var(--destructive) 65%, white);
+  }
+}

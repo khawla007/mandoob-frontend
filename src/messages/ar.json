@@ -5223,6 +5223,7 @@
           "description": "Manage blog attributes used for editorial metadata."
         },
         "categories": {
+          "eyebrow": "تصنيفات المحتوى",
           "title": "Categories",
           "description": "Manage blog categories used to group platform articles."
         },

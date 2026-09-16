@@ -5251,6 +5251,7 @@
           "description": "Manage blog attributes used for editorial metadata."
         },
         "categories": {
+          "eyebrow": "Editorial taxonomies",
           "title": "Categories",
           "description": "Manage blog categories used to group platform articles."
         },
