@@ -5257,6 +5257,7 @@
           "description": "Manage blog categories used to group platform articles."
         },
         "tags": {
+          "eyebrow": "Editorial taxonomies",
           "title": "Tags",
           "description": "Manage blog tags used for article discovery and filtering."
         },

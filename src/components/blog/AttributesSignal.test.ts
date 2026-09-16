@@ -15,7 +15,7 @@ test('Attributes deliberately opts into the shared inspected taxonomy workspace'
   assert.equal((page.match(/<h1/g) ?? []).length, 1);
   assert.doesNotMatch(
     readFileSync('src/app/admin/blog/tags/page.tsx', 'utf8'),
-    /admin-taxonomy-workspace/,
+    /taxonomy-attributes-workspace/,
   );
 });
 test('Shared taxonomy styles stay gated and preserve accessible instrument-free form surfaces', () => {

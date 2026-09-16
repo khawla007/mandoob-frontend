@@ -5229,6 +5229,7 @@
           "description": "Manage blog categories used to group platform articles."
         },
         "tags": {
+          "eyebrow": "تصنيفات المحتوى",
           "title": "Tags",
           "description": "Manage blog tags used for article discovery and filtering."
         },
