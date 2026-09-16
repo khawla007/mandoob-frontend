@@ -128,3 +128,14 @@ test('mandatory operator MFA removal delegates to the distributed invariant', ()
   assert.match(remove, /listVerifiedFactorIds/u);
   assert.match(remove, /unenroll/u);
 });
+
+test('password change preserves the browser session while reauthenticating in isolation', () => {
+  const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
+  const change = source.slice(
+    source.indexOf('export async function changePasswordAction'),
+    source.indexOf('export async function enrollMfaAction'),
+  );
+  assert.match(change, /verifyCurrentPassword\(/u);
+  assert.doesNotMatch(change, /\.auth\.signInWithPassword/u);
+  assert.ok(change.indexOf('verifyCurrentPassword(') < change.indexOf('.auth.updateUser'));
+});

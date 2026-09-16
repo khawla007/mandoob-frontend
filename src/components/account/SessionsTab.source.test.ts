@@ -3,18 +3,16 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
-test('sessions tab authenticates before its narrowly classified dependency recovery', () => {
+test('sessions tab authenticates before reading the service-backed session list', () => {
   const source = readFileSync(
     join(process.cwd(), 'src/components/account/SessionsTab.tsx'),
     'utf8',
   );
   const auth = source.indexOf('await requireUser()');
-  const recovery = source.indexOf('try {');
-  const sessions = source.indexOf('await listUserSessions(session.id)');
-  assert.ok(auth >= 0 && recovery > auth && sessions > recovery);
-  assert.match(source, /isSessionManagementUnavailableError\(error\)/u);
-  assert.match(source, /if \(!isSessionManagementUnavailableError\(error\)\) throw error/u);
-  assert.doesNotMatch(source, /catch\s*\{\s*return/u);
+  const sessions = source.indexOf('listUserSessions(session.id)');
+  assert.ok(auth >= 0 && sessions > auth);
+  assert.doesNotMatch(source, /SESSION_MANAGEMENT_UNAVAILABLE|sessionsUnavailable/u);
+  assert.doesNotMatch(source, /catch\s*\{/u);
 });
 
 test('account sessions route retains its direct role authorization before rendering the tab', () => {

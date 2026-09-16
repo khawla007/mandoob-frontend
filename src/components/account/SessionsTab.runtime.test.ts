@@ -6,12 +6,12 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 type TestGlobals = typeof globalThis & {
-  __scenario: 'ready' | 'unavailable' | 'provider-404' | 'unauthenticated';
+  __scenario: 'ready' | 'provider-error' | 'unauthenticated';
   __sessionReads: number;
 };
 
 if (process.env.SESSIONS_TAB_RUNTIME_CHILD !== '1') {
-  test('sessions tab preserves auth and renders only the classified unavailable state', () => {
+  test('sessions tab preserves authentication and propagates session-store failures', () => {
     const temporaryDirectory = mkdtempSync(join(tmpdir(), 'sessions-tab-'));
     const preloadPath = join(temporaryDirectory, 'preload.cjs');
     try {
@@ -37,21 +37,14 @@ Module._load = function (request, parent, isMain) {
   if (request === '@/lib/auth/sessions') return {
     listUserSessions: async () => {
       globalThis.__sessionReads += 1;
-      if (globalThis.__scenario === 'unavailable') {
-        const error = new Error('sessions unavailable');
-        error.code = 'SESSION_MANAGEMENT_UNAVAILABLE';
-        throw error;
-      }
-      if (globalThis.__scenario === 'provider-404') {
-        const error = new Error('provider resource not found');
+      if (globalThis.__scenario === 'provider-error') {
+        const error = new Error('session store failed');
         error.code = 'INTERNAL';
         error.status = 500;
         throw error;
       }
-      return [];
+      return [{id: 'session-1', userId: 'user-1'}];
     },
-    isSessionManagementUnavailableError: (error) =>
-      error && error.code === 'SESSION_MANAGEMENT_UNAVAILABLE',
   };
   return load.call(this, request, parent, isMain);
 };`,
@@ -81,32 +74,43 @@ Module._load = function (request, parent, isMain) {
     return '';
   }
 
-  function hasStatus(node: unknown): boolean {
-    if (Array.isArray(node)) return node.some(hasStatus);
-    if (!node || typeof node !== 'object' || !('props' in node)) return false;
-    const props = (node as { props: { role?: string; children?: unknown } }).props;
-    return props.role === 'status' || hasStatus(props.children);
+  function findSessions(node: unknown): { props: Record<string, unknown> } | undefined {
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        const match = findSessions(child);
+        if (match) return match;
+      }
+      return undefined;
+    }
+    if (!node || typeof node !== 'object') return undefined;
+    if ('props' in node) {
+      const props = (node as { props: Record<string, unknown> }).props;
+      if ('sessions' in props) return { props };
+      return findSessions(props.children);
+    }
+    return undefined;
   }
 
-  test('classified unavailable dependency renders localized semantic status', async () => {
-    globals.__scenario = 'unavailable';
+  test('ready session data renders the session list', async () => {
+    globals.__scenario = 'ready';
     globals.__sessionReads = 0;
     const { SessionsTab } = await import('./SessionsTab');
     const result = await SessionsTab();
     assert.match(textContent(result), /account:tabSessions/u);
-    assert.match(textContent(result), /customer\.settings\.account:sessionsUnavailable/u);
-    assert.equal(hasStatus(result), true);
+    const list = findSessions(result);
+    assert.ok(list);
+    assert.deepEqual(list.props.sessions, [{ id: 'session-1', userId: 'user-1' }]);
     assert.equal(globals.__sessionReads, 1);
   });
 
-  test('an ordinary provider resource 404 remains internal and is rethrown', async () => {
-    globals.__scenario = 'provider-404';
+  test('session-store errors are rethrown', async () => {
+    globals.__scenario = 'provider-error';
     const { SessionsTab } = await import('./SessionsTab');
     await assert.rejects(
       () => SessionsTab(),
       (error) =>
         error instanceof Error &&
-        error.message === 'provider resource not found' &&
+        error.message === 'session store failed' &&
         (error as Error & { code?: string; status?: number }).code === 'INTERNAL' &&
         (error as Error & { code?: string; status?: number }).status === 500,
     );

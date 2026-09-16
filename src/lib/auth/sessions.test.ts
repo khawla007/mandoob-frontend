@@ -38,99 +38,96 @@ test('parseSessionRow handles missing user_agent', async () => {
   assert.equal(out.lastSeenAt, '2026-04-30T08:00:00Z');
 });
 
-test('listUserSessions classifies only an unsupported sessions endpoint as unavailable', async (t) => {
-  const originalFetch = globalThis.fetch;
-  t.after(() => {
-    globalThis.fetch = originalFetch;
-  });
-  globalThis.fetch = async () =>
-    new Response('404 page not found\n', {
-      status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    });
-
-  const { isSessionManagementUnavailableError, listUserSessions } = await import('./sessions');
-  await assert.rejects(
-    () => listUserSessions('user-1'),
-    (error) => {
-      assert.ok(error instanceof ApiError);
-      assert.equal(error.code, 'SESSION_MANAGEMENT_UNAVAILABLE');
-      assert.equal(error.status, 503);
-      assert.equal(isSessionManagementUnavailableError(error), true);
-      return true;
+test('listUserSessions reads only the requested user through the service-role store', async () => {
+  const calls: string[] = [];
+  const { listUserSessionsWith } = await import('./sessions');
+  const sessions = await listUserSessionsWith(
+    {
+      list: async (userId) => {
+        calls.push(userId);
+        return {
+          data: [
+            {
+              id: '11111111-1111-4111-8111-111111111111',
+              user_id: userId,
+              user_agent: 'Browser',
+              ip: '127.0.0.1',
+              refreshed_at: null,
+              created_at: '2026-09-15T00:00:00Z',
+            },
+          ],
+          error: null,
+        };
+      },
+      revoke: async () => ({ data: false, error: null }),
     },
+    '22222222-2222-4222-8222-222222222222',
+  );
+
+  assert.deepEqual(calls, ['22222222-2222-4222-8222-222222222222']);
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0]?.userId, '22222222-2222-4222-8222-222222222222');
+});
+
+test('revokeSessionById uses an ownership-bound RPC and hides missing sessions', async () => {
+  const calls: unknown[] = [];
+  const { revokeSessionByIdWith } = await import('./sessions');
+  const store = {
+    list: async () => ({ data: [], error: null }),
+    revoke: async (userId: string, sessionId: string) => {
+      calls.push({ userId, sessionId });
+      return { data: true, error: null };
+    },
+  };
+
+  await revokeSessionByIdWith(
+    store,
+    '22222222-2222-4222-8222-222222222222',
+    '11111111-1111-4111-8111-111111111111',
+  );
+  assert.deepEqual(calls, [
+    {
+      userId: '22222222-2222-4222-8222-222222222222',
+      sessionId: '11111111-1111-4111-8111-111111111111',
+    },
+  ]);
+
+  store.revoke = async () => ({ data: false, error: null });
+  await assert.rejects(
+    () =>
+      revokeSessionByIdWith(
+        store,
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+      ),
+    (error) => error instanceof ApiError && error.code === 'FORBIDDEN',
   );
 });
 
-test('listUserSessions does not classify auth, provider, or unexpected failures as unavailable', async (t) => {
-  const originalFetch = globalThis.fetch;
-  t.after(() => {
-    globalThis.fetch = originalFetch;
-  });
-  const { isSessionManagementUnavailableError, listUserSessions } = await import('./sessions');
-  assert.equal(
-    isSessionManagementUnavailableError({ code: 'SESSION_MANAGEMENT_UNAVAILABLE', status: 503 }),
-    false,
-  );
-  assert.equal(
-    isSessionManagementUnavailableError(
-      new ApiError('SESSION_MANAGEMENT_UNAVAILABLE', 'wrong status', 500),
-    ),
-    false,
-  );
-
-  for (const response of [
-    new Response(
-      JSON.stringify({ code: 404, error_code: 'user_not_found', msg: 'User not found' }),
-      {
-        status: 404,
-        headers: { 'content-type': 'application/json' },
-      },
-    ),
-    new Response('resource not found', {
-      status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    }),
-    new Response(`404 page not found\n${'x'.repeat(128)}`, {
-      status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    }),
-  ]) {
-    globalThis.fetch = async () => response;
-    await assert.rejects(
-      () => listUserSessions('user-1'),
-      (error) => {
-        assert.ok(error instanceof ApiError);
-        assert.equal(error.code, 'INTERNAL');
-        assert.equal(isSessionManagementUnavailableError(error), false);
-        return true;
-      },
-    );
-  }
-
-  for (const status of [401, 403, 500]) {
-    globalThis.fetch = async () => new Response('provider detail', { status });
-    await assert.rejects(
-      () => listUserSessions('user-1'),
-      (error) => {
-        assert.ok(error instanceof ApiError);
-        assert.equal(error.code, 'INTERNAL');
-        assert.equal(isSessionManagementUnavailableError(error), false);
-        return true;
-      },
-    );
-  }
-
-  const networkError = new Error('network failed');
-  globalThis.fetch = async () => {
-    throw networkError;
+test('session store failures return sanitized errors', async () => {
+  const { listUserSessionsWith, revokeSessionByIdWith } = await import('./sessions');
+  const store = {
+    list: async () => ({ data: null, error: new Error('postgres password raw') }),
+    revoke: async () => ({ data: null, error: new Error('service key raw') }),
   };
+
   await assert.rejects(
-    () => listUserSessions('user-1'),
-    (error) => {
-      assert.equal(error, networkError);
-      assert.equal(isSessionManagementUnavailableError(error), false);
-      return true;
-    },
+    () => listUserSessionsWith(store, '22222222-2222-4222-8222-222222222222'),
+    (error) =>
+      error instanceof ApiError &&
+      error.code === 'INTERNAL' &&
+      !/postgres|password|raw/iu.test(error.message),
+  );
+  await assert.rejects(
+    () =>
+      revokeSessionByIdWith(
+        store,
+        '22222222-2222-4222-8222-222222222222',
+        '11111111-1111-4111-8111-111111111111',
+      ),
+    (error) =>
+      error instanceof ApiError &&
+      error.code === 'INTERNAL' &&
+      !/service|key|raw/iu.test(error.message),
   );
 });

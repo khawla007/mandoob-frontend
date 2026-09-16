@@ -19,6 +19,7 @@ import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { listUserSessions, revokeSessionById, type SessionSummary } from '@/lib/auth/sessions';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { removeMfaFactorWithInvariant } from '@/lib/auth/mfa-factor-removal';
+import { verifyCurrentPassword } from '@/lib/auth/password-change';
 import { ApiError } from '@/lib/errors';
 
 export type ActionResult<T = undefined> =
@@ -90,18 +91,19 @@ export async function changePasswordAction(formInput: unknown): Promise<ActionRe
     const parsed = PasswordChangeSchema.parse(formInput);
     if (!session.email) throw new ApiError('VALIDATION_FAILED', 'No email on session', 400);
 
-    const supabase = await createSupabaseServerClient();
-    const { error: reauthErr } = await supabase.auth.signInWithPassword({
-      email: session.email,
-      password: parsed.current_password,
-    });
-    if (reauthErr) {
+    const reauthenticated = await verifyCurrentPassword(
+      session.id,
+      session.email,
+      parsed.current_password,
+    );
+    if (!reauthenticated) {
       return {
         ok: false,
         error: { code: 'REAUTH_FAILED', message: 'Current password is incorrect' },
       };
     }
 
+    const supabase = await createSupabaseServerClient();
     const { error: updateErr } = await supabase.auth.updateUser({ password: parsed.new_password });
     if (updateErr) {
       return {

@@ -1,6 +1,6 @@
 import 'server-only';
-import { env } from '@/lib/env';
 import { ApiError } from '@/lib/errors';
+import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 export type SessionSummary = {
   id: string;
@@ -31,88 +31,53 @@ export function parseSessionRow(row: RawSessionRow): SessionSummary {
   };
 }
 
-export function isSessionManagementUnavailableError(error: unknown): error is ApiError {
-  return (
-    error instanceof ApiError &&
-    error.code === 'SESSION_MANAGEMENT_UNAVAILABLE' &&
-    error.status === 503
-  );
-}
+type StoreResult<T> = Promise<{ data: T | null; error: unknown }>;
 
-function adminUrl(path: string): string {
-  return `${env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/auth/v1/admin${path}`;
-}
+export type SessionStore = {
+  list: (userId: string) => StoreResult<RawSessionRow[]>;
+  revoke: (userId: string, sessionId: string) => StoreResult<boolean>;
+};
 
-function adminHeaders(): Record<string, string> {
+function createSessionStore(): SessionStore {
+  const admin = createSupabaseServiceRoleClient();
   return {
-    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-    Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-    'Content-Type': 'application/json',
+    list: async (userId) =>
+      admin
+        .from('admin_active_sessions')
+        .select('id, user_id, user_agent, ip, refreshed_at, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false }),
+    revoke: async (userId, sessionId) =>
+      admin.rpc('revoke_user_auth_session', {
+        p_user_id: userId,
+        p_session_id: sessionId,
+      }),
   };
 }
 
-async function readBoundedText(response: Response, maxBytes: number): Promise<string | null> {
-  if (!response.body) return '';
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) {
-        await reader.cancel();
-        return null;
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  const body = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(body);
-}
-
-async function isUnsupportedSessionsEndpointResponse(response: Response): Promise<boolean> {
-  if (response.status !== 404) return false;
-  if (response.headers.get('content-type')?.toLowerCase() !== 'text/plain; charset=utf-8') {
-    return false;
-  }
-  return (await readBoundedText(response, 64)) === '404 page not found\n';
+export async function listUserSessionsWith(
+  store: SessionStore,
+  userId: string,
+): Promise<SessionSummary[]> {
+  const { data, error } = await store.list(userId);
+  if (error || !data) throw new ApiError('INTERNAL', 'Could not list sessions', 500);
+  return data.map(parseSessionRow);
 }
 
 export async function listUserSessions(userId: string): Promise<SessionSummary[]> {
-  const res = await fetch(adminUrl(`/users/${encodeURIComponent(userId)}/sessions`), {
-    headers: adminHeaders(),
-    cache: 'no-store',
-  });
-  if (await isUnsupportedSessionsEndpointResponse(res)) {
-    throw new ApiError(
-      'SESSION_MANAGEMENT_UNAVAILABLE',
-      'Session management endpoint is unavailable',
-      503,
-    );
-  }
-  if (!res.ok) throw new ApiError('INTERNAL', `listUserSessions failed: ${res.status}`, 500);
-  const body = (await res.json()) as { sessions?: RawSessionRow[] };
-  return (body.sessions ?? []).map(parseSessionRow);
+  return listUserSessionsWith(createSessionStore(), userId);
+}
+
+export async function revokeSessionByIdWith(
+  store: SessionStore,
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  const { data, error } = await store.revoke(userId, sessionId);
+  if (error) throw new ApiError('INTERNAL', 'Could not revoke session', 500);
+  if (data !== true) throw new ApiError('FORBIDDEN', 'Session is unavailable', 403);
 }
 
 export async function revokeSessionById(userId: string, sessionId: string): Promise<void> {
-  const res = await fetch(adminUrl(`/sessions/${encodeURIComponent(sessionId)}`), {
-    method: 'DELETE',
-    headers: adminHeaders(),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    throw new ApiError('INTERNAL', `revokeSessionById failed: ${res.status} ${detail}`, 500);
-  }
-  void userId;
+  return revokeSessionByIdWith(createSessionStore(), userId, sessionId);
 }
