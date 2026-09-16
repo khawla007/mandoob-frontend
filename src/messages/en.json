@@ -5247,6 +5247,7 @@
       },
       "taxonomy": {
         "attributes": {
+          "eyebrow": "Editorial taxonomies",
           "title": "Attributes",
           "description": "Manage blog attributes used for editorial metadata."
         },

@@ -18,9 +18,9 @@ test('Categories opts in independently, preserving authorization and category lo
   }
 });
 test('Categories has scoped operational panels, field geometry and logical action alignment', () => {
-  assert.match(css, /\.taxonomy-categories-workspace \[data-slot='card'\]/);
-  assert.match(css, /\.taxonomy-categories-workspace :is\(input, textarea, button\)/);
-  assert.match(css, /\.taxonomy-categories-workspace form/);
+  assert.match(css, /\.admin-taxonomy-workspace \[data-slot='card'\]/);
+  assert.match(css, /\.admin-taxonomy-workspace :is\(input, textarea, button\)/);
+  assert.match(css, /\.admin-taxonomy-workspace form/);
   assert.doesNotMatch(page, /signal-kpi|signal-panel|LIVE/);
 });
 test('Taxonomy native form payload, confirmation, failure and pending contracts stay exact', () => {
@@ -38,5 +38,5 @@ test('Taxonomy native form payload, confirmation, failure and pending contracts 
 });
 
 test('Categories eyebrow uses the accessible paired accent token', () => {
-  assert.match(css, /\.taxonomy-categories-eyebrow \{[^}]*color: var\(--signal-accent-copy\)/);
+  assert.match(css, /\.admin-taxonomy-eyebrow \{[^}]*color: var\(--signal-accent-copy\)/);
 });
