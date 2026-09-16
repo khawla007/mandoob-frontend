@@ -27,6 +27,7 @@ export function BlogMediaPanel({ initialMediaId }: { initialMediaId?: string | n
     if (!file) return;
     setError(null);
     const formData = new FormData();
+    formData.set('operationId', crypto.randomUUID());
     formData.append('file', file);
     startTransition(async () => {
       const result = await uploadBlogMediaAction(formData);

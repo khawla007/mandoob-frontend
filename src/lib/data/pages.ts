@@ -13,11 +13,11 @@ import {
 } from '@/lib/validation/pages';
 
 const CMS_PAGE_COLUMNS =
-  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, script_head, script_body_start, script_body_end, created_by, updated_by, deleted_at, created_at, updated_at';
+  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, script_head, script_body_start, script_body_end, created_by, updated_by, deleted_at, created_at, updated_at, row_version';
 const CMS_PAGE_LIST_COLUMNS =
-  'id, slug, title, status, published_at, scheduled_for, noindex, deleted_at, created_at, updated_at';
+  'id, slug, title, status, published_at, scheduled_for, noindex, deleted_at, created_at, updated_at, row_version';
 const CMS_PAGE_PUBLIC_COLUMNS =
-  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, script_head, script_body_start, script_body_end, created_at, updated_at';
+  'id, slug, title, content_json, content_html, hero_settings, background_image_media_id, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, schema_markup, script_head, script_body_start, script_body_end, created_at, updated_at, row_version';
 
 type QueryResult = {
   data: unknown;
@@ -87,6 +87,7 @@ const cmsPageRowSchema = z.object({
   deleted_at: nullableTimestamp,
   created_at: timestamp,
   updated_at: timestamp,
+  row_version: z.number().int().positive().default(1),
 });
 const cmsPageListRowSchema = cmsPageRowSchema.pick({
   id: true,
@@ -99,6 +100,7 @@ const cmsPageListRowSchema = cmsPageRowSchema.pick({
   deleted_at: true,
   created_at: true,
   updated_at: true,
+  row_version: true,
 });
 const cmsPagePublicRowSchema = cmsPageRowSchema.omit({
   created_by: true,
@@ -137,6 +139,7 @@ export type CmsPage = {
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  rowVersion?: number;
 };
 export type CmsPageListItem = Pick<
   CmsPage,
@@ -150,6 +153,7 @@ export type CmsPageListItem = Pick<
   | 'deletedAt'
   | 'createdAt'
   | 'updatedAt'
+  | 'rowVersion'
 >;
 export type CmsPagePage = {
   items: CmsPageListItem[];
@@ -217,6 +221,7 @@ export function mapCmsPageRow(value: unknown): CmsPage {
     deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    rowVersion: row.row_version,
   };
 }
 
@@ -237,6 +242,7 @@ function mapListRow(value: unknown): CmsPageListItem {
     deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    rowVersion: row.row_version,
   };
 }
 

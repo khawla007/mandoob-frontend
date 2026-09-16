@@ -39,6 +39,8 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   function submit(data: FormData) {
+    data.set('operationId', crypto.randomUUID());
+    if (page) data.set('expectedVersion', String(page.rowVersion ?? 1));
     setError(null);
     startTransition(async () => {
       const result = await saveCmsPageAction(page?.id ?? null, data);

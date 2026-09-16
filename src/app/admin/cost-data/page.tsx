@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { CostDataStatusButton } from '@/components/admin/CostDataStatusButton';
 import { CostDataTable } from '@/components/admin/CostDataTable';
 import { requireRole } from '@/lib/auth/require-role';
 import { listCostDataRows, getCostDataSummary, type CostDataFilters } from '@/lib/data/cost-data';
+import { COST_DATA_PAGE_SIZE, costDataPageHref, parseCostDataPage } from './pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +20,7 @@ type SearchParams = {
   active?: string;
   feeType?: string;
   estimateGrade?: string;
+  page?: string;
 };
 
 export default async function CostDataPage({
@@ -34,8 +37,12 @@ export default async function CostDataPage({
     active: parseActive(sp.active),
     feeType: sp.feeType ?? 'all',
     estimateGrade: parseEstimateGrade(sp.estimateGrade),
+    page: positivePage(sp.page),
+    pageSize: COST_DATA_PAGE_SIZE,
   };
   const [summary, result] = await Promise.all([getCostDataSummary(), listCostDataRows(filters)]);
+  const pagination = parseCostDataPage(sp.page, result.count);
+  if (pagination.page !== filters.page) redirect(costDataPageHref(sp, pagination.page));
   const exportHref = `/admin/cost-data/export?${new URLSearchParams(cleanParams(sp)).toString()}`;
 
   return (
@@ -92,6 +99,43 @@ export default async function CostDataPage({
               </div>
             )}
           />
+          <nav
+            aria-label={t('costData.page.paginationLabel')}
+            className="mt-4 flex flex-wrap items-center justify-between gap-3"
+          >
+            <p className="text-muted-foreground text-sm">
+              {t('costData.page.paginationSummary', {
+                page: pagination.page,
+                pageCount: pagination.pageCount,
+                total: result.count,
+              })}
+            </p>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm" disabled={pagination.page <= 1}>
+                <Link
+                  href={costDataPageHref(sp, pagination.page - 1)}
+                  aria-disabled={pagination.page <= 1}
+                  tabIndex={pagination.page <= 1 ? -1 : undefined}
+                >
+                  {t('costData.page.previous')}
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                disabled={pagination.page >= pagination.pageCount}
+              >
+                <Link
+                  href={costDataPageHref(sp, pagination.page + 1)}
+                  aria-disabled={pagination.page >= pagination.pageCount}
+                  tabIndex={pagination.page >= pagination.pageCount ? -1 : undefined}
+                >
+                  {t('costData.page.next')}
+                </Link>
+              </Button>
+            </div>
+          </nav>
         </CardContent>
       </Card>
     </div>
@@ -155,4 +199,9 @@ function cleanParams(params: SearchParams): Record<string, string> {
   return Object.fromEntries(
     Object.entries(params).filter((entry): entry is [string, string] => Boolean(entry[1])),
   );
+}
+
+function positivePage(value: string | undefined): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }

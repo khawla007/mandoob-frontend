@@ -4,16 +4,10 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { z, ZodError } from 'zod';
 import { normalizeBlogSlug } from '@/lib/blog/slug';
+import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { requireAal2, requireRole } from '@/lib/auth/require-role';
-import {
-  createBlogTerm,
-  deleteBlogTerm,
-  getAdminBlogPost,
-  softDeleteBlogPost,
-  updateBlogTerm,
-  uploadBlogMedia,
-  upsertBlogPost,
-} from '@/lib/data/blog';
+import { getAdminBlogPost, uploadBlogMedia } from '@/lib/data/blog';
+import { mutateEditorialContent } from '@/lib/data/content-mutations';
 import { ApiError } from '@/lib/errors';
 import {
   MAX_GALLERY_IMAGE_BYTES,
@@ -31,6 +25,7 @@ type BlogAdminActor = {
 };
 
 const idSchema = z.string().uuid();
+const versionSchema = z.coerce.number().int().positive();
 
 function formString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -139,7 +134,40 @@ export async function saveBlogPostAction(
       galleryMediaIds: formStringList(formData, 'galleryMediaIds'),
     });
 
-    const post = await upsertBlogPost(parsed, actor, id ? idSchema.parse(id) : undefined);
+    const parsedId = id ? idSchema.parse(id) : null;
+    const operationId = idSchema.parse(formString(formData, 'operationId'));
+    const expectedVersion = parsedId
+      ? versionSchema.parse(formString(formData, 'expectedVersion'))
+      : null;
+    const timestamps = blogTimestamps(
+      parsed.status,
+      parsed.publishedAt ?? null,
+      parsed.scheduledFor ?? null,
+    );
+    const post = await mutateEditorialContent({
+      actorId: actor.id,
+      operationId,
+      entityType: 'blog_post',
+      action: parsedId ? 'update' : 'create',
+      entityId: parsedId,
+      expectedVersion,
+      payload: {
+        slug: parsed.slug,
+        title: parsed.title,
+        excerpt: parsed.excerpt ?? null,
+        content_json: parsed.contentJson,
+        content_html: sanitizeBlogHtml(parsed.contentHtml),
+        status: parsed.status,
+        ...timestamps,
+        meta_title: parsed.metaTitle ?? null,
+        meta_description: parsed.metaDescription ?? null,
+        canonical_url: parsed.canonicalUrl ?? null,
+        noindex: parsed.noindex,
+        featured_media_id: parsed.featuredMediaId ?? null,
+        term_ids: parsed.termIds,
+        gallery_media_ids: parsed.galleryMediaIds,
+      },
+    });
     revalidateBlogIndex();
     if (previousPost?.slug && previousPost.slug !== post.slug) {
       revalidatePath(`/blog/${previousPost.slug}`);
@@ -151,12 +179,24 @@ export async function saveBlogPostAction(
   }
 }
 
-export async function deleteBlogPostAction(id: string): Promise<ActionResult> {
+export async function deleteBlogPostAction(
+  id: string,
+  operationId: string,
+  expectedVersion: number,
+): Promise<ActionResult> {
   try {
     const actor = await requireBlogAdminActor();
     const parsedId = idSchema.parse(id);
     const previousPost = await getAdminBlogPost(parsedId);
-    await softDeleteBlogPost(parsedId, actor);
+    await mutateEditorialContent({
+      actorId: actor.id,
+      operationId: idSchema.parse(operationId),
+      entityType: 'blog_post',
+      action: 'delete',
+      entityId: parsedId,
+      expectedVersion: versionSchema.parse(expectedVersion),
+      payload: {},
+    });
     revalidateBlogIndex();
     if (previousPost?.slug) revalidatePath(`/blog/${previousPost.slug}`);
     return { ok: true, data: undefined };
@@ -181,11 +221,25 @@ export async function saveBlogTermAction(
       sortOrder: formString(formData, 'sortOrder'),
     });
 
-    if (id) {
-      await updateBlogTerm(idSchema.parse(id), parsed, actor);
-    } else {
-      await createBlogTerm(parsed, actor);
-    }
+    const parsedId = id ? idSchema.parse(id) : null;
+    await mutateEditorialContent({
+      actorId: actor.id,
+      operationId: idSchema.parse(formString(formData, 'operationId')),
+      entityType: 'blog_term',
+      action: parsedId ? 'update' : 'create',
+      entityId: parsedId,
+      expectedVersion: parsedId
+        ? versionSchema.parse(formString(formData, 'expectedVersion'))
+        : null,
+      payload: {
+        kind: parsed.kind,
+        name: parsed.name,
+        slug: parsed.slug,
+        description: parsed.description ?? null,
+        parent_id: parsed.parentId ?? null,
+        sort_order: parsed.sortOrder,
+      },
+    });
 
     revalidateBlogIndex();
     return { ok: true, data: undefined };
@@ -194,10 +248,22 @@ export async function saveBlogTermAction(
   }
 }
 
-export async function deleteBlogTermAction(id: string): Promise<ActionResult> {
+export async function deleteBlogTermAction(
+  id: string,
+  operationId: string,
+  expectedVersion: number,
+): Promise<ActionResult> {
   try {
     const actor = await requireBlogAdminActor();
-    await deleteBlogTerm(idSchema.parse(id), actor);
+    await mutateEditorialContent({
+      actorId: actor.id,
+      operationId: idSchema.parse(operationId),
+      entityType: 'blog_term',
+      action: 'delete',
+      entityId: idSchema.parse(id),
+      expectedVersion: versionSchema.parse(expectedVersion),
+      payload: {},
+    });
     revalidateBlogIndex();
     return { ok: true, data: undefined };
   } catch (e) {
@@ -235,6 +301,7 @@ export async function uploadBlogMediaAction(
         height: optionalNumber(formData, 'height'),
       },
       actor,
+      { operationId: idSchema.parse(formString(formData, 'operationId')) },
     );
 
     revalidateBlogIndex();
@@ -242,4 +309,16 @@ export async function uploadBlogMediaAction(
   } catch (e) {
     return toResult(e, 'Could not upload blog media');
   }
+}
+
+function blogTimestamps(
+  status: string,
+  publishedAt: string | null,
+  scheduledFor: string | null,
+): { published_at: string | null; scheduled_for: string | null } {
+  if (status === 'published') {
+    return { published_at: publishedAt ?? new Date().toISOString(), scheduled_for: null };
+  }
+  if (status === 'scheduled') return { published_at: null, scheduled_for: scheduledFor };
+  return { published_at: null, scheduled_for: null };
 }

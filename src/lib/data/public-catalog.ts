@@ -172,6 +172,12 @@ export function buildPublicCatalogCacheKey(
   return `catalog:v1:${resource}:${params.toString()}`;
 }
 
+export function getPublicCatalogOrderColumns(
+  resource: PublicCatalogResource,
+): [string, string, string] {
+  return resource === 'costs' ? ['authority', 'label', 'id'] : ['sort_order', 'slug', 'id'];
+}
+
 function mapPublicRow(value: unknown): { item: PublicCatalogItem; version: PublicCatalogVersion } {
   const parsed = publicRowSchema.parse(value);
   if (parsed.price_state === 'priced' && parsed.currency !== 'AED') {
@@ -282,10 +288,11 @@ async function createPublicCatalogStore(): Promise<PublicCatalogStore> {
       }
       if (query.q) builder = builder.or(config.searchColumns(query.q));
       const from = (query.page - 1) * query.pageSize;
+      const [primaryOrder, secondaryOrder, finalOrder] = getPublicCatalogOrderColumns(resource);
       const { data, error, count } = await builder
-        .order(config.sortColumn, { ascending: true })
-        .order('slug', { ascending: true })
-        .order('id', { ascending: true })
+        .order(primaryOrder, { ascending: true })
+        .order(secondaryOrder, { ascending: true })
+        .order(finalOrder, { ascending: true })
         .range(from, from + query.pageSize - 1);
       if (error) throw new Error('catalog query failed');
       return { rows: ((data ?? []) as unknown[]).map(config.flatten), count: count ?? 0 };

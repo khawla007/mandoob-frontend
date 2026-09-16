@@ -25,6 +25,8 @@ function validForm(): FormData {
   form.set('scriptHead', '<script>head()</script>');
   form.set('scriptBodyStart', '<script>start()</script>');
   form.set('scriptBodyEnd', '<script>end()</script>');
+  form.set('operationId', '22222222-2222-4222-8222-222222222222');
+  form.set('expectedVersion', '7');
   return form;
 }
 
@@ -83,7 +85,7 @@ function deps(overrides: Record<string, unknown> = {}) {
       },
       getPage: async () => {
         calls.push('get');
-        return { slug: 'old-page' };
+        return { slug: 'old-page', rowVersion: 7 };
       },
       upsertPage: async () => {
         calls.push('upsert');
@@ -129,11 +131,30 @@ test('save maps duplicate slugs to a stable public result', async () => {
   });
 });
 
+test('save preserves the stable optimistic-conflict result', async () => {
+  const context = deps({
+    upsertPage: async () => {
+      throw new ApiError('CONFLICT', 'This content changed. Refresh and try again.', 409);
+    },
+  });
+  assert.deepEqual(await runSaveCmsPageAction(null, validForm(), context.dependencies), {
+    ok: false,
+    error: 'This content changed. Refresh and try again.',
+    code: 'CONFLICT',
+  });
+});
+
 test('save orchestrates auth, prior lookup, mutation, and old/new root revalidation', async () => {
   let persisted: Record<string, unknown> | undefined;
+  let mutationContext: Record<string, unknown> | undefined;
   const context = deps({
-    upsertPage: async (input: Record<string, unknown>) => {
+    upsertPage: async (
+      input: Record<string, unknown>,
+      _actor: unknown,
+      durable: Record<string, unknown>,
+    ) => {
       persisted = input;
+      mutationContext = durable;
       context.calls.push('upsert');
       return { id: pageId, slug: 'about-us' };
     },
@@ -163,22 +184,42 @@ test('save orchestrates auth, prior lookup, mutation, and old/new root revalidat
       scriptBodyEnd: '<script>end()</script>',
     },
   );
+  assert.deepEqual(mutationContext, {
+    operationId: '22222222-2222-4222-8222-222222222222',
+    expectedVersion: 7,
+  });
 });
 
 test('delete authenticates, validates before reads/mutation, deletes, and revalidates the deleted slug', async () => {
   const invalid = deps();
-  assert.deepEqual(await runDeleteCmsPageAction('bad-id', invalid.dependencies), {
-    ok: false,
-    error: 'Invalid page ID',
-    code: 'INVALID_INPUT',
-  });
+  assert.deepEqual(
+    await runDeleteCmsPageAction(
+      'bad-id',
+      '22222222-2222-4222-8222-222222222222',
+      7,
+      invalid.dependencies,
+    ),
+    {
+      ok: false,
+      error: 'Invalid page ID',
+      code: 'INVALID_INPUT',
+    },
+  );
   assert.deepEqual(invalid.calls, ['auth']);
 
   const context = deps();
-  assert.deepEqual(await runDeleteCmsPageAction(pageId, context.dependencies), {
-    ok: true,
-    data: undefined,
-  });
+  assert.deepEqual(
+    await runDeleteCmsPageAction(
+      pageId,
+      '22222222-2222-4222-8222-222222222222',
+      7,
+      context.dependencies,
+    ),
+    {
+      ok: true,
+      data: undefined,
+    },
+  );
   assert.deepEqual(context.calls, [
     'auth',
     'get',

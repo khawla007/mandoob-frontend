@@ -348,6 +348,7 @@ test('mapBlogTermRow converts database fields to blog term shape', () => {
       createdBy: '00000000-0000-4000-8000-000000000012',
       createdAt: '2026-07-01T08:00:00.000Z',
       updatedAt: '2026-07-01T09:00:00.000Z',
+      rowVersion: 1,
     },
   );
 });
@@ -401,6 +402,7 @@ test('mapBlogPostRow converts database fields to blog post shape', () => {
       deletedAt: null,
       createdAt: '2026-07-01T07:00:00.000Z',
       updatedAt: '2026-07-01T09:00:00.000Z',
+      rowVersion: 1,
     },
   );
 });
@@ -507,6 +509,7 @@ test('mapBlogMediaRow converts database fields to blog media shape', () => {
       uploadedBy: '00000000-0000-4000-8000-000000000031',
       createdAt: '2026-07-01T07:00:00.000Z',
       updatedAt: '2026-07-01T09:00:00.000Z',
+      rowVersion: 1,
     },
   );
 });

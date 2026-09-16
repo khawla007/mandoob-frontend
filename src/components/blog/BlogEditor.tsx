@@ -54,6 +54,8 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
   );
 
   function submit(formData: FormData) {
+    formData.set('operationId', crypto.randomUUID());
+    if (post) formData.set('expectedVersion', String(post.rowVersion ?? 1));
     setMessage(null);
     startTransition(async () => {
       const result = await saveBlogPostAction(post?.id ?? null, formData);

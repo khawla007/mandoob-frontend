@@ -37,6 +37,7 @@ export function BlogGalleryManager({ initialMediaIds = [] }: { initialMediaIds?:
     if (!file) return;
     setError(null);
     const formData = new FormData();
+    formData.set('operationId', crypto.randomUUID());
     formData.append('file', file);
     startTransition(async () => {
       const result = await uploadBlogMediaAction(formData);

@@ -4436,7 +4436,11 @@
         "feeRows": "Fee rows",
         "filterAll": "All",
         "filterActive": "Active",
-        "filterInactive": "Inactive"
+        "filterInactive": "Inactive",
+        "paginationLabel": "Cost-data pages",
+        "paginationSummary": "Page {page} of {pageCount} · {total} rows",
+        "previous": "Previous",
+        "next": "Next"
       }
     },
     "companies": {

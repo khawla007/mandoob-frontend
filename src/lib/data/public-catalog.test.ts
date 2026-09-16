@@ -3,10 +3,16 @@ import { test } from 'node:test';
 
 import {
   buildPublicCatalogCacheKey,
+  getPublicCatalogOrderColumns,
   listPublicCatalog,
   normalizePublicCatalogQuery,
   type PublicCatalogStore,
 } from './public-catalog';
+
+test('uses only real deterministic order columns for each public catalog resource', () => {
+  assert.deepEqual(getPublicCatalogOrderColumns('authorities'), ['sort_order', 'slug', 'id']);
+  assert.deepEqual(getPublicCatalogOrderColumns('costs'), ['authority', 'label', 'id']);
+});
 
 test('normalizes public catalog pagination and filters into a stable cache key', () => {
   assert.deepEqual(
