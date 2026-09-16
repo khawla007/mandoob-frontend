@@ -9,6 +9,8 @@ test('Admin overview directly authorizes and composes the typed command dashboar
   assert.match(source, /resolveDashboardPeriod\(period\)/u);
   assert.match(source, /loadAdminCommandDashboard/u);
   assert.match(source, /<CommandDashboard/u);
+  assert.match(source, /<Suspense/u);
+  assert.match(source, /fallback=\{<AdminCommandDashboardLoading/u);
   assert.ok(
     source.indexOf('await requirePlatformOperator()') <
       source.indexOf('loadAdminCommandDashboard(resolvedPeriod)'),
