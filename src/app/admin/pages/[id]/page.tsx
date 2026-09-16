@@ -20,17 +20,15 @@ export default async function EditAdminPage({ params }: { params: Promise<{ id: 
   const page = await getAdminCmsPage(parsed.data);
   if (!page) notFound();
   return (
-    <div className="space-y-6">
-      <header>
-        <Button asChild variant="ghost" size="sm" className="mb-3 -ml-3">
+    <div className="admin-management-signal pages-management-workspace admin-editorial-workspace">
+      <header className="admin-editorial-heading">
+        <Button asChild variant="ghost" size="sm" className="-ms-3 mb-3">
           <Link href="/admin/pages">
-            <ArrowLeft />
+            <ArrowLeft className="rtl:rotate-180" />
             {t('library')}
           </Link>
         </Button>
-        <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-          {t('editing')}
-        </p>
+        <p className="admin-editorial-eyebrow">{t('editing')}</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{page.title}</h1>
         <p className="text-muted-foreground mt-1 font-mono text-xs">/{page.slug}</p>
       </header>

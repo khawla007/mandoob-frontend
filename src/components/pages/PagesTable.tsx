@@ -81,23 +81,27 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
   }
   return (
     <>
-      <Table>
+      <Table scrollAreaLabel={t('caption')}>
         <TableCaption className="sr-only">{t('caption')}</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>{t('title')}</TableHead>
-            <TableHead>{t('slug')}</TableHead>
-            <TableHead>{t('status')}</TableHead>
-            <TableHead>{t('published')}</TableHead>
-            <TableHead>{t('updated')}</TableHead>
-            <TableHead className="text-right">{t('actions')}</TableHead>
+            <TableHead className="text-start">{t('title')}</TableHead>
+            <TableHead className="text-start">{t('slug')}</TableHead>
+            <TableHead className="text-start">{t('status')}</TableHead>
+            <TableHead className="text-start">{t('published')}</TableHead>
+            <TableHead className="text-start">{t('updated')}</TableHead>
+            <TableHead className="text-end">{t('actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {pages.map((page) => (
             <TableRow key={page.id}>
-              <TableCell className="font-medium">{page.title}</TableCell>
-              <TableCell className="text-muted-foreground font-mono text-xs">{page.slug}</TableCell>
+              <TableCell className="max-w-80 font-medium break-words whitespace-normal">
+                {page.title}
+              </TableCell>
+              <TableCell className="text-muted-foreground max-w-64 font-mono text-xs break-all whitespace-normal">
+                {page.slug}
+              </TableCell>
               <TableCell>
                 <Badge
                   variant={
@@ -149,7 +153,7 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
       </Table>
       {target ? (
         <div
-          className="bg-foreground/40 fixed inset-0 z-50 grid place-items-center p-4"
+          className="pages-delete-backdrop bg-foreground/40 fixed inset-0 z-50 grid place-items-center p-4"
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget && !pending) setTarget(null);
@@ -162,7 +166,7 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
             aria-modal="true"
             aria-labelledby={dialogTitleId}
             aria-describedby={dialogDescriptionId}
-            className="bg-background w-full max-w-md rounded-xl border p-6 shadow-2xl outline-none"
+            className="pages-delete-dialog bg-background w-full max-w-md rounded-xl border p-6 shadow-2xl outline-none"
           >
             <h2 id={dialogTitleId} className="text-lg font-semibold">
               {t('deleteTitle')}
@@ -175,7 +179,7 @@ export function PagesTable({ pages }: { pages: CmsPageListItem[] }) {
                 {error}
               </p>
             ) : null}
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
               <Button
                 ref={cancelRef}
                 type="button"

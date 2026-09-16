@@ -31,13 +31,13 @@ test('Blog table uses one named keyboard scroll region, readable identities and 
   assert.match(table, /action=\{deletePost.bind\(null, post.id\)\}/);
   assert.match(table, /await deleteBlogPostAction\(id\)/);
 });
-test('Rich editor naming is optional and supplied only by the inspected Blog consumer', () => {
+test('Rich editor naming is optional and supplied only by inspected editorial consumers', () => {
   const rich = source('src/components/blog/BlogEditorContent.tsx');
   assert.match(rich, /contentLabel\?: string/);
   assert.match(rich, /contentLabel\s*\?\s*\{/);
   assert.match(rich, /'aria-label': contentLabel/);
   assert.match(source('src/components/blog/BlogEditor.tsx'), /contentLabel=\{t\('content'\)\}/);
-  assert.doesNotMatch(source('src/components/pages/PageEditor.tsx'), /contentLabel/);
+  assert.match(source('src/components/pages/PageEditor.tsx'), /contentLabel=\{t\('content'\)\}/);
   assert.match(rich, /immediatelyRender: false/);
   assert.match(rich, /onMouseDown/);
   assert.match(rich, /name="contentJson"/);
@@ -45,9 +45,9 @@ test('Rich editor naming is optional and supplied only by the inspected Blog con
 });
 test('Blog controls and panel bounds are scoped, leaving checkboxes at their original size', () => {
   const css = source('src/app/globals.css');
-  assert.match(css, /\.blog-management-workspace \[data-slot='card'\]/);
+  assert.match(css, /\.admin-editorial-workspace \[data-slot='card'\]/);
   assert.match(css, /input:not\(\[type='checkbox'\]\):not\(\[type='radio'\]\)/);
-  assert.match(css, /\.blog-management-workspace \.blog-editor-content/);
+  assert.match(css, /\.admin-editorial-workspace \.blog-editor-content/);
   const editor = source('src/components/blog/BlogEditor.tsx');
   assert.match(editor, /saveBlogPostAction\(post\?.id \?\? null, formData\)/);
   assert.match(editor, /\['draft', 'scheduled', 'published', 'archived'\]/);
@@ -60,6 +60,6 @@ test('Blog controls and panel bounds are scoped, leaving checkboxes at their ori
 test('Blog table keyboard focus stays visible inside its clipped border', () => {
   assert.match(
     source('src/app/globals.css'),
-    /\.blog-management-workspace \[data-slot='table-container'\]:focus-visible\s*\{[^}]*outline: 2px solid var\(--ring\);[^}]*outline-offset: -2px;/,
+    /\.admin-editorial-workspace \[data-slot='table-container'\]:focus-visible\s*\{[^}]*outline: 2px solid var\(--ring\);[^}]*outline-offset: -2px;/,
   );
 });
