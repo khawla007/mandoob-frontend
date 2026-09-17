@@ -4869,6 +4869,7 @@
       "date": "Date"
     },
     "finance": {
+      "eyebrow": "Business · Finance",
       "title": "Finance",
       "intro": "Active Stripe subscription recurring value; this is not collected revenue, accounting, or profit.",
       "pointInTime": "Rendered at",

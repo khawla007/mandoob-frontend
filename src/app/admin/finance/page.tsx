@@ -28,8 +28,13 @@ export default async function AdminFinancePage() {
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 
   return (
-    <div className="space-y-6">
-      <DashboardPageHeader title={t('finance.title')} description={t('finance.intro')} />
+    <div className="admin-management-signal finance-management-workspace admin-operational-workspace space-y-6">
+      <DashboardPageHeader
+        eyebrow={t('finance.eyebrow')}
+        title={t('finance.title')}
+        description={t('finance.intro')}
+        className="admin-operational-heading"
+      />
 
       <Card>
         <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -52,14 +57,14 @@ export default async function AdminFinancePage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
-          <Card key={kpi.labelKey}>
+          <Card key={kpi.labelKey} className="finance-kpi" data-kpi={kpi.labelKey}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">
                 {t(`finance.kpi.${kpi.labelKey}`)}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-semibold">{kpi.value}</div>
+              <div className="text-2xl font-semibold tabular-nums">{kpi.value}</div>
               <p className="text-muted-foreground mt-1 text-xs">
                 {t(`finance.kpi.${kpi.helperKey}`)}
               </p>
@@ -73,22 +78,22 @@ export default async function AdminFinancePage() {
           <CardTitle>{t('finance.tenantMrr')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table scrollAreaLabel={t('finance.tenantMrr')}>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('finance.table.tenant')}</TableHead>
-                <TableHead>{t('finance.table.plan')}</TableHead>
-                <TableHead>{t('finance.table.status')}</TableHead>
-                <TableHead>{t('finance.table.periodEnd')}</TableHead>
-                <TableHead className="text-right">{t('finance.table.mrr')}</TableHead>
+                <TableHead className="text-start">{t('finance.table.tenant')}</TableHead>
+                <TableHead className="text-start">{t('finance.table.plan')}</TableHead>
+                <TableHead className="text-start">{t('finance.table.status')}</TableHead>
+                <TableHead className="text-start">{t('finance.table.periodEnd')}</TableHead>
+                <TableHead className="text-end">{t('finance.table.mrr')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.tenantId}>
-                  <TableCell>
+                  <TableCell className="max-w-80 whitespace-normal">
                     <Link
-                      className="underline-offset-4 hover:underline"
+                      className="inline-flex min-h-11 min-w-11 items-center rounded-sm break-words underline-offset-4 hover:underline"
                       href={`/admin/companies?tenant=${row.tenantId}`}
                     >
                       {row.tenantName}
@@ -105,7 +110,7 @@ export default async function AdminFinancePage() {
                   <TableCell>
                     {row.currentPeriodEnd ? date.format(new Date(row.currentPeriodEnd)) : '—'}
                   </TableCell>
-                  <TableCell className="text-right">{row.mrr}</TableCell>
+                  <TableCell className="text-end">{row.mrr}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
