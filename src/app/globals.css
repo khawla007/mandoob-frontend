@@ -3402,7 +3402,9 @@ body.dashboard-surface-active {
   }
   .whatsapp-management-workspace .whatsapp-provider-context {
     padding-inline-start: 16px;
-    border-inline-start: 2px solid var(--signal-info);
+    border-inline-width: 2px 0;
+    border-inline-style: solid;
+    border-inline-color: var(--signal-info);
   }
   .whatsapp-management-workspace .whatsapp-approval-form {
     min-width: 320px;
@@ -3428,7 +3430,9 @@ body.dashboard-surface-active {
     content: none;
   }
   .registration-management-workspace [data-registration-workspace] > [role='status'] {
-    border-inline-start: 2px solid var(--signal-info);
+    border-inline-width: 2px 1px;
+    border-inline-style: solid;
+    border-inline-color: var(--signal-info) var(--border);
     background: var(--signal-panel-surface);
   }
   @media (64rem <= width < 80rem) {
