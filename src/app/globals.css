@@ -3465,3 +3465,49 @@ body.dashboard-surface-active {
     white-space: normal;
   }
 }
+
+@layer utilities {
+  .admin-operational-unavailable-workspace > .signal-dashboard > header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+  }
+  .admin-operational-unavailable-workspace :is(p, span, li, section) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .admin-operational-unavailable-workspace .signal-panel,
+  .admin-operational-unavailable-workspace > .signal-dashboard > section {
+    border-radius: 14px;
+    border-color: var(--border);
+    background: var(--signal-panel-surface);
+  }
+  .admin-operational-unavailable-workspace .signal-panel::before {
+    content: none;
+  }
+  .admin-operational-unavailable-workspace .signal-panel > div > a {
+    display: inline-flex;
+    min-height: 44px;
+    min-width: 44px;
+    align-items: center;
+    padding-inline: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .admin-operational-unavailable-workspace .signal-panel > div > a:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
+}
+
+@layer components {
+  .admin-operational-unavailable-workspace .signal-panel {
+    gap: 0 !important;
+    padding: 20px !important;
+  }
+  .admin-operational-unavailable-workspace .signal-panel[data-slot='card'] {
+    padding: 0 !important;
+  }
+  .admin-operational-unavailable-workspace .signal-panel [data-slot='card-content'] {
+    padding: 20px !important;
+  }
+}
