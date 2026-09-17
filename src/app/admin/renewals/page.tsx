@@ -9,11 +9,12 @@ export default async function AdminRenewalsPage() {
   const t = await getTranslations('admin.management.renewals');
 
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace admin-oversight-workspace space-y-6">
       <DashboardPageHeader
         eyebrow={t('eyebrow')}
         title={t('title')}
         description={t('description')}
+        className="admin-operational-heading"
       />
       <AdminOversightWorkspace
         summaries={[t('summaries.overdue'), t('summaries.week'), t('summaries.days90')]}
@@ -22,6 +23,7 @@ export default async function AdminRenewalsPage() {
         queueDescription={t('queueDescription')}
         stateGuidance={t('guidance')}
         unavailableTitle={t('unavailableTitle')}
+        unavailableLabel={t('unavailableTitle')}
         unavailableDescription={t('unavailableDescription')}
         actionLabel={t('action')}
         actionExplanation={t('actionExplanation')}
