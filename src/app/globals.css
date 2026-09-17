@@ -3179,3 +3179,110 @@ body.dashboard-surface-active {
     overflow-wrap: anywhere;
   }
 }
+
+/* Lead pipeline: existing filtered counts, native filters and live detail forms. */
+@layer utilities {
+  .leads-management-workspace,
+  .leads-management-workspace .leads-board-layout > *,
+  .leads-management-workspace form > * {
+    min-width: 0;
+  }
+  .leads-management-workspace .leads-management-heading {
+    margin-bottom: 0;
+    padding-block-end: 1.25rem;
+    border-bottom: 1px solid color-mix(in oklch, var(--brand-accent) 20%, var(--border));
+  }
+  .leads-management-heading p:first-child {
+    color: var(--signal-accent-copy);
+  }
+  .leads-management-workspace [data-slot='card'] {
+    min-width: 0;
+    background: var(--signal-panel-surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    box-shadow: none;
+  }
+  .leads-management-workspace .leads-funnel-count {
+    padding-block: 0;
+    border-block-start: 2px solid var(--signal-accent-copy);
+    background: var(--signal-coral-soft);
+  }
+  .leads-management-workspace .leads-funnel-count:is([data-stage='new'], [data-stage='contacted']) {
+    background: var(--signal-blue-soft);
+  }
+  .leads-management-workspace .leads-funnel-count[data-stage='won'] {
+    background: var(--signal-mint-soft);
+  }
+  .leads-management-workspace :is(input:not([type='hidden']), select, textarea, button) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .leads-management-workspace :is(p, h1, h2, h3, [data-slot='card-title'], [data-slot='badge']) {
+    overflow-wrap: anywhere;
+  }
+  .leads-management-workspace [data-slot='card-content'] {
+    overflow-wrap: anywhere;
+  }
+  .leads-management-workspace [data-slot='badge'] {
+    white-space: normal;
+  }
+  .leads-management-workspace [data-slot='card-title'] {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+  .leads-management-workspace [data-slot='select-trigger'] {
+    flex: 1;
+    width: 100%;
+  }
+  .leads-management-workspace .leads-board-track {
+    grid-template-columns: repeat(5, minmax(12.5rem, 1fr));
+    overflow-x: auto;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    background: var(--signal-panel-surface);
+    align-items: start;
+  }
+  .leads-management-workspace .leads-board-track:focus-visible {
+    outline: 2px solid var(--signal-accent-copy);
+    outline-offset: -2px;
+  }
+  .leads-management-workspace .leads-board-track a:focus-visible {
+    outline: 2px solid var(--signal-accent-copy);
+    outline-offset: -2px;
+    border-radius: 0.875rem;
+  }
+  @media (min-width: 48rem) and (max-width: 79.999rem) {
+    .leads-management-workspace .leads-management-filters {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+/* Portalled Leads menus opt in explicitly; other Select consumers keep their defaults. */
+@layer utilities {
+  .leads-management-select [data-slot='select-item'] {
+    min-height: 2.75rem;
+    padding-inline: 0.5rem 2rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .leads-management-select [data-slot='select-item'] > span:first-child {
+    right: auto;
+    inset-inline-end: 0.5rem;
+  }
+  .leads-management-workspace [data-slot='select-trigger'] {
+    padding-inline: 0.75rem;
+  }
+}
+
+@layer utilities {
+  .leads-management-workspace button[data-variant='default'] {
+    background: var(--signal-accent-copy);
+    color: var(--background);
+  }
+  .leads-management-workspace [data-slot='badge'] {
+    height: auto;
+    min-height: 1.25rem;
+  }
+}

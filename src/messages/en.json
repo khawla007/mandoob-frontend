@@ -3660,6 +3660,7 @@
       "unassigned": "Unassigned"
     },
     "detail": {
+      "stage": "Stage",
       "emptyTitle": "Lead detail",
       "emptyBody": "Select a lead card to review answers, assignment, stage controls, and activity.",
       "noEmail": "No email",
@@ -3702,6 +3703,8 @@
       "filter": "Filter"
     },
     "admin": {
+      "eyebrow": "Operations · Lead pipeline",
+      "boardLabel": "Lead pipeline stages",
       "title": "Lead pipeline",
       "subtitle": "Questionnaire leads across every company workspace. Showing {total}.",
       "funnelTitle": "Filtered funnel",
