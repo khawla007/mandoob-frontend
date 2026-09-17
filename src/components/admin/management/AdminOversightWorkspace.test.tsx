@@ -44,6 +44,31 @@ renderTest(
     assert.match(html, /data-admin-queue=/u);
     assert.match(html, /<button[^>]*disabled/u);
     assert.match(html, /Phase 3 mutation contract required/u);
+    assert.match(html, /aria-label="Requested: unavailable"/u);
     assert.doesNotMatch(html, /command-dashboard|client/iu);
   },
 );
+
+renderTest('localizes unavailable summary announcements without enabling controls', async () => {
+  const { renderToStaticMarkup } = await import('react-dom/server');
+  const { AdminOversightWorkspace } = await import('./AdminOversightWorkspace');
+  const html = renderToStaticMarkup(
+    <AdminOversightWorkspace
+      summaries={['مُقدَّم', 'قيد المراجعة', 'مرفوض']}
+      filters={['الشركة', 'حالة المراجعة', 'نوع المستند']}
+      queueTitle="قائمة مراجعة المستندات"
+      queueDescription="لا يتوفر عقد قراءة معتمد عبر الشركات."
+      stateGuidance="لا يتم استنتاج أي أعمال متراكمة."
+      unavailableTitle="غير متاح"
+      unavailableDescription="يلزم عقد المرحلة الثالثة."
+      unavailableLabel="غير متاح"
+      actionLabel="مراجعة المستند"
+      actionExplanation="يلزم عقد التعديل والتحقق من الملكية."
+    />,
+  );
+  assert.match(html, /aria-label="مُقدَّم: غير متاح"/u);
+  assert.doesNotMatch(html, /: unavailable/u);
+  assert.equal((html.match(/data-admin-summary="unavailable"/gu) ?? []).length, 3);
+  assert.equal((html.match(/<button[^>]*disabled/gu) ?? []).length, 4);
+  assert.match(html, /aria-describedby=/u);
+});

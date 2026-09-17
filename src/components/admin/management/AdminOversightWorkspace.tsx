@@ -11,6 +11,7 @@ export function AdminOversightWorkspace({
   unavailableDescription,
   actionLabel,
   actionExplanation,
+  unavailableLabel = 'unavailable',
 }: {
   summaries: readonly string[];
   filters: readonly string[];
@@ -21,6 +22,7 @@ export function AdminOversightWorkspace({
   unavailableDescription: string;
   actionLabel: string;
   actionExplanation: string;
+  unavailableLabel?: string;
 }) {
   return (
     <div className="space-y-6">
@@ -32,7 +34,7 @@ export function AdminOversightWorkspace({
             className="border-border bg-card rounded-xl border p-4"
           >
             <p className="text-muted-foreground text-xs font-medium">{summary}</p>
-            <p className="mt-2 font-mono text-xl" aria-label={`${summary}: unavailable`}>
+            <p className="mt-2 font-mono text-xl" aria-label={`${summary}: ${unavailableLabel}`}>
               —
             </p>
           </div>

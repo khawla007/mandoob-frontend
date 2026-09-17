@@ -3503,6 +3503,16 @@ body.dashboard-surface-active {
   }
 }
 
+@layer utilities {
+  .admin-oversight-workspace [data-admin-summary],
+  .admin-oversight-workspace section:has([data-admin-filter]) {
+    min-width: 0;
+    padding: 20px;
+    border-radius: 14px;
+    background: var(--signal-panel-surface);
+  }
+}
+
 @layer components {
   .admin-operational-unavailable-workspace .signal-panel {
     gap: 0 !important;

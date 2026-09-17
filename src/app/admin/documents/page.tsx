@@ -9,11 +9,12 @@ export default async function AdminDocumentsPage() {
   const t = await getTranslations('admin.management.documents');
 
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace admin-oversight-workspace space-y-6">
       <DashboardPageHeader
         eyebrow={t('eyebrow')}
         title={t('title')}
         description={t('description')}
+        className="admin-operational-heading"
       />
       <AdminOversightWorkspace
         summaries={[t('summaries.submitted'), t('summaries.review'), t('summaries.rejected')]}
@@ -22,6 +23,7 @@ export default async function AdminDocumentsPage() {
         queueDescription={t('queueDescription')}
         stateGuidance={t('guidance')}
         unavailableTitle={t('unavailableTitle')}
+        unavailableLabel={t('unavailableTitle')}
         unavailableDescription={t('unavailableDescription')}
         actionLabel={t('action')}
         actionExplanation={t('actionExplanation')}
