@@ -3363,3 +3363,53 @@ body.dashboard-surface-active {
     line-height: 1.5;
   }
 }
+
+@layer utilities {
+  .whatsapp-management-workspace :is(input:not([type='hidden']), select, textarea) {
+    min-height: 44px;
+    min-width: 0;
+    width: 100%;
+  }
+  .whatsapp-management-workspace [data-slot='table'] {
+    min-width: 80rem;
+    table-layout: fixed;
+  }
+  .whatsapp-management-workspace th:nth-child(1) {
+    width: 12rem;
+  }
+  .whatsapp-management-workspace th:nth-child(2) {
+    width: 10rem;
+  }
+  .whatsapp-management-workspace th:nth-child(3) {
+    width: 8rem;
+  }
+  .whatsapp-management-workspace th:nth-child(4) {
+    width: 12rem;
+  }
+  .whatsapp-management-workspace th:nth-child(5) {
+    width: 14rem;
+  }
+  .whatsapp-management-workspace th:nth-child(6) {
+    width: 24rem;
+  }
+  .whatsapp-management-workspace [data-slot='table-cell'] {
+    overflow-wrap: anywhere;
+  }
+  .whatsapp-management-workspace [data-slot='badge'] {
+    overflow-wrap: normal;
+    height: auto;
+    white-space: normal;
+  }
+  .whatsapp-management-workspace .whatsapp-provider-context {
+    padding-inline-start: 16px;
+    border-inline-start: 2px solid var(--signal-info);
+  }
+  .whatsapp-management-workspace .whatsapp-approval-form {
+    min-width: 320px;
+  }
+  @media (48rem <= width < 80rem) {
+    .whatsapp-management-workspace .whatsapp-filter {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}

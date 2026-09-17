@@ -5011,6 +5011,7 @@
       }
     },
     "whatsapp": {
+      "eyebrow": "Operations · WhatsApp templates",
       "title": "WhatsApp templates",
       "intro": "Track Meta approval state before templates are allowed into the outbound queue.",
       "providerCaveat": "Approval values are operator-maintained records; this page does not poll Meta or prove the current provider state.",
