@@ -25,11 +25,12 @@ export default async function AdminRegistrationDetailPage({
     loadRegistrationPresentation(),
   ]);
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace registration-management-workspace space-y-6">
       <DashboardPageHeader
         eyebrow={t('admin.detailEyebrow')}
         title={t('admin.detailTitle')}
         description={t('admin.detailUnavailable')}
+        className="admin-operational-heading"
       />
       <RegistrationWorkspace
         state={state}

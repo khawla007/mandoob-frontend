@@ -27,11 +27,15 @@ export default async function AdminRegistrationsPage({
   ]);
   const query = parseAdminRegistrationQuery(raw);
   return (
-    <div className="space-y-6" data-registration-index-source={state.kind}>
+    <div
+      className="admin-management-signal admin-operational-workspace registration-management-workspace space-y-6"
+      data-registration-index-source={state.kind}
+    >
       <DashboardPageHeader
         eyebrow={t('admin.eyebrow')}
         title={t('admin.title')}
         description={t('admin.description')}
+        className="admin-operational-heading"
       />
       <Card className="signal-panel">
         <CardContent className="pt-6">

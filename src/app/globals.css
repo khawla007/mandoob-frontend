@@ -3413,3 +3413,55 @@ body.dashboard-surface-active {
     }
   }
 }
+
+@layer utilities {
+  .registration-management-workspace :is(input, select) {
+    min-height: 44px;
+    min-width: 0;
+    width: 100%;
+  }
+  .registration-management-workspace :is(strong, span, li, section) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .registration-management-workspace .signal-panel::before {
+    content: none;
+  }
+  .registration-management-workspace [data-registration-workspace] > [role='status'] {
+    border-inline-start: 2px solid var(--signal-info);
+    background: var(--signal-panel-surface);
+  }
+  @media (64rem <= width < 80rem) {
+    .registration-management-workspace ol:has(> [data-registration-stage]) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}
+
+@layer components {
+  .registration-management-workspace .signal-panel {
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+  .registration-management-workspace .signal-panel [data-slot='card-header'],
+  .registration-management-workspace .signal-panel [data-slot='card-content'] {
+    padding: 20px !important;
+  }
+  .registration-management-workspace .signal-panel [data-slot='card-header'] {
+    display: grid;
+    align-items: start;
+    gap: 8px;
+    border-color: var(--border);
+  }
+  .registration-management-workspace .signal-panel [data-slot='card-title'] {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  .registration-management-workspace .signal-panel [data-slot='card-description'] {
+    overflow: visible;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
