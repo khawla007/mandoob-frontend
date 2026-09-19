@@ -8290,6 +8290,27 @@
   will-change: auto;
 }
 
+.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card {
+  opacity: 0;
+  transition:
+    opacity 1s ease,
+    transform 1s ease;
+  transition-delay: 0ms !important;
+}
+.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card--1 {
+  transform: translateX(-20px);
+}
+.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card--2 {
+  transform: translateY(20px);
+}
+.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card--3 {
+  transform: translateX(20px);
+}
+.site-public.reveal-on .home-setup-card.is-in {
+  opacity: 1;
+  transform: none;
+}
+
 /* mask variant: container stays visible; .rise__i does the clip rise */
 .site-public.reveal-on .reveal.reveal--mask {
   opacity: 1;
@@ -9019,6 +9040,11 @@
 @media (prefers-reduced-motion: reduce) {
   .site-public.reveal-on .reveal,
   .site-public.reveal-on .rise__i {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card {
     opacity: 1;
     transform: none;
     transition: none;

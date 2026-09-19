@@ -158,6 +158,72 @@ describe('homepage claims and CTA contract', () => {
     assert.doesNotMatch(services, /home-setup-card--(?:left|center|right)/u);
   });
 
+  it('matches the SteelNova directional reveal on only the three services cards', () => {
+    const services =
+      componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
+
+    assert.match(services, /home-setup-grid cards-stagger home-setup-grid--directional-reveal/u);
+    assert.match(
+      services,
+      /className=\{`home-setup-card home-setup-card--\$\{index \+ 1\} reveal`\}/u,
+    );
+
+    const directionalCards = ruleDeclarations(
+      publicThemeAst.nodes.find(
+        (node): node is Rule =>
+          node.type === 'rule' &&
+          node.selector ===
+            '.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card',
+      ) as Rule,
+    );
+    assert.equal(directionalCards.get('opacity'), '0');
+    assert.equal(
+      directionalCards.get('transition')?.replace(/\s+/gu, ' '),
+      'opacity 1s ease, transform 1s ease',
+    );
+    assert.equal(directionalCards.get('transition-delay'), '0ms');
+    assert.match(
+      declarations('.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card'),
+      /transition-delay:\s*0ms\s*!important/u,
+    );
+
+    assert.match(
+      declarations(
+        '.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card--1',
+      ),
+      /transform:\s*translateX\(-20px\)/u,
+    );
+    assert.match(
+      declarations(
+        '.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card--2',
+      ),
+      /transform:\s*translateY\(20px\)/u,
+    );
+    assert.match(
+      declarations(
+        '.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card--3',
+      ),
+      /transform:\s*translateX\(20px\)/u,
+    );
+    const visibleCard = ruleDeclarations(
+      publicThemeAst.nodes.find(
+        (node): node is Rule =>
+          node.type === 'rule' && node.selector === '.site-public.reveal-on .home-setup-card.is-in',
+      ) as Rule,
+    );
+    assert.equal(visibleCard.get('opacity'), '1');
+    assert.equal(visibleCard.get('transform'), 'none');
+
+    const reducedMotionCards = ruleDeclarations(
+      reducedMotionRule(
+        '.site-public.reveal-on .home-setup-grid--directional-reveal .home-setup-card',
+      ),
+    );
+    assert.equal(reducedMotionCards.get('opacity'), '1');
+    assert.equal(reducedMotionCards.get('transform'), 'none');
+    assert.equal(reducedMotionCards.get('transition'), 'none');
+  });
+
   it('preserves carousel density with factual workflow capabilities instead of fabricated proof', () => {
     const testimonials =
       componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';

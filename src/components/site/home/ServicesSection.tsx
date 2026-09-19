@@ -55,7 +55,10 @@ export async function ServicesSection() {
           <p className="reveal">{t('lede')}</p>
         </header>
 
-        <div className="home-setup-grid cards-stagger" data-reveal-cards>
+        <div
+          className="home-setup-grid cards-stagger home-setup-grid--directional-reveal"
+          data-reveal-cards
+        >
           {PATHS.map(({ key, href, cta, Icon }, index) => (
             <article className={`home-setup-card home-setup-card--${index + 1} reveal`} key={key}>
               <span className="home-icon-medallion">
