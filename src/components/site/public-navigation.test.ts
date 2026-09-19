@@ -269,10 +269,10 @@ describe('public header navigation styling contract', () => {
     assert.match(cssSource, /\.site-public \.nav\s*\{[^}]*pointer-events:\s*auto/u);
   });
 
-  it('keeps the expanded contact bar clipped and removes it immediately when collapsed', () => {
+  it('smoothly collapses the painted contact bar without leaving a gap', () => {
     assert.match(
       cssSource,
-      /\.site-public \.public-topbar\s*\{[^}]*display:\s*grid[^}]*grid-template-rows:\s*1fr[^}]*transition:[^}]*grid-template-rows 420ms/u,
+      /\.site-public \.public-topbar\s*\{[^}]*display:\s*grid[^}]*grid-template-rows:\s*1fr[^}]*transition:\s*grid-template-rows 420ms cubic-bezier\(0\.16, 1, 0\.3, 1\),\s*border-block-end-width 420ms cubic-bezier\(0\.16, 1, 0\.3, 1\),\s*visibility 0s linear 0s/u,
     );
     assert.doesNotMatch(
       cssSource,
@@ -288,7 +288,11 @@ describe('public header navigation styling contract', () => {
     );
     assert.match(
       cssSource,
-      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*display:\s*none[^}]*border-block-end:\s*0/u,
+      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*border-block-end-width:\s*0[^}]*transition:\s*grid-template-rows 420ms cubic-bezier\(0\.16, 1, 0\.3, 1\),\s*border-block-end-width 420ms cubic-bezier\(0\.16, 1, 0\.3, 1\),\s*visibility 0s linear 420ms/u,
+    );
+    assert.doesNotMatch(
+      cssSource,
+      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*display:\s*none/u,
     );
     assert.doesNotMatch(
       cssSource,
@@ -321,7 +325,7 @@ describe('public header navigation styling contract', () => {
   it('disables contact bar movement when reduced motion is requested', () => {
     assert.match(
       cssSource,
-      /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.public-topbar\s*\{[^}]*transition:\s*none/u,
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.public-topbar\s*,\s*\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*transition:\s*none/u,
     );
   });
 
