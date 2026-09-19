@@ -167,6 +167,10 @@ describe('homepage claims and CTA contract', () => {
       services,
       /className=\{`home-setup-card home-setup-card--\$\{index \+ 1\} reveal`\}/u,
     );
+    assert.match(
+      declarations('.site-public .home-setup-section:has(.home-setup-grid--directional-reveal)'),
+      /overflow-x:\s*clip/u,
+    );
 
     const directionalCards = ruleDeclarations(
       publicThemeAst.nodes.find(

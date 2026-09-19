@@ -8310,6 +8310,9 @@
   opacity: 1;
   transform: none;
 }
+.site-public .home-setup-section:has(.home-setup-grid--directional-reveal) {
+  overflow-x: clip;
+}
 
 /* mask variant: container stays visible; .rise__i does the clip rise */
 .site-public.reveal-on .reveal.reveal--mask {
