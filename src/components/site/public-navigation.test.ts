@@ -269,7 +269,7 @@ describe('public header navigation styling contract', () => {
     assert.match(cssSource, /\.site-public \.nav\s*\{[^}]*pointer-events:\s*auto/u);
   });
 
-  it('animates the contact bar closed as a clipped grid row', () => {
+  it('keeps the expanded contact bar clipped and removes it immediately when collapsed', () => {
     assert.match(
       cssSource,
       /\.site-public \.public-topbar\s*\{[^}]*display:\s*grid[^}]*grid-template-rows:\s*1fr[^}]*transition:[^}]*grid-template-rows 420ms/u,
