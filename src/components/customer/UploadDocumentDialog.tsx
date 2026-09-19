@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ export function UploadDocumentDialog(props: {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const operationId = useRef<string | null>(null);
 
   function onSubmit(formData: FormData) {
     setError(null);
@@ -56,12 +57,15 @@ export function UploadDocumentDialog(props: {
       setError(tErrors('longCopy.uploadTooLarge'));
       return;
     }
+    operationId.current ??= crypto.randomUUID();
+    formData.set('operation_id', operationId.current);
     startTransition(async () => {
       const result = await uploadDocumentAction(slug, formData);
       if (!result.ok) {
         setError(tDocument(`errors.${result.code}`));
         return;
       }
+      operationId.current = null;
       setOpen(false);
       router.refresh();
     });
@@ -72,7 +76,10 @@ export function UploadDocumentDialog(props: {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setError(null);
+        if (!next) {
+          setError(null);
+          operationId.current = null;
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -102,6 +109,10 @@ export function UploadDocumentDialog(props: {
               accept={ACCEPT}
               required
               disabled={pending}
+              onChange={() => {
+                setError(null);
+                operationId.current = null;
+              }}
             />
           </div>
 

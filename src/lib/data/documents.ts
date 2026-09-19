@@ -1,11 +1,13 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
-import { fileTypeFromBuffer } from 'file-type';
 import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { ApiError } from '@/lib/errors';
+import {
+  coordinateDocumentUpload,
+  type CoordinateDocumentUploadInput,
+  type DocumentUploadReceipt,
+} from '@/lib/data/document-upload-lifecycle';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
-import { scanFile } from '@/lib/security/scan-file';
 import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import { enqueueSms } from '@/lib/sms/send';
@@ -14,29 +16,18 @@ import { signDocumentAccess, type DocumentAccessInput } from '@/lib/data/documen
 import {
   createDocumentRequestSchema,
   documentReviewSchema,
-  sanitizeFilename,
   uploadDocumentMetadataSchema,
   type CreateDocumentRequestInput,
   type DocType,
   type DocumentReviewInput,
 } from '@/lib/validation/document';
 
-const STORAGE_BUCKET = 'tenant-documents';
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
 // PostgreSQL accepts canonical UUID text regardless of RFC version bits.
 // DAL identifiers can come from trusted database/auth rows, while form and
 // route schemas continue to enforce Zod's stricter RFC UUID contract.
 const uuidSchema = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
-
-const ALLOWED_MIMES = new Set<string>([
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-]);
 
 function normalizeUuid(value: string): string | null {
   const parsed = uuidSchema.safeParse(value);
@@ -47,6 +38,7 @@ export type UploadDocumentInput = {
   tenantId: string;
   companyId: string;
   docType: DocType;
+  operationId: string;
   requestId?: string;
   label?: string;
   file: {
@@ -65,7 +57,6 @@ export type UploadDocumentInput = {
 export type UploadDocumentResult = {
   documentId: string;
   versionId: string;
-  storagePath: string;
 };
 
 async function logDocumentAudit(
@@ -84,59 +75,14 @@ async function logDocumentAudit(
   if (error) logSafeActionError('document.audit.write', error);
 }
 
-async function logBlockedScanAudit(args: {
-  tenantId: string;
-  actorId: string;
-  requestId?: string;
-  docType: DocType;
-  filename: string;
-  fileHash: string;
-  reason: string | null;
-  provider: string | null;
-}) {
-  const admin = createSupabaseServiceRoleClient();
-  const { error } = await admin.from('tenant_audit_log').insert({
-    tenant_id: args.tenantId,
-    actor_id: args.actorId,
-    action: 'infected_blocked',
-    source: 'system',
-    details: {
-      entity: args.requestId ? 'document_request' : 'document',
-      op: 'upload_blocked',
-      request_id: args.requestId ?? null,
-      doc_type: args.docType,
-      filename: args.filename,
-      file_hash: args.fileHash,
-      reason: args.reason,
-      scanner_provider: args.provider,
-    },
-  });
-  if (error) logSafeActionError('document.audit.scan_blocked', error);
-}
+type DocumentUploadCoordinator = (
+  input: CoordinateDocumentUploadInput,
+) => Promise<DocumentUploadReceipt>;
 
-function buildStoragePath(args: {
-  tenantId: string;
-  companyId: string;
-  docType: DocType;
-  sha256: string;
-  originalName: string;
-  ext: string;
-}): string {
-  const today = new Date().toISOString().slice(0, 10);
-  const shortHash = args.sha256.slice(0, 12);
-  const sanitised = sanitizeFilename(args.originalName);
-  // Drop any extension that snuck through the sanitiser; we append the
-  // sniffed extension below for consistency with the magic-byte check.
-  const baseNoExt = sanitised.replace(/\.[^/.]+$/, '');
-  const safeBase = baseNoExt || 'file';
-  // Epoch-ms keeps the storage path unique even when a customer re-uploads
-  // identical bytes (same sha256). Without this, the second PUT collides
-  // because the bucket is configured upsert: false.
-  const stamp = Date.now().toString(36);
-  return `${args.tenantId}/${args.companyId}/${args.docType}/${today}_${stamp}_${shortHash}_${safeBase}.${args.ext}`;
-}
-
-export async function uploadDocument(input: UploadDocumentInput): Promise<UploadDocumentResult> {
+export async function uploadDocument(
+  input: UploadDocumentInput,
+  coordinator: DocumentUploadCoordinator = coordinateDocumentUpload,
+): Promise<UploadDocumentResult> {
   uploadDocumentMetadataSchema.parse({
     company_id: input.companyId,
     doc_type: input.docType,
@@ -144,174 +90,25 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Upload
     label: input.label,
   });
 
-  const { data, originalName, mimeType: declaredMime } = input.file;
-  if (data.byteLength === 0) {
-    throw new ApiError('PAYLOAD_EMPTY', 'file is empty', 400);
-  }
-  if (data.byteLength > MAX_FILE_BYTES) {
-    throw new ApiError('PAYLOAD_TOO_LARGE', `file exceeds ${MAX_FILE_BYTES} bytes`, 413, {
-      max_bytes: MAX_FILE_BYTES,
-      actual_bytes: data.byteLength,
-    });
-  }
-
-  const sniffed = await fileTypeFromBuffer(data);
-  if (!sniffed || !ALLOWED_MIMES.has(sniffed.mime)) {
-    throw new ApiError('UNSUPPORTED_MEDIA_TYPE', 'file type not allowed', 415, {
-      sniffed_mime: sniffed?.mime ?? null,
-      declared_mime: declaredMime,
-    });
-  }
-  if (declaredMime && declaredMime !== sniffed.mime) {
-    throw new ApiError('UNSUPPORTED_MEDIA_TYPE', 'declared MIME does not match content', 415, {
-      sniffed_mime: sniffed.mime,
-      declared_mime: declaredMime,
-    });
-  }
-
-  const sha256 = createHash('sha256').update(data).digest('hex');
-  const scan = await scanFile(data, { filename: originalName });
-  if (!scan.clean) {
-    await logBlockedScanAudit({
-      tenantId: input.tenantId,
-      actorId: input.actor.id,
-      requestId: input.requestId,
-      docType: input.docType,
-      filename: originalName,
-      fileHash: sha256,
-      reason: scan.reason ?? null,
-      provider: scan.provider ?? null,
-    });
-
-    if (scan.reason === 'scanner_unavailable') {
-      console.warn('virus scanner unavailable', {
-        feature: 'virus-scan',
-        provider: scan.provider ?? 'unknown',
-      });
-      throw new ApiError(
-        'SCANNER_UNAVAILABLE',
-        'Virus scanner is temporarily unavailable. Try again shortly.',
-        503,
-        {
-          reason: scan.reason,
-          scanner_provider: scan.provider ?? null,
-        },
-      );
-    }
-
-    throw new ApiError('FILE_REJECTED_BY_SCAN', 'file failed virus scan', 422, {
-      reason: scan.reason ?? null,
-      scanner_provider: scan.provider ?? null,
-    });
-  }
-
-  const storagePath = buildStoragePath({
+  const receipt = await coordinator({
     tenantId: input.tenantId,
     companyId: input.companyId,
+    operationId: input.operationId,
+    actorId: input.actor.id,
+    requestId: input.requestId ?? null,
+    documentId: null,
+    employeeId: null,
     docType: input.docType,
-    sha256,
-    originalName,
-    ext: sniffed.ext,
-  });
-
-  const admin = createSupabaseServiceRoleClient();
-
-  const { error: uploadErr } = await admin.storage.from(STORAGE_BUCKET).upload(storagePath, data, {
-    contentType: sniffed.mime,
-    upsert: false,
-  });
-  if (uploadErr) {
-    throw new ApiError('STORAGE_UPLOAD_FAILED', uploadErr.message, 502);
-  }
-
-  const headQuery = admin
-    .from('documents')
-    .select('id')
-    .eq('tenant_id', input.tenantId)
-    .eq('company_id', input.companyId)
-    .eq('doc_type', input.docType);
-  const headFilter = input.requestId
-    ? headQuery.eq('request_id', input.requestId)
-    : headQuery.is('request_id', null);
-  const { data: existingHead, error: headReadErr } = await headFilter.maybeSingle();
-  if (headReadErr) {
-    throw new ApiError('INTERNAL', headReadErr.message, 500);
-  }
-
-  let documentId: string;
-  if (existingHead?.id) {
-    documentId = existingHead.id as string;
-  } else {
-    const { data: createdHead, error: headInsertErr } = await admin
-      .from('documents')
-      .insert({
-        tenant_id: input.tenantId,
-        company_id: input.companyId,
-        request_id: input.requestId ?? null,
-        doc_type: input.docType,
-        label: input.label ?? null,
-      })
-      .select('id')
-      .single();
-    if (headInsertErr || !createdHead) {
-      throw new ApiError('INTERNAL', headInsertErr?.message ?? 'document insert failed', 500);
-    }
-    documentId = createdHead.id as string;
-  }
-
-  const { data: createdVersion, error: versionInsertErr } = await admin
-    .from('document_versions')
-    .insert({
-      document_id: documentId,
-      tenant_id: input.tenantId,
-      storage_path: storagePath,
-      mime_type: sniffed.mime,
-      size_bytes: data.byteLength,
-      sha256,
-      uploaded_by: input.actor.id,
-      review_status: 'pending',
-    })
-    .select('id')
-    .single();
-  if (versionInsertErr || !createdVersion) {
-    throw new ApiError('INTERNAL', versionInsertErr?.message ?? 'version insert failed', 500);
-  }
-  const versionId = createdVersion.id as string;
-
-  // Point the head at the just-uploaded version so list views always show the
-  // latest. Re-uploads after a rejection would otherwise keep the head pinned
-  // to the rejected version, breaking the "Pending review" badge.
-  const { error: linkErr } = await admin
-    .from('documents')
-    .update({ current_version_id: versionId, updated_at: new Date().toISOString() })
-    .eq('id', documentId);
-  if (linkErr) {
-    throw new ApiError('INTERNAL', linkErr.message, 500);
-  }
-
-  await logDocumentAudit(input.tenantId, input.actor.id, {
-    entity: 'document',
-    op: 'upload',
-    document_id: documentId,
-    version_id: versionId,
-    doc_type: input.docType,
-    request_id: input.requestId ?? null,
-  });
-  await recordAuthEvent({
-    kind: 'tenant_self_updated',
-    actorUserId: input.actor.id,
-    tenantId: input.tenantId,
-    ip: input.actor.ip,
-    userAgent: input.actor.userAgent,
-    details: {
-      entity: 'document',
-      op: 'upload',
-      document_id: documentId,
-      version_id: versionId,
+    label: input.label ?? null,
+    expectedHead: null,
+    file: {
+      data: input.file.data,
+      filename: input.file.originalName,
+      mimeType: input.file.mimeType,
     },
-  }).catch((error) => logSafeActionError('document.upload.auth_event', error));
+  });
 
-  return { documentId, versionId, storagePath };
+  return { documentId: receipt.documentId, versionId: receipt.versionId };
 }
 
 export type DocumentListEntry = {

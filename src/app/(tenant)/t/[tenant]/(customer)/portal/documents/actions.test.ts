@@ -41,6 +41,11 @@ test('upload authorizes before validating or reading attacker-controlled form da
   assert.ok(body.indexOf('resolveCustomerCallerCtx(slug)') < body.indexOf("formData.get('file')"));
 });
 
-test('requested uploads accept only an awaiting-action request', () => {
-  assert.match(source, /data\.status !== 'pending'/u);
+test('requested uploads allow pending and fulfilled replay but reject every other status', () => {
+  assert.match(source, /!\['pending', 'fulfilled'\]\.includes\(data\.status\)/u);
+});
+
+test('upload validates and forwards the client operation id to the coordinator-backed DAL', () => {
+  assert.match(source, /operation_id: formData\.get\('operation_id'\)/u);
+  assert.match(source, /operationId: parsed\.data\.operation_id/u);
 });

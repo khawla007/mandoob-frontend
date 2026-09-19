@@ -60,6 +60,7 @@ function safeCustomerDocumentError(
     PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
     FILE_REJECTED_BY_SCAN: 'FILE_REJECTED_BY_SCAN',
     SCANNER_UNAVAILABLE: 'SCANNER_UNAVAILABLE',
+    MALWARE_DETECTED: 'FILE_REJECTED_BY_SCAN',
     FORBIDDEN: 'DOCUMENT_UNAVAILABLE',
     NOT_FOUND: 'DOCUMENT_UNAVAILABLE',
     NO_LINKED_COMPANY: 'DOCUMENT_UNAVAILABLE',
@@ -87,7 +88,7 @@ async function assertRequestBelongsToCompany(args: {
   if (!data) {
     throw new ApiError('FORBIDDEN', 'Request not found for this company', 403);
   }
-  if (data.status !== 'pending') {
+  if (!['pending', 'fulfilled'].includes(data.status)) {
     throw new ApiError('FORBIDDEN', 'Request is not awaiting upload', 403);
   }
 }
@@ -105,6 +106,7 @@ export async function uploadDocumentAction(
 
     const parsed = customerUploadActionSchema.safeParse({
       doc_type: formData.get('doc_type'),
+      operation_id: formData.get('operation_id'),
       request_id: formData.get('request_id') ?? undefined,
       label: formData.get('label') ?? undefined,
     });
@@ -126,6 +128,7 @@ export async function uploadDocumentAction(
       tenantId: ctx.tenant.id,
       companyId: ctx.linkedCompanyId,
       docType: parsed.data.doc_type,
+      operationId: parsed.data.operation_id,
       requestId: parsed.data.request_id,
       label: parsed.data.label,
       file: {

@@ -26,6 +26,7 @@ const DOCUMENT = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const VERSION = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const ACTOR = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const REQUEST = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+const OPERATION = '55555555-5555-4555-8555-555555555555';
 const GENERATED_FILENAME = '2026-08-14_m0abc123_0123456789ab_server-held.pdf';
 
 test('document data operations route failures through redacted structured logging', () => {
@@ -94,6 +95,7 @@ function uploadInput(data: Uint8Array) {
     docType: 'passport' as const,
     requestId: '33333333-3333-4333-8333-333333333333',
     label: 'Passport',
+    operationId: OPERATION,
     file: {
       data,
       originalName: 'passport.pdf',
@@ -108,77 +110,55 @@ function uploadInput(data: Uint8Array) {
   };
 }
 
-async function assertUploadRejects(
-  data: Uint8Array,
-  expectedCode: string,
-  fetchImpl: typeof fetch,
-): Promise<string[]> {
-  const urls: string[] = [];
-  globalThis.fetch = (async (input, init) => {
-    urls.push(String(input));
-    return fetchImpl(input, init);
-  }) as typeof fetch;
-
-  const { uploadDocument } = await load();
-  await assert.rejects(
-    () => uploadDocument(uploadInput(data)),
-    (err) => err instanceof ApiError && err.code === expectedCode,
-  );
-  return urls;
-}
-
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test('uploadDocument rejects EICAR before storage or document inserts and writes audit', async () => {
-  const eicar = 'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
+test('uploadDocument delegates the exact authority and file input to the audited coordinator', async () => {
+  const received: unknown[] = [];
+  const input = uploadInput(pdfWith('coordinated upload'));
+  const { uploadDocument } = await load();
 
-  const urls = await assertUploadRejects(pdfWith(eicar), 'FILE_REJECTED_BY_SCAN', async () =>
-    Response.json([], { status: 201 }),
-  );
+  const result = await uploadDocument(input, async (coordinatorInput) => {
+    received.push(coordinatorInput);
+    return {
+      status: 'finalized',
+      operationId: OPERATION,
+      documentId: DOCUMENT,
+      versionId: VERSION,
+    };
+  });
 
-  assert.equal(urls.filter((url) => url.includes('/rest/v1/tenant_audit_log')).length, 1);
-  assert.equal(
-    urls.some((url) => url.includes('/storage/v1/object/tenant-documents')),
-    false,
-  );
-  assert.equal(
-    urls.some((url) => url.includes('/rest/v1/documents')),
-    false,
-  );
-  assert.equal(
-    urls.some((url) => url.includes('/rest/v1/document_versions')),
-    false,
-  );
+  assert.deepEqual(result, { documentId: DOCUMENT, versionId: VERSION });
+  assert.deepEqual(received, [
+    {
+      tenantId: input.tenantId,
+      companyId: input.companyId,
+      operationId: OPERATION,
+      actorId: input.actor.id,
+      requestId: input.requestId,
+      documentId: null,
+      employeeId: null,
+      docType: input.docType,
+      label: input.label,
+      expectedHead: null,
+      file: {
+        data: input.file.data,
+        filename: input.file.originalName,
+        mimeType: input.file.mimeType,
+      },
+    },
+  ]);
 });
 
-test('uploadDocument returns SCANNER_UNAVAILABLE when provider fails closed', async () => {
-  const urls = await assertUploadRejects(
-    pdfWith('clean but scanner unavailable'),
-    'SCANNER_UNAVAILABLE',
-    async (input) => {
-      const url = String(input);
-      if (url === 'https://www.virustotal.com/api/v3/files') {
-        return new Response('provider unavailable', { status: 500 });
-      }
-      return Response.json([], { status: 201 });
-    },
+test('uploadDocument has no legacy scan, storage, or manual document write path', () => {
+  const source = readFileSync(new URL('./documents.ts', import.meta.url), 'utf8');
+  const body = source.slice(
+    source.indexOf('export async function uploadDocument'),
+    source.indexOf('export type DocumentListEntry'),
   );
-
-  assert.equal(urls.filter((url) => url.includes('/rest/v1/tenant_audit_log')).length, 1);
-  assert.equal(
-    urls.some((url) => url.includes('/storage/v1/object/tenant-documents')),
-    false,
-  );
-  assert.equal(
-    urls.some((url) => url.includes('/rest/v1/documents')),
-    false,
-  );
-  assert.equal(
-    urls.some((url) => url.includes('/rest/v1/document_versions')),
-    false,
-  );
+  assert.doesNotMatch(body, /scanFile|\.storage\.|\.from\('documents'\)|document_versions/u);
+  assert.match(body, /coordinateDocumentUpload/u);
 });
 
 test('getCompanyDocumentSignedUrl rejects invalid UUIDs and a missing version before DAL signing', async () => {
