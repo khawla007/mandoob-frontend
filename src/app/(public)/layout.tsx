@@ -10,7 +10,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
       {/* SSR HTML already carries reveal-on so .reveal items are hidden from
           first paint before the React-safe reveal controller mounts. */}
       <noscript>
-        <style>{`.site-public .reveal,.site-public .rise__i{opacity:1!important;transform:none!important;}`}</style>
+        <style>{`.site-public .reveal,.site-public .rise__i{opacity:1!important;transform:none!important;}.site-public .home-services-title__char{opacity:1!important;filter:none!important;animation:none!important;}`}</style>
       </noscript>
       <a href="#main" className="skip-link">
         {t('skipToMain')}

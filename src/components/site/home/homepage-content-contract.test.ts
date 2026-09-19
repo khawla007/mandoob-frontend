@@ -19,6 +19,7 @@ const componentSources = [
 ].map((file) => ({ file, source: readFileSync(join(homeDirectory, file), 'utf8') }));
 const allSource = componentSources.map(({ source }) => source).join('\n');
 const publicTheme = readFileSync(join(process.cwd(), 'src/app/(public)/public-theme.css'), 'utf8');
+const publicLayout = readFileSync(join(process.cwd(), 'src/app/(public)/layout.tsx'), 'utf8');
 
 function declarations(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
@@ -84,6 +85,35 @@ describe('homepage claims and CTA contract', () => {
     assert.match(estimator, /home-estimate-card/u);
     assert.doesNotMatch(estimator, /EstimatorPreview/u);
     assert.doesNotMatch(hero, /stats-band|hero__spec/u);
+  });
+
+  it('gives only the services heading the SteelNova character blur reveal', () => {
+    const services =
+      componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
+
+    assert.match(services, /import type \{ CSSProperties \} from 'react'/u);
+    assert.match(services, /const titleText = t\('title'\);/u);
+    assert.match(services, /titleText\.trim\(\)\.split\(\/\\s\+\/u\)/u);
+    assert.match(services, /let characterIndex = 0;/u);
+    assert.match(services, /aria-label=\{titleText\}/u);
+    assert.match(services, /home-services-title--blur-reveal reveal/u);
+    assert.match(services, /className="home-services-title__visual" aria-hidden="true"/u);
+    assert.match(services, /className="home-services-title__word"/u);
+    assert.match(services, /Array\.from\(word\)/u);
+    assert.match(services, /className="home-services-title__char"/u);
+    assert.match(services, /--home-services-char-index/u);
+    assert.match(publicTheme, /@keyframes home-services-title-blur-reveal/u);
+    assert.match(publicTheme, /opacity:\s*0;[\s\S]*filter:\s*blur\(10px\)/u);
+    assert.match(publicTheme, /opacity:\s*1;[\s\S]*filter:\s*blur\(0\)/u);
+    assert.match(publicTheme, /1s cubic-bezier\(0\.25, 0\.46, 0\.45, 0\.94\) both/u);
+    assert.match(publicTheme, /calc\(var\(--home-services-char-index\) \* 25ms\)/u);
+    assert.match(publicTheme, /home-services-title__char[\s\S]*animation:\s*none/u);
+    assert.match(
+      publicLayout,
+      /home-services-title__char\{opacity:1!important;filter:none!important;animation:none!important;\}/u,
+    );
+    assert.match(services, /home-setup-grid cards-stagger/u);
+    assert.doesNotMatch(services, /home-setup-card--(?:left|center|right)/u);
   });
 
   it('preserves carousel density with factual workflow capabilities instead of fabricated proof', () => {
