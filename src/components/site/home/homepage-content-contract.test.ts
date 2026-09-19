@@ -137,12 +137,15 @@ describe('homepage claims and CTA contract', () => {
     assert.match(publicTheme, /opacity:\s*1;[\s\S]*filter:\s*blur\(0\)/u);
     assert.match(publicTheme, /1s cubic-bezier\(0\.25, 0\.46, 0\.45, 0\.94\) both/u);
     assert.match(publicTheme, /calc\(var\(--home-services-char-index\) \* 25ms\)/u);
-    const reducedMotionCharacters = ruleDeclarations(
-      reducedMotionRule('.site-public.reveal-on .home-services-title__char'),
-    );
-    assert.equal(reducedMotionCharacters.get('opacity'), '1');
-    assert.equal(reducedMotionCharacters.get('filter'), 'none');
-    assert.equal(reducedMotionCharacters.get('animation'), 'none');
+    for (const selector of [
+      '.site-public.reveal-on .home-services-title__char',
+      '.site-public.reveal-on .home-services-title--blur-reveal.is-in .home-services-title__char',
+    ]) {
+      const reducedMotionCharacters = ruleDeclarations(reducedMotionRule(selector));
+      assert.equal(reducedMotionCharacters.get('opacity'), '1');
+      assert.equal(reducedMotionCharacters.get('filter'), 'none');
+      assert.equal(reducedMotionCharacters.get('animation'), 'none');
+    }
     assert.match(
       publicLayout,
       /home-services-title__char\{opacity:1!important;filter:none!important;animation:none!important;\}/u,
