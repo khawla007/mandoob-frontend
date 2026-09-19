@@ -8,8 +8,13 @@ export default async function AdminPlansPage() {
   await requirePlatformOperator();
   const t = await getTranslations('admin.management.plans');
   return (
-    <div className="space-y-6">
-      <DashboardPageHeader eyebrow={t('eyebrow')} title={t('title')} description={t('intro')} />
+    <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace space-y-6 [&_section.grid>div]:rounded-[14px] [&_section.grid>div]:p-5">
+      <DashboardPageHeader
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        description={t('intro')}
+        className="admin-operational-heading"
+      />
       <PlanManagementUnavailable
         labels={{
           comparison: t('comparison'),
