@@ -8,8 +8,13 @@ export default async function AdminQuestionnairePage() {
   await requirePlatformOperator();
   const t = await getTranslations('admin.management.questionnaire');
   return (
-    <div className="space-y-6">
-      <DashboardPageHeader eyebrow={t('eyebrow')} title={t('title')} description={t('intro')} />
+    <div className="admin-management-signal admin-operational-workspace space-y-6">
+      <DashboardPageHeader
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        description={t('intro')}
+        className="admin-operational-heading"
+      />
       <QuestionnaireBuilderUnavailable
         labels={{
           sections: t('sections'),
