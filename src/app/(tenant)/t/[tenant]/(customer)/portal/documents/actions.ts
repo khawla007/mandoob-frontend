@@ -3,6 +3,7 @@
 import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
+import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { ApiError } from '@/lib/errors';
 import { requireAuthorizedCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
 import { getCompanyDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
@@ -149,7 +150,7 @@ export async function uploadDocumentAction(
     };
   } catch (e) {
     if (e instanceof ApiError) return safeCustomerDocumentError(e, 'UPLOAD_FAILED');
-    console.error('uploadDocumentAction unexpected error', e);
+    logSafeActionError('customer.document.upload', e);
     return { ok: false, code: 'UPLOAD_FAILED' };
   }
 }
@@ -190,11 +191,16 @@ export async function getCustomerDocumentSignedUrlAction(
       throw new ApiError('FORBIDDEN', 'Version not accessible', 403);
     }
 
-    const signed = await getCompanyDocumentSignedUrl(ctx.tenant.id, ctx.linkedCompanyId, versionId);
+    const signed = await getCompanyDocumentSignedUrl(
+      ctx.caller.id,
+      ctx.tenant.id,
+      ctx.linkedCompanyId,
+      versionId,
+    );
     return { ok: true, data: signed };
   } catch (e) {
     if (e instanceof ApiError) return safeCustomerDocumentError(e, 'OPEN_FAILED');
-    console.error('getCustomerDocumentSignedUrlAction unexpected error', e);
+    logSafeActionError('customer.document.open', e);
     return { ok: false, code: 'OPEN_FAILED' };
   }
 }

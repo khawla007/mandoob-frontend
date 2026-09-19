@@ -10,9 +10,8 @@ import { enqueueEmail } from '@/lib/mail/send';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import { enqueueSms } from '@/lib/sms/send';
 import { z } from 'zod';
-import { isNormalizedOwnedStoragePath } from '@/lib/storage/owned-path';
+import { signDocumentAccess, type DocumentAccessInput } from '@/lib/data/document-access';
 import {
-  DOC_TYPES,
   createDocumentRequestSchema,
   documentReviewSchema,
   sanitizeFilename,
@@ -30,9 +29,6 @@ const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const uuidSchema = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu);
-const DOC_TYPE_SET = new Set<string>(DOC_TYPES);
-const GENERATED_STORAGE_FILENAME =
-  /^(\d{4}-\d{2}-\d{2})_(?:[a-z0-9]+_)?[0-9a-f]{12}_([A-Za-z0-9._-]{1,100})\.(pdf|jpg|png|docx|xlsx)$/;
 
 const ALLOWED_MIMES = new Set<string>([
   'application/pdf',
@@ -45,37 +41,6 @@ const ALLOWED_MIMES = new Set<string>([
 function normalizeUuid(value: string): string | null {
   const parsed = uuidSchema.safeParse(value);
   return parsed.success ? parsed.data.toLowerCase() : null;
-}
-
-function isGeneratedStoragePath(path: string, tenantId: string, companyId: string): boolean {
-  if (
-    !isNormalizedOwnedStoragePath(path, tenantId, companyId) ||
-    normalizeUuid(tenantId) !== tenantId ||
-    normalizeUuid(companyId) !== companyId
-  ) {
-    return false;
-  }
-
-  const segments = path.split('/');
-  if (
-    segments.length !== 4 ||
-    segments.some((segment) => segment === '' || segment === '.' || segment === '..')
-  ) {
-    return false;
-  }
-
-  const [pathTenantId, pathCompanyId, docType, filename] = segments;
-  if (pathTenantId !== tenantId || pathCompanyId !== companyId || !DOC_TYPE_SET.has(docType)) {
-    return false;
-  }
-
-  const filenameMatch = GENERATED_STORAGE_FILENAME.exec(filename);
-  if (!filenameMatch) return false;
-  const generatedDate = new Date(`${filenameMatch[1]}T00:00:00.000Z`);
-  return (
-    !Number.isNaN(generatedDate.getTime()) &&
-    generatedDate.toISOString().slice(0, 10) === filenameMatch[1]
-  );
 }
 
 export type UploadDocumentInput = {
@@ -459,15 +424,21 @@ export async function listDocumentsForCompany(
 }
 
 async function createDocumentSignedUrl(
+  actorId: string,
   tenantId: string,
   versionId: string,
   expectedCompanyId: string | null,
   ttlSeconds = 60 * 5,
+  signer: (
+    input: DocumentAccessInput,
+  ) => Promise<{ url: string; expiresAt: string }> = signDocumentAccess,
 ): Promise<{ url: string; expiresAt: string }> {
+  const normalizedActorId = normalizeUuid(actorId);
   const normalizedTenantId = normalizeUuid(tenantId);
   const normalizedExpectedCompanyId = expectedCompanyId ? normalizeUuid(expectedCompanyId) : null;
   const normalizedVersionId = normalizeUuid(versionId);
   if (
+    !normalizedActorId ||
     !normalizedTenantId ||
     !normalizedVersionId ||
     (expectedCompanyId !== null && !normalizedExpectedCompanyId)
@@ -482,7 +453,7 @@ async function createDocumentSignedUrl(
   const { data: version, error: readErr } = await admin
     .from('document_versions')
     .select(
-      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id))',
+      'id, tenant_id, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id)',
     )
     .eq('id', normalizedVersionId)
     .maybeSingle();
@@ -492,70 +463,59 @@ async function createDocumentSignedUrl(
   type OwnedVersionRow = {
     id: string;
     tenant_id: string;
-    storage_path: string;
     document: {
       id: string;
       tenant_id: string;
       company_id: string;
-      request_id: string | null;
-      current_version_id: string | null;
-      company: { id: string; tenant_id: string } | null;
-      request: { id: string; tenant_id: string; company_id: string } | null;
     } | null;
   };
   const owned = version as unknown as OwnedVersionRow;
   const document = owned.document;
-  const company = document?.company;
-  const request = document?.request;
-  const normalizedCompanyId = company ? normalizeUuid(company.id) : null;
+  const normalizedCompanyId = document ? normalizeUuid(document.company_id) : null;
+  const normalizedDocumentId = document ? normalizeUuid(document.id) : null;
   if (
     owned.id !== normalizedVersionId ||
     owned.tenant_id !== normalizedTenantId ||
     !document ||
     document.tenant_id !== normalizedTenantId ||
-    !company ||
     !normalizedCompanyId ||
+    !normalizedDocumentId ||
     (normalizedExpectedCompanyId !== null && normalizedCompanyId !== normalizedExpectedCompanyId) ||
-    company.id !== normalizedCompanyId ||
     document.company_id !== normalizedCompanyId ||
-    company.tenant_id !== normalizedTenantId ||
-    (document.request_id !== null &&
-      (!request ||
-        request.id !== document.request_id ||
-        request.tenant_id !== normalizedTenantId ||
-        request.company_id !== normalizedCompanyId)) ||
-    typeof owned.storage_path !== 'string' ||
-    !isGeneratedStoragePath(owned.storage_path, normalizedTenantId, normalizedCompanyId)
+    document.id !== normalizedDocumentId
   ) {
     throw new ApiError('NOT_FOUND', 'document version not found', 404);
   }
 
-  const { data: signed, error: signErr } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(owned.storage_path, ttlSeconds);
-  if (signErr || !signed?.signedUrl) {
-    throw new ApiError('STORAGE_SIGN_FAILED', 'Could not create signed URL', 502);
-  }
-
-  const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
-  return { url: signed.signedUrl, expiresAt };
+  return signer({
+    actorId: normalizedActorId,
+    tenantId: normalizedTenantId,
+    companyId: normalizedCompanyId,
+    documentId: normalizedDocumentId,
+    versionId: normalizedVersionId,
+    lifetimeSeconds: ttlSeconds,
+  });
 }
 
 export async function getDocumentSignedUrl(
+  actorId: string,
   tenantId: string,
   versionId: string,
   ttlSeconds = 60 * 5,
+  signer?: (input: DocumentAccessInput) => Promise<{ url: string; expiresAt: string }>,
 ): Promise<{ url: string; expiresAt: string }> {
-  return createDocumentSignedUrl(tenantId, versionId, null, ttlSeconds);
+  return createDocumentSignedUrl(actorId, tenantId, versionId, null, ttlSeconds, signer);
 }
 
 export async function getCompanyDocumentSignedUrl(
+  actorId: string,
   tenantId: string,
   companyId: string,
   versionId: string,
   ttlSeconds = 60 * 5,
+  signer?: (input: DocumentAccessInput) => Promise<{ url: string; expiresAt: string }>,
 ): Promise<{ url: string; expiresAt: string }> {
-  return createDocumentSignedUrl(tenantId, versionId, companyId, ttlSeconds);
+  return createDocumentSignedUrl(actorId, tenantId, versionId, companyId, ttlSeconds, signer);
 }
 
 export type SetDocumentReviewCtx = {

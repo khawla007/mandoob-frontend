@@ -52,8 +52,8 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
       calls.push(`review:${ctx.tenantId}:${companyId}:${versionId}`);
       return { companyId: COMPANY_ID };
     },
-    openVersion: async (tenantId, companyId, versionId) => {
-      calls.push(`open:${tenantId}:${companyId}:${versionId}`);
+    openVersion: async (actorId, tenantId, companyId, versionId) => {
+      calls.push(`open:${actorId}:${tenantId}:${companyId}:${versionId}`);
       return {
         url: 'https://storage.test/signed',
         expiresAt: '2026-08-14T12:05:00.000Z',
@@ -292,7 +292,7 @@ test('review and expiry actions pass only the server-resolved assigned company t
   }
 });
 
-test('open and history pass the live assigned company into their DAL ownership boundary', async () => {
+test('open passes the authenticated actor and live assigned scope into the DAL ownership boundary', async () => {
   const opened: string[][] = [];
   const histories: string[][] = [];
   const context = setup({
@@ -309,8 +309,27 @@ test('open and history pass the live assigned company into their DAL ownership b
   await runOpenDocumentVersionAction('acme', VERSION_ID, context.dependencies);
   await runLoadVersionHistoryAction('acme', DOCUMENT_ID, context.dependencies);
 
-  assert.deepEqual(opened, [[TENANT_ID, COMPANY_ID, VERSION_ID]]);
+  assert.deepEqual(opened, [[ACTOR_ID, TENANT_ID, COMPANY_ID, VERSION_ID]]);
   assert.deepEqual(histories, [[TENANT_ID, COMPANY_ID, DOCUMENT_ID]]);
+});
+
+test('a document-access DAL failure is serialized without provider or path detail', async () => {
+  const raw = 'signed token secret at tenant-documents/private/path.pdf';
+  const context = setup({
+    openVersion: async () => {
+      throw new ApiError('DOCUMENT_ACCESS_FAILED', raw, 503);
+    },
+  });
+
+  const result = await runOpenDocumentVersionAction('acme', VERSION_ID, context.dependencies);
+
+  assert.deepEqual(result, {
+    ok: false,
+    code: 'DOCUMENT_ACCESS_FAILED',
+    messageKey: 'documents.errors.openFailed',
+  });
+  assert.doesNotMatch(JSON.stringify(result), /signed token|tenant-documents|private\/path/u);
+  assert.equal(context.calls.includes('logged'), false);
 });
 
 test('firm action logic module is server-only without becoming a Server Function', () => {

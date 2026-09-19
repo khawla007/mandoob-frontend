@@ -21,13 +21,16 @@ test('customer signing uses the exact version relation and linked-company scope 
   assert.match(source, /doc\.company_id !== ctx\.linkedCompanyId/u);
   assert.match(
     source,
-    /getCompanyDocumentSignedUrl\([\s\S]*?ctx\.tenant\.id,[\s\S]*?ctx\.linkedCompanyId,[\s\S]*?versionId/u,
+    /getCompanyDocumentSignedUrl\([\s\S]*?ctx\.caller\.id,[\s\S]*?ctx\.tenant\.id,[\s\S]*?ctx\.linkedCompanyId,[\s\S]*?versionId/u,
   );
   assert.doesNotMatch(source, /getDocumentSignedUrl\(/u);
 });
 
 test('upload and download actions return sanitized Customer-safe errors', () => {
   assert.match(source, /safeCustomerDocumentError/u);
+  assert.match(source, /logSafeActionError\('customer\.document\.upload', e\)/u);
+  assert.match(source, /logSafeActionError\('customer\.document\.open', e\)/u);
+  assert.doesNotMatch(source, /console\.error/u);
   assert.doesNotMatch(source, /error: e\.message/u);
   assert.match(source, /code: CustomerDocumentActionCode/u);
   assert.doesNotMatch(source, /\| \{ ok: false; error: string; code: string \}/u);

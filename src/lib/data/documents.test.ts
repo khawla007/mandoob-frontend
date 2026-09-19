@@ -27,7 +27,6 @@ const VERSION = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const ACTOR = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const REQUEST = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const GENERATED_FILENAME = '2026-08-14_m0abc123_0123456789ab_server-held.pdf';
-const LEGACY_GENERATED_FILENAME = '2026-08-14_0123456789ab_server-held.pdf';
 
 test('document data operations route failures through redacted structured logging', () => {
   const source = readFileSync(new URL('./documents.ts', import.meta.url), 'utf8');
@@ -182,56 +181,39 @@ test('uploadDocument returns SCANNER_UNAVAILABLE when provider fails closed', as
   );
 });
 
-test('getDocumentSignedUrl rejects invalid UUIDs and a missing version before signing', async () => {
+test('getCompanyDocumentSignedUrl rejects invalid UUIDs and a missing version before DAL signing', async () => {
   const calls = captureFetch(() => json(null));
   const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
+  let signCalls = 0;
+  const signer = async () => {
+    signCalls += 1;
+    return { url: 'https://storage.test/signed', expiresAt: '2026-08-14T12:05:00.000Z' };
+  };
 
   await assert.rejects(
-    () => getDocumentSignedUrl('not-a-uuid', CLIENT, VERSION),
+    () => getDocumentSignedUrl('not-a-uuid', TENANT, CLIENT, VERSION, 300, signer),
     (err) => err instanceof ApiError && err.code === 'VALIDATION_FAILED',
   );
   assert.equal(calls.length, 0);
 
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
+    () => getDocumentSignedUrl(ACTOR, TENANT, CLIENT, VERSION, 300, signer),
     (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
   );
   assert.equal(calls.length, 1);
-  assert.equal(
-    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
-    false,
-  );
+  assert.equal(signCalls, 0);
 });
 
-test('getDocumentSignedUrl pins the version FK and exact inner company ownership relation', async () => {
+test('getCompanyDocumentSignedUrl validates TTL before metadata or DAL I/O', async () => {
   const calls = captureFetch(() => json(null));
   const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
-
-  await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
-    (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
-  );
-
-  const select = new URL(calls[0].url).searchParams.get('select');
-  assert.ok(select);
-  assert.match(select, /document:documents!document_versions_document_id_fkey!inner\(/u);
-  assert.match(
-    select,
-    /company:company_profiles!documents_company_tenant_fk!inner\(id,\s*tenant_id\)/u,
-  );
-  assert.match(
-    select,
-    /request:document_requests!documents_request_id_fkey\(id,\s*tenant_id,\s*company_id\)/u,
-  );
-});
-
-test('getDocumentSignedUrl validates TTL before any database or storage I/O', async () => {
-  const calls = captureFetch(() => json(null));
-  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
+  const signer = async () => {
+    assert.fail('signer called for an invalid lifetime');
+  };
 
   for (const ttl of [-1, 0, 301, Number.POSITIVE_INFINITY, Number.NaN, 1.5]) {
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION, ttl),
+      () => getDocumentSignedUrl(ACTOR, TENANT, CLIENT, VERSION, ttl, signer),
       (err) => err instanceof ApiError && err.code === 'VALIDATION_FAILED',
     );
   }
@@ -239,7 +221,51 @@ test('getDocumentSignedUrl validates TTL before any database or storage I/O', as
   assert.equal(calls.length, 0);
 });
 
-test('getDocumentSignedUrl requires the full tenant-company-document-version ownership chain', async () => {
+test('getCompanyDocumentSignedUrl derives the document ID and forwards exact server authority to the DAL', async () => {
+  const calls = captureFetch(() => json(ownedVersion()));
+  const received: unknown[] = [];
+  const providerExpiry = '2026-08-14T12:04:17.000Z';
+  const { getCompanyDocumentSignedUrl } = await load();
+
+  const result = await getCompanyDocumentSignedUrl(
+    ACTOR.toUpperCase(),
+    TENANT.toUpperCase(),
+    CLIENT.toUpperCase(),
+    VERSION.toUpperCase(),
+    257,
+    async (input) => {
+      received.push(input);
+      return { url: 'https://storage.test/signed', expiresAt: providerExpiry };
+    },
+  );
+
+  assert.deepEqual(result, { url: 'https://storage.test/signed', expiresAt: providerExpiry });
+  assert.deepEqual(received, [
+    {
+      actorId: ACTOR,
+      tenantId: TENANT,
+      companyId: CLIENT,
+      documentId: DOCUMENT,
+      versionId: VERSION,
+      lifetimeSeconds: 257,
+    },
+  ]);
+  assert.equal(calls.length, 1);
+  const select = new URL(calls[0].url).searchParams.get('select');
+  assert.ok(select);
+  assert.match(
+    select,
+    /document:documents!document_versions_document_id_fkey!inner\(id,\s*tenant_id,\s*company_id\)/u,
+  );
+  assert.doesNotMatch(select, /storage_path|sha256|uploaded_by/u);
+  assert.equal(new URL(calls[0].url).searchParams.get('id'), `eq.${VERSION}`);
+  assert.equal(
+    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
+    false,
+  );
+});
+
+test('getCompanyDocumentSignedUrl rejects ownership mismatches before the DAL', async () => {
   const foreignTenant = '99999999-9999-4999-8999-999999999999';
   const mismatches = [
     ownedVersion({ tenant_id: foreignTenant }),
@@ -248,203 +274,73 @@ test('getDocumentSignedUrl requires the full tenant-company-document-version own
       document: {
         ...ownedVersion().document,
         company_id: foreignTenant,
-        company: { id: CLIENT, tenant_id: TENANT },
-      },
-    }),
-    ownedVersion({
-      document: {
-        ...ownedVersion().document,
-        company: { id: CLIENT, tenant_id: foreignTenant },
-      },
-    }),
-    ownedVersion({
-      document: {
-        ...ownedVersion().document,
-        request: { id: REQUEST, tenant_id: TENANT, company_id: foreignTenant },
       },
     }),
   ];
   let index = 0;
   const calls = captureFetch(() => json(mismatches[index++]));
   const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
+  let signCalls = 0;
 
   for (const mismatch of mismatches) {
     void mismatch;
     await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
+      () =>
+        getDocumentSignedUrl(ACTOR, TENANT, CLIENT, VERSION, 300, async () => {
+          signCalls += 1;
+          return { url: 'https://storage.test/signed', expiresAt: '2026-08-14T12:05:00.000Z' };
+        }),
       (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
     );
   }
 
   assert.equal(calls.length, mismatches.length);
-  assert.equal(
-    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
-    false,
-  );
+  assert.equal(signCalls, 0);
 });
 
-test('getDocumentSignedUrl rejects a same-tenant version owned by another company before signing', async () => {
-  const foreignCompany = '99999999-9999-4999-8999-999999999999';
-  const calls = captureFetch(() =>
-    json(
-      ownedVersion({
-        document: {
-          ...ownedVersion().document,
-          company_id: foreignCompany,
-          company: { id: foreignCompany, tenant_id: TENANT },
-          request: { id: REQUEST, tenant_id: TENANT, company_id: foreignCompany },
-        },
-      }),
-    ),
-  );
-  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
-
-  await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
-    (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
-  );
-  assert.equal(calls.length, 1);
-  assert.equal(
-    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
-    false,
-  );
-});
-
-test('getDocumentSignedUrl rejects a tampered storage prefix and signs only the stored path with TTL', async () => {
-  const tamperedCalls = captureFetch(() =>
-    json(ownedVersion({ storage_path: `${TENANT}/99999999-9999-4999-8999-999999999999/file.pdf` })),
-  );
-  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
-
-  await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION, 91),
-    (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
-  );
-  assert.equal(tamperedCalls.length, 1);
-
-  const storedPath = `${TENANT}/${CLIENT}/passport/${GENERATED_FILENAME}`;
-  const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/document_versions')) {
-      return json(ownedVersion({ storage_path: storedPath }));
-    }
-    if (call.url.includes('/storage/v1/object/sign/')) {
-      return json({ signedURL: '/object/sign/private?token=test' });
-    }
-    return json({ message: 'unexpected request' }, 500);
-  });
-  const before = Date.now();
-  const result = await getDocumentSignedUrl(TENANT, CLIENT, VERSION, 91);
-
-  assert.deepEqual(Object.keys(result).sort(), ['expiresAt', 'url']);
-  assert.equal(result.url, 'https://test.supabase.co/storage/v1/object/sign/private?token=test');
-  assert.ok(Date.parse(result.expiresAt) >= before + 90_000);
-  const signCall = calls.find((call) => call.url.includes('/storage/v1/object/sign/'));
-  assert.ok(signCall);
-  assert.match(decodeURIComponent(signCall.url), new RegExp(storedPath.replaceAll('/', '\\/')));
-  assert.deepEqual(signCall.body, { expiresIn: 91 });
-});
-
-test('getDocumentSignedUrl rejects traversal, encoded separators, and malformed generated keys', async () => {
-  const badPaths = [
-    `${TENANT}/${CLIENT}/../../foreign/file.pdf`,
-    `${TENANT}/${CLIENT}/passport\\${GENERATED_FILENAME}`,
-    `${TENANT}/${CLIENT}/passport/..%2fforeign.pdf`,
-    `${TENANT}/${CLIENT}/passport/file%5cforeign.pdf`,
-    `${TENANT}/${CLIENT}/passport/%2e%2e.pdf`,
-    `${TENANT}/${CLIENT}//passport/${GENERATED_FILENAME}`,
-    `${TENANT}/${CLIENT}/unknown/${GENERATED_FILENAME}`,
-    `${TENANT}/${CLIENT}/passport/server-held.pdf`,
-    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_bad name.pdf`,
-    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_bad\0name.pdf`,
-    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123_0123456789ab_${'a'.repeat(101)}.pdf`,
-    `${TENANT}/${CLIENT}/passport/2026-08-14_0123456789a_server-held.pdf`,
-    `${TENANT}/${CLIENT}/passport/2026-08-14_0123456789aB_server-held.pdf`,
-    `${TENANT}/${CLIENT}/passport/2026-08-14_M0abc123_0123456789ab_server-held.pdf`,
-    `${TENANT}/${CLIENT}/passport/2026-08-14_m0abc123__0123456789ab_server-held.pdf`,
-  ];
-  let index = 0;
-  const calls = captureFetch(() => json(ownedVersion({ storage_path: badPaths[index++] })));
-  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
-
-  for (const badPath of badPaths) {
-    void badPath;
-    await assert.rejects(
-      () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
-      (err) => err instanceof ApiError && err.code === 'NOT_FOUND',
-    );
-  }
-
-  assert.equal(calls.length, badPaths.length);
-  assert.equal(
-    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
-    false,
-  );
-});
-
-test('getDocumentSignedUrl signs a contained legacy generated storage key', async () => {
-  const legacyPath = `${TENANT}/${CLIENT}/passport/${LEGACY_GENERATED_FILENAME}`;
-  const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/document_versions')) {
-      return json(ownedVersion({ storage_path: legacyPath }));
-    }
-    return json({ signedURL: '/object/sign/private?token=legacy' });
-  });
-  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
-
-  const result = await getDocumentSignedUrl(TENANT, CLIENT, VERSION);
-
-  assert.match(result.url, /token=legacy/u);
-  const signCall = calls.find((call) => call.url.includes('/storage/v1/object/sign/'));
-  assert.ok(signCall);
-  assert.match(decodeURIComponent(signCall.url), new RegExp(legacyPath.replaceAll('/', '\\/')));
-  assert.deepEqual(signCall.body, { expiresIn: 300 });
-});
-
-test('getDocumentSignedUrl normalizes uppercase UUIDs before query, ownership checks, and signing', async () => {
-  const calls = captureFetch((call) => {
-    if (call.url.includes('/rest/v1/document_versions')) return json(ownedVersion());
-    return json({ signedURL: '/object/sign/private?token=normalized' });
-  });
-  const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
-
-  const result = await getDocumentSignedUrl(
-    TENANT.toUpperCase(),
-    CLIENT.toUpperCase(),
-    VERSION.toUpperCase(),
-    45,
-  );
-
-  assert.match(result.url, /token=normalized/u);
-  assert.equal(new URL(calls[0].url).searchParams.get('id'), `eq.${VERSION}`);
-  assert.equal(
-    calls.some((call) => call.url.includes('/storage/v1/object/sign/')),
-    true,
-  );
-});
-
-test('getDocumentSignedUrl sanitizes database and storage failures', async () => {
+test('getCompanyDocumentSignedUrl sanitizes metadata failures and preserves sanitized DAL errors', async () => {
   const { getCompanyDocumentSignedUrl: getDocumentSignedUrl } = await load();
   captureFetch(() => json({ code: 'XX000', message: 'secret database detail' }, 500));
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
+    () => getDocumentSignedUrl(ACTOR, TENANT, CLIENT, VERSION),
     (err) =>
       err instanceof ApiError &&
       err.code === 'INTERNAL' &&
       !err.message.includes('secret database detail'),
   );
 
-  captureFetch((call) =>
-    call.url.includes('/rest/v1/document_versions')
-      ? json(ownedVersion())
-      : json({ message: 'secret storage detail' }, 500),
+  captureFetch(() => json(ownedVersion()));
+  const safeDalError = new ApiError(
+    'DOCUMENT_ACCESS_FAILED',
+    'Document access could not be completed',
+    503,
   );
   await assert.rejects(
-    () => getDocumentSignedUrl(TENANT, CLIENT, VERSION),
-    (err) =>
-      err instanceof ApiError &&
-      err.code === 'STORAGE_SIGN_FAILED' &&
-      !err.message.includes('secret storage detail'),
+    () =>
+      getDocumentSignedUrl(ACTOR, TENANT, CLIENT, VERSION, 300, async () => {
+        throw safeDalError;
+      }),
+    (err) => err === safeDalError,
   );
+});
+
+test('getDocumentSignedUrl derives authoritative company and document IDs before DAL signing', async () => {
+  captureFetch(() => json(ownedVersion()));
+  const { getDocumentSignedUrl } = await load();
+  let input: unknown;
+  const signed = await getDocumentSignedUrl(ACTOR, TENANT, VERSION, 300, async (value) => {
+    input = value;
+    return { url: 'https://storage.test/signed', expiresAt: '2026-08-14T12:04:13.000Z' };
+  });
+  assert.equal(signed.expiresAt, '2026-08-14T12:04:13.000Z');
+  assert.deepEqual(input, {
+    actorId: ACTOR,
+    tenantId: TENANT,
+    companyId: CLIENT,
+    documentId: DOCUMENT,
+    versionId: VERSION,
+    lifetimeSeconds: 300,
+  });
 });
 
 test('setDocumentReview validates role, UUID, and required rejection note before I/O', async () => {

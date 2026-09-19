@@ -60,6 +60,7 @@ export type DocumentCenterActionDependencies = {
     input: DocumentReviewInput,
   ): Promise<{ companyId: string }>;
   openVersion(
+    actorId: string,
     tenantId: string,
     companyId: string,
     versionId: string,
@@ -135,6 +136,12 @@ function errorResult(
 ): DocumentCenterActionResult<never> {
   actionDependencies.rethrowNavigation(error);
   if (error instanceof ApiError) {
+    if (
+      label === 'document_center.open' &&
+      ['CONFLICT', 'DOCUMENT_ACCESS_EXPIRED', 'DOCUMENT_ACCESS_FAILED'].includes(error.code)
+    ) {
+      return { ok: false, code: error.code, messageKey: 'documents.errors.openFailed' };
+    }
     const mapped = {
       UNAUTHORIZED: 'documents.errors.unauthorized',
       FORBIDDEN: 'documents.errors.forbidden',
@@ -245,6 +252,7 @@ export async function runOpenDocumentVersionAction(
     const parsedVersionId = normalizedUuidSchema.safeParse(versionId);
     if (!parsedVersionId.success) return validationFailure();
     const signed = await actionDependencies.openVersion(
+      authorization.actor.actorId,
       authorization.tenant.id,
       authorization.company.id,
       parsedVersionId.data,
