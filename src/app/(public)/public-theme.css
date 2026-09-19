@@ -497,8 +497,10 @@
   background: rgb(255 255 255 / 18%);
 }
 .site-public.public-header-frame[data-collapsed='true'] .public-topbar {
+  display: none;
   grid-template-rows: 0fr;
   visibility: hidden;
+  border-block-end: 0;
 }
 .site-public .nav {
   pointer-events: auto;

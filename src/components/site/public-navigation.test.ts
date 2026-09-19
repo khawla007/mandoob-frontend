@@ -286,6 +286,10 @@ describe('public header navigation styling contract', () => {
       cssSource,
       /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*visibility:\s*hidden/u,
     );
+    assert.match(
+      cssSource,
+      /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*display:\s*none[^}]*border-block-end:\s*0/u,
+    );
     assert.doesNotMatch(
       cssSource,
       /\.site-public\.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*opacity/u,
