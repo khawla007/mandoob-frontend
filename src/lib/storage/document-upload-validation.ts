@@ -4,9 +4,9 @@ import { createHash } from 'node:crypto';
 import { fileTypeFromBuffer } from 'file-type';
 
 import { ApiError } from '../errors';
+import { MAX_DOCUMENT_UPLOAD_BYTES } from '../documents/upload-contract';
 import { sanitizeFilename } from '../validation/document';
 
-const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 const MIME_EXTENSIONS = new Map([
   ['application/pdf', 'pdf'],
   ['image/jpeg', 'jpg'],
@@ -52,9 +52,9 @@ export async function validateDocumentUpload(
     filename,
     mimeType,
     expectedSha256,
-    maxBytes = MAX_DOCUMENT_BYTES,
+    maxBytes = MAX_DOCUMENT_UPLOAD_BYTES,
   } = input;
-  if (!Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > MAX_DOCUMENT_BYTES) {
+  if (!Number.isInteger(maxBytes) || maxBytes <= 0 || maxBytes > MAX_DOCUMENT_UPLOAD_BYTES) {
     invalidInput();
   }
   if (!(callerData instanceof Uint8Array)) invalidInput();

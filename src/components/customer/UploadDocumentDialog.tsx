@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,92 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { uploadDocumentAction } from '@/app/(tenant)/t/[tenant]/(customer)/portal/documents/actions';
+import { MAX_DOCUMENT_UPLOAD_BYTES } from '@/lib/documents/upload-contract';
 import type { DocType } from '@/lib/validation/document';
 
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_FILE_BYTES = MAX_DOCUMENT_UPLOAD_BYTES;
+
+const SAFE_UPLOAD_CODES = new Set([
+  'VALIDATION_FAILED',
+  'PAYLOAD_EMPTY',
+  'UNSUPPORTED_MEDIA_TYPE',
+  'PAYLOAD_TOO_LARGE',
+  'FILE_REJECTED_BY_SCAN',
+  'SCANNER_UNAVAILABLE',
+  'DOCUMENT_UNAVAILABLE',
+  'OPERATION_REUSED',
+  'UPLOAD_FAILED',
+]);
+
+type UploadResult = { ok: true } | { ok: false; code: string };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+function isSuccessfulUploadPayload(payload: unknown): boolean {
+  if (payload === null || typeof payload !== 'object') return false;
+  const record = payload as Record<string, unknown>;
+  if (
+    Object.keys(record).length !== 2 ||
+    record.ok !== true ||
+    record.data === null ||
+    typeof record.data !== 'object'
+  ) {
+    return false;
+  }
+  const data = record.data as Record<string, unknown>;
+  return (
+    Object.keys(data).length === 2 &&
+    typeof data.documentId === 'string' &&
+    UUID.test(data.documentId) &&
+    typeof data.versionId === 'string' &&
+    UUID.test(data.versionId)
+  );
+}
+
+function csrfToken(): string | null {
+  const entry = document.cookie.split('; ').find((cookie) => cookie.startsWith('mandoob-csrf='));
+  if (!entry) return null;
+  try {
+    return decodeURIComponent(entry.split('=')[1] ?? '');
+  } catch {
+    return null;
+  }
+}
+
+async function uploadThroughRoute(slug: string, formData: FormData): Promise<UploadResult> {
+  try {
+    const headers = new Headers();
+    const csrf = csrfToken();
+    if (csrf) headers.set('x-mandoob-csrf', csrf);
+    const response = await fetch(
+      `/api/v1/t/${encodeURIComponent(slug)}/customer/documents/upload`,
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers,
+        body: formData,
+      },
+    );
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      return { ok: false, code: 'UPLOAD_FAILED' };
+    }
+    if (response.ok && isSuccessfulUploadPayload(payload)) {
+      return { ok: true };
+    }
+    const code =
+      payload !== null && typeof payload === 'object'
+        ? (payload as { code?: unknown }).code
+        : undefined;
+    return {
+      ok: false,
+      code: typeof code === 'string' && SAFE_UPLOAD_CODES.has(code) ? code : 'UPLOAD_FAILED',
+    };
+  } catch {
+    return { ok: false, code: 'UPLOAD_FAILED' };
+  }
+}
 
 const ACCEPT = [
   'application/pdf',
@@ -46,7 +128,10 @@ export function UploadDocumentDialog(props: {
   const [error, setError] = useState<string | null>(null);
   const operationId = useRef<string | null>(null);
 
-  function onSubmit(formData: FormData) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     setError(null);
     const file = formData.get('file');
     if (!(file instanceof File) || file.size === 0) {
@@ -60,35 +145,36 @@ export function UploadDocumentDialog(props: {
     operationId.current ??= crypto.randomUUID();
     formData.set('operation_id', operationId.current);
     startTransition(async () => {
-      const result = await uploadDocumentAction(slug, formData);
+      const result = await uploadThroughRoute(slug, formData);
       if (!result.ok) {
         setError(tDocument(`errors.${result.code}`));
         return;
       }
       operationId.current = null;
+      form.reset();
       setOpen(false);
       router.refresh();
     });
   }
 
+  function handleOpenChange(next: boolean) {
+    if (!next && pending) return;
+    setOpen(next);
+    if (!next) {
+      setError(null);
+      operationId.current = null;
+    }
+  }
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) {
-          setError(null);
-          operationId.current = null;
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           {t('uploadButton')}
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <form action={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           <DialogHeader>
             <DialogTitle>
               {t('uploadButton')} — {label}
@@ -127,7 +213,7 @@ export function UploadDocumentDialog(props: {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={pending}
             >
               {tCommon('cancel')}

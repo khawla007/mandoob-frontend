@@ -38,14 +38,18 @@ test('upload and download actions return sanitized Customer-safe errors', () => 
 
 test('upload authorizes before validating or reading attacker-controlled form data', () => {
   const body = source.slice(source.indexOf('export async function uploadDocumentAction'));
-  assert.ok(body.indexOf('resolveCustomerCallerCtx(slug)') < body.indexOf("formData.get('file')"));
+  assert.ok(
+    body.indexOf('resolveCustomerDocumentUploadAuthority(slug)') <
+      body.indexOf("formData.get('file')"),
+  );
 });
 
-test('requested uploads allow pending and fulfilled replay but reject every other status', () => {
-  assert.match(source, /!\['pending', 'fulfilled'\]\.includes\(data\.status\)/u);
+test('upload delegates requested-upload replay enforcement to the shared service', () => {
+  assert.match(source, /submitCustomerDocumentUpload\(authority, parsed\.data, file/u);
+  assert.doesNotMatch(source, /\.from\('document_requests'\)/u);
 });
 
 test('upload validates and forwards the client operation id to the coordinator-backed DAL', () => {
   assert.match(source, /operation_id: formData\.get\('operation_id'\)/u);
-  assert.match(source, /operationId: parsed\.data\.operation_id/u);
+  assert.match(source, /submitCustomerDocumentUpload\(authority, parsed\.data, file/u);
 });

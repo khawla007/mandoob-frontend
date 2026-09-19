@@ -6,7 +6,11 @@ import { headers } from 'next/headers';
 import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { ApiError } from '@/lib/errors';
 import { requireAuthorizedCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
-import { getCompanyDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
+import {
+  resolveCustomerDocumentUploadAuthority,
+  submitCustomerDocumentUpload,
+} from '@/lib/data/customer-document-upload';
+import { getCompanyDocumentSignedUrl } from '@/lib/data/documents';
 import { customerUploadActionSchema } from '@/lib/validation/document';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -21,6 +25,7 @@ export type CustomerDocumentActionCode =
   | 'PAYLOAD_TOO_LARGE'
   | 'FILE_REJECTED_BY_SCAN'
   | 'SCANNER_UNAVAILABLE'
+  | 'OPERATION_REUSED'
   | 'DOCUMENT_UNAVAILABLE'
   | 'UPLOAD_FAILED'
   | 'OPEN_FAILED';
@@ -60,6 +65,7 @@ function safeCustomerDocumentError(
     PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
     FILE_REJECTED_BY_SCAN: 'FILE_REJECTED_BY_SCAN',
     SCANNER_UNAVAILABLE: 'SCANNER_UNAVAILABLE',
+    CONFLICT: 'OPERATION_REUSED',
     MALWARE_DETECTED: 'FILE_REJECTED_BY_SCAN',
     FORBIDDEN: 'DOCUMENT_UNAVAILABLE',
     NOT_FOUND: 'DOCUMENT_UNAVAILABLE',
@@ -68,37 +74,13 @@ function safeCustomerDocumentError(
   return { ok: false, code: safeCodes[error.code] ?? fallback };
 }
 
-async function assertRequestBelongsToCompany(args: {
-  tenantId: string;
-  companyId: string;
-  requestId: string;
-}): Promise<void> {
-  // RLS on document_requests scopes customer reads to their linked company.
-  // A null result = either the request does not exist or it belongs to a
-  // different company/tenant. Either way, deny with FORBIDDEN.
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('document_requests')
-    .select('id, status')
-    .eq('id', args.requestId)
-    .eq('tenant_id', args.tenantId)
-    .eq('company_id', args.companyId)
-    .maybeSingle();
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-  if (!data) {
-    throw new ApiError('FORBIDDEN', 'Request not found for this company', 403);
-  }
-  if (!['pending', 'fulfilled'].includes(data.status)) {
-    throw new ApiError('FORBIDDEN', 'Request is not awaiting upload', 403);
-  }
-}
-
 export async function uploadDocumentAction(
   slug: string,
   formData: FormData,
 ): Promise<ActionResult<{ documentId: string; versionId: string }>> {
   try {
-    const ctx = await resolveCustomerCallerCtx(slug);
+    const authority = await resolveCustomerDocumentUploadAuthority(slug);
+    const hdr = await headers();
     const file = formData.get('file');
     if (!(file instanceof File)) {
       return { ok: false, code: 'PAYLOAD_EMPTY' };
@@ -114,34 +96,9 @@ export async function uploadDocumentAction(
       return { ok: false, code: 'VALIDATION_FAILED' };
     }
 
-    if (parsed.data.request_id) {
-      await assertRequestBelongsToCompany({
-        tenantId: ctx.tenant.id,
-        companyId: ctx.linkedCompanyId,
-        requestId: parsed.data.request_id,
-      });
-    }
-
-    const bytes = new Uint8Array(await file.arrayBuffer());
-
-    const result = await uploadDocument({
-      tenantId: ctx.tenant.id,
-      companyId: ctx.linkedCompanyId,
-      docType: parsed.data.doc_type,
-      operationId: parsed.data.operation_id,
-      requestId: parsed.data.request_id,
-      label: parsed.data.label,
-      file: {
-        data: bytes,
-        originalName: file.name || 'upload',
-        mimeType: file.type || 'application/octet-stream',
-      },
-      actor: {
-        id: ctx.caller.id,
-        role: 'customer',
-        ip: ctx.ip,
-        userAgent: ctx.userAgent,
-      },
+    const result = await submitCustomerDocumentUpload(authority, parsed.data, file, {
+      ip: hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+      userAgent: hdr.get('user-agent'),
     });
 
     revalidatePath(`/t/${slug}/portal/documents`);

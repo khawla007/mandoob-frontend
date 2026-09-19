@@ -1829,6 +1829,7 @@
         "PAYLOAD_TOO_LARGE": "The file is larger than 25 MB.",
         "FILE_REJECTED_BY_SCAN": "The file did not pass the security scan.",
         "SCANNER_UNAVAILABLE": "Security scanning is temporarily unavailable. Try again.",
+        "OPERATION_REUSED": "This upload no longer matches the saved retry. Select the file again.",
         "DOCUMENT_UNAVAILABLE": "This document is not available.",
         "UPLOAD_FAILED": "The document could not be uploaded safely. Try again.",
         "OPEN_FAILED": "The secure document link could not be created. Try again."

@@ -11,9 +11,10 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon_key_for_tests_padded_to_min_';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
 process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 
-test('Next proxy preserves the full 10 MiB evidence file plus multipart envelope', () => {
+test('shared Next proxy limit covers Customer uploads while evidence stays bounded per route', () => {
   const config = readFileSync('next.config.ts', 'utf8');
-  assert.match(config, /proxyClientMaxBodySize:\s*11 \* 1024 \* 1024/u);
+  assert.match(config, /proxyClientMaxBodySize:\s*26 \* 1024 \* 1024/u);
+  assert.equal(PRO_CREDENTIAL_EVIDENCE_MAX_BYTES, 10 * 1024 * 1024);
 });
 
 test('credential evidence route is statically pinned to the private-only scanner', () => {
