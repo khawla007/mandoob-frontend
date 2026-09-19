@@ -92,15 +92,14 @@ renderTest('public light and dark scopes expose the complete reusable semantic p
   }
 });
 
-renderTest('sticky public header surfaces retain the accepted translucent treatment', () => {
-  assert.equal(
-    rawToken(declarations('.site-public'), 'public-header-surface'),
-    'rgba(255, 255, 255, 0.85)',
+renderTest('sticky public header surfaces preserve their colors without transparency', () => {
+  assert.equal(rawToken(declarations('.site-public'), 'public-header-surface'), '#fff');
+  assert.equal(rawToken(declarations('.dark .site-public'), 'public-header-surface'), '#0a0a0a');
+  const values = [...css.matchAll(/--public-header-surface:\s*([^;]+);/gu)].map((match) =>
+    match[1].trim(),
   );
-  assert.equal(
-    rawToken(declarations('.dark .site-public'), 'public-header-surface'),
-    'rgba(10, 10, 10, 0.85)',
-  );
+  assert.deepEqual(values, ['#fff', '#0a0a0a', 'rgb(255 255 255)', 'rgb(24 24 27)', 'inherit']);
+  assert.doesNotMatch(css, /--public-header-surface:[^;]*(?:rgba|\/\s*85%|0\.85)/u);
 });
 
 renderTest('public light tokens match the canonical design-4 neutral palette and fonts', () => {

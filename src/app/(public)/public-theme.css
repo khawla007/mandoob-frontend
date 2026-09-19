@@ -45,7 +45,7 @@
   --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #6f5b54;
   --public-cta-disabled-text: #ffffff;
-  --public-header-surface: rgba(255, 255, 255, 0.85);
+  --public-header-surface: #fff;
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #b9380f;
   --public-danger: #8f1d14;
@@ -152,7 +152,7 @@
   --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #6f5b54;
   --public-cta-disabled-text: #ffffff;
-  --public-header-surface: rgba(10, 10, 10, 0.85);
+  --public-header-surface: #0a0a0a;
   --public-mobile-dialog-surface: #181614;
   --public-focus-ring: #ff5722;
   --public-danger: #ffb4a8;
@@ -9127,7 +9127,7 @@
   --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #a1a1aa;
   --public-cta-disabled-text: #ffffff;
-  --public-header-surface: rgb(255 255 255 / 85%);
+  --public-header-surface: rgb(255 255 255);
   --public-mobile-dialog-surface: #09090b;
   --public-focus-ring: #ff5722;
   --public-scrim: rgb(9 9 11 / 72%);
@@ -9168,7 +9168,7 @@
   --public-cta-focus-background: #b9380f;
   --public-cta-disabled-background: #6f5b54;
   --public-cta-disabled-text: #ffffff;
-  --public-header-surface: rgb(24 24 27 / 85%);
+  --public-header-surface: rgb(24 24 27);
   --public-mobile-dialog-surface: #09090b;
   --public-focus-ring: #ff5722;
   --public-scrim: rgb(9 9 11 / 82%);
