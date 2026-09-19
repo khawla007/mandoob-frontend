@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import postcss, { type Declaration, type Rule } from 'postcss';
 
 const homeDirectory = join(process.cwd(), 'src/components/site/home');
 const componentSources = [
@@ -20,12 +21,35 @@ const componentSources = [
 const allSource = componentSources.map(({ source }) => source).join('\n');
 const publicTheme = readFileSync(join(process.cwd(), 'src/app/(public)/public-theme.css'), 'utf8');
 const publicLayout = readFileSync(join(process.cwd(), 'src/app/(public)/layout.tsx'), 'utf8');
+const publicThemeAst = postcss.parse(publicTheme);
 
 function declarations(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
   const block = publicTheme.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'u'))?.[1];
   assert.ok(block, `missing ${selector} declarations`);
   return block;
+}
+
+function ruleDeclarations(rule: Rule): Map<string, string> {
+  return new Map(
+    rule.nodes
+      .filter((node): node is Declaration => node.type === 'decl')
+      .map((declaration) => [declaration.prop, declaration.value]),
+  );
+}
+
+function reducedMotionRule(selector: string): Rule {
+  let result: Rule | undefined;
+
+  publicThemeAst.walkAtRules('media', (atRule) => {
+    if (atRule.params !== '(prefers-reduced-motion: reduce)') return;
+    atRule.walkRules((rule) => {
+      if (!result && rule.selectors.includes(selector)) result = rule;
+    });
+  });
+
+  assert.ok(result, `missing reduced-motion rule for ${selector}`);
+  return result;
 }
 
 describe('homepage claims and CTA contract', () => {
@@ -94,6 +118,12 @@ describe('homepage claims and CTA contract', () => {
     assert.match(services, /import type \{ CSSProperties \} from 'react'/u);
     assert.match(services, /const titleText = t\('title'\);/u);
     assert.match(services, /titleText\.trim\(\)\.split\(\/\\s\+\/u\)/u);
+    assert.match(
+      services,
+      /const hasJoiningScript = \/\\p\{Script=Arabic\}\/u\.test\(titleText\);/u,
+    );
+    assert.match(services, /const supportsCharacterReveal = !hasJoiningScript;/u);
+    assert.match(services, /supportsCharacterReveal\s+\? titleWords\.map[\s\S]*: titleText/u);
     assert.match(services, /let characterIndex = 0;/u);
     assert.match(services, /aria-label=\{titleText\}/u);
     assert.match(services, /home-services-title--blur-reveal reveal/u);
@@ -107,12 +137,21 @@ describe('homepage claims and CTA contract', () => {
     assert.match(publicTheme, /opacity:\s*1;[\s\S]*filter:\s*blur\(0\)/u);
     assert.match(publicTheme, /1s cubic-bezier\(0\.25, 0\.46, 0\.45, 0\.94\) both/u);
     assert.match(publicTheme, /calc\(var\(--home-services-char-index\) \* 25ms\)/u);
-    assert.match(publicTheme, /home-services-title__char[\s\S]*animation:\s*none/u);
+    const reducedMotionCharacters = ruleDeclarations(
+      reducedMotionRule('.site-public.reveal-on .home-services-title__char'),
+    );
+    assert.equal(reducedMotionCharacters.get('opacity'), '1');
+    assert.equal(reducedMotionCharacters.get('filter'), 'none');
+    assert.equal(reducedMotionCharacters.get('animation'), 'none');
     assert.match(
       publicLayout,
       /home-services-title__char\{opacity:1!important;filter:none!important;animation:none!important;\}/u,
     );
     assert.match(services, /home-setup-grid cards-stagger/u);
+    assert.match(
+      services,
+      /className=\{`home-setup-card home-setup-card--\$\{index \+ 1\} reveal`\}/u,
+    );
     assert.doesNotMatch(services, /home-setup-card--(?:left|center|right)/u);
   });
 

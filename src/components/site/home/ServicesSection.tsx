@@ -13,6 +13,8 @@ export async function ServicesSection() {
   const t = await getTranslations('home.services');
   const titleText = t('title');
   const titleWords = titleText.trim().split(/\s+/u);
+  const hasJoiningScript = /\p{Script=Arabic}/u.test(titleText);
+  const supportsCharacterReveal = !hasJoiningScript;
   let characterIndex = 0;
 
   return (
@@ -26,26 +28,28 @@ export async function ServicesSection() {
             aria-label={titleText}
           >
             <span className="home-services-title__visual" aria-hidden="true">
-              {titleWords.map((word, wordIndex) => (
-                <span key={`${word}-${wordIndex}`}>
-                  {wordIndex > 0 ? ' ' : null}
-                  <span className="home-services-title__word">
-                    {Array.from(word).map((character) => {
-                      const index = characterIndex++;
+              {supportsCharacterReveal
+                ? titleWords.map((word, wordIndex) => (
+                    <span key={`${word}-${wordIndex}`}>
+                      {wordIndex > 0 ? ' ' : null}
+                      <span className="home-services-title__word">
+                        {Array.from(word).map((character) => {
+                          const index = characterIndex++;
 
-                      return (
-                        <span
-                          className="home-services-title__char"
-                          key={`${character}-${index}`}
-                          style={{ '--home-services-char-index': index } as CSSProperties}
-                        >
-                          {character}
-                        </span>
-                      );
-                    })}
-                  </span>
-                </span>
-              ))}
+                          return (
+                            <span
+                              className="home-services-title__char"
+                              key={`${character}-${index}`}
+                              style={{ '--home-services-char-index': index } as CSSProperties}
+                            >
+                              {character}
+                            </span>
+                          );
+                        })}
+                      </span>
+                    </span>
+                  ))
+                : titleText}
             </span>
           </h2>
           <p className="reveal">{t('lede')}</p>
