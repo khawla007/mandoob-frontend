@@ -209,7 +209,7 @@ test('Employee document and renewal reads bind tenant, Company and own employee 
     assert.match(query, /\.limit\(ROW_LIMIT \+ 1\)/u);
   }
   assert.doesNotMatch(source, /uploadDocument\(/u);
-  assert.match(source, /upload:\s*'phase-3-unavailable'/u);
+  assert.match(source, /upload:\s*'requested-documents'/u);
   assert.match(source, /requestRows && documentRows/u);
   assert.match(source, /documentRows && !documentHasMore/u);
   assert.match(source, /\.in\('status', \['upcoming', 'due_soon', 'overdue'\]\)/u);

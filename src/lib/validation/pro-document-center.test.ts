@@ -211,25 +211,47 @@ test('document center schema excludes company selection from URL query primitive
 test('document expiry input accepts UUID plus calendar ISO date or an empty null value', () => {
   const dated = documentExpirySchema.safeParse({
     document_id: DOCUMENT_ID,
+    expected_head_version_id: DOCUMENT_ID,
+    expected_expires_on: '',
     expires_on: '2026-08-31',
   });
   assert.equal(dated.success, true);
   if (dated.success) assert.equal(dated.data.expires_on, '2026-08-31');
 
-  const cleared = documentExpirySchema.safeParse({ document_id: DOCUMENT_ID, expires_on: '' });
+  const cleared = documentExpirySchema.safeParse({
+    document_id: DOCUMENT_ID,
+    expected_head_version_id: DOCUMENT_ID,
+    expected_expires_on: '2026-08-31',
+    expires_on: '',
+  });
   assert.equal(cleared.success, true);
   if (cleared.success) assert.equal(cleared.data.expires_on, null);
 
   assert.equal(
-    documentExpirySchema.safeParse({ document_id: 'not-a-uuid', expires_on: '' }).success,
+    documentExpirySchema.safeParse({
+      document_id: 'not-a-uuid',
+      expected_head_version_id: DOCUMENT_ID,
+      expected_expires_on: '',
+      expires_on: '',
+    }).success,
     false,
   );
   assert.equal(
-    documentExpirySchema.safeParse({ document_id: DOCUMENT_ID, expires_on: '2026-02-30' }).success,
+    documentExpirySchema.safeParse({
+      document_id: DOCUMENT_ID,
+      expected_head_version_id: DOCUMENT_ID,
+      expected_expires_on: '',
+      expires_on: '2026-02-30',
+    }).success,
     false,
   );
   assert.equal(
-    documentExpirySchema.safeParse({ document_id: DOCUMENT_ID, expires_on: '31/08/2026' }).success,
+    documentExpirySchema.safeParse({
+      document_id: DOCUMENT_ID,
+      expected_head_version_id: DOCUMENT_ID,
+      expected_expires_on: '',
+      expires_on: '31/08/2026',
+    }).success,
     false,
   );
 });

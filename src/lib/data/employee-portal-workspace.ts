@@ -344,7 +344,7 @@ export type EmployeeDocumentWorkspace = {
   awaitingActionCount: number | null;
   summaries: { underReview: number | null; approved: number | null; rejected: number | null };
   hasMore: boolean;
-  upload: 'phase-3-unavailable';
+  upload: 'requested-documents';
 };
 
 export async function loadEmployeeDocuments(
@@ -403,7 +403,7 @@ export async function loadEmployeeDocuments(
         awaitingActionCount: null,
         summaries: { underReview: null, approved: null, rejected: null },
         hasMore: false,
-        upload: 'phase-3-unavailable',
+        upload: 'requested-documents',
       };
     requestHasMore = rows.length > ROW_LIMIT;
     const mapped = rows.slice(0, ROW_LIMIT).map((row) => ({
@@ -432,7 +432,7 @@ export async function loadEmployeeDocuments(
         awaitingActionCount: null,
         summaries: { underReview: null, approved: null, rejected: null },
         hasMore: requestHasMore,
-        upload: 'phase-3-unavailable',
+        upload: 'requested-documents',
       };
     documentHasMore = rows.length > ROW_LIMIT;
     const mapped = rows.slice(0, ROW_LIMIT).map((row) => {
@@ -484,7 +484,7 @@ export async function loadEmployeeDocuments(
       rejected: countStatus('rejected'),
     },
     hasMore: requestHasMore || documentHasMore,
-    upload: 'phase-3-unavailable',
+    upload: 'requested-documents',
   };
 }
 

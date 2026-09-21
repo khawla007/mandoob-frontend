@@ -565,8 +565,17 @@
       "error": "تعذر إرسال الطلب. راجع الحقول وحاول مجددًا."
     },
     "batch": {
-      "title": "طلب الدُفعة غير متاح",
-      "description": "طلبات المستندات المجمعة مخططة للمرحلة الثالثة ولا يمكن إرسالها بعد."
+      "trigger": "طلب عدة مستندات",
+      "title": "طلب عدة مستندات",
+      "description": "أنشئ ما يصل إلى 25 طلب مستند للشركة المسندة إليك في عملية واحدة.",
+      "add": "إضافة مستند",
+      "remove": "إزالة المستند",
+      "item": "المستند",
+      "customType": "نوع المستند المخصص",
+      "submit": "إرسال الطلبات",
+      "pending": "جارٍ إرسال الطلبات…",
+      "success": "تم إنشاء طلبات المستندات.",
+      "maximum": "الحد الأقصى {count} مستندًا"
     },
     "review": {
       "approve": "اعتماد",
@@ -681,6 +690,7 @@
       "notFound": "لم يتم العثور على سجل المستند المطلوب.",
       "tenantInactive": "مساحة عمل هذه الشركة غير نشطة. تواصل مع مسؤول قبل المتابعة.",
       "expiryExternallyManaged": "عدّل تاريخ الانتهاء في سجل المصدر المرتبط.",
+      "conflict": "تغير هذا الطلب بعد إرساله أول مرة. راجعه ثم أرسله مجددًا.",
       "openFailed": "تعذر إنشاء رابط الملف الآمن. حاول مجددًا.",
       "phase3Unavailable": "هذا الإجراء غير متاح حتى إطلاق سير عمل المرحلة الثالثة المقيّد بالشركة.",
       "unexpected": "تعذر إكمال الإجراء بأمان. حاول مجددًا."
@@ -1813,6 +1823,7 @@
         "PAYLOAD_TOO_LARGE": "حجم الملف أكبر من 25 ميغابايت.",
         "FILE_REJECTED_BY_SCAN": "لم يجتز الملف فحص الأمان.",
         "SCANNER_UNAVAILABLE": "فحص الأمان غير متاح مؤقتًا. حاول مجددًا.",
+        "OPERATION_REUSED": "لم يعد هذا الرفع مطابقًا للمحاولة المحفوظة. اختر الملف مجددًا.",
         "DOCUMENT_UNAVAILABLE": "هذا المستند غير متاح.",
         "UPLOAD_FAILED": "تعذر رفع المستند بأمان. حاول مجددًا.",
         "OPEN_FAILED": "تعذر إنشاء رابط المستند الآمن. حاول مجددًا."
@@ -2240,9 +2251,12 @@
       "due": "Due {date}",
       "noDeadline": "No deadline recorded",
       "uploaded": "Uploaded {date}",
-      "uploadUnavailableTitle": "Requested-document upload is unavailable",
-      "uploadUnavailable": "The accepted backend cannot yet bind an Employee upload atomically to this request and own record. Upload remains disabled until the Phase 3 contract is available.",
-      "formats": "Planned secure upload accepts PDF, JPEG, PNG, DOCX or XLSX up to 25 MB and scans files before acceptance.",
+      "uploadTitle": "رفع آمن للمستند المطلوب",
+      "uploadDescription": "يتوفر الرفع فقط لطلب معلّق مرتبط بسجل الموظف النشط الخاص بك.",
+      "uploadButton": "رفع المستند",
+      "uploading": "جارٍ الرفع…",
+      "uploadDialogDescription": "اختر الملف المطلوب. سيُفحص بشكل خاص قبل قبول الإصدار.",
+      "formats": "يقبل الرفع الآمن ملفات PDF أو JPEG أو PNG أو DOCX أو XLSX حتى 25 ميجابايت ويفحصها قبل القبول.",
       "versionUnavailable": "Version history is unavailable on the accepted contract.",
       "review": {
         "pending": "Under review",
@@ -3690,15 +3704,73 @@
         "eyebrow": "العمليات · المستندات",
         "title": "الإشراف على مراجعة المستندات",
         "description": "راجع أعمال المستندات بين الشركات دون توسيع صلاحيات الوصول المقيدة بمساحة العمل.",
-        "summaries": { "submitted": "مُقدَّم", "review": "قيد المراجعة", "rejected": "مرفوض" },
-        "filters": { "company": "الشركة", "status": "حالة المراجعة", "type": "نوع المستند" },
         "queueTitle": "قائمة انتظار مراجعة المستندات",
-        "queueDescription": "سيظهر سياق الشركة والموظف والمواعيد والإصدارات الحالية وقرارات المراجعة في قائمة الانتظار الرئيسية.",
-        "guidance": "حالات سير العمل المعتمدة هي: مطلوب، ومُقدَّم، وقيد المراجعة، ومقبول، ومرفوض. لا يتم استنتاج أي أعمال متراكمة من مصادر مقيدة بمساحة العمل.",
-        "unavailableTitle": "غير متاح — يلزم عقد المرحلة الثالثة",
-        "unavailableDescription": "لا يتوفر في هذا الأساس عقد قراءة معتمد لمراجعة الإصدار الحالي عبر الشركات.",
-        "action": "مراجعة المستند",
-        "actionExplanation": "غير متاح — يلزم عقد المرحلة الثالثة للتعديل والتحقق من الملكية."
+        "queueDescription": "حالة حالية للطلبات والمستندات للقراءة فقط عبر مساحات عمل الشركات.",
+        "filters": {
+          "search": "بحث",
+          "searchPlaceholder": "مساحة العمل أو الشركة أو المستند",
+          "state": "حالة سير العمل",
+          "type": "نوع المستند",
+          "apply": "تطبيق عوامل التصفية",
+          "reset": "إعادة تعيين"
+        },
+        "states": {
+          "all": "كل الحالات",
+          "awaiting_upload": "بانتظار الرفع",
+          "under_review": "قيد المراجعة",
+          "approved": "مقبول",
+          "rejected": "مرفوض",
+          "expired": "منتهي"
+        },
+        "types": {
+          "all": "كل أنواع المستندات",
+          "passport": "جواز السفر",
+          "visa": "التأشيرة",
+          "emirates_id": "الهوية الإماراتية",
+          "trade_license": "الرخصة التجارية",
+          "ejari": "إيجاري",
+          "moa": "عقد التأسيس",
+          "shareholder_id": "هوية المساهم",
+          "other": "أخرى",
+          "aoa": "النظام الأساسي",
+          "bank_reference_letter": "خطاب مرجعي بنكي",
+          "noc": "شهادة عدم ممانعة",
+          "cv_resume": "السيرة الذاتية",
+          "office_lease": "عقد إيجار المكتب",
+          "medical_certificate": "الشهادة الطبية",
+          "insurance_policy": "وثيقة التأمين"
+        },
+        "kind": { "request": "طلب", "document": "مستند" },
+        "requestStatus": {
+          "pending": "بانتظار الرفع",
+          "fulfilled": "تم الرفع",
+          "cancelled": "ملغى"
+        },
+        "reviewStatus": { "pending": "قيد المراجعة", "approved": "مقبول", "rejected": "مرفوض" },
+        "table": {
+          "label": "الإشراف على المستندات عبر الشركات",
+          "company": "الشركة",
+          "document": "المستند",
+          "workflow": "سير العمل",
+          "due": "الاستحقاق",
+          "uploaded": "تاريخ الرفع",
+          "expiry": "الانتهاء"
+        },
+        "empty": {
+          "title": "لا توجد مستندات مطابقة لعوامل التصفية",
+          "description": "غيّر عوامل التصفية أو أعد تعيينها لمراجعة أعمال مستندات أخرى."
+        },
+        "error": {
+          "title": "مصدر المستندات غير متاح",
+          "description": "تعذّر تحميل مصدر المستندات الموثوق. حاول مرة أخرى بأمان."
+        },
+        "pagination": {
+          "label": "صفحات المستندات",
+          "summary": "الصفحة {page} من {totalPages} · الإجمالي {total}",
+          "previous": "السابق",
+          "next": "التالي"
+        },
+        "notAvailable": "غير متاح"
       },
       "employees": {
         "eyebrow": "العمليات · الموظفون",

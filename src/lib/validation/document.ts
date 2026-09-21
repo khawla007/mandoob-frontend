@@ -73,6 +73,7 @@ const emptyStringToUndefined = (value: unknown) =>
 
 export const customerUploadActionSchema = z.object({
   doc_type: docTypeSchema,
+  operation_id: z.string().uuid(),
   request_id: z.preprocess(emptyStringToUndefined, z.string().uuid().optional()),
   label: z.preprocess(emptyStringToUndefined, z.string().max(140).optional()),
 });

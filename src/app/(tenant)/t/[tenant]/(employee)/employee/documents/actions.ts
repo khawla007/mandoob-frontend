@@ -17,8 +17,12 @@ export async function getEmployeeDocumentSignedUrlAction(
 ): Promise<ActionResult<{ url: string; expiresAt: string }>> {
   try {
     const access = await authorizeEmployeePortalRead(slug);
-    const url = await getEmployeeDocumentSignedUrl(access.session.id, access.tenant.id, versionId);
-    return { ok: true, data: { url, expiresAt: new Date(Date.now() + 300_000).toISOString() } };
+    const signed = await getEmployeeDocumentSignedUrl(
+      access.session.id,
+      access.tenant.id,
+      versionId,
+    );
+    return { ok: true, data: signed };
   } catch (error) {
     logSafeActionError('employee.document.open', error);
     return {

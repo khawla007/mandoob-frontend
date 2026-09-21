@@ -569,8 +569,17 @@
       "error": "The request could not be sent. Review the fields and try again."
     },
     "batch": {
-      "title": "Batch request unavailable",
-      "description": "Batch document requests are planned for Phase 3 and cannot be sent yet."
+      "trigger": "Request several documents",
+      "title": "Request several documents",
+      "description": "Create up to 25 document requests for your assigned company in one operation.",
+      "add": "Add document",
+      "remove": "Remove document",
+      "item": "Document",
+      "customType": "Custom document type",
+      "submit": "Send requests",
+      "pending": "Sending requests…",
+      "success": "The document requests were created.",
+      "maximum": "Maximum {count} documents"
     },
     "review": {
       "approve": "Approve",
@@ -685,6 +694,7 @@
       "notFound": "The requested document record was not found.",
       "tenantInactive": "This company workspace is inactive. Contact an administrator before continuing.",
       "expiryExternallyManaged": "Update this expiry from its source record.",
+      "conflict": "This request changed after it was first sent. Review it and submit again.",
       "openFailed": "The secure file link could not be created. Try again.",
       "phase3Unavailable": "This action is unavailable until its company-scoped Phase 3 workflow is released.",
       "unexpected": "The action could not be completed safely. Try again."
@@ -1829,6 +1839,7 @@
         "PAYLOAD_TOO_LARGE": "The file is larger than 25 MB.",
         "FILE_REJECTED_BY_SCAN": "The file did not pass the security scan.",
         "SCANNER_UNAVAILABLE": "Security scanning is temporarily unavailable. Try again.",
+        "OPERATION_REUSED": "This upload no longer matches the saved retry. Select the file again.",
         "DOCUMENT_UNAVAILABLE": "This document is not available.",
         "UPLOAD_FAILED": "The document could not be uploaded safely. Try again.",
         "OPEN_FAILED": "The secure document link could not be created. Try again."
@@ -2256,9 +2267,12 @@
       "due": "Due {date}",
       "noDeadline": "No deadline recorded",
       "uploaded": "Uploaded {date}",
-      "uploadUnavailableTitle": "Requested-document upload is unavailable",
-      "uploadUnavailable": "The accepted backend cannot yet bind an Employee upload atomically to this request and own record. Upload remains disabled until the Phase 3 contract is available.",
-      "formats": "Planned secure upload accepts PDF, JPEG, PNG, DOCX or XLSX up to 25 MB and scans files before acceptance.",
+      "uploadTitle": "Secure requested-document upload",
+      "uploadDescription": "Upload is available only for a pending request linked to your active Employee record.",
+      "uploadButton": "Upload document",
+      "uploading": "Uploading…",
+      "uploadDialogDescription": "Choose the requested file. It will be privately scanned before a version is accepted.",
+      "formats": "Secure upload accepts PDF, JPEG, PNG, DOCX or XLSX up to 25 MB and scans files before acceptance.",
       "versionUnavailable": "Version history is unavailable on the accepted contract.",
       "review": {
         "pending": "Under review",
@@ -3706,15 +3720,77 @@
         "eyebrow": "Operations · Documents",
         "title": "Document review oversight",
         "description": "Review cross-company document work while preserving company-scoped access.",
-        "summaries": { "submitted": "Submitted", "review": "Under review", "rejected": "Rejected" },
-        "filters": { "company": "Company", "status": "Review status", "type": "Document type" },
         "queueTitle": "Document review queue",
-        "queueDescription": "Company and employee context, deadlines, current versions and review decisions will appear in this primary queue.",
-        "guidance": "The accepted workflow states are requested, submitted, under review, approved and rejected. No backlog is inferred from company-scoped sources.",
-        "unavailableTitle": "Unavailable — Phase 3 contract required",
-        "unavailableDescription": "No accepted cross-company current-version review read exists on this base.",
-        "action": "Review document",
-        "actionExplanation": "Unavailable — Phase 3 mutation and ownership contract required."
+        "queueDescription": "Read-only current request and document status across company workspaces.",
+        "filters": {
+          "search": "Search",
+          "searchPlaceholder": "Workspace, company or document",
+          "state": "Workflow state",
+          "type": "Document type",
+          "apply": "Apply filters",
+          "reset": "Reset"
+        },
+        "states": {
+          "all": "All states",
+          "awaiting_upload": "Awaiting upload",
+          "under_review": "Under review",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "expired": "Expired"
+        },
+        "types": {
+          "all": "All document types",
+          "passport": "Passport",
+          "visa": "Visa",
+          "emirates_id": "Emirates ID",
+          "trade_license": "Trade license",
+          "ejari": "Ejari",
+          "moa": "Memorandum of association",
+          "shareholder_id": "Shareholder ID",
+          "other": "Other",
+          "aoa": "Articles of association",
+          "bank_reference_letter": "Bank reference letter",
+          "noc": "No-objection certificate",
+          "cv_resume": "CV or résumé",
+          "office_lease": "Office lease",
+          "medical_certificate": "Medical certificate",
+          "insurance_policy": "Insurance policy"
+        },
+        "kind": { "request": "Request", "document": "Document" },
+        "requestStatus": {
+          "pending": "Awaiting upload",
+          "fulfilled": "Uploaded",
+          "cancelled": "Cancelled"
+        },
+        "reviewStatus": {
+          "pending": "Under review",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        },
+        "table": {
+          "label": "Cross-company document oversight",
+          "company": "Company",
+          "document": "Document",
+          "workflow": "Workflow",
+          "due": "Due",
+          "uploaded": "Uploaded",
+          "expiry": "Expiry"
+        },
+        "empty": {
+          "title": "No documents match these filters",
+          "description": "Change or reset the filters to inspect other document work."
+        },
+        "error": {
+          "title": "Document source unavailable",
+          "description": "The authoritative document source could not be loaded. Try again safely."
+        },
+        "pagination": {
+          "label": "Document pages",
+          "summary": "Page {page} of {totalPages} · {total} total",
+          "previous": "Previous",
+          "next": "Next"
+        },
+        "notAvailable": "Not available"
       },
       "employees": {
         "eyebrow": "Operations · Employees",

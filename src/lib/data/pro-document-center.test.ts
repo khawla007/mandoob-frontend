@@ -294,6 +294,8 @@ function ownedHistoryDocument(overrides: Record<string, unknown> = {}) {
     tenant_id: TENANT,
     company_id: CLIENT,
     request_id: null,
+    current_version_id: VERSION_1,
+    expires_on: null,
     company: { id: CLIENT, tenant_id: TENANT },
     request: null,
     ...overrides,
@@ -516,6 +518,8 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
 
     const result = await setDocumentExpiry(CLIENT, expiryContext(), {
       document_id: DOCUMENT,
+      expected_head_version_id: VERSION_1,
+      expected_expires_on: null,
       expires_on: expiresOn,
     });
 
@@ -524,8 +528,11 @@ test('setDocumentExpiry uses one transactional RPC for update and tenant audit, 
     const rpc = calls.find((call) => call.url.includes('/rest/v1/rpc/set_pro_document_expiry'))!;
     assert.deepEqual(rpc.body, {
       p_tenant_id: TENANT,
-      p_document_id: DOCUMENT,
       p_actor_id: ACTOR,
+      p_company_id: CLIENT,
+      p_document_id: DOCUMENT,
+      p_expected_head_version_id: VERSION_1,
+      p_expected_expires_on: null,
       p_expires_on: expiresOn,
     });
     assert.match(calls[0].url, new RegExp(`company_id=eq\\.${CLIENT}`, 'u'));
@@ -557,6 +564,8 @@ test('setDocumentExpiry rejects empty and failed transactional RPCs without succ
       () =>
         setDocumentExpiry(CLIENT, expiryContext(), {
           document_id: DOCUMENT,
+          expected_head_version_id: VERSION_1,
+          expected_expires_on: null,
           expires_on: '2027-08-13',
         }),
       (error) =>
@@ -609,6 +618,8 @@ test('setDocumentExpiry maps only stable SQLSTATE outcomes and never exposes dat
       () =>
         setDocumentExpiry(CLIENT, expiryContext(), {
           document_id: DOCUMENT,
+          expected_head_version_id: VERSION_1,
+          expected_expires_on: null,
           expires_on: '2027-08-13',
         }),
       (error) =>
@@ -642,6 +653,8 @@ test('setDocumentExpiry rejects a same-tenant foreign Company before the expiry 
     () =>
       setDocumentExpiry(CLIENT, expiryContext(), {
         document_id: DOCUMENT,
+        expected_head_version_id: VERSION_1,
+        expected_expires_on: null,
         expires_on: '2027-08-13',
       }),
     (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
@@ -651,6 +664,35 @@ test('setDocumentExpiry rejects a same-tenant foreign Company before the expiry 
     calls.some((call) => call.url.includes('/rpc/set_pro_document_expiry')),
     false,
   );
+});
+
+test('setDocumentExpiry rejects a stale observed head or expiry before mutation and telemetry', async () => {
+  const { setDocumentExpiry } = await load();
+  for (const stale of [
+    ownedHistoryDocument({ current_version_id: VERSION_2 }),
+    ownedHistoryDocument({ expires_on: '2027-08-12' }),
+  ]) {
+    const calls = captureFetch(() => json(stale));
+    await assert.rejects(
+      () =>
+        setDocumentExpiry(CLIENT, expiryContext(), {
+          document_id: DOCUMENT,
+          expected_head_version_id: VERSION_1,
+          expected_expires_on: null,
+          expires_on: '2027-08-13',
+        }),
+      (error) => error instanceof ApiError && error.code === 'CONFLICT' && error.status === 409,
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(
+      calls.some((call) => call.url.includes('/rpc/')),
+      false,
+    );
+    assert.equal(
+      calls.some((call) => call.url.includes('/auth_events')),
+      false,
+    );
+  }
 });
 
 test('setDocumentExpiry sanitizes assigned-company ownership read failures', async () => {
@@ -663,6 +705,8 @@ test('setDocumentExpiry sanitizes assigned-company ownership read failures', asy
     () =>
       setDocumentExpiry(CLIENT, expiryContext(), {
         document_id: DOCUMENT,
+        expected_head_version_id: VERSION_1,
+        expected_expires_on: null,
         expires_on: '2027-08-13',
       }),
     (error) =>

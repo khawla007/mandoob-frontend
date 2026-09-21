@@ -429,13 +429,14 @@ export async function setDocumentExpiry(
   const validContext = expiryContextSchema.parse(ctx);
   const validInput = documentExpirySchema.parse({
     ...input,
+    expected_expires_on: input.expected_expires_on === null ? '' : input.expected_expires_on,
     expires_on: input.expires_on === null ? '' : input.expires_on,
   });
   const admin = createSupabaseServiceRoleClient();
   const { data: document, error: ownershipError } = await admin
     .from('documents')
     .select(
-      'id, tenant_id, company_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id)',
+      'id, tenant_id, company_id, current_version_id, expires_on, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id)',
     )
     .eq('id', validInput.document_id)
     .eq('tenant_id', validContext.tenantId)
@@ -445,6 +446,8 @@ export async function setDocumentExpiry(
     id: string;
     tenant_id: string;
     company_id: string;
+    current_version_id: string | null;
+    expires_on: string | null;
     company: { id: string; tenant_id: string } | null;
   } | null;
   if (ownershipError) {
@@ -460,12 +463,21 @@ export async function setDocumentExpiry(
   ) {
     throw new ApiError('NOT_FOUND', 'Document not found', 404);
   }
+  if (
+    owned.current_version_id !== validInput.expected_head_version_id ||
+    owned.expires_on !== validInput.expected_expires_on
+  ) {
+    throw new ApiError('CONFLICT', 'Document expiry changed', 409);
+  }
   const { data, error } = await admin.rpc(
     'set_pro_document_expiry' as never,
     {
       p_tenant_id: validContext.tenantId,
-      p_document_id: validInput.document_id,
       p_actor_id: validContext.actorId,
+      p_company_id: validCompanyId,
+      p_document_id: validInput.document_id,
+      p_expected_head_version_id: validInput.expected_head_version_id,
+      p_expected_expires_on: validInput.expected_expires_on,
       p_expires_on: validInput.expires_on,
     } as never,
   );
@@ -478,6 +490,9 @@ export async function setDocumentExpiry(
     throw new ApiError('NOT_FOUND', 'Document not found', 404);
   }
   if (error?.code === 'MD409') {
+    if (error.message === 'document_expiry_conflict') {
+      throw new ApiError('CONFLICT', 'Document expiry changed', 409);
+    }
     throw new ApiError(
       'EXPIRY_EXTERNALLY_MANAGED',
       'Expiry is managed by the linked company or employee',
