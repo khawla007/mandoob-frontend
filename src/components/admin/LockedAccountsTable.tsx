@@ -43,7 +43,7 @@ export function LockedAccountsTable({ rows }: { rows: LockedAccountRow[] }) {
   }
 
   return (
-    <Table>
+    <Table scrollAreaLabel={t('security.lockedAccountsTitle')}>
       <TableHeader>
         <TableRow>
           <TableHead>{t('user.lockedAccounts.account')}</TableHead>
