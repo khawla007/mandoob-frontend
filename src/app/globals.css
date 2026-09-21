@@ -3385,6 +3385,9 @@ body.dashboard-surface-active {
     min-height: 2.75rem;
     align-items: center;
   }
+  .dark .erasure-management-workspace button[data-variant='destructive'] {
+    color: color-mix(in oklch, var(--destructive) 65%, white);
+  }
   .finance-management-workspace [data-slot='table'] {
     min-width: 42rem;
   }

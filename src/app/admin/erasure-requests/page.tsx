@@ -22,22 +22,22 @@ export default async function AdminErasureRequestsPage() {
   const rows = await listAdminErasureRequests();
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="admin-management-signal admin-operational-workspace erasure-management-workspace space-y-6">
+      <div className="admin-operational-heading">
         <h1 className="text-2xl font-semibold tracking-tight">{t('erasure.list.title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('erasure.list.intro')}</p>
       </div>
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table scrollAreaLabel={t('erasure.list.title')}>
             <TableHeader>
               <TableRow>
                 <TableHead>{t('erasure.list.subject')}</TableHead>
                 <TableHead>{t('erasure.list.tenant')}</TableHead>
                 <TableHead>{t('erasure.list.status')}</TableHead>
                 <TableHead>{t('erasure.list.submitted')}</TableHead>
-                <TableHead className="text-right">{t('erasure.list.action')}</TableHead>
+                <TableHead className="text-end">{t('erasure.list.action')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -60,7 +60,7 @@ export default async function AdminErasureRequestsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>{new Date(row.submittedAt).toLocaleString()}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-end">
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/admin/erasure-requests/${row.id}`}>
                         {t('erasure.list.review')}
