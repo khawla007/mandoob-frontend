@@ -18,10 +18,12 @@ import {
   setDocumentReview,
 } from '@/lib/data/documents';
 import { listDocumentVersionHistory, setDocumentExpiry } from '@/lib/data/pro-document-center';
+import { createDocumentRequestBatch } from '@/lib/data/document-request-batch';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 import {
   runLoadVersionHistoryAction,
   runOpenDocumentVersionAction,
+  runRequestDocumentBatchAction,
   runRequestDocumentCenterAction,
   runReviewDocumentCenterAction,
   runSetDocumentExpiryAction,
@@ -47,6 +49,7 @@ function dependencies(): DocumentCenterActionDependencies {
       return normalizeActionRequestMetadata(requestHeaders);
     },
     createRequest: createDocumentRequest,
+    createBatch: createDocumentRequestBatch,
     reviewVersion: setDocumentReview,
     openVersion: getCompanyDocumentSignedUrl,
     loadHistory: listDocumentVersionHistory,
@@ -63,6 +66,14 @@ export async function requestDocumentCenterAction(
   formData: FormData,
 ): Promise<DocumentCenterActionResult<{ requestId: string }>> {
   return runRequestDocumentCenterAction(slug, previousState, formData, dependencies());
+}
+
+export async function requestDocumentBatchAction(
+  slug: string,
+  previousState: DocumentCenterActionResult<{ operationId: string; requestIds: string[] }> | null,
+  formData: FormData,
+): Promise<DocumentCenterActionResult<{ operationId: string; requestIds: string[] }>> {
+  return runRequestDocumentBatchAction(slug, previousState, formData, dependencies());
 }
 
 export async function reviewDocumentCenterAction(

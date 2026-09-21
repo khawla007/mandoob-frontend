@@ -569,8 +569,17 @@
       "error": "The request could not be sent. Review the fields and try again."
     },
     "batch": {
-      "title": "Batch request unavailable",
-      "description": "Batch document requests are planned for Phase 3 and cannot be sent yet."
+      "trigger": "Request several documents",
+      "title": "Request several documents",
+      "description": "Create up to 25 document requests for your assigned company in one operation.",
+      "add": "Add document",
+      "remove": "Remove document",
+      "item": "Document",
+      "customType": "Custom document type",
+      "submit": "Send requests",
+      "pending": "Sending requests…",
+      "success": "The document requests were created.",
+      "maximum": "Maximum {count} documents"
     },
     "review": {
       "approve": "Approve",
@@ -685,6 +694,7 @@
       "notFound": "The requested document record was not found.",
       "tenantInactive": "This company workspace is inactive. Contact an administrator before continuing.",
       "expiryExternallyManaged": "Update this expiry from its source record.",
+      "conflict": "This request changed after it was first sent. Review it and submit again.",
       "openFailed": "The secure file link could not be created. Try again.",
       "phase3Unavailable": "This action is unavailable until its company-scoped Phase 3 workflow is released.",
       "unexpected": "The action could not be completed safely. Try again."

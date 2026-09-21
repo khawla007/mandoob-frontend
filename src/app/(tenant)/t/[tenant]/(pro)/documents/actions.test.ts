@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/errors';
 import {
   runLoadVersionHistoryAction,
   runOpenDocumentVersionAction,
+  runRequestDocumentBatchAction,
   runRequestDocumentCenterAction,
   runReviewDocumentCenterAction,
   runSetDocumentExpiryAction,
@@ -47,6 +48,10 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
     createRequest: async (ctx) => {
       calls.push(`request:${ctx.tenantId}:${ctx.actorId}:${ctx.role}`);
       return { id: REQUEST_ID, companyId: COMPANY_ID };
+    },
+    createBatch: async (ctx, input) => {
+      calls.push(`batch:${ctx.tenantId}:${ctx.actorId}:${ctx.companyId}:${input.operationId}`);
+      return { operationId: input.operationId, requestIds: [REQUEST_ID], replayed: false };
     },
     reviewVersion: async (companyId, versionId, ctx) => {
       calls.push(`review:${ctx.tenantId}:${companyId}:${versionId}`);
@@ -101,6 +106,133 @@ function requestForm() {
   form.append('notes', 'Clear colour scan');
   return form;
 }
+
+function batchRequestForm() {
+  const form = new FormData();
+  form.append('operation_id', '88888888-8888-4888-8888-888888888888');
+  form.append(
+    'items',
+    JSON.stringify([
+      { doc_type: 'passport', label: 'Passport' },
+      { doc_type: 'other', custom_type_label: 'Board resolution', label: 'Signed resolution' },
+    ]),
+  );
+  form.append('company_id', OTHER_TENANT_ID);
+  return form;
+}
+
+test('batch request authorizes exact assigned company before reading and atomically mutating', async () => {
+  let received: unknown;
+  const context = setup({
+    createBatch: async (authorization, input) => {
+      received = { authorization, input };
+      return {
+        operationId: input.operationId,
+        requestIds: [REQUEST_ID, VERSION_ID],
+        replayed: false,
+      };
+    },
+  });
+  const result = await runRequestDocumentBatchAction(
+    'acme',
+    null,
+    batchRequestForm(),
+    context.dependencies,
+  );
+  assert.deepEqual(result, {
+    ok: true,
+    code: 'SUCCESS',
+    data: {
+      operationId: '88888888-8888-4888-8888-888888888888',
+      requestIds: [REQUEST_ID, VERSION_ID],
+    },
+  });
+  assert.deepEqual(received, {
+    authorization: {
+      tenantId: TENANT_ID,
+      actorId: ACTOR_ID,
+      companyId: COMPANY_ID,
+      role: 'pro',
+    },
+    input: {
+      operationId: '88888888-8888-4888-8888-888888888888',
+      items: [
+        { doc_type: 'passport', label: 'Passport' },
+        { doc_type: 'other', custom_type_label: 'Board resolution', label: 'Signed resolution' },
+      ],
+    },
+  });
+  assert.deepEqual(context.calls.slice(0, 5), [
+    'auth',
+    'tenant:acme',
+    `active:${TENANT_ID}`,
+    'headers',
+    `company:${ACTOR_ID}:acme`,
+  ]);
+  assert.deepEqual(
+    context.calls.filter((call) => call.startsWith('revalidate:')),
+    ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company', 'revalidate:/t/acme/dashboard'],
+  );
+});
+
+test('batch request rejects invalid bodies after authority and maps operation conflicts safely', async () => {
+  let mutations = 0;
+  const invalid = setup({
+    createBatch: async () => {
+      mutations += 1;
+      throw new Error('must not run');
+    },
+  });
+  const form = batchRequestForm();
+  form.set('items', '[]');
+  const invalidResult = await runRequestDocumentBatchAction(
+    'acme',
+    null,
+    form,
+    invalid.dependencies,
+  );
+  assert.deepEqual(invalidResult, {
+    ok: false,
+    code: 'VALIDATION_FAILED',
+    messageKey: 'documents.errors.validation',
+  });
+  assert.equal(mutations, 0);
+  assert.deepEqual(invalid.calls.slice(0, 5), [
+    'auth',
+    'tenant:acme',
+    `active:${TENANT_ID}`,
+    'headers',
+    `company:${ACTOR_ID}:acme`,
+  ]);
+
+  const conflict = setup({
+    createBatch: async () => {
+      throw new ApiError('CONFLICT', 'raw earlier operation payload', 409);
+    },
+  });
+  assert.deepEqual(
+    await runRequestDocumentBatchAction('acme', null, batchRequestForm(), conflict.dependencies),
+    { ok: false, code: 'CONFLICT', messageKey: 'documents.errors.conflict' },
+  );
+  assert.equal(conflict.calls.includes('logged'), false);
+
+  for (const [code, status, expected] of [
+    ['VALIDATION_FAILED', 400, 'documents.errors.validation'],
+    ['FORBIDDEN', 403, 'documents.errors.forbidden'],
+    ['CONFLICT', 409, 'documents.errors.conflict'],
+  ] as const) {
+    const mapped = setup({
+      createBatch: async () => {
+        throw new ApiError(code, 'private database detail', status);
+      },
+    });
+    assert.deepEqual(
+      await runRequestDocumentBatchAction('acme', null, batchRequestForm(), mapped.dependencies),
+      { ok: false, code, messageKey: expected },
+    );
+    assert.equal(mapped.calls.includes('logged'), false);
+  }
+});
 
 function reviewForm() {
   const form = new FormData();
@@ -247,13 +379,14 @@ for (const action of actionOrderCases) {
   });
 }
 
-test('firm actions module exports only the five public Server Actions', () => {
+test('firm actions module exports only the six public Server Actions', () => {
   const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
   const exportedFunctions = [...source.matchAll(/export async function (\w+)/gu)].map(
     (match) => match[1],
   );
   assert.deepEqual(exportedFunctions, [
     'requestDocumentCenterAction',
+    'requestDocumentBatchAction',
     'reviewDocumentCenterAction',
     'openDocumentVersionAction',
     'loadVersionHistoryAction',
