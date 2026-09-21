@@ -8,11 +8,13 @@ export default async function AdminTasksPage({
 }) {
   await requirePlatformOperator();
   return (
-    <OperationalUnavailableRoute
-      role="admin"
-      module="tasks"
-      baseHref="/admin/tasks"
-      search={await searchParams}
-    />
+    <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace">
+      <OperationalUnavailableRoute
+        role="admin"
+        module="tasks"
+        baseHref="/admin/tasks"
+        search={await searchParams}
+      />
+    </div>
   );
 }

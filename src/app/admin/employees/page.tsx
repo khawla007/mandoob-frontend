@@ -9,11 +9,12 @@ export default async function AdminEmployeesPage() {
   const t = await getTranslations('admin.management.employees');
 
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace admin-oversight-workspace space-y-6">
       <DashboardPageHeader
         eyebrow={t('eyebrow')}
         title={t('title')}
         description={t('description')}
+        className="admin-operational-heading"
       />
       <AdminOversightWorkspace
         summaries={[t('summaries.visaRisk'), t('summaries.eidRisk'), t('summaries.renewalRisk')]}
@@ -22,6 +23,7 @@ export default async function AdminEmployeesPage() {
         queueDescription={t('queueDescription')}
         stateGuidance={t('guidance')}
         unavailableTitle={t('unavailableTitle')}
+        unavailableLabel={t('unavailableTitle')}
         unavailableDescription={t('unavailableDescription')}
         actionLabel={t('action')}
         actionExplanation={t('actionExplanation')}

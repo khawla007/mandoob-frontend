@@ -24,8 +24,8 @@ export default async function SecurityPage() {
   const data = await loadSecurityDashboard();
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="admin-management-signal admin-operational-workspace security-management-workspace space-y-6">
+      <div className="admin-operational-heading">
         <h1 className="text-2xl font-semibold tracking-tight">{t('security.title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('security.intro')}</p>
       </div>
@@ -70,7 +70,7 @@ export default async function SecurityPage() {
                 {t('security.topIpsEmpty')}
               </p>
             ) : (
-              <Table>
+              <Table scrollAreaLabel={t('security.topIpsTitle')}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('security.ip')}</TableHead>
@@ -101,7 +101,7 @@ export default async function SecurityPage() {
                 {t('security.mfaFailuresEmpty')}
               </p>
             ) : (
-              <Table>
+              <Table scrollAreaLabel={t('security.mfaFailuresTitle')}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('security.when')}</TableHead>

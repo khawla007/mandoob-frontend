@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { importCostDataCsvAction } from '@/app/admin/cost-data/actions';
 
@@ -51,7 +52,10 @@ export function CostDataImportDialog() {
       <DialogTrigger asChild>
         <Button variant="outline">{t('costData.import.trigger')}</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent
+        className="cost-data-dialog max-h-[90vh] overflow-y-auto sm:max-w-3xl"
+        closeLabel={t('costData.close')}
+      >
         <DialogHeader>
           <DialogTitle>{t('costData.import.title')}</DialogTitle>
           <DialogDescription>{t('costData.import.description')}</DialogDescription>
@@ -63,7 +67,10 @@ export function CostDataImportDialog() {
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           ) : null}
+          <Label htmlFor="cost-data-csv">{t('costData.import.csvLabel')}</Label>
           <Textarea
+            id="cost-data-csv"
+            aria-label={t('costData.import.csvLabel')}
             className="min-h-72 font-mono text-xs"
             value={csv}
             onChange={(event) => setCsv(event.target.value)}

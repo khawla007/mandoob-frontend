@@ -51,6 +51,7 @@ type ReadOnly = {
 type Props = {
   initial: Initial;
   readOnly: ReadOnly;
+  selectContentClassName?: string;
 };
 
 const LOCALE_LABELS: Record<(typeof SUPPORTED_LOCALES)[number], string> = {
@@ -73,7 +74,7 @@ function initials(name: string): string {
     .join('');
 }
 
-export function ProfileGeneralForm({ initial, readOnly }: Props) {
+export function ProfileGeneralForm({ initial, readOnly, selectContentClassName }: Props) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
   const tShell = useTranslations('shell');
@@ -263,7 +264,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 <SelectTrigger id="locale" aria-invalid={!!errors.locale}>
                   <SelectValue placeholder={t('selectLanguage')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={selectContentClassName}>
                   {SUPPORTED_LOCALES.map((l) => (
                     <SelectItem key={l} value={l}>
                       {LOCALE_LABELS[l]}
@@ -291,7 +292,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 <SelectTrigger id="timezone" aria-invalid={!!errors.timezone}>
                   <SelectValue placeholder={t('selectTimezone')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={selectContentClassName}>
                   {SUPPORTED_TIMEZONES.map((tz) => (
                     <SelectItem key={tz} value={tz}>
                       {tz}
@@ -319,7 +320,7 @@ export function ProfileGeneralForm({ initial, readOnly }: Props) {
                 <SelectTrigger id="date_format" aria-invalid={!!errors.date_format}>
                   <SelectValue placeholder={t('selectDateFormat')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={selectContentClassName}>
                   {SUPPORTED_DATE_FORMATS.map((f) => (
                     <SelectItem key={f} value={f}>
                       {DATE_FORMAT_LABELS[f]}

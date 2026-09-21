@@ -78,7 +78,7 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
     filters.expiryWindow,
   );
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace user-management-workspace space-y-6">
       <UserModeNavigation
         label={t('modeNavigation')}
         allUsers={t('modeAllUsers')}
@@ -95,7 +95,7 @@ async function ProRegistryMode({ raw, actorId }: { raw: RawProRegistryParams; ac
           <AlertDescription>{t('partialEmail')}</AlertDescription>
         </Alert>
       ) : null}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="admin-operational-heading flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -188,7 +188,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   );
 
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace user-management-workspace space-y-6">
       <UserModeNavigation
         label={t('user.modeNavigation')}
         allUsers={t('user.modeAllUsers')}
@@ -200,7 +200,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <AlertDescription>{t('user.createdAlertDescription')}</AlertDescription>
         </Alert>
       )}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="admin-operational-heading flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('user.listTitle')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">

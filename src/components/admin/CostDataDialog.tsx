@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,7 +67,10 @@ export function CostDataDialog({ mode, row }: { mode: 'create' | 'edit'; row?: C
           {mode === 'edit' ? t('costData.edit') : t('costData.newRow')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent
+        className="cost-data-dialog max-h-[90vh] overflow-y-auto sm:max-w-3xl"
+        closeLabel={t('costData.close')}
+      >
         <DialogHeader>
           <DialogTitle>
             {mode === 'edit' ? t('costData.editTitle') : t('costData.createTitle')}
@@ -253,14 +256,15 @@ function SelectField({
   defaultValue: string;
   options: readonly string[];
 }) {
+  const dir = useLocale() === 'ar' ? 'rtl' : 'ltr';
   return (
     <div className="grid gap-2">
       <Label htmlFor={name}>{label}</Label>
-      <Select name={name} defaultValue={defaultValue}>
+      <Select dir={dir} name={name} defaultValue={defaultValue}>
         <SelectTrigger id={name}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="cost-data-select">
           {options.map((option) => (
             <SelectItem key={option} value={option}>
               {option}

@@ -43,8 +43,8 @@ export default async function ProLifecycleDetailPage({
 
   const t = await getTranslations('admin.user.proRegistry');
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="admin-management-signal admin-operational-workspace user-management-workspace space-y-6">
+      <div className="admin-operational-heading flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
             {t('detailEyebrow')}

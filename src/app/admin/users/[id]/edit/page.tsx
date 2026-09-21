@@ -34,8 +34,8 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
     : null;
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="admin-management-signal admin-operational-workspace user-management-workspace space-y-6">
+      <div className="admin-operational-heading">
         <h1 className="text-2xl font-semibold tracking-tight">{t('user.editTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('user.editIntro')}</p>
       </div>

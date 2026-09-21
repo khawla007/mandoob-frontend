@@ -8,11 +8,13 @@ export default async function AdminCalendarPage({
 }) {
   await requirePlatformOperator();
   return (
-    <OperationalUnavailableRoute
-      role="admin"
-      module="calendar"
-      baseHref="/admin/calendar"
-      search={await searchParams}
-    />
+    <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace">
+      <OperationalUnavailableRoute
+        role="admin"
+        module="calendar"
+        baseHref="/admin/calendar"
+        search={await searchParams}
+      />
+    </div>
   );
 }

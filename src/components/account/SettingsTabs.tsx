@@ -6,10 +6,16 @@ import { cn } from '@/lib/utils';
 
 export type SettingsTab = { href: string; label: string };
 
-export function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
+export function SettingsTabs({
+  tabs,
+  ariaLabel = 'Settings sections',
+}: {
+  tabs: SettingsTab[];
+  ariaLabel?: string;
+}) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Settings sections" className="border-b">
+    <nav aria-label={ariaLabel} className="border-b">
       <ul className="-mb-px flex flex-wrap gap-1">
         {tabs.map((t) => {
           // Pick the longest matching tab href so a child route doesn't

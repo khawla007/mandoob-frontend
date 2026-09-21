@@ -76,7 +76,10 @@ export function PageEditor({ page }: { page: CmsPage | null }) {
               />
             </F>
             <F label={t('content')} id="content-editor">
-              <BlogEditorContent initialContent={page?.contentJson ?? null} />
+              <BlogEditorContent
+                initialContent={page?.contentJson ?? null}
+                contentLabel={t('content')}
+              />
             </F>
           </CardContent>
         </Card>

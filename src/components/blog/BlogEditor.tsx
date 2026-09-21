@@ -95,7 +95,10 @@ export function BlogEditor({ post, terms }: { post: BlogPost | null; terms: Blog
               />
             </Field>
             <Field label={t('content')}>
-              <BlogEditorContent initialContent={post?.contentJson ?? null} />
+              <BlogEditorContent
+                initialContent={post?.contentJson ?? null}
+                contentLabel={t('content')}
+              />
             </Field>
           </CardContent>
         </Card>

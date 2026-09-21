@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,10 +48,14 @@ export default async function AdminWhatsAppTemplatesPage({
   const rows = await listWhatsAppTemplateApprovals(filters);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('whatsapp.title')}</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t('whatsapp.intro')}</p>
+    <div className="admin-management-signal admin-operational-workspace whatsapp-management-workspace space-y-6">
+      <DashboardPageHeader
+        eyebrow={t('whatsapp.eyebrow')}
+        title={t('whatsapp.title')}
+        description={t('whatsapp.intro')}
+        className="admin-operational-heading"
+      />
+      <div className="whatsapp-provider-context">
         <p className="text-muted-foreground mt-2 max-w-3xl text-xs leading-5">
           {t('whatsapp.providerCaveat')}
         </p>
@@ -62,11 +67,12 @@ export default async function AdminWhatsAppTemplatesPage({
       <Card>
         <CardContent className="p-4">
           <form
-            className="grid gap-3 md:grid-cols-[1fr_180px_180px_auto]"
+            className="whatsapp-filter grid gap-3 md:grid-cols-[1fr_180px_180px_auto]"
             action="/admin/whatsapp-templates"
           >
             <Input
               name="tenantId"
+              aria-label={t('whatsapp.tenantPlaceholder')}
               defaultValue={sp.tenantId ?? ''}
               placeholder={t('whatsapp.tenantPlaceholder')}
             />
@@ -106,15 +112,15 @@ export default async function AdminWhatsAppTemplatesPage({
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table scrollAreaLabel={t('whatsapp.title')}>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('whatsapp.template')}</TableHead>
-                <TableHead>{t('whatsapp.scope')}</TableHead>
-                <TableHead>{t('whatsapp.status')}</TableHead>
-                <TableHead>{t('whatsapp.timestamps')}</TableHead>
-                <TableHead>{t('whatsapp.notes')}</TableHead>
-                <TableHead className="min-w-[360px]">{t('whatsapp.update')}</TableHead>
+                <TableHead className="text-start">{t('whatsapp.template')}</TableHead>
+                <TableHead className="text-start">{t('whatsapp.scope')}</TableHead>
+                <TableHead className="text-start">{t('whatsapp.status')}</TableHead>
+                <TableHead className="text-start">{t('whatsapp.timestamps')}</TableHead>
+                <TableHead className="text-start">{t('whatsapp.notes')}</TableHead>
+                <TableHead className="min-w-[360px] text-start">{t('whatsapp.update')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -193,7 +199,10 @@ function ApprovalForm({
 }) {
   const targetTenantId = row.tenantId ?? tenantId ?? '';
   return (
-    <form action={updateWhatsAppTemplateApprovalAction as never} className="grid gap-2">
+    <form
+      action={updateWhatsAppTemplateApprovalAction as never}
+      className="whatsapp-approval-form grid gap-2"
+    >
       <input type="hidden" name="templateId" value={row.templateId} />
       <input type="hidden" name="tenantId" value={targetTenantId} />
       <div className="grid gap-2 sm:grid-cols-2">
@@ -226,11 +235,13 @@ function ApprovalForm({
       />
       <Textarea
         name="notes"
+        aria-label={t('whatsapp.notesPlaceholder')}
         defaultValue={row.notes ?? ''}
         placeholder={t('whatsapp.notesPlaceholder')}
       />
       <Textarea
         name="rejectionReason"
+        aria-label={t('whatsapp.rejectionPlaceholder')}
         defaultValue={row.rejectionReason ?? ''}
         placeholder={t('whatsapp.rejectionPlaceholder')}
       />

@@ -11,8 +11,9 @@ export default async function AdminBlogCategoriesPage() {
   const terms = await listBlogTerms('category');
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="admin-management-signal taxonomy-categories-workspace admin-taxonomy-workspace">
+      <div className="admin-taxonomy-heading">
+        <p className="admin-taxonomy-eyebrow">{t('eyebrow')}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('description')}</p>
       </div>

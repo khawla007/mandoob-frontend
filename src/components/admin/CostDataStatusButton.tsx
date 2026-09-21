@@ -29,7 +29,7 @@ export function CostDataStatusButton({ id, active }: { id: string; active: boole
       <Button size="sm" variant="outline" disabled={pending} onClick={onClick}>
         {active ? t('costData.status.deactivate') : t('costData.status.reactivate')}
       </Button>
-      {message ? <p className="text-destructive max-w-40 text-right text-xs">{message}</p> : null}
+      {message ? <p className="text-destructive max-w-40 text-end text-xs">{message}</p> : null}
     </div>
   );
 }

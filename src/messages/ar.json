@@ -3644,6 +3644,7 @@
       "unassigned": "غير مُعيّن"
     },
     "detail": {
+      "stage": "المرحلة",
       "emptyTitle": "تفاصيل العميل المحتمل",
       "emptyBody": "اختر بطاقة عميل محتمل لمراجعة الإجابات والتعيين وعناصر التحكم بالمرحلة والنشاط.",
       "noEmail": "لا بريد إلكتروني",
@@ -3686,6 +3687,8 @@
       "filter": "تصفية"
     },
     "admin": {
+      "eyebrow": "العمليات · العملاء المحتملون",
+      "boardLabel": "مراحل العملاء المحتملين",
       "title": "خط أنابيب العملاء المحتملين",
       "subtitle": "عملاء محتملون من الاستبيان عبر جميع مساحات عمل الشركات. عرض {total}.",
       "funnelTitle": "مسار التحويل المصفّى",
@@ -4363,6 +4366,7 @@
       }
     },
     "costData": {
+      "close": "إغلاق",
       "newRow": "صف جديد",
       "edit": "تحرير",
       "createTitle": "صف تكلفة جديد",
@@ -4391,6 +4395,7 @@
         "requiredDocumentKeys": "مفاتيح المستندات المطلوبة"
       },
       "import": {
+        "csvLabel": "محتوى CSV",
         "trigger": "استيراد CSV",
         "title": "استيراد بيانات التكلفة",
         "description": "الصق ملف CSV المصدَّر من هذه الصفحة، ثم استورد الصفوف المُتحقَّق منها.",
@@ -4423,6 +4428,8 @@
         "openEnded": "مفتوح"
       },
       "page": {
+        "eyebrow": "عمليات دليل الرسوم",
+        "statusFilter": "حالة الرسوم",
         "title": "بيانات التكلفة",
         "intro": "إدارة صفوف رسوم المقدّر المستخدمة في عروض الأسعار العامة للتأسيس.",
         "exportCsv": "تصدير CSV",
@@ -4834,6 +4841,7 @@
       "date": "Date"
     },
     "finance": {
+      "eyebrow": "الأعمال · المالية",
       "title": "المالية",
       "intro": "القيمة المتكررة لاشتراكات Stripe النشطة؛ وليست إيرادًا محصّلًا أو محاسبة أو ربحًا.",
       "pointInTime": "وقت العرض",
@@ -4906,8 +4914,10 @@
         "decisionTitle": "القرار",
         "decisionDescription": "الموافقة تنفّذ سلسلة إخفاء الهوية.",
         "approveExecute": "الموافقة والتنفيذ",
+        "confirmApprove": "هل تريد الموافقة على طلب المحو هذا وتنفيذه؟ سيؤدي ذلك إلى إخفاء هوية البيانات الشخصية نهائيًا ولا يمكن التراجع عنه.",
         "rejectionReason": "سبب الرفض",
         "rejectRequest": "رفض الطلب",
+        "confirmReject": "هل تريد رفض طلب المحو هذا؟ سيُغلق الطلب دون محو البيانات الشخصية.",
         "cascadeTitle": "نطاق السلسلة",
         "cascadeDescription": "الحقول التي تُحذف عند الموافقة.",
         "profilePii": "بيانات الملف الشخصي",
@@ -4975,6 +4985,7 @@
       }
     },
     "whatsapp": {
+      "eyebrow": "العمليات · قوالب واتساب",
       "title": "قوالب واتساب",
       "intro": "تتبّع حالة موافقة Meta قبل السماح للقوالب بالدخول إلى قائمة الإرسال.",
       "providerCaveat": "قيم الموافقة سجلات يديرها المشغّل؛ لا تستعلم هذه الصفحة من Meta ولا تثبت حالة المزود الحالية.",
@@ -5036,6 +5047,7 @@
       "pageNumber": "Page {page}",
       "showing": "Showing {from}–{to} of {total}",
       "blog": {
+        "eyebrow": "مساحة إدارة المحتوى",
         "title": "Blog",
         "description": "Manage platform articles, publishing status, search metadata, images, and galleries.",
         "new": "New post",
@@ -5215,14 +5227,17 @@
       },
       "taxonomy": {
         "attributes": {
+          "eyebrow": "تصنيفات المحتوى",
           "title": "Attributes",
           "description": "Manage blog attributes used for editorial metadata."
         },
         "categories": {
+          "eyebrow": "تصنيفات المحتوى",
           "title": "Categories",
           "description": "Manage blog categories used to group platform articles."
         },
         "tags": {
+          "eyebrow": "تصنيفات المحتوى",
           "title": "Tags",
           "description": "Manage blog tags used for article discovery and filtering."
         },
@@ -5259,6 +5274,7 @@
       "layout": {
         "title": "الإعدادات",
         "description": "إعدادات الحساب.",
+        "tabsLabel": "أقسام الإعدادات",
         "tabs": {
           "profile": "الملف الشخصي",
           "security": "الأمان"

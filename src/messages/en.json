@@ -3660,6 +3660,7 @@
       "unassigned": "Unassigned"
     },
     "detail": {
+      "stage": "Stage",
       "emptyTitle": "Lead detail",
       "emptyBody": "Select a lead card to review answers, assignment, stage controls, and activity.",
       "noEmail": "No email",
@@ -3702,6 +3703,8 @@
       "filter": "Filter"
     },
     "admin": {
+      "eyebrow": "Operations · Lead pipeline",
+      "boardLabel": "Lead pipeline stages",
       "title": "Lead pipeline",
       "subtitle": "Questionnaire leads across every company workspace. Showing {total}.",
       "funnelTitle": "Filtered funnel",
@@ -4379,6 +4382,7 @@
       }
     },
     "costData": {
+      "close": "Close",
       "newRow": "New row",
       "edit": "Edit",
       "createTitle": "New cost row",
@@ -4407,6 +4411,7 @@
         "requiredDocumentKeys": "Required document keys"
       },
       "import": {
+        "csvLabel": "CSV content",
         "trigger": "Import CSV",
         "title": "Import cost data",
         "description": "Paste CSV exported from this page, then import validated rows.",
@@ -4439,6 +4444,8 @@
         "openEnded": "open-ended"
       },
       "page": {
+        "eyebrow": "Catalog operations",
+        "statusFilter": "Fee status",
         "title": "Cost data",
         "intro": "Manage estimator fee rows used by public setup quotes.",
         "exportCsv": "Export CSV",
@@ -4862,6 +4869,7 @@
       "date": "Date"
     },
     "finance": {
+      "eyebrow": "Business · Finance",
       "title": "Finance",
       "intro": "Active Stripe subscription recurring value; this is not collected revenue, accounting, or profit.",
       "pointInTime": "Rendered at",
@@ -4934,8 +4942,10 @@
         "decisionTitle": "Decision",
         "decisionDescription": "Approval executes the anonymization cascade.",
         "approveExecute": "Approve and execute",
+        "confirmApprove": "Approve and execute this erasure request? This permanently anonymizes personal data and cannot be undone.",
         "rejectionReason": "Rejection reason",
         "rejectRequest": "Reject request",
+        "confirmReject": "Reject this erasure request? The request will close without erasing personal data.",
         "cascadeTitle": "Cascade scope",
         "cascadeDescription": "Fields removed on approval.",
         "profilePii": "Profile PII",
@@ -5003,6 +5013,7 @@
       }
     },
     "whatsapp": {
+      "eyebrow": "Operations · WhatsApp templates",
       "title": "WhatsApp templates",
       "intro": "Track Meta approval state before templates are allowed into the outbound queue.",
       "providerCaveat": "Approval values are operator-maintained records; this page does not poll Meta or prove the current provider state.",
@@ -5064,6 +5075,7 @@
       "pageNumber": "Page {page}",
       "showing": "Showing {from}–{to} of {total}",
       "blog": {
+        "eyebrow": "Editorial workspace",
         "title": "Blog",
         "description": "Manage platform articles, publishing status, search metadata, images, and galleries.",
         "new": "New post",
@@ -5243,14 +5255,17 @@
       },
       "taxonomy": {
         "attributes": {
+          "eyebrow": "Editorial taxonomies",
           "title": "Attributes",
           "description": "Manage blog attributes used for editorial metadata."
         },
         "categories": {
+          "eyebrow": "Editorial taxonomies",
           "title": "Categories",
           "description": "Manage blog categories used to group platform articles."
         },
         "tags": {
+          "eyebrow": "Editorial taxonomies",
           "title": "Tags",
           "description": "Manage blog tags used for article discovery and filtering."
         },
@@ -5287,6 +5302,7 @@
       "layout": {
         "title": "Settings",
         "description": "Account configuration.",
+        "tabsLabel": "Settings sections",
         "tabs": {
           "profile": "Profile",
           "security": "Security"

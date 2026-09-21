@@ -20,7 +20,13 @@ function previewDetails(d: unknown): string {
   return s.length > 120 ? s.slice(0, 120) + '…' : s;
 }
 
-export async function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
+export async function AuditLogTable({
+  rows,
+  scrollAreaLabel,
+}: {
+  rows: AuditLogRow[];
+  scrollAreaLabel: string;
+}) {
   const t = await getTranslations('admin');
   if (rows.length === 0) {
     return (
@@ -28,7 +34,7 @@ export async function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
     );
   }
   return (
-    <Table>
+    <Table scrollAreaLabel={scrollAreaLabel}>
       <TableHeader>
         <TableRow>
           <TableHead className="w-44">{t('audit.table.when')}</TableHead>
@@ -60,7 +66,7 @@ export async function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
                 </span>
               )}
               {r.actorRole && (
-                <Badge variant="outline" className="ml-2">
+                <Badge variant="outline" className="ms-2">
                   {t.has(`enums.role.${r.actorRole}`)
                     ? t(`enums.role.${r.actorRole}`)
                     : r.actorRole}
@@ -75,7 +81,11 @@ export async function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
                 <summary className="text-muted-foreground cursor-pointer text-xs">
                   {previewDetails(r.details) || <em>{t('audit.table.emptyDetails')}</em>}
                 </summary>
-                <pre className="bg-muted/40 mt-2 max-h-64 overflow-auto rounded p-2 text-xs">
+                <pre
+                  className="bg-muted/40 mt-2 max-h-64 overflow-auto rounded p-2 text-xs"
+                  tabIndex={0}
+                  aria-label={t('audit.table.details')}
+                >
                   {JSON.stringify(
                     {
                       details: r.details,

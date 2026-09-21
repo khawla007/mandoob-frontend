@@ -3,11 +3,9 @@ import { getTranslations } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/require-role';
 import { getErasureRequestDetail } from '@/lib/data/erasure';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { approveErasureAction, rejectErasureAction } from '../actions';
+import { ErasureDecisionForms } from '@/components/admin/ErasureDecisionForms';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +22,8 @@ export default async function AdminErasureRequestDetailPage({
   const canReview = request.status === 'submitted' || request.status === 'under_review';
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="admin-management-signal admin-operational-workspace erasure-management-workspace space-y-6">
+      <div className="admin-operational-heading flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('erasure.detail.title')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{request.id}</p>
@@ -80,41 +78,24 @@ export default async function AdminErasureRequestDetailPage({
             <CardTitle className="text-lg">{t('erasure.detail.decisionTitle')}</CardTitle>
             <CardDescription>{t('erasure.detail.decisionDescription')}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <form
-              action={async (formData) => {
+          <CardContent>
+            <ErasureDecisionForms
+              requestId={request.id}
+              canReview={canReview}
+              approveLabel={t('erasure.detail.approveExecute')}
+              rejectLabel={t('erasure.detail.rejectRequest')}
+              rejectionReasonLabel={t('erasure.detail.rejectionReason')}
+              confirmApprove={t('erasure.detail.confirmApprove')}
+              confirmReject={t('erasure.detail.confirmReject')}
+              approveAction={async (formData) => {
                 'use server';
                 await approveErasureAction(formData);
               }}
-            >
-              <input type="hidden" name="requestId" value={request.id} />
-              <Button type="submit" disabled={!canReview} className="w-full">
-                {t('erasure.detail.approveExecute')}
-              </Button>
-            </form>
-            <form
-              action={async (formData) => {
+              rejectAction={async (formData) => {
                 'use server';
                 await rejectErasureAction(formData);
               }}
-              className="space-y-3"
-            >
-              <input type="hidden" name="requestId" value={request.id} />
-              <div className="space-y-2">
-                <Label htmlFor="rejectionReason">{t('erasure.detail.rejectionReason')}</Label>
-                <Textarea
-                  id="rejectionReason"
-                  name="rejectionReason"
-                  rows={4}
-                  maxLength={1000}
-                  required
-                  disabled={!canReview}
-                />
-              </div>
-              <Button type="submit" variant="outline" disabled={!canReview} className="w-full">
-                {t('erasure.detail.rejectRequest')}
-              </Button>
-            </form>
+            />
           </CardContent>
         </Card>
       </div>

@@ -37,6 +37,8 @@ export async function LeadKanbanBoard({
   stageAction,
   noteAction,
   canAssign = false,
+  scrollAreaLabel,
+  direction,
 }: {
   kanban: LeadKanban;
   baseHref: string;
@@ -46,11 +48,18 @@ export async function LeadKanbanBoard({
   stageAction: LeadAction;
   noteAction: LeadAction;
   canAssign?: boolean;
+  scrollAreaLabel?: string;
+  direction?: 'ltr' | 'rtl';
 }) {
   const t = await getTranslations('leads');
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="grid gap-4 lg:grid-cols-5">
+    <div className="leads-board-layout grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div
+        className="leads-board-track grid gap-4 lg:grid-cols-5"
+        role={scrollAreaLabel ? 'region' : undefined}
+        aria-label={scrollAreaLabel}
+        tabIndex={scrollAreaLabel ? 0 : undefined}
+      >
         {LEAD_STAGES.map((stage) => (
           <section key={stage} className="min-w-0">
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -74,6 +83,7 @@ export async function LeadKanbanBoard({
 
       <LeadDetailPanel
         detail={detail}
+        direction={direction}
         tenants={tenants}
         assignAction={assignAction}
         stageAction={stageAction}
@@ -125,6 +135,7 @@ async function LeadCard({ lead, href }: { lead: LeadCardRow; href: string }) {
 
 async function LeadDetailPanel({
   detail,
+  direction,
   tenants,
   assignAction,
   stageAction,
@@ -132,6 +143,7 @@ async function LeadDetailPanel({
   canAssign,
 }: {
   detail?: LeadDetail | null;
+  direction?: 'ltr' | 'rtl';
   tenants: TenantOption[];
   assignAction?: LeadAction;
   stageAction: LeadAction;
@@ -183,11 +195,11 @@ async function LeadDetailPanel({
           {canAssign && assignAction ? (
             <form action={assignAction as never} className="space-y-2">
               <input type="hidden" name="leadId" value={detail.id} />
-              <Select name="tenantId" defaultValue={detail.tenantId ?? undefined}>
-                <SelectTrigger>
+              <Select dir={direction} name="tenantId" defaultValue={detail.tenantId ?? undefined}>
+                <SelectTrigger aria-label={t('detail.assignPlaceholder')}>
                   <SelectValue placeholder={t('detail.assignPlaceholder')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={direction ? 'leads-management-select' : undefined}>
                   {tenants.map((tenant) => (
                     <SelectItem key={tenant.id} value={tenant.id}>
                       {tenant.name}
@@ -203,11 +215,11 @@ async function LeadDetailPanel({
 
           <form action={stageAction as never} className="flex gap-2">
             <input type="hidden" name="leadId" value={detail.id} />
-            <Select name="stage" defaultValue={detail.stage}>
-              <SelectTrigger>
+            <Select dir={direction} name="stage" defaultValue={detail.stage}>
+              <SelectTrigger aria-label={t('detail.stage')}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className={direction ? 'leads-management-select' : undefined}>
                 {LEAD_STAGES.map((stage) => (
                   <SelectItem key={stage} value={stage}>
                     {t(`stage.${stage}`)}
@@ -256,7 +268,12 @@ async function LeadDetailPanel({
 
           <form action={noteAction as never} className="space-y-2">
             <input type="hidden" name="leadId" value={detail.id} />
-            <Textarea name="note" placeholder={t('detail.notePlaceholder')} rows={3} />
+            <Textarea
+              aria-label={t('detail.notePlaceholder')}
+              name="note"
+              placeholder={t('detail.notePlaceholder')}
+              rows={3}
+            />
             <Button type="submit" size="sm" variant="outline" className="w-full">
               {t('detail.addNote')}
             </Button>

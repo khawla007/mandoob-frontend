@@ -29,12 +29,10 @@ export default async function AdminPagesPage({
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
   const start = (currentPage - 1) * result.pageSize;
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="admin-management-signal pages-management-workspace admin-editorial-workspace">
+      <header className="admin-editorial-heading flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">
-            {t('pages.eyebrow')}
-          </p>
+          <p className="admin-editorial-eyebrow">{t('pages.eyebrow')}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{t('pages.title')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('pages.description')}</p>
         </div>
@@ -55,7 +53,7 @@ export default async function AdminPagesPage({
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-lg border">
+              <div className="overflow-hidden rounded-lg border">
                 <PagesTable pages={result.items} />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -66,7 +64,7 @@ export default async function AdminPagesPage({
                     total: result.total,
                   })}
                 </p>
-                <nav aria-label={t('pages.pagination')} className="flex gap-2">
+                <nav aria-label={t('pages.pagination')} className="flex flex-wrap gap-2">
                   <Button
                     asChild={currentPage > 1}
                     variant="outline"

@@ -56,7 +56,7 @@ export function ResetMfaButton({ userId, mfaEnrolled }: { userId: string; mfaEnr
           {mfaEnrolled ? t('user.mfaReset.trigger') : t('user.mfaReset.notEnrolled')}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="user-management-dialog">
         <DialogHeader>
           <DialogTitle>{t('user.mfaReset.title')}</DialogTitle>
           <DialogDescription>{t('user.mfaReset.description')}</DialogDescription>
@@ -79,6 +79,7 @@ export function ResetMfaButton({ userId, mfaEnrolled }: { userId: string; mfaEnr
           <div className="space-y-2">
             <Label>{t('user.fields.reason')}</Label>
             <Textarea
+              aria-label={t('user.fields.reason')}
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}

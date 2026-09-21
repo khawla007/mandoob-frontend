@@ -61,7 +61,7 @@ export function SessionsTable({
   }
 
   return (
-    <Table>
+    <Table scrollAreaLabel={t('sessions.activeTitle')}>
       <TableHeader>
         <TableRow>
           <TableHead>{t('user.sessions.user')}</TableHead>

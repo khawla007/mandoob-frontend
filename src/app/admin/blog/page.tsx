@@ -39,9 +39,10 @@ export default async function AdminBlogPage({
   const paginatedPosts = posts.slice(start, start + POSTS_PER_PAGE);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="admin-management-signal blog-management-workspace admin-editorial-workspace">
+      <div className="admin-editorial-heading flex flex-wrap items-end justify-between gap-4">
         <div>
+          <p className="admin-editorial-eyebrow">{t('blog.eyebrow')}</p>
           <h1 className="text-2xl font-semibold tracking-tight">{t('blog.title')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('blog.description')}</p>
         </div>
@@ -73,7 +74,7 @@ export default async function AdminBlogPage({
                     total: posts.length,
                   })}
                 </p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {currentPage > 1 ? (
                     <Button asChild variant="outline" size="sm">
                       <Link href={pageHref(currentPage - 1)}>

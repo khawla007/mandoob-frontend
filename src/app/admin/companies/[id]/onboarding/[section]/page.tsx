@@ -319,42 +319,44 @@ export default async function AdminCompanyOnboardingSectionPage({
   })();
 
   return (
-    <OnboardingShell
-      steps={steps}
-      labels={{
-        eyebrow: tx('shell.eyebrow'),
-        title: tx('shell.title'),
-        description: tx('shell.description'),
-        navigationLabel: tx('shell.navigationLabel'),
-        leaveWarning: tx('form.leaveWarning'),
-        status: {
-          complete: tx('shell.status.complete'),
-          current: tx('shell.status.current'),
-          incomplete: tx('shell.status.incomplete'),
-        },
-      }}
-    >
-      {content}
-      {section !== 'review' ? (
-        <div className="mt-8 border-t pt-6">
-          <ReopenCompanyOnboardingForm
-            companyId={snapshot.companyId}
-            companyName={snapshot.companyName}
-            section={section}
-            initialState={reopenInitialState}
-            labels={{
-              title: tx('reopen.title'),
-              description: tx('reopen.description'),
-              reason: tx('reopen.reason'),
-              confirmation: tx('reopen.confirmation'),
-              submit: tx('reopen.submit'),
-              submitting: tx('reopen.submitting'),
-              saved: tx('reopen.saved'),
-              error: tx('reopen.error'),
-            }}
-          />
-        </div>
-      ) : null}
-    </OnboardingShell>
+    <div className="admin-management-signal admin-operational-workspace company-management-workspace">
+      <OnboardingShell
+        steps={steps}
+        labels={{
+          eyebrow: tx('shell.eyebrow'),
+          title: tx('shell.title'),
+          description: tx('shell.description'),
+          navigationLabel: tx('shell.navigationLabel'),
+          leaveWarning: tx('form.leaveWarning'),
+          status: {
+            complete: tx('shell.status.complete'),
+            current: tx('shell.status.current'),
+            incomplete: tx('shell.status.incomplete'),
+          },
+        }}
+      >
+        {content}
+        {section !== 'review' ? (
+          <div className="mt-8 border-t pt-6">
+            <ReopenCompanyOnboardingForm
+              companyId={snapshot.companyId}
+              companyName={snapshot.companyName}
+              section={section}
+              initialState={reopenInitialState}
+              labels={{
+                title: tx('reopen.title'),
+                description: tx('reopen.description'),
+                reason: tx('reopen.reason'),
+                confirmation: tx('reopen.confirmation'),
+                submit: tx('reopen.submit'),
+                submitting: tx('reopen.submitting'),
+                saved: tx('reopen.saved'),
+                error: tx('reopen.error'),
+              }}
+            />
+          </div>
+        ) : null}
+      </OnboardingShell>
+    </div>
   );
 }

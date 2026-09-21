@@ -30,29 +30,31 @@ function statusVariant(status: BlogPost['status']): 'default' | 'secondary' | 'o
 export async function BlogPostsTable({ posts }: { posts: BlogPost[] }) {
   const [t, locale] = await Promise.all([getTranslations('admin.cms.blog.table'), getLocale()]);
   return (
-    <Table>
+    <Table scrollAreaLabel={t('caption')}>
       <TableCaption className="sr-only">{t('caption')}</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>{t('title')}</TableHead>
-          <TableHead>{t('slug')}</TableHead>
-          <TableHead>{t('status')}</TableHead>
-          <TableHead>{t('published')}</TableHead>
-          <TableHead className="text-right">{t('actions')}</TableHead>
+          <TableHead className="text-start">{t('title')}</TableHead>
+          <TableHead className="text-start">{t('slug')}</TableHead>
+          <TableHead className="text-start">{t('status')}</TableHead>
+          <TableHead className="text-start">{t('published')}</TableHead>
+          <TableHead className="text-end">{t('actions')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {posts.map((post) => (
           <TableRow key={post.id}>
             <TableCell>
-              <div className="max-w-80 truncate font-medium">{post.title}</div>
+              <div className="max-w-80 font-medium break-words whitespace-normal">{post.title}</div>
               {post.excerpt ? (
-                <div className="text-muted-foreground mt-1 max-w-80 truncate text-xs">
+                <div className="text-muted-foreground mt-1 max-w-80 text-xs break-words whitespace-normal">
                   {post.excerpt}
                 </div>
               ) : null}
             </TableCell>
-            <TableCell className="text-muted-foreground font-mono text-xs">{post.slug}</TableCell>
+            <TableCell className="text-muted-foreground max-w-64 font-mono text-xs break-all whitespace-normal">
+              {post.slug}
+            </TableCell>
             <TableCell>
               <Badge variant={statusVariant(post.status)} className="capitalize">
                 {t(`statuses.${post.status}`)}

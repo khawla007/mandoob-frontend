@@ -26,8 +26,8 @@ export async function CostDataTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <Table>
+    <div className="cost-data-table">
+      <Table scrollAreaLabel={t('costData.page.feeRows')}>
         <TableHeader>
           <TableRow>
             <TableHead>{t('costData.table.authority')}</TableHead>
@@ -36,8 +36,8 @@ export async function CostDataTable({
             <TableHead>{t('costData.table.range')}</TableHead>
             <TableHead>{t('costData.table.timeline')}</TableHead>
             <TableHead>{t('costData.table.validity')}</TableHead>
-            <TableHead className="text-right">{t('costData.table.amount')}</TableHead>
-            <TableHead className="text-right">{t('costData.table.actions')}</TableHead>
+            <TableHead className="text-end">{t('costData.table.amount')}</TableHead>
+            <TableHead className="text-end">{t('costData.table.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -87,11 +87,11 @@ export async function CostDataTable({
                   {row.validTo ?? t('costData.table.openEnded')}
                 </div>
               </TableCell>
-              <TableCell className="text-right font-medium">
+              <TableCell className="text-end font-medium">
                 AED {formatMinorAsAed(row.amountMinor)}
                 <div className="text-muted-foreground text-xs">{row.recurrence}</div>
               </TableCell>
-              <TableCell className="text-right">{renderActions(row)}</TableCell>
+              <TableCell className="text-end">{renderActions(row)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

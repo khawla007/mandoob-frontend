@@ -20,7 +20,11 @@ function pickEnum<T extends readonly string[]>(
   return fallback;
 }
 
-export async function ProfileTab() {
+export async function ProfileTab({
+  selectContentClassName,
+}: {
+  selectContentClassName?: string;
+} = {}) {
   const profile = await readSelfProfile();
   const useGeneral =
     profile.role === 'super_admin' || profile.role === 'admin' || profile.role === 'pro';
@@ -58,6 +62,7 @@ export async function ProfileTab() {
           createdAt: profile.createdAt,
           mfaEnrolledAt: profile.mfaEnrolledAt,
         }}
+        selectContentClassName={selectContentClassName}
       />
     );
   }

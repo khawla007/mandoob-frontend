@@ -79,7 +79,7 @@ export default async function CompanyDetailPage({
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace company-management-workspace space-y-6">
       {sp.created ? (
         <Alert aria-live="polite">
           <AlertTitle>{t('feedback.createdTitle')}</AlertTitle>
@@ -94,7 +94,7 @@ export default async function CompanyDetailPage({
         </Link>
       </Button>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="admin-operational-heading flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-primary font-mono text-xs tracking-[0.14em] uppercase">
             {t('detail.eyebrow')}
@@ -319,34 +319,32 @@ export default async function CompanyDetailPage({
               {assignmentHistory.length === 0 ? (
                 <p className="text-muted-foreground px-6 pb-6 text-sm">{t('history.empty')}</p>
               ) : (
-                <div className="overflow-x-auto" role="region" aria-label={t('history.tableLabel')}>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('history.pro')}</TableHead>
-                        <TableHead>{t('history.state')}</TableHead>
-                        <TableHead>{t('history.when')}</TableHead>
+                <Table scrollAreaLabel={t('history.tableLabel')}>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('history.pro')}</TableHead>
+                      <TableHead>{t('history.state')}</TableHead>
+                      <TableHead>{t('history.when')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assignmentHistory.map((assignment) => (
+                      <TableRow key={assignment.id}>
+                        <TableCell className="min-w-36">
+                          {assignment.proFullName ?? t('assignment.unnamedPro')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={assignment.status === 'active' ? 'default' : 'outline'}>
+                            {t(`history.status.${assignment.status}`)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground min-w-40 text-xs">
+                          {dateTime.format(new Date(assignment.assignedAt))}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {assignmentHistory.map((assignment) => (
-                        <TableRow key={assignment.id}>
-                          <TableCell className="min-w-36">
-                            {assignment.proFullName ?? t('assignment.unnamedPro')}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={assignment.status === 'active' ? 'default' : 'outline'}>
-                              {t(`history.status.${assignment.status}`)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground min-w-40 text-xs">
-                            {dateTime.format(new Date(assignment.assignedAt))}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>

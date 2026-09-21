@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,10 +44,16 @@ export default async function AdminLeadsPage({
   ]);
   const total = Object.values(kanban).reduce((sum, rows) => sum + rows.length, 0);
   const t = await getTranslations('leads');
+  const locale = await getLocale();
 
   return (
-    <div className="space-y-6">
-      <DashboardPageHeader title={t('admin.title')} description={t('admin.subtitle', { total })} />
+    <div className="admin-management-signal leads-management-workspace space-y-6">
+      <DashboardPageHeader
+        eyebrow={t('admin.eyebrow')}
+        title={t('admin.title')}
+        description={t('admin.subtitle', { total })}
+        className="leads-management-heading"
+      />
 
       <section className="space-y-2" aria-labelledby="lead-funnel-summary">
         <div>
@@ -66,7 +72,7 @@ export default async function AdminLeadsPage({
               ['lost', kanban.lost.length],
             ] as const
           ).map(([stage, count]) => (
-            <Card key={stage}>
+            <Card key={stage} className="leads-funnel-count" data-stage={stage}>
               <CardContent className="p-4">
                 <p className="text-muted-foreground text-xs">{t(`stage.${stage}`)}</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{count}</p>
@@ -79,9 +85,13 @@ export default async function AdminLeadsPage({
 
       <Card>
         <CardContent className="p-4">
-          <form className="grid gap-3 md:grid-cols-[1fr_160px_160px_auto]" action="/admin/leads">
+          <form
+            className="leads-management-filters grid gap-3 md:grid-cols-[1fr_160px_160px_auto]"
+            action="/admin/leads"
+          >
             <Input
               name="q"
+              aria-label={t('filters.searchPlaceholder')}
               defaultValue={sp.q ?? ''}
               placeholder={t('filters.searchPlaceholder')}
             />
@@ -121,6 +131,8 @@ export default async function AdminLeadsPage({
 
       <LeadKanbanBoard
         kanban={kanban}
+        scrollAreaLabel={t('admin.boardLabel')}
+        direction={locale === 'ar' ? 'rtl' : 'ltr'}
         baseHref="/admin/leads"
         detail={detail}
         tenants={tenants}
