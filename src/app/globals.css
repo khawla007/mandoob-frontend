@@ -3188,7 +3188,6 @@ body.dashboard-surface-active {
     min-width: 0;
   }
   .leads-management-workspace .leads-management-heading {
-    margin-bottom: 0;
     padding-block-end: 1.25rem;
     border-bottom: 1px solid color-mix(in oklch, var(--brand-accent) 20%, var(--border));
   }
@@ -3295,7 +3294,6 @@ body.dashboard-surface-active {
     min-width: 0;
   }
   .admin-operational-workspace .admin-operational-heading {
-    margin-bottom: 0;
     padding-block-end: 1.25rem;
     border-bottom: 1px solid color-mix(in oklch, var(--brand-accent) 20%, var(--border));
   }
