@@ -42,10 +42,16 @@ const envelope = {
   payload: { documentRequestId: 'reference-only' },
 } as const;
 
+const eventSchemas = {
+  'documents.requested': {
+    1: { documentRequestId: 'reference' },
+  },
+} as const;
+
 describe('event repository producer and worker contract', () => {
   test('publishes the exact validated envelope and opaque dedupe hash', async () => {
     const stub = createRpcStub({ publish_domain_event: IDS.event });
-    const repository = createEventQueueRepository(stub.client);
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
     const result = await repository.publish(envelope, 'a'.repeat(64));
 
     assert.equal(result, IDS.event);
@@ -70,7 +76,7 @@ describe('event repository producer and worker contract', () => {
 
   test('claims only bounded batches and lease durations', async () => {
     const stub = createRpcStub({ claim_event_jobs: [] });
-    const repository = createEventQueueRepository(stub.client);
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
 
     await repository.claim({
       workerId: IDS.worker,
@@ -96,7 +102,7 @@ describe('event repository producer and worker contract', () => {
       extend_event_job_lease: '2026-09-21T04:32:00.000Z',
       complete_event_job: true,
     });
-    const repository = createEventQueueRepository(stub.client);
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
 
     await repository.extendLease(IDS.job, IDS.worker, IDS.lease, 120);
     await repository.succeed(IDS.job, IDS.worker, IDS.lease, 'b'.repeat(64));
@@ -110,11 +116,11 @@ describe('event repository producer and worker contract', () => {
 
   test('sends only allowlisted provider failure fields to the database', async () => {
     const stub = createRpcStub({ fail_event_job: 'retryable' });
-    const repository = createEventQueueRepository(stub.client);
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
 
     await repository.fail(IDS.job, IDS.worker, IDS.lease, {
       category: 'provider_unavailable',
-      code: 'SMTP_TIMEOUT',
+      code: 'PROVIDER_UNAVAILABLE',
       retryable: true,
       message: 'Authorization: Bearer secret user@example.com',
       response: { token: 'secret' },
@@ -127,7 +133,7 @@ describe('event repository producer and worker contract', () => {
         p_worker_id: IDS.worker,
         p_lease_token: IDS.lease,
         p_error_category: 'provider_unavailable',
-        p_error_code: 'SMTP_TIMEOUT',
+        p_error_code: 'PROVIDER_UNAVAILABLE',
         p_retryable: true,
       },
     });
@@ -140,7 +146,7 @@ describe('event repository scheduler, replay, and inbound contract', () => {
       record_event_worker_heartbeat: true,
       cancel_event_job: true,
     });
-    const repository = createEventQueueRepository(stub.client);
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
 
     await repository.heartbeat({
       workerId: IDS.worker,
@@ -160,7 +166,7 @@ describe('event repository scheduler, replay, and inbound contract', () => {
 
   test('manual replay carries stable operation intent and no authority override', async () => {
     const stub = createRpcStub({ request_event_job_replay: IDS.job });
-    const repository = createEventQueueRepository(stub.client);
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
 
     await repository.requestReplay(IDS.job, IDS.operation, 'Retry after provider reconciliation');
 
@@ -175,10 +181,19 @@ describe('event repository scheduler, replay, and inbound contract', () => {
   });
 
   test('hashes inbound destination, event, and payload before reserving', async () => {
-    const stub = createRpcStub({ reserve_inbound_webhook: IDS.event });
-    const repository = createEventQueueRepository(stub.client);
+    const stub = createRpcStub({
+      reserve_inbound_webhook: [
+        {
+          receipt_id: IDS.event,
+          destination_id: IDS.job,
+          tenant_id: IDS.tenant,
+          company_id: IDS.company,
+        },
+      ],
+    });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
 
-    await repository.reserveInboundWebhook({
+    const reservation = await repository.reserveInboundWebhook({
       provider: 'twilio',
       destinationKey: '+971501234567',
       providerEventId: 'SM-private-provider-id',
@@ -194,6 +209,12 @@ describe('event repository scheduler, replay, and inbound contract', () => {
     assert.match(String(stub.calls[0]?.args.p_destination_key_hash), /^[a-f0-9]{64}$/);
     assert.match(String(stub.calls[0]?.args.p_provider_event_id_hash), /^[a-f0-9]{64}$/);
     assert.match(String(stub.calls[0]?.args.p_payload_hash), /^[a-f0-9]{64}$/);
+    assert.deepEqual(reservation, {
+      receiptId: IDS.event,
+      destinationId: IDS.job,
+      tenantId: IDS.tenant,
+      companyId: IDS.company,
+    });
   });
 
   test('synthetic producer and consumer retain stable event and effect identities', async () => {
@@ -206,7 +227,7 @@ describe('event repository scheduler, replay, and inbound contract', () => {
       publish_domain_event: IDS.event,
       claim_event_jobs: [claimed],
     });
-    const repository = createEventQueueRepository(stub.client);
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
 
     assert.equal(await repository.publish(envelope, 'c'.repeat(64)), IDS.event);
     const jobs = await repository.claim({

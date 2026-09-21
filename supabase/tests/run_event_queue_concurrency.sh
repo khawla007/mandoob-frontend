@@ -36,6 +36,8 @@ alter table public.event_replay_requests enable trigger event_replay_requests_im
 alter table public.domain_events enable trigger domain_events_immutable;
 delete from public.event_consumer_registrations
 where consumer_name = 'p3_10.concurrent.worker' and event_type = 'p3_10.concurrent';
+delete from public.event_contract_registrations
+where event_type = 'p3_10.concurrent' and event_version = 1;
 delete from public.profiles where id = '93200000-0000-4000-8000-000000000001';
 delete from auth.users where id = '93200000-0000-4000-8000-000000000001';
 commit;
@@ -71,6 +73,8 @@ insert into auth.users (
 );
 insert into public.profiles (id, role, status, full_name)
 values ('93200000-0000-4000-8000-000000000001', 'admin', 'active', 'Event Race Admin');
+insert into public.event_contract_registrations (event_type, event_version, payload_schema)
+values ('p3_10.concurrent', 1, '{"sequence":"integer"}');
 insert into public.event_consumer_registrations (
   consumer_name, event_type, event_version, max_attempts, default_lease_seconds
 ) values ('p3_10.concurrent.worker', 'p3_10.concurrent', 1, 3, 15);
@@ -99,6 +103,14 @@ select public.publish_domain_event(
   pg_catalog.now(), null, null, null, '93200000-0000-4000-8000-000000000205', null,
   'internal', '{"sequence":5}', repeat('5', 64)
 );
+select public.publish_domain_event(
+  ('93200000-0000-4000-8000-' || pg_catalog.lpad((100 + value)::text, 12, '0'))::uuid,
+  'p3_10.concurrent', 1::smallint, pg_catalog.now(), null, null, null,
+  ('93200000-0000-4000-8000-' || pg_catalog.lpad((200 + value)::text, 12, '0'))::uuid,
+  null, 'internal', pg_catalog.jsonb_build_object('sequence', value),
+  encode(extensions.digest(pg_catalog.convert_to(value::text, 'UTF8'), 'sha256'), 'hex')
+)
+from pg_catalog.generate_series(6, 10) value;
 SQL
 "${psql_cmd[@]}" -q -c "${setup_sql}" >/dev/null
 
@@ -175,17 +187,24 @@ if [[ "$("${psql_cmd[@]}" -Atc "select effect_reference_hash from public.event_j
   exit 1
 fi
 
-"${psql_cmd[@]}" -q -c "insert into public.event_jobs (id, event_id, consumer_name, state, attempts, max_attempts, last_error_category, last_error_code, dead_at) values ('93200000-0000-4000-8000-000000000401', '93200000-0000-4000-8000-000000000105', 'manual.replay', 'dead', 1, 1, 'malformed_payload', 'REFERENCE_POISON', pg_catalog.now());" >/dev/null
+"${psql_cmd[@]}" -q -c "update public.event_jobs set state = 'leased', attempts = 3, max_attempts = 3, lease_owner = '93200000-0000-4000-8000-000000000398', lease_token = gen_random_uuid(), lease_expires_at = pg_catalog.now() - interval '1 second' where event_id in (select id from public.domain_events where event_type = 'p3_10.concurrent' and (payload ->> 'sequence')::integer between 6 and 10);" >/dev/null
+"${psql_cmd[@]}" -q -c "select * from public.claim_event_jobs('93200000-0000-4000-8000-000000000304', 'p3_10.concurrent.worker', 2, 15);" >/dev/null
+if [[ "$("${psql_cmd[@]}" -Atc "select count(*) from public.event_jobs job join public.domain_events event on event.id = job.event_id where event.event_type = 'p3_10.concurrent' and (event.payload ->> 'sequence')::integer between 6 and 10 and job.state = 'dead'")" != "2" ]]; then
+  printf 'expired lease exhaustion exceeded the bounded cleanup batch\n' >&2
+  exit 1
+fi
+
+"${psql_cmd[@]}" -q -c "insert into public.event_jobs (id, event_id, consumer_name, state, attempts, max_attempts, last_error_category, last_error_code, dead_at) values ('93200000-0000-4000-8000-000000000401', '93200000-0000-4000-8000-000000000105', 'manual.replay', 'dead', 1, 1, 'malformed_payload', 'EVENT_PAYLOAD_INVALID', pg_catalog.now());" >/dev/null
 replay_prefix="set request.jwt.claims = '{\"sub\":\"93200000-0000-4000-8000-000000000001\",\"role\":\"authenticated\",\"aal\":\"aal2\"}'; set role authenticated;"
 set +e
 (
-  "${psql_cmd[@]}" -Atc "${replay_prefix} select public.request_event_job_replay('93200000-0000-4000-8000-000000000401', '93200000-0000-4000-8000-000000000411', 'Concurrent recovery request alpha');" \
+  "${psql_cmd[@]}" -Atc "${replay_prefix} select public.request_event_job_replay('93200000-0000-4000-8000-000000000401', '93200000-0000-4000-8000-000000000411', 'Concurrent recovery request same operation');" \
     >"${scratch_dir}/replay-a.out" 2>"${scratch_dir}/replay-a.err"
   printf '%s\n' "$?" >"${scratch_dir}/replay_a_status"
 ) &
 replay_a_pid=$!
 (
-  "${psql_cmd[@]}" -Atc "${replay_prefix} select public.request_event_job_replay('93200000-0000-4000-8000-000000000401', '93200000-0000-4000-8000-000000000412', 'Concurrent recovery request beta');" \
+  "${psql_cmd[@]}" -Atc "${replay_prefix} select public.request_event_job_replay('93200000-0000-4000-8000-000000000401', '93200000-0000-4000-8000-000000000411', 'Concurrent recovery request same operation');" \
     >"${scratch_dir}/replay-b.out" 2>"${scratch_dir}/replay-b.err"
   printf '%s\n' "$?" >"${scratch_dir}/replay_b_status"
 ) &
@@ -195,12 +214,12 @@ wait "${replay_b_pid}"
 set -e
 
 replay_statuses="$(sort "${scratch_dir}/replay_a_status" "${scratch_dir}/replay_b_status" | tr '\n' ' ')"
-if [[ "${replay_statuses}" != "0 1 " ]]; then
-  printf 'concurrent replay did not produce exactly one winner\n' >&2
+if [[ "${replay_statuses}" != "0 0 " ]]; then
+  printf 'same-operation concurrent replay was not idempotent\n' >&2
   exit 1
 fi
-if ! grep -q 'EVENT_REPLAY_ALREADY_ACTIVE' "${scratch_dir}"/replay-*.err; then
-  printf 'concurrent replay loser did not receive the safe active-replay error\n' >&2
+if [[ "$(tail -n 1 "${scratch_dir}/replay-a.out")" != "$(tail -n 1 "${scratch_dir}/replay-b.out")" ]]; then
+  printf 'same-operation concurrent replay returned different jobs\n' >&2
   exit 1
 fi
 if [[ "$("${psql_cmd[@]}" -Atc "select count(*) from public.event_jobs where replay_of_job_id = '93200000-0000-4000-8000-000000000401' and state = 'replayed'")" != "1" ]]; then

@@ -2,6 +2,27 @@
 -- Provider/channel workers remain disabled until a later integration phase.
 begin;
 
+create table public.event_contract_registrations (
+  event_type text not null,
+  event_version smallint not null,
+  payload_schema jsonb not null,
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now(),
+  primary key (event_type, event_version),
+  constraint event_contract_type_valid check (
+    event_type ~ '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'
+    and pg_catalog.char_length(event_type) <= 160
+  ),
+  constraint event_contract_version_valid check (event_version between 1 and 32767),
+  constraint event_contract_schema_object check (pg_catalog.jsonb_typeof(payload_schema) = 'object'),
+  constraint event_contract_schema_kinds check (
+    not pg_catalog.jsonb_path_exists(
+      payload_schema,
+      '$.keyvalue() ? (@.value != "boolean" && @.value != "integer" && @.value != "reference" && @.value != "sha256" && @.value != "state" && @.value != "uuid")'
+    )
+  )
+);
+
 create table public.event_consumer_registrations (
   consumer_name text not null,
   event_type text not null,
@@ -23,6 +44,10 @@ create table public.event_consumer_registrations (
   constraint event_consumer_version_valid check (event_version between 1 and 32767),
   constraint event_consumer_attempts_valid check (max_attempts between 1 and 25),
   constraint event_consumer_lease_valid check (default_lease_seconds between 15 and 900)
+  ,constraint event_consumer_contract_fkey
+    foreign key (event_type, event_version)
+    references public.event_contract_registrations (event_type, event_version)
+    on delete restrict
 );
 
 create table public.domain_events (
@@ -280,6 +305,7 @@ create table public.event_worker_heartbeats (
   constraint event_worker_time_valid check (heartbeat_at >= started_at)
 );
 
+alter table public.event_contract_registrations enable row level security;
 alter table public.event_consumer_registrations enable row level security;
 alter table public.domain_events enable row level security;
 alter table public.event_jobs enable row level security;
@@ -357,6 +383,57 @@ begin
 end;
 $$;
 
+create or replace function public.event_payload_matches_schema(
+  p_payload jsonb,
+  p_schema jsonb
+)
+returns boolean
+language plpgsql
+immutable
+strict
+set search_path = ''
+as $$
+declare
+  v_key text;
+  v_value jsonb;
+  v_kind text;
+  v_scalar text;
+  v_invalid boolean;
+begin
+  if pg_catalog.jsonb_typeof(p_payload) <> 'object'
+    or pg_catalog.jsonb_typeof(p_schema) <> 'object'
+    or (select count(*) from pg_catalog.jsonb_object_keys(p_payload))
+      <> (select count(*) from pg_catalog.jsonb_object_keys(p_schema))
+  then
+    return false;
+  end if;
+
+  for v_key, v_value in select key, value from pg_catalog.jsonb_each(p_payload)
+  loop
+    v_kind := p_schema ->> v_key;
+    if v_kind is null then return false; end if;
+    v_scalar := case when pg_catalog.jsonb_typeof(v_value) = 'string' then v_value #>> '{}' else null end;
+    v_invalid := case v_kind
+      when 'boolean' then pg_catalog.jsonb_typeof(v_value) <> 'boolean'
+      when 'integer' then case
+        when pg_catalog.jsonb_typeof(v_value) <> 'number' then true
+        when (v_value #>> '{}') !~ '^-?[0-9]+$' then true
+        else (v_value #>> '{}')::numeric not between -9007199254740991 and 9007199254740991
+      end
+      when 'reference' then v_scalar is null or v_scalar !~* '^[a-z0-9][a-z0-9:_-]{2,127}$'
+      when 'sha256' then v_scalar is null or v_scalar !~ '^[a-f0-9]{64}$'
+      when 'state' then v_scalar is null or v_scalar !~ '^[a-z][a-z0-9_]{0,63}$'
+      when 'uuid' then v_scalar is null or v_scalar !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      else true
+    end;
+    if v_invalid then
+      return false;
+    end if;
+  end loop;
+  return true;
+end;
+$$;
+
 create or replace function public.publish_domain_event(
   p_event_id uuid,
   p_event_type text,
@@ -378,17 +455,24 @@ set search_path = ''
 as $$
 declare
   v_event public.domain_events%rowtype;
+  v_payload_schema jsonb;
 begin
-  if not exists (
-    select 1
-    from public.event_consumer_registrations registration
-    where registration.event_type = p_event_type
-      and registration.event_version = p_event_version
-      and registration.enabled
-  ) then
+  select contract.payload_schema into v_payload_schema
+  from public.event_contract_registrations contract
+  where contract.event_type = p_event_type
+    and contract.event_version = p_event_version;
+  if not found or not exists (
+      select 1 from public.event_consumer_registrations registration
+      where registration.event_type = p_event_type
+        and registration.event_version = p_event_version
+        and registration.enabled
+    )
+  then
     raise exception using errcode = '22023', message = 'EVENT_VERSION_UNSUPPORTED';
   end if;
-  if not public.event_payload_is_safe(p_payload) then
+  if not public.event_payload_is_safe(p_payload)
+    or not public.event_payload_matches_schema(p_payload, v_payload_schema)
+  then
     raise exception using errcode = '22023', message = 'EVENT_PAYLOAD_REDACTION_REQUIRED';
   end if;
 
@@ -474,7 +558,17 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_CLAIM_ARGUMENTS';
   end if;
 
-  with exhausted as (
+  with exhausted_candidates as (
+    select job.id
+    from public.event_jobs job
+    where job.consumer_name = p_consumer_name
+      and job.state = 'leased'
+      and job.lease_expires_at <= pg_catalog.now()
+      and job.attempts >= job.max_attempts
+    order by job.lease_expires_at, job.id
+    for update skip locked
+    limit p_batch_size
+  ), exhausted as (
     update public.event_jobs job
     set state = 'dead',
         lease_owner = null,
@@ -484,10 +578,8 @@ begin
         last_error_category = 'lease_expired',
         last_error_code = 'ATTEMPT_LIMIT_EXHAUSTED',
         updated_at = pg_catalog.now()
-    where job.consumer_name = p_consumer_name
-      and job.state = 'leased'
-      and job.lease_expires_at <= pg_catalog.now()
-      and job.attempts >= job.max_attempts
+    from exhausted_candidates candidate
+    where job.id = candidate.id
     returning job.id, job.attempts
   )
   insert into public.event_job_attempts (
@@ -658,15 +750,23 @@ as $$
 declare
   v_job public.event_jobs%rowtype;
   v_state text;
-  v_delay_seconds integer;
+  v_delay_ms integer;
+  v_hash bytea;
+  v_hash_uint numeric;
+  v_raw_delay_ms numeric;
 begin
   if p_error_category not in (
       'authentication', 'configuration', 'invalid_recipient', 'invalid_template',
       'rate_limited', 'provider_unavailable', 'timeout', 'rejected',
       'malformed_payload', 'unsupported_version', 'lease_expired', 'unknown'
     )
-    or p_error_code !~ '^[A-Z][A-Z0-9_]{1,63}$'
-    or pg_catalog.char_length(p_error_code) > 64
+    or p_error_code not in (
+      'PROVIDER_AUTHENTICATION_FAILED', 'PROVIDER_CONFIGURATION_INVALID',
+      'PROVIDER_FAILURE', 'PROVIDER_RATE_LIMITED', 'PROVIDER_RECIPIENT_INVALID',
+      'PROVIDER_REJECTED', 'PROVIDER_TEMPLATE_INVALID', 'PROVIDER_TIMEOUT',
+      'PROVIDER_UNAVAILABLE', 'EVENT_PAYLOAD_INVALID', 'EVENT_VERSION_UNSUPPORTED',
+      'LEASE_ATTEMPT_LIMIT_EXHAUSTED'
+    )
   then
     raise exception using errcode = '22023', message = 'INVALID_SAFE_EVENT_ERROR';
   end if;
@@ -688,15 +788,26 @@ begin
     when p_retryable and v_job.attempts < v_job.max_attempts then 'retryable'
     else 'dead'
   end;
-  v_delay_seconds := least(3600, (120 * pg_catalog.power(2, v_job.attempts - 1))::integer);
-  v_delay_seconds := greatest(
-    1,
-    least(
-      3600,
+  v_raw_delay_ms := least(
+    3600000::numeric,
+    120000::numeric * pg_catalog.power(2, v_job.attempts - 1)
+  );
+  v_hash := extensions.digest(
+    pg_catalog.convert_to(v_job.id::text || ':' || v_job.attempts::text, 'UTF8'),
+    'sha256'
+  );
+  v_hash_uint := (
+    pg_catalog.get_byte(v_hash, 0)::numeric * 16777216
+    + pg_catalog.get_byte(v_hash, 1)::numeric * 65536
+    + pg_catalog.get_byte(v_hash, 2)::numeric * 256
+    + pg_catalog.get_byte(v_hash, 3)::numeric
+  );
+  v_delay_ms := least(
+    3600000,
+    greatest(
+      0,
       pg_catalog.round(
-        v_delay_seconds * (
-          1 + (((pg_catalog.abs(pg_catalog.hashtextextended(v_job.id::text || ':' || v_job.attempts::text, 0)) % 4001) - 2000)::numeric / 10000)
-        )
+        v_raw_delay_ms * (1 + (((v_hash_uint / 4294967295) * 2 - 1) * 0.2))
       )::integer
     )
   );
@@ -705,7 +816,7 @@ begin
   set state = v_state,
       available_at = case
         when v_state = 'retryable'
-          then pg_catalog.now() + pg_catalog.make_interval(secs => v_delay_seconds)
+          then pg_catalog.now() + pg_catalog.make_interval(secs => v_delay_ms / 1000.0)
         else job.available_at
       end,
       lease_owner = null,
@@ -777,6 +888,8 @@ declare
   v_request_id uuid := gen_random_uuid();
   v_replay_job_id uuid := gen_random_uuid();
   v_existing_job_id uuid;
+  v_existing_source_job_id uuid;
+  v_existing_reason text;
   v_replay_root_id uuid;
 begin
   if v_actor_id is null
@@ -800,11 +913,23 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_EVENT_REPLAY_REQUEST';
   end if;
 
-  select request.replay_job_id into v_existing_job_id
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_actor_id::text || ':' || p_operation_id::text, 0)
+  );
+
+  select request.replay_job_id, request.source_job_id, request.reason
+  into v_existing_job_id, v_existing_source_job_id, v_existing_reason
   from public.event_replay_requests request
   where request.requested_by = v_actor_id
     and request.operation_id = p_operation_id;
-  if found then return v_existing_job_id; end if;
+  if found then
+    if v_existing_source_job_id is distinct from p_source_job_id
+      or v_existing_reason is distinct from pg_catalog.btrim(p_reason)
+    then
+      raise exception using errcode = '22023', message = 'EVENT_REPLAY_IDEMPOTENCY_CONFLICT';
+    end if;
+    return v_existing_job_id;
+  end if;
 
   select * into v_source_job
   from public.event_jobs source_job
@@ -882,13 +1007,20 @@ create or replace function public.reserve_inbound_webhook(
   p_occurred_at timestamptz,
   p_signature_verified boolean
 )
-returns uuid
+returns table (
+  receipt_id uuid,
+  destination_id uuid,
+  tenant_id uuid,
+  company_id uuid
+)
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
   v_destination_id uuid;
+  v_tenant_id uuid;
+  v_company_id uuid;
   v_receipt_id uuid;
 begin
   if p_signature_verified is not true
@@ -898,24 +1030,26 @@ begin
     or p_occurred_at < pg_catalog.now() - interval '5 minutes'
     or p_occurred_at > pg_catalog.now() + interval '5 minutes'
   then
-    return null;
+    return;
   end if;
 
-  select destination.id into v_destination_id
+  select destination.id, destination.tenant_id, destination.company_id
+  into v_destination_id, v_tenant_id, v_company_id
   from public.inbound_destinations destination
   where destination.provider = p_provider
     and destination.destination_key_hash = p_destination_key_hash
     and destination.enabled;
-  if not found then return null; end if;
+  if not found then return; end if;
 
-  insert into public.inbound_webhook_receipts (
+  insert into public.inbound_webhook_receipts as receipt (
     provider, destination_id, provider_event_id_hash, payload_hash, occurred_at
   ) values (
     p_provider, v_destination_id, p_provider_event_id_hash, p_payload_hash, p_occurred_at
   )
-  on conflict (provider, destination_id, provider_event_id_hash) do nothing
-  returning id into v_receipt_id;
-  return v_receipt_id;
+  on conflict on constraint inbound_webhook_provider_event_unique do nothing
+  returning receipt.id into v_receipt_id;
+  if v_receipt_id is null then return; end if;
+  return query select v_receipt_id, v_destination_id, v_tenant_id, v_company_id;
 end;
 $$;
 
@@ -958,6 +1092,7 @@ as $$
   where p_consumer_name is null or job.consumer_name = p_consumer_name;
 $$;
 
+revoke all on table public.event_contract_registrations from anon, authenticated, service_role;
 revoke all on table public.event_consumer_registrations from anon, authenticated, service_role;
 revoke all on table public.domain_events from anon, authenticated, service_role;
 revoke all on table public.event_jobs from anon, authenticated, service_role;
@@ -970,6 +1105,7 @@ revoke all on sequence public.event_job_attempts_id_seq from anon, authenticated
 
 revoke all on function public.reject_event_history_mutation() from public, anon, authenticated;
 revoke all on function public.event_payload_is_safe(jsonb) from public, anon, authenticated, service_role;
+revoke all on function public.event_payload_matches_schema(jsonb, jsonb) from public, anon, authenticated, service_role;
 revoke all on function public.publish_domain_event(uuid, text, smallint, timestamptz, uuid, uuid, uuid, uuid, uuid, text, jsonb, text) from public, anon, authenticated;
 revoke all on function public.claim_event_jobs(uuid, text, integer, integer) from public, anon, authenticated;
 revoke all on function public.extend_event_job_lease(uuid, uuid, uuid, integer) from public, anon, authenticated;

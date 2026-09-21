@@ -26,11 +26,17 @@ values
   ('93100000-0000-4000-8000-000000000020', '93100000-0000-4000-8000-000000000010', 'Event Company One'),
   ('93100000-0000-4000-8000-000000000021', '93100000-0000-4000-8000-000000000011', 'Event Company Two');
 
+insert into public.event_contract_registrations (event_type, event_version, payload_schema)
+values
+  ('documents.requested', 1, '{"documentRequestId":"reference"}'),
+  ('p3_10.integer', 1, '{"sequence":"integer"}');
+
 insert into public.event_consumer_registrations (
   consumer_name, event_type, event_version, max_attempts, default_lease_seconds
 ) values
   ('notifications.reference', 'documents.requested', 1, 2, 120),
-  ('audit.reference', 'documents.requested', 1, 3, 120);
+  ('audit.reference', 'documents.requested', 1, 3, 120),
+  ('integer.reference', 'p3_10.integer', 1, 1, 120);
 
 do $event_publish_contract$
 declare
@@ -98,7 +104,7 @@ begin
       '93100000-0000-4000-8000-000000000010',
       '93100000-0000-4000-8000-000000000021', null,
       '93100000-0000-4000-8000-000000000036', null,
-      'internal', '{}', repeat('c', 64)
+      'internal', '{"documentRequestId":"cross-tenant-reference"}', repeat('c', 64)
     );
     raise exception 'CROSS_TENANT_COMPANY_ACCEPTED';
   exception when foreign_key_violation then null;
@@ -109,7 +115,7 @@ begin
       '93100000-0000-4000-8000-000000000037', 'documents.requested', 1::smallint,
       pg_catalog.now(), null, null, null,
       '93100000-0000-4000-8000-000000000038', null,
-      'internal', '{"rollback":true}', repeat('d', 64)
+      'internal', '{"documentRequestId":"rollback-reference"}', repeat('d', 64)
     );
     raise exception 'FORCED_PRODUCER_ROLLBACK';
   exception when raise_exception then
@@ -133,6 +139,62 @@ begin
   end;
 end;
 $event_publish_contract$;
+
+do $event_payload_schema_contract$
+declare
+  v_payload jsonb;
+begin
+  foreach v_payload in array array[
+    '{"body":"Call 0501234567"}'::jsonb,
+    '{"content":"synthetic content"}'::jsonb,
+    '{"text":"synthetic text"}'::jsonb,
+    '{"contactName":"Synthetic Person"}'::jsonb,
+    '{"address":"Synthetic Street"}'::jsonb,
+    '{"documentRequestId":"valid-reference","unexpected":true}'::jsonb,
+    '{"documentRequestId":42}'::jsonb
+  ] loop
+    begin
+      perform public.publish_domain_event(
+        gen_random_uuid(), 'documents.requested', 1::smallint, pg_catalog.now(), null, null, null,
+        gen_random_uuid(), null, 'internal', v_payload,
+        encode(extensions.digest(pg_catalog.convert_to(v_payload::text, 'UTF8'), 'sha256'), 'hex')
+      );
+      raise exception 'UNREGISTERED_PAYLOAD_SHAPE_ACCEPTED';
+    exception when invalid_parameter_value then
+      if sqlerrm <> 'EVENT_PAYLOAD_REDACTION_REQUIRED' then raise; end if;
+    end;
+  end loop;
+end;
+$event_payload_schema_contract$;
+
+do $event_integer_contract$
+declare
+  v_value numeric;
+begin
+  foreach v_value in array array[-9007199254740991::numeric, 9007199254740991::numeric]
+  loop
+    perform public.publish_domain_event(
+      gen_random_uuid(), 'p3_10.integer', 1::smallint, pg_catalog.now(), null, null, null,
+      gen_random_uuid(), null, 'internal', pg_catalog.jsonb_build_object('sequence', v_value),
+      encode(extensions.digest(pg_catalog.convert_to(v_value::text, 'UTF8'), 'sha256'), 'hex')
+    );
+  end loop;
+
+  foreach v_value in array array[-9007199254740992::numeric, 9007199254740992::numeric]
+  loop
+    begin
+      perform public.publish_domain_event(
+        gen_random_uuid(), 'p3_10.integer', 1::smallint, pg_catalog.now(), null, null, null,
+        gen_random_uuid(), null, 'internal', pg_catalog.jsonb_build_object('sequence', v_value),
+        encode(extensions.digest(pg_catalog.convert_to(v_value::text, 'UTF8'), 'sha256'), 'hex')
+      );
+      raise exception 'UNSAFE_INTEGER_ACCEPTED';
+    exception when invalid_parameter_value then
+      if sqlerrm <> 'EVENT_PAYLOAD_REDACTION_REQUIRED' then raise; end if;
+    end;
+  end loop;
+end;
+$event_integer_contract$;
 
 do $event_worker_contract$
 declare
@@ -172,7 +234,7 @@ begin
     v_notification.job_id,
     '93100000-0000-4000-8000-000000000040',
     v_notification.lease_token,
-    'provider_unavailable', 'REFERENCE_OUTAGE', true
+    'provider_unavailable', 'PROVIDER_UNAVAILABLE', true
   );
   if v_state <> 'retryable' then raise exception 'RETRYABLE_FAILURE_NOT_REQUEUED'; end if;
 
@@ -185,7 +247,7 @@ begin
     v_notification.job_id,
     '93100000-0000-4000-8000-000000000040',
     v_notification.lease_token,
-    'malformed_payload', 'REFERENCE_POISON', true
+    'malformed_payload', 'EVENT_PAYLOAD_INVALID', true
   );
   if v_state <> 'dead' then raise exception 'ATTEMPT_EXHAUSTION_NOT_DEAD'; end if;
 
@@ -213,7 +275,7 @@ begin
   perform public.publish_domain_event(
     v_event_id, 'documents.requested', 1::smallint, pg_catalog.now(), null, null, null,
     '93100000-0000-4000-8000-000000000051', null,
-    'internal', '{"cancel":true}', repeat('f', 64)
+    'internal', '{"documentRequestId":"cancel-reference"}', repeat('f', 64)
   );
   select id into v_job_id from public.event_jobs
   where event_id = v_event_id and consumer_name = 'notifications.reference';
@@ -270,7 +332,7 @@ insert into public.event_jobs (
   '93100000-0000-4000-8000-000000000063',
   '93100000-0000-4000-8000-000000000030',
   'manual.replay', 'dead', 1, 1,
-  'malformed_payload', 'REFERENCE_POISON', pg_catalog.now()
+  'malformed_payload', 'EVENT_PAYLOAD_INVALID', pg_catalog.now()
 );
 
 set local request.jwt.claims = '{"sub":"93100000-0000-4000-8000-000000000001","role":"authenticated","aal":"aal1"}';
@@ -313,6 +375,17 @@ begin
   begin
     perform public.request_event_job_replay(
       '93100000-0000-4000-8000-000000000063',
+      '93100000-0000-4000-8000-000000000061',
+      'Different normalized replay reason'
+    );
+    raise exception 'REPLAY_OPERATION_MISMATCH_ACCEPTED';
+  exception when invalid_parameter_value then
+    if sqlerrm <> 'EVENT_REPLAY_IDEMPOTENCY_CONFLICT' then raise; end if;
+  end;
+
+  begin
+    perform public.request_event_job_replay(
+      '93100000-0000-4000-8000-000000000063',
       '93100000-0000-4000-8000-000000000062',
       'Second concurrent replay request'
     );
@@ -347,7 +420,7 @@ insert into public.inbound_destinations (
 
 do $inbound_webhook_contract$
 declare
-  v_receipt uuid;
+  v_reservation record;
 begin
   begin
     insert into public.inbound_destinations (
@@ -361,27 +434,31 @@ begin
   exception when unique_violation then null;
   end;
 
-  v_receipt := public.reserve_inbound_webhook(
+  select * into v_reservation from public.reserve_inbound_webhook(
     'twilio', repeat('1', 64), repeat('2', 64), repeat('3', 64),
     pg_catalog.now(), true
   );
-  if v_receipt is null then raise exception 'VALID_WEBHOOK_NOT_RESERVED'; end if;
-  if public.reserve_inbound_webhook(
+  if v_reservation.receipt_id is null
+    or v_reservation.destination_id <> '93100000-0000-4000-8000-000000000070'
+    or v_reservation.tenant_id <> '93100000-0000-4000-8000-000000000010'
+    or v_reservation.company_id <> '93100000-0000-4000-8000-000000000020'
+  then raise exception 'VALID_WEBHOOK_OWNER_NOT_RETURNED'; end if;
+  if exists (select 1 from public.reserve_inbound_webhook(
     'twilio', repeat('1', 64), repeat('2', 64), repeat('3', 64),
     pg_catalog.now(), true
-  ) is not null then raise exception 'DUPLICATE_WEBHOOK_ACCEPTED'; end if;
-  if public.reserve_inbound_webhook(
+  )) then raise exception 'DUPLICATE_WEBHOOK_ACCEPTED'; end if;
+  if exists (select 1 from public.reserve_inbound_webhook(
     'twilio', repeat('9', 64), repeat('4', 64), repeat('5', 64),
     pg_catalog.now(), true
-  ) is not null then raise exception 'UNKNOWN_DESTINATION_DISCLOSED'; end if;
-  if public.reserve_inbound_webhook(
+  )) then raise exception 'UNKNOWN_DESTINATION_DISCLOSED'; end if;
+  if exists (select 1 from public.reserve_inbound_webhook(
     'twilio', repeat('1', 64), repeat('6', 64), repeat('7', 64),
     pg_catalog.now() - interval '6 minutes', true
-  ) is not null then raise exception 'EXPIRED_WEBHOOK_ACCEPTED'; end if;
-  if public.reserve_inbound_webhook(
+  )) then raise exception 'EXPIRED_WEBHOOK_ACCEPTED'; end if;
+  if exists (select 1 from public.reserve_inbound_webhook(
     'twilio', repeat('1', 64), repeat('8', 64), repeat('9', 64),
     pg_catalog.now(), false
-  ) is not null then raise exception 'UNVERIFIED_WEBHOOK_ACCEPTED'; end if;
+  )) then raise exception 'UNVERIFIED_WEBHOOK_ACCEPTED'; end if;
 end;
 $inbound_webhook_contract$;
 

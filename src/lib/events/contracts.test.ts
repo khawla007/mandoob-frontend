@@ -30,6 +30,12 @@ const validEnvelope = {
   payload: { documentRequestId: 'request-reference' },
 } as const;
 
+const eventSchemas = {
+  'documents.requested': {
+    1: { documentRequestId: 'reference' },
+  },
+} as const;
+
 describe('domain event envelope', () => {
   test('accepts the frozen v1 ownership and correlation contract', () => {
     assert.deepEqual(domainEventEnvelopeSchema.parse(validEnvelope), validEnvelope);
@@ -63,9 +69,28 @@ describe('domain event envelope', () => {
 
   test('fails closed for an unregistered event version', () => {
     assert.throws(
-      () => parseRegisteredDomainEvent(validEnvelope, { 'documents.requested': [2] }),
+      () => parseRegisteredDomainEvent(validEnvelope, { 'documents.requested': {} }),
       /EVENT_VERSION_UNSUPPORTED/,
     );
+  });
+
+  test('enforces the exact registered payload schema before publication', () => {
+    assert.deepEqual(parseRegisteredDomainEvent(validEnvelope, eventSchemas), validEnvelope);
+
+    for (const payload of [
+      { body: 'Call 0501234567' },
+      { content: 'synthetic content' },
+      { text: 'synthetic text' },
+      { contactName: 'Synthetic Person' },
+      { address: 'Synthetic Street' },
+      { documentRequestId: 'valid-reference', unexpected: true },
+      { documentRequestId: 42 },
+    ]) {
+      assert.throws(
+        () => parseRegisteredDomainEvent({ ...validEnvelope, payload }, eventSchemas),
+        /EVENT_PAYLOAD_SCHEMA_INVALID/,
+      );
+    }
   });
 
   test('rejects payload keys and values that can retain communications, credentials, or PII', () => {
@@ -88,12 +113,13 @@ describe('queue retry and provider safety', () => {
   test('uses deterministic bounded exponential backoff with jitter', () => {
     const attemptOne = retryDelayMs(EVENT_ID, 1);
     const attemptFour = retryDelayMs(EVENT_ID, 4);
-    const attemptForty = retryDelayMs(EVENT_ID, 40);
+    const attemptTwentyFive = retryDelayMs(EVENT_ID, 25);
 
     assert.ok(attemptOne >= 96_000 && attemptOne <= 144_000);
     assert.ok(attemptFour > attemptOne);
-    assert.ok(attemptForty <= 3_600_000);
+    assert.ok(attemptTwentyFive <= 3_600_000);
     assert.equal(retryDelayMs(EVENT_ID, 4), attemptFour);
+    assert.throws(() => retryDelayMs(EVENT_ID, 0), /INVALID_RETRY_ATTEMPT/);
   });
 
   test('creates a stable effect key without recipient or payload material', () => {
@@ -106,7 +132,7 @@ describe('queue retry and provider safety', () => {
   test('allowlists provider error categories and removes raw protected material', () => {
     const safe = toSafeProviderFailure({
       category: 'rate_limited',
-      code: 'META_429',
+      code: 'PROVIDER_RATE_LIMITED',
       retryable: true,
       message: 'Bearer secret-token to +971501234567 user@example.com',
       response: { access_token: 'secret-token' },
@@ -114,7 +140,7 @@ describe('queue retry and provider safety', () => {
 
     assert.deepEqual(safe, {
       category: 'rate_limited',
-      code: 'META_429',
+      code: 'PROVIDER_RATE_LIMITED',
       retryable: true,
     });
     assert.equal(JSON.stringify(safe).includes('secret-token'), false);
@@ -127,6 +153,17 @@ describe('queue retry and provider safety', () => {
       code: 'PROVIDER_FAILURE',
       retryable: false,
     });
+  });
+
+  test('maps caller-controlled uppercase provider codes to the safe fallback', () => {
+    assert.deepEqual(
+      toSafeProviderFailure({
+        category: 'provider_unavailable',
+        code: 'SECRET_BEARER_VALUE',
+        retryable: true,
+      }),
+      { category: 'unknown', code: 'PROVIDER_FAILURE', retryable: false },
+    );
   });
 });
 

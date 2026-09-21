@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import {
-  domainEventEnvelopeSchema,
   hashDestinationKey,
+  parseRegisteredDomainEvent,
   toSafeProviderFailure,
   type DomainEventEnvelope,
+  type EventSchemaRegistry,
 } from './contracts';
 
 type RpcResult = { data: unknown; error: unknown };
@@ -45,10 +46,29 @@ function hashOpaque(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-export function createEventQueueRepository(client: EventQueueRpcClient) {
+const inboundReservationSchema = z
+  .object({
+    receipt_id: uuidSchema,
+    destination_id: uuidSchema,
+    tenant_id: uuidSchema,
+    company_id: uuidSchema.nullable(),
+  })
+  .strict();
+
+export type InboundWebhookReservation = {
+  receiptId: string;
+  destinationId: string;
+  tenantId: string;
+  companyId: string | null;
+};
+
+export function createEventQueueRepository(
+  client: EventQueueRpcClient,
+  eventSchemas: EventSchemaRegistry,
+) {
   return {
     async publish(envelopeInput: DomainEventEnvelope, dedupeKey: string): Promise<string> {
-      const envelope = domainEventEnvelopeSchema.parse(envelopeInput);
+      const envelope = parseRegisteredDomainEvent(envelopeInput, eventSchemas);
       const data = await rpcData(client, 'publish_domain_event', {
         p_event_id: envelope.eventId,
         p_event_type: envelope.eventType,
@@ -199,7 +219,7 @@ export function createEventQueueRepository(client: EventQueueRpcClient) {
       rawPayload: string;
       occurredAt: string;
       signatureVerified: boolean;
-    }): Promise<string | null> {
+    }): Promise<InboundWebhookReservation | null> {
       const data = await rpcData(client, 'reserve_inbound_webhook', {
         p_provider: z
           .string()
@@ -211,7 +231,15 @@ export function createEventQueueRepository(client: EventQueueRpcClient) {
         p_occurred_at: z.string().datetime({ offset: true }).parse(input.occurredAt),
         p_signature_verified: input.signatureVerified,
       });
-      return data === null ? null : uuidSchema.parse(data);
+      const rows = z.array(inboundReservationSchema).parse(data);
+      const reservation = rows[0];
+      if (!reservation) return null;
+      return {
+        receiptId: reservation.receipt_id,
+        destinationId: reservation.destination_id,
+        tenantId: reservation.tenant_id,
+        companyId: reservation.company_id,
+      };
     },
 
     async readHealth(consumerName?: string): Promise<Record<string, unknown>> {

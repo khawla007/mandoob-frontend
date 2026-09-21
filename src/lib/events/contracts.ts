@@ -69,13 +69,59 @@ export const domainEventEnvelopeSchema = z
 
 export type DomainEventEnvelope = z.infer<typeof domainEventEnvelopeSchema>;
 
+const eventPayloadFieldKindSchema = z.enum([
+  'boolean',
+  'integer',
+  'reference',
+  'sha256',
+  'state',
+  'uuid',
+]);
+export type EventPayloadFieldKind = z.infer<typeof eventPayloadFieldKindSchema>;
+export type EventPayloadSchema = Readonly<Record<string, EventPayloadFieldKind>>;
+export type EventSchemaRegistry = Readonly<
+  Record<string, Readonly<Record<number, EventPayloadSchema>>>
+>;
+
+const payloadFieldSchemas: Record<EventPayloadFieldKind, z.ZodType> = {
+  boolean: z.boolean(),
+  integer: z.number().int().safe(),
+  reference: z.string().regex(/^[a-z0-9][a-z0-9:_-]{2,127}$/i),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  state: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+  uuid: uuidSchema,
+};
+
+function payloadMatchesSchema(
+  payload: Record<string, unknown>,
+  schema: EventPayloadSchema,
+): boolean {
+  const schemaEntries = Object.entries(schema);
+  if (
+    Object.keys(payload).length !== schemaEntries.length ||
+    schemaEntries.some(([key]) => !Object.hasOwn(payload, key))
+  ) {
+    return false;
+  }
+  return schemaEntries.every(([key, kind]) => {
+    const parsedKind = eventPayloadFieldKindSchema.safeParse(kind);
+    return (
+      parsedKind.success && payloadFieldSchemas[parsedKind.data].safeParse(payload[key]).success
+    );
+  });
+}
+
 export function parseRegisteredDomainEvent(
   input: unknown,
-  registrations: Readonly<Record<string, readonly number[]>>,
+  registrations: EventSchemaRegistry,
 ): DomainEventEnvelope {
   const envelope = domainEventEnvelopeSchema.parse(input);
-  if (!registrations[envelope.eventType]?.includes(envelope.eventVersion)) {
+  const payloadSchema = registrations[envelope.eventType]?.[envelope.eventVersion];
+  if (!payloadSchema) {
     throw new Error('EVENT_VERSION_UNSUPPORTED');
+  }
+  if (!payloadMatchesSchema(envelope.payload, payloadSchema)) {
+    throw new Error('EVENT_PAYLOAD_SCHEMA_INVALID');
   }
   return envelope;
 }
@@ -95,7 +141,17 @@ const providerErrorCategorySchema = z.enum([
 const safeProviderFailureSchema = z
   .object({
     category: providerErrorCategorySchema,
-    code: z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/),
+    code: z.enum([
+      'PROVIDER_AUTHENTICATION_FAILED',
+      'PROVIDER_CONFIGURATION_INVALID',
+      'PROVIDER_FAILURE',
+      'PROVIDER_RATE_LIMITED',
+      'PROVIDER_RECIPIENT_INVALID',
+      'PROVIDER_REJECTED',
+      'PROVIDER_TEMPLATE_INVALID',
+      'PROVIDER_TIMEOUT',
+      'PROVIDER_UNAVAILABLE',
+    ]),
     retryable: z.boolean(),
   })
   .strip();
@@ -125,24 +181,16 @@ export function createProviderEffectKey(jobId: string): string {
   return `mandoob:event-job:${uuidSchema.parse(jobId)}`;
 }
 
-export function retryDelayMs(
-  eventId: string,
-  attempt: number,
-  options: { baseMs?: number; capMs?: number; jitterRatio?: number } = {},
-): number {
-  uuidSchema.parse(eventId);
-  const safeAttempt = Math.max(1, Math.min(Math.trunc(attempt), 63));
-  const baseMs = options.baseMs ?? 120_000;
-  const capMs = options.capMs ?? 3_600_000;
-  const jitterRatio = options.jitterRatio ?? 0.2;
-  const rawDelay = Math.min(baseMs * 2 ** (safeAttempt - 1), capMs);
-  const hashPrefix = createHash('sha256')
-    .update(`${eventId}:${safeAttempt}`)
-    .digest()
-    .readUInt32BE(0);
+export function retryDelayMs(jobId: string, attempt: number): number {
+  uuidSchema.parse(jobId);
+  if (!Number.isInteger(attempt) || attempt < 1 || attempt > 25) {
+    throw new Error('INVALID_RETRY_ATTEMPT');
+  }
+  const rawDelay = Math.min(120_000 * 2 ** (attempt - 1), 3_600_000);
+  const hashPrefix = createHash('sha256').update(`${jobId}:${attempt}`).digest().readUInt32BE(0);
   const unit = hashPrefix / 0xffffffff;
-  const jitter = (unit * 2 - 1) * jitterRatio;
-  return Math.min(capMs, Math.max(0, Math.round(rawDelay * (1 + jitter))));
+  const jitter = (unit * 2 - 1) * 0.2;
+  return Math.min(3_600_000, Math.max(0, Math.round(rawDelay * (1 + jitter))));
 }
 
 function normalizeDestinationKey(value: string): string {
