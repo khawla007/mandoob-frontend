@@ -33,7 +33,7 @@ export function OperationalUnavailableWorkspace({
   resetHref: string;
 }) {
   return (
-    <div className="signal-dashboard min-w-0 space-y-5">
+    <div className="signal-dashboard min-w-0 space-y-6">
       <DashboardPageHeader
         eyebrow={copy.eyebrow}
         title={copy.title}

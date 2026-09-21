@@ -13,6 +13,10 @@ test('shared unavailable workspace uses canonical heading and route state primit
   assert.match(source, /state="unavailable"/u);
 });
 
+test('shared unavailable workspace keeps 1.5rem below the page-header border', () => {
+  assert.match(source, /className="signal-dashboard min-w-0 space-y-6"/u);
+});
+
 test('calendar unavailable geometry retains an accessible list alternative', () => {
   assert.match(source, /data-operational-list-alternative/u);
   assert.match(source, /<ul/u);
