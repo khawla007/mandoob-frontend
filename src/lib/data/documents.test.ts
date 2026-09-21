@@ -60,6 +60,7 @@ function ownedVersion(overrides: Record<string, unknown> = {}) {
   return {
     id: VERSION,
     tenant_id: TENANT,
+    review_status: 'pending',
     storage_path: `${TENANT}/${CLIENT}/passport/${GENERATED_FILENAME}`,
     document: {
       id: DOCUMENT,
@@ -81,6 +82,14 @@ function reviewCtx() {
     role: 'pro' as const,
     ip: '127.0.0.1',
     userAgent: 'node-test',
+  };
+}
+
+function reviewProvenance() {
+  return {
+    documentId: DOCUMENT,
+    expectedHeadVersionId: VERSION,
+    expectedReviewStatus: 'pending' as const,
   };
 }
 
@@ -360,17 +369,21 @@ test('setDocumentReview validates role, UUID, and required rejection note before
       setDocumentReview(
         CLIENT,
         VERSION,
+        reviewProvenance(),
         { ...reviewCtx(), role: 'customer' as never },
         { status: 'approved' },
       ),
     (err) => err instanceof ApiError && err.code === 'FORBIDDEN',
   );
   await assert.rejects(() =>
-    setDocumentReview(CLIENT, 'bad-id', reviewCtx(), { status: 'approved' }),
+    setDocumentReview(CLIENT, 'bad-id', reviewProvenance(), reviewCtx(), { status: 'approved' }),
   );
   for (const note of ['   ', '\u00a0', '\ufeff', '\u00a0\ufeff']) {
     await assert.rejects(() =>
-      setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'rejected', note }),
+      setDocumentReview(CLIENT, VERSION, reviewProvenance(), reviewCtx(), {
+        status: 'rejected',
+        note,
+      }),
     );
   }
   assert.equal(calls.length, 0);
@@ -392,7 +405,7 @@ test('setDocumentReview verifies assigned-company ownership before its atomic RP
   });
   const { setDocumentReview } = await load();
 
-  const result = await setDocumentReview(CLIENT, VERSION, reviewCtx(), {
+  const result = await setDocumentReview(CLIENT, VERSION, reviewProvenance(), reviewCtx(), {
     status: 'approved',
     note: ' looks good ',
   });
@@ -405,15 +418,14 @@ test('setDocumentReview verifies assigned-company ownership before its atomic RP
   assert.deepEqual(calls[1].body, {
     p_tenant_id: TENANT,
     p_actor_id: ACTOR,
+    p_company_id: CLIENT,
+    p_document_id: DOCUMENT,
     p_version_id: VERSION,
+    p_expected_head_version_id: VERSION,
+    p_expected_review_status: 'pending',
     p_status: 'approved',
     p_note: 'looks good',
-    p_reviewed_at: (calls[1].body as Record<string, unknown>).p_reviewed_at,
   });
-  assert.equal(
-    Number.isNaN(Date.parse((calls[1].body as Record<string, string>).p_reviewed_at)),
-    false,
-  );
   assert.match(calls[2].url, /\/rest\/v1\/auth_events$/u);
   assert.equal(
     calls.some((call) => call.url.includes('/tenant_audit_log')),
@@ -445,7 +457,7 @@ test('setDocumentReview supports rejection through the RPC without fulfilling a 
   });
   const { setDocumentReview } = await load();
 
-  await setDocumentReview(CLIENT, VERSION, reviewCtx(), {
+  await setDocumentReview(CLIENT, VERSION, reviewProvenance(), reviewCtx(), {
     status: 'rejected',
     note: 'Unreadable',
   });
@@ -476,6 +488,11 @@ test('setDocumentReview normalizes uppercase UUIDs in the RPC and success teleme
   await setDocumentReview(
     CLIENT,
     VERSION.toUpperCase(),
+    {
+      documentId: DOCUMENT.toUpperCase(),
+      expectedHeadVersionId: VERSION.toUpperCase(),
+      expectedReviewStatus: 'pending',
+    },
     {
       ...reviewCtx(),
       tenantId: TENANT.toUpperCase(),
@@ -596,7 +613,7 @@ test('setDocumentReview maps controlled and zero-row RPC failures without teleme
     },
     {
       response: json({ code: 'MD409', message: 'document_review_conflict' }, 400),
-      code: 'VALIDATION_FAILED',
+      code: 'CONFLICT',
       status: 409,
     },
     {
@@ -614,7 +631,8 @@ test('setDocumentReview maps controlled and zero-row RPC failures without teleme
         : scenario.response.clone(),
     );
     await assert.rejects(
-      () => setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'approved' }),
+      () =>
+        setDocumentReview(CLIENT, VERSION, reviewProvenance(), reviewCtx(), { status: 'approved' }),
       (err) =>
         err instanceof ApiError &&
         err.code === scenario.code &&
@@ -650,7 +668,8 @@ test('setDocumentReview rejects a same-tenant foreign Company before the review 
   const { setDocumentReview } = await load();
 
   await assert.rejects(
-    () => setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'approved' }),
+    () =>
+      setDocumentReview(CLIENT, VERSION, reviewProvenance(), reviewCtx(), { status: 'approved' }),
     (error) => error instanceof ApiError && error.code === 'NOT_FOUND',
   );
   assert.equal(calls.length, 1);
@@ -667,7 +686,8 @@ test('setDocumentReview sanitizes assigned-company ownership read failures', asy
   const { setDocumentReview } = await load();
 
   await assert.rejects(
-    () => setDocumentReview(CLIENT, VERSION, reviewCtx(), { status: 'approved' }),
+    () =>
+      setDocumentReview(CLIENT, VERSION, reviewProvenance(), reviewCtx(), { status: 'approved' }),
     (error) =>
       error instanceof ApiError &&
       error.code === 'INTERNAL' &&

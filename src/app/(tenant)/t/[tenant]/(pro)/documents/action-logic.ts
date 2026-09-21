@@ -2,7 +2,11 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import type { CreateDocumentRequestCtx, SetDocumentReviewCtx } from '@/lib/data/documents';
+import type {
+  CreateDocumentRequestCtx,
+  DocumentReviewProvenance,
+  SetDocumentReviewCtx,
+} from '@/lib/data/documents';
 import {
   parseDocumentRequestBatchItems,
   type DocumentRequestBatchItem,
@@ -68,6 +72,7 @@ export type DocumentCenterActionDependencies = {
   reviewVersion(
     companyId: string,
     versionId: string,
+    provenance: DocumentReviewProvenance,
     ctx: SetDocumentReviewCtx,
     input: DocumentReviewInput,
   ): Promise<{ companyId: string }>;
@@ -104,6 +109,11 @@ const normalizedUuidSchema = z
   .transform((value) => value.toLowerCase());
 const requestActionSchema = createDocumentRequestSchema.omit({ company_id: true });
 const expiryActionSchema = documentExpirySchema.extend({ document_id: normalizedUuidSchema });
+const reviewProvenanceSchema = z.object({
+  document_id: normalizedUuidSchema,
+  expected_head_version_id: normalizedUuidSchema,
+  expected_review_status: z.literal('pending'),
+});
 async function resolveAndAuthorize(
   slug: string,
   session: ProSession,
@@ -272,15 +282,28 @@ export async function runReviewDocumentCenterAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, ['version_id', 'status', 'note'] as const);
+    const values = readFormStrings(formData, [
+      'document_id',
+      'version_id',
+      'expected_head_version_id',
+      'expected_review_status',
+      'status',
+      'note',
+    ] as const);
     if (!values) return validationFailure();
     const versionId = normalizedUuidSchema.safeParse(values.version_id);
     const review = documentReviewSchema.safeParse({ status: values.status, note: values.note });
-    if (!versionId.success || !review.success) return validationFailure();
+    const provenance = reviewProvenanceSchema.safeParse(values);
+    if (!versionId.success || !review.success || !provenance.success) return validationFailure();
 
     const reviewed = await actionDependencies.reviewVersion(
       authorization.company.id,
       versionId.data,
+      {
+        documentId: provenance.data.document_id,
+        expectedHeadVersionId: provenance.data.expected_head_version_id,
+        expectedReviewStatus: provenance.data.expected_review_status,
+      },
       authorization.actor,
       review.data,
     );
@@ -363,10 +386,17 @@ export async function runSetDocumentExpiryAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, ['document_id', 'expires_on'] as const);
+    const values = readFormStrings(formData, [
+      'document_id',
+      'expected_head_version_id',
+      'expected_expires_on',
+      'expires_on',
+    ] as const);
     if (!values) return validationFailure();
     const expiry = expiryActionSchema.safeParse({
       document_id: values.document_id,
+      expected_head_version_id: values.expected_head_version_id,
+      expected_expires_on: values.expected_expires_on,
       expires_on: values.expires_on,
     });
     if (!expiry.success) return validationFailure();

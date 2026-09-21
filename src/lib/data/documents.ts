@@ -327,6 +327,12 @@ export type SetDocumentReviewCtx = {
   userAgent: string | null;
 };
 
+export type DocumentReviewProvenance = {
+  documentId: string;
+  expectedHeadVersionId: string;
+  expectedReviewStatus: 'pending';
+};
+
 type DocumentReviewRpcResult = {
   document_id: string;
   company_id: string;
@@ -337,6 +343,7 @@ type DocumentReviewRpcResult = {
 export async function setDocumentReview(
   expectedCompanyId: string,
   versionId: string,
+  provenance: DocumentReviewProvenance,
   ctx: SetDocumentReviewCtx,
   input: DocumentReviewInput,
 ): Promise<{ companyId: string }> {
@@ -347,11 +354,16 @@ export async function setDocumentReview(
   const normalizedTenantId = normalizeUuid(ctx.tenantId);
   const normalizedActorId = normalizeUuid(ctx.actorId);
   const normalizedExpectedCompanyId = normalizeUuid(expectedCompanyId);
+  const normalizedDocumentId = normalizeUuid(provenance.documentId);
+  const normalizedExpectedHeadVersionId = normalizeUuid(provenance.expectedHeadVersionId);
   if (
     !normalizedVersionId ||
     !normalizedTenantId ||
     !normalizedActorId ||
-    !normalizedExpectedCompanyId
+    !normalizedExpectedCompanyId ||
+    !normalizedDocumentId ||
+    !normalizedExpectedHeadVersionId ||
+    provenance.expectedReviewStatus !== 'pending'
   ) {
     throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
   }
@@ -361,7 +373,7 @@ export async function setDocumentReview(
   const { data: version, error: ownershipError } = await admin
     .from('document_versions')
     .select(
-      'id, tenant_id, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id))',
+      'id, tenant_id, review_status, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, request_id, current_version_id, company:company_profiles!documents_company_tenant_fk!inner(id, tenant_id), request:document_requests!documents_request_id_fkey(id, tenant_id, company_id))',
     )
     .eq('id', normalizedVersionId)
     .eq('tenant_id', normalizedTenantId)
@@ -369,6 +381,7 @@ export async function setDocumentReview(
   const owned = version as {
     id: string;
     tenant_id: string;
+    review_status: string;
     document: {
       id: string;
       tenant_id: string;
@@ -388,11 +401,11 @@ export async function setDocumentReview(
     owned.id !== normalizedVersionId ||
     owned.tenant_id !== normalizedTenantId ||
     !document ||
+    document.id !== normalizedDocumentId ||
     document.tenant_id !== normalizedTenantId ||
     document.company_id !== normalizedExpectedCompanyId ||
     document.company?.id !== normalizedExpectedCompanyId ||
     document.company.tenant_id !== normalizedTenantId ||
-    document.current_version_id !== normalizedVersionId ||
     (document.request_id !== null &&
       (!document.request ||
         document.request.id !== document.request_id ||
@@ -401,15 +414,24 @@ export async function setDocumentReview(
   ) {
     throw new ApiError('NOT_FOUND', 'document version not found', 404);
   }
-  const reviewedAt = new Date().toISOString();
+  if (
+    owned.review_status !== provenance.expectedReviewStatus ||
+    document.current_version_id !== normalizedExpectedHeadVersionId ||
+    normalizedVersionId !== normalizedExpectedHeadVersionId
+  ) {
+    throw new ApiError('CONFLICT', 'Document version is no longer pending', 409);
+  }
   const { data: result, error: reviewErr } = await admin
     .rpc('review_document_version', {
       p_tenant_id: normalizedTenantId,
       p_actor_id: normalizedActorId,
+      p_company_id: normalizedExpectedCompanyId,
+      p_document_id: normalizedDocumentId,
       p_version_id: normalizedVersionId,
+      p_expected_head_version_id: normalizedExpectedHeadVersionId,
+      p_expected_review_status: provenance.expectedReviewStatus,
       p_status: review.status,
       p_note: review.note ?? null,
-      p_reviewed_at: reviewedAt,
     })
     .maybeSingle();
   if (reviewErr) {
@@ -423,7 +445,7 @@ export async function setDocumentReview(
       throw new ApiError('VALIDATION_FAILED', 'Invalid document review', 400);
     }
     if (reviewErr.code === 'MD409') {
-      throw new ApiError('VALIDATION_FAILED', 'Document version is no longer pending', 409);
+      throw new ApiError('CONFLICT', 'Document version is no longer pending', 409);
     }
     throw new ApiError('INTERNAL', 'Could not save document review', 500);
   }

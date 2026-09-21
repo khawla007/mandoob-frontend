@@ -53,7 +53,7 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
       calls.push(`batch:${ctx.tenantId}:${ctx.actorId}:${ctx.companyId}:${input.operationId}`);
       return { operationId: input.operationId, requestIds: [REQUEST_ID], replayed: false };
     },
-    reviewVersion: async (companyId, versionId, ctx) => {
+    reviewVersion: async (companyId, versionId, _provenance, ctx) => {
       calls.push(`review:${ctx.tenantId}:${companyId}:${versionId}`);
       return { companyId: COMPANY_ID };
     },
@@ -236,7 +236,10 @@ test('batch request rejects invalid bodies after authority and maps operation co
 
 function reviewForm() {
   const form = new FormData();
+  form.append('document_id', DOCUMENT_ID);
   form.append('version_id', VERSION_ID);
+  form.append('expected_head_version_id', VERSION_ID);
+  form.append('expected_review_status', 'pending');
   form.append('company_id', COMPANY_ID);
   form.append('status', 'approved');
   form.append('note', 'Readable');
@@ -246,6 +249,8 @@ function reviewForm() {
 function expiryForm() {
   const form = new FormData();
   form.append('document_id', DOCUMENT_ID);
+  form.append('expected_head_version_id', VERSION_ID);
+  form.append('expected_expires_on', '2027-08-01');
   form.append('company_id', COMPANY_ID);
   form.append('expires_on', '2027-08-31');
   return form;
@@ -423,6 +428,53 @@ test('review and expiry actions pass only the server-resolved assigned company t
       true,
     );
   }
+});
+
+test('review and expiry forward the exact client-observed mutation provenance', async () => {
+  let reviewProvenance: unknown;
+  let expiryInput: unknown;
+  const context = setup({
+    reviewVersion: async (_companyId, _versionId, provenance) => {
+      reviewProvenance = provenance;
+      return { companyId: COMPANY_ID };
+    },
+    setExpiry: async (_companyId, _ctx, input) => {
+      expiryInput = input;
+      return { companyId: COMPANY_ID };
+    },
+  });
+
+  assert.equal(
+    (await runReviewDocumentCenterAction('acme', null, reviewForm(), context.dependencies)).ok,
+    true,
+  );
+  assert.deepEqual(reviewProvenance, {
+    documentId: DOCUMENT_ID,
+    expectedHeadVersionId: VERSION_ID,
+    expectedReviewStatus: 'pending',
+  });
+
+  assert.equal(
+    (await runSetDocumentExpiryAction('acme', null, expiryForm(), context.dependencies)).ok,
+    true,
+  );
+  assert.deepEqual(expiryInput, {
+    document_id: DOCUMENT_ID,
+    expected_head_version_id: VERSION_ID,
+    expected_expires_on: '2027-08-01',
+    expires_on: '2027-08-31',
+  });
+});
+
+test('document action controls submit immutable observed review/head/expiry tokens', () => {
+  const source = readFileSync(
+    join(process.cwd(), 'src/components/pro/documents/DocumentActions.tsx'),
+    'utf8',
+  );
+  assert.match(source, /name="expected_review_status" value="pending"/u);
+  assert.equal((source.match(/name="expected_head_version_id"/gu) ?? []).length, 4);
+  assert.equal((source.match(/name="expected_expires_on"/gu) ?? []).length, 2);
+  assert.equal((source.match(/name="document_id"/gu) ?? []).length, 4);
 });
 
 test('open passes the authenticated actor and live assigned scope into the DAL ownership boundary', async () => {

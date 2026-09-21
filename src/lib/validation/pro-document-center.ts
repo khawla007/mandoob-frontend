@@ -53,6 +53,10 @@ export type DocumentCenterSearch = z.infer<typeof documentCenterSearchSchema>;
 
 export const documentExpirySchema = z.object({
   document_id: z.string().uuid(),
+  expected_head_version_id: z.string().uuid(),
+  expected_expires_on: z
+    .union([documentCenterIsoDateSchema, z.literal('')])
+    .transform((value) => value || null),
   expires_on: z
     .union([documentCenterIsoDateSchema, z.literal('')])
     .transform((value) => value || null),
