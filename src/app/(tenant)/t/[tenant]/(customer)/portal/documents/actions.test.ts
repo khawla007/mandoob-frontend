@@ -36,12 +36,12 @@ test('upload and download actions return sanitized Customer-safe errors', () => 
   assert.doesNotMatch(source, /\| \{ ok: false; error: string; code: string \}/u);
 });
 
-test('upload authorizes before validating or reading attacker-controlled form data', () => {
-  const body = source.slice(source.indexOf('export async function uploadDocumentAction'));
-  assert.ok(
-    body.indexOf('resolveCustomerDocumentUploadAuthority(slug)') <
-      body.indexOf("formData.get('file')"),
-  );
+test('legacy upload directly authorizes the linked Company before reading attacker-controlled form data', () => {
+  const start = source.indexOf('export async function uploadDocumentAction');
+  const body = source.slice(start, source.indexOf('export async function', start + 1));
+  const authorization = body.indexOf('requireAuthorizedCustomerLinkedCompanyRead(slug)');
+  const formRead = body.indexOf("formData.get('file')");
+  assert.ok(authorization !== -1 && formRead !== -1 && authorization < formRead);
 });
 
 test('upload delegates requested-upload replay enforcement to the shared service', () => {

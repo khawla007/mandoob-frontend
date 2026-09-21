@@ -6,10 +6,7 @@ import { headers } from 'next/headers';
 import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { ApiError } from '@/lib/errors';
 import { requireAuthorizedCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
-import {
-  resolveCustomerDocumentUploadAuthority,
-  submitCustomerDocumentUpload,
-} from '@/lib/data/customer-document-upload';
+import { submitCustomerDocumentUpload } from '@/lib/data/customer-document-upload';
 import { getCompanyDocumentSignedUrl } from '@/lib/data/documents';
 import { customerUploadActionSchema } from '@/lib/validation/document';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -79,7 +76,12 @@ export async function uploadDocumentAction(
   formData: FormData,
 ): Promise<ActionResult<{ documentId: string; versionId: string }>> {
   try {
-    const authority = await resolveCustomerDocumentUploadAuthority(slug);
+    const access = await requireAuthorizedCustomerLinkedCompanyRead(slug);
+    const authority = {
+      actorId: access.session.id,
+      tenantId: access.tenant.id,
+      companyId: access.company.id,
+    };
     const hdr = await headers();
     const file = formData.get('file');
     if (!(file instanceof File)) {

@@ -1,10 +1,12 @@
 \set ON_ERROR_STOP on
 \if :{?red_bypass}
-\else
+    \set red_bypass :red_bypass
+\elif true
     \set red_bypass false
 \endif
 \if :{?wallclock_regression}
-\else
+    \set wallclock_regression :wallclock_regression
+\elif true
     \set wallclock_regression false
 \endif
 set statement_timeout = '20s';
@@ -13,6 +15,7 @@ begin;
 -- Metadata simulation only, never proof of provider URLs or physical bytes.
 \if :red_bypass
 \else
+    \set ON_ERROR_STOP on
 do $$
 begin
     if to_regclass('public.document_access_audit') is null
@@ -94,6 +97,7 @@ reset role;
 \if :red_bypass
 rollback;
 \else
+    \set ON_ERROR_STOP on
 create function pg_temp.publish(actor integer, op integer, doc integer, req integer,
     emp integer, company integer default 101) returns uuid language plpgsql as $$
 declare receipt jsonb; operation public.document_upload_operations; head uuid; tenant uuid; resource_type text;
