@@ -3339,6 +3339,21 @@ body.dashboard-surface-active {
     outline: 2px solid var(--signal-accent-copy);
     outline-offset: -2px;
   }
+  .company-management-workspace
+    :is(input:not([type='hidden']):not([type='checkbox']):not([type='radio']), select, textarea) {
+    min-height: 2.75rem;
+  }
+  .company-management-workspace > section > header {
+    margin-bottom: 0;
+    padding-block-end: 1.25rem;
+    border-bottom: 1px solid color-mix(in oklch, var(--brand-accent) 20%, var(--border));
+  }
+  .company-management-workspace > section > header p:first-child {
+    color: var(--signal-accent-copy);
+  }
+  .dark .company-management-workspace button[data-variant='destructive'] {
+    color: color-mix(in oklch, var(--destructive) 65%, white);
+  }
   .finance-management-workspace [data-slot='table'] {
     min-width: 42rem;
   }

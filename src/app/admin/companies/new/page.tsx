@@ -13,14 +13,14 @@ export default async function NewCompanyPage() {
   const t = await getTranslations('admin.companies');
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="admin-management-signal admin-operational-workspace company-management-workspace max-w-3xl space-y-6">
       <Button asChild variant="ghost" size="sm" className="-ms-2">
         <Link href="/admin/companies">
           <ArrowLeft className="rtl:rotate-180" aria-hidden="true" />
           {t('new.back')}
         </Link>
       </Button>
-      <div>
+      <div className="admin-operational-heading">
         <p className="text-primary font-mono text-xs tracking-[0.14em] uppercase">
           {t('page.eyebrow')}
         </p>

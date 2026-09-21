@@ -57,11 +57,12 @@ export default async function CompaniesPage({
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 
   return (
-    <div className="space-y-6">
+    <div className="admin-management-signal admin-operational-workspace company-management-workspace space-y-6">
       <DashboardPageHeader
         eyebrow={t('page.eyebrow')}
         title={t('page.title')}
         description={t('page.intro', { count: companies.total })}
+        className="admin-operational-heading"
         primaryAction={
           <Button asChild className="min-h-11 sm:min-h-9">
             <Link href="/admin/companies/new">
