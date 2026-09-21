@@ -150,7 +150,7 @@ export function ChangeRolePanel({
       <DialogTrigger asChild>
         <Button variant="outline">{t('user.roleChange.trigger')}</Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent className="user-management-dialog max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('user.roleChange.title')}</DialogTitle>
           <DialogDescription>
@@ -168,10 +168,10 @@ export function ChangeRolePanel({
           <div className="space-y-2">
             <Label>{t('user.roleChange.newRoleLabel')}</Label>
             <Select value={newRole} onValueChange={(v) => setNewRole(v as NewRole)}>
-              <SelectTrigger>
+              <SelectTrigger aria-label={t('user.roleChange.newRoleLabel')}>
                 <SelectValue placeholder={t('user.roleChange.newRolePlaceholder')} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="user-management-select">
                 {roleOptions.map((r) => (
                   <SelectItem key={r} value={r}>
                     {t(`enums.role.${r}`)}
@@ -185,10 +185,10 @@ export function ChangeRolePanel({
             <div className="space-y-2">
               <Label>{t('user.fields.tenant')}</Label>
               <Select value={tenantId} onValueChange={setTenantId}>
-                <SelectTrigger>
+                <SelectTrigger aria-label={t('user.fields.tenant')}>
                   <SelectValue placeholder={t('user.roleChange.tenantPlaceholder')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="user-management-select">
                   {tenants.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
@@ -203,11 +203,19 @@ export function ChangeRolePanel({
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label>{t('user.fields.designation')}</Label>
-                <Input value={designation} onChange={(e) => setDesignation(e.target.value)} />
+                <Input
+                  aria-label={t('user.fields.designation')}
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.department')}</Label>
-                <Input value={department} onChange={(e) => setDepartment(e.target.value)} />
+                <Input
+                  aria-label={t('user.fields.department')}
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.serviceAreasLabel')}</Label>
@@ -228,7 +236,12 @@ export function ChangeRolePanel({
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.bio')}</Label>
-                <Textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
+                <Textarea
+                  aria-label={t('user.fields.bio')}
+                  rows={3}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                />
               </div>
             </div>
           )}
@@ -238,6 +251,7 @@ export function ChangeRolePanel({
               <div className="space-y-2">
                 <Label>{t('user.fields.nationality')}</Label>
                 <Input
+                  aria-label={t('user.fields.nationality')}
                   value={nationality}
                   maxLength={2}
                   onChange={(e) => setNationality(e.target.value.toUpperCase())}
@@ -245,7 +259,11 @@ export function ChangeRolePanel({
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.passportNo')}</Label>
-                <Input value={passportNo} onChange={(e) => setPassportNo(e.target.value)} />
+                <Input
+                  aria-label={t('user.fields.passportNo')}
+                  value={passportNo}
+                  onChange={(e) => setPassportNo(e.target.value)}
+                />
               </div>
               {tenantId && (
                 <div className="space-y-2">
@@ -287,19 +305,32 @@ export function ChangeRolePanel({
               )}
               <div className="space-y-2">
                 <Label>{t('user.fields.passportNo')}</Label>
-                <Input value={passportNo} onChange={(e) => setPassportNo(e.target.value)} />
+                <Input
+                  aria-label={t('user.fields.passportNo')}
+                  value={passportNo}
+                  onChange={(e) => setPassportNo(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.visaNo')}</Label>
-                <Input value={visaNo} onChange={(e) => setVisaNo(e.target.value)} />
+                <Input
+                  aria-label={t('user.fields.visaNo')}
+                  value={visaNo}
+                  onChange={(e) => setVisaNo(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.visaExpiry')}</Label>
-                <Input value={visaExpiry} onChange={(e) => setVisaExpiry(e.target.value)} />
+                <Input
+                  aria-label={t('user.fields.visaExpiry')}
+                  value={visaExpiry}
+                  onChange={(e) => setVisaExpiry(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.emiratesId')}</Label>
                 <Input
+                  aria-label={t('user.fields.emiratesId')}
                   value={emiratesId}
                   placeholder="784-YYYY-NNNNNNN-N"
                   onChange={(e) => setEmiratesId(e.target.value)}
@@ -307,7 +338,11 @@ export function ChangeRolePanel({
               </div>
               <div className="space-y-2">
                 <Label>{t('user.fields.eidExpiry')}</Label>
-                <Input value={eidExpiry} onChange={(e) => setEidExpiry(e.target.value)} />
+                <Input
+                  aria-label={t('user.fields.eidExpiry')}
+                  value={eidExpiry}
+                  onChange={(e) => setEidExpiry(e.target.value)}
+                />
               </div>
             </div>
           )}
@@ -316,6 +351,7 @@ export function ChangeRolePanel({
             <div className="space-y-2">
               <Label>{t('user.roleChange.confirmLabel')}</Label>
               <Input
+                aria-label={t('user.roleChange.confirmLabel')}
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
                 placeholder="DEMOTE"
@@ -326,6 +362,7 @@ export function ChangeRolePanel({
           <div className="space-y-2">
             <Label>{t('user.fields.reason')}</Label>
             <Textarea
+              aria-label={t('user.fields.reason')}
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}

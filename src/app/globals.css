@@ -3354,6 +3354,22 @@ body.dashboard-surface-active {
   .dark .company-management-workspace button[data-variant='destructive'] {
     color: color-mix(in oklch, var(--destructive) 65%, white);
   }
+  .user-management-workspace
+    :is(input:not([type='hidden']):not([type='checkbox']):not([type='radio']), textarea),
+  .user-management-dialog
+    :is(input:not([type='hidden']):not([type='checkbox']):not([type='radio']), textarea) {
+    min-height: 2.75rem;
+  }
+  .user-management-workspace table a {
+    display: inline-flex;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    align-items: center;
+  }
+  .user-management-dialog :is(button, [data-slot='select-trigger']),
+  .user-management-select [data-slot='select-item'] {
+    min-height: 2.75rem;
+  }
   .finance-management-workspace [data-slot='table'] {
     min-width: 42rem;
   }

@@ -107,7 +107,7 @@ export function ChangeStatusPanel({
       <DialogTrigger asChild>
         <Button variant="outline">{t('user.statusChange.trigger')}</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="user-management-dialog">
         <DialogHeader>
           <DialogTitle>{t('user.statusChange.title')}</DialogTitle>
           <DialogDescription>
@@ -124,10 +124,10 @@ export function ChangeStatusPanel({
           <div className="space-y-2">
             <Label>{t('user.statusChange.targetStatusLabel')}</Label>
             <Select value={newStatus} onValueChange={(v) => setNewStatus(v as never)}>
-              <SelectTrigger>
+              <SelectTrigger aria-label={t('user.statusChange.targetStatusLabel')}>
                 <SelectValue placeholder={t('user.statusChange.targetStatusPlaceholder')} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="user-management-select">
                 {options.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {t(`user.statusChange.transitions.${o.labelKey}`)}
@@ -144,6 +144,11 @@ export function ChangeStatusPanel({
                   : t('user.statusChange.reasonOptional')}
               </Label>
               <Textarea
+                aria-label={
+                  newStatus === 'suspended'
+                    ? t('user.statusChange.reasonRequired')
+                    : t('user.statusChange.reasonOptional')
+                }
                 rows={3}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
