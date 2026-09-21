@@ -1,10 +1,10 @@
 import { getTranslations } from 'next-intl/server';
-import { requireUser } from '@/lib/auth/require-user';
+import { requireAccountUser } from '@/lib/auth/require-account-user';
 import { listUserSessions } from '@/lib/auth/sessions';
 import { SessionsList } from './SessionsList';
 
 export async function SessionsTab() {
-  const session = await requireUser();
+  const session = await requireAccountUser();
   const [sessions, t] = await Promise.all([
     listUserSessions(session.id),
     getTranslations('account'),

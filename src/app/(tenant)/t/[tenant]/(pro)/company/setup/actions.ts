@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { enforcePrivilegedSession } from '@/lib/auth/require-role';
 import { invokeOnboardingMutation } from '@/lib/company-onboarding/action-mutations';
 import { readCompanyOnboarding } from '@/lib/data/company-onboarding';
 import {
@@ -19,6 +20,7 @@ function dependencies(): ProOnboardingActionDependencies {
   return {
     async authorize(tenantSlug) {
       const { session, tenant } = await requireProTenantRouteAccess(tenantSlug);
+      await enforcePrivilegedSession(session);
       return { actorProfileId: session.id, tenantId: tenant.id, tenantSlug: tenant.slug };
     },
     read: readCompanyOnboarding,

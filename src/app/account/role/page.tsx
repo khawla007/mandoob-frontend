@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { requireUser } from '@/lib/auth/require-user';
+import { requireAccountUser } from '@/lib/auth/require-account-user';
 import { requireProRolePageAccess } from '@/app/account/role/authorize';
 import {
   readSelfPro,
@@ -16,7 +16,7 @@ import { getTranslations } from 'next-intl/server';
 export const dynamic = 'force-dynamic';
 
 export default async function RolePage() {
-  const authSession = await requireUser();
+  const authSession = await requireAccountUser();
   const currentRole = authSession.role;
   if (currentRole === 'pro') {
     let session;

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { requireUser } from '@/lib/auth/require-user';
+import { requireAccountUser } from '@/lib/auth/require-account-user';
 import {
   ProfileGeneralSchema,
   ProfilePhoneSchema,
@@ -44,7 +44,7 @@ export async function updateProfileAction(
   formInput: unknown,
 ): Promise<ActionResult<{ changedKeys: string[] }>> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const useGeneral =
       session.role === 'super_admin' || session.role === 'admin' || session.role === 'pro';
     let updateInput: Parameters<typeof updateSelfProfile>[0];
@@ -87,7 +87,7 @@ export async function updateProfileAction(
 
 export async function changePasswordAction(formInput: unknown): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const parsed = PasswordChangeSchema.parse(formInput);
     if (!session.email) throw new ApiError('VALIDATION_FAILED', 'No email on session', 400);
 
@@ -130,7 +130,7 @@ export async function enrollMfaAction(): Promise<
   ActionResult<{ factorId: string; qrCode: string; secret: string }>
 > {
   try {
-    await requireUser();
+    await requireAccountUser();
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
     if (error || !data) {
@@ -154,7 +154,7 @@ export async function enrollMfaAction(): Promise<
 
 export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const parsed = MfaEnrollFinalizeSchema.parse(formInput);
     const supabase = await createSupabaseServerClient();
     const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({
@@ -194,7 +194,7 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
 
 export async function removeMfaFactorAction(factorId: string): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const supabase = await createSupabaseServerClient();
     await removeMfaFactorWithInvariant(
       { userId: session.id, role: session.role, factorId },
@@ -239,7 +239,7 @@ export async function updateRoleFieldsAction(
   formInput: unknown,
 ): Promise<ActionResult<{ changedKeys: string[] }>> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     if (session.role !== 'pro' && session.role !== 'customer' && session.role !== 'employee') {
       return {
         ok: false,
@@ -272,7 +272,7 @@ export async function updateRoleFieldsAction(
 
 export async function optInSelfCommsAction(formInput: FormData): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     if (session.role !== 'customer' && session.role !== 'super_admin') {
       throw new ApiError('FORBIDDEN', 'Only customers can update communication preferences', 403);
     }
@@ -309,7 +309,7 @@ function gateSessionsRole(role: string | null): void {
 
 export async function listMySessionsAction(): Promise<ActionResult<SessionSummary[]>> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     gateSessionsRole(session.role);
     const sessions = await listUserSessions(session.id);
     return { ok: true, data: sessions };
@@ -320,7 +320,7 @@ export async function listMySessionsAction(): Promise<ActionResult<SessionSummar
 
 export async function revokeMySessionAction(sessionId: string): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     gateSessionsRole(session.role);
     const sessions = await listUserSessions(session.id);
     const owns = sessions.some((s) => s.id === sessionId);
@@ -344,7 +344,7 @@ export async function revokeMySessionAction(sessionId: string): Promise<ActionRe
 
 export async function signOutEverywhereAction(): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     gateSessionsRole(session.role);
     await revokeAllSessions(session.id);
     const ctx = await getActionContext();

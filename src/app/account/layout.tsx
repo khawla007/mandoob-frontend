@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { requireUser } from '@/lib/auth/require-user';
+import { requireAccountUser } from '@/lib/auth/require-account-user';
 import { SiteHeader } from '@/components/site/SiteHeader';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { AccountTabs } from '@/components/account/AccountTabs';
@@ -8,7 +8,7 @@ import { getTranslations } from 'next-intl/server';
 export const dynamic = 'force-dynamic';
 
 export default async function AccountLayout({ children }: { children: ReactNode }) {
-  const session = await requireUser();
+  const session = await requireAccountUser();
   const t = await getTranslations('account');
   return (
     <div className="authenticated-shared-surface flex min-h-screen flex-col">

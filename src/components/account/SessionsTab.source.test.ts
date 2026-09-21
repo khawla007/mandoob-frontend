@@ -8,7 +8,7 @@ test('sessions tab authenticates before reading the service-backed session list'
     join(process.cwd(), 'src/components/account/SessionsTab.tsx'),
     'utf8',
   );
-  const auth = source.indexOf('await requireUser()');
+  const auth = source.indexOf('await requireAccountUser()');
   const sessions = source.indexOf('listUserSessions(session.id)');
   assert.ok(auth >= 0 && sessions > auth);
   assert.doesNotMatch(source, /SESSION_MANAGEMENT_UNAVAILABLE|sessionsUnavailable/u);
@@ -17,7 +17,7 @@ test('sessions tab authenticates before reading the service-backed session list'
 
 test('account sessions route retains its direct role authorization before rendering the tab', () => {
   const source = readFileSync(join(process.cwd(), 'src/app/account/sessions/page.tsx'), 'utf8');
-  const auth = source.indexOf('await requireUser()');
+  const auth = source.indexOf('await requireAccountUser()');
   const roleGuard = source.indexOf("session.role !== 'super_admin' && session.role !== 'pro'");
   const deny = source.indexOf('notFound()');
   const render = source.indexOf('<SessionsTab />');

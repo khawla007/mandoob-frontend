@@ -9,6 +9,7 @@ import { OnboardingReview } from '@/components/company-onboarding/OnboardingRevi
 import { OnboardingShell } from '@/components/company-onboarding/OnboardingShell';
 import { ShareholdersForm } from '@/components/company-onboarding/ShareholdersForm';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { enforcePrivilegedSession } from '@/lib/auth/require-role';
 import {
   COMPANY_ONBOARDING_READINESS_CODES,
   COMPANY_ONBOARDING_SECTION_KEYS,
@@ -62,6 +63,7 @@ export default async function CompanyOnboardingSectionPage({
   if (!section) notFound();
 
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await enforcePrivilegedSession(session);
   if (!isCompanyOnboardingTenantStatusAllowed(tenant.status)) notFound();
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company) notFound();

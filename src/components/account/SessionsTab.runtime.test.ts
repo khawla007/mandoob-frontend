@@ -28,8 +28,8 @@ Module._load = function (request, parent, isMain) {
   if (request === '@/components/account/SessionsList' || request === './SessionsList') return {
     SessionsList: (props) => ({type: 'sessions-list', props}),
   };
-  if (request === '@/lib/auth/require-user') return {
-    requireUser: async () => {
+  if (request === '@/lib/auth/require-account-user') return {
+    requireAccountUser: async () => {
       if (globalThis.__scenario === 'unauthenticated') throw new Error('UNAUTHENTICATED');
       return {id: 'user-1', role: 'super_admin'};
     },

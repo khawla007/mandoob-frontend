@@ -2668,7 +2668,8 @@
         "unavailable": "This setting is temporarily unavailable. No changes were saved.",
         "forbidden": "You no longer have access to this workspace.",
         "saveFailed": "Could not save this setting.",
-        "credentialRequired": "Enter a credential before saving this configuration."
+        "credentialRequired": "Enter a credential before saving this configuration.",
+        "conflict": "These settings changed or this operation conflicts with an earlier save. Reload the page to review the latest values before saving again."
       },
       "context": {
         "title": "Verified context",

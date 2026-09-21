@@ -1538,6 +1538,64 @@ export type Database = {
           },
         ];
       };
+      company_settings_operations: {
+        Row: {
+          created_at: string;
+          operation_id: string;
+          payload_digest: string;
+          result: Json;
+          tenant_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          operation_id: string;
+          payload_digest: string;
+          result: Json;
+          tenant_id: string;
+        };
+        Update: {
+          created_at?: string;
+          operation_id?: string;
+          payload_digest?: string;
+          result?: Json;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'company_settings_operations_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      company_settings_versions: {
+        Row: {
+          section: string;
+          tenant_id: string;
+          version: number;
+        };
+        Insert: {
+          section: string;
+          tenant_id: string;
+          version?: number;
+        };
+        Update: {
+          section?: string;
+          tenant_id?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'company_settings_versions_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       company_shareholders: {
         Row: {
           company_id: string;
@@ -5120,6 +5178,14 @@ export type Database = {
         };
         Returns: Json;
       };
+      authorize_assigned_company_settings: {
+        Args: {
+          p_actor_profile_id: string;
+          p_company_id: string;
+          p_tenant_id: string;
+        };
+        Returns: undefined;
+      };
       authorize_pro_company_access: {
         Args: { p_actor_id: string; p_company_id?: string; p_tenant_id: string };
         Returns: boolean;
@@ -5351,6 +5417,10 @@ export type Database = {
         Args: { p_actor_id: string; p_operation_id: string; p_rows: Json };
         Returns: Json;
       };
+      is_valid_company_settings_http_url: {
+        Args: { p_url: string };
+        Returns: boolean;
+      };
       list_company_payment_invoices: {
         Args: {
           p_company_id: string;
@@ -5457,6 +5527,20 @@ export type Database = {
         Returns: undefined;
       };
       materialize_expired_pro_credentials: { Args: never; Returns: number };
+      mutate_assigned_company_settings: {
+        Args: {
+          p_actor_profile_id: string;
+          p_company_id: string;
+          p_expected_version: number;
+          p_input: Json;
+          p_operation_id: string;
+          p_replacement_secret_encrypted?: string;
+          p_replacement_secret_fingerprint?: string;
+          p_section: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       mutate_cost_data: {
         Args: {
           p_action: string;
@@ -5605,6 +5689,14 @@ export type Database = {
           p_refill_per_sec: number;
         };
         Returns: boolean;
+      };
+      read_assigned_company_settings: {
+        Args: {
+          p_actor_profile_id: string;
+          p_company_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
       };
       read_authoritative_pro_tenant: {
         Args: { p_actor_id: string };
