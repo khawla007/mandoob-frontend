@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
-const routes = ['documents', 'employees', 'renewals'] as const;
+const routes = ['employees', 'renewals'] as const;
 
 for (const route of routes) {
   test(`/admin/${route} directly authorizes and renders an unavailable production contract`, () => {

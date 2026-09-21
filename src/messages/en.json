@@ -3709,15 +3709,77 @@
         "eyebrow": "Operations · Documents",
         "title": "Document review oversight",
         "description": "Review cross-company document work while preserving company-scoped access.",
-        "summaries": { "submitted": "Submitted", "review": "Under review", "rejected": "Rejected" },
-        "filters": { "company": "Company", "status": "Review status", "type": "Document type" },
         "queueTitle": "Document review queue",
-        "queueDescription": "Company and employee context, deadlines, current versions and review decisions will appear in this primary queue.",
-        "guidance": "The accepted workflow states are requested, submitted, under review, approved and rejected. No backlog is inferred from company-scoped sources.",
-        "unavailableTitle": "Unavailable — Phase 3 contract required",
-        "unavailableDescription": "No accepted cross-company current-version review read exists on this base.",
-        "action": "Review document",
-        "actionExplanation": "Unavailable — Phase 3 mutation and ownership contract required."
+        "queueDescription": "Read-only current request and document status across company workspaces.",
+        "filters": {
+          "search": "Search",
+          "searchPlaceholder": "Workspace, company or document",
+          "state": "Workflow state",
+          "type": "Document type",
+          "apply": "Apply filters",
+          "reset": "Reset"
+        },
+        "states": {
+          "all": "All states",
+          "awaiting_upload": "Awaiting upload",
+          "under_review": "Under review",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "expired": "Expired"
+        },
+        "types": {
+          "all": "All document types",
+          "passport": "Passport",
+          "visa": "Visa",
+          "emirates_id": "Emirates ID",
+          "trade_license": "Trade license",
+          "ejari": "Ejari",
+          "moa": "Memorandum of association",
+          "shareholder_id": "Shareholder ID",
+          "other": "Other",
+          "aoa": "Articles of association",
+          "bank_reference_letter": "Bank reference letter",
+          "noc": "No-objection certificate",
+          "cv_resume": "CV or résumé",
+          "office_lease": "Office lease",
+          "medical_certificate": "Medical certificate",
+          "insurance_policy": "Insurance policy"
+        },
+        "kind": { "request": "Request", "document": "Document" },
+        "requestStatus": {
+          "pending": "Awaiting upload",
+          "fulfilled": "Uploaded",
+          "cancelled": "Cancelled"
+        },
+        "reviewStatus": {
+          "pending": "Under review",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        },
+        "table": {
+          "label": "Cross-company document oversight",
+          "company": "Company",
+          "document": "Document",
+          "workflow": "Workflow",
+          "due": "Due",
+          "uploaded": "Uploaded",
+          "expiry": "Expiry"
+        },
+        "empty": {
+          "title": "No documents match these filters",
+          "description": "Change or reset the filters to inspect other document work."
+        },
+        "error": {
+          "title": "Document source unavailable",
+          "description": "The authoritative document source could not be loaded. Try again safely."
+        },
+        "pagination": {
+          "label": "Document pages",
+          "summary": "Page {page} of {totalPages} · {total} total",
+          "previous": "Previous",
+          "next": "Next"
+        },
+        "notAvailable": "Not available"
       },
       "employees": {
         "eyebrow": "Operations · Employees",
