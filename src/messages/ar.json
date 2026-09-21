@@ -5274,6 +5274,7 @@
       "layout": {
         "title": "الإعدادات",
         "description": "إعدادات الحساب.",
+        "tabsLabel": "أقسام الإعدادات",
         "tabs": {
           "profile": "الملف الشخصي",
           "security": "الأمان"

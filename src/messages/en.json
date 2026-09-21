@@ -5302,6 +5302,7 @@
       "layout": {
         "title": "Settings",
         "description": "Account configuration.",
+        "tabsLabel": "Settings sections",
         "tabs": {
           "profile": "Profile",
           "security": "Security"

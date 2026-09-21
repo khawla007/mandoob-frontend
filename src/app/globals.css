@@ -3388,6 +3388,36 @@ body.dashboard-surface-active {
   .dark .erasure-management-workspace button[data-variant='destructive'] {
     color: color-mix(in oklch, var(--destructive) 65%, white);
   }
+  .settings-management-workspace
+    :is(
+      input:not([type='hidden']):not([type='checkbox']):not([type='radio']),
+      textarea,
+      [data-slot='select-trigger']
+    ),
+  .settings-management-workspace nav a {
+    min-height: 2.75rem;
+  }
+  .settings-management-workspace nav a {
+    display: inline-flex;
+    align-items: center;
+  }
+  .settings-management-select [data-slot='select-item'] {
+    min-height: 2.75rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .settings-security-grid > section {
+    min-width: 0;
+    align-self: start;
+    padding: 1.25rem;
+    background: var(--signal-panel-surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+  }
+  .settings-security-grid > section > h2 {
+    padding-block-end: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
   .finance-management-workspace [data-slot='table'] {
     min-width: 42rem;
   }

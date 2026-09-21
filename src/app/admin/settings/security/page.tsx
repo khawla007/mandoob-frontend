@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsSecurityPage() {
   return (
-    <div className="space-y-10">
+    <div className="settings-security-grid grid gap-6 lg:grid-cols-2">
       <SecurityTab />
       <MfaTab />
     </div>
