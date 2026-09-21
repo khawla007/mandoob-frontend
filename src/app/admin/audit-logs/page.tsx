@@ -80,8 +80,8 @@ export default async function AuditLogsPage({
     filters.kind === 'tenant_audit' ? TENANT_AUDIT_ACTIONS : AUTH_EVENT_KINDS;
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="admin-management-signal admin-operational-workspace audit-management-workspace space-y-6">
+      <div className="admin-operational-heading">
         <h1 className="text-2xl font-semibold tracking-tight">{t('audit.page.title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('audit.page.intro')}</p>
       </div>
@@ -197,7 +197,14 @@ export default async function AuditLogsPage({
           <CardDescription>{t('audit.page.resultsDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <AuditLogTable rows={page.rows} />
+          <AuditLogTable
+            rows={page.rows}
+            scrollAreaLabel={
+              filters.kind === 'tenant_audit'
+                ? t('audit.page.tenantAuditLog')
+                : t('audit.page.authEvents')
+            }
+          />
           <div className="mt-4 flex justify-end">
             {page.nextCursor ? (
               <Button asChild variant="outline" size="sm">
@@ -237,11 +244,11 @@ function KindLink({
   return (
     <Link
       href={href}
-      className={
+      className={`audit-kind-link ${
         active
           ? 'bg-foreground text-background rounded px-3 py-1 text-sm'
           : 'border-border hover:bg-muted rounded border px-3 py-1 text-sm'
-      }
+      }`}
     >
       {label}
     </Link>

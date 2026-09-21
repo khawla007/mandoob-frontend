@@ -3376,6 +3376,15 @@ body.dashboard-surface-active {
   .dark .session-management-workspace button[data-variant='destructive'] {
     color: color-mix(in oklch, var(--destructive) 65%, white);
   }
+  .audit-management-workspace :is(input:not([type='hidden']), select) {
+    min-height: 2.75rem;
+  }
+  .audit-management-workspace .audit-kind-link,
+  .audit-management-workspace summary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+  }
   .finance-management-workspace [data-slot='table'] {
     min-width: 42rem;
   }
