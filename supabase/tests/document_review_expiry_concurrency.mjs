@@ -91,6 +91,7 @@ const expiry = (actor, expected, next) => `
   );`;
 
 let success = false;
+let runError;
 try {
   await file(teardown).catch(() => {});
   await file(setup);
@@ -135,9 +136,21 @@ try {
   console.log('CONFLICT_AUDIT_ATOMIC');
   console.log('DOCUMENT_REVIEW_EXPIRY_CONCURRENCY_PASS');
   success = true;
+} catch (error) {
+  runError = error;
+  throw error;
 } finally {
   for (const child of active) child.kill('SIGTERM');
-  await file(teardown).catch(() => {});
+  try {
+    await file(teardown);
+  } catch (cleanupError) {
+    if (runError)
+      throw new AggregateError(
+        [runError, cleanupError],
+        'DOCUMENT_REVIEW_EXPIRY_RUN_AND_CLEANUP_FAILED',
+      );
+    throw cleanupError;
+  }
 }
 
 if (!success) process.exitCode = 1;

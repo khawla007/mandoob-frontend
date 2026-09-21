@@ -121,4 +121,28 @@ test('batch request rollback fixture covers replay, conflicts and privilege boun
   }
   assert.match(sql, /\\set ON_ERROR_STOP on/iu);
   assert.match(sql, /begin;[\s\S]*rollback;/iu);
+  assert.doesNotMatch(sql, /create function pg_temp\.expect_rpc_privilege_denied/iu);
+  assert.match(
+    sql,
+    /not has_function_privilege\( 'anon', 'public\.create_document_request_batch\(uuid,uuid,uuid,uuid,jsonb\)', 'EXECUTE' \)[\s\S]*'ANON_RPC_DENIED'/iu,
+  );
+  assert.match(
+    sql,
+    /not has_function_privilege\( 'authenticated', 'public\.create_document_request_batch\(uuid,uuid,uuid,uuid,jsonb\)', 'EXECUTE' \)[\s\S]*'AUTHENTICATED_RPC_DENIED'/iu,
+  );
+  assert.match(
+    sql,
+    /has_function_privilege\( 'service_role', 'public\.create_document_request_batch\(uuid,uuid,uuid,uuid,jsonb\)', 'EXECUTE' \)/iu,
+  );
+  assert.match(sql, /from pg_catalog\.pg_proc[\s\S]*proacl/iu);
+  assert.match(
+    sql,
+    /aclexplode\(procedure\.proacl\)[\s\S]*acl\.grantee = 0[\s\S]*acl\.privilege_type = 'EXECUTE'/iu,
+  );
+  assert.match(
+    sql,
+    /aclexplode\(procedure\.proacl\) acl[\s\S]*acl\.grantee = 'service_role'::regrole[\s\S]*acl\.privilege_type = 'EXECUTE'[\s\S]*'SERVICE_ROLE_POSITIVE_CONTROL'/iu,
+  );
+  assert.doesNotMatch(sql, /proacl::text\s+like/iu);
+  assert.doesNotMatch(sql, /set local role (?:anon|authenticated)/iu);
 });

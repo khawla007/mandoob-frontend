@@ -21,6 +21,10 @@ const setupPath = resolve(
   process.cwd(),
   'supabase/tests/document_review_expiry_concurrency_setup.sql',
 );
+const teardownPath = resolve(
+  process.cwd(),
+  'supabase/tests/document_review_expiry_concurrency_teardown.sql',
+);
 
 function compact(path: string): string {
   return readFileSync(path, 'utf8').replace(/--.*$/gmu, '').replace(/\s+/gu, ' ');
@@ -149,6 +153,49 @@ test('held-session fixture uses one live company assignment and one assigned act
   );
   assert.doesNotMatch(sessionRunner, /review\(2,/u);
   assert.doesNotMatch(sessionRunner, /expiry\(2,/u);
+});
+
+test('held-session teardown removes protected fixture children and cannot conceal final cleanup failure', () => {
+  const teardown = compact(teardownPath);
+  const sessionRunner = compact(sessionRunnerPath);
+  const finalCleanup = sessionRunner.slice(sessionRunner.indexOf('} finally {'));
+
+  for (const table of [
+    'tenant_audit_log',
+    'document_versions',
+    'documents',
+    'pro_company_assignments',
+    'company_profiles',
+    'pro_profiles',
+    'profiles',
+    'tenants',
+  ])
+    assert.match(teardown, new RegExp(`delete from public\\.${table}`, 'u'));
+  assert.doesNotMatch(teardown, /session_replication_role/iu);
+  assert.match(
+    teardown,
+    /alter table public\.document_versions disable trigger document_versions_immutable; delete from public\.document_versions[^;]+; alter table public\.document_versions enable trigger document_versions_immutable;/iu,
+    'only the append-only version trigger may be disabled, and it must be restored immediately',
+  );
+  assert.ok(
+    teardown.indexOf('delete from public.document_versions') <
+      teardown.indexOf('delete from public.documents'),
+    'protected versions must be removed before their document parents',
+  );
+  assert.ok(
+    teardown.indexOf('delete from public.documents') <
+      teardown.indexOf('delete from public.tenants'),
+    'document children must be removed before the tenant parent',
+  );
+  assert.match(finalCleanup, /await file\(teardown\)/u);
+  assert.doesNotMatch(finalCleanup, /file\(teardown\)\.catch/u);
+  assert.match(
+    finalCleanup,
+    /if \(runError\) throw new AggregateError\(\s*\[runError, cleanupError\]/u,
+    'execution and teardown failures must both be preserved',
+  );
+  assert.match(finalCleanup, /throw cleanupError/u);
+  assert.doesNotMatch(finalCleanup, /if \(!runError\) throw cleanupError/u);
 });
 
 test('review and expiry function bodies explicitly qualify every relation column', () => {

@@ -40,23 +40,6 @@ begin
   end;
 end;
 $$;
-create function pg_temp.expect_rpc_privilege_denied()
-returns void language plpgsql as $$
-begin
-  begin
-    perform public.create_document_request_batch(
-      pg_temp.uid(999), pg_temp.uid(1), pg_temp.uid(100),
-      pg_temp.uid(101), pg_temp.items()
-    );
-    raise exception using errcode='ZT001', message='UNEXPECTED_RPC_PERMIT';
-  exception
-    when insufficient_privilege then null;
-    when sqlstate 'ZT001' then raise;
-    when others then raise exception 'UNEXPECTED_RPC_DENIAL_%', sqlstate;
-  end;
-end;
-$$;
-
 insert into public.tenants(id,slug,name) values
   (pg_temp.uid(100),'batch-fixture-one','Synthetic One'),
   (pg_temp.uid(200),'batch-fixture-two','Synthetic Two');
@@ -180,16 +163,48 @@ reset role;
 select pg_temp.check(not exists(select 1 from public.document_request_batch_operations
   where operation_id=pg_temp.uid(904)),'DIRECT_TABLE_MUTATION_DENIED');
 
-set local role anon;
-select pg_temp.expect_rpc_privilege_denied();
-reset role;
-select pg_temp.check(true,'ANON_RPC_DENIED');
-set local role authenticated;
-select pg_temp.expect_rpc_privilege_denied();
-reset role;
-select pg_temp.check(true,'AUTHENTICATED_RPC_DENIED');
 select pg_temp.check(
-  (select receipt->>'replayed'='false' from pg_temp.batch_results where kind='first'),
+  not has_function_privilege(
+    'anon',
+    'public.create_document_request_batch(uuid,uuid,uuid,uuid,jsonb)',
+    'EXECUTE'
+  )
+  and (select procedure.proacl is not null
+    from pg_catalog.pg_proc procedure
+    where procedure.oid='public.create_document_request_batch(uuid,uuid,uuid,uuid,jsonb)'::regprocedure)
+  and not exists(
+    select 1
+    from pg_catalog.pg_proc procedure
+    cross join lateral aclexplode(procedure.proacl) acl
+    where procedure.oid='public.create_document_request_batch(uuid,uuid,uuid,uuid,jsonb)'::regprocedure
+      and acl.grantee = 0
+      and acl.privilege_type = 'EXECUTE'
+  ),
+  'ANON_RPC_DENIED'
+);
+select pg_temp.check(
+  not has_function_privilege(
+    'authenticated',
+    'public.create_document_request_batch(uuid,uuid,uuid,uuid,jsonb)',
+    'EXECUTE'
+  ),
+  'AUTHENTICATED_RPC_DENIED'
+);
+select pg_temp.check(
+  (select receipt->>'replayed'='false' from pg_temp.batch_results where kind='first')
+  and has_function_privilege(
+    'service_role',
+    'public.create_document_request_batch(uuid,uuid,uuid,uuid,jsonb)',
+    'EXECUTE'
+  )
+  and exists(
+    select 1
+    from pg_catalog.pg_proc procedure
+    cross join lateral aclexplode(procedure.proacl) acl
+    where procedure.oid='public.create_document_request_batch(uuid,uuid,uuid,uuid,jsonb)'::regprocedure
+      and acl.grantee = 'service_role'::regrole
+      and acl.privilege_type = 'EXECUTE'
+  ),
   'SERVICE_ROLE_POSITIVE_CONTROL'
 );
 
