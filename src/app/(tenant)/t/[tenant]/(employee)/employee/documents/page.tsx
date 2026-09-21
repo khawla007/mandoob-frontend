@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { FileCheck2, FileClock, FileText, ShieldAlert } from 'lucide-react';
 
 import { OpenEmployeeSignedUrlButton } from '@/components/employee/OpenEmployeeSignedUrlButton';
+import { UploadDocumentDialog } from '@/components/customer/UploadDocumentDialog';
 import { getEmployeeDocumentSignedUrlAction } from './actions';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import {
   authorizeEmployeePortalRead,
   loadEmployeeDocuments,
 } from '@/lib/data/employee-portal-workspace';
+import { docTypeSchema } from '@/lib/validation/document';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +87,7 @@ export default async function EmployeeDocumentsPage({
             ) : (
               <ul className="divide-y">
                 {workspace.requests.value.map((request, index) => {
+                  const parsedDocType = docTypeSchema.safeParse(request.docType);
                   const documentSourceKnown = workspace.documents.kind !== 'error';
                   const submitted =
                     documentSourceKnown &&
@@ -120,12 +123,17 @@ export default async function EmployeeDocumentsPage({
                         <Badge variant={submitted ? 'secondary' : 'outline'}>{requestStatus}</Badge>
                       </div>
                       {documentSourceKnown && !submitted && request.status === 'pending' ? (
-                        <div className="bg-muted/40 mt-3 rounded-lg border border-dashed p-3">
-                          <p className="text-sm font-medium">{t('uploadUnavailableTitle')}</p>
-                          <p className="text-muted-foreground mt-1 text-sm leading-6">
-                            {t('uploadUnavailable')}
-                          </p>
-                        </div>
+                        parsedDocType.success ? (
+                          <div className="mt-3">
+                            <UploadDocumentDialog
+                              audience="employee"
+                              slug={access.tenant.slug}
+                              docType={parsedDocType.data}
+                              requestId={request.id}
+                              label={request.label}
+                            />
+                          </div>
+                        ) : null
                       ) : null}
                     </li>
                   );
@@ -205,13 +213,11 @@ export default async function EmployeeDocumentsPage({
       ) : null}
       <Card className="signal-panel">
         <CardHeader>
-          <CardTitle>{t('uploadUnavailableTitle')}</CardTitle>
+          <CardTitle>{t('uploadTitle')}</CardTitle>
           <CardDescription>{t('formats')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p role="status" className="text-muted-foreground text-sm leading-6">
-            {t('uploadUnavailable')}
-          </p>
+          <p className="text-muted-foreground text-sm leading-6">{t('uploadDescription')}</p>
           <p className="text-muted-foreground mt-3 text-sm">{t('versionUnavailable')}</p>
         </CardContent>
       </Card>

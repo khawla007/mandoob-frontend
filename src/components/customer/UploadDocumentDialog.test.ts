@@ -24,8 +24,9 @@ test('upload uses the bounded same-origin route with CSRF and safe response hand
   assert.doesNotMatch(source, /uploadDocumentAction/u);
   assert.match(
     source,
-    /fetch\([\s\S]*?`\/api\/v1\/t\/\$\{encodeURIComponent\(slug\)\}\/customer\/documents\/upload`/u,
+    /fetch\([\s\S]*?`\/api\/v1\/t\/\$\{encodeURIComponent\(slug\)\}\/\$\{audience\}\/documents\/upload`/u,
   );
+  assert.match(source, /audience = 'customer'/u);
   assert.match(source, /credentials:\s*'same-origin'/u);
   assert.match(source, /x-mandoob-csrf/u);
   assert.match(source, /mandoob-csrf/u);

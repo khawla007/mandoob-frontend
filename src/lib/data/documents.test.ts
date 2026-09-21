@@ -151,6 +151,34 @@ test('uploadDocument delegates the exact authority and file input to the audited
   ]);
 });
 
+test('uploadDocument binds an Employee upload to the authoritative own employee record', async () => {
+  const received: unknown[] = [];
+  const employeeId = '66666666-6666-4666-8666-666666666666';
+  const input = {
+    ...uploadInput(pdfWith('employee coordinated upload')),
+    employeeId,
+    actor: {
+      id: '44444444-4444-4444-8444-444444444444',
+      role: 'employee' as const,
+      ip: '127.0.0.1',
+      userAgent: 'node-test',
+    },
+  };
+  const { uploadDocument } = await load();
+
+  await uploadDocument(input, async (coordinatorInput) => {
+    received.push(coordinatorInput);
+    return {
+      status: 'finalized',
+      operationId: OPERATION,
+      documentId: DOCUMENT,
+      versionId: VERSION,
+    };
+  });
+
+  assert.equal((received[0] as { employeeId: string }).employeeId, employeeId);
+});
+
 test('uploadDocument has no legacy scan, storage, or manual document write path', () => {
   const source = readFileSync(new URL('./documents.ts', import.meta.url), 'utf8');
   const body = source.slice(

@@ -67,13 +67,17 @@ function csrfToken(): string | null {
   }
 }
 
-async function uploadThroughRoute(slug: string, formData: FormData): Promise<UploadResult> {
+async function uploadThroughRoute(
+  slug: string,
+  audience: 'customer' | 'employee',
+  formData: FormData,
+): Promise<UploadResult> {
   try {
     const headers = new Headers();
     const csrf = csrfToken();
     if (csrf) headers.set('x-mandoob-csrf', csrf);
     const response = await fetch(
-      `/api/v1/t/${encodeURIComponent(slug)}/customer/documents/upload`,
+      `/api/v1/t/${encodeURIComponent(slug)}/${audience}/documents/upload`,
       {
         method: 'POST',
         credentials: 'same-origin',
@@ -116,13 +120,15 @@ export function UploadDocumentDialog(props: {
   docType: DocType;
   requestId?: string;
   label: string;
+  audience?: 'customer' | 'employee';
 }) {
-  const { slug, docType, requestId, label } = props;
+  const { slug, docType, requestId, label, audience = 'customer' } = props;
   const router = useRouter();
   const t = useTranslations('customer');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
   const tDocument = useTranslations('customer.documentCenter');
+  const tEmployee = useTranslations('employee.documents');
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +151,7 @@ export function UploadDocumentDialog(props: {
     operationId.current ??= crypto.randomUUID();
     formData.set('operation_id', operationId.current);
     startTransition(async () => {
-      const result = await uploadThroughRoute(slug, formData);
+      const result = await uploadThroughRoute(slug, audience, formData);
       if (!result.ok) {
         setError(tDocument(`errors.${result.code}`));
         return;
@@ -156,6 +162,12 @@ export function UploadDocumentDialog(props: {
       router.refresh();
     });
   }
+
+  const uploadLabel = audience === 'employee' ? tEmployee('uploadButton') : t('uploadButton');
+  const uploadDescription =
+    audience === 'employee'
+      ? tEmployee('uploadDialogDescription')
+      : t('longCopy.uploadDialogDescription');
 
   function handleOpenChange(next: boolean) {
     if (!next && pending) return;
@@ -170,16 +182,16 @@ export function UploadDocumentDialog(props: {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          {t('uploadButton')}
+          {uploadLabel}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={onSubmit} className="space-y-4">
           <DialogHeader>
             <DialogTitle>
-              {t('uploadButton')} — {label}
+              {uploadLabel} — {label}
             </DialogTitle>
-            <DialogDescription>{t('longCopy.uploadDialogDescription')}</DialogDescription>
+            <DialogDescription>{uploadDescription}</DialogDescription>
           </DialogHeader>
 
           <input type="hidden" name="doc_type" value={docType} />
@@ -219,7 +231,11 @@ export function UploadDocumentDialog(props: {
               {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? t('uploading') : t('uploadButton')}
+              {pending
+                ? audience === 'employee'
+                  ? tEmployee('uploading')
+                  : t('uploading')
+                : uploadLabel}
             </Button>
           </DialogFooter>
         </form>

@@ -37,6 +37,7 @@ function normalizeUuid(value: string): string | null {
 export type UploadDocumentInput = {
   tenantId: string;
   companyId: string;
+  employeeId?: string;
   docType: DocType;
   operationId: string;
   requestId?: string;
@@ -48,7 +49,7 @@ export type UploadDocumentInput = {
   };
   actor: {
     id: string;
-    role: 'pro' | 'customer';
+    role: 'pro' | 'customer' | 'employee';
     ip: string;
     userAgent: string | null;
   };
@@ -83,6 +84,9 @@ export async function uploadDocument(
   input: UploadDocumentInput,
   coordinator: DocumentUploadCoordinator = coordinateDocumentUpload,
 ): Promise<UploadDocumentResult> {
+  if (input.actor.role === 'employee' && !input.employeeId) {
+    throw new ApiError('VALIDATION_FAILED', 'Employee upload scope is required', 400);
+  }
   uploadDocumentMetadataSchema.parse({
     company_id: input.companyId,
     doc_type: input.docType,
@@ -97,7 +101,7 @@ export async function uploadDocument(
     actorId: input.actor.id,
     requestId: input.requestId ?? null,
     documentId: null,
-    employeeId: null,
+    employeeId: input.actor.role === 'employee' ? (input.employeeId ?? null) : null,
     docType: input.docType,
     label: input.label ?? null,
     expectedHead: null,
