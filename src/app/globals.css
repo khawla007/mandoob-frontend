@@ -3370,6 +3370,12 @@ body.dashboard-surface-active {
   .user-management-select [data-slot='select-item'] {
     min-height: 2.75rem;
   }
+  .session-management-workspace select {
+    min-height: 2.75rem;
+  }
+  .dark .session-management-workspace button[data-variant='destructive'] {
+    color: color-mix(in oklch, var(--destructive) 65%, white);
+  }
   .finance-management-workspace [data-slot='table'] {
     min-width: 42rem;
   }
