@@ -1962,10 +1962,168 @@ export type Database = {
           },
         ];
       };
+      document_access_audit: {
+        Row: {
+          actor_id: string | null;
+          classification: string;
+          company_id: string | null;
+          document_id: string | null;
+          event: string;
+          expires_at: string | null;
+          id: string;
+          occurred_at: string;
+          operation_id: string | null;
+          phase: string;
+          request_id: string | null;
+          sha256: string | null;
+          signing_lifetime_seconds: number | null;
+          tenant_id: string | null;
+          version_id: string | null;
+        };
+        Insert: {
+          actor_id?: string | null;
+          classification: string;
+          company_id?: string | null;
+          document_id?: string | null;
+          event: string;
+          expires_at?: string | null;
+          id?: string;
+          occurred_at?: string;
+          operation_id?: string | null;
+          phase: string;
+          request_id?: string | null;
+          sha256?: string | null;
+          signing_lifetime_seconds?: number | null;
+          tenant_id?: string | null;
+          version_id?: string | null;
+        };
+        Update: {
+          actor_id?: string | null;
+          classification?: string;
+          company_id?: string | null;
+          document_id?: string | null;
+          event?: string;
+          expires_at?: string | null;
+          id?: string;
+          occurred_at?: string;
+          operation_id?: string | null;
+          phase?: string;
+          request_id?: string | null;
+          sha256?: string | null;
+          signing_lifetime_seconds?: number | null;
+          tenant_id?: string | null;
+          version_id?: string | null;
+        };
+        Relationships: [];
+      };
+      document_lifecycle_audit: {
+        Row: {
+          actor_id: string | null;
+          actor_kind: string;
+          classification: string;
+          cleanup_fence: string | null;
+          company_id: string;
+          document_id: string;
+          event: string;
+          id: string;
+          occurred_at: string;
+          operation_id: string;
+          request_id: string | null;
+          sha256: string;
+          tenant_id: string;
+          version_id: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_kind?: string;
+          classification: string;
+          cleanup_fence?: string | null;
+          company_id: string;
+          document_id: string;
+          event: string;
+          id?: string;
+          occurred_at?: string;
+          operation_id: string;
+          request_id?: string | null;
+          sha256: string;
+          tenant_id: string;
+          version_id: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_kind?: string;
+          classification?: string;
+          cleanup_fence?: string | null;
+          company_id?: string;
+          document_id?: string;
+          event?: string;
+          id?: string;
+          occurred_at?: string;
+          operation_id?: string;
+          request_id?: string | null;
+          sha256?: string;
+          tenant_id?: string;
+          version_id?: string;
+        };
+        Relationships: [];
+      };
+      document_request_batch_operations: {
+        Row: {
+          actor_id: string;
+          company_id: string;
+          created_at: string;
+          operation_id: string;
+          request_fingerprint: string;
+          request_ids: Json;
+          tenant_id: string;
+        };
+        Insert: {
+          actor_id: string;
+          company_id: string;
+          created_at?: string;
+          operation_id: string;
+          request_fingerprint: string;
+          request_ids: Json;
+          tenant_id: string;
+        };
+        Update: {
+          actor_id?: string;
+          company_id?: string;
+          created_at?: string;
+          operation_id?: string;
+          request_fingerprint?: string;
+          request_ids?: Json;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'document_request_batch_operations_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'document_request_batch_operations_company_fk';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'document_request_batch_operations_tenant_fk';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       document_requests: {
         Row: {
           company_id: string;
           created_at: string;
+          custom_type_label: string | null;
           doc_type: string;
           due_at: string | null;
           employee_id: string | null;
@@ -1980,6 +2138,7 @@ export type Database = {
         Insert: {
           company_id: string;
           created_at?: string;
+          custom_type_label?: string | null;
           doc_type: string;
           due_at?: string | null;
           employee_id?: string | null;
@@ -1994,6 +2153,7 @@ export type Database = {
         Update: {
           company_id?: string;
           created_at?: string;
+          custom_type_label?: string | null;
           doc_type?: string;
           due_at?: string | null;
           employee_id?: string | null;
@@ -2050,6 +2210,140 @@ export type Database = {
           },
         ];
       };
+      document_upload_operations: {
+        Row: {
+          actor_id: string;
+          cleanup_authorized: boolean;
+          cleanup_completed_at: string | null;
+          cleanup_fence: string | null;
+          cleanup_hold: boolean;
+          cleanup_lease_until: string | null;
+          committed_receipt: Json | null;
+          company_id: string;
+          deadline_at: string;
+          doc_type: string;
+          document_id: string;
+          employee_id: string | null;
+          expected_head: string | null;
+          extension: string;
+          finalized_at: string | null;
+          input_document_id: string | null;
+          label: string | null;
+          mime_type: string;
+          object_id: string;
+          operation_id: string;
+          payload_fingerprint: string;
+          prepared_at: string;
+          request_id: string | null;
+          reserved_version_id: string;
+          safe_filename: string;
+          scan_completed_at: string | null;
+          scan_provider: string | null;
+          sha256: string;
+          size_bytes: number;
+          state: string;
+          storage_path: string;
+          tenant_id: string;
+        };
+        Insert: {
+          actor_id: string;
+          cleanup_authorized?: boolean;
+          cleanup_completed_at?: string | null;
+          cleanup_fence?: string | null;
+          cleanup_hold?: boolean;
+          cleanup_lease_until?: string | null;
+          committed_receipt?: Json | null;
+          company_id: string;
+          deadline_at: string;
+          doc_type: string;
+          document_id: string;
+          employee_id?: string | null;
+          expected_head?: string | null;
+          extension: string;
+          finalized_at?: string | null;
+          input_document_id?: string | null;
+          label?: string | null;
+          mime_type: string;
+          object_id: string;
+          operation_id: string;
+          payload_fingerprint: string;
+          prepared_at?: string;
+          request_id?: string | null;
+          reserved_version_id: string;
+          safe_filename: string;
+          scan_completed_at?: string | null;
+          scan_provider?: string | null;
+          sha256: string;
+          size_bytes: number;
+          state?: string;
+          storage_path: string;
+          tenant_id: string;
+        };
+        Update: {
+          actor_id?: string;
+          cleanup_authorized?: boolean;
+          cleanup_completed_at?: string | null;
+          cleanup_fence?: string | null;
+          cleanup_hold?: boolean;
+          cleanup_lease_until?: string | null;
+          committed_receipt?: Json | null;
+          company_id?: string;
+          deadline_at?: string;
+          doc_type?: string;
+          document_id?: string;
+          employee_id?: string | null;
+          expected_head?: string | null;
+          extension?: string;
+          finalized_at?: string | null;
+          input_document_id?: string | null;
+          label?: string | null;
+          mime_type?: string;
+          object_id?: string;
+          operation_id?: string;
+          payload_fingerprint?: string;
+          prepared_at?: string;
+          request_id?: string | null;
+          reserved_version_id?: string;
+          safe_filename?: string;
+          scan_completed_at?: string | null;
+          scan_provider?: string | null;
+          sha256?: string;
+          size_bytes?: number;
+          state?: string;
+          storage_path?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'document_upload_company_fk';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'document_upload_employee_fk';
+            columns: ['tenant_id', 'company_id', 'employee_id'];
+            isOneToOne: false;
+            referencedRelation: 'employees';
+            referencedColumns: ['tenant_id', 'company_id', 'id'];
+          },
+          {
+            foreignKeyName: 'document_upload_operations_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'document_upload_request_fk';
+            columns: ['tenant_id', 'company_id', 'request_id'];
+            isOneToOne: false;
+            referencedRelation: 'document_requests';
+            referencedColumns: ['tenant_id', 'company_id', 'id'];
+          },
+        ];
+      };
       document_versions: {
         Row: {
           created_at: string;
@@ -2064,6 +2358,7 @@ export type Database = {
           size_bytes: number;
           storage_path: string;
           tenant_id: string;
+          upload_operation_id: string | null;
           uploaded_by: string | null;
         };
         Insert: {
@@ -2079,6 +2374,7 @@ export type Database = {
           size_bytes: number;
           storage_path: string;
           tenant_id: string;
+          upload_operation_id?: string | null;
           uploaded_by?: string | null;
         };
         Update: {
@@ -2094,6 +2390,7 @@ export type Database = {
           size_bytes?: number;
           storage_path?: string;
           tenant_id?: string;
+          upload_operation_id?: string | null;
           uploaded_by?: string | null;
         };
         Relationships: [
@@ -2117,6 +2414,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'document_versions_upload_operation_fk';
+            columns: ['upload_operation_id', 'tenant_id', 'document_id', 'id'];
+            isOneToOne: false;
+            referencedRelation: 'document_upload_operations';
+            referencedColumns: ['operation_id', 'tenant_id', 'document_id', 'reserved_version_id'];
           },
           {
             foreignKeyName: 'document_versions_uploaded_by_fkey';
@@ -2226,6 +2530,76 @@ export type Database = {
           },
           {
             foreignKeyName: 'documents_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      domain_events: {
+        Row: {
+          actor_id: string | null;
+          causation_id: string | null;
+          company_id: string | null;
+          correlation_id: string;
+          created_at: string;
+          dedupe_key: string;
+          event_type: string;
+          event_version: number;
+          id: string;
+          occurred_at: string;
+          payload: Json;
+          privacy_class: string;
+          tenant_id: string | null;
+        };
+        Insert: {
+          actor_id?: string | null;
+          causation_id?: string | null;
+          company_id?: string | null;
+          correlation_id: string;
+          created_at?: string;
+          dedupe_key: string;
+          event_type: string;
+          event_version: number;
+          id: string;
+          occurred_at: string;
+          payload: Json;
+          privacy_class: string;
+          tenant_id?: string | null;
+        };
+        Update: {
+          actor_id?: string | null;
+          causation_id?: string | null;
+          company_id?: string | null;
+          correlation_id?: string;
+          created_at?: string;
+          dedupe_key?: string;
+          event_type?: string;
+          event_version?: number;
+          id?: string;
+          occurred_at?: string;
+          payload?: Json;
+          privacy_class?: string;
+          tenant_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'domain_events_actor_id_fkey';
+            columns: ['actor_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'domain_events_tenant_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'domain_events_tenant_id_fkey';
             columns: ['tenant_id'];
             isOneToOne: false;
             referencedRelation: 'tenants';
@@ -2545,6 +2919,398 @@ export type Database = {
             columns: ['subject_user_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      event_consumer_registrations: {
+        Row: {
+          consumer_name: string;
+          created_at: string;
+          default_lease_seconds: number;
+          enabled: boolean;
+          event_type: string;
+          event_version: number;
+          max_attempts: number;
+          updated_at: string;
+        };
+        Insert: {
+          consumer_name: string;
+          created_at?: string;
+          default_lease_seconds?: number;
+          enabled?: boolean;
+          event_type: string;
+          event_version: number;
+          max_attempts?: number;
+          updated_at?: string;
+        };
+        Update: {
+          consumer_name?: string;
+          created_at?: string;
+          default_lease_seconds?: number;
+          enabled?: boolean;
+          event_type?: string;
+          event_version?: number;
+          max_attempts?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_consumer_contract_fkey';
+            columns: ['event_type', 'event_version'];
+            isOneToOne: false;
+            referencedRelation: 'event_contract_registrations';
+            referencedColumns: ['event_type', 'event_version'];
+          },
+        ];
+      };
+      event_contract_registrations: {
+        Row: {
+          created_at: string;
+          event_type: string;
+          event_version: number;
+          payload_schema: Json;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_type: string;
+          event_version: number;
+          payload_schema: Json;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_type?: string;
+          event_version?: number;
+          payload_schema?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      event_job_attempts: {
+        Row: {
+          attempt_number: number;
+          effect_reference_hash: string | null;
+          error_category: string | null;
+          error_code: string | null;
+          id: number;
+          job_id: string;
+          lease_token: string | null;
+          occurred_at: string;
+          transition: string;
+          worker_id: string | null;
+        };
+        Insert: {
+          attempt_number: number;
+          effect_reference_hash?: string | null;
+          error_category?: string | null;
+          error_code?: string | null;
+          id?: never;
+          job_id: string;
+          lease_token?: string | null;
+          occurred_at?: string;
+          transition: string;
+          worker_id?: string | null;
+        };
+        Update: {
+          attempt_number?: number;
+          effect_reference_hash?: string | null;
+          error_category?: string | null;
+          error_code?: string | null;
+          id?: never;
+          job_id?: string;
+          lease_token?: string | null;
+          occurred_at?: string;
+          transition?: string;
+          worker_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_job_attempts_job_id_fkey';
+            columns: ['job_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      event_jobs: {
+        Row: {
+          attempts: number;
+          available_at: string;
+          cancelled_at: string | null;
+          consumer_name: string;
+          created_at: string;
+          dead_at: string | null;
+          effect_key: string | null;
+          effect_reference_hash: string | null;
+          event_id: string;
+          id: string;
+          last_error_category: string | null;
+          last_error_code: string | null;
+          lease_expires_at: string | null;
+          lease_owner: string | null;
+          lease_token: string | null;
+          max_attempts: number;
+          replay_of_job_id: string | null;
+          replay_request_id: string | null;
+          state: string;
+          succeeded_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          attempts?: number;
+          available_at?: string;
+          cancelled_at?: string | null;
+          consumer_name: string;
+          created_at?: string;
+          dead_at?: string | null;
+          effect_key?: string | null;
+          effect_reference_hash?: string | null;
+          event_id: string;
+          id?: string;
+          last_error_category?: string | null;
+          last_error_code?: string | null;
+          lease_expires_at?: string | null;
+          lease_owner?: string | null;
+          lease_token?: string | null;
+          max_attempts: number;
+          replay_of_job_id?: string | null;
+          replay_request_id?: string | null;
+          state?: string;
+          succeeded_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          attempts?: number;
+          available_at?: string;
+          cancelled_at?: string | null;
+          consumer_name?: string;
+          created_at?: string;
+          dead_at?: string | null;
+          effect_key?: string | null;
+          effect_reference_hash?: string | null;
+          event_id?: string;
+          id?: string;
+          last_error_category?: string | null;
+          last_error_code?: string | null;
+          lease_expires_at?: string | null;
+          lease_owner?: string | null;
+          lease_token?: string | null;
+          max_attempts?: number;
+          replay_of_job_id?: string | null;
+          replay_request_id?: string | null;
+          state?: string;
+          succeeded_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_jobs_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'domain_events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'event_jobs_replay_of_job_id_fkey';
+            columns: ['replay_of_job_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'event_jobs_replay_request_fkey';
+            columns: ['replay_request_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_replay_requests';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      event_replay_requests: {
+        Row: {
+          id: string;
+          operation_id: string;
+          reason: string;
+          replay_job_id: string;
+          requested_at: string;
+          requested_by: string;
+          source_job_id: string;
+        };
+        Insert: {
+          id: string;
+          operation_id: string;
+          reason: string;
+          replay_job_id: string;
+          requested_at?: string;
+          requested_by: string;
+          source_job_id: string;
+        };
+        Update: {
+          id?: string;
+          operation_id?: string;
+          reason?: string;
+          replay_job_id?: string;
+          requested_at?: string;
+          requested_by?: string;
+          source_job_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_replay_requests_replay_job_fkey';
+            columns: ['replay_job_id'];
+            isOneToOne: true;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'event_replay_requests_requested_by_fkey';
+            columns: ['requested_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'event_replay_requests_source_job_id_fkey';
+            columns: ['source_job_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      event_worker_heartbeats: {
+        Row: {
+          consumer_name: string;
+          created_at: string;
+          heartbeat_at: string;
+          release_version: string;
+          scheduler_owner: string;
+          started_at: string;
+          updated_at: string;
+          worker_id: string;
+          worker_name: string;
+        };
+        Insert: {
+          consumer_name: string;
+          created_at?: string;
+          heartbeat_at: string;
+          release_version: string;
+          scheduler_owner: string;
+          started_at: string;
+          updated_at?: string;
+          worker_id: string;
+          worker_name: string;
+        };
+        Update: {
+          consumer_name?: string;
+          created_at?: string;
+          heartbeat_at?: string;
+          release_version?: string;
+          scheduler_owner?: string;
+          started_at?: string;
+          updated_at?: string;
+          worker_id?: string;
+          worker_name?: string;
+        };
+        Relationships: [];
+      };
+      inbound_destinations: {
+        Row: {
+          company_id: string | null;
+          created_at: string;
+          destination_key_hash: string;
+          enabled: boolean;
+          id: string;
+          provider: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          company_id?: string | null;
+          created_at?: string;
+          destination_key_hash: string;
+          enabled?: boolean;
+          id?: string;
+          provider: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          company_id?: string | null;
+          created_at?: string;
+          destination_key_hash?: string;
+          enabled?: boolean;
+          id?: string;
+          provider?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'inbound_destinations_tenant_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'inbound_destinations_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      inbound_webhook_receipts: {
+        Row: {
+          destination_id: string;
+          error_category: string | null;
+          error_code: string | null;
+          id: string;
+          occurred_at: string;
+          payload_hash: string;
+          processed_at: string | null;
+          provider: string;
+          provider_event_id_hash: string;
+          received_at: string;
+          status: string;
+        };
+        Insert: {
+          destination_id: string;
+          error_category?: string | null;
+          error_code?: string | null;
+          id?: string;
+          occurred_at: string;
+          payload_hash: string;
+          processed_at?: string | null;
+          provider: string;
+          provider_event_id_hash: string;
+          received_at?: string;
+          status?: string;
+        };
+        Update: {
+          destination_id?: string;
+          error_category?: string | null;
+          error_code?: string | null;
+          id?: string;
+          occurred_at?: string;
+          payload_hash?: string;
+          processed_at?: string | null;
+          provider?: string;
+          provider_event_id_hash?: string;
+          received_at?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'inbound_webhook_receipts_destination_id_fkey';
+            columns: ['destination_id'];
+            isOneToOne: false;
+            referencedRelation: 'inbound_destinations';
             referencedColumns: ['id'];
           },
         ];
@@ -5108,6 +5874,264 @@ export type Database = {
       };
     };
     Functions: {
+      _document_access_audit: {
+        Args: {
+          p_actor_id: string;
+          p_classification: string;
+          p_context: Json;
+          p_event: string;
+          p_expires_at: string;
+          p_lifetime_seconds: number;
+          p_phase: string;
+        };
+        Returns: string;
+      };
+      _document_access_business_date: { Args: never; Returns: string };
+      _document_access_context: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_document_id: string;
+          p_lifetime_seconds: number;
+          p_tenant_id: string;
+          p_version_id: string;
+        };
+        Returns: Json;
+      };
+      _document_access_current_pro_credential: {
+        Args: { p_actor_id: string };
+        Returns: boolean;
+      };
+      _document_access_resolve_before_provider_identity: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_document_id: string;
+          p_lifetime_seconds: number;
+          p_tenant_id: string;
+          p_version_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_authorize_before_provider_identity: {
+        Args: {
+          p_company_id: string;
+          p_fence: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_business_date: { Args: never; Returns: string };
+      _document_upload_claim_before_provider_identity: {
+        Args: {
+          p_company_id: string;
+          p_lease_seconds?: number;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_cleanup_audit: {
+        Args: {
+          p_classification: string;
+          p_event: string;
+          r: Database['public']['Tables']['document_upload_operations']['Row'];
+        };
+        Returns: undefined;
+      };
+      _document_upload_cleanup_lock: {
+        Args: {
+          p_company_id: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: {
+          actor_id: string;
+          cleanup_authorized: boolean;
+          cleanup_completed_at: string | null;
+          cleanup_fence: string | null;
+          cleanup_hold: boolean;
+          cleanup_lease_until: string | null;
+          committed_receipt: Json | null;
+          company_id: string;
+          deadline_at: string;
+          doc_type: string;
+          document_id: string;
+          employee_id: string | null;
+          expected_head: string | null;
+          extension: string;
+          finalized_at: string | null;
+          input_document_id: string | null;
+          label: string | null;
+          mime_type: string;
+          object_id: string;
+          operation_id: string;
+          payload_fingerprint: string;
+          prepared_at: string;
+          request_id: string | null;
+          reserved_version_id: string;
+          safe_filename: string;
+          scan_completed_at: string | null;
+          scan_provider: string | null;
+          sha256: string;
+          size_bytes: number;
+          state: string;
+          storage_path: string;
+          tenant_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'document_upload_operations';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      _document_upload_cleanup_unreferenced: {
+        Args: {
+          r: Database['public']['Tables']['document_upload_operations']['Row'];
+        };
+        Returns: undefined;
+      };
+      _document_upload_current_pro_credential: {
+        Args: { p_actor_id: string };
+        Returns: undefined;
+      };
+      _document_upload_finalize_before_cleanup: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_scan_state: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_finalize_before_wallclock_authority: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_scan_state: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_lock_authority: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_employee_id: string;
+          p_request_id: string;
+          p_tenant_id: string;
+        };
+        Returns: undefined;
+      };
+      _document_upload_lock_resource: {
+        Args: {
+          p_allow_fulfilled: boolean;
+          p_company_id: string;
+          p_doc_type: string;
+          p_document_id: string;
+          p_employee_id: string;
+          p_request_id: string;
+          p_tenant_id: string;
+        };
+        Returns: {
+          company_id: string;
+          created_at: string;
+          current_version_id: string | null;
+          doc_type: string;
+          employee_id: string | null;
+          expires_on: string | null;
+          id: string;
+          label: string | null;
+          request_id: string | null;
+          tenant_id: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'documents';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      _document_upload_prepare_before_provider_identity: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_doc_type: string;
+          p_document_id: string;
+          p_employee_id: string;
+          p_expected_head: string;
+          p_extension: string;
+          p_label: string;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_request_id: string;
+          p_safe_filename: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_prepare_before_wallclock_authority: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_doc_type: string;
+          p_document_id: string;
+          p_employee_id: string;
+          p_expected_head: string;
+          p_extension: string;
+          p_label: string;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_request_id: string;
+          p_safe_filename: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_provider_identity: {
+        Args: {
+          r: Database['public']['Tables']['document_upload_operations']['Row'];
+        };
+        Returns: Json;
+      };
+      _document_upload_receipt_before_wallclock_authority: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      _document_upload_reconcile_before_provider_identity: {
+        Args: {
+          p_company_id: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       activate_company_onboarding: {
         Args: {
           p_actor_id: string;
@@ -5186,6 +6210,15 @@ export type Database = {
         };
         Returns: undefined;
       };
+      authorize_document_upload_cleanup: {
+        Args: {
+          p_company_id: string;
+          p_fence: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       authorize_pro_company_access: {
         Args: { p_actor_id: string; p_company_id?: string; p_tenant_id: string };
         Returns: boolean;
@@ -5208,9 +6241,60 @@ export type Database = {
         };
         Returns: Json;
       };
+      can_read_document_metadata: {
+        Args: {
+          p_company_id: string;
+          p_doc_type: string;
+          p_employee_id: string;
+          p_request_id: string;
+          p_tenant_id: string;
+        };
+        Returns: boolean;
+      };
+      cancel_event_job: {
+        Args: { p_error_code: string; p_job_id: string };
+        Returns: boolean;
+      };
       catalog_version_is_public: {
         Args: { p_version_id: string };
         Returns: boolean;
+      };
+      claim_document_upload_cleanup: {
+        Args: {
+          p_company_id: string;
+          p_lease_seconds?: number;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      claim_event_jobs: {
+        Args: {
+          p_batch_size?: number;
+          p_consumer_name: string;
+          p_lease_seconds?: number;
+          p_worker_id: string;
+        };
+        Returns: {
+          actor_id: string;
+          attempt_number: number;
+          causation_id: string;
+          company_id: string;
+          consumer_name: string;
+          correlation_id: string;
+          effect_key: string;
+          event_id: string;
+          event_type: string;
+          event_version: number;
+          job_id: string;
+          lease_expires_at: string;
+          lease_token: string;
+          max_attempts: number;
+          occurred_at: string;
+          payload: Json;
+          privacy_class: string;
+          tenant_id: string;
+        }[];
       };
       claim_pro_credential_evidence_removal_recovery: {
         Args: {
@@ -5245,9 +6329,28 @@ export type Database = {
         };
         Returns: Json;
       };
+      complete_document_upload_cleanup: {
+        Args: {
+          p_company_id: string;
+          p_deleted: boolean;
+          p_fence: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       complete_erasure_cleanup: {
         Args: { p_actor_id: string; p_request_id: string; p_tenant_id: string };
         Returns: Json;
+      };
+      complete_event_job: {
+        Args: {
+          p_effect_reference_hash?: string;
+          p_job_id: string;
+          p_lease_token: string;
+          p_worker_id: string;
+        };
+        Returns: boolean;
       };
       compute_notify_at: {
         Args: { due: string; renewal_type: string };
@@ -5275,6 +6378,16 @@ export type Database = {
           p_tenant_id: string;
         };
         Returns: string;
+      };
+      create_document_request_batch: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_items: Json;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
       };
       create_pro_commercial_term_draft: {
         Args: {
@@ -5357,6 +6470,61 @@ export type Database = {
         Args: { p_company_id?: string; p_pro_profile_id: string };
         Returns: Json;
       };
+      event_payload_is_safe: { Args: { p_payload: Json }; Returns: boolean };
+      event_payload_matches_schema: {
+        Args: { p_payload: Json; p_schema: Json };
+        Returns: boolean;
+      };
+      extend_event_job_lease: {
+        Args: {
+          p_job_id: string;
+          p_lease_seconds: number;
+          p_lease_token: string;
+          p_worker_id: string;
+        };
+        Returns: string;
+      };
+      fail_event_job: {
+        Args: {
+          p_error_category: string;
+          p_error_code: string;
+          p_job_id: string;
+          p_lease_token: string;
+          p_retryable: boolean;
+          p_worker_id: string;
+        };
+        Returns: string;
+      };
+      finalize_document_access_grant: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_document_id: string;
+          p_expected_operation_id: string;
+          p_expected_sha256: string;
+          p_lifetime_seconds: number;
+          p_provider_expires_at: string;
+          p_tenant_id: string;
+          p_version_id: string;
+        };
+        Returns: Json;
+      };
+      finalize_document_upload: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_scan_completed_at: string;
+          p_scan_provider: string;
+          p_scan_state: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       finalize_pro_credential_evidence_removal: {
         Args: {
           p_actor_id: string;
@@ -5400,6 +6568,15 @@ export type Database = {
         Args: { p_recovery_operation_id: string; p_reservation_id: string };
         Returns: Json;
       };
+      get_document_upload_receipt: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       get_pro_document_version_history: {
         Args: { p_document_id: string; p_tenant_id: string };
         Returns: Json;
@@ -5421,6 +6598,16 @@ export type Database = {
         Args: { p_url: string };
         Returns: boolean;
       };
+      list_admin_document_center: {
+        Args: {
+          p_doc_type: string;
+          p_page: number;
+          p_page_size: number;
+          p_search: string;
+          p_state: string;
+        };
+        Returns: Json;
+      };
       list_company_payment_invoices: {
         Args: {
           p_company_id: string;
@@ -5432,6 +6619,10 @@ export type Database = {
           p_today?: string;
           p_view: string;
         };
+        Returns: Json;
+      };
+      list_document_upload_cleanup_candidates: {
+        Args: { p_company_id: string; p_limit?: number; p_tenant_id: string };
         Returns: Json;
       };
       list_eligible_pros_for_company: {
@@ -5607,6 +6798,26 @@ export type Database = {
           refund_status: string;
         }[];
       };
+      prepare_document_upload: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_doc_type: string;
+          p_document_id: string;
+          p_employee_id: string;
+          p_expected_head: string;
+          p_extension: string;
+          p_label: string;
+          p_mime_type: string;
+          p_operation_id: string;
+          p_request_id: string;
+          p_safe_filename: string;
+          p_sha256: string;
+          p_size_bytes: number;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       prepare_erasure_cleanup: {
         Args: {
           p_actor_id: string;
@@ -5677,6 +6888,23 @@ export type Database = {
         };
         Returns: Json;
       };
+      publish_domain_event: {
+        Args: {
+          p_actor_id: string;
+          p_causation_id: string;
+          p_company_id: string;
+          p_correlation_id: string;
+          p_dedupe_key: string;
+          p_event_id: string;
+          p_event_type: string;
+          p_event_version: number;
+          p_occurred_at: string;
+          p_payload: Json;
+          p_privacy_class: string;
+          p_tenant_id: string;
+        };
+        Returns: string;
+      };
       raise_pro_assignment_eligibility_error: {
         Args: { p_result: Json };
         Returns: undefined;
@@ -5708,6 +6936,10 @@ export type Database = {
       };
       read_current_company_assignment_summary: {
         Args: { p_actor_id: string; p_company_id: string };
+        Returns: Json;
+      };
+      read_event_queue_health: {
+        Args: { p_consumer_name?: string };
         Returns: Json;
       };
       read_pro_commercial_terms: {
@@ -5801,6 +7033,14 @@ export type Database = {
           refund_status: string;
         }[];
       };
+      reconcile_document_upload_cleanup: {
+        Args: {
+          p_company_id: string;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       record_company_onboarding_operation: {
         Args: {
           p_committed_version: number;
@@ -5812,6 +7052,17 @@ export type Database = {
           p_tenant_id: string;
         };
         Returns: undefined;
+      };
+      record_event_worker_heartbeat: {
+        Args: {
+          p_consumer_name: string;
+          p_release_version: string;
+          p_scheduler_owner: string;
+          p_started_at: string;
+          p_worker_id: string;
+          p_worker_name: string;
+        };
+        Returns: boolean;
       };
       register_pro_credential_evidence: {
         Args: {
@@ -5888,15 +7139,53 @@ export type Database = {
         };
         Returns: Json;
       };
+      request_event_job_replay: {
+        Args: {
+          p_operation_id: string;
+          p_reason: string;
+          p_source_job_id: string;
+        };
+        Returns: string;
+      };
+      reserve_inbound_webhook: {
+        Args: {
+          p_destination_key_hash: string;
+          p_occurred_at: string;
+          p_payload_hash: string;
+          p_provider: string;
+          p_provider_event_id_hash: string;
+          p_signature_verified: boolean;
+        };
+        Returns: {
+          company_id: string;
+          destination_id: string;
+          receipt_id: string;
+          tenant_id: string;
+        }[];
+      };
       reserve_mfa_factor_removal: {
         Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
         Returns: boolean;
       };
+      resolve_document_access: {
+        Args: {
+          p_actor_id: string;
+          p_company_id: string;
+          p_document_id: string;
+          p_lifetime_seconds: number;
+          p_tenant_id: string;
+          p_version_id: string;
+        };
+        Returns: Json;
+      };
       review_document_version: {
         Args: {
           p_actor_id: string;
+          p_company_id: string;
+          p_document_id: string;
+          p_expected_head_version_id: string;
+          p_expected_review_status: string;
           p_note: string;
-          p_reviewed_at: string;
           p_status: string;
           p_tenant_id: string;
           p_version_id: string;
@@ -5906,6 +7195,7 @@ export type Database = {
           document_id: string;
           fulfilled_request_id: string;
           review_status: string;
+          reviewed_at: string;
         }[];
       };
       revoke_all_user_auth_sessions: {
@@ -6030,10 +7320,22 @@ export type Database = {
         };
         Returns: Json;
       };
+      set_document_upload_cleanup_hold: {
+        Args: {
+          p_company_id: string;
+          p_held: boolean;
+          p_operation_id: string;
+          p_tenant_id: string;
+        };
+        Returns: Json;
+      };
       set_pro_document_expiry: {
         Args: {
           p_actor_id: string;
+          p_company_id: string;
           p_document_id: string;
+          p_expected_expires_on: string;
+          p_expected_head_version_id: string;
           p_expires_on: string;
           p_tenant_id: string;
         };

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { MULTIPART_BODY_ENVELOPE_BYTES } from '@/app/api/v1/_shared/bounded-body';
@@ -23,6 +24,7 @@ test('credential evidence route is statically pinned to the private-only scanner
     'utf8',
   );
   assert.match(source, /scanFilePrivate/u);
+  assert.match(source, /validateCredentialDocumentUpload/u);
   assert.doesNotMatch(source, /\.scanFile\(bytes/u);
 });
 
@@ -158,7 +160,11 @@ test('evidence upload rejects oversized, dirty, mismatched and malware files bef
       stored += 1;
       return 'stored' as const;
     },
-    readExisting: async () => ({ bytes: new Uint8Array(), mime: null }),
+    readExisting: async () => ({
+      status: 'found' as const,
+      bytes: new Uint8Array(),
+      mime: null,
+    }),
     finalize: async () => ({ credentialId: C }) as never,
     revalidate: () => undefined,
     now: () => new Date('2026-08-22T00:00:00.000Z'),
@@ -248,7 +254,7 @@ test('evidence upload scans before private storage and registers a stable retry 
       path = p;
       return 'stored';
     },
-    readExisting: async () => ({ bytes: new Uint8Array(), mime: null }),
+    readExisting: async () => ({ status: 'found', bytes: new Uint8Array(), mime: null }),
     finalize: async () => {
       calls.push('mutation');
       return publicCredential();
@@ -471,7 +477,11 @@ test('crash after upload leaves a retryable artifact and an identical retry reus
       artifact = bytes;
       return 'stored';
     },
-    readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
+    readExisting: async () => ({
+      status: 'found',
+      bytes: artifact!,
+      mime: 'application/pdf',
+    }),
     finalize: async () => {
       calls.push('register');
       if (registrations++ === 0) throw new Error('private crash after upload');
@@ -515,7 +525,11 @@ test('two identical concurrent retries share create-only bytes and both reach id
       artifact = bytes;
       return 'stored';
     },
-    readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
+    readExisting: async () => ({
+      status: 'found',
+      bytes: artifact!,
+      mime: 'application/pdf',
+    }),
     finalize: async () => {
       registrations += 1;
       return publicCredential();
@@ -553,7 +567,7 @@ test('same operation with different bytes conflicts without registration or dele
     scan: async () => ({ clean: true, provider: 'test' }),
     reserve: async () => preparedReservation(),
     store: async () => 'exists',
-    readExisting: async () => ({ bytes: existing, mime: 'application/pdf' }),
+    readExisting: async () => ({ status: 'found', bytes: existing, mime: 'application/pdf' }),
     finalize: async () => {
       registrations += 1;
       return publicCredential();
@@ -588,7 +602,7 @@ test('same operation fails closed when stored MIME metadata is missing', async (
     scan: async () => ({ clean: true, provider: 'test' }),
     reserve: async () => preparedReservation(),
     store: async () => 'exists',
-    readExisting: async () => ({ bytes: existing, mime: null }),
+    readExisting: async () => ({ status: 'found', bytes: existing, mime: null }),
     finalize: async () => {
       registrations += 1;
       return publicCredential();
@@ -628,7 +642,11 @@ test('ambiguous post-commit error leaves bytes untouched and retry reaches DB re
       artifact = bytes;
       return 'stored';
     },
-    readExisting: async () => ({ bytes: artifact!, mime: 'application/pdf' }),
+    readExisting: async () => ({
+      status: 'found',
+      bytes: artifact!,
+      mime: 'application/pdf',
+    }),
     erase: async () => {
       erasures += 1;
     },
@@ -760,6 +778,11 @@ test('completed reservation replay returns without storage or finalization', asy
     inspectFile: async () => ({ mime: 'application/pdf' }),
     scan: async () => ({ clean: true, provider: 'clamav' }),
     reserve: async () => ({ status: 'complete', credential: publicCredential() }),
+    readExisting: async () => ({
+      status: 'found',
+      bytes: new TextEncoder().encode('%PDF-'),
+      mime: 'application/pdf',
+    }),
     store: async () => {
       stored += 1;
       return 'stored';
@@ -779,6 +802,107 @@ test('completed reservation replay returns without storage or finalization', asy
   assert.equal(stored, 0);
   assert.equal(finalized, 0);
 });
+
+for (const [label, readExisting] of [
+  ['missing', async () => ({ status: 'missing' as const })],
+  [
+    'corrupt',
+    async () => ({
+      status: 'found' as const,
+      bytes: new TextEncoder().encode('%PDF-corrupt'),
+      mime: 'application/pdf',
+    }),
+  ],
+  [
+    'MIME-changed',
+    async () => ({
+      status: 'found' as const,
+      bytes: new TextEncoder().encode('%PDF-'),
+      mime: 'image/png',
+    }),
+  ],
+] as const) {
+  test(`completed reservation replay fails closed when the provider object is ${label}`, async () => {
+    let stored = 0;
+    let finalized = 0;
+    const handler = createEvidencePostHandler({
+      guardCsrf: async () => null,
+      requirePro: async () => ({
+        id: A,
+        role: 'pro',
+        tenantId: A,
+        aal: 'aal2',
+        mfaEnrolled: true,
+        email: null,
+      }),
+      resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+      limit: async () => 'allowed',
+      inspectFile: async (bytes) => ({
+        mime: 'application/pdf',
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      }),
+      scan: async () => ({ clean: true, provider: 'clamav' }),
+      reserve: async () => ({ status: 'complete', credential: publicCredential() }),
+      readExisting,
+      store: async () => {
+        stored += 1;
+        return 'stored';
+      },
+      finalize: async () => {
+        finalized += 1;
+        return publicCredential();
+      },
+      revalidate: () => undefined,
+      now: () => new Date('2026-08-26T10:00:00.000Z'),
+    });
+
+    const response = await handler(
+      upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' })),
+    );
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).code, 'OPERATION_REUSED');
+    assert.equal(stored, 0);
+    assert.equal(finalized, 0);
+  });
+}
+
+for (const [label, readExisting, uploadTimeoutMs] of [
+  ['provider failure', async () => ({ status: 'unavailable' as const }), 120_000],
+  ['provider timeout', async () => new Promise<never>(() => undefined), 10],
+] as const) {
+  test(`completed reservation replay returns retryable 503 on ${label}`, async () => {
+    const handler = createEvidencePostHandler({
+      guardCsrf: async () => null,
+      requirePro: async () => ({
+        id: A,
+        role: 'pro',
+        tenantId: A,
+        aal: 'aal2',
+        mfaEnrolled: true,
+        email: null,
+      }),
+      resolveTarget: async () => ({ proProfileId: A, credentialIds: [C] }),
+      limit: async () => 'allowed',
+      inspectFile: async (bytes) => ({
+        mime: 'application/pdf',
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      }),
+      scan: async () => ({ clean: true, provider: 'clamav' }),
+      reserve: async () => ({ status: 'complete', credential: publicCredential() }),
+      readExisting,
+      uploadTimeoutMs,
+      revalidate: () => undefined,
+      now: () => new Date('2026-08-26T10:00:00.000Z'),
+    });
+    const response = await Promise.race([
+      handler(upload(new File(['%PDF-'], 'proof.pdf', { type: 'application/pdf' }))),
+      new Promise<'unbounded'>((resolve) => setTimeout(() => resolve('unbounded'), 100)),
+    ]);
+    if (response === 'unbounded') assert.fail('provider read was not bounded');
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).code, 'SERVICE_UNAVAILABLE');
+  });
+}
 
 test('upload reservation conflicts return sanitized route-level 409 codes before storage', async () => {
   for (const code of ['EVIDENCE_UPLOAD_IN_PROGRESS', 'EVIDENCE_UPLOAD_RESERVATION_LOST']) {

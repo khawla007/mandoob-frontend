@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 
 const container = process.env.P303_TEST_DB_CONTAINER;
-assert.equal(container, 'supabase_db_mandoob-p303-QHFx6rlv', 'Exact dedicated database required');
+const approvedContainer =
+  container === 'supabase_db_mandoob-p303-QHFx6rlv' ||
+  (process.env.P303_ALLOW_COMBINED_FIXTURE === '1' &&
+    /^supabase_db_mandoob-p303-combined-[A-Za-z0-9]+$/.test(container ?? ''));
+assert.equal(approvedContainer, true, 'Exact dedicated database required');
 const id = (n) => `95050000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const actorA = id(1),
   actorB = id(2),
@@ -120,7 +124,31 @@ async function contend(label, first, second, secondStale) {
 }
 function cleanCompany() {
   sql(
-    `delete from public.pro_company_assignments where company_id='${company}' and pro_profile_id='${pro}'; update public.profiles set tenant_id=null where id='${pro}'; delete from public.tenant_audit_log where tenant_id='${tenant}'; delete from public.company_profiles where id='${company}'; delete from public.tenants where id='${tenant}';`,
+    `begin;
+     set constraints all deferred;
+     alter table public.event_job_attempts disable trigger event_job_attempts_immutable;
+     alter table public.event_replay_requests disable trigger event_replay_requests_immutable;
+     alter table public.domain_events disable trigger domain_events_immutable;
+     update public.event_jobs set replay_request_id=null where event_id in
+       (select id from public.domain_events where tenant_id='${tenant}' and company_id='${company}');
+     delete from public.event_job_attempts where job_id in
+       (select id from public.event_jobs where event_id in
+         (select id from public.domain_events where tenant_id='${tenant}' and company_id='${company}'));
+     delete from public.event_replay_requests where source_job_id in
+       (select id from public.event_jobs where event_id in
+         (select id from public.domain_events where tenant_id='${tenant}' and company_id='${company}'));
+     delete from public.event_jobs where event_id in
+       (select id from public.domain_events where tenant_id='${tenant}' and company_id='${company}');
+     delete from public.domain_events where tenant_id='${tenant}' and company_id='${company}';
+     alter table public.event_job_attempts enable trigger event_job_attempts_immutable;
+     alter table public.event_replay_requests enable trigger event_replay_requests_immutable;
+     alter table public.domain_events enable trigger domain_events_immutable;
+     delete from public.pro_company_assignments where company_id='${company}' and pro_profile_id='${pro}';
+     update public.profiles set tenant_id=null where id='${pro}';
+     delete from public.tenant_audit_log where tenant_id='${tenant}';
+     delete from public.company_profiles where id='${company}';
+     delete from public.tenants where id='${tenant}';
+     commit;`,
   );
 }
 function setupCompany() {
@@ -154,6 +182,7 @@ assert.equal(
     (select count(*) from public.pro_company_assignments where company_id='${company}' or pro_profile_id='${pro}') +
     (select count(*) from public.company_onboarding_operations where company_id='${company}') +
     (select count(*) from public.tenant_audit_log where tenant_id='${tenant}') +
+    (select count(*) from public.domain_events where tenant_id='${tenant}' or company_id='${company}') +
     (select count(*) from pg_stat_activity where application_name in ('p303-independent-a','p303-independent-b'));`),
   '0',
   'Reserved fixture/worker collision: refusing setup and cleanup',

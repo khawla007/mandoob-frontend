@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- CommonJS preload intercepts require before the runtime test loads the component. */
 const Module = require('node:module');
 const requireFromProject = Module.createRequire(process.cwd() + '/package.json');
 const React = requireFromProject('react');

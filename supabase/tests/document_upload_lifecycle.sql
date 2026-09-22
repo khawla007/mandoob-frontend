@@ -336,7 +336,13 @@ select pg_temp.uid(1043),actor_id,tenant_id,company_id,pg_temp.uid(1044),'cv_res
   mime_type,extension,size_bytes,sha256,safe_filename,
   timestamp with time zone '2000-01-01T00:00:00Z',timestamp with time zone '2000-01-01T00:15:00Z'
 from public.document_upload_operations where operation_id=pg_temp.uid(1000);
-select pg_temp.object(1043);
+do $$
+begin
+  perform pg_temp.object(1043);
+  raise exception 'EXPIRED_RESERVATION_OBJECT_CREATE_ACCEPTED';
+exception when sqlstate 'DU409' then null;
+end;
+$$;
 select pg_temp.reject_finish(4,1043,jsonb_build_object('scanned','2000-01-01T00:01:00Z'),'DU410');
 
 create function pg_temp.reject_audit() returns trigger language plpgsql as $$
