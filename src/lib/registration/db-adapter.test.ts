@@ -225,55 +225,83 @@ test('customer loader redacts documents to approved-only and pro/customer differ
   assert.doesNotThrow(() => validateVisaPerson(state.value.visaPeople[0]));
 });
 
-test('employee scope drops documents and restricts to its own visa person key', async () => {
-  const { loadVisaPresentation } = await import('./db-adapter');
-  const customerRead = {
-    registrationId,
+// The employee visa RPC returns EXACTLY the actor's own visa person, keyed by
+// the registration_visa_people row id (not an ordinal). These fixtures model the
+// wrapped single-person receipt for two different employees in the same company.
+const OWN_VISA_PERSON_ID = 'e1e1e1e1-e1e1-4e1e-8e1e-e1e1e1e1e1e1';
+const OTHER_VISA_PERSON_ID = 'e2e2e2e2-e2e2-4e2e-8e2e-e2e2e2e2e2e2';
+const employeeActor = {
+  role: 'employee' as const,
+  actorId: proActor.actorId,
+  tenantId: proActor.tenantId,
+  companyId: proActor.companyId,
+};
+
+const ownEmployeeRead = {
+  registrationId,
+  generatedAt,
+  visaPerson: {
+    visaPersonId: OWN_VISA_PERSON_ID,
+    displayName: 'Own Employee',
+    personKind: 'employee',
+    visaKind: 'employee',
     status: 'in_progress',
-    currentStage: 'visa_processing',
-    completedStages: 4,
-    totalStages: 7,
-    generatedAt,
-    stages: proRead.stages.map((s) => ({
-      code: s.code,
-      ordinal: s.ordinal,
-      status: s.status,
-      startedAt: s.startedAt,
-      completedAt: s.completedAt,
-    })),
-    documents: [],
-    visaProgress: [
-      {
-        displayName: 'Own Employee',
-        personKind: 'employee',
-        visaKind: 'employee',
-        status: 'in_progress',
-        currentStage: 'documents_ready',
-      },
-    ],
-  };
-  const supabase = fakeSupabase({ data: customerRead, error: null });
-  const ownKey = `${registrationId}:visa:0`;
-  const state = await loadVisaPresentation(
-    registrationId,
-    { role: 'employee', actorId: proActor.actorId, employeeVisaPersonKey: ownKey },
-    { supabase },
-  );
+    currentStage: 'documents_ready',
+  },
+};
+
+const otherEmployeeRead = {
+  registrationId,
+  generatedAt,
+  visaPerson: {
+    visaPersonId: OTHER_VISA_PERSON_ID,
+    displayName: 'Second Employee',
+    personKind: 'employee',
+    visaKind: 'employee',
+    status: 'blocked',
+    currentStage: 'entry_permit',
+  },
+};
+
+test('SECURITY: employee visa read yields ONLY the actor own person keyed by the row id', async () => {
+  const { loadVisaPresentation } = await import('./db-adapter');
+  const supabase = fakeSupabase({ data: ownEmployeeRead, error: null });
+  const state = await loadVisaPresentation(registrationId, employeeActor, { supabase });
   assert.equal(state.kind, 'ready');
   if (state.kind !== 'ready') return;
   assert.equal(state.value.length, 1);
-  assert.equal(state.value[0].key, ownKey);
+  // Key is the registration_visa_people row id, NOT `${registrationId}:visa:0`.
+  assert.equal(state.value[0].key, OWN_VISA_PERSON_ID);
+  assert.notEqual(state.value[0].key, `${registrationId}:visa:0`);
+  assert.equal(state.value[0].displayName, 'Own Employee');
+  // Employee path routes through the dedicated employee-scoped RPC.
+  assert.equal(supabase.calls[0].name, 'read_employee_visa_person');
+  assert.equal(supabase.calls[0].args.p_actor_id, proActor.actorId);
+  assert.equal(supabase.calls[0].args.p_registration_id, registrationId);
+});
 
-  // A non-matching key redacts everyone out.
-  const supabase2 = fakeSupabase({ data: customerRead, error: null });
-  const empty = await loadVisaPresentation(
-    registrationId,
-    { role: 'employee', actorId: proActor.actorId, employeeVisaPersonKey: 'no-match' },
-    { supabase: supabase2 },
-  );
-  assert.equal(empty.kind, 'ready');
-  if (empty.kind !== 'ready') return;
-  assert.equal(empty.value.length, 0);
+test('SECURITY: a DIFFERENT employee sees a DIFFERENT (their own) visa person', async () => {
+  const { loadVisaPresentation } = await import('./db-adapter');
+  const supabase = fakeSupabase({ data: otherEmployeeRead, error: null });
+  const state = await loadVisaPresentation(registrationId, employeeActor, { supabase });
+  assert.equal(state.kind, 'ready');
+  if (state.kind !== 'ready') return;
+  assert.equal(state.value.length, 1);
+  assert.equal(state.value[0].key, OTHER_VISA_PERSON_ID);
+  assert.equal(state.value[0].displayName, 'Second Employee');
+  // The two employees resolve to distinct own persons — no shared person[0].
+  assert.notEqual(OTHER_VISA_PERSON_ID, OWN_VISA_PERSON_ID);
+});
+
+test('employee with no own visa person fails closed to visa-unavailable', async () => {
+  const { loadVisaPresentation } = await import('./db-adapter');
+  // The RPC raises REGISTRATION_NOT_FOUND when the actor has no own visa person.
+  const supabase = fakeSupabase({
+    data: null,
+    error: { message: 'REGISTRATION_NOT_FOUND', code: 'P0001' },
+  });
+  const state = await loadVisaPresentation(registrationId, employeeActor, { supabase });
+  assert.deepEqual(state, { kind: 'unavailable', reason: 'visa_contract_unavailable' });
 });
 
 test('a forbidden/not-found source fails closed to contract-unavailable', async () => {
@@ -312,4 +340,104 @@ test('the index loader returns empty for no ids and aggregates ready presentatio
   assert.equal(state.kind, 'ready');
   if (state.kind !== 'ready') return;
   assert.equal(state.value.length, 1);
+});
+
+const operatorContext = { role: 'operator' as const, actorId: proActor.actorId, actorAal: 'aal2' };
+
+const adminIndexRow = {
+  registrationId,
+  tenantId: proActor.tenantId,
+  companyId: proActor.companyId,
+  companyName: 'Acme FZ',
+  proName: 'Sara PRO',
+  title: 'New LLC',
+  status: 'in_progress',
+  currentStage: 'application_submitted',
+  completedStages: 1,
+  totalStages: 7,
+  registrationVersion: 2,
+  updatedAt: generatedAt,
+};
+
+test('loadAdminRegistrationIndex maps ready summary rows with total/page/pageSize', async () => {
+  const { loadAdminRegistrationIndex } = await import('./db-adapter');
+  const supabase = fakeSupabase({
+    data: { items: [adminIndexRow], total: 42, page: 2, pageSize: 20 },
+    error: null,
+  });
+  const state = await loadAdminRegistrationIndex(
+    operatorContext,
+    { company: null, pro: null, stage: null, status: null, page: 2 },
+    { supabase },
+  );
+  assert.equal(state.kind, 'ready');
+  if (state.kind !== 'ready') return;
+  assert.equal(state.total, 42);
+  assert.equal(state.page, 2);
+  assert.equal(state.pageSize, 20);
+  assert.equal(state.value.length, 1);
+  assert.equal(state.value[0].companyName, 'Acme FZ');
+  assert.equal(supabase.calls[0].name, 'read_admin_registration_index');
+  assert.equal(supabase.calls[0].args.p_actor_aal, 'aal2');
+});
+
+test('loadAdminRegistrationIndex returns empty with paging when there are no rows', async () => {
+  const { loadAdminRegistrationIndex } = await import('./db-adapter');
+  const supabase = fakeSupabase({
+    data: { items: [], total: 0, page: 1, pageSize: 20 },
+    error: null,
+  });
+  const state = await loadAdminRegistrationIndex(
+    operatorContext,
+    { company: null, pro: null, stage: null, status: null, page: 1 },
+    { supabase },
+  );
+  assert.deepEqual(state, { kind: 'empty', page: 1, pageSize: 20 });
+});
+
+test('loadAdminRegistrationIndex fails closed to unavailable on a forbidden read', async () => {
+  const { loadAdminRegistrationIndex } = await import('./db-adapter');
+  const supabase = fakeSupabase({ data: null, error: { message: 'FORBIDDEN', code: '42501' } });
+  const state = await loadAdminRegistrationIndex(
+    operatorContext,
+    { company: null, pro: null, stage: null, status: null, page: 1 },
+    { supabase },
+  );
+  assert.deepEqual(state, { kind: 'unavailable', reason: 'registration_contract_unavailable' });
+});
+
+test('loadAdminRegistrationIndex surfaces an unexpected source error', async () => {
+  const { loadAdminRegistrationIndex } = await import('./db-adapter');
+  const supabase = fakeSupabase({ data: null, error: { message: 'boom', code: 'XX000' } });
+  const state = await loadAdminRegistrationIndex(
+    operatorContext,
+    { company: null, pro: null, stage: null, status: null, page: 1 },
+    { supabase },
+  );
+  assert.deepEqual(state, { kind: 'error', code: 'source_error' });
+});
+
+test('SECURITY: in a MULTI-person company the employee sees ONLY their own person, not person[0]', async () => {
+  const { loadVisaPresentation } = await import('./db-adapter');
+  // The company has several visa people. The employee-scoped RPC is keyed by the
+  // actor's own employee_id, so it returns EXACTLY the actor's own person — even
+  // when that person is not the first-created (person[0]) row. The old ordinal
+  // heuristic would have surfaced person[0]; this must not.
+  const supabase = fakeSupabase({ data: otherEmployeeRead, error: null });
+  const state = await loadVisaPresentation(registrationId, employeeActor, { supabase });
+  assert.equal(state.kind, 'ready');
+  if (state.kind !== 'ready') return;
+  // Exactly one person, and it is the actor's own (keyed by the row id).
+  assert.equal(state.value.length, 1);
+  assert.equal(state.value[0].key, OTHER_VISA_PERSON_ID);
+  assert.equal(state.value[0].displayName, 'Second Employee');
+  // No other person from the company leaked, and it is NOT the ordinal person[0].
+  assert.equal(
+    state.value.some((p) => p.displayName === 'Own Employee'),
+    false,
+  );
+  assert.equal(
+    state.value.some((p) => p.key === `${registrationId}:visa:0`),
+    false,
+  );
 });

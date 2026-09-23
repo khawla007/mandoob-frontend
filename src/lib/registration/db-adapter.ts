@@ -21,14 +21,19 @@ import {
   loadVisaPresentation as unavailableVisa,
 } from './unavailable-adapter';
 import {
+  readAdminRegistrationIndex,
   readCustomerRegistration,
+  readEmployeeVisaPerson,
   readOperatorRegistration,
   readProRegistration,
+  type AdminRegistrationIndexRow,
   type CustomerRegistrationRead,
+  type EmployeeVisaPersonRead,
   type OperatorRegistrationRead,
   type ProRegistrationRead,
   type RegistrationWorkflowDeps,
 } from '@/lib/data/registration-workflow';
+import type { AdminRegistrationIndexQueryInput } from '@/lib/validation/registration-workflow';
 
 // ---------------------------------------------------------------------------
 // Role scoping. Each loader takes a role/context param so redaction is applied
@@ -55,8 +60,8 @@ export type CustomerLoaderContext = {
 export type EmployeeLoaderContext = {
   role: 'employee';
   actorId: string;
-  // Restricts the visa presentation to this employee's own person row.
-  employeeVisaPersonKey: string;
+  tenantId: string;
+  companyId: string;
 };
 export type RegistrationLoaderContext =
   | ProLoaderContext
@@ -235,14 +240,9 @@ function operatorPresentation(read: OperatorRegistrationRead): RegistrationPrese
   };
 }
 
-// Customer/employee scope: drop bank_account stage timestamps beyond status,
-// drop protected identifiers, and drop other-people documents entirely. The
+// Customer scope: drop protected identifiers and other-people documents. The
 // customer read RPC already omits operator notes and unapproved evidence.
-function customerPresentation(
-  read: CustomerRegistrationRead,
-  scope: 'customer' | 'employee',
-  employeeVisaPersonKey?: string,
-): RegistrationPresentation {
+function customerPresentation(read: CustomerRegistrationRead): RegistrationPresentation {
   const stages = buildStages(
     read.stages.map((stage) => ({
       code: stage.code,
@@ -251,24 +251,19 @@ function customerPresentation(
       completedAt: stage.completedAt,
     })),
   );
-  const documents =
-    scope === 'employee'
-      ? []
-      : mapDocuments(
-          read.documents.map((doc) => ({
-            linkId: doc.evidenceId,
-            documentType: doc.role,
-            displayLabel: doc.label,
-            // Customer-facing evidence is always approved (RPC filter); mark it.
-            reviewStatus: 'approved',
-            versionTimestamp: doc.linkedAt,
-          })),
-        );
+  const documents = mapDocuments(
+    read.documents.map((doc) => ({
+      linkId: doc.evidenceId,
+      documentType: doc.role,
+      displayLabel: doc.label,
+      // Customer-facing evidence is always approved (RPC filter); mark it.
+      reviewStatus: 'approved',
+      versionTimestamp: doc.linkedAt,
+    })),
+  );
   // Customer read visa rows carry no person id; synthesize a stable key from
-  // ordinal position. Employees are restricted to their own person key upstream
-  // (the RPC/RLS already returns only the employee's own row), so redact to the
-  // matching key when provided.
-  let visaPeople = read.visaProgress.map((person, index) =>
+  // ordinal position. The customer is authorized to see every visible person.
+  const visaPeople = read.visaProgress.map((person, index) =>
     buildVisaPerson({
       visaPersonId: `${read.registrationId}:visa:${index}`,
       displayName: person.displayName,
@@ -277,15 +272,34 @@ function customerPresentation(
       currentStage: person.currentStage,
     }),
   );
-  if (scope === 'employee' && employeeVisaPersonKey) {
-    visaPeople = visaPeople.filter((person) => person.key === employeeVisaPersonKey);
-  }
   return {
     stages,
     currentBlocker: null,
     nextAction: null,
     documents,
     visaPeople,
+    history: [],
+  };
+}
+
+// Employee scope: the dedicated employee read RPC returns EXACTLY the actor's
+// own visa person, keyed by their own employee_id (not an ordinal). The person's
+// stable key is the registration_visa_people row id. The presentation carries
+// ONLY that one person and no documents.
+function employeeVisaPresentation(read: EmployeeVisaPersonRead): RegistrationPresentation {
+  const person = buildVisaPerson({
+    visaPersonId: read.visaPerson.visaPersonId,
+    displayName: read.visaPerson.displayName,
+    personKind: read.visaPerson.personKind,
+    status: read.visaPerson.status,
+    currentStage: read.visaPerson.currentStage,
+  });
+  return {
+    stages: [],
+    currentBlocker: null,
+    nextAction: null,
+    documents: [],
+    visaPeople: [person],
     history: [],
   };
 }
@@ -315,12 +329,24 @@ export async function loadRegistrationPresentation(
       );
       return { kind: 'ready', value: operatorPresentation(read), generatedAt: read.generatedAt };
     }
+    if (context.role === 'employee') {
+      // Employee-scoped read: keyed by the actor's own employee_id inside the
+      // RPC. Returns ONLY the employee's own visa person — never person[0].
+      const read = await readEmployeeVisaPerson(
+        registrationId,
+        { actorId: context.actorId, tenantId: context.tenantId, companyId: context.companyId },
+        deps,
+      );
+      return {
+        kind: 'ready',
+        value: employeeVisaPresentation(read),
+        generatedAt: read.generatedAt,
+      };
+    }
     const read = await readCustomerRegistration(registrationId, context.actorId, deps);
-    const scope = context.role;
-    const employeeKey = context.role === 'employee' ? context.employeeVisaPersonKey : undefined;
     return {
       kind: 'ready',
-      value: customerPresentation(read, scope, employeeKey),
+      value: customerPresentation(read),
       generatedAt: read.generatedAt,
     };
   } catch (error) {
@@ -376,6 +402,80 @@ export async function loadRegistrationIndex(
   }
   if (value.length === 0) return { kind: 'empty' };
   return { kind: 'ready', value, generatedAt };
+}
+
+// ---------------------------------------------------------------------------
+// Admin registration index (operator, AAL2). Returns a paginated list of safe
+// summary rows plus an exact total — NOT full presentations. The list view does
+// not need per-row stage/document detail, so this avoids an N+1 over the full
+// read RPC. Fails closed to the unavailable/source-error states.
+// ---------------------------------------------------------------------------
+export type AdminRegistrationIndexSummary = {
+  registrationId: string;
+  companyId: string;
+  companyName: string | null;
+  proName: string | null;
+  title: string | null;
+  status: AdminRegistrationIndexRow['status'];
+  currentStage: AdminRegistrationIndexRow['currentStage'];
+  completedStages: number;
+  totalStages: 7;
+  registrationVersion: number;
+  updatedAt: string | null;
+};
+
+export type AdminRegistrationIndexState =
+  | {
+      kind: 'ready';
+      value: AdminRegistrationIndexSummary[];
+      total: number;
+      page: number;
+      pageSize: number;
+    }
+  | { kind: 'empty'; page: number; pageSize: number }
+  | { kind: 'unavailable'; reason: 'registration_contract_unavailable' }
+  | { kind: 'error'; code: 'source_error' };
+
+export async function loadAdminRegistrationIndex(
+  context: OperatorLoaderContext,
+  query: AdminRegistrationIndexQueryInput,
+  deps: RegistrationWorkflowDeps = {},
+): Promise<AdminRegistrationIndexState> {
+  try {
+    const receipt = await readAdminRegistrationIndex(
+      { actorId: context.actorId, actorAal: context.actorAal },
+      query,
+      deps,
+    );
+    if (receipt.items.length === 0) {
+      return { kind: 'empty', page: receipt.page, pageSize: receipt.pageSize };
+    }
+    const value: AdminRegistrationIndexSummary[] = receipt.items.map((row) => ({
+      registrationId: row.registrationId,
+      companyId: row.companyId,
+      companyName: row.companyName,
+      proName: row.proName,
+      title: row.title,
+      status: row.status,
+      currentStage: row.currentStage,
+      completedStages: row.completedStages,
+      totalStages: row.totalStages,
+      registrationVersion: row.registrationVersion,
+      updatedAt: row.updatedAt,
+    }));
+    return {
+      kind: 'ready',
+      value,
+      total: receipt.total,
+      page: receipt.page,
+      pageSize: receipt.pageSize,
+    };
+  } catch (error) {
+    const failure = classifyFailure(error);
+    return failure.kind === 'unavailable'
+      ? registrationUnavailable
+      : { kind: 'error', code: 'source_error' };
+  }
 }
 
 // A NOT_FOUND / FORBIDDEN read is treated as contract-unavailable (fail

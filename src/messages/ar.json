@@ -13,7 +13,11 @@
       "customer": "شركتك المرتبطة فقط",
       "employee": "سجلات الموظف الخاصة بك فقط"
     },
-    "summary": { "source": "مصدر الإنتاج", "scope": "نطاق البيانات", "owner": "مالك التنفيذ" },
+    "summary": {
+      "source": "مصدر الإنتاج",
+      "scope": "نطاق البيانات",
+      "owner": "مالك التنفيذ"
+    },
     "phase3": "عقود واجهات وأمان المرحلة الثالثة",
     "unavailableTitle": "بيانات الإنتاج غير متاحة",
     "boundariesTitle": "العقد التشغيلي",
@@ -168,7 +172,11 @@
         "completed": "Completed",
         "failed": "Failed"
       },
-      "priorities": { "low": "Low", "medium": "Medium", "high": "High" }
+      "priorities": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
     },
     "statuses": {
       "scheduled": "مجدول",
@@ -765,7 +773,7 @@
     "company": "الشركة",
     "assignedPro": "مندوب العلاقات الحكومية المعيّن",
     "settings": "الإعدادات",
-    "profile": "ملفي الشخصي",
+    "profile": "الملف الشخصي",
     "myRecords": "سجلاتي",
     "visaAndEid": "التأشيرة والهوية الإماراتية",
     "auth": "المصادقة",
@@ -811,7 +819,6 @@
     "proWorkspace": "PRO workspace",
     "superAdmin": "Super Admin",
     "admin": "Admin",
-    "profile": "الملف الشخصي",
     "security": "الأمان",
     "privacy": "الخصوصية وحذف البيانات",
     "terms": "الشروط",
@@ -1574,8 +1581,14 @@
         "eid": "الهوية الإماراتية",
         "ejari": "إيجاري"
       },
-      "renewals": { "title": "التجديدات القادمة", "description": "مواعيد الشركة بتوقيت عمل دبي." },
-      "notifications": { "title": "الإشعارات الأخيرة", "description": "حالة إشعارات التطبيق فقط." },
+      "renewals": {
+        "title": "التجديدات القادمة",
+        "description": "مواعيد الشركة بتوقيت عمل دبي."
+      },
+      "notifications": {
+        "title": "الإشعارات الأخيرة",
+        "description": "حالة إشعارات التطبيق فقط."
+      },
       "documents": {
         "title": "المستندات",
         "description": "مستندات الشركة المطلوبة والمقدمة.",
@@ -1658,8 +1671,14 @@
         "description": "الأنشطة المسجلة لهذه الشركة.",
         "primary": "رئيسي"
       },
-      "office": { "title": "المكتب", "description": "بيانات المكتب المسجل وعقد الإيجار." },
-      "establishment": { "title": "المنشأة", "description": "حالة بطاقة المنشأة بشكل مخفي." },
+      "office": {
+        "title": "المكتب",
+        "description": "بيانات المكتب المسجل وعقد الإيجار."
+      },
+      "establishment": {
+        "title": "المنشأة",
+        "description": "حالة بطاقة المنشأة بشكل مخفي."
+      },
       "bank": {
         "title": "البيانات المصرفية",
         "description": "حالة مصرفية مخفية؛ لا تظهر المعرّفات الكاملة مطلقًا."
@@ -1697,7 +1716,10 @@
         "free_zone": "منطقة حرة",
         "offshore": "أوفشور"
       },
-      "shareholderKinds": { "individual": "فرد", "company": "شركة" },
+      "shareholderKinds": {
+        "individual": "فرد",
+        "company": "شركة"
+      },
       "officeTypes": {
         "physical": "مكتب فعلي",
         "flexi_desk": "مكتب مرن",
@@ -1722,8 +1744,14 @@
       "eyebrow": "بوابة الشركة",
       "title": "مندوب العلاقات الحكومية المعيّن",
       "subtitle": "تعيين المندوب النشط لشركتك المرتبطة.",
-      "card": { "title": "التعيين", "description": "تظهر فقط معلومات الهوية المهنية المعتمدة." },
-      "fields": { "name": "الاسم", "title": "المسمى" },
+      "card": {
+        "title": "التعيين",
+        "description": "تظهر فقط معلومات الهوية المهنية المعتمدة."
+      },
+      "fields": {
+        "name": "الاسم",
+        "title": "المسمى"
+      },
       "states": {
         "missing": "لم يتم تعيين مندوب.",
         "released": "تم إنهاء التعيين السابق ولا يوجد مندوب معيّن حاليًا.",
@@ -1772,7 +1800,10 @@
         "consentUnavailable": "حالة موافقة التواصل غير متاحة؛ لا تُفترض فعالية أي قناة.",
         "optedOut": "لقد ألغيت الاشتراك في: {channels}.",
         "optIn": "إعادة الاشتراك",
-        "channels": { "whatsapp": "واتساب", "sms": "الرسائل النصية" },
+        "channels": {
+          "whatsapp": "واتساب",
+          "sms": "الرسائل النصية"
+        },
         "preferencesUnavailable": "تفضيلات الإشعارات والمزود غير متاحة."
       }
     },
@@ -1803,8 +1834,14 @@
       "uploaded": "تم الرفع في {date}",
       "currentVersion": "الإصدار الحالي",
       "fileMeta": "{mime} · {size, number} كيلوبايت",
-      "scanStatus": { "unavailable": "نتيجة الفحص غير متاحة" },
-      "reviewStatus": { "pending": "بانتظار المراجعة", "approved": "معتمد", "rejected": "مرفوض" },
+      "scanStatus": {
+        "unavailable": "نتيجة الفحص غير متاحة"
+      },
+      "reviewStatus": {
+        "pending": "بانتظار المراجعة",
+        "approved": "معتمد",
+        "rejected": "مرفوض"
+      },
       "rejectionReason": "سبب الرفض:",
       "rejectionReasonUnavailable": "لم يُقدم سبب. تواصل مع المندوب المعيّن قبل إعادة الإرسال.",
       "unlinkedTitle": "حساب الشركة غير مرتبط",
@@ -2499,7 +2536,11 @@
         "recordedExpiry": "الانتهاء مسجل",
         "missingExpiry": "الانتهاء غير مسجل"
       },
-      "status": { "active": "نشط", "inactive": "غير نشط", "terminated": "منتهية خدمته" },
+      "status": {
+        "active": "نشط",
+        "inactive": "غير نشط",
+        "terminated": "منتهية خدمته"
+      },
       "identity": {
         "missing": "الانتهاء غير مسجل",
         "expired": "منتهية",
@@ -2507,7 +2548,11 @@
         "current": "سارية",
         "unavailableWithoutMaskedContract": "المعرّف غير متاح: لا يوجد عقد مقبول للعرض أو الإخفاء الجزئي."
       },
-      "risk": { "attention": "تحتاج إلى اهتمام", "clear": "سليمة", "unknown": "غير مقيّمة" },
+      "risk": {
+        "attention": "تحتاج إلى اهتمام",
+        "clear": "سليمة",
+        "unknown": "غير مقيّمة"
+      },
       "signals": {
         "total": "الموظفون المطابقون",
         "visible": "الظاهرون في هذه الصفحة",
@@ -3127,7 +3172,10 @@
         "sms": "SMS",
         "in_app": "In-app"
       },
-      "directions": { "in": "Inbound", "out": "Outbound" },
+      "directions": {
+        "in": "Inbound",
+        "out": "Outbound"
+      },
       "statuses": {
         "pending": "Pending",
         "queued": "Queued",
@@ -3740,13 +3788,20 @@
           "medical_certificate": "الشهادة الطبية",
           "insurance_policy": "وثيقة التأمين"
         },
-        "kind": { "request": "طلب", "document": "مستند" },
+        "kind": {
+          "request": "طلب",
+          "document": "مستند"
+        },
         "requestStatus": {
           "pending": "بانتظار الرفع",
           "fulfilled": "تم الرفع",
           "cancelled": "ملغى"
         },
-        "reviewStatus": { "pending": "قيد المراجعة", "approved": "مقبول", "rejected": "مرفوض" },
+        "reviewStatus": {
+          "pending": "قيد المراجعة",
+          "approved": "مقبول",
+          "rejected": "مرفوض"
+        },
         "table": {
           "label": "الإشراف على المستندات عبر الشركات",
           "company": "الشركة",
@@ -3781,7 +3836,11 @@
           "eidRisk": "الهويات التي تتطلب الانتباه",
           "renewalRisk": "مخاطر التجديد"
         },
-        "filters": { "search": "البحث عن موظف", "company": "الشركة", "risk": "مخاطر التجديد" },
+        "filters": {
+          "search": "البحث عن موظف",
+          "company": "الشركة",
+          "risk": "مخاطر التجديد"
+        },
         "queueTitle": "قائمة الإشراف على الموظفين",
         "queueDescription": "ستظهر حالة الموظف والشركة والتأشيرة والهوية والتجديد في القائمة الرئيسية مع إخفاء المعرّفات.",
         "guidance": "يجب ألا تظهر أرقام جواز السفر أو التأشيرة أو الهوية الإماراتية كاملة في صفوف القوائم. تتطلب روابط التفاصيل عقد قراءة إداريًا مصرحًا به.",
@@ -3794,8 +3853,16 @@
         "eyebrow": "العمليات · الامتثال",
         "title": "الإشراف على التجديدات والامتثال",
         "description": "رتّب مخاطر التجديد عبر الشركات باستخدام فترات استعجال واضحة وإجراءات صادقة التوفر.",
-        "summaries": { "overdue": "متأخر", "week": "مستحق هذا الأسبوع", "days90": "خلال 90 يومًا" },
-        "filters": { "entity": "الكيان", "type": "نوع التجديد", "status": "حالة سير العمل" },
+        "summaries": {
+          "overdue": "متأخر",
+          "week": "مستحق هذا الأسبوع",
+          "days90": "خلال 90 يومًا"
+        },
+        "filters": {
+          "entity": "الكيان",
+          "type": "نوع التجديد",
+          "status": "حالة سير العمل"
+        },
         "queueTitle": "قائمة مخاطر التجديد",
         "queueDescription": "سيظهر سياق الاستعجال والكيان والنوع والحالة والتصعيد والمخطط الزمني في القائمة الرئيسية.",
         "guidance": "مجموعات الاستعجال المعتمدة هي: متأخر، وهذا الأسبوع، وهذا الشهر، وخلال 90 يومًا. لا يتم استنتاج تذكيرات أو دفعات أو غرامات.",
@@ -4773,7 +4840,10 @@
             "label": "إجمالي مندوبي العلاقات العامة",
             "helper": "جميع ملفات مندوبي العلاقات العامة المسجلة · لحظة حالية"
           },
-          "totalCompanies": { "label": "إجمالي الشركات", "helper": "سجلات الشركات · لحظة حالية" },
+          "totalCompanies": {
+            "label": "إجمالي الشركات",
+            "helper": "سجلات الشركات · لحظة حالية"
+          },
           "activeAssignments": {
             "label": "تعيينات المندوب–الشركة النشطة",
             "helper": "سجل التعيينات النشطة الفريد"
@@ -4782,8 +4852,14 @@
             "label": "مندوبون بلا تعيين",
             "helper": "مندوبون نشطون بلا شركة نشطة"
           },
-          "unassignedCompanies": { "label": "شركات بلا تعيين", "helper": "شركات بلا مندوب نشط" },
-          "activeRegistrations": { "label": "التسجيلات النشطة", "helper": "فترة التقرير المحددة" },
+          "unassignedCompanies": {
+            "label": "شركات بلا تعيين",
+            "helper": "شركات بلا مندوب نشط"
+          },
+          "activeRegistrations": {
+            "label": "التسجيلات النشطة",
+            "helper": "فترة التقرير المحددة"
+          },
           "pendingRenewals": {
             "label": "التجديدات المعلقة",
             "helper": "مستحقة قريبًا أو متأخرة · لحظة حالية"
@@ -4852,7 +4928,10 @@
           "won": "ناجح",
           "lost": "مفقود"
         },
-        "proHealth": { "assigned": "معين", "unassigned": "بلا تعيين" },
+        "proHealth": {
+          "assigned": "معين",
+          "unassigned": "بلا تعيين"
+        },
         "activities": {
           "platform": "المنصة",
           "lead_created": "تم إنشاء عميل محتمل",
@@ -5110,7 +5189,11 @@
           "edit": "Edit {title}",
           "view": "View {title}",
           "delete": "Delete {title}",
-          "statuses": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published" }
+          "statuses": {
+            "draft": "Draft",
+            "scheduled": "Scheduled",
+            "published": "Published"
+          }
         },
         "editor": {
           "post": "Post",
@@ -5129,7 +5212,11 @@
           "featuredImage": "Featured image",
           "taxonomy": "Taxonomy",
           "noTerms": "No {kind} terms yet.",
-          "termKinds": { "category": "Category", "tag": "Tag", "attribute": "Attribute" },
+          "termKinds": {
+            "category": "Category",
+            "tag": "Tag",
+            "attribute": "Attribute"
+          },
           "seo": "Search metadata",
           "metaTitle": "Meta title",
           "metaDescription": "Meta description",
@@ -5166,7 +5253,11 @@
           "actions": "Actions",
           "edit": "Edit {title}",
           "delete": "Delete {title}",
-          "statuses": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published" },
+          "statuses": {
+            "draft": "Draft",
+            "scheduled": "Scheduled",
+            "published": "Published"
+          },
           "deleteTitle": "Delete page?",
           "deleteDescription": "“{title}” will be removed from the page library. This action cannot be undone here.",
           "deleteError": "The page could not be deleted. Try again.",
@@ -5214,7 +5305,11 @@
           "headingAlignment": "Heading alignment",
           "textAlignment": "Text alignment",
           "buttonAlignment": "Button alignment",
-          "alignments": { "left": "Left", "center": "Center", "right": "Right" },
+          "alignments": {
+            "left": "Left",
+            "center": "Center",
+            "right": "Right"
+          },
           "backgroundColor": "Background color",
           "overlayColor": "Overlay color",
           "overlayOpacity": "Overlay opacity",
@@ -5282,7 +5377,11 @@
           "description": "Manage blog tags used for article discovery and filtering."
         },
         "manager": {
-          "termKinds": { "category": "category", "attribute": "attribute", "tag": "tag" },
+          "termKinds": {
+            "category": "category",
+            "attribute": "attribute",
+            "tag": "tag"
+          },
           "saveErrorTitle": "Could not save {kind}",
           "saveErrorDescription": "The term could not be saved. Check the details and try again.",
           "savedTitle": "{kind} saved",
@@ -5776,7 +5875,8 @@
       "noNextAction": "لا يوجد إجراء تالٍ مسجل.",
       "noDocuments": "لا توجد مستندات تسجيل.",
       "noVisaPeople": "لا يوجد أشخاص في مسار التأشيرة.",
-      "noHistory": "لا يوجد سجل تسجيل."
+      "noHistory": "لا يوجد سجل تسجيل.",
+      "indexError": "تعذر تحميل فهرس التسجيلات. حاول مرة أخرى."
     },
     "stages": {
       "application_submitted": "تقديم الطلب",
@@ -5810,6 +5910,17 @@
       "completed": "مكتمل",
       "unavailable": "غير متاح",
       "cancelled": "ملغى"
+    },
+    "list": {
+      "company": "الشركة",
+      "pro": "المندوب المعيّن",
+      "title": "التسجيل",
+      "stage": "المرحلة الحالية",
+      "status": "الحالة",
+      "progress": "التقدم",
+      "updated": "آخر تحديث",
+      "view": "فتح",
+      "results": "{count, plural, =0 {لا تسجيلات} one {تسجيل واحد} other {# تسجيلات}}"
     }
   }
 }

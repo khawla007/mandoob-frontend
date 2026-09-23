@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import {
+  adminRegistrationIndexQuerySchema,
   cancelVisaPersonSchema,
   createRegistrationSchema,
   createVisaPersonSchema,
@@ -13,6 +14,7 @@ import {
   transitionStageSchema,
   transitionVisaPersonSchema,
   unlinkStageDocumentSchema,
+  type AdminRegistrationIndexQueryInput,
   type CancelVisaPersonInput,
   type CreateRegistrationInput,
   type CreateVisaPersonInput,
@@ -371,9 +373,70 @@ export const customerRegistrationReadSchema = z
   })
   .strip();
 
+// Employee-scoped single-person visa read. The RPC returns EXACTLY the actor's
+// own visa person (keyed by their own employee_id) wrapped so the adapter can
+// build a single-element visaPeople presentation. The stable visaPersonId is the
+// registration_visa_people row id — not an ordinal position.
+const employeeVisaPersonRow = z
+  .object({
+    visaPersonId: uuidSchema,
+    displayName: z.string(),
+    personKind: z.enum(['shareholder', 'employee', 'dependent', 'other']),
+    visaKind: z.enum(['investor', 'employee', 'family']),
+    status: visaReceiptStatus,
+    currentStage: visaStageCode,
+  })
+  .strip();
+
+export const employeeVisaPersonReadSchema = z
+  .object({
+    registrationId: uuidSchema,
+    generatedAt: z.string(),
+    visaPerson: employeeVisaPersonRow,
+  })
+  .strip();
+
 export type ProRegistrationRead = z.infer<typeof proRegistrationReadSchema>;
 export type OperatorRegistrationRead = z.infer<typeof operatorRegistrationReadSchema>;
 export type CustomerRegistrationRead = z.infer<typeof customerRegistrationReadSchema>;
+export type EmployeeVisaPersonRead = z.infer<typeof employeeVisaPersonReadSchema>;
+
+// ---------------------------------------------------------------------------
+// Admin registration index receipt. The RPC returns safe summary rows only
+// (no per-row full presentation): id + scope labels + stage/status + counters.
+// ---------------------------------------------------------------------------
+const adminRegistrationIndexRow = z
+  .object({
+    registrationId: uuidSchema,
+    tenantId: uuidSchema,
+    companyId: uuidSchema,
+    companyName: z.string().nullable(),
+    proName: z.string().nullable(),
+    title: z.string().nullable(),
+    status: registrationStatus,
+    currentStage: stageCode,
+    completedStages: z.number().int().nonnegative(),
+    totalStages: z.literal(7),
+    registrationVersion: versionInt,
+    updatedAt: z.string().nullable(),
+  })
+  .strip();
+
+export const adminRegistrationIndexReceiptSchema = z
+  .object({
+    items: z.array(adminRegistrationIndexRow),
+    total: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    pageSize: z.number().int().positive(),
+  })
+  .strip();
+
+const resolveCompanyActiveRegistrationReceipt = z
+  .object({ registrationId: uuidSchema.nullable() })
+  .strip();
+
+export type AdminRegistrationIndexRow = z.infer<typeof adminRegistrationIndexRow>;
+export type AdminRegistrationIndexReceipt = z.infer<typeof adminRegistrationIndexReceiptSchema>;
 
 // ---------------------------------------------------------------------------
 // Command wrappers
@@ -718,4 +781,82 @@ export async function readCustomerRegistration(
     },
     customerRegistrationReadSchema,
   );
+}
+
+// Employee-scoped visa read. Keyed by the actor's OWN employee_id inside the
+// RPC (via the active employees link), so an employee only ever sees their own
+// visa person — never person[0] or anyone else's. Absence raises
+// REGISTRATION_NOT_FOUND (fail closed at the caller).
+export async function readEmployeeVisaPerson(
+  registrationId: string,
+  context: RegistrationActorContext,
+  deps: RegistrationWorkflowDeps = {},
+): Promise<EmployeeVisaPersonRead> {
+  const parsed = readRegistrationSchema.parse({ registrationId });
+  const { actorId } = parseActor(context);
+  return callRead(
+    deps,
+    'read_employee_visa_person',
+    {
+      p_actor_id: actorId,
+      p_registration_id: parsed.registrationId,
+    },
+    employeeVisaPersonReadSchema,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Admin registration index (operator, AAL2). Returns safe summary rows plus an
+// exact total for pagination. Filters are Zod-parsed to a nullable uuid/enum
+// contract before being handed to the RPC.
+// ---------------------------------------------------------------------------
+export async function readAdminRegistrationIndex(
+  context: OperatorActorContext,
+  query: AdminRegistrationIndexQueryInput,
+  deps: RegistrationWorkflowDeps = {},
+): Promise<AdminRegistrationIndexReceipt> {
+  const parsedQuery = adminRegistrationIndexQuerySchema.parse(query);
+  const actorId = uuidSchema.parse(context.actorId);
+  const actorAal = z.string().parse(context.actorAal);
+  return callRead(
+    deps,
+    'read_admin_registration_index',
+    {
+      p_actor_id: actorId,
+      p_actor_aal: actorAal,
+      p_company: parsedQuery.company,
+      p_pro: parsedQuery.pro,
+      p_stage: parsedQuery.stage,
+      p_status: parsedQuery.status,
+      p_page: parsedQuery.page,
+    },
+    adminRegistrationIndexReceiptSchema,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Resolve the single active registration for a company from fresh DB state.
+// The RPC enforces the caller's scope (assigned PRO / linked customer / active
+// employee) against tenant + company; returns the registration id or null.
+// ---------------------------------------------------------------------------
+export type ResolveActiveRegistrationRole = 'pro' | 'customer' | 'employee';
+
+export async function resolveCompanyActiveRegistration(
+  context: RegistrationActorContext & { role: ResolveActiveRegistrationRole },
+  deps: RegistrationWorkflowDeps = {},
+): Promise<string | null> {
+  const { actorId, tenantId, companyId } = parseActor(context);
+  const role = z.enum(['pro', 'customer', 'employee']).parse(context.role);
+  const receipt = await callRead(
+    deps,
+    'resolve_company_active_registration',
+    {
+      p_actor_id: actorId,
+      p_tenant_id: tenantId,
+      p_company_id: companyId,
+      p_role: role,
+    },
+    resolveCompanyActiveRegistrationReceipt,
+  );
+  return receipt.registrationId;
 }

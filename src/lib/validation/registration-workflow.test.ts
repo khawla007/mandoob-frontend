@@ -284,3 +284,35 @@ test('admin query trims/slices text filters and clamps the page', () => {
   assert.equal(adminRegistrationQuerySchema.safeParse({ page: 20000 }).success, false);
   assert.equal(adminRegistrationQuerySchema.safeParse({ stage: 'bogus' }).success, false);
 });
+
+test('adminRegistrationIndexQuerySchema enforces nullable uuid + enum filters and clamps page', async () => {
+  const { adminRegistrationIndexQuerySchema } = await import('./registration-workflow');
+  const uuid = '12121212-1212-4212-8212-121212121212';
+  const parsed = adminRegistrationIndexQuerySchema.parse({
+    company: uuid,
+    pro: null,
+    stage: 'name_reservation',
+    status: 'blocked',
+    page: 3,
+  });
+  assert.deepEqual(parsed, {
+    company: uuid,
+    pro: null,
+    stage: 'name_reservation',
+    status: 'blocked',
+    page: 3,
+  });
+
+  assert.deepEqual(adminRegistrationIndexQuerySchema.parse({}), {
+    company: null,
+    pro: null,
+    stage: null,
+    status: null,
+    page: 1,
+  });
+
+  assert.equal(adminRegistrationIndexQuerySchema.safeParse({ company: 'Acme' }).success, false);
+  assert.equal(adminRegistrationIndexQuerySchema.safeParse({ stage: 'all' }).success, false);
+  assert.equal(adminRegistrationIndexQuerySchema.safeParse({ page: 0 }).success, false);
+  assert.equal(adminRegistrationIndexQuerySchema.safeParse({ page: 10001 }).success, false);
+});

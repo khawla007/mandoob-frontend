@@ -2884,4 +2884,89 @@ revoke all on function public.resolve_company_active_registration(uuid, uuid, uu
 grant execute on function public.read_admin_registration_index(uuid, text, text, text, text, text, integer) to service_role;
 grant execute on function public.resolve_company_active_registration(uuid, uuid, uuid, text) to service_role;
 
+-- ---------------------------------------------------------------------------
+-- Read RPC: read_employee_visa_person
+--
+-- Employee-scoped visa read keyed by the actor's OWN employee id. Replaces the
+-- prior ordinal `${registrationId}:visa:0` heuristic in the employee path, which
+-- keyed to person[0] and would surface the wrong person once a registration has
+-- more than one visa person.
+--
+-- Authorize: the actor must be an ACTIVE employees row (profile_id = actor,
+-- status active) whose (tenant_id, company_id) match the registration's; else
+-- 42501 FORBIDDEN, mirroring resolve_company_active_registration's employee
+-- branch. Then find the single registration_visa_people row for that
+-- registration where employee_id = the actor's own employee id; if none, raise
+-- P0001 REGISTRATION_NOT_FOUND (no disclosure difference).
+--
+-- Returns jsonb for EXACTLY that one person in the same per-person shape
+-- read_customer_registration_progress uses (safe reference-only fields only),
+-- wrapped in a single-element visaPeople array so the adapter builds a
+-- RegistrationPresentation with the employee's own person. The stable
+-- visaPersonId / key is the registration_visa_people row id. No other people and
+-- no protected identifiers of others are ever surfaced.
+-- ---------------------------------------------------------------------------
+create function public.read_employee_visa_person(
+  p_actor_id uuid,
+  p_registration_id uuid
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_tenant_id uuid;
+  v_company_id uuid;
+  v_employee_id uuid;
+  v_person jsonb;
+begin
+  -- Resolve the registration scope and authorize the actor as an active
+  -- employee of the owning (tenant, company). Scope comes from live DB state,
+  -- never from JWT claims.
+  select registration.tenant_id, registration.company_id, employee.id
+    into v_tenant_id, v_company_id, v_employee_id
+  from public.company_registrations registration
+  join public.employees employee
+    on employee.profile_id = p_actor_id
+   and employee.tenant_id = registration.tenant_id
+   and employee.company_id = registration.company_id
+   and employee.status = 'active'
+  where registration.id = p_registration_id;
+  if not found then raise exception using errcode = '42501', message = 'FORBIDDEN'; end if;
+
+  -- The single own visa person row, keyed by the actor's own employee id (a
+  -- partial unique index guarantees at most one). Reference-only safe fields;
+  -- the visaPersonId is the stable row id used as the presentation key.
+  select pg_catalog.jsonb_build_object(
+    'visaPersonId', visa_person.id,
+    'displayName', visa_person.display_name,
+    'personKind', visa_person.person_kind::text,
+    'visaKind', visa_person.visa_kind::text,
+    'status', visa_person.status::text,
+    'currentStage', visa_person.current_stage::text
+  ) into v_person
+  from public.registration_visa_people visa_person
+  where visa_person.registration_id = p_registration_id
+    and visa_person.tenant_id = v_tenant_id
+    and visa_person.company_id = v_company_id
+    and visa_person.employee_id = v_employee_id;
+  if v_person is null then
+    raise exception using errcode = 'P0001', message = 'REGISTRATION_NOT_FOUND';
+  end if;
+
+  return pg_catalog.jsonb_build_object(
+    'registrationId', p_registration_id,
+    'generatedAt', pg_catalog.now(),
+    'visaPerson', v_person
+  );
+end;
+$$;
+
+alter function public.read_employee_visa_person(uuid, uuid) owner to postgres;
+revoke all on function public.read_employee_visa_person(uuid, uuid)
+  from public, anon, authenticated, service_role;
+grant execute on function public.read_employee_visa_person(uuid, uuid) to service_role;
+
 commit;

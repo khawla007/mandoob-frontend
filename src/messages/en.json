@@ -172,7 +172,11 @@
         "completed": "Completed",
         "failed": "Failed"
       },
-      "priorities": { "low": "Low", "medium": "Medium", "high": "High" }
+      "priorities": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
     },
     "statuses": {
       "scheduled": "Scheduled",
@@ -769,7 +773,7 @@
     "company": "Company",
     "assignedPro": "Assigned PRO",
     "settings": "Settings",
-    "profile": "My profile",
+    "profile": "Profile",
     "myRecords": "My records",
     "visaAndEid": "Visa & EID",
     "auth": "Auth",
@@ -815,7 +819,6 @@
     "proWorkspace": "PRO workspace",
     "superAdmin": "Super Admin",
     "admin": "Admin",
-    "profile": "Profile",
     "security": "Security",
     "privacy": "Privacy and data erasure",
     "terms": "Terms",
@@ -1668,7 +1671,10 @@
         "description": "Activities registered for this Company.",
         "primary": "Primary"
       },
-      "office": { "title": "Office", "description": "Registered office and lease facts." },
+      "office": {
+        "title": "Office",
+        "description": "Registered office and lease facts."
+      },
       "establishment": {
         "title": "Establishment",
         "description": "Masked establishment-card state."
@@ -1705,8 +1711,15 @@
         "iban": "IBAN",
         "accountNumber": "Account number"
       },
-      "jurisdictions": { "mainland": "Mainland", "free_zone": "Free zone", "offshore": "Offshore" },
-      "shareholderKinds": { "individual": "Individual", "company": "Company" },
+      "jurisdictions": {
+        "mainland": "Mainland",
+        "free_zone": "Free zone",
+        "offshore": "Offshore"
+      },
+      "shareholderKinds": {
+        "individual": "Individual",
+        "company": "Company"
+      },
       "officeTypes": {
         "physical": "Physical office",
         "flexi_desk": "Flexi desk",
@@ -1735,7 +1748,10 @@
         "title": "Assignment",
         "description": "Only approved professional identity information is shown."
       },
-      "fields": { "name": "Name", "title": "Title" },
+      "fields": {
+        "name": "Name",
+        "title": "Title"
+      },
       "states": {
         "missing": "No PRO has been assigned.",
         "released": "The previous assignment was released and no PRO is currently assigned.",
@@ -1784,7 +1800,10 @@
         "consentUnavailable": "Communication consent status is unavailable; no channel is assumed active.",
         "optedOut": "You opted out of: {channels}.",
         "optIn": "Opt in again",
-        "channels": { "whatsapp": "WhatsApp", "sms": "SMS" },
+        "channels": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS"
+        },
         "preferencesUnavailable": "Notification and provider preferences are unavailable."
       }
     },
@@ -1815,7 +1834,9 @@
       "uploaded": "Uploaded {date}",
       "currentVersion": "Current version",
       "fileMeta": "{mime} · {size, number} KB",
-      "scanStatus": { "unavailable": "Scan result unavailable" },
+      "scanStatus": {
+        "unavailable": "Scan result unavailable"
+      },
       "reviewStatus": {
         "pending": "Pending review",
         "approved": "Approved",
@@ -2515,7 +2536,11 @@
         "recordedExpiry": "Expiry recorded",
         "missingExpiry": "Expiry not recorded"
       },
-      "status": { "active": "Active", "inactive": "Inactive", "terminated": "Terminated" },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "terminated": "Terminated"
+      },
       "identity": {
         "missing": "Expiry not recorded",
         "expired": "Expired",
@@ -2523,7 +2548,11 @@
         "current": "Current",
         "unavailableWithoutMaskedContract": "Identifier unavailable: no accepted masked/display contract exists."
       },
-      "risk": { "attention": "Needs attention", "clear": "Clear", "unknown": "Not assessed" },
+      "risk": {
+        "attention": "Needs attention",
+        "clear": "Clear",
+        "unknown": "Not assessed"
+      },
       "signals": {
         "total": "Matching employees",
         "visible": "Visible on this page",
@@ -3143,7 +3172,10 @@
         "sms": "SMS",
         "in_app": "In-app"
       },
-      "directions": { "in": "Inbound", "out": "Outbound" },
+      "directions": {
+        "in": "Inbound",
+        "out": "Outbound"
+      },
       "statuses": {
         "pending": "Pending",
         "queued": "Queued",
@@ -3756,7 +3788,10 @@
           "medical_certificate": "Medical certificate",
           "insurance_policy": "Insurance policy"
         },
-        "kind": { "request": "Request", "document": "Document" },
+        "kind": {
+          "request": "Request",
+          "document": "Document"
+        },
         "requestStatus": {
           "pending": "Awaiting upload",
           "fulfilled": "Uploaded",
@@ -3801,7 +3836,11 @@
           "eidRisk": "Emirates ID attention",
           "renewalRisk": "Renewal risk"
         },
-        "filters": { "search": "Search employee", "company": "Company", "risk": "Renewal risk" },
+        "filters": {
+          "search": "Search employee",
+          "company": "Company",
+          "risk": "Renewal risk"
+        },
         "queueTitle": "Employee oversight queue",
         "queueDescription": "Employee, Company, visa, Emirates ID and renewal state belong in this primary queue with identifiers masked.",
         "guidance": "Full passport, visa and Emirates ID numbers must never appear in collection rows. Exact detail links require an authorized Admin read contract.",
@@ -3814,8 +3853,16 @@
         "eyebrow": "Operations · Compliance",
         "title": "Renewals and compliance oversight",
         "description": "Prioritize renewal risk across Companies using explicit urgency windows and truthful action availability.",
-        "summaries": { "overdue": "Overdue", "week": "Due this week", "days90": "Next 90 days" },
-        "filters": { "entity": "Entity", "type": "Renewal type", "status": "Workflow status" },
+        "summaries": {
+          "overdue": "Overdue",
+          "week": "Due this week",
+          "days90": "Next 90 days"
+        },
+        "filters": {
+          "entity": "Entity",
+          "type": "Renewal type",
+          "status": "Workflow status"
+        },
         "queueTitle": "Renewal risk queue",
         "queueDescription": "Urgency, entity, type, status, escalation and timeline context will appear in this primary queue.",
         "guidance": "Accepted urgency groups are overdue, this week, this month and next 90 days. No reminders, batches or fines are inferred.",
@@ -5142,7 +5189,11 @@
           "edit": "Edit {title}",
           "view": "View {title}",
           "delete": "Delete {title}",
-          "statuses": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published" }
+          "statuses": {
+            "draft": "Draft",
+            "scheduled": "Scheduled",
+            "published": "Published"
+          }
         },
         "editor": {
           "post": "Post",
@@ -5161,7 +5212,11 @@
           "featuredImage": "Featured image",
           "taxonomy": "Taxonomy",
           "noTerms": "No {kind} terms yet.",
-          "termKinds": { "category": "Category", "tag": "Tag", "attribute": "Attribute" },
+          "termKinds": {
+            "category": "Category",
+            "tag": "Tag",
+            "attribute": "Attribute"
+          },
           "seo": "Search metadata",
           "metaTitle": "Meta title",
           "metaDescription": "Meta description",
@@ -5198,7 +5253,11 @@
           "actions": "Actions",
           "edit": "Edit {title}",
           "delete": "Delete {title}",
-          "statuses": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published" },
+          "statuses": {
+            "draft": "Draft",
+            "scheduled": "Scheduled",
+            "published": "Published"
+          },
           "deleteTitle": "Delete page?",
           "deleteDescription": "“{title}” will be removed from the page library. This action cannot be undone here.",
           "deleteError": "The page could not be deleted. Try again.",
@@ -5246,7 +5305,11 @@
           "headingAlignment": "Heading alignment",
           "textAlignment": "Text alignment",
           "buttonAlignment": "Button alignment",
-          "alignments": { "left": "Left", "center": "Center", "right": "Right" },
+          "alignments": {
+            "left": "Left",
+            "center": "Center",
+            "right": "Right"
+          },
           "backgroundColor": "Background color",
           "overlayColor": "Overlay color",
           "overlayOpacity": "Overlay opacity",
@@ -5314,7 +5377,11 @@
           "description": "Manage blog tags used for article discovery and filtering."
         },
         "manager": {
-          "termKinds": { "category": "category", "attribute": "attribute", "tag": "tag" },
+          "termKinds": {
+            "category": "category",
+            "attribute": "attribute",
+            "tag": "tag"
+          },
           "saveErrorTitle": "Could not save {kind}",
           "saveErrorDescription": "The term could not be saved. Check the details and try again.",
           "savedTitle": "{kind} saved",
@@ -5808,7 +5875,8 @@
       "noNextAction": "No next action is recorded.",
       "noDocuments": "No registration documents are recorded.",
       "noVisaPeople": "No visa people are recorded.",
-      "noHistory": "No registration history is recorded."
+      "noHistory": "No registration history is recorded.",
+      "indexError": "The registration index could not be loaded. Try again."
     },
     "stages": {
       "application_submitted": "Application submitted",
@@ -5842,6 +5910,17 @@
       "completed": "Completed",
       "unavailable": "Unavailable",
       "cancelled": "Cancelled"
+    },
+    "list": {
+      "company": "Company",
+      "pro": "Assigned PRO",
+      "title": "Registration",
+      "stage": "Current stage",
+      "status": "Status",
+      "progress": "Progress",
+      "updated": "Updated",
+      "view": "Open",
+      "results": "{count, plural, =0 {No registrations} one {# registration} other {# registrations}}"
     }
   }
 }

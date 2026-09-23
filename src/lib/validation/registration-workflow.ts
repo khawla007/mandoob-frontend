@@ -179,7 +179,7 @@ export const recoverUnlinkStageDocumentSchema = z
 const displayName = z
   .string()
   .trim()
-   
+
   .refine((value) => !/[\u0000-\u001f\u007f<>]/.test(value), {
     message: 'Display name contains forbidden characters',
   })
@@ -297,6 +297,26 @@ export const adminRegistrationQuerySchema = z
   .strict();
 
 // ---------------------------------------------------------------------------
+// read_admin_registration_index RPC input (server-derived actor lives outside).
+// company/pro are nullable uuid filters; stage/status nullable enum filters;
+// page 1..10000. Unlike adminRegistrationQuerySchema (the page's URL parser,
+// which surfaces free-text filters and an 'all' sentinel), this is the exact
+// contract handed to the RPC wrapper.
+// ---------------------------------------------------------------------------
+export const adminRegistrationIndexQuerySchema = z
+  .object({
+    company: uuid.nullable().default(null),
+    pro: uuid.nullable().default(null),
+    stage: z.enum(REGISTRATION_STAGE_CODES).nullable().default(null),
+    status: z
+      .enum(['not_started', 'in_progress', 'blocked', 'completed', 'skipped'])
+      .nullable()
+      .default(null),
+    page: z.coerce.number().int().min(1).max(10_000).default(1),
+  })
+  .strict();
+
+// ---------------------------------------------------------------------------
 // Inferred input types
 // ---------------------------------------------------------------------------
 // Callers pass the pre-default (input) shape; the wrappers apply defaults via
@@ -311,3 +331,5 @@ export type TransitionVisaPersonInput = z.input<typeof transitionVisaPersonSchem
 export type CancelVisaPersonInput = z.input<typeof cancelVisaPersonSchema>;
 export type ReadRegistrationInput = z.input<typeof readRegistrationSchema>;
 export type AdminRegistrationQueryInput = z.output<typeof adminRegistrationQuerySchema>;
+export type AdminRegistrationIndexQueryInput = z.input<typeof adminRegistrationIndexQuerySchema>;
+export type AdminRegistrationIndexQuery = z.output<typeof adminRegistrationIndexQuerySchema>;

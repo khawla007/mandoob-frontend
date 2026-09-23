@@ -173,7 +173,8 @@ begin
       'recover_unlink_registration_stage_document','create_registration_visa_person',
       'transition_registration_visa_person','cancel_registration_visa_person',
       'read_pro_registration_workflow','read_operator_registration_workflow',
-      'read_customer_registration_progress'
+      'read_customer_registration_progress','read_admin_registration_index',
+      'resolve_company_active_registration','read_employee_visa_person'
     )
   loop
     perform pg_temp.check(

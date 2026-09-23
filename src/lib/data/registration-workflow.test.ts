@@ -210,3 +210,139 @@ test('read wrappers pass operator AAL and reject malformed receipts', async () =
   assert.equal(supabase.calls[0].name, 'read_operator_registration_workflow');
   assert.equal(supabase.calls[0].args.p_actor_aal, 'aal2');
 });
+
+const companyFilter = '12121212-1212-4212-8212-121212121212';
+const proFilter = '13131313-1313-4313-8313-131313131313';
+
+test('readAdminRegistrationIndex passes AAL2, nullable filters, page and parses the receipt', async () => {
+  const { readAdminRegistrationIndex } = await import('./registration-workflow');
+  const supabase = fakeSupabase([
+    {
+      data: {
+        items: [
+          {
+            registrationId,
+            tenantId: actor.tenantId,
+            companyId: actor.companyId,
+            companyName: 'Acme FZ',
+            proName: 'Sara PRO',
+            title: 'New LLC',
+            status: 'in_progress',
+            currentStage: 'application_submitted',
+            completedStages: 1,
+            totalStages: 7,
+            registrationVersion: 2,
+            updatedAt: '2026-09-23T10:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      },
+      error: null,
+    },
+  ]);
+  const receipt = await readAdminRegistrationIndex(
+    { actorId: actor.actorId, actorAal: 'aal2' },
+    {
+      company: companyFilter,
+      pro: proFilter,
+      stage: 'application_submitted',
+      status: null,
+      page: 1,
+    },
+    { supabase },
+  );
+  assert.equal(receipt.total, 1);
+  assert.equal(receipt.items[0].companyName, 'Acme FZ');
+  const call = supabase.calls[0];
+  assert.equal(call.name, 'read_admin_registration_index');
+  assert.equal(call.args.p_actor_id, actor.actorId);
+  assert.equal(call.args.p_actor_aal, 'aal2');
+  assert.equal(call.args.p_company, companyFilter);
+  assert.equal(call.args.p_pro, proFilter);
+  assert.equal(call.args.p_stage, 'application_submitted');
+  assert.equal(call.args.p_status, null);
+  assert.equal(call.args.p_page, 1);
+});
+
+test('readAdminRegistrationIndex rejects a non-uuid company filter before the RPC', async () => {
+  const { readAdminRegistrationIndex } = await import('./registration-workflow');
+  const supabase = fakeSupabase([{ data: null, error: null }]);
+  await assert.rejects(() =>
+    readAdminRegistrationIndex(
+      { actorId: actor.actorId, actorAal: 'aal2' },
+      { company: 'Acme', pro: null, stage: null, status: null, page: 1 },
+      { supabase },
+    ),
+  );
+  assert.equal(supabase.calls.length, 0);
+});
+
+test('readAdminRegistrationIndex surfaces a malformed receipt as an internal read error', async () => {
+  const { readAdminRegistrationIndex } = await import('./registration-workflow');
+  const supabase = fakeSupabase([
+    { data: { items: 'nope', total: 1, page: 1, pageSize: 20 }, error: null },
+  ]);
+  await assert.rejects(
+    () =>
+      readAdminRegistrationIndex(
+        { actorId: actor.actorId, actorAal: 'aal2' },
+        { company: null, pro: null, stage: null, status: null, page: 1 },
+        { supabase },
+      ),
+    (error: unknown) => {
+      const api = error as { status: number };
+      assert.equal(api.status, 500);
+      return true;
+    },
+  );
+});
+
+test('resolveCompanyActiveRegistration passes scope+role and returns the id', async () => {
+  const { resolveCompanyActiveRegistration } = await import('./registration-workflow');
+  const supabase = fakeSupabase([{ data: { registrationId }, error: null }]);
+  const id = await resolveCompanyActiveRegistration(
+    { role: 'pro', actorId: actor.actorId, tenantId: actor.tenantId, companyId: actor.companyId },
+    { supabase },
+  );
+  assert.equal(id, registrationId);
+  const call = supabase.calls[0];
+  assert.equal(call.name, 'resolve_company_active_registration');
+  assert.equal(call.args.p_actor_id, actor.actorId);
+  assert.equal(call.args.p_tenant_id, actor.tenantId);
+  assert.equal(call.args.p_company_id, actor.companyId);
+  assert.equal(call.args.p_role, 'pro');
+});
+
+test('resolveCompanyActiveRegistration returns null when no registration is active', async () => {
+  const { resolveCompanyActiveRegistration } = await import('./registration-workflow');
+  const supabase = fakeSupabase([{ data: { registrationId: null }, error: null }]);
+  const id = await resolveCompanyActiveRegistration(
+    {
+      role: 'employee',
+      actorId: actor.actorId,
+      tenantId: actor.tenantId,
+      companyId: actor.companyId,
+    },
+    { supabase },
+  );
+  assert.equal(id, null);
+  assert.equal(supabase.calls[0].args.p_role, 'employee');
+});
+
+test('resolveCompanyActiveRegistration maps an authorization error onto an ApiError', async () => {
+  const { resolveCompanyActiveRegistration } = await import('./registration-workflow');
+  const supabase = fakeSupabase([{ data: null, error: { message: 'FORBIDDEN', code: 'P0001' } }]);
+  await assert.rejects(() =>
+    resolveCompanyActiveRegistration(
+      {
+        role: 'customer',
+        actorId: actor.actorId,
+        tenantId: actor.tenantId,
+        companyId: actor.companyId,
+      },
+      { supabase },
+    ),
+  );
+});

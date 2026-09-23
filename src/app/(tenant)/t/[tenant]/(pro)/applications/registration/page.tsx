@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
+import { resolveCompanyActiveRegistration } from '@/lib/data/registration-workflow';
 import { registrationWorkspaceLabels } from '@/lib/registration/labels';
-import { loadRegistrationPresentation } from '@/lib/registration/unavailable-adapter';
+import { loadRegistrationPresentation } from '@/lib/registration/db-adapter';
+import { resolveScopedRegistrationPresentation } from '@/lib/registration/resolve-presentation';
 
 export const dynamic = 'force-dynamic';
 export default async function ProRegistrationPage({
@@ -22,11 +24,19 @@ export default async function ProRegistrationPage({
   await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
-  const [t, locale, state] = await Promise.all([
-    getTranslations('registration'),
-    getLocale(),
-    loadRegistrationPresentation(),
-  ]);
+  const [t, locale] = await Promise.all([getTranslations('registration'), getLocale()]);
+  // Resolve the one active registration for the assigned Company from fresh DB
+  // state, then load its presentation. On absence / REGISTRATION_NOT_FOUND this
+  // fails closed to the unavailable contract — the workspace renders its
+  // existing unavailable state rather than crashing.
+  const state = await resolveScopedRegistrationPresentation(
+    { role: 'pro', actorId: session.id, tenantId: tenant.id, companyId: company.id },
+    { role: 'pro', actorId: session.id, tenantId: tenant.id, companyId: company.id },
+    {
+      resolveActiveRegistration: resolveCompanyActiveRegistration,
+      loadPresentation: loadRegistrationPresentation,
+    },
+  );
   const completedSections = Object.values(company.sectionProgress).filter(
     (status) => status === 'complete',
   ).length;
