@@ -2631,4 +2631,257 @@ grant execute on function public.read_pro_registration_workflow(uuid, uuid, uuid
 grant execute on function public.read_operator_registration_workflow(uuid, text, uuid) to service_role;
 grant execute on function public.read_customer_registration_progress(uuid, uuid) to service_role;
 
+-- ---------------------------------------------------------------------------
+-- Read RPC: read_admin_registration_index (contract 0105)
+--
+-- Bounded, display-safe cross-workspace registration oversight for platform
+-- operators. HARDENED like read_operator_registration_workflow: requires an
+-- active tenant-null admin/super_admin with MFA enrolled AND p_actor_aal =
+-- 'aal2' (fail closed otherwise), and writes ONE cross-tenant operator-read
+-- audit row into tenant_audit_log before returning any state. Not STABLE (it
+-- performs an audit INSERT). Filters are allowlisted; NULL/empty means no
+-- constraint. Items are safe summaries (ids/title/codes/timestamps only) with
+-- an exact total count of matching rows, not just the page.
+-- ---------------------------------------------------------------------------
+create function public.read_admin_registration_index(
+  p_actor_id uuid,
+  p_actor_aal text,
+  p_company text,
+  p_pro text,
+  p_stage text,
+  p_status text,
+  p_page integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_page integer := p_page;
+  v_page_size constant integer := 20;
+  v_company text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_company, '')), '');
+  v_pro text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_pro, '')), '');
+  v_stage text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_stage, '')), '');
+  v_status text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_status, '')), '');
+  v_company_id uuid;
+  v_pro_id uuid;
+  v_stage_code public.registration_stage_code;
+  v_status_value public.registration_status;
+  v_total integer;
+  v_items jsonb;
+  v_audit_tenant_id uuid;
+begin
+  perform 1 from public.profiles profile
+  where profile.id = p_actor_id and profile.role in ('admin', 'super_admin')
+    and profile.status = 'active' and profile.tenant_id is null
+    and profile.mfa_enrolled_at is not null;
+  if not found or p_actor_aal <> 'aal2' then
+    raise exception using errcode = '42501', message = 'FORBIDDEN';
+  end if;
+
+  if v_page is null or v_page not between 1 and 10000 then
+    raise exception using errcode = '22023', message = 'INVALID_REGISTRATION_INPUT';
+  end if;
+
+  -- Allowlisted filters. p_company narrows by company id only when it parses as
+  -- a uuid; company_profiles carries no slug, so any non-uuid company token is
+  -- ignored rather than guessed. p_pro is the active-assignment pro id.
+  if v_company is not null then
+    begin
+      v_company_id := v_company::uuid;
+    exception when others then
+      v_company_id := null;
+    end;
+  end if;
+  if v_pro is not null then
+    begin
+      v_pro_id := v_pro::uuid;
+    exception when others then
+      v_pro_id := null;
+    end;
+  end if;
+  if v_stage is not null then
+    begin
+      v_stage_code := v_stage::public.registration_stage_code;
+    exception when others then
+      raise exception using errcode = '22023', message = 'INVALID_REGISTRATION_INPUT';
+    end;
+  end if;
+  if v_status is not null then
+    begin
+      v_status_value := v_status::public.registration_status;
+    exception when others then
+      raise exception using errcode = '22023', message = 'INVALID_REGISTRATION_INPUT';
+    end;
+  end if;
+
+  select pg_catalog.count(*)::integer into v_total
+  from public.company_registrations registration
+  join public.service_cases service_case
+    on service_case.id = registration.service_case_id
+   and service_case.tenant_id = registration.tenant_id
+   and service_case.company_id = registration.company_id
+  join public.registration_stages current_stage
+    on current_stage.registration_id = registration.id
+   and current_stage.tenant_id = registration.tenant_id
+   and current_stage.company_id = registration.company_id
+   and current_stage.code = registration.current_stage
+  where (v_company_id is null or registration.company_id = v_company_id)
+    and (v_stage_code is null or registration.current_stage = v_stage_code)
+    and (v_status_value is null or registration.status = v_status_value)
+    and (
+      v_pro_id is null
+      or exists (
+        select 1 from public.pro_company_assignments assignment
+        where assignment.pro_profile_id = v_pro_id
+          and assignment.tenant_id = registration.tenant_id
+          and assignment.company_id = registration.company_id
+          and assignment.status = 'active'
+      )
+    );
+
+  select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+    'registrationId', page_row.id,
+    'companyId', page_row.company_id,
+    'title', page_row.title,
+    'status', page_row.status,
+    'currentStage', page_row.current_stage,
+    'currentStageStatus', page_row.current_stage_status,
+    'updatedAt', page_row.updated_at
+  ) order by page_row.created_at desc, page_row.id asc), '[]'::jsonb),
+         pg_catalog.max(page_row.tenant_id)
+    into v_items, v_audit_tenant_id
+  from (
+    select registration.id, registration.tenant_id, registration.company_id,
+           service_case.title, registration.status::text as status,
+           registration.current_stage::text as current_stage,
+           current_stage.status::text as current_stage_status,
+           registration.updated_at, registration.created_at
+    from public.company_registrations registration
+    join public.service_cases service_case
+      on service_case.id = registration.service_case_id
+     and service_case.tenant_id = registration.tenant_id
+     and service_case.company_id = registration.company_id
+    join public.registration_stages current_stage
+      on current_stage.registration_id = registration.id
+     and current_stage.tenant_id = registration.tenant_id
+     and current_stage.company_id = registration.company_id
+     and current_stage.code = registration.current_stage
+    where (v_company_id is null or registration.company_id = v_company_id)
+      and (v_stage_code is null or registration.current_stage = v_stage_code)
+      and (v_status_value is null or registration.status = v_status_value)
+      and (
+        v_pro_id is null
+        or exists (
+          select 1 from public.pro_company_assignments assignment
+          where assignment.pro_profile_id = v_pro_id
+            and assignment.tenant_id = registration.tenant_id
+            and assignment.company_id = registration.company_id
+            and assignment.status = 'active'
+        )
+      )
+    order by registration.created_at desc, registration.id asc
+    limit v_page_size offset (v_page - 1) * v_page_size
+  ) as page_row;
+
+  -- Cross-tenant operator index read is a privileged action; record ONE audit
+  -- row before returning. tenant_audit_log.tenant_id is NOT NULL with an FK to
+  -- tenants, and the scan spans workspaces, so attribute the row to the tenant
+  -- of the most-recent matching registration (the same ordering as page 1).
+  -- When zero rows match, nothing is disclosed and no row is written, mirroring
+  -- read_operator_registration_workflow's fail-closed no-disclosure shape.
+  if v_audit_tenant_id is not null then
+    insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
+    values (
+      v_audit_tenant_id, p_actor_id, 'updated', 'admin',
+      pg_catalog.jsonb_build_object(
+        'entity', 'registration_admin_index',
+        'company', v_company_id, 'pro', v_pro_id,
+        'stage', v_stage_code::text, 'status', v_status_value::text,
+        'page', v_page, 'total', v_total
+      )
+    );
+  end if;
+
+  return pg_catalog.jsonb_build_object(
+    'items', v_items,
+    'total', v_total,
+    'page', v_page,
+    'pageSize', v_page_size
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Read RPC: resolve_company_active_registration
+--
+-- Resolves the single active company_registrations id for a company, for
+-- PRO/customer/employee pages that hold a company but not a registration id.
+-- Scope resolves from live DB state per role (assignment / customer link /
+-- employee link), never from JWT claims. Message shape matches the existing
+-- RPCs: unauthorized raises 42501 FORBIDDEN, missing raises P0001
+-- REGISTRATION_NOT_FOUND (no existence disclosure difference beyond role scope).
+-- ---------------------------------------------------------------------------
+create function public.resolve_company_active_registration(
+  p_actor_id uuid,
+  p_tenant_id uuid,
+  p_company_id uuid,
+  p_role text
+)
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_registration_id uuid;
+begin
+  if p_role = 'pro' then
+    if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
+      raise exception using errcode = '42501', message = 'FORBIDDEN';
+    end if;
+  elsif p_role = 'customer' then
+    perform 1
+    from public.profiles profile
+    join public.customer_profiles customer on customer.profile_id = profile.id
+    where profile.id = p_actor_id and profile.role = 'customer'
+      and profile.status = 'active' and profile.tenant_id = p_tenant_id
+      and customer.linked_company_id = p_company_id;
+    if not found then raise exception using errcode = '42501', message = 'FORBIDDEN'; end if;
+  elsif p_role = 'employee' then
+    perform 1 from public.employees employee
+    where employee.profile_id = p_actor_id
+      and employee.tenant_id = p_tenant_id
+      and employee.company_id = p_company_id
+      and employee.status = 'active';
+    if not found then raise exception using errcode = '42501', message = 'FORBIDDEN'; end if;
+  else
+    raise exception using errcode = '42501', message = 'FORBIDDEN';
+  end if;
+
+  select registration.id into v_registration_id
+  from public.company_registrations registration
+  where registration.tenant_id = p_tenant_id
+    and registration.company_id = p_company_id
+    and registration.status in ('draft', 'in_progress', 'blocked');
+  if v_registration_id is null then
+    raise exception using errcode = 'P0001', message = 'REGISTRATION_NOT_FOUND';
+  end if;
+  return v_registration_id;
+end;
+$$;
+
+alter function public.read_admin_registration_index(uuid, text, text, text, text, text, integer) owner to postgres;
+alter function public.resolve_company_active_registration(uuid, uuid, uuid, text) owner to postgres;
+
+revoke all on function public.read_admin_registration_index(uuid, text, text, text, text, text, integer)
+  from public, anon, authenticated, service_role;
+revoke all on function public.resolve_company_active_registration(uuid, uuid, uuid, text)
+  from public, anon, authenticated, service_role;
+
+grant execute on function public.read_admin_registration_index(uuid, text, text, text, text, text, integer) to service_role;
+grant execute on function public.resolve_company_active_registration(uuid, uuid, uuid, text) to service_role;
+
 commit;
