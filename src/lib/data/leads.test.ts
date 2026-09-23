@@ -57,7 +57,7 @@ test('lead routing falls back to platform unassigned without active tenants', as
   assert.deepEqual(selected, { tenantId: null, routingReason: 'platform_unassigned' });
 });
 
-test('createLeadFromQuestionnaire inserts normalized payload and soft-fails acknowledgements', async () => {
+test('createLeadFromQuestionnaire inserts normalized payload and emits one acceptance event', async () => {
   const { createLeadFromQuestionnaire } = await loadLeads();
   const inserts: Array<{ table: string; payload: Record<string, unknown> }> = [];
   const supabase = {
@@ -78,17 +78,18 @@ test('createLeadFromQuestionnaire inserts normalized payload and soft-fails ackn
     },
   };
 
+  let publishedLeadId: string | undefined;
   const result = await createLeadFromQuestionnaire(input, {
     supabase: supabase as never,
-    enqueueEmail: async () => {
-      throw new Error('email provider down');
+    publishEvent: async (leadId) => {
+      publishedLeadId = leadId;
     },
-    enqueueWhatsApp: async () => ({ ok: false, reason: 'WHATSAPP_NOT_CONFIGURED' }),
   });
 
   assert.equal(result.leadId, 'lead-1');
   assert.equal(result.stage, 'new');
   assert.equal(result.assignedTenantId, null);
+  assert.equal(publishedLeadId, 'lead-1');
   assert.equal(inserts[0].table, 'leads');
   assert.equal(inserts[0].payload.source, 'questionnaire');
   assert.equal(inserts[0].payload.stage, 'new');

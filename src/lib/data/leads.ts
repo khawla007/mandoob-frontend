@@ -1,9 +1,8 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { questionnaireSubmissionSchema, type QuestionnaireSubmission } from '@/lib/questionnaire';
+import { createHash, randomUUID } from 'node:crypto';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { enqueueEmail } from '@/lib/mail/send';
-import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 import { scoreLead } from '@/lib/leads/scoring';
 
 type SupabaseClient = ReturnType<typeof createSupabaseServiceRoleClient>;
@@ -23,8 +22,7 @@ export type LeadCreateResult = {
 
 export type LeadDeps = {
   supabase?: SupabaseClient;
-  enqueueEmail?: typeof enqueueEmail;
-  enqueueWhatsApp?: typeof enqueueWhatsApp;
+  publishEvent?: (leadId: string) => Promise<void>;
 };
 
 export type RecalculateLeadScoresResult = {
@@ -47,8 +45,6 @@ export async function createLeadFromQuestionnaire(
 ): Promise<LeadCreateResult> {
   const input = questionnaireSubmissionSchema.parse(rawInput);
   const supabase = deps.supabase ?? createSupabaseServiceRoleClient();
-  const emailQueue = deps.enqueueEmail ?? enqueueEmail;
-  const whatsAppQueue = deps.enqueueWhatsApp ?? enqueueWhatsApp;
 
   const routing = await routeLead(supabase);
   const answers = input.answers;
@@ -80,14 +76,7 @@ export async function createLeadFromQuestionnaire(
 
   const leadId = data.id as string;
   await recordLeadAudit(supabase, routing.tenantId, leadId, routing.routingReason);
-  await enqueueAcknowledgements({
-    leadId,
-    tenantId: routing.tenantId,
-    tenantName: routing.tenantName ?? 'Mandoob',
-    input,
-    emailQueue,
-    whatsAppQueue,
-  });
+  await (deps.publishEvent ?? ((id: string) => emitLeadAcceptedEvent(supabase, id)))(leadId);
 
   return {
     leadId,
@@ -160,64 +149,28 @@ async function recordLeadAudit(
   if (error) console.error('lead_created audit insert failed', error);
 }
 
-async function enqueueAcknowledgements(args: {
-  leadId: string;
-  tenantId: string | null;
-  tenantName: string;
-  input: QuestionnaireSubmission;
-  emailQueue: typeof enqueueEmail;
-  whatsAppQueue: typeof enqueueWhatsApp;
-}): Promise<void> {
-  const { answers, estimateData } = args.input;
-  const scheduledFor = new Date(0);
-  const templateInput = {
-    leadName: answers.fullName,
-    tenantName: args.tenantName,
-    leadReference: args.leadId,
-    jurisdiction: answers.jurisdiction,
-    authority: answers.authority,
-  };
-
-  if (answers.email) {
-    await args
-      .emailQueue({
-        tenantId: args.tenantId,
-        templateId: 'lead-acknowledgement',
-        toAddress: answers.email,
-        input: templateInput,
-        scheduledFor,
-        linked: { entityType: 'lead_acknowledgement', entityId: args.leadId },
-      })
-      .catch((error) =>
-        console.error('lead email acknowledgement failed', { leadId: args.leadId, error }),
-      );
-  }
-
-  if (answers.phone && args.tenantId) {
-    await args
-      .whatsAppQueue({
-        tenantId: args.tenantId,
-        templateId: 'lead-acknowledgement',
-        toPhone: answers.phone,
-        input: {
-          leadName: answers.fullName,
-          tenantName: args.tenantName,
-          leadReference:
-            typeof estimateData?.reference === 'string' ? estimateData.reference : args.leadId,
-        },
-        scheduledFor,
-        linked: { entityType: 'lead_acknowledgement', entityId: args.leadId },
-      })
-      .then((result) => {
-        if (!result.ok) {
-          console.error('lead whatsapp acknowledgement skipped', {
-            leadId: args.leadId,
-            reason: result.reason,
-          });
-        }
-      })
-      .catch((error) =>
-        console.error('lead whatsapp acknowledgement failed', { leadId: args.leadId, error }),
-      );
-  }
+async function emitLeadAcceptedEvent(supabase: SupabaseClient, leadId: string): Promise<void> {
+  // A single domain event is the delivery trigger for questionnaire acceptance; channel
+  // fan-out (email/WhatsApp/SMS/in-app) is P3.10-owned. Best-effort: the lead is already
+  // committed, so acceptance truth persists even if event emission is momentarily degraded.
+  const payload = { resource_id: leadId, lead_id: leadId, operation_id: leadId, version: 1 };
+  const dedupeKey = createHash('sha256').update(`application.accepted:${leadId}`).digest('hex');
+  const { error } = await supabase.rpc(
+    'publish_domain_event' as never,
+    {
+      p_event_id: randomUUID(),
+      p_event_type: 'application.accepted',
+      p_event_version: 1,
+      p_occurred_at: new Date().toISOString(),
+      p_tenant_id: null,
+      p_company_id: null,
+      p_actor_id: null,
+      p_correlation_id: null,
+      p_causation_id: null,
+      p_privacy_class: 'restricted',
+      p_payload: payload,
+      p_dedupe_key: dedupeKey,
+    } as never,
+  );
+  if (error) console.error('lead accepted event publish failed', { leadId, error });
 }

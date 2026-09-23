@@ -1,44 +1,88 @@
 import { getTranslations } from 'next-intl/server';
 
-import { QuestionnaireBuilderUnavailable } from '@/components/admin/management/QuestionnaireBuilderUnavailable';
+import { QuestionnaireDefinitionEditor } from '@/components/admin/questionnaire/QuestionnaireDefinitionEditor';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
-import { requirePlatformOperator } from '@/lib/auth/require-role';
+import { requireRole } from '@/lib/auth/require-role';
+import { getQuestionnaireDefinition } from '@/lib/questionnaire/definitions';
+import {
+  archiveQuestionnaireVersionAction,
+  publishQuestionnaireVersionAction,
+  saveQuestionnaireDraftAction,
+} from './actions';
+
+const DEFINITION_KEY = 'company-registration';
+
+const STARTER_DEFINITION = {
+  key: DEFINITION_KEY,
+  version: 1,
+  sections: [
+    {
+      id: 'applicant',
+      title: 'Applicant',
+      order: 1,
+      fields: [
+        { id: 'full_name', type: 'text', label: 'Full name', order: 1, required: true },
+        { id: 'email', type: 'email', label: 'Email', order: 2, required: true },
+        {
+          id: 'consent',
+          type: 'consent',
+          label: 'I agree to the privacy policy',
+          order: 3,
+          required: true,
+        },
+      ],
+    },
+  ],
+};
 
 export default async function AdminQuestionnairePage() {
-  await requirePlatformOperator();
+  const session = await requireRole('super_admin', 'admin');
   const t = await getTranslations('admin.management.questionnaire');
+
+  if (session.aal !== 'aal2') {
+    return (
+      <div className="space-y-6">
+        <DashboardPageHeader eyebrow={t('eyebrow')} title={t('title')} description={t('intro')} />
+        <p className="text-destructive text-sm">{t('editor.mfaRequired')}</p>
+      </div>
+    );
+  }
+
+  const summary = await getQuestionnaireDefinition(DEFINITION_KEY);
+  const draftJson = JSON.stringify(summary?.draftDefinition ?? STARTER_DEFINITION, null, 2);
+
   return (
     <div className="space-y-6">
-      <DashboardPageHeader eyebrow={t('eyebrow')} title={t('title')} description={t('intro')} />
-      <QuestionnaireBuilderUnavailable
+      <DashboardPageHeader
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        description={t('editor.intro')}
+      />
+      <QuestionnaireDefinitionEditor
+        definitionKey={DEFINITION_KEY}
+        definitionId={summary?.definitionId ?? null}
+        title={summary?.title ?? 'Company registration'}
+        rowVersion={summary?.rowVersion ?? 0}
+        draftJson={draftJson}
+        versions={(summary?.versions ?? []).map((version) => ({
+          version: version.version,
+          state: version.state,
+          publishedAt: version.publishedAt,
+        }))}
+        saveAction={saveQuestionnaireDraftAction}
+        publishAction={publishQuestionnaireVersionAction}
+        archiveAction={archiveQuestionnaireVersionAction}
         labels={{
-          sections: t('sections'),
-          sectionsDescription: t('sectionsDescription'),
-          questionEditor: t('questionEditor'),
-          editorDescription: t('editorDescription'),
-          questionType: t('fields.questionType'),
-          label: t('fields.label'),
-          help: t('fields.help'),
-          required: t('fields.required'),
-          options: t('fields.options'),
-          validation: t('fields.validation'),
-          conditional: t('fields.conditional'),
-          consent: t('fields.consent'),
-          dirty: t('states.dirty'),
-          validating: t('states.validating'),
-          pending: t('states.pending'),
-          success: t('states.success'),
-          conflict: t('states.conflict'),
-          unavailable: t('states.unavailable'),
-          error: t('states.error'),
-          add: t('actions.add'),
-          reorder: t('actions.reorder'),
-          edit: t('actions.edit'),
-          duplicate: t('actions.duplicate'),
-          archive: t('actions.archive'),
-          preview: t('actions.preview'),
-          publish: t('actions.publish'),
-          actionExplanation: t('actionExplanation'),
+          key: t('editor.keyLabel'),
+          title: t('editor.titleLabel'),
+          definition: t('editor.definition'),
+          preview: t('editor.preview'),
+          save: t('editor.save'),
+          publish: t('editor.publish'),
+          archive: t('editor.archive'),
+          versions: t('editor.versions'),
+          invalidJson: t('editor.invalidJson'),
+          savedHint: t('editor.savedHint'),
         }}
       />
     </div>

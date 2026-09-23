@@ -3927,7 +3927,21 @@
           "preview": "Preview",
           "publish": "Publish"
         },
-        "actionExplanation": "Unavailable — Phase 3 questionnaire version, persistence, preview and publish contracts required."
+        "actionExplanation": "Unavailable — Phase 3 questionnaire version, persistence, preview and publish contracts required.",
+        "editor": {
+          "intro": "Create and version the public application questionnaire. Published versions are immutable; edits create a new draft.",
+          "keyLabel": "Definition key",
+          "titleLabel": "Title",
+          "definition": "Definition (JSON)",
+          "preview": "Preview",
+          "save": "Save draft",
+          "publish": "Publish",
+          "archive": "Archive",
+          "versions": "Versions",
+          "invalidJson": "The definition is not valid JSON or is structurally invalid.",
+          "savedHint": "Draft saved.",
+          "mfaRequired": "MFA (AAL2) is required to manage questionnaire definitions."
+        }
       }
     },
     "user": {

@@ -3523,15 +3523,20 @@ export type Database = {
       leads: {
         Row: {
           assigned_team_member_id: string | null;
+          consent_provenance: Json;
           converted_company_id: string | null;
           created_at: string;
           email: string | null;
           estimate_data: Json;
           form_data: Json;
           id: string;
+          intake_operation_id: string | null;
+          lead_score_factors: Json;
+          lead_score_version: number;
           name: string;
           phone: string | null;
           routing_reason: string;
+          row_version: number;
           score: number;
           source: string;
           stage: string;
@@ -3540,15 +3545,20 @@ export type Database = {
         };
         Insert: {
           assigned_team_member_id?: string | null;
+          consent_provenance?: Json;
           converted_company_id?: string | null;
           created_at?: string;
           email?: string | null;
           estimate_data?: Json;
           form_data?: Json;
           id?: string;
+          intake_operation_id?: string | null;
+          lead_score_factors?: Json;
+          lead_score_version?: number;
           name: string;
           phone?: string | null;
           routing_reason: string;
+          row_version?: number;
           score?: number;
           source?: string;
           stage?: string;
@@ -3557,15 +3567,20 @@ export type Database = {
         };
         Update: {
           assigned_team_member_id?: string | null;
+          consent_provenance?: Json;
           converted_company_id?: string | null;
           created_at?: string;
           email?: string | null;
           estimate_data?: Json;
           form_data?: Json;
           id?: string;
+          intake_operation_id?: string | null;
+          lead_score_factors?: Json;
+          lead_score_version?: number;
           name?: string;
           phone?: string | null;
           routing_reason?: string;
+          row_version?: number;
           score?: number;
           source?: string;
           stage?: string;
@@ -4954,6 +4969,321 @@ export type Database = {
           },
         ];
       };
+      public_application_attachments: {
+        Row: {
+          application_id: string | null;
+          content_sha256: string;
+          created_at: string;
+          document_upload_id: string | null;
+          draft_id: string;
+          field_id: string;
+          id: string;
+          immutable: boolean;
+          scan_state: string;
+          storage_path: string | null;
+        };
+        Insert: {
+          application_id?: string | null;
+          content_sha256: string;
+          created_at?: string;
+          document_upload_id?: string | null;
+          draft_id: string;
+          field_id: string;
+          id?: string;
+          immutable?: boolean;
+          scan_state: string;
+          storage_path?: string | null;
+        };
+        Update: {
+          application_id?: string | null;
+          content_sha256?: string;
+          created_at?: string;
+          document_upload_id?: string | null;
+          draft_id?: string;
+          field_id?: string;
+          id?: string;
+          immutable?: boolean;
+          scan_state?: string;
+          storage_path?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'public_application_attachments_application_id_fkey';
+            columns: ['application_id'];
+            isOneToOne: false;
+            referencedRelation: 'public_applications';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'public_application_attachments_draft_id_fkey';
+            columns: ['draft_id'];
+            isOneToOne: false;
+            referencedRelation: 'public_application_drafts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      public_application_drafts: {
+        Row: {
+          answers: Json;
+          created_at: string;
+          definition_id: string;
+          definition_version: number;
+          estimator_result_id: string | null;
+          expires_at: string;
+          id: string;
+          resume_secret_hash: string;
+          row_version: number;
+          state: string;
+          submitted_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          answers?: Json;
+          created_at?: string;
+          definition_id: string;
+          definition_version: number;
+          estimator_result_id?: string | null;
+          expires_at: string;
+          id?: string;
+          resume_secret_hash: string;
+          row_version?: number;
+          state?: string;
+          submitted_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          answers?: Json;
+          created_at?: string;
+          definition_id?: string;
+          definition_version?: number;
+          estimator_result_id?: string | null;
+          expires_at?: string;
+          id?: string;
+          resume_secret_hash?: string;
+          row_version?: number;
+          state?: string;
+          submitted_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'public_application_drafts_definition_id_definition_version_fkey';
+            columns: ['definition_id', 'definition_version'];
+            isOneToOne: false;
+            referencedRelation: 'questionnaire_definition_versions';
+            referencedColumns: ['definition_id', 'version'];
+          },
+        ];
+      };
+      public_applications: {
+        Row: {
+          accepted_at: string;
+          accepted_operation_id: string;
+          definition_id: string;
+          definition_version: number;
+          draft_id: string;
+          id: string;
+          lead_id: string;
+          retention_until: string;
+        };
+        Insert: {
+          accepted_at?: string;
+          accepted_operation_id: string;
+          definition_id: string;
+          definition_version: number;
+          draft_id: string;
+          id?: string;
+          lead_id: string;
+          retention_until: string;
+        };
+        Update: {
+          accepted_at?: string;
+          accepted_operation_id?: string;
+          definition_id?: string;
+          definition_version?: number;
+          draft_id?: string;
+          id?: string;
+          lead_id?: string;
+          retention_until?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'public_applications_definition_id_definition_version_fkey';
+            columns: ['definition_id', 'definition_version'];
+            isOneToOne: false;
+            referencedRelation: 'questionnaire_definition_versions';
+            referencedColumns: ['definition_id', 'version'];
+          },
+          {
+            foreignKeyName: 'public_applications_draft_id_fkey';
+            columns: ['draft_id'];
+            isOneToOne: true;
+            referencedRelation: 'public_application_drafts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'public_applications_lead_id_fkey';
+            columns: ['lead_id'];
+            isOneToOne: true;
+            referencedRelation: 'leads';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      public_contact_intakes: {
+        Row: {
+          abuse_scope_hash: string;
+          accepted_at: string;
+          acknowledgement_state: string;
+          consent_accepted_at: string;
+          consent_version: string;
+          id: string;
+          normalized_payload: Json;
+          operation_id: string;
+          request_hash: string;
+        };
+        Insert: {
+          abuse_scope_hash: string;
+          accepted_at?: string;
+          acknowledgement_state?: string;
+          consent_accepted_at: string;
+          consent_version: string;
+          id?: string;
+          normalized_payload: Json;
+          operation_id: string;
+          request_hash: string;
+        };
+        Update: {
+          abuse_scope_hash?: string;
+          accepted_at?: string;
+          acknowledgement_state?: string;
+          consent_accepted_at?: string;
+          consent_version?: string;
+          id?: string;
+          normalized_payload?: Json;
+          operation_id?: string;
+          request_hash?: string;
+        };
+        Relationships: [];
+      };
+      public_intake_operations: {
+        Row: {
+          created_at: string;
+          operation_id: string;
+          request_hash: string;
+          sanitized_result: Json;
+          scope: string;
+          subject_id: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          operation_id: string;
+          request_hash: string;
+          sanitized_result: Json;
+          scope: string;
+          subject_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          operation_id?: string;
+          request_hash?: string;
+          sanitized_result?: Json;
+          scope?: string;
+          subject_id?: string | null;
+        };
+        Relationships: [];
+      };
+      questionnaire_definition_versions: {
+        Row: {
+          archived_at: string | null;
+          created_at: string;
+          created_by: string;
+          definition: Json;
+          definition_hash: string;
+          definition_id: string;
+          published_at: string | null;
+          row_version: number;
+          state: string;
+          updated_at: string;
+          version: number;
+        };
+        Insert: {
+          archived_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          definition: Json;
+          definition_hash: string;
+          definition_id: string;
+          published_at?: string | null;
+          row_version?: number;
+          state: string;
+          updated_at?: string;
+          version: number;
+        };
+        Update: {
+          archived_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          definition?: Json;
+          definition_hash?: string;
+          definition_id?: string;
+          published_at?: string | null;
+          row_version?: number;
+          state?: string;
+          updated_at?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'questionnaire_definition_versions_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'questionnaire_definition_versions_definition_id_fkey';
+            columns: ['definition_id'];
+            isOneToOne: false;
+            referencedRelation: 'questionnaire_definitions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      questionnaire_definitions: {
+        Row: {
+          created_at: string;
+          current_draft_version: number;
+          current_published_version: number | null;
+          definition_key: string;
+          id: string;
+          row_version: number;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          current_draft_version?: number;
+          current_published_version?: number | null;
+          definition_key: string;
+          id?: string;
+          row_version?: number;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          current_draft_version?: number;
+          current_published_version?: number | null;
+          definition_key?: string;
+          id?: string;
+          row_version?: number;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       rate_limits: {
         Row: {
           key: string;
@@ -6132,6 +6462,17 @@ export type Database = {
         };
         Returns: Json;
       };
+      accept_public_contact: {
+        Args: {
+          p_abuse_scope_hash: string;
+          p_consent_accepted_at: string;
+          p_consent_version: string;
+          p_normalized_payload: Json;
+          p_operation_id: string;
+          p_request_hash: string;
+        };
+        Returns: Json;
+      };
       activate_company_onboarding: {
         Args: {
           p_actor_id: string;
@@ -6164,6 +6505,14 @@ export type Database = {
           p_reason?: string;
           p_role_data: Json;
           p_target_id: string;
+        };
+        Returns: Json;
+      };
+      archive_questionnaire_version: {
+        Args: {
+          p_definition_id: string;
+          p_expected_definition_version: number;
+          p_version: number;
         };
         Returns: Json;
       };
@@ -6423,6 +6772,17 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_public_application_draft: {
+        Args: {
+          p_definition_id: string;
+          p_definition_version: number;
+          p_expires_at: string;
+          p_operation_id: string;
+          p_request_hash: string;
+          p_resume_secret_hash: string;
+        };
+        Returns: Json;
+      };
       create_service_case_with_audit: {
         Args: {
           p_actor_id: string;
@@ -6438,6 +6798,14 @@ export type Database = {
           p_title: string;
         };
         Returns: string;
+      };
+      delete_public_application_attachment: {
+        Args: {
+          p_attachment_id: string;
+          p_draft_id: string;
+          p_resume_secret_hash: string;
+        };
+        Returns: Json;
       };
       end_pro_commercial_term: {
         Args: {
@@ -6566,6 +6934,15 @@ export type Database = {
       };
       finalize_pro_credential_evidence_upload_cleanup: {
         Args: { p_recovery_operation_id: string; p_reservation_id: string };
+        Returns: Json;
+      };
+      finalize_public_application_attachment: {
+        Args: {
+          p_attachment_id: string;
+          p_draft_id: string;
+          p_resume_secret_hash: string;
+          p_storage_path: string;
+        };
         Returns: Json;
       };
       get_document_upload_receipt: {
@@ -6755,6 +7132,17 @@ export type Database = {
         };
         Returns: Json;
       };
+      mutate_platform_lead: {
+        Args: {
+          p_action: string;
+          p_expected_version: number;
+          p_lead_id: string;
+          p_operation_id: string;
+          p_request_hash: string;
+          p_value: string;
+        };
+        Returns: Json;
+      };
       open_pro_credential_evidence_metadata: {
         Args: { p_actor_id: string; p_evidence_id: string };
         Returns: {
@@ -6904,6 +7292,14 @@ export type Database = {
           p_tenant_id: string;
         };
         Returns: string;
+      };
+      publish_questionnaire_version: {
+        Args: {
+          p_definition_id: string;
+          p_expected_definition_version: number;
+          p_version: number;
+        };
+        Returns: Json;
       };
       raise_pro_assignment_eligibility_error: {
         Args: { p_result: Json };
@@ -7167,6 +7563,17 @@ export type Database = {
         Args: { p_factor_id: string; p_operation_id: string; p_user_id: string };
         Returns: boolean;
       };
+      reserve_public_application_attachment: {
+        Args: {
+          p_content_sha256: string;
+          p_draft_id: string;
+          p_field_id: string;
+          p_operation_id: string;
+          p_request_hash: string;
+          p_resume_secret_hash: string;
+        };
+        Returns: Json;
+      };
       resolve_document_access: {
         Args: {
           p_actor_id: string;
@@ -7320,6 +7727,27 @@ export type Database = {
         };
         Returns: Json;
       };
+      save_public_application_draft: {
+        Args: {
+          p_answers: Json;
+          p_draft_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_request_hash: string;
+          p_resume_secret_hash: string;
+        };
+        Returns: Json;
+      };
+      save_questionnaire_draft: {
+        Args: {
+          p_definition: Json;
+          p_definition_hash: string;
+          p_definition_key: string;
+          p_expected_definition_version: number;
+          p_title: string;
+        };
+        Returns: Json;
+      };
       set_document_upload_cleanup_hold: {
         Args: {
           p_company_id: string;
@@ -7374,6 +7802,20 @@ export type Database = {
           p_expected_version: number;
           p_operation_id: string;
           p_payload_hash: string;
+        };
+        Returns: Json;
+      };
+      submit_public_application: {
+        Args: {
+          p_consent_provenance: Json;
+          p_draft_id: string;
+          p_expected_version: number;
+          p_operation_id: string;
+          p_request_hash: string;
+          p_resume_secret_hash: string;
+          p_score: number;
+          p_score_factors: Json;
+          p_score_version: number;
         };
         Returns: Json;
       };
