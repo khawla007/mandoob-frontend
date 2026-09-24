@@ -415,6 +415,7 @@ const adminRegistrationIndexRow = z
     title: z.string().nullable(),
     status: registrationStatus,
     currentStage: stageCode,
+    currentStageStatus: stageStatus,
     completedStages: z.number().int().nonnegative(),
     totalStages: z.literal(7),
     registrationVersion: versionInt,
@@ -431,9 +432,8 @@ export const adminRegistrationIndexReceiptSchema = z
   })
   .strip();
 
-const resolveCompanyActiveRegistrationReceipt = z
-  .object({ registrationId: uuidSchema.nullable() })
-  .strip();
+// resolve_company_active_registration `returns uuid` (a bare scalar).
+const resolveCompanyActiveRegistrationReceipt = uuidSchema;
 
 export type AdminRegistrationIndexRow = z.infer<typeof adminRegistrationIndexRow>;
 export type AdminRegistrationIndexReceipt = z.infer<typeof adminRegistrationIndexReceiptSchema>;
@@ -837,7 +837,8 @@ export async function readAdminRegistrationIndex(
 // ---------------------------------------------------------------------------
 // Resolve the single active registration for a company from fresh DB state.
 // The RPC enforces the caller's scope (assigned PRO / linked customer / active
-// employee) against tenant + company; returns the registration id or null.
+// employee) against tenant + company; returns the registration id, or null when
+// the RPC raises REGISTRATION_NOT_FOUND (no active registration in scope).
 // ---------------------------------------------------------------------------
 export type ResolveActiveRegistrationRole = 'pro' | 'customer' | 'employee';
 
@@ -847,16 +848,20 @@ export async function resolveCompanyActiveRegistration(
 ): Promise<string | null> {
   const { actorId, tenantId, companyId } = parseActor(context);
   const role = z.enum(['pro', 'customer', 'employee']).parse(context.role);
-  const receipt = await callRead(
-    deps,
-    'resolve_company_active_registration',
-    {
-      p_actor_id: actorId,
-      p_tenant_id: tenantId,
-      p_company_id: companyId,
-      p_role: role,
-    },
-    resolveCompanyActiveRegistrationReceipt,
-  );
-  return receipt.registrationId;
+  try {
+    return await callRead(
+      deps,
+      'resolve_company_active_registration',
+      {
+        p_actor_id: actorId,
+        p_tenant_id: tenantId,
+        p_company_id: companyId,
+        p_role: role,
+      },
+      resolveCompanyActiveRegistrationReceipt,
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'REGISTRATION_NOT_FOUND') return null;
+    throw error;
+  }
 }

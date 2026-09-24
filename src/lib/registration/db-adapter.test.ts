@@ -353,6 +353,7 @@ const adminIndexRow = {
   title: 'New LLC',
   status: 'in_progress',
   currentStage: 'application_submitted',
+  currentStageStatus: 'blocked',
   completedStages: 1,
   totalStages: 7,
   registrationVersion: 2,
@@ -377,6 +378,7 @@ test('loadAdminRegistrationIndex maps ready summary rows with total/page/pageSiz
   assert.equal(state.pageSize, 20);
   assert.equal(state.value.length, 1);
   assert.equal(state.value[0].companyName, 'Acme FZ');
+  assert.equal(state.value[0].currentStageStatus, 'blocked');
   assert.equal(supabase.calls[0].name, 'read_admin_registration_index');
   assert.equal(supabase.calls[0].args.p_actor_aal, 'aal2');
 });

@@ -418,6 +418,7 @@ export type AdminRegistrationIndexSummary = {
   title: string | null;
   status: AdminRegistrationIndexRow['status'];
   currentStage: AdminRegistrationIndexRow['currentStage'];
+  currentStageStatus: AdminRegistrationIndexRow['currentStageStatus'];
   completedStages: number;
   totalStages: 7;
   registrationVersion: number;
@@ -458,6 +459,7 @@ export async function loadAdminRegistrationIndex(
       title: row.title,
       status: row.status,
       currentStage: row.currentStage,
+      currentStageStatus: row.currentStageStatus,
       completedStages: row.completedStages,
       totalStages: row.totalStages,
       registrationVersion: row.registrationVersion,

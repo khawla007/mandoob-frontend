@@ -229,6 +229,7 @@ test('readAdminRegistrationIndex passes AAL2, nullable filters, page and parses 
             title: 'New LLC',
             status: 'in_progress',
             currentStage: 'application_submitted',
+            currentStageStatus: 'in_progress',
             completedStages: 1,
             totalStages: 7,
             registrationVersion: 2,
@@ -301,7 +302,8 @@ test('readAdminRegistrationIndex surfaces a malformed receipt as an internal rea
 
 test('resolveCompanyActiveRegistration passes scope+role and returns the id', async () => {
   const { resolveCompanyActiveRegistration } = await import('./registration-workflow');
-  const supabase = fakeSupabase([{ data: { registrationId }, error: null }]);
+  // The RPC `returns uuid` (a bare scalar), not a jsonb object.
+  const supabase = fakeSupabase([{ data: registrationId, error: null }]);
   const id = await resolveCompanyActiveRegistration(
     { role: 'pro', actorId: actor.actorId, tenantId: actor.tenantId, companyId: actor.companyId },
     { supabase },
@@ -317,7 +319,10 @@ test('resolveCompanyActiveRegistration passes scope+role and returns the id', as
 
 test('resolveCompanyActiveRegistration returns null when no registration is active', async () => {
   const { resolveCompanyActiveRegistration } = await import('./registration-workflow');
-  const supabase = fakeSupabase([{ data: { registrationId: null }, error: null }]);
+  // No active registration: the RPC raises P0001 REGISTRATION_NOT_FOUND.
+  const supabase = fakeSupabase([
+    { data: null, error: { message: 'REGISTRATION_NOT_FOUND', code: 'P0001' } },
+  ]);
   const id = await resolveCompanyActiveRegistration(
     {
       role: 'employee',

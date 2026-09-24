@@ -127,7 +127,7 @@ export default async function AdminRegistrationsPage({
                       <td className="py-3 pr-4">{row.proName ?? '—'}</td>
                       <td className="py-3 pr-4">{t(`stages.${row.currentStage}`)}</td>
                       <td className="py-3 pr-4">
-                        <Badge variant="outline">{t(`statuses.${row.status}`)}</Badge>
+                        <Badge variant="outline">{t(`statuses.${row.currentStageStatus}`)}</Badge>
                       </td>
                       <td className="py-3 pr-4 tabular-nums">
                         {t('workspace.stageCount', {

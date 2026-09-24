@@ -677,6 +677,76 @@ begin
 end;
 $$;
 
+-- 8b. Invoke (not just grant-check) the admin index + active-registration
+--     resolver and assert their exact return contracts.
+do $$
+declare
+  v_reg_id uuid;
+  v_index jsonb;
+  v_row jsonb;
+  v_key text;
+  v_resolved uuid;
+begin
+  select id into v_reg_id from public.company_registrations where company_id = pg_temp.uid(101);
+
+  v_index := public.read_admin_registration_index(pg_temp.uid(1), 'aal2', null, null, null, null, 1);
+  perform pg_temp.check((v_index->>'total')::integer >= 1, 'ADMIN_INDEX_TOTAL');
+  select item into v_row from jsonb_array_elements(v_index->'items') item
+    where item->>'registrationId' = v_reg_id::text;
+  perform pg_temp.check(v_row is not null, 'ADMIN_INDEX_ROW_MISSING');
+  foreach v_key in array array[
+    'registrationId','tenantId','companyId','companyName','proName','title','status',
+    'currentStage','currentStageStatus','completedStages','totalStages',
+    'registrationVersion','updatedAt'
+  ] loop
+    perform pg_temp.check(v_row ? v_key, 'ADMIN_INDEX_KEY_MISSING:' || v_key);
+  end loop;
+  perform pg_temp.check(v_row->>'tenantId' = pg_temp.uid(100)::text, 'ADMIN_INDEX_TENANT');
+  perform pg_temp.check(v_row->>'companyName' = 'Synthetic Co A', 'ADMIN_INDEX_COMPANY_NAME');
+  perform pg_temp.check((v_row->>'totalStages')::integer = 7, 'ADMIN_INDEX_TOTAL_STAGES');
+  perform pg_temp.check(
+    (v_row->>'completedStages')::integer = (
+      select count(*) from public.registration_stages
+      where registration_id = v_reg_id and status in ('completed', 'skipped')
+    ),
+    'ADMIN_INDEX_COMPLETED_STAGES'
+  );
+  perform pg_temp.check(
+    (v_row->>'registrationVersion')::bigint =
+      (select version from public.company_registrations where id = v_reg_id),
+    'ADMIN_INDEX_VERSION'
+  );
+
+  -- The status filter is the current-stage status (the page's filter domain).
+  v_index := public.read_admin_registration_index(
+    pg_temp.uid(1), 'aal2', pg_temp.uid(101)::text, null, null, v_row->>'currentStageStatus', 1
+  );
+  perform pg_temp.check((v_index->>'total')::integer = 1, 'ADMIN_INDEX_STATUS_FILTER_MATCH');
+  foreach v_key in array array['not_started', 'in_progress', 'blocked', 'completed', 'skipped'] loop
+    v_index := public.read_admin_registration_index(pg_temp.uid(1), 'aal2', null, null, null, v_key, 1);
+    perform pg_temp.check(v_index ? 'total', 'ADMIN_INDEX_STATUS_FILTER:' || v_key);
+  end loop;
+  v_index := public.read_admin_registration_index(
+    pg_temp.uid(1), 'aal2', pg_temp.uid(999)::text, null, null, null, 1
+  );
+  perform pg_temp.check((v_index->>'total')::integer = 0
+    and jsonb_array_length(v_index->'items') = 0, 'ADMIN_INDEX_EMPTY_FILTER');
+  begin
+    perform public.read_admin_registration_index(pg_temp.uid(1), 'aal2', null, null, null, 'draft', 1);
+    raise exception 'ADMIN_INDEX_REGISTRATION_STATUS_ACCEPTED';
+  exception when sqlstate '22023' then null;
+  end;
+
+  -- Resolver returns the bare registration uuid for in-scope roles.
+  v_resolved := public.resolve_company_active_registration(
+    pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), 'pro');
+  perform pg_temp.check(v_resolved = v_reg_id, 'RESOLVE_PRO');
+  v_resolved := public.resolve_company_active_registration(
+    pg_temp.uid(3), pg_temp.uid(100), pg_temp.uid(101), 'customer');
+  perform pg_temp.check(v_resolved = v_reg_id, 'RESOLVE_CUSTOMER');
+end;
+$$;
+
 -- 9. Final marker.
 select 'REGISTRATION_VISA_ASSERTIONS_PASSED' as assertion;
 rollback;

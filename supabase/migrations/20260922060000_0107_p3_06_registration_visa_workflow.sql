@@ -2660,14 +2660,14 @@ as $$
 declare
   v_page integer := p_page;
   v_page_size constant integer := 20;
-  v_company text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_company, '')), '');
-  v_pro text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_pro, '')), '');
-  v_stage text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_stage, '')), '');
-  v_status text := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_status, '')), '');
+  v_company text := nullif(pg_catalog.btrim(coalesce(p_company, '')), '');
+  v_pro text := nullif(pg_catalog.btrim(coalesce(p_pro, '')), '');
+  v_stage text := nullif(pg_catalog.btrim(coalesce(p_stage, '')), '');
+  v_status text := nullif(pg_catalog.btrim(coalesce(p_status, '')), '');
   v_company_id uuid;
   v_pro_id uuid;
   v_stage_code public.registration_stage_code;
-  v_status_value public.registration_status;
+  v_status_value public.registration_stage_status;
   v_total integer;
   v_items jsonb;
   v_audit_tenant_id uuid;
@@ -2710,7 +2710,7 @@ begin
   end if;
   if v_status is not null then
     begin
-      v_status_value := v_status::public.registration_status;
+      v_status_value := v_status::public.registration_stage_status;
     exception when others then
       raise exception using errcode = '22023', message = 'INVALID_REGISTRATION_INPUT';
     end;
@@ -2729,7 +2729,7 @@ begin
    and current_stage.code = registration.current_stage
   where (v_company_id is null or registration.company_id = v_company_id)
     and (v_stage_code is null or registration.current_stage = v_stage_code)
-    and (v_status_value is null or registration.status = v_status_value)
+    and (v_status_value is null or current_stage.status = v_status_value)
     and (
       v_pro_id is null
       or exists (
@@ -2743,22 +2743,45 @@ begin
 
   select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
     'registrationId', page_row.id,
+    'tenantId', page_row.tenant_id,
     'companyId', page_row.company_id,
+    'companyName', page_row.company_name,
+    'proName', page_row.pro_name,
     'title', page_row.title,
     'status', page_row.status,
     'currentStage', page_row.current_stage,
     'currentStageStatus', page_row.current_stage_status,
+    'completedStages', page_row.completed_stages,
+    'totalStages', 7,
+    'registrationVersion', page_row.version,
     'updatedAt', page_row.updated_at
   ) order by page_row.created_at desc, page_row.id asc), '[]'::jsonb),
-         pg_catalog.max(page_row.tenant_id)
+         (pg_catalog.array_agg(page_row.tenant_id order by page_row.created_at desc, page_row.id asc))[1]
     into v_items, v_audit_tenant_id
   from (
     select registration.id, registration.tenant_id, registration.company_id,
            service_case.title, registration.status::text as status,
            registration.current_stage::text as current_stage,
            current_stage.status::text as current_stage_status,
+           company.company_name, active_pro.full_name as pro_name,
+           (select pg_catalog.count(*)::integer from public.registration_stages stage
+             where stage.registration_id = registration.id
+               and stage.status in ('completed', 'skipped')) as completed_stages,
+           registration.version,
            registration.updated_at, registration.created_at
     from public.company_registrations registration
+    join public.company_profiles company
+      on company.id = registration.company_id
+     and company.tenant_id = registration.tenant_id
+    left join lateral (
+      select profile.full_name
+      from public.pro_company_assignments assignment
+      join public.profiles profile on profile.id = assignment.pro_profile_id
+      where assignment.tenant_id = registration.tenant_id
+        and assignment.company_id = registration.company_id
+        and assignment.status = 'active'
+      limit 1
+    ) as active_pro on true
     join public.service_cases service_case
       on service_case.id = registration.service_case_id
      and service_case.tenant_id = registration.tenant_id
@@ -2770,7 +2793,7 @@ begin
      and current_stage.code = registration.current_stage
     where (v_company_id is null or registration.company_id = v_company_id)
       and (v_stage_code is null or registration.current_stage = v_stage_code)
-      and (v_status_value is null or registration.status = v_status_value)
+      and (v_status_value is null or current_stage.status = v_status_value)
       and (
         v_pro_id is null
         or exists (
