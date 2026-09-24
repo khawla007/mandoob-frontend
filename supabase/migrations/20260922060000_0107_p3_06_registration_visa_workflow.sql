@@ -333,6 +333,8 @@ create table public.registration_stage_events (
   reason_text text,
   operation_id uuid not null,
   actor_id uuid not null references public.profiles (id) on delete restrict,
+  actor_category text not null
+    check (actor_category in ('pro', 'operator', 'system')),
   registration_version bigint not null,
   stage_version bigint not null,
   occurred_at timestamptz not null default now(),
@@ -376,6 +378,8 @@ create table public.registration_visa_events (
   reason_text text,
   operation_id uuid not null,
   actor_id uuid not null references public.profiles (id) on delete restrict,
+  actor_category text not null
+    check (actor_category in ('pro', 'operator', 'system')),
   visa_version bigint not null,
   occurred_at timestamptz not null default now(),
   constraint registration_visa_events_person_fk
@@ -993,6 +997,49 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- Mutation authority. Returns the actor category from fresh DB state:
+--   'pro'      — active verified PRO with an active assignment to the company;
+--   'operator' — active tenant-null admin/super_admin with MFA enrolled, at
+--                aal2, acting on a company that belongs to the tenant.
+-- Anything else raises 42501 FORBIDDEN (no existence disclosure). Callable only
+-- from the owning SECURITY DEFINER mutation RPCs.
+-- ---------------------------------------------------------------------------
+create function public.authorize_registration_mutation(
+  p_actor_id uuid,
+  p_actor_aal text,
+  p_tenant_id uuid,
+  p_company_id uuid
+)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
+    return 'pro';
+  end if;
+  if p_actor_aal = 'aal2'
+     and exists (
+       select 1 from public.profiles profile
+       where profile.id = p_actor_id
+         and profile.role in ('admin', 'super_admin')
+         and profile.status = 'active'
+         and profile.tenant_id is null
+         and profile.mfa_enrolled_at is not null
+     )
+     and exists (
+       select 1 from public.company_profiles company
+       where company.id = p_company_id and company.tenant_id = p_tenant_id
+     ) then
+    return 'operator';
+  end if;
+  raise exception using errcode = '42501', message = 'FORBIDDEN';
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Command RPC: create_company_registration
 -- ---------------------------------------------------------------------------
 create function public.create_company_registration(
@@ -1105,11 +1152,11 @@ begin
   insert into public.registration_stage_events (
     registration_id, stage_id, tenant_id, company_id, from_stage_status,
     to_stage_status, from_registration_stage, to_registration_stage,
-    transition_code, operation_id, actor_id, registration_version, stage_version
+    transition_code, operation_id, actor_id, actor_category, registration_version, stage_version
   ) values (
     v_registration_id, v_stage_id, p_tenant_id, p_company_id, null,
     'in_progress', null, 'application_submitted', 'started',
-    p_operation_id, p_actor_id, 1, 1
+    p_operation_id, p_actor_id, 'pro', 1, 1
   );
   insert into public.registration_domain_events (
     event_code, registration_id, tenant_id, company_id, payload
@@ -1167,6 +1214,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create function public.transition_registration_stage(
   p_actor_id uuid,
+  p_actor_aal text,
   p_tenant_id uuid,
   p_company_id uuid,
   p_registration_id uuid,
@@ -1186,6 +1234,7 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_actor_category text;
   v_registration public.company_registrations%rowtype;
   v_stage public.registration_stages%rowtype;
   v_from_status public.registration_stage_status;
@@ -1200,9 +1249,9 @@ declare
   v_require_reason boolean;
   v_has_required_document boolean;
 begin
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
-    raise exception using errcode = '42501', message = 'FORBIDDEN';
-  end if;
+  v_actor_category := public.authorize_registration_mutation(
+    p_actor_id, p_actor_aal, p_tenant_id, p_company_id
+  );
   if p_command is null
      or p_command not in ('start', 'block', 'unblock', 'complete', 'skip', 'recover')
      or pg_catalog.jsonb_typeof(v_details) <> 'object' then
@@ -1217,6 +1266,9 @@ begin
       'CUSTOMER_DECLINED', 'OPERATOR_RECOVERY'
     ) or v_reason_text is null or pg_catalog.char_length(v_reason_text) not between 3 and 500
   ) then
+    raise exception using errcode = '22023', message = 'INVALID_STAGE_REASON';
+  end if;
+  if v_reason_code = 'OPERATOR_RECOVERY' and v_actor_category <> 'operator' then
     raise exception using errcode = '22023', message = 'INVALID_STAGE_REASON';
   end if;
   if not v_require_reason and (p_reason_code is not null or p_reason_text is not null) then
@@ -1238,7 +1290,8 @@ begin
     and stage.tenant_id = p_tenant_id and stage.company_id = p_company_id
   for update;
   if not found then raise exception using errcode = 'P0001', message = 'STAGE_NOT_FOUND'; end if;
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
+  if public.authorize_registration_mutation(p_actor_id, p_actor_aal, p_tenant_id, p_company_id)
+     is distinct from v_actor_category then
     raise exception using errcode = '42501', message = 'FORBIDDEN';
   end if;
   v_result := public.registration_replay_result(
@@ -1491,7 +1544,7 @@ begin
   insert into public.registration_stage_events (
     registration_id, stage_id, tenant_id, company_id, from_stage_status,
     to_stage_status, from_registration_stage, to_registration_stage,
-    transition_code, reason_code, reason_text, operation_id, actor_id,
+    transition_code, reason_code, reason_text, operation_id, actor_id, actor_category,
     registration_version, stage_version
   ) values (
     p_registration_id, p_stage_id, p_tenant_id, p_company_id, v_from_status,
@@ -1499,7 +1552,7 @@ begin
     v_transition_code,
     case when v_require_reason then v_reason_code else null end,
     case when v_require_reason then v_reason_text else null end,
-    p_operation_id, p_actor_id, v_registration.version + 1, v_stage.version + 1
+    p_operation_id, p_actor_id, v_actor_category, v_registration.version + 1, v_stage.version + 1
   );
   insert into public.registration_domain_events (
     event_code, registration_id, tenant_id, company_id, payload
@@ -1517,7 +1570,7 @@ begin
   );
   insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
   values (
-    p_tenant_id, p_actor_id, 'registration_stage_changed', 'self_serve',
+    p_tenant_id, p_actor_id, 'registration_stage_changed', case when v_actor_category = 'operator' then 'admin' else 'self_serve' end,
     pg_catalog.jsonb_build_object(
       'registration_id', p_registration_id, 'stage_id', p_stage_id,
       'command', p_command, 'to_status', v_to_status::text,
@@ -1596,6 +1649,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create function public.link_registration_stage_document(
   p_actor_id uuid,
+  p_actor_aal text,
   p_tenant_id uuid,
   p_company_id uuid,
   p_registration_id uuid,
@@ -1612,14 +1666,15 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_actor_category text;
   v_registration public.company_registrations%rowtype;
   v_stage public.registration_stages%rowtype;
   v_link_id uuid;
   v_result jsonb;
 begin
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
-    raise exception using errcode = '42501', message = 'FORBIDDEN';
-  end if;
+  v_actor_category := public.authorize_registration_mutation(
+    p_actor_id, p_actor_aal, p_tenant_id, p_company_id
+  );
   v_result := public.registration_replay_result(
     'link_document', p_registration_id, p_operation_id, p_payload_hash
   );
@@ -1633,7 +1688,8 @@ begin
   where stage.id = p_stage_id and stage.registration_id = p_registration_id
     and stage.tenant_id = p_tenant_id and stage.company_id = p_company_id for update;
   if not found then raise exception using errcode = 'P0001', message = 'STAGE_NOT_FOUND'; end if;
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
+  if public.authorize_registration_mutation(p_actor_id, p_actor_aal, p_tenant_id, p_company_id)
+     is distinct from v_actor_category then
     raise exception using errcode = '42501', message = 'FORBIDDEN';
   end if;
   v_result := public.registration_replay_result(
@@ -1682,7 +1738,7 @@ begin
   ) returning id into v_link_id;
   insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
   values (
-    p_tenant_id, p_actor_id, 'registration_document_linked', 'self_serve',
+    p_tenant_id, p_actor_id, 'registration_document_linked', case when v_actor_category = 'operator' then 'admin' else 'self_serve' end,
     pg_catalog.jsonb_build_object(
       'registration_id', p_registration_id, 'stage_id', p_stage_id,
       'link_id', v_link_id, 'document_id', p_document_id,
@@ -1718,6 +1774,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create function public.unlink_registration_stage_document(
   p_actor_id uuid,
+  p_actor_aal text,
   p_tenant_id uuid,
   p_company_id uuid,
   p_registration_id uuid,
@@ -1732,13 +1789,14 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_actor_category text;
   v_stage public.registration_stages%rowtype;
   v_link public.registration_stage_documents%rowtype;
   v_result jsonb;
 begin
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
-    raise exception using errcode = '42501', message = 'FORBIDDEN';
-  end if;
+  v_actor_category := public.authorize_registration_mutation(
+    p_actor_id, p_actor_aal, p_tenant_id, p_company_id
+  );
   v_result := public.registration_replay_result(
     'unlink_document', p_registration_id, p_operation_id, p_payload_hash
   );
@@ -1751,7 +1809,8 @@ begin
   where stage.id = p_stage_id and stage.registration_id = p_registration_id
     and stage.tenant_id = p_tenant_id and stage.company_id = p_company_id for update;
   if not found then raise exception using errcode = 'P0001', message = 'STAGE_NOT_FOUND'; end if;
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
+  if public.authorize_registration_mutation(p_actor_id, p_actor_aal, p_tenant_id, p_company_id)
+     is distinct from v_actor_category then
     raise exception using errcode = '42501', message = 'FORBIDDEN';
   end if;
   v_result := public.registration_replay_result(
@@ -1769,7 +1828,7 @@ begin
   delete from public.registration_stage_documents where id = p_link_id;
   insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
   values (
-    p_tenant_id, p_actor_id, 'registration_document_unlinked', 'self_serve',
+    p_tenant_id, p_actor_id, 'registration_document_unlinked', case when v_actor_category = 'operator' then 'admin' else 'self_serve' end,
     pg_catalog.jsonb_build_object(
       'registration_id', p_registration_id, 'stage_id', p_stage_id,
       'link_id', p_link_id, 'document_id', v_link.document_id,
@@ -1959,10 +2018,10 @@ begin
   ) returning id into v_person_id;
   insert into public.registration_visa_events (
     registration_id, visa_person_id, tenant_id, company_id, from_stage, to_stage,
-    from_status, to_status, operation_id, actor_id, visa_version
+    from_status, to_status, operation_id, actor_id, actor_category, visa_version
   ) values (
     p_registration_id, v_person_id, p_tenant_id, p_company_id, null, 'documents_ready',
-    null, 'not_started', p_operation_id, p_actor_id, 1
+    null, 'not_started', p_operation_id, p_actor_id, 'pro', 1
   );
   update public.registration_visa_people set version = 1 where id = v_person_id;
   insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
@@ -2006,6 +2065,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create function public.transition_registration_visa_person(
   p_actor_id uuid,
+  p_actor_aal text,
   p_tenant_id uuid,
   p_company_id uuid,
   p_registration_id uuid,
@@ -2024,6 +2084,7 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_actor_category text;
   v_person public.registration_visa_people%rowtype;
   v_from_status public.registration_visa_status;
   v_to_status public.registration_visa_status;
@@ -2034,9 +2095,9 @@ declare
   v_to_ordinal integer;
   v_result jsonb;
 begin
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
-    raise exception using errcode = '42501', message = 'FORBIDDEN';
-  end if;
+  v_actor_category := public.authorize_registration_mutation(
+    p_actor_id, p_actor_aal, p_tenant_id, p_company_id
+  );
   if p_command is null or p_to_stage is null
      or p_command not in ('start', 'advance', 'block', 'unblock', 'complete') then
     raise exception using errcode = '22023', message = 'INVALID_VISA_COMMAND';
@@ -2076,7 +2137,8 @@ begin
   where person.id = p_visa_person_id and person.registration_id = p_registration_id
     and person.tenant_id = p_tenant_id and person.company_id = p_company_id for update;
   if not found then raise exception using errcode = 'P0001', message = 'VISA_PERSON_NOT_FOUND'; end if;
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
+  if public.authorize_registration_mutation(p_actor_id, p_actor_aal, p_tenant_id, p_company_id)
+     is distinct from v_actor_category then
     raise exception using errcode = '42501', message = 'FORBIDDEN';
   end if;
   v_result := public.registration_replay_result(
@@ -2133,17 +2195,17 @@ begin
   where id = p_visa_person_id;
   insert into public.registration_visa_events (
     registration_id, visa_person_id, tenant_id, company_id, from_stage, to_stage,
-    from_status, to_status, reason_code, reason_text, operation_id, actor_id, visa_version
+    from_status, to_status, reason_code, reason_text, operation_id, actor_id, actor_category, visa_version
   ) values (
     p_registration_id, p_visa_person_id, p_tenant_id, p_company_id,
     v_from_stage, p_to_stage, v_from_status, v_to_status,
     case when p_command in ('block', 'unblock') then v_reason_code else null end,
     case when p_command in ('block', 'unblock') then v_reason_text else null end,
-    p_operation_id, p_actor_id, v_person.version + 1
+    p_operation_id, p_actor_id, v_actor_category, v_person.version + 1
   );
   insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
   values (
-    p_tenant_id, p_actor_id, 'registration_visa_changed', 'self_serve',
+    p_tenant_id, p_actor_id, 'registration_visa_changed', case when v_actor_category = 'operator' then 'admin' else 'self_serve' end,
     pg_catalog.jsonb_build_object(
       'registration_id', p_registration_id, 'visa_person_id', p_visa_person_id,
       'command', p_command, 'to_stage', p_to_stage::text, 'to_status', v_to_status::text,
@@ -2181,6 +2243,7 @@ $$;
 -- ---------------------------------------------------------------------------
 create function public.cancel_registration_visa_person(
   p_actor_id uuid,
+  p_actor_aal text,
   p_tenant_id uuid,
   p_company_id uuid,
   p_registration_id uuid,
@@ -2197,17 +2260,21 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_actor_category text;
   v_person public.registration_visa_people%rowtype;
   v_reason_code text := pg_catalog.upper(pg_catalog.btrim(p_reason_code));
   v_reason_text text := pg_catalog.btrim(p_reason_text);
   v_result jsonb;
 begin
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
-    raise exception using errcode = '42501', message = 'FORBIDDEN';
-  end if;
+  v_actor_category := public.authorize_registration_mutation(
+    p_actor_id, p_actor_aal, p_tenant_id, p_company_id
+  );
   if v_reason_code is null
      or v_reason_code not in ('CUSTOMER_CANCELLED', 'NOT_APPLICABLE', 'DUPLICATE_PERSON', 'OPERATOR_CANCELLED')
      or v_reason_text is null or pg_catalog.char_length(v_reason_text) not between 3 and 500 then
+    raise exception using errcode = '22023', message = 'INVALID_VISA_REASON';
+  end if;
+  if v_reason_code = 'OPERATOR_CANCELLED' and v_actor_category <> 'operator' then
     raise exception using errcode = '22023', message = 'INVALID_VISA_REASON';
   end if;
   v_result := public.registration_replay_result(
@@ -2234,7 +2301,8 @@ begin
   where person.id = p_visa_person_id and person.registration_id = p_registration_id
     and person.tenant_id = p_tenant_id and person.company_id = p_company_id for update;
   if not found then raise exception using errcode = 'P0001', message = 'VISA_PERSON_NOT_FOUND'; end if;
-  if not public.authorize_pro_company_access(p_actor_id, p_tenant_id, p_company_id) then
+  if public.authorize_registration_mutation(p_actor_id, p_actor_aal, p_tenant_id, p_company_id)
+     is distinct from v_actor_category then
     raise exception using errcode = '42501', message = 'FORBIDDEN';
   end if;
   v_result := public.registration_replay_result(
@@ -2253,15 +2321,15 @@ begin
   where id = p_visa_person_id;
   insert into public.registration_visa_events (
     registration_id, visa_person_id, tenant_id, company_id, from_stage, to_stage,
-    from_status, to_status, reason_code, reason_text, operation_id, actor_id, visa_version
+    from_status, to_status, reason_code, reason_text, operation_id, actor_id, actor_category, visa_version
   ) values (
     p_registration_id, p_visa_person_id, p_tenant_id, p_company_id,
     v_person.current_stage, v_person.current_stage, v_person.status, 'cancelled',
-    v_reason_code, v_reason_text, p_operation_id, p_actor_id, v_person.version + 1
+    v_reason_code, v_reason_text, p_operation_id, p_actor_id, v_actor_category, v_person.version + 1
   );
   insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
   values (
-    p_tenant_id, p_actor_id, 'registration_visa_changed', 'self_serve',
+    p_tenant_id, p_actor_id, 'registration_visa_changed', case when v_actor_category = 'operator' then 'admin' else 'self_serve' end,
     pg_catalog.jsonb_build_object(
       'registration_id', p_registration_id, 'visa_person_id', p_visa_person_id,
       'command', 'cancel', 'reason_code', v_reason_code
@@ -2584,14 +2652,15 @@ alter function public.reject_registration_event_mutation() owner to postgres;
 alter function public.guard_registration_domain_event_consumption() owner to postgres;
 alter function public.registration_replay_result(public.registration_operation_kind, uuid, uuid, text) owner to postgres;
 alter function public.store_registration_receipt(public.registration_operation_kind, uuid, uuid, text, jsonb) owner to postgres;
+alter function public.authorize_registration_mutation(uuid, text, uuid, uuid) owner to postgres;
 alter function public.create_company_registration(uuid, uuid, uuid, text, text, timestamptz, uuid, text) owner to postgres;
-alter function public.transition_registration_stage(uuid, uuid, uuid, uuid, uuid, text, bigint, bigint, jsonb, text, text, uuid, text) owner to postgres;
-alter function public.link_registration_stage_document(uuid, uuid, uuid, uuid, uuid, uuid, uuid, public.registration_document_role, uuid, text) owner to postgres;
-alter function public.unlink_registration_stage_document(uuid, uuid, uuid, uuid, uuid, uuid, uuid, text) owner to postgres;
+alter function public.transition_registration_stage(uuid, text, uuid, uuid, uuid, uuid, text, bigint, bigint, jsonb, text, text, uuid, text) owner to postgres;
+alter function public.link_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, public.registration_document_role, uuid, text) owner to postgres;
+alter function public.unlink_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, text) owner to postgres;
 alter function public.recover_unlink_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, text, uuid, text) owner to postgres;
 alter function public.create_registration_visa_person(uuid, uuid, uuid, uuid, public.registration_person_kind, uuid, uuid, text, public.registration_visa_kind, uuid, text) owner to postgres;
-alter function public.transition_registration_visa_person(uuid, uuid, uuid, uuid, uuid, text, public.registration_visa_stage_code, bigint, text, text, uuid, text) owner to postgres;
-alter function public.cancel_registration_visa_person(uuid, uuid, uuid, uuid, uuid, bigint, text, text, uuid, text) owner to postgres;
+alter function public.transition_registration_visa_person(uuid, text, uuid, uuid, uuid, uuid, text, public.registration_visa_stage_code, bigint, text, text, uuid, text) owner to postgres;
+alter function public.cancel_registration_visa_person(uuid, text, uuid, uuid, uuid, uuid, bigint, text, text, uuid, text) owner to postgres;
 alter function public.read_pro_registration_workflow(uuid, uuid, uuid, uuid) owner to postgres;
 alter function public.read_operator_registration_workflow(uuid, text, uuid) owner to postgres;
 alter function public.read_customer_registration_progress(uuid, uuid) owner to postgres;
@@ -2605,14 +2674,15 @@ revoke all on function private.p306_event_uuid(text) from public, anon, authenti
 revoke all on function private.publish_p306_event(text, text, timestamptz, uuid, uuid, uuid, uuid, jsonb) from public, anon, authenticated, service_role;
 revoke all on function public.registration_replay_result(public.registration_operation_kind, uuid, uuid, text) from public, anon, authenticated, service_role;
 revoke all on function public.store_registration_receipt(public.registration_operation_kind, uuid, uuid, text, jsonb) from public, anon, authenticated, service_role;
+revoke all on function public.authorize_registration_mutation(uuid, text, uuid, uuid) from public, anon, authenticated, service_role;
 revoke all on function public.create_company_registration(uuid, uuid, uuid, text, text, timestamptz, uuid, text) from public, anon, authenticated, service_role;
-revoke all on function public.transition_registration_stage(uuid, uuid, uuid, uuid, uuid, text, bigint, bigint, jsonb, text, text, uuid, text) from public, anon, authenticated, service_role;
-revoke all on function public.link_registration_stage_document(uuid, uuid, uuid, uuid, uuid, uuid, uuid, public.registration_document_role, uuid, text) from public, anon, authenticated, service_role;
-revoke all on function public.unlink_registration_stage_document(uuid, uuid, uuid, uuid, uuid, uuid, uuid, text) from public, anon, authenticated, service_role;
+revoke all on function public.transition_registration_stage(uuid, text, uuid, uuid, uuid, uuid, text, bigint, bigint, jsonb, text, text, uuid, text) from public, anon, authenticated, service_role;
+revoke all on function public.link_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, public.registration_document_role, uuid, text) from public, anon, authenticated, service_role;
+revoke all on function public.unlink_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, text) from public, anon, authenticated, service_role;
 revoke all on function public.recover_unlink_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, text, uuid, text) from public, anon, authenticated, service_role;
 revoke all on function public.create_registration_visa_person(uuid, uuid, uuid, uuid, public.registration_person_kind, uuid, uuid, text, public.registration_visa_kind, uuid, text) from public, anon, authenticated, service_role;
-revoke all on function public.transition_registration_visa_person(uuid, uuid, uuid, uuid, uuid, text, public.registration_visa_stage_code, bigint, text, text, uuid, text) from public, anon, authenticated, service_role;
-revoke all on function public.cancel_registration_visa_person(uuid, uuid, uuid, uuid, uuid, bigint, text, text, uuid, text) from public, anon, authenticated, service_role;
+revoke all on function public.transition_registration_visa_person(uuid, text, uuid, uuid, uuid, uuid, text, public.registration_visa_stage_code, bigint, text, text, uuid, text) from public, anon, authenticated, service_role;
+revoke all on function public.cancel_registration_visa_person(uuid, text, uuid, uuid, uuid, uuid, bigint, text, text, uuid, text) from public, anon, authenticated, service_role;
 revoke all on function public.read_pro_registration_workflow(uuid, uuid, uuid, uuid) from public, anon, authenticated, service_role;
 revoke all on function public.read_operator_registration_workflow(uuid, text, uuid) from public, anon, authenticated, service_role;
 revoke all on function public.read_customer_registration_progress(uuid, uuid) from public, anon, authenticated, service_role;
@@ -2620,13 +2690,13 @@ revoke all on function public.read_customer_registration_progress(uuid, uuid) fr
 grant execute on function public.registration_replay_result(public.registration_operation_kind, uuid, uuid, text) to service_role;
 grant execute on function public.store_registration_receipt(public.registration_operation_kind, uuid, uuid, text, jsonb) to service_role;
 grant execute on function public.create_company_registration(uuid, uuid, uuid, text, text, timestamptz, uuid, text) to service_role;
-grant execute on function public.transition_registration_stage(uuid, uuid, uuid, uuid, uuid, text, bigint, bigint, jsonb, text, text, uuid, text) to service_role;
-grant execute on function public.link_registration_stage_document(uuid, uuid, uuid, uuid, uuid, uuid, uuid, public.registration_document_role, uuid, text) to service_role;
-grant execute on function public.unlink_registration_stage_document(uuid, uuid, uuid, uuid, uuid, uuid, uuid, text) to service_role;
+grant execute on function public.transition_registration_stage(uuid, text, uuid, uuid, uuid, uuid, text, bigint, bigint, jsonb, text, text, uuid, text) to service_role;
+grant execute on function public.link_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, public.registration_document_role, uuid, text) to service_role;
+grant execute on function public.unlink_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, uuid, text) to service_role;
 grant execute on function public.recover_unlink_registration_stage_document(uuid, text, uuid, uuid, uuid, uuid, uuid, text, uuid, text) to service_role;
 grant execute on function public.create_registration_visa_person(uuid, uuid, uuid, uuid, public.registration_person_kind, uuid, uuid, text, public.registration_visa_kind, uuid, text) to service_role;
-grant execute on function public.transition_registration_visa_person(uuid, uuid, uuid, uuid, uuid, text, public.registration_visa_stage_code, bigint, text, text, uuid, text) to service_role;
-grant execute on function public.cancel_registration_visa_person(uuid, uuid, uuid, uuid, uuid, bigint, text, text, uuid, text) to service_role;
+grant execute on function public.transition_registration_visa_person(uuid, text, uuid, uuid, uuid, uuid, text, public.registration_visa_stage_code, bigint, text, text, uuid, text) to service_role;
+grant execute on function public.cancel_registration_visa_person(uuid, text, uuid, uuid, uuid, uuid, bigint, text, text, uuid, text) to service_role;
 grant execute on function public.read_pro_registration_workflow(uuid, uuid, uuid, uuid) to service_role;
 grant execute on function public.read_operator_registration_workflow(uuid, text, uuid) to service_role;
 grant execute on function public.read_customer_registration_progress(uuid, uuid) to service_role;

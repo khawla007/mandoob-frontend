@@ -202,7 +202,7 @@ select public.create_company_registration(
 // can be embedded in either `select (<expr>)` or `perform <expr>`.
 function callExpr(command, reasonCode, reasonText, regId, stageId, expReg, expStage, opId, hashId) {
   return `public.transition_registration_stage(
-    ${uid(2)}, ${uid(0)}, ${uid(3)}, '${regId}'::uuid, '${stageId}'::uuid, '${command}',
+    ${uid(2)}, 'aal1', ${uid(0)}, ${uid(3)}, '${regId}'::uuid, '${stageId}'::uuid, '${command}',
     ${expReg}, ${expStage}, '{}'::jsonb,
     '${reasonCode}', '${reasonText}', ${opId}, ${hashId})`;
 }

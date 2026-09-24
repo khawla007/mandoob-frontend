@@ -183,6 +183,11 @@ begin
       and has_function_privilege('service_role', signature, 'EXECUTE'),
       'RPC_EXECUTE_ACLS:'||signature);
   end loop;
+  perform pg_temp.check(
+    not has_function_privilege('anon', 'public.authorize_registration_mutation(uuid,text,uuid,uuid)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.authorize_registration_mutation(uuid,text,uuid,uuid)', 'EXECUTE')
+    and not has_function_privilege('service_role', 'public.authorize_registration_mutation(uuid,text,uuid,uuid)', 'EXECUTE'),
+    'HELPER_NOT_EXECUTABLE');
   -- Workflow tables carry no direct DML for anon/authenticated/service_role;
   -- only SELECT is granted to authenticated (RLS-gated).
   perform pg_temp.check(
@@ -253,7 +258,7 @@ begin
     where registration_id = v_reg_id and code = 'application_submitted';
   v_op := v_op + 1;
   v_link := public.link_registration_stage_document(
-    pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_stage_id,
+    pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_stage_id,
     pg_temp.uid(170), pg_temp.uid(171), 'application_form',
     pg_temp.uid(v_op), pg_temp.hash(v_op));
   perform pg_temp.check((v_link->>'linkId') is not null
@@ -262,7 +267,7 @@ begin
   -- complete stage 1 (requires approved application_form + applicationSubmittedOn)
   v_op := v_op + 1;
   v_tr := public.transition_registration_stage(
-    pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_stage_id,
+    pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_stage_id,
     'complete', 1, v_stage_ver,
     jsonb_build_object('applicationSubmittedOn', to_char(current_date, 'YYYY-MM-DD')),
     null, null, pg_temp.uid(v_op), pg_temp.hash(v_op));
@@ -276,7 +281,7 @@ begin
   select id, version into v_stage_id, v_stage_ver from public.registration_stages
     where registration_id = v_reg_id and code = 'initial_approval';
   v_op := v_op + 1;
-  perform public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'start', 2, v_stage_ver, '{}'::jsonb, null, null,
     pg_temp.uid(v_op), pg_temp.hash(v_op));
   -- seed + link an approved approval_letter document for stage 2
@@ -289,13 +294,13 @@ begin
       'application/pdf', 8, repeat('d',64), null, 'pending');
   update public.document_versions set review_status = 'approved' where id = pg_temp.uid(173);
   v_op := v_op + 1;
-  perform public.link_registration_stage_document(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.link_registration_stage_document(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, pg_temp.uid(172), pg_temp.uid(173), 'approval_letter',
     pg_temp.uid(v_op), pg_temp.hash(v_op));
   select version into v_stage_ver from public.registration_stages where id = v_stage_id;
   select version into v_reg_ver from public.company_registrations where id = v_reg_id;
   v_op := v_op + 1;
-  perform public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'complete', v_reg_ver, v_stage_ver,
     jsonb_build_object('approvalReceivedOn', to_char(current_date, 'YYYY-MM-DD')),
     null, null, pg_temp.uid(v_op), pg_temp.hash(v_op));
@@ -305,13 +310,13 @@ begin
     where registration_id = v_reg_id and code = 'name_reservation';
   select version into v_reg_ver from public.company_registrations where id = v_reg_id;
   v_op := v_op + 1;
-  perform public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'start', v_reg_ver, v_stage_ver, '{}'::jsonb, null, null,
     pg_temp.uid(v_op), pg_temp.hash(v_op));
   select version into v_stage_ver from public.registration_stages where id = v_stage_id;
   select version into v_reg_ver from public.company_registrations where id = v_reg_id;
   v_op := v_op + 1;
-  perform public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'complete', v_reg_ver, v_stage_ver,
     jsonb_build_object('nameOptions', jsonb_build_array('Synthetic Trade Name'),
       'approvedName', 'Synthetic Trade Name', 'approvedNameVersion', 1),
@@ -322,7 +327,7 @@ begin
     where registration_id = v_reg_id and code = 'license_issuance';
   select version into v_reg_ver from public.company_registrations where id = v_reg_id;
   v_op := v_op + 1;
-  perform public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'start', v_reg_ver, v_stage_ver, '{}'::jsonb, null, null,
     pg_temp.uid(v_op), pg_temp.hash(v_op));
   insert into public.documents(id, tenant_id, company_id, doc_type, label)
@@ -334,13 +339,13 @@ begin
       'application/pdf', 8, repeat('e',64), null, 'pending');
   update public.document_versions set review_status = 'approved' where id = pg_temp.uid(175);
   v_op := v_op + 1;
-  perform public.link_registration_stage_document(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.link_registration_stage_document(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, pg_temp.uid(174), pg_temp.uid(175), 'trade_license',
     pg_temp.uid(v_op), pg_temp.hash(v_op));
   select version into v_stage_ver from public.registration_stages where id = v_stage_id;
   select version into v_reg_ver from public.company_registrations where id = v_reg_id;
   v_op := v_op + 1;
-  perform public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'complete', v_reg_ver, v_stage_ver, '{}'::jsonb, null, null,
     pg_temp.uid(v_op), pg_temp.hash(v_op));
 
@@ -351,7 +356,7 @@ begin
   perform pg_temp.check((select current_stage::text from public.company_registrations
     where id = v_reg_id) = 'visa_processing', 'ADVANCED_TO_VISA_PROCESSING');
   v_op := v_op + 1;
-  perform public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  perform public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'start', v_reg_ver, v_stage_ver, '{}'::jsonb, null, null,
     pg_temp.uid(v_op), pg_temp.hash(v_op));
 
@@ -369,7 +374,7 @@ begin
   -- start (stays documents_ready, in_progress), then advance through all 6 stages
   v_op := v_op + 1;
   v_tr := public.transition_registration_visa_person(
-    pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_person_id,
+    pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_person_id,
     'start', 'documents_ready', 1, null, null, pg_temp.uid(v_op), pg_temp.hash(v_op));
   perform pg_temp.check((v_tr->>'status') = 'in_progress', 'VISA_STARTED');
   declare
@@ -379,26 +384,62 @@ begin
     foreach v_next in array v_stages loop
       select version into v_visa_ver from public.registration_visa_people where id = v_person_id;
       v_op := v_op + 1;
-      perform public.transition_registration_visa_person(
-        pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_person_id,
-        'advance', v_next::public.registration_visa_stage_code, v_visa_ver, null, null,
-        pg_temp.uid(v_op), pg_temp.hash(v_op));
+      if v_next = 'entry_permit' then
+        -- Operator (admin, MFA, aal2) runs one milestone advance.
+        perform public.transition_registration_visa_person(
+          pg_temp.uid(1), 'aal2', pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_person_id,
+          'advance', v_next::public.registration_visa_stage_code, v_visa_ver, null, null,
+          pg_temp.uid(v_op), pg_temp.hash(v_op));
+        perform pg_temp.check((select actor_category from public.registration_visa_events
+          where operation_id = pg_temp.uid(v_op)) = 'operator', 'VISA_OPERATOR_EVENT_CATEGORY');
+      else
+        perform public.transition_registration_visa_person(
+          pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_person_id,
+          'advance', v_next::public.registration_visa_stage_code, v_visa_ver, null, null,
+          pg_temp.uid(v_op), pg_temp.hash(v_op));
+      end if;
     end loop;
   end;
   -- complete at residency_issued
   select version into v_visa_ver from public.registration_visa_people where id = v_person_id;
   v_op := v_op + 1;
   v_tr := public.transition_registration_visa_person(
-    pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_person_id,
+    pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101), v_reg_id, v_person_id,
     'complete', 'residency_issued', v_visa_ver, null, null, pg_temp.uid(v_op), pg_temp.hash(v_op));
   perform pg_temp.check((v_tr->>'status') = 'completed'
     and (v_tr->>'currentStage') = 'residency_issued', 'VISA_COMPLETED');
+
+  -- Operator cancels a second (employee) visa person; PRO may not use OPERATOR_CANCELLED.
+  v_op := v_op + 1;
+  v_person := public.create_registration_visa_person(
+    pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), v_reg_id,
+    'employee', null, pg_temp.uid(111), 'Synthetic Employee A2', 'employee',
+    pg_temp.uid(v_op), pg_temp.hash(v_op));
+  perform pg_temp.check((select actor_category from public.registration_visa_events
+    where operation_id = pg_temp.uid(v_op)) = 'pro', 'VISA_CREATE_EVENT_CATEGORY');
+  begin
+    v_op := v_op + 1;
+    perform public.cancel_registration_visa_person(
+      pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101), v_reg_id,
+      (v_person->>'visaPersonId')::uuid, 1, 'OPERATOR_CANCELLED', 'Operator only reason',
+      pg_temp.uid(v_op), pg_temp.hash(v_op));
+    raise exception 'PRO_USED_OPERATOR_CANCELLED';
+  exception when sqlstate '22023' then
+    if sqlerrm <> 'INVALID_VISA_REASON' then raise exception 'PRO_CANCEL_REASON_WRONG:%', sqlerrm; end if;
+  end;
+  v_op := v_op + 1;
+  perform public.cancel_registration_visa_person(
+    pg_temp.uid(1), 'aal2', pg_temp.uid(100), pg_temp.uid(101), v_reg_id,
+    (v_person->>'visaPersonId')::uuid, 1, 'OPERATOR_CANCELLED', 'Duplicate intake by operator',
+    pg_temp.uid(v_op), pg_temp.hash(v_op));
+  perform pg_temp.check((select actor_category from public.registration_visa_events
+    where operation_id = pg_temp.uid(v_op)) = 'operator', 'VISA_OPERATOR_CANCEL_CATEGORY');
 
   -- complete visa_processing (all non-cancelled people completed at residency).
   select version into v_stage_ver from public.registration_stages where id = v_stage_id;
   select version into v_reg_ver from public.company_registrations where id = v_reg_id;
   v_op := v_op + 1;
-  v_tr := public.transition_registration_stage(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101),
+  v_tr := public.transition_registration_stage(pg_temp.uid(2), 'aal1', pg_temp.uid(100), pg_temp.uid(101),
     v_reg_id, v_stage_id, 'complete', v_reg_ver, v_stage_ver, '{}'::jsonb, null, null,
     pg_temp.uid(v_op), pg_temp.hash(v_op));
   perform pg_temp.check((v_tr->>'currentStage') = 'bank_account', 'VISA_STAGE_COMPLETE');
@@ -407,7 +448,10 @@ begin
   v_pro := public.read_pro_registration_workflow(pg_temp.uid(2), pg_temp.uid(100), pg_temp.uid(101), v_reg_id);
   perform pg_temp.check((v_pro->>'registrationId')::uuid = v_reg_id
     and jsonb_array_length(v_pro->'stages') = 7
-    and jsonb_array_length(v_pro->'visaPeople') = 1
+    -- shareholder (completed) + operator-cancelled employee person
+    and jsonb_array_length(v_pro->'visaPeople') = 2
+    and (select count(*) from jsonb_array_elements(v_pro->'visaPeople') p
+         where p->>'status' = 'cancelled') = 1
     and jsonb_array_length(v_pro->'documents') = 3, 'READ_PRO_COHERENT');
 
   v_cust := public.read_customer_registration_progress(pg_temp.uid(3), v_reg_id);
@@ -477,7 +521,7 @@ begin
 
   -- wrong registration version
   begin
-    perform public.transition_registration_stage(pg_temp.uid(9), pg_temp.uid(300), pg_temp.uid(301),
+    perform public.transition_registration_stage(pg_temp.uid(9), 'aal1', pg_temp.uid(300), pg_temp.uid(301),
       v_reg_id, v_stage_id, 'start', 99999, 1, '{}'::jsonb, null, null,
       pg_temp.uid(6100), pg_temp.hash(6100));
     raise exception 'STALE_REG_NOT_RAISED';
@@ -487,7 +531,7 @@ begin
 
   -- wrong stage version (correct reg version)
   begin
-    perform public.transition_registration_stage(pg_temp.uid(9), pg_temp.uid(300), pg_temp.uid(301),
+    perform public.transition_registration_stage(pg_temp.uid(9), 'aal1', pg_temp.uid(300), pg_temp.uid(301),
       v_reg_id, v_stage_id, 'start',
       (select version from public.company_registrations where id = v_reg_id), 99999,
       '{}'::jsonb, null, null, pg_temp.uid(6101), pg_temp.hash(6101));
@@ -515,7 +559,7 @@ begin
   -- current stage (application_submitted) is in_progress; 'complete' with no
   -- linked evidence violates the requirements guard for stage 1.
   begin
-    perform public.transition_registration_stage(pg_temp.uid(9), pg_temp.uid(300), pg_temp.uid(301),
+    perform public.transition_registration_stage(pg_temp.uid(9), 'aal1', pg_temp.uid(300), pg_temp.uid(301),
       v_reg_id, v_stage_id, 'complete', v_reg_ver, v_stage_ver,
       jsonb_build_object('applicationSubmittedOn', to_char(current_date,'YYYY-MM-DD')),
       null, null, pg_temp.uid(6200), pg_temp.hash(6200));
@@ -526,7 +570,7 @@ begin
 
   -- 'start' on an already in_progress stage -> INVALID_STAGE_TRANSITION.
   begin
-    perform public.transition_registration_stage(pg_temp.uid(9), pg_temp.uid(300), pg_temp.uid(301),
+    perform public.transition_registration_stage(pg_temp.uid(9), 'aal1', pg_temp.uid(300), pg_temp.uid(301),
       v_reg_id, v_stage_id, 'start', v_reg_ver, v_stage_ver, '{}'::jsonb, null, null,
       pg_temp.uid(6201), pg_temp.hash(6201));
     raise exception 'INVALID_TRANS_NOT_RAISED';
@@ -536,7 +580,7 @@ begin
 
   -- skip application_submitted (not skippable) -> STAGE_SKIP_FORBIDDEN.
   begin
-    perform public.transition_registration_stage(pg_temp.uid(9), pg_temp.uid(300), pg_temp.uid(301),
+    perform public.transition_registration_stage(pg_temp.uid(9), 'aal1', pg_temp.uid(300), pg_temp.uid(301),
       v_reg_id, v_stage_id, 'skip', v_reg_ver, v_stage_ver, '{}'::jsonb,
       'NOT_APPLICABLE', 'Synthetic skip reason', pg_temp.uid(6202), pg_temp.hash(6202));
     raise exception 'SKIP_NOT_RAISED';
@@ -744,6 +788,172 @@ begin
   v_resolved := public.resolve_company_active_registration(
     pg_temp.uid(3), pg_temp.uid(100), pg_temp.uid(101), 'customer');
   perform pg_temp.check(v_resolved = v_reg_id, 'RESOLVE_CUSTOMER');
+end;
+$$;
+
+-- 8c. Operator (admin/super_admin, MFA, aal2) mutation authority on an isolated
+--     tenant D: success paths, actor_category, audit source, replay, and the
+--     fail-closed matrix.
+insert into auth.users(id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+select pg_temp.uid(n), '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated', 'reg-visa-' || n || '@example.invalid',
+  '', now(), '{}', '{}', now(), now() from generate_series(10, 12) n;
+insert into public.tenants(id, slug, name, status) values
+  (pg_temp.uid(400), 'reg-visa-d', 'Synthetic Tenant D', 'active');
+insert into public.profiles(id, tenant_id, role, status, mfa_enrolled_at) values
+  (pg_temp.uid(10), null,             'super_admin', 'active',   now()),
+  (pg_temp.uid(11), pg_temp.uid(400), 'pro',         'active',   null),
+  (pg_temp.uid(12), null,             'admin',       'disabled', now());
+insert into public.company_profiles(
+  id, tenant_id, company_name, status,
+  licensing_authority, jurisdiction_type, legal_structure,
+  trade_license_no, license_expiry) values
+  (pg_temp.uid(401), pg_temp.uid(400), 'Synthetic Co D', 'active',
+    'DED', 'mainland', 'llc', 'CN-4001', current_date + 365);
+insert into public.pro_profiles(profile_id) values (pg_temp.uid(11));
+insert into public.pro_credentials(id, pro_profile_id, credential_type,
+  identifier_ciphertext, identifier_hash, identifier_last4, issuing_authority,
+  issue_date, expiry_date, state, version, submitted_at, created_by) values
+  (pg_temp.uid(410), pg_temp.uid(11), 'pro_license', 'synthetic', repeat('d',64),
+    'DD41', 'Synthetic Authority', current_date - 30, current_date + 365, 'verified', 1, now(), pg_temp.uid(1));
+insert into public.pro_company_assignments(id, tenant_id, company_id, pro_profile_id, assigned_by) values
+  (pg_temp.uid(411), pg_temp.uid(400), pg_temp.uid(401), pg_temp.uid(11), pg_temp.uid(1));
+insert into public.documents(id, tenant_id, company_id, doc_type, label) values
+  (pg_temp.uid(470), pg_temp.uid(400), pg_temp.uid(401), 'other', 'Application Form D');
+insert into public.document_versions(
+  id, document_id, tenant_id, storage_path, mime_type, size_bytes, sha256,
+  upload_operation_id, review_status) values
+  (pg_temp.uid(471), pg_temp.uid(470), pg_temp.uid(400),
+    pg_temp.uid(400)::text||'/'||pg_temp.uid(401)::text||'/documents/seed/'||pg_temp.uid(471)::text||'.pdf',
+    'application/pdf', 8, repeat('e',64), null, 'pending');
+update public.document_versions set review_status = 'approved', reviewed_by = pg_temp.uid(1), reviewed_at = now()
+  where id = pg_temp.uid(471);
+
+do $$
+declare
+  v_reg jsonb;
+  v_reg_id uuid;
+  v_stage_id uuid;
+  v_reg_ver bigint;
+  v_stage_ver bigint;
+  v_link jsonb;
+  v_first jsonb;
+  v_again jsonb;
+  v_audit_before integer;
+  v_case record;
+begin
+  -- Create stays PRO-only.
+  begin
+    perform public.create_company_registration(
+      pg_temp.uid(10), pg_temp.uid(400), pg_temp.uid(401), 'Operator create attempt',
+      'normal', null, pg_temp.uid(8001), pg_temp.hash(8001));
+    raise exception 'OPERATOR_CREATE_ALLOWED';
+  exception when sqlstate '42501' then null;
+  end;
+  v_reg := public.create_company_registration(
+    pg_temp.uid(11), pg_temp.uid(400), pg_temp.uid(401), 'Tenant D registration',
+    'normal', null, pg_temp.uid(8002), pg_temp.hash(8002));
+  v_reg_id := (v_reg->>'registrationId')::uuid;
+  perform pg_temp.check((select actor_category from public.registration_stage_events
+    where operation_id = pg_temp.uid(8002)) = 'pro', 'CREATE_EVENT_CATEGORY');
+  select id, version into v_stage_id, v_stage_ver from public.registration_stages
+    where registration_id = v_reg_id and code = 'application_submitted';
+  select version into v_reg_ver from public.company_registrations where id = v_reg_id;
+
+  -- Fail-closed matrix: every one of these must raise 42501 FORBIDDEN.
+  for v_case in
+    select * from (values
+      (pg_temp.uid(10), 'aal1', pg_temp.uid(400), pg_temp.uid(401), 'OPERATOR_AAL1'),
+      (pg_temp.uid(8),  'aal2', pg_temp.uid(400), pg_temp.uid(401), 'OPERATOR_NO_MFA'),
+      (pg_temp.uid(12), 'aal2', pg_temp.uid(400), pg_temp.uid(401), 'OPERATOR_DISABLED'),
+      (pg_temp.uid(10), 'aal2', pg_temp.uid(400), pg_temp.uid(101), 'OPERATOR_MISMATCHED_PAIR'),
+      (pg_temp.uid(3),  'aal2', pg_temp.uid(400), pg_temp.uid(401), 'CUSTOMER_ACTOR'),
+      (pg_temp.uid(4),  'aal2', pg_temp.uid(400), pg_temp.uid(401), 'EMPLOYEE_ACTOR'),
+      (pg_temp.uid(2),  'aal2', pg_temp.uid(400), pg_temp.uid(401), 'FOREIGN_PRO')
+    ) as t(actor, aal, tenant, company, label)
+  loop
+    begin
+      perform public.transition_registration_stage(
+        v_case.actor, v_case.aal, v_case.tenant, v_case.company, v_reg_id, v_stage_id,
+        'block', v_reg_ver, v_stage_ver, '{}'::jsonb, 'AUTHORITY_DELAY', 'Denied attempt',
+        pg_temp.uid(8003), pg_temp.hash(8003));
+      raise exception 'NOT_FENCED:%', v_case.label;
+    exception when sqlstate '42501' then
+      if sqlerrm <> 'FORBIDDEN' then raise exception 'WRONG_DENIAL:%:%', v_case.label, sqlerrm; end if;
+    end;
+  end loop;
+
+  -- PRO may not use the operator-only recovery reason.
+  begin
+    perform public.transition_registration_stage(
+      pg_temp.uid(11), 'aal1', pg_temp.uid(400), pg_temp.uid(401), v_reg_id, v_stage_id,
+      'recover', v_reg_ver, v_stage_ver, '{}'::jsonb, 'OPERATOR_RECOVERY', 'PRO attempt',
+      pg_temp.uid(8004), pg_temp.hash(8004));
+    raise exception 'PRO_USED_OPERATOR_RECOVERY';
+  exception when sqlstate '22023' then
+    if sqlerrm <> 'INVALID_STAGE_REASON' then raise exception 'PRO_REASON_WRONG:%', sqlerrm; end if;
+  end;
+
+  -- Operator block: succeeds without any PRO assignment, event + audit attributed.
+  select pg_catalog.count(*) into v_audit_before from public.tenant_audit_log
+    where tenant_id = pg_temp.uid(400) and source = 'admin';
+  v_first := public.transition_registration_stage(
+    pg_temp.uid(10), 'aal2', pg_temp.uid(400), pg_temp.uid(401), v_reg_id, v_stage_id,
+    'block', v_reg_ver, v_stage_ver, '{}'::jsonb, 'AUTHORITY_DELAY', 'Operator block',
+    pg_temp.uid(8005), pg_temp.hash(8005));
+  perform pg_temp.check((select actor_category from public.registration_stage_events
+    where operation_id = pg_temp.uid(8005)) = 'operator', 'OPERATOR_STAGE_EVENT_CATEGORY');
+  perform pg_temp.check((select pg_catalog.count(*) from public.tenant_audit_log
+    where tenant_id = pg_temp.uid(400) and source = 'admin') = v_audit_before + 1,
+    'OPERATOR_STAGE_AUDIT_ONCE');
+
+  -- Exact replay returns the stored receipt and writes no second audit row.
+  v_again := public.transition_registration_stage(
+    pg_temp.uid(10), 'aal2', pg_temp.uid(400), pg_temp.uid(401), v_reg_id, v_stage_id,
+    'block', v_reg_ver, v_stage_ver, '{}'::jsonb, 'AUTHORITY_DELAY', 'Operator block',
+    pg_temp.uid(8005), pg_temp.hash(8005));
+  perform pg_temp.check(v_again = v_first, 'OPERATOR_REPLAY_RECEIPT');
+  perform pg_temp.check((select pg_catalog.count(*) from public.tenant_audit_log
+    where tenant_id = pg_temp.uid(400) and source = 'admin') = v_audit_before + 1,
+    'OPERATOR_REPLAY_NO_AUDIT');
+  begin
+    perform public.transition_registration_stage(
+      pg_temp.uid(10), 'aal2', pg_temp.uid(400), pg_temp.uid(401), v_reg_id, v_stage_id,
+      'block', v_reg_ver, v_stage_ver, '{}'::jsonb, 'AUTHORITY_DELAY', 'Operator block',
+      pg_temp.uid(8005), pg_temp.hash(8999));
+    raise exception 'OPERATOR_CHANGED_REPLAY_ALLOWED';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'OPERATION_REUSED' then raise exception 'REPLAY_WRONG:%', sqlerrm; end if;
+  end;
+
+  -- PRO unblock after the operator block: category 'pro', audit stays self_serve.
+  select version into v_reg_ver from public.company_registrations where id = v_reg_id;
+  select version into v_stage_ver from public.registration_stages where id = v_stage_id;
+  perform public.transition_registration_stage(
+    pg_temp.uid(11), 'aal1', pg_temp.uid(400), pg_temp.uid(401), v_reg_id, v_stage_id,
+    'unblock', v_reg_ver, v_stage_ver, '{}'::jsonb, 'AUTHORITY_RESUMED', 'PRO resumes',
+    pg_temp.uid(8006), pg_temp.hash(8006));
+  perform pg_temp.check((select actor_category from public.registration_stage_events
+    where operation_id = pg_temp.uid(8006)) = 'pro', 'PRO_STAGE_EVENT_CATEGORY');
+  perform pg_temp.check((select pg_catalog.count(*) from public.tenant_audit_log
+    where tenant_id = pg_temp.uid(400) and source = 'admin') = v_audit_before + 1,
+    'PRO_AUDIT_NOT_ADMIN');
+
+  -- Operator link then unlink evidence; each writes exactly one admin audit row.
+  v_link := public.link_registration_stage_document(
+    pg_temp.uid(10), 'aal2', pg_temp.uid(400), pg_temp.uid(401), v_reg_id, v_stage_id,
+    pg_temp.uid(470), pg_temp.uid(471), 'application_form',
+    pg_temp.uid(8007), pg_temp.hash(8007));
+  perform pg_temp.check((select pg_catalog.count(*) from public.tenant_audit_log
+    where tenant_id = pg_temp.uid(400) and source = 'admin') = v_audit_before + 2,
+    'OPERATOR_LINK_AUDIT');
+  perform public.unlink_registration_stage_document(
+    pg_temp.uid(10), 'aal2', pg_temp.uid(400), pg_temp.uid(401), v_reg_id, v_stage_id,
+    (v_link->>'linkId')::uuid, pg_temp.uid(8008), pg_temp.hash(8008));
+  perform pg_temp.check((select pg_catalog.count(*) from public.tenant_audit_log
+    where tenant_id = pg_temp.uid(400) and source = 'admin') = v_audit_before + 3,
+    'OPERATOR_UNLINK_AUDIT');
 end;
 $$;
 
