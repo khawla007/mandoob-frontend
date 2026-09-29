@@ -7,7 +7,7 @@ import type {
   createVisaPerson,
   transitionVisaPerson,
   cancelVisaPerson,
-  RegistrationActorContext,
+  RegistrationMutationActorContext,
 } from '@/lib/data/registration-workflow';
 import type {
   CreateRegistrationInput,
@@ -23,7 +23,7 @@ export type RegistrationActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; code: string };
 
-type ProSession = { id: string; role: 'pro'; tenantId: string | null };
+type ProSession = { id: string; role: 'pro'; tenantId: string | null; aal: 'aal1' | 'aal2' };
 type TenantIdentity = { id: string };
 type CompanyIdentity = { id: string; tenantId: string };
 
@@ -62,7 +62,7 @@ async function authorize(
   slug: string,
   session: ProSessionIdentity,
   dependencies: RegistrationActionDependencies,
-): Promise<RegistrationActorContext> {
+): Promise<RegistrationMutationActorContext> {
   const tenant = await dependencies.resolveTenant(slug);
   if (!tenant) throw new ApiError('TENANT_NOT_FOUND', 'Tenant not found', 404);
   if (!session.tenantId || session.tenantId !== tenant.id) {
@@ -73,7 +73,7 @@ async function authorize(
   if (!company || company.tenantId !== tenant.id) {
     throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
   }
-  return { actorId: session.id, tenantId: tenant.id, companyId: company.id };
+  return { actorId: session.id, tenantId: tenant.id, companyId: company.id, actorAal: session.aal };
 }
 
 function revalidateRegistration(dependencies: RegistrationActionDependencies, slug: string): void {
@@ -86,7 +86,7 @@ async function run<T>(
   slug: string,
   dependencies: RegistrationActionDependencies,
   fallback: string,
-  operation: (actor: RegistrationActorContext) => Promise<T>,
+  operation: (actor: RegistrationMutationActorContext) => Promise<T>,
 ): Promise<RegistrationActionResult<T>> {
   // Authenticate outside the try so an auth throw (redirect) is not swallowed.
   const session = await dependencies.requirePro(slug);

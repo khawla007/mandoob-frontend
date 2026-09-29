@@ -114,7 +114,7 @@ test('transitionStage maps a domain error onto the public ApiError', async () =>
           expectedStageVersion: 1,
           operationId,
         },
-        actor,
+        { ...actor, actorAal: 'aal1' },
         { supabase },
       ),
     (error: unknown) => {
@@ -351,3 +351,99 @@ test('resolveCompanyActiveRegistration maps an authorization error onto an ApiEr
     ),
   );
 });
+
+const MUTATION_IDS = {
+  stageId: '88888888-8888-4888-8888-888888888888',
+  linkId: '99999999-9999-4999-8999-999999999999',
+  documentId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  documentVersionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  visaPersonId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  operationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+};
+
+const mutationCases = [
+  {
+    name: 'transitionStage',
+    rpc: 'transition_registration_stage',
+    input: {
+      registrationId,
+      stageId: MUTATION_IDS.stageId,
+      command: 'start',
+      expectedRegistrationVersion: 1,
+      expectedStageVersion: 1,
+      operationId: MUTATION_IDS.operationId,
+    },
+  },
+  {
+    name: 'linkStageDocument',
+    rpc: 'link_registration_stage_document',
+    input: {
+      registrationId,
+      stageId: MUTATION_IDS.stageId,
+      documentId: MUTATION_IDS.documentId,
+      documentVersionId: MUTATION_IDS.documentVersionId,
+      role: 'application_form',
+      operationId: MUTATION_IDS.operationId,
+    },
+  },
+  {
+    name: 'unlinkStageDocument',
+    rpc: 'unlink_registration_stage_document',
+    input: {
+      registrationId,
+      stageId: MUTATION_IDS.stageId,
+      linkId: MUTATION_IDS.linkId,
+      operationId: MUTATION_IDS.operationId,
+    },
+  },
+  {
+    name: 'transitionVisaPerson',
+    rpc: 'transition_registration_visa_person',
+    input: {
+      registrationId,
+      visaPersonId: MUTATION_IDS.visaPersonId,
+      command: 'start',
+      toStage: 'documents_ready',
+      expectedVisaVersion: 1,
+      operationId: MUTATION_IDS.operationId,
+    },
+  },
+  {
+    name: 'cancelVisaPerson',
+    rpc: 'cancel_registration_visa_person',
+    input: {
+      registrationId,
+      visaPersonId: MUTATION_IDS.visaPersonId,
+      expectedVisaVersion: 1,
+      reasonCode: 'NOT_APPLICABLE',
+      reasonText: 'No longer required',
+      operationId: MUTATION_IDS.operationId,
+    },
+  },
+] as const;
+
+for (const mutation of mutationCases) {
+  test(`${mutation.name} sends the actor AAL as p_actor_aal`, async () => {
+    const workflow = (await import('./registration-workflow')) as unknown as Record<
+      string,
+      (input: unknown, actor: unknown, deps: unknown) => Promise<unknown>
+    >;
+    const supabase = fakeSupabase([{ data: null, error: { message: 'FORBIDDEN', code: '42501' } }]);
+    await assert.rejects(() =>
+      workflow[mutation.name]!(mutation.input, { ...actor, actorAal: 'aal2' }, { supabase }),
+    );
+    assert.equal(supabase.calls[0].name, mutation.rpc);
+    assert.equal(supabase.calls[0].args.p_actor_id, actor.actorId);
+    assert.equal(supabase.calls[0].args.p_actor_aal, 'aal2');
+  });
+
+  test(`${mutation.name} rejects a missing actor AAL before calling the RPC`, async () => {
+    const workflow = (await import('./registration-workflow')) as unknown as Record<
+      string,
+      (input: unknown, actor: unknown, deps: unknown) => Promise<unknown>
+    >;
+    const supabase = fakeSupabase([]);
+    await assert.rejects(() => workflow[mutation.name]!(mutation.input, actor, { supabase }));
+    assert.equal(supabase.calls.length, 0);
+  });
+}

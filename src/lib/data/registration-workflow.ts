@@ -52,6 +52,11 @@ export type RegistrationActorContext = {
   tenantId: string;
   companyId: string;
 };
+// Mutations additionally carry the session AAL; the DB grants the operator
+// path only at aal2 and re-checks authority after row locks.
+export type RegistrationMutationActorContext = RegistrationActorContext & { actorAal: string };
+
+const actorAalSchema = z.enum(['aal1', 'aal2']);
 export type OperatorActorContext = {
   actorId: string;
   actorAal: string;
@@ -474,11 +479,12 @@ export async function createRegistration(
 
 export async function transitionStage(
   input: TransitionStageInput,
-  actor: RegistrationActorContext,
+  actor: RegistrationMutationActorContext,
   deps: RegistrationWorkflowDeps = {},
 ): Promise<TransitionStageReceipt> {
   const parsed = transitionStageSchema.parse(input);
   const { actorId, tenantId, companyId } = parseActor(actor);
+  const actorAal = actorAalSchema.parse(actor.actorAal);
   const logical = {
     registrationId: parsed.registrationId,
     stageId: parsed.stageId,
@@ -495,6 +501,7 @@ export async function transitionStage(
     'transition_registration_stage',
     {
       p_actor_id: actorId,
+      p_actor_aal: actorAal,
       p_tenant_id: tenantId,
       p_company_id: companyId,
       p_registration_id: parsed.registrationId,
@@ -514,11 +521,12 @@ export async function transitionStage(
 
 export async function linkStageDocument(
   input: LinkStageDocumentInput,
-  actor: RegistrationActorContext,
+  actor: RegistrationMutationActorContext,
   deps: RegistrationWorkflowDeps = {},
 ): Promise<LinkStageDocumentReceipt> {
   const parsed = linkStageDocumentSchema.parse(input);
   const { actorId, tenantId, companyId } = parseActor(actor);
+  const actorAal = actorAalSchema.parse(actor.actorAal);
   const logical = {
     registrationId: parsed.registrationId,
     stageId: parsed.stageId,
@@ -532,6 +540,7 @@ export async function linkStageDocument(
     'link_registration_stage_document',
     {
       p_actor_id: actorId,
+      p_actor_aal: actorAal,
       p_tenant_id: tenantId,
       p_company_id: companyId,
       p_registration_id: parsed.registrationId,
@@ -548,11 +557,12 @@ export async function linkStageDocument(
 
 export async function unlinkStageDocument(
   input: UnlinkStageDocumentInput,
-  actor: RegistrationActorContext,
+  actor: RegistrationMutationActorContext,
   deps: RegistrationWorkflowDeps = {},
 ): Promise<UnlinkStageDocumentReceipt> {
   const parsed = unlinkStageDocumentSchema.parse(input);
   const { actorId, tenantId, companyId } = parseActor(actor);
+  const actorAal = actorAalSchema.parse(actor.actorAal);
   const logical = {
     registrationId: parsed.registrationId,
     stageId: parsed.stageId,
@@ -564,6 +574,7 @@ export async function unlinkStageDocument(
     'unlink_registration_stage_document',
     {
       p_actor_id: actorId,
+      p_actor_aal: actorAal,
       p_tenant_id: tenantId,
       p_company_id: companyId,
       p_registration_id: parsed.registrationId,
@@ -652,11 +663,12 @@ export async function createVisaPerson(
 
 export async function transitionVisaPerson(
   input: TransitionVisaPersonInput,
-  actor: RegistrationActorContext,
+  actor: RegistrationMutationActorContext,
   deps: RegistrationWorkflowDeps = {},
 ): Promise<TransitionVisaPersonReceipt> {
   const parsed = transitionVisaPersonSchema.parse(input);
   const { actorId, tenantId, companyId } = parseActor(actor);
+  const actorAal = actorAalSchema.parse(actor.actorAal);
   const logical = {
     registrationId: parsed.registrationId,
     visaPersonId: parsed.visaPersonId,
@@ -672,6 +684,7 @@ export async function transitionVisaPerson(
     'transition_registration_visa_person',
     {
       p_actor_id: actorId,
+      p_actor_aal: actorAal,
       p_tenant_id: tenantId,
       p_company_id: companyId,
       p_registration_id: parsed.registrationId,
@@ -690,11 +703,12 @@ export async function transitionVisaPerson(
 
 export async function cancelVisaPerson(
   input: CancelVisaPersonInput,
-  actor: RegistrationActorContext,
+  actor: RegistrationMutationActorContext,
   deps: RegistrationWorkflowDeps = {},
 ): Promise<TransitionVisaPersonReceipt> {
   const parsed = cancelVisaPersonSchema.parse(input);
   const { actorId, tenantId, companyId } = parseActor(actor);
+  const actorAal = actorAalSchema.parse(actor.actorAal);
   const logical = {
     registrationId: parsed.registrationId,
     visaPersonId: parsed.visaPersonId,
@@ -708,6 +722,7 @@ export async function cancelVisaPerson(
     'cancel_registration_visa_person',
     {
       p_actor_id: actorId,
+      p_actor_aal: actorAal,
       p_tenant_id: tenantId,
       p_company_id: companyId,
       p_registration_id: parsed.registrationId,

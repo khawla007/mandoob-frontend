@@ -41,7 +41,7 @@ function dependencies(): RegistrationActionDependencies {
   return {
     requirePro: async (slug) => {
       const { session, tenant } = await requireProTenantRouteAccess(slug);
-      return { id: session.id, role: session.role, tenantId: tenant.id };
+      return { id: session.id, role: session.role, tenantId: tenant.id, aal: session.aal };
     },
     resolveTenant: resolveTenantBySlug,
     requireActive: requireActiveTenant,

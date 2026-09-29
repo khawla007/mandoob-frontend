@@ -25,7 +25,7 @@ function setup(overrides: Partial<RegistrationActionDependencies> = {}) {
   const dependencies: RegistrationActionDependencies = {
     requirePro: async () => {
       calls.push('auth');
-      return { id: ACTOR_ID, role: 'pro', tenantId: TENANT_ID };
+      return { id: ACTOR_ID, role: 'pro', tenantId: TENANT_ID, aal: 'aal1' };
     },
     resolveTenant: async (slug) => {
       calls.push(`tenant:${slug}`);
@@ -50,7 +50,9 @@ function setup(overrides: Partial<RegistrationActionDependencies> = {}) {
       };
     },
     transitionStage: async (_input, actor) => {
-      calls.push(`transition:${actor.actorId}:${actor.tenantId}:${actor.companyId}`);
+      calls.push(
+        `transition:${actor.actorId}:${actor.tenantId}:${actor.companyId}:${actor.actorAal}`,
+      );
       return {
         registrationId: REGISTRATION_ID,
         stageId: STAGE_ID,
@@ -224,7 +226,7 @@ test('transition action forwards the trusted actor and version-checked input', a
   const context = setup();
   const result = await runTransitionStageAction('acme', validTransition, context.dependencies);
   assert.equal(result.ok, true);
-  assert.equal(context.calls.includes(`transition:${ACTOR_ID}:${TENANT_ID}:${COMPANY_ID}`), true);
+  assert.equal(context.calls.includes(`transition:${ACTOR_ID}:${TENANT_ID}:${COMPANY_ID}:aal1`), true);
 });
 
 test('create->transition->link->visa idempotency: the operationId is preserved unmodified', async () => {
