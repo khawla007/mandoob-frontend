@@ -5,6 +5,8 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { RenewalsTable } from '@/components/pro/RenewalsTable';
 import { RenewalsTimeline } from '@/components/pro/RenewalsTimeline';
 import { NewRenewalDialog } from '@/components/pro/NewRenewalDialog';
+import { BatchRenewalPanel } from '@/components/pro/BatchRenewalPanel';
+import { loadRenewalWorkspaceContext } from '@/lib/renewals/workspace-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
@@ -40,7 +42,7 @@ export default async function RenewalsPage({
   const canonicalHref = renewalWorkspaceCanonicalRedirect(slug, rawSearchParams, search);
   if (canonicalHref) redirect(canonicalHref);
 
-  const [workspace, t, locale] = await Promise.all([
+  const [workspace, t, p, locale, context] = await Promise.all([
     listProRenewalWorkspace({
       actorProfileId: session.id,
       tenantSlug: slug,
@@ -48,7 +50,9 @@ export default async function RenewalsPage({
       search,
     }),
     getTranslations('pro'),
+    getTranslations('p308.renewals'),
     getLocale(),
+    loadRenewalWorkspaceContext({ tenantId: tenant.id, companyId: company.id }),
   ]);
   if (workspace.canonicalPage !== workspace.page) {
     redirect(renewalWorkspaceHref(slug, search, workspace.canonicalPage));
@@ -71,8 +75,19 @@ export default async function RenewalsPage({
   const typeLabels = {
     license: t('renewalTypeLicense'),
     visa: t('renewalTypeVisa'),
+    investor_visa: p('types.investor_visa'),
     eid: t('renewalTypeEid'),
+    establishment_card: p('types.establishment_card'),
     ejari: t('renewalTypeEjari'),
+    medical_insurance: p('types.medical_insurance'),
+  };
+  const stageLabels = {
+    due: p('stages.due'),
+    in_progress: p('stages.in_progress'),
+    documents_submitted: p('stages.documents_submitted'),
+    government_processing: p('stages.government_processing'),
+    completed: p('stages.completed'),
+    cancelled: p('stages.cancelled'),
   };
   const statusLabels = {
     upcoming: t('renewalStatusUpcoming'),
@@ -123,7 +138,7 @@ export default async function RenewalsPage({
             {t('renewalsPageSubtitle', { tenant: company.companyName })}
           </p>
         </div>
-        <NewRenewalDialog slug={slug} />
+        <NewRenewalDialog slug={slug} employees={context.employees} />
       </div>
 
       <dl className="signal-kpis-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -301,8 +316,13 @@ export default async function RenewalsPage({
                 sourceValues: {
                   manual: t('renewalSourceManual'),
                   license_backfill: t('renewalSourceAuto'),
+                  company_onboarding: p('sourceOnboarding'),
                 },
+                stage: p('stage'),
+                stageValues: stageLabels,
+                blocked: p('blocked'),
               }}
+              evidenceOptions={context.evidence}
             />
           ) : null}
           {workspace.total !== null && workspace.total > 0 ? (
@@ -325,6 +345,7 @@ export default async function RenewalsPage({
           ) : null}
         </CardContent>
       </Card>
+      <BatchRenewalPanel slug={slug} rows={workspace.rows} />
       {workspace.rows.length > 0 ? (
         <RenewalsTimeline
           rows={workspace.rows}

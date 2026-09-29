@@ -206,9 +206,7 @@ test('company workspace migration establishes one-to-one ownership', () => {
   const assignmentVerification = companyWorkspaceSql.indexOf(
     'company_workspace_rebase_assignment_mismatch',
   );
-  const legacyColumnDrop = companyWorkspaceSql.indexOf(
-    'drop column assigned_pro_profile_id',
-  );
+  const legacyColumnDrop = companyWorkspaceSql.indexOf('drop column assigned_pro_profile_id');
   assert.ok(assignmentInsert >= 0, 'legacy company assignments must be backfilled');
   assert.ok(
     assignmentInsert < assignmentVerification && assignmentVerification < legacyColumnDrop,
@@ -235,7 +233,10 @@ test('company workspace migration fails closed before mutating incompatible lega
   ]) {
     const invariantCheck = companyWorkspaceSql.indexOf(invariant);
     assert.ok(invariantCheck >= 0, `${invariant} preflight is missing`);
-    assert.ok(invariantCheck < firstMutation, `${invariant} must be checked before schema mutation`);
+    assert.ok(
+      invariantCheck < firstMutation,
+      `${invariant} must be checked before schema mutation`,
+    );
   }
 });
 

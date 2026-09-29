@@ -3,8 +3,11 @@ import type { RenewalStatus, RenewalType } from '@/lib/data/renewals';
 export const RENEWAL_TYPE_LABEL: Record<RenewalType, string> = {
   license: 'License',
   visa: 'Visa',
+  investor_visa: 'Investor visa',
   eid: 'EID',
+  establishment_card: 'Establishment card',
   ejari: 'Ejari',
+  medical_insurance: 'Medical insurance',
 };
 
 export const RENEWAL_STATUS_LABEL: Record<RenewalStatus, string> = {

@@ -1944,7 +1944,10 @@
       "previous": "السابق",
       "next": "التالي",
       "loading": "جارٍ تحميل التجديدات…",
-      "retry": "إعادة المحاولة"
+      "retry": "إعادة المحاولة",
+      "investor_visa": "تأشيرة المستثمر/الشريك",
+      "establishment_card": "بطاقة المنشأة",
+      "medical_insurance": "التأمين الصحي"
     },
     "financeWorkspace": {
       "eyebrow": "مالية الشركة",
@@ -2314,7 +2317,8 @@
       "openSecurity": "Open security settings",
       "securityTitle": "Password and multi-factor security",
       "securityDescription": "Password, MFA and session changes remain in the existing protected account security center.",
-      "openAccountSecurity": "Open protected account security"
+      "openAccountSecurity": "Open protected account security",
+      "conflict": "تغيّر سجلك. حدّث الصفحة وحاول مرة أخرى."
     }
   },
   "pro": {
@@ -2505,7 +2509,9 @@
         "expired": "منتهية",
         "attention": "مستحقة خلال 90 يومًا",
         "current": "سارية",
-        "unavailableWithoutMaskedContract": "المعرّف غير متاح: لا يوجد عقد مقبول للعرض أو الإخفاء الجزئي."
+        "unavailableWithoutMaskedContract": "المعرّف غير متاح: لا يوجد عقد مقبول للعرض أو الإخفاء الجزئي.",
+        "masked": "معرّف مقنّع",
+        "notRecorded": "المعرّف غير مسجل"
       },
       "risk": { "attention": "تحتاج إلى اهتمام", "clear": "سليمة", "unknown": "غير مقيّمة" },
       "signals": {
@@ -2522,10 +2528,10 @@
         "visa": "انتهاء التأشيرة",
         "eid": "انتهاء الهوية الإماراتية",
         "risk": "مخاطر التجديد",
-        "provenance": "مصدر الاستيراد",
+        "provenance": "الإجراءات",
         "phase3Unavailable": "المرحلة 3 غير متاحة",
         "phase3Note": "مصدر الاستيراد وإجراءات المستندات غير متاحة حتى المرحلة 3.",
-        "identifierSurfaceUnavailable": "معرّفات التأشيرة والهوية الإماراتية غير متاحة لأنه لا يوجد عقد مقبول للعرض أو الإخفاء الجزئي."
+        "identifierSurfaceUnavailable": "المعرّفات مشفّرة؛ لا تظهر إلا آخر أربعة أحرف."
       },
       "pagination": {
         "label": "صفحات سجل الموظفين",
@@ -2622,23 +2628,42 @@
         "eid_expiry": "انتهاء الهوية الإماراتية",
         "row": "الصف",
         "job": "مهمة الاستيراد",
-        "unknown": "حقل غير معروف"
+        "unknown": "حقل غير معروف",
+        "job_title": "المسمى الوظيفي"
       },
       "errorCodes": {
         "VALIDATION_FAILED": "لم يجتز الصف عملية التحقق.",
         "DUPLICATE_SKIPPED": "تم تخطي رقم جواز سفر موجود أو مكرر.",
         "INSERT_FAILED": "تعذر استيراد الصف بأمان.",
         "CANCELLED": "لم يتم استيراد الصف لأن المهمة أُلغيت.",
-        "UNKNOWN": "تعذرت معالجة الصف."
+        "UNKNOWN": "تعذرت معالجة الصف.",
+        "INVALID_FORMAT": "القيمة بتنسيق غير صالح.",
+        "INVALID_LENGTH": "القيمة طويلة جداً أو فارغة.",
+        "DUPLICATE_IN_FILE": "رقم الجواز يكرر صفاً سابقاً في هذا الملف.",
+        "DUPLICATE_EXISTING": "يوجد موظف بهذا الجواز؛ سيتم تخطي الصف."
       },
       "errorCodeLabels": {
         "VALIDATION_FAILED": "فشل التحقق",
         "DUPLICATE_SKIPPED": "تم تخطي التكرار",
         "INSERT_FAILED": "فشل الإدراج",
         "CANCELLED": "ملغي",
-        "UNKNOWN": "خطأ في المعالجة"
+        "UNKNOWN": "خطأ في المعالجة",
+        "INVALID_FORMAT": "INVALID_FORMAT",
+        "INVALID_LENGTH": "INVALID_LENGTH",
+        "DUPLICATE_IN_FILE": "DUPLICATE_IN_FILE",
+        "DUPLICATE_EXISTING": "DUPLICATE_EXISTING"
       },
-      "csvHeader": "الصف,الحقل,الرسالة,الرمز"
+      "csvHeader": "الصف,الحقل,الرسالة,الرمز",
+      "outcomes": "{inserted} مستورد · {skipped} متخطى مع نتيجة دقيقة لكل صف",
+      "cancelRequested": "تم طلب الإلغاء. يتوقف الاستيراد عند حد الدفعة التالية.",
+      "artifactRetired": "حُذف الملف المصدر المشفّر وفق سياسة الاحتفاظ.",
+      "failureCodes": {
+        "ASSIGNMENT_RELEASED": "توقف: تم إنهاء إسناد المندوب.",
+        "IMPORT_ARTIFACT_MISMATCH": "توقف: الملف المخزن لا يطابق بصمته.",
+        "IMPORT_ARTIFACT_INVALID": "توقف: الملف المخزن لم يعد صالحاً.",
+        "IMPORT_ARTIFACT_MISSING": "توقف: الملف المخزن لم يعد متاحاً.",
+        "UNKNOWN": "توقف لسبب يتعلق بالسلامة."
+      }
     },
     "settings": {
       "eyebrow": "عناصر التحكم بمساحة العمل",
@@ -5810,6 +5835,253 @@
       "completed": "مكتمل",
       "unavailable": "غير متاح",
       "cancelled": "ملغى"
+    }
+  },
+  "p308": {
+    "errors": {
+      "FORBIDDEN": "هذا السجل خارج صلاحية شركتك.",
+      "VALIDATION_FAILED": "تحقق من القيم وحاول مرة أخرى.",
+      "OPERATION_REUSED": "تم استخدام هذا الطلب لتغيير مختلف. أعد فتح النموذج.",
+      "STALE_VERSION": "تغيّر هذا السجل منذ فتحه. حدّث الصفحة وحاول مرة أخرى.",
+      "EMPLOYEE_PASSPORT_DUPLICATE": "يوجد موظف بنفس رقم الجواز في هذه الشركة.",
+      "EMPLOYEE_NOT_FOUND": "الموظف لم يعد متاحاً.",
+      "EMPLOYEE_STATUS_UNCHANGED": "الموظف لديه هذه الحالة بالفعل.",
+      "EMPLOYEE_STATUS_TERMINAL": "لا يمكن تغيير الموظفين المنتهية خدمتهم هنا.",
+      "IMPORT_NOT_FOUND": "عملية الاستيراد لم تعد متاحة.",
+      "IMPORT_DUPLICATE_ARTIFACT": "هذا الملف قيد الاستيراد بالفعل.",
+      "INVALID_IMPORT_TRANSITION": "لا يمكن نقل الاستيراد إلى هذه الحالة الآن.",
+      "RENEWAL_NOT_FOUND": "التجديد لم يعد متاحاً.",
+      "RENEWAL_DUPLICATE": "يوجد تجديد نشط مطابق بالفعل.",
+      "RENEWAL_TERMINAL": "لا يمكن تغيير التجديدات المكتملة أو الملغاة.",
+      "RENEWAL_BLOCKED": "أزل العائق قبل تقديم هذا التجديد.",
+      "RENEWAL_LICENSE_LOCKED": "هذا التجديد مرتبط بسجل رخصة الشركة ولا يمكن تغييره هنا.",
+      "RENEWAL_EVIDENCE_REQUIRED": "أرفق مستنداً مرفوعاً واحداً على الأقل كدليل.",
+      "RENEWAL_EVIDENCE_NOT_FOUND": "أحد المستندات المختارة غير متاح لهذه الشركة.",
+      "INVALID_RENEWAL_TRANSITION": "تغيير المرحلة هذا غير مسموح.",
+      "INTERNAL": "تعذّر حفظ التغيير. حاول مرة أخرى.",
+      "RATE_LIMITED": "عمليات استيراد كثيرة. حاول لاحقاً.",
+      "FILE_TOO_LARGE": "حجم ملف CSV أكبر من 1 ميغابايت.",
+      "INVALID_ENCODING": "يجب أن يكون ملف CSV نصاً بترميز UTF-8.",
+      "MISSING_REQUIRED_HEADER": "يحتاج ملف CSV إلى عمود الاسم.",
+      "UNKNOWN_HEADER": "يحتوي ملف CSV على عمود غير مدعوم.",
+      "DUPLICATE_HEADER": "يكرر ملف CSV عموداً.",
+      "NO_ROWS": "لا يحتوي ملف CSV على صفوف موظفين.",
+      "TOO_MANY_ROWS": "يحتوي ملف CSV على أكثر من 5000 صف."
+    },
+    "renewals": {
+      "stageTitle": "تغيير مرحلة التجديد",
+      "stageDescription": "المرحلة الحالية: {stage}. تنتقل المراحل خطوة واحدة في كل مرة.",
+      "blockedHint": "هذا التجديد متوقف. أزل العائق لتقديمه.",
+      "targetStage": "المرحلة التالية",
+      "evidence": "مستندات الإثبات",
+      "noEvidence": "لا توجد مستندات شركة مرفوعة متاحة كدليل.",
+      "cancelReason": "سبب الإلغاء",
+      "cancelReasons": {
+        "duplicate_entry": "إدخال مكرر",
+        "not_required": "لم يعد مطلوباً",
+        "handled_elsewhere": "تمت معالجته في مكان آخر"
+      },
+      "close": "إغلاق",
+      "saving": "جارٍ الحفظ…",
+      "applyStage": "تطبيق المرحلة",
+      "terminal": "مغلق",
+      "changeStage": "تغيير المرحلة",
+      "costs": "التكاليف ({currency})",
+      "governmentFee": "الرسوم الحكومية",
+      "serviceFee": "رسوم خدمة المندوب",
+      "fine": "الغرامة",
+      "blocker": "العائق",
+      "noBlocker": "لا يوجد عائق",
+      "blockers": {
+        "awaiting_documents": "بانتظار المستندات",
+        "awaiting_payment": "بانتظار الدفع",
+        "awaiting_government": "بانتظار الجهة الحكومية",
+        "awaiting_medical": "بانتظار الفحص الطبي"
+      },
+      "types": {
+        "license": "الرخصة التجارية",
+        "visa": "تأشيرة الموظف",
+        "investor_visa": "تأشيرة المستثمر/الشريك",
+        "eid": "الهوية الإماراتية",
+        "establishment_card": "بطاقة المنشأة",
+        "ejari": "إيجاري / الإيجار",
+        "medical_insurance": "التأمين الصحي"
+      },
+      "stages": {
+        "due": "مستحق",
+        "in_progress": "قيد التنفيذ",
+        "documents_submitted": "تم تقديم المستندات",
+        "government_processing": "قيد المعالجة الحكومية",
+        "completed": "مكتمل",
+        "cancelled": "ملغى"
+      },
+      "employee": "الموظف",
+      "companyLevel": "تجديد على مستوى الشركة",
+      "stage": "المرحلة",
+      "blocked": "متوقف",
+      "sourceOnboarding": "تسجيل الشركة",
+      "batchTitle": "بدء التجديدات دفعة واحدة",
+      "batchDescription": "تنتقل التجديدات المستحقة المختارة إلى قيد التنفيذ معاً، أو لا ينتقل أي منها.",
+      "batchDone": "تم بدء {count} تجديدات.",
+      "batchStart": "بدء {count} مختارة"
+    },
+    "employees": {
+      "add": "إضافة موظف",
+      "edit": "تعديل",
+      "addTitle": "إضافة موظف",
+      "editTitle": "تعديل الموظف",
+      "privacyNote": "أرقام الجواز والتأشيرة والهوية مشفّرة ولا تظهر إلا آخر أربعة أحرف. اترك حقول المعرّفات فارغة للاحتفاظ بالقيمة المخزنة.",
+      "fields": {
+        "name": "الاسم الكامل",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف",
+        "nationality": "الجنسية (رمز ISO)",
+        "job_title": "المسمى الوظيفي",
+        "passport_no": "رقم الجواز",
+        "visa_no": "رقم التأشيرة",
+        "visa_expiry": "انتهاء التأشيرة",
+        "emirates_id": "الهوية الإماراتية",
+        "eid_expiry": "انتهاء الهوية"
+      },
+      "close": "إغلاق",
+      "saving": "جارٍ الحفظ…",
+      "save": "حفظ الموظف",
+      "deactivate": "إلغاء التفعيل",
+      "reactivate": "إعادة التفعيل"
+    },
+    "employeeSelf": {
+      "phone": "هاتف التواصل",
+      "saving": "جارٍ الحفظ…",
+      "save": "حفظ جهة الاتصال",
+      "success": "تم حفظ هاتف التواصل.",
+      "error": "تعذّر حفظ هاتف التواصل.",
+      "conflict": "تغيّر سجلك. حدّث الصفحة وحاول مرة أخرى.",
+      "contactTitle": "بيانات التواصل الخاصة بي",
+      "contactDescription": "يمكنك تحديث رقم هاتفك. يتولى المندوب بقية البيانات.",
+      "calendarTitle": "تقويم تجديداتي — {month}",
+      "calendarDescription": "تجديداتك حسب يوم العمل في دبي.",
+      "calendarNav": "أشهر التقويم",
+      "previousMonth": "الشهر السابق",
+      "nextMonth": "الشهر التالي",
+      "calendarEmpty": "لا توجد تجديدات في هذا الشهر.",
+      "urgency": {
+        "overdue": "متأخر",
+        "due_today": "مستحق اليوم",
+        "upcoming": "قادم"
+      },
+      "stages": {
+        "due": "مستحق",
+        "in_progress": "قيد التنفيذ",
+        "documents_submitted": "تم تقديم المستندات",
+        "government_processing": "قيد المعالجة الحكومية",
+        "completed": "مكتمل",
+        "cancelled": "ملغى"
+      },
+      "activityTitle": "سجل بياناتي",
+      "activityDescription": "التغييرات على سجلك الوظيفي وتجديداتك.",
+      "activityEmpty": "لا توجد تغييرات مسجلة بعد.",
+      "activity": {
+        "profile": {
+          "created": "تم إنشاء السجل",
+          "updated": "حدّث المندوب السجل",
+          "deactivated": "تم إلغاء تفعيل السجل",
+          "reactivated": "أعيد تفعيل السجل",
+          "self_profile_updated": "حدّثت هاتف التواصل",
+          "preferences_updated": "غيّرت تفضيل التذكير",
+          "imported": "تم استيراد السجل"
+        },
+        "renewal": {
+          "created": "تم إنشاء التجديد",
+          "updated": "تم تحديث التجديد",
+          "transitioned": "تغيّرت مرحلة التجديد",
+          "blocked": "توقف التجديد",
+          "unblocked": "استؤنف التجديد",
+          "evidence_linked": "تم ربط الدليل",
+          "completed": "اكتمل التجديد",
+          "cancelled": "أُلغي التجديد",
+          "escalated": "تم تصعيد التجديد"
+        }
+      },
+      "tasksTitle": "بنودي المفتوحة",
+      "tasksDescription": "طلبات المستندات الموجهة إليك وتجديداتك التي تحتاج إلى متابعة.",
+      "tasksEmpty": "لا شيء يحتاج إلى متابعتك.",
+      "taskKinds": {
+        "document_request": "طلب مستند",
+        "renewal": "تجديد"
+      }
+    },
+    "adminRenewals": {
+      "pagination": "صفحات التجديدات",
+      "pageOf": "الصفحة {page} من {pages}",
+      "previous": "السابق",
+      "next": "التالي",
+      "counts": {
+        "overdue": "متأخرة",
+        "week": "مستحقة هذا الأسبوع",
+        "days90": "خلال 90 يوماً"
+      },
+      "health": "التحديث اليومي",
+      "healthUnavailable": "الحالة غير متاحة",
+      "healthStale": "متأخر منذ {date} (دبي)",
+      "healthFresh": "محدّث · {reminders} تذكيرات مجدولة",
+      "empty": "لا توجد تجديدات نشطة.",
+      "columns": {
+        "company": "الشركة",
+        "renewal": "التجديد",
+        "due": "الاستحقاق (دبي)",
+        "stage": "المرحلة"
+      },
+      "types": {
+        "license": "الرخصة التجارية",
+        "visa": "تأشيرة الموظف",
+        "investor_visa": "تأشيرة المستثمر/الشريك",
+        "eid": "الهوية الإماراتية",
+        "establishment_card": "بطاقة المنشأة",
+        "ejari": "إيجاري / الإيجار",
+        "medical_insurance": "التأمين الصحي"
+      },
+      "stages": {
+        "due": "مستحق",
+        "in_progress": "قيد التنفيذ",
+        "documents_submitted": "تم تقديم المستندات",
+        "government_processing": "قيد المعالجة الحكومية",
+        "completed": "مكتمل",
+        "cancelled": "ملغى"
+      },
+      "buckets": {
+        "overdue": "متأخر",
+        "this_week": "هذا الأسبوع",
+        "this_month": "هذا الشهر",
+        "next_90": "خلال 90 يوماً",
+        "later": "لاحقاً"
+      },
+      "blocked": "متوقف"
+    },
+    "adminEmployees": {
+      "pagination": "صفحات الموظفين",
+      "pageOf": "الصفحة {page} من {pages}",
+      "previous": "السابق",
+      "next": "التالي",
+      "counts": {
+        "total": "الموظفون",
+        "visaRisk": "تأشيرات خلال 90 يوماً",
+        "eidRisk": "هويات خلال 90 يوماً"
+      },
+      "empty": "لا يوجد موظفون مسجلون.",
+      "columns": {
+        "company": "الشركة",
+        "employee": "الموظف",
+        "identifiers": "المعرّفات المقنّعة",
+        "expiries": "تواريخ الانتهاء",
+        "status": "الحالة"
+      },
+      "visa": "التأشيرة",
+      "eid": "الهوية",
+      "statuses": {
+        "active": "نشط",
+        "inactive": "غير نشط",
+        "terminated": "منتهي"
+      }
     }
   }
 }

@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Building2, FileText, IdCard, Settings, UserRound } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { EmployeePhoneForm } from '@/components/employee/EmployeePhoneForm';
+import { readEmployeeSelfState } from '@/lib/employees/self-service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   authorizeEmployeePortalRead,
@@ -19,11 +22,13 @@ export default async function EmployeeProfilePage({
 }) {
   const { tenant: slug } = await params;
   const access = await authorizeEmployeePortalRead(slug);
-  const [assignment, t, tCommon, tActions] = await Promise.all([
+  const [assignment, self, t, tCommon, tActions, tSelf] = await Promise.all([
     loadEmployeeAssignment(access),
+    readEmployeeSelfState(access),
     getTranslations('employee.profile'),
     getTranslations('employee.common'),
     getTranslations('employee.actions'),
+    getTranslations('p308.employeeSelf'),
   ]);
   const href = (route: Parameters<typeof employeePortalHref>[1]) =>
     employeePortalHref(access.tenant.slug, route);
@@ -45,6 +50,20 @@ export default async function EmployeeProfilePage({
         <h1>{t('title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">{t('subtitle')}</p>
       </header>
+      <Card className="signal-panel">
+        <CardHeader>
+          <CardTitle>{tSelf('contactTitle')}</CardTitle>
+          <CardDescription>{tSelf('contactDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EmployeePhoneForm
+            slug={access.tenant.slug}
+            phone={self.phone}
+            version={self.version}
+            operationId={randomUUID()}
+          />
+        </CardContent>
+      </Card>
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="signal-panel min-w-0">
           <CardHeader>

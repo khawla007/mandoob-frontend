@@ -65,10 +65,6 @@ export function BulkImportJobActions({
       ) : null}
       {status === 'validated' ? (
         <form action={execute} className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input name="skip_existing" type="checkbox" defaultChecked className="size-4" />
-            <span>{labels.skipExisting}</span>
-          </label>
           <Button disabled={executing} type="submit">
             <Play className="me-2 size-4" aria-hidden />
             {executing ? labels.pending : labels.confirm}
@@ -113,7 +109,7 @@ export function BulkImportJobActions({
           </Dialog>
         </>
       ) : null}
-      {status === 'importing' ? (
+      {status === 'importing' && !canCancel ? (
         <p className="text-muted-foreground text-sm">{labels.cannotCancel}</p>
       ) : null}
     </div>

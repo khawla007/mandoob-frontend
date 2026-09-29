@@ -11,12 +11,21 @@ test('every current employee passport writer stores or clears the keyed hash coh
     'src/lib/data/admin-create-user.ts',
     'src/lib/data/admin-edit-user.ts',
     'src/lib/data/admin-change-role.ts',
-    'src/lib/data/bulk-import.ts',
   ]) {
     const source = read(path);
     assert.match(source, /passport_no_hash/iu, path);
     assert.match(source, /hashPassportForLookup/iu, path);
   }
+  // P3.08 writers seal the ciphertext, keyed hash and last4 as one triple.
+  assert.match(
+    read('src/lib/employees/identifiers.ts'),
+    /passport_no_hash = normalized \? deps\.hashPassport/u,
+  );
+  assert.match(read('src/lib/p308/server.ts'), /hashPassport: hashPassportForLookup/u);
+  assert.match(
+    read('src/lib/employees/import-worker-supabase.ts'),
+    /hashPassport: hashPassportForLookup/u,
+  );
   assert.match(read('src/lib/data/account-self.ts'), /updateEmployeeSelfPassport/iu);
   assert.doesNotMatch(
     read('src/lib/data/account-self.ts'),
@@ -45,21 +54,19 @@ test('all direct employee mutations use the service-role boundary', () => {
   for (const path of [
     'src/lib/data/admin-create-user.ts',
     'src/lib/data/admin-edit-user.ts',
-    'src/lib/data/bulk-import.ts',
     'src/lib/data/erasure.ts',
+    'src/lib/p308/server.ts',
+    'src/lib/employees/import-worker-supabase.ts',
   ]) {
     const source = read(path);
     assert.match(source, /createSupabaseServiceRoleClient/iu, path);
   }
-  const bulkImport = read('src/lib/data/bulk-import.ts');
+  const importActions = read('src/app/(tenant)/t/[tenant]/(pro)/imports/actions.ts');
   assert.match(
-    bulkImport,
+    importActions,
     /select\('id, passport_no_hash'\)[\s\S]*?\.not\('passport_no_hash', 'is', null\)/u,
   );
-  assert.doesNotMatch(
-    bulkImport,
-    /async function loadPassportHashPage[\s\S]*?select\([^)]*passport_no_encrypted/u,
-  );
+  assert.doesNotMatch(importActions, /select\([^)]*passport_no_encrypted/u);
 });
 
 test('employee passport unique violations map to stable safe duplicate outcomes', () => {
@@ -68,7 +75,7 @@ test('employee passport unique violations map to stable safe duplicate outcomes'
     'src/lib/data/admin-edit-user.ts',
     'src/lib/data/admin-change-role.ts',
     'src/lib/data/account-self.ts',
-    'src/lib/data/bulk-import.ts',
+    'src/lib/p308/operation.ts',
   ]) {
     assert.match(read(path), /PASSPORT_DUPLICATE|EmployeePassportDuplicateError/iu, path);
   }

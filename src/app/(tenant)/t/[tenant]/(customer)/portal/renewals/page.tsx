@@ -26,9 +26,10 @@ export default async function CustomerRenewalsPage({
   const [{ tenant: slug }, raw] = await Promise.all([params, searchParams]);
   const access = await authorizeCustomerLinkedCompanyRead(slug);
   const search = parseCustomerRenewalSearch(raw);
-  const [workspace, t, locale] = await Promise.all([
+  const [workspace, t, stageT, locale] = await Promise.all([
     listCustomerRenewals({ tenantSlug: slug, search }, { authorize: async () => access }),
     getTranslations('customer.renewalWorkspace'),
+    getTranslations('p308.renewals'),
     getLocale(),
   ]);
   if (workspace.canonicalPage !== workspace.page)
@@ -173,7 +174,7 @@ export default async function CustomerRenewalsPage({
             />
           ) : null}
           {workspace.rows.length ? (
-            <RenewalList workspace={workspace} locale={locale} date={date} t={t} />
+            <RenewalList workspace={workspace} locale={locale} date={date} t={t} stageT={stageT} />
           ) : null}
           {workspace.total !== null && workspace.total > workspace.pageSize ? (
             <Pagination slug={slug} search={search} workspace={workspace} t={t} />
@@ -204,11 +205,13 @@ function RenewalList({
   locale,
   date,
   t,
+  stageT,
 }: {
   workspace: CustomerRenewalResult;
   locale: string;
   date: Intl.DateTimeFormat;
   t: RenewalT;
+  stageT: (key: string) => string;
 }) {
   const number = new Intl.NumberFormat(locale);
   return (
@@ -263,6 +266,11 @@ function RenewalList({
                         : row.bucket,
                   )}
                 </Badge>
+                {row.stage ? (
+                  <Badge variant="outline" className="ms-1">
+                    {stageT(`stages.${row.stage}`)}
+                  </Badge>
+                ) : null}
               </td>
             </tr>
           ))}

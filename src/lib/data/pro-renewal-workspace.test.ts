@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { RENEWAL_COLUMNS } from '@/lib/renewals/row';
 
 import {
   classifyRenewalUrgency,
@@ -410,11 +411,7 @@ test('renewal Supabase adapter applies exact tenant and Company ownership, stabl
   });
   await store.total({ tenantId: 'tenant-1', companyId: 'company-1' });
   assert.deepEqual(calls, [
-    [
-      'select',
-      'id, tenant_id, company_id, type, label, due_date, status, source, completed_at, created_at, updated_at',
-      { count: 'exact' },
-    ],
+    ['select', RENEWAL_COLUMNS, { count: 'exact' }],
     ['eq', 'tenant_id', 'tenant-1'],
     ['eq', 'company_id', 'company-1'],
     ['in', 'status', ['upcoming', 'due_soon', 'overdue']],
@@ -458,11 +455,7 @@ test('renewal adapter keeps terminal rows out of urgency windows and can query d
     today: '2026-08-12',
   });
   assert.deepEqual(calls, [
-    [
-      'select',
-      'id, tenant_id, company_id, type, label, due_date, status, source, completed_at, created_at, updated_at',
-      { count: 'exact' },
-    ],
+    ['select', RENEWAL_COLUMNS, { count: 'exact' }],
     ['eq', 'tenant_id', 'tenant-1'],
     ['eq', 'company_id', 'company-1'],
     ['in', 'status', ['completed']],
@@ -507,11 +500,7 @@ test('renewal adapter keeps exact Signal target, cumulative days, and Dubai dead
     today: '2026-08-01',
   });
   assert.deepEqual(calls, [
-    [
-      'select',
-      'id, tenant_id, company_id, type, label, due_date, status, source, completed_at, created_at, updated_at',
-      { count: 'exact' },
-    ],
+    ['select', RENEWAL_COLUMNS, { count: 'exact' }],
     ['eq', 'tenant_id', 'tenant-1'],
     ['eq', 'company_id', 'company-1'],
     ['eq', 'id', focus],

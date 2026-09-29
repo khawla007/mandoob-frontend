@@ -1960,7 +1960,10 @@
       "previous": "Previous",
       "next": "Next",
       "loading": "Loading renewals…",
-      "retry": "Retry"
+      "retry": "Retry",
+      "investor_visa": "Investor/partner visa",
+      "establishment_card": "Establishment card",
+      "medical_insurance": "Medical insurance"
     },
     "financeWorkspace": {
       "eyebrow": "Company finance",
@@ -2330,7 +2333,8 @@
       "openSecurity": "Open security settings",
       "securityTitle": "Password and multi-factor security",
       "securityDescription": "Password, MFA and session changes remain in the existing protected account security center.",
-      "openAccountSecurity": "Open protected account security"
+      "openAccountSecurity": "Open protected account security",
+      "conflict": "Your record changed. Refresh and try again."
     }
   },
   "pro": {
@@ -2521,7 +2525,9 @@
         "expired": "Expired",
         "attention": "Due within 90 days",
         "current": "Current",
-        "unavailableWithoutMaskedContract": "Identifier unavailable: no accepted masked/display contract exists."
+        "unavailableWithoutMaskedContract": "Identifier unavailable: no accepted masked/display contract exists.",
+        "masked": "Masked identifier",
+        "notRecorded": "Identifier not recorded"
       },
       "risk": { "attention": "Needs attention", "clear": "Clear", "unknown": "Not assessed" },
       "signals": {
@@ -2538,10 +2544,10 @@
         "visa": "Visa expiry",
         "eid": "Emirates ID expiry",
         "risk": "Renewal risk",
-        "provenance": "Import provenance",
+        "provenance": "Actions",
         "phase3Unavailable": "Phase 3 unavailable",
         "phase3Note": "Import provenance and document actions are unavailable until Phase 3.",
-        "identifierSurfaceUnavailable": "Visa and Emirates ID identifiers are unavailable because no accepted masked/display contract exists."
+        "identifierSurfaceUnavailable": "Identifiers are encrypted; only the last four characters are shown."
       },
       "pagination": {
         "label": "Employee registry pages",
@@ -2638,23 +2644,42 @@
         "eid_expiry": "Emirates ID expiry",
         "row": "Row",
         "job": "Import job",
-        "unknown": "Unknown field"
+        "unknown": "Unknown field",
+        "job_title": "Job title"
       },
       "errorCodes": {
         "VALIDATION_FAILED": "The row did not pass validation.",
         "DUPLICATE_SKIPPED": "An existing or duplicate passport number was skipped.",
         "INSERT_FAILED": "The row could not be imported safely.",
         "CANCELLED": "The row was not imported because the job was cancelled.",
-        "UNKNOWN": "The row could not be processed."
+        "UNKNOWN": "The row could not be processed.",
+        "INVALID_FORMAT": "The value has an invalid format.",
+        "INVALID_LENGTH": "The value is too long or empty.",
+        "DUPLICATE_IN_FILE": "The passport number repeats an earlier row in this file.",
+        "DUPLICATE_EXISTING": "An employee with this passport already exists; the row will be skipped."
       },
       "errorCodeLabels": {
         "VALIDATION_FAILED": "Validation failed",
         "DUPLICATE_SKIPPED": "Duplicate skipped",
         "INSERT_FAILED": "Insert failed",
         "CANCELLED": "Cancelled",
-        "UNKNOWN": "Processing error"
+        "UNKNOWN": "Processing error",
+        "INVALID_FORMAT": "INVALID_FORMAT",
+        "INVALID_LENGTH": "INVALID_LENGTH",
+        "DUPLICATE_IN_FILE": "DUPLICATE_IN_FILE",
+        "DUPLICATE_EXISTING": "DUPLICATE_EXISTING"
       },
-      "csvHeader": "Row,Field,Message,Code"
+      "csvHeader": "Row,Field,Message,Code",
+      "outcomes": "{inserted} imported · {skipped} skipped with an exact row outcome",
+      "cancelRequested": "Cancellation requested. The import stops at the next batch boundary.",
+      "artifactRetired": "The encrypted source file was deleted under the retention policy.",
+      "failureCodes": {
+        "ASSIGNMENT_RELEASED": "Stopped: the PRO assignment was released.",
+        "IMPORT_ARTIFACT_MISMATCH": "Stopped: the stored file did not match its checksum.",
+        "IMPORT_ARTIFACT_INVALID": "Stopped: the stored file is no longer valid.",
+        "IMPORT_ARTIFACT_MISSING": "Stopped: the stored file is no longer available.",
+        "UNKNOWN": "Stopped for a safety reason."
+      }
     },
     "settings": {
       "eyebrow": "Workspace controls",
@@ -5842,6 +5867,253 @@
       "completed": "Completed",
       "unavailable": "Unavailable",
       "cancelled": "Cancelled"
+    }
+  },
+  "p308": {
+    "errors": {
+      "FORBIDDEN": "This record is outside your company access.",
+      "VALIDATION_FAILED": "Check the values and try again.",
+      "OPERATION_REUSED": "This request was already used for a different change. Reopen the form.",
+      "STALE_VERSION": "This record changed since you opened it. Refresh and try again.",
+      "EMPLOYEE_PASSPORT_DUPLICATE": "An employee with this passport number already exists in this company.",
+      "EMPLOYEE_NOT_FOUND": "The employee is no longer available.",
+      "EMPLOYEE_STATUS_UNCHANGED": "The employee already has this status.",
+      "EMPLOYEE_STATUS_TERMINAL": "Terminated employees cannot be changed here.",
+      "IMPORT_NOT_FOUND": "The import is no longer available.",
+      "IMPORT_DUPLICATE_ARTIFACT": "This file is already being imported.",
+      "INVALID_IMPORT_TRANSITION": "The import cannot move to that state now.",
+      "RENEWAL_NOT_FOUND": "The renewal is no longer available.",
+      "RENEWAL_DUPLICATE": "A matching active renewal already exists.",
+      "RENEWAL_TERMINAL": "Completed or cancelled renewals cannot change.",
+      "RENEWAL_BLOCKED": "Clear the blocker before advancing this renewal.",
+      "RENEWAL_LICENSE_LOCKED": "This renewal follows the company licence record and cannot be changed here.",
+      "RENEWAL_EVIDENCE_REQUIRED": "Attach at least one uploaded document as evidence.",
+      "RENEWAL_EVIDENCE_NOT_FOUND": "A selected document is not available for this company.",
+      "INVALID_RENEWAL_TRANSITION": "That stage change is not allowed.",
+      "INTERNAL": "The change could not be saved. Try again.",
+      "RATE_LIMITED": "Too many imports. Try again later.",
+      "FILE_TOO_LARGE": "The CSV file is larger than 1 MB.",
+      "INVALID_ENCODING": "The CSV file must be UTF-8 text.",
+      "MISSING_REQUIRED_HEADER": "The CSV needs a name column.",
+      "UNKNOWN_HEADER": "The CSV has a column that is not supported.",
+      "DUPLICATE_HEADER": "The CSV repeats a column.",
+      "NO_ROWS": "The CSV has no employee rows.",
+      "TOO_MANY_ROWS": "The CSV has more than 5,000 rows."
+    },
+    "renewals": {
+      "stageTitle": "Change renewal stage",
+      "stageDescription": "Current stage: {stage}. Stages move one step at a time.",
+      "blockedHint": "This renewal is blocked. Clear the blocker to advance it.",
+      "targetStage": "Next stage",
+      "evidence": "Evidence documents",
+      "noEvidence": "No uploaded company documents are available as evidence.",
+      "cancelReason": "Cancellation reason",
+      "cancelReasons": {
+        "duplicate_entry": "Duplicate entry",
+        "not_required": "No longer required",
+        "handled_elsewhere": "Handled elsewhere"
+      },
+      "close": "Close",
+      "saving": "Saving…",
+      "applyStage": "Apply stage",
+      "terminal": "Closed",
+      "changeStage": "Change stage",
+      "costs": "Costs ({currency})",
+      "governmentFee": "Government fee",
+      "serviceFee": "PRO service fee",
+      "fine": "Fine",
+      "blocker": "Blocker",
+      "noBlocker": "No blocker",
+      "blockers": {
+        "awaiting_documents": "Awaiting documents",
+        "awaiting_payment": "Awaiting payment",
+        "awaiting_government": "Awaiting government",
+        "awaiting_medical": "Awaiting medical"
+      },
+      "types": {
+        "license": "Trade license",
+        "visa": "Employee visa",
+        "investor_visa": "Investor/partner visa",
+        "eid": "Emirates ID",
+        "establishment_card": "Establishment card",
+        "ejari": "Ejari / tenancy",
+        "medical_insurance": "Medical insurance"
+      },
+      "stages": {
+        "due": "Due",
+        "in_progress": "In progress",
+        "documents_submitted": "Documents submitted",
+        "government_processing": "Government processing",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "employee": "Employee",
+      "companyLevel": "Company-level renewal",
+      "stage": "Stage",
+      "blocked": "Blocked",
+      "sourceOnboarding": "Company onboarding",
+      "batchTitle": "Start renewals in a batch",
+      "batchDescription": "Selected due renewals move to In progress together, or none move.",
+      "batchDone": "{count} renewals started.",
+      "batchStart": "Start {count} selected"
+    },
+    "employees": {
+      "add": "Add employee",
+      "edit": "Edit",
+      "addTitle": "Add employee",
+      "editTitle": "Edit employee",
+      "privacyNote": "Passport, visa and Emirates ID numbers are encrypted and only the last four characters are shown. Leave identifier fields empty to keep the stored value.",
+      "fields": {
+        "name": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "nationality": "Nationality (ISO code)",
+        "job_title": "Job title",
+        "passport_no": "Passport number",
+        "visa_no": "Visa number",
+        "visa_expiry": "Visa expiry",
+        "emirates_id": "Emirates ID",
+        "eid_expiry": "Emirates ID expiry"
+      },
+      "close": "Close",
+      "saving": "Saving…",
+      "save": "Save employee",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate"
+    },
+    "employeeSelf": {
+      "phone": "Contact phone",
+      "saving": "Saving…",
+      "save": "Save contact",
+      "success": "Your contact phone was saved.",
+      "error": "The contact phone could not be saved.",
+      "conflict": "Your record changed. Refresh and try again.",
+      "contactTitle": "My contact details",
+      "contactDescription": "You can update your own phone number. Other details are maintained by your PRO.",
+      "calendarTitle": "My renewal calendar — {month}",
+      "calendarDescription": "Your own renewals by Dubai business date.",
+      "calendarNav": "Calendar months",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "calendarEmpty": "No renewals fall in this month.",
+      "urgency": {
+        "overdue": "Overdue",
+        "due_today": "Due today",
+        "upcoming": "Upcoming"
+      },
+      "stages": {
+        "due": "Due",
+        "in_progress": "In progress",
+        "documents_submitted": "Documents submitted",
+        "government_processing": "Government processing",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "activityTitle": "My record history",
+      "activityDescription": "Changes to your employee record and your renewals.",
+      "activityEmpty": "No recorded changes yet.",
+      "activity": {
+        "profile": {
+          "created": "Record created",
+          "updated": "Record updated by your PRO",
+          "deactivated": "Record deactivated",
+          "reactivated": "Record reactivated",
+          "self_profile_updated": "You updated your contact phone",
+          "preferences_updated": "You changed reminder preference",
+          "imported": "Record imported"
+        },
+        "renewal": {
+          "created": "Renewal created",
+          "updated": "Renewal updated",
+          "transitioned": "Renewal stage changed",
+          "blocked": "Renewal blocked",
+          "unblocked": "Renewal unblocked",
+          "evidence_linked": "Evidence linked",
+          "completed": "Renewal completed",
+          "cancelled": "Renewal cancelled",
+          "escalated": "Renewal escalated"
+        }
+      },
+      "tasksTitle": "My open items",
+      "tasksDescription": "Document requests addressed to you and your renewals that need attention.",
+      "tasksEmpty": "Nothing needs your attention.",
+      "taskKinds": {
+        "document_request": "Document request",
+        "renewal": "Renewal"
+      }
+    },
+    "adminRenewals": {
+      "pagination": "Renewal pages",
+      "pageOf": "Page {page} of {pages}",
+      "previous": "Previous",
+      "next": "Next",
+      "counts": {
+        "overdue": "Overdue",
+        "week": "Due this week",
+        "days90": "Next 90 days"
+      },
+      "health": "Materialization",
+      "healthUnavailable": "Health unavailable",
+      "healthStale": "Stale since {date} (Dubai)",
+      "healthFresh": "Current · {reminders} reminders scheduled",
+      "empty": "No active renewals.",
+      "columns": {
+        "company": "Company",
+        "renewal": "Renewal",
+        "due": "Due (Dubai)",
+        "stage": "Stage"
+      },
+      "types": {
+        "license": "Trade license",
+        "visa": "Employee visa",
+        "investor_visa": "Investor/partner visa",
+        "eid": "Emirates ID",
+        "establishment_card": "Establishment card",
+        "ejari": "Ejari / tenancy",
+        "medical_insurance": "Medical insurance"
+      },
+      "stages": {
+        "due": "Due",
+        "in_progress": "In progress",
+        "documents_submitted": "Documents submitted",
+        "government_processing": "Government processing",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "buckets": {
+        "overdue": "Overdue",
+        "this_week": "This week",
+        "this_month": "This month",
+        "next_90": "Next 90 days",
+        "later": "Later"
+      },
+      "blocked": "Blocked"
+    },
+    "adminEmployees": {
+      "pagination": "Employee pages",
+      "pageOf": "Page {page} of {pages}",
+      "previous": "Previous",
+      "next": "Next",
+      "counts": {
+        "total": "Employees",
+        "visaRisk": "Visa due ≤90 days",
+        "eidRisk": "EID due ≤90 days"
+      },
+      "empty": "No employees recorded.",
+      "columns": {
+        "company": "Company",
+        "employee": "Employee",
+        "identifiers": "Masked identifiers",
+        "expiries": "Expiries",
+        "status": "Status"
+      },
+      "visa": "Visa",
+      "eid": "EID",
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "terminated": "Terminated"
+      }
     }
   }
 }

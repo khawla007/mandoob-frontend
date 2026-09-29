@@ -3,7 +3,6 @@ import { ApiError } from '@/lib/errors';
 import { decryptOptional } from '@/lib/crypto/pii';
 import { signDocumentAccess, type DocumentAccessInput } from '@/lib/data/document-access';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { employeeNotificationPreferencesSchema } from '@/lib/validation/employee-portal';
 
 const SIGNED_URL_TTL_SECONDS = 300;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
@@ -340,25 +339,4 @@ export async function getEmployeeNotificationPreferences(
 ): Promise<{ renewalRemindersEnabled: boolean | null }> {
   const employee = await getOwnedEmployee(actorProfileId, tenantId);
   return { renewalRemindersEnabled: await getPreference(employee) };
-}
-
-export async function updateEmployeeNotificationPreferences(
-  actorProfileId: string,
-  tenantId: string,
-  input: unknown,
-): Promise<{ renewalRemindersEnabled: boolean }> {
-  const parsed = employeeNotificationPreferencesSchema.parse(input);
-  const employee = await getOwnedEmployee(actorProfileId, tenantId);
-  const admin = createSupabaseServiceRoleClient();
-  const { error } = await admin.from('employee_notification_preferences').upsert(
-    {
-      tenant_id: tenantId,
-      employee_id: employee.id,
-      profile_id: actorProfileId,
-      renewal_reminders_enabled: parsed.renewal_reminders_enabled,
-    },
-    { onConflict: 'employee_id' },
-  );
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-  return { renewalRemindersEnabled: parsed.renewal_reminders_enabled };
 }

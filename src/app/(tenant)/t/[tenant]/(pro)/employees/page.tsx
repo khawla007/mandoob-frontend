@@ -7,6 +7,7 @@ import {
   EmployeeRegistrySignals,
   EmployeeRegistryTable,
 } from '@/components/pro/EmployeeRegistryWorkspace';
+import { EmployeeFormDialog, EmployeeStatusButton } from '@/components/pro/EmployeeFormDialog';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
@@ -88,7 +89,8 @@ export default async function ProEmployeesPage({
     missing: t('identity.missing'),
     expired: t('identity.expired'),
     current: t('identity.current'),
-    unavailable_without_masked_contract: t('identity.unavailableWithoutMaskedContract'),
+    masked: t('identity.masked'),
+    not_recorded: t('identity.notRecorded'),
     clear: t('risk.clear'),
     unknown: t('risk.unknown'),
     empty: t('states.empty'),
@@ -106,7 +108,11 @@ export default async function ProEmployeesPage({
 
   return (
     <div className="space-y-6">
-      <EmployeeRegistryHeader slug={slug} labels={labels} />
+      <EmployeeRegistryHeader
+        slug={slug}
+        labels={labels}
+        addAction={<EmployeeFormDialog slug={slug} />}
+      />
       <EmployeeRegistrySignals result={result} labels={labels} locale={locale} />
       <EmployeeRegistryFilters slug={slug} search={search} labels={labels} />
       <section className="space-y-3">
@@ -114,7 +120,17 @@ export default async function ProEmployeesPage({
           <h2 className="text-lg font-semibold">{t('table.title')}</h2>
           <p className="text-muted-foreground text-sm">{registryDescription}</p>
         </div>
-        <EmployeeRegistryTable result={result} labels={labels} locale={locale} />
+        <EmployeeRegistryTable
+          result={result}
+          labels={labels}
+          locale={locale}
+          renderActions={(row) => (
+            <>
+              <EmployeeFormDialog slug={slug} row={row} />
+              <EmployeeStatusButton key={`${row.id}:${row.version}`} slug={slug} row={row} />
+            </>
+          )}
+        />
         <EmployeeRegistryPagination
           slug={slug}
           search={search}

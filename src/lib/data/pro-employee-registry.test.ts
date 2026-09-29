@@ -57,8 +57,9 @@ test('registry reports renewal attention from only date-backed visa and EID valu
   assert.equal(employeeRisk(null, null, new Date('2026-05-01T00:00:00Z')), 'unknown');
 });
 
-test('registry marks Visa and EID identifiers unavailable without an accepted display contract', () => {
-  assert.equal(employeeIdentifierDisplayState(), 'unavailable_without_masked_contract');
+test('registry shows identifiers only through the masked last-four contract', () => {
+  assert.equal(employeeIdentifierDisplayState('4567'), 'masked');
+  assert.equal(employeeIdentifierDisplayState(null), 'not_recorded');
 });
 
 test('registry authorizes the actor before querying and scopes every store call to the resolved Company', async () => {
@@ -168,7 +169,11 @@ test('Supabase registry adapter composes search, expiry, risk, tenant, Company, 
   assert.deepEqual(listed, response);
   assert.deepEqual(total, response);
   assert.deepEqual(calls, [
-    ['select', 'id, name, email, nationality, status, visa_expiry, eid_expiry', { count: 'exact' }],
+    [
+      'select',
+      'id, name, email, nationality, status, visa_expiry, eid_expiry, version, phone, job_title, passport_no_last4, visa_no_last4, emirates_id_last4',
+      { count: 'exact' },
+    ],
     ['eq', 'tenant_id', 'tenant-1'],
     ['eq', 'company_id', 'company-1'],
     ['eq', 'status', 'active'],
