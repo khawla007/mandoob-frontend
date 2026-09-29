@@ -41,6 +41,7 @@ export type P308ErrorCode =
   | 'RENEWAL_EVIDENCE_REQUIRED'
   | 'RENEWAL_EVIDENCE_NOT_FOUND'
   | 'INVALID_RENEWAL_TRANSITION'
+  | 'LEASE_LOST'
   | 'INTERNAL';
 
 export type P308Failure = { code: P308ErrorCode; status: number };
@@ -69,7 +70,16 @@ const DOMAIN: Record<string, P308Failure> = {
 export function mapP308Error(error: unknown): P308Failure {
   const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown };
   if (code === '42501') return { code: 'FORBIDDEN', status: 403 };
-  if (code === '22023') return { code: 'VALIDATION_FAILED', status: 400 };
+  // Any SQL data exception (22xxx: invalid date, length, format) is a
+  // deterministic input rejection, never a transient failure.
+  if (typeof code === 'string' && code.startsWith('22'))
+    return { code: 'VALIDATION_FAILED', status: 400 };
+  if (
+    code === '55000' &&
+    (message === 'STALE_IMPORT_LEASE' || message === 'STALE_EVENT_JOB_LEASE')
+  ) {
+    return { code: 'LEASE_LOST', status: 409 };
+  }
   if (code === 'P0001' && typeof message === 'string' && DOMAIN[message]) return DOMAIN[message];
   return { code: 'INTERNAL', status: 500 };
 }

@@ -11,7 +11,7 @@ test('valid CSV yields ordinal rows, in-file passport duplicates and field error
         'Alpha,alpha@example.invalid,p1234567,2027-01-01,Engineer\n' +
         '\n' +
         'Beta,not-an-email,B7654321,,\n' +
-        'Gamma,,P1234567 ,2027-13-40,\n' +
+        'Gamma,,P1234567 ,2027-12-31,\n' +
         '"Delta, Jr",,D0000001,,Lead\n',
     ),
   );
@@ -81,4 +81,24 @@ test('existing passports can be flagged before execution without changing row or
     result.rows.map((row) => row.outcome),
     ['valid', 'duplicate_existing'],
   );
+});
+
+test('code-review F1: CSV rules match database constraints exactly', () => {
+  const run = (row: string) =>
+    validateEmployeeImportBytes(
+      encode(`name,passport_no,visa_no,visa_expiry,eid_expiry\n${row}\n`),
+    );
+  const outcome = (row: string) => {
+    const result = run(row);
+    assert.ok(result.ok);
+    return result.ok ? result.rows[0].outcome : null;
+  };
+  assert.equal(outcome(`${'x'.repeat(160)},,,,`), 'valid');
+  assert.equal(outcome(`${'x'.repeat(161)},,,,`), 'invalid');
+  assert.equal(outcome('A,,,2026-02-30,'), 'invalid');
+  assert.equal(outcome('A,,,,2027-13-01'), 'invalid');
+  assert.equal(outcome('A,,,2028-02-29,'), 'valid');
+  assert.equal(outcome('A,ÉÉ,,,'), 'invalid');
+  assert.equal(outcome('A,,ÉÉ,,'), 'invalid');
+  assert.equal(outcome('A,P-12,,,'), 'valid');
 });

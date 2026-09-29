@@ -2678,6 +2678,9 @@
         "IMPORT_ARTIFACT_MISMATCH": "Stopped: the stored file did not match its checksum.",
         "IMPORT_ARTIFACT_INVALID": "Stopped: the stored file is no longer valid.",
         "IMPORT_ARTIFACT_MISSING": "Stopped: the stored file is no longer available.",
+        "IMPORT_ARTIFACT_UNREADABLE": "Stopped: the stored file could not be decrypted.",
+        "IMPORT_BATCH_REJECTED": "Stopped: the database rejected a batch of rows; no rows from that batch were imported.",
+        "IMPORT_ATTEMPTS_EXHAUSTED": "Stopped: the import could not finish after repeated attempts.",
         "UNKNOWN": "Stopped for a safety reason."
       }
     },

@@ -2662,6 +2662,9 @@
         "IMPORT_ARTIFACT_MISMATCH": "توقف: الملف المخزن لا يطابق بصمته.",
         "IMPORT_ARTIFACT_INVALID": "توقف: الملف المخزن لم يعد صالحاً.",
         "IMPORT_ARTIFACT_MISSING": "توقف: الملف المخزن لم يعد متاحاً.",
+        "IMPORT_ARTIFACT_UNREADABLE": "توقف: تعذّر فك تشفير الملف المخزن.",
+        "IMPORT_BATCH_REJECTED": "توقف: رفضت قاعدة البيانات دفعة من الصفوف؛ لم يُستورد أي صف من تلك الدفعة.",
+        "IMPORT_ATTEMPTS_EXHAUSTED": "توقف: تعذّر إكمال الاستيراد بعد محاولات متكررة.",
         "UNKNOWN": "توقف لسبب يتعلق بالسلامة."
       }
     },

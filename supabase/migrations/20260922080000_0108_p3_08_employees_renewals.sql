@@ -265,6 +265,9 @@ alter table public.employees
   add column visa_no_last4 text,
   add column emirates_id_last4 text,
   add column deactivated_at timestamptz,
+  add column passport_no_last4_source text,
+  add column visa_no_last4_source text,
+  add column emirates_id_last4_source text,
   add constraint employees_version_positive check (version >= 1),
   add constraint employees_name_shape check (pg_catalog.char_length(pg_catalog.btrim(name)) between 1 and 160),
   add constraint employees_job_title_shape check (job_title is null or pg_catalog.char_length(job_title) between 1 and 120),
@@ -294,6 +297,62 @@ $$;
 create trigger p308_employee_version_guard
   before update on public.employees
   for each row execute function private.p308_employee_version_guard();
+
+-- A masked last-4 is only valid for the exact ciphertext it was derived from.
+-- `*_last4_source` = sha256(ciphertext). P3.08 RPCs (which derive last4 from
+-- the same payload) mark themselves with `app.p308_identifier_writer`; any other
+-- writer must send a matching source or the mask is cleared (never stale).
+create function private.p308_sha256_text(p_value text)
+returns text
+language sql
+immutable
+security definer
+set search_path = ''
+as $$
+  select case when p_value is null then null
+    else pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(p_value, 'UTF8')), 'hex') end;
+$$;
+
+create function private.p308_employee_mask_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if coalesce(pg_catalog.current_setting('app.p308_identifier_writer', true), '') = 'on' then
+    new.passport_no_last4_source := case when new.passport_no_last4 is null then null
+      else private.p308_sha256_text(new.passport_no_encrypted) end;
+    new.visa_no_last4_source := case when new.visa_no_last4 is null then null
+      else private.p308_sha256_text(new.visa_no_encrypted) end;
+    new.emirates_id_last4_source := case when new.emirates_id_last4 is null then null
+      else private.p308_sha256_text(new.emirates_id_encrypted) end;
+  end if;
+  if new.passport_no_encrypted is null or new.passport_no_last4 is null
+    or new.passport_no_last4_source is distinct from private.p308_sha256_text(new.passport_no_encrypted)
+  then
+    new.passport_no_last4 := null;
+    new.passport_no_last4_source := null;
+  end if;
+  if new.visa_no_encrypted is null or new.visa_no_last4 is null
+    or new.visa_no_last4_source is distinct from private.p308_sha256_text(new.visa_no_encrypted)
+  then
+    new.visa_no_last4 := null;
+    new.visa_no_last4_source := null;
+  end if;
+  if new.emirates_id_encrypted is null or new.emirates_id_last4 is null
+    or new.emirates_id_last4_source is distinct from private.p308_sha256_text(new.emirates_id_encrypted)
+  then
+    new.emirates_id_last4 := null;
+    new.emirates_id_last4_source := null;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger p308_employee_mask_guard
+  before insert or update on public.employees
+  for each row execute function private.p308_employee_mask_guard();
 
 alter table public.employee_notification_preferences
   add column version bigint not null default 1,
@@ -458,6 +517,8 @@ begin
   perform private.p308_resolve_actor(p_actor_id, p_tenant_id, p_company_id, array['pro']);
   perform private.p308_validate_employee_payload(p_employee, false);
 
+  -- Scope the trusted-writer flag to this one statement.
+  perform pg_catalog.set_config('app.p308_identifier_writer', 'on', true);
   begin
     insert into public.employees (
       tenant_id, company_id, name, email, phone, nationality, job_title,
@@ -479,6 +540,7 @@ begin
   exception when unique_violation then
     raise exception using errcode = 'P0001', message = 'EMPLOYEE_PASSPORT_DUPLICATE';
   end;
+  perform pg_catalog.set_config('app.p308_identifier_writer', '', true);
 
   perform private.p308_employee_event(
     v_employee, p_actor_id, p_operation_id, 'created', array['record'], 'created', 'self_serve'
@@ -532,6 +594,7 @@ begin
     raise exception using errcode = 'P0001', message = 'STALE_VERSION';
   end if;
 
+  perform pg_catalog.set_config('app.p308_identifier_writer', 'on', true);
   begin
     update public.employees employee set
       name = case when p_patch ? 'name' then pg_catalog.btrim(p_patch->>'name') else employee.name end,
@@ -554,6 +617,7 @@ begin
   exception when unique_violation then
     raise exception using errcode = 'P0001', message = 'EMPLOYEE_PASSPORT_DUPLICATE';
   end;
+  perform pg_catalog.set_config('app.p308_identifier_writer', '', true);
 
   perform private.p308_employee_event(
     v_employee, p_actor_id, p_operation_id, 'updated', v_fields, 'updated', 'self_serve'
@@ -1168,10 +1232,7 @@ begin
       'next_batch', v_job.next_batch);
   end if;
   if not public.authorize_pro_company_access(v_job.requested_by, v_job.tenant_id, v_job.company_id) then
-    update public.bulk_import_jobs job set
-      status = 'failed', failure_code = 'ASSIGNMENT_RELEASED', completed_at = pg_catalog.now(),
-      version = job.version + 1
-    where job.id = v_job.id;
+    perform private.p308_close_import(v_job, 'failed', 'ASSIGNMENT_RELEASED');
     return pg_catalog.jsonb_build_object('state', 'failed', 'failure_code', 'ASSIGNMENT_RELEASED');
   end if;
   v_count := pg_catalog.jsonb_array_length(p_rows);
@@ -1198,6 +1259,7 @@ begin
       raise exception using errcode = '22023', message = 'INVALID_IMPORT_BATCH';
     end if;
     perform private.p308_validate_employee_payload(v_row->'employee', false);
+    perform pg_catalog.set_config('app.p308_identifier_writer', 'on', true);
     v_employee := null;
     insert into public.employees (
       tenant_id, company_id, name, email, phone, nationality, job_title,
@@ -1214,6 +1276,7 @@ begin
     from (select v_row->'employee' as e) source
     on conflict (company_id, passport_no_hash) where passport_no_hash is not null do nothing
     returning * into v_employee;
+    perform pg_catalog.set_config('app.p308_identifier_writer', '', true);
     if v_employee.id is null then
       insert into public.bulk_import_row_outcomes (job_id, row_number, batch_no, outcome, error_code)
       values (v_job.id, v_row_number, p_batch_no, 'duplicate_existing', 'EMPLOYEE_PASSPORT_DUPLICATE');
@@ -1243,6 +1306,53 @@ begin
   returning * into v_job;
   return pg_catalog.jsonb_build_object('state', 'applied', 'next_row', v_job.next_row,
     'next_batch', v_job.next_batch, 'inserted', v_inserted, 'skipped', v_skipped);
+end;
+$$;
+
+-- The only way an executing import reaches a terminal state: exactly one
+-- status change, one audit row and one employee.import.finished event.
+create function private.p308_close_import(
+  p_job public.bulk_import_jobs,
+  p_state text,
+  p_failure_code text
+)
+returns public.bulk_import_jobs
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_job public.bulk_import_jobs%rowtype;
+begin
+  update public.bulk_import_jobs job set
+    status = p_state::public.bulk_import_status,
+    failure_code = p_failure_code,
+    completed_at = pg_catalog.now(),
+    version = job.version + 1
+  where job.id = p_job.id and job.status::text = 'importing'
+  returning * into v_job;
+  if not found then
+    raise exception using errcode = 'P0001', message = 'IMPORT_NOT_EXECUTING';
+  end if;
+  insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
+  values (
+    v_job.tenant_id, v_job.requested_by,
+    case p_state when 'completed' then 'bulk_imported' when 'cancelled' then 'cancelled' else 'updated' end,
+    'system',
+    pg_catalog.jsonb_build_object(
+      'entity', 'employee_import', 'import_job_id', v_job.id, 'company_id', v_job.company_id,
+      'state', p_state, 'total', v_job.total_rows, 'processed', v_job.next_row,
+      'succeeded', v_job.inserted_rows, 'skipped', v_job.skipped_rows,
+      'failure_code', p_failure_code
+    )
+  );
+  perform private.p308_publish(
+    'import:' || v_job.id::text || ':finished',
+    'employee.import.finished',
+    v_job.tenant_id, v_job.company_id, v_job.requested_by, v_job.operation_id,
+    pg_catalog.jsonb_build_object('resource_id', v_job.id, 'version', v_job.version, 'state', p_state)
+  );
+  return v_job;
 end;
 $$;
 
@@ -1284,33 +1394,51 @@ begin
   else
     raise exception using errcode = 'P0001', message = 'IMPORT_INCOMPLETE';
   end if;
-  update public.bulk_import_jobs job set
-    status = v_state::public.bulk_import_status,
-    failure_code = p_failure_code,
-    error_rows = job.error_rows,
-    completed_at = pg_catalog.now(),
-    version = job.version + 1
-  where job.id = v_job.id
-  returning * into v_job;
-  insert into public.tenant_audit_log (tenant_id, actor_id, action, source, details)
-  values (
-    v_job.tenant_id, v_job.requested_by,
-    case v_state when 'completed' then 'bulk_imported' when 'cancelled' then 'cancelled' else 'updated' end,
-    'system',
-    pg_catalog.jsonb_build_object(
-      'entity', 'employee_import', 'import_job_id', v_job.id, 'company_id', v_job.company_id,
-      'state', v_state, 'total', v_job.total_rows, 'processed', v_job.next_row,
-      'succeeded', v_job.inserted_rows, 'skipped', v_job.skipped_rows,
-      'failure_code', p_failure_code
-    )
-  );
-  perform private.p308_publish(
-    'import:' || v_job.id::text || ':finished',
-    'employee.import.finished',
-    v_job.tenant_id, v_job.company_id, v_job.requested_by, v_job.operation_id,
-    pg_catalog.jsonb_build_object('resource_id', v_job.id, 'version', v_job.version, 'state', v_state)
-  );
+  perform private.p308_close_import(v_job, v_state, p_failure_code);
   return pg_catalog.jsonb_build_object('state', v_state, 'replayed', false);
+end;
+$$;
+
+-- Imports whose execution job was dead-lettered by P3.10 (every attempt failed
+-- or leases kept expiring) are closed here so they never stay `importing`.
+create function public.p308_reconcile_stuck_imports(p_limit integer)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_job public.bulk_import_jobs%rowtype;
+  v_count integer := 0;
+begin
+  for v_job in
+    select job.* from public.bulk_import_jobs job
+    where job.status::text = 'importing'
+      and job.execution_event_id is not null
+      and exists (
+        select 1 from public.event_jobs event_job
+        where event_job.event_id = job.execution_event_id
+          and event_job.consumer_name = 'p308.employee_import.executor'
+          and event_job.state = 'dead'
+      )
+      and not exists (
+        select 1 from public.event_jobs event_job
+        where event_job.event_id = job.execution_event_id
+          and event_job.consumer_name = 'p308.employee_import.executor'
+          and event_job.state in ('pending', 'leased', 'retryable', 'replayed')
+      )
+    order by job.created_at, job.id
+    limit least(greatest(coalesce(p_limit, 50), 1), 500)
+    for update of job skip locked
+  loop
+    perform private.p308_close_import(
+      v_job,
+      case when v_job.cancel_requested_at is not null then 'cancelled' else 'failed' end,
+      case when v_job.cancel_requested_at is not null then null else 'IMPORT_ATTEMPTS_EXHAUSTED' end
+    );
+    v_count := v_count + 1;
+  end loop;
+  return v_count;
 end;
 $$;
 
@@ -1741,6 +1869,51 @@ begin
 end;
 $$;
 
+create function private.p308_set_reminder_context(p_actor_id uuid, p_operation_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform pg_catalog.set_config('app.p308_reminder_actor', coalesce(p_actor_id::text, ''), true);
+  perform pg_catalog.set_config('app.p308_reminder_operation', coalesce(p_operation_id::text, ''), true);
+end;
+$$;
+
+-- Single scheduling point for every writer (P3.08 RPCs, licence/onboarding
+-- sync triggers, legacy status edits, the uncancel trigger): whenever a
+-- renewal's due date or stage changes, the previous reminder generation is
+-- superseded and the current one published in the same transaction.
+create function private.p308_renewal_reminder_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor text := pg_catalog.current_setting('app.p308_reminder_actor', true);
+  v_operation text := pg_catalog.current_setting('app.p308_reminder_operation', true);
+begin
+  perform private.p308_schedule_renewal_reminders(
+    new,
+    case when coalesce(v_actor, '') = '' then null else v_actor::uuid end,
+    case when coalesce(v_operation, '') = '' then null else v_operation::uuid end
+  );
+  return null;
+end;
+$$;
+
+create trigger p308_renewal_reminders_on_insert
+  after insert on public.renewals
+  for each row execute function private.p308_renewal_reminder_trigger();
+
+create trigger p308_renewal_reminders_on_change
+  after update of due_date, status, stage on public.renewals
+  for each row
+  when (old.due_date is distinct from new.due_date or old.stage is distinct from new.stage)
+  execute function private.p308_renewal_reminder_trigger();
+
 create function public.p308_create_renewal(
   p_actor_id uuid,
   p_operation_id uuid,
@@ -1763,6 +1936,7 @@ begin
   v_replay := private.p308_receipt_lookup(p_actor_id, p_operation_id, 'renewal.create', p_payload_hash);
   if v_replay is not null then return v_replay; end if;
   perform private.p308_resolve_actor(p_actor_id, p_tenant_id, p_company_id, array['pro']);
+  perform private.p308_set_reminder_context(p_actor_id, p_operation_id);
   if pg_catalog.jsonb_typeof(p_renewal) <> 'object'
     or coalesce(p_renewal->>'type', '') not in (
       'license', 'visa', 'investor_visa', 'eid', 'establishment_card', 'ejari', 'medical_insurance')
@@ -1800,7 +1974,6 @@ begin
     raise exception using errcode = 'P0001', message = 'RENEWAL_DUPLICATE';
   end;
   perform private.p308_renewal_event(v_renewal, p_actor_id, p_operation_id, null, 'created', null, null, '{}');
-  perform private.p308_schedule_renewal_reminders(v_renewal, p_actor_id, p_operation_id);
   return private.p308_receipt_store(
     p_actor_id, p_operation_id, 'renewal.create', p_payload_hash, p_tenant_id,
     pg_catalog.jsonb_build_object('renewal_id', v_renewal.id, 'version', v_renewal.version)
@@ -1834,6 +2007,7 @@ begin
   v_replay := private.p308_receipt_lookup(p_actor_id, p_operation_id, 'renewal.update', p_payload_hash);
   if v_replay is not null then return v_replay; end if;
   perform private.p308_resolve_actor(p_actor_id, p_tenant_id, p_company_id, array['pro']);
+  perform private.p308_set_reminder_context(p_actor_id, p_operation_id);
   if pg_catalog.jsonb_typeof(p_patch) <> 'object' or p_patch = '{}'::jsonb then
     raise exception using errcode = '22023', message = 'INVALID_RENEWAL_PAYLOAD';
   end if;
@@ -1895,9 +2069,6 @@ begin
     case when v_action = 'blocked' then v_renewal.blocker_code else null end,
     pg_catalog.jsonb_build_object('fields', (select pg_catalog.jsonb_agg(k order by k) from pg_catalog.jsonb_object_keys(p_patch) k))
   );
-  if p_patch ? 'due_date' then
-    perform private.p308_schedule_renewal_reminders(v_renewal, p_actor_id, p_operation_id);
-  end if;
   return private.p308_receipt_store(
     p_actor_id, p_operation_id, 'renewal.update', p_payload_hash, p_tenant_id,
     pg_catalog.jsonb_build_object('renewal_id', v_renewal.id, 'version', v_renewal.version)
@@ -1992,7 +2163,6 @@ begin
     v_renewal, p_actor_id, p_operation_id, p_batch_operation_id, v_action, v_from, p_reason_code,
     pg_catalog.jsonb_build_object('evidence_count', coalesce(pg_catalog.cardinality(p_evidence), 0))
   );
-  perform private.p308_schedule_renewal_reminders(v_renewal, p_actor_id, coalesce(p_operation_id, p_batch_operation_id));
   return v_renewal;
 end;
 $$;
@@ -2021,6 +2191,7 @@ begin
   v_replay := private.p308_receipt_lookup(p_actor_id, p_operation_id, 'renewal.transition', p_payload_hash);
   if v_replay is not null then return v_replay; end if;
   perform private.p308_resolve_actor(p_actor_id, p_tenant_id, p_company_id, array['pro']);
+  perform private.p308_set_reminder_context(p_actor_id, p_operation_id);
   if coalesce(pg_catalog.cardinality(p_evidence_document_ids), 0) > 20 then
     raise exception using errcode = '22023', message = 'INVALID_RENEWAL_PAYLOAD';
   end if;
@@ -2072,6 +2243,7 @@ begin
   v_replay := private.p308_receipt_lookup(p_actor_id, p_operation_id, 'renewal.batch', p_payload_hash);
   if v_replay is not null then return v_replay; end if;
   perform private.p308_resolve_actor(p_actor_id, p_tenant_id, p_company_id, array['pro']);
+  perform private.p308_set_reminder_context(p_actor_id, p_operation_id);
   if pg_catalog.jsonb_typeof(p_items) <> 'array' then
     raise exception using errcode = '22023', message = 'INVALID_RENEWAL_BATCH';
   end if;
@@ -2140,6 +2312,18 @@ begin
     select renewal.* from public.renewals renewal
     where renewal.stage = 'due' and renewal.escalation_level = 0
       and renewal.due_date - v_today <= 30
+      -- Escalate only when the 30-day reminder for the current due date was
+      -- actually delivered (P3.10 job succeeded) and a one-day grace passed.
+      and exists (
+        select 1
+        from public.renewal_reminder_jobs reminder
+        join public.event_jobs job on job.id = reminder.job_id
+        where reminder.renewal_id = renewal.id
+          and reminder.window_days = 30
+          and reminder.state = 'scheduled'
+          and job.state = 'succeeded'
+          and reminder.remind_at <= pg_catalog.now() - interval '1 day'
+      )
     for update
   loop
     update public.renewals renewal set escalation_level = 1, version = renewal.version + 1
@@ -2285,6 +2469,11 @@ begin
     'private.p308_assert_import_lease(public.bulk_import_jobs,uuid,uuid)',
     'private.p308_renewal_row_guard()',
     'private.p308_employee_version_guard()',
+    'private.p308_sha256_text(text)',
+    'private.p308_employee_mask_guard()',
+    'private.p308_close_import(public.bulk_import_jobs,text,text)',
+    'private.p308_set_reminder_context(uuid,uuid)',
+    'private.p308_renewal_reminder_trigger()',
     'private.p308_legacy_status(date,text)',
     'private.p308_reminder_offsets(text)',
     'private.p308_dubai_instant(date)',
@@ -2310,6 +2499,7 @@ begin
     'public.p308_apply_import_batch(uuid,uuid,uuid,integer,integer,jsonb)',
     'public.p308_finalize_import(uuid,uuid,uuid,text)',
     'public.p308_list_expired_import_artifacts(integer)',
+    'public.p308_reconcile_stuck_imports(integer)',
     'public.p308_mark_import_artifact_deleted(uuid,uuid)',
     'public.p308_create_renewal(uuid,uuid,text,uuid,uuid,jsonb)',
     'public.p308_update_renewal(uuid,uuid,text,uuid,uuid,uuid,bigint,jsonb)',

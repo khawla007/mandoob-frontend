@@ -7,16 +7,18 @@ const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), 'utf8');
 
 test('every current employee passport writer stores or clears the keyed hash coherently', () => {
+  // P3.02 admin writers share one helper that emits ciphertext + keyed hash + last4 + mask source.
   for (const path of [
     'src/lib/data/admin-create-user.ts',
     'src/lib/data/admin-edit-user.ts',
     'src/lib/data/admin-change-role.ts',
   ]) {
-    const source = read(path);
-    assert.match(source, /passport_no_hash/iu, path);
-    assert.match(source, /hashPassportForLookup/iu, path);
+    assert.match(read(path), /adminEmployeeIdentifierColumns\(input\.company_id, input\)/u, path);
+    assert.doesNotMatch(read(path), /emirates_id_encrypted: encryptOptional/u, path);
   }
-  // P3.08 writers seal the ciphertext, keyed hash and last4 as one triple.
+  const helper = read('src/lib/employees/admin-identifiers.ts');
+  assert.match(helper, /hashPassport: hashPassportForLookup/u);
+  assert.match(read('src/lib/employees/identifiers.ts'), /passport_no_last4_source = maskSource/u);
   assert.match(
     read('src/lib/employees/identifiers.ts'),
     /passport_no_hash = normalized \? deps\.hashPassport/u,
@@ -38,15 +40,7 @@ test('every current employee passport writer stores or clears the keyed hash coh
   assert.match(read('src/lib/data/erasure.ts'), /update\.passport_no_hash = null/iu);
   assert.match(
     read('src/lib/data/admin-create-user.ts'),
-    /from\('employees'\)\.insert\(\{[\s\S]*?passport_no_encrypted:[\s\S]*?passport_no_hash:/u,
-  );
-  assert.match(
-    read('src/lib/data/admin-edit-user.ts'),
-    /else if \(input\.role === 'employee'\)[\s\S]*?passport_no_encrypted:[\s\S]*?passport_no_hash:/u,
-  );
-  assert.match(
-    read('src/lib/data/admin-change-role.ts'),
-    /else if \(input\.newRole === 'employee'\)[\s\S]*?passport_no_encrypted:[\s\S]*?passport_no_hash:/u,
+    /from\('employees'\)\.insert\(\{[\s\S]*?\.\.\.encryptedPayload/u,
   );
 });
 

@@ -34,3 +34,22 @@ test('database domain errors map to stable non-disclosing codes', () => {
   });
   assert.deepEqual(mapP308Error(new Error('boom')), { code: 'INTERNAL', status: 500 });
 });
+
+test('code-review F3/F1: lease loss and data exceptions stay distinguishable', () => {
+  assert.deepEqual(mapP308Error({ code: '55000', message: 'STALE_IMPORT_LEASE' }), {
+    code: 'LEASE_LOST',
+    status: 409,
+  });
+  assert.deepEqual(mapP308Error({ code: '55000', message: 'STALE_EVENT_JOB_LEASE' }), {
+    code: 'LEASE_LOST',
+    status: 409,
+  });
+  assert.deepEqual(mapP308Error({ code: '22008', message: 'date/time field value out of range' }), {
+    code: 'VALIDATION_FAILED',
+    status: 400,
+  });
+  assert.deepEqual(mapP308Error({ code: '55000', message: 'P308_HISTORY_IMMUTABLE' }), {
+    code: 'INTERNAL',
+    status: 500,
+  });
+});

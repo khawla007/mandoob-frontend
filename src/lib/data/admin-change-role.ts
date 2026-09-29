@@ -2,7 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { encryptOptional } from '@/lib/crypto/pii';
-import { hashPassportForLookup } from '@/lib/crypto/passport-lookup';
+import { adminEmployeeIdentifierColumns } from '@/lib/employees/admin-identifiers';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { assertRoleChangeAllowed, assertAdminCanModifyTarget } from './admin-edit-helpers';
@@ -95,11 +95,8 @@ export async function adminChangeRole(
       name: (existing.full_name as string | null) ?? authUser?.user?.email ?? 'Unnamed',
       email: authUser?.user?.email ?? null,
       phone: (existing.phone as string | null) ?? null,
-      passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-      passport_no_hash: hashPassportForLookup(input.company_id, input.passport_no),
-      visa_no_encrypted: encryptOptional(input.visa_no ?? null),
+      ...adminEmployeeIdentifierColumns(input.company_id, input),
       visa_expiry: input.visa_expiry ?? null,
-      emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
       eid_expiry: input.eid_expiry ?? null,
     };
   }

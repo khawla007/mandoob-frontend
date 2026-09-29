@@ -365,6 +365,20 @@ select pg_temp.check(
   and (select status::text = 'failed' and failure_code = 'ASSIGNMENT_RELEASED' from public.bulk_import_jobs where id = pg_temp.uid(710))
   and (select count(*) = 0 from public.employees where name = 'Epsilon'),
   'IMPORT_ASSIGNMENT_RELEASE_FENCED');
+select pg_temp.check(
+  (select count(*) = 1 from public.tenant_audit_log where details->>'entity' = 'employee_import'
+     and details->>'import_job_id' = pg_temp.uid(710)::text and details->>'state' = 'failed'
+     and details->>'failure_code' = 'ASSIGNMENT_RELEASED')
+  and (select count(*) = 1 from public.domain_events where event_type = 'employee.import.finished'
+     and payload->>'resource_id' = pg_temp.uid(710)::text and payload->>'state' = 'failed'),
+  'CR_F4_RELEASE_AUDITED_AND_EVENTED_ONCE');
+set local role service_role;
+select public.p308_finalize_import(pg_temp.uid(710), pg_temp.uid(991), (select lease from pg_temp.leases where k = 'w2'), null);
+reset role;
+select pg_temp.check(
+  (select count(*) = 1 from public.tenant_audit_log where details->>'entity' = 'employee_import'
+     and details->>'import_job_id' = pg_temp.uid(710)::text and details ? 'state'),
+  'CR_F4_FINALIZE_AFTER_RELEASE_NO_DUPLICATE_AUDIT');
 select pg_temp.expect_error(format($q$select public.p308_create_employee(%L,%L,%L,%L,%L,%L)$q$,
   pg_temp.uid(1), pg_temp.uid(943), pg_temp.h('rel'), pg_temp.uid(100), pg_temp.uid(101),
   pg_temp.emp('After Release', 'R0000001')), 'FORBIDDEN', 'RELEASED_PRO_DENIED');
@@ -558,6 +572,85 @@ select pg_temp.check(
   (select count(*) = 1 from public.domain_events where event_type = 'renewal.attention.daily'
      and payload->>'resource_id' = (select v->>'renewal_id' from pg_temp.results where k = 'r3')),
   'ATTENTION_DAILY_DEDUPED');
+
+-- 10. Code-review remediation ------------------------------------------------------
+-- F5: legacy writers (licence sync, direct status cancel) supersede reminders centrally.
+select pg_temp.check((select count(*) > 0 from public.renewal_reminder_jobs j join public.renewals r on r.id = j.renewal_id
+  where r.company_id = pg_temp.uid(101) and r.source <> 'manual' and j.state = 'scheduled'), 'CR_F5_LICENCE_INSERT_SCHEDULES');
+update public.company_profiles set license_expiry = current_date + 100 where id = pg_temp.uid(101);
+select pg_temp.check(
+  (select bool_and(j.remind_at < private.p308_dubai_instant(current_date + 101)) from public.renewal_reminder_jobs j
+     join public.renewals r on r.id = j.renewal_id
+     where r.company_id = pg_temp.uid(101) and r.source <> 'manual' and j.state = 'scheduled')
+  and (select count(*) = 0 from public.renewal_reminder_jobs j join public.renewals r on r.id = j.renewal_id
+     join public.event_jobs e on e.id = j.job_id
+     where r.company_id = pg_temp.uid(101) and r.source <> 'manual' and j.state = 'superseded' and e.state <> 'cancelled')
+  and (select count(*) > 0 from public.renewal_reminder_jobs j join public.renewals r on r.id = j.renewal_id
+     where r.company_id = pg_temp.uid(101) and r.source <> 'manual' and j.state = 'superseded'),
+  'CR_F5_LICENCE_REDATE_SUPERSEDES');
+update public.renewals set status = 'cancelled' where company_id = pg_temp.uid(101) and source <> 'manual';
+select pg_temp.check(
+  (select count(*) = 0 from public.renewal_reminder_jobs j join public.renewals r on r.id = j.renewal_id
+     where r.company_id = pg_temp.uid(101) and r.source <> 'manual' and j.state = 'scheduled'),
+  'CR_F5_LEGACY_CANCEL_CLEARS_REMINDERS');
+
+-- F6: masked last4 can never outlive the ciphertext it was derived from.
+insert into public.employees(id, tenant_id, company_id, name, passport_no_encrypted, passport_no_last4,
+  passport_no_last4_source) values
+  (pg_temp.uid(61), pg_temp.uid(100), pg_temp.uid(101), 'Mask Kept', 'cipher-a', '1111', encode(sha256(convert_to('cipher-a','UTF8')),'hex')),
+  (pg_temp.uid(62), pg_temp.uid(100), pg_temp.uid(101), 'Mask Unbound', 'cipher-b', '2222', null);
+select pg_temp.check(
+  (select passport_no_last4 = '1111' from public.employees where id = pg_temp.uid(61))
+  and (select passport_no_last4 is null from public.employees where id = pg_temp.uid(62)),
+  'CR_F6_INSERT_REQUIRES_BOUND_SOURCE');
+update public.employees set passport_no_encrypted = 'cipher-c' where id = pg_temp.uid(61);
+select pg_temp.check((select passport_no_last4 is null and passport_no_last4_source is null
+  from public.employees where id = pg_temp.uid(61)), 'CR_F6_CIPHERTEXT_CHANGE_CLEARS_STALE_MASK');
+select pg_temp.check((select passport_no_last4 = '4567' and passport_no_last4_source is not null
+  from public.employees where name = 'Alpha'), 'CR_F6_RPC_WRITES_KEEP_MASK');
+
+-- F7: escalation requires a delivered 30-day reminder plus a one-day grace.
+set local role service_role;
+insert into pg_temp.results select 'r4', public.p308_create_renewal(pg_temp.uid(1), pg_temp.uid(980), pg_temp.h('r4'),
+  pg_temp.uid(100), pg_temp.uid(101), jsonb_build_object('type', 'ejari', 'label', 'No reminder yet',
+  'due_date', (current_date + 20)::text));
+insert into pg_temp.results select 'r5', public.p308_create_renewal(pg_temp.uid(1), pg_temp.uid(981), pg_temp.h('r5'),
+  pg_temp.uid(100), pg_temp.uid(101), jsonb_build_object('type', 'visa', 'label', 'Reminder delivered',
+  'due_date', (current_date + 25)::text));
+reset role;
+-- Simulate P3.10 having delivered r5's 30-day reminder two days ago.
+insert into public.renewal_reminder_jobs(renewal_id, renewal_version, window_days, remind_at, event_id, job_id)
+select (v->>'renewal_id')::uuid, 1, 30, now() - interval '2 days', e.id, j.id
+from pg_temp.results, lateral (select id from public.domain_events limit 1) e,
+  lateral (select id from public.event_jobs limit 1) j where k = 'r5';
+update public.event_jobs set state = 'succeeded', succeeded_at = now()
+where id = (select job_id from public.renewal_reminder_jobs where renewal_id = (select (v->>'renewal_id')::uuid from pg_temp.results where k = 'r5') and window_days = 30);
+select public.recompute_renewal_status();
+select pg_temp.check(
+  (select escalation_level = 0 from public.renewals where id = (select (v->>'renewal_id')::uuid from pg_temp.results where k = 'r4'))
+  and (select escalation_level = 1 from public.renewals where id = (select (v->>'renewal_id')::uuid from pg_temp.results where k = 'r5')),
+  'CR_F7_ESCALATE_ONLY_AFTER_DELIVERED_30_DAY_REMINDER');
+
+-- F1: an import whose execution job died is reconciled to a terminal, audited state.
+set local role service_role;
+select public.p308_register_import(pg_temp.uid(1), pg_temp.uid(982), pg_temp.h('d1'), pg_temp.uid(100),
+  pg_temp.uid(101), pg_temp.uid(720), pg_temp.path(720), pg_temp.h('artifact-3'), 50);
+select public.p308_record_import_validation(pg_temp.uid(1), pg_temp.uid(983), pg_temp.h('d2'), pg_temp.uid(100),
+  pg_temp.uid(101), pg_temp.uid(720), 1, 2, 0, '[]');
+select public.p308_request_import_execution(pg_temp.uid(1), pg_temp.uid(984), pg_temp.h('d3'), pg_temp.uid(100),
+  pg_temp.uid(101), pg_temp.uid(720), 2);
+reset role;
+update public.event_jobs set state = 'dead', dead_at = now(), last_error_category = 'unknown', last_error_code = 'PROVIDER_FAILURE'
+where event_id = (select execution_event_id from public.bulk_import_jobs where id = pg_temp.uid(720));
+set local role service_role;
+insert into pg_temp.results select 'reconcile', jsonb_build_object('n', public.p308_reconcile_stuck_imports(10));
+reset role;
+select pg_temp.check(
+  (select (v->>'n')::int >= 1 from pg_temp.results where k = 'reconcile')
+  and (select status::text = 'failed' and failure_code = 'IMPORT_ATTEMPTS_EXHAUSTED' from public.bulk_import_jobs where id = pg_temp.uid(720))
+  and (select count(*) = 1 from public.domain_events where event_type = 'employee.import.finished'
+       and payload->>'resource_id' = pg_temp.uid(720)::text),
+  'CR_F1_DEAD_EXECUTION_RECONCILED');
 
 -- 9. RLS: new history tables are invisible to authenticated users ---------------------
 set local role authenticated;

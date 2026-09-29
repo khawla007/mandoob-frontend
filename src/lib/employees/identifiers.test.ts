@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { identifierLast4, sealEmployeeIdentifiers } from './identifiers';
+import { employeeIdentifierColumns, identifierLast4, sealEmployeeIdentifiers } from './identifiers';
 
 const deps = {
   encrypt: (value: string) => `enc(${value})`,
@@ -40,4 +40,20 @@ test('explicit empty identifiers clear the stored triple', () => {
     passport_no_hash: null,
     passport_no_last4: null,
   });
+});
+
+test('code-review F6: direct writers get ciphertext, hash, last4 and a mask source together', () => {
+  const columns = employeeIdentifierColumns(
+    'company',
+    { passport_no: ' p1234567 ', visa_no: null, emirates_id: '784-1990-1234567-1' },
+    deps,
+  );
+  assert.equal(columns.passport_no_encrypted, 'enc(P1234567)');
+  assert.equal(columns.passport_no_last4, '4567');
+  assert.match(String(columns.passport_no_last4_source), /^[a-f0-9]{64}$/u);
+  assert.equal(columns.visa_no_encrypted, null);
+  assert.equal(columns.visa_no_last4, null);
+  assert.equal(columns.visa_no_last4_source, null);
+  assert.equal(columns.emirates_id_last4, '5671');
+  assert.match(String(columns.emirates_id_last4_source), /^[a-f0-9]{64}$/u);
 });

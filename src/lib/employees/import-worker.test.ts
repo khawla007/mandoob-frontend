@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runEmployeeImportWorkerOnce, type ImportWorkerDeps } from './import-worker';
 import { sha256Hex } from './import-artifact';
+import { P308Error } from '@/lib/p308/rpc';
 
 type FakeJob = {
   status: 'importing' | 'completed' | 'cancelled' | 'failed';
@@ -33,7 +34,9 @@ function harness(bytes: Uint8Array, options: { crashAfterBatches?: number; sha?:
   };
   const calls: string[] = [];
   let applied = 0;
-  let queue = [{ eventJobId: 'ej-1', leaseToken: 'lease-1', importJobId: 'job-1' }];
+  let queue = [
+    { eventJobId: 'ej-1', leaseToken: 'lease-1', importJobId: 'job-1', attempt: 1, maxAttempts: 5 },
+  ];
   const deps: ImportWorkerDeps = {
     workerId: 'worker-1',
     claim: async () => {
@@ -92,7 +95,15 @@ function harness(bytes: Uint8Array, options: { crashAfterBatches?: number; sha?:
     },
     fail: async (_claim, retryable) => {
       calls.push(`fail:${retryable}`);
-      queue = [{ eventJobId: 'ej-1', leaseToken: 'lease-2', importJobId: 'job-1' }];
+      queue = [
+        {
+          eventJobId: 'ej-1',
+          leaseToken: 'lease-2',
+          importJobId: 'job-1',
+          attempt: 2,
+          maxAttempts: 5,
+        },
+      ];
     },
     log: () => {},
   };
@@ -147,7 +158,7 @@ test('artifact hash mismatch fails the import closed without applying rows', asy
 test('a lost lease stops work without finalizing or completing', async () => {
   const { job, calls, deps } = harness(csv(150));
   deps.applyBatch = async () => {
-    throw Object.assign(new Error('STALE_IMPORT_LEASE'), { code: '55000' });
+    throw new P308Error('LEASE_LOST', 409);
   };
   const summary = await runEmployeeImportWorkerOnce(deps);
   assert.deepEqual(summary, { processed: 1, completed: 0, retried: 0, lost: 1 });
@@ -179,4 +190,59 @@ test('a cancel requested before the first lease finalizes without reading the ar
   await runEmployeeImportWorkerOnce(deps);
   assert.equal(job.status, 'cancelled');
   assert.deepEqual(calls, ['finalize:none', 'complete']);
+});
+
+test('code-review F1: a database-rejected batch finalizes the job failed instead of retrying', async () => {
+  const { job, calls, deps } = harness(csv(3));
+  deps.applyBatch = async () => {
+    throw new P308Error('VALIDATION_FAILED', 400);
+  };
+  const summary = await runEmployeeImportWorkerOnce(deps);
+  assert.deepEqual(summary, { processed: 1, completed: 1, retried: 0, lost: 0 });
+  assert.equal(job.failureCode, 'IMPORT_BATCH_REJECTED');
+  assert.deepEqual(calls, ['access', 'finalize:IMPORT_BATCH_REJECTED', 'complete']);
+});
+
+test('code-review F1: the last allowed attempt finalizes the job instead of leaving it importing', async () => {
+  const { job, calls, deps } = harness(csv(3));
+  const claim = deps.claim;
+  deps.claim = async () => (await claim()).map((item) => ({ ...item, attempt: 5, maxAttempts: 5 }));
+  deps.applyBatch = async () => {
+    throw new Error('ECONNRESET');
+  };
+  const summary = await runEmployeeImportWorkerOnce(deps);
+  assert.deepEqual(summary, { processed: 1, completed: 1, retried: 0, lost: 0 });
+  assert.equal(job.failureCode, 'IMPORT_ATTEMPTS_EXHAUSTED');
+  assert.deepEqual(calls, ['access', 'finalize:IMPORT_ATTEMPTS_EXHAUSTED', 'complete']);
+});
+
+test('code-review F2: an undecryptable artifact is terminal', async () => {
+  const { job, calls, deps } = harness(csv(3));
+  deps.decryptArtifact = () => {
+    throw new Error('IMPORT_ARTIFACT_DECRYPT_FAILED');
+  };
+  const summary = await runEmployeeImportWorkerOnce(deps);
+  assert.deepEqual(summary, { processed: 1, completed: 1, retried: 0, lost: 0 });
+  assert.equal(job.failureCode, 'IMPORT_ARTIFACT_UNREADABLE');
+  assert.deepEqual(calls, ['finalize:IMPORT_ARTIFACT_UNREADABLE', 'complete']);
+});
+
+test('code-review F3: a lost lease reported through callP308 is not failed or retried', async () => {
+  const { calls, deps } = harness(csv(3));
+  deps.readExecution = async () => {
+    throw new P308Error('LEASE_LOST', 409);
+  };
+  const summary = await runEmployeeImportWorkerOnce(deps);
+  assert.deepEqual(summary, { processed: 1, completed: 0, retried: 0, lost: 1 });
+  assert.deepEqual(calls, []);
+});
+
+test('code-review F1: each pass first reconciles imports whose execution job was dead-lettered', async () => {
+  const { calls, deps } = harness(csv(3));
+  deps.reconcile = async () => {
+    calls.push('reconcile');
+    return 1;
+  };
+  await runEmployeeImportWorkerOnce(deps);
+  assert.equal(calls[0], 'reconcile');
 });

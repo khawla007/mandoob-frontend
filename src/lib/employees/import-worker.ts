@@ -15,7 +15,14 @@ import {
 export const IMPORT_BATCH_SIZE = 100;
 export const IMPORT_CONSUMER = 'p308.employee_import.executor';
 
-export type ImportClaim = { eventJobId: string; leaseToken: string; importJobId: string };
+export type ImportClaim = {
+  eventJobId: string;
+  leaseToken: string;
+  importJobId: string;
+  /** P3.10 attempt number of this lease (1-based) and the consumer's limit. */
+  attempt: number;
+  maxAttempts: number;
+};
 export type ImportExecution = {
   status: 'importing' | 'completed' | 'cancelled' | 'failed' | string;
   tenantId: string;
@@ -49,6 +56,8 @@ export type ImportWorkerDeps = {
   finalize(claim: ImportClaim, failureCode: string | null): Promise<{ state: string }>;
   complete(claim: ImportClaim): Promise<void>;
   fail(claim: ImportClaim, retryable: boolean): Promise<void>;
+  /** Closes imports whose P3.10 execution job is dead (`p308_reconcile_stuck_imports`). */
+  reconcile?(): Promise<number>;
   log(event: string): void;
 };
 
@@ -59,11 +68,26 @@ export type ImportWorkerSummary = {
   lost: number;
 };
 
+function errorCode(error: unknown): unknown {
+  return (error ?? {}) as { code?: unknown; message?: unknown };
+}
+
 function isLeaseLoss(error: unknown): boolean {
-  const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown };
+  const { code, message } = errorCode(error) as { code?: unknown; message?: unknown };
   return (
-    code === '55000' || message === 'STALE_IMPORT_LEASE' || message === 'STALE_EVENT_JOB_LEASE'
+    code === 'LEASE_LOST' ||
+    code === '55000' ||
+    message === 'STALE_IMPORT_LEASE' ||
+    message === 'STALE_EVENT_JOB_LEASE'
   );
+}
+
+/** Deterministic failures that will never succeed on retry. */
+function terminalFailureCode(error: unknown): string | null {
+  const { code, message } = errorCode(error) as { code?: unknown; message?: unknown };
+  if (message === 'IMPORT_ARTIFACT_DECRYPT_FAILED') return 'IMPORT_ARTIFACT_UNREADABLE';
+  if (code === 'VALIDATION_FAILED') return 'IMPORT_BATCH_REJECTED';
+  return null;
 }
 
 function toBatchRow(deps: ImportWorkerDeps, companyId: string, row: ImportRow): ImportBatchRow {
@@ -113,7 +137,15 @@ async function processClaim(deps: ImportWorkerDeps, claim: ImportClaim): Promise
     await deps.complete(claim);
     return 'completed';
   }
-  const plain = deps.decryptArtifact(sealed);
+  let plain: Uint8Array;
+  try {
+    plain = deps.decryptArtifact(sealed);
+  } catch (error) {
+    if ((error as Error | null)?.message !== 'IMPORT_ARTIFACT_DECRYPT_FAILED') throw error;
+    await deps.finalize(claim, 'IMPORT_ARTIFACT_UNREADABLE');
+    await deps.complete(claim);
+    return 'completed';
+  }
   if (sha256Hex(plain) !== execution.artifactSha256) {
     await deps.finalize(claim, 'IMPORT_ARTIFACT_MISMATCH');
     await deps.complete(claim);
@@ -154,6 +186,13 @@ export async function runEmployeeImportWorkerOnce(
   deps: ImportWorkerDeps,
 ): Promise<ImportWorkerSummary> {
   const summary: ImportWorkerSummary = { processed: 0, completed: 0, retried: 0, lost: 0 };
+  if (deps.reconcile) {
+    try {
+      await deps.reconcile();
+    } catch {
+      deps.log('employee-import.reconcile-failed');
+    }
+  }
   for (const claim of await deps.claim()) {
     summary.processed += 1;
     try {
@@ -161,9 +200,29 @@ export async function runEmployeeImportWorkerOnce(
       summary.completed += 1;
     } catch (error) {
       if (isLeaseLoss(error)) {
+        // Another worker owns the job now; failing it with a stale token would also fail.
         deps.log('employee-import.lease-lost');
         summary.lost += 1;
         continue;
+      }
+      const terminal =
+        terminalFailureCode(error) ??
+        (claim.attempt >= claim.maxAttempts ? 'IMPORT_ATTEMPTS_EXHAUSTED' : null);
+      if (terminal) {
+        try {
+          await deps.finalize(claim, terminal);
+          await deps.complete(claim);
+          deps.log('employee-import.terminal-failure');
+          summary.completed += 1;
+          continue;
+        } catch (finalizeError) {
+          if (isLeaseLoss(finalizeError)) {
+            deps.log('employee-import.lease-lost');
+            summary.lost += 1;
+            continue;
+          }
+          deps.log('employee-import.finalize-failed');
+        }
       }
       deps.log('employee-import.retryable-failure');
       summary.retried += 1;

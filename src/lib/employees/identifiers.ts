@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 /** Seals plaintext identifiers into ciphertext + lookup hash + last4 triples. */
 export type IdentifierKind = 'passport' | 'visa' | 'emirates_id';
 
@@ -55,5 +57,35 @@ export function sealEmployeeIdentifiers(
     sealed.emirates_id_encrypted = normalized ? deps.encrypt(normalized) : null;
     sealed.emirates_id_last4 = normalized ? identifierLast4('emirates_id', normalized) : null;
   }
+  return sealed;
+}
+
+export type EmployeeIdentifierColumns = SealedIdentifiers &
+  Partial<{
+    passport_no_last4_source: string | null;
+    visa_no_last4_source: string | null;
+    emirates_id_last4_source: string | null;
+  }>;
+
+const maskSource = (ciphertext: string | null | undefined) =>
+  ciphertext ? createHash('sha256').update(ciphertext, 'utf8').digest('hex') : null;
+
+/**
+ * Column set for writers outside the P3.08 RPCs (P3.02 admin user flows). The
+ * `*_last4_source` digest binds each masked value to the ciphertext it was
+ * derived from; the database guard clears any mask whose source no longer matches.
+ */
+export function employeeIdentifierColumns(
+  companyId: string,
+  input: IdentifierInput,
+  deps: SealDeps,
+): EmployeeIdentifierColumns {
+  const sealed: EmployeeIdentifierColumns = sealEmployeeIdentifiers(companyId, input, deps);
+  if ('passport_no_encrypted' in sealed)
+    sealed.passport_no_last4_source = maskSource(sealed.passport_no_encrypted);
+  if ('visa_no_encrypted' in sealed)
+    sealed.visa_no_last4_source = maskSource(sealed.visa_no_encrypted);
+  if ('emirates_id_encrypted' in sealed)
+    sealed.emirates_id_last4_source = maskSource(sealed.emirates_id_encrypted);
   return sealed;
 }

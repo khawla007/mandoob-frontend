@@ -8,7 +8,13 @@ import { recordImportArtifactAccess } from './import-commands';
 import type { ImportEmployeeValue } from './import-csv';
 import { IMPORT_CONSUMER, type ImportClaim, type ImportWorkerDeps } from './import-worker';
 
-type Claimed = { job_id: string; lease_token: string; payload: { resource_id?: string } };
+type Claimed = {
+  job_id: string;
+  lease_token: string;
+  attempt_number: number;
+  max_attempts: number;
+  payload: { resource_id?: string };
+};
 
 /** Production wiring for the P3.08 import consumer (service role only). */
 export async function createSupabaseImportWorkerDeps(
@@ -43,6 +49,8 @@ export async function createSupabaseImportWorkerDeps(
           eventJobId: row.job_id,
           leaseToken: row.lease_token,
           importJobId: row.payload.resource_id as string,
+          attempt: Number(row.attempt_number),
+          maxAttempts: Number(row.max_attempts),
         }));
     },
     readExecution: async (claim) => {
@@ -134,6 +142,7 @@ export async function createSupabaseImportWorkerDeps(
         p_retryable: retryable,
       });
     },
+    reconcile: () => callP308<number>(client, 'p308_reconcile_stuck_imports', { p_limit: 50 }),
     log: (event) => console.error(event),
   };
 }

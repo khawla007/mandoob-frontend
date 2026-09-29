@@ -31,6 +31,29 @@ export type ImportValidation =
   | { ok: false; code: string }
   | { ok: true; totalRows: number; errorRows: number; rows: ImportRow[]; errors: ImportRowError[] };
 
+/** Mirrors the database: real calendar dates only (casting `2026-02-30` fails there). */
+export function isCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
+  if (!match) return false;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return date.toISOString().slice(0, 10) === value;
+}
+
+/** Database limits the row must satisfy beyond the shared CSV schema. */
+function databaseRowIssue(value: EmployeeCsvRow): { field: string; code: string } | null {
+  if (value.name.trim().length > 160) return { field: 'name', code: 'INVALID_LENGTH' };
+  for (const field of ['visa_expiry', 'eid_expiry'] as const) {
+    const date = value[field];
+    if (date && !isCalendarDate(date)) return { field, code: 'INVALID_FORMAT' };
+  }
+  // The masked last-4 is built from ASCII letters/digits; identifiers without any are unusable.
+  for (const field of ['passport_no', 'visa_no'] as const) {
+    const identifier = value[field];
+    if (identifier && !/[A-Za-z0-9]/u.test(identifier)) return { field, code: 'INVALID_FORMAT' };
+  }
+  return null;
+}
+
 function errorCode(issueCode: string): string {
   return issueCode === 'too_big' || issueCode === 'too_small' ? 'INVALID_LENGTH' : 'INVALID_FORMAT';
 }
@@ -69,10 +92,11 @@ export function validateEmployeeImportBytes(
     const rowNumber = index + 1;
     const { job_title: jobTitle, ...rest } = record;
     const parsed = employeeCsvRowSchema.safeParse(rest);
-    if (!parsed.success || (jobTitle && jobTitle.length > 120)) {
+    const dbIssue = parsed.success ? databaseRowIssue(parsed.data) : null;
+    if (!parsed.success || dbIssue || (jobTitle && jobTitle.length > 120)) {
       const issue = parsed.success ? null : parsed.error.issues[0];
-      const field = issue ? String(issue.path[0] ?? 'row') : 'job_title';
-      const code = issue ? errorCode(issue.code) : 'INVALID_LENGTH';
+      const field = issue ? String(issue.path[0] ?? 'row') : (dbIssue?.field ?? 'job_title');
+      const code = issue ? errorCode(issue.code) : (dbIssue?.code ?? 'INVALID_LENGTH');
       errors.push({ row_number: rowNumber, field, code });
       rows.push({ rowNumber, outcome: 'invalid', errorCode: code });
       return;
