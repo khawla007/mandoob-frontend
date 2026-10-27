@@ -58,6 +58,8 @@ export type ImportWorkerDeps = {
   fail(claim: ImportClaim, retryable: boolean): Promise<void>;
   /** Closes imports whose P3.10 execution job is dead (`p308_reconcile_stuck_imports`). */
   reconcile?(): Promise<number>;
+  /** Event-driven lease checkpoint, invoked at every durable batch boundary. */
+  checkpoint?(): Promise<void>;
   log(event: string): void;
 };
 
@@ -115,7 +117,10 @@ function rowsOf(bytes: Uint8Array) {
   return result.ok ? result.rows : null;
 }
 
-async function processClaim(deps: ImportWorkerDeps, claim: ImportClaim): Promise<'completed'> {
+export async function processEmployeeImportClaim(
+  deps: ImportWorkerDeps,
+  claim: ImportClaim,
+): Promise<'completed'> {
   const execution = await deps.readExecution(claim);
   if (execution.status !== 'importing') {
     await deps.complete(claim);
@@ -163,6 +168,7 @@ async function processClaim(deps: ImportWorkerDeps, claim: ImportClaim): Promise
   let firstIndex = execution.nextRow;
   let stopped = false;
   while (!stopped && firstIndex < rows.length) {
+    await deps.checkpoint?.();
     const slice = rows.slice(firstIndex, firstIndex + IMPORT_BATCH_SIZE);
     const result = await deps.applyBatch(
       claim,
@@ -196,7 +202,7 @@ export async function runEmployeeImportWorkerOnce(
   for (const claim of await deps.claim()) {
     summary.processed += 1;
     try {
-      await processClaim(deps, claim);
+      await processEmployeeImportClaim(deps, claim);
       summary.completed += 1;
     } catch (error) {
       if (isLeaseLoss(error)) {

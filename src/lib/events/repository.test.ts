@@ -221,7 +221,22 @@ describe('event repository scheduler, replay, and inbound contract', () => {
     const claimed = {
       job_id: IDS.job,
       event_id: IDS.event,
+      consumer_name: 'notifications.reference',
+      attempt_number: 1,
+      max_attempts: 5,
+      lease_token: IDS.lease,
+      lease_expires_at: '2026-09-21T04:32:00.000Z',
       effect_key: `mandoob:event-job:${IDS.job}`,
+      event_type: 'documents.requested',
+      event_version: 1,
+      occurred_at: envelope.occurredAt,
+      tenant_id: IDS.tenant,
+      company_id: IDS.company,
+      actor_id: null,
+      correlation_id: IDS.correlation,
+      causation_id: null,
+      privacy_class: 'confidential',
+      payload: envelope.payload,
     };
     const stub = createRpcStub({
       publish_domain_event: IDS.event,
@@ -236,6 +251,48 @@ describe('event repository scheduler, replay, and inbound contract', () => {
       batchSize: 1,
       leaseSeconds: 120,
     });
-    assert.deepEqual(jobs, [claimed]);
+    assert.equal(jobs[0]?.ok, true);
+    if (jobs[0]?.ok) {
+      assert.equal(jobs[0].job.workerId, IDS.worker);
+      assert.equal(jobs[0].job.eventType, 'documents.requested');
+      assert.deepEqual(jobs[0].job.payload, envelope.payload);
+    }
+  });
+
+  test('strictly rejects unknown claimed fields while retaining a valid failure fence', async () => {
+    const stub = createRpcStub({
+      claim_event_jobs: [
+        {
+          job_id: IDS.job,
+          event_id: IDS.event,
+          consumer_name: 'notifications.reference',
+          attempt_number: 1,
+          max_attempts: 5,
+          lease_token: IDS.lease,
+          lease_expires_at: '2026-09-21T04:32:00.000Z',
+          effect_key: `mandoob:event-job:${IDS.job}`,
+          event_type: 'documents.requested',
+          event_version: 1,
+          occurred_at: envelope.occurredAt,
+          tenant_id: IDS.tenant,
+          company_id: IDS.company,
+          actor_id: null,
+          correlation_id: IDS.correlation,
+          causation_id: null,
+          privacy_class: 'confidential',
+          payload: envelope.payload,
+          raw_secret: 'must-not-survive',
+        },
+      ],
+    });
+    const [result] = await createEventQueueRepository(stub.client, eventSchemas).claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+    });
+
+    assert.deepEqual(result, {
+      ok: false,
+      lease: { jobId: IDS.job, workerId: IDS.worker, leaseToken: IDS.lease },
+    });
   });
 });

@@ -27,6 +27,8 @@ export type MeetingAiWorkerDeps = {
   complete(claim: MeetingAiClaim, effectHash: string): Promise<void>;
   fail(claim: MeetingAiClaim, retryable: boolean): Promise<void>;
   cancel(claim: MeetingAiClaim, code: string): Promise<void>;
+  /** Event-driven lease checkpoint around long provider work. */
+  checkpoint?(): Promise<void>;
   log(event: string): void;
 };
 
@@ -61,7 +63,9 @@ export async function runMeetingAiWorkerOnce(
         summary.cancelled++;
         continue;
       }
+      await deps.checkpoint?.();
       const result = await deps.process(claim);
+      await deps.checkpoint?.();
       await deps.persist(claim, redactMeetingTranscript(result.transcriptText), result);
       await deps.complete(claim, result.effectHash);
       summary.completed++;

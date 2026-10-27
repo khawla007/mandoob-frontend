@@ -246,3 +246,12 @@ test('code-review F1: each pass first reconciles imports whose execution job was
   await runEmployeeImportWorkerOnce(deps);
   assert.equal(calls[0], 'reconcile');
 });
+
+test('long imports expose deterministic batch checkpoints for lease extension', async () => {
+  const { calls, deps } = harness(csv(250));
+  deps.checkpoint = async () => {
+    calls.push('checkpoint');
+  };
+  await runEmployeeImportWorkerOnce(deps);
+  assert.equal(calls.filter((call) => call === 'checkpoint').length, 3);
+});

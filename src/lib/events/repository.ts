@@ -23,6 +23,138 @@ const consumerNameSchema = z
   .max(160)
   .regex(/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/);
 
+const claimedEventJobRowSchema = z
+  .object({
+    job_id: uuidSchema,
+    event_id: uuidSchema,
+    consumer_name: consumerNameSchema,
+    attempt_number: z.number().int().min(1).max(32_767),
+    max_attempts: z.number().int().min(1).max(32_767),
+    lease_token: uuidSchema,
+    lease_expires_at: z.string().datetime({ offset: true }),
+    effect_key: z.string().regex(/^mandoob:event-job:[0-9a-f-]{36}$/),
+    event_type: z
+      .string()
+      .min(3)
+      .max(160)
+      .regex(/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/),
+    event_version: z.number().int().min(1).max(32_767),
+    occurred_at: z.string().datetime({ offset: true }),
+    tenant_id: uuidSchema.nullable(),
+    company_id: uuidSchema.nullable(),
+    actor_id: uuidSchema.nullable(),
+    correlation_id: uuidSchema,
+    causation_id: uuidSchema.nullable(),
+    privacy_class: z.enum(['public', 'internal', 'confidential', 'restricted']),
+    payload: z.record(z.string(), z.unknown()),
+  })
+  .strict()
+  .superRefine((row, context) => {
+    if (row.attempt_number > row.max_attempts) {
+      context.addIssue({
+        code: 'custom',
+        path: ['attempt_number'],
+        message: 'attempt exceeds max',
+      });
+    }
+    if (row.effect_key !== `mandoob:event-job:${row.job_id}`) {
+      context.addIssue({ code: 'custom', path: ['effect_key'], message: 'effect key mismatch' });
+    }
+  });
+
+const claimedLeaseSchema = z.object({ job_id: uuidSchema, lease_token: uuidSchema }).passthrough();
+
+export type ClaimedEventJob = {
+  jobId: string;
+  eventId: string;
+  workerId: string;
+  consumerName: string;
+  attemptNumber: number;
+  maxAttempts: number;
+  leaseToken: string;
+  leaseExpiresAt: string;
+  effectKey: string;
+  eventType: string;
+  eventVersion: number;
+  occurredAt: string;
+  tenantId: string | null;
+  companyId: string | null;
+  actorId: string | null;
+  correlationId: string;
+  causationId: string | null;
+  privacyClass: 'public' | 'internal' | 'confidential' | 'restricted';
+  payload: Record<string, unknown>;
+};
+
+export type ClaimedEventJobResult =
+  | { ok: true; job: ClaimedEventJob }
+  | { ok: false; lease: { jobId: string; workerId: string; leaseToken: string } | null };
+
+function decodeClaimedEventJob(
+  input: unknown,
+  workerId: string,
+  eventSchemas: EventSchemaRegistry,
+): ClaimedEventJobResult {
+  const parsed = claimedEventJobRowSchema.safeParse(input);
+  if (!parsed.success) {
+    const lease = claimedLeaseSchema.safeParse(input);
+    return {
+      ok: false,
+      lease: lease.success
+        ? { jobId: lease.data.job_id, workerId, leaseToken: lease.data.lease_token }
+        : null,
+    };
+  }
+  const row = parsed.data;
+  try {
+    const envelope = parseRegisteredDomainEvent(
+      {
+        eventId: row.event_id,
+        eventType: row.event_type,
+        eventVersion: row.event_version,
+        occurredAt: row.occurred_at,
+        tenantId: row.tenant_id,
+        companyId: row.company_id,
+        actorId: row.actor_id,
+        correlationId: row.correlation_id,
+        causationId: row.causation_id,
+        privacyClass: row.privacy_class,
+        payload: row.payload,
+      },
+      eventSchemas,
+    );
+    return {
+      ok: true,
+      job: {
+        jobId: row.job_id,
+        eventId: envelope.eventId,
+        workerId,
+        consumerName: row.consumer_name,
+        attemptNumber: row.attempt_number,
+        maxAttempts: row.max_attempts,
+        leaseToken: row.lease_token,
+        leaseExpiresAt: row.lease_expires_at,
+        effectKey: row.effect_key,
+        eventType: envelope.eventType,
+        eventVersion: envelope.eventVersion,
+        occurredAt: envelope.occurredAt,
+        tenantId: envelope.tenantId,
+        companyId: envelope.companyId,
+        actorId: envelope.actorId,
+        correlationId: envelope.correlationId,
+        causationId: envelope.causationId,
+        privacyClass: envelope.privacyClass,
+        payload: envelope.payload,
+      },
+    };
+  } catch {
+    return {
+      ok: false,
+      lease: { jobId: row.job_id, workerId, leaseToken: row.lease_token },
+    };
+  }
+}
+
 export class EventQueueRepositoryError extends Error {
   readonly code = 'EVENT_QUEUE_OPERATION_FAILED';
 
@@ -91,7 +223,7 @@ export function createEventQueueRepository(
       consumerName: string;
       batchSize?: number;
       leaseSeconds?: number;
-    }): Promise<unknown[]> {
+    }): Promise<ClaimedEventJobResult[]> {
       const batchSize = input.batchSize ?? 25;
       const leaseSeconds = input.leaseSeconds ?? 120;
       if (
@@ -111,7 +243,10 @@ export function createEventQueueRepository(
         p_lease_seconds: leaseSeconds,
       };
       return rpcData(client, 'claim_event_jobs', args).then((data) =>
-        z.array(z.record(z.string(), z.unknown())).parse(data),
+        z
+          .array(z.unknown())
+          .parse(data)
+          .map((row) => decodeClaimedEventJob(row, input.workerId, eventSchemas)),
       );
     },
 

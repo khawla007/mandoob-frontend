@@ -71,3 +71,13 @@ test('leased AI worker retries provider failure and fences lease loss', async ()
   assert.equal((await runMeetingAiWorkerOnce(lost.deps)).lost, 1);
   assert.deepEqual(lost.calls, ['meeting-ai.lease-lost']);
 });
+
+test('long AI work checkpoints the lease around provider processing', async () => {
+  const { calls, deps } = dependencies({
+    checkpoint: async () => {
+      calls.push('checkpoint');
+    },
+  });
+  await runMeetingAiWorkerOnce(deps);
+  assert.deepEqual(calls, ['checkpoint', 'checkpoint', 'persist', 'complete']);
+});
