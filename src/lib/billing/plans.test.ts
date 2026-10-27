@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mapPriceIdToPlanFromEnv } from './plans';
-
-const priceEnv = {
-  STRIPE_PRICE_STARTER: 'price_starter',
-  STRIPE_PRICE_PROFESSIONAL: 'price_professional',
-  STRIPE_PRICE_ENTERPRISE: 'price_enterprise',
+import { resolveMappedStripePrice } from './plans';
+const mapping = {
+  providerPriceId: 'price_exact',
+  plan: 'starter' as const,
+  cadence: 'monthly' as const,
+  amountMinor: 19_900,
+  currency: 'AED',
+  interval: 'month' as const,
 };
-
-test('mapPriceIdToPlanFromEnv maps configured Stripe price IDs to plans', () => {
-  assert.equal(mapPriceIdToPlanFromEnv('price_starter', priceEnv), 'starter');
-  assert.equal(mapPriceIdToPlanFromEnv('price_professional', priceEnv), 'professional');
-  assert.equal(mapPriceIdToPlanFromEnv('price_enterprise', priceEnv), 'enterprise');
-});
-
-test('mapPriceIdToPlanFromEnv rejects unknown Stripe price IDs', () => {
-  assert.throws(() => mapPriceIdToPlanFromEnv('price_unknown', priceEnv), /Unknown Stripe price/);
+test('resolves only an exact authoritative database mapping', () => {
+  assert.equal(resolveMappedStripePrice('price_exact', [mapping]), mapping);
+  assert.throws(() => resolveMappedStripePrice('price_unknown', [mapping]), /MAPPING_UNAVAILABLE/u);
+  assert.throws(
+    () => resolveMappedStripePrice('price_exact', [mapping, mapping]),
+    /MAPPING_UNAVAILABLE/u,
+  );
 });

@@ -56,7 +56,7 @@ test('PRO renewal creation derives company ownership and exposes no company sele
 
 test('PRO invoice creation derives company ownership and exposes no company selector', () => {
   assert.doesNotMatch(invoiceDialog, /companyId|fixedCompanyId|clients|invoice-company/i);
-  assert.match(invoiceActions, /resolveAssignedCompanyForCaller\(ctx\)/);
+  assert.match(invoiceActions, /readAssignedCompanyForPro\(session\.id, tenant\.slug\)/);
   assert.match(invoiceActions, /companyId: company\.id/);
   assert.doesNotMatch(invoiceActions, /\.eq\('id', input\.companyId\)/);
 });
@@ -68,12 +68,12 @@ test('renewal and invoice lifecycle mutations reject same-tenant rows from anoth
   assert.match(renewalData, /\.eq\('company_id', ctx\.companyId\)/u);
   assert.match(renewalData, /input\.company_id !== ctx\.companyId/u);
 
-  assert.match(invoiceActions, /resolveAssignedCompanyForCaller\(ctx\)/u);
-  assert.match(invoiceActions, /rpc\(\s*'mark_company_invoice_paid'/u);
-  assert.match(invoiceActions, /rpc\(\s*'void_company_invoice'/u);
-  assert.match(invoiceActions, /rpc\(\s*'prepare_company_refund'/u);
-  assert.match(invoiceActions, /rpc\(\s*'reconcile_company_refund'/u);
-  assert.match(invoiceActions, /p_company_id: company\.id/u);
+  assert.match(invoiceActions, /readAssignedCompanyForPro\(session\.id, tenant\.slug\)/u);
+  assert.match(invoiceActions, /allocateManualPayment\(client, input\)/u);
+  assert.match(invoiceActions, /voidInvoice\(client, input\)/u);
+  assert.match(invoiceActions, /prepareInvoiceRefund\(client, input\)/u);
+  assert.match(invoiceActions, /reconcileInvoiceRefund\(client/u);
+  assert.match(invoiceActions, /companyId: company\.id/u);
 });
 
 test('invoice receipt reads bind every child lookup to the authoritative tenant and company', () => {

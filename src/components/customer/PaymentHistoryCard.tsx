@@ -38,7 +38,11 @@ export async function PaymentHistoryCard({
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-sm font-semibold">{p.amount}</div>
-                    <PayButton invoiceId={p.id} tenantSlug={tenantSlug} />
+                    <PayButton
+                      invoiceId={p.id}
+                      tenantSlug={tenantSlug}
+                      expectedVersion={p.version}
+                    />
                   </div>
                 </li>
               ))}
@@ -64,14 +68,20 @@ export async function PaymentHistoryCard({
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-muted-foreground text-sm">{h.amount}</div>
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        href={`/t/${tenantSlug}/portal/payments/${h.id}/receipt`}
-                        target="_blank"
-                      >
-                        {t('receipt')}
-                      </Link>
-                    </Button>
+                    {h.receiptAvailable ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          href={`/t/${tenantSlug}/portal/payments/${h.id}/receipt`}
+                          target="_blank"
+                        >
+                          {t('receipt')}
+                        </Link>
+                      </Button>
+                    ) : (
+                      <span className="text-muted-foreground max-w-40 text-xs">
+                        {t('receiptUnavailable')}
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}

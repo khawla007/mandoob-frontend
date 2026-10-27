@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   canShowRefundAction,
-  remainingRefundableMinor,
+  selectRefundablePayment,
   resolveInvoiceFinanceSections,
 } from './invoice-finance-state';
 
-test('remaining refundable balance matches the refund RPC latest-payment and reservation rule', () => {
-  assert.equal(
-    remainingRefundableMinor({
+test('refund projection returns one payment with its own remaining reservation balance', () => {
+  assert.deepEqual(
+    selectRefundablePayment({
       currency: 'AED',
       payments: [
         {
@@ -33,10 +33,10 @@ test('remaining refundable balance matches the refund RPC latest-payment and res
         { paymentId: 'latest', amountMinor: 100, status: 'failed' },
       ],
     }),
-    650,
+    { paymentId: 'latest', remainingMinor: 650 },
   );
   assert.equal(
-    remainingRefundableMinor({
+    selectRefundablePayment({
       currency: 'AED',
       payments: [
         {
@@ -49,10 +49,10 @@ test('remaining refundable balance matches the refund RPC latest-payment and res
       ],
       refunds: [{ paymentId: 'p', amountMinor: 1000, status: 'succeeded' }],
     }),
-    0,
+    null,
   );
   assert.equal(
-    remainingRefundableMinor({
+    selectRefundablePayment({
       currency: 'AED',
       payments: [
         {

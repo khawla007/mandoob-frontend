@@ -7,6 +7,7 @@ import { NewInvoiceDialog } from '@/components/pro/NewInvoiceDialog';
 import { InvoicesTable } from '@/components/pro/InvoicesTable';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { listActiveInvoiceCustomerOptions } from '@/lib/data/invoice-customer-options';
 import { listInvoicesForPaymentView } from '@/lib/data/invoices';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
@@ -38,23 +39,30 @@ export default async function ProPaymentsPage({
     date?: string | string[];
     period?: string | string[];
     eventTypes?: string | string[];
+    before?: string | string[];
+    beforeId?: string | string[];
   }>;
 }) {
   const { tenant: slug } = await params;
   const search = await searchParams;
-  const { view, date, period } = parsePaymentSearch(search);
+  const { view, date, period, cursor } = parsePaymentSearch(search);
   const page = parsePaymentPage(search.page);
   const { session, tenant } = await requireProTenantRouteAccess(slug);
   await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
-  const [t, locale] = await Promise.all([getTranslations('pro'), getLocale()]);
+  const [t, locale, customers] = await Promise.all([
+    getTranslations('pro'),
+    getLocale(),
+    listActiveInvoiceCustomerOptions(tenant.id, company.id),
+  ]);
 
-  const invoicePage = await listInvoicesForPaymentView(tenant.id, company.id, {
+  const invoicePage = await listInvoicesForPaymentView(tenant.id, company.id, session.id, {
     view,
     page,
     date,
     period,
+    cursor,
   });
   const activeView =
     view === 'due-date'
@@ -72,7 +80,7 @@ export default async function ProPaymentsPage({
           <Button asChild variant="outline">
             <Link href={`/t/${tenant.slug}/payments/analytics`}>{t('paymentAnalytics')}</Link>
           </Button>
-          <NewInvoiceDialog slug={tenant.slug} />
+          <NewInvoiceDialog slug={tenant.slug} customers={customers} />
         </div>
       </div>
 
@@ -87,6 +95,7 @@ export default async function ProPaymentsPage({
                 key={item.value}
                 asChild
                 size="sm"
+                className="min-h-11"
                 variant={view === item.value ? 'default' : 'outline'}
               >
                 <Link
@@ -110,23 +119,6 @@ export default async function ProPaymentsPage({
               aria-label={t('paymentPagesLabel')}
               className="mt-4 flex items-center justify-between text-sm"
             >
-              {invoicePage.page > 1 ? (
-                <Button asChild size="sm" variant="outline">
-                  <Link
-                    href={paymentPageHref(
-                      tenant.slug,
-                      { view, date, period },
-                      invoicePage.page - 1,
-                    )}
-                  >
-                    {t('paymentPrevious')}
-                  </Link>
-                </Button>
-              ) : (
-                <Button size="sm" variant="outline" disabled>
-                  {t('paymentPrevious')}
-                </Button>
-              )}
               <span>
                 {t('paymentPageSummary', {
                   page: new Intl.NumberFormat(locale).format(invoicePage.page),
@@ -135,20 +127,21 @@ export default async function ProPaymentsPage({
                   ),
                 })}
               </span>
-              {invoicePage.page * invoicePage.pageSize < invoicePage.total ? (
-                <Button asChild size="sm" variant="outline">
+              {invoicePage.nextCursor ? (
+                <Button asChild size="sm" variant="outline" className="min-h-11">
                   <Link
                     href={paymentPageHref(
                       tenant.slug,
                       { view, date, period },
                       invoicePage.page + 1,
+                      invoicePage.nextCursor,
                     )}
                   >
                     {t('paymentNext')}
                   </Link>
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" disabled>
+                <Button size="sm" variant="outline" className="min-h-11" disabled>
                   {t('paymentNext')}
                 </Button>
               )}

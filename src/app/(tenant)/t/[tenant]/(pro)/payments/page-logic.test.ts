@@ -13,6 +13,8 @@ import {
 
 test('payment page parser accepts safe positive integers only', () => {
   assert.equal(parsePaymentPage('2'), 2);
+  assert.equal(parsePaymentPage('10000'), 10000);
+  assert.equal(parsePaymentPage(String(Number.MAX_SAFE_INTEGER)), Number.MAX_SAFE_INTEGER);
   for (const value of ['0', '-1', '1.5', '1e999', '9007199254740992', 'nope']) {
     assert.equal(parsePaymentPage(value), 1, value);
   }
@@ -45,10 +47,11 @@ test('payments page consumes view through a paginated tenant-scoped finance read
   assert.match(page, /parsePaymentSearch\(search\)/);
   assert.match(page, /listInvoicesForPaymentView\(tenant\.id, company\.id/);
   assert.doesNotMatch(invoices, /collectPaymentQueryPages|PAYMENT_QUERY_BATCH_SIZE/);
-  assert.match(invoices, /rpc\(\s*'list_company_payment_invoices'/);
-  assert.match(invoices, /\.range\(\(page - 1\) \* PAYMENT_INVOICE_PAGE_SIZE/);
-  assert.match(invoices, /\.eq\('tenant_id', tenantId\)/);
-  assert.match(invoices, /\.eq\('company_id', companyId\)/);
+  assert.match(invoices, /rpc\(\s*'p309_list_company_invoices'/);
+  assert.doesNotMatch(invoices, /\.range\(\(page - 1\) \* PAYMENT_INVOICE_PAGE_SIZE/);
+  assert.match(invoices, /p_tenant_id:\s*tenantId/);
+  assert.match(invoices, /p_company_id:\s*companyId/);
+  assert.match(invoices, /p_actor_id:\s*actorId/);
 });
 
 test('payments consume exact invoice deadline filters', () => {
@@ -59,11 +62,11 @@ test('payments consume exact invoice deadline filters', () => {
       period: 'afternoon',
       eventTypes: 'invoice',
     }),
-    { view: 'due-date', date: '2026-08-12', period: 'afternoon' },
+    { view: 'due-date', date: '2026-08-12', period: 'afternoon', cursor: null },
   );
   assert.equal(
     paymentPageHref('acme', { view: 'due-date', date: '2026-08-12', period: 'afternoon' }, 2),
-    '/t/acme/payments?view=due-date&date=2026-08-12&period=afternoon&eventTypes=invoice&page=2',
+    '/t/acme/payments?view=due-date&date=2026-08-12&period=afternoon&eventTypes=invoice',
   );
 });
 

@@ -62,13 +62,12 @@ const schema = z.object({
   TAP_PUBLIC_KEY: optionalStr,
   TAP_WEBHOOK_SECRET: optionalStr,
   TAP_API_BASE: optionalStr,
+  TAP_REDIRECT_HOSTS: optionalStr,
 
   STRIPE_SECRET_KEY: optionalStr,
   STRIPE_PUBLISHABLE_KEY: optionalStr,
   STRIPE_WEBHOOK_SECRET: optionalStr,
-  STRIPE_PRICE_STARTER: optionalStr,
-  STRIPE_PRICE_PROFESSIONAL: optionalStr,
-  STRIPE_PRICE_ENTERPRISE: optionalStr,
+  STRIPE_DESTINATION: z.enum(['test', 'sandbox', 'live', 'production']).optional(),
 
   VIRUSTOTAL_API_KEY: optionalStr,
   CLAMAV_HOST: optionalStr,

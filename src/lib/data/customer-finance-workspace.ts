@@ -14,6 +14,7 @@ import {
   type CustomerProviderState,
 } from '@/lib/customer/customer-finance';
 import { signalBusinessDate } from '@/lib/data/signal-finance';
+import { parseInvoiceRpcWindow } from '@/lib/data/invoice-rpc-validation';
 
 export const CUSTOMER_FINANCE_PAGE_SIZE = 25;
 
@@ -67,7 +68,7 @@ export type CustomerFinanceStore = {
   total: (input: Scope) => Promise<CountDbResult<never>>;
   payments: (tenantId: string, invoiceIds: string[]) => Promise<DbResult<CustomerPaymentDbRow[]>>;
   refunds: (tenantId: string, paymentIds: string[]) => Promise<DbResult<CustomerRefundDbRow[]>>;
-  provider: (tenantId: string) => Promise<CustomerProviderState>;
+  provider: (tenantId: string, companyId: string) => Promise<CustomerProviderState>;
   invoice: (input: Scope & { invoiceId: string }) => Promise<DbResult<CustomerInvoiceDbRow>>;
 };
 export type CustomerFinanceDependencies = {
@@ -83,6 +84,7 @@ type FinanceBase = {
   canonicalPage: number;
   pageSize: number;
   provider: CustomerProviderState;
+  nextCursor: { createdAt: string; id: string } | null;
 };
 export type CustomerFinanceResult = FinanceBase & {
   state: 'ready' | 'empty' | 'no-results' | 'partial' | 'error' | 'unlinked' | 'permission';
@@ -111,6 +113,7 @@ export async function listCustomerFinance(
     canonicalPage: search.invoice ? 1 : search.page,
     pageSize: CUSTOMER_FINANCE_PAGE_SIZE,
     provider: 'unavailable',
+    nextCursor: null,
   };
   if (access.kind === 'unlinked') return { ...unavailable, state: 'unlinked' };
   if (access.kind !== 'authorized') return { ...unavailable, state: 'permission' };
@@ -134,7 +137,7 @@ export async function listCustomerFinance(
       })
       .catch(() => ({ data: null, count: null, error: 'sanitized' })),
     store.total(scope).catch(() => ({ data: null, count: null, error: 'sanitized' })),
-    store.provider(scope.tenantId).catch(() => 'error' as const),
+    store.provider(scope.tenantId, scope.companyId).catch(() => 'error' as const),
   ]);
   if (listed.error || listed.count === null || !listed.data)
     return { ...unavailable, provider, state: 'error' };
@@ -187,6 +190,13 @@ export async function listCustomerFinance(
     canonicalPage,
     pageSize: CUSTOMER_FINANCE_PAGE_SIZE,
     provider,
+    nextCursor:
+      safeInvoices.length === CUSTOMER_FINANCE_PAGE_SIZE
+        ? {
+            createdAt: safeInvoices.at(-1)!.createdAt,
+            id: safeInvoices.at(-1)!.id,
+          }
+        : null,
   };
   if (
     paymentResult.error ||
@@ -229,7 +239,7 @@ export async function loadCustomerInvoiceDetail(
   if (!invoice) return { state: 'error' };
   const [paymentResult, provider] = await Promise.all([
     store.payments(scope.tenantId, [invoice.id]).catch(() => ({ data: null, error: 'sanitized' })),
-    store.provider(scope.tenantId).catch(() => 'error' as const),
+    store.provider(scope.tenantId, scope.companyId).catch(() => 'error' as const),
   ]);
   const paymentOverflow = (paymentResult.data?.length ?? 0) > 100;
   const payments =
@@ -303,7 +313,7 @@ function mapPayments(
 
 type Query = PromiseLike<unknown> & {
   select: (columns: string, options?: { count: 'exact'; head?: boolean }) => Query;
-  eq: (column: string, value: string) => Query;
+  eq: (column: string, value: unknown) => Query;
   in: (column: string, values: string[]) => Query;
   lt: (column: string, value: string) => Query;
   order: (column: string, options: { ascending: boolean }) => Query;
@@ -312,46 +322,64 @@ type Query = PromiseLike<unknown> & {
   maybeSingle: () => Query;
 };
 type Client = { from: (table: string) => Query };
+type RpcClient = Client & {
+  rpc: (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: unknown | null }>;
+};
 
 async function serviceClient() {
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-  return createSupabaseServiceRoleClient() as unknown as Client;
+  return createSupabaseServiceRoleClient() as unknown as RpcClient;
 }
 
-export function createCustomerFinanceSupabaseStore(client: Client): CustomerFinanceStore {
-  const invoiceScope = (query: Query, input: Scope) =>
-    query
-      .eq('tenant_id', input.tenantId)
-      .eq('company_id', input.companyId)
-      .eq('customer_profile_id', input.profileId);
+export function createCustomerFinanceSupabaseStore(client: RpcClient): CustomerFinanceStore {
   return {
     list: async (input) => {
-      let query = invoiceScope(
-        client
-          .from('invoices')
-          .select(
-            'id, tenant_id, company_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
-            { count: 'exact' },
-          ),
-        input,
-      );
-      if (input.search.invoice) query = query.eq('id', input.search.invoice);
-      else if (input.search.status === 'open') query = query.eq('status', 'open');
-      else if (input.search.status === 'overdue')
-        query = query.eq('status', 'open').lt('due_at', input.today);
-      else if (input.search.status === 'paid')
-        query = query.in('status', ['paid', 'refunded', 'partially_refunded']);
-      else if (input.search.status === 'cancelled') query = query.eq('status', 'void');
-      return (await query
-        .order('created_at', { ascending: false })
-        .order('id', { ascending: false })
-        .range(input.from, input.to)) as CountDbResult<CustomerInvoiceDbRow[]>;
+      const response = await client.rpc('p309_list_customer_invoices', {
+        p_tenant_id: input.tenantId,
+        p_company_id: input.companyId,
+        p_customer_profile_id: input.profileId,
+        p_before_created_at: input.search.cursor?.createdAt ?? null,
+        p_before_id: input.search.cursor?.id ?? null,
+        p_limit: CUSTOMER_FINANCE_PAGE_SIZE,
+        p_status: input.search.status,
+        p_today: input.today,
+        p_invoice_id: input.search.invoice,
+      });
+      if (response.error) return { data: null, count: null, error: response.error };
+      try {
+        const result = parseInvoiceRpcWindow(response.data);
+        return {
+          data: result.rows as unknown as CustomerInvoiceDbRow[],
+          count: result.total,
+          error: null,
+        };
+      } catch {
+        return { data: null, count: null, error: { code: 'INVOICE_SOURCE_UNAVAILABLE' } };
+      }
     },
-    total: async (input) =>
-      (await invoiceScope(
-        client.from('invoices').select('id', { count: 'exact', head: true }),
-        input,
-      )) as CountDbResult<never>,
+    total: async (input) => {
+      const response = await client.rpc('p309_list_customer_invoices', {
+        p_tenant_id: input.tenantId,
+        p_company_id: input.companyId,
+        p_customer_profile_id: input.profileId,
+        p_before_created_at: null,
+        p_before_id: null,
+        p_limit: 1,
+        p_status: 'all',
+        p_today: signalBusinessDate(),
+        p_invoice_id: null,
+      });
+      if (response.error) return { data: null, count: null, error: response.error };
+      try {
+        const result = parseInvoiceRpcWindow(response.data);
+        return { data: null, count: result.total, error: null };
+      } catch {
+        return { data: null, count: null, error: { code: 'INVOICE_SOURCE_UNAVAILABLE' } };
+      }
+    },
     payments: async (tenantId, invoiceIds) => {
       if (!invoiceIds.length) return { data: [], error: null };
       return (await client
@@ -376,21 +404,34 @@ export function createCustomerFinanceSupabaseStore(client: Client): CustomerFina
         .order('id', { ascending: false })
         .limit(101)) as DbResult<CustomerRefundDbRow[]>;
     },
-    provider: async (tenantId) => {
+    provider: async (tenantId, companyId) => {
       const { resolveTenantTapConfig } = await import('@/lib/payments/config');
-      const config = await resolveTenantTapConfig(tenantId);
-      return config?.enabled ? 'configured' : 'unavailable';
-    },
-    invoice: async (input) =>
-      (await invoiceScope(
+      const [config, destinationResult] = await Promise.all([
+        resolveTenantTapConfig(tenantId),
         client
-          .from('invoices')
-          .select(
-            'id, tenant_id, company_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
-          ),
-        input,
-      )
-        .eq('id', input.invoiceId)
-        .maybeSingle()) as DbResult<CustomerInvoiceDbRow>,
+          .from('tap_provider_destinations')
+          .select('account_id')
+          .eq('tenant_id', tenantId)
+          .eq('company_id', companyId)
+          .eq('enabled', true)
+          .maybeSingle(),
+      ]);
+      const destination = destinationResult as DbResult<{ account_id: string }>;
+      return config?.enabled && destination.data?.account_id === config.merchantId
+        ? 'configured'
+        : 'unavailable';
+    },
+    invoice: async (input) => {
+      const response = await client.rpc('p309_get_customer_invoice', {
+        p_tenant_id: input.tenantId,
+        p_company_id: input.companyId,
+        p_customer_profile_id: input.profileId,
+        p_invoice_id: input.invoiceId,
+      });
+      return {
+        data: (response.data as CustomerInvoiceDbRow | null) ?? null,
+        error: response.error,
+      };
+    },
   };
 }

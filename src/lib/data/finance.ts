@@ -32,7 +32,7 @@ export type TenantMrrRow = {
 };
 
 export function monthlyAmountMinor(amountMinor: number, interval: string): number {
-  if (interval === 'year') return Math.round(amountMinor / 12);
+  if (interval === 'year') return Math.floor(amountMinor / 12);
   return amountMinor;
 }
 
@@ -105,7 +105,7 @@ export async function getTenantMrrRows(): Promise<TenantMrrRow[]> {
   const { data } = await admin
     .from('subscriptions')
     .select(
-      'tenant_id, plan, status, current_period_end, unit_amount_minor, interval, tenants(name)',
+      'tenant_id, plan, status, current_period_end, unit_amount_minor, currency, interval, tenants(name)',
     )
     .eq('status', 'active')
     .order('unit_amount_minor', { ascending: false })
@@ -118,6 +118,7 @@ export async function getTenantMrrRows(): Promise<TenantMrrRow[]> {
       status: string;
       current_period_end: string | null;
       unit_amount_minor: number;
+      currency: string;
       interval: string;
       tenants: { name: string } | null;
     }>
@@ -130,7 +131,7 @@ export async function getTenantMrrRows(): Promise<TenantMrrRow[]> {
         plan: row.plan,
         status: row.status,
         currentPeriodEnd: row.current_period_end,
-        mrr: formatMoney(mrrMinor, 'USD'),
+        mrr: formatMoney(mrrMinor, row.currency),
         mrrMinor,
       };
     })

@@ -83,4 +83,5 @@ export const SENSITIVE_RATE_LIMITS = {
   credentialUpload: { capacity: 10, refillPerSec: 10 / 60 },
   credentialMutation: { capacity: 30, refillPerSec: 30 / 60 },
   credentialReview: { capacity: 30, refillPerSec: 30 / 60 },
+  financialEffect: { capacity: 10, refillPerSec: 10 / 60 },
 } as const;

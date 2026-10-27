@@ -19,6 +19,9 @@ import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { getInvoiceDetailForTenant } from '@/lib/data/invoices';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
+import { listBankEvidenceReviewQueue } from '@/lib/finance/bank-evidence-review';
+import { BankEvidenceReviewPanel } from '@/components/finance/BankEvidenceReviewPanel';
+import { openBankEvidenceAction, reviewBankEvidenceAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,18 +36,17 @@ export default async function ProInvoiceDetailPage({
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
-  const invoice = await getInvoiceDetailForTenant(tenant.id, company.id, invoiceId);
+  const invoice = await getInvoiceDetailForTenant(tenant.id, company.id, session.id, invoiceId);
   if (!invoice) notFound();
-  const [locale, t] = await Promise.all([getLocale(), getTranslations('pro')]);
-
-  const canShowReceipt =
-    invoice.status === 'paid' ||
-    invoice.status === 'refunded' ||
-    invoice.status === 'partially_refunded';
+  const [locale, t, evidenceRows] = await Promise.all([
+    getLocale(),
+    getTranslations('pro'),
+    listBankEvidenceReviewQueue({ tenantId: tenant.id, companyId: company.id, invoiceId }),
+  ]);
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
+      <Button asChild variant="ghost" size="sm" className="-ml-2 min-h-11 w-fit">
         <Link href={`/t/${tenant.slug}/payments`}>
           <ChevronLeft className="size-4" />
           {t('paymentBack')}
@@ -63,22 +65,30 @@ export default async function ProInvoiceDetailPage({
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
-          {canShowReceipt && (
+          {invoice.receiptAvailable ? (
             <Button asChild variant="outline">
               <Link href={`/t/${tenant.slug}/payments/${invoice.id}/receipt`} target="_blank">
                 {t('paymentReceipt')}
               </Link>
             </Button>
+          ) : (
+            <p className="text-muted-foreground max-w-56 text-sm">
+              {t('paymentReceiptUnavailable')}
+            </p>
           )}
           <InvoiceActions
             slug={tenant.slug}
             invoiceId={invoice.id}
+            version={invoice.version}
+            paymentId={invoice.paymentId}
             amountMinor={invoice.amountMinor}
+            outstandingMinor={invoice.outstandingMinor}
             currency={invoice.currency}
             remainingRefundableMinor={invoice.remainingRefundableMinor}
             status={invoice.status}
             refundOperation={invoice.refundOperation}
-            refundAvailable={invoice.refundAvailable}
+            refundDetailsLoaded={invoice.refundDetailsLoaded}
+            bankEvidenceSubmissionId={evidenceRows.find((row) => row.state === 'clean')?.id}
           />
         </div>
       </div>
@@ -103,6 +113,32 @@ export default async function ProInvoiceDetailPage({
           </dl>
         </CardContent>
       </Card>
+
+      <BankEvidenceReviewPanel
+        rows={evidenceRows}
+        reviewAction={reviewBankEvidenceAction}
+        openAction={openBankEvidenceAction}
+        tenantSlug={tenant.slug}
+        labels={{
+          title: t('bankEvidence.title'),
+          description: t('bankEvidence.description'),
+          empty: t('bankEvidence.empty'),
+          open: t('bankEvidence.open'),
+          clean: t('bankEvidence.clean'),
+          reject: t('bankEvidence.reject'),
+          rejectTitle: t('bankEvidence.rejectTitle'),
+          rejectDescription: t('bankEvidence.rejectDescription'),
+          rejectReason: t('bankEvidence.rejectReason'),
+          confirmReject: t('bankEvidence.confirmReject'),
+          cancel: t('bankEvidence.cancel'),
+          actionFailed: t('bankEvidence.actionFailed'),
+          states: Object.fromEntries(
+            ['pending', 'clean', 'rejected', 'reconciled', 'expired', 'held', 'tombstoned'].map(
+              (state) => [state, t(`bankEvidence.states.${state}`)],
+            ),
+          ),
+        }}
+      />
 
       <Card>
         <CardHeader>

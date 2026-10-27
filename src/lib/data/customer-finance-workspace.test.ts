@@ -20,6 +20,8 @@ const invoice = {
   due_at: '2026-09-10',
   paid_at: null,
   created_at: '2026-09-01T00:00:00Z',
+  version: 2,
+  receipt_available: true,
 };
 const authorized = {
   kind: 'authorized',
@@ -42,6 +44,7 @@ function store(overrides: Partial<CustomerFinanceStore> = {}): CustomerFinanceSt
 
 test('finance list passes authoritative actor, tenant, and linked Company scope', async () => {
   let received: unknown;
+  let providerScope: unknown;
   const result = await listCustomerFinance(
     'acme',
     { status: 'open', page: 1, invoice: null },
@@ -52,10 +55,15 @@ test('finance list passes authoritative actor, tenant, and linked Company scope'
           received = input;
           return { data: [invoice], count: 1, error: null };
         },
+        provider: async (tenantId, companyId) => {
+          providerScope = { tenantId, companyId };
+          return 'configured';
+        },
       }),
     },
   );
   assert.equal(result.state, 'ready');
+  assert.equal(result.rows[0]?.receiptAvailable, true);
   assert.match((received as { today: string }).today, /^\d{4}-\d{2}-\d{2}$/u);
   assert.deepEqual(received, {
     tenantId: 'tenant-1',
@@ -66,6 +74,7 @@ test('finance list passes authoritative actor, tenant, and linked Company scope'
     from: 0,
     to: 24,
   });
+  assert.deepEqual(providerScope, { tenantId: 'tenant-1', companyId: 'company-1' });
 });
 
 test('finance list fails closed on cross-Company rows and unsafe money', async () => {
@@ -146,19 +155,22 @@ test('invoice detail is non-disclosing and chains payments/refunds through the o
   assert.deepEqual(foreign, { state: 'not-found' });
 });
 
-test('Supabase store scopes every invoice query to tenant, Company, and actor profile', async () => {
-  const calls: Array<[string, string, unknown]> = [];
+test('Supabase store uses owned keyset RPCs for invoice list, count, and detail', async () => {
+  const calls: Array<[string, Record<string, unknown>]> = [];
   const client = {
+    async rpc(name: string, args: Record<string, unknown>) {
+      calls.push([name, args]);
+      return name === 'p309_get_customer_invoice'
+        ? { data: invoice, error: null }
+        : { data: { rows: [], total: 0 }, error: null };
+    },
     from(table: string) {
       const response =
         table === 'invoices' ? { data: [], count: 0, error: null } : { data: [], error: null };
       const query = new Proxy(Promise.resolve(response) as object, {
         get(target, property) {
           if (property === 'then') return (target as Promise<unknown>).then.bind(target);
-          return (...args: unknown[]) => {
-            calls.push([table, String(property), args]);
-            return query;
-          };
+          return () => query;
         },
       });
       return query;
@@ -175,13 +187,65 @@ test('Supabase store scopes every invoice query to tenant, Company, and actor pr
   });
   await financeStore.total(scope);
   await financeStore.invoice({ ...scope, invoiceId: invoice.id });
-  for (const column of ['tenant_id', 'company_id', 'customer_profile_id']) {
-    assert.equal(
-      calls.filter(
-        ([table, method, args]) =>
-          table === 'invoices' && method === 'eq' && (args as unknown[])[0] === column,
-      ).length,
-      3,
-    );
+  assert.deepEqual(
+    calls.map(([name]) => name),
+    ['p309_list_customer_invoices', 'p309_list_customer_invoices', 'p309_get_customer_invoice'],
+  );
+  for (const [, args] of calls) {
+    assert.equal(args.p_tenant_id, scope.tenantId);
+    assert.equal(args.p_company_id, scope.companyId);
+    assert.equal(args.p_customer_profile_id, scope.profileId);
+  }
+});
+
+test('Supabase store performs one keyset RPC under hostile page input', async () => {
+  let calls = 0;
+  const rows = Array.from({ length: 25 }, (_, index) => ({
+    ...invoice,
+    id: `11111111-1111-4111-8111-${String(index).padStart(12, '0')}`,
+    created_at: `2026-09-01T00:00:${String(index).padStart(2, '0')}Z`,
+  }));
+  const client = {
+    async rpc() {
+      calls += 1;
+      return { data: { rows, total: 1_000_000 }, error: null };
+    },
+    from() {
+      throw new Error('not used');
+    },
+  };
+  const financeStore = createCustomerFinanceSupabaseStore(client as never);
+  await financeStore.list({
+    tenantId: 'tenant-1',
+    companyId: 'company-1',
+    profileId: 'profile-1',
+    search: { status: 'all', page: 10_000, invoice: null },
+    today: '2026-09-05',
+    from: Number.MAX_SAFE_INTEGER,
+    to: Number.MAX_SAFE_INTEGER,
+  });
+  assert.equal(calls, 1);
+});
+
+test('Supabase store rejects malformed invoice RPC success as a source error', async () => {
+  for (const data of [null, {}, { rows: [], total: '0' }, { rows: 'no', total: 0 }]) {
+    const financeStore = createCustomerFinanceSupabaseStore({
+      rpc: async () => ({ data, error: null }),
+      from: () => {
+        throw new Error('not used');
+      },
+    } as never);
+    const result = await financeStore.list({
+      tenantId: 'tenant-1',
+      companyId: 'company-1',
+      profileId: 'profile-1',
+      search: { status: 'all', page: 1, invoice: null },
+      today: '2026-09-05',
+      from: 0,
+      to: 24,
+    });
+    assert.equal(result.data, null);
+    assert.equal(result.count, null);
+    assert.deepEqual(result.error, { code: 'INVOICE_SOURCE_UNAVAILABLE' });
   }
 });

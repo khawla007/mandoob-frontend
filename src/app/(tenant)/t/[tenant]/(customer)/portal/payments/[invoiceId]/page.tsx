@@ -5,22 +5,28 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { customerInvoiceDueState } from '@/lib/customer/customer-finance';
+import { customerInvoiceDueState, isCustomerInvoicePayable } from '@/lib/customer/customer-finance';
 import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
 import { loadCustomerInvoiceDetail } from '@/lib/data/customer-finance-workspace';
 import { signalBusinessDate } from '@/lib/data/signal-finance';
 import { formatMoney } from '@/lib/format/money';
-import { isReceiptEligible } from '@/lib/pdf/receipt';
+import { BankEvidenceUpload } from '@/components/customer/BankEvidenceUpload';
+import { PayButton } from '@/components/customer/PayButton';
+import { resolveTenantTapConfig } from '@/lib/payments/config';
+import { verifyPaymentReturnState } from '@/lib/payments/tap-coordinator';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CustomerInvoicePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string; invoiceId: string }>;
+  searchParams: Promise<{ state?: string; operation?: string }>;
 }) {
-  const [{ tenant: slug, invoiceId }, t, locale] = await Promise.all([
+  const [{ tenant: slug, invoiceId }, query, t, locale] = await Promise.all([
     params,
+    searchParams,
     getTranslations('customer.financeWorkspace'),
     getLocale(),
   ]);
@@ -39,10 +45,27 @@ export default async function CustomerInvoicePage({
       />
     );
   }
+  if (query.state) {
+    if (access.kind !== 'authorized' || !query.operation) notFound();
+    const config = await resolveTenantTapConfig(access.tenant.id);
+    const validReturn = Boolean(
+      config?.enabled &&
+      verifyPaymentReturnState(query.state, config.webhookSecret, {
+        invoiceId,
+        operationId: query.operation,
+      }),
+    );
+    if (!validReturn) notFound();
+  }
   const { invoice } = detail;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Dubai' });
   const dueState = customerInvoiceDueState(invoice.status, invoice.dueAt, signalBusinessDate());
   const base = `/t/${encodeURIComponent(slug)}/portal/payments`;
+  const onlinePayable = isCustomerInvoicePayable(
+    invoice.status,
+    detail.provider,
+    invoice.amountMinor > 0 ? 'available' : 'unavailable',
+  );
   return (
     <div className="space-y-6">
       <header>
@@ -143,24 +166,36 @@ export default async function CustomerInvoicePage({
           </Card>
         </div>
         <aside className="space-y-4">
-          <div className="signal-panel rounded-lg border p-4">
-            <p className="text-muted-foreground text-sm">
-              {invoice.status !== 'open'
-                ? t('detail.invoiceNotPayable')
-                : detail.provider === 'error'
-                  ? t('detail.providerStateUnavailable')
-                  : detail.provider === 'unavailable'
-                    ? t('detail.providerUnavailable')
-                    : t('detail.paymentContractUnavailable')}
-            </p>
-            {isReceiptEligible(invoice.status) ? (
-              <Button variant="outline" className="mt-3 w-full" asChild>
-                <a href={`${base}/${encodeURIComponent(invoice.id)}/receipt`}>
-                  {t('detail.receipt')}
-                </a>
-              </Button>
-            ) : null}
-          </div>
+          {onlinePayable ? (
+            <PayButton invoiceId={invoice.id} tenantSlug={slug} expectedVersion={invoice.version} />
+          ) : null}
+          {invoice.status === 'open' ? (
+            <BankEvidenceUpload slug={slug} invoiceId={invoice.id} />
+          ) : null}
+          {!onlinePayable || invoice.receiptAvailable ? (
+            <div className="signal-panel rounded-lg border p-4">
+              {!onlinePayable ? (
+                <p className="text-muted-foreground text-sm">
+                  {invoice.status !== 'open'
+                    ? t('detail.invoiceNotPayable')
+                    : detail.provider === 'error'
+                      ? t('detail.providerStateUnavailable')
+                      : t('detail.providerUnavailable')}
+                </p>
+              ) : null}
+              {invoice.receiptAvailable ? (
+                <Button variant="outline" className="mt-3 w-full" asChild>
+                  <a href={`${base}/${encodeURIComponent(invoice.id)}/receipt`}>
+                    {t('detail.receipt')}
+                  </a>
+                </Button>
+              ) : invoice.status !== 'open' ? (
+                <p className="text-muted-foreground mt-3 text-sm">
+                  {t('detail.receiptUnavailable')}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
             {t('detail.lineItemsUnavailable')}
           </p>

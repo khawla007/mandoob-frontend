@@ -11,10 +11,19 @@ export type PaymentSearch = {
   date?: string | string[];
   period?: string | string[];
   eventTypes?: string | string[];
+  before?: string | string[];
+  beforeId?: string | string[];
 };
 
 export function parsePaymentSearch(search: PaymentSearch) {
-  return parsePaymentSignalFilter(search);
+  const filter = parsePaymentSignalFilter(search);
+  const before = Array.isArray(search.before) ? search.before[0] : search.before;
+  const beforeId = Array.isArray(search.beforeId) ? search.beforeId[0] : search.beforeId;
+  const validDate = before && !Number.isNaN(new Date(before).getTime());
+  const validId =
+    beforeId &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(beforeId);
+  return { ...filter, cursor: validDate && validId ? { createdAt: before!, id: beforeId! } : null };
 }
 
 export function parsePaymentView(value: string | string[] | undefined): PaymentView {
@@ -37,6 +46,7 @@ export function paymentPageHref(
   slug: string,
   filter: { view: PaymentView; date?: string; period?: 'morning' | 'afternoon' },
   page: number,
+  cursor?: { createdAt: string; id: string } | null,
 ): string {
   const base =
     filter.view === 'due-date' && filter.date && filter.period
@@ -47,6 +57,10 @@ export function paymentPageHref(
         })
       : paymentViewHref(slug, filter.view);
   const url = new URL(base, 'https://mandoob.invalid');
-  url.searchParams.set('page', String(Math.max(1, Math.trunc(page))));
+  if (cursor) {
+    url.searchParams.set('page', String(Math.max(1, Math.trunc(page))));
+    url.searchParams.set('before', cursor.createdAt);
+    url.searchParams.set('beforeId', cursor.id);
+  }
   return `${url.pathname}?${url.searchParams.toString()}`;
 }

@@ -17,11 +17,11 @@ import { InvoiceActions } from './InvoiceActions';
 export function InvoicesTable({
   slug,
   rows,
-  emptyMessage = 'No invoices yet.',
+  emptyMessage,
 }: {
   slug: string;
   rows: ProInvoiceRow[];
-  emptyMessage?: string;
+  emptyMessage: string;
 }) {
   const t = useTranslations('pro');
   const locale = useLocale();
@@ -30,7 +30,12 @@ export function InvoicesTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      className="overflow-x-auto"
+      role="region"
+      aria-label={t('paymentInvoicesTable')}
+      tabIndex={0}
+    >
       <Table>
         <TableHeader>
           <TableRow>
@@ -61,24 +66,29 @@ export function InvoicesTable({
               <TableCell className="text-right font-medium">{row.amount}</TableCell>
               <TableCell className="text-right">
                 <div className="flex flex-col items-end gap-2">
-                  {(row.status === 'paid' ||
-                    row.status === 'refunded' ||
-                    row.status === 'partially_refunded') && (
-                    <Button asChild size="sm" variant="outline">
+                  {row.receiptAvailable ? (
+                    <Button asChild size="sm" variant="outline" className="min-h-11">
                       <Link href={`/t/${slug}/payments/${row.id}/receipt`} target="_blank">
                         {t('paymentReceipt')}
                       </Link>
                     </Button>
+                  ) : (
+                    <span className="text-muted-foreground max-w-40 text-xs">
+                      {t('paymentReceiptUnavailable')}
+                    </span>
                   )}
                   <InvoiceActions
                     slug={slug}
                     invoiceId={row.id}
+                    version={row.version}
+                    paymentId={row.paymentId}
                     amountMinor={row.amountMinor}
+                    outstandingMinor={row.outstandingMinor}
                     currency={row.currency}
                     remainingRefundableMinor={row.remainingRefundableMinor}
                     status={row.status}
                     refundOperation={row.refundOperation}
-                    refundAvailable={row.refundAvailable}
+                    refundDetailsLoaded={row.refundDetailsLoaded}
                   />
                 </div>
               </TableCell>

@@ -68,7 +68,6 @@ export type ReconcileChargeArgs = {
   supabase: Supa;
   payment: ReconcilePaymentRow;
   tapStatus: string;
-  rawPayload: unknown;
   now?: Date;
 };
 
@@ -86,17 +85,12 @@ export async function applyTapChargeReconciliation(
 
   if (targetStatus === args.payment.status) {
     if (TERMINAL_STATUSES.has(args.payment.status)) return 'noop';
-    await args.supabase
-      .from('payments')
-      .update({ provider_event_payload: args.rawPayload })
-      .eq('id', args.payment.id);
     return 'unchanged';
   }
 
   const nowIso = (args.now ?? new Date()).toISOString();
   const paymentUpdate: Record<string, unknown> = {
     status: targetStatus,
-    provider_event_payload: args.rawPayload,
   };
   if (targetStatus !== 'initiated') paymentUpdate.received_at = nowIso;
   if (targetStatus === 'failed') paymentUpdate.failure_reason = args.tapStatus.toLowerCase();
