@@ -63,26 +63,47 @@ test('runtime RPC boundary rejects malformed responses without exposing raw erro
   await assert.rejects(runtime.cancelLeasedJob(cancellation), /RUNTIME_RPC_FAILED/);
 });
 
-test('runtime RPC boundary classifies deterministic SQL failures without raw details', async () => {
-  const runtime = createRuntimeRpc({
-    async rpc() {
-      return { data: null, error: { code: 'P3102', message: 'private row detail' } };
-    },
-  });
-  await assert.rejects(runtime.cancelLeasedJob(cancellation), (error) => {
-    assert.ok(error instanceof RuntimeRpcError);
-    assert.deepEqual(error.failure, {
-      category: 'configuration',
-      code: 'PROVIDER_CONFIGURATION_INVALID',
-      retryable: false,
+test('runtime RPC boundary allowlists deterministic SQL failures without raw details', async () => {
+  for (const rpcError of [
+    ...['22023', '42501', 'P3101', 'P3102'].map((code) => ({
+      code,
+      message: 'private row detail',
+    })),
+    { code: 'XX000', message: 'RUNTIME_INVALID_PROJECTION' },
+    { code: 'XX000', message: 'RUNTIME_IDEMPOTENCY_CONFLICT' },
+  ]) {
+    const runtime = createRuntimeRpc({
+      async rpc() {
+        return { data: null, error: rpcError };
+      },
     });
-    assert.equal(JSON.stringify(error).includes('private row detail'), false);
-    return true;
-  });
+    await assert.rejects(runtime.cancelLeasedJob(cancellation), (error) => {
+      assert.ok(error instanceof RuntimeRpcError);
+      assert.deepEqual(error.failure, {
+        category: 'configuration',
+        code: 'PROVIDER_CONFIGURATION_INVALID',
+        retryable: false,
+      });
+      assert.equal(JSON.stringify(error).includes('private row detail'), false);
+      return true;
+    });
+  }
 });
 
-test('runtime RPC boundary classifies serialization and deadlock failures as retryable', async () => {
-  for (const code of ['40001', '40P01']) {
+test('runtime RPC boundary retries transient and infrastructure SQL failures', async () => {
+  for (const code of [
+    '40001',
+    '40P01',
+    '55P03',
+    '57P01',
+    '57P02',
+    '57P03',
+    '53000',
+    '58000',
+    'PGRST000',
+    '23505',
+    'ZZ999',
+  ]) {
     const runtime = createRuntimeRpc({
       async rpc() {
         return { data: null, error: { code, message: 'private row detail' } };

@@ -43,20 +43,38 @@ const timeoutFailure: SafeProviderFailure = {
   code: 'PROVIDER_TIMEOUT',
   retryable: true,
 };
+const deterministicSqlCodes = new Set(['22023', '42501', 'P3101', 'P3102']);
+const deterministicRuntimeCodes = new Set([
+  'RUNTIME_ACCESS_DENIED',
+  'RUNTIME_ATTEMPT_MISMATCH',
+  'RUNTIME_IDEMPOTENCY_CONFLICT',
+  'RUNTIME_INVALID_CHANNEL',
+  'RUNTIME_INVALID_CURSOR',
+  'RUNTIME_INVALID_OPERATION',
+  'RUNTIME_INVALID_PROJECTION',
+  'RUNTIME_INVALID_RECEIPT',
+  'RUNTIME_OPERATION_REUSED',
+  'RUNTIME_RECIPIENT_REQUIRED',
+  'RUNTIME_RECIPIENT_SCOPE_DENIED',
+  'RUNTIME_REFERENCE_SCOPE_DENIED',
+]);
 
 function classifyFailure(error: unknown): SafeProviderFailure {
   if (error instanceof z.ZodError) return malformedFailure;
   const parsed = z
-    .object({ code: z.string().min(1) })
+    .object({ code: z.string().min(1), message: z.string().optional() })
     .passthrough()
     .safeParse(error);
   if (!parsed.success) return unavailableFailure;
-  const { code } = parsed.data;
+  const { code, message } = parsed.data;
   if (code === '57014') return timeoutFailure;
-  if (/^08/u.test(code) || ['40001', '40P01', '53300'].includes(code)) {
-    return unavailableFailure;
+  if (
+    deterministicSqlCodes.has(code) ||
+    (message !== undefined && deterministicRuntimeCodes.has(message))
+  ) {
+    return configurationFailure;
   }
-  return configurationFailure;
+  return unavailableFailure;
 }
 
 export function createRuntimeRpc(client: RuntimeRpcClient) {
