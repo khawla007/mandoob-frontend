@@ -5,7 +5,10 @@ export type EventHandlerContext = { checkpoint(): Promise<void> };
 export type EventJobHandler = (
   job: ClaimedEventJob,
   context: EventHandlerContext,
-) => Promise<{ effectReferenceHash?: string }>;
+) => Promise<{
+  effectReferenceHash?: string;
+  outcome?: 'complete' | 'already-terminal' | 'lease-lost';
+}>;
 
 export type EventWorkerRepository = {
   heartbeat(input: {
@@ -55,6 +58,16 @@ const retryableRuntimeFailure: SafeProviderFailure = {
   category: 'provider_unavailable',
   code: 'PROVIDER_UNAVAILABLE',
   retryable: true,
+};
+const malformedPayloadFailure: SafeProviderFailure = {
+  category: 'malformed_payload',
+  code: 'EVENT_PAYLOAD_INVALID',
+  retryable: false,
+};
+const unsupportedVersionFailure: SafeProviderFailure = {
+  category: 'unsupported_version',
+  code: 'EVENT_VERSION_UNSUPPORTED',
+  retryable: false,
 };
 
 export async function runEventWorkerOnce(input: {
@@ -108,7 +121,12 @@ export async function runEventWorkerOnce(input: {
     if (!result.ok) {
       input.log('event-worker.claim-invalid');
       if (result.lease) {
-        await failSafely(result.lease, nonRetryableConfigurationFailure);
+        await failSafely(
+          result.lease,
+          result.reason === 'unsupported_version'
+            ? unsupportedVersionFailure
+            : malformedPayloadFailure,
+        );
       }
       continue;
     }
@@ -123,7 +141,7 @@ export async function runEventWorkerOnce(input: {
     );
     if (!handler) {
       input.log('event-worker.handler-unsupported');
-      await failSafely(job, nonRetryableConfigurationFailure);
+      await failSafely(job, unsupportedVersionFailure);
       continue;
     }
     let leaseExpiresAt = Date.parse(job.leaseExpiresAt);
@@ -135,6 +153,14 @@ export async function runEventWorkerOnce(input: {
     };
     try {
       const handled = await handler(job, { checkpoint });
+      if (handled.outcome === 'already-terminal') {
+        summary.succeeded += 1;
+        continue;
+      }
+      if (handled.outcome === 'lease-lost') {
+        summary.leaseLost += 1;
+        continue;
+      }
       const completed = await input.repository.succeed(
         job.jobId,
         job.workerId,

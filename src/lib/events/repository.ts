@@ -32,7 +32,11 @@ const claimedEventJobRowSchema = z
     max_attempts: z.number().int().min(1).max(32_767),
     lease_token: uuidSchema,
     lease_expires_at: z.string().datetime({ offset: true }),
-    effect_key: z.string().regex(/^mandoob:event-job:[0-9a-f-]{36}$/),
+    effect_key: z
+      .string()
+      .regex(
+        /^mandoob:event-job:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
     event_type: z
       .string()
       .min(3)
@@ -56,9 +60,6 @@ const claimedEventJobRowSchema = z
         path: ['attempt_number'],
         message: 'attempt exceeds max',
       });
-    }
-    if (row.effect_key !== `mandoob:event-job:${row.job_id}`) {
-      context.addIssue({ code: 'custom', path: ['effect_key'], message: 'effect key mismatch' });
     }
   });
 
@@ -88,7 +89,11 @@ export type ClaimedEventJob = {
 
 export type ClaimedEventJobResult =
   | { ok: true; job: ClaimedEventJob }
-  | { ok: false; lease: { jobId: string; workerId: string; leaseToken: string } | null };
+  | {
+      ok: false;
+      lease: { jobId: string; workerId: string; leaseToken: string } | null;
+      reason: 'malformed_payload' | 'unsupported_version';
+    };
 
 function decodeClaimedEventJob(
   input: unknown,
@@ -100,6 +105,7 @@ function decodeClaimedEventJob(
     const lease = claimedLeaseSchema.safeParse(input);
     return {
       ok: false,
+      reason: 'malformed_payload',
       lease: lease.success
         ? { jobId: lease.data.job_id, workerId, leaseToken: lease.data.lease_token }
         : null,
@@ -147,9 +153,13 @@ function decodeClaimedEventJob(
         payload: envelope.payload,
       },
     };
-  } catch {
+  } catch (error) {
     return {
       ok: false,
+      reason:
+        (error as Error | null)?.message === 'EVENT_VERSION_UNSUPPORTED'
+          ? 'unsupported_version'
+          : 'malformed_payload',
       lease: { jobId: row.job_id, workerId, leaseToken: row.lease_token },
     };
   }

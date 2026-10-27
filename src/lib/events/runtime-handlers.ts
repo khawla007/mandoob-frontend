@@ -1,7 +1,17 @@
 import type { EventSchemaRegistry } from './contracts';
+import {
+  runEmployeeImportWorkerOnce,
+  type ImportClaim,
+  type ImportWorkerDeps,
+} from '@/lib/employees/import-worker';
+import {
+  runMeetingAiWorkerOnce,
+  type MeetingAiClaim,
+  type MeetingAiWorkerDeps,
+} from '@/lib/meetings/ai-worker';
 import { handlerKey, type EventJobHandler } from './worker';
 
-type RegistrationStatus = 'local' | 'adapter' | 'unsupported' | 'provider-disabled';
+type RegistrationStatus = 'local' | 'adapter' | 'pending' | 'provider-disabled';
 type RuntimeRegistration = {
   consumerName: string;
   eventType: string;
@@ -24,7 +34,7 @@ export const ENABLED_RUNTIME_REGISTRATIONS: readonly RuntimeRegistration[] = [
     'company.onboarding.activated',
     'company.settings.updated',
   ]),
-  ...registrations('internal.lifecycle.projection', 'unsupported', [
+  ...registrations('internal.lifecycle.projection', 'pending', [
     'pro.credential.submitted',
     'pro.credential.decided',
     'pro.credential.evidence_changed',
@@ -38,7 +48,7 @@ export const ENABLED_RUNTIME_REGISTRATIONS: readonly RuntimeRegistration[] = [
     'registration.visa_changed',
     'registration.completed',
   ]),
-  ...registrations('internal.p305.projection', 'unsupported', [
+  ...registrations('internal.p305.projection', 'pending', [
     'contact.accepted',
     'application.draft_submitted',
     'application.accepted',
@@ -70,6 +80,18 @@ export const scheduledRuntimeConsumers = [
   'internal.renewal_reminder.delivery',
   'internal.meeting.invitation',
 ] as const;
+
+export const excludedRuntimeConsumers = [
+  'internal.lifecycle.projection',
+  'internal.p305.projection',
+  'p311.meeting_ai.processor',
+] as const;
+
+export const mixedConsumerBacklogDisposition = {
+  consumerName: 'internal.lifecycle.projection',
+  status: 'pending',
+  reason: 'MIXED_SCOPED_AND_UNSCOPED_REGISTRATIONS',
+} as const;
 
 export const RUNTIME_EVENT_SCHEMAS = {
   'employee.record.changed': {
@@ -139,8 +161,9 @@ function localHandler(
     if (!job.tenantId || !job.companyId) throw new Error('RUNTIME_REFERENCE_SCOPE_REQUIRED');
     await context.checkpoint();
     const reminder = job.consumerName === 'internal.renewal_reminder.delivery';
+    const operationId = job.effectKey.slice('mandoob:event-job:'.length);
     return writeProjection({
-      operationId: job.jobId,
+      operationId,
       tenantId: job.tenantId,
       companyId: job.companyId,
       eventId: job.eventId,
@@ -156,6 +179,77 @@ function localHandler(
       dueAt: null,
       safeMetadata: job.payload,
     });
+  };
+}
+
+function importClaim(job: Parameters<EventJobHandler>[0]): ImportClaim {
+  const importJobId = job.payload.resource_id;
+  if (typeof importJobId !== 'string') throw new Error('IMPORT_REFERENCE_INVALID');
+  return {
+    eventJobId: job.jobId,
+    leaseToken: job.leaseToken,
+    importJobId,
+    attempt: job.attemptNumber,
+    maxAttempts: job.maxAttempts,
+  };
+}
+
+export function createEmployeeImportEventHandler(
+  dependencies: (job: Parameters<EventJobHandler>[0]) => Promise<ImportWorkerDeps>,
+): EventJobHandler {
+  return async (job, context) => {
+    const claim = importClaim(job);
+    const deps = await dependencies(job);
+    const summary = await runEmployeeImportWorkerOnce({
+      ...deps,
+      claim: async () => [claim],
+      complete: async () => {},
+      fail: async () => {},
+      checkpoint: context.checkpoint,
+    });
+    if (summary.lost) return { outcome: 'lease-lost' };
+    if (summary.retried) throw new Error('EMPLOYEE_IMPORT_RETRYABLE');
+    if (summary.completed !== 1) throw new Error('EMPLOYEE_IMPORT_INCOMPLETE');
+    return {};
+  };
+}
+
+function meetingClaim(job: Parameters<EventJobHandler>[0]): MeetingAiClaim {
+  const meetingId = job.payload.resource_id;
+  if (typeof meetingId !== 'string') throw new Error('MEETING_REFERENCE_INVALID');
+  return {
+    eventJobId: job.jobId,
+    leaseToken: job.leaseToken,
+    meetingId,
+    attempt: job.attemptNumber,
+    maxAttempts: job.maxAttempts,
+  };
+}
+
+export function createMeetingAiEventHandler(
+  dependencies: (job: Parameters<EventJobHandler>[0]) => Promise<MeetingAiWorkerDeps>,
+): EventJobHandler {
+  return async (job, context) => {
+    const claim = meetingClaim(job);
+    const deps = await dependencies(job);
+    let effectReferenceHash: string | undefined;
+    const summary = await runMeetingAiWorkerOnce({
+      ...deps,
+      claim: async () => [claim],
+      complete: async (_claim, effectHash) => {
+        effectReferenceHash = effectHash;
+      },
+      fail: async () => {},
+      checkpoint: context.checkpoint,
+    });
+    if (summary.lost) return { outcome: 'lease-lost' };
+    if (summary.retried) throw new Error('MEETING_AI_RETRYABLE');
+    if (summary.completed === 1 || summary.cancelled === 1) {
+      return effectReferenceHash
+        ? { outcome: 'already-terminal', effectReferenceHash }
+        : { outcome: 'already-terminal' };
+    }
+    throw new Error('MEETING_AI_INCOMPLETE');
   };
 }
 

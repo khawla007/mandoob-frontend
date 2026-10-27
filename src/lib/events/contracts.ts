@@ -127,6 +127,8 @@ export function parseRegisteredDomainEvent(
 }
 
 const providerErrorCategorySchema = z.enum([
+  'malformed_payload',
+  'unsupported_version',
   'authentication',
   'configuration',
   'invalid_recipient',
@@ -142,6 +144,8 @@ const safeProviderFailureSchema = z
   .object({
     category: providerErrorCategorySchema,
     code: z.enum([
+      'EVENT_PAYLOAD_INVALID',
+      'EVENT_VERSION_UNSUPPORTED',
       'PROVIDER_AUTHENTICATION_FAILED',
       'PROVIDER_CONFIGURATION_INVALID',
       'PROVIDER_FAILURE',

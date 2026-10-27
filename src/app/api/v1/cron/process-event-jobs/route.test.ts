@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, test } from 'node:test';
-import { createProcessEventJobsHandler } from './route-handler';
+import { EVENT_RUNTIME_CADENCE_DISPOSITION, createProcessEventJobsHandler } from './route-handler';
 
 describe('event worker cron owner', () => {
   test('fails closed for missing, short, or incorrect secrets', async () => {
@@ -71,5 +71,13 @@ describe('event worker cron owner', () => {
       route,
       /processOutboundEmails|processOutboundSms|processOutboundWhatsApp|processMeetingAiJobs/u,
     );
+  });
+
+  test('records unavailable scheduler cadence as launch-blocking without enabling a schedule', () => {
+    assert.deepEqual(EVENT_RUNTIME_CADENCE_DISPOSITION, {
+      configured: false,
+      status: 'launch-blocking',
+      reason: 'DEPLOY_SCHEDULE_NOT_APPROVED',
+    });
   });
 });

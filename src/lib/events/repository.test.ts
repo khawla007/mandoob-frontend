@@ -259,6 +259,79 @@ describe('event repository scheduler, replay, and inbound contract', () => {
     }
   });
 
+  test('accepts a replay row whose stable root effect key differs from its current job id', async () => {
+    const replayJob = '99999999-9999-4999-8999-999999999999';
+    const stableRootJob = IDS.job;
+    const stub = createRpcStub({
+      claim_event_jobs: [
+        {
+          job_id: replayJob,
+          event_id: IDS.event,
+          consumer_name: 'notifications.reference',
+          attempt_number: 1,
+          max_attempts: 5,
+          lease_token: IDS.lease,
+          lease_expires_at: '2026-09-21T04:32:00.000Z',
+          effect_key: `mandoob:event-job:${stableRootJob}`,
+          event_type: 'documents.requested',
+          event_version: 1,
+          occurred_at: envelope.occurredAt,
+          tenant_id: IDS.tenant,
+          company_id: IDS.company,
+          actor_id: null,
+          correlation_id: IDS.correlation,
+          causation_id: null,
+          privacy_class: 'confidential',
+          payload: envelope.payload,
+        },
+      ],
+    });
+    const [result] = await createEventQueueRepository(stub.client, eventSchemas).claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+    });
+    assert.equal(result?.ok, true);
+    if (result?.ok) {
+      assert.equal(result.job.jobId, replayJob);
+      assert.equal(result.job.effectKey, `mandoob:event-job:${stableRootJob}`);
+    }
+  });
+
+  test('preserves unsupported-version and malformed-payload rejection reasons', async () => {
+    const base = {
+      job_id: IDS.job,
+      event_id: IDS.event,
+      consumer_name: 'notifications.reference',
+      attempt_number: 1,
+      max_attempts: 5,
+      lease_token: IDS.lease,
+      lease_expires_at: '2026-09-21T04:32:00.000Z',
+      effect_key: `mandoob:event-job:${IDS.job}`,
+      event_type: 'documents.requested',
+      occurred_at: envelope.occurredAt,
+      tenant_id: IDS.tenant,
+      company_id: IDS.company,
+      actor_id: null,
+      correlation_id: IDS.correlation,
+      causation_id: null,
+      privacy_class: 'confidential',
+    };
+    const stub = createRpcStub({
+      claim_event_jobs: [
+        { ...base, event_version: 2, payload: envelope.payload },
+        { ...base, event_version: 1, payload: { unexpected: 'reference-only' } },
+      ],
+    });
+    const results = await createEventQueueRepository(stub.client, eventSchemas).claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+    });
+    assert.deepEqual(
+      results.map((result) => (result.ok ? null : result.reason)),
+      ['unsupported_version', 'malformed_payload'],
+    );
+  });
+
   test('strictly rejects unknown claimed fields while retaining a valid failure fence', async () => {
     const stub = createRpcStub({
       claim_event_jobs: [
@@ -293,6 +366,7 @@ describe('event repository scheduler, replay, and inbound contract', () => {
     assert.deepEqual(result, {
       ok: false,
       lease: { jobId: IDS.job, workerId: IDS.worker, leaseToken: IDS.lease },
+      reason: 'malformed_payload',
     });
   });
 });

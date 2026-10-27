@@ -2,6 +2,12 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 
 type WorkerSummary = { claimed: number; succeeded: number; failed: number; leaseLost: number };
 
+export const EVENT_RUNTIME_CADENCE_DISPOSITION = {
+  configured: false,
+  status: 'launch-blocking',
+  reason: 'DEPLOY_SCHEDULE_NOT_APPROVED',
+} as const;
+
 function secretMatches(configured: string | undefined, supplied: string | null): boolean {
   if (!configured || configured.length < 32 || !supplied) return false;
   const expected = createHash('sha256').update(configured).digest();

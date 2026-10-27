@@ -92,8 +92,20 @@ describe('bounded event worker', () => {
       payload: { private: 'protected payload' },
     });
     const state = harness([
-      { ok: false, lease: { jobId: ids.job, workerId: ids.worker, leaseToken: ids.lease } },
-      { ok: true, job: second },
+      {
+        ok: false,
+        lease: { jobId: ids.job, workerId: ids.worker, leaseToken: ids.lease },
+        reason: 'malformed_payload',
+      },
+      {
+        ok: false,
+        lease: {
+          jobId: second.jobId,
+          workerId: second.workerId,
+          leaseToken: second.leaseToken,
+        },
+        reason: 'unsupported_version',
+      },
     ]);
     await runEventWorkerOnce({
       repository: state.repository,
@@ -108,7 +120,37 @@ describe('bounded event worker', () => {
     });
 
     assert.equal(state.calls.filter(([name]) => name === 'fail').length, 2);
+    const failures = state.calls.filter(([name]) => name === 'fail').map((call) => call[4]);
+    assert.deepEqual(failures, [
+      { category: 'malformed_payload', code: 'EVENT_PAYLOAD_INVALID', retryable: false },
+      { category: 'unsupported_version', code: 'EVENT_VERSION_UNSUPPORTED', retryable: false },
+    ]);
     assert.equal(JSON.stringify(state.calls).includes('protected payload'), false);
+  });
+
+  test('does not acknowledge an already-terminal specialized handler result twice', async () => {
+    const state = harness([{ ok: true, job: job() }]);
+    const result = await runEventWorkerOnce({
+      repository: state.repository,
+      handlers: new Map([
+        [
+          handlerKey('internal.test.projection', 'test.changed', 1),
+          async () => ({ outcome: 'already-terminal' as const }),
+        ],
+      ]),
+      clock: () => new Date('2026-10-27T10:00:00.000Z'),
+      workerId: ids.worker,
+      workerName: 'p3-10-worker',
+      consumerName: 'internal.test.projection',
+      schedulerOwner: 'netlify.event-runtime',
+      releaseVersion: 'p3.10-test',
+      log: () => {},
+    });
+    assert.equal(
+      state.calls.some(([name]) => name === 'succeed' || name === 'fail'),
+      false,
+    );
+    assert.deepEqual(result, { claimed: 1, succeeded: 1, failed: 0, leaseLost: 0 });
   });
 
   test('extends a live lease at handler checkpoints and honors a lost completion fence', async () => {

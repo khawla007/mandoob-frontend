@@ -1,16 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { env } from '@/lib/env';
 import { createSupabaseImportWorkerDeps } from '@/lib/employees/import-worker-supabase';
-import { processEmployeeImportClaim } from '@/lib/employees/import-worker';
 import { createEventQueueRepository } from '@/lib/events/repository';
 import {
   RUNTIME_EVENT_SCHEMAS,
+  createEmployeeImportEventHandler,
+  createMeetingAiEventHandler,
   createRuntimeHandlerRegistry,
   scheduledRuntimeConsumers,
 } from '@/lib/events/runtime-handlers';
 import { runEventWorkerOnce } from '@/lib/events/worker';
 import { createSupabaseMeetingAiWorkerDeps } from '@/lib/meetings/ai-worker-supabase';
-import { runMeetingAiWorkerOnce } from '@/lib/meetings/ai-worker';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { createProcessEventJobsHandler } from './route-handler';
 
@@ -49,56 +49,17 @@ async function runConsumer(consumerName: string, options: { owner: string; batch
         ? { effectReferenceHash: createHash('sha256').update(projectionId).digest('hex') }
         : {};
     },
-    async employeeImport(job, context) {
-      await context.checkpoint();
+    employeeImport: createEmployeeImportEventHandler(async () => {
       importDepsPromise ??= createSupabaseImportWorkerDeps({
         workerId,
         batchSize: options.batchSize,
       });
-      const importDeps = await importDepsPromise;
-      const importJobId = job.payload.resource_id;
-      if (typeof importJobId !== 'string') throw new Error('IMPORT_REFERENCE_INVALID');
-      await processEmployeeImportClaim(
-        { ...importDeps, complete: async () => {}, checkpoint: context.checkpoint },
-        {
-          eventJobId: job.jobId,
-          leaseToken: job.leaseToken,
-          importJobId,
-          attempt: job.attemptNumber,
-          maxAttempts: job.maxAttempts,
-        },
-      );
-      return {};
-    },
-    async meetingAi(job, context) {
-      // This is a real adapter over P3.11, but provider-off scheduling excludes its consumer.
-      const meetingId = job.payload.resource_id;
-      if (typeof meetingId !== 'string') throw new Error('MEETING_REFERENCE_INVALID');
-      const meetingDeps = createSupabaseMeetingAiWorkerDeps({ workerId, batchSize: 1 });
-      let effectReferenceHash: string | undefined;
-      const result = await runMeetingAiWorkerOnce({
-        ...meetingDeps,
-        claim: async () => [
-          {
-            eventJobId: job.jobId,
-            leaseToken: job.leaseToken,
-            meetingId,
-            attempt: job.attemptNumber,
-            maxAttempts: job.maxAttempts,
-          },
-        ],
-        complete: async (_claim, effectHash) => {
-          effectReferenceHash = effectHash;
-        },
-        cancel: async () => {},
-        checkpoint: context.checkpoint,
-        fail: async () => {
-          throw new Error('MEETING_AI_HANDLER_FAILED');
-        },
-      });
-      if (result.retried || result.lost) throw new Error('MEETING_AI_HANDLER_FAILED');
-      return effectReferenceHash ? { effectReferenceHash } : {};
-    },
+      return importDepsPromise;
+    }),
+    // Real P3.11 adapter remains registry-only; its consumer is not scheduled.
+    meetingAi: createMeetingAiEventHandler(async () =>
+      createSupabaseMeetingAiWorkerDeps({ workerId, batchSize: 1 }),
+    ),
   });
   return runEventWorkerOnce({
     repository,

@@ -165,6 +165,30 @@ describe('queue retry and provider safety', () => {
       { category: 'unknown', code: 'PROVIDER_FAILURE', retryable: false },
     );
   });
+
+  test('allowlists sanitized non-retryable event decode failures', () => {
+    assert.deepEqual(
+      toSafeProviderFailure({
+        category: 'malformed_payload',
+        code: 'EVENT_PAYLOAD_INVALID',
+        retryable: false,
+        payload: { secret: 'discarded' },
+      }),
+      { category: 'malformed_payload', code: 'EVENT_PAYLOAD_INVALID', retryable: false },
+    );
+    assert.deepEqual(
+      toSafeProviderFailure({
+        category: 'unsupported_version',
+        code: 'EVENT_VERSION_UNSUPPORTED',
+        retryable: false,
+      }),
+      {
+        category: 'unsupported_version',
+        code: 'EVENT_VERSION_UNSUPPORTED',
+        retryable: false,
+      },
+    );
+  });
 });
 
 describe('inbound destination and replay boundaries', () => {

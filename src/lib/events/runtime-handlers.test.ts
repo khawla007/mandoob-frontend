@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { describe, test } from 'node:test';
+import type { ImportWorkerDeps } from '@/lib/employees/import-worker';
+import type { MeetingAiWorkerDeps } from '@/lib/meetings/ai-worker';
 import type { ClaimedEventJob } from './repository';
 import {
   ENABLED_RUNTIME_REGISTRATIONS,
+  createEmployeeImportEventHandler,
+  createMeetingAiEventHandler,
   createRuntimeHandlerRegistry,
+  excludedRuntimeConsumers,
+  mixedConsumerBacklogDisposition,
   scheduledRuntimeConsumers,
 } from './runtime-handlers';
 import { handlerKey } from './worker';
@@ -44,19 +51,60 @@ function claimed(eventType: string, consumerName: string): ClaimedEventJob {
 
 describe('runtime handler registry', () => {
   test('explicitly dispositions all 30 enabled registrations from migrations 0105-0111', () => {
-    assert.equal(ENABLED_RUNTIME_REGISTRATIONS.length, 30);
-    assert.equal(
-      new Set(
-        ENABLED_RUNTIME_REGISTRATIONS.map((registration) =>
-          handlerKey(registration.consumerName, registration.eventType, registration.eventVersion),
-        ),
-      ).size,
-      30,
+    assert.deepEqual(
+      ENABLED_RUNTIME_REGISTRATIONS.map(
+        ({ consumerName, eventType, eventVersion, status }) =>
+          `${consumerName}|${eventType}|${eventVersion}|${status}`,
+      ),
+      [
+        'internal.lifecycle.projection|company.onboarding.section_saved|1|local',
+        'internal.lifecycle.projection|company.onboarding.submitted|1|local',
+        'internal.lifecycle.projection|company.onboarding.activated|1|local',
+        'internal.lifecycle.projection|company.settings.updated|1|local',
+        'internal.lifecycle.projection|pro.credential.submitted|1|pending',
+        'internal.lifecycle.projection|pro.credential.decided|1|pending',
+        'internal.lifecycle.projection|pro.credential.evidence_changed|1|pending',
+        'internal.lifecycle.projection|pro.commercial_terms.changed|1|pending',
+        'internal.lifecycle.projection|registration.created|1|local',
+        'internal.lifecycle.projection|registration.stage_changed|1|local',
+        'internal.lifecycle.projection|registration.stage_blocked|1|local',
+        'internal.lifecycle.projection|registration.evidence_linked|1|local',
+        'internal.lifecycle.projection|registration.visa_changed|1|local',
+        'internal.lifecycle.projection|registration.completed|1|local',
+        'internal.p305.projection|contact.accepted|1|pending',
+        'internal.p305.projection|application.draft_submitted|1|pending',
+        'internal.p305.projection|application.accepted|1|pending',
+        'internal.p305.projection|lead.assigned|1|pending',
+        'internal.p305.projection|lead.stage_changed|1|pending',
+        'internal.p305.projection|lead.note_added|1|pending',
+        'internal.employee_renewal.projection|employee.record.changed|1|local',
+        'internal.employee_renewal.projection|employee.import.finished|1|local',
+        'internal.employee_renewal.projection|renewal.lifecycle.changed|1|local',
+        'p308.employee_import.executor|employee.import.requested|1|adapter',
+        'internal.renewal_reminder.delivery|renewal.reminder.scheduled|1|local',
+        'internal.renewal_reminder.delivery|renewal.attention.daily|1|local',
+        'internal.meeting.invitation|meeting.booked|1|local',
+        'internal.meeting.invitation|meeting.rescheduled|1|local',
+        'internal.meeting.invitation|meeting.cancelled|1|local',
+        'p311.meeting_ai.processor|meeting.ai.requested|1|provider-disabled',
+      ],
     );
-    assert.equal(
-      ENABLED_RUNTIME_REGISTRATIONS.every((registration) => registration.status !== undefined),
-      true,
-    );
+    assert.deepEqual(scheduledRuntimeConsumers, [
+      'internal.employee_renewal.projection',
+      'p308.employee_import.executor',
+      'internal.renewal_reminder.delivery',
+      'internal.meeting.invitation',
+    ]);
+    assert.deepEqual(excludedRuntimeConsumers, [
+      'internal.lifecycle.projection',
+      'internal.p305.projection',
+      'p311.meeting_ai.processor',
+    ]);
+    assert.deepEqual(mixedConsumerBacklogDisposition, {
+      consumerName: 'internal.lifecycle.projection',
+      status: 'pending',
+      reason: 'MIXED_SCOPED_AND_UNSCOPED_REGISTRATIONS',
+    });
   });
 
   test('writes a local idempotent projection through the fenced 0114 boundary', async () => {
@@ -92,6 +140,109 @@ describe('runtime handler registry', () => {
       dueAt: null,
       safeMetadata: job.payload,
     });
+  });
+
+  test('uses the stable root effect UUID as projection operation identity on replay', async () => {
+    const writes: Array<{ operationId: string; jobId: string; leaseToken: string }> = [];
+    const registry = createRuntimeHandlerRegistry({
+      writeProjection: async (input) => (
+        writes.push({
+          operationId: input.operationId,
+          jobId: input.jobId,
+          leaseToken: input.leaseToken,
+        }),
+        {}
+      ),
+      employeeImport: async () => ({}),
+      meetingAi: async () => ({}),
+    });
+    const replayJob = claimed('employee.record.changed', 'internal.employee_renewal.projection');
+    replayJob.jobId = '88888888-8888-4888-8888-888888888888';
+    replayJob.leaseToken = '99999999-9999-4999-8999-999999999999';
+    const handler = registry.handlers.get(
+      handlerKey(replayJob.consumerName, replayJob.eventType, 1),
+    );
+    assert.ok(handler);
+    await handler(replayJob, { checkpoint: async () => {} });
+    assert.deepEqual(writes[0], {
+      operationId: ids.job,
+      jobId: replayJob.jobId,
+      leaseToken: replayJob.leaseToken,
+    });
+  });
+
+  test('P3.08 adapter preserves reconcile and terminal versus retry outcomes', async () => {
+    const csv = new TextEncoder().encode('name,passport_no\nPerson One,P0000001\n');
+    const scenarios = [
+      { failure: { code: 'VALIDATION_FAILED' }, attempt: 1, terminal: 'IMPORT_BATCH_REJECTED' },
+      { failure: new Error('network'), attempt: 5, terminal: 'IMPORT_ATTEMPTS_EXHAUSTED' },
+    ] as const;
+    for (const scenario of scenarios) {
+      const calls: string[] = [];
+      const deps = importDeps(calls, csv, scenario.failure);
+      const handler = createEmployeeImportEventHandler(async () => deps);
+      const result = await handler(
+        {
+          ...claimed('employee.import.requested', 'p308.employee_import.executor'),
+          attemptNumber: scenario.attempt,
+        },
+        { checkpoint: async () => {} },
+      );
+      assert.deepEqual(result, {});
+      assert.deepEqual(
+        calls.filter((call) => call.startsWith('finalize:')),
+        [`finalize:${scenario.terminal}`],
+      );
+      assert.equal(calls.includes('reconcile'), true);
+      assert.equal(calls.includes('inner-complete') || calls.includes('inner-fail'), false);
+    }
+
+    const retryCalls: string[] = [];
+    const retryHandler = createEmployeeImportEventHandler(async () =>
+      importDeps(retryCalls, csv, new Error('network')),
+    );
+    await assert.rejects(
+      retryHandler(claimed('employee.import.requested', 'p308.employee_import.executor'), {
+        checkpoint: async () => {},
+      }),
+      /EMPLOYEE_IMPORT_RETRYABLE/,
+    );
+    assert.equal(retryCalls.includes('reconcile'), true);
+    assert.equal(retryCalls.includes('inner-fail'), false);
+  });
+
+  test('P3.11 adapter preserves cancellation/completion and surfaces one outer retry', async () => {
+    const cancelled: string[] = [];
+    const cancelHandler = createMeetingAiEventHandler(async () => meetingDeps(cancelled, false));
+    assert.deepEqual(
+      await cancelHandler(claimed('meeting.ai.requested', 'p311.meeting_ai.processor'), {
+        checkpoint: async () => {},
+      }),
+      { outcome: 'already-terminal' },
+    );
+    assert.deepEqual(cancelled, ['cancel']);
+
+    const completed: string[] = [];
+    const completeHandler = createMeetingAiEventHandler(async () => meetingDeps(completed, true));
+    assert.deepEqual(
+      await completeHandler(claimed('meeting.ai.requested', 'p311.meeting_ai.processor'), {
+        checkpoint: async () => {},
+      }),
+      { outcome: 'already-terminal', effectReferenceHash: 'a'.repeat(64) },
+    );
+    assert.deepEqual(completed, ['persist']);
+
+    const retried: string[] = [];
+    const retryHandler = createMeetingAiEventHandler(async () =>
+      meetingDeps(retried, true, new Error('provider unavailable')),
+    );
+    await assert.rejects(
+      retryHandler(claimed('meeting.ai.requested', 'p311.meeting_ai.processor'), {
+        checkpoint: async () => {},
+      }),
+      /MEETING_AI_RETRYABLE/,
+    );
+    assert.equal(retried.includes('inner-fail'), false);
   });
 
   test('adapts employee import and meeting AI but schedules no provider effect', async () => {
@@ -142,3 +293,69 @@ describe('runtime handler registry', () => {
     );
   });
 });
+
+function importDeps(calls: string[], csv: Uint8Array, batchFailure: unknown): ImportWorkerDeps {
+  return {
+    workerId: ids.worker,
+    claim: async () => [],
+    reconcile: async () => (calls.push('reconcile'), 0),
+    readExecution: async () => ({
+      status: 'importing',
+      tenantId: ids.tenant,
+      companyId: ids.company,
+      storagePath: 'opaque/path',
+      artifactSha256: createHash('sha256').update(csv).digest('hex'),
+      totalRows: 1,
+      nextRow: 0,
+      nextBatch: 0,
+      cancelRequested: false,
+    }),
+    downloadArtifact: async () => csv,
+    decryptArtifact: (value) => value,
+    recordAccess: async () => {},
+    sealEmployee: () => ({}),
+    applyBatch: async () => {
+      throw batchFailure;
+    },
+    finalize: async (_claim, failureCode) => (
+      calls.push(`finalize:${failureCode ?? 'none'}`),
+      { state: 'failed' }
+    ),
+    complete: async () => {
+      calls.push('inner-complete');
+    },
+    fail: async () => {
+      calls.push('inner-fail');
+    },
+    log: () => {},
+  };
+}
+
+function meetingDeps(
+  calls: string[],
+  consent: boolean,
+  processFailure?: Error,
+): MeetingAiWorkerDeps {
+  return {
+    workerId: ids.worker,
+    claim: async () => [],
+    hasConsent: async () => consent,
+    process: async () => {
+      if (processFailure) throw processFailure;
+      return { transcriptText: 'safe', effectHash: 'a'.repeat(64) };
+    },
+    persist: async () => {
+      calls.push('persist');
+    },
+    complete: async () => {
+      calls.push('inner-complete');
+    },
+    fail: async () => {
+      calls.push('inner-fail');
+    },
+    cancel: async () => {
+      calls.push('cancel');
+    },
+    log: () => {},
+  };
+}
