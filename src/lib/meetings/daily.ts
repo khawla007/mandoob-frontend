@@ -16,6 +16,8 @@ export type DailyRecording = {
 };
 
 export type DailyWebhookEvent = {
+  id: string;
+  timestamp: string;
   type: string;
   payload: Record<string, unknown>;
 };
@@ -81,7 +83,10 @@ export async function createDailyRoom(input: CreateDailyRoomInput): Promise<Dail
   return { name: data.name, url: data.url };
 }
 
-export async function verifyDailyWebhook(request: Request): Promise<DailyWebhookEvent | null> {
+export async function verifyDailyWebhook(
+  request: Request,
+  options: { now?: Date; toleranceMs?: number } = {},
+): Promise<DailyWebhookEvent | null> {
   const secret = process.env.DAILY_WEBHOOK_SECRET?.trim();
   if (!secret) return null;
 
@@ -103,12 +108,19 @@ export async function verifyDailyWebhook(request: Request): Promise<DailyWebhook
   const parsed = JSON.parse(body) as DailyWebhookEvent;
   if (
     !parsed ||
+    typeof parsed.id !== 'string' ||
+    !parsed.id.trim() ||
+    typeof parsed.timestamp !== 'string' ||
     typeof parsed.type !== 'string' ||
     typeof parsed.payload !== 'object' ||
     !parsed.payload
   ) {
     return null;
   }
+  const occurredAt = new Date(parsed.timestamp).getTime();
+  const now = (options.now ?? new Date()).getTime();
+  const tolerance = options.toleranceMs ?? 5 * 60_000;
+  if (!Number.isFinite(occurredAt) || Math.abs(now - occurredAt) > tolerance) return null;
   return parsed;
 }
 

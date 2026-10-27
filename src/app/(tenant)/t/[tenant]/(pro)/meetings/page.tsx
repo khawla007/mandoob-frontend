@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { randomUUID } from 'node:crypto';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import {
@@ -87,20 +88,23 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
     ]),
   );
   const cancellation = Object.fromEntries(
-    upcoming.map((meeting) => [
-      meeting.id,
-      <form
-        key={meeting.id}
-        action={async () => {
-          'use server';
-          await cancelMeetingAction(slug, meeting.id);
-        }}
-      >
-        <Button type="submit" size="sm" variant="ghost">
-          {t('cancel')}
-        </Button>
-      </form>,
-    ]),
+    upcoming.map((meeting) => {
+      const operationId = randomUUID();
+      return [
+        meeting.id,
+        <form
+          key={meeting.id}
+          action={async () => {
+            'use server';
+            await cancelMeetingAction(slug, meeting.id, meeting.version, operationId);
+          }}
+        >
+          <Button type="submit" size="sm" variant="ghost">
+            {t('cancel')}
+          </Button>
+        </form>,
+      ];
+    }),
   );
 
   return (

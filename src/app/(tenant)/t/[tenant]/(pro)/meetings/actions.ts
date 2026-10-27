@@ -4,9 +4,11 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { ApiError } from '@/lib/errors';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { cancelCompanyMeeting, createMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
+import { createMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { retryMeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
+import { createMeetingCommands } from '@/lib/meetings/commands';
+import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 export type MeetingActionResult = { ok: true } | { ok: false; error: string; code: string };
 
@@ -64,10 +66,17 @@ export async function createMeetingSlotAction(
 export async function cancelMeetingAction(
   slug: string,
   meetingId: string,
+  expectedVersion: number,
+  operationId: string,
 ): Promise<MeetingActionResult> {
   try {
-    const { actor, companyId } = await resolveActor(slug);
-    await cancelCompanyMeeting(meetingId, companyId, actor);
+    const { actor } = await resolveActor(slug);
+    await createMeetingCommands(createSupabaseServiceRoleClient()).cancel({
+      actorId: actor.id,
+      operationId,
+      meetingId,
+      expectedVersion,
+    });
     revalidatePath(`/t/${slug}/meetings`);
     return { ok: true };
   } catch (error) {

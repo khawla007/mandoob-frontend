@@ -6,7 +6,10 @@ import { ApiError } from '@/lib/errors';
 import { requireRole } from '@/lib/auth/require-role';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readSelfCustomer } from '@/lib/data/account-self';
-import { bookMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
+import type { MeetingActor } from '@/lib/data/meetings';
+import { createMeetingCommands } from '@/lib/meetings/commands';
+import { createDailyRoom } from '@/lib/meetings/daily';
+import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 
 export type CustomerMeetingActionResult = { ok: true } | { ok: false; error: string; code: string };
@@ -40,19 +43,58 @@ function toResult(error: unknown, fallback: string): CustomerMeetingActionResult
 export async function bookMeetingSlotAction(
   slug: string,
   slotId: string,
+  expectedVersion: number,
+  operationId: string,
 ): Promise<CustomerMeetingActionResult> {
   try {
     const { tenantId, companyId, actor } = await resolveCustomerActor(slug);
-    await bookMeetingSlot(
+    if (!companyId) throw new ApiError('FORBIDDEN', 'Company is not available', 403);
+    const admin = createSupabaseServiceRoleClient();
+    const receipt = await createMeetingCommands(admin).book({
+      actorId: actor.id,
+      operationId,
+      tenantId,
+      companyId,
       slotId,
-      {
-        tenantId,
-        customerProfileId: actor.id,
-        companyId,
-        title: 'Consultation',
-      },
-      actor,
-    );
+      expectedVersion,
+      title: 'Consultation',
+    });
+    if (receipt.roomState !== 'ready') {
+      const { data: meeting, error: meetingError } = await admin
+        .from('meetings')
+        .select('scheduled_at, duration_minutes')
+        .eq('id', receipt.meetingId)
+        .eq('tenant_id', tenantId)
+        .eq('company_id', companyId)
+        .single();
+      if (meetingError || !meeting) {
+        throw new ApiError('MEETING_UNAVAILABLE', 'Meeting is not available.', 404);
+      }
+      try {
+        const room = await createDailyRoom({
+          meetingId: receipt.meetingId,
+          startsAt: meeting.scheduled_at,
+          durationMinutes: meeting.duration_minutes,
+        });
+        const { error } = await admin
+          .from('meetings')
+          .update({
+            provider_room_name: room.name,
+            meeting_url: room.url,
+            room_state: 'ready',
+          })
+          .eq('id', receipt.meetingId)
+          .eq('version', receipt.version);
+        if (error) throw error;
+      } catch (error) {
+        await admin
+          .from('meetings')
+          .update({ room_state: 'compensation_pending' })
+          .eq('id', receipt.meetingId)
+          .eq('version', receipt.version);
+        throw error;
+      }
+    }
     revalidatePath(`/t/${slug}/portal/meetings`);
     return { ok: true };
   } catch (error) {

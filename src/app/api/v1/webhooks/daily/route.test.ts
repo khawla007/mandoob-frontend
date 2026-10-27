@@ -7,9 +7,11 @@ test('Daily recording webhook carries tenant and company ownership into attachme
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'placeholder-service-key-000000000';
   process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'example.com';
   const { handleDailyWebhook } = await import('./route-handler');
-  const attachments: Array<{ meetingId: string; storagePath: string }> = [];
+  const ingestions: Array<{ meetingId: string; storagePath: string; recordingId: string }> = [];
   const response = await handleDailyWebhook(new Request('https://mandoob.test/webhook'), {
     verify: async () => ({
+      id: 'daily-event-1',
+      timestamp: '2026-10-27T06:00:00.000Z',
       type: 'recording.ready',
       payload: { room_name: 'room-1', recording_id: 'recording-1' },
     }),
@@ -29,18 +31,39 @@ test('Daily recording webhook carries tenant and company ownership into attachme
       recordingStoragePath: null,
       recordingUrl: null,
       recordingReadyAt: null,
+      version: 1,
     }),
-    attachRecording: async (meetingId, recording) => {
-      attachments.push({ meetingId, storagePath: recording.storagePath });
+    reserve: async () => true,
+    ingestRecording: async (meeting, recordingId, storagePath) => {
+      ingestions.push({ meetingId: meeting.id, storagePath, recordingId });
     },
     ensureSummary: async () => undefined,
   });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(attachments, [
+  assert.deepEqual(ingestions, [
     {
       meetingId: 'meeting-1',
       storagePath: 'tenant-1/company-1/meetings/meeting-1/recording-1.mp4',
+      recordingId: 'recording-1',
     },
   ]);
+});
+
+test('Daily webhook replay and unknown rooms are non-disclosing noops', async () => {
+  const { handleDailyWebhook } = await import('./route-handler');
+  const event = {
+    id: 'daily-event-2',
+    timestamp: '2026-10-27T06:00:00.000Z',
+    type: 'recording.ready',
+    payload: { room_name: 'unknown', recording_id: 'recording-2' },
+  };
+  const replay = await handleDailyWebhook(new Request('https://mandoob.test/webhook'), {
+    verify: async () => event,
+    reserve: async () => false,
+    findMeeting: async () => null,
+    ingestRecording: async () => assert.fail('replay must not ingest'),
+    ensureSummary: async () => undefined,
+  });
+  assert.equal(replay.status, 200);
 });

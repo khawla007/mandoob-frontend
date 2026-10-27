@@ -24,6 +24,7 @@ export type MeetingSlot = {
   endsAt: string;
   timezone: string;
   status: MeetingSlotStatus;
+  version: number;
 };
 
 export type Meeting = {
@@ -42,6 +43,7 @@ export type Meeting = {
   recordingStoragePath: string | null;
   recordingUrl: string | null;
   recordingReadyAt: string | null;
+  version: number;
 };
 
 export type MeetingDeps = {
@@ -57,6 +59,7 @@ type MeetingSlotRow = {
   ends_at: string;
   timezone: string;
   status: MeetingSlotStatus;
+  version?: number;
 };
 
 type MeetingRow = {
@@ -75,6 +78,7 @@ type MeetingRow = {
   recording_storage_path?: string | null;
   recording_url?: string | null;
   recording_ready_at?: string | null;
+  version?: number;
 };
 
 function client(deps: MeetingDeps = {}) {
@@ -97,6 +101,7 @@ function toSlot(row: MeetingSlotRow): MeetingSlot {
     endsAt: row.ends_at,
     timezone: row.timezone,
     status: row.status,
+    version: row.version ?? 1,
   };
 }
 
@@ -117,6 +122,7 @@ function toMeeting(row: MeetingRow): Meeting {
     recordingStoragePath: row.recording_storage_path ?? null,
     recordingUrl: row.recording_url ?? null,
     recordingReadyAt: row.recording_ready_at ?? null,
+    version: row.version ?? 1,
   };
 }
 
@@ -162,7 +168,7 @@ export async function createMeetingSlot(
       timezone: input.timezone ?? 'Asia/Dubai',
       status: 'open',
     })
-    .select('id, tenant_id, created_by, starts_at, ends_at, timezone, status')
+    .select('id, tenant_id, created_by, starts_at, ends_at, timezone, status, version')
     .single();
   if (error || !data)
     throw new ApiError('INTERNAL', error?.message ?? 'Could not create meeting slot', 500);
@@ -181,7 +187,7 @@ export async function listOpenMeetingSlots(
 ): Promise<MeetingSlot[]> {
   const { data, error } = await client(deps)
     .from('meeting_slots')
-    .select('id, tenant_id, created_by, starts_at, ends_at, timezone, status')
+    .select('id, tenant_id, created_by, starts_at, ends_at, timezone, status, version')
     .eq('tenant_id', tenantId)
     .eq('status', 'open')
     .gte('starts_at', from)
@@ -207,7 +213,7 @@ export async function bookMeetingSlot(
   const admin = client(deps);
   const { data: slot, error: slotError } = await admin
     .from('meeting_slots')
-    .select('id, tenant_id, created_by, starts_at, ends_at, timezone, status')
+    .select('id, tenant_id, created_by, starts_at, ends_at, timezone, status, version')
     .eq('id', slotId)
     .maybeSingle();
   if (slotError) throw new ApiError('INTERNAL', slotError.message, 500);
@@ -356,6 +362,53 @@ export async function listMeetingsForTenant(
     .select(MEETING_COLUMNS)
     .eq('tenant_id', tenantId)
     .order('scheduled_at', { ascending: false })
+    .limit(200);
+  if (error) throw new ApiError('INTERNAL', error.message, 500);
+  return ((data as MeetingRow[] | null) ?? []).map(toMeeting);
+}
+
+export async function listMeetingsForEmployee(
+  profileId: string,
+  tenantId: string,
+  companyId: string,
+  deps: MeetingDeps = {},
+): Promise<Meeting[]> {
+  const admin = client(deps);
+  const { data: participants, error: participantError } = await admin
+    .from('meeting_participants')
+    .select('meeting_id')
+    .eq('profile_id', profileId)
+    .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
+    .eq('active', true)
+    .limit(500);
+  if (participantError) throw new ApiError('INTERNAL', participantError.message, 500);
+  const meetingIds = (participants ?? []).map((row) => row.meeting_id as string);
+  if (!meetingIds.length) return [];
+  const { data, error } = await admin
+    .from('meetings')
+    .select(MEETING_COLUMNS)
+    .eq('tenant_id', tenantId)
+    .eq('company_id', companyId)
+    .in('id', meetingIds)
+    .order('scheduled_at', { ascending: true })
+    .order('id', { ascending: true });
+  if (error) throw new ApiError('INTERNAL', error.message, 500);
+  return ((data as MeetingRow[] | null) ?? []).map(toMeeting);
+}
+
+export async function listMeetingsForPlatform(
+  actor: MeetingActor,
+  deps: MeetingDeps = {},
+): Promise<Meeting[]> {
+  if (actor.role !== 'admin' && actor.role !== 'super_admin') {
+    throw new ApiError('FORBIDDEN', 'Meeting list is not accessible', 403);
+  }
+  const { data, error } = await client(deps)
+    .from('meetings')
+    .select(MEETING_COLUMNS)
+    .order('scheduled_at', { ascending: false })
+    .order('id', { ascending: true })
     .limit(200);
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   return ((data as MeetingRow[] | null) ?? []).map(toMeeting);
@@ -525,7 +578,7 @@ export async function getCustomerCompanyMeetingRecordingSignedUrl(
 }
 
 const MEETING_COLUMNS =
-  'id, tenant_id, lead_id, company_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at';
+  'id, tenant_id, lead_id, company_id, customer_profile_id, title, status, scheduled_at, duration_minutes, timezone, provider_room_name, meeting_url, recording_storage_path, recording_url, recording_ready_at, version';
 
 async function readMeeting(admin: SupabaseClient, meetingId: string): Promise<MeetingRow> {
   const { data, error } = await admin

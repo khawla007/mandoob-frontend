@@ -1,8 +1,9 @@
 import { getLocale, getTranslations } from 'next-intl/server';
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
+import { MeetingCalendarPanel } from '@/components/operations/MeetingCalendarPanel';
 import { EmployeeRenewalCalendar } from '@/components/employee/EmployeeP308Sections';
 import { authorizeEmployeePortalRead } from '@/lib/data/employee-portal-workspace';
 import { loadEmployeeRenewalCalendar } from '@/lib/employees/self-service';
+import { listMeetingsForEmployee } from '@/lib/data/meetings';
 import { dubaiBusinessDate } from '@/lib/renewals/dubai-calendar';
 
 export const dynamic = 'force-dynamic';
@@ -29,9 +30,11 @@ export default async function EmployeeCalendarPage({
       ? rawMonth
       : dubaiBusinessDate().slice(0, 7);
   const baseHref = `/t/${encodeURIComponent(slug)}/employee/calendar`;
-  const [calendar, t, locale] = await Promise.all([
+  const [calendar, meetings, t, meetingT, locale] = await Promise.all([
     loadEmployeeRenewalCalendar(access, month),
+    listMeetingsForEmployee(access.session.id, access.tenant.id, access.employee.companyId),
     getTranslations('p308.employeeSelf'),
+    getTranslations('meetingOperations'),
     getLocale(),
   ]);
   return (
@@ -43,12 +46,16 @@ export default async function EmployeeCalendarPage({
         previousHref={`${baseHref}?month=${shiftMonth(month, -1)}`}
         nextHref={`${baseHref}?month=${shiftMonth(month, 1)}`}
       />
-      {/* Meetings and follow-ups belong to P3.11; they stay truthfully unavailable. */}
-      <OperationalUnavailableRoute
-        role="employee"
-        module="calendar"
-        baseHref={baseHref}
-        search={search}
+      <MeetingCalendarPanel
+        meetings={meetings}
+        locale={locale}
+        title={meetingT('calendarTitle')}
+        description={meetingT('employeeDescription')}
+        emptyLabel={meetingT('noCustomerMeetings')}
+        joinLabel={meetingT('join')}
+        recordingLabel={meetingT('recording')}
+        durationLabel={(minutes) => meetingT('duration', { minutes })}
+        statusLabel={(status) => meetingT(`statuses.${status}`)}
       />
     </div>
   );

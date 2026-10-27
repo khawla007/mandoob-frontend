@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { randomUUID } from 'node:crypto';
 
 import {
   OperationalMeetingList,
@@ -85,23 +86,26 @@ export default async function CustomerMeetingsPage({
         <CardContent>
           <ul className="grid gap-3 md:grid-cols-2">
             {openSlots.length ? (
-              openSlots.map((slot) => (
-                <li key={slot.id} className="rounded-lg border p-4">
-                  <p className="font-medium">{date.format(new Date(slot.startsAt))}</p>
-                  <p className="text-muted-foreground mt-1 text-sm">{slot.timezone}</p>
-                  <form
-                    className="mt-4"
-                    action={async () => {
-                      'use server';
-                      await bookMeetingSlotAction(slug, slot.id);
-                    }}
-                  >
-                    <Button type="submit" size="sm">
-                      {t('book')}
-                    </Button>
-                  </form>
-                </li>
-              ))
+              openSlots.map((slot) => {
+                const operationId = randomUUID();
+                return (
+                  <li key={slot.id} className="rounded-lg border p-4">
+                    <p className="font-medium">{date.format(new Date(slot.startsAt))}</p>
+                    <p className="text-muted-foreground mt-1 text-sm">{slot.timezone}</p>
+                    <form
+                      className="mt-4"
+                      action={async () => {
+                        'use server';
+                        await bookMeetingSlotAction(slug, slot.id, slot.version, operationId);
+                      }}
+                    >
+                      <Button type="submit" size="sm">
+                        {t('book')}
+                      </Button>
+                    </form>
+                  </li>
+                );
+              })
             ) : (
               <li className="text-muted-foreground text-sm">{t('noOpenSlots')}</li>
             )}
