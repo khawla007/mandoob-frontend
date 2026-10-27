@@ -694,8 +694,12 @@ set search_path = ''
 as $$
 declare
   v_id uuid;
+  v_job public.event_jobs%rowtype;
   v_existing public.operational_runtime_audit%rowtype;
   v_request_hash text;
+  v_normalized_state text;
+  v_normalized_priority text;
+  v_normalized_due_at timestamptz;
 begin
   if p_operation_id is null or p_worker_id is null or p_lease_token is null
     or p_projection_type not in ('notification', 'task', 'activity')
@@ -706,8 +710,28 @@ begin
     or not public.event_payload_is_safe(p_safe_metadata) then
     raise exception using errcode = '22023', message = 'RUNTIME_INVALID_PROJECTION';
   end if;
-  if not exists (
-    select 1
+  if p_projection_type = 'notification' then
+    v_normalized_state := coalesce(p_state, 'info');
+    v_normalized_priority := null;
+    v_normalized_due_at := null;
+    if v_normalized_state not in ('info', 'success', 'warning', 'critical') then
+      raise exception using errcode = '22023', message = 'RUNTIME_INVALID_PROJECTION';
+    end if;
+  elsif p_projection_type = 'task' then
+    v_normalized_state := coalesce(p_state, 'open');
+    v_normalized_priority := coalesce(p_priority, 'normal');
+    v_normalized_due_at := p_due_at;
+    if v_normalized_state not in ('open', 'in_progress', 'done', 'cancelled')
+      or v_normalized_priority not in ('low', 'normal', 'high', 'urgent') then
+      raise exception using errcode = '22023', message = 'RUNTIME_INVALID_PROJECTION';
+    end if;
+  else
+    v_normalized_state := null;
+    v_normalized_priority := null;
+    v_normalized_due_at := null;
+  end if;
+
+  select job.* into v_job
     from public.domain_events as event
     join public.event_jobs as job on job.event_id = event.id
     join public.company_profiles as company
@@ -715,6 +739,7 @@ begin
     join public.tenants as tenant on tenant.id = event.tenant_id
     where event.id = p_event_id
       and job.id = p_job_id
+      and job.event_id = p_event_id
       and event.tenant_id = p_tenant_id
       and event.company_id = p_company_id
       and job.state = 'leased'
@@ -723,7 +748,8 @@ begin
       and job.lease_expires_at > pg_catalog.statement_timestamp()
       and company.status::text = 'active'
       and tenant.status = 'active'
-  ) then
+  for update of job;
+  if not found then
     raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
   end if;
   v_request_hash := public.runtime_request_hash(pg_catalog.jsonb_build_object(
@@ -738,9 +764,9 @@ begin
     'projectionKey', p_projection_key,
     'code', p_code,
     'profileId', p_profile_id,
-    'state', p_state,
-    'priority', p_priority,
-    'dueAt', p_due_at,
+    'state', v_normalized_state,
+    'priority', v_normalized_priority,
+    'dueAt', v_normalized_due_at,
     'safeMetadata', p_safe_metadata
   ));
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 0));
@@ -794,7 +820,7 @@ begin
       projection_key, notification_code, severity, safe_metadata
     ) values (
       p_tenant_id, p_company_id, p_profile_id, p_event_id, p_job_id,
-      p_projection_key, p_code, coalesce(p_state, 'info'), p_safe_metadata
+      p_projection_key, p_code, v_normalized_state, p_safe_metadata
     )
     on conflict (source_event_id, projection_key) do nothing
     returning id into v_id;
@@ -805,8 +831,11 @@ begin
         and notification.projection_key = p_projection_key
         and notification.tenant_id = p_tenant_id
         and notification.company_id = p_company_id
+        and notification.source_job_id = p_job_id
         and notification.recipient_profile_id = p_profile_id
-        and notification.notification_code = p_code;
+        and notification.notification_code = p_code
+        and notification.severity = v_normalized_state
+        and notification.safe_metadata = p_safe_metadata;
     end if;
   elsif p_projection_type = 'task' then
     insert into public.operational_tasks (
@@ -814,7 +843,7 @@ begin
       projection_key, task_code, state, priority, due_at, safe_metadata
     ) values (
       p_tenant_id, p_company_id, p_profile_id, p_event_id, p_job_id, p_projection_key, p_code,
-      coalesce(p_state, 'open'), coalesce(p_priority, 'normal'), p_due_at,
+      v_normalized_state, v_normalized_priority, v_normalized_due_at,
       p_safe_metadata
     )
     on conflict (source_event_id, projection_key) do nothing
@@ -824,7 +853,13 @@ begin
       from public.operational_tasks as task
       where task.source_event_id = p_event_id and task.projection_key = p_projection_key
         and task.tenant_id = p_tenant_id and task.company_id = p_company_id
-        and task.assigned_profile_id is not distinct from p_profile_id and task.task_code = p_code;
+        and task.source_job_id = p_job_id
+        and task.assigned_profile_id is not distinct from p_profile_id
+        and task.task_code = p_code
+        and task.state = v_normalized_state
+        and task.priority = v_normalized_priority
+        and task.due_at is not distinct from v_normalized_due_at
+        and task.safe_metadata = p_safe_metadata;
     end if;
   else
     insert into public.operational_activity (
@@ -841,8 +876,10 @@ begin
       from public.operational_activity as activity
       where activity.source_event_id = p_event_id and activity.projection_key = p_projection_key
         and activity.tenant_id = p_tenant_id and activity.company_id = p_company_id
+        and activity.source_job_id = p_job_id
         and activity.actor_profile_id is not distinct from p_profile_id
-        and activity.activity_code = p_code;
+        and activity.activity_code = p_code
+        and activity.safe_metadata = p_safe_metadata;
     end if;
   end if;
   if v_id is null then
@@ -886,6 +923,7 @@ set search_path = ''
 as $$
 declare
   v_id uuid;
+  v_job public.event_jobs%rowtype;
   v_existing public.operational_runtime_audit%rowtype;
   v_request_hash text;
 begin
@@ -903,8 +941,7 @@ begin
     or ((p_reconciliation_state = 'pending') <> (p_reconciled_at is null)) then
     raise exception using errcode = '22023', message = 'RUNTIME_INVALID_RECEIPT';
   end if;
-  if not exists (
-    select 1
+  select job.* into v_job
     from public.domain_events as event
     join public.event_jobs as job on job.event_id = event.id
     join public.company_profiles as company
@@ -912,6 +949,7 @@ begin
     join public.tenants as tenant on tenant.id = event.tenant_id
     where event.id = p_event_id
       and job.id = p_job_id
+      and job.event_id = p_event_id
       and event.tenant_id = p_tenant_id
       and event.company_id = p_company_id
       and job.state = 'leased'
@@ -920,7 +958,8 @@ begin
       and job.lease_expires_at > pg_catalog.statement_timestamp()
       and company.status::text = 'active'
       and tenant.status = 'active'
-  ) then
+  for update of job;
+  if not found then
     raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
   end if;
   v_request_hash := public.runtime_request_hash(pg_catalog.jsonb_build_object(

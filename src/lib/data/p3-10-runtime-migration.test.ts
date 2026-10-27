@@ -249,9 +249,9 @@ test('operation replay requires an exact deterministic request fingerprint', asy
     'p_projection_key',
     'p_code',
     'p_profile_id',
-    'p_state',
-    'p_priority',
-    'p_due_at',
+    'v_normalized_state',
+    'v_normalized_priority',
+    'v_normalized_due_at',
     'p_safe_metadata',
   ]) {
     assert.match(projectionIntent, new RegExp(`\\b${argument}\\b`));
@@ -334,4 +334,64 @@ test('each role-scoped list is bounded, authorized, stable, and mutations are au
   ]) {
     assert.match(rpcSql(sql, rpc), /insert into public\.operational_runtime_audit/);
   }
+});
+
+test('worker writers lock the exact fenced job before mutating runtime state', async () => {
+  const sql = await migrationSql();
+
+  for (const rpc of ['write_operational_projection', 'record_safe_delivery_receipt']) {
+    const body = rpcSql(sql, rpc);
+    assert.match(body, /v_job public\.event_jobs%rowtype/);
+    assert.match(body, /select job\.\* into v_job/);
+    assert.match(body, /job\.id = p_job_id/);
+    assert.match(body, /job\.event_id = p_event_id/);
+    assert.match(body, /job\.state = 'leased'/);
+    assert.match(body, /job\.lease_owner = p_worker_id/);
+    assert.match(body, /job\.lease_token = p_lease_token/);
+    assert.match(body, /job\.lease_expires_at > pg_catalog\.statement_timestamp\(\)/);
+    assert.match(body, /for update of job/);
+    assert.match(body, /if not found then[\s\S]*runtime_reference_scope_denied/);
+  }
+});
+
+test('projection conflicts require exact normalized stored intent equivalence', async () => {
+  const sql = await migrationSql();
+  const body = rpcSql(sql, 'write_operational_projection');
+
+  assert.match(body, /v_normalized_state text/);
+  assert.match(body, /v_normalized_priority text/);
+  assert.match(body, /v_normalized_due_at timestamptz/);
+  assert.match(
+    body,
+    /p_projection_type = 'notification'[\s\S]*v_normalized_state := coalesce\(p_state, 'info'\)/,
+  );
+  assert.match(
+    body,
+    /p_projection_type = 'task'[\s\S]*v_normalized_state := coalesce\(p_state, 'open'\)[\s\S]*v_normalized_priority := coalesce\(p_priority, 'normal'\)[\s\S]*v_normalized_due_at := p_due_at/,
+  );
+  assert.match(body, /'state', v_normalized_state/);
+  assert.match(body, /'priority', v_normalized_priority/);
+  assert.match(body, /'dueat', v_normalized_due_at/);
+
+  for (const predicate of [
+    'notification.source_job_id = p_job_id',
+    'notification.recipient_profile_id = p_profile_id',
+    'notification.notification_code = p_code',
+    'notification.severity = v_normalized_state',
+    'notification.safe_metadata = p_safe_metadata',
+    'task.source_job_id = p_job_id',
+    'task.assigned_profile_id is not distinct from p_profile_id',
+    'task.task_code = p_code',
+    'task.state = v_normalized_state',
+    'task.priority = v_normalized_priority',
+    'task.due_at is not distinct from v_normalized_due_at',
+    'task.safe_metadata = p_safe_metadata',
+    'activity.source_job_id = p_job_id',
+    'activity.actor_profile_id is not distinct from p_profile_id',
+    'activity.activity_code = p_code',
+    'activity.safe_metadata = p_safe_metadata',
+  ]) {
+    assert.match(body, new RegExp(predicate.replaceAll('.', '\\.')));
+  }
+  assert.match(body, /if v_id is null then[\s\S]*runtime_idempotency_conflict/);
 });
