@@ -186,7 +186,8 @@ function localHandler(
         dueAt: null,
         safeMetadata: job.payload,
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof EventHandlerFailure) throw error;
       throw new EventHandlerFailure({
         category: 'configuration',
         code: 'PROVIDER_CONFIGURATION_INVALID',
@@ -272,6 +273,7 @@ export function createMeetingAiEventHandler(
     const deps = await dependencies(job);
     let effectReferenceHash: string | undefined;
     let cancellationConfirmed = false;
+    let handlerFailure: EventHandlerFailure | undefined;
     const summary = await runMeetingAiWorkerOnce({
       ...deps,
       claim: async () => [claim],
@@ -280,7 +282,12 @@ export function createMeetingAiEventHandler(
       },
       fail: async () => {},
       cancel: async (innerClaim, code) => {
-        cancellationConfirmed = (await deps.cancel(innerClaim, code)) === true;
+        try {
+          cancellationConfirmed = (await deps.cancel(innerClaim, code)) === true;
+        } catch (error) {
+          if (error instanceof EventHandlerFailure) handlerFailure = error;
+          throw error;
+        }
         if (!cancellationConfirmed) throw new Error('LEASED_CANCELLATION_FAILED');
         return true;
       },
@@ -288,6 +295,7 @@ export function createMeetingAiEventHandler(
     });
     if (summary.lost) return { outcome: 'lease-lost' };
     if (summary.retried) {
+      if (handlerFailure) throw handlerFailure;
       throw new EventHandlerFailure({
         category: 'provider_unavailable',
         code: 'PROVIDER_UNAVAILABLE',
@@ -298,7 +306,7 @@ export function createMeetingAiEventHandler(
       return { outcome: 'already-terminal' };
     }
     if (summary.completed === 1 && effectReferenceHash) {
-      return { effectReferenceHash };
+      return { outcome: 'already-terminal', effectReferenceHash };
     }
     throw new EventHandlerFailure({
       category: 'configuration',

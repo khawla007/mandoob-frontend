@@ -26,9 +26,10 @@ export function createSupabaseMeetingAiWorkerDeps(
     workerId?: string;
     batchSize?: number;
     provider?: MeetingSummaryProvider;
+    signal?: AbortSignal;
   } = {},
 ): MeetingAiWorkerDeps {
-  const admin = createSupabaseServiceRoleClient();
+  const admin = createSupabaseServiceRoleClient({ signal: options.signal });
   const workerId = options.workerId ?? randomUUID();
   const provider = options.provider ?? createOpenAiMeetingSummaryProvider();
   const lease = (claim: MeetingAiClaim) => ({

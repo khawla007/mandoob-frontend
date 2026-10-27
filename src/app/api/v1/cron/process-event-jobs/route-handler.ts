@@ -18,6 +18,7 @@ function secretMatches(configured: string | undefined, supplied: string | null):
 export function createProcessEventJobsHandler(input: {
   configuredSecret: string | undefined;
   consumers: readonly string[];
+  deadlineMs?: number;
   runConsumer(
     consumer: string,
     options: { owner: string; batchSize: number; signal: AbortSignal; deadlineAt: number },
@@ -27,21 +28,44 @@ export function createProcessEventJobsHandler(input: {
     if (!secretMatches(input.configuredSecret, request.headers.get('x-cron-secret'))) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });
     }
+    const deadlineController = new AbortController();
+    const relayRequestAbort = () => deadlineController.abort();
+    if (request.signal.aborted) relayRequestAbort();
+    else request.signal.addEventListener('abort', relayRequestAbort, { once: true });
+    const deadlineMs = Math.min(Math.max(input.deadlineMs ?? 20_000, 1), 20_000);
+    const deadlineAt = Date.now() + deadlineMs;
+    const deadlineTimer = setTimeout(() => deadlineController.abort(), deadlineMs);
     let completed = 0;
     let unavailable = 0;
-    const deadlineAt = Date.now() + 20_000;
-    for (const consumer of input.consumers) {
-      try {
-        await input.runConsumer(consumer, {
-          owner: 'netlify.event-runtime',
-          batchSize: 1,
-          signal: request.signal,
-          deadlineAt,
-        });
-        completed += 1;
-      } catch {
-        unavailable += 1;
+    try {
+      for (const [index, consumer] of input.consumers.entries()) {
+        if (deadlineController.signal.aborted) {
+          unavailable += input.consumers.length - index;
+          break;
+        }
+        try {
+          await input.runConsumer(consumer, {
+            owner: 'netlify.event-runtime',
+            batchSize: 1,
+            signal: deadlineController.signal,
+            deadlineAt,
+          });
+          if (deadlineController.signal.aborted) {
+            unavailable += input.consumers.length - index;
+            break;
+          }
+          completed += 1;
+        } catch {
+          unavailable += 1;
+          if (deadlineController.signal.aborted) {
+            unavailable += input.consumers.length - index - 1;
+            break;
+          }
+        }
       }
+    } finally {
+      clearTimeout(deadlineTimer);
+      request.signal.removeEventListener('abort', relayRequestAbort);
     }
     return Response.json(
       { ok: unavailable === 0, consumers: input.consumers.length, completed, unavailable },

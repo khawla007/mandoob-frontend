@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { env } from '@/lib/env';
 import { createSupabaseImportWorkerDeps } from '@/lib/employees/import-worker-supabase';
 import { createEventQueueRepository } from '@/lib/events/repository';
-import { createRuntimeRpc } from '@/lib/events/runtime-rpc';
+import { RuntimeRpcError, createRuntimeRpc } from '@/lib/events/runtime-rpc';
 import {
   RUNTIME_EVENT_SCHEMAS,
   createEmployeeImportEventHandler,
@@ -10,7 +10,7 @@ import {
   createRuntimeHandlerRegistry,
   scheduledRuntimeConsumers,
 } from '@/lib/events/runtime-handlers';
-import { runEventWorkerOnce } from '@/lib/events/worker';
+import { EventHandlerFailure, runEventWorkerOnce } from '@/lib/events/worker';
 import { createSupabaseMeetingAiWorkerDeps } from '@/lib/meetings/ai-worker-supabase';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { createProcessEventJobsHandler } from './route-handler';
@@ -30,36 +30,52 @@ async function runConsumer(
   },
 ) {
   const workerId = randomUUID();
-  const admin = createSupabaseServiceRoleClient();
+  const admin = createSupabaseServiceRoleClient({ signal: options.signal });
   const repository = createEventQueueRepository(admin, RUNTIME_EVENT_SCHEMAS);
   const runtimeRpc = createRuntimeRpc(admin);
   let importDepsPromise: ReturnType<typeof createSupabaseImportWorkerDeps> | undefined;
   const registry = createRuntimeHandlerRegistry({
     async writeProjection(projection) {
-      const result = await runtimeRpc.writeProjection(projection);
-      return {
-        effectReferenceHash: createHash('sha256').update(result.projectionId).digest('hex'),
-      };
+      try {
+        const result = await runtimeRpc.writeProjection(projection);
+        return {
+          effectReferenceHash: createHash('sha256').update(result.projectionId).digest('hex'),
+        };
+      } catch (error) {
+        if (error instanceof RuntimeRpcError) throw new EventHandlerFailure(error.failure);
+        throw error;
+      }
     },
     employeeImport: createEmployeeImportEventHandler(async () => {
       importDepsPromise ??= createSupabaseImportWorkerDeps({
         workerId,
         batchSize: options.batchSize,
+        signal: options.signal,
       });
       return importDepsPromise;
     }),
     // Real P3.11 adapter remains registry-only; its consumer is not scheduled.
     meetingAi: createMeetingAiEventHandler(async () => {
-      const deps = createSupabaseMeetingAiWorkerDeps({ workerId, batchSize: 1 });
+      const deps = createSupabaseMeetingAiWorkerDeps({
+        workerId,
+        batchSize: 1,
+        signal: options.signal,
+      });
       return {
         ...deps,
-        cancel: (claim, code) =>
-          runtimeRpc.cancelLeasedJob({
-            jobId: claim.eventJobId,
-            workerId,
-            leaseToken: claim.leaseToken,
-            safeCode: code,
-          }),
+        cancel: async (claim, code) => {
+          try {
+            return await runtimeRpc.cancelLeasedJob({
+              jobId: claim.eventJobId,
+              workerId,
+              leaseToken: claim.leaseToken,
+              safeCode: code,
+            });
+          } catch (error) {
+            if (error instanceof RuntimeRpcError) throw new EventHandlerFailure(error.failure);
+            throw error;
+          }
+        },
       };
     }),
   });

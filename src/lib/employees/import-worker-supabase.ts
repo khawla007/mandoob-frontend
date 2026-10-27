@@ -18,9 +18,14 @@ type Claimed = {
 
 /** Production wiring for the P3.08 import consumer (service role only). */
 export async function createSupabaseImportWorkerDeps(
-  options: { workerId?: string; batchSize?: number; leaseSeconds?: number } = {},
+  options: {
+    workerId?: string;
+    batchSize?: number;
+    leaseSeconds?: number;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<ImportWorkerDeps> {
-  const admin = createSupabaseServiceRoleClient();
+  const admin = createSupabaseServiceRoleClient({ signal: options.signal });
   const client = admin as unknown as P308RpcClient;
   const workerId = options.workerId ?? randomUUID();
   const key = loadImportArtifactKey();

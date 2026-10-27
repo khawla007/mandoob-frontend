@@ -85,6 +85,89 @@ describe('event worker cron owner', () => {
     );
   });
 
+  test('aborts in-flight work at the enforced deadline without racing it in the background', async () => {
+    const secret = '0123456789abcdef0123456789abcdef';
+    let observedAbort = false;
+    const post = createProcessEventJobsHandler({
+      configuredSecret: secret,
+      consumers: ['internal.safe.projection'],
+      deadlineMs: 1,
+      runConsumer: async (_consumer, { signal }) => {
+        await new Promise<void>((resolve) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              observedAbort = true;
+              resolve();
+            },
+            { once: true },
+          );
+        });
+        return { claimed: 0, succeeded: 0, failed: 0, leaseLost: 0 };
+      },
+    });
+    const response = await post(
+      new Request('https://example.test/api/v1/cron/process-event-jobs', {
+        method: 'POST',
+        headers: { 'x-cron-secret': secret },
+      }),
+    );
+    assert.equal(response.status, 503);
+    assert.equal(observedAbort, true);
+  });
+
+  test('relays request cancellation to in-flight work', async () => {
+    const secret = '0123456789abcdef0123456789abcdef';
+    const requestAbort = new AbortController();
+    let observedAbort = false;
+    const post = createProcessEventJobsHandler({
+      configuredSecret: secret,
+      consumers: ['internal.safe.projection'],
+      runConsumer: async (_consumer, { signal }) => {
+        setImmediate(() => requestAbort.abort());
+        await new Promise<void>((resolve) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              observedAbort = true;
+              resolve();
+            },
+            { once: true },
+          );
+        });
+        return { claimed: 0, succeeded: 0, failed: 0, leaseLost: 0 };
+      },
+    });
+    await post(
+      new Request('https://example.test/api/v1/cron/process-event-jobs', {
+        method: 'POST',
+        headers: { 'x-cron-secret': secret },
+        signal: requestAbort.signal,
+      }),
+    );
+    assert.equal(observedAbort, true);
+  });
+
+  test('threads the deadline signal into every service-role dependency while AI stays disabled', () => {
+    const route = readFileSync(join(__dirname, 'route.ts'), 'utf8');
+    const imports = readFileSync(
+      join(process.cwd(), 'src/lib/employees/import-worker-supabase.ts'),
+      'utf8',
+    );
+    const meetings = readFileSync(
+      join(process.cwd(), 'src/lib/meetings/ai-worker-supabase.ts'),
+      'utf8',
+    );
+    assert.match(route, /createSupabaseServiceRoleClient\(\{ signal: options\.signal \}\)/u);
+    assert.match(route, /RuntimeRpcError/u);
+    assert.match(route, /new EventHandlerFailure\(error\.failure\)/u);
+    assert.match(imports, /signal\?: AbortSignal/u);
+    assert.match(imports, /createSupabaseServiceRoleClient\(\{ signal: options\.signal \}\)/u);
+    assert.match(meetings, /signal\?: AbortSignal/u);
+    assert.match(meetings, /createSupabaseServiceRoleClient\(\{ signal: options\.signal \}\)/u);
+    assert.doesNotMatch(route, /p311\.meeting_ai\.processor/u);
+  });
+
   test('records unavailable scheduler cadence as launch-blocking without enabling a schedule', () => {
     assert.deepEqual(EVENT_RUNTIME_CADENCE_DISPOSITION, {
       configured: false,

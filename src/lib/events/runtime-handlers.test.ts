@@ -4,6 +4,7 @@ import { describe, test } from 'node:test';
 import type { ImportWorkerDeps } from '@/lib/employees/import-worker';
 import type { MeetingAiWorkerDeps } from '@/lib/meetings/ai-worker';
 import type { ClaimedEventJob } from './repository';
+import type { EventWorkerRepository } from './worker';
 import { EventHandlerFailure } from './worker';
 import {
   ENABLED_RUNTIME_REGISTRATIONS,
@@ -14,7 +15,7 @@ import {
   mixedConsumerBacklogDisposition,
   scheduledRuntimeConsumers,
 } from './runtime-handlers';
-import { handlerKey } from './worker';
+import { handlerKey, runEventWorkerOnce } from './worker';
 
 const ids = {
   job: '11111111-1111-4111-8111-111111111111',
@@ -248,9 +249,34 @@ describe('runtime handler registry', () => {
       await completeHandler(claimed('meeting.ai.requested', 'p311.meeting_ai.processor'), {
         checkpoint: async () => {},
       }),
-      { effectReferenceHash: 'a'.repeat(64) },
+      { outcome: 'already-terminal', effectReferenceHash: 'a'.repeat(64) },
     );
     assert.deepEqual(completed, ['persist']);
+
+    const transitions: string[] = [];
+    const completedJob = claimed('meeting.ai.requested', 'p311.meeting_ai.processor');
+    const repository: EventWorkerRepository = {
+      heartbeat: async () => true,
+      claim: async () => [{ ok: true, job: completedJob }],
+      extendLease: async () => completedJob.leaseExpiresAt,
+      succeed: async () => (transitions.push('succeed'), true),
+      fail: async () => (transitions.push('fail'), 'dead'),
+    };
+    const summary = await runEventWorkerOnce({
+      repository,
+      handlers: new Map([
+        [handlerKey(completedJob.consumerName, completedJob.eventType, 1), completeHandler],
+      ]),
+      clock: () => new Date('2026-10-27T10:00:00.000Z'),
+      workerId: ids.worker,
+      workerName: 'worker',
+      consumerName: completedJob.consumerName,
+      schedulerOwner: 'test',
+      releaseVersion: 'test',
+      log: () => {},
+    });
+    assert.deepEqual(summary, { claimed: 1, succeeded: 1, failed: 0, leaseLost: 0 });
+    assert.deepEqual(transitions, []);
 
     const retried: string[] = [];
     const retryHandler = createMeetingAiEventHandler(async () =>
@@ -319,6 +345,32 @@ describe('runtime handler registry', () => {
         error.failure.code === 'EVENT_PAYLOAD_INVALID' &&
         !error.failure.retryable,
     );
+  });
+
+  test('preserves a sanitized transient runtime RPC classification for the outer worker', async () => {
+    const registry = createRuntimeHandlerRegistry({
+      writeProjection: async () => {
+        throw new EventHandlerFailure({
+          category: 'timeout',
+          code: 'PROVIDER_TIMEOUT',
+          retryable: true,
+        });
+      },
+      employeeImport: async () => ({}),
+      meetingAi: async () => ({}),
+    });
+    const job = claimed('meeting.booked', 'internal.meeting.invitation');
+    const handler = registry.handlers.get(handlerKey(job.consumerName, job.eventType, 1));
+    assert.ok(handler);
+    await assert.rejects(handler(job, { checkpoint: async () => {} }), (error) => {
+      assert.ok(error instanceof EventHandlerFailure);
+      assert.deepEqual(error.failure, {
+        category: 'timeout',
+        code: 'PROVIDER_TIMEOUT',
+        retryable: true,
+      });
+      return true;
+    });
   });
 });
 

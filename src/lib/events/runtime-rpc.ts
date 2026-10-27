@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { SafeProviderFailure } from './contracts';
 import type { ProjectionWrite } from './runtime-handlers';
 
 type RpcResult = { data: unknown; error: unknown };
@@ -16,22 +17,71 @@ const projectionResultSchema = z
 const safeCodeSchema = z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/);
 
 export class RuntimeRpcError extends Error {
-  constructor() {
+  constructor(readonly failure: SafeProviderFailure) {
     super('RUNTIME_RPC_FAILED');
     this.name = 'RuntimeRpcError';
   }
 }
 
+const malformedFailure: SafeProviderFailure = {
+  category: 'malformed_payload',
+  code: 'EVENT_PAYLOAD_INVALID',
+  retryable: false,
+};
+const configurationFailure: SafeProviderFailure = {
+  category: 'configuration',
+  code: 'PROVIDER_CONFIGURATION_INVALID',
+  retryable: false,
+};
+const unavailableFailure: SafeProviderFailure = {
+  category: 'provider_unavailable',
+  code: 'PROVIDER_UNAVAILABLE',
+  retryable: true,
+};
+const timeoutFailure: SafeProviderFailure = {
+  category: 'timeout',
+  code: 'PROVIDER_TIMEOUT',
+  retryable: true,
+};
+
+function classifyFailure(error: unknown): SafeProviderFailure {
+  if (error instanceof z.ZodError) return malformedFailure;
+  const parsed = z
+    .object({ code: z.string().min(1) })
+    .passthrough()
+    .safeParse(error);
+  if (!parsed.success) return unavailableFailure;
+  const { code } = parsed.data;
+  if (code === '57014') return timeoutFailure;
+  if (/^08/u.test(code) || ['40001', '40P01', '53300'].includes(code)) {
+    return unavailableFailure;
+  }
+  return configurationFailure;
+}
+
 export function createRuntimeRpc(client: RuntimeRpcClient) {
+  const classified = async <T>(operation: () => Promise<T>): Promise<T> => {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof RuntimeRpcError) throw error;
+      throw new RuntimeRpcError(classifyFailure(error));
+    }
+  };
   const call = async (name: string, args: Record<string, unknown>) => {
-    const result = await client.rpc(name, args);
-    if (result.error) throw new RuntimeRpcError();
-    return result.data;
+    try {
+      const result = await client.rpc(name, args);
+      if (result.error) throw new RuntimeRpcError(classifyFailure(result.error));
+      return result.data;
+    } catch (error) {
+      if (error instanceof RuntimeRpcError) throw error;
+      throw new RuntimeRpcError(classifyFailure(error));
+    }
   };
   return {
     async writeProjection(input: ProjectionWrite) {
-      try {
-        return projectionResultSchema.parse(
+      return classified(async () =>
+        projectionResultSchema.parse(
           await call('write_operational_projection', {
             p_operation_id: input.operationId,
             p_tenant_id: input.tenantId,
@@ -49,10 +99,8 @@ export function createRuntimeRpc(client: RuntimeRpcClient) {
             p_due_at: input.dueAt,
             p_safe_metadata: input.safeMetadata,
           }),
-        );
-      } catch {
-        throw new RuntimeRpcError();
-      }
+        ),
+      );
     },
     async cancelLeasedJob(input: {
       jobId: string;
@@ -60,18 +108,16 @@ export function createRuntimeRpc(client: RuntimeRpcClient) {
       leaseToken: string;
       safeCode: string;
     }) {
-      try {
-        return z.boolean().parse(
+      return classified(async () =>
+        z.boolean().parse(
           await call('cancel_leased_event_job', {
             p_job_id: z.string().uuid().parse(input.jobId),
             p_worker_id: z.string().uuid().parse(input.workerId),
             p_lease_token: z.string().uuid().parse(input.leaseToken),
             p_error_code: safeCodeSchema.parse(input.safeCode),
           }),
-        );
-      } catch {
-        throw new RuntimeRpcError();
-      }
+        ),
+      );
     },
   };
 }
