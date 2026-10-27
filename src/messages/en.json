@@ -3890,7 +3890,17 @@
         "unavailableTitle": "Unavailable — Phase 3 contract required",
         "unavailableDescription": "No accepted platform report catalog or export job contract exists on this base.",
         "export": "Generate export",
-        "actionExplanation": "Unavailable — Phase 3 report, export-job and delivery contract required."
+        "actionExplanation": "Unavailable — Phase 3 report, export-job and delivery contract required.",
+        "partialDescription": "Local operational totals are current; named parallel-domain sources remain unavailable.",
+        "errorDescription": "The authorized report could not be loaded safely.",
+        "generatedAt": "Generated {value} · Asia/Dubai reporting semantics",
+        "unavailableSources": "Unavailable sources: {value}",
+        "metrics": {
+          "companies": "Companies",
+          "activeEmployees": "Active employees",
+          "overdueRenewals": "Overdue renewals",
+          "scheduledMeetings": "Scheduled meetings"
+        }
       },
       "compliance": {
         "eyebrow": "Platform · Governance",
@@ -3907,7 +3917,13 @@
         "unavailableTitle": "Unavailable — Phase 3 contract required",
         "unavailableDescription": "No accepted compliance aggregate or evidence catalog exists on this base.",
         "openEvidence": "Open evidence",
-        "actionExplanation": "Unavailable — Phase 3 compliance evidence contract required."
+        "actionExplanation": "Unavailable — Phase 3 compliance evidence contract required.",
+        "policyDisclaimer": "Policy status is shown as recorded. This is not a legal-compliance claim; destructive erasure remains disabled without approved policy and P3.13 runtime evidence.",
+        "dataClass": "Data class",
+        "owner": "Owner",
+        "policyStatus": "Policy status",
+        "runtimeStatus": "Runtime status",
+        "action": "Retention action"
       },
       "systemStatus": {
         "eyebrow": "Platform · Operations",
@@ -3923,7 +3939,14 @@
         "unavailableTitle": "Unavailable — Phase 3 contract required",
         "unavailableDescription": "No accepted system-health monitoring or incident source exists on this base.",
         "refresh": "Refresh status",
-        "actionExplanation": "Unavailable — Phase 3 monitoring and freshness contract required."
+        "actionExplanation": "Unavailable — Phase 3 monitoring and freshness contract required.",
+        "generatedAt": "Generated {value}",
+        "pending": "{count} pending",
+        "components": {
+          "database": "Database",
+          "eventQueue": "Event queue",
+          "distributedRuntime": "Distributed runtime"
+        }
       },
       "plans": {
         "eyebrow": "Platform · Subscriptions",
@@ -5042,8 +5065,9 @@
         "unknown": "Unknown",
         "noReason": "No reason provided",
         "decisionTitle": "Decision",
-        "decisionDescription": "Approval executes the anonymization cascade.",
+        "decisionDescription": "Approval records an audited dry-run decision. Destructive cleanup stays disabled pending approved policy and P3.13 acceptance.",
         "approveExecute": "Approve and execute",
+        "approveDecision": "Approve decision (dry run)",
         "rejectionReason": "Rejection reason",
         "rejectRequest": "Reject request",
         "cascadeTitle": "Cascade scope",

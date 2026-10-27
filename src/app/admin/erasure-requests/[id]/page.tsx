@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { randomUUID } from 'node:crypto';
 import { getTranslations } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/require-role';
 import { getErasureRequestDetail } from '@/lib/data/erasure';
@@ -22,6 +23,8 @@ export default async function AdminErasureRequestDetailPage({
   const request = await getErasureRequestDetail(id);
   if (!request) notFound();
   const canReview = request.status === 'submitted' || request.status === 'under_review';
+  const approveOperationId = randomUUID();
+  const rejectOperationId = randomUUID();
 
   return (
     <div className="space-y-6">
@@ -88,8 +91,10 @@ export default async function AdminErasureRequestDetailPage({
               }}
             >
               <input type="hidden" name="requestId" value={request.id} />
+              <input type="hidden" name="expectedVersion" value={request.version} />
+              <input type="hidden" name="operationId" value={approveOperationId} />
               <Button type="submit" disabled={!canReview} className="w-full">
-                {t('erasure.detail.approveExecute')}
+                {t('erasure.detail.approveDecision')}
               </Button>
             </form>
             <form
@@ -100,6 +105,8 @@ export default async function AdminErasureRequestDetailPage({
               className="space-y-3"
             >
               <input type="hidden" name="requestId" value={request.id} />
+              <input type="hidden" name="expectedVersion" value={request.version} />
+              <input type="hidden" name="operationId" value={rejectOperationId} />
               <div className="space-y-2">
                 <Label htmlFor="rejectionReason">{t('erasure.detail.rejectionReason')}</Label>
                 <Textarea

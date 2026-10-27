@@ -28,7 +28,7 @@ export function LockedAccountsTable({ rows }: { rows: LockedAccountRow[] }) {
     if (!confirm(t('user.lockedAccounts.confirmUnlock', { key }))) return;
     setBusy(key);
     start(async () => {
-      const r = await unlockAccountAction({ key });
+      const r = await unlockAccountAction({ key, operationId: crypto.randomUUID() });
       if (!r.ok) alert(t('user.lockedAccounts.unlockFailed', { code: r.code, error: r.error }));
       setBusy(null);
     });

@@ -1,30 +1,48 @@
 import { getTranslations } from 'next-intl/server';
-
-import { SystemStatusUnavailable } from '@/components/admin/management/SystemStatusUnavailable';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
+import { loadSystemReadiness } from '@/lib/data/reporting-p3-12';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminSystemStatusPage() {
-  await requirePlatformOperator();
+  const session = await requirePlatformOperator();
   const t = await getTranslations('admin.management.systemStatus');
+  const readiness = await loadSystemReadiness(session.id).catch(() => null);
   return (
     <div className="space-y-6">
       <DashboardPageHeader eyebrow={t('eyebrow')} title={t('title')} description={t('intro')} />
-      <SystemStatusUnavailable
-        labels={{
-          status: t('status'),
-          generated: t('generated'),
-          monitoring: t('monitoring'),
-          source: t('source'),
-          unavailable: t('unavailable'),
-          description: t('description'),
-          guidance: t('guidance'),
-          unavailableTitle: t('unavailableTitle'),
-          unavailableDescription: t('unavailableDescription'),
-          refresh: t('refresh'),
-          actionExplanation: t('actionExplanation'),
-        }}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('status')}</CardTitle>
+          <CardDescription>
+            {readiness
+              ? t('generatedAt', { value: readiness.generatedAt })
+              : t('unavailableDescription')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {readiness ? (
+            readiness.components.map((component) => (
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3"
+                key={component.id}
+              >
+                <span className="font-medium">{t(`components.${component.id}`)}</span>
+                <span className="text-muted-foreground">
+                  {component.state}
+                  {typeof component.pending === 'number'
+                    ? ` · ${t('pending', { count: component.pending })}`
+                    : ''}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p role="alert">{t('unavailableTitle')}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

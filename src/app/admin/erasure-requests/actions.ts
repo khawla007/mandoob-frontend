@@ -2,10 +2,11 @@
 
 import 'server-only';
 import { revalidatePath } from 'next/cache';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { ApiError } from '@/lib/errors';
 import { requireAal2, requireRole } from '@/lib/auth/require-role';
-import { executeErasure, rejectErasureRequest } from '@/lib/data/erasure';
+import { approveErasureDecision, rejectErasureRequest } from '@/lib/data/erasure';
 
 export type ActionResult =
   | { ok: true; data: undefined }
@@ -13,6 +14,7 @@ export type ActionResult =
 
 const idSchema = z.string().uuid();
 const rejectionSchema = z.string().trim().min(1).max(1000);
+const versionSchema = z.coerce.number().int().positive();
 
 function field(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -30,7 +32,15 @@ export async function approveErasureAction(formData: FormData): Promise<ActionRe
     const session = await requireRole('super_admin', 'admin');
     await requireAal2(session);
     const requestId = idSchema.parse(field(formData, 'requestId'));
-    await executeErasure(requestId, session.id);
+    const expectedVersion = versionSchema.parse(field(formData, 'expectedVersion'));
+    const operationId = idSchema.parse(field(formData, 'operationId'));
+    await approveErasureDecision({
+      requestId,
+      actorId: session.id,
+      expectedVersion,
+      operationId,
+      correlationId: randomUUID(),
+    });
     revalidatePath('/admin/erasure-requests');
     revalidatePath(`/admin/erasure-requests/${requestId}`);
     return { ok: true, data: undefined };
@@ -45,7 +55,16 @@ export async function rejectErasureAction(formData: FormData): Promise<ActionRes
     await requireAal2(session);
     const requestId = idSchema.parse(field(formData, 'requestId'));
     const reason = rejectionSchema.parse(field(formData, 'rejectionReason'));
-    await rejectErasureRequest({ requestId, actorId: session.id, reason });
+    const expectedVersion = versionSchema.parse(field(formData, 'expectedVersion'));
+    const operationId = idSchema.parse(field(formData, 'operationId'));
+    await rejectErasureRequest({
+      requestId,
+      actorId: session.id,
+      reason,
+      expectedVersion,
+      operationId,
+      correlationId: randomUUID(),
+    });
     revalidatePath('/admin/erasure-requests');
     revalidatePath(`/admin/erasure-requests/${requestId}`);
     return { ok: true, data: undefined };
