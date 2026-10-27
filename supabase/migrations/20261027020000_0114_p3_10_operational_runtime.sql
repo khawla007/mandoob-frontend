@@ -476,16 +476,20 @@ stable
 security definer
 set search_path = ''
 as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_role text;
 begin
   if not (p_limit between 1 and 100)
     or ((p_before_created_at is null) <> (p_before_id is null)) then
     raise exception using errcode = '22023', message = 'RUNTIME_INVALID_CURSOR';
   end if;
-  perform public.runtime_actor_company_access(p_company_id, true);
+  v_role := public.runtime_actor_company_access(p_company_id, true);
   return query
   select activity.*
   from public.operational_activity as activity
   where activity.company_id = p_company_id
+    and (v_role in ('admin', 'super_admin', 'pro') or activity.actor_profile_id = v_actor_id)
     and (
       p_before_created_at is null
       or activity.created_at < p_before_created_at
@@ -732,24 +736,32 @@ begin
   end if;
 
   select job.* into v_job
+  from public.event_jobs as job
+  where job.id = p_job_id
+    and job.event_id = p_event_id
+  for update of job;
+  if not found then
+    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
+  end if;
+  if not exists (
+    select 1
     from public.domain_events as event
-    join public.event_jobs as job on job.event_id = event.id
     join public.company_profiles as company
       on company.id = event.company_id and company.tenant_id = event.tenant_id
     join public.tenants as tenant on tenant.id = event.tenant_id
     where event.id = p_event_id
-      and job.id = p_job_id
-      and job.event_id = p_event_id
       and event.tenant_id = p_tenant_id
       and event.company_id = p_company_id
-      and job.state = 'leased'
-      and job.lease_owner = p_worker_id
-      and job.lease_token = p_lease_token
-      and job.lease_expires_at > pg_catalog.statement_timestamp()
       and company.status::text = 'active'
       and tenant.status = 'active'
-  for update of job;
-  if not found then
+  ) then
+    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
+  end if;
+  if v_job.state <> 'leased'
+    or v_job.lease_owner is distinct from p_worker_id
+    or v_job.lease_token is distinct from p_lease_token
+    or v_job.lease_expires_at is null
+    or v_job.lease_expires_at <= pg_catalog.clock_timestamp() then
     raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
   end if;
   v_request_hash := public.runtime_request_hash(pg_catalog.jsonb_build_object(
@@ -942,25 +954,36 @@ begin
     raise exception using errcode = '22023', message = 'RUNTIME_INVALID_RECEIPT';
   end if;
   select job.* into v_job
+  from public.event_jobs as job
+  where job.id = p_job_id
+    and job.event_id = p_event_id
+  for update of job;
+  if not found then
+    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
+  end if;
+  if not exists (
+    select 1
     from public.domain_events as event
-    join public.event_jobs as job on job.event_id = event.id
     join public.company_profiles as company
       on company.id = event.company_id and company.tenant_id = event.tenant_id
     join public.tenants as tenant on tenant.id = event.tenant_id
     where event.id = p_event_id
-      and job.id = p_job_id
-      and job.event_id = p_event_id
       and event.tenant_id = p_tenant_id
       and event.company_id = p_company_id
-      and job.state = 'leased'
-      and job.lease_owner = p_worker_id
-      and job.lease_token = p_lease_token
-      and job.lease_expires_at > pg_catalog.statement_timestamp()
       and company.status::text = 'active'
       and tenant.status = 'active'
-  for update of job;
-  if not found then
+  ) then
     raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
+  end if;
+  if v_job.state <> 'leased'
+    or v_job.lease_owner is distinct from p_worker_id
+    or v_job.lease_token is distinct from p_lease_token
+    or v_job.lease_expires_at is null
+    or v_job.lease_expires_at <= pg_catalog.clock_timestamp() then
+    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
+  end if;
+  if p_attempt_number <> v_job.attempts then
+    raise exception using errcode = '22023', message = 'RUNTIME_ATTEMPT_MISMATCH';
   end if;
   v_request_hash := public.runtime_request_hash(pg_catalog.jsonb_build_object(
     'action', 'DELIVERY_RECEIPT_RECORDED',

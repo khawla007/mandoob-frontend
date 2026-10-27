@@ -170,14 +170,13 @@ test('exposes bounded role-scoped reads and transactional audited mutations', as
 test('worker mutations validate event and job ownership without enabling consumers', async () => {
   const sql = await migrationSql();
 
-  assert.match(
-    sql,
-    /write_operational_projection[\s\S]*domain_events[\s\S]*event_jobs[\s\S]*tenant_id = p_tenant_id[\s\S]*company_id = p_company_id/,
-  );
-  assert.match(
-    sql,
-    /record_safe_delivery_receipt[\s\S]*domain_events[\s\S]*event_jobs[\s\S]*tenant_id = p_tenant_id[\s\S]*company_id = p_company_id/,
-  );
+  for (const rpc of ['write_operational_projection', 'record_safe_delivery_receipt']) {
+    const body = rpcSql(sql, rpc);
+    assert.match(body, /public\.event_jobs/);
+    assert.match(body, /public\.domain_events/);
+    assert.match(body, /event\.tenant_id = p_tenant_id/);
+    assert.match(body, /event\.company_id = p_company_id/);
+  }
   assert.match(sql, /^begin;/);
   assert.match(sql, /commit;\s*$/);
   assert.doesNotMatch(sql, /insert into public\.event_consumer_registrations/);
@@ -193,10 +192,10 @@ test('worker projection and receipt RPCs require a current matching lease fence'
     const body = rpcSql(sql, rpc);
     assert.match(body, /p_worker_id uuid/);
     assert.match(body, /p_lease_token uuid/);
-    assert.match(body, /job\.state = 'leased'/);
-    assert.match(body, /job\.lease_owner = p_worker_id/);
-    assert.match(body, /job\.lease_token = p_lease_token/);
-    assert.match(body, /job\.lease_expires_at > pg_catalog\.statement_timestamp\(\)/);
+    assert.match(body, /v_job\.state <> 'leased'/);
+    assert.match(body, /v_job\.lease_owner is distinct from p_worker_id/);
+    assert.match(body, /v_job\.lease_token is distinct from p_lease_token/);
+    assert.match(body, /v_job\.lease_expires_at <= pg_catalog\.clock_timestamp\(\)/);
     assert.match(body, /company\.status::text = 'active'/);
     assert.match(body, /tenant\.status = 'active'/);
   }
@@ -345,10 +344,10 @@ test('worker writers lock the exact fenced job before mutating runtime state', a
     assert.match(body, /select job\.\* into v_job/);
     assert.match(body, /job\.id = p_job_id/);
     assert.match(body, /job\.event_id = p_event_id/);
-    assert.match(body, /job\.state = 'leased'/);
-    assert.match(body, /job\.lease_owner = p_worker_id/);
-    assert.match(body, /job\.lease_token = p_lease_token/);
-    assert.match(body, /job\.lease_expires_at > pg_catalog\.statement_timestamp\(\)/);
+    assert.match(body, /v_job\.state <> 'leased'/);
+    assert.match(body, /v_job\.lease_owner is distinct from p_worker_id/);
+    assert.match(body, /v_job\.lease_token is distinct from p_lease_token/);
+    assert.match(body, /v_job\.lease_expires_at <= pg_catalog\.clock_timestamp\(\)/);
     assert.match(body, /for update of job/);
     assert.match(body, /if not found then[\s\S]*runtime_reference_scope_denied/);
   }
@@ -394,4 +393,47 @@ test('projection conflicts require exact normalized stored intent equivalence', 
     assert.match(body, new RegExp(predicate.replaceAll('.', '\\.')));
   }
   assert.match(body, /if v_id is null then[\s\S]*runtime_idempotency_conflict/);
+});
+
+test('activity listing exposes company-wide rows only to operators and self rows to members', async () => {
+  const sql = await migrationSql();
+  const body = rpcSql(sql, 'list_operational_activity');
+
+  assert.match(body, /v_actor_id uuid := auth\.uid\(\)/);
+  assert.match(body, /v_role text/);
+  assert.match(body, /v_role := public\.runtime_actor_company_access\(p_company_id, true\)/);
+  assert.match(
+    body,
+    /v_role in \('admin', 'super_admin', 'pro'\)[\s\S]*activity\.actor_profile_id = v_actor_id/,
+  );
+});
+
+test('worker writers lock identity before checking lease authority against wall-clock time', async () => {
+  const sql = await migrationSql();
+
+  for (const rpc of ['write_operational_projection', 'record_safe_delivery_receipt']) {
+    const body = rpcSql(sql, rpc);
+    const lock = body.match(/select job\.\* into v_job([\s\S]*?)for update of job;/)?.[1];
+    assert.ok(lock, `${rpc} must lock its job row`);
+    assert.match(lock, /job\.id = p_job_id/);
+    assert.match(lock, /job\.event_id = p_event_id/);
+    assert.doesNotMatch(lock, /job\.state|job\.lease_owner|job\.lease_token|job\.lease_expires_at/);
+    assert.match(body, /if v_job\.state <> 'leased'/);
+    assert.match(body, /v_job\.lease_owner is distinct from p_worker_id/);
+    assert.match(body, /v_job\.lease_token is distinct from p_lease_token/);
+    assert.match(body, /v_job\.lease_expires_at <= pg_catalog\.clock_timestamp\(\)/);
+    assert.doesNotMatch(body, /lease_expires_at > pg_catalog\.statement_timestamp\(\)/);
+  }
+});
+
+test('delivery receipts accept only the current locked job attempt', async () => {
+  const sql = await migrationSql();
+  const body = rpcSql(sql, 'record_safe_delivery_receipt');
+  const matchesCurrentAttempt = (supplied: number, current: number) => supplied === current;
+
+  assert.match(body, /p_attempt_number <> v_job\.attempts/);
+  assert.match(body, /runtime_attempt_mismatch/);
+  assert.equal(matchesCurrentAttempt(3, 3), true);
+  assert.equal(matchesCurrentAttempt(2, 3), false);
+  assert.equal(matchesCurrentAttempt(4, 3), false);
 });
