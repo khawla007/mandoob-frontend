@@ -6,7 +6,7 @@ import { RegistrationWorkspace } from '@/components/registration/RegistrationWor
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
 import { registrationWorkspaceLabels } from '@/lib/registration/labels';
-import { loadRegistrationPresentation } from '@/lib/registration/unavailable-adapter';
+import { loadRegistrationPresentation } from '@/lib/registration/db-adapter';
 
 export const dynamic = 'force-dynamic';
 const registrationIdSchema = z.string().uuid();
@@ -16,14 +16,22 @@ export default async function AdminRegistrationDetailPage({
 }: {
   params: Promise<{ registrationId: string }>;
 }) {
-  await requirePlatformOperator();
+  // requirePlatformOperator enforces admin/super_admin + MFA + AAL2 (fail closed).
+  const session = await requirePlatformOperator();
   const { registrationId } = await params;
   if (!registrationIdSchema.safeParse(registrationId).success) notFound();
   const [t, locale, state] = await Promise.all([
     getTranslations('registration'),
     getLocale(),
-    loadRegistrationPresentation(),
+    loadRegistrationPresentation(registrationId, {
+      role: 'operator',
+      actorId: session.id,
+      actorAal: session.aal,
+    }),
   ]);
+  // Fail closed on a guessed / forbidden / non-existent id — no existence
+  // disclosure: an unavailable contract read is indistinguishable from absence.
+  if (state.kind === 'unavailable' || state.kind === 'error') notFound();
   return (
     <div className="space-y-6">
       <DashboardPageHeader

@@ -1,6 +1,8 @@
-import { getTranslations } from 'next-intl/server';
+import Link from 'next/link';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,9 +10,14 @@ import { requirePlatformOperator } from '@/lib/auth/require-role';
 import {
   REGISTRATION_STAGE_CODES,
   REGISTRATION_STAGE_STATUSES,
+  formatDubaiRegistrationTimestamp,
 } from '@/lib/registration/contracts';
 import { parseAdminRegistrationQuery } from '@/lib/registration/admin-query';
-import { loadRegistrationIndex } from '@/lib/registration/unavailable-adapter';
+import { loadAdminRegistrationIndex } from '@/lib/registration/db-adapter';
+import {
+  adminRegistrationPagination,
+  buildAdminRegistrationIndexQuery,
+} from '@/lib/registration/admin-index-query';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,13 +26,26 @@ export default async function AdminRegistrationsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePlatformOperator();
-  const [t, raw, state] = await Promise.all([
+  // requirePlatformOperator enforces admin/super_admin + MFA + AAL2 (fail closed).
+  const session = await requirePlatformOperator();
+  const [t, locale, raw] = await Promise.all([
     getTranslations('registration'),
+    getLocale(),
     searchParams,
-    loadRegistrationIndex(),
   ]);
   const query = parseAdminRegistrationQuery(raw);
+  const state = await loadAdminRegistrationIndex(
+    { role: 'operator', actorId: session.id, actorAal: session.aal },
+    buildAdminRegistrationIndexQuery(query),
+  );
+
+  const { previous, next: hasNext } = adminRegistrationPagination(
+    query,
+    state.kind === 'ready'
+      ? { total: state.total, page: state.page, pageSize: state.pageSize }
+      : null,
+  );
+
   return (
     <div className="space-y-6" data-registration-index-source={state.kind}>
       <DashboardPageHeader
@@ -80,22 +100,100 @@ export default async function AdminRegistrationsPage({
           </form>
         </CardContent>
       </Card>
-      <Card className="signal-panel">
-        <CardContent className="py-12 text-center">
-          <strong className="block">{t('states.unavailable')}</strong>
-          <p role="status" className="text-muted-foreground mx-auto mt-2 max-w-2xl text-sm">
-            {t('states.indexUnavailable')}
-          </p>
-        </CardContent>
-      </Card>
+
+      {state.kind === 'ready' ? (
+        <Card className="signal-panel">
+          <CardContent className="pt-6">
+            <p role="status" className="text-muted-foreground mb-4 text-sm">
+              {t('list.results', { count: state.total })}
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-muted-foreground border-b text-xs">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">{t('list.company')}</th>
+                    <th className="py-2 pr-4 font-medium">{t('list.pro')}</th>
+                    <th className="py-2 pr-4 font-medium">{t('list.stage')}</th>
+                    <th className="py-2 pr-4 font-medium">{t('list.status')}</th>
+                    <th className="py-2 pr-4 font-medium">{t('list.progress')}</th>
+                    <th className="py-2 pr-4 font-medium">{t('list.updated')}</th>
+                    <th className="py-2 pr-0 font-medium" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.value.map((row) => (
+                    <tr key={row.registrationId} className="border-b last:border-0">
+                      <td className="py-3 pr-4 font-medium">{row.companyName ?? '—'}</td>
+                      <td className="py-3 pr-4">{row.proName ?? '—'}</td>
+                      <td className="py-3 pr-4">{t(`stages.${row.currentStage}`)}</td>
+                      <td className="py-3 pr-4">
+                        <Badge variant="outline">{t(`statuses.${row.currentStageStatus}`)}</Badge>
+                      </td>
+                      <td className="py-3 pr-4 tabular-nums">
+                        {t('workspace.stageCount', {
+                          completed: row.completedStages,
+                          total: row.totalStages,
+                        })}
+                      </td>
+                      <td className="text-muted-foreground py-3 pr-4">
+                        {row.updatedAt
+                          ? (formatDubaiRegistrationTimestamp(row.updatedAt, locale) ?? '—')
+                          : '—'}
+                      </td>
+                      <td className="py-3 pr-0 text-right">
+                        <Link
+                          className="text-primary text-sm font-medium hover:underline"
+                          href={`/admin/registrations/${row.registrationId}`}
+                        >
+                          {t('list.view')}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="signal-panel">
+          <CardContent className="py-12 text-center">
+            <strong className="block">
+              {state.kind === 'empty' ? t('states.empty') : t('states.unavailable')}
+            </strong>
+            <p role="status" className="text-muted-foreground mx-auto mt-2 max-w-2xl text-sm">
+              {state.kind === 'error' ? t('states.indexError') : t('states.indexUnavailable')}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <nav aria-label={t('pagination.label')} className="flex items-center justify-between gap-3">
-        <span aria-disabled="true" className="text-muted-foreground px-3 py-2 text-sm">
-          {t('pagination.previous')}
-        </span>
+        {previous ? (
+          <Link
+            className="text-primary px-3 py-2 text-sm font-medium hover:underline"
+            href={previous}
+          >
+            {t('pagination.previous')}
+          </Link>
+        ) : (
+          <span aria-disabled="true" className="text-muted-foreground px-3 py-2 text-sm">
+            {t('pagination.previous')}
+          </span>
+        )}
         <span className="text-sm tabular-nums">{t('pagination.page', { page: query.page })}</span>
-        <span aria-disabled="true" className="text-muted-foreground px-3 py-2 text-sm">
-          {t('pagination.next')}
-        </span>
+        {hasNext ? (
+          <Link
+            className="text-primary px-3 py-2 text-sm font-medium hover:underline"
+            href={hasNext}
+          >
+            {t('pagination.next')}
+          </Link>
+        ) : (
+          <span aria-disabled="true" className="text-muted-foreground px-3 py-2 text-sm">
+            {t('pagination.next')}
+          </span>
+        )}
       </nav>
     </div>
   );

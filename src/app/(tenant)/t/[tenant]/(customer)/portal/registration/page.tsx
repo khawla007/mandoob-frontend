@@ -6,8 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
 import { loadCustomerCompanyDisplay } from '@/lib/data/customer-company-display-loader';
+import { resolveCompanyActiveRegistration } from '@/lib/data/registration-workflow';
 import { registrationWorkspaceLabels } from '@/lib/registration/labels';
-import { loadRegistrationPresentation } from '@/lib/registration/unavailable-adapter';
+import { loadRegistrationPresentation } from '@/lib/registration/db-adapter';
+import {
+  REGISTRATION_UNAVAILABLE,
+  resolveScopedRegistrationPresentation,
+} from '@/lib/registration/resolve-presentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,11 +23,26 @@ export default async function CustomerRegistrationPage({
 }) {
   const { tenant: slug } = await params;
   const access = await authorizeCustomerLinkedCompanyRead(slug);
-  const [t, locale, state] = await Promise.all([
-    getTranslations('registration'),
-    getLocale(),
-    loadRegistrationPresentation(),
-  ]);
+  const [t, locale] = await Promise.all([getTranslations('registration'), getLocale()]);
+  // Redacted read-only progress for the linked Company's active registration.
+  // Only an authorized customer link resolves; any other access shape fails
+  // closed to the unavailable contract with no existence disclosure.
+  const state =
+    access.kind === 'authorized'
+      ? await resolveScopedRegistrationPresentation(
+          {
+            role: 'customer',
+            actorId: access.session.id,
+            tenantId: access.tenant.id,
+            companyId: access.company.id,
+          },
+          { role: 'customer', actorId: access.session.id },
+          {
+            resolveActiveRegistration: resolveCompanyActiveRegistration,
+            loadPresentation: loadRegistrationPresentation,
+          },
+        )
+      : REGISTRATION_UNAVAILABLE;
   const company = access.kind === 'authorized' ? await loadCustomerCompanyDisplay(access) : null;
   const context =
     access.kind === 'authorized' ? access.company.companyName : t('customer.companyUnavailable');
