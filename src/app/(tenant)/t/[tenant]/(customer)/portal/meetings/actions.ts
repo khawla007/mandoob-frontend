@@ -9,6 +9,7 @@ import { readSelfCustomer } from '@/lib/data/account-self';
 import type { MeetingActor } from '@/lib/data/meetings';
 import { createMeetingCommands } from '@/lib/meetings/commands';
 import { createDailyRoom } from '@/lib/meetings/daily';
+import { createMeetingCollaborationCommands } from '@/lib/meetings/collaboration';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 
@@ -99,5 +100,25 @@ export async function bookMeetingSlotAction(
     return { ok: true };
   } catch (error) {
     return toResult(error, 'Could not book meeting');
+  }
+}
+
+export async function setCustomerMeetingConsentAction(
+  slug: string,
+  meetingId: string,
+  granted: boolean,
+): Promise<CustomerMeetingActionResult> {
+  try {
+    const { actor } = await resolveCustomerActor(slug);
+    await createMeetingCollaborationCommands(createSupabaseServiceRoleClient()).setConsent({
+      actorId: actor.id,
+      meetingId,
+      granted,
+      policyVersion: 'p3.11-v1',
+    });
+    revalidatePath(`/t/${slug}/portal/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not update meeting consent');
   }
 }

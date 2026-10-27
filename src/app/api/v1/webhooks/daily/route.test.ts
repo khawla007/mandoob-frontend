@@ -34,10 +34,11 @@ test('Daily recording webhook carries tenant and company ownership into attachme
       version: 1,
     }),
     reserve: async () => true,
+    hasConsent: async () => true,
     ingestRecording: async (meeting, recordingId, storagePath) => {
       ingestions.push({ meetingId: meeting.id, storagePath, recordingId });
     },
-    ensureSummary: async () => undefined,
+    enqueueSummary: async () => undefined,
   });
 
   assert.equal(response.status, 200);
@@ -61,9 +62,46 @@ test('Daily webhook replay and unknown rooms are non-disclosing noops', async ()
   const replay = await handleDailyWebhook(new Request('https://mandoob.test/webhook'), {
     verify: async () => event,
     reserve: async () => false,
+    hasConsent: async () => false,
     findMeeting: async () => null,
     ingestRecording: async () => assert.fail('replay must not ingest'),
-    ensureSummary: async () => undefined,
+    enqueueSummary: async () => undefined,
   });
   assert.equal(replay.status, 200);
+});
+
+test('Daily webhook never downloads recording bytes without current participant consent', async () => {
+  const { handleDailyWebhook } = await import('./route-handler');
+  const response = await handleDailyWebhook(new Request('https://mandoob.test/webhook'), {
+    verify: async () => ({
+      id: 'daily-event-3',
+      timestamp: '2026-10-27T06:00:00.000Z',
+      type: 'recording.ready',
+      payload: { room_name: 'room-3', recording_id: 'recording-3' },
+    }),
+    reserve: async () => true,
+    findMeeting: async () => ({
+      id: 'meeting-3',
+      tenantId: 'tenant-1',
+      companyId: 'company-1',
+      leadId: null,
+      customerProfileId: null,
+      title: 'Private',
+      status: 'scheduled',
+      scheduledAt: '2026-10-27T06:00:00.000Z',
+      durationMinutes: 30,
+      timezone: 'Asia/Dubai',
+      providerRoomName: 'room-3',
+      meetingUrl: null,
+      recordingStoragePath: null,
+      recordingUrl: null,
+      recordingReadyAt: null,
+      version: 1,
+    }),
+    hasConsent: async () => false,
+    ingestRecording: async () => assert.fail('recording must not be downloaded'),
+    enqueueSummary: async () => assert.fail('AI must not be queued'),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ignored: true, reason: 'consent_required' });
 });

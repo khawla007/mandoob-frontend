@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
-import { processPendingMeetingAiSummaries } from '@/lib/meetings/ai-summary';
+import { processMeetingAiJobs } from '@/lib/meetings/ai-worker-supabase';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,6 +10,6 @@ export async function POST(req: Request): Promise<Response> {
   if (!env.CRON_SECRET || !auth || auth !== env.CRON_SECRET) {
     return NextResponse.json({ error: 'unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
-  const result = await processPendingMeetingAiSummaries({ batchSize: 5 });
+  const result = await processMeetingAiJobs(5);
   return NextResponse.json(result);
 }

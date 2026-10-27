@@ -7,9 +7,11 @@ import {
   type OperationalMeetingDisplay,
 } from '@/components/operations/OperationalMeetingList';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
+import { MeetingCollaborationPanel } from '@/components/operations/MeetingCollaborationPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
+import { listMeetingCollaboration } from '@/lib/data/meeting-collaboration';
 import {
   getCustomerCompanyMeetingRecordingSignedUrl,
   listMeetingsForCustomerCompany,
@@ -17,7 +19,7 @@ import {
   type MeetingActor,
 } from '@/lib/data/meetings';
 import { safeExternalMeetingHref } from '@/lib/operations/meeting-presentation';
-import { bookMeetingSlotAction } from './actions';
+import { bookMeetingSlotAction, setCustomerMeetingConsentAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +57,11 @@ export default async function CustomerMeetingsPage({
   const recordingUrls = new Map(
     recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])),
   );
+  const collaboration = await listMeetingCollaboration(
+    meetings.map(({ id }) => id),
+    access.session.id,
+    false,
+  );
   const date = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -70,6 +77,36 @@ export default async function CustomerMeetingsPage({
     meetingUrl: safeExternalMeetingHref(meeting.meetingUrl),
     recordingUrl: safeExternalMeetingHref(recordingUrls.get(meeting.id) ?? null),
   }));
+  const collaborationLabels = {
+    consentTitle: t('collaboration.consentTitle'),
+    consentDescription: t('collaboration.consentDescription'),
+    consentGranted: t('collaboration.consentGranted'),
+    consentRequired: t('collaboration.consentRequired'),
+    grantConsent: t('collaboration.grantConsent'),
+    withdrawConsent: t('collaboration.withdrawConsent'),
+    notePlaceholder: t('collaboration.notePlaceholder'),
+    addNote: t('collaboration.addNote'),
+    notes: t('collaboration.notes'),
+    actions: t('collaboration.actions'),
+    accept: t('collaboration.accept'),
+    dismiss: t('collaboration.dismiss'),
+  };
+  const details = Object.fromEntries(
+    meetings.map((meeting) => [
+      meeting.id,
+      <MeetingCollaborationPanel
+        key={meeting.id}
+        state={collaboration.get(meeting.id) ?? { consentGranted: false, notes: [], actions: [] }}
+        canReview={false}
+        canAddNote={false}
+        labels={collaborationLabels}
+        setConsent={async (granted) => {
+          'use server';
+          await setCustomerMeetingConsentAction(slug, meeting.id, granted);
+        }}
+      />,
+    ]),
+  );
 
   return (
     <div className="signal-dashboard min-w-0 space-y-5">
@@ -122,14 +159,9 @@ export default async function CustomerMeetingsPage({
             emptyLabel={t('noCustomerMeetings')}
             joinLabel={t('join')}
             recordingLabel={t('recording')}
+            details={details}
           />
         </CardContent>
-      </Card>
-      <Card className="signal-panel">
-        <CardHeader>
-          <CardTitle>{t('consentTitle')}</CardTitle>
-          <CardDescription>{t('consentUnavailable')}</CardDescription>
-        </CardHeader>
       </Card>
     </div>
   );

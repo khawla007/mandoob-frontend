@@ -5,7 +5,6 @@ import {
   findMeetingByDailyRoom,
   type Meeting,
 } from '@/lib/data/meetings';
-import { ensurePendingMeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 import { attachMeetingRecordingVersion } from '@/lib/meetings/recording-store';
 import { downloadDailyRecording, verifyDailyWebhook } from '@/lib/meetings/daily';
 import type { DailyWebhookEvent } from '@/lib/meetings/daily';
@@ -17,9 +16,17 @@ type DailyWebhookDependencies = {
   verify(request: Request): Promise<DailyWebhookEvent | null>;
   reserve(event: DailyWebhookEvent): Promise<boolean>;
   findMeeting(roomName: string): Promise<Meeting | null>;
+  hasConsent(meetingId: string): Promise<boolean>;
   ingestRecording(meeting: Meeting, recordingId: string, storagePath: string): Promise<void>;
-  ensureSummary(meetingId: string): Promise<unknown>;
+  enqueueSummary(meetingId: string, eventId: string): Promise<unknown>;
 };
+
+function stableOperationId(value: string): string {
+  const hex = createHash('sha256').update(value).digest('hex').slice(0, 32).split('');
+  hex[12] = '4';
+  hex[16] = ['8', '9', 'a', 'b'][Number.parseInt(hex[16] ?? '0', 16) % 4] ?? '8';
+  return `${hex.slice(0, 8).join('')}-${hex.slice(8, 12).join('')}-${hex.slice(12, 16).join('')}-${hex.slice(16, 20).join('')}-${hex.slice(20).join('')}`;
+}
 
 const dailyWebhookDependencies: DailyWebhookDependencies = {
   verify: verifyDailyWebhook,
@@ -38,6 +45,14 @@ const dailyWebhookDependencies: DailyWebhookDependencies = {
     throw error;
   },
   findMeeting: findMeetingByDailyRoom,
+  async hasConsent(meetingId) {
+    const { data, error } = await createSupabaseServiceRoleClient().rpc(
+      'p311_has_processing_consent',
+      { p_meeting_id: meetingId },
+    );
+    if (error) throw error;
+    return data === true;
+  },
   async ingestRecording(meeting, recordingId, storagePath) {
     const recording = await downloadDailyRecording(recordingId);
     const admin = createSupabaseServiceRoleClient();
@@ -64,7 +79,14 @@ const dailyWebhookDependencies: DailyWebhookDependencies = {
       },
     );
   },
-  ensureSummary: ensurePendingMeetingAiSummary,
+  async enqueueSummary(meetingId, eventId) {
+    const { data, error } = await createSupabaseServiceRoleClient().rpc(
+      'p311_request_ai_processing',
+      { p_meeting_id: meetingId, p_operation_id: stableOperationId(eventId), p_actor_id: null },
+    );
+    if (error) throw error;
+    return data;
+  },
 };
 
 export async function handleDailyWebhook(
@@ -81,6 +103,9 @@ export async function handleDailyWebhook(
 
   const meeting = await dependencies.findMeeting(roomName);
   if (!meeting) return jsonOk({ ignored: true });
+  if (!(await dependencies.hasConsent(meeting.id))) {
+    return jsonOk({ ignored: true, reason: 'consent_required' });
+  }
 
   const recordingId = String(event.payload.recording_id ?? event.payload.id ?? '');
   const storagePath =
@@ -93,7 +118,7 @@ export async function handleDailyWebhook(
   await dependencies.ingestRecording(meeting, recordingId, storagePath);
 
   try {
-    await dependencies.ensureSummary(meeting.id);
+    await dependencies.enqueueSummary(meeting.id, event.id);
   } catch (error) {
     console.warn('meeting AI summary enqueue failed', {
       meetingId: meeting.id,

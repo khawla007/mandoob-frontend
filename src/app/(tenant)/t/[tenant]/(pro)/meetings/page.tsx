@@ -7,6 +7,7 @@ import {
   type OperationalMeetingDisplay,
 } from '@/components/operations/OperationalMeetingList';
 import { MeetingAiSummaryCard } from '@/components/pro/MeetingAiSummaryCard';
+import { MeetingCollaborationPanel } from '@/components/operations/MeetingCollaborationPanel';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,8 +23,15 @@ import {
   type MeetingActor,
 } from '@/lib/data/meetings';
 import { listMeetingAiSummariesForMeetings } from '@/lib/data/meeting-ai-summaries';
+import { listMeetingCollaboration } from '@/lib/data/meeting-collaboration';
 import { partitionMeetings, safeExternalMeetingHref } from '@/lib/operations/meeting-presentation';
-import { cancelMeetingAction, createMeetingSlotAction } from './actions';
+import {
+  addMeetingNoteAction,
+  cancelMeetingAction,
+  createMeetingSlotAction,
+  reviewMeetingActionItemAction,
+  setProMeetingConsentAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +67,11 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
     meetings.map(({ id }) => id),
     actor,
   );
+  const collaboration = await listMeetingCollaboration(
+    meetings.map(({ id }) => id),
+    session.id,
+    true,
+  );
   const { upcoming, past } = partitionMeetings(meetings, now);
   const date = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
@@ -76,15 +89,48 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
       meetingUrl: safeExternalMeetingHref(meeting.meetingUrl),
       recordingUrl: safeExternalMeetingHref(recordingUrls.get(meeting.id) ?? null),
     }));
+  const collaborationLabels = {
+    consentTitle: t('collaboration.consentTitle'),
+    consentDescription: t('collaboration.consentDescription'),
+    consentGranted: t('collaboration.consentGranted'),
+    consentRequired: t('collaboration.consentRequired'),
+    grantConsent: t('collaboration.grantConsent'),
+    withdrawConsent: t('collaboration.withdrawConsent'),
+    notePlaceholder: t('collaboration.notePlaceholder'),
+    addNote: t('collaboration.addNote'),
+    notes: t('collaboration.notes'),
+    actions: t('collaboration.actions'),
+    accept: t('collaboration.accept'),
+    dismiss: t('collaboration.dismiss'),
+  };
   const details = Object.fromEntries(
     meetings.map((meeting) => [
       meeting.id,
-      <MeetingAiSummaryCard
-        key={meeting.id}
-        meetingId={meeting.id}
-        slug={slug}
-        summary={summaries.get(meeting.id) ?? null}
-      />,
+      <div key={meeting.id}>
+        <MeetingAiSummaryCard
+          meetingId={meeting.id}
+          slug={slug}
+          summary={summaries.get(meeting.id) ?? null}
+        />
+        <MeetingCollaborationPanel
+          state={collaboration.get(meeting.id) ?? { consentGranted: false, notes: [], actions: [] }}
+          canReview
+          canAddNote
+          labels={collaborationLabels}
+          setConsent={async (granted) => {
+            'use server';
+            await setProMeetingConsentAction(slug, meeting.id, granted);
+          }}
+          addNote={async (formData) => {
+            'use server';
+            await addMeetingNoteAction(slug, meeting.id, formData);
+          }}
+          reviewAction={async (actionItemId, decision) => {
+            'use server';
+            await reviewMeetingActionItemAction(slug, meeting.id, actionItemId, decision);
+          }}
+        />
+      </div>,
     ]),
   );
   const cancellation = Object.fromEntries(
@@ -199,12 +245,6 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
             details={details}
           />
         </CardContent>
-      </Card>
-      <Card className="signal-panel">
-        <CardHeader>
-          <CardTitle>{t('unavailableTitle')}</CardTitle>
-          <CardDescription>{t('unavailableDescription')}</CardDescription>
-        </CardHeader>
       </Card>
     </div>
   );

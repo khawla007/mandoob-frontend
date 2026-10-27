@@ -42,3 +42,26 @@ test('P3.11 migration keeps provider and private data out of event payload decla
     );
   }
 });
+
+test('P3.11 completion migration wires consent, retention, notes and action review', () => {
+  const completion = readFileSync(
+    new URL(
+      '../../../supabase/migrations/20260922110100_0110_p3_11_collaboration_completion.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  for (const required of [
+    'p311_set_consent',
+    'p311_has_processing_consent',
+    'p311_add_meeting_note',
+    'p311_review_action_item',
+    'p311_complete_ai_processing',
+    'transcript_retain_until',
+    'transcript_deleted_at',
+    'proposed_by_summary_id',
+  ]) {
+    assert.match(completion.toLowerCase(), new RegExp(required, 'u'));
+  }
+  assert.match(completion, /participant_role,starts_at,ends_at[\s\S]*'host'/u);
+});

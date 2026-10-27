@@ -6,9 +6,10 @@ import { ApiError } from '@/lib/errors';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { createMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
-import { retryMeetingAiSummary } from '@/lib/data/meeting-ai-summaries';
 import { createMeetingCommands } from '@/lib/meetings/commands';
+import { createMeetingCollaborationCommands } from '@/lib/meetings/collaboration';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { randomUUID } from 'node:crypto';
 
 export type MeetingActionResult = { ok: true } | { ok: false; error: string; code: string };
 
@@ -90,10 +91,77 @@ export async function retryMeetingSummaryAction(
 ): Promise<MeetingActionResult> {
   try {
     const { actor } = await resolveActor(slug);
-    await retryMeetingAiSummary(meetingId, actor);
+    const { data, error } = await createSupabaseServiceRoleClient().rpc(
+      'p311_request_ai_processing',
+      { p_meeting_id: meetingId, p_operation_id: randomUUID(), p_actor_id: actor.id },
+    );
+    if (error || data !== true) {
+      throw new ApiError('CONSENT_REQUIRED', 'All participants must grant consent first.', 409);
+    }
     revalidatePath(`/t/${slug}/meetings`);
     return { ok: true };
   } catch (error) {
     return toResult(error, 'Could not retry meeting summary');
+  }
+}
+
+export async function setProMeetingConsentAction(
+  slug: string,
+  meetingId: string,
+  granted: boolean,
+): Promise<MeetingActionResult> {
+  try {
+    const { actor } = await resolveActor(slug);
+    await createMeetingCollaborationCommands(createSupabaseServiceRoleClient()).setConsent({
+      actorId: actor.id,
+      meetingId,
+      granted,
+      policyVersion: 'p3.11-v1',
+    });
+    revalidatePath(`/t/${slug}/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not update meeting consent');
+  }
+}
+
+export async function addMeetingNoteAction(
+  slug: string,
+  meetingId: string,
+  formData: FormData,
+): Promise<MeetingActionResult> {
+  try {
+    const { actor } = await resolveActor(slug);
+    await createMeetingCollaborationCommands(createSupabaseServiceRoleClient()).addNote({
+      actorId: actor.id,
+      meetingId,
+      body: String(formData.get('body') ?? ''),
+      visibility: 'participants',
+    });
+    revalidatePath(`/t/${slug}/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not add meeting note');
+  }
+}
+
+export async function reviewMeetingActionItemAction(
+  slug: string,
+  meetingId: string,
+  actionItemId: string,
+  decision: 'accepted' | 'dismissed',
+): Promise<MeetingActionResult> {
+  try {
+    const { actor } = await resolveActor(slug);
+    await createMeetingCollaborationCommands(createSupabaseServiceRoleClient()).reviewAction({
+      actorId: actor.id,
+      meetingId,
+      actionItemId,
+      decision,
+    });
+    revalidatePath(`/t/${slug}/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not review action item');
   }
 }
