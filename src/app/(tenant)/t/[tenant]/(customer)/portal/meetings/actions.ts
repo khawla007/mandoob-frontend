@@ -10,6 +10,7 @@ import type { MeetingActor } from '@/lib/data/meetings';
 import { createMeetingCommands } from '@/lib/meetings/commands';
 import { createDailyRoom } from '@/lib/meetings/daily';
 import { createMeetingCollaborationCommands } from '@/lib/meetings/collaboration';
+import { dubaiLocalToIso } from '@/lib/meetings/contracts';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { resolveTenantBySlug } from '@/lib/data/tenant';
 
@@ -120,5 +121,56 @@ export async function setCustomerMeetingConsentAction(
     return { ok: true };
   } catch (error) {
     return toResult(error, 'Could not update meeting consent');
+  }
+}
+
+export async function rescheduleCustomerMeetingAction(
+  slug: string,
+  meetingId: string,
+  expectedVersion: number,
+  operationId: string,
+  formData: FormData,
+): Promise<CustomerMeetingActionResult> {
+  try {
+    const startsAt = dubaiLocalToIso(String(formData.get('starts_at') ?? ''));
+    const duration = Number(formData.get('duration_minutes') ?? 30);
+    if (!Number.isInteger(duration) || duration < 15 || duration > 180) {
+      throw new ApiError('INVALID_INPUT', 'Choose a valid meeting duration.', 400);
+    }
+    const endsAt = new Date(new Date(startsAt).getTime() + duration * 60000).toISOString();
+    const { actor } = await resolveCustomerActor(slug);
+    await createMeetingCommands(createSupabaseServiceRoleClient()).reschedule({
+      actorId: actor.id,
+      operationId,
+      meetingId,
+      expectedVersion,
+      startsAt,
+      endsAt,
+    });
+    revalidatePath(`/t/${slug}/portal/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not reschedule meeting');
+  }
+}
+
+export async function cancelCustomerMeetingAction(
+  slug: string,
+  meetingId: string,
+  expectedVersion: number,
+  operationId: string,
+): Promise<CustomerMeetingActionResult> {
+  try {
+    const { actor } = await resolveCustomerActor(slug);
+    await createMeetingCommands(createSupabaseServiceRoleClient()).cancel({
+      actorId: actor.id,
+      operationId,
+      meetingId,
+      expectedVersion,
+    });
+    revalidatePath(`/t/${slug}/portal/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not cancel meeting');
   }
 }

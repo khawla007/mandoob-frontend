@@ -18,6 +18,10 @@ const receiptSchema = z.object({
   version: z.number().int().positive(),
   room_state: z.enum(['pending', 'ready', 'compensation_pending', 'cancelled']),
 });
+const slotReceiptSchema = z.object({
+  slot_id: uuid,
+  version: z.number().int().positive(),
+});
 
 export type MeetingCommandReceipt = {
   meetingId: string;
@@ -50,6 +54,36 @@ async function run(client: RpcClient, name: string, args: Record<string, unknown
 
 export function createMeetingCommands(client: RpcClient) {
   return {
+    async createSlot(input: {
+      actorId: string;
+      operationId: string;
+      tenantId: string;
+      companyId: string;
+      startsAt: string;
+      endsAt: string;
+    }) {
+      const payload = {
+        startsAt: z.string().datetime({ offset: true }).parse(input.startsAt),
+        endsAt: z.string().datetime({ offset: true }).parse(input.endsAt),
+      };
+      const { data, error } = await client.rpc('p311_create_slot', {
+        p_actor_id: uuid.parse(input.actorId),
+        p_operation_id: uuid.parse(input.operationId),
+        p_payload_hash: hash(payload),
+        p_tenant_id: uuid.parse(input.tenantId),
+        p_company_id: uuid.parse(input.companyId),
+        p_starts_at: payload.startsAt,
+        p_ends_at: payload.endsAt,
+      });
+      if (error) {
+        if (error.code === '23505' || error.code === '23P01' || error.code === '40001') {
+          throw new ApiError('MEETING_CONFLICT', 'Meeting slot conflicts with availability.', 409);
+        }
+        throw new ApiError('MEETING_COMMAND_FAILED', 'Meeting slot could not be created.', 500);
+      }
+      const receipt = slotReceiptSchema.parse(data);
+      return { slotId: receipt.slot_id, version: receipt.version };
+    },
     book(input: {
       actorId: string;
       operationId: string;

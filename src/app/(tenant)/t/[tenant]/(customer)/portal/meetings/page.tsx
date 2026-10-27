@@ -8,6 +8,7 @@ import {
 } from '@/components/operations/OperationalMeetingList';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { MeetingCollaborationPanel } from '@/components/operations/MeetingCollaborationPanel';
+import { MeetingScheduleControls } from '@/components/operations/MeetingScheduleControls';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
@@ -19,7 +20,12 @@ import {
   type MeetingActor,
 } from '@/lib/data/meetings';
 import { safeExternalMeetingHref } from '@/lib/operations/meeting-presentation';
-import { bookMeetingSlotAction, setCustomerMeetingConsentAction } from './actions';
+import {
+  bookMeetingSlotAction,
+  cancelCustomerMeetingAction,
+  rescheduleCustomerMeetingAction,
+  setCustomerMeetingConsentAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,20 +98,55 @@ export default async function CustomerMeetingsPage({
     dismiss: t('collaboration.dismiss'),
   };
   const details = Object.fromEntries(
-    meetings.map((meeting) => [
-      meeting.id,
-      <MeetingCollaborationPanel
-        key={meeting.id}
-        state={collaboration.get(meeting.id) ?? { consentGranted: false, notes: [], actions: [] }}
-        canReview={false}
-        canAddNote={false}
-        labels={collaborationLabels}
-        setConsent={async (granted) => {
-          'use server';
-          await setCustomerMeetingConsentAction(slug, meeting.id, granted);
-        }}
-      />,
-    ]),
+    meetings.map((meeting) => {
+      const canChange = meeting.status === 'scheduled' && new Date(meeting.scheduledAt) > now;
+      const cancelOperationId = randomUUID();
+      const rescheduleOperationId = randomUUID();
+      return [
+        meeting.id,
+        <div key={meeting.id} className="space-y-3">
+          {canChange ? (
+            <MeetingScheduleControls
+              rescheduleLabel={t('reschedule')}
+              cancelLabel={t('cancel')}
+              startLabel={t('start')}
+              durationLabel={t('durationLabel')}
+              reschedule={async (formData) => {
+                'use server';
+                await rescheduleCustomerMeetingAction(
+                  slug,
+                  meeting.id,
+                  meeting.version,
+                  rescheduleOperationId,
+                  formData,
+                );
+              }}
+              cancel={async () => {
+                'use server';
+                await cancelCustomerMeetingAction(
+                  slug,
+                  meeting.id,
+                  meeting.version,
+                  cancelOperationId,
+                );
+              }}
+            />
+          ) : null}
+          <MeetingCollaborationPanel
+            state={
+              collaboration.get(meeting.id) ?? { consentGranted: false, notes: [], actions: [] }
+            }
+            canReview={false}
+            canAddNote={false}
+            labels={collaborationLabels}
+            setConsent={async (granted) => {
+              'use server';
+              await setCustomerMeetingConsentAction(slug, meeting.id, granted);
+            }}
+          />
+        </div>,
+      ];
+    }),
   );
 
   return (

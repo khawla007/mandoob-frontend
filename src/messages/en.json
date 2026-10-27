@@ -145,6 +145,7 @@
     "timezone": "Timezone",
     "create": "Create slot",
     "cancel": "Cancel",
+    "reschedule": "Reschedule",
     "book": "Book",
     "join": "Join securely",
     "recording": "Open recording",

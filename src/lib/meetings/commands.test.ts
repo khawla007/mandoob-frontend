@@ -35,6 +35,28 @@ test('booking command sends stable replay identity and expected slot version to 
   assert.match(String(calls[0]?.args.p_payload_hash), /^[a-f0-9]{64}$/u);
 });
 
+test('slot creation is replay-safe and company scoped', async () => {
+  const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+  const commands = createMeetingCommands({
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      calls.push({ name, args });
+      return { data: { slot_id: IDS.slot, version: 1 }, error: null };
+    },
+  } as never);
+  const receipt = await commands.createSlot({
+    actorId: IDS.actor,
+    operationId: IDS.operation,
+    tenantId: IDS.tenant,
+    companyId: IDS.company,
+    startsAt: '2026-11-01T09:00:00.000+04:00',
+    endsAt: '2026-11-01T09:30:00.000+04:00',
+  });
+  assert.equal(receipt.slotId, IDS.slot);
+  assert.equal(calls[0]?.name, 'p311_create_slot');
+  assert.equal(calls[0]?.args.p_company_id, IDS.company);
+  assert.match(String(calls[0]?.args.p_payload_hash), /^[a-f0-9]{64}$/u);
+});
+
 test('mutation commands expose safe conflicts instead of raw database errors', async () => {
   const commands = createMeetingCommands({
     rpc: async () => ({ data: null, error: { message: 'private row dump', code: '40001' } }),

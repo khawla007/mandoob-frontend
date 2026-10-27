@@ -8,6 +8,7 @@ import {
 } from '@/components/operations/OperationalMeetingList';
 import { MeetingAiSummaryCard } from '@/components/pro/MeetingAiSummaryCard';
 import { MeetingCollaborationPanel } from '@/components/operations/MeetingCollaborationPanel';
+import { MeetingScheduleControls } from '@/components/operations/MeetingScheduleControls';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,7 @@ import {
   cancelMeetingAction,
   createMeetingSlotAction,
   reviewMeetingActionItemAction,
+  rescheduleMeetingAction,
   setProMeetingConsentAction,
 } from './actions';
 
@@ -73,6 +75,7 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
     true,
   );
   const { upcoming, past } = partitionMeetings(meetings, now);
+  const slotOperationId = randomUUID();
   const date = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -133,22 +136,33 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
       </div>,
     ]),
   );
-  const cancellation = Object.fromEntries(
+  const scheduleActions = Object.fromEntries(
     upcoming.map((meeting) => {
-      const operationId = randomUUID();
+      const cancelOperationId = randomUUID();
+      const rescheduleOperationId = randomUUID();
       return [
         meeting.id,
-        <form
+        <MeetingScheduleControls
           key={meeting.id}
-          action={async () => {
+          rescheduleLabel={t('reschedule')}
+          cancelLabel={t('cancel')}
+          startLabel={t('start')}
+          durationLabel={t('durationLabel')}
+          reschedule={async (formData) => {
             'use server';
-            await cancelMeetingAction(slug, meeting.id, meeting.version, operationId);
+            await rescheduleMeetingAction(
+              slug,
+              meeting.id,
+              meeting.version,
+              rescheduleOperationId,
+              formData,
+            );
           }}
-        >
-          <Button type="submit" size="sm" variant="ghost">
-            {t('cancel')}
-          </Button>
-        </form>,
+          cancel={async () => {
+            'use server';
+            await cancelMeetingAction(slug, meeting.id, meeting.version, cancelOperationId);
+          }}
+        />,
       ];
     }),
   );
@@ -173,6 +187,7 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
               await createMeetingSlotAction(slug, formData);
             }}
           >
+            <input type="hidden" name="operation_id" value={slotOperationId} />
             <div className="space-y-2">
               <Label htmlFor="starts_at">{t('start')}</Label>
               <Input id="starts_at" name="starts_at" type="datetime-local" required />
@@ -226,7 +241,7 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
               emptyLabel={t('noUpcoming')}
               joinLabel={t('join')}
               recordingLabel={t('recording')}
-              actions={cancellation}
+              actions={scheduleActions}
               details={details}
             />
           </CardContent>

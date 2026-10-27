@@ -3,11 +3,17 @@ import test from 'node:test';
 
 import {
   composeOperationalCalendar,
+  dubaiLocalToIso,
   hasProcessingConsent,
   meetingCommandSchema,
   meetingSlotInputSchema,
   projectMeetingForActor,
 } from './contracts';
+
+test('datetime-local meeting inputs are interpreted in Dubai time', () => {
+  assert.equal(dubaiLocalToIso('2026-11-01T09:30'), '2026-11-01T05:30:00.000Z');
+  assert.throws(() => dubaiLocalToIso('not-a-date'));
+});
 
 const UUIDS = {
   actor: '11111111-1111-4111-8111-111111111111',

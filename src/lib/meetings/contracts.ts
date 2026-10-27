@@ -3,6 +3,16 @@ import { z } from 'zod';
 const uuid = z.string().uuid();
 const instant = z.string().datetime({ offset: true });
 
+export function dubaiLocalToIso(value: string): string {
+  const normalized = z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/u)
+    .parse(value.trim());
+  const parsed = new Date(`${normalized.length === 16 ? `${normalized}:00` : normalized}+04:00`);
+  if (Number.isNaN(parsed.getTime())) throw new Error('INVALID_DUBAI_DATETIME');
+  return parsed.toISOString();
+}
+
 export const meetingCommandSchema = z.object({
   meetingId: uuid,
   operationId: uuid,

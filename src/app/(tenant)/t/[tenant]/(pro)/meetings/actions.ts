@@ -4,12 +4,13 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { ApiError } from '@/lib/errors';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
-import { createMeetingSlot, type MeetingActor } from '@/lib/data/meetings';
+import type { MeetingActor } from '@/lib/data/meetings';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { createMeetingCommands } from '@/lib/meetings/commands';
 import { createMeetingCollaborationCommands } from '@/lib/meetings/collaboration';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { randomUUID } from 'node:crypto';
+import { dubaiLocalToIso } from '@/lib/meetings/contracts';
 
 export type MeetingActionResult = { ok: true } | { ok: false; error: string; code: string };
 
@@ -42,25 +43,55 @@ export async function createMeetingSlotAction(
     const startsAt = String(formData.get('starts_at') ?? '');
     const durationMinutes = Number(formData.get('duration_minutes') ?? 30);
     const timezone = String(formData.get('timezone') ?? 'Asia/Dubai') || 'Asia/Dubai';
-    const starts = new Date(startsAt);
-    if (!Number.isFinite(starts.getTime())) {
-      return { ok: false, error: 'Choose a valid start time.', code: 'INVALID_INPUT' };
+    if (timezone !== 'Asia/Dubai' || durationMinutes < 15 || durationMinutes > 180) {
+      return { ok: false, error: 'Choose a valid Dubai meeting time.', code: 'INVALID_INPUT' };
     }
-    const ends = new Date(starts.getTime() + Math.max(15, durationMinutes) * 60000);
-    const { tenantId, actor } = await resolveActor(slug);
-    await createMeetingSlot(
-      {
-        tenantId,
-        startsAt: starts.toISOString(),
-        endsAt: ends.toISOString(),
-        timezone,
-      },
-      actor,
-    );
+    const startsIso = dubaiLocalToIso(startsAt);
+    const endsIso = new Date(new Date(startsIso).getTime() + durationMinutes * 60000).toISOString();
+    const operationId = String(formData.get('operation_id') ?? '');
+    const { tenantId, companyId, actor } = await resolveActor(slug);
+    await createMeetingCommands(createSupabaseServiceRoleClient()).createSlot({
+      actorId: actor.id,
+      operationId,
+      tenantId,
+      companyId,
+      startsAt: startsIso,
+      endsAt: endsIso,
+    });
     revalidatePath(`/t/${slug}/meetings`);
     return { ok: true };
   } catch (error) {
     return toResult(error, 'Could not create meeting slot');
+  }
+}
+
+export async function rescheduleMeetingAction(
+  slug: string,
+  meetingId: string,
+  expectedVersion: number,
+  operationId: string,
+  formData: FormData,
+): Promise<MeetingActionResult> {
+  try {
+    const startsAt = dubaiLocalToIso(String(formData.get('starts_at') ?? ''));
+    const duration = Number(formData.get('duration_minutes') ?? 30);
+    if (!Number.isInteger(duration) || duration < 15 || duration > 180) {
+      throw new ApiError('INVALID_INPUT', 'Choose a valid meeting duration.', 400);
+    }
+    const endsAt = new Date(new Date(startsAt).getTime() + duration * 60000).toISOString();
+    const { actor } = await resolveActor(slug);
+    await createMeetingCommands(createSupabaseServiceRoleClient()).reschedule({
+      actorId: actor.id,
+      operationId,
+      meetingId,
+      expectedVersion,
+      startsAt,
+      endsAt,
+    });
+    revalidatePath(`/t/${slug}/meetings`);
+    return { ok: true };
+  } catch (error) {
+    return toResult(error, 'Could not reschedule meeting');
   }
 }
 

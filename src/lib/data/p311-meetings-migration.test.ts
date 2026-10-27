@@ -65,3 +65,24 @@ test('P3.11 completion migration wires consent, retention, notes and action revi
   }
   assert.match(completion, /participant_role,starts_at,ends_at[\s\S]*'host'/u);
 });
+
+test('P3.11 route completion owns slot creation and participant-scoped mutations', () => {
+  const routeCompletion = readFileSync(
+    new URL(
+      '../../../supabase/migrations/20260922110200_0111_p3_11_route_completion.sql',
+      import.meta.url,
+    ),
+    'utf8',
+  ).toLowerCase();
+  for (const required of [
+    'p311_create_slot',
+    "'meeting.slot_create'",
+    'p311_assert_meeting_actor',
+    'p311_reschedule_meeting',
+    'p311_cancel_meeting',
+    'meeting_participants',
+    'p_expected_version',
+  ]) {
+    assert.match(routeCompletion, new RegExp(required.replaceAll('(', '\\('), 'u'));
+  }
+});
