@@ -11,12 +11,21 @@ test('parses real zeroes and explicit partial sources', () => {
     generatedAt: '2026-10-27T00:00:00.000Z',
     businessTimezone: 'Asia/Dubai',
     state: 'partial',
-    counts: { companies: 0, activeEmployees: 0, overdueRenewals: 0, scheduledMeetings: 0 },
+    counts: {
+      companies: 0,
+      activeEmployees: 0,
+      overdueRenewals: 0,
+      scheduledMeetings: 0,
+      contactIntakes: 0,
+      submittedApplications: 0,
+      registrations: 0,
+      postedFinanceJournals: 0,
+    },
     sourceFreshness: { local: '2026-10-27T00:00:00.000Z' },
-    unavailableSources: ['P3_09_NOT_INTEGRATED'],
+    unavailableSources: ['P3_10_RUNTIME_PENDING'],
   });
   assert.equal(parsed.counts.companies, 0);
-  assert.deepEqual(parsed.unavailableSources, ['P3_09_NOT_INTEGRATED']);
+  assert.deepEqual(parsed.unavailableSources, ['P3_10_RUNTIME_PENDING']);
 });
 
 test('rejects unsafe, unknown, and repeated export parameters', () => {

@@ -4004,7 +4004,7 @@
         "unavailableDescription": "No accepted platform report catalog or export job contract exists on this base.",
         "export": "Generate export",
         "actionExplanation": "Unavailable — Phase 3 report, export-job and delivery contract required.",
-        "partialDescription": "Local operational totals are current; named parallel-domain sources remain unavailable.",
+        "partialDescription": "Integrated operational totals are current; the P3.10 distributed runtime remains unavailable.",
         "errorDescription": "The authorized report could not be loaded safely.",
         "generatedAt": "Generated {value} · Asia/Dubai reporting semantics",
         "unavailableSources": "Unavailable sources: {value}",
@@ -4012,7 +4012,11 @@
           "companies": "Companies",
           "activeEmployees": "Active employees",
           "overdueRenewals": "Overdue renewals",
-          "scheduledMeetings": "Scheduled meetings"
+          "scheduledMeetings": "Scheduled meetings",
+          "contactIntakes": "Contact intakes",
+          "submittedApplications": "Submitted applications",
+          "registrations": "Registrations",
+          "postedFinanceJournals": "Posted finance journals"
         }
       },
       "compliance": {

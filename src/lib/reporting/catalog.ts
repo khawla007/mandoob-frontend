@@ -45,9 +45,10 @@ export const REPORT_CATALOG: {
       retentionClass: 'operational-report-export',
       sources: {
         local: 'required',
-        p305: 'unintegrated',
-        p306: 'unintegrated',
-        p309: 'unintegrated',
+        p305: 'required',
+        p306: 'required',
+        p309: 'required',
+        p310: 'unintegrated',
       },
     },
     'company-operations': {
@@ -62,7 +63,7 @@ export const REPORT_CATALOG: {
       pagination: { kind: 'cursor', maxPageSize: 100, tieBreaker: 'id' },
       exportPolicy: 'bounded_sync',
       retentionClass: 'operational-report-export',
-      sources: { local: 'required', p306: 'unintegrated', p309: 'unintegrated' },
+      sources: { local: 'required', p306: 'required', p309: 'required' },
     },
     'platform-finance': {
       id: 'platform-finance',
@@ -76,7 +77,7 @@ export const REPORT_CATALOG: {
       pagination: { kind: 'cursor', maxPageSize: 100, tieBreaker: 'id' },
       exportPolicy: 'unavailable',
       retentionClass: 'financial-report',
-      sources: { p309: 'unintegrated' },
+      sources: { p309: 'required' },
     },
   },
 };

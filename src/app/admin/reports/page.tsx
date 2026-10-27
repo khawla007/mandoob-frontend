@@ -18,6 +18,10 @@ export default async function AdminReportsPage() {
         ['activeEmployees', report.counts.activeEmployees],
         ['overdueRenewals', report.counts.overdueRenewals],
         ['scheduledMeetings', report.counts.scheduledMeetings],
+        ['contactIntakes', report.counts.contactIntakes],
+        ['submittedApplications', report.counts.submittedApplications],
+        ['registrations', report.counts.registrations],
+        ['postedFinanceJournals', report.counts.postedFinanceJournals],
       ] as const)
     : [];
   return (

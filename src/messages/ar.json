@@ -4004,7 +4004,7 @@
         "unavailableDescription": "لا يتوفر عقد معتمد لكتالوج تقارير المنصة أو مهام التصدير.",
         "export": "إنشاء تصدير",
         "actionExplanation": "غير متاح — يلزم عقد المرحلة الثالثة للتقرير ومهمة التصدير والتسليم.",
-        "partialDescription": "الإجماليات التشغيلية المحلية حديثة؛ وتبقى مصادر المجالات المتوازية المسماة غير متاحة.",
+        "partialDescription": "الإجماليات التشغيلية المدمجة حديثة؛ وتبقى بيئة التشغيل الموزعة P3.10 غير متاحة.",
         "errorDescription": "تعذّر تحميل التقرير المصرح به بأمان.",
         "generatedAt": "تم الإنشاء {value} · وفق توقيت تقارير دبي",
         "unavailableSources": "المصادر غير المتاحة: {value}",
@@ -4012,7 +4012,11 @@
           "companies": "الشركات",
           "activeEmployees": "الموظفون النشطون",
           "overdueRenewals": "التجديدات المتأخرة",
-          "scheduledMeetings": "الاجتماعات المجدولة"
+          "scheduledMeetings": "الاجتماعات المجدولة",
+          "contactIntakes": "طلبات التواصل",
+          "submittedApplications": "الطلبات المقدمة",
+          "registrations": "التسجيلات",
+          "postedFinanceJournals": "القيود المالية المرحلة"
         }
       },
       "compliance": {

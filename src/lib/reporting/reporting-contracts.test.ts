@@ -4,10 +4,14 @@ import { REPORT_CATALOG, resolveReportAvailability, type ReportSourceState } fro
 import { aggregateOperationalFacts, aggregateFinanceFacts } from './aggregates';
 import { buildDubaiMonthPeriod } from './periods';
 
-test('report catalog is versioned and never treats unintegrated domains as available', () => {
+test('report catalog marks integrated domain sources as required and keeps pending runtime unavailable', () => {
   assert.equal(REPORT_CATALOG.version, 1);
   assert.equal(REPORT_CATALOG.reports['platform-operations'].currency, 'AED');
-  assert.equal(REPORT_CATALOG.reports['platform-finance'].sources.p309, 'unintegrated');
+  assert.equal(REPORT_CATALOG.reports['platform-operations'].sources.p305, 'required');
+  assert.equal(REPORT_CATALOG.reports['platform-operations'].sources.p306, 'required');
+  assert.equal(REPORT_CATALOG.reports['platform-operations'].sources.p309, 'required');
+  assert.equal(REPORT_CATALOG.reports['platform-operations'].sources.p310, 'unintegrated');
+  assert.equal(REPORT_CATALOG.reports['platform-finance'].sources.p309, 'required');
   assert.equal(
     resolveReportAvailability(REPORT_CATALOG.reports['platform-operations'], {
       local: 'fresh',
@@ -15,7 +19,7 @@ test('report catalog is versioned and never treats unintegrated domains as avail
       p306: 'missing',
       p309: 'missing',
     }),
-    'partial',
+    'unavailable',
   );
   assert.equal(
     resolveReportAvailability(REPORT_CATALOG.reports['platform-finance'], {
@@ -23,6 +27,23 @@ test('report catalog is versioned and never treats unintegrated domains as avail
       p309: 'missing',
     }),
     'unavailable',
+  );
+});
+
+test('combined authoritative sources are ready only when every required adapter is fresh', () => {
+  assert.equal(
+    resolveReportAvailability(REPORT_CATALOG.reports['platform-finance'], { p309: 'fresh' }),
+    'ready',
+  );
+  assert.equal(
+    resolveReportAvailability(REPORT_CATALOG.reports['platform-operations'], {
+      local: 'fresh',
+      p305: 'fresh',
+      p306: 'fresh',
+      p309: 'fresh',
+      p310: 'missing',
+    }),
+    'partial',
   );
 });
 
