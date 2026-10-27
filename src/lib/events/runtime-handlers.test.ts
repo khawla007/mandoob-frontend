@@ -4,6 +4,7 @@ import { describe, test } from 'node:test';
 import type { ImportWorkerDeps } from '@/lib/employees/import-worker';
 import type { MeetingAiWorkerDeps } from '@/lib/meetings/ai-worker';
 import type { ClaimedEventJob } from './repository';
+import { EventHandlerFailure } from './worker';
 import {
   ENABLED_RUNTIME_REGISTRATIONS,
   createEmployeeImportEventHandler,
@@ -205,7 +206,11 @@ describe('runtime handler registry', () => {
       retryHandler(claimed('employee.import.requested', 'p308.employee_import.executor'), {
         checkpoint: async () => {},
       }),
-      /EMPLOYEE_IMPORT_RETRYABLE/,
+      (error) =>
+        error instanceof EventHandlerFailure &&
+        error.failure.category === 'provider_unavailable' &&
+        error.failure.code === 'PROVIDER_UNAVAILABLE' &&
+        error.failure.retryable,
     );
     assert.equal(retryCalls.includes('reconcile'), true);
     assert.equal(retryCalls.includes('inner-fail'), false);
@@ -222,13 +227,28 @@ describe('runtime handler registry', () => {
     );
     assert.deepEqual(cancelled, ['cancel']);
 
+    const rejectedCancel = createMeetingAiEventHandler(async () =>
+      meetingDeps([], false, undefined, false),
+    );
+    await assert.rejects(
+      rejectedCancel(claimed('meeting.ai.requested', 'p311.meeting_ai.processor'), {
+        checkpoint: async () => {},
+        signal: new AbortController().signal,
+      }),
+      (error) =>
+        error instanceof EventHandlerFailure &&
+        error.failure.category === 'provider_unavailable' &&
+        error.failure.code === 'PROVIDER_UNAVAILABLE' &&
+        error.failure.retryable,
+    );
+
     const completed: string[] = [];
     const completeHandler = createMeetingAiEventHandler(async () => meetingDeps(completed, true));
     assert.deepEqual(
       await completeHandler(claimed('meeting.ai.requested', 'p311.meeting_ai.processor'), {
         checkpoint: async () => {},
       }),
-      { outcome: 'already-terminal', effectReferenceHash: 'a'.repeat(64) },
+      { effectReferenceHash: 'a'.repeat(64) },
     );
     assert.deepEqual(completed, ['persist']);
 
@@ -240,7 +260,11 @@ describe('runtime handler registry', () => {
       retryHandler(claimed('meeting.ai.requested', 'p311.meeting_ai.processor'), {
         checkpoint: async () => {},
       }),
-      /MEETING_AI_RETRYABLE/,
+      (error) =>
+        error instanceof EventHandlerFailure &&
+        error.failure.category === 'provider_unavailable' &&
+        error.failure.code === 'PROVIDER_UNAVAILABLE' &&
+        error.failure.retryable,
     );
     assert.equal(retried.includes('inner-fail'), false);
   });
@@ -289,7 +313,11 @@ describe('runtime handler registry', () => {
     assert.ok(handler);
     await assert.rejects(
       handler({ ...job, companyId: null }, { checkpoint: async () => {} }),
-      /RUNTIME_REFERENCE_SCOPE_REQUIRED/,
+      (error) =>
+        error instanceof EventHandlerFailure &&
+        error.failure.category === 'malformed_payload' &&
+        error.failure.code === 'EVENT_PAYLOAD_INVALID' &&
+        !error.failure.retryable,
     );
   });
 });
@@ -335,6 +363,7 @@ function meetingDeps(
   calls: string[],
   consent: boolean,
   processFailure?: Error,
+  cancelResult = true,
 ): MeetingAiWorkerDeps {
   return {
     workerId: ids.worker,
@@ -355,6 +384,7 @@ function meetingDeps(
     },
     cancel: async () => {
       calls.push('cancel');
+      return cancelResult;
     },
     log: () => {},
   };

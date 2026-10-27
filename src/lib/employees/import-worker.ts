@@ -121,7 +121,9 @@ export async function processEmployeeImportClaim(
   deps: ImportWorkerDeps,
   claim: ImportClaim,
 ): Promise<'completed'> {
+  await deps.checkpoint?.();
   const execution = await deps.readExecution(claim);
+  await deps.checkpoint?.();
   if (execution.status !== 'importing') {
     await deps.complete(claim);
     return 'completed';
@@ -133,7 +135,9 @@ export async function processEmployeeImportClaim(
   }
   let sealed: Uint8Array;
   try {
+    await deps.checkpoint?.();
     sealed = await deps.downloadArtifact(execution.storagePath);
+    await deps.checkpoint?.();
   } catch (error) {
     // A missing object is permanent (retention or orphan cleanup); other
     // storage errors stay retryable through the P3.10 lease.
@@ -144,6 +148,7 @@ export async function processEmployeeImportClaim(
   }
   let plain: Uint8Array;
   try {
+    await deps.checkpoint?.();
     plain = deps.decryptArtifact(sealed);
   } catch (error) {
     if ((error as Error | null)?.message !== 'IMPORT_ARTIFACT_DECRYPT_FAILED') throw error;
@@ -156,13 +161,16 @@ export async function processEmployeeImportClaim(
     await deps.complete(claim);
     return 'completed';
   }
-  await deps.recordAccess(claim, execution.artifactSha256);
   const rows = rowsOf(plain);
   if (!rows || rows.length !== execution.totalRows) {
     await deps.finalize(claim, 'IMPORT_ARTIFACT_INVALID');
     await deps.complete(claim);
     return 'completed';
   }
+  await deps.checkpoint?.();
+  await deps.checkpoint?.();
+  await deps.recordAccess(claim, execution.artifactSha256);
+  await deps.checkpoint?.();
 
   let batchNo = execution.nextBatch;
   let firstIndex = execution.nextRow;
@@ -176,6 +184,7 @@ export async function processEmployeeImportClaim(
       firstIndex + 1,
       slice.map((row) => toBatchRow(deps, execution.companyId, row)),
     );
+    await deps.checkpoint?.();
     if (result.state === 'cancel_requested' || result.state === 'failed') {
       stopped = true;
       break;

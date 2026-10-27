@@ -253,5 +253,5 @@ test('long imports expose deterministic batch checkpoints for lease extension', 
     calls.push('checkpoint');
   };
   await runEmployeeImportWorkerOnce(deps);
-  assert.equal(calls.filter((call) => call === 'checkpoint').length, 3);
+  assert.equal(calls.filter((call) => call === 'checkpoint').length, 14);
 });

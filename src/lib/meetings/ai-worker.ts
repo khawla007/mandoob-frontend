@@ -26,7 +26,7 @@ export type MeetingAiWorkerDeps = {
   ): Promise<void>;
   complete(claim: MeetingAiClaim, effectHash: string): Promise<void>;
   fail(claim: MeetingAiClaim, retryable: boolean): Promise<void>;
-  cancel(claim: MeetingAiClaim, code: string): Promise<void>;
+  cancel(claim: MeetingAiClaim, code: string): Promise<boolean | void>;
   /** Event-driven lease checkpoint around long provider work. */
   checkpoint?(): Promise<void>;
   log(event: string): void;

@@ -9,7 +9,7 @@ import {
   type MeetingAiClaim,
   type MeetingAiWorkerDeps,
 } from '@/lib/meetings/ai-worker';
-import { handlerKey, type EventJobHandler } from './worker';
+import { EventHandlerFailure, handlerKey, type EventJobHandler } from './worker';
 
 type RegistrationStatus = 'local' | 'adapter' | 'pending' | 'provider-disabled';
 type RuntimeRegistration = {
@@ -158,33 +158,53 @@ function localHandler(
   writeProjection: RuntimeHandlerDependencies['writeProjection'],
 ): EventJobHandler {
   return async (job, context) => {
-    if (!job.tenantId || !job.companyId) throw new Error('RUNTIME_REFERENCE_SCOPE_REQUIRED');
+    if (!job.tenantId || !job.companyId) {
+      throw new EventHandlerFailure({
+        category: 'malformed_payload',
+        code: 'EVENT_PAYLOAD_INVALID',
+        retryable: false,
+      });
+    }
     await context.checkpoint();
     const reminder = job.consumerName === 'internal.renewal_reminder.delivery';
     const operationId = job.effectKey.slice('mandoob:event-job:'.length);
-    return writeProjection({
-      operationId,
-      tenantId: job.tenantId,
-      companyId: job.companyId,
-      eventId: job.eventId,
-      jobId: job.jobId,
-      workerId: job.workerId,
-      leaseToken: job.leaseToken,
-      projectionType: reminder ? 'task' : 'activity',
-      projectionKey: `${job.consumerName}.${job.eventType}`,
-      code: job.eventType.replaceAll('.', '_').toUpperCase(),
-      profileId: null,
-      state: reminder ? 'open' : null,
-      priority: reminder ? 'normal' : null,
-      dueAt: null,
-      safeMetadata: job.payload,
-    });
+    try {
+      return await writeProjection({
+        operationId,
+        tenantId: job.tenantId,
+        companyId: job.companyId,
+        eventId: job.eventId,
+        jobId: job.jobId,
+        workerId: job.workerId,
+        leaseToken: job.leaseToken,
+        projectionType: reminder ? 'task' : 'activity',
+        projectionKey: `${job.consumerName}.${job.eventType}`,
+        code: job.eventType.replaceAll('.', '_').toUpperCase(),
+        profileId: null,
+        state: reminder ? 'open' : null,
+        priority: reminder ? 'normal' : null,
+        dueAt: null,
+        safeMetadata: job.payload,
+      });
+    } catch {
+      throw new EventHandlerFailure({
+        category: 'configuration',
+        code: 'PROVIDER_CONFIGURATION_INVALID',
+        retryable: false,
+      });
+    }
   };
 }
 
 function importClaim(job: Parameters<EventJobHandler>[0]): ImportClaim {
   const importJobId = job.payload.resource_id;
-  if (typeof importJobId !== 'string') throw new Error('IMPORT_REFERENCE_INVALID');
+  if (typeof importJobId !== 'string') {
+    throw new EventHandlerFailure({
+      category: 'malformed_payload',
+      code: 'EVENT_PAYLOAD_INVALID',
+      retryable: false,
+    });
+  }
   return {
     eventJobId: job.jobId,
     leaseToken: job.leaseToken,
@@ -208,15 +228,33 @@ export function createEmployeeImportEventHandler(
       checkpoint: context.checkpoint,
     });
     if (summary.lost) return { outcome: 'lease-lost' };
-    if (summary.retried) throw new Error('EMPLOYEE_IMPORT_RETRYABLE');
-    if (summary.completed !== 1) throw new Error('EMPLOYEE_IMPORT_INCOMPLETE');
+    if (summary.retried) {
+      throw new EventHandlerFailure({
+        category: 'provider_unavailable',
+        code: 'PROVIDER_UNAVAILABLE',
+        retryable: true,
+      });
+    }
+    if (summary.completed !== 1) {
+      throw new EventHandlerFailure({
+        category: 'configuration',
+        code: 'PROVIDER_CONFIGURATION_INVALID',
+        retryable: false,
+      });
+    }
     return {};
   };
 }
 
 function meetingClaim(job: Parameters<EventJobHandler>[0]): MeetingAiClaim {
   const meetingId = job.payload.resource_id;
-  if (typeof meetingId !== 'string') throw new Error('MEETING_REFERENCE_INVALID');
+  if (typeof meetingId !== 'string') {
+    throw new EventHandlerFailure({
+      category: 'malformed_payload',
+      code: 'EVENT_PAYLOAD_INVALID',
+      retryable: false,
+    });
+  }
   return {
     eventJobId: job.jobId,
     leaseToken: job.leaseToken,
@@ -233,6 +271,7 @@ export function createMeetingAiEventHandler(
     const claim = meetingClaim(job);
     const deps = await dependencies(job);
     let effectReferenceHash: string | undefined;
+    let cancellationConfirmed = false;
     const summary = await runMeetingAiWorkerOnce({
       ...deps,
       claim: async () => [claim],
@@ -240,16 +279,32 @@ export function createMeetingAiEventHandler(
         effectReferenceHash = effectHash;
       },
       fail: async () => {},
+      cancel: async (innerClaim, code) => {
+        cancellationConfirmed = (await deps.cancel(innerClaim, code)) === true;
+        if (!cancellationConfirmed) throw new Error('LEASED_CANCELLATION_FAILED');
+        return true;
+      },
       checkpoint: context.checkpoint,
     });
     if (summary.lost) return { outcome: 'lease-lost' };
-    if (summary.retried) throw new Error('MEETING_AI_RETRYABLE');
-    if (summary.completed === 1 || summary.cancelled === 1) {
-      return effectReferenceHash
-        ? { outcome: 'already-terminal', effectReferenceHash }
-        : { outcome: 'already-terminal' };
+    if (summary.retried) {
+      throw new EventHandlerFailure({
+        category: 'provider_unavailable',
+        code: 'PROVIDER_UNAVAILABLE',
+        retryable: true,
+      });
     }
-    throw new Error('MEETING_AI_INCOMPLETE');
+    if (summary.cancelled === 1 && cancellationConfirmed) {
+      return { outcome: 'already-terminal' };
+    }
+    if (summary.completed === 1 && effectReferenceHash) {
+      return { effectReferenceHash };
+    }
+    throw new EventHandlerFailure({
+      category: 'configuration',
+      code: 'PROVIDER_CONFIGURATION_INVALID',
+      retryable: false,
+    });
   };
 }
 

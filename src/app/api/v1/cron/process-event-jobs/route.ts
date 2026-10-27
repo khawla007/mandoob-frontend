@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { env } from '@/lib/env';
 import { createSupabaseImportWorkerDeps } from '@/lib/employees/import-worker-supabase';
 import { createEventQueueRepository } from '@/lib/events/repository';
+import { createRuntimeRpc } from '@/lib/events/runtime-rpc';
 import {
   RUNTIME_EVENT_SCHEMAS,
   createEmployeeImportEventHandler,
@@ -19,35 +20,26 @@ export const runtime = 'nodejs';
 
 const RELEASE_VERSION = 'p3.10-runtime-v1';
 
-async function runConsumer(consumerName: string, options: { owner: string; batchSize: number }) {
+async function runConsumer(
+  consumerName: string,
+  options: {
+    owner: string;
+    batchSize: number;
+    signal: AbortSignal;
+    deadlineAt: number;
+  },
+) {
   const workerId = randomUUID();
   const admin = createSupabaseServiceRoleClient();
   const repository = createEventQueueRepository(admin, RUNTIME_EVENT_SCHEMAS);
+  const runtimeRpc = createRuntimeRpc(admin);
   let importDepsPromise: ReturnType<typeof createSupabaseImportWorkerDeps> | undefined;
   const registry = createRuntimeHandlerRegistry({
     async writeProjection(projection) {
-      const { data, error } = await admin.rpc('write_operational_projection', {
-        p_operation_id: projection.operationId,
-        p_tenant_id: projection.tenantId,
-        p_company_id: projection.companyId,
-        p_event_id: projection.eventId,
-        p_job_id: projection.jobId,
-        p_worker_id: projection.workerId,
-        p_lease_token: projection.leaseToken,
-        p_projection_type: projection.projectionType,
-        p_projection_key: projection.projectionKey,
-        p_code: projection.code,
-        p_profile_id: projection.profileId,
-        p_state: projection.state,
-        p_priority: projection.priority,
-        p_due_at: projection.dueAt,
-        p_safe_metadata: projection.safeMetadata,
-      });
-      if (error) throw new Error('RUNTIME_PROJECTION_FAILED');
-      const projectionId = (data as { projectionId?: unknown } | null)?.projectionId;
-      return typeof projectionId === 'string'
-        ? { effectReferenceHash: createHash('sha256').update(projectionId).digest('hex') }
-        : {};
+      const result = await runtimeRpc.writeProjection(projection);
+      return {
+        effectReferenceHash: createHash('sha256').update(result.projectionId).digest('hex'),
+      };
     },
     employeeImport: createEmployeeImportEventHandler(async () => {
       importDepsPromise ??= createSupabaseImportWorkerDeps({
@@ -57,9 +49,19 @@ async function runConsumer(consumerName: string, options: { owner: string; batch
       return importDepsPromise;
     }),
     // Real P3.11 adapter remains registry-only; its consumer is not scheduled.
-    meetingAi: createMeetingAiEventHandler(async () =>
-      createSupabaseMeetingAiWorkerDeps({ workerId, batchSize: 1 }),
-    ),
+    meetingAi: createMeetingAiEventHandler(async () => {
+      const deps = createSupabaseMeetingAiWorkerDeps({ workerId, batchSize: 1 });
+      return {
+        ...deps,
+        cancel: (claim, code) =>
+          runtimeRpc.cancelLeasedJob({
+            jobId: claim.eventJobId,
+            workerId,
+            leaseToken: claim.leaseToken,
+            safeCode: code,
+          }),
+      };
+    }),
   });
   return runEventWorkerOnce({
     repository,
@@ -72,6 +74,8 @@ async function runConsumer(consumerName: string, options: { owner: string; batch
     releaseVersion: RELEASE_VERSION,
     batchSize: options.batchSize,
     leaseSeconds: consumerName === 'p308.employee_import.executor' ? 300 : 120,
+    deadlineAt: options.deadlineAt,
+    signal: options.signal,
     log: (event) => console.error(event),
   });
 }

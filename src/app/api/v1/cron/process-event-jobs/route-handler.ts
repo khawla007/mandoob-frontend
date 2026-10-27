@@ -20,7 +20,7 @@ export function createProcessEventJobsHandler(input: {
   consumers: readonly string[];
   runConsumer(
     consumer: string,
-    options: { owner: string; batchSize: number },
+    options: { owner: string; batchSize: number; signal: AbortSignal; deadlineAt: number },
   ): Promise<WorkerSummary>;
 }): (request: Request) => Promise<Response> {
   return async (request) => {
@@ -29,17 +29,23 @@ export function createProcessEventJobsHandler(input: {
     }
     let completed = 0;
     let unavailable = 0;
+    const deadlineAt = Date.now() + 20_000;
     for (const consumer of input.consumers) {
       try {
         await input.runConsumer(consumer, {
           owner: 'netlify.event-runtime',
-          batchSize: 25,
+          batchSize: 1,
+          signal: request.signal,
+          deadlineAt,
         });
         completed += 1;
       } catch {
         unavailable += 1;
       }
     }
-    return Response.json({ ok: true, consumers: input.consumers.length, completed, unavailable });
+    return Response.json(
+      { ok: unavailable === 0, consumers: input.consumers.length, completed, unavailable },
+      { status: unavailable === 0 ? 200 : 503 },
+    );
   };
 }

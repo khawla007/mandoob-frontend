@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import type { ClaimedEventJob, ClaimedEventJobResult } from './repository';
-import { handlerKey, runEventWorkerOnce, type EventWorkerRepository } from './worker';
+import {
+  EventHandlerFailure,
+  handlerKey,
+  runEventWorkerOnce,
+  type EventWorkerRepository,
+} from './worker';
 
 const ids = {
   job: '11111111-1111-4111-8111-111111111111',
@@ -204,5 +209,117 @@ describe('bounded event worker', () => {
       /INVALID_BATCH_SIZE/,
     );
     assert.equal(state.calls.length, 0);
+  });
+
+  test('preserves typed safe handler failures and sanitizes unknown exceptions', async () => {
+    for (const [error, expected] of [
+      [
+        new EventHandlerFailure({
+          category: 'configuration',
+          code: 'PROVIDER_CONFIGURATION_INVALID',
+          retryable: false,
+        }),
+        {
+          category: 'configuration',
+          code: 'PROVIDER_CONFIGURATION_INVALID',
+          retryable: false,
+        },
+      ],
+      [
+        new Error('Bearer private-token user@example.com'),
+        { category: 'unknown', code: 'PROVIDER_FAILURE', retryable: true },
+      ],
+    ] as const) {
+      const state = harness([{ ok: true, job: job() }]);
+      await runEventWorkerOnce({
+        repository: state.repository,
+        handlers: new Map([
+          [
+            handlerKey('internal.test.projection', 'test.changed', 1),
+            async () => Promise.reject(error),
+          ],
+        ]),
+        clock: () => new Date('2026-10-27T10:00:00.000Z'),
+        workerId: ids.worker,
+        workerName: 'worker',
+        consumerName: 'internal.test.projection',
+        schedulerOwner: 'netlify.event-runtime',
+        releaseVersion: 'test',
+        log: (event) => state.calls.push(['log', event]),
+      });
+      assert.deepEqual(state.calls.find(([name]) => name === 'fail')?.[4], expected);
+      assert.equal(JSON.stringify(state.calls).includes('private-token'), false);
+    }
+  });
+
+  test('stops before claim and before the next claimed unit when deadline is exhausted', async () => {
+    let now = new Date('2026-10-27T10:00:00.000Z');
+    const expired = harness([]);
+    const noClaim = await runEventWorkerOnce({
+      repository: expired.repository,
+      handlers: new Map(),
+      clock: () => now,
+      deadlineAt: now.getTime(),
+      workerId: ids.worker,
+      workerName: 'worker',
+      consumerName: 'internal.test.projection',
+      schedulerOwner: 'netlify.event-runtime',
+      releaseVersion: 'test',
+      log: () => {},
+    });
+    assert.deepEqual(noClaim, { claimed: 0, succeeded: 0, failed: 0, leaseLost: 0 });
+    assert.equal(expired.calls.length, 0);
+
+    const expiredAfterHeartbeat = harness([]);
+    expiredAfterHeartbeat.repository.heartbeat = async (input) => {
+      expiredAfterHeartbeat.calls.push(['heartbeat', input]);
+      now = new Date('2026-10-27T10:00:01.000Z');
+      return true;
+    };
+    const noLateClaim = await runEventWorkerOnce({
+      repository: expiredAfterHeartbeat.repository,
+      handlers: new Map(),
+      clock: () => now,
+      deadlineAt: Date.parse('2026-10-27T10:00:00.500Z'),
+      workerId: ids.worker,
+      workerName: 'worker',
+      consumerName: 'internal.test.projection',
+      schedulerOwner: 'netlify.event-runtime',
+      releaseVersion: 'test',
+      log: () => {},
+    });
+    assert.deepEqual(noLateClaim, { claimed: 0, succeeded: 0, failed: 0, leaseLost: 0 });
+    assert.equal(
+      expiredAfterHeartbeat.calls.some(([name]) => name === 'claim'),
+      false,
+    );
+
+    now = new Date('2026-10-27T10:00:00.000Z');
+    const second = job({ jobId: '88888888-8888-4888-8888-888888888888' });
+    const state = harness([
+      { ok: true, job: job() },
+      { ok: true, job: second },
+    ]);
+    await runEventWorkerOnce({
+      repository: state.repository,
+      handlers: new Map([
+        [
+          handlerKey('internal.test.projection', 'test.changed', 1),
+          async () => {
+            now = new Date('2026-10-27T10:00:01.000Z');
+            return {};
+          },
+        ],
+      ]),
+      clock: () => now,
+      deadlineAt: Date.parse('2026-10-27T10:00:00.500Z'),
+      workerId: ids.worker,
+      workerName: 'worker',
+      consumerName: 'internal.test.projection',
+      schedulerOwner: 'netlify.event-runtime',
+      releaseVersion: 'test',
+      log: () => {},
+    });
+    assert.equal(state.calls.filter(([name]) => name === 'succeed').length, 1);
   });
 });

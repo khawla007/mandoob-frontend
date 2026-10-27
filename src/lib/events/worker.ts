@@ -1,7 +1,7 @@
 import type { SafeProviderFailure } from './contracts';
 import type { ClaimedEventJob, ClaimedEventJobResult } from './repository';
 
-export type EventHandlerContext = { checkpoint(): Promise<void> };
+export type EventHandlerContext = { checkpoint(): Promise<void>; signal?: AbortSignal };
 export type EventJobHandler = (
   job: ClaimedEventJob,
   context: EventHandlerContext,
@@ -55,8 +55,8 @@ const nonRetryableConfigurationFailure: SafeProviderFailure = {
   retryable: false,
 };
 const retryableRuntimeFailure: SafeProviderFailure = {
-  category: 'provider_unavailable',
-  code: 'PROVIDER_UNAVAILABLE',
+  category: 'unknown',
+  code: 'PROVIDER_FAILURE',
   retryable: true,
 };
 const malformedPayloadFailure: SafeProviderFailure = {
@@ -70,6 +70,15 @@ const unsupportedVersionFailure: SafeProviderFailure = {
   retryable: false,
 };
 
+export class EventHandlerFailure extends Error {
+  constructor(readonly failure: SafeProviderFailure) {
+    super('EVENT_HANDLER_FAILED');
+    this.name = 'EventHandlerFailure';
+  }
+}
+
+class WorkerDeadlineExceeded extends Error {}
+
 export async function runEventWorkerOnce(input: {
   repository: EventWorkerRepository;
   handlers: ReadonlyMap<string, EventJobHandler>;
@@ -81,12 +90,20 @@ export async function runEventWorkerOnce(input: {
   releaseVersion: string;
   batchSize?: number;
   leaseSeconds?: number;
+  deadlineAt?: number;
+  signal?: AbortSignal;
   log(event: string): void;
 }): Promise<{ claimed: number; succeeded: number; failed: number; leaseLost: number }> {
   const batchSize = input.batchSize ?? 25;
   const leaseSeconds = input.leaseSeconds ?? 120;
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100) {
     throw new Error('INVALID_BATCH_SIZE');
+  }
+  const deadlineExceeded = () =>
+    input.signal?.aborted === true ||
+    (input.deadlineAt !== undefined && input.clock().getTime() >= input.deadlineAt);
+  if (deadlineExceeded()) {
+    return { claimed: 0, succeeded: 0, failed: 0, leaseLost: 0 };
   }
   const startedAt = input.clock().toISOString();
   await input.repository.heartbeat({
@@ -97,6 +114,9 @@ export async function runEventWorkerOnce(input: {
     releaseVersion: input.releaseVersion,
     startedAt,
   });
+  if (deadlineExceeded()) {
+    return { claimed: 0, succeeded: 0, failed: 0, leaseLost: 0 };
+  }
   const claimed = await input.repository.claim({
     workerId: input.workerId,
     consumerName: input.consumerName,
@@ -118,6 +138,7 @@ export async function runEventWorkerOnce(input: {
   };
 
   for (const result of claimed) {
+    if (deadlineExceeded()) break;
     if (!result.ok) {
       input.log('event-worker.claim-invalid');
       if (result.lease) {
@@ -146,13 +167,14 @@ export async function runEventWorkerOnce(input: {
     }
     let leaseExpiresAt = Date.parse(job.leaseExpiresAt);
     const checkpoint = async () => {
+      if (deadlineExceeded()) throw new WorkerDeadlineExceeded();
       if (input.clock().getTime() < leaseExpiresAt - leaseSeconds * 500) return;
       leaseExpiresAt = Date.parse(
         await input.repository.extendLease(job.jobId, job.workerId, job.leaseToken, leaseSeconds),
       );
     };
     try {
-      const handled = await handler(job, { checkpoint });
+      const handled = await handler(job, { checkpoint, signal: input.signal });
       if (handled.outcome === 'already-terminal') {
         summary.succeeded += 1;
         continue;
@@ -169,11 +191,17 @@ export async function runEventWorkerOnce(input: {
       );
       if (completed) summary.succeeded += 1;
       else summary.leaseLost += 1;
-    } catch {
+    } catch (error) {
+      if (error instanceof WorkerDeadlineExceeded) {
+        input.log('event-worker.deadline-exhausted');
+        break;
+      }
       input.log('event-worker.handler-failed');
+      const failure =
+        error instanceof EventHandlerFailure ? error.failure : retryableRuntimeFailure;
       await failSafely(job, {
-        ...retryableRuntimeFailure,
-        retryable: job.attemptNumber < job.maxAttempts,
+        ...failure,
+        retryable: failure.retryable && job.attemptNumber < job.maxAttempts,
       });
     }
   }

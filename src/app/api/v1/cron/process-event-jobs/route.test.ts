@@ -34,7 +34,12 @@ describe('event worker cron owner', () => {
   });
 
   test('runs only the explicit bounded consumer list and returns generic counts', async () => {
-    const calls: Array<{ consumer: string; owner: string; batchSize: number }> = [];
+    const calls: Array<{
+      consumer: string;
+      owner: string;
+      batchSize: number;
+      signal: AbortSignal;
+    }> = [];
     const secret = '0123456789abcdef0123456789abcdef';
     const post = createProcessEventJobsHandler({
       configuredSecret: secret,
@@ -52,13 +57,20 @@ describe('event worker cron owner', () => {
       }),
     );
 
-    assert.equal(response.status, 200);
-    assert.deepEqual(calls, [
-      { consumer: 'internal.one.projection', owner: 'netlify.event-runtime', batchSize: 25 },
-      { consumer: 'internal.two.projection', owner: 'netlify.event-runtime', batchSize: 25 },
-    ]);
+    assert.equal(response.status, 503);
+    assert.deepEqual(
+      calls.map(({ consumer, owner, batchSize }) => ({ consumer, owner, batchSize })),
+      [
+        { consumer: 'internal.one.projection', owner: 'netlify.event-runtime', batchSize: 1 },
+        { consumer: 'internal.two.projection', owner: 'netlify.event-runtime', batchSize: 1 },
+      ],
+    );
+    assert.equal(
+      calls.every((call) => call.signal === calls[0]?.signal),
+      true,
+    );
     const body = await response.json();
-    assert.deepEqual(body, { ok: true, consumers: 2, completed: 1, unavailable: 1 });
+    assert.deepEqual(body, { ok: false, consumers: 2, completed: 1, unavailable: 1 });
     assert.equal(JSON.stringify(body).includes('private database detail'), false);
   });
 
