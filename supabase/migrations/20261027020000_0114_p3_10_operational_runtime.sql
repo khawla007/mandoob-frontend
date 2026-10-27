@@ -1,13 +1,16 @@
 begin;
 
 -- Persistent P3.10 local projections. External channel consumers remain disabled.
+alter table public.event_jobs
+  add constraint event_jobs_id_event_id_key unique (id, event_id);
+
 create table public.operational_notifications (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   tenant_id uuid not null references public.tenants(id) on delete cascade,
   company_id uuid not null,
   recipient_profile_id uuid not null references public.profiles(id) on delete restrict,
-  source_event_id uuid not null references public.domain_events(id) on delete restrict,
-  source_job_id uuid not null references public.event_jobs(id) on delete restrict,
+  source_event_id uuid not null,
+  source_job_id uuid not null,
   projection_key text not null,
   notification_code text not null,
   severity text not null default 'info',
@@ -18,6 +21,10 @@ create table public.operational_notifications (
     foreign key (tenant_id, company_id)
     references public.company_profiles (tenant_id, id)
     on delete cascade,
+  constraint operational_notifications_job_event_fkey
+    foreign key (source_job_id, source_event_id)
+    references public.event_jobs (id, event_id)
+    on delete restrict,
   constraint operational_notifications_projection_key_valid
     check (projection_key ~ '^[a-z][a-z0-9_.-]{0,127}$'),
   constraint operational_notifications_code_valid
@@ -44,8 +51,8 @@ create table public.operational_tasks (
   tenant_id uuid not null references public.tenants(id) on delete cascade,
   company_id uuid not null,
   assigned_profile_id uuid references public.profiles(id) on delete restrict,
-  source_event_id uuid not null references public.domain_events(id) on delete restrict,
-  source_job_id uuid not null references public.event_jobs(id) on delete restrict,
+  source_event_id uuid not null,
+  source_job_id uuid not null,
   projection_key text not null,
   task_code text not null,
   state text not null default 'open',
@@ -58,6 +65,10 @@ create table public.operational_tasks (
     foreign key (tenant_id, company_id)
     references public.company_profiles (tenant_id, id)
     on delete cascade,
+  constraint operational_tasks_job_event_fkey
+    foreign key (source_job_id, source_event_id)
+    references public.event_jobs (id, event_id)
+    on delete restrict,
   constraint operational_tasks_projection_key_valid
     check (projection_key ~ '^[a-z][a-z0-9_.-]{0,127}$'),
   constraint operational_tasks_code_valid check (task_code ~ '^[A-Z][A-Z0-9_]{1,63}$'),
@@ -81,8 +92,8 @@ create table public.operational_activity (
   tenant_id uuid not null references public.tenants(id) on delete cascade,
   company_id uuid not null,
   actor_profile_id uuid references public.profiles(id) on delete set null,
-  source_event_id uuid not null references public.domain_events(id) on delete restrict,
-  source_job_id uuid not null references public.event_jobs(id) on delete restrict,
+  source_event_id uuid not null,
+  source_job_id uuid not null,
   projection_key text not null,
   activity_code text not null,
   safe_metadata jsonb not null default '{}'::jsonb,
@@ -91,6 +102,10 @@ create table public.operational_activity (
     foreign key (tenant_id, company_id)
     references public.company_profiles (tenant_id, id)
     on delete cascade,
+  constraint operational_activity_job_event_fkey
+    foreign key (source_job_id, source_event_id)
+    references public.event_jobs (id, event_id)
+    on delete restrict,
   constraint operational_activity_projection_key_valid
     check (projection_key ~ '^[a-z][a-z0-9_.-]{0,127}$'),
   constraint operational_activity_code_valid
@@ -175,8 +190,8 @@ create table public.runtime_delivery_receipts (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   tenant_id uuid not null references public.tenants(id) on delete cascade,
   company_id uuid not null,
-  event_id uuid not null references public.domain_events(id) on delete restrict,
-  job_id uuid not null references public.event_jobs(id) on delete restrict,
+  event_id uuid not null,
+  job_id uuid not null,
   attempt_number smallint not null,
   channel text not null,
   provider_category text not null,
@@ -192,6 +207,10 @@ create table public.runtime_delivery_receipts (
     foreign key (tenant_id, company_id)
     references public.company_profiles (tenant_id, id)
     on delete cascade,
+  constraint runtime_delivery_receipts_job_event_fkey
+    foreign key (job_id, event_id)
+    references public.event_jobs (id, event_id)
+    on delete restrict,
   constraint runtime_delivery_receipts_attempt_valid check (attempt_number between 1 and 25),
   constraint runtime_delivery_receipts_channel_valid check (channel in ('email', 'sms', 'whatsapp')),
   constraint runtime_delivery_receipts_provider_category_valid check (
@@ -228,11 +247,12 @@ create index runtime_delivery_receipts_reconciliation_idx
 create table public.operational_runtime_audit (
   id bigint generated always as identity primary key,
   operation_id uuid not null unique,
+  request_hash text not null,
   tenant_id uuid not null references public.tenants(id) on delete restrict,
   company_id uuid not null,
   actor_profile_id uuid references public.profiles(id) on delete set null,
-  source_event_id uuid references public.domain_events(id) on delete restrict,
-  source_job_id uuid references public.event_jobs(id) on delete restrict,
+  source_event_id uuid,
+  source_job_id uuid,
   action_code text not null,
   resource_type text not null,
   resource_id uuid not null,
@@ -242,6 +262,13 @@ create table public.operational_runtime_audit (
     foreign key (tenant_id, company_id)
     references public.company_profiles (tenant_id, id)
     on delete restrict,
+  constraint operational_runtime_audit_job_event_fkey
+    foreign key (source_job_id, source_event_id)
+    references public.event_jobs (id, event_id)
+    match full
+    on delete restrict,
+  constraint operational_runtime_audit_request_hash_valid
+    check (request_hash ~ '^[a-f0-9]{64}$'),
   constraint operational_runtime_audit_action_valid
     check (action_code in ('NOTIFICATION_READ_STATE_SET', 'PROJECTION_WRITTEN', 'DELIVERY_RECEIPT_RECORDED')),
   constraint operational_runtime_audit_resource_valid
@@ -280,6 +307,22 @@ revoke all on table public.operational_runtime_audit from public, anon, authenti
 revoke all on sequence public.operational_runtime_audit_id_seq
   from public, anon, authenticated, service_role;
 
+create or replace function public.runtime_request_hash(p_intent jsonb)
+returns text
+language sql
+immutable
+strict
+set search_path = ''
+as $$
+  select pg_catalog.encode(
+    extensions.digest(pg_catalog.convert_to(p_intent::text, 'UTF8'), 'sha256'),
+    'hex'
+  );
+$$;
+
+revoke all on function public.runtime_request_hash(jsonb)
+  from public, anon, authenticated, service_role;
+
 create or replace function public.runtime_actor_company_access(
   p_company_id uuid,
   p_allow_member boolean default true
@@ -297,7 +340,8 @@ begin
   select company.tenant_id into v_tenant_id
   from public.company_profiles as company
   join public.tenants as tenant on tenant.id = company.tenant_id and tenant.status = 'active'
-  where company.id = p_company_id;
+  where company.id = p_company_id
+    and company.status::text = 'active';
 
   select * into v_profile
   from public.profiles as profile
@@ -465,8 +509,9 @@ declare
   v_actor_id uuid := auth.uid();
   v_notification public.operational_notifications%rowtype;
   v_existing public.operational_runtime_audit%rowtype;
+  v_request_hash text;
 begin
-  if p_operation_id is null then
+  if p_operation_id is null or p_read is null then
     raise exception using errcode = '22023', message = 'RUNTIME_INVALID_OPERATION';
   end if;
   select * into v_notification
@@ -477,6 +522,12 @@ begin
     raise exception using errcode = '42501', message = 'RUNTIME_ACCESS_DENIED';
   end if;
   perform public.runtime_actor_company_access(v_notification.company_id, true);
+  v_request_hash := public.runtime_request_hash(pg_catalog.jsonb_build_object(
+    'action', 'NOTIFICATION_READ_STATE_SET',
+    'actorId', v_actor_id,
+    'notificationId', p_notification_id,
+    'read', p_read
+  ));
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 0));
   select * into v_existing
   from public.operational_runtime_audit as audit
@@ -484,7 +535,8 @@ begin
   if found then
     if v_existing.action_code <> 'NOTIFICATION_READ_STATE_SET'
       or v_existing.resource_id <> p_notification_id
-      or v_existing.actor_profile_id is distinct from v_actor_id then
+      or v_existing.actor_profile_id is distinct from v_actor_id
+      or v_existing.request_hash <> v_request_hash then
       raise exception using errcode = 'P3101', message = 'RUNTIME_OPERATION_REUSED';
     end if;
     return pg_catalog.jsonb_build_object('state', 'replayed', 'notificationId', p_notification_id);
@@ -494,10 +546,10 @@ begin
   set read_at = case when p_read then pg_catalog.now() else null end
   where id = p_notification_id;
   insert into public.operational_runtime_audit (
-    operation_id, tenant_id, company_id, actor_profile_id, source_event_id, source_job_id,
+    operation_id, request_hash, tenant_id, company_id, actor_profile_id, source_event_id, source_job_id,
     action_code, resource_type, resource_id
   ) values (
-    p_operation_id, v_notification.tenant_id, v_notification.company_id, v_actor_id,
+    p_operation_id, v_request_hash, v_notification.tenant_id, v_notification.company_id, v_actor_id,
     v_notification.source_event_id, v_notification.source_job_id,
     'NOTIFICATION_READ_STATE_SET', 'notification', p_notification_id
   );
@@ -537,10 +589,15 @@ begin
     select 1
     from public.domain_events as event
     join public.event_jobs as job on job.event_id = event.id
+    join public.company_profiles as company
+      on company.id = event.company_id and company.tenant_id = event.tenant_id
+    join public.tenants as tenant on tenant.id = event.tenant_id
     where event.id = p_event_id
       and job.id = p_job_id
       and event.tenant_id = p_tenant_id
       and event.company_id = p_company_id
+      and company.status::text = 'active'
+      and tenant.status = 'active'
   ) then
     raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
   end if;
@@ -620,6 +677,8 @@ create or replace function public.write_operational_projection(
   p_company_id uuid,
   p_event_id uuid,
   p_job_id uuid,
+  p_worker_id uuid,
+  p_lease_token uuid,
   p_projection_type text,
   p_projection_key text,
   p_code text,
@@ -636,8 +695,9 @@ as $$
 declare
   v_id uuid;
   v_existing public.operational_runtime_audit%rowtype;
+  v_request_hash text;
 begin
-  if p_operation_id is null
+  if p_operation_id is null or p_worker_id is null or p_lease_token is null
     or p_projection_type not in ('notification', 'task', 'activity')
     or p_projection_key !~ '^[a-z][a-z0-9_.-]{0,127}$'
     or p_code !~ '^[A-Z][A-Z0-9_]{1,63}$'
@@ -646,6 +706,43 @@ begin
     or not public.event_payload_is_safe(p_safe_metadata) then
     raise exception using errcode = '22023', message = 'RUNTIME_INVALID_PROJECTION';
   end if;
+  if not exists (
+    select 1
+    from public.domain_events as event
+    join public.event_jobs as job on job.event_id = event.id
+    join public.company_profiles as company
+      on company.id = event.company_id and company.tenant_id = event.tenant_id
+    join public.tenants as tenant on tenant.id = event.tenant_id
+    where event.id = p_event_id
+      and job.id = p_job_id
+      and event.tenant_id = p_tenant_id
+      and event.company_id = p_company_id
+      and job.state = 'leased'
+      and job.lease_owner = p_worker_id
+      and job.lease_token = p_lease_token
+      and job.lease_expires_at > pg_catalog.statement_timestamp()
+      and company.status::text = 'active'
+      and tenant.status = 'active'
+  ) then
+    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
+  end if;
+  v_request_hash := public.runtime_request_hash(pg_catalog.jsonb_build_object(
+    'action', 'PROJECTION_WRITTEN',
+    'tenantId', p_tenant_id,
+    'companyId', p_company_id,
+    'eventId', p_event_id,
+    'jobId', p_job_id,
+    'workerId', p_worker_id,
+    'leaseToken', p_lease_token,
+    'projectionType', p_projection_type,
+    'projectionKey', p_projection_key,
+    'code', p_code,
+    'profileId', p_profile_id,
+    'state', p_state,
+    'priority', p_priority,
+    'dueAt', p_due_at,
+    'safeMetadata', p_safe_metadata
+  ));
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 0));
   select * into v_existing
   from public.operational_runtime_audit as audit
@@ -656,24 +753,13 @@ begin
       or v_existing.company_id <> p_company_id
       or v_existing.source_event_id <> p_event_id
       or v_existing.source_job_id <> p_job_id
-      or v_existing.resource_type <> p_projection_type then
+      or v_existing.resource_type <> p_projection_type
+      or v_existing.request_hash <> v_request_hash then
       raise exception using errcode = 'P3101', message = 'RUNTIME_OPERATION_REUSED';
     end if;
     return pg_catalog.jsonb_build_object(
       'state', 'replayed', 'projectionType', p_projection_type, 'projectionId', v_existing.resource_id
     );
-  end if;
-  if not exists (
-    select 1
-    from public.domain_events as event
-    join public.event_jobs as job on job.event_id = event.id
-    where event.id = p_event_id
-      and job.id = p_job_id
-      and event.tenant_id = p_tenant_id
-      and event.company_id = p_company_id
-      and job.state = 'leased'
-  ) then
-    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
   end if;
   if p_profile_id is not null and not exists (
     select 1 from public.profiles as profile
@@ -763,10 +849,10 @@ begin
     raise exception using errcode = 'P3102', message = 'RUNTIME_IDEMPOTENCY_CONFLICT';
   end if;
   insert into public.operational_runtime_audit (
-    operation_id, tenant_id, company_id, source_event_id, source_job_id,
+    operation_id, request_hash, tenant_id, company_id, source_event_id, source_job_id,
     action_code, resource_type, resource_id
   ) values (
-    p_operation_id, p_tenant_id, p_company_id, p_event_id, p_job_id,
+    p_operation_id, v_request_hash, p_tenant_id, p_company_id, p_event_id, p_job_id,
     'PROJECTION_WRITTEN', p_projection_type, v_id
   );
   return pg_catalog.jsonb_build_object(
@@ -781,6 +867,8 @@ create or replace function public.record_safe_delivery_receipt(
   p_company_id uuid,
   p_event_id uuid,
   p_job_id uuid,
+  p_worker_id uuid,
+  p_lease_token uuid,
   p_attempt_number smallint,
   p_channel text,
   p_provider_category text,
@@ -799,8 +887,10 @@ as $$
 declare
   v_id uuid;
   v_existing public.operational_runtime_audit%rowtype;
+  v_request_hash text;
 begin
-  if p_operation_id is null or p_attempt_number not between 1 and 25
+  if p_operation_id is null or p_worker_id is null or p_lease_token is null
+    or p_attempt_number not between 1 and 25
     or p_channel not in ('email', 'sms', 'whatsapp')
     or p_provider_category not in (
       'accepted', 'authentication', 'configuration', 'invalid_recipient',
@@ -813,27 +903,56 @@ begin
     or ((p_reconciliation_state = 'pending') <> (p_reconciled_at is null)) then
     raise exception using errcode = '22023', message = 'RUNTIME_INVALID_RECEIPT';
   end if;
+  if not exists (
+    select 1
+    from public.domain_events as event
+    join public.event_jobs as job on job.event_id = event.id
+    join public.company_profiles as company
+      on company.id = event.company_id and company.tenant_id = event.tenant_id
+    join public.tenants as tenant on tenant.id = event.tenant_id
+    where event.id = p_event_id
+      and job.id = p_job_id
+      and event.tenant_id = p_tenant_id
+      and event.company_id = p_company_id
+      and job.state = 'leased'
+      and job.lease_owner = p_worker_id
+      and job.lease_token = p_lease_token
+      and job.lease_expires_at > pg_catalog.statement_timestamp()
+      and company.status::text = 'active'
+      and tenant.status = 'active'
+  ) then
+    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
+  end if;
+  v_request_hash := public.runtime_request_hash(pg_catalog.jsonb_build_object(
+    'action', 'DELIVERY_RECEIPT_RECORDED',
+    'tenantId', p_tenant_id,
+    'companyId', p_company_id,
+    'eventId', p_event_id,
+    'jobId', p_job_id,
+    'workerId', p_worker_id,
+    'leaseToken', p_lease_token,
+    'attemptNumber', p_attempt_number,
+    'channel', p_channel,
+    'providerCategory', p_provider_category,
+    'providerCode', p_provider_code,
+    'retryable', p_retryable,
+    'effectReferenceHash', p_effect_reference_hash,
+    'deliveryState', p_delivery_state,
+    'reconciliationState', p_reconciliation_state,
+    'attemptedAt', p_attempted_at,
+    'reconciledAt', p_reconciled_at
+  ));
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 0));
   select * into v_existing from public.operational_runtime_audit as audit
   where audit.operation_id = p_operation_id;
   if found then
     if v_existing.action_code <> 'DELIVERY_RECEIPT_RECORDED'
       or v_existing.tenant_id <> p_tenant_id or v_existing.company_id <> p_company_id
-      or v_existing.source_event_id <> p_event_id or v_existing.source_job_id <> p_job_id then
+      or v_existing.source_event_id <> p_event_id or v_existing.source_job_id <> p_job_id
+      or v_existing.request_hash <> v_request_hash then
       raise exception using errcode = 'P3101', message = 'RUNTIME_OPERATION_REUSED';
     end if;
     return pg_catalog.jsonb_build_object('state', 'replayed', 'receiptId', v_existing.resource_id);
-  end if;
-  if not exists (
-    select 1
-    from public.domain_events as event
-    join public.event_jobs as job on job.event_id = event.id
-    where event.id = p_event_id
-      and job.id = p_job_id
-      and event.tenant_id = p_tenant_id
-      and event.company_id = p_company_id
-  ) then
-    raise exception using errcode = '42501', message = 'RUNTIME_REFERENCE_SCOPE_DENIED';
   end if;
   insert into public.runtime_delivery_receipts (
     tenant_id, company_id, event_id, job_id, attempt_number, channel,
@@ -864,10 +983,10 @@ begin
     raise exception using errcode = 'P3102', message = 'RUNTIME_IDEMPOTENCY_CONFLICT';
   end if;
   insert into public.operational_runtime_audit (
-    operation_id, tenant_id, company_id, source_event_id, source_job_id,
+    operation_id, request_hash, tenant_id, company_id, source_event_id, source_job_id,
     action_code, resource_type, resource_id
   ) values (
-    p_operation_id, p_tenant_id, p_company_id, p_event_id, p_job_id,
+    p_operation_id, v_request_hash, p_tenant_id, p_company_id, p_event_id, p_job_id,
     'DELIVERY_RECEIPT_RECORDED', 'delivery_receipt', v_id
   );
   return pg_catalog.jsonb_build_object('state', 'applied', 'receiptId', v_id);
@@ -920,10 +1039,10 @@ revoke all on function public.set_operational_notification_read_state(uuid, bool
 revoke all on function public.resolve_runtime_delivery_policy(uuid, uuid, uuid, uuid, uuid, text, integer, text)
   from public, anon, authenticated, service_role;
 revoke all on function public.write_operational_projection(
-  uuid, uuid, uuid, uuid, uuid, text, text, text, uuid, text, text, timestamptz, jsonb
+  uuid, uuid, uuid, uuid, uuid, uuid, uuid, text, text, text, uuid, text, text, timestamptz, jsonb
 ) from public, anon, authenticated, service_role;
 revoke all on function public.record_safe_delivery_receipt(
-  uuid, uuid, uuid, uuid, uuid, smallint, text, text, text, boolean, text, text, text,
+  uuid, uuid, uuid, uuid, uuid, uuid, uuid, smallint, text, text, text, boolean, text, text, text,
   timestamptz, timestamptz
 ) from public, anon, authenticated, service_role;
 revoke all on function public.read_operational_runtime_health(uuid)
@@ -942,10 +1061,10 @@ grant execute on function public.read_operational_runtime_health(uuid)
 grant execute on function public.resolve_runtime_delivery_policy(uuid, uuid, uuid, uuid, uuid, text, integer, text)
   to service_role;
 grant execute on function public.write_operational_projection(
-  uuid, uuid, uuid, uuid, uuid, text, text, text, uuid, text, text, timestamptz, jsonb
+  uuid, uuid, uuid, uuid, uuid, uuid, uuid, text, text, text, uuid, text, text, timestamptz, jsonb
 ) to service_role;
 grant execute on function public.record_safe_delivery_receipt(
-  uuid, uuid, uuid, uuid, uuid, smallint, text, text, text, boolean, text, text, text,
+  uuid, uuid, uuid, uuid, uuid, uuid, uuid, smallint, text, text, text, boolean, text, text, text,
   timestamptz, timestamptz
 ) to service_role;
 

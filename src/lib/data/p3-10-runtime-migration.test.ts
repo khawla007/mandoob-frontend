@@ -11,6 +11,22 @@ async function migrationSql(): Promise<string> {
   return (await readFile(migrationUrl, 'utf8')).toLowerCase();
 }
 
+function rpcSql(sql: string, name: string): string {
+  const match = sql.match(
+    new RegExp(`create or replace function public\\.${name}\\([\\s\\S]*?\\n\\$\\$;`),
+  );
+  assert.ok(match, `missing RPC ${name}`);
+  return match[0];
+}
+
+function requestIntentSql(body: string): string {
+  const match = body.match(
+    /v_request_hash := public\.runtime_request_hash\(pg_catalog\.jsonb_build_object\(([\s\S]*?)\n  \)\);/,
+  );
+  assert.ok(match, 'missing canonical request intent');
+  return match[1];
+}
+
 const runtimeTables = [
   'operational_notifications',
   'operational_tasks',
@@ -168,4 +184,154 @@ test('worker mutations validate event and job ownership without enabling consume
   assert.doesNotMatch(sql, /update public\.event_consumer_registrations/);
   assert.doesNotMatch(sql, /delete from public\.event_consumer_registrations/);
   assert.doesNotMatch(sql, /p3_10_runtime_pending/);
+});
+
+test('worker projection and receipt RPCs require a current matching lease fence', async () => {
+  const sql = await migrationSql();
+
+  for (const rpc of ['write_operational_projection', 'record_safe_delivery_receipt']) {
+    const body = rpcSql(sql, rpc);
+    assert.match(body, /p_worker_id uuid/);
+    assert.match(body, /p_lease_token uuid/);
+    assert.match(body, /job\.state = 'leased'/);
+    assert.match(body, /job\.lease_owner = p_worker_id/);
+    assert.match(body, /job\.lease_token = p_lease_token/);
+    assert.match(body, /job\.lease_expires_at > pg_catalog\.statement_timestamp\(\)/);
+    assert.match(body, /company\.status::text = 'active'/);
+    assert.match(body, /tenant\.status = 'active'/);
+  }
+  assert.match(
+    sql,
+    /grant execute on function public\.write_operational_projection\(\s*uuid, uuid, uuid, uuid, uuid, uuid, uuid,/,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.record_safe_delivery_receipt\(\s*uuid, uuid, uuid, uuid, uuid, uuid, uuid, smallint,/,
+  );
+});
+
+test('operation replay requires an exact deterministic request fingerprint', async () => {
+  const sql = await migrationSql();
+
+  assert.match(
+    sql,
+    /operational_runtime_audit[\s\S]*request_hash text not null[\s\S]*request_hash ~ '\^\[a-f0-9\]\{64\}\$'/,
+  );
+  assert.match(sql, /create or replace function public\.runtime_request_hash\(p_intent jsonb\)/);
+  assert.match(sql, /extensions\.digest[\s\S]*'sha256'/);
+
+  for (const rpc of [
+    'set_operational_notification_read_state',
+    'write_operational_projection',
+    'record_safe_delivery_receipt',
+  ]) {
+    const body = rpcSql(sql, rpc);
+    assert.match(body, /v_request_hash text/);
+    assert.match(body, /public\.runtime_request_hash\(pg_catalog\.jsonb_build_object/);
+    assert.match(body, /v_existing\.request_hash <> v_request_hash/);
+    assert.match(body, /request_hash/);
+    assert.match(body, /insert into public\.operational_runtime_audit/);
+  }
+  const readIntent = requestIntentSql(rpcSql(sql, 'set_operational_notification_read_state'));
+  for (const argument of ['v_actor_id', 'p_notification_id', 'p_read']) {
+    assert.match(readIntent, new RegExp(`\\b${argument}\\b`));
+  }
+
+  const projectionIntent = requestIntentSql(rpcSql(sql, 'write_operational_projection'));
+  for (const argument of [
+    'p_tenant_id',
+    'p_company_id',
+    'p_event_id',
+    'p_job_id',
+    'p_worker_id',
+    'p_lease_token',
+    'p_projection_type',
+    'p_projection_key',
+    'p_code',
+    'p_profile_id',
+    'p_state',
+    'p_priority',
+    'p_due_at',
+    'p_safe_metadata',
+  ]) {
+    assert.match(projectionIntent, new RegExp(`\\b${argument}\\b`));
+  }
+
+  const receiptIntent = requestIntentSql(rpcSql(sql, 'record_safe_delivery_receipt'));
+  for (const argument of [
+    'p_tenant_id',
+    'p_company_id',
+    'p_event_id',
+    'p_job_id',
+    'p_worker_id',
+    'p_lease_token',
+    'p_attempt_number',
+    'p_channel',
+    'p_provider_category',
+    'p_provider_code',
+    'p_retryable',
+    'p_effect_reference_hash',
+    'p_delivery_state',
+    'p_reconciliation_state',
+    'p_attempted_at',
+    'p_reconciled_at',
+  ]) {
+    assert.match(receiptIntent, new RegExp(`\\b${argument}\\b`));
+  }
+});
+
+test('database constraints bind every projection and audit job to its event', async () => {
+  const sql = await migrationSql();
+
+  assert.match(sql, /alter table public\.event_jobs[\s\S]*unique \(id, event_id\)/);
+  for (const table of [
+    'operational_notifications',
+    'operational_tasks',
+    'operational_activity',
+    'operational_runtime_audit',
+  ]) {
+    assert.match(
+      sql,
+      new RegExp(
+        `${table}[\\s\\S]*foreign key \\(source_job_id, source_event_id\\)[\\s\\S]*references public\\.event_jobs \\(id, event_id\\)`,
+      ),
+    );
+  }
+  assert.match(
+    sql,
+    /runtime_delivery_receipts[\s\S]*foreign key \(job_id, event_id\)[\s\S]*references public\.event_jobs \(id, event_id\)/,
+  );
+});
+
+test('each role-scoped list is bounded, authorized, stable, and mutations are audited', async () => {
+  const sql = await migrationSql();
+
+  for (const rpc of [
+    'list_operational_notifications',
+    'list_operational_tasks',
+    'list_operational_activity',
+  ]) {
+    const body = rpcSql(sql, rpc);
+    assert.match(body, /p_limit between 1 and 100/);
+    assert.match(body, /public\.runtime_actor_company_access\(p_company_id, true\)/);
+    assert.match(body, /created_at < p_before_created_at/);
+    assert.match(body, /created_at = p_before_created_at[\s\S]*id < p_before_id/);
+    assert.match(body, /order by [a-z_.]+\.created_at desc, [a-z_.]+\.id desc/);
+  }
+
+  const access = rpcSql(sql, 'runtime_actor_company_access');
+  assert.match(access, /tenant\.status = 'active'/);
+  assert.match(access, /company\.status::text = 'active'/);
+  assert.match(
+    rpcSql(sql, 'read_operational_runtime_health'),
+    /public\.runtime_actor_company_access\(p_company_id, false\)/,
+  );
+
+  for (const rpc of [
+    'set_operational_notification_read_state',
+    'write_operational_projection',
+    'record_safe_delivery_receipt',
+  ]) {
+    assert.match(rpcSql(sql, rpc), /insert into public\.operational_runtime_audit/);
+  }
 });
