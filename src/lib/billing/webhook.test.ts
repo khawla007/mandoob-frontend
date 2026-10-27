@@ -7,27 +7,33 @@ import {
 } from './webhook';
 
 test('normalizeStripeSubscription maps Stripe subscription data to database fields', () => {
-  const row = normalizeStripeSubscription({
-    id: 'sub_123',
-    customer: 'cus_123',
-    status: 'active',
-    cancel_at_period_end: false,
-    canceled_at: null,
-    items: {
-      data: [
-        {
-          current_period_start: 1_700_000_000,
-          current_period_end: 1_702_592_000,
-          price: {
-            id: 'price_professional',
-            unit_amount: 9900,
-            currency: 'usd',
-            recurring: { interval: 'month' as const },
+  const row = normalizeStripeSubscription(
+    {
+      id: 'sub_123',
+      customer: 'cus_123',
+      status: 'active',
+      cancel_at_period_end: false,
+      canceled_at: null,
+      items: {
+        data: [
+          {
+            current_period_start: 1_700_000_000,
+            current_period_end: 1_702_592_000,
+            price: {
+              id: 'price_professional',
+              unit_amount: 9900,
+              currency: 'usd',
+              recurring: { interval: 'month' as const },
+            },
           },
-        },
-      ],
+        ],
+      },
     },
-  });
+    (priceId) => {
+      assert.equal(priceId, 'price_professional');
+      return 'professional';
+    },
+  );
 
   assert.deepEqual(row, {
     stripe_customer_id: 'cus_123',

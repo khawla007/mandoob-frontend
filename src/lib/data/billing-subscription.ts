@@ -1,6 +1,7 @@
 import type { SourceState } from '@/lib/settings/provider-state';
 
 export type BillingSubscription = {
+  version: number;
   plan: string;
   status: string;
   currentPeriodEnd: string | null;
@@ -9,11 +10,15 @@ export type BillingSubscription = {
   unitAmountMinor: number;
   currency: string;
   interval: string;
+  pendingPlan: string | null;
+  pendingCadence: string | null;
+  pendingEffectiveAt: string | null;
 };
 
 export type BillingSubscriptionSnapshot = SourceState<BillingSubscription | null>;
 
 type BillingSourceRow = {
+  version: unknown;
   plan: unknown;
   status: unknown;
   current_period_end: unknown;
@@ -22,6 +27,9 @@ type BillingSourceRow = {
   unit_amount_minor: unknown;
   currency: unknown;
   interval: unknown;
+  pending_plan: unknown;
+  pending_cadence: unknown;
+  pending_effective_at: unknown;
 };
 
 export function toBillingSubscriptionSnapshot({
@@ -36,6 +44,10 @@ export function toBillingSubscriptionSnapshot({
   return {
     status: 'ready',
     data: {
+      version:
+        Number.isSafeInteger(Number(data.version)) && Number(data.version) >= 0
+          ? Number(data.version)
+          : 0,
       plan: String(data.plan),
       status: String(data.status),
       currentPeriodEnd:
@@ -45,6 +57,10 @@ export function toBillingSubscriptionSnapshot({
       unitAmountMinor: Number(data.unit_amount_minor),
       currency: String(data.currency),
       interval: String(data.interval),
+      pendingPlan: typeof data.pending_plan === 'string' ? data.pending_plan : null,
+      pendingCadence: typeof data.pending_cadence === 'string' ? data.pending_cadence : null,
+      pendingEffectiveAt:
+        typeof data.pending_effective_at === 'string' ? data.pending_effective_at : null,
     },
   };
 }

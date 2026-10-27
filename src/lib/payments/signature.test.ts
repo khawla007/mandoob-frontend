@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computeTapHashstring, tapHashstringInput, verifyTapHashstring } from './signature';
+import {
+  canonicalTapAmount,
+  computeTapHashstring,
+  normalizeTapCreated,
+  tapHashstringInput,
+  tapMajorToMinor,
+  verifyTapHashstring,
+} from './signature';
 
 const FIELDS = {
   id: 'chg_TS01A1234',
@@ -40,4 +47,12 @@ test('verifyTapHashstring rejects an empty header', () => {
 test('verifyTapHashstring rejects a wrong secret', () => {
   const expected = computeTapHashstring(FIELDS, SECRET);
   assert.equal(verifyTapHashstring(FIELDS, expected, 'whsec_other'), false);
+});
+
+test('official webhook shapes canonicalize ISO exponents and millisecond timestamps exactly', () => {
+  assert.equal(canonicalTapAmount(125, 'AED'), '125.00');
+  assert.equal(canonicalTapAmount('1.234', 'BHD'), '1.234');
+  assert.equal(tapMajorToMinor('1.234', 'BHD'), 1234);
+  assert.equal(normalizeTapCreated('1714900000000'), '2024-05-05T09:06:40.000Z');
+  assert.equal(normalizeTapCreated(1714900000000), '2024-05-05T09:06:40.000Z');
 });

@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
@@ -19,6 +21,7 @@ import type { ProFinanceDashboard } from '@/lib/data/pro-finance';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { formatMoney as formatMinorMoney } from '@/lib/format/money';
 import { formatFinanceDate } from '@/lib/format/finance-date';
+import { dubaiMonthKey, dubaiMonthRange, loadFinanceReport } from '@/lib/finance/reports';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,8 +51,17 @@ export default async function ProPaymentAnalyticsPage({
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
-  const [dashboard, t, locale] = await Promise.all([
+  const month = dubaiMonthKey();
+  const exportOperationId = randomUUID();
+  const period = dubaiMonthRange(month)!;
+  const [dashboard, accounting, t, locale] = await Promise.all([
     getProFinanceDashboard(tenant.id, company.id),
+    loadFinanceReport({
+      actorId: session.id,
+      tenantId: tenant.id,
+      companyId: company.id,
+      period,
+    }),
     getTranslations('pro'),
     getLocale(),
   ]);
@@ -57,7 +69,7 @@ export default async function ProPaymentAnalyticsPage({
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
+      <Button asChild variant="ghost" size="sm" className="-ml-2 min-h-11 w-fit">
         <Link href={`/t/${tenant.slug}/payments`}>
           <ChevronLeft className="size-4" />
           {t('paymentBack')}
@@ -69,10 +81,59 @@ export default async function ProPaymentAnalyticsPage({
           <h1 className="text-2xl font-semibold tracking-tight">{t('paymentAnalyticsTitle')}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t('paymentAnalyticsSubtitle')}</p>
         </div>
-        <Button asChild>
-          <Link href={`/t/${tenant.slug}/payments`}>{t('payments')}</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link
+              href={`/t/${tenant.slug}/payments/export?month=${month}&operationId=${exportOperationId}`}
+            >
+              {t('paymentExportCsv')}
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href={`/t/${tenant.slug}/payments`}>{t('payments')}</Link>
+          </Button>
+        </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('paymentAccountingReport', { month })}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FinanceTableRegion label={t('paymentAccountingReport', { month })}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('paymentAmount')}</TableHead>
+                  <TableHead className="text-right">{t('paymentCollectedRevenue')}</TableHead>
+                  <TableHead className="text-right">{t('paymentBilled')}</TableHead>
+                  <TableHead className="text-right">{t('paymentOutstandingReceivables')}</TableHead>
+                  <TableHead className="text-right">{t('paymentProfit')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(accounting.currencies).map(([currency, report]) => (
+                  <TableRow key={currency}>
+                    <TableCell>{currency}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(report.cashCollectedMinor, currency, locale)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(report.billedMinor, currency, locale)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(report.receivableMinor, currency, locale)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoney(report.profitMinor, currency, locale)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </FinanceTableRegion>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {kpiCards.map((kpi) => (
@@ -105,26 +166,30 @@ export default async function ProPaymentAnalyticsPage({
           {dashboard.invoiceStatus.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('paymentAnalyticsEmpty')}</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('paymentStatus')}</TableHead>
-                  <TableHead className="text-right">{t('paymentCount')}</TableHead>
-                  <TableHead className="text-right">{t('paymentAmount')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dashboard.invoiceStatus.map((row) => (
-                  <TableRow key={row.key}>
-                    <TableCell className="font-medium">{invoiceStatusLabel(row.key, t)}</TableCell>
-                    <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(row.amountMinor, row.currency, locale)}
-                    </TableCell>
+            <FinanceTableRegion label={t('paymentInvoiceStatus')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('paymentStatus')}</TableHead>
+                    <TableHead className="text-right">{t('paymentCount')}</TableHead>
+                    <TableHead className="text-right">{t('paymentAmount')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {dashboard.invoiceStatus.map((row) => (
+                    <TableRow key={row.key}>
+                      <TableCell className="font-medium">
+                        {invoiceStatusLabel(row.key, t)}
+                      </TableCell>
+                      <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(row.amountMinor, row.currency, locale)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </FinanceTableRegion>
           )}
         </CardContent>
       </Card>
@@ -141,26 +206,30 @@ export default async function ProPaymentAnalyticsPage({
           ) : dashboard.paymentMethods.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('paymentAnalyticsEmpty')}</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('paymentMethod')}</TableHead>
-                  <TableHead className="text-right">{t('paymentCount')}</TableHead>
-                  <TableHead className="text-right">{t('paymentAmount')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dashboard.paymentMethods.map((row) => (
-                  <TableRow key={row.key}>
-                    <TableCell className="font-medium">{paymentMethodLabel(row.key, t)}</TableCell>
-                    <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(row.amountMinor, row.currency, locale)}
-                    </TableCell>
+            <FinanceTableRegion label={t('paymentMethods')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('paymentMethod')}</TableHead>
+                    <TableHead className="text-right">{t('paymentCount')}</TableHead>
+                    <TableHead className="text-right">{t('paymentAmount')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {dashboard.paymentMethods.map((row) => (
+                    <TableRow key={row.key}>
+                      <TableCell className="font-medium">
+                        {paymentMethodLabel(row.key, t)}
+                      </TableCell>
+                      <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(row.amountMinor, row.currency, locale)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </FinanceTableRegion>
           )}
         </CardContent>
       </Card>
@@ -173,26 +242,28 @@ export default async function ProPaymentAnalyticsPage({
           {dashboard.aging.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('paymentAgingEmpty')}</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('paymentStatus')}</TableHead>
-                  <TableHead className="text-right">{t('paymentCount')}</TableHead>
-                  <TableHead className="text-right">{t('paymentAmount')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dashboard.aging.map((row) => (
-                  <TableRow key={row.key}>
-                    <TableCell className="font-medium">{agingLabel(row.key, t)}</TableCell>
-                    <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(row.amountMinor, row.currency, locale)}
-                    </TableCell>
+            <FinanceTableRegion label={t('paymentAging')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('paymentStatus')}</TableHead>
+                    <TableHead className="text-right">{t('paymentCount')}</TableHead>
+                    <TableHead className="text-right">{t('paymentAmount')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {dashboard.aging.map((row) => (
+                    <TableRow key={row.key}>
+                      <TableCell className="font-medium">{agingLabel(row.key, t)}</TableCell>
+                      <TableCell className="text-right">{formatCount(row.count, locale)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(row.amountMinor, row.currency, locale)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </FinanceTableRegion>
           )}
         </CardContent>
       </Card>
@@ -218,33 +289,43 @@ export default async function ProPaymentAnalyticsPage({
           ) : failedAttempts.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('paymentAttemptsEmpty')}</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('paymentInvoice')}</TableHead>
-                  <TableHead>{t('paymentStatus')}</TableHead>
-                  <TableHead>{t('paymentAttempted')}</TableHead>
-                  <TableHead className="text-right">{t('paymentAmount')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {failedAttempts.map((attempt) => (
-                  <TableRow key={attempt.id}>
-                    <TableCell className="font-mono">{attempt.invoiceId.slice(0, 8)}</TableCell>
-                    <TableCell>{paymentStatusLabel(attempt.status, t)}</TableCell>
-                    <TableCell>
-                      {formatFinanceDate(attempt.createdAt, locale, t('paymentDateUnavailable'))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(attempt.amountMinor, attempt.currency, locale)}
-                    </TableCell>
+            <FinanceTableRegion label={t('paymentAttempts')}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('paymentInvoice')}</TableHead>
+                    <TableHead>{t('paymentStatus')}</TableHead>
+                    <TableHead>{t('paymentAttempted')}</TableHead>
+                    <TableHead className="text-right">{t('paymentAmount')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {failedAttempts.map((attempt) => (
+                    <TableRow key={attempt.id}>
+                      <TableCell className="font-mono">{attempt.invoiceId.slice(0, 8)}</TableCell>
+                      <TableCell>{paymentStatusLabel(attempt.status, t)}</TableCell>
+                      <TableCell>
+                        {formatFinanceDate(attempt.createdAt, locale, t('paymentDateUnavailable'))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(attempt.amountMinor, attempt.currency, locale)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </FinanceTableRegion>
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function FinanceTableRegion({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="overflow-x-auto" role="region" aria-label={label} tabIndex={0}>
+      {children}
     </div>
   );
 }

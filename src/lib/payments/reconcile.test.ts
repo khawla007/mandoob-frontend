@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { mapTapChargeToPaymentStatus } from './reconcile';
 
 const NOW = new Date('2026-05-07T08:00:00.000Z');
+
+test('legacy reconciliation never accepts or persists raw provider payloads', () => {
+  const source = readFileSync(new URL('./reconcile.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /rawPayload|provider_event_payload/u);
+});
 
 test('mapTapChargeToPaymentStatus maps CAPTURED to succeeded', () => {
   assert.equal(

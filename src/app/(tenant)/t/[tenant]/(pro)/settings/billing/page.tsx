@@ -1,17 +1,26 @@
+import { randomUUID } from 'node:crypto';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SubscriptionControls } from '@/components/finance/SubscriptionControls';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
   billingCancellationState,
   billingStatusKey,
+  getBillingManagementSnapshot,
   getBillingSubscriptionSnapshot,
 } from '@/lib/data/tenant-billing';
+import { resolveStripeRuntimeConfig } from '@/lib/billing/providers/stripe';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { formatMoney } from '@/lib/format/money';
+import {
+  cancelSubscriptionFormAction,
+  changeSubscriptionFormAction,
+  openBillingPortalFormAction,
+  startCheckoutFormAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,21 +54,40 @@ function billingIntervalKey(interval: string): (typeof BILLING_INTERVAL_KEYS)[nu
 
 export default async function BillingSettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string }>;
+  searchParams: Promise<{ billing?: string }>;
 }) {
   const { tenant: slug } = await params;
+  const query = await searchParams;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
   await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
-  const [t, locale, snapshot] = await Promise.all([
+  const stripeConfig = resolveStripeRuntimeConfig();
+  const [t, locale, snapshot, management] = await Promise.all([
     getTranslations('pro.settings'),
     getLocale(),
     getBillingSubscriptionSnapshot(tenant.id),
+    getBillingManagementSnapshot(tenant.id, stripeConfig?.destination ?? null),
   ]);
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Dubai' });
+  const managementData = management.status === 'ready' ? management.data : null;
+  const subscription = snapshot.status === 'ready' ? snapshot.data : null;
+  const providerAvailable = Boolean(managementData);
+  const options = managementData?.options ?? [];
+  const operationIds = Array.from({ length: options.length + 2 }, () => randomUUID());
+  const actionStatus = [
+    'scheduled',
+    'provider_disabled',
+    'provider_unavailable',
+    'stale_version',
+    'validation_failed',
+  ].includes(query.billing ?? '')
+    ? query.billing
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-[96rem] space-y-6">
@@ -67,9 +95,9 @@ export default async function BillingSettingsPage({
         <p className="text-signal-accent-copy font-mono text-xs tracking-[0.14em] uppercase">
           {t('billing.eyebrow')}
         </p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
           {t('billing.title')}
-        </h2>
+        </h1>
         <p className="text-muted-foreground mt-1 max-w-2xl text-sm">{t('billing.description')}</p>
       </header>
 
@@ -120,6 +148,20 @@ export default async function BillingSettingsPage({
                   {t(`billing.cancellationStates.${billingCancellationState(snapshot.data)}`)}
                 </dd>
               </div>
+              {snapshot.data.pendingPlan && snapshot.data.pendingCadence ? (
+                <div>
+                  <dt className="text-muted-foreground">{t('billing.pendingChange')}</dt>
+                  <dd className="mt-1 font-medium">
+                    {t(`billing.plans.${billingPlanKey(snapshot.data.pendingPlan)}`)} ·{' '}
+                    {t(
+                      `billing.intervals.${billingIntervalKey(snapshot.data.pendingCadence === 'monthly' ? 'month' : 'year')}`,
+                    )}
+                    {snapshot.data.pendingEffectiveAt
+                      ? ` · ${date.format(new Date(snapshot.data.pendingEffectiveAt))}`
+                      : ''}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           ) : (
             <p className="text-muted-foreground text-sm" role="status">
@@ -130,21 +172,40 @@ export default async function BillingSettingsPage({
       </Card>
 
       <Card className="signal-panel">
-        <CardContent className="pt-6">
-          <p id="billing-actions-unavailable" className="font-medium">
-            {t('billing.planSelectionUnavailable')}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2" aria-describedby="billing-actions-unavailable">
-            <Button type="button" disabled>
-              {t('billing.changePlan')}
-            </Button>
-            <Button type="button" variant="outline" disabled>
-              {t('billing.manageBilling')}
-            </Button>
-            <Button type="button" variant="outline" disabled>
-              {t('billing.cancelSubscription')}
-            </Button>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('billing.manageSubscription')}</CardTitle>
+          <CardDescription>{t('billing.managementDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {actionStatus ? (
+            <p className="mb-4 text-sm" role="status">
+              {t(`billing.actionStates.${actionStatus}`)}
+            </p>
+          ) : null}
+          <SubscriptionControls
+            providerAvailable={providerAvailable}
+            labels={{
+              providerUnavailable: t('billing.providerDisabled'),
+              checkout: t('billing.choosePlan'),
+              change: t('billing.changePlan'),
+              portal: t('billing.manageBilling'),
+              cancel: t('billing.cancelSubscription'),
+              monthly: t('billing.cadences.monthly'),
+              annual: t('billing.cadences.annual'),
+              starter: t('billing.plans.starter'),
+              professional: t('billing.plans.professional'),
+              enterprise: t('billing.plans.enterprise'),
+            }}
+            purchaseAction={subscription ? changeSubscriptionFormAction : startCheckoutFormAction}
+            portalAction={openBillingPortalFormAction}
+            cancelAction={cancelSubscriptionFormAction}
+            tenantSlug={slug}
+            catalogVersionId={managementData?.catalogVersionId ?? null}
+            options={options}
+            subscriptionVersion={subscription?.version ?? null}
+            operationIds={operationIds}
+            locale={locale}
+          />
         </CardContent>
       </Card>
     </div>

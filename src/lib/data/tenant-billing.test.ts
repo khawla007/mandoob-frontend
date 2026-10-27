@@ -7,6 +7,7 @@ import {
 } from './billing-subscription';
 
 const row = (status: string, overrides: Record<string, unknown> = {}) => ({
+  version: 4,
   plan: 'source-plan',
   status,
   current_period_end: '2026-12-01T00:00:00.000Z',
@@ -15,6 +16,9 @@ const row = (status: string, overrides: Record<string, unknown> = {}) => ({
   unit_amount_minor: 9900,
   currency: 'AED',
   interval: 'month',
+  pending_plan: null,
+  pending_cadence: null,
+  pending_effective_at: null,
   ...overrides,
 });
 
@@ -48,6 +52,7 @@ test('billing loader reports unavailable only when the live source fails', () =>
 
 test('actual cancellation beats a scheduled cancellation flag', () => {
   const subscription = (overrides: Partial<BillingSubscription>): BillingSubscription => ({
+    version: 1,
     plan: 'source-plan',
     status: 'active',
     currentPeriodEnd: null,
@@ -56,6 +61,9 @@ test('actual cancellation beats a scheduled cancellation flag', () => {
     unitAmountMinor: 0,
     currency: 'AED',
     interval: 'month',
+    pendingPlan: null,
+    pendingCadence: null,
+    pendingEffectiveAt: null,
     ...overrides,
   });
   assert.equal(billingCancellationState(subscription({ status: 'canceled' })), 'cancelled');

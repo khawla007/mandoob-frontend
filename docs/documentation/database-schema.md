@@ -97,3 +97,20 @@ Approved/rejected are the only accepted outcomes. A rejection requires a Unicode
 ## Dubai date semantics
 
 The queue derives today's business date with `(now() at time zone 'Asia/Dubai')::date`. Request due timestamps are converted to Dubai dates before filtering. Expiring means the effective expiry is between today and today + 30 inclusive; overdue means a pending request due date is strictly earlier than today. Date filters are inclusive at both ends.
+
+## P3.09 finance, payments and plans
+
+Forward migrations `20260922090000`–`20260922095000` add the local P3.09 candidate:
+
+| Area                 | Authoritative records                                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Financial core       | invoice lines and tax provenance, operation receipts, append-only journals/entries, payment/refund allocations, credit notes, expenses and PRO compensation |
+| Bank evidence        | P3.07 document/version bindings, review/access/reconciliation state; no public object paths or bank details                                                 |
+| Tap                  | destination-bound payment attempts, stable effect keys, provider event replay/order state and recovery leases/fences                                        |
+| Reports/receipts     | immutable receipt snapshots, Dubai-period aggregates and bounded export projections                                                                         |
+| Catalog/entitlements | versioned AED plans/add-ons/allowances, provider enablement/mappings, period snapshots, usage and replay receipts                                           |
+| Stripe               | authoritative customer/subscription mappings, durable Checkout/change effects and ordered inbound event ledger                                              |
+
+All financial commands are service-role-only `SECURITY DEFINER SET search_path = ''` RPCs. They re-resolve live ownership and commit state, command receipt, audit and reference-only P3.10 events atomically. Monetary values are integer minor units with explicit currency. Posted journals are immutable and balanced per currency.
+
+The demo catalog `p309-demo-aed-v1` is local/test or explicitly enabled sandbox only and is forbidden for live effects. Tap and Stripe have separate enablement. Provider metadata does not establish tenant, company, plan or subscription authority.

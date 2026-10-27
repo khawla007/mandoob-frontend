@@ -1,210 +1,83 @@
 import { NextResponse } from 'next/server';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
-import { type TapHashstringFields, verifyTapHashstring } from '@/lib/payments/signature';
+import {
+  normalizeTapWebhookPayload,
+  processTapWebhook,
+  verifyTapWebhookPayload,
+} from '@/lib/payments/tap-webhook';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
-
-type TapWebhookPayload = {
-  id?: string;
-  amount?: number | string;
-  currency?: string;
-  status?: string;
-  reference?: { gateway?: string | null; payment?: string | null } | null;
-  transaction?: { created?: string | number | null } | null;
-  metadata?: Record<string, string> | null;
-};
-
 export async function POST(req: Request): Promise<Response> {
-  const rawBody = await req.text();
-  let payload: TapWebhookPayload;
-  try {
-    payload = JSON.parse(rawBody) as TapWebhookPayload;
-  } catch {
-    return NextResponse.json({ error: 'invalid json', code: 'BAD_REQUEST' }, { status: 400 });
-  }
-
-  const tenantId = payload.metadata?.tenant_id ?? null;
-  if (!tenantId) {
-    return NextResponse.json(
-      { error: 'metadata.tenant_id missing', code: 'BAD_REQUEST' },
-      { status: 400 },
-    );
-  }
-
-  const config = await resolveTenantTapConfig(tenantId);
-  if (!config) {
-    return NextResponse.json(
-      { error: 'tap not configured for tenant', code: 'NOT_CONFIGURED' },
-      { status: 503 },
-    );
-  }
-
-  const fields = extractHashstringFields(payload);
-  if (!fields) {
-    return NextResponse.json(
-      { error: 'missing fields for signature', code: 'BAD_REQUEST' },
-      { status: 400 },
-    );
-  }
-
-  const headerHash = req.headers.get('hashstring') ?? '';
-  if (!verifyTapHashstring(fields, headerHash, config.webhookSecret)) {
-    return NextResponse.json({ error: 'invalid signature', code: 'FORBIDDEN' }, { status: 403 });
-  }
-
+  const rawBody = new Uint8Array(await req.arrayBuffer());
+  const signature = req.headers.get('hashstring') ?? '';
+  const destination = new URL(req.url).searchParams.get('destination') ?? '';
   const supabase = createSupabaseServiceRoleClient();
-  const status = (payload.status ?? '').toUpperCase();
-  const chargeId = payload.id ?? null;
-  if (!chargeId) {
-    return NextResponse.json({ error: 'charge id missing', code: 'BAD_REQUEST' }, { status: 400 });
-  }
-
-  const outcome = await applyChargeStatus(supabase, {
-    tenantId,
-    chargeId,
-    status,
-    failureReason: extractFailureReason(payload),
-  });
-
-  return NextResponse.json({ ok: true, outcome });
-}
-
-type ChargeStatusInput = {
-  tenantId: string;
-  chargeId: string;
-  status: string;
-  failureReason: string | null;
-};
-
-async function applyChargeStatus(
-  supabase: Supa,
-  input: ChargeStatusInput,
-): Promise<'noop' | 'updated'> {
-  const { data: paymentRow } = await supabase
-    .from('payments')
-    .select('id, status, invoice_id, amount_minor, tenant_id')
-    .eq('provider_charge_id', input.chargeId)
-    .maybeSingle();
-
-  if (!paymentRow) return 'noop';
-  if (paymentRow.tenant_id !== input.tenantId) return 'noop';
-
-  const targetPaymentStatus = mapTapStatusToPayment(input.status);
-  const targetInvoiceStatus = mapTapStatusToInvoice(input.status);
-  if (!targetPaymentStatus) return 'noop';
-  if (paymentRow.status === targetPaymentStatus) return 'noop';
-
-  const nowIso = new Date().toISOString();
-  await supabase
-    .from('payments')
-    .update({
-      status: targetPaymentStatus,
-      received_at: nowIso,
-      failure_reason: input.failureReason,
-    })
-    .eq('id', paymentRow.id);
-
-  if (targetInvoiceStatus) {
-    const update: Record<string, unknown> = { status: targetInvoiceStatus };
-    if (targetInvoiceStatus === 'paid') update.paid_at = nowIso;
-    await supabase.from('invoices').update(update).eq('id', paymentRow.invoice_id);
-  }
-
-  const auditAction =
-    targetPaymentStatus === 'succeeded'
-      ? 'payment_succeeded'
-      : targetPaymentStatus === 'failed'
-        ? 'payment_failed'
-        : null;
-
-  if (auditAction) {
-    await supabase.from('tenant_audit_log').insert({
-      tenant_id: input.tenantId,
-      actor_id: null,
-      action: auditAction,
-      source: 'system',
-      details: {
-        entity: 'payment',
-        payment_id: paymentRow.id,
-        invoice_id: paymentRow.invoice_id,
-        provider: 'tap',
-        provider_charge_id: input.chargeId,
-        status: input.status,
+  await processTapWebhook(
+    { rawBody, signature, destination },
+    {
+      resolveDestination: async (value) => {
+        if (!value) return null;
+        const { data, error } = await supabase
+          .from('tap_provider_destinations')
+          .select('id, tenant_id, account_id')
+          .eq('id', value)
+          .eq('enabled', true)
+          .maybeSingle();
+        if (error || !data) return null;
+        const config = await resolveTenantTapConfig(data.tenant_id);
+        if (!config?.enabled || config.merchantId !== data.account_id) return null;
+        return { accountId: data.account_id, secret: config.webhookSecret };
       },
-    });
-  }
-
-  return 'updated';
-}
-
-function mapTapStatusToPayment(
-  status: string,
-): 'succeeded' | 'failed' | 'refunded' | 'partially_refunded' | null {
-  switch (status) {
-    case 'CAPTURED':
-    case 'AUTHORIZED':
-      return 'succeeded';
-    case 'FAILED':
-    case 'DECLINED':
-    case 'CANCELLED':
-    case 'TIMEDOUT':
-      return 'failed';
-    case 'REFUNDED':
-      return 'refunded';
-    case 'PARTIALLY_REFUNDED':
-      return 'partially_refunded';
-    default:
-      return null;
-  }
-}
-
-function mapTapStatusToInvoice(status: string): 'paid' | 'refunded' | 'partially_refunded' | null {
-  switch (status) {
-    case 'CAPTURED':
-    case 'AUTHORIZED':
-      return 'paid';
-    case 'REFUNDED':
-      return 'refunded';
-    case 'PARTIALLY_REFUNDED':
-      return 'partially_refunded';
-    default:
-      return null;
-  }
-}
-
-function extractFailureReason(payload: TapWebhookPayload): string | null {
-  const status = (payload.status ?? '').toUpperCase();
-  if (!['FAILED', 'DECLINED', 'CANCELLED', 'TIMEDOUT'].includes(status)) return null;
-  return status.toLowerCase();
-}
-
-function extractHashstringFields(payload: TapWebhookPayload): TapHashstringFields | null {
-  const id = payload.id;
-  const amountRaw = payload.amount;
-  const currency = payload.currency;
-  const status = payload.status;
-  const created = payload.transaction?.created;
-  if (
-    !id ||
-    amountRaw === undefined ||
-    amountRaw === null ||
-    !currency ||
-    !status ||
-    created == null
-  ) {
-    return null;
-  }
-  return {
-    id,
-    amount: typeof amountRaw === 'number' ? amountRaw.toFixed(3) : String(amountRaw),
-    currency,
-    gatewayReference: payload.reference?.gateway ?? '',
-    paymentReference: payload.reference?.payment ?? '',
-    status,
-    created: String(created),
-  };
+      verify: verifyTapWebhookPayload,
+      parse: (bytes) => normalizeTapWebhookPayload(bytes, req.headers.get('x-tap-event-id')),
+      reserveEvent: async (event) => {
+        const { data: row } = await supabase
+          .from('tap_provider_destinations')
+          .select('id')
+          .eq('id', destination)
+          .eq('account_id', event.accountId)
+          .maybeSingle();
+        if (!row) return { reserved: false };
+        const { data, error } = await supabase.rpc(
+          'p309_reserve_tap_event' as never,
+          {
+            p_destination_id: row.id,
+            p_provider_event_id: event.eventId,
+            p_body_hash: event.bodyHash,
+            p_provider_reference: event.chargeId,
+            p_amount_minor: event.amountMinor,
+            p_currency: event.currency,
+            p_provider_status: event.status,
+            p_provider_occurred_at: event.occurredAt,
+          } as never,
+        );
+        if (error || !data || typeof data !== 'object') return { reserved: false };
+        const receipt = data as { reserved?: unknown; token?: unknown; eventId?: unknown };
+        return receipt.reserved === true &&
+          typeof receipt.token === 'string' &&
+          typeof receipt.eventId === 'string'
+          ? { reserved: true, token: receipt.token, claimId: receipt.eventId }
+          : { reserved: false };
+      },
+      reconcile: async (event) => {
+        if (!event.claimId) return 'fenced';
+        const { data, error } = await supabase.rpc(
+          'p309_reconcile_tap_event' as never,
+          {
+            p_event_id: event.claimId,
+            p_fence_token: event.token,
+          } as never,
+        );
+        if (error || !data || typeof data !== 'object') return 'fenced';
+        const outcome = (data as { outcome?: unknown }).outcome;
+        return ['updated', 'duplicate', 'stale', 'fenced', 'mismatch'].includes(String(outcome))
+          ? (outcome as 'updated' | 'duplicate' | 'stale' | 'fenced' | 'mismatch')
+          : 'fenced';
+      },
+    },
+  );
+  return NextResponse.json({ accepted: true }, { status: 202 });
 }

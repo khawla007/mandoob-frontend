@@ -1,4 +1,4 @@
-export function remainingRefundableMinor(args: {
+export function selectRefundablePayment(args: {
   currency: string;
   payments: Array<{
     id: string;
@@ -8,17 +8,22 @@ export function remainingRefundableMinor(args: {
     createdAt: string;
   }>;
   refunds: Array<{ paymentId: string; amountMinor: number; status: string }>;
-}): number | null {
-  const payment = args.payments
+}): { paymentId: string; remainingMinor: number } | null {
+  const candidates = args.payments
     .filter(
       (candidate) => candidate.status === 'succeeded' || candidate.status === 'partially_refunded',
     )
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0];
-  if (!payment || payment.currency !== args.currency) return null;
-  const reserved = args.refunds
-    .filter((refund) => refund.paymentId === payment.id && refund.status !== 'failed')
-    .reduce((total, refund) => total + refund.amountMinor, 0);
-  return Math.max(0, payment.amountMinor - reserved);
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+  for (const payment of candidates) {
+    if (payment.currency !== args.currency) continue;
+    const reserved = args.refunds
+      .filter((refund) => refund.paymentId === payment.id && refund.status !== 'failed')
+      .reduce((total, refund) => total + refund.amountMinor, 0);
+    const remainingMinor = payment.amountMinor - reserved;
+    if (Number.isSafeInteger(remainingMinor) && remainingMinor > 0)
+      return { paymentId: payment.id, remainingMinor };
+  }
+  return null;
 }
 
 export function canShowRefundAction(args: {

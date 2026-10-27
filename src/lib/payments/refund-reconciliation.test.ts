@@ -10,10 +10,10 @@ const scope = {
   providerRefundId: 'tap-refund-1',
 };
 
-test('completed Tap refunds reconcile through the exact tenant-company intent', async () => {
+test('refunded Tap refunds reconcile through the exact tenant-company intent', async () => {
   const reconciliations: unknown[] = [];
   const outcome = await reconcilePendingTapRefund(scope, {
-    fetchStatus: async () => 'COMPLETED',
+    fetchStatus: async () => 'REFUNDED',
     reconcile: async (input) => {
       reconciliations.push(input);
     },
@@ -22,6 +22,20 @@ test('completed Tap refunds reconcile through the exact tenant-company intent', 
   assert.deepEqual(reconciliations, [
     { ...scope, status: 'succeeded', providerRefundId: 'tap-refund-1' },
   ]);
+});
+
+test('unknown and future Tap refund states remain pending and never reconcile terminally', async () => {
+  for (const providerStatus of ['UNKNOWN', 'COMPLETED', 'FUTURE_STATUS']) {
+    let reconciliations = 0;
+    const outcome = await reconcilePendingTapRefund(scope, {
+      fetchStatus: async () => providerStatus,
+      reconcile: async () => {
+        reconciliations += 1;
+      },
+    });
+    assert.equal(outcome, 'unchanged');
+    assert.equal(reconciliations, 0);
+  }
 });
 
 test('pending Tap refunds remain durable without a premature ledger transition', async () => {

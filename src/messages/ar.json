@@ -1,4 +1,14 @@
 {
+  "bankEvidence": {
+    "uploadTitle": "إثبات التحويل البنكي",
+    "uploadDescription": "ارفع ملف PDF أو JPEG أو PNG بحجم لا يتجاوز 10 ميبي بايت للمراجعة.",
+    "file": "ملف الإثبات",
+    "upload": "إرسال الإثبات",
+    "uploading": "جارٍ الإرسال…",
+    "submitted": "تم إرسال الإثبات للمراجعة.",
+    "invalidFile": "اختر ملف PDF أو JPEG أو PNG بحجم لا يتجاوز 10 ميبي بايت.",
+    "failed": "تعذر إرسال الإثبات. حاول مرة أخرى."
+  },
   "operations": {
     "eyebrow": "عمليات {scope}",
     "roles": {
@@ -2081,6 +2091,12 @@
       "previous": "السابق",
       "next": "التالي",
       "retry": "حاول مرة أخرى",
+      "payAction": {
+        "pay": "الدفع الآمن",
+        "redirecting": "جارٍ فتح صفحة الدفع الآمن…",
+        "unavailable": "الدفع الإلكتروني غير متاح مؤقتًا.",
+        "failed": "تعذر بدء الدفع. حاول مرة أخرى."
+      },
       "detail": {
         "eyebrow": "فاتورة الشركة",
         "back": "العودة إلى الفواتير",
@@ -2088,6 +2104,7 @@
         "payments": "سجل المدفوعات",
         "refunds": "سجل الاسترداد",
         "receipt": "فتح الإيصال",
+        "receiptUnavailable": "لا يتوفر إيصال موثّق لهذه الفاتورة القديمة.",
         "providerUnavailable": "الدفع الإلكتروني غير متاح لبوابة الشركة.",
         "providerStateUnavailable": "حالة مزود الدفع الإلكتروني غير متاحة مؤقتاً.",
         "paymentContractUnavailable": "يبقى الدفع الإلكتروني غير متاح حتى يتوفر عقد بدء ذري وآمن من التكرار.",
@@ -2141,6 +2158,7 @@
     "paid": "مدفوع",
     "noDueDate": "بدون تاريخ استحقاق",
     "receipt": "الإيصال",
+    "receiptUnavailable": "الإيصال الموثّق غير متاح",
     "reviewerNote": "ملاحظة المراجع:",
     "pleaseReupload": "يرجى إعادة الرفع.",
     "docTypeLabels": {
@@ -2161,7 +2179,7 @@
       "insurance_policy": "وثيقة التأمين"
     },
     "longCopy": {
-      "welcomeIntro": "Your registration, documents, renewals, and invoices at a glance.",
+      "welcomeIntro": "ملخص التسجيل والمستندات والتجديدات والفواتير.",
       "noOpenRequests": "You have no open document requests right now.",
       "noUpcomingRenewals": "No upcoming renewals in the next 90 days.",
       "documentsIntro": "Upload requested documents and track items already submitted.",
@@ -2171,7 +2189,7 @@
       "awaitingDescription": "المستندات التي يحتاجها منك PRO المعيّن.",
       "accountNotLinkedNote": "حسابك غير مرتبط بشركة بعد. تواصل مع دعم مندوب لربطه، ثم راجع تفاصيل حسابك.",
       "registrationProgressDescription": "Where your company stands in the UAE registration flow.",
-      "paymentsDescription": "Pending invoices and recent receipts.",
+      "paymentsDescription": "الفواتير المعلقة والإيصالات الحديثة.",
       "recentCommsDescription": "أحدث الرسائل بينك وبين PRO المعيّن.",
       "uploadDialogDescription": "PDF, JPEG, PNG, DOCX, or XLSX up to 25 MB. The file is scanned before storage."
     }
@@ -2741,10 +2759,10 @@
       "title": "الإعدادات",
       "description": "إعدادات مساحة العمل الموثقة للشركة المعيّنة لك.",
       "tabs": {
-        "workspace": "Workspace",
-        "billing": "Billing",
-        "profile": "Profile",
-        "security": "Security"
+        "workspace": "مساحة العمل",
+        "billing": "الفوترة",
+        "profile": "الملف التعريفي",
+        "security": "الأمان"
       },
       "readOnly": {
         "title": "Read-only view",
@@ -2783,8 +2801,9 @@
         "title": "إعدادات الفوترة",
         "description": "معلومات الاشتراك الحالية لمساحة العمل الموثقة.",
         "currentSubscription": "الاشتراك الحالي",
-        "readOnlyDescription": "تغييرات الاشتراك غير متاحة حتى يتم التحقق من كتالوج المرحلة 3 وعقود المزوّد.",
+        "readOnlyDescription": "حالة الاشتراك والتغييرات المجدولة الموثقة من مزود الفوترة.",
         "providerUnavailable": "معلومات الاشتراك غير متاحة مؤقتًا.",
+        "providerDisabled": "إدارة الاشتراك غير متاحة لأن Stripe غير مُفعّل مع ربط سعر معتمد.",
         "noSubscription": "لا يوجد اشتراك حالي مسجل.",
         "plan": "الخطة",
         "plans": {
@@ -2802,16 +2821,30 @@
         },
         "periodEnd": "انتهاء الفترة الحالية",
         "cancellation": "الإلغاء",
+        "pendingChange": "التغيير المجدول",
         "notAvailable": "غير متاح",
         "cancellationStates": {
           "cancelled": "ملغي",
           "scheduled": "تمت جدولة الإلغاء عند نهاية الفترة",
           "not_scheduled": "غير مجدول"
         },
-        "planSelectionUnavailable": "اختيار الخطة غير متاح — يتطلب عقد المرحلة 3",
+        "manageSubscription": "إدارة الاشتراك",
+        "managementDescription": "اختر خطة معتمدة أو أدر الاشتراك الحالي. تسري التغييرات عند نهاية الفترة.",
+        "choosePlan": "اختيار الخطة",
         "changePlan": "تغيير الخطة",
         "manageBilling": "إدارة الفوترة",
         "cancelSubscription": "إلغاء الاشتراك",
+        "cadences": {
+          "monthly": "شهر",
+          "annual": "سنة"
+        },
+        "actionStates": {
+          "scheduled": "تمت جدولة تغيير الاشتراك.",
+          "provider_disabled": "Stripe غير مُفعّل لهذا الكتالوج.",
+          "provider_unavailable": "Stripe غير متاح مؤقتًا. لم تبدأ عملية جديدة.",
+          "stale_version": "تغير الاشتراك. حدّث الصفحة قبل المحاولة مجددًا.",
+          "validation_failed": "تغيير الاشتراك المطلوب غير صالح."
+        },
         "statuses": {
           "active": "نشط",
           "trialing": "تجريبي",
@@ -3200,16 +3233,18 @@
     "renewalPreviousPage": "السابق",
     "renewalNextPage": "التالي",
     "paymentsPageSubtitle": "أصدر الفواتير وتابع المدفوعات المعلقة وأدر الإيصالات.",
-    "invoiceNew": "New invoice",
-    "invoiceCreateDescription": "Issue an AED invoice and notify the linked customer.",
-    "invoiceCreateErrorTitle": "Could not create invoice",
-    "invoiceCreateErrorDescription": "The invoice could not be issued. Check the details and try again.",
-    "invoiceLabel": "Label",
-    "invoiceLabelPlaceholder": "Trade licence renewal",
-    "invoiceAmountAed": "Amount (AED)",
-    "invoiceDueDate": "Due date",
-    "invoiceIssuing": "Issuing…",
-    "invoiceIssue": "Issue invoice",
+    "invoiceNew": "فاتورة جديدة",
+    "invoiceCreateDescription": "إصدار فاتورة بالدرهم الإماراتي وإبلاغ العميل المرتبط.",
+    "invoiceCreateErrorTitle": "تعذر إنشاء الفاتورة",
+    "invoiceCreateErrorDescription": "تعذر إصدار الفاتورة. تحقق من التفاصيل وحاول مرة أخرى.",
+    "invoiceCustomer": "العميل",
+    "invoiceCustomerPlaceholder": "اختر عميلاً",
+    "invoiceLabel": "الوصف",
+    "invoiceLabelPlaceholder": "تجديد الرخصة التجارية",
+    "invoiceAmountAed": "المبلغ (درهم إماراتي)",
+    "invoiceDueDate": "تاريخ الاستحقاق",
+    "invoiceIssuing": "جارٍ الإصدار…",
+    "invoiceIssue": "إصدار الفاتورة",
     "communications": {
       "title": "Communications",
       "empty": "No communications yet.",
@@ -3238,6 +3273,29 @@
         "cancelled": "Cancelled"
       }
     },
+    "bankEvidence": {
+      "title": "مراجعة إثبات التحويل",
+      "description": "راجع إثبات العميل غير القابل للتغيير قبل التخصيص اليدوي.",
+      "empty": "لا يوجد إثبات تحويل مرفق بهذه الفاتورة.",
+      "open": "فتح الإثبات",
+      "clean": "تحديد كسليم",
+      "reject": "رفض",
+      "rejectTitle": "رفض إثبات التحويل؟",
+      "rejectDescription": "هذا القرار نهائي. أدخل سبب المراجع قبل رفض الإثبات.",
+      "rejectReason": "سبب الرفض",
+      "confirmReject": "تأكيد الرفض",
+      "cancel": "إلغاء",
+      "actionFailed": "تعذر إكمال إجراء الإثبات.",
+      "states": {
+        "pending": "قيد المراجعة",
+        "clean": "سليم",
+        "rejected": "مرفوض",
+        "reconciled": "تمت التسوية",
+        "expired": "منتهي",
+        "held": "معلّق",
+        "tombstoned": "مؤرشف منطقيًا"
+      }
+    },
     "paymentAnalytics": "التحليلات",
     "paymentViewAll": "الكل",
     "paymentViewBilled": "المفوتر هذا الشهر",
@@ -3251,10 +3309,14 @@
     "paymentPagesLabel": "صفحات الفواتير",
     "paymentPrevious": "السابق",
     "paymentNext": "التالي",
-    "paymentPageSummary": "{page} / {pages}",
+    "paymentPageSummary": "الصفحة {page} من {pages}",
     "paymentBack": "العودة إلى المدفوعات",
     "paymentAnalyticsTitle": "تحليلات المدفوعات",
     "paymentAnalyticsSubtitle": "التحصيلات والذمم وعمليات الدفع للشركة المعيّنة.",
+    "paymentAccountingReport": "التقرير المحاسبي · {month}",
+    "paymentExportCsv": "تصدير CSV",
+    "paymentBilled": "المفوترة",
+    "paymentProfit": "الربح",
     "paymentCollectedRevenue": "صافي التحصيل هذا الشهر",
     "paymentOutstandingReceivables": "الذمم المستحقة",
     "paymentOpenInvoices": "الفواتير المفتوحة",
@@ -3275,6 +3337,7 @@
     "paymentAmount": "المبلغ",
     "paymentMethod": "الطريقة",
     "paymentInvoice": "الفاتورة",
+    "paymentInvoicesTable": "سجل الفواتير",
     "paymentAttempted": "وقت المحاولة",
     "paymentDetailsUnavailable": "تفاصيل الدفع هذه غير متاحة.",
     "paymentInvoiceDetails": "تفاصيل الفاتورة",
@@ -3284,6 +3347,7 @@
     "paymentPaidAt": "تاريخ السداد",
     "paymentLinkedEntity": "الكيان المرتبط",
     "paymentReceipt": "الإيصال",
+    "paymentReceiptUnavailable": "لا يتوفر إيصال موثّق لهذه الفاتورة.",
     "paymentAttemptsTitle": "محاولات الدفع",
     "paymentAttemptsNone": "لا توجد محاولات دفع مسجلة.",
     "paymentReconciliation": "المطابقة",
@@ -3296,6 +3360,8 @@
     "paymentActions": "الإجراءات",
     "paymentDue": "الاستحقاق",
     "paymentMarkPaid": "تحديد كمدفوع",
+    "paymentFinalizeInvoice": "إصدار الفاتورة",
+    "paymentManualAmountMinor": "مبلغ الدفع (بالوحدة الصغرى)",
     "paymentVoid": "إلغاء",
     "paymentRefund": "استرداد",
     "paymentRetryRefund": "إعادة محاولة الاسترداد المعلّق",
@@ -3322,7 +3388,7 @@
     "paymentMethodCash": "نقدًا",
     "paymentMethodBankTransfer": "تحويل بنكي",
     "paymentMethodMada": "مدى",
-    "paymentMethodApplePay": "Apple Pay",
+    "paymentMethodApplePay": "آبل باي",
     "paymentMethodUnavailable": "غير متاح",
     "paymentProviderTap": "تاب",
     "paymentProviderManual": "يدوي",
@@ -3998,7 +4064,24 @@
       "plans": {
         "eyebrow": "المنصة · الاشتراكات",
         "title": "الخطط والحصص والإضافات",
-        "intro": "صمّم إدارة الاشتراكات دون عرض أسعار محلية للصفحة أو عمليات حفظ غير مدعومة.",
+        "intro": "إدارة كتالوجات الخطط غير القابلة للتغيير وتوفر المزود والتفعيل الخاضع للمراجعة.",
+        "catalogs": "إصدارات كتالوج الاشتراك",
+        "version": "إصدار الكتالوج",
+        "class": "فئة الكتالوج",
+        "currency": "العملة",
+        "revision": "المراجعة",
+        "effectiveFrom": "ساري من",
+        "notScheduled": "غير مجدول",
+        "providers": "وجهات المزود",
+        "enabled": "مفعّل",
+        "disabled": "متوقف",
+        "label": "اسم الكتالوج",
+        "reviewReference": "مرجع المراجعة",
+        "clone": "نسخ كمسودة",
+        "edit": "تحديث المسودة",
+        "activate": "تفعيل الإصدار",
+        "states": { "draft": "مسودة", "active": "نشط", "retired": "متقاعد" },
+        "classes": { "demo": "تجريبي", "local": "محلي", "commercial": "تجاري" },
         "comparison": "مقارنة الخطط",
         "cadence": "الدورية الشهرية والسنوية",
         "allowances": "حصص الاتصالات والتخزين",
@@ -5060,11 +5143,21 @@
       "intro": "القيمة المتكررة لاشتراكات Stripe النشطة؛ وليست إيرادًا محصّلًا أو محاسبة أو ربحًا.",
       "pointInTime": "وقت العرض",
       "currencyUsd": "العملة",
+      "currency": "العملة",
+      "currenciesSeparated": "تُعرض كل عملة بصورة منفصلة",
+      "valueUnavailable": "غير متاح",
+      "accountingTable": "الإجماليات المحاسبية حسب العملة",
       "includedActive": "المشمول",
       "activeSubscriptionsOnly": "الاشتراكات النشطة فقط",
       "excludedStatuses": "المستبعد",
       "nonActiveExcluded": "الاشتراكات التجريبية والمتأخرة والملغاة وغير المدفوعة وغير المكتملة والمتوقفة",
       "tenantMrr": "الإيراد الشهري المتكرر لمساحة العمل",
+      "reportTitle": "التقرير المحاسبي · {month}",
+      "exportCsv": "تصدير CSV",
+      "cashCollected": "النقد المحصل",
+      "billed": "المفوترة",
+      "receivable": "الذمم المدينة",
+      "profit": "الربح",
       "table": {
         "tenant": "مساحة عمل الشركة",
         "plan": "الخطة",
@@ -5080,7 +5173,8 @@
         "helperMonthlyValue": "القيمة الشهرية النشطة",
         "helperMrrTimes12": "الإيراد الشهري × 12",
         "helperActiveSubscriptions": "الاشتراكات النشطة",
-        "helperLast30Days": "آخر 30 يومًا"
+        "helperLast30Days": "آخر 30 يومًا",
+        "exactRemainder": "باقي البسط الدقيق {remainder} / 12"
       },
       "subStatus": {
         "active": "نشط",
@@ -5091,6 +5185,29 @@
         "incomplete": "غير مكتمل",
         "incomplete_expired": "غير مكتمل ومنتهي",
         "paused": "متوقف مؤقتًا"
+      },
+      "bankEvidence": {
+        "title": "مراجعة إثباتات التحويل",
+        "description": "راجع أحدث قائمة محدودة من إثباتات المنصة.",
+        "empty": "لا توجد إثباتات تحويل بانتظار المراجعة.",
+        "open": "فتح الإثبات",
+        "clean": "تحديد كسليم",
+        "reject": "رفض",
+        "rejectTitle": "رفض إثبات التحويل؟",
+        "rejectDescription": "هذا القرار نهائي. أدخل سبب المراجع قبل رفض الإثبات.",
+        "rejectReason": "سبب الرفض",
+        "confirmReject": "تأكيد الرفض",
+        "cancel": "إلغاء",
+        "actionFailed": "تعذر إكمال إجراء الإثبات.",
+        "states": {
+          "pending": "قيد المراجعة",
+          "clean": "سليم",
+          "rejected": "مرفوض",
+          "reconciled": "تمت التسوية",
+          "expired": "منتهي",
+          "held": "معلّق",
+          "tombstoned": "مؤرشف منطقيًا"
+        }
       },
       "unsupported": {
         "title": "المحاسبة والتحصيل والتسوية",

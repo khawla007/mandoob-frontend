@@ -25,6 +25,31 @@ test('PRO finance pages remain assigned-company scoped without a Company selecto
   assert.doesNotMatch(analytics, /Revenue by company|<TableHead>Company<\/TableHead>/);
 });
 
+test('PRO receipt selects and audits an immutable authoritative record after company authorization', () => {
+  const receipt = read(`${base}/[invoiceId]/receipt/route.ts`);
+  const authorized = receipt.indexOf('readAssignedCompanyForPro(session.id, slug)');
+  const selected = receipt.lastIndexOf('parseReceiptSelection');
+  const loaded = receipt.lastIndexOf('loadAuthoritativeReceipt');
+  assert.ok(authorized >= 0 && authorized < selected && selected < loaded);
+  assert.match(receipt, /actorRole: 'pro'/u);
+  assert.match(receipt, /receiptDownloadHeaders/u);
+  assert.doesNotMatch(receipt, /getReceiptPayloadForTenant/u);
+});
+
+test('PRO receipt links require authoritative snapshot availability, never invoice status', () => {
+  const table = read('src/components/pro/InvoicesTable.tsx');
+  const detail = read(`${base}/[invoiceId]/page.tsx`);
+  const invoices = read('src/lib/data/invoices.ts');
+  const migration = read('supabase/migrations/20260922091000_p309_finance_commands.sql');
+  assert.match(table, /row\.receiptAvailable/u);
+  assert.doesNotMatch(table, /row\.status === 'paid'[\s\S]*?\/receipt/u);
+  assert.match(detail, /invoice\.receiptAvailable/u);
+  assert.doesNotMatch(detail, /const canShowReceipt[\s\S]*?invoice\.status/u);
+  assert.match(invoices, /receipt_available/u);
+  assert.match(migration, /finance_receipt_snapshots/u);
+  assert.match(migration, /receipt_available/u);
+});
+
 test('finance analytics only renders evidence-backed assigned-company operational sections', () => {
   const analytics = read(`${base}/analytics/page.tsx`);
   assert.match(analytics, /paymentInvoiceStatus/);
@@ -32,6 +57,10 @@ test('finance analytics only renders evidence-backed assigned-company operationa
   assert.match(analytics, /paymentAttempts/);
   assert.match(analytics, /hasMixedCurrencies/);
   assert.doesNotMatch(analytics, /companyRevenue/);
+  assert.match(analytics, /loadFinanceReport/u);
+  assert.match(analytics, /tenantId: tenant\.id/u);
+  assert.match(analytics, /companyId: company\.id/u);
+  assert.match(analytics, /payments\/export\?month=/u);
 });
 
 test('invoice detail does not expose raw provider, profile, or provider failure identifiers', () => {
@@ -47,26 +76,20 @@ test('invoice detail does not expose raw provider, profile, or provider failure 
 
 test('verified payment mutations revalidate the exact invoice and assigned-company analytics route', () => {
   const actions = read(`${base}/actions.ts`);
-  const accessAt = actions.indexOf('requireProTenantRouteAccess(slug)');
+  const accessAt = actions.indexOf('requireProTenantRouteAccess(tenantSlug)');
   const activeAt = actions.indexOf('requireActiveTenant(tenant.id)');
-  const headersAt = actions.indexOf('headers()');
-  assert.ok(accessAt >= 0 && accessAt < activeAt && activeAt < headersAt);
-  assert.match(
-    actions,
-    /revalidatePath\(`\/t\/\$\{ctx\.tenantSlug\}\/payments\/\$\{parsed\.invoiceId\}`\)/,
-  );
-  assert.match(actions, /revalidatePath\(`\/t\/\$\{ctx\.tenantSlug\}\/payments\/analytics`\)/);
-  assert.equal(
-    actions.match(/revalidatePath\(`\/t\/\$\{ctx\.tenantSlug\}\/company`\)/gu)?.length,
-    4,
-  );
+  const companyAt = actions.indexOf('readAssignedCompanyForPro(session.id, tenant.slug)');
+  assert.ok(accessAt >= 0 && accessAt < activeAt && activeAt < companyAt);
+  assert.match(actions, /`\/t\/\$\{slug\}\/payments\/\$\{invoiceId\}`/u);
+  assert.match(actions, /`\/t\/\$\{slug\}\/payments\/analytics`/u);
+  assert.match(actions, /`\/t\/\$\{slug\}\/portal\/payments\/\$\{invoiceId\}`/u);
 });
 
 test('payment actions never return raw provider or database exception text', () => {
   const actions = read(`${base}/actions.ts`);
-  const mapError = actions.slice(actions.indexOf('function mapError'));
-  assert.doesNotMatch(mapError, /err\.message/);
-  assert.match(mapError, /Operation could not be completed/);
+  const presentation = actions.slice(actions.indexOf('function present'));
+  assert.doesNotMatch(presentation, /error\.message|err\.message/);
+  assert.match(presentation, /Operation could not be completed/);
 });
 
 test('finance strings have English and Arabic parity', () => {
@@ -82,6 +105,7 @@ test('finance strings have English and Arabic parity', () => {
       'paymentMixedCurrencyNotice',
       'paymentAttempts',
       'paymentDetailsUnavailable',
+      'paymentReceiptUnavailable',
     ]) {
       assert.equal(typeof messages.pro[key], 'string', `${locale}.${key}`);
     }

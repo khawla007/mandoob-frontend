@@ -17,18 +17,29 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createInvoiceAction } from '@/app/(tenant)/t/[tenant]/(pro)/payments/actions';
+import type { InvoiceCustomerOption } from '@/lib/data/invoice-customer-options';
 
-export function NewInvoiceDialog({ slug, triggerLabel }: { slug: string; triggerLabel?: string }) {
+export function NewInvoiceDialog({
+  slug,
+  customers,
+  triggerLabel,
+}: {
+  slug: string;
+  customers: InvoiceCustomerOption[];
+  triggerLabel?: string;
+}) {
   const t = useTranslations('pro');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [customerProfileId, setCustomerProfileId] = useState('');
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [dueAt, setDueAt] = useState('');
 
   function reset() {
+    setCustomerProfileId('');
     setLabel('');
     setAmount('');
     setDueAt('');
@@ -39,7 +50,31 @@ export function NewInvoiceDialog({ slug, triggerLabel }: { slug: string; trigger
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await createInvoiceAction(slug, { label, amount, dueAt });
+      const amountMatch = amount.trim().match(/^(\d+)(?:\.(\d{1,2}))?$/u);
+      if (!amountMatch || !customerProfileId) {
+        setError(t('invoiceCreateErrorDescription'));
+        return;
+      }
+      const amountMinor =
+        Number(amountMatch[1]) * 100 + Number((amountMatch[2] ?? '').padEnd(2, '0'));
+      const result = await createInvoiceAction(slug, {
+        operationId: crypto.randomUUID(),
+        customerProfileId,
+        label,
+        dueDate: dueAt || null,
+        lines: [
+          {
+            description: label,
+            quantity: 1,
+            unitAmountMinor: amountMinor,
+            discountMinor: 0,
+            taxCategory: 'standard',
+            taxBasis: 'inclusive',
+            vatBasisPoints: 500,
+            currency: 'AED',
+          },
+        ],
+      });
       if (!result.ok) {
         setError(t('invoiceCreateErrorDescription'));
         return;
@@ -48,6 +83,10 @@ export function NewInvoiceDialog({ slug, triggerLabel }: { slug: string; trigger
       setOpen(false);
       router.refresh();
     });
+  }
+
+  if (customers.length === 0) {
+    return <Button disabled>{triggerLabel ?? t('invoiceNew')}</Button>;
   }
 
   return (
@@ -73,6 +112,24 @@ export function NewInvoiceDialog({ slug, triggerLabel }: { slug: string; trigger
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
+          <div className="grid gap-2">
+            <Label htmlFor="invoice-customer">{t('invoiceCustomer')}</Label>
+            <select
+              id="invoice-customer"
+              required
+              value={customerProfileId}
+              onChange={(event) => setCustomerProfileId(event.target.value)}
+              className="border-input bg-background ring-offset-background focus-visible:ring-ring h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">{t('invoiceCustomerPlaceholder')}</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="invoice-label">{t('invoiceLabel')}</Label>

@@ -14,12 +14,15 @@ export type CustomerFinanceSearch = {
   status: CustomerFinanceFilter;
   page: number;
   invoice: string | null;
+  cursor?: { createdAt: string; id: string } | null;
 };
 
 const searchSchema = z.object({
   status: z.enum(['all', 'open', 'overdue', 'paid', 'cancelled']).optional(),
-  page: z.coerce.number().int().min(1).max(10_000).optional(),
+  page: z.coerce.number().int().min(1).safe().optional(),
   invoice: z.string().uuid().optional(),
+  before: z.string().datetime({ offset: true }).optional(),
+  beforeId: z.string().uuid().optional(),
 });
 
 function first(value: string | string[] | undefined) {
@@ -33,16 +36,27 @@ export function parseCustomerFinanceSearch(
     status: first(input.status),
     page: first(input.page),
     invoice: first(input.invoice),
+    before: first(input.before),
+    beforeId: first(input.beforeId),
   });
   const value = parsed.success ? parsed.data : {};
-  return { status: value.status ?? 'all', page: value.page ?? 1, invoice: value.invoice ?? null };
+  return {
+    status: value.status ?? 'all',
+    page: value.before && value.beforeId ? (value.page ?? 1) : 1,
+    invoice: value.invoice ?? null,
+    cursor: value.before && value.beforeId ? { createdAt: value.before, id: value.beforeId } : null,
+  };
 }
 
 export function customerFinanceHref(slug: string, search: CustomerFinanceSearch) {
   const params = new URLSearchParams();
   if (search.status !== 'all') params.set('status', search.status);
   if (search.invoice) params.set('invoice', search.invoice);
-  else if (search.page > 1) params.set('page', String(search.page));
+  else if (search.page > 1 && search.cursor) params.set('page', String(search.page));
+  if (!search.invoice && search.cursor) {
+    params.set('before', search.cursor.createdAt);
+    params.set('beforeId', search.cursor.id);
+  }
   const query = params.toString();
   return `/t/${encodeURIComponent(slug)}/portal/payments${query ? `?${query}` : ''}`;
 }
@@ -59,6 +73,8 @@ export type CustomerInvoiceDbRow = {
   due_at: string | null;
   paid_at: string | null;
   created_at: string;
+  version: number;
+  receipt_available: boolean;
 };
 export type CustomerInvoice = {
   id: string;
@@ -69,6 +85,8 @@ export type CustomerInvoice = {
   dueAt: string | null;
   paidAt: string | null;
   createdAt: string;
+  version: number;
+  receiptAvailable: boolean;
 };
 
 const statuses = new Set<CustomerInvoiceStatus>([
@@ -93,7 +111,10 @@ export function normaliseCustomerInvoice(
     typeof row.status !== 'string' ||
     !statuses.has(row.status as CustomerInvoiceStatus) ||
     typeof row.created_at !== 'string' ||
-    Number.isNaN(new Date(row.created_at).getTime())
+    Number.isNaN(new Date(row.created_at).getTime()) ||
+    !Number.isSafeInteger(row.version) ||
+    (row.version ?? -1) < 0 ||
+    typeof row.receipt_available !== 'boolean'
   )
     return null;
   return {
@@ -105,6 +126,8 @@ export function normaliseCustomerInvoice(
     dueAt: strictDate(row.due_at ?? null) ? row.due_at! : null,
     paidAt: row.paid_at && !Number.isNaN(new Date(row.paid_at).getTime()) ? row.paid_at : null,
     createdAt: row.created_at,
+    version: row.version!,
+    receiptAvailable: row.receipt_available,
   };
 }
 

@@ -1,42 +1,24 @@
 import 'server-only';
-import { enqueueEmail } from '@/lib/mail/send';
 import { formatMoney } from '@/lib/format/money';
 import { isReceiptEligible } from '@/lib/pdf/receipt';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { signalBusinessDate } from './signal-finance';
 import type { PaymentSignalView } from '@/lib/signal-studio-filters';
-import { remainingRefundableMinor, resolveInvoiceFinanceSections } from './invoice-finance-state';
-import { createInvoiceFailure } from './create-invoice-result';
-
-export type LinkedEntity = {
-  type: 'renewal' | 'document_request' | 'manual';
-  id: string;
-};
-
-export type CreateInvoiceArgs = {
-  tenantId: string;
-  companyId: string;
-  customerProfileId?: string | null;
-  linked?: LinkedEntity;
-  label: string;
-  amountMinor: bigint | number;
-  currency?: string;
-  dueAt?: Date | string | null;
-  createdBy?: string | null;
-};
-
-export type CreateInvoiceResult =
-  | { ok: true; data: { id: string; emailQueueId: number | null } }
-  | { ok: false; error: string; code: string };
+import { selectRefundablePayment, resolveInvoiceFinanceSections } from './invoice-finance-state';
+import { refundOperationFromRow, type RefundOperationState } from './refund-operation-state';
+import { parseInvoiceRpcWindow } from './invoice-rpc-validation';
 
 export type ProInvoiceRow = {
   id: string;
+  version: number;
+  paymentId: string | null;
   companyId: string;
   companyName: string;
   customerProfileId: string | null;
   label: string;
   amount: string;
   amountMinor: number;
+  outstandingMinor: number;
   currency: string;
   status: string;
   dueAt: string | null;
@@ -44,15 +26,11 @@ export type ProInvoiceRow = {
   createdAt: string;
   refundOperation: RefundOperationState | null;
   remainingRefundableMinor: number | null;
-  refundAvailable: boolean;
+  refundDetailsLoaded: boolean;
+  receiptAvailable: boolean;
 };
 
-export type RefundOperationState = {
-  operationId: string;
-  status: 'pending' | 'succeeded' | 'failed';
-  amountMinor: number;
-  reason: string | null;
-};
+export type { RefundOperationState } from './refund-operation-state';
 
 export type PaymentInvoicePage = {
   rows: ProInvoiceRow[];
@@ -60,21 +38,25 @@ export type PaymentInvoicePage = {
   page: number;
   pageSize: number;
   currency: string;
+  nextCursor: { createdAt: string; id: string } | null;
 };
 
 const PAYMENT_INVOICE_PAGE_SIZE = 50;
 type PaymentFilterInvoice = {
   id: string;
+  version: number;
   tenant_id: string;
   company_id: string;
   customer_profile_id: string | null;
   label: string;
   amount_minor: number;
+  outstanding_minor: number;
   currency: string;
   status: string;
   due_at: string | null;
   paid_at: string | null;
   created_at: string;
+  receipt_available: boolean;
 };
 type PaymentRpcResult = {
   rows: PaymentFilterInvoice[];
@@ -87,61 +69,48 @@ type PaymentRpcResult = {
 export async function listInvoicesForPaymentView(
   tenantId: string,
   companyId: string,
+  actorId: string,
   options: {
     view: PaymentSignalView | 'all';
     page?: number;
     today?: string;
     date?: string;
     period?: 'morning' | 'afternoon';
+    cursor?: { createdAt: string; id: string } | null;
   } = { view: 'all' },
 ): Promise<PaymentInvoicePage> {
   const admin = createSupabaseServiceRoleClient();
-  const requestedPage = Math.max(1, Math.trunc(options.page ?? 1));
-  let result: PaymentRpcResult;
-  if (options.view === 'all') {
-    const load = (page: number) =>
-      admin
-        .from('invoices')
-        .select(
-          'id, tenant_id, company_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
-          { count: 'exact' },
-        )
-        .eq('tenant_id', tenantId)
-        .eq('company_id', companyId)
-        .order('created_at', { ascending: false })
-        .order('id', { ascending: false })
-        .range((page - 1) * PAYMENT_INVOICE_PAGE_SIZE, page * PAYMENT_INVOICE_PAGE_SIZE - 1);
-    let query = await load(requestedPage);
-    if (query.error) throw new Error(query.error.message);
-    const total = query.count ?? 0;
-    const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / PAYMENT_INVOICE_PAGE_SIZE)));
-    if (page !== requestedPage) query = await load(page);
-    if (query.error) throw new Error(query.error.message);
-    const rows = (query.data ?? []) as PaymentFilterInvoice[];
-    result = {
-      rows,
-      total,
-      page,
-      pageSize: PAYMENT_INVOICE_PAGE_SIZE,
-      currency: rows.find((row) => row.currency === 'AED')?.currency ?? rows[0]?.currency ?? 'AED',
-    };
-  } else {
-    const { data, error } = await admin.rpc(
-      'list_company_payment_invoices' as never,
-      {
-        p_tenant_id: tenantId,
-        p_company_id: companyId,
-        p_view: options.view,
-        p_page: requestedPage,
-        p_page_size: PAYMENT_INVOICE_PAGE_SIZE,
-        p_today: options.today ?? signalBusinessDate(),
-        p_date: options.date ?? null,
-        p_period: options.period ?? null,
-      } as never,
-    );
-    if (error) throw new Error(error.message);
-    result = data as unknown as PaymentRpcResult;
-  }
+  const { data, error } = await admin.rpc(
+    'p309_list_company_invoices' as never,
+    {
+      p_tenant_id: tenantId,
+      p_company_id: companyId,
+      p_actor_id: actorId,
+      p_before_created_at: options.cursor?.createdAt ?? null,
+      p_before_id: options.cursor?.id ?? null,
+      p_limit: PAYMENT_INVOICE_PAGE_SIZE,
+      p_view: options.view,
+      p_today: options.today ?? signalBusinessDate(),
+      p_date: options.date ?? null,
+      p_period: options.period ?? null,
+    } as never,
+  );
+  if (error) throw new Error(error.message);
+  const window = parseInvoiceRpcWindow(data) as unknown as {
+    rows: PaymentFilterInvoice[];
+    total: number;
+  };
+  const rows = window.rows;
+  if (rows.some((row) => typeof row.receipt_available !== 'boolean'))
+    throw new Error('INVOICE_SOURCE_UNAVAILABLE');
+  const last = rows.at(-1);
+  const result: PaymentRpcResult = {
+    rows,
+    total: window.total,
+    page: Math.max(1, Math.trunc(options.page ?? 1)),
+    pageSize: PAYMENT_INVOICE_PAGE_SIZE,
+    currency: rows[0]?.currency ?? 'AED',
+  };
   const selected = result.rows;
   const companyNames = await getCompanyNames(
     admin,
@@ -155,12 +124,15 @@ export async function listInvoicesForPaymentView(
   return {
     rows: selected.map((row) => ({
       id: row.id,
+      version: row.version,
+      paymentId: null,
       companyId: row.company_id,
       companyName: companyNames.get(row.company_id) ?? 'Unknown company',
       customerProfileId: row.customer_profile_id ?? null,
       label: row.label,
       amount: formatMoney(row.amount_minor, row.currency),
       amountMinor: row.amount_minor,
+      outstandingMinor: row.outstanding_minor,
       currency: row.currency,
       status: row.status,
       dueAt: row.due_at ?? null,
@@ -168,15 +140,19 @@ export async function listInvoicesForPaymentView(
       createdAt: row.created_at,
       refundOperation: refundOperations.get(row.id) ?? null,
       remainingRefundableMinor: null,
-      refundAvailable: false,
+      refundDetailsLoaded: true,
+      receiptAvailable: row.receipt_available,
     })),
     total: result.total,
     page: result.page,
     pageSize: result.pageSize,
     currency: result.currency,
+    nextCursor:
+      rows.length === PAYMENT_INVOICE_PAGE_SIZE && last
+        ? { createdAt: last.created_at, id: last.id }
+        : null,
   };
 }
-
 export type ReceiptPayload = {
   tenantName: string;
   tenantColor: string | null;
@@ -222,54 +198,6 @@ export type InvoiceDetail = ProInvoiceRow & {
   };
 };
 
-export async function createInvoice(args: CreateInvoiceArgs): Promise<CreateInvoiceResult> {
-  if (typeof args.amountMinor === 'bigint' && args.amountMinor < BigInt(0)) {
-    return { ok: false, error: 'amount cannot be negative', code: 'INVALID_AMOUNT' };
-  }
-  if (typeof args.amountMinor === 'number' && args.amountMinor < 0) {
-    return { ok: false, error: 'amount cannot be negative', code: 'INVALID_AMOUNT' };
-  }
-
-  const admin = createSupabaseServiceRoleClient();
-  const currency = (args.currency ?? 'AED').toUpperCase();
-
-  const customerProfileId =
-    args.customerProfileId ?? (await resolveCustomerProfileId(admin, args.companyId));
-
-  const dueAtIso = normaliseDueAt(args.dueAt);
-  const linkedEntityType = args.linked?.type ?? 'manual';
-  const linkedEntityId = args.linked?.id ?? null;
-  const { data: insertedId, error } = await admin.rpc('create_company_invoice', {
-    p_tenant_id: args.tenantId,
-    p_company_id: args.companyId,
-    p_customer_profile_id: customerProfileId,
-    p_linked_entity_type: linkedEntityType,
-    p_linked_entity_id: linkedEntityId,
-    p_label: args.label,
-    p_amount_minor: Number(args.amountMinor),
-    p_currency: currency,
-    p_due_at: dueAtIso,
-    p_created_by: args.createdBy ?? null,
-  });
-
-  if (error || !insertedId) {
-    return createInvoiceFailure(error);
-  }
-
-  const emailQueueId = await fanOutInvoiceDueEmail({
-    admin,
-    invoiceId: insertedId,
-    tenantId: args.tenantId,
-    companyId: args.companyId,
-    customerProfileId,
-    label: args.label,
-    amountMinor: args.amountMinor,
-    currency,
-  });
-
-  return { ok: true, data: { id: insertedId, emailQueueId } };
-}
-
 export async function listInvoicesForTenant(
   tenantId: string,
   opts: { companyId?: string; limit?: number } = {},
@@ -278,7 +206,7 @@ export async function listInvoicesForTenant(
   let query = admin
     .from('invoices')
     .select(
-      'id, company_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
+      'id, company_id, customer_profile_id, label, amount_minor, currency, status, due_at, paid_at, created_at, version',
     )
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
@@ -298,12 +226,15 @@ export async function listInvoicesForTenant(
 
   return rows.map((r) => ({
     id: r.id as string,
+    version: (r.version as number | undefined) ?? 0,
+    paymentId: null,
     companyId: r.company_id as string,
     companyName: companyNames.get(r.company_id as string) ?? 'Unknown company',
     customerProfileId: (r.customer_profile_id as string | null) ?? null,
     label: r.label as string,
     amount: formatMoney(r.amount_minor as number, r.currency as string),
     amountMinor: r.amount_minor as number,
+    outstandingMinor: r.amount_minor as number,
     currency: r.currency as string,
     status: r.status as string,
     dueAt: (r.due_at as string | null) ?? null,
@@ -311,7 +242,8 @@ export async function listInvoicesForTenant(
     createdAt: r.created_at as string,
     refundOperation: refundOperations.get(r.id as string) ?? null,
     remainingRefundableMinor: null,
-    refundAvailable: false,
+    refundDetailsLoaded: true,
+    receiptAvailable: false,
   }));
 }
 
@@ -338,19 +270,31 @@ export async function getReceiptPayloadForTenant(
 export async function getInvoiceDetailForTenant(
   tenantId: string,
   companyId: string,
+  actorId: string,
   invoiceId: string,
 ): Promise<InvoiceDetail | null> {
   const admin = createSupabaseServiceRoleClient();
-  const { data: invoice } = await admin
-    .from('invoices')
-    .select(
-      'id, company_id, customer_profile_id, linked_entity_type, linked_entity_id, label, amount_minor, currency, status, due_at, paid_at, created_at',
-    )
-    .eq('tenant_id', tenantId)
-    .eq('company_id', companyId)
-    .eq('id', invoiceId)
-    .maybeSingle();
-  if (!invoice) return null;
+  const { data, error } = await admin.rpc(
+    'p309_get_company_invoice' as never,
+    {
+      p_tenant_id: tenantId,
+      p_company_id: companyId,
+      p_actor_id: actorId,
+      p_invoice_id: invoiceId,
+    } as never,
+  );
+  if (error || !data || typeof data !== 'object') return null;
+  const invoice = data as unknown as PaymentFilterInvoice & {
+    linked_entity_type: string | null;
+    linked_entity_id: string | null;
+  };
+  if (
+    invoice.id !== invoiceId ||
+    invoice.tenant_id !== tenantId ||
+    invoice.company_id !== companyId ||
+    typeof invoice.receipt_available !== 'boolean'
+  )
+    return null;
 
   const [companyNames, paymentsResult, auditResult] = await Promise.all([
     getCompanyNames(admin, [invoice.company_id as string]),
@@ -389,9 +333,14 @@ export async function getInvoiceDetailForTenant(
     audit: !auditResult.error,
   });
   const invoiceCurrency = invoice.currency as string;
-  const remaining =
+  const allocatedMinor = (paymentsResult.data ?? [])
+    .filter((payment) =>
+      ['succeeded', 'partially_refunded', 'refunded'].includes(payment.status as string),
+    )
+    .reduce((total, payment) => total + (payment.amount_minor as number), 0);
+  const refundable =
     sections.refundOperation === 'available'
-      ? remainingRefundableMinor({
+      ? selectRefundablePayment({
           currency: invoiceCurrency,
           payments: (paymentsResult.data ?? []).map((payment) => ({
             id: payment.id as string,
@@ -410,12 +359,15 @@ export async function getInvoiceDetailForTenant(
 
   return {
     id: invoice.id as string,
+    version: (invoice.version as number | undefined) ?? 0,
+    paymentId: refundable?.paymentId ?? null,
     companyId: invoice.company_id as string,
     companyName: companyNames.get(invoice.company_id as string) ?? 'Unknown company',
     customerProfileId: (invoice.customer_profile_id as string | null) ?? null,
     label: invoice.label as string,
     amount: formatMoney(invoice.amount_minor as number, invoice.currency as string),
     amountMinor: invoice.amount_minor as number,
+    outstandingMinor: Math.max(0, (invoice.amount_minor as number) - allocatedMinor),
     currency: invoiceCurrency,
     status: invoice.status as string,
     dueAt: (invoice.due_at as string | null) ?? null,
@@ -425,8 +377,9 @@ export async function getInvoiceDetailForTenant(
       sections.refundOperation === 'available'
         ? mapRefundOperation(refunds.find((refund) => refund.idempotency_key))
         : null,
-    remainingRefundableMinor: remaining,
-    refundAvailable: remaining !== null,
+    remainingRefundableMinor: refundable?.remainingMinor ?? null,
+    refundDetailsLoaded: sections.refundOperation === 'available',
+    receiptAvailable: invoice.receipt_available,
     linkedEntityType: (invoice.linked_entity_type as string | null) ?? null,
     linkedEntityId: (invoice.linked_entity_id as string | null) ?? null,
     payments: (paymentsResult.data ?? []).map((p) => ({
@@ -526,6 +479,7 @@ async function getLatestRefundOperations(
 function mapRefundOperation(
   refund:
     | {
+        payment_id?: string | null;
         idempotency_key?: string | null;
         status?: string | null;
         amount_minor?: number | null;
@@ -533,28 +487,7 @@ function mapRefundOperation(
       }
     | undefined,
 ): RefundOperationState | null {
-  if (!refund?.idempotency_key || !isRefundOperationStatus(refund.status)) return null;
-  return {
-    operationId: refund.idempotency_key,
-    status: refund.status,
-    amountMinor: refund.amount_minor ?? 0,
-    reason: refund.reason ?? null,
-  };
-}
-
-function isRefundOperationStatus(
-  status: string | null | undefined,
-): status is RefundOperationState['status'] {
-  return status === 'pending' || status === 'succeeded' || status === 'failed';
-}
-
-async function resolveCustomerProfileId(admin: Admin, companyId: string): Promise<string | null> {
-  const { data } = await admin
-    .from('customer_profiles')
-    .select('profile_id')
-    .eq('linked_company_id', companyId)
-    .maybeSingle();
-  return data?.profile_id ?? null;
+  return refundOperationFromRow(refund ?? {});
 }
 
 async function getCompanyNames(admin: Admin, companyIds: string[]): Promise<Map<string, string>> {
@@ -667,52 +600,4 @@ async function loadReceiptPayload(
       status: r.status as string,
     })),
   };
-}
-
-function normaliseDueAt(dueAt: Date | string | null | undefined): string | null {
-  if (!dueAt) return null;
-  if (dueAt instanceof Date) return dueAt.toISOString().slice(0, 10);
-  return dueAt;
-}
-
-async function fanOutInvoiceDueEmail(opts: {
-  admin: Admin;
-  invoiceId: string;
-  tenantId: string;
-  companyId: string;
-  customerProfileId: string | null;
-  label: string;
-  amountMinor: bigint | number;
-  currency: string;
-}): Promise<number | null> {
-  if (!opts.customerProfileId) return null;
-
-  const [{ data: tenant }, { data: profile }, { data: authUser }] = await Promise.all([
-    opts.admin.from('tenants').select('name').eq('id', opts.tenantId).maybeSingle(),
-    opts.admin.from('profiles').select('full_name').eq('id', opts.customerProfileId).maybeSingle(),
-    opts.admin.auth.admin.getUserById(opts.customerProfileId),
-  ]);
-
-  const email = authUser?.user?.email;
-  if (!email) return null;
-
-  const result = await enqueueEmail({
-    tenantId: opts.tenantId,
-    templateId: 'invoice-due',
-    toAddress: email,
-    input: {
-      customerName: profile?.full_name ?? 'there',
-      tenantName: tenant?.name ?? '',
-      amount: formatMoney(opts.amountMinor, opts.currency),
-      invoiceUrl: invoiceUrl(opts.invoiceId),
-    },
-    linked: { entityType: 'invoice', entityId: opts.invoiceId },
-  });
-
-  return result.ok ? result.queueId : null;
-}
-
-function invoiceUrl(invoiceId: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  return `${base}/portal/payments?invoice=${invoiceId}`;
 }

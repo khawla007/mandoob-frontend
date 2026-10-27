@@ -1,4 +1,14 @@
 {
+  "bankEvidence": {
+    "uploadTitle": "Bank transfer evidence",
+    "uploadDescription": "Upload a PDF, JPEG, or PNG up to 10 MiB for review.",
+    "file": "Evidence file",
+    "upload": "Submit evidence",
+    "uploading": "Submitting…",
+    "submitted": "Evidence submitted for review.",
+    "invalidFile": "Choose a PDF, JPEG, or PNG up to 10 MiB.",
+    "failed": "Evidence could not be submitted. Try again."
+  },
   "operations": {
     "eyebrow": "{scope} operations",
     "roles": {
@@ -2081,6 +2091,12 @@
       "previous": "Previous",
       "next": "Next",
       "retry": "Try again",
+      "payAction": {
+        "pay": "Pay securely",
+        "redirecting": "Opening secure payment…",
+        "unavailable": "Online payment is temporarily unavailable.",
+        "failed": "Payment could not be started. Try again."
+      },
       "detail": {
         "eyebrow": "Company invoice",
         "back": "Back to invoices",
@@ -2088,6 +2104,7 @@
         "payments": "Payment history",
         "refunds": "Refund history",
         "receipt": "Open receipt",
+        "receiptUnavailable": "A verified receipt is unavailable for this legacy invoice.",
         "providerUnavailable": "Online payment is unavailable for this Company portal.",
         "providerStateUnavailable": "Online payment provider status is temporarily unavailable.",
         "paymentContractUnavailable": "Online payment remains unavailable until an atomic replay-safe initiation contract exists.",
@@ -2141,6 +2158,7 @@
     "paid": "Paid",
     "noDueDate": "No due date",
     "receipt": "Receipt",
+    "receiptUnavailable": "Verified receipt unavailable",
     "reviewerNote": "Reviewer note:",
     "pleaseReupload": "Please re-upload.",
     "docTypeLabels": {
@@ -2783,8 +2801,9 @@
         "title": "Billing settings",
         "description": "Current subscription information for this verified workspace.",
         "currentSubscription": "Current subscription",
-        "readOnlyDescription": "Subscription changes are unavailable until the Phase 3 catalog and provider contracts are verified.",
+        "readOnlyDescription": "Authoritative subscription status and scheduled changes from the billing provider.",
         "providerUnavailable": "Subscription information is temporarily unavailable.",
+        "providerDisabled": "Subscription management is unavailable because Stripe is not enabled with an approved price mapping.",
         "noSubscription": "No current subscription is recorded.",
         "plan": "Plan",
         "plans": {
@@ -2802,16 +2821,30 @@
         },
         "periodEnd": "Current period ends",
         "cancellation": "Cancellation",
+        "pendingChange": "Scheduled change",
         "notAvailable": "Not available",
         "cancellationStates": {
           "cancelled": "Cancelled",
           "scheduled": "Cancellation scheduled at period end",
           "not_scheduled": "Not scheduled"
         },
-        "planSelectionUnavailable": "Plan selection unavailable — Phase 3 contract required",
+        "manageSubscription": "Manage subscription",
+        "managementDescription": "Choose an approved plan or manage the current subscription. Changes take effect at the period boundary.",
+        "choosePlan": "Choose plan",
         "changePlan": "Change plan",
         "manageBilling": "Manage billing",
         "cancelSubscription": "Cancel subscription",
+        "cadences": {
+          "monthly": "month",
+          "annual": "year"
+        },
+        "actionStates": {
+          "scheduled": "The subscription change was scheduled.",
+          "provider_disabled": "Stripe is not enabled for this catalog.",
+          "provider_unavailable": "Stripe is temporarily unavailable. No new operation was started.",
+          "stale_version": "The subscription changed. Refresh before trying again.",
+          "validation_failed": "The requested subscription change is invalid."
+        },
         "statuses": {
           "active": "Active",
           "trialing": "Trialing",
@@ -3204,6 +3237,8 @@
     "invoiceCreateDescription": "Issue an AED invoice and notify the linked customer.",
     "invoiceCreateErrorTitle": "Could not create invoice",
     "invoiceCreateErrorDescription": "The invoice could not be issued. Check the details and try again.",
+    "invoiceCustomer": "Customer",
+    "invoiceCustomerPlaceholder": "Select a customer",
     "invoiceLabel": "Label",
     "invoiceLabelPlaceholder": "Trade licence renewal",
     "invoiceAmountAed": "Amount (AED)",
@@ -3238,6 +3273,29 @@
         "cancelled": "Cancelled"
       }
     },
+    "bankEvidence": {
+      "title": "Bank evidence review",
+      "description": "Review immutable customer evidence before manual allocation.",
+      "empty": "No bank evidence is attached to this invoice.",
+      "open": "Open evidence",
+      "clean": "Mark clean",
+      "reject": "Reject",
+      "rejectTitle": "Reject bank evidence?",
+      "rejectDescription": "This decision is irreversible. Enter the reviewer reason before rejecting the evidence.",
+      "rejectReason": "Rejection reason",
+      "confirmReject": "Confirm rejection",
+      "cancel": "Cancel",
+      "actionFailed": "Evidence action could not be completed.",
+      "states": {
+        "pending": "Pending",
+        "clean": "Clean",
+        "rejected": "Rejected",
+        "reconciled": "Reconciled",
+        "expired": "Expired",
+        "held": "Held",
+        "tombstoned": "Tombstoned"
+      }
+    },
     "paymentAnalytics": "Analytics",
     "paymentViewAll": "All",
     "paymentViewBilled": "Billed this month",
@@ -3255,6 +3313,10 @@
     "paymentBack": "Back to payments",
     "paymentAnalyticsTitle": "Payment analytics",
     "paymentAnalyticsSubtitle": "Assigned-company collections, receivables, and payment operations.",
+    "paymentAccountingReport": "Accounting report · {month}",
+    "paymentExportCsv": "Export CSV",
+    "paymentBilled": "Billed",
+    "paymentProfit": "Profit",
     "paymentCollectedRevenue": "Net collected this month",
     "paymentOutstandingReceivables": "Outstanding receivables",
     "paymentOpenInvoices": "Open invoices",
@@ -3275,6 +3337,7 @@
     "paymentAmount": "Amount",
     "paymentMethod": "Method",
     "paymentInvoice": "Invoice",
+    "paymentInvoicesTable": "Invoice ledger",
     "paymentAttempted": "Attempted",
     "paymentDetailsUnavailable": "This payment detail is unavailable.",
     "paymentInvoiceDetails": "Invoice details",
@@ -3284,6 +3347,7 @@
     "paymentPaidAt": "Paid at",
     "paymentLinkedEntity": "Linked entity",
     "paymentReceipt": "Receipt",
+    "paymentReceiptUnavailable": "Verified receipt unavailable for this invoice.",
     "paymentAttemptsTitle": "Payment attempts",
     "paymentAttemptsNone": "No payment attempts recorded.",
     "paymentReconciliation": "Reconciliation",
@@ -3296,6 +3360,8 @@
     "paymentActions": "Actions",
     "paymentDue": "Due",
     "paymentMarkPaid": "Mark paid",
+    "paymentFinalizeInvoice": "Finalize invoice",
+    "paymentManualAmountMinor": "Payment amount (minor units)",
     "paymentVoid": "Void",
     "paymentRefund": "Refund",
     "paymentRetryRefund": "Retry pending refund",
@@ -3998,7 +4064,24 @@
       "plans": {
         "eyebrow": "Platform · Subscriptions",
         "title": "Plans, allowances and add-ons",
-        "intro": "Design subscription management without exposing page-local prices or unsupported saves.",
+        "intro": "Manage immutable plan catalogs, provider availability, and reviewed activation.",
+        "catalogs": "Subscription catalog versions",
+        "version": "Catalog version",
+        "class": "Catalog class",
+        "currency": "Currency",
+        "revision": "Revision",
+        "effectiveFrom": "Effective from",
+        "notScheduled": "Not scheduled",
+        "providers": "Provider destinations",
+        "enabled": "Enabled",
+        "disabled": "Off",
+        "label": "Catalog label",
+        "reviewReference": "Review reference",
+        "clone": "Clone draft",
+        "edit": "Update draft",
+        "activate": "Activate version",
+        "states": { "draft": "Draft", "active": "Active", "retired": "Retired" },
+        "classes": { "demo": "Demo", "local": "Local", "commercial": "Commercial" },
         "comparison": "Plan comparison",
         "cadence": "Monthly and annual cadence",
         "allowances": "Communication and storage allowances",
@@ -5060,11 +5143,21 @@
       "intro": "Active Stripe subscription recurring value; this is not collected revenue, accounting, or profit.",
       "pointInTime": "Rendered at",
       "currencyUsd": "Currency",
+      "currency": "Currency",
+      "currenciesSeparated": "Reported separately by currency",
+      "valueUnavailable": "Unavailable",
+      "accountingTable": "Accounting totals by currency",
       "includedActive": "Included",
       "activeSubscriptionsOnly": "Active subscriptions only",
       "excludedStatuses": "Excluded",
       "nonActiveExcluded": "Trialing, past-due, canceled, unpaid, incomplete and paused subscriptions",
       "tenantMrr": "Workspace MRR",
+      "reportTitle": "Accounting report · {month}",
+      "exportCsv": "Export CSV",
+      "cashCollected": "Cash collected",
+      "billed": "Billed",
+      "receivable": "Receivable",
+      "profit": "Profit",
       "table": {
         "tenant": "Company workspace",
         "plan": "Plan",
@@ -5080,7 +5173,8 @@
         "helperMonthlyValue": "active monthly value",
         "helperMrrTimes12": "MRR x 12",
         "helperActiveSubscriptions": "active subscriptions",
-        "helperLast30Days": "last 30 days"
+        "helperLast30Days": "last 30 days",
+        "exactRemainder": "exact numerator remainder {remainder} / 12"
       },
       "subStatus": {
         "active": "Active",
@@ -5091,6 +5185,29 @@
         "incomplete": "Incomplete",
         "incomplete_expired": "Incomplete expired",
         "paused": "Paused"
+      },
+      "bankEvidence": {
+        "title": "Bank evidence review",
+        "description": "Review the newest bounded platform evidence queue.",
+        "empty": "No bank evidence is waiting for review.",
+        "open": "Open evidence",
+        "clean": "Mark clean",
+        "reject": "Reject",
+        "rejectTitle": "Reject bank evidence?",
+        "rejectDescription": "This decision is irreversible. Enter the reviewer reason before rejecting the evidence.",
+        "rejectReason": "Rejection reason",
+        "confirmReject": "Confirm rejection",
+        "cancel": "Cancel",
+        "actionFailed": "Evidence action could not be completed.",
+        "states": {
+          "pending": "Pending",
+          "clean": "Clean",
+          "rejected": "Rejected",
+          "reconciled": "Reconciled",
+          "expired": "Expired",
+          "held": "Held",
+          "tombstoned": "Tombstoned"
+        }
       },
       "unsupported": {
         "title": "Accounting, collections and reconciliation",
