@@ -1,6 +1,7 @@
 import 'server-only';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { EstimateError, type CostDataRow } from './calculate';
+import type { VersionedCostDataRow } from './authoritative-result';
 
 type CostDataDbRow = {
   id: string;
@@ -23,6 +24,11 @@ type CostDataDbRow = {
   valid_from: string;
   valid_to: string | null;
   estimate_grade: boolean;
+  source_id: string | null;
+  catalog_version_id: string | null;
+  catalog_versions?:
+    | { id?: string; version_key?: string; source_id?: string }
+    | Array<{ id?: string; version_key?: string; source_id?: string }>;
 };
 
 const COST_DATA_COLUMNS = `
@@ -46,19 +52,25 @@ const COST_DATA_COLUMNS = `
   valid_from,
   valid_to,
   estimate_grade
+  ,source_id
+  ,catalog_version_id
+  ,catalog_versions!inner(id,version_key,source_id)
 `;
 
-export async function listActiveEstimatorCostRows(): Promise<CostDataRow[]> {
+export async function listActiveEstimatorCostRows(
+  expectedCatalogVersionId?: string,
+): Promise<VersionedCostDataRow[]> {
   const admin = createSupabaseServiceRoleClient();
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await admin
+  let query = admin
     .from('cost_data')
     .select(COST_DATA_COLUMNS)
     .eq('active', true)
     .eq('estimate_grade', true)
     .lte('valid_from', today)
-    .or(`valid_to.is.null,valid_to.gte.${today}`)
-    .order('authority', { ascending: true });
+    .or(`valid_to.is.null,valid_to.gte.${today}`);
+  if (expectedCatalogVersionId) query = query.eq('catalog_version_id', expectedCatalogVersionId);
+  const { data, error } = await query.order('authority', { ascending: true });
 
   if (error) {
     console.error('cost_data estimator lookup failed', error);
@@ -72,7 +84,13 @@ export async function listActiveEstimatorCostRows(): Promise<CostDataRow[]> {
   return rows;
 }
 
-function toCostDataRow(row: CostDataDbRow): CostDataRow {
+function toCostDataRow(row: CostDataDbRow): VersionedCostDataRow {
+  const version = Array.isArray(row.catalog_versions)
+    ? row.catalog_versions[0]
+    : row.catalog_versions;
+  if (!row.source_id || !row.catalog_version_id || !version?.version_key) {
+    throw new EstimateError('MISSING_COST_DATA', 'Estimator catalog version is unavailable');
+  }
   return {
     id: row.id,
     jurisdiction: row.jurisdiction,
@@ -94,5 +112,8 @@ function toCostDataRow(row: CostDataDbRow): CostDataRow {
     validFrom: row.valid_from,
     validTo: row.valid_to,
     estimateGrade: row.estimate_grade,
+    sourceId: row.source_id,
+    catalogVersionId: row.catalog_version_id,
+    catalogVersion: version.version_key,
   };
 }

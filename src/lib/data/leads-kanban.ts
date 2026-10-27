@@ -1,4 +1,5 @@
 import 'server-only';
+import { createHash } from 'node:crypto';
 import { ApiError } from '@/lib/errors';
 import {
   scoreLead,
@@ -6,20 +7,13 @@ import {
   type LeadScoreFactor,
   type LeadTemperature,
 } from '@/lib/leads/scoring';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 type SupabaseClient = ReturnType<typeof createSupabaseServiceRoleClient>;
 
 export const LEAD_STAGES = ['new', 'contacted', 'qualified', 'won', 'lost'] as const;
 export type LeadStage = (typeof LEAD_STAGES)[number];
-export type LeadActorRole = 'super_admin' | 'admin' | 'pro';
-
-export type LeadActor = {
-  id: string;
-  role: LeadActorRole;
-  tenantId: string | null;
-};
-
 export type LeadKanbanDeps = {
   supabase?: SupabaseClient;
 };
@@ -46,6 +40,7 @@ export type LeadCardRow = {
   score: number;
   scoreTemperature: LeadTemperature;
   scoreFactors: LeadScoreFactor[];
+  rowVersion: number;
   createdAt: string;
 };
 
@@ -79,12 +74,13 @@ type LeadDbRow = {
   estimate_data: Record<string, unknown>;
   routing_reason: string;
   score: number;
+  row_version: number;
   created_at: string;
   tenants?: { name?: string | null } | null;
 };
 
 const LEAD_COLUMNS =
-  'id, tenant_id, name, email, phone, stage, form_data, estimate_data, routing_reason, score, created_at, tenants(name)';
+  'id, tenant_id, name, email, phone, stage, form_data, estimate_data, routing_reason, score, row_version, created_at, tenants(name)';
 
 function client(deps: LeadKanbanDeps = {}) {
   return deps.supabase ?? createSupabaseServiceRoleClient();
@@ -132,6 +128,7 @@ function toLeadCard(row: LeadDbRow): LeadCardRow {
     score: row.score,
     scoreTemperature: scoreTemperatureFromScore(row.score),
     scoreFactors: scoreContext.factors,
+    rowVersion: row.row_version,
     createdAt: row.created_at,
   };
 }
@@ -152,6 +149,7 @@ export async function listPlatformLeadKanban(
     .select(LEAD_COLUMNS)
     .eq('source', 'questionnaire')
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(250);
 
   if (filters.stage && filters.stage !== 'all') query = query.eq('stage', filters.stage);
@@ -179,6 +177,7 @@ export async function listTenantLeadKanban(
     .select(LEAD_COLUMNS)
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(250);
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   return groupRows((data as LeadDbRow[] | null) ?? []);
@@ -231,148 +230,76 @@ export async function listActiveLeadAssigneeTenants(deps: LeadKanbanDeps = {}) {
   return (data as Array<{ id: string; name: string; slug: string; status: string }> | null) ?? [];
 }
 
-export async function assignLeadToTenant(
-  leadId: string,
-  tenantId: string,
-  actorId: string,
-  deps: LeadKanbanDeps = {},
-): Promise<void> {
-  const admin = client(deps);
-  const { data: tenant, error: tenantError } = await admin
-    .from('tenants')
-    .select('id, status')
-    .eq('id', tenantId)
-    .maybeSingle();
-  if (tenantError) throw new ApiError('INTERNAL', tenantError.message, 500);
-  if (!tenant || tenant.status !== 'active') {
-    throw new ApiError('INVALID_TENANT', 'Lead can only be assigned to an active tenant', 400);
-  }
+export type LeadMutationAction = 'assign' | 'stage' | 'note';
 
-  const lead = await readLeadForMutation(admin, leadId);
-  await updateLead(admin, leadId, {
-    tenant_id: tenantId,
-    routing_reason: 'assigned_by_platform',
-  });
-  await recordLeadEvent(admin, {
-    leadId,
-    tenantId,
-    actorId,
-    eventType: 'lead_assigned',
-    fromValue: lead.tenant_id,
-    toValue: tenantId,
-  });
-}
+export type LeadMutationInput = {
+  leadId: string;
+  operationId: string;
+  expectedVersion: number;
+  action: LeadMutationAction;
+  value: string;
+};
 
-export async function setLeadStage(
-  leadId: string,
-  nextStage: LeadStage,
-  actor: LeadActor,
-  deps: LeadKanbanDeps = {},
-): Promise<void> {
-  if (!isLeadStage(nextStage)) throw new ApiError('INVALID_STAGE', 'Invalid lead stage', 400);
-  const admin = client(deps);
-  const lead = await readLeadForMutation(admin, leadId);
-  authorizeLeadMutation(lead, actor);
-  if (lead.stage === nextStage) return;
+type LeadRpcResult = { data: unknown; error: { code?: string; message?: string } | null };
+export type LeadMutationDeps = {
+  rpc?: (fn: string, args: Record<string, unknown>) => Promise<LeadRpcResult>;
+};
 
-  await updateLead(admin, leadId, { stage: nextStage });
-  await recordLeadEvent(admin, {
-    leadId,
-    tenantId: lead.tenant_id,
-    actorId: actor.id,
-    eventType: 'lead_stage_changed',
-    fromValue: lead.stage,
-    toValue: nextStage,
-  });
-}
-
-export async function addLeadNote(
-  leadId: string,
-  note: string,
-  actor: LeadActor,
-  deps: LeadKanbanDeps = {},
-): Promise<void> {
-  const trimmed = note.trim();
-  if (!trimmed) throw new ApiError('INVALID_NOTE', 'Lead note is required', 400);
-  if (trimmed.length > 2000) throw new ApiError('INVALID_NOTE', 'Lead note is too long', 400);
-
-  const admin = client(deps);
-  const lead = await readLeadForMutation(admin, leadId);
-  authorizeLeadMutation(lead, actor);
-  await recordLeadEvent(admin, {
-    leadId,
-    tenantId: lead.tenant_id,
-    actorId: actor.id,
-    eventType: 'lead_note_added',
-    note: trimmed,
-  });
-}
-
-async function readLeadForMutation(admin: SupabaseClient, leadId: string): Promise<LeadDbRow> {
-  const { data, error } = await admin
-    .from('leads')
-    .select(
-      'id, tenant_id, name, email, phone, stage, form_data, estimate_data, routing_reason, score, created_at',
+// Every Admin lead write goes through the atomic, replay-safe, AAL2-gated
+// `mutate_platform_lead` RPC. It runs under the caller's JWT (never service-role) so the
+// function's own `auth.uid()`/role/AAL2 checks and the lead_events audit stay in one
+// transaction. Operation ID + expected row_version give idempotency and stale-write conflict.
+export async function mutatePlatformLead(
+  input: LeadMutationInput,
+  deps: LeadMutationDeps = {},
+): Promise<{ leadId: string; version: number }> {
+  const requestHash = createHash('sha256')
+    .update(
+      JSON.stringify({
+        action: input.action,
+        value: input.value,
+        expectedVersion: input.expectedVersion,
+      }),
     )
-    .eq('id', leadId)
-    .maybeSingle();
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-  if (!data) throw new ApiError('NOT_FOUND', 'Lead not found', 404);
-  return data as LeadDbRow;
-}
-
-function authorizeLeadMutation(lead: LeadDbRow, actor: LeadActor): void {
-  if (actor.role === 'super_admin' || actor.role === 'admin') return;
-  if (!actor.tenantId || lead.tenant_id !== actor.tenantId) {
-    throw new ApiError('FORBIDDEN', 'Lead belongs to a different tenant', 403);
-  }
-}
-
-async function updateLead(
-  admin: SupabaseClient,
-  leadId: string,
-  patch: Record<string, unknown>,
-): Promise<void> {
-  const { error } = await admin.from('leads').update(patch).eq('id', leadId);
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-}
-
-async function recordLeadEvent(
-  admin: SupabaseClient,
-  args: {
-    leadId: string;
-    tenantId: string | null;
-    actorId: string;
-    eventType: LeadEventRow['eventType'];
-    fromValue?: string | null;
-    toValue?: string | null;
-    note?: string | null;
-  },
-): Promise<void> {
-  const payload = {
-    lead_id: args.leadId,
-    tenant_id: args.tenantId,
-    actor_id: args.actorId,
-    event_type: args.eventType,
-    from_value: args.fromValue ?? null,
-    to_value: args.toValue ?? null,
-    note: args.note ?? null,
-  };
-  const { error } = await admin.from('lead_events').insert(payload);
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-
-  if (!args.tenantId) return;
-  const { error: auditError } = await admin.from('tenant_audit_log').insert({
-    tenant_id: args.tenantId,
-    actor_id: args.actorId,
-    action: args.eventType,
-    source: args.eventType === 'lead_assigned' ? 'admin' : 'self_serve',
-    details: {
-      entity: 'lead',
-      lead_id: args.leadId,
-      from: args.fromValue ?? null,
-      to: args.toValue ?? null,
-    },
+    .digest('hex');
+  const run =
+    deps.rpc ??
+    (async (fn: string, args: Record<string, unknown>) => {
+      const supabase = await createSupabaseServerClient();
+      return (await supabase.rpc(fn as never, args as never)) as LeadRpcResult;
+    });
+  const { data, error } = await run('mutate_platform_lead', {
+    p_lead_id: input.leadId,
+    p_operation_id: input.operationId,
+    p_request_hash: requestHash,
+    p_expected_version: input.expectedVersion,
+    p_action: input.action,
+    p_value: input.value,
   });
-  if (auditError) throw new ApiError('INTERNAL', auditError.message, 500);
+  if (error || !data) throw mapLeadRpcError(error);
+  return data as { leadId: string; version: number };
+}
+
+function mapLeadRpcError(error: { code?: string; message?: string } | null): ApiError {
+  const message = error?.message ?? '';
+  if (error?.code === '40001' || message.includes('STALE_LEAD_VERSION')) {
+    return new ApiError(
+      'VERSION_CONFLICT',
+      'This lead was updated elsewhere. Reload and try again.',
+      409,
+    );
+  }
+  if (error?.code === '42501' || message.includes('FORBIDDEN')) {
+    return new ApiError('FORBIDDEN', 'You are not allowed to modify this lead', 403);
+  }
+  if (error?.code === 'P0002' || message.includes('LEAD_NOT_FOUND')) {
+    return new ApiError('NOT_FOUND', 'Lead not found', 404);
+  }
+  if (error?.code === '23505' || message.includes('OPERATION_REUSED')) {
+    return new ApiError('OPERATION_CONFLICT', 'This action was already submitted', 409);
+  }
+  if (message.includes('INVALID_ASSIGNEE')) {
+    return new ApiError('INVALID_TENANT', 'Lead can only be assigned to an active tenant', 400);
+  }
+  return new ApiError('INTERNAL', 'Could not update lead', 500);
 }

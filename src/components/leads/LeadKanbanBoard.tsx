@@ -183,6 +183,8 @@ async function LeadDetailPanel({
           {canAssign && assignAction ? (
             <form action={assignAction as never} className="space-y-2">
               <input type="hidden" name="leadId" value={detail.id} />
+              <input type="hidden" name="operationId" value={crypto.randomUUID()} />
+              <input type="hidden" name="expectedVersion" value={detail.rowVersion} />
               <Select name="tenantId" defaultValue={detail.tenantId ?? undefined}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('detail.assignPlaceholder')} />
@@ -203,6 +205,8 @@ async function LeadDetailPanel({
 
           <form action={stageAction as never} className="flex gap-2">
             <input type="hidden" name="leadId" value={detail.id} />
+            <input type="hidden" name="operationId" value={crypto.randomUUID()} />
+            <input type="hidden" name="expectedVersion" value={detail.rowVersion} />
             <Select name="stage" defaultValue={detail.stage}>
               <SelectTrigger>
                 <SelectValue />
@@ -256,6 +260,8 @@ async function LeadDetailPanel({
 
           <form action={noteAction as never} className="space-y-2">
             <input type="hidden" name="leadId" value={detail.id} />
+            <input type="hidden" name="operationId" value={crypto.randomUUID()} />
+            <input type="hidden" name="expectedVersion" value={detail.rowVersion} />
             <Textarea name="note" placeholder={t('detail.notePlaceholder')} rows={3} />
             <Button type="submit" size="sm" variant="outline" className="w-full">
               {t('detail.addNote')}

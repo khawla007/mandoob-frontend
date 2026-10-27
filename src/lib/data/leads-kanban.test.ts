@@ -110,6 +110,7 @@ const lead = {
   estimate_data: { total: 12000 },
   routing_reason: 'platform_unassigned',
   score: 65,
+  row_version: 1,
   assigned_team_member_id: null,
   converted_company_id: null,
   created_at: '2026-05-01T00:00:00.000Z',
@@ -147,91 +148,50 @@ test('tenant kanban lists only leads assigned to that tenant', async () => {
   );
 });
 
-test('assignment rejects inactive tenants', async () => {
-  const { assignLeadToTenant } = await loadKanban();
+test('platform kanban orders with a stable id tie-breaker', async () => {
+  const { listPlatformLeadKanban } = await loadKanban();
   const supabase = createSupabaseStub({
-    leads: [lead],
-    tenants: [{ id: 'tenant-1', status: 'suspended', name: 'Paused PRO', slug: 'paused' }],
+    leads: [lead, { ...lead, id: 'lead-2' }],
   });
-
-  await assert.rejects(
-    () => assignLeadToTenant('lead-1', 'tenant-1', 'actor-1', { supabase: supabase as never }),
-    /active tenant/,
-  );
+  const kanban = await listPlatformLeadKanban({}, { supabase: supabase as never });
+  assert.equal(kanban.new.length, 2);
+  assert.equal(kanban.new[0].rowVersion, 1);
 });
 
-test('assignment updates lead and records history plus tenant audit', async () => {
-  const { assignLeadToTenant } = await loadKanban();
-  const supabase = createSupabaseStub({
-    leads: [lead],
-    tenants: [{ id: 'tenant-1', status: 'active', name: 'Active PRO', slug: 'active' }],
-    tenant_audit_log: [],
-    lead_events: [],
-  });
-
-  await assignLeadToTenant('lead-1', 'tenant-1', 'actor-1', { supabase: supabase as never });
-
-  assert.equal(supabase.tables.get('leads')![0].tenant_id, 'tenant-1');
-  assert.equal(supabase.tables.get('leads')![0].routing_reason, 'assigned_by_platform');
-  assert.equal(supabase.tables.get('lead_events')![0].event_type, 'lead_assigned');
-  assert.equal(supabase.tables.get('tenant_audit_log')![0].action, 'lead_assigned');
+test('platform lead mutation calls the atomic RPC with operation and version binding', async () => {
+  const { mutatePlatformLead } = await loadKanban();
+  let received: Record<string, unknown> | undefined;
+  const result = await mutatePlatformLead(
+    {
+      leadId: 'lead-1',
+      operationId: 'op-1',
+      expectedVersion: 3,
+      action: 'stage',
+      value: 'qualified',
+    },
+    {
+      rpc: async (fn, args) => {
+        received = { fn, ...args };
+        return { data: { leadId: 'lead-1', version: 4 }, error: null };
+      },
+    },
+  );
+  assert.deepEqual(result, { leadId: 'lead-1', version: 4 });
+  assert.equal(received?.fn, 'mutate_platform_lead');
+  assert.equal(received?.p_action, 'stage');
+  assert.equal(received?.p_operation_id, 'op-1');
+  assert.equal(received?.p_expected_version, 3);
+  assert.match(received?.p_request_hash as string, /^[a-f0-9]{64}$/u);
 });
 
-test('stage changes reject invalid stages and cross-tenant writes', async () => {
-  const { setLeadStage } = await loadKanban();
-  const supabase = createSupabaseStub({ leads: [{ ...lead, tenant_id: 'tenant-1' }] });
-
-  await assert.rejects(
-    () =>
-      setLeadStage(
-        'lead-1',
-        'converted' as never,
-        { id: 'actor-1', role: 'pro', tenantId: 'tenant-1' },
-        { supabase: supabase as never },
-      ),
-    /Invalid lead stage/,
-  );
-
-  await assert.rejects(
-    () =>
-      setLeadStage(
-        'lead-1',
-        'contacted',
-        { id: 'actor-2', role: 'pro', tenantId: 'tenant-2' },
-        { supabase: supabase as never },
-      ),
-    /different tenant/,
-  );
-});
-
-test('stage changes update leads and record events', async () => {
-  const { setLeadStage, addLeadNote } = await loadKanban();
-  const supabase = createSupabaseStub({
-    leads: [{ ...lead, tenant_id: 'tenant-1' }],
-    lead_events: [],
-    tenant_audit_log: [],
-  });
-
-  await setLeadStage(
-    'lead-1',
-    'qualified',
-    { id: 'actor-1', role: 'pro', tenantId: 'tenant-1' },
-    { supabase: supabase as never },
-  );
-  await addLeadNote(
-    'lead-1',
-    'Called founder and confirmed DMCC preference.',
-    { id: 'actor-1', role: 'pro', tenantId: 'tenant-1' },
-    { supabase: supabase as never },
-  );
-
-  assert.equal(supabase.tables.get('leads')![0].stage, 'qualified');
-  assert.deepEqual(
-    supabase.tables.get('lead_events')!.map((row) => row.event_type),
-    ['lead_stage_changed', 'lead_note_added'],
-  );
-  assert.deepEqual(
-    supabase.tables.get('tenant_audit_log')!.map((row) => row.action),
-    ['lead_stage_changed', 'lead_note_added'],
-  );
+test('platform lead mutation maps stale version, forbidden, and replay conflicts to safe codes', async () => {
+  const { mutatePlatformLead } = await loadKanban();
+  const call = (error: { code?: string; message?: string }) =>
+    mutatePlatformLead(
+      { leadId: 'lead-1', operationId: 'op-1', expectedVersion: 1, action: 'note', value: 'hi' },
+      { rpc: async () => ({ data: null, error }) },
+    );
+  await assert.rejects(call({ code: '40001' }), /updated elsewhere/);
+  await assert.rejects(call({ code: '42501' }), /not allowed/);
+  await assert.rejects(call({ code: '23505' }), /already submitted/);
 });

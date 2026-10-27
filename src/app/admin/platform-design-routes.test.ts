@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
-const routes = ['reports', 'compliance', 'system-status', 'plans', 'questionnaire'] as const;
+// `questionnaire` graduated to a live P3.05 surface (AAL2 admin editor with real reads),
+// so it no longer follows the read-free platform-design placeholder contract.
+const routes = ['reports', 'compliance', 'system-status', 'plans'] as const;
 
 for (const route of routes) {
   test(`/admin/${route} directly authorizes without production fixtures or provider reads`, () => {
