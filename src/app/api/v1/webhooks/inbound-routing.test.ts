@@ -12,9 +12,31 @@ process.env.WHATSAPP_APP_SECRET = 'whatsapp_secret';
 
 type Row = Record<string, unknown>;
 
-function createWebhookSupabaseStub(provider: 'twilio' | 'unifonic' | 'whatsapp') {
+const TENANT_ID = '00000000-0000-4000-8000-000000000003';
+const DESTINATION_ID = '00000000-0000-4000-8000-000000000002';
+const RECEIPT_ID = '00000000-0000-4000-8000-000000000001';
+
+type ReservationRow = {
+  receipt_id: string;
+  destination_id: string;
+  tenant_id: string;
+  company_id: string | null;
+};
+
+function createWebhookSupabaseStub(
+  provider: 'twilio' | 'unifonic' | 'whatsapp',
+  reservations: Array<ReservationRow | null> = [reservationRow()],
+) {
+  const calls: string[] = [];
+  const rpcArgs: Array<Record<string, unknown>> = [];
   const tables = new Map<string, Row[]>([
-    ['tenant_sms_config', [{ id: 'sms-config-1', tenant_id: 'tenant-1', provider, enabled: true }]],
+    [
+      'tenant_sms_config',
+      [
+        { id: 'unsafe-first-config', tenant_id: 'wrong-tenant', provider, enabled: true },
+        { id: 'sms-config-1', tenant_id: TENANT_ID, provider, enabled: true },
+      ],
+    ],
     ['leads', [leadRow()]],
     ['lead_events', []],
     ['sms_inbox', []],
@@ -33,8 +55,21 @@ function createWebhookSupabaseStub(provider: 'twilio' | 'unifonic' | 'whatsapp')
   }
 
   return {
+    calls,
+    rpcArgs,
     tables,
+    async rpc(name: string, args: Record<string, unknown>) {
+      assert.equal(name, 'reserve_inbound_webhook');
+      calls.push('rpc:reserve_inbound_webhook');
+      rpcArgs.push(args);
+      const reservation = reservations.shift() ?? null;
+      return {
+        data: reservation ? [reservation] : [],
+        error: null,
+      };
+    },
     from(table: string) {
+      calls.push(`from:${table}`);
       const state: {
         filters: Record<string, unknown>;
         orderKey: string | null;
@@ -91,6 +126,15 @@ function createWebhookSupabaseStub(provider: 'twilio' | 'unifonic' | 'whatsapp')
   };
 }
 
+function reservationRow(): ReservationRow {
+  return {
+    receipt_id: RECEIPT_ID,
+    destination_id: DESTINATION_ID,
+    tenant_id: TENANT_ID,
+    company_id: null,
+  };
+}
+
 function leadRow(): Row {
   return {
     id: 'lead-1',
@@ -103,42 +147,125 @@ function leadRow(): Row {
   };
 }
 
-test('Twilio inbound logging survives lead routing failure', async () => {
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+test('Twilio reserves the callback destination before any tenant-scoped side effect', async () => {
   const { recordTwilioInbound } = await import('./inbound-recording');
   const supabase = createWebhookSupabaseStub('twilio');
 
-  await recordTwilioInbound(supabase as never, '+971501234567', 'I need help', 'twilio-message-1');
-
-  assert.equal(supabase.tables.get('sms_inbox')!.length, 1);
-  assert.equal(supabase.tables.get('lead_events')!.length, 0);
-});
-
-test('Unifonic inbound logging survives lead routing failure', async () => {
-  const { recordUnifonicInbound } = await import('./inbound-recording');
-  const supabase = createWebhookSupabaseStub('unifonic');
-
-  await recordUnifonicInbound(
-    supabase as never,
-    '+971501234567',
-    'I need help',
-    'unifonic-message-1',
-  );
-
-  assert.equal(supabase.tables.get('sms_inbox')!.length, 1);
-  assert.equal(supabase.tables.get('lead_events')!.length, 0);
-});
-
-test('WhatsApp inbound logging survives lead routing failure', async () => {
-  const { recordWhatsAppInboundMessage } = await import('./inbound-recording');
-  const supabase = createWebhookSupabaseStub('whatsapp');
-
-  await recordWhatsAppInboundMessage(supabase as never, 'tenant-1', {
-    id: 'wamid-1',
-    from: '+971501234567',
-    type: 'text',
-    text: { body: 'I need help' },
+  await recordTwilioInbound(supabase as never, {
+    destinationKey: '+12025550123',
+    fromPhone: '+971501234567',
+    body: 'I need help',
+    providerEventId: 'twilio-message-reserved',
+    occurredAt: nowIso(),
+    rawPayload: 'To=%2B12025550123&From=%2B971501234567&Body=I+need+help',
   });
 
-  assert.equal(supabase.tables.get('whatsapp_inbox')!.length, 1);
+  assert.equal(supabase.calls[0], 'rpc:reserve_inbound_webhook');
+  assert.equal(supabase.calls.includes('from:tenant_sms_config'), false);
+  assert.equal(supabase.tables.get('sms_inbox')!.length, 1);
+  assert.equal(supabase.tables.get('sms_inbox')![0]?.tenant_id, TENANT_ID);
   assert.equal(supabase.tables.get('lead_events')!.length, 0);
+});
+
+test('unknown Twilio destination is a non-disclosing no-op', async () => {
+  const { recordTwilioInbound } = await import('./inbound-recording');
+  const supabase = createWebhookSupabaseStub('twilio', [null]);
+
+  await recordTwilioInbound(supabase as never, {
+    destinationKey: '+19999999999',
+    fromPhone: '+971501234567',
+    body: 'I need help',
+    providerEventId: 'twilio-message-unknown',
+    occurredAt: nowIso(),
+    rawPayload: 'protected raw body',
+  });
+
+  assert.deepEqual(supabase.calls, ['rpc:reserve_inbound_webhook']);
+  assert.equal(supabase.tables.get('sms_inbox')!.length, 0);
+});
+
+test('duplicate Unifonic provider event IDs are idempotent', async () => {
+  const { recordUnifonicInbound } = await import('./inbound-recording');
+  const supabase = createWebhookSupabaseStub('unifonic', [reservationRow(), null]);
+  const input = {
+    destinationKey: '971500001111',
+    fromPhone: '+971501234567',
+    body: 'I need help',
+    providerEventId: 'unifonic-message-1',
+    occurredAt: nowIso(),
+    rawPayload: '{"MessageID":"unifonic-message-1"}',
+  };
+
+  await recordUnifonicInbound(supabase as never, input);
+  await recordUnifonicInbound(supabase as never, input);
+
+  assert.equal(supabase.tables.get('sms_inbox')!.length, 1);
+  assert.equal(supabase.calls.filter((call) => call === 'rpc:reserve_inbound_webhook').length, 2);
+});
+
+test('stale and malformed provider timestamps fail closed before reservation', async () => {
+  const { recordTwilioInbound } = await import('./inbound-recording');
+  const supabase = createWebhookSupabaseStub('twilio');
+  const baseInput = {
+    destinationKey: '+12025550123',
+    fromPhone: '+971501234567',
+    body: 'I need help',
+    providerEventId: 'twilio-message-stale',
+    rawPayload: 'protected raw body',
+  };
+
+  await recordTwilioInbound(supabase as never, {
+    ...baseInput,
+    occurredAt: '2020-01-01T00:00:00.000Z',
+  });
+  await recordTwilioInbound(supabase as never, { ...baseInput, occurredAt: 'not-a-date' });
+
+  assert.deepEqual(supabase.calls, []);
+  assert.equal(supabase.tables.get('sms_inbox')!.length, 0);
+});
+
+test('WhatsApp resolves ownership through destination reservation and suppresses duplicates', async () => {
+  const { recordWhatsAppInboundMessage } = await import('./inbound-recording');
+  const supabase = createWebhookSupabaseStub('whatsapp', [reservationRow(), null]);
+  const message = {
+    id: 'wamid-1',
+    from: '+971501234567',
+    timestamp: String(Math.floor(Date.now() / 1000)),
+    type: 'text',
+    text: { body: 'I need help' },
+  };
+
+  await recordWhatsAppInboundMessage(supabase as never, 'meta-phone-number-id', message, '{}');
+  await recordWhatsAppInboundMessage(supabase as never, 'meta-phone-number-id', message, '{}');
+
+  assert.equal(supabase.tables.get('whatsapp_inbox')!.length, 1);
+  assert.equal(supabase.tables.get('whatsapp_inbox')![0]?.tenant_id, TENANT_ID);
+  assert.equal(supabase.calls.includes('from:tenant_whatsapp_config'), false);
+});
+
+test('reservation RPC receives only hashes, timestamp, provider, and verified-signature proof', async () => {
+  const { recordTwilioInbound } = await import('./inbound-recording');
+  const supabase = createWebhookSupabaseStub('twilio', [null]);
+
+  await recordTwilioInbound(supabase as never, {
+    destinationKey: '+12025550123',
+    fromPhone: '+971501234567',
+    body: 'private body',
+    providerEventId: 'private-event-id',
+    occurredAt: nowIso(),
+    rawPayload: 'private raw payload',
+  });
+
+  const serialized = JSON.stringify(supabase.rpcArgs[0]);
+  assert.equal(serialized.includes('+12025550123'), false);
+  assert.equal(serialized.includes('private-event-id'), false);
+  assert.equal(serialized.includes('private raw payload'), false);
+  assert.match(String(supabase.rpcArgs[0]?.p_destination_key_hash), /^[a-f0-9]{64}$/);
+  assert.match(String(supabase.rpcArgs[0]?.p_provider_event_id_hash), /^[a-f0-9]{64}$/);
+  assert.match(String(supabase.rpcArgs[0]?.p_payload_hash), /^[a-f0-9]{64}$/);
+  assert.equal(supabase.rpcArgs[0]?.p_signature_verified, true);
 });

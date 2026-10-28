@@ -36,13 +36,29 @@ export async function POST(req: Request): Promise<Response> {
 
   const supabase = createSupabaseServiceRoleClient();
   const messageId = payload.MessageID ?? payload.messageId;
+  const destinationKey = payload.To ?? payload.Recipient;
+  const occurredAt = payload.Timestamp ?? payload.timestamp;
 
   if (payload.Status && messageId) {
     await applyDeliveryStatus(supabase, String(messageId), payload.Status);
   }
 
-  if (!payload.Status && payload.From && payload.Body !== undefined && messageId) {
-    await recordUnifonicInbound(supabase, payload.From, payload.Body ?? '', String(messageId));
+  if (
+    !payload.Status &&
+    destinationKey &&
+    payload.From &&
+    payload.Body !== undefined &&
+    messageId &&
+    occurredAt
+  ) {
+    await recordUnifonicInbound(supabase, {
+      destinationKey,
+      fromPhone: payload.From,
+      body: payload.Body ?? '',
+      providerEventId: String(messageId),
+      occurredAt: String(occurredAt),
+      rawPayload: rawBody,
+    });
   }
 
   return NextResponse.json({ ok: true });
@@ -88,4 +104,8 @@ type UnifonicPayload = {
   Status?: string;
   From?: string;
   Body?: string;
+  To?: string;
+  Recipient?: string;
+  Timestamp?: string | number;
+  timestamp?: string | number;
 };

@@ -51,15 +51,14 @@ export async function POST(req: Request): Promise<Response> {
     for (const change of entry.changes ?? []) {
       const value = change.value;
       const phoneNumberId = value.metadata?.phone_number_id ?? null;
-      const tenantId = phoneNumberId ? await resolveTenantId(supabase, phoneNumberId) : null;
 
       for (const status of value.statuses ?? []) {
         await applyStatusUpdate(supabase, status);
       }
 
       for (const message of value.messages ?? []) {
-        if (!tenantId) continue;
-        await recordWhatsAppInboundMessage(supabase, tenantId, message);
+        if (!phoneNumberId) continue;
+        await recordWhatsAppInboundMessage(supabase, phoneNumberId, message, rawBody);
       }
     }
   }
@@ -68,15 +67,6 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
-
-async function resolveTenantId(supabase: Supa, phoneNumberId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('tenant_whatsapp_config')
-    .select('tenant_id')
-    .eq('phone_number_id', phoneNumberId)
-    .maybeSingle();
-  return data?.tenant_id ?? null;
-}
 
 async function applyStatusUpdate(supabase: Supa, status: WhatsAppStatus): Promise<void> {
   if (!status.id) return;

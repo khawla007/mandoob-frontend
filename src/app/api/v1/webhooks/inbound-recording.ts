@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import { recordInboundConsentKeyword } from '@/lib/comms/consent';
 import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
+import { hashDestinationKey, isWebhookTimestampWithinTolerance } from '@/lib/events/contracts';
 import { enqueueSms } from '@/lib/sms/send';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { enqueueWhatsApp } from '@/lib/whatsapp/send';
@@ -14,29 +16,85 @@ export type WhatsAppInboundMessage = {
   text?: { body?: string };
 };
 
+type SmsInbound = {
+  destinationKey: string;
+  fromPhone: string;
+  body: string;
+  providerEventId: string;
+  occurredAt: string;
+  rawPayload: string;
+};
+
+type InboundReservation = {
+  tenantId: string;
+};
+
+function hashOpaque(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function normalizeProviderTimestamp(value: string): string | null {
+  const trimmed = value.trim();
+  const timestampMs = /^\d{10}$/.test(trimmed) ? Number(trimmed) * 1000 : Date.parse(trimmed);
+  if (!Number.isFinite(timestampMs)) return null;
+  const normalized = new Date(timestampMs).toISOString();
+  return isWebhookTimestampWithinTolerance(normalized) ? normalized : null;
+}
+
+async function reserveInbound(
+  supabase: Supa,
+  provider: 'twilio' | 'unifonic' | 'whatsapp',
+  destinationKey: string,
+  providerEventId: string,
+  rawPayload: string,
+  providerTimestamp: string,
+): Promise<InboundReservation | null> {
+  const occurredAt = normalizeProviderTimestamp(providerTimestamp);
+  if (!occurredAt || !providerEventId || !rawPayload) return null;
+
+  let destinationKeyHash: string;
+  try {
+    destinationKeyHash = hashDestinationKey(provider, destinationKey);
+  } catch {
+    return null;
+  }
+
+  const { data, error } = await supabase.rpc('reserve_inbound_webhook', {
+    p_provider: provider,
+    p_destination_key_hash: destinationKeyHash,
+    p_provider_event_id_hash: hashOpaque(providerEventId),
+    p_payload_hash: hashOpaque(rawPayload),
+    p_occurred_at: occurredAt,
+    p_signature_verified: true,
+  });
+  if (error) return null;
+  const row = data?.[0];
+  if (!row || typeof row.tenant_id !== 'string') return null;
+  return { tenantId: row.tenant_id };
+}
+
 async function recordSmsInbound(
   supabase: Supa,
   provider: 'twilio' | 'unifonic',
-  fromPhone: string,
-  body: string,
-  providerMessageId: string,
+  input: SmsInbound,
 ): Promise<void> {
-  const { data: tenant } = await supabase
-    .from('tenant_sms_config')
-    .select('tenant_id')
-    .eq('provider', provider)
-    .eq('enabled', true)
-    .limit(1)
-    .maybeSingle();
-  if (!tenant) return;
+  const reservation = await reserveInbound(
+    supabase,
+    provider,
+    input.destinationKey,
+    input.providerEventId,
+    input.rawPayload,
+    input.occurredAt,
+  );
+  if (!reservation) return;
 
   const { data: inboxRow, error: inboxError } = await supabase
     .from('sms_inbox')
     .insert({
-      tenant_id: tenant.tenant_id,
-      from_phone: fromPhone,
-      body,
-      provider_message_id: providerMessageId,
+      tenant_id: reservation.tenantId,
+      from_phone: input.fromPhone,
+      body: input.body,
+      provider_message_id: input.providerEventId,
     })
     .select('id, received_at')
     .single();
@@ -44,61 +102,61 @@ async function recordSmsInbound(
 
   const action = await recordInboundConsentKeyword({
     supabase,
-    phoneE164: fromPhone,
+    phoneE164: input.fromPhone,
     channel: 'sms',
-    body,
-    inboundMessageId: providerMessageId,
+    body: input.body,
+    inboundMessageId: input.providerEventId,
   });
   if (action) {
     await enqueueSms({
-      tenantId: tenant.tenant_id,
+      tenantId: reservation.tenantId,
       templateId: 'opt-out-confirmation',
-      toPhone: fromPhone,
+      toPhone: input.fromPhone,
       input: {},
     });
   }
   await routeInboundReplyToLeadSafely(
     {
-      tenantId: tenant.tenant_id,
+      tenantId: reservation.tenantId,
       channel: 'sms',
       inboxId: inboxRow.id,
-      fromPhone,
-      body,
-      providerMessageId,
+      fromPhone: input.fromPhone,
+      body: input.body,
+      providerMessageId: input.providerEventId,
       receivedAt: inboxRow.received_at,
     },
     { supabase },
   );
 }
 
-export function recordTwilioInbound(
-  supabase: Supa,
-  fromPhone: string,
-  body: string,
-  providerMessageId: string,
-): Promise<void> {
-  return recordSmsInbound(supabase, 'twilio', fromPhone, body, providerMessageId);
+export function recordTwilioInbound(supabase: Supa, input: SmsInbound): Promise<void> {
+  return recordSmsInbound(supabase, 'twilio', input);
 }
 
-export function recordUnifonicInbound(
-  supabase: Supa,
-  fromPhone: string,
-  body: string,
-  providerMessageId: string,
-): Promise<void> {
-  return recordSmsInbound(supabase, 'unifonic', fromPhone, body, providerMessageId);
+export function recordUnifonicInbound(supabase: Supa, input: SmsInbound): Promise<void> {
+  return recordSmsInbound(supabase, 'unifonic', input);
 }
 
 export async function recordWhatsAppInboundMessage(
   supabase: Supa,
-  tenantId: string,
+  destinationKey: string,
   message: WhatsAppInboundMessage,
+  rawPayload: string,
 ): Promise<void> {
-  if (!message.from || !message.id) return;
+  if (!message.from || !message.id || !message.timestamp) return;
+  const reservation = await reserveInbound(
+    supabase,
+    'whatsapp',
+    destinationKey,
+    message.id,
+    rawPayload,
+    message.timestamp,
+  );
+  if (!reservation) return;
   const { data: inboxRow, error: inboxError } = await supabase
     .from('whatsapp_inbox')
     .insert({
-      tenant_id: tenantId,
+      tenant_id: reservation.tenantId,
       from_phone: message.from,
       body: message.text?.body ?? null,
       wamid: message.id,
@@ -117,7 +175,7 @@ export async function recordWhatsAppInboundMessage(
   });
   if (action) {
     await enqueueWhatsApp({
-      tenantId,
+      tenantId: reservation.tenantId,
       templateId: 'opt-out-confirmation',
       toPhone: message.from,
       input: {},
@@ -125,7 +183,7 @@ export async function recordWhatsAppInboundMessage(
   }
   await routeInboundReplyToLeadSafely(
     {
-      tenantId,
+      tenantId: reservation.tenantId,
       channel: 'whatsapp',
       inboxId: inboxRow.id,
       fromPhone: message.from,

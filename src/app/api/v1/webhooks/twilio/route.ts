@@ -33,14 +33,29 @@ export async function POST(req: Request): Promise<Response> {
 
   const messageStatus = params.MessageStatus ?? params.SmsStatus;
   const messageSid = params.MessageSid ?? params.SmsSid;
+  const occurredAt = params.Timestamp ?? params.DateCreated;
 
   if (messageStatus && messageSid) {
     await applyDeliveryStatus(supabase, messageSid, messageStatus);
   }
 
   // Inbound SMS: presence of Body + From, no status field.
-  if (!messageStatus && params.From && params.Body !== undefined && messageSid) {
-    await recordTwilioInbound(supabase, params.From, params.Body, messageSid);
+  if (
+    !messageStatus &&
+    params.To &&
+    params.From &&
+    params.Body !== undefined &&
+    messageSid &&
+    occurredAt
+  ) {
+    await recordTwilioInbound(supabase, {
+      destinationKey: params.To,
+      fromPhone: params.From,
+      body: params.Body,
+      providerEventId: messageSid,
+      occurredAt,
+      rawPayload: rawBody,
+    });
   }
 
   return NextResponse.json({ ok: true });
