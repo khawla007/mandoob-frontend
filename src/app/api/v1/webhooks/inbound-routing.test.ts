@@ -10,6 +10,8 @@ process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 process.env.TWILIO_AUTH_TOKEN = 'twilio_token';
 process.env.UNIFONIC_WEBHOOK_SECRET = 'unifonic_secret';
 process.env.WHATSAPP_APP_SECRET = 'whatsapp_secret';
+process.env.INBOUND_DESTINATION_HMAC_SECRET = 'inbound-destination-secret-32-bytes-minimum';
+process.env.TWILIO_INBOUND_ENABLED = 'false';
 
 type Row = Record<string, unknown>;
 
@@ -60,12 +62,44 @@ function createWebhookSupabaseStub(
     rpcArgs,
     tables,
     async rpc(name: string, args: Record<string, unknown>) {
-      assert.equal(name, 'reserve_inbound_webhook');
-      calls.push('rpc:reserve_inbound_webhook');
+      assert.equal(name, 'accept_inbound_webhook');
+      calls.push('rpc:accept_inbound_webhook');
       rpcArgs.push(args);
       const reservation = reservations.shift() ?? null;
+      if (!reservation) {
+        return { data: [{ outcome: 'unknown' }], error: null };
+      }
+      const table = args.p_channel === 'whatsapp' ? 'whatsapp_inbox' : 'sms_inbox';
+      const inbox = {
+        id: rows(table).length + 1,
+        tenant_id: reservation.tenant_id,
+        from_phone: args.p_from_phone,
+        body: args.p_body,
+        received_at: nowIso(),
+        ...(table === 'whatsapp_inbox'
+          ? { wamid: args.p_provider_event_id }
+          : { provider_message_id: args.p_provider_event_id }),
+      };
+      rows(table).push(inbox);
+      const keyword = String(args.p_body ?? '')
+        .trim()
+        .toUpperCase();
+      if (['STOP', 'UNSUBSCRIBE', 'END', 'CANCEL', 'QUIT'].includes(keyword)) {
+        rows('consent_opt_outs').push({
+          phone_e164: args.p_from_phone,
+          channel: args.p_channel,
+          last_inbound_message_id: args.p_provider_event_id,
+        });
+      }
       return {
-        data: reservation ? [reservation] : [],
+        data: [
+          {
+            outcome: 'accepted',
+            tenant_id: reservation.tenant_id,
+            inbox_id: inbox.id,
+            received_at: inbox.received_at,
+          },
+        ],
         error: null,
       };
     },
@@ -173,7 +207,7 @@ test('Twilio reserves the callback destination before any tenant-scoped side eff
     rawPayload: 'To=%2B12025550123&From=%2B971501234567&Body=I+need+help',
   });
 
-  assert.equal(supabase.calls[0], 'rpc:reserve_inbound_webhook');
+  assert.equal(supabase.calls[0], 'rpc:accept_inbound_webhook');
   assert.equal(supabase.calls.includes('from:tenant_sms_config'), false);
   assert.equal(supabase.tables.get('sms_inbox')!.length, 1);
   assert.equal(supabase.tables.get('sms_inbox')![0]?.tenant_id, TENANT_ID);
@@ -193,7 +227,7 @@ test('unknown Twilio destination is a non-disclosing no-op', async () => {
     rawPayload: 'protected raw body',
   });
 
-  assert.deepEqual(supabase.calls, ['rpc:reserve_inbound_webhook']);
+  assert.deepEqual(supabase.calls, ['rpc:accept_inbound_webhook']);
   assert.equal(supabase.tables.get('sms_inbox')!.length, 0);
 });
 
@@ -213,7 +247,7 @@ test('duplicate Unifonic provider event IDs are idempotent', async () => {
   await recordUnifonicInbound(supabase as never, input);
 
   assert.equal(supabase.tables.get('sms_inbox')!.length, 1);
-  assert.equal(supabase.calls.filter((call) => call === 'rpc:reserve_inbound_webhook').length, 2);
+  assert.equal(supabase.calls.filter((call) => call === 'rpc:accept_inbound_webhook').length, 2);
 });
 
 test('stale and malformed provider timestamps fail closed before reservation', async () => {
@@ -256,7 +290,7 @@ test('WhatsApp resolves ownership through destination reservation and suppresses
   assert.equal(supabase.calls.includes('from:tenant_whatsapp_config'), false);
 });
 
-test('reservation RPC receives only hashes, timestamp, provider, and verified-signature proof', async () => {
+test('atomic RPC HMACs destination and hashes raw payload before transactional writes', async () => {
   const { recordTwilioInbound } = await import('./inbound-recording');
   const supabase = createWebhookSupabaseStub('twilio', [null]);
 
@@ -271,11 +305,12 @@ test('reservation RPC receives only hashes, timestamp, provider, and verified-si
 
   const serialized = JSON.stringify(supabase.rpcArgs[0]);
   assert.equal(serialized.includes('+12025550123'), false);
-  assert.equal(serialized.includes('private-event-id'), false);
   assert.equal(serialized.includes('private raw payload'), false);
-  assert.match(String(supabase.rpcArgs[0]?.p_destination_key_hash), /^[a-f0-9]{64}$/);
+  assert.match(String(supabase.rpcArgs[0]?.p_destination_key_hash), /^v1:[a-f0-9]{64}$/);
   assert.match(String(supabase.rpcArgs[0]?.p_provider_event_id_hash), /^[a-f0-9]{64}$/);
   assert.match(String(supabase.rpcArgs[0]?.p_payload_hash), /^[a-f0-9]{64}$/);
+  assert.equal(supabase.rpcArgs[0]?.p_provider_event_id, 'private-event-id');
+  assert.equal(supabase.rpcArgs[0]?.p_body, 'private body');
   assert.equal(supabase.rpcArgs[0]?.p_signature_verified, true);
 });
 
@@ -343,7 +378,61 @@ test('WhatsApp route verifies the exact raw body before any reservation or netwo
   }
 });
 
-test('WhatsApp route reserves every inbound message before mixed-payload mutations', async () => {
+test('WhatsApp route converts atomic RPC failures to a sanitized retryable response', async () => {
+  const { POST } = await import('./whatsapp/route');
+  const rawBody = JSON.stringify({
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              metadata: { phone_number_id: 'meta-destination' },
+              messages: [
+                {
+                  id: 'wamid-infrastructure',
+                  from: '+971501234567',
+                  timestamp: String(Math.floor(Date.now() / 1000)),
+                  text: { body: 'help' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+  const signature = `sha256=${createHmac('sha256', 'whatsapp_secret')
+    .update(rawBody)
+    .digest('hex')}`;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ message: 'private database failure' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+
+  try {
+    const response = await POST(
+      new Request('https://app.example.com/api/v1/webhooks/whatsapp', {
+        method: 'POST',
+        headers: { 'x-hub-signature-256': signature },
+        body: rawBody,
+      }),
+    );
+    const body = await response.text();
+
+    assert.equal(response.status, 503);
+    assert.equal(body.includes('private database failure'), false);
+    assert.deepEqual(JSON.parse(body), {
+      error: 'inbound webhook unavailable',
+      code: 'TEMPORARILY_UNAVAILABLE',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('WhatsApp route atomically accepts every inbound message before status mutations', async () => {
   const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
   const calls: string[] = [];
   const rawBody = '{"signed":"raw-body"}';
@@ -373,7 +462,7 @@ test('WhatsApp route reserves every inbound message before mixed-payload mutatio
       assert.equal(destination, 'meta-destination');
       assert.equal(message.timestamp, timestamp);
       assert.equal(receivedRawBody, rawBody);
-      return { tenantId: TENANT_ID };
+      return { tenantId: TENANT_ID, inboxId: 1, receivedAt: nowIso() };
     },
     record: async (_supabase, _reservation, message) => {
       calls.push(`record:${message.id}`);
@@ -385,8 +474,8 @@ test('WhatsApp route reserves every inbound message before mixed-payload mutatio
 
   assert.deepEqual(calls, [
     'reserve:wamid-1',
-    'reserve:wamid-2',
     'record:wamid-1',
+    'reserve:wamid-2',
     'record:wamid-2',
     'status:outbound-1',
   ]);
@@ -508,4 +597,136 @@ test('inbound consent keywords update state without enabling SMS or WhatsApp egr
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('atomic inbound RPC infrastructure errors are retryable and never collapse to a no-op', async () => {
+  const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
+    await import('./inbound-recording');
+  let attempts = 0;
+  const supabase = {
+    rpc: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('database unavailable');
+      return {
+        data: [
+          {
+            outcome: 'accepted',
+            tenant_id: TENANT_ID,
+            inbox_id: 42,
+            received_at: nowIso(),
+          },
+        ],
+        error: null,
+      };
+    },
+    from: () => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        order: () => builder,
+        limit: () => builder,
+        insert: () => {
+          throw new Error('non-atomic write attempted');
+        },
+        then: (resolve: (value: { data: []; error: null }) => void) =>
+          resolve({ data: [], error: null }),
+      };
+      return builder;
+    },
+  };
+  const input = {
+    destinationKey: '971500001111',
+    fromPhone: '+971501234567',
+    body: 'help',
+    providerEventId: 'retryable-event',
+    occurredAt: nowIso(),
+    rawPayload: '{"signed":true}',
+  };
+
+  await assert.rejects(
+    recordUnifonicInbound(supabase as never, input),
+    InboundWebhookInfrastructureError,
+  );
+  await recordUnifonicInbound(supabase as never, input);
+  assert.equal(attempts, 2);
+});
+
+test('WhatsApp mid-batch infrastructure failure blocks statuses and retry continues safely', async () => {
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const calls: string[] = [];
+  let failSecond = true;
+  const payload = {
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              metadata: { phone_number_id: 'meta-destination' },
+              messages: [
+                { id: 'first', from: '+971501111111', timestamp: String(Date.now() / 1000) },
+                { id: 'second', from: '+971502222222', timestamp: String(Date.now() / 1000) },
+              ],
+              statuses: [{ id: 'status-1', status: 'delivered' as const }],
+            },
+          },
+        ],
+      },
+    ],
+  };
+  const dependencies = {
+    reserve: async (_supabase: never, _destination: string, message: { id?: string }) => {
+      calls.push(`accept:${message.id}`);
+      if (message.id === 'second' && failSecond) throw new Error('infrastructure');
+      return message.id === 'first' && !failSecond
+        ? null
+        : { tenantId: TENANT_ID, inboxId: 1, receivedAt: nowIso() };
+    },
+    record: async (_supabase: never, _reservation: never, message: { id?: string }) => {
+      calls.push(`route:${message.id}`);
+    },
+    applyStatus: async () => {
+      calls.push('status');
+    },
+  };
+
+  await assert.rejects(
+    dispatchWhatsAppWebhookPayload({} as never, payload, '{}', dependencies as never),
+  );
+  assert.deepEqual(calls, ['accept:first', 'route:first', 'accept:second']);
+
+  calls.length = 0;
+  failSecond = false;
+  await dispatchWhatsAppWebhookPayload({} as never, payload, '{}', dependencies as never);
+  assert.deepEqual(calls, ['accept:first', 'accept:second', 'route:second', 'status']);
+});
+
+test('real Twilio inbound shape is explicitly unavailable while the provider gate is off', async () => {
+  const { POST } = await import('./twilio/route');
+  const url = 'https://app.example.com/api/v1/webhooks/twilio';
+  const params = {
+    To: '+12025550123',
+    From: '+971501234567',
+    Body: 'provider shaped message',
+    MessageSid: 'SM-real-shape',
+  };
+  const rawBody = new URLSearchParams(params).toString();
+  let signed = url;
+  for (const key of Object.keys(params).sort() as Array<keyof typeof params>) {
+    signed += key + params[key];
+  }
+  const signature = createHmac('sha1', 'twilio_token').update(signed).digest('base64');
+
+  const response = await POST(
+    new Request(url, {
+      method: 'POST',
+      headers: { 'x-twilio-signature': signature },
+      body: rawBody,
+    }),
+  );
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: 'inbound webhook unavailable',
+    code: 'INBOUND_DISABLED',
+  });
 });

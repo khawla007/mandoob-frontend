@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyTwilioSignature } from '@/lib/sms/signature';
-import { recordTwilioInbound, type SmsInbound } from '../inbound-recording';
+import {
+  InboundWebhookInfrastructureError,
+  recordTwilioInbound,
+  type SmsInbound,
+} from '../inbound-recording';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -29,10 +33,17 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'invalid signature', code: 'FORBIDDEN' }, { status: 403 });
   }
 
-  const supabase = createSupabaseServiceRoleClient();
-
   const messageStatus = params.MessageStatus ?? params.SmsStatus;
   const messageSid = params.MessageSid ?? params.SmsSid;
+  const inboundShape = !messageStatus && params.From && params.Body !== undefined && messageSid;
+  if (inboundShape && !env.TWILIO_INBOUND_ENABLED) {
+    return NextResponse.json(
+      { error: 'inbound webhook unavailable', code: 'INBOUND_DISABLED' },
+      { status: 503 },
+    );
+  }
+
+  const supabase = createSupabaseServiceRoleClient();
 
   if (messageStatus && messageSid) {
     await applyDeliveryStatus(supabase, messageSid, messageStatus);
@@ -40,7 +51,23 @@ export async function POST(req: Request): Promise<Response> {
 
   // Inbound SMS: presence of Body + From, no status field.
   const inbound = parseTwilioInboundCallback(rawBody);
-  if (inbound) await recordTwilioInbound(supabase, inbound);
+  if (inboundShape && !inbound) {
+    return NextResponse.json(
+      { error: 'inbound webhook unavailable', code: 'TIMESTAMP_UNSUPPORTED' },
+      { status: 503 },
+    );
+  }
+  try {
+    if (inbound) await recordTwilioInbound(supabase, inbound);
+  } catch (error) {
+    if (error instanceof InboundWebhookInfrastructureError) {
+      return NextResponse.json(
+        { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 
   return NextResponse.json({ ok: true });
 }

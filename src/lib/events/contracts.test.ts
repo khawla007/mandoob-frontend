@@ -193,12 +193,24 @@ describe('queue retry and provider safety', () => {
 
 describe('inbound destination and replay boundaries', () => {
   test('hashes normalized provider destinations without retaining the raw key', () => {
-    const first = hashDestinationKey('twilio', '  +971 50 123 4567 ');
-    const second = hashDestinationKey('twilio', '+971501234567');
+    const secret = 'inbound-destination-secret-32-bytes-minimum';
+    const first = hashDestinationKey('twilio', '  +971 50 123 4567 ', secret);
+    const second = hashDestinationKey('twilio', '+971501234567', secret);
 
     assert.equal(first, second);
-    assert.match(first, /^[a-f0-9]{64}$/);
+    assert.match(first, /^v1:[a-f0-9]{64}$/);
     assert.equal(first.includes('971'), false);
+  });
+
+  test('fails closed when the destination HMAC secret is missing or weak', () => {
+    const previous = process.env.INBOUND_DESTINATION_HMAC_SECRET;
+    delete process.env.INBOUND_DESTINATION_HMAC_SECRET;
+    try {
+      assert.throws(() => hashDestinationKey('twilio', '+971501234567'));
+      assert.throws(() => hashDestinationKey('twilio', '+971501234567', 'too-short'));
+    } finally {
+      if (previous) process.env.INBOUND_DESTINATION_HMAC_SECRET = previous;
+    }
   });
 
   test('enforces an inclusive five-minute webhook timestamp tolerance', () => {

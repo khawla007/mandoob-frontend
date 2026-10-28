@@ -3,6 +3,7 @@ import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyHubSignature } from '@/lib/whatsapp/signature';
 import {
+  InboundWebhookInfrastructureError,
   recordReservedWhatsAppInboundMessage,
   reserveWhatsAppInboundMessage,
   type InboundReservation,
@@ -51,7 +52,17 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const supabase = createSupabaseServiceRoleClient();
-  await dispatchWhatsAppWebhookPayload(supabase, payload, rawBody);
+  try {
+    await dispatchWhatsAppWebhookPayload(supabase, payload, rawBody);
+  } catch (error) {
+    if (error instanceof InboundWebhookInfrastructureError) {
+      return NextResponse.json(
+        { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 
   return NextResponse.json({ ok: true });
 }
@@ -85,10 +96,6 @@ export async function dispatchWhatsAppWebhookPayload(
   rawBody: string,
   dependencies: WhatsAppDispatchDependencies = defaultDispatchDependencies,
 ): Promise<void> {
-  const reserved: Array<{
-    reservation: InboundReservation;
-    message: WhatsAppInboundMessage;
-  }> = [];
   const inbound: Array<{
     destinationKey: string;
     message: WhatsAppInboundMessage;
@@ -119,11 +126,7 @@ export async function dispatchWhatsAppWebhookPayload(
       item.message,
       rawBody,
     );
-    if (reservation) reserved.push({ reservation, message: item.message });
-  }
-
-  for (const item of reserved) {
-    await dependencies.record(supabase, item.reservation, item.message);
+    if (reservation) await dependencies.record(supabase, reservation, item.message);
   }
   for (const status of statuses) {
     await dependencies.applyStatus(supabase, status);

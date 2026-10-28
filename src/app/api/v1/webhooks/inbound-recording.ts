@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { recordInboundConsentKeyword } from '@/lib/comms/consent';
 import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
 import { hashDestinationKey, isWebhookTimestampWithinTolerance } from '@/lib/events/contracts';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
@@ -25,7 +24,16 @@ export type SmsInbound = {
 
 export type InboundReservation = {
   tenantId: string;
+  inboxId: number;
+  receivedAt: string;
 };
+
+export class InboundWebhookInfrastructureError extends Error {
+  constructor() {
+    super('INBOUND_WEBHOOK_INFRASTRUCTURE_ERROR');
+    this.name = 'InboundWebhookInfrastructureError';
+  }
+}
 
 function hashOpaque(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -39,10 +47,13 @@ function normalizeProviderTimestamp(value: string): string | null {
   return isWebhookTimestampWithinTolerance(normalized) ? normalized : null;
 }
 
-async function reserveInbound(
+async function acceptInbound(
   supabase: Supa,
   provider: 'twilio' | 'unifonic' | 'whatsapp',
+  channel: 'sms' | 'whatsapp',
   destinationKey: string,
+  fromPhone: string,
+  body: string | null,
   providerEventId: string,
   rawPayload: string,
   providerTimestamp: string,
@@ -54,21 +65,49 @@ async function reserveInbound(
   try {
     destinationKeyHash = hashDestinationKey(provider, destinationKey);
   } catch {
-    return null;
+    throw new InboundWebhookInfrastructureError();
   }
 
-  const { data, error } = await supabase.rpc('reserve_inbound_webhook', {
-    p_provider: provider,
-    p_destination_key_hash: destinationKeyHash,
-    p_provider_event_id_hash: hashOpaque(providerEventId),
-    p_payload_hash: hashOpaque(rawPayload),
-    p_occurred_at: occurredAt,
-    p_signature_verified: true,
-  });
-  if (error) return null;
-  const row = data?.[0];
-  if (!row || typeof row.tenant_id !== 'string') return null;
-  return { tenantId: row.tenant_id };
+  const rpc = supabase.rpc.bind(supabase) as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: unknown }>;
+  let result: { data: unknown; error: unknown };
+  try {
+    result = await rpc('accept_inbound_webhook', {
+      p_provider: provider,
+      p_channel: channel,
+      p_destination_key_hash: destinationKeyHash,
+      p_provider_event_id_hash: hashOpaque(providerEventId),
+      p_payload_hash: hashOpaque(rawPayload),
+      p_occurred_at: occurredAt,
+      p_signature_verified: true,
+      p_from_phone: fromPhone,
+      p_body: body,
+      p_provider_event_id: providerEventId,
+    });
+  } catch {
+    throw new InboundWebhookInfrastructureError();
+  }
+  const { data, error } = result;
+  if (error || !Array.isArray(data) || data.length !== 1) {
+    throw new InboundWebhookInfrastructureError();
+  }
+  const row = data[0] as Record<string, unknown>;
+  if (['unknown', 'duplicate', 'stale', 'rejected'].includes(String(row.outcome))) return null;
+  if (
+    row.outcome !== 'accepted' ||
+    typeof row.tenant_id !== 'string' ||
+    typeof row.inbox_id !== 'number' ||
+    typeof row.received_at !== 'string'
+  ) {
+    throw new InboundWebhookInfrastructureError();
+  }
+  return {
+    tenantId: row.tenant_id,
+    inboxId: row.inbox_id,
+    receivedAt: row.received_at,
+  };
 }
 
 async function recordSmsInbound(
@@ -76,45 +115,28 @@ async function recordSmsInbound(
   provider: 'twilio' | 'unifonic',
   input: SmsInbound,
 ): Promise<void> {
-  const reservation = await reserveInbound(
+  const reservation = await acceptInbound(
     supabase,
     provider,
+    'sms',
     input.destinationKey,
+    input.fromPhone,
+    input.body,
     input.providerEventId,
     input.rawPayload,
     input.occurredAt,
   );
   if (!reservation) return;
 
-  const { data: inboxRow, error: inboxError } = await supabase
-    .from('sms_inbox')
-    .insert({
-      tenant_id: reservation.tenantId,
-      from_phone: input.fromPhone,
-      body: input.body,
-      provider_message_id: input.providerEventId,
-    })
-    .select('id, received_at')
-    .single();
-  if (inboxError) return;
-
-  // P3.13 inbound callbacks persist consent only; provider acknowledgement egress is disabled.
-  await recordInboundConsentKeyword({
-    supabase,
-    phoneE164: input.fromPhone,
-    channel: 'sms',
-    body: input.body,
-    inboundMessageId: input.providerEventId,
-  });
   await routeInboundReplyToLeadSafely(
     {
       tenantId: reservation.tenantId,
       channel: 'sms',
-      inboxId: inboxRow.id,
+      inboxId: reservation.inboxId,
       fromPhone: input.fromPhone,
       body: input.body,
       providerMessageId: input.providerEventId,
-      receivedAt: inboxRow.received_at,
+      receivedAt: reservation.receivedAt,
     },
     { supabase },
   );
@@ -151,10 +173,13 @@ export async function reserveWhatsAppInboundMessage(
   rawPayload: string,
 ): Promise<InboundReservation | null> {
   if (!message.from || !message.id || !message.timestamp) return null;
-  return reserveInbound(
+  return acceptInbound(
     supabase,
     'whatsapp',
+    'whatsapp',
     destinationKey,
+    message.from,
+    message.text?.body ?? null,
     message.id,
     rawPayload,
     message.timestamp,
@@ -167,36 +192,16 @@ export async function recordReservedWhatsAppInboundMessage(
   message: WhatsAppInboundMessage,
 ): Promise<void> {
   if (!message.from || !message.id) return;
-  const { data: inboxRow, error: inboxError } = await supabase
-    .from('whatsapp_inbox')
-    .insert({
-      tenant_id: reservation.tenantId,
-      from_phone: message.from,
-      body: message.text?.body ?? null,
-      wamid: message.id,
-    })
-    .select('id, received_at')
-    .single();
-  if (inboxError) return;
-
   const body = message.text?.body ?? null;
-  // P3.13 inbound callbacks persist consent only; provider acknowledgement egress is disabled.
-  await recordInboundConsentKeyword({
-    supabase,
-    phoneE164: message.from,
-    channel: 'whatsapp',
-    body,
-    inboundMessageId: message.id,
-  });
   await routeInboundReplyToLeadSafely(
     {
       tenantId: reservation.tenantId,
       channel: 'whatsapp',
-      inboxId: inboxRow.id,
+      inboxId: reservation.inboxId,
       fromPhone: message.from,
       body,
       providerMessageId: message.id,
-      receivedAt: inboxRow.received_at,
+      receivedAt: reservation.receivedAt,
     },
     { supabase },
   );

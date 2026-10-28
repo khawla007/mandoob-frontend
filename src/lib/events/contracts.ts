@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { z } from 'zod';
 
 export const EVENT_INTERFACE_VERSION = '1.0.0' as const;
@@ -201,13 +201,24 @@ function normalizeDestinationKey(value: string): string {
   return value.normalize('NFKC').trim().replace(/\s+/g, '').toLowerCase();
 }
 
-export function hashDestinationKey(provider: string, destinationKey: string): string {
+export function hashDestinationKey(
+  provider: string,
+  destinationKey: string,
+  secret: string | undefined = process.env.INBOUND_DESTINATION_HMAC_SECRET,
+): string {
   const normalizedProvider = provider.trim().toLowerCase();
   const normalizedKey = normalizeDestinationKey(destinationKey);
-  if (!/^[a-z][a-z0-9_-]{1,31}$/.test(normalizedProvider) || normalizedKey.length < 3) {
+  if (
+    !/^[a-z][a-z0-9_-]{1,31}$/.test(normalizedProvider) ||
+    normalizedKey.length < 3 ||
+    !secret ||
+    secret.length < 32
+  ) {
     throw new Error('INVALID_DESTINATION_KEY');
   }
-  return createHash('sha256').update(`${normalizedProvider}\0${normalizedKey}`).digest('hex');
+  return `v1:${createHmac('sha256', secret)
+    .update(`${normalizedProvider}\0${normalizedKey}`)
+    .digest('hex')}`;
 }
 
 export function isWebhookTimestampWithinTolerance(

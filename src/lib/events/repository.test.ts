@@ -180,43 +180,6 @@ describe('event repository scheduler, replay, and inbound contract', () => {
     });
   });
 
-  test('hashes inbound destination, event, and payload before reserving', async () => {
-    const stub = createRpcStub({
-      reserve_inbound_webhook: [
-        {
-          receipt_id: IDS.event,
-          destination_id: IDS.job,
-          tenant_id: IDS.tenant,
-          company_id: IDS.company,
-        },
-      ],
-    });
-    const repository = createEventQueueRepository(stub.client, eventSchemas);
-
-    const reservation = await repository.reserveInboundWebhook({
-      provider: 'twilio',
-      destinationKey: '+971501234567',
-      providerEventId: 'SM-private-provider-id',
-      rawPayload: '{"Body":"protected message"}',
-      occurredAt: '2026-09-21T04:30:00.000Z',
-      signatureVerified: true,
-    });
-
-    const serialized = JSON.stringify(stub.calls[0]);
-    assert.equal(serialized.includes('+971501234567'), false);
-    assert.equal(serialized.includes('SM-private-provider-id'), false);
-    assert.equal(serialized.includes('protected message'), false);
-    assert.match(String(stub.calls[0]?.args.p_destination_key_hash), /^[a-f0-9]{64}$/);
-    assert.match(String(stub.calls[0]?.args.p_provider_event_id_hash), /^[a-f0-9]{64}$/);
-    assert.match(String(stub.calls[0]?.args.p_payload_hash), /^[a-f0-9]{64}$/);
-    assert.deepEqual(reservation, {
-      receiptId: IDS.event,
-      destinationId: IDS.job,
-      tenantId: IDS.tenant,
-      companyId: IDS.company,
-    });
-  });
-
   test('synthetic producer and consumer retain stable event and effect identities', async () => {
     const claimed = {
       job_id: IDS.job,

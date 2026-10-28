@@ -30,6 +30,13 @@ const optionalPort = z.preprocess(
   (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
   z.coerce.number().int().positive().max(65_535).optional(),
 );
+const optionalBoolean = z.preprocess(
+  (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
+  z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
+);
 
 const schema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -45,6 +52,11 @@ const schema = z.object({
   TWILIO_AUTH_TOKEN: optionalStr,
   TWILIO_MESSAGING_SERVICE_SID: optionalStr,
   TWILIO_FROM_NUMBER: optionalStr,
+  TWILIO_INBOUND_ENABLED: optionalBoolean,
+  INBOUND_DESTINATION_HMAC_SECRET: z.preprocess(
+    (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
+    z.string().min(32).optional(),
+  ),
 
   TURNSTILE_SECRET_KEY: optionalStr,
 

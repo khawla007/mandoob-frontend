@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyUnifonicSignature } from '@/lib/sms/signature';
-import { recordUnifonicInbound, type SmsInbound } from '../inbound-recording';
+import {
+  InboundWebhookInfrastructureError,
+  recordUnifonicInbound,
+  type SmsInbound,
+} from '../inbound-recording';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,7 +46,17 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const inbound = parseUnifonicInboundCallback(payload, rawBody);
-  if (inbound) await recordUnifonicInbound(supabase, inbound);
+  try {
+    if (inbound) await recordUnifonicInbound(supabase, inbound);
+  } catch (error) {
+    if (error instanceof InboundWebhookInfrastructureError) {
+      return NextResponse.json(
+        { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 
   return NextResponse.json({ ok: true });
 }

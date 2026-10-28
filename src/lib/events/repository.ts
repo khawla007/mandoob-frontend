@@ -1,7 +1,5 @@
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import {
-  hashDestinationKey,
   parseRegisteredDomainEvent,
   toSafeProviderFailure,
   type DomainEventEnvelope,
@@ -184,26 +182,6 @@ async function rpcData(
   return data;
 }
 
-function hashOpaque(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
-const inboundReservationSchema = z
-  .object({
-    receipt_id: uuidSchema,
-    destination_id: uuidSchema,
-    tenant_id: uuidSchema,
-    company_id: uuidSchema.nullable(),
-  })
-  .strict();
-
-export type InboundWebhookReservation = {
-  receiptId: string;
-  destinationId: string;
-  tenantId: string;
-  companyId: string | null;
-};
-
 export function createEventQueueRepository(
   client: EventQueueRpcClient,
   eventSchemas: EventSchemaRegistry,
@@ -355,36 +333,6 @@ export function createEventQueueRepository(
           p_reason: z.string().trim().min(8).max(240).parse(reason),
         }),
       );
-    },
-
-    async reserveInboundWebhook(input: {
-      provider: string;
-      destinationKey: string;
-      providerEventId: string;
-      rawPayload: string;
-      occurredAt: string;
-      signatureVerified: boolean;
-    }): Promise<InboundWebhookReservation | null> {
-      const data = await rpcData(client, 'reserve_inbound_webhook', {
-        p_provider: z
-          .string()
-          .regex(/^[a-z][a-z0-9_-]{1,31}$/)
-          .parse(input.provider),
-        p_destination_key_hash: hashDestinationKey(input.provider, input.destinationKey),
-        p_provider_event_id_hash: hashOpaque(input.providerEventId),
-        p_payload_hash: hashOpaque(input.rawPayload),
-        p_occurred_at: z.string().datetime({ offset: true }).parse(input.occurredAt),
-        p_signature_verified: input.signatureVerified,
-      });
-      const rows = z.array(inboundReservationSchema).parse(data);
-      const reservation = rows[0];
-      if (!reservation) return null;
-      return {
-        receiptId: reservation.receipt_id,
-        destinationId: reservation.destination_id,
-        tenantId: reservation.tenant_id,
-        companyId: reservation.company_id,
-      };
     },
 
     async readHealth(consumerName?: string): Promise<Record<string, unknown>> {

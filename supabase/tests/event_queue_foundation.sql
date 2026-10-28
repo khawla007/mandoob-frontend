@@ -413,52 +413,29 @@ $event_replay_storage_contract$;
 insert into public.inbound_destinations (
   id, provider, destination_key_hash, tenant_id, company_id, enabled
 ) values (
-  '93100000-0000-4000-8000-000000000070', 'twilio', repeat('1', 64),
+  '93100000-0000-4000-8000-000000000070', 'twilio', 'v1:' || repeat('1', 64),
   '93100000-0000-4000-8000-000000000010',
   '93100000-0000-4000-8000-000000000020', true
 );
 
 do $inbound_webhook_contract$
-declare
-  v_reservation record;
 begin
   begin
     insert into public.inbound_destinations (
       provider, destination_key_hash, tenant_id, company_id, enabled
     ) values (
-      'twilio', repeat('1', 64),
+      'twilio', 'v1:' || repeat('1', 64),
       '93100000-0000-4000-8000-000000000011',
       '93100000-0000-4000-8000-000000000021', true
     );
     raise exception 'DESTINATION_COLLISION_ACCEPTED';
   exception when unique_violation then null;
   end;
-
-  select * into v_reservation from public.reserve_inbound_webhook(
-    'twilio', repeat('1', 64), repeat('2', 64), repeat('3', 64),
-    pg_catalog.now(), true
-  );
-  if v_reservation.receipt_id is null
-    or v_reservation.destination_id <> '93100000-0000-4000-8000-000000000070'
-    or v_reservation.tenant_id <> '93100000-0000-4000-8000-000000000010'
-    or v_reservation.company_id <> '93100000-0000-4000-8000-000000000020'
-  then raise exception 'VALID_WEBHOOK_OWNER_NOT_RETURNED'; end if;
-  if exists (select 1 from public.reserve_inbound_webhook(
-    'twilio', repeat('1', 64), repeat('2', 64), repeat('3', 64),
-    pg_catalog.now(), true
-  )) then raise exception 'DUPLICATE_WEBHOOK_ACCEPTED'; end if;
-  if exists (select 1 from public.reserve_inbound_webhook(
-    'twilio', repeat('9', 64), repeat('4', 64), repeat('5', 64),
-    pg_catalog.now(), true
-  )) then raise exception 'UNKNOWN_DESTINATION_DISCLOSED'; end if;
-  if exists (select 1 from public.reserve_inbound_webhook(
-    'twilio', repeat('1', 64), repeat('6', 64), repeat('7', 64),
-    pg_catalog.now() - interval '6 minutes', true
-  )) then raise exception 'EXPIRED_WEBHOOK_ACCEPTED'; end if;
-  if exists (select 1 from public.reserve_inbound_webhook(
-    'twilio', repeat('1', 64), repeat('8', 64), repeat('9', 64),
-    pg_catalog.now(), false
-  )) then raise exception 'UNVERIFIED_WEBHOOK_ACCEPTED'; end if;
+  if has_function_privilege(
+    'service_role',
+    'public.reserve_inbound_webhook(text,text,text,text,timestamptz,boolean)',
+    'execute'
+  ) then raise exception 'LEGACY_RESERVATION_RPC_STILL_EXECUTABLE'; end if;
 end;
 $inbound_webhook_contract$;
 
