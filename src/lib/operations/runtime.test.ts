@@ -24,6 +24,7 @@ const readForm = existsSync(readFormPath) ? readFileSync(readFormPath, 'utf8') :
 const ACTOR_ID = '00000000-0000-4000-8000-000000000001';
 const TENANT_ID = '00000000-0000-4000-8000-000000000002';
 const COMPANY_ID = '00000000-0000-4000-8000-000000000003';
+const ignoreFailure = () => {};
 
 function rowId(value: number): string {
   return `00000000-0000-4000-8000-${value.toString().padStart(12, '0')}`;
@@ -175,6 +176,7 @@ test('PRO loader authorizes authoritative Company scope and forwards a complete 
           return { data, error: null };
         },
       },
+      logFailure: ignoreFailure,
     },
   );
 
@@ -216,6 +218,7 @@ test('loader fails closed before the RPC when the resolved Company is outside th
           return { data: [], error: null };
         },
       },
+      logFailure: ignoreFailure,
     },
   );
 
@@ -270,6 +273,7 @@ test('admin reads use the selected valid Company and preserve its canonical retr
           return { data: null, error: { message: 'private failure' } };
         },
       },
+      logFailure: ignoreFailure,
     },
   );
 
@@ -388,6 +392,7 @@ test('invalid or repeated cursors reset both RPC cursor fields and retry to cano
             return { data: null, error: { message: 'private failure' } };
           },
         },
+        logFailure: ignoreFailure,
       },
     );
     assert.equal(args?.p_before_created_at, null);
@@ -421,6 +426,7 @@ test('communications authorizes its role but does not call a provider or records
           return { data: [], error: null };
         },
       },
+      logFailure: ignoreFailure,
     },
   );
 
@@ -482,6 +488,7 @@ test('tampered notification mutation fails closed when the resource belongs to a
             : { data: null, error: { message: 'RUNTIME_ACCESS_DENIED' } };
         },
       },
+      logFailure: ignoreFailure,
     },
   );
 
@@ -505,6 +512,7 @@ test('RPC failures and invalid response rows expose only the finite sanitized er
         authorizePro: async () => ({ tenant: { id: TENANT_ID }, session: proSession() }),
         readProCompany: async () => ({ id: COMPANY_ID, tenantId: TENANT_ID }),
         client: { rpc: async () => response },
+        logFailure: ignoreFailure,
       },
     );
     assert.deepEqual(model, {
@@ -517,6 +525,125 @@ test('RPC failures and invalid response rows expose only the finite sanitized er
     assert.equal(JSON.stringify(model).includes('private database detail'), false);
     assert.equal(JSON.stringify(model).includes('secret'), false);
   }
+});
+
+test('loader emits only finite redacted diagnostics for authorization, RPC, and schema failures', async () => {
+  const diagnostics: unknown[] = [];
+  const logFailure = (event: unknown) => diagnostics.push(event);
+  const base = {
+    role: 'pro' as const,
+    tenantSlug: 'firm-one',
+    baseHref: '/t/firm-one/tasks',
+  };
+
+  await loadOperationalWorkspace(
+    { ...base, module: 'tasks' },
+    {
+      authorizePro: async () => {
+        throw new Error('authorization canary secret');
+      },
+      logFailure,
+    },
+  );
+  await loadOperationalWorkspace(
+    { ...base, module: 'tasks' },
+    {
+      authorizePro: async () => ({ tenant: { id: TENANT_ID }, session: proSession() }),
+      readProCompany: async () => ({ id: COMPANY_ID, tenantId: TENANT_ID }),
+      client: {
+        rpc: async () => ({ data: null, error: { message: 'rpc canary secret' } }),
+      },
+      logFailure,
+    },
+  );
+  await loadOperationalWorkspace(
+    { ...base, module: 'tasks' },
+    {
+      authorizePro: async () => ({ tenant: { id: TENANT_ID }, session: proSession() }),
+      readProCompany: async () => ({ id: COMPANY_ID, tenantId: TENANT_ID }),
+      client: { rpc: async () => ({ data: [{ password: 'schema canary secret' }], error: null }) },
+      logFailure,
+    },
+  );
+
+  assert.deepEqual(diagnostics, [
+    {
+      event: 'operational-runtime.failure',
+      category: 'authorization',
+      operation: 'load',
+      module: 'tasks',
+      role: 'pro',
+    },
+    {
+      event: 'operational-runtime.failure',
+      category: 'rpc',
+      operation: 'load',
+      module: 'tasks',
+      role: 'pro',
+    },
+    {
+      event: 'operational-runtime.failure',
+      category: 'schema',
+      operation: 'load',
+      module: 'tasks',
+      role: 'pro',
+    },
+  ]);
+  assert.doesNotMatch(JSON.stringify(diagnostics), /canary|secret|password|message|stack/iu);
+});
+
+test('mutation emits redacted schema, authorization, and RPC diagnostics while returning one safe code', async () => {
+  const diagnostics: unknown[] = [];
+  const logFailure = (event: unknown) => diagnostics.push(event);
+  const base = {
+    role: 'pro' as const,
+    tenantSlug: 'firm-one',
+    notificationId: rowId(42),
+    operationId: rowId(43),
+    read: true,
+  };
+
+  const schemaResult = await setOperationalNotificationReadState(
+    { ...base, notificationId: 'schema canary secret' },
+    { logFailure },
+  );
+  const authorizationResult = await setOperationalNotificationReadState(base, {
+    authorizePro: async () => {
+      throw new Error('authorization canary secret');
+    },
+    logFailure,
+  });
+  const rpcResult = await setOperationalNotificationReadState(base, {
+    authorizePro: async () => ({ tenant: { id: TENANT_ID }, session: proSession() }),
+    readProCompany: async () => ({ id: COMPANY_ID, tenantId: TENANT_ID }),
+    client: {
+      rpc: async () => ({ data: null, error: { message: 'rpc canary secret' } }),
+    },
+    logFailure,
+  });
+
+  assert.deepEqual(
+    [schemaResult, authorizationResult, rpcResult],
+    [
+      { ok: false, code: 'unavailable' },
+      { ok: false, code: 'unavailable' },
+      { ok: false, code: 'unavailable' },
+    ],
+  );
+  assert.deepEqual(
+    diagnostics.map((event) => (event as { category: string }).category),
+    ['schema', 'authorization', 'rpc'],
+  );
+  for (const event of diagnostics) {
+    assert.deepEqual(event, {
+      event: 'operational-runtime.failure',
+      category: (event as { category: string }).category,
+      operation: 'mutation',
+      module: 'notifications',
+      role: 'pro',
+    });
+  }
+  assert.doesNotMatch(JSON.stringify(diagnostics), /canary|secret|message|stack/iu);
 });
 
 function messageShape(value: unknown): unknown {
