@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { test } from 'node:test';
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
@@ -83,6 +84,14 @@ function createWebhookSupabaseStub(
         select: () => builder,
         eq(key: string, value: unknown) {
           state.filters[key] = value;
+          return builder;
+        },
+        is(key: string, value: unknown) {
+          state.filters[key] = value;
+          return builder;
+        },
+        update(payload: Row) {
+          for (const row of filterRows(table, state.filters)) Object.assign(row, payload);
           return builder;
         },
         order(key: string, opts?: { ascending?: boolean }) {
@@ -268,4 +277,235 @@ test('reservation RPC receives only hashes, timestamp, provider, and verified-si
   assert.match(String(supabase.rpcArgs[0]?.p_provider_event_id_hash), /^[a-f0-9]{64}$/);
   assert.match(String(supabase.rpcArgs[0]?.p_payload_hash), /^[a-f0-9]{64}$/);
   assert.equal(supabase.rpcArgs[0]?.p_signature_verified, true);
+});
+
+test('Twilio route extracts destination and timestamp while preserving the signed raw body', async () => {
+  const { parseTwilioInboundCallback } = await import('./twilio/route');
+  const rawBody =
+    'To=%2B12025550123&From=%2B971501234567&Body=help&MessageSid=SM123&Timestamp=2026-10-28T10%3A00%3A00.000Z';
+
+  assert.deepEqual(parseTwilioInboundCallback(rawBody), {
+    destinationKey: '+12025550123',
+    fromPhone: '+971501234567',
+    body: 'help',
+    providerEventId: 'SM123',
+    occurredAt: '2026-10-28T10:00:00.000Z',
+    rawPayload: rawBody,
+  });
+});
+
+test('Unifonic route extracts destination and timestamp while preserving the signed raw body', async () => {
+  const { parseUnifonicInboundCallback } = await import('./unifonic/route');
+  const rawBody = JSON.stringify({
+    To: '971500001111',
+    From: '+971501234567',
+    Body: 'help',
+    MessageID: 'uni-123',
+    Timestamp: '2026-10-28T10:00:00.000Z',
+  });
+
+  assert.deepEqual(parseUnifonicInboundCallback(JSON.parse(rawBody), rawBody), {
+    destinationKey: '971500001111',
+    fromPhone: '+971501234567',
+    body: 'help',
+    providerEventId: 'uni-123',
+    occurredAt: '2026-10-28T10:00:00.000Z',
+    rawPayload: rawBody,
+  });
+});
+
+test('WhatsApp route verifies the exact raw body before any reservation or network call', async () => {
+  const { POST } = await import('./whatsapp/route');
+  const rawBody = '{"entry":[]}';
+  const signatureForDifferentBody = `sha256=${createHmac('sha256', 'whatsapp_secret')
+    .update(`${rawBody} `)
+    .digest('hex')}`;
+  const originalFetch = globalThis.fetch;
+  let networkCalls = 0;
+  globalThis.fetch = async () => {
+    networkCalls += 1;
+    throw new Error('network forbidden');
+  };
+
+  try {
+    const response = await POST(
+      new Request('https://app.example.com/api/v1/webhooks/whatsapp', {
+        method: 'POST',
+        headers: { 'x-hub-signature-256': signatureForDifferentBody },
+        body: rawBody,
+      }),
+    );
+
+    assert.equal(response.status, 403);
+    assert.equal(networkCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('WhatsApp route reserves every inbound message before mixed-payload mutations', async () => {
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const calls: string[] = [];
+  const rawBody = '{"signed":"raw-body"}';
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const payload = {
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              metadata: { phone_number_id: 'meta-destination' },
+              messages: [
+                { id: 'wamid-1', from: '+971501111111', timestamp },
+                { id: 'wamid-2', from: '+971502222222', timestamp },
+              ],
+              statuses: [{ id: 'outbound-1', status: 'delivered' as const }],
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  await dispatchWhatsAppWebhookPayload({} as never, payload, rawBody, {
+    reserve: async (_supabase, destination, message, receivedRawBody) => {
+      calls.push(`reserve:${message.id}`);
+      assert.equal(destination, 'meta-destination');
+      assert.equal(message.timestamp, timestamp);
+      assert.equal(receivedRawBody, rawBody);
+      return { tenantId: TENANT_ID };
+    },
+    record: async (_supabase, _reservation, message) => {
+      calls.push(`record:${message.id}`);
+    },
+    applyStatus: async (_supabase, status) => {
+      calls.push(`status:${status.id}`);
+    },
+  });
+
+  assert.deepEqual(calls, [
+    'reserve:wamid-1',
+    'reserve:wamid-2',
+    'record:wamid-1',
+    'record:wamid-2',
+    'status:outbound-1',
+  ]);
+});
+
+test('WhatsApp route treats unknown, duplicate, and stale inbound reservations as no-ops', async () => {
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const recorded: string[] = [];
+  const payload = {
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              metadata: { phone_number_id: 'meta-destination' },
+              messages: [
+                { id: 'unknown', from: '+971501111111', timestamp: '1' },
+                { id: 'duplicate', from: '+971501111111', timestamp: '2' },
+                { id: 'stale', from: '+971501111111', timestamp: '3' },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  await dispatchWhatsAppWebhookPayload({} as never, payload, '{}', {
+    reserve: async () => null,
+    record: async (_supabase, _reservation, message) => {
+      recorded.push(message.id ?? 'missing');
+    },
+    applyStatus: async () => undefined,
+  });
+
+  assert.deepEqual(recorded, []);
+});
+
+test('WhatsApp route preserves status-only callback handling', async () => {
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const calls: string[] = [];
+
+  await dispatchWhatsAppWebhookPayload(
+    {} as never,
+    {
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                statuses: [{ id: 'outbound-only', status: 'read' }],
+              },
+            },
+          ],
+        },
+      ],
+    },
+    '{}',
+    {
+      reserve: async () => {
+        calls.push('reserve');
+        return null;
+      },
+      record: async () => {
+        calls.push('record');
+      },
+      applyStatus: async (_supabase, status) => {
+        calls.push(`status:${status.id}`);
+      },
+    },
+  );
+
+  assert.deepEqual(calls, ['status:outbound-only']);
+});
+
+test('inbound consent keywords update state without enabling SMS or WhatsApp egress', async () => {
+  const { recordTwilioInbound, recordWhatsAppInboundMessage } = await import('./inbound-recording');
+  const originalFetch = globalThis.fetch;
+  let networkCalls = 0;
+  globalThis.fetch = async () => {
+    networkCalls += 1;
+    throw new Error('provider egress forbidden');
+  };
+
+  try {
+    const sms = createWebhookSupabaseStub('twilio');
+    await recordTwilioInbound(sms as never, {
+      destinationKey: '+12025550123',
+      fromPhone: '+971501234567',
+      body: 'STOP',
+      providerEventId: 'twilio-stop',
+      occurredAt: nowIso(),
+      rawPayload: 'signed sms body',
+    });
+
+    const whatsapp = createWebhookSupabaseStub('whatsapp');
+    await recordWhatsAppInboundMessage(
+      whatsapp as never,
+      'meta-destination',
+      {
+        id: 'wamid-start',
+        from: '+971501234567',
+        timestamp: String(Math.floor(Date.now() / 1000)),
+        text: { body: 'START' },
+      },
+      'signed whatsapp body',
+    );
+
+    assert.equal(sms.tables.get('consent_opt_outs')?.length, 1);
+    assert.equal(
+      sms.calls.some((call) => call === 'from:outbound_sms'),
+      false,
+    );
+    assert.equal(
+      whatsapp.calls.some((call) => call === 'from:outbound_whatsapp'),
+      false,
+    );
+    assert.equal(networkCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

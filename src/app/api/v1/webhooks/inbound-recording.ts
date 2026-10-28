@@ -2,9 +2,7 @@ import { createHash } from 'node:crypto';
 import { recordInboundConsentKeyword } from '@/lib/comms/consent';
 import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
 import { hashDestinationKey, isWebhookTimestampWithinTolerance } from '@/lib/events/contracts';
-import { enqueueSms } from '@/lib/sms/send';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { enqueueWhatsApp } from '@/lib/whatsapp/send';
 
 type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
 
@@ -16,7 +14,7 @@ export type WhatsAppInboundMessage = {
   text?: { body?: string };
 };
 
-type SmsInbound = {
+export type SmsInbound = {
   destinationKey: string;
   fromPhone: string;
   body: string;
@@ -25,7 +23,7 @@ type SmsInbound = {
   rawPayload: string;
 };
 
-type InboundReservation = {
+export type InboundReservation = {
   tenantId: string;
 };
 
@@ -100,21 +98,14 @@ async function recordSmsInbound(
     .single();
   if (inboxError) return;
 
-  const action = await recordInboundConsentKeyword({
+  // P3.13 inbound callbacks persist consent only; provider acknowledgement egress is disabled.
+  await recordInboundConsentKeyword({
     supabase,
     phoneE164: input.fromPhone,
     channel: 'sms',
     body: input.body,
     inboundMessageId: input.providerEventId,
   });
-  if (action) {
-    await enqueueSms({
-      tenantId: reservation.tenantId,
-      templateId: 'opt-out-confirmation',
-      toPhone: input.fromPhone,
-      input: {},
-    });
-  }
   await routeInboundReplyToLeadSafely(
     {
       tenantId: reservation.tenantId,
@@ -143,8 +134,24 @@ export async function recordWhatsAppInboundMessage(
   message: WhatsAppInboundMessage,
   rawPayload: string,
 ): Promise<void> {
-  if (!message.from || !message.id || !message.timestamp) return;
-  const reservation = await reserveInbound(
+  const reservation = await reserveWhatsAppInboundMessage(
+    supabase,
+    destinationKey,
+    message,
+    rawPayload,
+  );
+  if (!reservation) return;
+  await recordReservedWhatsAppInboundMessage(supabase, reservation, message);
+}
+
+export async function reserveWhatsAppInboundMessage(
+  supabase: Supa,
+  destinationKey: string,
+  message: WhatsAppInboundMessage,
+  rawPayload: string,
+): Promise<InboundReservation | null> {
+  if (!message.from || !message.id || !message.timestamp) return null;
+  return reserveInbound(
     supabase,
     'whatsapp',
     destinationKey,
@@ -152,7 +159,14 @@ export async function recordWhatsAppInboundMessage(
     rawPayload,
     message.timestamp,
   );
-  if (!reservation) return;
+}
+
+export async function recordReservedWhatsAppInboundMessage(
+  supabase: Supa,
+  reservation: InboundReservation,
+  message: WhatsAppInboundMessage,
+): Promise<void> {
+  if (!message.from || !message.id) return;
   const { data: inboxRow, error: inboxError } = await supabase
     .from('whatsapp_inbox')
     .insert({
@@ -166,21 +180,14 @@ export async function recordWhatsAppInboundMessage(
   if (inboxError) return;
 
   const body = message.text?.body ?? null;
-  const action = await recordInboundConsentKeyword({
+  // P3.13 inbound callbacks persist consent only; provider acknowledgement egress is disabled.
+  await recordInboundConsentKeyword({
     supabase,
     phoneE164: message.from,
     channel: 'whatsapp',
     body,
     inboundMessageId: message.id,
   });
-  if (action) {
-    await enqueueWhatsApp({
-      tenantId: reservation.tenantId,
-      templateId: 'opt-out-confirmation',
-      toPhone: message.from,
-      input: {},
-    });
-  }
   await routeInboundReplyToLeadSafely(
     {
       tenantId: reservation.tenantId,

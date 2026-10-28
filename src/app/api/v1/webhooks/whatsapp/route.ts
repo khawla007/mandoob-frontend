@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyHubSignature } from '@/lib/whatsapp/signature';
-import { recordWhatsAppInboundMessage, type WhatsAppInboundMessage } from '../inbound-recording';
+import {
+  recordReservedWhatsAppInboundMessage,
+  reserveWhatsAppInboundMessage,
+  type InboundReservation,
+  type WhatsAppInboundMessage,
+} from '../inbound-recording';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,27 +51,84 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const supabase = createSupabaseServiceRoleClient();
-
-  for (const entry of payload.entry ?? []) {
-    for (const change of entry.changes ?? []) {
-      const value = change.value;
-      const phoneNumberId = value.metadata?.phone_number_id ?? null;
-
-      for (const status of value.statuses ?? []) {
-        await applyStatusUpdate(supabase, status);
-      }
-
-      for (const message of value.messages ?? []) {
-        if (!phoneNumberId) continue;
-        await recordWhatsAppInboundMessage(supabase, phoneNumberId, message, rawBody);
-      }
-    }
-  }
+  await dispatchWhatsAppWebhookPayload(supabase, payload, rawBody);
 
   return NextResponse.json({ ok: true });
 }
 
 type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
+
+type WhatsAppDispatchDependencies = {
+  reserve: (
+    supabase: Supa,
+    destinationKey: string,
+    message: WhatsAppInboundMessage,
+    rawBody: string,
+  ) => Promise<InboundReservation | null>;
+  record: (
+    supabase: Supa,
+    reservation: InboundReservation,
+    message: WhatsAppInboundMessage,
+  ) => Promise<void>;
+  applyStatus: (supabase: Supa, status: WhatsAppStatus) => Promise<void>;
+};
+
+const defaultDispatchDependencies: WhatsAppDispatchDependencies = {
+  reserve: reserveWhatsAppInboundMessage,
+  record: recordReservedWhatsAppInboundMessage,
+  applyStatus: applyStatusUpdate,
+};
+
+export async function dispatchWhatsAppWebhookPayload(
+  supabase: Supa,
+  payload: WhatsAppWebhookPayload,
+  rawBody: string,
+  dependencies: WhatsAppDispatchDependencies = defaultDispatchDependencies,
+): Promise<void> {
+  const reserved: Array<{
+    reservation: InboundReservation;
+    message: WhatsAppInboundMessage;
+  }> = [];
+  const inbound: Array<{
+    destinationKey: string;
+    message: WhatsAppInboundMessage;
+  }> = [];
+  const statuses: WhatsAppStatus[] = [];
+  let missingInboundDestination = false;
+
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      const value = change.value;
+      statuses.push(...(value.statuses ?? []));
+      const destinationKey = value.metadata?.phone_number_id;
+      for (const message of value.messages ?? []) {
+        if (!destinationKey) {
+          missingInboundDestination = true;
+          continue;
+        }
+        inbound.push({ destinationKey, message });
+      }
+    }
+  }
+  if (missingInboundDestination) return;
+
+  for (const item of inbound) {
+    const reservation = await dependencies.reserve(
+      supabase,
+      item.destinationKey,
+      item.message,
+      rawBody,
+    );
+    if (reservation) reserved.push({ reservation, message: item.message });
+  }
+
+  for (const item of reserved) {
+    await dependencies.record(supabase, item.reservation, item.message);
+  }
+  for (const status of statuses) {
+    await dependencies.applyStatus(supabase, status);
+  }
+}
 
 async function applyStatusUpdate(supabase: Supa, status: WhatsAppStatus): Promise<void> {
   if (!status.id) return;

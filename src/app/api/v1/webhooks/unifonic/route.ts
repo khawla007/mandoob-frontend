@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyUnifonicSignature } from '@/lib/sms/signature';
-import { recordUnifonicInbound } from '../inbound-recording';
+import { recordUnifonicInbound, type SmsInbound } from '../inbound-recording';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,32 +36,42 @@ export async function POST(req: Request): Promise<Response> {
 
   const supabase = createSupabaseServiceRoleClient();
   const messageId = payload.MessageID ?? payload.messageId;
-  const destinationKey = payload.To ?? payload.Recipient;
-  const occurredAt = payload.Timestamp ?? payload.timestamp;
 
   if (payload.Status && messageId) {
     await applyDeliveryStatus(supabase, String(messageId), payload.Status);
   }
 
-  if (
-    !payload.Status &&
-    destinationKey &&
-    payload.From &&
-    payload.Body !== undefined &&
-    messageId &&
-    occurredAt
-  ) {
-    await recordUnifonicInbound(supabase, {
-      destinationKey,
-      fromPhone: payload.From,
-      body: payload.Body ?? '',
-      providerEventId: String(messageId),
-      occurredAt: String(occurredAt),
-      rawPayload: rawBody,
-    });
-  }
+  const inbound = parseUnifonicInboundCallback(payload, rawBody);
+  if (inbound) await recordUnifonicInbound(supabase, inbound);
 
   return NextResponse.json({ ok: true });
+}
+
+export function parseUnifonicInboundCallback(
+  payload: UnifonicPayload,
+  rawBody: string,
+): SmsInbound | null {
+  const destinationKey = payload.To ?? payload.Recipient;
+  const providerEventId = payload.MessageID ?? payload.messageId;
+  const occurredAt = payload.Timestamp ?? payload.timestamp;
+  if (
+    payload.Status ||
+    !destinationKey ||
+    !payload.From ||
+    payload.Body === undefined ||
+    !providerEventId ||
+    !occurredAt
+  ) {
+    return null;
+  }
+  return {
+    destinationKey,
+    fromPhone: payload.From,
+    body: payload.Body,
+    providerEventId: String(providerEventId),
+    occurredAt: String(occurredAt),
+    rawPayload: rawBody,
+  };
 }
 
 const STATUS_MAP: Record<string, 'pending' | 'sent' | 'delivered' | 'failed' | 'dead'> = {

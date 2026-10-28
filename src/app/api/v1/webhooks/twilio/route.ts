@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyTwilioSignature } from '@/lib/sms/signature';
-import { recordTwilioInbound } from '../inbound-recording';
+import { recordTwilioInbound, type SmsInbound } from '../inbound-recording';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,32 +33,41 @@ export async function POST(req: Request): Promise<Response> {
 
   const messageStatus = params.MessageStatus ?? params.SmsStatus;
   const messageSid = params.MessageSid ?? params.SmsSid;
-  const occurredAt = params.Timestamp ?? params.DateCreated;
 
   if (messageStatus && messageSid) {
     await applyDeliveryStatus(supabase, messageSid, messageStatus);
   }
 
   // Inbound SMS: presence of Body + From, no status field.
-  if (
-    !messageStatus &&
-    params.To &&
-    params.From &&
-    params.Body !== undefined &&
-    messageSid &&
-    occurredAt
-  ) {
-    await recordTwilioInbound(supabase, {
-      destinationKey: params.To,
-      fromPhone: params.From,
-      body: params.Body,
-      providerEventId: messageSid,
-      occurredAt,
-      rawPayload: rawBody,
-    });
-  }
+  const inbound = parseTwilioInboundCallback(rawBody);
+  if (inbound) await recordTwilioInbound(supabase, inbound);
 
   return NextResponse.json({ ok: true });
+}
+
+export function parseTwilioInboundCallback(rawBody: string): SmsInbound | null {
+  const params = parseFormBody(rawBody);
+  const messageStatus = params.MessageStatus ?? params.SmsStatus;
+  const providerEventId = params.MessageSid ?? params.SmsSid;
+  const occurredAt = params.Timestamp ?? params.DateCreated;
+  if (
+    messageStatus ||
+    !params.To ||
+    !params.From ||
+    params.Body === undefined ||
+    !providerEventId ||
+    !occurredAt
+  ) {
+    return null;
+  }
+  return {
+    destinationKey: params.To,
+    fromPhone: params.From,
+    body: params.Body,
+    providerEventId,
+    occurredAt,
+    rawPayload: rawBody,
+  };
 }
 
 function buildSignatureUrl(req: Request): string {
