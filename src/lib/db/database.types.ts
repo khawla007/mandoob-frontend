@@ -1599,6 +1599,67 @@ export type Database = {
           },
         ];
       };
+      company_message_template_overrides: {
+        Row: {
+          body_template: string | null;
+          channel: string;
+          company_id: string;
+          created_at: string;
+          enabled: boolean;
+          subject_template: string | null;
+          template_key: string;
+          tenant_id: string;
+          updated_at: string;
+          version: number;
+        };
+        Insert: {
+          body_template?: string | null;
+          channel: string;
+          company_id: string;
+          created_at?: string;
+          enabled?: boolean;
+          subject_template?: string | null;
+          template_key: string;
+          tenant_id: string;
+          updated_at?: string;
+          version: number;
+        };
+        Update: {
+          body_template?: string | null;
+          channel?: string;
+          company_id?: string;
+          created_at?: string;
+          enabled?: boolean;
+          subject_template?: string | null;
+          template_key?: string;
+          tenant_id?: string;
+          updated_at?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'company_message_template_overrides_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'company_message_template_overrides_template_fkey';
+            columns: ['template_key', 'version', 'channel'];
+            isOneToOne: false;
+            referencedRelation: 'message_template_versions';
+            referencedColumns: ['template_key', 'version', 'channel'];
+          },
+          {
+            foreignKeyName: 'company_message_template_overrides_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       company_office_details: {
         Row: {
           address_line_1: string | null;
@@ -5446,6 +5507,36 @@ export type Database = {
           },
         ];
       };
+      message_template_versions: {
+        Row: {
+          body_template: string;
+          channel: string;
+          created_at: string;
+          enabled: boolean;
+          subject_template: string | null;
+          template_key: string;
+          version: number;
+        };
+        Insert: {
+          body_template: string;
+          channel: string;
+          created_at?: string;
+          enabled?: boolean;
+          subject_template?: string | null;
+          template_key: string;
+          version: number;
+        };
+        Update: {
+          body_template?: string;
+          channel?: string;
+          created_at?: string;
+          enabled?: boolean;
+          subject_template?: string | null;
+          template_key?: string;
+          version?: number;
+        };
+        Relationships: [];
+      };
       mfa_factor_removal_reservations: {
         Row: {
           created_at: string;
@@ -5466,6 +5557,305 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      operational_activity: {
+        Row: {
+          activity_code: string;
+          actor_profile_id: string | null;
+          company_id: string;
+          created_at: string;
+          id: string;
+          projection_key: string;
+          safe_metadata: Json;
+          source_event_id: string;
+          source_job_id: string;
+          tenant_id: string;
+        };
+        Insert: {
+          activity_code: string;
+          actor_profile_id?: string | null;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          projection_key: string;
+          safe_metadata?: Json;
+          source_event_id: string;
+          source_job_id: string;
+          tenant_id: string;
+        };
+        Update: {
+          activity_code?: string;
+          actor_profile_id?: string | null;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          projection_key?: string;
+          safe_metadata?: Json;
+          source_event_id?: string;
+          source_job_id?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'operational_activity_actor_profile_id_fkey';
+            columns: ['actor_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'operational_activity_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'operational_activity_job_event_fkey';
+            columns: ['source_job_id', 'source_event_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id', 'event_id'];
+          },
+          {
+            foreignKeyName: 'operational_activity_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      operational_notifications: {
+        Row: {
+          company_id: string;
+          created_at: string;
+          id: string;
+          notification_code: string;
+          projection_key: string;
+          read_at: string | null;
+          recipient_profile_id: string;
+          safe_metadata: Json;
+          severity: string;
+          source_event_id: string;
+          source_job_id: string;
+          tenant_id: string;
+        };
+        Insert: {
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          notification_code: string;
+          projection_key: string;
+          read_at?: string | null;
+          recipient_profile_id: string;
+          safe_metadata?: Json;
+          severity?: string;
+          source_event_id: string;
+          source_job_id: string;
+          tenant_id: string;
+        };
+        Update: {
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          notification_code?: string;
+          projection_key?: string;
+          read_at?: string | null;
+          recipient_profile_id?: string;
+          safe_metadata?: Json;
+          severity?: string;
+          source_event_id?: string;
+          source_job_id?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'operational_notifications_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'operational_notifications_job_event_fkey';
+            columns: ['source_job_id', 'source_event_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id', 'event_id'];
+          },
+          {
+            foreignKeyName: 'operational_notifications_recipient_profile_id_fkey';
+            columns: ['recipient_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'operational_notifications_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      operational_runtime_audit: {
+        Row: {
+          action_code: string;
+          actor_profile_id: string | null;
+          company_id: string;
+          id: number;
+          occurred_at: string;
+          operation_id: string;
+          outcome: string;
+          request_hash: string;
+          resource_id: string;
+          resource_type: string;
+          source_event_id: string | null;
+          source_job_id: string | null;
+          tenant_id: string;
+        };
+        Insert: {
+          action_code: string;
+          actor_profile_id?: string | null;
+          company_id: string;
+          id?: never;
+          occurred_at?: string;
+          operation_id: string;
+          outcome?: string;
+          request_hash: string;
+          resource_id: string;
+          resource_type: string;
+          source_event_id?: string | null;
+          source_job_id?: string | null;
+          tenant_id: string;
+        };
+        Update: {
+          action_code?: string;
+          actor_profile_id?: string | null;
+          company_id?: string;
+          id?: never;
+          occurred_at?: string;
+          operation_id?: string;
+          outcome?: string;
+          request_hash?: string;
+          resource_id?: string;
+          resource_type?: string;
+          source_event_id?: string | null;
+          source_job_id?: string | null;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'operational_runtime_audit_actor_profile_id_fkey';
+            columns: ['actor_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'operational_runtime_audit_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'operational_runtime_audit_job_event_fkey';
+            columns: ['source_job_id', 'source_event_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id', 'event_id'];
+          },
+          {
+            foreignKeyName: 'operational_runtime_audit_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      operational_tasks: {
+        Row: {
+          assigned_profile_id: string | null;
+          company_id: string;
+          created_at: string;
+          due_at: string | null;
+          id: string;
+          priority: string;
+          projection_key: string;
+          safe_metadata: Json;
+          source_event_id: string;
+          source_job_id: string;
+          state: string;
+          task_code: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_profile_id?: string | null;
+          company_id: string;
+          created_at?: string;
+          due_at?: string | null;
+          id?: string;
+          priority?: string;
+          projection_key: string;
+          safe_metadata?: Json;
+          source_event_id: string;
+          source_job_id: string;
+          state?: string;
+          task_code: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_profile_id?: string | null;
+          company_id?: string;
+          created_at?: string;
+          due_at?: string | null;
+          id?: string;
+          priority?: string;
+          projection_key?: string;
+          safe_metadata?: Json;
+          source_event_id?: string;
+          source_job_id?: string;
+          state?: string;
+          task_code?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'operational_tasks_assigned_profile_id_fkey';
+            columns: ['assigned_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'operational_tasks_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'operational_tasks_job_event_fkey';
+            columns: ['source_job_id', 'source_event_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id', 'event_id'];
+          },
+          {
+            foreignKeyName: 'operational_tasks_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       outbound_emails: {
         Row: {
@@ -8474,6 +8864,137 @@ export type Database = {
           },
         ];
       };
+      runtime_delivery_preferences: {
+        Row: {
+          channel: string;
+          company_id: string;
+          enabled: boolean;
+          opted_out: boolean;
+          profile_id: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          channel: string;
+          company_id: string;
+          enabled?: boolean;
+          opted_out?: boolean;
+          profile_id: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          channel?: string;
+          company_id?: string;
+          enabled?: boolean;
+          opted_out?: boolean;
+          profile_id?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'runtime_delivery_preferences_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'runtime_delivery_preferences_profile_id_fkey';
+            columns: ['profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'runtime_delivery_preferences_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      runtime_delivery_receipts: {
+        Row: {
+          attempt_number: number;
+          attempted_at: string;
+          channel: string;
+          company_id: string;
+          created_at: string;
+          delivery_state: string;
+          effect_reference_hash: string | null;
+          event_id: string;
+          id: string;
+          job_id: string;
+          provider_category: string;
+          provider_code: string;
+          reconciled_at: string | null;
+          reconciliation_state: string;
+          retryable: boolean;
+          tenant_id: string;
+        };
+        Insert: {
+          attempt_number: number;
+          attempted_at: string;
+          channel: string;
+          company_id: string;
+          created_at?: string;
+          delivery_state: string;
+          effect_reference_hash?: string | null;
+          event_id: string;
+          id?: string;
+          job_id: string;
+          provider_category: string;
+          provider_code: string;
+          reconciled_at?: string | null;
+          reconciliation_state: string;
+          retryable: boolean;
+          tenant_id: string;
+        };
+        Update: {
+          attempt_number?: number;
+          attempted_at?: string;
+          channel?: string;
+          company_id?: string;
+          created_at?: string;
+          delivery_state?: string;
+          effect_reference_hash?: string | null;
+          event_id?: string;
+          id?: string;
+          job_id?: string;
+          provider_category?: string;
+          provider_code?: string;
+          reconciled_at?: string | null;
+          reconciliation_state?: string;
+          retryable?: boolean;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'runtime_delivery_receipts_company_fkey';
+            columns: ['tenant_id', 'company_id'];
+            isOneToOne: false;
+            referencedRelation: 'company_profiles';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'runtime_delivery_receipts_job_event_fkey';
+            columns: ['job_id', 'event_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_jobs';
+            referencedColumns: ['id', 'event_id'];
+          },
+          {
+            foreignKeyName: 'runtime_delivery_receipts_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       service_cases: {
         Row: {
           assigned_to: string | null;
@@ -10421,6 +10942,26 @@ export type Database = {
         };
         Returns: Json;
       };
+      accept_inbound_webhook: {
+        Args: {
+          p_body: string;
+          p_channel: string;
+          p_destination_key_hash: string;
+          p_from_phone: string;
+          p_occurred_at: string;
+          p_payload_hash: string;
+          p_provider: string;
+          p_provider_event_id: string;
+          p_provider_event_id_hash: string;
+          p_signature_verified: boolean;
+        };
+        Returns: {
+          inbox_id: number;
+          outcome: string;
+          received_at: string;
+          tenant_id: string;
+        }[];
+      };
       accept_public_contact: {
         Args: {
           p_abuse_scope_hash: string;
@@ -10618,6 +11159,15 @@ export type Database = {
       };
       cancel_event_job: {
         Args: { p_error_code: string; p_job_id: string };
+        Returns: boolean;
+      };
+      cancel_leased_event_job: {
+        Args: {
+          p_error_code: string;
+          p_job_id: string;
+          p_lease_token: string;
+          p_worker_id: string;
+        };
         Returns: boolean;
       };
       cancel_registration_visa_person: {
@@ -11100,6 +11650,90 @@ export type Database = {
           p_query?: string;
         };
         Returns: Json;
+      };
+      list_operational_activity: {
+        Args: {
+          p_before_created_at?: string;
+          p_before_id?: string;
+          p_company_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          activity_code: string;
+          actor_profile_id: string | null;
+          company_id: string;
+          created_at: string;
+          id: string;
+          projection_key: string;
+          safe_metadata: Json;
+          source_event_id: string;
+          source_job_id: string;
+          tenant_id: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'operational_activity';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      list_operational_notifications: {
+        Args: {
+          p_before_created_at?: string;
+          p_before_id?: string;
+          p_company_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          company_id: string;
+          created_at: string;
+          id: string;
+          notification_code: string;
+          projection_key: string;
+          read_at: string | null;
+          recipient_profile_id: string;
+          safe_metadata: Json;
+          severity: string;
+          source_event_id: string;
+          source_job_id: string;
+          tenant_id: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'operational_notifications';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      list_operational_tasks: {
+        Args: {
+          p_before_created_at?: string;
+          p_before_id?: string;
+          p_company_id: string;
+          p_limit?: number;
+        };
+        Returns: {
+          assigned_profile_id: string | null;
+          company_id: string;
+          created_at: string;
+          due_at: string | null;
+          id: string;
+          priority: string;
+          projection_key: string;
+          safe_metadata: Json;
+          source_event_id: string;
+          source_job_id: string;
+          state: string;
+          task_code: string;
+          tenant_id: string;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'operational_tasks';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
       list_pro_document_center: {
         Args: {
@@ -12641,6 +13275,10 @@ export type Database = {
         Args: { p_consumer_name?: string };
         Returns: Json;
       };
+      read_operational_runtime_health: {
+        Args: { p_company_id: string };
+        Returns: Json;
+      };
       read_operator_registration_workflow: {
         Args: {
           p_actor_aal: string;
@@ -12827,6 +13465,28 @@ export type Database = {
         };
         Returns: boolean;
       };
+      record_safe_delivery_receipt: {
+        Args: {
+          p_attempt_number: number;
+          p_attempted_at: string;
+          p_channel: string;
+          p_company_id: string;
+          p_delivery_state: string;
+          p_effect_reference_hash: string;
+          p_event_id: string;
+          p_job_id: string;
+          p_lease_token: string;
+          p_operation_id: string;
+          p_provider_category: string;
+          p_provider_code: string;
+          p_reconciled_at?: string;
+          p_reconciliation_state: string;
+          p_retryable: boolean;
+          p_tenant_id: string;
+          p_worker_id: string;
+        };
+        Returns: Json;
+      };
       recover_unlink_registration_stage_document: {
         Args: {
           p_actor_aal: string;
@@ -12997,6 +13657,19 @@ export type Database = {
         };
         Returns: Json;
       };
+      resolve_runtime_delivery_policy: {
+        Args: {
+          p_channel: string;
+          p_company_id: string;
+          p_event_id: string;
+          p_job_id: string;
+          p_profile_id: string;
+          p_template_key: string;
+          p_tenant_id: string;
+          p_version: number;
+        };
+        Returns: Json;
+      };
       review_document_version: {
         Args: {
           p_actor_id: string;
@@ -13037,6 +13710,11 @@ export type Database = {
         Args: { p_session_id: string; p_user_id: string };
         Returns: boolean;
       };
+      runtime_actor_company_access: {
+        Args: { p_allow_member?: boolean; p_company_id: string };
+        Returns: string;
+      };
+      runtime_request_hash: { Args: { p_intent: Json }; Returns: string };
       save_company_activities_section: {
         Args: {
           p_actor_id: string;
@@ -13166,6 +13844,15 @@ export type Database = {
           p_held: boolean;
           p_operation_id: string;
           p_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      set_operational_notification_read_state: {
+        Args: {
+          p_company_id: string;
+          p_notification_id: string;
+          p_operation_id: string;
+          p_read: boolean;
         };
         Returns: Json;
       };
@@ -13369,6 +14056,26 @@ export type Database = {
           p_tenant_id: string;
         };
         Returns: string;
+      };
+      write_operational_projection: {
+        Args: {
+          p_code: string;
+          p_company_id: string;
+          p_due_at?: string;
+          p_event_id: string;
+          p_job_id: string;
+          p_lease_token: string;
+          p_operation_id: string;
+          p_priority?: string;
+          p_profile_id?: string;
+          p_projection_key: string;
+          p_projection_type: string;
+          p_safe_metadata?: Json;
+          p_state?: string;
+          p_tenant_id: string;
+          p_worker_id: string;
+        };
+        Returns: Json;
       };
       write_pro_lifecycle_audit: {
         Args: {
