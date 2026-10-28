@@ -6,6 +6,10 @@ const migration = readFileSync(
   'supabase/migrations/20261027060000_0118_inbound_webhook_atomic_lifecycle.sql',
   'utf8',
 );
+const qualificationMigration = readFileSync(
+  'supabase/migrations/20261027070000_0119_inbound_webhook_returning_qualification.sql',
+  'utf8',
+);
 const sqlContract = readFileSync('supabase/tests/inbound_webhook_atomic_lifecycle.sql', 'utf8');
 
 test('atomic inbound RPC owns receipt, inbox, and consent writes in one transaction', () => {
@@ -31,4 +35,13 @@ test('SQL contract proves failed inbox writes roll back receipts and remain retr
   assert.match(sqlContract, /DUPLICATE_NOT_CLASSIFIED/);
   assert.match(sqlContract, /UNKNOWN_NOT_CLASSIFIED/);
   assert.match(sqlContract, /STALE_NOT_CLASSIFIED/);
+});
+
+test('forward fix qualifies inbox RETURNING columns against PL/pgSQL output names', () => {
+  assert.match(qualificationMigration, /insert into public\.sms_inbox as inbox/i);
+  assert.match(qualificationMigration, /insert into public\.whatsapp_inbox as inbox/i);
+  assert.equal(
+    (qualificationMigration.match(/returning inbox\.id, inbox\.received_at/g) ?? []).length,
+    2,
+  );
 });
