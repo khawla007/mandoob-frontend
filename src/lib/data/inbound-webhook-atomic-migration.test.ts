@@ -10,6 +10,10 @@ const qualificationMigration = readFileSync(
   'supabase/migrations/20261027070000_0119_inbound_webhook_returning_qualification.sql',
   'utf8',
 );
+const coalesceMigration = readFileSync(
+  'supabase/migrations/20261027080000_0120_inbound_webhook_coalesce_fix.sql',
+  'utf8',
+);
 const sqlContract = readFileSync('supabase/tests/inbound_webhook_atomic_lifecycle.sql', 'utf8');
 
 test('atomic inbound RPC owns receipt, inbox, and consent writes in one transaction', () => {
@@ -44,4 +48,9 @@ test('forward fix qualifies inbox RETURNING columns against PL/pgSQL output name
     (qualificationMigration.match(/returning inbox\.id, inbox\.received_at/g) ?? []).length,
     2,
   );
+});
+
+test('forward fix leaves COALESCE unqualified as SQL syntax', () => {
+  assert.match(coalesceMigration, /btrim\(coalesce\(p_body, ''\)\)/);
+  assert.doesNotMatch(coalesceMigration, /pg_catalog\.coalesce/i);
 });
