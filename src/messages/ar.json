@@ -4853,6 +4853,15 @@
         "noLicense": "لم يتم تقديم الرخصة",
         "unassigned": "غير معيّن"
       },
+      "operations": {
+        "label": "العمليات",
+        "companyLabel": "مساحات العمل التشغيلية لشركة {company}",
+        "title": "عمليات الشركة",
+        "description": "افتح السجلات المقيدة بالشركة دون توسيع النطاق إلى تجميعات المنصة.",
+        "tasks": "المهام",
+        "notifications": "الإشعارات",
+        "communications": "الاتصالات"
+      },
       "status": {
         "all": "الكل",
         "onboarding": "قيد الإعداد",

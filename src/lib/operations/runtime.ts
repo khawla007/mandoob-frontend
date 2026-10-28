@@ -104,7 +104,13 @@ export type OperationalRuntimeItem =
 export type OperationalRuntimeModel =
   | { state: 'scope-required'; channelState: 'disabled'; items: [] }
   | { state: 'unavailable'; channelState: 'disabled'; items: [] }
-  | { state: 'error'; code: 'unavailable'; channelState: 'disabled'; items: [] }
+  | {
+      state: 'error';
+      code: 'unavailable';
+      channelState: 'disabled';
+      items: [];
+      retryHref: string;
+    }
   | {
       state: 'empty' | 'data';
       channelState: 'disabled';
@@ -204,22 +210,26 @@ function cursor(search: OperationalSearch): { createdAt: string; id: string } | 
     : null;
 }
 
-function nextHref(
+function operationalHref(
   baseHref: string,
   companyId: string | undefined,
-  item: OperationalRuntimeItem,
+  before: { createdAt: string; id: string } | null,
 ): string {
   const query = new URLSearchParams();
   if (companyId) query.set('companyId', companyId);
-  query.set('before', item.createdAt);
-  query.set('beforeId', item.id);
-  return `${baseHref}?${query.toString()}`;
+  if (before) {
+    query.set('before', before.createdAt);
+    query.set('beforeId', before.id);
+  }
+  const suffix = query.toString();
+  return suffix ? `${baseHref}?${suffix}` : baseHref;
 }
 
 export async function loadOperationalWorkspace(
   input: LoadOperationalRuntimeInput,
   dependencies: OperationalDependencies = {},
 ): Promise<OperationalRuntimeModel> {
+  let retryHref = input.baseHref;
   try {
     const scope = await resolveOperationalScope(input, dependencies);
     if (!scope) return { state: 'scope-required', channelState: 'disabled', items: [] };
@@ -229,6 +239,8 @@ export async function loadOperationalWorkspace(
 
     const search = input.search ?? {};
     const before = cursor(search);
+    const scopedCompanyId = input.role === 'admin' ? scope.companyId : undefined;
+    retryHref = operationalHref(input.baseHref, scopedCompanyId, before);
     const name = {
       notifications: 'list_operational_notifications',
       tasks: 'list_operational_tasks',
@@ -285,7 +297,7 @@ export async function loadOperationalWorkspace(
       items,
       nextHref:
         data.length > OPERATIONAL_PAGE_SIZE && last
-          ? nextHref(input.baseHref, input.role === 'admin' ? scope.companyId : undefined, last)
+          ? operationalHref(input.baseHref, scopedCompanyId, last)
           : null,
     };
   } catch (error) {
@@ -294,6 +306,7 @@ export async function loadOperationalWorkspace(
       ...sanitizeOperationalError(error),
       channelState: 'disabled',
       items: [],
+      retryHref,
     };
   }
 }
@@ -314,6 +327,7 @@ export async function setOperationalNotificationReadState(
     const { error } = await (
       await rpcClient(dependencies)
     ).rpc('set_operational_notification_read_state', {
+      p_company_id: scope.companyId,
       p_notification_id: notificationId,
       p_read: input.read,
       p_operation_id: operationId,

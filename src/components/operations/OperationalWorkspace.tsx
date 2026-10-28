@@ -162,7 +162,7 @@ export async function OperationalWorkspace({
           variant="panel"
           title={t('runtime.error.title')}
           safeDescription={t('runtime.error.description')}
-          safeHref={baseHref}
+          safeHref={model.retryHref}
           safeHrefLabel={t('runtime.error.retry')}
         />
       ) : model.state === 'empty' ? (

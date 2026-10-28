@@ -4853,6 +4853,15 @@
         "noLicense": "License not provided",
         "unassigned": "Unassigned"
       },
+      "operations": {
+        "label": "Operations",
+        "companyLabel": "Operational workspaces for {company}",
+        "title": "Company operations",
+        "description": "Open Company-scoped records without widening to platform aggregates.",
+        "tasks": "Tasks",
+        "notifications": "Notifications",
+        "communications": "Communications"
+      },
       "status": {
         "all": "All",
         "onboarding": "Onboarding",

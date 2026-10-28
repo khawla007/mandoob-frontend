@@ -84,6 +84,7 @@ test('runtime reads only through stable company-scoped P3.10 cursor RPCs', () =>
 test('notification mutation reauthorizes and uses the recipient-safe replay RPC', () => {
   assert.match(runtime, /set_operational_notification_read_state/u);
   assert.match(runtime, /p_notification_id/u);
+  assert.match(runtime, /p_company_id/u);
   assert.match(runtime, /p_read/u);
   assert.match(runtime, /p_operation_id/u);
   assert.match(runtime, /randomUUID/u);
@@ -223,6 +224,7 @@ test('loader fails closed before the RPC when the resolved Company is outside th
     code: 'unavailable',
     channelState: 'disabled',
     items: [],
+    retryHref: '/t/firm-one/notifications',
   });
   assert.equal(rpcCalled, false);
 });
@@ -244,6 +246,157 @@ test('admin reads require an explicit valid Company scope and never imply a plat
 
   assert.deepEqual(model, { state: 'scope-required', channelState: 'disabled', items: [] });
   assert.equal(rpcCalled, false);
+});
+
+test('admin reads use the selected valid Company and preserve its canonical retry scope', async () => {
+  const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+  const model = await loadOperationalWorkspace(
+    {
+      role: 'admin',
+      module: 'tasks',
+      requestedCompanyId: COMPANY_ID,
+      baseHref: '/admin/tasks',
+      search: {
+        companyId: COMPANY_ID,
+        before: '2026-10-28T09:00:00.000Z',
+        beforeId: rowId(9),
+      },
+    },
+    {
+      authorizeAdmin: async () => ({ ...proSession(), role: 'admin', tenantId: null }),
+      client: {
+        async rpc(name, args) {
+          calls.push({ name, args });
+          return { data: null, error: { message: 'private failure' } };
+        },
+      },
+    },
+  );
+
+  assert.deepEqual(model, {
+    state: 'error',
+    code: 'unavailable',
+    channelState: 'disabled',
+    items: [],
+    retryHref: `/admin/tasks?companyId=${COMPANY_ID}&before=2026-10-28T09%3A00%3A00.000Z&beforeId=${rowId(9)}`,
+  });
+  assert.equal(calls[0].args.p_company_id, COMPANY_ID);
+});
+
+test('customer and employee loaders use only their authoritative linked Company', async () => {
+  const tenant = {
+    id: TENANT_ID,
+    slug: 'firm-one',
+    name: 'Firm One',
+    plan: 'professional',
+    status: 'active',
+  };
+  const customerSession = {
+    ...proSession(),
+    role: 'customer' as const,
+    tenantId: TENANT_ID,
+  };
+  const employeeSession = {
+    ...proSession(),
+    role: 'employee' as const,
+    tenantId: TENANT_ID,
+  };
+  const scopedCompanyIds: unknown[] = [];
+  const client = {
+    async rpc(_name: string, args: Record<string, unknown>) {
+      scopedCompanyIds.push(args.p_company_id);
+      return { data: [], error: null };
+    },
+  };
+
+  const customer = await loadOperationalWorkspace(
+    {
+      role: 'customer',
+      module: 'notifications',
+      tenantSlug: tenant.slug,
+      baseHref: `/t/${tenant.slug}/portal/notifications`,
+    },
+    {
+      authorizeCustomer: async () => ({
+        kind: 'authorized',
+        tenant,
+        session: customerSession,
+        company: {
+          id: COMPANY_ID,
+          tenantId: TENANT_ID,
+          companyName: 'Company',
+          status: 'active',
+          onboardingStatus: 'active',
+        },
+      }),
+      client,
+    },
+  );
+  const employee = await loadOperationalWorkspace(
+    {
+      role: 'employee',
+      module: 'activity',
+      tenantSlug: tenant.slug,
+      baseHref: `/t/${tenant.slug}/employee/activity`,
+    },
+    {
+      authorizeEmployee: async () => ({
+        tenant,
+        session: employeeSession,
+        employee: {
+          id: rowId(50),
+          companyId: COMPANY_ID,
+          name: null,
+          nationality: null,
+          passportMasked: null,
+          visaMasked: null,
+          visaExpiry: null,
+          emiratesIdMasked: null,
+          eidExpiry: null,
+        },
+        company: { kind: 'active', name: 'Company' },
+      }),
+      client,
+    },
+  );
+
+  assert.equal(customer.state, 'empty');
+  assert.equal(employee.state, 'empty');
+  assert.deepEqual(scopedCompanyIds, [COMPANY_ID, COMPANY_ID]);
+});
+
+test('invalid or repeated cursors reset both RPC cursor fields and retry to canonical scope', async () => {
+  for (const search of [
+    { before: 'not-a-time', beforeId: rowId(9) },
+    { before: ['2026-10-28T09:00:00.000Z'], beforeId: rowId(9) },
+    { before: '2026-10-28T09:00:00.000Z', beforeId: [rowId(9), rowId(10)] },
+  ]) {
+    let args: Record<string, unknown> | undefined;
+    const model = await loadOperationalWorkspace(
+      {
+        role: 'admin',
+        module: 'tasks',
+        requestedCompanyId: COMPANY_ID,
+        baseHref: '/admin/tasks',
+        search: { companyId: COMPANY_ID, ...search },
+      },
+      {
+        authorizeAdmin: async () => ({ ...proSession(), role: 'admin', tenantId: null }),
+        client: {
+          async rpc(_name, rpcArgs) {
+            args = rpcArgs;
+            return { data: null, error: { message: 'private failure' } };
+          },
+        },
+      },
+    );
+    assert.equal(args?.p_before_created_at, null);
+    assert.equal(args?.p_before_id, null);
+    assert.equal(
+      model.state === 'error' ? model.retryHref : null,
+      `/admin/tasks?companyId=${COMPANY_ID}`,
+    );
+  }
 });
 
 test('communications authorizes its role but does not call a provider or records RPC', async () => {
@@ -302,9 +455,38 @@ test('read-state mutation reauthorizes and sends only recipient-safe RPC inputs'
   assert.deepEqual(result, { ok: true });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].name, 'set_operational_notification_read_state');
+  assert.equal(calls[0].args.p_company_id, COMPANY_ID);
   assert.equal(calls[0].args.p_notification_id, rowId(42));
   assert.equal(calls[0].args.p_read, true);
   assert.equal(calls[0].args.p_operation_id, operationId);
+});
+
+test('tampered notification mutation fails closed when the resource belongs to another Company', async () => {
+  const otherCompanyId = rowId(99);
+  let rpcArgs: Record<string, unknown> | undefined;
+  const result = await setOperationalNotificationReadState(
+    {
+      role: 'admin',
+      requestedCompanyId: COMPANY_ID,
+      notificationId: rowId(42),
+      read: true,
+      operationId: rowId(43),
+    },
+    {
+      authorizeAdmin: async () => ({ ...proSession(), role: 'admin', tenantId: null }),
+      client: {
+        async rpc(_name, args) {
+          rpcArgs = args;
+          return args.p_company_id === otherCompanyId
+            ? { data: { state: 'read' }, error: null }
+            : { data: null, error: { message: 'RUNTIME_ACCESS_DENIED' } };
+        },
+      },
+    },
+  );
+
+  assert.equal(rpcArgs?.p_company_id, COMPANY_ID);
+  assert.deepEqual(result, { ok: false, code: 'unavailable' });
 });
 
 test('RPC failures and invalid response rows expose only the finite sanitized error', async () => {
@@ -330,6 +512,7 @@ test('RPC failures and invalid response rows expose only the finite sanitized er
       code: 'unavailable',
       channelState: 'disabled',
       items: [],
+      retryHref: '/t/firm-one/activity',
     });
     assert.equal(JSON.stringify(model).includes('private database detail'), false);
     assert.equal(JSON.stringify(model).includes('secret'), false);
