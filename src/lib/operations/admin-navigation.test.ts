@@ -9,7 +9,7 @@ test('admin Company operational links preserve one validated Company scope', asy
   const { adminCompanyOperationalHref } = await import('./admin-navigation');
   const companyId = '00000000-0000-4000-8000-000000000003';
   assert.deepEqual(
-    ['tasks', 'notifications', 'communications'].map((module) =>
+    (['tasks', 'notifications', 'communications'] as const).map((module) =>
       adminCompanyOperationalHref(companyId, module),
     ),
     [
