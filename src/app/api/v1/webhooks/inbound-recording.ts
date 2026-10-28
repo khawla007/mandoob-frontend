@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
+import type { Database } from '@/lib/db/database.types';
 import { hashDestinationKey, isWebhookTimestampWithinTolerance } from '@/lib/events/contracts';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
@@ -34,6 +36,37 @@ export class InboundWebhookInfrastructureError extends Error {
     this.name = 'InboundWebhookInfrastructureError';
   }
 }
+
+type GeneratedInboundRpcRow =
+  Database['public']['Functions']['accept_inbound_webhook']['Returns'][number];
+type InboundNoOpOutcome = 'unknown' | 'duplicate' | 'stale' | 'rejected';
+type InboundRpcRow =
+  | (Omit<GeneratedInboundRpcRow, 'outcome'> & { outcome: 'accepted' })
+  | (Omit<GeneratedInboundRpcRow, 'outcome' | 'tenant_id' | 'inbox_id' | 'received_at'> & {
+      outcome: InboundNoOpOutcome;
+      tenant_id: null;
+      inbox_id: null;
+      received_at: null;
+    });
+
+const inboundRpcRowSchema: z.ZodType<InboundRpcRow> = z.discriminatedUnion('outcome', [
+  z
+    .object({
+      outcome: z.literal('accepted'),
+      tenant_id: z.string().uuid(),
+      inbox_id: z.number().int().positive(),
+      received_at: z.string().datetime({ offset: true }),
+    })
+    .strict(),
+  z
+    .object({
+      outcome: z.enum(['unknown', 'duplicate', 'stale', 'rejected']),
+      tenant_id: z.null(),
+      inbox_id: z.null(),
+      received_at: z.null(),
+    })
+    .strict(),
+]);
 
 function hashOpaque(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -86,19 +119,12 @@ async function acceptInbound(
     throw new InboundWebhookInfrastructureError();
   }
   const { data, error } = result;
-  if (error || !Array.isArray(data) || data.length !== 1) {
+  const parsed = inboundRpcRowSchema.array().safeParse(data);
+  if (error || !parsed.success || parsed.data.length !== 1) {
     throw new InboundWebhookInfrastructureError();
   }
-  const row = data[0];
-  if (['unknown', 'duplicate', 'stale', 'rejected'].includes(String(row.outcome))) return null;
-  if (
-    row.outcome !== 'accepted' ||
-    typeof row.tenant_id !== 'string' ||
-    typeof row.inbox_id !== 'number' ||
-    typeof row.received_at !== 'string'
-  ) {
-    throw new InboundWebhookInfrastructureError();
-  }
+  const row = parsed.data[0];
+  if (row.outcome !== 'accepted') return null;
   return {
     tenantId: row.tenant_id,
     inboxId: row.inbox_id,

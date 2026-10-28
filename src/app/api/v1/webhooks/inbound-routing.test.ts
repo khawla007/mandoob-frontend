@@ -67,7 +67,10 @@ function createWebhookSupabaseStub(
       rpcArgs.push(args);
       const reservation = reservations.shift() ?? null;
       if (!reservation) {
-        return { data: [{ outcome: 'unknown' }], error: null };
+        return {
+          data: [{ outcome: 'unknown', tenant_id: null, inbox_id: null, received_at: null }],
+          error: null,
+        };
       }
       const table = args.p_channel === 'whatsapp' ? 'whatsapp_inbox' : 'sms_inbox';
       const inbox = {
@@ -649,6 +652,43 @@ test('atomic inbound RPC infrastructure errors are retryable and never collapse 
   );
   await recordUnifonicInbound(supabase as never, input);
   assert.equal(attempts, 2);
+});
+
+test('atomic RPC accepts nullable ownership for every known no-op outcome only', async () => {
+  const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
+    await import('./inbound-recording');
+  const input = {
+    destinationKey: '971500001111',
+    fromPhone: '+971501234567',
+    body: 'help',
+    providerEventId: 'known-no-op',
+    occurredAt: nowIso(),
+    rawPayload: '{"signed":true}',
+  };
+
+  for (const outcome of ['unknown', 'duplicate', 'stale', 'rejected']) {
+    const supabase = {
+      rpc: async () => ({
+        data: [{ outcome, tenant_id: null, inbox_id: null, received_at: null }],
+        error: null,
+      }),
+      from: () => {
+        throw new Error('no-op attempted a side effect');
+      },
+    };
+    await recordUnifonicInbound(supabase as never, input);
+  }
+
+  const malformed = {
+    rpc: async () => ({ data: [{ outcome: 'unknown' }], error: null }),
+    from: () => {
+      throw new Error('malformed row attempted a side effect');
+    },
+  };
+  await assert.rejects(
+    recordUnifonicInbound(malformed as never, input),
+    InboundWebhookInfrastructureError,
+  );
 });
 
 test('WhatsApp mid-batch infrastructure failure blocks statuses and retry continues safely', async () => {
