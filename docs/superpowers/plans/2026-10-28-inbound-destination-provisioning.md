@@ -47,3 +47,17 @@
 - [ ] Add checked commands that do not expose plaintext destinations or secret values in logs.
 - [ ] Run focused inbound/signature/SMS/WhatsApp tests, TypeScript, scoped ESLint, Prettier check, SQL/static migration checks, and `git diff --check`.
 - [ ] Self-review least privilege, error sanitization, default-off behavior, audit atomicity, and file scope; commit Task5 files only.
+
+### Task 4: Stable replay after later destination mutation
+
+**Files:**
+
+- Create: `supabase/migrations/20261027100000_0122_inbound_destination_stable_replay.sql`
+- Create: `src/lib/data/inbound-destination-provisioning-replay-migration.test.ts`
+- Modify: `docs/ops/inbound-destination-provisioning.md`
+
+- [x] Add a forward-only immutable replay receipt with no direct role privileges.
+- [x] Fingerprint the exact request and atomically store its original destination ID and enabled result.
+- [x] Return the stored result for an exact replay without consulting mutable destination state.
+- [x] Reject operation reuse with changed request input.
+- [ ] Verify grants, active ownership, readiness, rollback, concurrency, and A-H1/B-H2/retry-A behavior in the disposable SQL fixture.

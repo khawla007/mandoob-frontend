@@ -5,7 +5,8 @@ provider, call a provider API, or enable a channel automatically.
 
 ## Deploy order
 
-- [ ] Apply migration `20261027090000_0121_inbound_destination_provisioning.sql` in an approved
+- [ ] Apply migrations `20261027090000_0121_inbound_destination_provisioning.sql` and
+      `20261027100000_0122_inbound_destination_stable_replay.sql`, in that order, in an approved
       non-production environment and run the SQL integration fixture.
 - [ ] Regenerate and review `src/lib/db/database.types.ts` from that migrated schema. Do not hand
       edit the generated RPC contract.
@@ -53,12 +54,18 @@ select event_name, tenant_id, action, target_opaque_id, outcome, reason_code,
 from public.platform_audit_events
 where event_name = 'integration.inbound_destination_provisioned'
   and operation_id = :'operation_id'::uuid;
+
+-- Database-owner verification only; the application service role has no table access.
+select operation_id, destination_id, enabled, created_at
+from public.inbound_destination_provisioning_receipts
+where operation_id = :'operation_id'::uuid;
 ```
 
 Expected before readiness approval: exactly one destination row with the intended active owner and
 `enabled = false`, plus exactly one successful audit row whose `target_opaque_id` is that destination
-UUID. Replaying the same request and operation UUID must return the same destination with
-`replayed = true` and must not add an audit row.
+UUID, plus exactly one immutable replay receipt. Replaying the same request and operation UUID must
+return the original destination ID and enabled result with `replayed = true`, even after a later
+valid operation re-keys that destination. Replay must not add or mutate a receipt or audit row.
 
 ## Failure handling
 
