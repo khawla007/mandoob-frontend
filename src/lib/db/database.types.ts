@@ -12,6 +12,7 @@ export type Database = {
           reason: string | null;
           target_profile_id: string;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor_id: string;
@@ -41,7 +42,7 @@ export type Database = {
       auth_events: {
         Row: {
           actor_user_id: string | null;
-          details: Json;
+          details: NonNullable<Json>;
           id: number;
           ip: unknown;
           kind: Database['public']['Enums']['auth_event_kind'];
@@ -49,9 +50,10 @@ export type Database = {
           tenant_id: string | null;
           user_agent: string | null;
         };
+        ComputedFields: never;
         Insert: {
           actor_user_id?: string | null;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: number;
           ip?: unknown;
           kind: Database['public']['Enums']['auth_event_kind'];
@@ -61,7 +63,7 @@ export type Database = {
         };
         Update: {
           actor_user_id?: string | null;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: number;
           ip?: unknown;
           kind?: Database['public']['Enums']['auth_event_kind'];
@@ -78,6 +80,7 @@ export type Database = {
           locked_until: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           count?: number;
           key: string;
@@ -102,10 +105,11 @@ export type Database = {
           id: string;
           operation_id: string;
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           submission_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           committed_at?: string;
@@ -115,7 +119,7 @@ export type Database = {
           id?: string;
           operation_id: string;
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           submission_id: string;
           tenant_id: string;
         };
@@ -128,7 +132,7 @@ export type Database = {
           id?: string;
           operation_id?: string;
           payload_hash?: string;
-          sanitized_result?: Json;
+          sanitized_result?: NonNullable<Json>;
           submission_id?: string;
           tenant_id?: string;
         };
@@ -156,6 +160,7 @@ export type Database = {
           reviewed_at: string;
           reviewed_by: string;
         };
+        ComputedFields: never;
         Insert: {
           active?: boolean;
           policy_key: string;
@@ -202,6 +207,7 @@ export type Database = {
           version: number;
           version_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           company_id: string;
@@ -325,6 +331,7 @@ export type Database = {
           uploaded_by: string | null;
           width: number | null;
         };
+        ComputedFields: never;
         Insert: {
           alt_text?: string | null;
           caption?: string | null;
@@ -378,6 +385,7 @@ export type Database = {
           post_id: string;
           sort_order: number;
         };
+        ComputedFields: never;
         Insert: {
           alt_text?: string | null;
           caption?: string | null;
@@ -414,7 +422,7 @@ export type Database = {
       blog_post_revisions: {
         Row: {
           content_html: string;
-          content_json: Json;
+          content_json: NonNullable<Json>;
           created_at: string;
           created_by: string | null;
           excerpt: string | null;
@@ -424,9 +432,10 @@ export type Database = {
           status: string;
           title: string;
         };
+        ComputedFields: never;
         Insert: {
           content_html?: string;
-          content_json?: Json;
+          content_json?: NonNullable<Json>;
           created_at?: string;
           created_by?: string | null;
           excerpt?: string | null;
@@ -438,7 +447,7 @@ export type Database = {
         };
         Update: {
           content_html?: string;
-          content_json?: Json;
+          content_json?: NonNullable<Json>;
           created_at?: string;
           created_by?: string | null;
           excerpt?: string | null;
@@ -471,6 +480,7 @@ export type Database = {
           post_id: string;
           term_id: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           post_id: string;
@@ -503,7 +513,7 @@ export type Database = {
           author_id: string | null;
           canonical_url: string | null;
           content_html: string;
-          content_json: Json;
+          content_json: NonNullable<Json>;
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
@@ -522,11 +532,12 @@ export type Database = {
           updated_at: string;
           updated_by: string | null;
         };
+        ComputedFields: never;
         Insert: {
           author_id?: string | null;
           canonical_url?: string | null;
           content_html?: string;
-          content_json?: Json;
+          content_json?: NonNullable<Json>;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
@@ -549,7 +560,7 @@ export type Database = {
           author_id?: string | null;
           canonical_url?: string | null;
           content_html?: string;
-          content_json?: Json;
+          content_json?: NonNullable<Json>;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
@@ -613,6 +624,7 @@ export type Database = {
           sort_order: number;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           created_by?: string | null;
@@ -668,6 +680,7 @@ export type Database = {
           tenant_id: string;
           worker_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           accessed_at?: string;
           actor_id?: string | null;
@@ -741,6 +754,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           artifact_bytes?: number | null;
           artifact_deleted_at?: string | null;
@@ -862,6 +876,7 @@ export type Database = {
           outcome: string;
           row_number: number;
         };
+        ComputedFields: never;
         Insert: {
           batch_no: number;
           created_at?: string;
@@ -910,6 +925,7 @@ export type Database = {
           tenant_id: string;
           token_expires_at: string | null;
         };
+        ComputedFields: never;
         Insert: {
           disconnected_at?: string | null;
           encrypted_access_token?: string | null;
@@ -964,6 +980,7 @@ export type Database = {
           sort_order: number;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           availability?: string;
           catalog_version_id: string;
@@ -1013,6 +1030,7 @@ export type Database = {
           summary: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           availability?: string;
           catalog_version_id: string;
@@ -1064,6 +1082,7 @@ export type Database = {
           sort_order: number;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           activity_id: string;
           authority_id: string;
@@ -1131,6 +1150,7 @@ export type Database = {
           sort_order: number;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           availability?: string;
           catalog_version_id: string;
@@ -1180,6 +1200,7 @@ export type Database = {
           sort_order: number;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor?: number | null;
           catalog_version_id: string;
@@ -1243,6 +1264,7 @@ export type Database = {
           summary: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           authority_id: string;
           availability?: string;
@@ -1305,6 +1327,7 @@ export type Database = {
           source_url: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           approved_at?: string | null;
           approved_by?: string | null;
@@ -1354,6 +1377,7 @@ export type Database = {
           version_key: string;
           version_number: number;
         };
+        ComputedFields: never;
         Insert: {
           approved_at?: string | null;
           approved_by?: string | null;
@@ -1422,12 +1446,12 @@ export type Database = {
           background_image_media_id: string | null;
           canonical_url: string | null;
           content_html: string;
-          content_json: Json;
+          content_json: NonNullable<Json>;
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
           excerpt: string | null;
-          hero_settings: Json;
+          hero_settings: NonNullable<Json>;
           id: string;
           meta_description: string | null;
           meta_title: string | null;
@@ -1435,7 +1459,7 @@ export type Database = {
           published_at: string | null;
           row_version: number;
           scheduled_for: string | null;
-          schema_markup: Json;
+          schema_markup: NonNullable<Json>;
           script_body_end: string | null;
           script_body_start: string | null;
           script_head: string | null;
@@ -1445,16 +1469,17 @@ export type Database = {
           updated_at: string;
           updated_by: string | null;
         };
+        ComputedFields: never;
         Insert: {
           background_image_media_id?: string | null;
           canonical_url?: string | null;
           content_html?: string;
-          content_json?: Json;
+          content_json?: NonNullable<Json>;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
           excerpt?: string | null;
-          hero_settings?: Json;
+          hero_settings?: NonNullable<Json>;
           id?: string;
           meta_description?: string | null;
           meta_title?: string | null;
@@ -1462,7 +1487,7 @@ export type Database = {
           published_at?: string | null;
           row_version?: number;
           scheduled_for?: string | null;
-          schema_markup?: Json;
+          schema_markup?: NonNullable<Json>;
           script_body_end?: string | null;
           script_body_start?: string | null;
           script_head?: string | null;
@@ -1476,12 +1501,12 @@ export type Database = {
           background_image_media_id?: string | null;
           canonical_url?: string | null;
           content_html?: string;
-          content_json?: Json;
+          content_json?: NonNullable<Json>;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
           excerpt?: string | null;
-          hero_settings?: Json;
+          hero_settings?: NonNullable<Json>;
           id?: string;
           meta_description?: string | null;
           meta_title?: string | null;
@@ -1489,7 +1514,7 @@ export type Database = {
           published_at?: string | null;
           row_version?: number;
           scheduled_for?: string | null;
-          schema_markup?: Json;
+          schema_markup?: NonNullable<Json>;
           script_body_end?: string | null;
           script_body_start?: string | null;
           script_head?: string | null;
@@ -1541,6 +1566,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           account_holder_name: string;
           account_number_encrypted?: string | null;
@@ -1612,6 +1638,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           body_template?: string | null;
           channel: string;
@@ -1678,6 +1705,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           address_line_1?: string | null;
           address_line_2?: string | null;
@@ -1744,9 +1772,10 @@ export type Database = {
           operation_id: string;
           operation_kind: string;
           payload_hash: string;
-          result: Json;
+          result: NonNullable<Json>;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           committed_version: number;
           company_id: string;
@@ -1754,7 +1783,7 @@ export type Database = {
           operation_id: string;
           operation_kind: string;
           payload_hash: string;
-          result: Json;
+          result: NonNullable<Json>;
           tenant_id: string;
         };
         Update: {
@@ -1764,7 +1793,7 @@ export type Database = {
           operation_id?: string;
           operation_kind?: string;
           payload_hash?: string;
-          result?: Json;
+          result?: NonNullable<Json>;
           tenant_id?: string;
         };
         Relationships: [
@@ -1802,6 +1831,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           completed_at?: string | null;
@@ -1876,6 +1906,7 @@ export type Database = {
           trade_license_no: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           activated_at?: string | null;
           activated_by_profile_id?: string | null;
@@ -1950,6 +1981,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           activity_code: string;
           activity_name: string;
@@ -2012,6 +2044,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           completed_at?: string | null;
@@ -2067,21 +2100,22 @@ export type Database = {
           created_at: string;
           operation_id: string;
           payload_digest: string;
-          result: Json;
+          result: NonNullable<Json>;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           operation_id: string;
           payload_digest: string;
-          result: Json;
+          result: NonNullable<Json>;
           tenant_id: string;
         };
         Update: {
           created_at?: string;
           operation_id?: string;
           payload_digest?: string;
-          result?: Json;
+          result?: NonNullable<Json>;
           tenant_id?: string;
         };
         Relationships: [
@@ -2100,6 +2134,7 @@ export type Database = {
           tenant_id: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           section: string;
           tenant_id: string;
@@ -2141,6 +2176,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           country_of_incorporation?: string | null;
@@ -2217,6 +2253,7 @@ export type Database = {
           source: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           channel: string;
           created_at?: string;
@@ -2249,11 +2286,12 @@ export type Database = {
           entity_id: string | null;
           entity_type: string;
           id: string;
-          metadata: Json;
+          metadata: NonNullable<Json>;
           next_version: number | null;
           operation_id: string;
           previous_version: number | null;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor_id: string;
@@ -2261,7 +2299,7 @@ export type Database = {
           entity_id?: string | null;
           entity_type: string;
           id?: string;
-          metadata?: Json;
+          metadata?: NonNullable<Json>;
           next_version?: number | null;
           operation_id: string;
           previous_version?: number | null;
@@ -2273,7 +2311,7 @@ export type Database = {
           entity_id?: string | null;
           entity_type?: string;
           id?: string;
-          metadata?: Json;
+          metadata?: NonNullable<Json>;
           next_version?: number | null;
           operation_id?: string;
           previous_version?: number | null;
@@ -2298,8 +2336,9 @@ export type Database = {
           operation_id: string;
           operation_kind: string;
           request_hash: string;
-          result: Json;
+          result: NonNullable<Json>;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           created_at?: string;
@@ -2309,7 +2348,7 @@ export type Database = {
           operation_id: string;
           operation_kind: string;
           request_hash: string;
-          result?: Json;
+          result?: NonNullable<Json>;
         };
         Update: {
           actor_id?: string;
@@ -2320,7 +2359,7 @@ export type Database = {
           operation_id?: string;
           operation_kind?: string;
           request_hash?: string;
-          result?: Json;
+          result?: NonNullable<Json>;
         };
         Relationships: [
           {
@@ -2362,6 +2401,7 @@ export type Database = {
           valid_from: string;
           valid_to: string | null;
         };
+        ComputedFields: never;
         Insert: {
           active?: boolean;
           activity_key?: string | null;
@@ -2453,6 +2493,7 @@ export type Database = {
           profile_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           linked_company_id?: string | null;
@@ -2499,11 +2540,12 @@ export type Database = {
           outcome: string;
           reason_code: string;
           resource_type: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           source_class: string;
           target_opaque_id: string | null;
           tenant_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           actor_id?: string | null;
           company_id?: string | null;
@@ -2516,7 +2558,7 @@ export type Database = {
           outcome: string;
           reason_code: string;
           resource_type: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_class: string;
           target_opaque_id?: string | null;
           tenant_id?: string | null;
@@ -2533,7 +2575,7 @@ export type Database = {
           outcome?: string;
           reason_code?: string;
           resource_type?: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_class?: string;
           target_opaque_id?: string | null;
           tenant_id?: string | null;
@@ -2580,6 +2622,7 @@ export type Database = {
           tenant_id: string | null;
           version_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           actor_id?: string | null;
           classification: string;
@@ -2633,6 +2676,7 @@ export type Database = {
           tenant_id: string;
           version_id: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id?: string | null;
           actor_kind?: string;
@@ -2674,16 +2718,17 @@ export type Database = {
           created_at: string;
           operation_id: string;
           request_fingerprint: string;
-          request_ids: Json;
+          request_ids: NonNullable<Json>;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           company_id: string;
           created_at?: string;
           operation_id: string;
           request_fingerprint: string;
-          request_ids: Json;
+          request_ids: NonNullable<Json>;
           tenant_id: string;
         };
         Update: {
@@ -2692,7 +2737,7 @@ export type Database = {
           created_at?: string;
           operation_id?: string;
           request_fingerprint?: string;
-          request_ids?: Json;
+          request_ids?: NonNullable<Json>;
           tenant_id?: string;
         };
         Relationships: [
@@ -2735,6 +2780,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           created_at?: string;
@@ -2844,7 +2890,12 @@ export type Database = {
           state: string;
           storage_path: string;
           tenant_id: string;
+          _document_upload_cleanup_unreferenced: undefined | null;
+          _document_upload_provider_identity: Json | null;
         };
+        ComputedFields:
+          | '_document_upload_cleanup_unreferenced'
+          | '_document_upload_provider_identity';
         Insert: {
           actor_id: string;
           cleanup_authorized?: boolean;
@@ -2961,6 +3012,7 @@ export type Database = {
           upload_operation_id: string | null;
           uploaded_by: string | null;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           document_id: string;
@@ -3045,6 +3097,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           created_at?: string;
@@ -3149,10 +3202,11 @@ export type Database = {
           event_version: number;
           id: string;
           occurred_at: string;
-          payload: Json;
+          payload: NonNullable<Json>;
           privacy_class: string;
           tenant_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           actor_id?: string | null;
           causation_id?: string | null;
@@ -3164,7 +3218,7 @@ export type Database = {
           event_version: number;
           id: string;
           occurred_at: string;
-          payload: Json;
+          payload: NonNullable<Json>;
           privacy_class: string;
           tenant_id?: string | null;
         };
@@ -3179,7 +3233,7 @@ export type Database = {
           event_version?: number;
           id?: string;
           occurred_at?: string;
-          payload?: Json;
+          payload?: NonNullable<Json>;
           privacy_class?: string;
           tenant_id?: string | null;
         };
@@ -3221,6 +3275,7 @@ export type Database = {
           tenant_id: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor_id?: string | null;
@@ -3275,6 +3330,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           employee_id: string;
@@ -3348,6 +3404,7 @@ export type Database = {
           visa_no_last4: string | null;
           visa_no_last4_source: string | null;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           created_at?: string;
@@ -3444,7 +3501,7 @@ export type Database = {
       };
       erasure_cleanup_jobs: {
         Row: {
-          anonymization_diff: Json;
+          anonymization_diff: NonNullable<Json>;
           attempts: number;
           auth_anonymized_at: string | null;
           company_id: string;
@@ -3460,8 +3517,9 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
-          anonymization_diff?: Json;
+          anonymization_diff?: NonNullable<Json>;
           attempts?: number;
           auth_anonymized_at?: string | null;
           company_id: string;
@@ -3478,7 +3536,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          anonymization_diff?: Json;
+          anonymization_diff?: NonNullable<Json>;
           attempts?: number;
           auth_anonymized_at?: string | null;
           company_id?: string;
@@ -3536,6 +3594,7 @@ export type Database = {
           released_by: string | null;
           request_id: string;
         };
+        ComputedFields: never;
         Insert: {
           active?: boolean;
           id?: string;
@@ -3604,6 +3663,7 @@ export type Database = {
           verified_at: string | null;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           anonymization_diff?: Json | null;
           completed_at?: string | null;
@@ -3685,6 +3745,7 @@ export type Database = {
           max_attempts: number;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           consumer_name: string;
           created_at?: string;
@@ -3720,21 +3781,22 @@ export type Database = {
           created_at: string;
           event_type: string;
           event_version: number;
-          payload_schema: Json;
+          payload_schema: NonNullable<Json>;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           event_type: string;
           event_version: number;
-          payload_schema: Json;
+          payload_schema: NonNullable<Json>;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
           event_type?: string;
           event_version?: number;
-          payload_schema?: Json;
+          payload_schema?: NonNullable<Json>;
           updated_at?: string;
         };
         Relationships: [];
@@ -3752,6 +3814,7 @@ export type Database = {
           transition: string;
           worker_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           attempt_number: number;
           effect_reference_hash?: string | null;
@@ -3810,6 +3873,7 @@ export type Database = {
           succeeded_at: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
           available_at?: string;
@@ -3817,7 +3881,7 @@ export type Database = {
           consumer_name: string;
           created_at?: string;
           dead_at?: string | null;
-          effect_key?: string | null;
+          effect_key?: never;
           effect_reference_hash?: string | null;
           event_id: string;
           id?: string;
@@ -3840,7 +3904,7 @@ export type Database = {
           consumer_name?: string;
           created_at?: string;
           dead_at?: string | null;
-          effect_key?: string | null;
+          effect_key?: never;
           effect_reference_hash?: string | null;
           event_id?: string;
           id?: string;
@@ -3890,6 +3954,7 @@ export type Database = {
           requested_by: string;
           source_job_id: string;
         };
+        ComputedFields: never;
         Insert: {
           id: string;
           operation_id: string;
@@ -3944,6 +4009,7 @@ export type Database = {
           worker_id: string;
           worker_name: string;
         };
+        ComputedFields: never;
         Insert: {
           consumer_name: string;
           created_at?: string;
@@ -3974,19 +4040,20 @@ export type Database = {
           actor_id: string;
           company_id: string;
           created_at: string;
-          details: Json;
+          details: NonNullable<Json>;
           id: string;
           operation_receipt_id: string;
           resource_id: string;
           resource_kind: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor_id: string;
           company_id: string;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: string;
           operation_receipt_id: string;
           resource_id: string;
@@ -3998,7 +4065,7 @@ export type Database = {
           actor_id?: string;
           company_id?: string;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: string;
           operation_receipt_id?: string;
           resource_id?: string;
@@ -4041,6 +4108,7 @@ export type Database = {
           reason: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           company_id: string;
@@ -4091,6 +4159,7 @@ export type Database = {
         Row: {
           code: string;
         };
+        ComputedFields: never;
         Insert: {
           code: string;
         };
@@ -4116,6 +4185,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           company_id: string;
@@ -4197,6 +4267,7 @@ export type Database = {
           journal_id: string;
           line_number: number;
         };
+        ComputedFields: never;
         Insert: {
           account_code: string;
           created_at?: string;
@@ -4249,6 +4320,7 @@ export type Database = {
           state: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           accounting_at: string;
           company_id: string;
@@ -4257,7 +4329,7 @@ export type Database = {
           id?: string;
           operation_receipt_id: string;
           posted_at?: string | null;
-          source_category?: string | null;
+          source_category?: never;
           source_id: string;
           source_kind: string;
           state?: string;
@@ -4271,7 +4343,7 @@ export type Database = {
           id?: string;
           operation_receipt_id?: string;
           posted_at?: string | null;
-          source_category?: string | null;
+          source_category?: never;
           source_id?: string;
           source_kind?: string;
           state?: string;
@@ -4313,9 +4385,10 @@ export type Database = {
           id: string;
           operation_id: string;
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           aggregate_id: string;
@@ -4327,7 +4400,7 @@ export type Database = {
           id?: string;
           operation_id: string;
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           tenant_id: string;
         };
         Update: {
@@ -4341,7 +4414,7 @@ export type Database = {
           id?: string;
           operation_id?: string;
           payload_hash?: string;
-          sanitized_result?: Json;
+          sanitized_result?: NonNullable<Json>;
           tenant_id?: string;
         };
         Relationships: [
@@ -4369,9 +4442,10 @@ export type Database = {
           operation_receipt_id: string;
           receipt_id: string;
           receipt_kind: string;
-          snapshot: Json;
+          snapshot: NonNullable<Json>;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           captured_at?: string;
           company_id: string;
@@ -4379,7 +4453,7 @@ export type Database = {
           operation_receipt_id: string;
           receipt_id: string;
           receipt_kind: string;
-          snapshot: Json;
+          snapshot: NonNullable<Json>;
           tenant_id: string;
         };
         Update: {
@@ -4389,7 +4463,7 @@ export type Database = {
           operation_receipt_id?: string;
           receipt_id?: string;
           receipt_kind?: string;
-          snapshot?: Json;
+          snapshot?: NonNullable<Json>;
           tenant_id?: string;
         };
         Relationships: [
@@ -4409,6 +4483,39 @@ export type Database = {
           },
         ];
       };
+      inbound_destination_provisioning_receipts: {
+        Row: {
+          created_at: string;
+          destination_id: string;
+          enabled: boolean;
+          operation_id: string;
+          request_hash: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          destination_id: string;
+          enabled: boolean;
+          operation_id: string;
+          request_hash: string;
+        };
+        Update: {
+          created_at?: string;
+          destination_id?: string;
+          enabled?: boolean;
+          operation_id?: string;
+          request_hash?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'inbound_destination_provisioning_receipts_destination_id_fkey';
+            columns: ['destination_id'];
+            isOneToOne: false;
+            referencedRelation: 'inbound_destinations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       inbound_destinations: {
         Row: {
           company_id: string | null;
@@ -4420,6 +4527,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id?: string | null;
           created_at?: string;
@@ -4471,6 +4579,7 @@ export type Database = {
           received_at: string;
           status: string;
         };
+        ComputedFields: never;
         Insert: {
           destination_id: string;
           error_category?: string | null;
@@ -4519,6 +4628,7 @@ export type Database = {
           tenant_id: string | null;
           token_hash: string;
         };
+        ComputedFields: never;
         Insert: {
           accepted_at?: string | null;
           created_at?: string;
@@ -4571,6 +4681,7 @@ export type Database = {
           vat_basis_points: number;
           vat_minor: number;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           created_at?: string;
@@ -4649,6 +4760,7 @@ export type Database = {
           void_reason: string | null;
           voided_at: string | null;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           company_id: string;
@@ -4746,11 +4858,12 @@ export type Database = {
           from_value: string | null;
           id: string;
           lead_id: string;
-          metadata: Json;
+          metadata: NonNullable<Json>;
           note: string | null;
           tenant_id: string | null;
           to_value: string | null;
         };
+        ComputedFields: never;
         Insert: {
           actor_id?: string | null;
           created_at?: string;
@@ -4758,7 +4871,7 @@ export type Database = {
           from_value?: string | null;
           id?: string;
           lead_id: string;
-          metadata?: Json;
+          metadata?: NonNullable<Json>;
           note?: string | null;
           tenant_id?: string | null;
           to_value?: string | null;
@@ -4770,7 +4883,7 @@ export type Database = {
           from_value?: string | null;
           id?: string;
           lead_id?: string;
-          metadata?: Json;
+          metadata?: NonNullable<Json>;
           note?: string | null;
           tenant_id?: string | null;
           to_value?: string | null;
@@ -4802,15 +4915,15 @@ export type Database = {
       leads: {
         Row: {
           assigned_team_member_id: string | null;
-          consent_provenance: Json;
+          consent_provenance: NonNullable<Json>;
           converted_company_id: string | null;
           created_at: string;
           email: string | null;
-          estimate_data: Json;
-          form_data: Json;
+          estimate_data: NonNullable<Json>;
+          form_data: NonNullable<Json>;
           id: string;
           intake_operation_id: string | null;
-          lead_score_factors: Json;
+          lead_score_factors: NonNullable<Json>;
           lead_score_version: number;
           name: string;
           phone: string | null;
@@ -4822,17 +4935,18 @@ export type Database = {
           tenant_id: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           assigned_team_member_id?: string | null;
-          consent_provenance?: Json;
+          consent_provenance?: NonNullable<Json>;
           converted_company_id?: string | null;
           created_at?: string;
           email?: string | null;
-          estimate_data?: Json;
-          form_data?: Json;
+          estimate_data?: NonNullable<Json>;
+          form_data?: NonNullable<Json>;
           id?: string;
           intake_operation_id?: string | null;
-          lead_score_factors?: Json;
+          lead_score_factors?: NonNullable<Json>;
           lead_score_version?: number;
           name: string;
           phone?: string | null;
@@ -4846,15 +4960,15 @@ export type Database = {
         };
         Update: {
           assigned_team_member_id?: string | null;
-          consent_provenance?: Json;
+          consent_provenance?: NonNullable<Json>;
           converted_company_id?: string | null;
           created_at?: string;
           email?: string | null;
-          estimate_data?: Json;
-          form_data?: Json;
+          estimate_data?: NonNullable<Json>;
+          form_data?: NonNullable<Json>;
           id?: string;
           intake_operation_id?: string | null;
-          lead_score_factors?: Json;
+          lead_score_factors?: NonNullable<Json>;
           lead_score_version?: number;
           name?: string;
           phone?: string | null;
@@ -4905,6 +5019,7 @@ export type Database = {
           state: string;
           title: string;
         };
+        ComputedFields: never;
         Insert: {
           accepted_at?: string | null;
           accepted_by?: string | null;
@@ -4959,12 +5074,12 @@ export type Database = {
       };
       meeting_ai_summaries: {
         Row: {
-          action_items: Json;
+          action_items: NonNullable<Json>;
           attempts: number;
           completed_at: string | null;
           created_at: string;
           customer_visible: boolean;
-          decisions: Json;
+          decisions: NonNullable<Json>;
           error: string | null;
           error_code: string | null;
           id: string;
@@ -4972,7 +5087,7 @@ export type Database = {
           meeting_id: string;
           model: string | null;
           provider: string | null;
-          risks_or_followups: Json;
+          risks_or_followups: NonNullable<Json>;
           status: string;
           summary_text: string | null;
           tenant_id: string;
@@ -4981,13 +5096,14 @@ export type Database = {
           transcript_text: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
-          action_items?: Json;
+          action_items?: NonNullable<Json>;
           attempts?: number;
           completed_at?: string | null;
           created_at?: string;
           customer_visible?: boolean;
-          decisions?: Json;
+          decisions?: NonNullable<Json>;
           error?: string | null;
           error_code?: string | null;
           id?: string;
@@ -4995,7 +5111,7 @@ export type Database = {
           meeting_id: string;
           model?: string | null;
           provider?: string | null;
-          risks_or_followups?: Json;
+          risks_or_followups?: NonNullable<Json>;
           status?: string;
           summary_text?: string | null;
           tenant_id: string;
@@ -5005,12 +5121,12 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          action_items?: Json;
+          action_items?: NonNullable<Json>;
           attempts?: number;
           completed_at?: string | null;
           created_at?: string;
           customer_visible?: boolean;
-          decisions?: Json;
+          decisions?: NonNullable<Json>;
           error?: string | null;
           error_code?: string | null;
           id?: string;
@@ -5018,7 +5134,7 @@ export type Database = {
           meeting_id?: string;
           model?: string | null;
           provider?: string | null;
-          risks_or_followups?: Json;
+          risks_or_followups?: NonNullable<Json>;
           status?: string;
           summary_text?: string | null;
           tenant_id?: string;
@@ -5062,6 +5178,7 @@ export type Database = {
           source: string;
           withdrawn_at: string | null;
         };
+        ComputedFields: never;
         Insert: {
           captured_at?: string;
           granted: boolean;
@@ -5108,6 +5225,7 @@ export type Database = {
           meeting_id: string;
           visibility: string;
         };
+        ComputedFields: never;
         Insert: {
           author_profile_id: string;
           body: string;
@@ -5153,6 +5271,7 @@ export type Database = {
           starts_at: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           active?: boolean;
           company_id: string;
@@ -5217,6 +5336,7 @@ export type Database = {
           received_at: string;
           state: string;
         };
+        ComputedFields: never;
         Insert: {
           destination_id?: string | null;
           id?: string;
@@ -5254,6 +5374,7 @@ export type Database = {
           storage_path: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           created_at?: string;
@@ -5320,6 +5441,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           created_by?: string | null;
@@ -5392,6 +5514,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           cancelled_at?: string | null;
           company_id?: string | null;
@@ -5517,6 +5640,7 @@ export type Database = {
           template_key: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           body_template: string;
           channel: string;
@@ -5544,6 +5668,7 @@ export type Database = {
           operation_id: string;
           user_id: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           factor_id: string;
@@ -5566,11 +5691,12 @@ export type Database = {
           created_at: string;
           id: string;
           projection_key: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           source_event_id: string;
           source_job_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           activity_code: string;
           actor_profile_id?: string | null;
@@ -5578,7 +5704,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           projection_key: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_event_id: string;
           source_job_id: string;
           tenant_id: string;
@@ -5590,7 +5716,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           projection_key?: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_event_id?: string;
           source_job_id?: string;
           tenant_id?: string;
@@ -5635,12 +5761,13 @@ export type Database = {
           projection_key: string;
           read_at: string | null;
           recipient_profile_id: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           severity: string;
           source_event_id: string;
           source_job_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           created_at?: string;
@@ -5649,7 +5776,7 @@ export type Database = {
           projection_key: string;
           read_at?: string | null;
           recipient_profile_id: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           severity?: string;
           source_event_id: string;
           source_job_id: string;
@@ -5663,7 +5790,7 @@ export type Database = {
           projection_key?: string;
           read_at?: string | null;
           recipient_profile_id?: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           severity?: string;
           source_event_id?: string;
           source_job_id?: string;
@@ -5716,6 +5843,7 @@ export type Database = {
           source_job_id: string | null;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           action_code: string;
           actor_profile_id?: string | null;
@@ -5786,7 +5914,7 @@ export type Database = {
           id: string;
           priority: string;
           projection_key: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           source_event_id: string;
           source_job_id: string;
           state: string;
@@ -5794,6 +5922,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           assigned_profile_id?: string | null;
           company_id: string;
@@ -5802,7 +5931,7 @@ export type Database = {
           id?: string;
           priority?: string;
           projection_key: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_event_id: string;
           source_job_id: string;
           state?: string;
@@ -5818,7 +5947,7 @@ export type Database = {
           id?: string;
           priority?: string;
           projection_key?: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_event_id?: string;
           source_job_id?: string;
           state?: string;
@@ -5878,6 +6007,7 @@ export type Database = {
           tenant_id: string | null;
           to_address: string;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
           body_html: string;
@@ -5948,6 +6078,7 @@ export type Database = {
           tenant_id: string;
           to_phone: string;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
           body: string;
@@ -5999,7 +6130,7 @@ export type Database = {
       outbound_whatsapp: {
         Row: {
           attempts: number;
-          components: Json;
+          components: NonNullable<Json>;
           created_at: string;
           delivered_at: string | null;
           id: number;
@@ -6017,9 +6148,10 @@ export type Database = {
           tenant_id: string;
           to_phone: string;
         };
+        ComputedFields: never;
         Insert: {
           attempts?: number;
-          components: Json;
+          components: NonNullable<Json>;
           created_at?: string;
           delivered_at?: string | null;
           id?: number;
@@ -6039,7 +6171,7 @@ export type Database = {
         };
         Update: {
           attempts?: number;
-          components?: Json;
+          components?: NonNullable<Json>;
           created_at?: string;
           delivered_at?: string | null;
           id?: number;
@@ -6074,16 +6206,17 @@ export type Database = {
           kind: string;
           operation_id: string;
           payload_hash: string;
-          result: Json;
+          result: NonNullable<Json>;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           created_at?: string;
           kind: string;
           operation_id: string;
           payload_hash: string;
-          result: Json;
+          result: NonNullable<Json>;
           tenant_id: string;
         };
         Update: {
@@ -6092,7 +6225,7 @@ export type Database = {
           kind?: string;
           operation_id?: string;
           payload_hash?: string;
-          result?: Json;
+          result?: NonNullable<Json>;
           tenant_id?: string;
         };
         Relationships: [
@@ -6119,15 +6252,16 @@ export type Database = {
           operation_id: string;
           operation_type: string;
           payload_hash: string;
-          response: Json;
+          response: NonNullable<Json>;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           created_at?: string;
           operation_id: string;
           operation_type: string;
           payload_hash: string;
-          response: Json;
+          response: NonNullable<Json>;
         };
         Update: {
           actor_id?: string;
@@ -6135,7 +6269,7 @@ export type Database = {
           operation_id?: string;
           operation_type?: string;
           payload_hash?: string;
-          response?: Json;
+          response?: NonNullable<Json>;
         };
         Relationships: [
           {
@@ -6159,6 +6293,7 @@ export type Database = {
           payment_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           allocated_at?: string;
           amount_minor: number;
@@ -6246,6 +6381,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           company_id: string;
@@ -6373,6 +6509,7 @@ export type Database = {
           status: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           created_at?: string;
@@ -6439,12 +6576,13 @@ export type Database = {
           operation_id: string;
           outcome: string;
           reason_code: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           source_class: string;
           target_opaque_id: string | null;
           target_type: string;
           tenant_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor_id?: string | null;
@@ -6456,7 +6594,7 @@ export type Database = {
           operation_id: string;
           outcome: string;
           reason_code: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_class: string;
           target_opaque_id?: string | null;
           target_type: string;
@@ -6473,7 +6611,7 @@ export type Database = {
           operation_id?: string;
           outcome?: string;
           reason_code?: string;
-          safe_metadata?: Json;
+          safe_metadata?: NonNullable<Json>;
           source_class?: string;
           target_opaque_id?: string | null;
           target_type?: string;
@@ -6504,6 +6642,7 @@ export type Database = {
           linked_by: string;
           pricing_term_id: string;
         };
+        ComputedFields: never;
         Insert: {
           assignment_id: string;
           compensation_term_id: string;
@@ -6561,6 +6700,7 @@ export type Database = {
           term_version: number;
           to_status: Database['public']['Enums']['pro_term_status'];
         };
+        ComputedFields: never;
         Insert: {
           actor_profile_id: string;
           commercial_term_id: string;
@@ -6618,6 +6758,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           created_at?: string;
@@ -6684,6 +6825,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           assigned_at?: string;
           assigned_by: string;
@@ -6783,6 +6925,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           commercial_term_amount_minor: number;
@@ -6802,7 +6945,7 @@ export type Database = {
           posted_journal_id?: string | null;
           pro_profile_id: string;
           source_reference: string;
-          source_reference_normalized?: string | null;
+          source_reference_normalized?: never;
           state?: string;
           tenant_id: string;
           updated_at?: string;
@@ -6827,7 +6970,7 @@ export type Database = {
           posted_journal_id?: string | null;
           pro_profile_id?: string;
           source_reference?: string;
-          source_reference_normalized?: string | null;
+          source_reference_normalized?: never;
           state?: string;
           tenant_id?: string;
           updated_at?: string;
@@ -6912,6 +7055,7 @@ export type Database = {
           reason_code: string | null;
           to_state: Database['public']['Enums']['pro_credential_state'];
         };
+        ComputedFields: never;
         Insert: {
           actor_profile_id?: string | null;
           created_at?: string;
@@ -6971,6 +7115,7 @@ export type Database = {
           updated_at: string;
           uploaded_by: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           credential_id: string;
@@ -7038,6 +7183,7 @@ export type Database = {
           status: string;
           storage_path: string | null;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           cancelled_at?: string | null;
@@ -7134,6 +7280,7 @@ export type Database = {
           storage_path: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           cleanup_after?: string | null;
@@ -7223,6 +7370,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           created_by?: string | null;
@@ -7292,15 +7440,16 @@ export type Database = {
           entity_kind: Database['public']['Enums']['pro_lifecycle_operation_kind'];
           operation_id: string;
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           entity_id: string;
           entity_kind: Database['public']['Enums']['pro_lifecycle_operation_kind'];
           operation_id: string;
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
         };
         Update: {
           created_at?: string;
@@ -7308,7 +7457,7 @@ export type Database = {
           entity_kind?: Database['public']['Enums']['pro_lifecycle_operation_kind'];
           operation_id?: string;
           payload_hash?: string;
-          sanitized_result?: Json;
+          sanitized_result?: NonNullable<Json>;
         };
         Relationships: [];
       };
@@ -7319,16 +7468,17 @@ export type Database = {
           department: string | null;
           designation: string | null;
           profile_id: string;
-          service_areas: Json;
+          service_areas: NonNullable<Json>;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           bio?: string | null;
           created_at?: string;
           department?: string | null;
           designation?: string | null;
           profile_id: string;
-          service_areas?: Json;
+          service_areas?: NonNullable<Json>;
           updated_at?: string;
         };
         Update: {
@@ -7337,7 +7487,7 @@ export type Database = {
           department?: string | null;
           designation?: string | null;
           profile_id?: string;
-          service_areas?: Json;
+          service_areas?: NonNullable<Json>;
           updated_at?: string;
         };
         Relationships: [
@@ -7374,6 +7524,7 @@ export type Database = {
           updated_at: string;
           username: string | null;
         };
+        ComputedFields: never;
         Insert: {
           avatar_url?: string | null;
           bio?: string | null;
@@ -7443,6 +7594,7 @@ export type Database = {
           scan_state: string;
           storage_path: string | null;
         };
+        ComputedFields: never;
         Insert: {
           application_id?: string | null;
           content_sha256: string;
@@ -7486,7 +7638,7 @@ export type Database = {
       };
       public_application_drafts: {
         Row: {
-          answers: Json;
+          answers: NonNullable<Json>;
           created_at: string;
           definition_id: string;
           definition_version: number;
@@ -7499,8 +7651,9 @@ export type Database = {
           submitted_at: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
-          answers?: Json;
+          answers?: NonNullable<Json>;
           created_at?: string;
           definition_id: string;
           definition_version: number;
@@ -7514,7 +7667,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          answers?: Json;
+          answers?: NonNullable<Json>;
           created_at?: string;
           definition_id?: string;
           definition_version?: number;
@@ -7548,6 +7701,7 @@ export type Database = {
           lead_id: string;
           retention_until: string;
         };
+        ComputedFields: never;
         Insert: {
           accepted_at?: string;
           accepted_operation_id: string;
@@ -7600,10 +7754,11 @@ export type Database = {
           consent_accepted_at: string;
           consent_version: string;
           id: string;
-          normalized_payload: Json;
+          normalized_payload: NonNullable<Json>;
           operation_id: string;
           request_hash: string;
         };
+        ComputedFields: never;
         Insert: {
           abuse_scope_hash: string;
           accepted_at?: string;
@@ -7611,7 +7766,7 @@ export type Database = {
           consent_accepted_at: string;
           consent_version: string;
           id?: string;
-          normalized_payload: Json;
+          normalized_payload: NonNullable<Json>;
           operation_id: string;
           request_hash: string;
         };
@@ -7622,7 +7777,7 @@ export type Database = {
           consent_accepted_at?: string;
           consent_version?: string;
           id?: string;
-          normalized_payload?: Json;
+          normalized_payload?: NonNullable<Json>;
           operation_id?: string;
           request_hash?: string;
         };
@@ -7633,15 +7788,16 @@ export type Database = {
           created_at: string;
           operation_id: string;
           request_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           scope: string;
           subject_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           operation_id: string;
           request_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           scope: string;
           subject_id?: string | null;
         };
@@ -7649,7 +7805,7 @@ export type Database = {
           created_at?: string;
           operation_id?: string;
           request_hash?: string;
-          sanitized_result?: Json;
+          sanitized_result?: NonNullable<Json>;
           scope?: string;
           subject_id?: string | null;
         };
@@ -7660,7 +7816,7 @@ export type Database = {
           archived_at: string | null;
           created_at: string;
           created_by: string;
-          definition: Json;
+          definition: NonNullable<Json>;
           definition_hash: string;
           definition_id: string;
           published_at: string | null;
@@ -7669,11 +7825,12 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           archived_at?: string | null;
           created_at?: string;
           created_by: string;
-          definition: Json;
+          definition: NonNullable<Json>;
           definition_hash: string;
           definition_id: string;
           published_at?: string | null;
@@ -7686,7 +7843,7 @@ export type Database = {
           archived_at?: string | null;
           created_at?: string;
           created_by?: string;
-          definition?: Json;
+          definition?: NonNullable<Json>;
           definition_hash?: string;
           definition_id?: string;
           published_at?: string | null;
@@ -7723,6 +7880,7 @@ export type Database = {
           title: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           current_draft_version?: number;
@@ -7751,6 +7909,7 @@ export type Database = {
           last_refill: string;
           tokens: number;
         };
+        ComputedFields: never;
         Insert: {
           key: string;
           last_refill?: string;
@@ -7777,6 +7936,7 @@ export type Database = {
           refund_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           allocated_at?: string;
           amount_minor: number;
@@ -7855,6 +8015,7 @@ export type Database = {
           updated_at: string;
           worker_name: string;
         };
+        ComputedFields: never;
         Insert: {
           cursor_created_at?: string | null;
           cursor_id?: string | null;
@@ -7891,6 +8052,7 @@ export type Database = {
           status: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           created_at?: string;
@@ -7971,17 +8133,18 @@ export type Database = {
           event_code: Database['public']['Enums']['registration_domain_event_code'];
           id: string;
           occurred_at: string;
-          payload: Json;
+          payload: NonNullable<Json>;
           registration_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           consumed_at?: string | null;
           event_code: Database['public']['Enums']['registration_domain_event_code'];
           id?: string;
           occurred_at?: string;
-          payload: Json;
+          payload: NonNullable<Json>;
           registration_id: string;
           tenant_id: string;
         };
@@ -7991,7 +8154,7 @@ export type Database = {
           event_code?: Database['public']['Enums']['registration_domain_event_code'];
           id?: string;
           occurred_at?: string;
-          payload?: Json;
+          payload?: NonNullable<Json>;
           registration_id?: string;
           tenant_id?: string;
         };
@@ -8011,15 +8174,16 @@ export type Database = {
           operation_id: string;
           operation_kind: Database['public']['Enums']['registration_operation_kind'];
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           scope_id: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           operation_id: string;
           operation_kind: Database['public']['Enums']['registration_operation_kind'];
           payload_hash: string;
-          sanitized_result: Json;
+          sanitized_result: NonNullable<Json>;
           scope_id: string;
         };
         Update: {
@@ -8027,7 +8191,7 @@ export type Database = {
           operation_id?: string;
           operation_kind?: Database['public']['Enums']['registration_operation_kind'];
           payload_hash?: string;
-          sanitized_result?: Json;
+          sanitized_result?: NonNullable<Json>;
           scope_id?: string;
         };
         Relationships: [];
@@ -8045,6 +8209,7 @@ export type Database = {
           stage_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           document_id: string;
@@ -8121,6 +8286,7 @@ export type Database = {
           to_stage_status: Database['public']['Enums']['registration_stage_status'];
           transition_code: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_category: string;
           actor_id: string;
@@ -8184,7 +8350,7 @@ export type Database = {
           company_id: string;
           completed_at: string | null;
           created_at: string;
-          details: Json;
+          details: NonNullable<Json>;
           id: string;
           ordinal: number;
           registration_id: string;
@@ -8194,12 +8360,13 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           code: Database['public']['Enums']['registration_stage_code'];
           company_id: string;
           completed_at?: string | null;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: string;
           ordinal: number;
           registration_id: string;
@@ -8214,7 +8381,7 @@ export type Database = {
           company_id?: string;
           completed_at?: string | null;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: string;
           ordinal?: number;
           registration_id?: string;
@@ -8253,6 +8420,7 @@ export type Database = {
           visa_person_id: string;
           visa_version: number;
         };
+        ComputedFields: never;
         Insert: {
           actor_category: string;
           actor_id: string;
@@ -8325,6 +8493,7 @@ export type Database = {
           version: number;
           visa_kind: Database['public']['Enums']['registration_visa_kind'];
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           completed_at?: string | null;
@@ -8395,6 +8564,7 @@ export type Database = {
           renewal_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           company_id: string;
           document_id: string;
@@ -8448,6 +8618,7 @@ export type Database = {
           started_at: string;
           status_changes: number;
         };
+        ComputedFields: never;
         Insert: {
           active_renewals: number;
           attention_events: number;
@@ -8482,6 +8653,7 @@ export type Database = {
           superseded_at: string | null;
           window_days: number;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           event_id: string;
@@ -8535,7 +8707,7 @@ export type Database = {
           batch_operation_id: string | null;
           company_id: string;
           created_at: string;
-          details: Json;
+          details: NonNullable<Json>;
           from_stage: string | null;
           id: string;
           operation_id: string | null;
@@ -8545,13 +8717,14 @@ export type Database = {
           to_stage: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor_id?: string | null;
           batch_operation_id?: string | null;
           company_id: string;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           from_stage?: string | null;
           id?: string;
           operation_id?: string | null;
@@ -8567,7 +8740,7 @@ export type Database = {
           batch_operation_id?: string | null;
           company_id?: string;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           from_stage?: string | null;
           id?: string;
           operation_id?: string | null;
@@ -8622,6 +8795,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           blocked_at?: string | null;
           blocker_code?: string | null;
@@ -8723,7 +8897,7 @@ export type Database = {
           delivery_mode: string;
           expires_at: string;
           file_size_bytes: number;
-          filters: Json;
+          filters: NonNullable<Json>;
           id: string;
           max_bytes: number;
           max_rows: number;
@@ -8737,6 +8911,7 @@ export type Database = {
           state: string;
           tenant_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           cancelled_at?: string | null;
           company_id?: string | null;
@@ -8745,7 +8920,7 @@ export type Database = {
           delivery_mode?: string;
           expires_at?: string;
           file_size_bytes?: number;
-          filters?: Json;
+          filters?: NonNullable<Json>;
           id?: string;
           max_bytes?: number;
           max_rows?: number;
@@ -8767,7 +8942,7 @@ export type Database = {
           delivery_mode?: string;
           expires_at?: string;
           file_size_bytes?: number;
-          filters?: Json;
+          filters?: NonNullable<Json>;
           id?: string;
           max_bytes?: number;
           max_rows?: number;
@@ -8822,6 +8997,7 @@ export type Database = {
           trigger_event: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           approved_at?: string | null;
           approved_by?: string | null;
@@ -8874,6 +9050,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           channel: string;
           company_id: string;
@@ -8935,6 +9112,7 @@ export type Database = {
           retryable: boolean;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           attempt_number: number;
           attempted_at: string;
@@ -9013,6 +9191,7 @@ export type Database = {
           title: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           assigned_to?: string | null;
           blocked_reason?: string | null;
@@ -9102,6 +9281,7 @@ export type Database = {
           received_at: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           body?: string | null;
           created_at?: string;
@@ -9139,6 +9319,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           destination: string;
@@ -9180,6 +9361,7 @@ export type Database = {
           stripe_customer_id: string | null;
           stripe_subscription_id: string | null;
         };
+        ComputedFields: never;
         Insert: {
           applied_at?: string | null;
           body_hash: string;
@@ -9214,15 +9396,16 @@ export type Database = {
         Row: {
           action: string;
           created_at: string;
-          details: Json;
+          details: NonNullable<Json>;
           id: string;
           provider_event_id: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: string;
           provider_event_id: string;
           tenant_id: string;
@@ -9230,7 +9413,7 @@ export type Database = {
         Update: {
           action?: string;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: string;
           provider_event_id?: string;
           tenant_id?: string;
@@ -9270,6 +9453,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id?: string | null;
           cadence?: string | null;
@@ -9352,6 +9536,7 @@ export type Database = {
           quantity: number;
           subscription_id: string;
         };
+        ComputedFields: never;
         Insert: {
           addon_key: string;
           catalog_version_id: string;
@@ -9403,6 +9588,7 @@ export type Database = {
           catalog_version_id: string;
           monthly_amount_minor: number;
         };
+        ComputedFields: never;
         Insert: {
           addon_key: string;
           allowance_delta: number;
@@ -9443,6 +9629,7 @@ export type Database = {
           tenant_id: string;
           used: number;
         };
+        ComputedFields: never;
         Insert: {
           allowance_key: string;
           allowance_limit?: number;
@@ -9495,6 +9682,7 @@ export type Database = {
           payload_hash: string;
           version_id: string;
         };
+        ComputedFields: never;
         Insert: {
           actor_id: string;
           command: string;
@@ -9546,6 +9734,7 @@ export type Database = {
           state: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           activated_by?: string | null;
           catalog_class: string;
@@ -9606,8 +9795,8 @@ export type Database = {
       };
       subscription_period_snapshots: {
         Row: {
-          addon_deltas: Json;
-          allowances: Json;
+          addon_deltas: NonNullable<Json>;
+          allowances: NonNullable<Json>;
           cadence: string;
           catalog_version_id: string;
           created_at: string;
@@ -9620,9 +9809,10 @@ export type Database = {
           subscription_status: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
-          addon_deltas?: Json;
-          allowances: Json;
+          addon_deltas?: NonNullable<Json>;
+          allowances: NonNullable<Json>;
           cadence: string;
           catalog_version_id: string;
           created_at?: string;
@@ -9636,8 +9826,8 @@ export type Database = {
           tenant_id: string;
         };
         Update: {
-          addon_deltas?: Json;
-          allowances?: Json;
+          addon_deltas?: NonNullable<Json>;
+          allowances?: NonNullable<Json>;
           cadence?: string;
           catalog_version_id?: string;
           created_at?: string;
@@ -9681,6 +9871,7 @@ export type Database = {
           catalog_version_id: string;
           plan_key: string;
         };
+        ComputedFields: never;
         Insert: {
           allowance_key: string;
           allowance_value: number;
@@ -9710,6 +9901,7 @@ export type Database = {
           catalog_version_id: string;
           plan_key: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           cadence: string;
@@ -9743,6 +9935,7 @@ export type Database = {
           updated_at: string;
           updated_by: string | null;
         };
+        ComputedFields: never;
         Insert: {
           catalog_version_id: string;
           destination: string;
@@ -9793,6 +9986,7 @@ export type Database = {
           provider: string;
           provider_price_id: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           cadence: string;
@@ -9839,6 +10033,7 @@ export type Database = {
           valid_from: string;
           valid_to: string | null;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           currency: string;
@@ -9890,6 +10085,7 @@ export type Database = {
           source_id: string | null;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           allowance_key: string;
           amount: number;
@@ -9959,6 +10155,7 @@ export type Database = {
           updated_at: string;
           version: number;
         };
+        ComputedFields: never;
         Insert: {
           cadence?: string | null;
           cancel_at_period_end?: boolean;
@@ -10045,6 +10242,7 @@ export type Database = {
           provider: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           account_id: string;
           company_id: string;
@@ -10100,6 +10298,7 @@ export type Database = {
           reconciled_at: string | null;
           state: string;
         };
+        ComputedFields: never;
         Insert: {
           amount_minor: number;
           body_hash: string;
@@ -10156,16 +10355,17 @@ export type Database = {
           action: string;
           actor_id: string | null;
           created_at: string;
-          details: Json;
+          details: NonNullable<Json>;
           id: number;
           source: string;
           tenant_id: string;
         };
+        ComputedFields: never;
         Insert: {
           action: string;
           actor_id?: string | null;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: never;
           source: string;
           tenant_id: string;
@@ -10174,7 +10374,7 @@ export type Database = {
           action?: string;
           actor_id?: string | null;
           created_at?: string;
-          details?: Json;
+          details?: NonNullable<Json>;
           id?: never;
           source?: string;
           tenant_id?: string;
@@ -10207,6 +10407,7 @@ export type Database = {
           updated_at: string;
           webhook_secret_encrypted: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           enabled?: boolean;
@@ -10247,6 +10448,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           credentials_encrypted: string;
@@ -10287,6 +10489,7 @@ export type Database = {
           updated_at: string;
           username: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           enabled?: boolean;
@@ -10329,6 +10532,7 @@ export type Database = {
           tenant_id: string;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           access_token_encrypted: string;
           business_account_id: string;
@@ -10375,6 +10579,7 @@ export type Database = {
           terms_url: string | null;
           updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           email_reply_to?: string | null;
@@ -10419,6 +10624,7 @@ export type Database = {
           used_at: string | null;
           user_id: string;
         };
+        ComputedFields: never;
         Insert: {
           code_hash: string;
           created_at?: string;
@@ -10441,6 +10647,7 @@ export type Database = {
           password_hash: string;
           user_id: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string;
           password_hash: string;
@@ -10462,6 +10669,7 @@ export type Database = {
           tenant_id: string;
           wamid: string | null;
         };
+        ComputedFields: never;
         Insert: {
           body?: string | null;
           from_phone: string;
@@ -10506,6 +10714,7 @@ export type Database = {
           updated_at: string;
           updated_by: string | null;
         };
+        ComputedFields: never;
         Insert: {
           category: string;
           created_at?: string;
@@ -10569,13 +10778,14 @@ export type Database = {
       admin_active_sessions: {
         Row: {
           created_at: string | null;
-          id: string | null;
+          id: string;
           ip: unknown;
           not_after: string | null;
           refreshed_at: string | null;
           user_agent: string | null;
-          user_id: string | null;
+          user_id: string;
         };
+        ComputedFields: never;
         Insert: {
           created_at?: string | null;
           id?: string | null;
@@ -10600,21 +10810,22 @@ export type Database = {
         Row: {
           assigned_to: string | null;
           blocked_reason: string | null;
-          company_id: string | null;
+          company_id: string;
           completed_at: string | null;
-          created_at: string | null;
+          created_at: string;
           due_at: string | null;
-          id: string | null;
-          priority: string | null;
+          id: string;
+          priority: string;
           priority_rank: number | null;
-          service_type: string | null;
+          service_type: string;
           sla_breach_rank: number | null;
           sla_due_at: string | null;
-          status: string | null;
-          tenant_id: string | null;
-          title: string | null;
-          updated_at: string | null;
+          status: string;
+          tenant_id: string;
+          title: string;
+          updated_at: string;
         };
+        ComputedFields: never;
         Insert: {
           assigned_to?: string | null;
           blocked_reason?: string | null;
@@ -10696,7 +10907,7 @@ export type Database = {
         };
         Returns: string;
       };
-      _document_access_business_date: { Args: never; Returns: string };
+      _document_access_business_date: { Args: Record<PropertyKey, never>; Returns: string };
       _document_access_context: {
         Args: {
           p_actor_id: string;
@@ -10708,10 +10919,7 @@ export type Database = {
         };
         Returns: Json;
       };
-      _document_access_current_pro_credential: {
-        Args: { p_actor_id: string };
-        Returns: boolean;
-      };
+      _document_access_current_pro_credential: { Args: { p_actor_id: string }; Returns: boolean };
       _document_access_resolve_before_provider_identity: {
         Args: {
           p_actor_id: string;
@@ -10732,7 +10940,7 @@ export type Database = {
         };
         Returns: Json;
       };
-      _document_upload_business_date: { Args: never; Returns: string };
+      _document_upload_business_date: { Args: Record<PropertyKey, never>; Returns: string };
       _document_upload_claim_before_provider_identity: {
         Args: {
           p_company_id: string;
@@ -10746,16 +10954,15 @@ export type Database = {
         Args: {
           p_classification: string;
           p_event: string;
-          r: Database['public']['Tables']['document_upload_operations']['Row'];
+          r: Omit<
+            Database['public']['Tables']['document_upload_operations']['Row'],
+            Database['public']['Tables']['document_upload_operations']['ComputedFields']
+          >;
         };
         Returns: undefined;
       };
       _document_upload_cleanup_lock: {
-        Args: {
-          p_company_id: string;
-          p_operation_id: string;
-          p_tenant_id: string;
-        };
+        Args: { p_company_id: string; p_operation_id: string; p_tenant_id: string };
         Returns: {
           actor_id: string;
           cleanup_authorized: boolean;
@@ -10799,14 +11006,14 @@ export type Database = {
       };
       _document_upload_cleanup_unreferenced: {
         Args: {
-          r: Database['public']['Tables']['document_upload_operations']['Row'];
+          r: Omit<
+            Database['public']['Tables']['document_upload_operations']['Row'],
+            Database['public']['Tables']['document_upload_operations']['ComputedFields']
+          >;
         };
         Returns: undefined;
       };
-      _document_upload_current_pro_credential: {
-        Args: { p_actor_id: string };
-        Returns: undefined;
-      };
+      _document_upload_current_pro_credential: { Args: { p_actor_id: string }; Returns: undefined };
       _document_upload_finalize_before_cleanup: {
         Args: {
           p_actor_id: string;
@@ -10921,7 +11128,10 @@ export type Database = {
       };
       _document_upload_provider_identity: {
         Args: {
-          r: Database['public']['Tables']['document_upload_operations']['Row'];
+          r: Omit<
+            Database['public']['Tables']['document_upload_operations']['Row'],
+            Database['public']['Tables']['document_upload_operations']['ComputedFields']
+          >;
         };
         Returns: Json;
       };
@@ -10935,11 +11145,7 @@ export type Database = {
         Returns: Json;
       };
       _document_upload_reconcile_before_provider_identity: {
-        Args: {
-          p_company_id: string;
-          p_operation_id: string;
-          p_tenant_id: string;
-        };
+        Args: { p_company_id: string; p_operation_id: string; p_tenant_id: string };
         Returns: Json;
       };
       accept_inbound_webhook: {
@@ -11053,23 +11259,12 @@ export type Database = {
         Returns: Json;
       };
       archive_questionnaire_version: {
-        Args: {
-          p_definition_id: string;
-          p_expected_definition_version: number;
-          p_version: number;
-        };
+        Args: { p_definition_id: string; p_expected_definition_version: number; p_version: number };
         Returns: Json;
       };
-      assert_erasure_cleanup_allowed: {
-        Args: { p_request_id: string };
-        Returns: undefined;
-      };
+      assert_erasure_cleanup_allowed: { Args: { p_request_id: string }; Returns: undefined };
       assert_pro_lifecycle_actor: {
-        Args: {
-          p_actor_id: string;
-          p_operator_only?: boolean;
-          p_target_pro_profile_id: string;
-        };
+        Args: { p_actor_id: string; p_operator_only?: boolean; p_target_pro_profile_id: string };
         Returns: string;
       };
       assert_safe_pro_decision_reason: {
@@ -11084,27 +11279,15 @@ export type Database = {
         Returns: undefined;
       };
       assign_pro_to_company: {
-        Args: {
-          p_actor_profile_id: string;
-          p_company_id: string;
-          p_pro_profile_id: string;
-        };
+        Args: { p_actor_profile_id: string; p_company_id: string; p_pro_profile_id: string };
         Returns: Json;
       };
       assign_pro_to_company_with_context: {
-        Args: {
-          p_actor_profile_id: string;
-          p_company_id: string;
-          p_pro_profile_id: string;
-        };
+        Args: { p_actor_profile_id: string; p_company_id: string; p_pro_profile_id: string };
         Returns: Json;
       };
       authorize_assigned_company_settings: {
-        Args: {
-          p_actor_profile_id: string;
-          p_company_id: string;
-          p_tenant_id: string;
-        };
+        Args: { p_actor_profile_id: string; p_company_id: string; p_tenant_id: string };
         Returns: undefined;
       };
       authorize_document_upload_cleanup: {
@@ -11121,11 +11304,7 @@ export type Database = {
         Returns: boolean;
       };
       authorize_pro_lifecycle_actor: {
-        Args: {
-          p_actor_id: string;
-          p_operator_only?: boolean;
-          p_target_pro_profile_id: string;
-        };
+        Args: { p_actor_id: string; p_operator_only?: boolean; p_target_pro_profile_id: string };
         Returns: string;
       };
       authorize_registration_mutation: {
@@ -11157,10 +11336,7 @@ export type Database = {
         };
         Returns: boolean;
       };
-      cancel_event_job: {
-        Args: { p_error_code: string; p_job_id: string };
-        Returns: boolean;
-      };
+      cancel_event_job: { Args: { p_error_code: string; p_job_id: string }; Returns: boolean };
       cancel_leased_event_job: {
         Args: {
           p_error_code: string;
@@ -11186,10 +11362,7 @@ export type Database = {
         };
         Returns: Json;
       };
-      catalog_version_is_public: {
-        Args: { p_version_id: string };
-        Returns: boolean;
-      };
+      catalog_version_is_public: { Args: { p_version_id: string }; Returns: boolean };
       claim_document_upload_cleanup: {
         Args: {
           p_company_id: string;
@@ -11241,13 +11414,19 @@ export type Database = {
         Args: { p_limit: number; p_recovery_operation_id: string };
         Returns: Json;
       };
-      cleanup_company_onboarding_operations: { Args: never; Returns: number };
+      cleanup_company_onboarding_operations: { Args: Record<PropertyKey, never>; Returns: number };
       cleanup_finalized_pro_credential_evidence_upload_reservations: {
-        Args: never;
+        Args: Record<PropertyKey, never>;
         Returns: number;
       };
-      cleanup_pro_credential_evidence_removals: { Args: never; Returns: number };
-      cleanup_pro_lifecycle_operation_receipts: { Args: never; Returns: number };
+      cleanup_pro_credential_evidence_removals: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      cleanup_pro_lifecycle_operation_receipts: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
       clear_company_bank_identifier: {
         Args: {
           p_actor_id: string;
@@ -11283,16 +11462,9 @@ export type Database = {
         };
         Returns: boolean;
       };
-      compute_notify_at: {
-        Args: { due: string; renewal_type: string };
-        Returns: string[];
-      };
+      compute_notify_at: { Args: { due: string; renewal_type: string }; Returns: string[] };
       cost_data_version_is_public: {
-        Args: {
-          p_authority_id: string;
-          p_source_id: string;
-          p_version_id: string;
-        };
+        Args: { p_authority_id: string; p_source_id: string; p_version_id: string };
         Returns: boolean;
       };
       create_company_invoice: {
@@ -11424,11 +11596,7 @@ export type Database = {
         Returns: string;
       };
       delete_public_application_attachment: {
-        Args: {
-          p_attachment_id: string;
-          p_draft_id: string;
-          p_resume_secret_hash: string;
-        };
+        Args: { p_attachment_id: string; p_draft_id: string; p_resume_secret_hash: string };
         Returns: Json;
       };
       end_pro_commercial_term: {
@@ -11451,11 +11619,7 @@ export type Database = {
         }[];
       };
       evaluate_company_assignment_eligibility: {
-        Args: {
-          p_company_id: string;
-          p_expected_assignment_id?: string;
-          p_pro_profile_id: string;
-        };
+        Args: { p_company_id: string; p_expected_assignment_id?: string; p_pro_profile_id: string };
         Returns: Json;
       };
       evaluate_pro_assignment_eligibility: {
@@ -11463,10 +11627,7 @@ export type Database = {
         Returns: Json;
       };
       event_payload_is_safe: { Args: { p_payload: Json }; Returns: boolean };
-      event_payload_matches_schema: {
-        Args: { p_payload: Json; p_schema: Json };
-        Returns: boolean;
-      };
+      event_payload_matches_schema: { Args: { p_payload: Json; p_schema: Json }; Returns: boolean };
       extend_event_job_lease: {
         Args: {
           p_job_id: string;
@@ -11583,22 +11744,13 @@ export type Database = {
         Returns: Json;
       };
       has_company_access: { Args: { p_tenant_id: string }; Returns: boolean };
-      has_company_storage_access: {
-        Args: { p_object_name: string };
-        Returns: boolean;
-      };
-      has_current_pro_credential: {
-        Args: { p_pro_profile_id: string };
-        Returns: boolean;
-      };
+      has_company_storage_access: { Args: { p_object_name: string }; Returns: boolean };
+      has_current_pro_credential: { Args: { p_pro_profile_id: string }; Returns: boolean };
       import_cost_data: {
         Args: { p_actor_id: string; p_operation_id: string; p_rows: Json };
         Returns: Json;
       };
-      is_valid_company_settings_http_url: {
-        Args: { p_url: string };
-        Returns: boolean;
-      };
+      is_valid_company_settings_http_url: { Args: { p_url: string }; Returns: boolean };
       link_registration_stage_document: {
         Args: {
           p_actor_aal: string;
@@ -11643,12 +11795,7 @@ export type Database = {
         Returns: Json;
       };
       list_eligible_pros_for_company: {
-        Args: {
-          p_actor_id: string;
-          p_company_id: string;
-          p_limit?: number;
-          p_query?: string;
-        };
+        Args: { p_actor_id: string; p_company_id: string; p_limit?: number; p_query?: string };
         Returns: Json;
       };
       list_operational_activity: {
@@ -11665,7 +11812,7 @@ export type Database = {
           created_at: string;
           id: string;
           projection_key: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           source_event_id: string;
           source_job_id: string;
           tenant_id: string;
@@ -11692,7 +11839,7 @@ export type Database = {
           projection_key: string;
           read_at: string | null;
           recipient_profile_id: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           severity: string;
           source_event_id: string;
           source_job_id: string;
@@ -11720,7 +11867,7 @@ export type Database = {
           id: string;
           priority: string;
           projection_key: string;
-          safe_metadata: Json;
+          safe_metadata: NonNullable<Json>;
           source_event_id: string;
           source_job_id: string;
           state: string;
@@ -11818,7 +11965,7 @@ export type Database = {
         Args: { p_request_id: string; p_step: string; p_tenant_id: string };
         Returns: undefined;
       };
-      materialize_expired_pro_credentials: { Args: never; Returns: number };
+      materialize_expired_pro_credentials: { Args: Record<PropertyKey, never>; Returns: number };
       mutate_assigned_company_settings: {
         Args: {
           p_actor_profile_id: string;
@@ -11963,11 +12110,8 @@ export type Database = {
         Args: { p_job_id: string; p_lease_token: string; p_worker_id: string };
         Returns: Json;
       };
-      p308_read_renewal_health: { Args: never; Returns: Json };
-      p308_reconcile_stuck_imports: {
-        Args: { p_limit: number };
-        Returns: number;
-      };
+      p308_read_renewal_health: { Args: Record<PropertyKey, never>; Returns: Json };
+      p308_reconcile_stuck_imports: { Args: { p_limit: number }; Returns: number };
       p308_record_import_artifact_access: {
         Args: {
           p_actor_id: string;
@@ -12245,11 +12389,7 @@ export type Database = {
         Returns: string;
       };
       p309_claim_stripe_operation_recovery: {
-        Args: {
-          p_lease_seconds?: number;
-          p_limit?: number;
-          p_worker_id: string;
-        };
+        Args: { p_lease_seconds?: number; p_limit?: number; p_worker_id: string };
         Returns: {
           actor_id: string | null;
           cadence: string | null;
@@ -12282,11 +12422,7 @@ export type Database = {
         };
       };
       p309_claim_tap_compensation: {
-        Args: {
-          p_lease_seconds?: number;
-          p_limit?: number;
-          p_worker_id: string;
-        };
+        Args: { p_lease_seconds?: number; p_limit?: number; p_worker_id: string };
         Returns: {
           amount_minor: number;
           company_id: string;
@@ -12328,11 +12464,7 @@ export type Database = {
         };
       };
       p309_claim_tap_event_recovery: {
-        Args: {
-          p_lease_seconds?: number;
-          p_limit?: number;
-          p_worker_id: string;
-        };
+        Args: { p_lease_seconds?: number; p_limit?: number; p_worker_id: string };
         Returns: {
           amount_minor: number;
           body_hash: string;
@@ -12358,11 +12490,7 @@ export type Database = {
         };
       };
       p309_claim_tap_recovery: {
-        Args: {
-          p_lease_seconds?: number;
-          p_limit?: number;
-          p_worker_id: string;
-        };
+        Args: { p_lease_seconds?: number; p_limit?: number; p_worker_id: string };
         Returns: {
           amount_minor: number;
           company_id: string;
@@ -12404,11 +12532,7 @@ export type Database = {
         };
       };
       p309_claim_tap_refund_recovery: {
-        Args: {
-          p_lease_seconds?: number;
-          p_limit?: number;
-          p_worker_id: string;
-        };
+        Args: { p_lease_seconds?: number; p_limit?: number; p_worker_id: string };
         Returns: {
           amount_minor: number;
           created_at: string;
@@ -12453,35 +12577,19 @@ export type Database = {
         }[];
       };
       p309_complete_tap_compensation: {
-        Args: {
-          p_attempt_id: string;
-          p_lease_token: string;
-          p_worker_id: string;
-        };
+        Args: { p_attempt_id: string; p_lease_token: string; p_worker_id: string };
         Returns: boolean;
       };
       p309_complete_tap_recovery: {
-        Args: {
-          p_attempt_id: string;
-          p_lease_token: string;
-          p_worker_id: string;
-        };
+        Args: { p_attempt_id: string; p_lease_token: string; p_worker_id: string };
         Returns: boolean;
       };
       p309_complete_tap_refund_recovery: {
-        Args: {
-          p_lease_token: string;
-          p_refund_id: string;
-          p_worker_id: string;
-        };
+        Args: { p_lease_token: string; p_refund_id: string; p_worker_id: string };
         Returns: boolean;
       };
       p309_consume_finance_export: {
-        Args: {
-          p_operation_id: string;
-          p_source_id?: string;
-          p_tenant_id: string;
-        };
+        Args: { p_operation_id: string; p_source_id?: string; p_tenant_id: string };
         Returns: {
           allowance_limit: number;
           replayed: boolean;
@@ -12779,11 +12887,7 @@ export type Database = {
         Returns: Json;
       };
       p309_reconcile_pending_refund: {
-        Args: {
-          p_provider_refund_id: string;
-          p_refund_id: string;
-          p_status: string;
-        };
+        Args: { p_provider_refund_id: string; p_refund_id: string; p_status: string };
         Returns: Json;
       };
       p309_reconcile_refund: {
@@ -12816,10 +12920,7 @@ export type Database = {
         Args: { p_event_id: string; p_fence_token: string };
         Returns: Json;
       };
-      p309_require_catalog_actor: {
-        Args: { p_actor_id: string };
-        Returns: undefined;
-      };
+      p309_require_catalog_actor: { Args: { p_actor_id: string }; Returns: undefined };
       p309_reserve_payment_attempt: {
         Args: {
           p_company_id: string;
@@ -12964,12 +13065,7 @@ export type Database = {
         Returns: Json;
       };
       p311_add_meeting_note: {
-        Args: {
-          p_actor_id: string;
-          p_body: string;
-          p_meeting_id: string;
-          p_visibility: string;
-        };
+        Args: { p_actor_id: string; p_body: string; p_meeting_id: string; p_visibility: string };
         Returns: string;
       };
       p311_book_meeting: {
@@ -13026,20 +13122,10 @@ export type Database = {
         };
         Returns: Json;
       };
-      p311_delete_expired_transcripts: {
-        Args: { p_limit?: number };
-        Returns: number;
-      };
-      p311_has_processing_consent: {
-        Args: { p_meeting_id: string };
-        Returns: boolean;
-      };
+      p311_delete_expired_transcripts: { Args: { p_limit?: number }; Returns: number };
+      p311_has_processing_consent: { Args: { p_meeting_id: string }; Returns: boolean };
       p311_request_ai_processing: {
-        Args: {
-          p_actor_id?: string;
-          p_meeting_id: string;
-          p_operation_id: string;
-        };
+        Args: { p_actor_id?: string; p_meeting_id: string; p_operation_id: string };
         Returns: boolean;
       };
       p311_reschedule_meeting: {
@@ -13171,10 +13257,7 @@ export type Database = {
         };
         Returns: Json;
       };
-      pro_credential_masked_result: {
-        Args: { p_credential_id: string };
-        Returns: Json;
-      };
+      pro_credential_masked_result: { Args: { p_credential_id: string }; Returns: Json };
       pro_lifecycle_replay_result: {
         Args: {
           p_entity_id: string;
@@ -13185,13 +13268,26 @@ export type Database = {
         Returns: Json;
       };
       provision_company_workspace_atomic: {
-        Args: {
-          p_actor_id: string;
-          p_company_name: string;
-          p_plan: string;
-          p_slug: string;
-        };
+        Args: { p_actor_id: string; p_company_name: string; p_plan: string; p_slug: string };
         Returns: Json;
+      };
+      provision_inbound_destination: {
+        Args: {
+          p_company_id: string;
+          p_correlation_id: string;
+          p_destination_id: string;
+          p_destination_key_hash: string;
+          p_enabled: boolean;
+          p_operation_id: string;
+          p_provider: string;
+          p_readiness_approved: boolean;
+          p_tenant_id: string;
+        };
+        Returns: {
+          destination_id: string;
+          enabled: boolean;
+          replayed: boolean;
+        }[];
       };
       publish_domain_event: {
         Args: {
@@ -13211,24 +13307,12 @@ export type Database = {
         Returns: string;
       };
       publish_questionnaire_version: {
-        Args: {
-          p_definition_id: string;
-          p_expected_definition_version: number;
-          p_version: number;
-        };
+        Args: { p_definition_id: string; p_expected_definition_version: number; p_version: number };
         Returns: Json;
       };
-      raise_pro_assignment_eligibility_error: {
-        Args: { p_result: Json };
-        Returns: undefined;
-      };
+      raise_pro_assignment_eligibility_error: { Args: { p_result: Json }; Returns: undefined };
       rate_limit_consume: {
-        Args: {
-          p_capacity: number;
-          p_cost?: number;
-          p_key: string;
-          p_refill_per_sec: number;
-        };
+        Args: { p_capacity: number; p_cost?: number; p_key: string; p_refill_per_sec: number };
         Returns: boolean;
       };
       read_admin_registration_index: {
@@ -13244,17 +13328,10 @@ export type Database = {
         Returns: Json;
       };
       read_assigned_company_settings: {
-        Args: {
-          p_actor_profile_id: string;
-          p_company_id: string;
-          p_tenant_id: string;
-        };
+        Args: { p_actor_profile_id: string; p_company_id: string; p_tenant_id: string };
         Returns: Json;
       };
-      read_authoritative_pro_tenant: {
-        Args: { p_actor_id: string };
-        Returns: string;
-      };
+      read_authoritative_pro_tenant: { Args: { p_actor_id: string }; Returns: string };
       read_company_onboarding: {
         Args: { p_actor_id: string; p_company_id: string; p_tenant_id: string };
         Returns: Json;
@@ -13271,20 +13348,10 @@ export type Database = {
         Args: { p_actor_id: string; p_registration_id: string };
         Returns: Json;
       };
-      read_event_queue_health: {
-        Args: { p_consumer_name?: string };
-        Returns: Json;
-      };
-      read_operational_runtime_health: {
-        Args: { p_company_id: string };
-        Returns: Json;
-      };
+      read_event_queue_health: { Args: { p_consumer_name?: string }; Returns: Json };
+      read_operational_runtime_health: { Args: { p_company_id: string }; Returns: Json };
       read_operator_registration_workflow: {
-        Args: {
-          p_actor_aal: string;
-          p_actor_id: string;
-          p_registration_id: string;
-        };
+        Args: { p_actor_aal: string; p_actor_id: string; p_registration_id: string };
         Returns: Json;
       };
       read_p3_12_operational_report: {
@@ -13298,19 +13365,11 @@ export type Database = {
         Returns: Json;
       };
       read_p3_12_readiness: {
-        Args: {
-          p_actor_id: string;
-          p_correlation_id: string;
-          p_operation_id: string;
-        };
+        Args: { p_actor_id: string; p_correlation_id: string; p_operation_id: string };
         Returns: Json;
       };
       read_p3_12_retention_registry: {
-        Args: {
-          p_actor_id: string;
-          p_correlation_id: string;
-          p_operation_id: string;
-        };
+        Args: { p_actor_id: string; p_correlation_id: string; p_operation_id: string };
         Returns: {
           approved_at: string | null;
           approved_by: string | null;
@@ -13343,19 +13402,11 @@ export type Database = {
         Returns: Json;
       };
       read_pro_lifecycle_detail: {
-        Args: {
-          p_actor_id: string;
-          p_pro_profile_id: string;
-          p_timeline_limit?: number;
-        };
+        Args: { p_actor_id: string; p_pro_profile_id: string; p_timeline_limit?: number };
         Returns: Json;
       };
       read_pro_lifecycle_detail_without_reasons_0076: {
-        Args: {
-          p_actor_id: string;
-          p_pro_profile_id: string;
-          p_timeline_limit?: number;
-        };
+        Args: { p_actor_id: string; p_pro_profile_id: string; p_timeline_limit?: number };
         Returns: Json;
       };
       read_pro_lifecycle_identity: {
@@ -13417,7 +13468,7 @@ export type Database = {
         };
         Returns: Json;
       };
-      recompute_renewal_status: { Args: never; Returns: undefined };
+      recompute_renewal_status: { Args: Record<PropertyKey, never>; Returns: undefined };
       reconcile_company_refund: {
         Args: {
           p_actor_id: string;
@@ -13435,11 +13486,7 @@ export type Database = {
         }[];
       };
       reconcile_document_upload_cleanup: {
-        Args: {
-          p_company_id: string;
-          p_operation_id: string;
-          p_tenant_id: string;
-        };
+        Args: { p_company_id: string; p_operation_id: string; p_tenant_id: string };
         Returns: Json;
       };
       record_company_onboarding_operation: {
@@ -13599,11 +13646,7 @@ export type Database = {
         Returns: Json;
       };
       request_event_job_replay: {
-        Args: {
-          p_operation_id: string;
-          p_reason: string;
-          p_source_job_id: string;
-        };
+        Args: { p_operation_id: string; p_reason: string; p_source_job_id: string };
         Returns: string;
       };
       reserve_inbound_webhook: {
@@ -13638,12 +13681,7 @@ export type Database = {
         Returns: Json;
       };
       resolve_company_active_registration: {
-        Args: {
-          p_actor_id: string;
-          p_company_id: string;
-          p_role: string;
-          p_tenant_id: string;
-        };
+        Args: { p_actor_id: string; p_company_id: string; p_role: string; p_tenant_id: string };
         Returns: string;
       };
       resolve_document_access: {
@@ -13690,10 +13728,7 @@ export type Database = {
           reviewed_at: string;
         }[];
       };
-      revoke_all_user_auth_sessions: {
-        Args: { p_user_id: string };
-        Returns: number;
-      };
+      revoke_all_user_auth_sessions: { Args: { p_user_id: string }; Returns: number };
       revoke_pro_credential: {
         Args: {
           p_actor_id: string;
@@ -14032,10 +14067,7 @@ export type Database = {
         };
         Returns: string;
       };
-      verify_erasure_request: {
-        Args: { p_token_hash: string };
-        Returns: string;
-      };
+      verify_erasure_request: { Args: { p_token_hash: string }; Returns: string };
       verify_pro_credential: {
         Args: {
           p_actor_id: string;
@@ -14264,9 +14296,7 @@ export type Tables<
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
       Row: infer R;
@@ -14290,9 +14320,7 @@ export type TablesInsert<
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
       Insert: infer I;
     }
@@ -14315,9 +14343,7 @@ export type TablesUpdate<
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
       Update: infer U;
     }
@@ -14340,9 +14366,7 @@ export type Enums<
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
     ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
@@ -14357,9 +14381,7 @@ export type CompositeTypes<
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
     ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
