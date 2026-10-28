@@ -131,6 +131,66 @@ begin
   exception when unique_violation then null;
   end;
 
+  select * into v_result from public.route_inbound_reply_to_lead(
+    '91800000-0000-4000-8000-000000000001', 'sms', 'replay-changed-inbox',
+    v_accepted.routing_key::text, '+971509999999', 'replay existing event',
+    'replay-changed-provider-id', pg_catalog.now()
+  );
+  if v_result.status <> 'routed'
+    or v_result.lead_id <> '91800000-0000-4000-8000-000000000050'
+  then raise exception 'EXISTING_LEAD_EVENT_NOT_REPLAYED'; end if;
+
+  insert into public.leads (
+    id, tenant_id, name, phone, source, stage, routing_reason, created_at
+  )
+  select
+    pg_catalog.gen_random_uuid(),
+    '91800000-0000-4000-8000-000000000001',
+    'Provider cap filler ' || series.value,
+    '+97152' || pg_catalog.lpad(series.value::text, 7, '0'),
+    'questionnaire', 'new', 'assigned_active_tenant_v1',
+    '2026-12-01 00:00:00+00'::timestamptz + series.value * interval '1 second'
+  from pg_catalog.generate_series(1, 1001) series(value);
+
+  insert into public.leads (
+    id, tenant_id, name, phone, source, stage, routing_reason, created_at
+  ) values
+    ('91800000-0000-4000-8000-000000000060', '91800000-0000-4000-8000-000000000001',
+     'Beyond cap open winner', '050 222 3333', 'questionnaire', 'qualified',
+     'assigned_active_tenant_v1', '2026-01-01 00:00:00+00'),
+    ('91800000-0000-4000-8000-000000000061', '91800000-0000-4000-8000-000000000001',
+     'Beyond cap closed candidate', '+971502223333', 'questionnaire', 'won',
+     'assigned_active_tenant_v1', '2026-01-02 00:00:00+00');
+
+  select * into v_result from public.route_inbound_reply_to_lead(
+    '91800000-0000-4000-8000-000000000001', 'sms', 'provider-cap-inbox',
+    'provider-cap-operation', '+971 50 222 3333', 'route beyond provider cap',
+    'provider-cap-message', pg_catalog.now()
+  );
+  if v_result.status <> 'routed'
+    or v_result.lead_id <> '91800000-0000-4000-8000-000000000060'
+    or not v_result.ambiguous
+    or v_result.candidate_lead_ids <> array[
+      '91800000-0000-4000-8000-000000000060'::uuid,
+      '91800000-0000-4000-8000-000000000061'::uuid
+    ]
+  then raise exception 'BEYOND_PROVIDER_CAP_ROUTE_NOT_DETERMINISTIC'; end if;
+
+  select * into v_result from public.route_inbound_reply_to_lead(
+    '91800000-0000-4000-8000-000000000001', 'sms', 'provider-cap-inbox-changed',
+    'provider-cap-operation', '+971509999999', 'replay beyond provider cap',
+    'provider-cap-message-changed', pg_catalog.now()
+  );
+  if v_result.lead_id <> '91800000-0000-4000-8000-000000000060'
+    or (
+      select pg_catalog.count(*) from public.lead_events event
+      where event.tenant_id = '91800000-0000-4000-8000-000000000001'
+        and event.event_type = 'inbound_reply'
+        and event.metadata ->> 'channel' = 'sms'
+        and event.metadata ->> 'inbound_operation_key' = 'provider-cap-operation'
+    ) <> 1
+  then raise exception 'BEYOND_PROVIDER_CAP_REPLAY_DUPLICATED_EVENT'; end if;
+
   select * into v_result from public.accept_inbound_webhook(
     'unifonic', 'sms', 'v1:' || repeat('d', 64), repeat('e', 64), repeat('f', 64),
     pg_catalog.now(), true, '+971501234567', 'help', 'unknown-event'
@@ -158,6 +218,16 @@ begin
   then raise exception 'PROVISIONING_GRANT_MISMATCH'; end if;
 end;
 $destination_provisioning_grants$;
+
+do $lead_reply_routing_grants$
+begin
+  if has_function_privilege('public', 'public.route_inbound_reply_to_lead(uuid,text,text,text,text,text,text,timestamptz)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.route_inbound_reply_to_lead(uuid,text,text,text,text,text,text,timestamptz)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.route_inbound_reply_to_lead(uuid,text,text,text,text,text,text,timestamptz)', 'EXECUTE')
+    or not has_function_privilege('service_role', 'public.route_inbound_reply_to_lead(uuid,text,text,text,text,text,text,timestamptz)', 'EXECUTE')
+  then raise exception 'LEAD_REPLY_ROUTING_GRANT_MISMATCH'; end if;
+end;
+$lead_reply_routing_grants$;
 
 do $destination_provisioning$
 declare

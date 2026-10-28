@@ -12034,6 +12034,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      normalize_lead_phone: { Args: { p_phone: string }; Returns: string };
       open_pro_credential_evidence_metadata: {
         Args: { p_actor_id: string; p_evidence_id: string };
         Returns: {
@@ -13764,6 +13765,24 @@ export type Database = {
       revoke_user_auth_session: {
         Args: { p_session_id: string; p_user_id: string };
         Returns: boolean;
+      };
+      route_inbound_reply_to_lead: {
+        Args: {
+          p_body: string;
+          p_channel: string;
+          p_from_phone: string;
+          p_inbox_id: string;
+          p_operation_key: string;
+          p_provider_message_id: string;
+          p_received_at: string;
+          p_tenant_id: string;
+        };
+        Returns: {
+          ambiguous: boolean;
+          candidate_lead_ids: string[];
+          lead_id: string;
+          status: string;
+        }[];
       };
       runtime_actor_company_access: {
         Args: { p_allow_member?: boolean; p_company_id: string };
