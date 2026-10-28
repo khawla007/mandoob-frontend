@@ -35,28 +35,23 @@ export async function POST(req: Request): Promise<Response> {
 
   const messageStatus = params.MessageStatus ?? params.SmsStatus;
   const messageSid = params.MessageSid ?? params.SmsSid;
-  const inboundShape = !messageStatus && params.From && params.Body !== undefined && messageSid;
-  if (inboundShape && !env.TWILIO_INBOUND_ENABLED) {
+  const inboundShape = isTwilioInboundCallback(params);
+  const unavailableCode = twilioInboundUnavailableCode(rawBody, env.TWILIO_INBOUND_ENABLED);
+  if (unavailableCode) {
     return NextResponse.json(
-      { error: 'inbound webhook unavailable', code: 'INBOUND_DISABLED' },
+      { error: 'inbound webhook unavailable', code: unavailableCode },
       { status: 503 },
     );
   }
 
   const supabase = createSupabaseServiceRoleClient();
 
-  if (messageStatus && messageSid) {
+  if (!inboundShape && messageStatus && messageSid) {
     await applyDeliveryStatus(supabase, messageSid, messageStatus);
   }
 
   // Inbound SMS: presence of Body + From, no status field.
   const inbound = parseTwilioInboundCallback(rawBody);
-  if (inboundShape && !inbound) {
-    return NextResponse.json(
-      { error: 'inbound webhook unavailable', code: 'TIMESTAMP_UNSUPPORTED' },
-      { status: 503 },
-    );
-  }
   try {
     if (inbound) await recordTwilioInbound(supabase, inbound);
   } catch (error) {
@@ -74,17 +69,9 @@ export async function POST(req: Request): Promise<Response> {
 
 export function parseTwilioInboundCallback(rawBody: string): SmsInbound | null {
   const params = parseFormBody(rawBody);
-  const messageStatus = params.MessageStatus ?? params.SmsStatus;
   const providerEventId = params.MessageSid ?? params.SmsSid;
   const occurredAt = params.Timestamp ?? params.DateCreated;
-  if (
-    messageStatus ||
-    !params.To ||
-    !params.From ||
-    params.Body === undefined ||
-    !providerEventId ||
-    !occurredAt
-  ) {
+  if (!isTwilioInboundCallback(params) || !providerEventId || !occurredAt) {
     return null;
   }
   return {
@@ -95,6 +82,28 @@ export function parseTwilioInboundCallback(rawBody: string): SmsInbound | null {
     occurredAt,
     rawPayload: rawBody,
   };
+}
+
+export function twilioInboundUnavailableCode(
+  rawBody: string,
+  enabled: boolean,
+): 'INBOUND_DISABLED' | 'TIMESTAMP_UNSUPPORTED' | null {
+  const params = parseFormBody(rawBody);
+  if (!isTwilioInboundCallback(params)) return null;
+  if (!enabled) return 'INBOUND_DISABLED';
+  if (!(params.Timestamp ?? params.DateCreated)) return 'TIMESTAMP_UNSUPPORTED';
+  return null;
+}
+
+function isTwilioInboundCallback(params: Record<string, string>): boolean {
+  const status = (params.MessageStatus ?? params.SmsStatus)?.toLowerCase();
+  return Boolean(
+    (!status || status === 'received') &&
+    params.To &&
+    params.From &&
+    params.Body !== undefined &&
+    (params.MessageSid ?? params.SmsSid),
+  );
 }
 
 function buildSignatureUrl(req: Request): string {

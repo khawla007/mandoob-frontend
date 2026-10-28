@@ -68,13 +68,9 @@ async function acceptInbound(
     throw new InboundWebhookInfrastructureError();
   }
 
-  const rpc = supabase.rpc.bind(supabase) as unknown as (
-    name: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: unknown }>;
-  let result: { data: unknown; error: unknown };
+  let result;
   try {
-    result = await rpc('accept_inbound_webhook', {
+    result = await supabase.rpc('accept_inbound_webhook', {
       p_provider: provider,
       p_channel: channel,
       p_destination_key_hash: destinationKeyHash,
@@ -83,7 +79,7 @@ async function acceptInbound(
       p_occurred_at: occurredAt,
       p_signature_verified: true,
       p_from_phone: fromPhone,
-      p_body: body,
+      p_body: body ?? '',
       p_provider_event_id: providerEventId,
     });
   } catch {
@@ -93,7 +89,7 @@ async function acceptInbound(
   if (error || !Array.isArray(data) || data.length !== 1) {
     throw new InboundWebhookInfrastructureError();
   }
-  const row = data[0] as Record<string, unknown>;
+  const row = data[0];
   if (['unknown', 'duplicate', 'stale', 'rejected'].includes(String(row.outcome))) return null;
   if (
     row.outcome !== 'accepted' ||

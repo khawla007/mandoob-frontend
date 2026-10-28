@@ -708,6 +708,7 @@ test('real Twilio inbound shape is explicitly unavailable while the provider gat
     From: '+971501234567',
     Body: 'provider shaped message',
     MessageSid: 'SM-real-shape',
+    SmsStatus: 'received',
   };
   const rawBody = new URLSearchParams(params).toString();
   let signed = url;
@@ -729,4 +730,17 @@ test('real Twilio inbound shape is explicitly unavailable while the provider gat
     error: 'inbound webhook unavailable',
     code: 'INBOUND_DISABLED',
   });
+});
+
+test('enabled Twilio inbound still fails closed when the provider omits a timestamp', async () => {
+  const { twilioInboundUnavailableCode } = await import('./twilio/route');
+  const rawBody = new URLSearchParams({
+    To: '+12025550123',
+    From: '+971501234567',
+    Body: 'provider shaped message',
+    MessageSid: 'SM-real-shape-enabled',
+    SmsStatus: 'received',
+  }).toString();
+
+  assert.equal(twilioInboundUnavailableCode(rawBody, true), 'TIMESTAMP_UNSUPPORTED');
 });
