@@ -4567,10 +4567,13 @@ export type Database = {
       };
       inbound_webhook_receipts: {
         Row: {
+          channel: string | null;
           destination_id: string;
           error_category: string | null;
           error_code: string | null;
           id: string;
+          inbox_id: number | null;
+          inbox_received_at: string | null;
           occurred_at: string;
           payload_hash: string;
           processed_at: string | null;
@@ -4578,13 +4581,17 @@ export type Database = {
           provider_event_id_hash: string;
           received_at: string;
           status: string;
+          tenant_id: string | null;
         };
         ComputedFields: never;
         Insert: {
+          channel?: string | null;
           destination_id: string;
           error_category?: string | null;
           error_code?: string | null;
           id?: string;
+          inbox_id?: number | null;
+          inbox_received_at?: string | null;
           occurred_at: string;
           payload_hash: string;
           processed_at?: string | null;
@@ -4592,12 +4599,16 @@ export type Database = {
           provider_event_id_hash: string;
           received_at?: string;
           status?: string;
+          tenant_id?: string | null;
         };
         Update: {
+          channel?: string | null;
           destination_id?: string;
           error_category?: string | null;
           error_code?: string | null;
           id?: string;
+          inbox_id?: number | null;
+          inbox_received_at?: string | null;
           occurred_at?: string;
           payload_hash?: string;
           processed_at?: string | null;
@@ -4605,6 +4616,7 @@ export type Database = {
           provider_event_id_hash?: string;
           received_at?: string;
           status?: string;
+          tenant_id?: string | null;
         };
         Relationships: [
           {
@@ -4612,6 +4624,13 @@ export type Database = {
             columns: ['destination_id'];
             isOneToOne: false;
             referencedRelation: 'inbound_destinations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'inbound_webhook_receipts_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
             referencedColumns: ['id'];
           },
         ];
@@ -11165,6 +11184,7 @@ export type Database = {
           inbox_id: number;
           outcome: string;
           received_at: string;
+          routing_key: string;
           tenant_id: string;
         }[];
       };

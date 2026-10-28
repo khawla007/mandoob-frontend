@@ -68,7 +68,15 @@ function createWebhookSupabaseStub(
       const reservation = reservations.shift() ?? null;
       if (!reservation) {
         return {
-          data: [{ outcome: 'unknown', tenant_id: null, inbox_id: null, received_at: null }],
+          data: [
+            {
+              outcome: 'unknown',
+              tenant_id: null,
+              inbox_id: null,
+              received_at: null,
+              routing_key: null,
+            },
+          ],
           error: null,
         };
       }
@@ -101,6 +109,7 @@ function createWebhookSupabaseStub(
             tenant_id: reservation.tenant_id,
             inbox_id: inbox.id,
             received_at: inbox.received_at,
+            routing_key: reservation.receipt_id,
           },
         ],
         error: null,
@@ -465,7 +474,12 @@ test('WhatsApp route atomically accepts every inbound message before status muta
       assert.equal(destination, 'meta-destination');
       assert.equal(message.timestamp, timestamp);
       assert.equal(receivedRawBody, rawBody);
-      return { tenantId: TENANT_ID, inboxId: 1, receivedAt: nowIso() };
+      return {
+        tenantId: TENANT_ID,
+        inboxId: 1,
+        receivedAt: nowIso(),
+        operationKey: RECEIPT_ID,
+      };
     },
     record: async (_supabase, _reservation, message) => {
       calls.push(`record:${message.id}`);
@@ -617,6 +631,7 @@ test('atomic inbound RPC infrastructure errors are retryable and never collapse 
             tenant_id: TENANT_ID,
             inbox_id: 42,
             received_at: nowIso(),
+            routing_key: RECEIPT_ID,
           },
         ],
         error: null,
@@ -654,6 +669,115 @@ test('atomic inbound RPC infrastructure errors are retryable and never collapse 
   assert.equal(attempts, 2);
 });
 
+test('routing failure after inbox acceptance resumes on duplicate retry exactly once', async () => {
+  const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
+    await import('./inbound-recording');
+  const leadEvents: Row[] = [];
+  let acceptAttempts = 0;
+  let insertAttempts = 0;
+  const routingKey = '00000000-0000-4000-8000-000000000099';
+  const supabase = {
+    rpc: async () => {
+      acceptAttempts += 1;
+      return {
+        data: [
+          {
+            outcome: acceptAttempts === 1 ? 'accepted' : 'duplicate',
+            tenant_id: TENANT_ID,
+            inbox_id: 42,
+            received_at: '2026-10-28T10:00:00.000Z',
+            routing_key: routingKey,
+          },
+        ],
+        error: null,
+      };
+    },
+    from(table: string) {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        order: () => builder,
+        insert(payload: Row) {
+          insertAttempts += 1;
+          if (insertAttempts === 1) return { error: { message: 'transient insert failure' } };
+          leadEvents.push(payload);
+          return { error: null };
+        },
+        then(resolve: (value: { data: Row[]; error: null }) => void) {
+          resolve({
+            data: table === 'leads' ? [{ ...leadRow(), tenant_id: TENANT_ID }] : leadEvents,
+            error: null,
+          });
+        },
+      };
+      return builder;
+    },
+  };
+  const input = {
+    destinationKey: '971500001111',
+    fromPhone: '+971501234567',
+    body: 'help',
+    providerEventId: 'retry-after-routing-failure',
+    occurredAt: nowIso(),
+    rawPayload: '{"signed":true}',
+  };
+
+  await assert.rejects(
+    recordUnifonicInbound(supabase as never, input),
+    InboundWebhookInfrastructureError,
+  );
+  await recordUnifonicInbound(supabase as never, input);
+  await recordUnifonicInbound(supabase as never, input);
+
+  assert.equal(acceptAttempts, 3);
+  assert.equal(leadEvents.length, 1);
+  assert.equal(
+    (leadEvents[0].metadata as Record<string, unknown>).inbound_operation_key,
+    routingKey,
+  );
+});
+
+test('lead lookup infrastructure failure is retryable instead of unmatched', async () => {
+  const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
+    await import('./inbound-recording');
+  const supabase = {
+    rpc: async () => ({
+      data: [
+        {
+          outcome: 'accepted',
+          tenant_id: TENANT_ID,
+          inbox_id: 42,
+          received_at: nowIso(),
+          routing_key: '00000000-0000-4000-8000-000000000098',
+        },
+      ],
+      error: null,
+    }),
+    from: () => {
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        order: () => builder,
+        then: (resolve: (value: { data: null; error: { message: string } }) => void) =>
+          resolve({ data: null, error: { message: 'private lookup failure' } }),
+      };
+      return builder;
+    },
+  };
+
+  await assert.rejects(
+    recordUnifonicInbound(supabase as never, {
+      destinationKey: '971500001111',
+      fromPhone: '+971501234567',
+      body: 'help',
+      providerEventId: 'lookup-failure',
+      occurredAt: nowIso(),
+      rawPayload: '{"signed":true}',
+    }),
+    InboundWebhookInfrastructureError,
+  );
+});
+
 test('atomic RPC enforces the SQL ownership shape for every no-op outcome', async () => {
   const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
     await import('./inbound-recording');
@@ -667,10 +791,27 @@ test('atomic RPC enforces the SQL ownership shape for every no-op outcome', asyn
   };
 
   const noOpRows = [
-    { outcome: 'unknown', tenant_id: null, inbox_id: null, received_at: null },
-    { outcome: 'duplicate', tenant_id: TENANT_ID, inbox_id: null, received_at: null },
-    { outcome: 'stale', tenant_id: null, inbox_id: null, received_at: null },
-    { outcome: 'rejected', tenant_id: null, inbox_id: null, received_at: null },
+    {
+      outcome: 'unknown',
+      tenant_id: null,
+      inbox_id: null,
+      received_at: null,
+      routing_key: null,
+    },
+    {
+      outcome: 'stale',
+      tenant_id: null,
+      inbox_id: null,
+      received_at: null,
+      routing_key: null,
+    },
+    {
+      outcome: 'rejected',
+      tenant_id: null,
+      inbox_id: null,
+      received_at: null,
+      routing_key: null,
+    },
   ];
   for (const row of noOpRows) {
     const supabase = {
@@ -687,7 +828,15 @@ test('atomic RPC enforces the SQL ownership shape for every no-op outcome', asyn
 
   const duplicateMismatch = {
     rpc: async () => ({
-      data: [{ outcome: 'duplicate', tenant_id: null, inbox_id: null, received_at: null }],
+      data: [
+        {
+          outcome: 'duplicate',
+          tenant_id: null,
+          inbox_id: null,
+          received_at: null,
+          routing_key: null,
+        },
+      ],
       error: null,
     }),
     from: () => {
@@ -739,7 +888,12 @@ test('WhatsApp mid-batch infrastructure failure blocks statuses and retry contin
       if (message.id === 'second' && failSecond) throw new Error('infrastructure');
       return message.id === 'first' && !failSecond
         ? null
-        : { tenantId: TENANT_ID, inboxId: 1, receivedAt: nowIso() };
+        : {
+            tenantId: TENANT_ID,
+            inboxId: 1,
+            receivedAt: nowIso(),
+            operationKey: RECEIPT_ID,
+          };
     },
     record: async (_supabase: never, _reservation: never, message: { id?: string }) => {
       calls.push(`route:${message.id}`);

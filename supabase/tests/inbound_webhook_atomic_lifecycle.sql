@@ -39,6 +39,7 @@ values (
 do $atomic_failure_retry$
 declare
   v_result record;
+  v_accepted record;
 begin
   begin
     perform * from public.accept_inbound_webhook(
@@ -65,6 +66,7 @@ begin
   if v_result.outcome <> 'accepted' or v_result.inbox_id is null then
     raise exception 'RETRY_NOT_ACCEPTED_AFTER_ROLLBACK';
   end if;
+  v_accepted := v_result;
   if not exists (
     select 1 from public.inbound_webhook_receipts
     where provider_event_id_hash = repeat('b', 64) and status = 'processed'
@@ -83,6 +85,51 @@ begin
     pg_catalog.now(), true, '+971501234567', 'STOP', 'retry-event'
   );
   if v_result.outcome <> 'duplicate' then raise exception 'DUPLICATE_NOT_CLASSIFIED'; end if;
+  if v_result.tenant_id is distinct from v_accepted.tenant_id
+    or v_result.inbox_id is distinct from v_accepted.inbox_id
+    or v_result.received_at is distinct from v_accepted.received_at
+    or v_result.routing_key is distinct from v_accepted.routing_key
+  then raise exception 'DUPLICATE_ROUTING_REPLAY_UNSTABLE'; end if;
+
+  insert into public.leads (
+    id, tenant_id, name, phone, source, stage, routing_reason
+  ) values (
+    '91800000-0000-4000-8000-000000000050',
+    '91800000-0000-4000-8000-000000000001',
+    'Inbound Routing Fixture',
+    '+971501234567',
+    'questionnaire',
+    'new',
+    'assigned_active_tenant_v1'
+  );
+
+  insert into public.lead_events (
+    lead_id, tenant_id, event_type, metadata
+  ) values (
+    '91800000-0000-4000-8000-000000000050',
+    '91800000-0000-4000-8000-000000000001',
+    'inbound_reply',
+    pg_catalog.jsonb_build_object(
+      'channel', 'sms',
+      'inbound_operation_key', v_result.routing_key::text
+    )
+  );
+
+  begin
+    insert into public.lead_events (
+      lead_id, tenant_id, event_type, metadata
+    ) values (
+      '91800000-0000-4000-8000-000000000050',
+      '91800000-0000-4000-8000-000000000001',
+      'inbound_reply',
+      pg_catalog.jsonb_build_object(
+        'channel', 'sms',
+        'inbound_operation_key', v_result.routing_key::text
+      )
+    );
+    raise exception 'INBOUND_OPERATION_KEY_NOT_UNIQUE';
+  exception when unique_violation then null;
+  end;
 
   select * into v_result from public.accept_inbound_webhook(
     'unifonic', 'sms', 'v1:' || repeat('d', 64), repeat('e', 64), repeat('f', 64),

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { routeInboundReplyToLeadSafely } from '@/lib/data/lead-reply-routing';
+import { routeInboundReplyToLead } from '@/lib/data/lead-reply-routing';
 import type { Database } from '@/lib/db/database.types';
 import { hashDestinationKey, isWebhookTimestampWithinTolerance } from '@/lib/events/contracts';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
@@ -28,6 +28,7 @@ export type InboundReservation = {
   tenantId: string;
   inboxId: number;
   receivedAt: string;
+  operationKey: string;
 };
 
 export class InboundWebhookInfrastructureError extends Error {
@@ -41,34 +42,26 @@ type GeneratedInboundRpcRow =
   Database['public']['Functions']['accept_inbound_webhook']['Returns'][number];
 type OwnershipFreeNoOpOutcome = 'unknown' | 'stale' | 'rejected';
 type InboundRpcRow =
-  | (Omit<GeneratedInboundRpcRow, 'outcome'> & { outcome: 'accepted' })
-  | (Omit<GeneratedInboundRpcRow, 'outcome' | 'inbox_id' | 'received_at'> & {
-      outcome: 'duplicate';
-      inbox_id: null;
-      received_at: null;
-    })
-  | (Omit<GeneratedInboundRpcRow, 'outcome' | 'tenant_id' | 'inbox_id' | 'received_at'> & {
+  | (Omit<GeneratedInboundRpcRow, 'outcome'> & { outcome: 'accepted' | 'duplicate' })
+  | (Omit<
+      GeneratedInboundRpcRow,
+      'outcome' | 'tenant_id' | 'inbox_id' | 'received_at' | 'routing_key'
+    > & {
       outcome: OwnershipFreeNoOpOutcome;
       tenant_id: null;
       inbox_id: null;
       received_at: null;
+      routing_key: null;
     });
 
 const inboundRpcRowSchema: z.ZodType<InboundRpcRow> = z.discriminatedUnion('outcome', [
   z
     .object({
-      outcome: z.literal('accepted'),
+      outcome: z.enum(['accepted', 'duplicate']),
       tenant_id: z.string().uuid(),
       inbox_id: z.number().int().positive(),
       received_at: z.string().datetime({ offset: true }),
-    })
-    .strict(),
-  z
-    .object({
-      outcome: z.literal('duplicate'),
-      tenant_id: z.string().uuid(),
-      inbox_id: z.null(),
-      received_at: z.null(),
+      routing_key: z.string().uuid(),
     })
     .strict(),
   z
@@ -77,6 +70,7 @@ const inboundRpcRowSchema: z.ZodType<InboundRpcRow> = z.discriminatedUnion('outc
       tenant_id: z.null(),
       inbox_id: z.null(),
       received_at: z.null(),
+      routing_key: z.null(),
     })
     .strict(),
 ]);
@@ -137,11 +131,12 @@ async function acceptInbound(
     throw new InboundWebhookInfrastructureError();
   }
   const row = parsed.data[0];
-  if (row.outcome !== 'accepted') return null;
+  if (row.outcome !== 'accepted' && row.outcome !== 'duplicate') return null;
   return {
     tenantId: row.tenant_id,
     inboxId: row.inbox_id,
     receivedAt: row.received_at,
+    operationKey: row.routing_key,
   };
 }
 
@@ -163,18 +158,16 @@ async function recordSmsInbound(
   );
   if (!reservation) return;
 
-  await routeInboundReplyToLeadSafely(
-    {
-      tenantId: reservation.tenantId,
-      channel: 'sms',
-      inboxId: reservation.inboxId,
-      fromPhone: input.fromPhone,
-      body: input.body,
-      providerMessageId: input.providerEventId,
-      receivedAt: reservation.receivedAt,
-    },
-    { supabase },
-  );
+  await routeAcceptedInboundReply(supabase, {
+    tenantId: reservation.tenantId,
+    channel: 'sms',
+    inboxId: reservation.inboxId,
+    operationKey: reservation.operationKey,
+    fromPhone: input.fromPhone,
+    body: input.body,
+    providerMessageId: input.providerEventId,
+    receivedAt: reservation.receivedAt,
+  });
 }
 
 export function recordTwilioInbound(supabase: Supa, input: SmsInbound): Promise<void> {
@@ -228,16 +221,31 @@ export async function recordReservedWhatsAppInboundMessage(
 ): Promise<void> {
   if (!message.from || !message.id) return;
   const body = message.text?.body ?? null;
-  await routeInboundReplyToLeadSafely(
-    {
-      tenantId: reservation.tenantId,
-      channel: 'whatsapp',
-      inboxId: reservation.inboxId,
-      fromPhone: message.from,
-      body,
-      providerMessageId: message.id,
-      receivedAt: reservation.receivedAt,
-    },
-    { supabase },
-  );
+  await routeAcceptedInboundReply(supabase, {
+    tenantId: reservation.tenantId,
+    channel: 'whatsapp',
+    inboxId: reservation.inboxId,
+    operationKey: reservation.operationKey,
+    fromPhone: message.from,
+    body,
+    providerMessageId: message.id,
+    receivedAt: reservation.receivedAt,
+  });
+}
+
+async function routeAcceptedInboundReply(
+  supabase: Supa,
+  input: Parameters<typeof routeInboundReplyToLead>[0],
+): Promise<void> {
+  try {
+    await routeInboundReplyToLead(input, { supabase });
+  } catch (error) {
+    console.error('lead inbound reply routing infrastructure failure', {
+      channel: input.channel,
+      inbox_id: input.inboxId,
+      operation_key: input.operationKey,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new InboundWebhookInfrastructureError();
+  }
 }

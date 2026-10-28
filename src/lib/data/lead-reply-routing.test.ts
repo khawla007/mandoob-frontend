@@ -252,25 +252,54 @@ test('finds older same-tenant phone matches beyond the newest 250 leads', async 
   assert.equal(supabase.tables.get('lead_events')![0].lead_id, 'lead-old-match');
 });
 
-test('safe routing wrapper swallows routing failures', async () => {
-  const { routeInboundReplyToLeadSafely } = await loadRouting();
+test('routing infrastructure failures remain distinguishable from true unmatched replies', async () => {
+  const { routeInboundReplyToLead } = await loadRouting();
   const supabase = createSupabaseStub(
     { leads: [baseLead], lead_events: [] },
     { lead_events: 'boom' },
   );
 
-  const result = await routeInboundReplyToLeadSafely(
-    {
-      tenantId: 'tenant-1',
-      channel: 'sms',
-      inboxId: 5,
-      fromPhone: '+971501234567',
-      body: 'Still log inbox',
-    },
+  await assert.rejects(
+    routeInboundReplyToLead(
+      {
+        tenantId: 'tenant-1',
+        channel: 'sms',
+        inboxId: 5,
+        operationKey: 'receipt-5',
+        fromPhone: '+971501234567',
+        body: 'Still log inbox',
+      },
+      { supabase: supabase as never },
+    ),
+    /lead reply event insert failed/,
+  );
+});
+
+test('stable receipt operation key prevents duplicate lead activity', async () => {
+  const { routeInboundReplyToLead } = await loadRouting();
+  const supabase = createSupabaseStub({ leads: [baseLead], lead_events: [] });
+  const base = {
+    tenantId: 'tenant-1',
+    channel: 'sms' as const,
+    inboxId: 8,
+    operationKey: 'receipt-stable-1',
+    fromPhone: '+971501234567',
+    body: 'Retry-safe reply',
+    providerMessageId: 'sms-provider-1',
+  };
+
+  await routeInboundReplyToLead(base, { supabase: supabase as never });
+  await routeInboundReplyToLead(
+    { ...base, inboxId: 9, providerMessageId: 'provider-representation-changed' },
     { supabase: supabase as never },
   );
 
-  assert.equal(result.status, 'unmatched');
+  assert.equal(supabase.tables.get('lead_events')!.length, 1);
+  assert.equal(
+    (supabase.tables.get('lead_events')![0].metadata as Record<string, unknown>)
+      .inbound_operation_key,
+    'receipt-stable-1',
+  );
 });
 
 test('provider retries do not duplicate inbound reply lead events', async () => {

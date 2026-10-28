@@ -10,6 +10,7 @@ export type InboundReplyInput = {
   tenantId: string;
   channel: InboundReplyChannel;
   inboxId: string | number;
+  operationKey?: string;
   fromPhone: string;
   body: string | null;
   providerMessageId?: string | null;
@@ -100,6 +101,7 @@ export async function routeInboundReplyToLead(
     from_phone: input.fromPhone,
     body_preview: (input.body ?? '').slice(0, 500),
     provider_message_id: input.providerMessageId ?? null,
+    inbound_operation_key: input.operationKey ?? null,
     received_at: input.receivedAt ?? null,
     routed_status: 'routed',
     ambiguous,
@@ -132,23 +134,6 @@ export async function routeInboundReplyToLead(
   return { status: 'routed', leadId: winner.id, ambiguous, candidateLeadIds };
 }
 
-export async function routeInboundReplyToLeadSafely(
-  input: InboundReplyInput,
-  deps: LeadReplyRoutingDeps = {},
-): Promise<InboundReplyRouteResult> {
-  try {
-    return await routeInboundReplyToLead(input, deps);
-  } catch (error) {
-    console.error('lead inbound reply routing failed', {
-      tenant_id: input.tenantId,
-      channel: input.channel,
-      inbox_id: input.inboxId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return { status: 'unmatched' };
-  }
-}
-
 function compareLeadCandidates(a: LeadCandidateRow, b: LeadCandidateRow): number {
   const aOpen = OPEN_STAGES.has(a.stage);
   const bOpen = OPEN_STAGES.has(b.stage);
@@ -160,8 +145,12 @@ async function findExistingInboundReplyEvent(
   admin: SupabaseClient,
   input: InboundReplyInput,
 ): Promise<{ lead_id: string } | null> {
-  const identityKey = input.providerMessageId ? 'provider_message_id' : 'inbox_id';
-  const identityValue = input.providerMessageId ?? String(input.inboxId);
+  const identityKey = input.operationKey
+    ? 'inbound_operation_key'
+    : input.providerMessageId
+      ? 'provider_message_id'
+      : 'inbox_id';
+  const identityValue = input.operationKey ?? input.providerMessageId ?? String(input.inboxId);
   const { data, error } = await admin
     .from('lead_events')
     .select('lead_id, metadata')
