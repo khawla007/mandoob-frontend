@@ -39,11 +39,16 @@ export class InboundWebhookInfrastructureError extends Error {
 
 type GeneratedInboundRpcRow =
   Database['public']['Functions']['accept_inbound_webhook']['Returns'][number];
-type InboundNoOpOutcome = 'unknown' | 'duplicate' | 'stale' | 'rejected';
+type OwnershipFreeNoOpOutcome = 'unknown' | 'stale' | 'rejected';
 type InboundRpcRow =
   | (Omit<GeneratedInboundRpcRow, 'outcome'> & { outcome: 'accepted' })
+  | (Omit<GeneratedInboundRpcRow, 'outcome' | 'inbox_id' | 'received_at'> & {
+      outcome: 'duplicate';
+      inbox_id: null;
+      received_at: null;
+    })
   | (Omit<GeneratedInboundRpcRow, 'outcome' | 'tenant_id' | 'inbox_id' | 'received_at'> & {
-      outcome: InboundNoOpOutcome;
+      outcome: OwnershipFreeNoOpOutcome;
       tenant_id: null;
       inbox_id: null;
       received_at: null;
@@ -60,7 +65,15 @@ const inboundRpcRowSchema: z.ZodType<InboundRpcRow> = z.discriminatedUnion('outc
     .strict(),
   z
     .object({
-      outcome: z.enum(['unknown', 'duplicate', 'stale', 'rejected']),
+      outcome: z.literal('duplicate'),
+      tenant_id: z.string().uuid(),
+      inbox_id: z.null(),
+      received_at: z.null(),
+    })
+    .strict(),
+  z
+    .object({
+      outcome: z.enum(['unknown', 'stale', 'rejected']),
       tenant_id: z.null(),
       inbox_id: z.null(),
       received_at: z.null(),

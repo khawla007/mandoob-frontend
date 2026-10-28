@@ -654,7 +654,7 @@ test('atomic inbound RPC infrastructure errors are retryable and never collapse 
   assert.equal(attempts, 2);
 });
 
-test('atomic RPC accepts nullable ownership for every known no-op outcome only', async () => {
+test('atomic RPC enforces the SQL ownership shape for every no-op outcome', async () => {
   const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
     await import('./inbound-recording');
   const input = {
@@ -666,10 +666,16 @@ test('atomic RPC accepts nullable ownership for every known no-op outcome only',
     rawPayload: '{"signed":true}',
   };
 
-  for (const outcome of ['unknown', 'duplicate', 'stale', 'rejected']) {
+  const noOpRows = [
+    { outcome: 'unknown', tenant_id: null, inbox_id: null, received_at: null },
+    { outcome: 'duplicate', tenant_id: TENANT_ID, inbox_id: null, received_at: null },
+    { outcome: 'stale', tenant_id: null, inbox_id: null, received_at: null },
+    { outcome: 'rejected', tenant_id: null, inbox_id: null, received_at: null },
+  ];
+  for (const row of noOpRows) {
     const supabase = {
       rpc: async () => ({
-        data: [{ outcome, tenant_id: null, inbox_id: null, received_at: null }],
+        data: [row],
         error: null,
       }),
       from: () => {
@@ -678,6 +684,20 @@ test('atomic RPC accepts nullable ownership for every known no-op outcome only',
     };
     await recordUnifonicInbound(supabase as never, input);
   }
+
+  const duplicateMismatch = {
+    rpc: async () => ({
+      data: [{ outcome: 'duplicate', tenant_id: null, inbox_id: null, received_at: null }],
+      error: null,
+    }),
+    from: () => {
+      throw new Error('mismatched duplicate attempted a side effect');
+    },
+  };
+  await assert.rejects(
+    recordUnifonicInbound(duplicateMismatch as never, input),
+    InboundWebhookInfrastructureError,
+  );
 
   const malformed = {
     rpc: async () => ({ data: [{ outcome: 'unknown' }], error: null }),
