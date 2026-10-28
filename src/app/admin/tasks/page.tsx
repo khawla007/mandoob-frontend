@@ -1,4 +1,4 @@
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
+import { OperationalWorkspace } from '@/components/operations/OperationalWorkspace';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
 
 export default async function AdminTasksPage({
@@ -8,7 +8,7 @@ export default async function AdminTasksPage({
 }) {
   await requirePlatformOperator();
   return (
-    <OperationalUnavailableRoute
+    <OperationalWorkspace
       role="admin"
       module="tasks"
       baseHref="/admin/tasks"

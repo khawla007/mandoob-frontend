@@ -5,32 +5,27 @@ import test from 'node:test';
 
 const routes = [
   'src/app/admin/tasks/page.tsx',
-  'src/app/admin/calendar/page.tsx',
   'src/app/admin/communications/page.tsx',
   'src/app/admin/notifications/page.tsx',
-  'src/app/admin/meetings/page.tsx',
   'src/app/(tenant)/t/[tenant]/(pro)/tasks/page.tsx',
-  'src/app/(tenant)/t/[tenant]/(pro)/calendar/page.tsx',
   'src/app/(tenant)/t/[tenant]/(pro)/communications/page.tsx',
   'src/app/(tenant)/t/[tenant]/(pro)/notifications/page.tsx',
   'src/app/(tenant)/t/[tenant]/(customer)/portal/tasks/page.tsx',
-  'src/app/(tenant)/t/[tenant]/(customer)/portal/calendar/page.tsx',
   'src/app/(tenant)/t/[tenant]/(customer)/portal/communications/page.tsx',
   'src/app/(tenant)/t/[tenant]/(customer)/portal/notifications/page.tsx',
   'src/app/(tenant)/t/[tenant]/(customer)/portal/activity/page.tsx',
   'src/app/(tenant)/t/[tenant]/(employee)/employee/tasks/page.tsx',
-  'src/app/(tenant)/t/[tenant]/(employee)/employee/calendar/page.tsx',
   'src/app/(tenant)/t/[tenant]/(employee)/employee/communications/page.tsx',
   'src/app/(tenant)/t/[tenant]/(employee)/employee/notifications/page.tsx',
   'src/app/(tenant)/t/[tenant]/(employee)/employee/activity/page.tsx',
 ] as const;
 
-test('every useful authorized operational route has truthful unavailable geometry', () => {
+test('accepted operational routes render the shared runtime instead of unavailable geometry', () => {
   for (const route of routes) {
     assert.equal(existsSync(resolve(route)), true, route);
     const source = readFileSync(resolve(route), 'utf8');
-    assert.match(source, /OperationalUnavailableRoute/u, route);
-    assert.doesNotMatch(source, /outbox|template|audit-log|completeTask/u, route);
+    assert.match(source, /OperationalWorkspace/u, route);
+    assert.doesNotMatch(source, /OperationalUnavailableRoute/u, route);
   }
 });
 

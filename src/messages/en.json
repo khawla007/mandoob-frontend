@@ -29,6 +29,77 @@
       "owner": "Implementation owner"
     },
     "phase3": "Phase 3 API and security contracts",
+    "runtime": {
+      "channels": {
+        "label": "Provider channels",
+        "disabled": "Disabled",
+        "description": "Email, SMS, and WhatsApp sending remain unavailable. This workspace shows local operational records only."
+      },
+      "scopeRequired": {
+        "title": "Choose a Company context",
+        "description": "Open this workspace from an authorized Company record. Platform-wide aggregation is not available through this Company-scoped runtime.",
+        "action": "View Companies"
+      },
+      "communications": {
+        "title": "Communication channels unavailable",
+        "description": "No user-facing inbox or thread source exists in the accepted runtime. Provider delivery is not inferred from local operational records."
+      },
+      "error": {
+        "title": "Operational records unavailable",
+        "description": "The authorized source could not be read. No empty state, count, or delivery result has been inferred.",
+        "retry": "Retry"
+      },
+      "empty": {
+        "title": "No operational records",
+        "notifications": "The authorized notification source returned no records for this page.",
+        "tasks": "The authorized task source returned no records for this page.",
+        "activity": "The authorized activity source returned no records for this page.",
+        "communications": "Communication channels remain unavailable."
+      },
+      "listLabel": "Operational records",
+      "next": "Next page",
+      "dueAt": "Due {value}",
+      "codes": {
+        "employeeRecordChanged": "Employee record updated",
+        "employeeImportFinished": "Employee import finished",
+        "renewalLifecycleChanged": "Renewal status updated",
+        "renewalReminderScheduled": "Renewal reminder scheduled",
+        "renewalAttentionDaily": "Renewal requires attention",
+        "meetingBooked": "Meeting booked",
+        "meetingRescheduled": "Meeting rescheduled",
+        "meetingCancelled": "Meeting cancelled",
+        "other": "Operational update"
+      },
+      "severity": {
+        "info": "Information",
+        "success": "Success",
+        "warning": "Warning",
+        "critical": "Critical"
+      },
+      "readState": {
+        "read": "Read",
+        "unread": "Unread"
+      },
+      "actions": {
+        "markRead": "Mark as read",
+        "markUnread": "Mark as unread",
+        "pending": "Updating…",
+        "success": "Read state updated.",
+        "error": "The read state could not be updated. Try again."
+      },
+      "priority": {
+        "low": "Low priority",
+        "normal": "Normal priority",
+        "high": "High priority",
+        "urgent": "Urgent"
+      },
+      "taskState": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "done": "Done",
+        "cancelled": "Cancelled"
+      }
+    },
     "unavailableTitle": "Production data unavailable",
     "boundariesTitle": "Operational contract",
     "boundariesDescription": "These boundaries remain visible so a missing backend contract is never mistaken for an empty or successful workflow.",

@@ -1,13 +1,18 @@
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
+import { OperationalWorkspace } from '@/components/operations/OperationalWorkspace';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
 
-export default async function AdminNotificationsPage() {
+export default async function AdminNotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requirePlatformOperator();
   return (
-    <OperationalUnavailableRoute
+    <OperationalWorkspace
       role="admin"
       module="notifications"
       baseHref="/admin/notifications"
+      search={await searchParams}
     />
   );
 }

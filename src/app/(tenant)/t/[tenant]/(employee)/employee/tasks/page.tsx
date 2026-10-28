@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
+import { OperationalWorkspace } from '@/components/operations/OperationalWorkspace';
 import { EmployeeTaskList } from '@/components/employee/EmployeeP308Sections';
 import { authorizeEmployeePortalRead } from '@/lib/data/employee-portal-workspace';
 import { loadEmployeeTasks } from '@/lib/employees/self-service';
@@ -23,11 +23,11 @@ export default async function EmployeeTasksPage({
   return (
     <div className="space-y-5">
       <EmployeeTaskList tasks={tasks} t={t} />
-      {/* Persistent assignable tasks are a P3.10 capability and remain unavailable. */}
-      <OperationalUnavailableRoute
+      <OperationalWorkspace
         role="employee"
         module="tasks"
         baseHref={baseHref}
+        tenantSlug={slug}
         search={await searchParams}
       />
     </div>
