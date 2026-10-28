@@ -26,12 +26,18 @@ type ReservationRow = {
   company_id: string | null;
 };
 
+type RpcCall = {
+  name: string;
+  args: Record<string, unknown>;
+};
+
 function createWebhookSupabaseStub(
   provider: 'twilio' | 'unifonic' | 'whatsapp',
   reservations: Array<ReservationRow | null> = [reservationRow()],
 ) {
   const calls: string[] = [];
   const rpcArgs: Array<Record<string, unknown>> = [];
+  const rpcCalls: RpcCall[] = [];
   const tables = new Map<string, Row[]>([
     [
       'tenant_sms_config',
@@ -60,11 +66,81 @@ function createWebhookSupabaseStub(
   return {
     calls,
     rpcArgs,
+    rpcCalls,
     tables,
     async rpc(name: string, args: Record<string, unknown>) {
-      assert.equal(name, 'accept_inbound_webhook');
-      calls.push('rpc:accept_inbound_webhook');
+      calls.push(`rpc:${name}`);
       rpcArgs.push(args);
+      rpcCalls.push({ name, args });
+      if (name === 'route_inbound_reply_to_lead') {
+        const existing = rows('lead_events').find((event) => {
+          const metadata = event.metadata as Record<string, unknown>;
+          return (
+            event.tenant_id === args.p_tenant_id &&
+            metadata.channel === args.p_channel &&
+            metadata.inbound_operation_key === args.p_operation_key
+          );
+        });
+        if (existing) {
+          return {
+            data: [
+              {
+                status: 'routed',
+                lead_id: existing.lead_id,
+                ambiguous: false,
+                candidate_lead_ids: [existing.lead_id],
+              },
+            ],
+            error: null,
+          };
+        }
+
+        const candidates = rows('leads')
+          .filter(
+            (lead) =>
+              lead.tenant_id === args.p_tenant_id &&
+              normalizePhone(String(lead.phone ?? '')) ===
+                normalizePhone(String(args.p_from_phone ?? '')),
+          )
+          .sort(compareLeadRows);
+        if (candidates.length === 0) {
+          return {
+            data: [
+              {
+                status: 'unmatched',
+                lead_id: null,
+                ambiguous: false,
+                candidate_lead_ids: [],
+              },
+            ],
+            error: null,
+          };
+        }
+
+        const candidateLeadIds = candidates.map((lead) => String(lead.id));
+        rows('lead_events').push({
+          lead_id: candidateLeadIds[0],
+          tenant_id: args.p_tenant_id,
+          event_type: 'inbound_reply',
+          metadata: {
+            channel: args.p_channel,
+            inbound_operation_key: args.p_operation_key,
+          },
+        });
+        return {
+          data: [
+            {
+              status: 'routed',
+              lead_id: candidateLeadIds[0],
+              ambiguous: candidateLeadIds.length > 1,
+              candidate_lead_ids: candidateLeadIds,
+            },
+          ],
+          error: null,
+        };
+      }
+
+      assert.equal(name, 'accept_inbound_webhook');
       const reservation = reservations.shift() ?? null;
       if (!reservation) {
         return {
@@ -206,6 +282,22 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function normalizePhone(value: string): string {
+  let digits = value.replace(/\D/gu, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0') && digits.length === 10) digits = `971${digits.slice(1)}`;
+  return digits;
+}
+
+function compareLeadRows(a: Row, b: Row): number {
+  const openStages = new Set(['new', 'contacted', 'qualified']);
+  const openDifference =
+    Number(openStages.has(String(b.stage))) - Number(openStages.has(String(a.stage)));
+  if (openDifference !== 0) return openDifference;
+  const createdDifference = String(b.created_at).localeCompare(String(a.created_at));
+  return createdDifference || String(a.id).localeCompare(String(b.id));
+}
+
 test('Twilio reserves the callback destination before any tenant-scoped side effect', async () => {
   const { recordTwilioInbound } = await import('./inbound-recording');
   const supabase = createWebhookSupabaseStub('twilio');
@@ -224,6 +316,19 @@ test('Twilio reserves the callback destination before any tenant-scoped side eff
   assert.equal(supabase.tables.get('sms_inbox')!.length, 1);
   assert.equal(supabase.tables.get('sms_inbox')![0]?.tenant_id, TENANT_ID);
   assert.equal(supabase.tables.get('lead_events')!.length, 0);
+  assert.deepEqual(supabase.rpcCalls[1], {
+    name: 'route_inbound_reply_to_lead',
+    args: {
+      p_body: 'I need help',
+      p_channel: 'sms',
+      p_from_phone: '+971501234567',
+      p_inbox_id: '1',
+      p_operation_key: RECEIPT_ID,
+      p_provider_message_id: 'twilio-message-reserved',
+      p_received_at: supabase.tables.get('sms_inbox')![0]?.received_at,
+      p_tenant_id: TENANT_ID,
+    },
+  });
 });
 
 test('unknown Twilio destination is a non-disclosing no-op', async () => {
@@ -620,8 +725,25 @@ test('atomic inbound RPC infrastructure errors are retryable and never collapse 
   const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
     await import('./inbound-recording');
   let attempts = 0;
+  let routingCalls = 0;
   const supabase = {
-    rpc: async () => {
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      if (name === 'route_inbound_reply_to_lead') {
+        routingCalls += 1;
+        assert.equal(args.p_operation_key, RECEIPT_ID);
+        return {
+          data: [
+            {
+              status: 'unmatched',
+              lead_id: null,
+              ambiguous: false,
+              candidate_lead_ids: [],
+            },
+          ],
+          error: null,
+        };
+      }
+      assert.equal(name, 'accept_inbound_webhook');
       attempts += 1;
       if (attempts === 1) throw new Error('database unavailable');
       return {
@@ -667,6 +789,7 @@ test('atomic inbound RPC infrastructure errors are retryable and never collapse 
   );
   await recordUnifonicInbound(supabase as never, input);
   assert.equal(attempts, 2);
+  assert.equal(routingCalls, 1);
 });
 
 test('routing failure after inbox acceptance resumes on duplicate retry exactly once', async () => {
@@ -674,10 +797,38 @@ test('routing failure after inbox acceptance resumes on duplicate retry exactly 
     await import('./inbound-recording');
   const leadEvents: Row[] = [];
   let acceptAttempts = 0;
-  let insertAttempts = 0;
+  let routingAttempts = 0;
   const routingKey = '00000000-0000-4000-8000-000000000099';
   const supabase = {
-    rpc: async () => {
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      if (name === 'route_inbound_reply_to_lead') {
+        routingAttempts += 1;
+        assert.equal(args.p_operation_key, routingKey);
+        assert.equal(args.p_tenant_id, TENANT_ID);
+        if (routingAttempts === 1) {
+          return { data: null, error: { message: 'transient routing failure' } };
+        }
+        if (leadEvents.length === 0) {
+          leadEvents.push({
+            lead_id: 'lead-1',
+            tenant_id: TENANT_ID,
+            event_type: 'inbound_reply',
+            metadata: { inbound_operation_key: routingKey, channel: 'sms' },
+          });
+        }
+        return {
+          data: [
+            {
+              status: 'routed',
+              lead_id: 'lead-1',
+              ambiguous: false,
+              candidate_lead_ids: ['lead-1'],
+            },
+          ],
+          error: null,
+        };
+      }
+      assert.equal(name, 'accept_inbound_webhook');
       acceptAttempts += 1;
       return {
         data: [
@@ -692,25 +843,8 @@ test('routing failure after inbox acceptance resumes on duplicate retry exactly 
         error: null,
       };
     },
-    from(table: string) {
-      const builder = {
-        select: () => builder,
-        eq: () => builder,
-        order: () => builder,
-        insert(payload: Row) {
-          insertAttempts += 1;
-          if (insertAttempts === 1) return { error: { message: 'transient insert failure' } };
-          leadEvents.push(payload);
-          return { error: null };
-        },
-        then(resolve: (value: { data: Row[]; error: null }) => void) {
-          resolve({
-            data: table === 'leads' ? [{ ...leadRow(), tenant_id: TENANT_ID }] : leadEvents,
-            error: null,
-          });
-        },
-      };
-      return builder;
+    from() {
+      throw new Error('routing must remain inside the RPC');
     },
   };
   const input = {
@@ -730,6 +864,7 @@ test('routing failure after inbox acceptance resumes on duplicate retry exactly 
   await recordUnifonicInbound(supabase as never, input);
 
   assert.equal(acceptAttempts, 3);
+  assert.equal(routingAttempts, 3);
   assert.equal(leadEvents.length, 1);
   assert.equal(
     (leadEvents[0].metadata as Record<string, unknown>).inbound_operation_key,
@@ -737,31 +872,31 @@ test('routing failure after inbox acceptance resumes on duplicate retry exactly 
   );
 });
 
-test('lead lookup infrastructure failure is retryable instead of unmatched', async () => {
+test('lead routing RPC infrastructure failure is retryable instead of unmatched', async () => {
   const { recordUnifonicInbound, InboundWebhookInfrastructureError } =
     await import('./inbound-recording');
   const supabase = {
-    rpc: async () => ({
-      data: [
-        {
-          outcome: 'accepted',
-          tenant_id: TENANT_ID,
-          inbox_id: 42,
-          received_at: nowIso(),
-          routing_key: '00000000-0000-4000-8000-000000000098',
-        },
-      ],
-      error: null,
-    }),
-    from: () => {
-      const builder = {
-        select: () => builder,
-        eq: () => builder,
-        order: () => builder,
-        then: (resolve: (value: { data: null; error: { message: string } }) => void) =>
-          resolve({ data: null, error: { message: 'private lookup failure' } }),
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      if (name === 'route_inbound_reply_to_lead') {
+        assert.equal(args.p_operation_key, '00000000-0000-4000-8000-000000000098');
+        return { data: null, error: { message: 'private routing failure' } };
+      }
+      assert.equal(name, 'accept_inbound_webhook');
+      return {
+        data: [
+          {
+            outcome: 'accepted',
+            tenant_id: TENANT_ID,
+            inbox_id: 42,
+            received_at: nowIso(),
+            routing_key: '00000000-0000-4000-8000-000000000098',
+          },
+        ],
+        error: null,
       };
-      return builder;
+    },
+    from: () => {
+      throw new Error('routing must remain inside the RPC');
     },
   };
 
