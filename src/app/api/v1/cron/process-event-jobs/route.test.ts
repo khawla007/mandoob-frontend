@@ -14,6 +14,7 @@ describe('event worker cron owner', () => {
     ] as const) {
       let called = false;
       const post = createProcessEventJobsHandler({
+        cutoverValue: 'event-runtime-only',
         configuredSecret,
         consumers: ['internal.safe.projection'],
         runConsumer: async () => {
@@ -42,6 +43,7 @@ describe('event worker cron owner', () => {
     }> = [];
     const secret = '0123456789abcdef0123456789abcdef';
     const post = createProcessEventJobsHandler({
+      cutoverValue: 'event-runtime-only',
       configuredSecret: secret,
       consumers: ['internal.one.projection', 'internal.two.projection'],
       runConsumer: async (consumer, options) => {
@@ -89,6 +91,7 @@ describe('event worker cron owner', () => {
     const secret = '0123456789abcdef0123456789abcdef';
     let observedAbort = false;
     const post = createProcessEventJobsHandler({
+      cutoverValue: 'event-runtime-only',
       configuredSecret: secret,
       consumers: ['internal.safe.projection'],
       deadlineMs: 1,
@@ -121,6 +124,7 @@ describe('event worker cron owner', () => {
     const requestAbort = new AbortController();
     let observedAbort = false;
     const post = createProcessEventJobsHandler({
+      cutoverValue: 'event-runtime-only',
       configuredSecret: secret,
       consumers: ['internal.safe.projection'],
       runConsumer: async (_consumer, { signal }) => {
@@ -168,11 +172,42 @@ describe('event worker cron owner', () => {
     assert.doesNotMatch(route, /p311\.meeting_ai\.processor/u);
   });
 
-  test('records unavailable scheduler cadence as launch-blocking without enabling a schedule', () => {
+  test('fails closed before worker creation unless the exact event runtime mode is active', async () => {
+    const secret = '0123456789abcdef0123456789abcdef';
+    for (const cutoverValue of [undefined, '', 'legacy', 'event-runtime']) {
+      let workerCreated = false;
+      const post = createProcessEventJobsHandler({
+        cutoverValue,
+        configuredSecret: secret,
+        consumers: ['internal.safe.projection'],
+        runConsumer: async () => {
+          workerCreated = true;
+          return { claimed: 0, succeeded: 0, failed: 0, leaseLost: 0 };
+        },
+      });
+      const response = await post(
+        new Request('https://example.test/api/v1/cron/process-event-jobs', {
+          method: 'POST',
+          headers: { 'x-cron-secret': secret },
+        }),
+      );
+      assert.equal(response.status, 503);
+      assert.deepEqual(await response.json(), {
+        error: 'unavailable',
+        code: 'EVENT_RUNTIME_CUTOVER_INACTIVE',
+      });
+      assert.equal(workerCreated, false);
+    }
+  });
+
+  test('records checked-in cadence while deployment activation remains launch-blocked', () => {
     assert.deepEqual(EVENT_RUNTIME_CADENCE_DISPOSITION, {
-      configured: false,
+      configured: true,
+      deploymentActivated: false,
+      owner: 'netlify.event-runtime',
+      cadence: '*/5 * * * *',
       status: 'launch-blocking',
-      reason: 'DEPLOY_SCHEDULE_NOT_APPROVED',
+      reason: 'DEPLOY_SCHEDULE_ACTIVATION_NOT_APPROVED',
     });
   });
 });

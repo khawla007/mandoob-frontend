@@ -1,11 +1,15 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { eventRuntimeEnabled } from '@/lib/events/runtime-cutover';
 
 type WorkerSummary = { claimed: number; succeeded: number; failed: number; leaseLost: number };
 
 export const EVENT_RUNTIME_CADENCE_DISPOSITION = {
-  configured: false,
+  configured: true,
+  deploymentActivated: false,
+  owner: 'netlify.event-runtime',
+  cadence: '*/5 * * * *',
   status: 'launch-blocking',
-  reason: 'DEPLOY_SCHEDULE_NOT_APPROVED',
+  reason: 'DEPLOY_SCHEDULE_ACTIVATION_NOT_APPROVED',
 } as const;
 
 function secretMatches(configured: string | undefined, supplied: string | null): boolean {
@@ -16,6 +20,7 @@ function secretMatches(configured: string | undefined, supplied: string | null):
 }
 
 export function createProcessEventJobsHandler(input: {
+  cutoverValue: string | undefined;
   configuredSecret: string | undefined;
   consumers: readonly string[];
   deadlineMs?: number;
@@ -27,6 +32,12 @@ export function createProcessEventJobsHandler(input: {
   return async (request) => {
     if (!secretMatches(input.configuredSecret, request.headers.get('x-cron-secret'))) {
       return Response.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    if (!eventRuntimeEnabled(input.cutoverValue)) {
+      return Response.json(
+        { error: 'unavailable', code: 'EVENT_RUNTIME_CUTOVER_INACTIVE' },
+        { status: 503 },
+      );
     }
     const deadlineController = new AbortController();
     const relayRequestAbort = () => deadlineController.abort();

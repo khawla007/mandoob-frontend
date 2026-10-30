@@ -60,6 +60,7 @@ const schema = z.object({
   ENCRYPTION_KEY: optionalStr,
   SUPABASE_AUTH_WEBHOOK_SECRET: optionalStr,
   CRON_SECRET: optionalStr,
+  EVENT_RUNTIME_SCHEDULER_CUTOVER: optionalStr,
 
   WHATSAPP_VERIFY_TOKEN: optionalStr,
   WHATSAPP_APP_SECRET: optionalStr,

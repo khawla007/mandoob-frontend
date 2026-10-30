@@ -97,6 +97,7 @@ async function runConsumer(
 }
 
 export const POST = createProcessEventJobsHandler({
+  cutoverValue: env.EVENT_RUNTIME_SCHEDULER_CUTOVER,
   configuredSecret: env.CRON_SECRET,
   consumers: scheduledRuntimeConsumers,
   runConsumer,
