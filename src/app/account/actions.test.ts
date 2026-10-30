@@ -129,6 +129,38 @@ test('mandatory operator MFA removal delegates to the distributed invariant', ()
   assert.match(remove, /unenroll/u);
 });
 
+test('every legacy account MFA mutation enforces privileged step-up before provider work', () => {
+  const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
+  const sections = [
+    source.slice(
+      source.indexOf('export async function enrollMfaAction'),
+      source.indexOf('export async function finalizeMfaEnrollmentAction'),
+    ),
+    source.slice(
+      source.indexOf('export async function finalizeMfaEnrollmentAction'),
+      source.indexOf('export async function removeMfaFactorAction'),
+    ),
+    source.slice(
+      source.indexOf('export async function removeMfaFactorAction'),
+      source.indexOf('export async function updateRoleFieldsAction'),
+    ),
+  ];
+
+  for (const section of sections) {
+    assert.match(section, /authorizeAccountMfaMutation/u);
+  }
+  assert.ok(
+    sections[0]!.indexOf('authorizeAccountMfaMutation') < sections[0]!.indexOf('.mfa.enroll'),
+  );
+  assert.ok(
+    sections[1]!.indexOf('authorizeAccountMfaMutation') < sections[1]!.indexOf('.mfa.challenge'),
+  );
+  assert.ok(
+    sections[2]!.indexOf('authorizeAccountMfaMutation') <
+      sections[2]!.indexOf('removeMfaFactorWithInvariant'),
+  );
+});
+
 test('password change preserves the browser session while reauthenticating in isolation', () => {
   const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
   const change = source.slice(

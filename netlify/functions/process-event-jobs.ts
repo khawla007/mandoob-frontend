@@ -2,7 +2,6 @@ import { eventRuntimeEnabled } from '../../src/lib/events/runtime-cutover';
 
 export const EVENT_RUNTIME_SCHEDULER_OWNER = 'netlify.event-runtime' as const;
 export const EVENT_RUNTIME_SCHEDULE = '*/5 * * * *' as const;
-export const config = { schedule: EVENT_RUNTIME_SCHEDULE } as const;
 
 const PROCESS_EVENT_JOBS_PATH = '/api/v1/cron/process-event-jobs';
 const DEFAULT_TIMEOUT_MS = 20_000;

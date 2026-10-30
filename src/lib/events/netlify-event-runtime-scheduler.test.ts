@@ -5,7 +5,6 @@ import { describe, test } from 'node:test';
 import {
   EVENT_RUNTIME_SCHEDULE,
   EVENT_RUNTIME_SCHEDULER_OWNER,
-  config,
   createScheduledEventRuntimeHandler,
 } from '../../../netlify/functions/process-event-jobs';
 import { EVENT_RUNTIME_CADENCE_DISPOSITION } from '../../app/api/v1/cron/process-event-jobs/route-handler';
@@ -39,7 +38,6 @@ describe('Netlify event runtime scheduler', () => {
   test('checks in one UTC cadence owned only by the event runtime', () => {
     assert.equal(EVENT_RUNTIME_SCHEDULER_OWNER, 'netlify.event-runtime');
     assert.equal(EVENT_RUNTIME_SCHEDULE, '*/5 * * * *');
-    assert.deepEqual(config, { schedule: EVENT_RUNTIME_SCHEDULE });
     assert.equal(EVENT_RUNTIME_CADENCE_DISPOSITION.owner, EVENT_RUNTIME_SCHEDULER_OWNER);
     assert.equal(EVENT_RUNTIME_CADENCE_DISPOSITION.cadence, EVENT_RUNTIME_SCHEDULE);
 
@@ -55,8 +53,10 @@ describe('Netlify event runtime scheduler', () => {
       })
       .sort();
 
-    assert.deepEqual(scheduledFunctions, ['process-event-jobs.ts']);
-    assert.doesNotMatch(readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8'), /schedule\s*=/u);
+    assert.deepEqual(scheduledFunctions, []);
+    const netlifyConfig = readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8');
+    assert.match(netlifyConfig, /\[functions\."process-event-jobs"\]/u);
+    assert.match(netlifyConfig, /schedule\s*=\s*"\*\/5 \* \* \* \*"/u);
   });
 
   test('fails closed unless the exclusive cutover selector, URL, and secret are valid', async () => {

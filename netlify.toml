@@ -2,3 +2,6 @@
 # in canonical URLs. Keep secret scanning enabled for every other environment key.
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_ROOT_DOMAIN"
+
+[functions."process-event-jobs"]
+  schedule = "*/5 * * * *"
