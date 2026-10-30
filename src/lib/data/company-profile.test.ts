@@ -251,3 +251,27 @@ test('dashboard assignment remains authorized when optional Company profile or r
   assert.equal(missingReadiness?.readinessState, 'unavailable');
   assert.deepEqual(missingReadiness?.company?.readinessCodes, []);
 });
+
+test('dashboard assignment accepts a canonical PostgreSQL UUID with non-RFC variant bits', async () => {
+  const { readAssignedCompanyDashboardForPro } = await import('./company-profile');
+  const postgresTenantId = '00000000-0000-0000-0000-000000000001';
+
+  const result = await readAssignedCompanyDashboardForPro(profileId, 'firm', {
+    supabase: fakeSupabase([
+      {
+        data: { id: postgresTenantId, slug: 'firm', name: 'Firm', plan: 'pro', status: 'active' },
+        error: null,
+      },
+      { data: { company_id: companyId }, error: null },
+      { data: null, error: { message: 'optional profile unavailable' } },
+    ]) as never,
+  });
+
+  assert.deepEqual(result, {
+    tenantId: postgresTenantId,
+    companyId,
+    company: null,
+    profileState: 'unavailable',
+    readinessState: 'unavailable',
+  });
+});
