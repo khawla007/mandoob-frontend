@@ -1,5 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
+import { isExplicitLocalAcceptanceOrigin } from './local-acceptance-origin';
 
 const optionalStr = z.preprocess(
   (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
@@ -17,11 +18,7 @@ const productionAppUrl = z
   .string()
   .url()
   .refine((value) => new URL(value).protocol === 'https:', 'must use HTTPS in production');
-const explicitLocalAcceptanceOrigin =
-  (process.env.P112_ACCEPTANCE_LOCAL_ONLY === '1' &&
-    process.env.NEXT_PUBLIC_APP_URL === 'http://127.0.0.1:3001') ||
-  (process.env.P2_ACCEPTANCE_LOCAL_ONLY === '1' &&
-    process.env.NEXT_PUBLIC_APP_URL === 'http://127.0.0.1:3100');
+const explicitLocalAcceptanceOrigin = isExplicitLocalAcceptanceOrigin(process.env);
 const appUrlSchema =
   process.env.NODE_ENV === 'production' && !explicitLocalAcceptanceOrigin
     ? productionAppUrl

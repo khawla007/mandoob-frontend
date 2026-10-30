@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
+import { resolveFixtureSecretPath } from './acceptance-paths';
 import { assertLocalAcceptanceTarget, parseSupabaseStatus } from './local-target';
 import {
   ACCEPTANCE_CONFIG,
@@ -14,6 +15,14 @@ import {
 } from './supabase-cli';
 
 const PROJECT_ID = ACCEPTANCE_PROJECT_ID;
+
+function acceptanceAppPort(): string {
+  const port = process.env.P2_ACCEPTANCE_APP_PORT?.trim() || '3100';
+  if (!/^\d+$/u.test(port) || Number(port) < 1024 || Number(port) > 65535) {
+    throw new Error('P2_APP: application port is invalid');
+  }
+  return port;
+}
 
 async function listIdentityEmails(
   apiUrl: string,
@@ -43,7 +52,7 @@ async function main() {
   };
   const apiUrl = read('API_URL');
   const serviceKey = read('SERVICE_ROLE_KEY');
-  const manifest = JSON.parse(await readFile('tests/.auth/p2-credentials.json', 'utf8')) as {
+  const manifest = JSON.parse(await readFile(resolveFixtureSecretPath(process.env), 'utf8')) as {
     encryptionKey?: string;
     roles?: Array<{ email?: string }>;
   };
@@ -74,7 +83,7 @@ async function main() {
   });
   const child = spawn(
     resolve(process.cwd(), 'node_modules/.bin/next'),
-    action === 'build' ? ['build'] : ['start', '-H', '127.0.0.1', '-p', '3100'],
+    action === 'build' ? ['build'] : ['start', '-H', '127.0.0.1', '-p', acceptanceAppPort()],
     {
       stdio: 'inherit',
       env: {
@@ -83,8 +92,8 @@ async function main() {
         NEXT_PUBLIC_SUPABASE_ANON_KEY: read('ANON_KEY'),
         SUPABASE_SERVICE_ROLE_KEY: serviceKey,
         ENCRYPTION_KEY: manifest.encryptionKey,
-        NEXT_PUBLIC_ROOT_DOMAIN: '127.0.0.1:3100',
-        NEXT_PUBLIC_APP_URL: 'http://127.0.0.1:3100',
+        NEXT_PUBLIC_ROOT_DOMAIN: `127.0.0.1:${acceptanceAppPort()}`,
+        NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${acceptanceAppPort()}`,
         P2_ACCEPTANCE_LOCAL_ONLY: '1',
       },
     },

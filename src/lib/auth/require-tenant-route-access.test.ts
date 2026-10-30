@@ -115,12 +115,33 @@ test('PRO boundary returns the authoritative PRO for controls and mutations', as
   const result = await requireProTenantRouteAccess('acme', {
     resolveTenant: async () => tenant,
     requireAccess: async () => session('pro'),
+    enforcePrivileged: async () => undefined,
     deny: () => {
       throw new Error('DENIED');
     },
   });
   assert.equal(result.session.role, 'pro');
   assert.equal(result.session.tenantId, tenant.id);
+});
+
+test('PRO boundary enforces the privileged AAL2 session before returning access', async () => {
+  const { requireProTenantRouteAccess } = await import('./require-tenant-route-access');
+  const calls: string[] = [];
+  await assert.rejects(
+    requireProTenantRouteAccess('acme', {
+      resolveTenant: async () => tenant,
+      requireAccess: async () => session('pro'),
+      enforcePrivileged: async (actor) => {
+        calls.push(`mfa:${actor.aal}`);
+        throw new Error('MFA_REQUIRED');
+      },
+      deny: () => {
+        throw new Error('DENIED');
+      },
+    }),
+    /MFA_REQUIRED/u,
+  );
+  assert.deepEqual(calls, ['mfa:aal1']);
 });
 
 test('Customer shell denies a customer whose authoritative tenant does not match the route', async () => {

@@ -35,7 +35,7 @@ describe('login and registration form contracts', () => {
 
   it('preserves the login API payload and sanitizes its server destination', () => {
     assert.match(login, /postJson\('\/api\/v1\/auth\/login', values\)/u);
-    assert.match(login, /loginSuccessDestination\(data\.redirectTo\)/u);
+    assert.match(login, /loginSuccessDestination\([\s\S]*data\.redirectTo[\s\S]*requiresMfaChallenge/u);
     assert.doesNotMatch(state, /queryNext === '\/mfa\/enroll'/u);
     assert.match(state, /sharedSafeDestination\(serverRedirect\)/u);
     assert.match(login, /EMAIL_NOT_VERIFIED/u);
@@ -43,6 +43,13 @@ describe('login and registration form contracts', () => {
     assert.match(login, /role=\{feedback\.tone === 'error' \? 'alert' : 'status'\}/u);
     assert.match(login, /errorSummaryRef/u);
     assert.match(state, /loginFailureCategory/u);
+  });
+
+  it('carries the authoritative MFA requirement and exact safe next destination', () => {
+    const route = source('src/app/api/v1/auth/login/route.ts');
+    assert.match(route, /requiresMfaChallenge/u);
+    assert.match(route, /authoritative\.mfaEnrolled/u);
+    assert.match(route, /authoritative\.aal\s*!==\s*'aal2'/u);
   });
 
   it('collects only accepted registration fields and presents persistent requirements', () => {

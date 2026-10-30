@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { isExplicitLocalAcceptanceOrigin } from '@/lib/local-acceptance-origin';
+
 const LOCAL_APPLICATION_ORIGIN = 'http://localhost:3001';
 
 function isLoopbackHostname(hostname: string): boolean {
@@ -8,13 +10,6 @@ function isLoopbackHostname(hostname: string): boolean {
     hostname.endsWith('.localhost') ||
     hostname === '[::1]' ||
     /^127(?:\.\d{1,3}){3}$/u.test(hostname)
-  );
-}
-
-function isExplicitLocalAcceptanceOrigin(configured: string): boolean {
-  return (
-    (process.env.P112_ACCEPTANCE_LOCAL_ONLY === '1' && configured === 'http://127.0.0.1:3001') ||
-    (process.env.P2_ACCEPTANCE_LOCAL_ONLY === '1' && configured === 'http://127.0.0.1:3100')
   );
 }
 
@@ -31,7 +26,7 @@ function trustedApplicationOrigin(): string {
     const url = new URL(configured);
     const isAllowedProtocol =
       url.protocol === 'https:' ||
-      isExplicitLocalAcceptanceOrigin(configured) ||
+      isExplicitLocalAcceptanceOrigin(process.env) ||
       (process.env.NODE_ENV !== 'production' &&
         url.protocol === 'http:' &&
         isLoopbackHostname(url.hostname));

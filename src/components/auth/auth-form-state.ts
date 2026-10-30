@@ -106,8 +106,20 @@ export function loginFailureCategory(code: string | undefined): LoginFailureCate
   return 'unexpected';
 }
 
-export function loginSuccessDestination(serverRedirect: string | null | undefined): string {
-  return sharedSafeDestination(serverRedirect);
+export function loginSuccessDestination(
+  serverRedirect: string | null | undefined,
+  requestedNext?: string | null,
+  requiresMfaChallenge = false,
+): string {
+  const serverDestination = sharedSafeDestination(serverRedirect);
+  const requestedDestination = sharedSafeDestination(requestedNext);
+  const destination =
+    requestedDestination === '/' || requestedDestination === '/reset-password'
+      ? serverDestination
+      : requestedDestination;
+  return requiresMfaChallenge
+    ? `/mfa/challenge?next=${encodeURIComponent(destination)}`
+    : destination;
 }
 
 export type RegistrationFailureCategory =

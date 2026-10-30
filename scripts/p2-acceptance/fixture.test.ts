@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, readFile, symlink, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 
 import {
@@ -12,6 +12,7 @@ import {
   assertFixtureCounts,
   readReusableFixtureSecrets,
   reuseExistingFixture,
+  runOptionalFixtureSeed,
   runAfterLocalPreflight,
   verifyReusableCredentials,
   writeSecretFile,
@@ -19,6 +20,7 @@ import {
   type ReusableFixtureSnapshot,
   type RuntimeSecrets,
 } from './fixture';
+import { isReducedAuthFixtureMode, resolveFixtureSecretPath } from './acceptance-paths';
 
 const FIXTURE_IDS = {
   admin: '00000000-0000-4000-8000-000000000001',
@@ -140,6 +142,56 @@ function exactUsers() {
 }
 
 describe('P2.12 fixture definition', () => {
+  it('keeps the default manifest path and confines the reduced override to the private workdir', () => {
+    assert.equal(resolveFixtureSecretPath({}), resolve('tests/.auth/p2-credentials.json'));
+    const privatePath = resolve('.p2-12-acceptance-runtime/p3-13-auth/p2-credentials.json');
+    assert.equal(
+      resolveFixtureSecretPath({
+        P3_13_REDUCED_AUTH_FIXTURE: '1',
+        P3_13_REDUCED_AUTH_SECRET_PATH: privatePath,
+      }),
+      privatePath,
+    );
+    assert.throws(
+      () => resolveFixtureSecretPath({ P3_13_REDUCED_AUTH_FIXTURE: '1' }),
+      /reduced secret path is required/u,
+    );
+    assert.throws(
+      () => resolveFixtureSecretPath({ P3_13_REDUCED_AUTH_SECRET_PATH: privatePath }),
+      /secret path override requires reduced mode/u,
+    );
+    assert.throws(
+      () =>
+        resolveFixtureSecretPath({
+          P3_13_REDUCED_AUTH_FIXTURE: '1',
+          P3_13_REDUCED_AUTH_SECRET_PATH: resolve('tests/.auth/p2-credentials.json'),
+        }),
+      /must be inside the private acceptance workdir/u,
+    );
+  });
+
+  it('enables the reduced auth fixture only through an exact explicit opt-in', () => {
+    assert.equal(isReducedAuthFixtureMode({}), false);
+    assert.equal(isReducedAuthFixtureMode({ P3_13_REDUCED_AUTH_FIXTURE: 'true' }), false);
+    assert.equal(isReducedAuthFixtureMode({ P3_13_REDUCED_AUTH_FIXTURE: '0' }), false);
+    assert.equal(isReducedAuthFixtureMode({ P3_13_REDUCED_AUTH_FIXTURE: '1' }), true);
+  });
+
+  it('reduced auth mode omits only the optional dashboard-data seed callback', async () => {
+    let calls = 0;
+    const seed = async () => {
+      calls += 1;
+      return { invoice: 'invoice', serviceCase: 'service-case' };
+    };
+    assert.deepEqual(await runOptionalFixtureSeed({}, seed), {
+      invoice: 'invoice',
+      serviceCase: 'service-case',
+    });
+    assert.equal(calls, 1);
+    assert.deepEqual(await runOptionalFixtureSeed({ P3_13_REDUCED_AUTH_FIXTURE: '1' }, seed), null);
+    assert.equal(calls, 1);
+  });
+
   it('creates exactly four synthetic role identities with unique generated passwords', () => {
     const roles = buildRoleSeeds();
     assert.deepEqual(

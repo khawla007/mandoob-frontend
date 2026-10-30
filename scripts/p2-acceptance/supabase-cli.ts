@@ -1,11 +1,13 @@
 import { execFileSync, type ExecFileSyncOptionsWithStringEncoding } from 'node:child_process';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, readFile, readlink, rm, symlink } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, readdir, readlink, rm, symlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-export const ACCEPTANCE_PROJECT_ID = 'mandoob-p2-12-acceptance';
-export const ACCEPTANCE_WORKDIR = resolve('.p2-12-acceptance-runtime');
-export const ACCEPTANCE_CONFIG = resolve(ACCEPTANCE_WORKDIR, 'supabase/config.toml');
+import { ACCEPTANCE_PROJECT_ID, ACCEPTANCE_WORKDIR } from './acceptance-paths';
+
+export { ACCEPTANCE_CONFIG, ACCEPTANCE_PROJECT_ID, ACCEPTANCE_WORKDIR } from './acceptance-paths';
+export const ACCEPTANCE_EXCLUDED_MIGRATION =
+  '20260915090000_0087_reconcile_existing_pro_access.sql';
 
 const replacements = [
   ['project_id = "mandoob"', `project_id = "${ACCEPTANCE_PROJECT_ID}"`],
@@ -107,20 +109,44 @@ async function ensurePrivateFile(path: string, contents: string): Promise<void> 
   }
 }
 
-async function ensureMigrationLink(migrations: string, migrationsSource: string): Promise<void> {
+async function ensureMigrationFileLink(runtimePath: string, sourcePath: string): Promise<void> {
   try {
-    const metadata = await lstat(migrations);
-    if (!metadata.isSymbolicLink()) throw new Error('P2_CLI: migrations path is not isolated');
+    const metadata = await lstat(runtimePath);
+    if (!metadata.isSymbolicLink()) throw new Error('P2_CLI: migration view entry is not isolated');
     if (typeof process.getuid === 'function' && metadata.uid !== process.getuid()) {
-      throw new Error('P2_CLI: migrations link ownership mismatch');
+      throw new Error('P2_CLI: migration view entry ownership mismatch');
     }
-    const currentTarget = resolve(dirname(migrations), await readlink(migrations));
-    if (currentTarget !== migrationsSource) {
-      throw new Error('P2_CLI: migrations link target mismatch');
+    if (resolve(dirname(runtimePath), await readlink(runtimePath)) !== sourcePath) {
+      throw new Error('P2_CLI: migration view entry target mismatch');
     }
   } catch (error) {
     if (!isMissing(error)) throw error;
-    await symlink(migrationsSource, migrations, 'dir');
+    await symlink(sourcePath, runtimePath, 'file');
+  }
+}
+
+async function ensureAcceptanceMigrationView(
+  migrations: string,
+  migrationsSource: string,
+): Promise<void> {
+  await createPrivateDirectory(migrations);
+  const sourceEntries = (await readdir(migrationsSource)).sort();
+  if (!sourceEntries.includes(ACCEPTANCE_EXCLUDED_MIGRATION)) {
+    throw new Error('P2_CLI: required excluded migration is missing');
+  }
+  const included = sourceEntries.filter((entry) => entry !== ACCEPTANCE_EXCLUDED_MIGRATION);
+  for (const entry of sourceEntries) {
+    const metadata = await lstat(resolve(migrationsSource, entry));
+    if (!metadata.isFile() || metadata.isSymbolicLink() || !entry.endsWith('.sql')) {
+      throw new Error(`P2_CLI: migration source entry must be a regular file ${entry}`);
+    }
+  }
+  const existing = (await readdir(migrations)).sort();
+  if (existing.some((entry) => !included.includes(entry))) {
+    throw new Error('P2_CLI: migration view contains an unexpected entry');
+  }
+  for (const entry of included) {
+    await ensureMigrationFileLink(resolve(migrations, entry), resolve(migrationsSource, entry));
   }
 }
 
@@ -139,7 +165,7 @@ export async function prepareAcceptanceWorkdir(paths: AcceptancePaths = {}): Pro
   }
   await createPrivateDirectory(workdir);
   await createPrivateDirectory(supabaseDirectory);
-  await ensureMigrationLink(resolve(supabaseDirectory, 'migrations'), migrationsSource);
+  await ensureAcceptanceMigrationView(resolve(supabaseDirectory, 'migrations'), migrationsSource);
   const base = await readFile(resolve(paths.baseConfig ?? 'supabase/config.toml'), 'utf8');
   await ensurePrivateFile(acceptanceConfig, buildAcceptanceConfig(base));
   await ensurePrivateFile(seed, '-- Intentionally empty P2 acceptance seed.\n');

@@ -99,6 +99,10 @@ export async function POST(request: NextRequest) {
     role: authoritative.role as Role,
     tenantId: authoritative.tenantId,
   });
+  const requiresMfaChallenge =
+    ['admin', 'super_admin', 'pro'].includes(authoritative.role) &&
+    authoritative.mfaEnrolled &&
+    authoritative.aal !== 'aal2';
 
   await recordAuthEvent({
     kind: 'login_success',
@@ -108,5 +112,5 @@ export async function POST(request: NextRequest) {
     userAgent,
   });
 
-  return jsonOk({ ok: true, userId: data.user.id, redirectTo });
+  return jsonOk({ ok: true, userId: data.user.id, redirectTo, requiresMfaChallenge });
 }

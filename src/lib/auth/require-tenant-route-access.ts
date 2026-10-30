@@ -1,5 +1,6 @@
 import 'server-only';
 import { requireCompanyAccess } from './require-company-access';
+import { enforcePrivilegedSession } from './require-role';
 import { isPlatformOperatorRole, type Role } from './roles';
 import { resolveTenantBySlug, type Tenant } from '@/lib/data/tenant';
 import type { SessionProfile } from './require-user';
@@ -7,6 +8,7 @@ import type { SessionProfile } from './require-user';
 type Dependencies = {
   resolveTenant?: (slug: string) => Promise<Tenant | null>;
   requireAccess?: (tenantId: string) => Promise<SessionProfile>;
+  enforcePrivileged?: (session: SessionProfile) => Promise<void>;
   deny?: () => never;
 };
 
@@ -43,6 +45,7 @@ export async function requireProTenantRouteAccess(
 ): Promise<{ tenant: Tenant; session: SessionProfile & { role: 'pro'; tenantId: string } }> {
   const { tenant, session } = await requireTenantRouteAccess(slug, ['pro'], deps);
   if (!isProTenantSession(session, tenant.id)) return deny(deps);
+  await (deps.enforcePrivileged ?? enforcePrivilegedSession)(session);
   return { tenant, session };
 }
 
