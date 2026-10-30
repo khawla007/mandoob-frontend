@@ -161,6 +161,18 @@ test('every legacy account MFA mutation enforces privileged step-up before provi
   );
 });
 
+test('legacy account MFA authorization inspects every verified factor and both assurance levels', () => {
+  const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
+  const authorization = source.slice(
+    source.indexOf('async function authorizeAccountMfaMutationForSession'),
+    source.indexOf('export async function updateProfileAction'),
+  );
+
+  assert.match(authorization, /return data;/u);
+  assert.match(authorization, /data\.all/u);
+  assert.doesNotMatch(authorization, /data\?\.totp/u);
+});
+
 test('password change preserves the browser session while reauthenticating in isolation', () => {
   const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
   const change = source.slice(

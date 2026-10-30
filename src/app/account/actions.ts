@@ -46,17 +46,15 @@ async function authorizeAccountMfaMutationForSession(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
 ): Promise<void> {
   await authorizeAccountMfaMutation(role, {
-    loadCurrentLevel: async () => {
+    loadAssurance: async () => {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (error) throw error;
-      return data.currentLevel;
+      if (error || !data) throw error ?? new Error('MFA assurance lookup failed');
+      return data;
     },
     listVerifiedFactorIds: async () => {
       const { data, error } = await supabase.auth.mfa.listFactors();
-      if (error) throw error;
-      return (data?.totp ?? [])
-        .filter((factor) => factor.status === 'verified')
-        .map((factor) => factor.id);
+      if (error || !data) throw error ?? new Error('MFA factor lookup failed');
+      return data.all.filter((factor) => factor.status === 'verified').map((factor) => factor.id);
     },
   });
 }
