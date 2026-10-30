@@ -16,17 +16,17 @@ test('lead pipeline shows a real filtered funnel and explains its existing score
   assert.match(source, /scoringExplanation/u);
 });
 
-test('finance is directly guarded and narrowly labels active subscription MRR', () => {
+test('finance is directly guarded and separates accounting from subscription reporting', () => {
   const page = read('src/app/admin/finance/page.tsx');
   const data = read('src/lib/data/finance.ts');
   assert.match(page, /requirePlatformOperator\(\)/u);
   assert.match(page, /pointInTime/u);
-  assert.match(page, /currencyUsd/u);
+  assert.match(page, /currenciesSeparated/u);
   assert.match(page, /includedActive/u);
   assert.match(page, /excludedStatuses/u);
-  assert.match(page, /AdminUnavailableWorkspace/u);
-  assert.match(page, /AdminUnavailableAction/u);
-  assert.doesNotMatch(page, /profit|P&L|collected revenue/iu);
+  assert.match(page, /loadFinanceReport/u);
+  assert.match(page, /loadSubscriptionReport/u);
+  assert.match(page, /formatMoney\(report\.profitMinor, currency, locale\)/u);
   assert.match(data, /\.eq\('status', 'active'\)/u);
 });
 

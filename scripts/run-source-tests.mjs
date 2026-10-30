@@ -16,6 +16,21 @@ export function enumerateSourceTestFiles(root = 'src') {
     .sort();
 }
 
+export function partitionTestPatterns(patterns, batchSize = 128) {
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1) {
+    throw new RangeError('batchSize must be a positive safe integer');
+  }
+  const isIsolatedPattern = (pattern) =>
+    pattern.replaceAll('\\', '/').endsWith('/security/scan-file.test.ts');
+  const isolatedPatterns = patterns.filter(isIsolatedPattern);
+  const regularPatterns = patterns.filter((pattern) => !isIsolatedPattern(pattern));
+  const batches = isolatedPatterns.map((pattern) => [pattern]);
+  for (let index = 0; index < regularPatterns.length; index += batchSize) {
+    batches.push(regularPatterns.slice(index, index + batchSize));
+  }
+  return batches;
+}
+
 function main() {
   const testFiles = enumerateSourceTestFiles();
   const testPatterns = testFiles.map(escapeTestPattern);
@@ -30,25 +45,19 @@ function main() {
     return;
   }
 
-  const result = spawnSync(
-    process.execPath,
-    [
-      '--import',
-      'tsx',
-      '--conditions=react-server',
-      '--test',
-      '--test-concurrency=1',
-      ...testPatterns,
-    ],
-    { stdio: 'inherit' },
-  );
+  for (const batch of partitionTestPatterns(testPatterns)) {
+    const result = spawnSync(
+      process.execPath,
+      ['--import', 'tsx', '--conditions=react-server', '--test', '--test-concurrency=1', ...batch],
+      { stdio: 'inherit' },
+    );
 
-  if (result.error) {
-    console.error(result.error.message);
-    process.exit(1);
+    if (result.error) {
+      console.error(result.error.message);
+      process.exit(1);
+    }
+    if (result.status !== 0) process.exit(result.status ?? 1);
   }
-
-  process.exit(result.status ?? 1);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

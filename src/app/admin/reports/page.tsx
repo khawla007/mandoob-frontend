@@ -12,7 +12,7 @@ export default async function AdminReportsPage() {
   const session = await requirePlatformOperator();
   const t = await getTranslations('admin.management.reports');
   const report = await loadOperationalReport(session.id).catch(() => null);
-  const metrics = report
+  const reportRows = report
     ? ([
         ['companies', report.counts.companies],
         ['activeEmployees', report.counts.activeEmployees],
@@ -38,7 +38,7 @@ export default async function AdminReportsPage() {
           {report ? (
             <>
               <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {metrics.map(([key, value]) => (
+                {reportRows.map(([key, value]) => (
                   <div key={key} className="rounded-lg border p-3">
                     <dt className="text-muted-foreground text-sm">{t(`metrics.${key}`)}</dt>
                     <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>

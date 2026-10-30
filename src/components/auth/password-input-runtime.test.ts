@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import test from 'node:test';
 import { Window } from 'happy-dom';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 
 if (process.env.PASSWORD_INPUT_CHILD === '1') {
   const browser = new Window({ url: 'https://app.example.test/login' });
-  Object.assign(globalThis, {
+  installDomGlobals({
     window: browser,
     document: browser.document,
     navigator: browser.navigator,

@@ -79,15 +79,12 @@ test('cards bind retry identity and version receipts without refresh resetting e
   }
 });
 
-test('billing has no local plan catalog, pricing, checkout, portal, or cancellation controls', () => {
+test('billing uses the authoritative management catalog and provider-gated controls', () => {
   assert.doesNotMatch(billingPage, /const plans\s*=/u);
   assert.doesNotMatch(billingPage, /\bStarter\b|\bProfessional\b|\bEnterprise\b|\bUSD\b/u);
-  assert.doesNotMatch(
-    billingPage,
-    /startCheckoutAction|openBillingPortalAction|cancelSubscriptionAction/u,
-  );
-  assert.match(billingPage, /billing\.planSelectionUnavailable/u);
-  assert.match(billingPage, /<Button type="button" disabled>/u);
+  assert.match(billingPage, /getBillingManagementSnapshot\(tenant\.id,/u);
+  assert.match(billingPage, /<SubscriptionControls/u);
+  assert.match(billingPage, /providerAvailable/u);
   assert.match(billingPage, /getBillingSubscriptionSnapshot\(tenant.id\)/u);
 });
 
@@ -113,12 +110,14 @@ test('billing localizes known plan and interval enums and hides unknown values',
   assert.match(billingPage, /:\s*'unknown'/u);
 });
 
-test('billing mutations are unavailable without a complete catalog and safe provider contract', () => {
-  assert.doesNotMatch(
-    billingActions,
-    /createCheckoutSession|createBillingPortalSession|subscriptions\.update/u,
-  );
-  assert.match(billingActions, /BILLING_ACTIONS_UNAVAILABLE/u);
+test('billing mutations use replay-safe coordination and normalized provider redirects', () => {
+  assert.match(billingActions, /runStripeEffect/u);
+  assert.match(billingActions, /p309_reserve_stripe_operation/u);
+  assert.match(billingActions, /p309_attach_stripe_operation/u);
+  assert.match(billingActions, /normalizeStripeRedirectUrl/u);
+  assert.match(billingActions, /createCheckoutSession/u);
+  assert.match(billingActions, /createBillingPortalSession/u);
+  assert.doesNotMatch(billingActions, /subscriptions\.update/u);
 });
 
 test('settings and billing render only redacted source contracts', () => {
@@ -199,8 +198,6 @@ test('English and Arabic settings catalogs have the same top-level settings keys
     assert.ok(key in en, `en.${key}`);
     assert.ok(key in ar, `ar.${key}`);
   }
-  assert.equal(
-    en.billing.planSelectionUnavailable,
-    'Plan selection unavailable — Phase 3 contract required',
-  );
+  assert.equal(typeof en.billing.manageSubscription, 'string');
+  assert.equal(typeof ar.billing.manageSubscription, 'string');
 });

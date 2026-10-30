@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { Window } from 'happy-dom';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -14,7 +15,7 @@ declare global {
 
 if (process.env.PRO_CREDENTIAL_CREATE_CHILD === '1') {
   const browser = new Window({ url: 'https://app.example.test/admin/users/pro-id' });
-  Object.assign(globalThis, {
+  installDomGlobals({
     window: browser,
     document: browser.document,
     navigator: browser.navigator,

@@ -31,11 +31,15 @@ test('customer payment action uses localized copy and sanitized error states', (
 
 test('finance pages have a single h1 and labelled table overflow regions', () => {
   const billing = read('src/app/(tenant)/t/[tenant]/(pro)/settings/billing/page.tsx');
+  const settingsLayout = read('src/app/(tenant)/t/[tenant]/(pro)/settings/layout.tsx');
   const admin = read('src/app/admin/finance/page.tsx');
   const invoices = read('src/components/pro/InvoicesTable.tsx');
 
-  assert.equal(billing.match(/<h1\b/gu)?.length, 1);
-  assert.equal(billing.match(/<h2\b/gu)?.length ?? 0, 0);
+  assert.equal(
+    (settingsLayout.match(/<h1\b/gu) ?? []).length + (billing.match(/<h1\b/gu) ?? []).length,
+    1,
+  );
+  assert.equal(billing.match(/<h2\b/gu)?.length, 1);
   assert.match(admin, /timeZone: 'Asia\/Dubai'/u);
   assert.doesNotMatch(admin, /currencyUsd/u);
   assert.doesNotMatch(admin, /: row\.(?:plan|status)\}/u);

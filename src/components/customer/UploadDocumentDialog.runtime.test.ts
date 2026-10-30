@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { Window } from 'happy-dom';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 
 if (process.env.CUSTOMER_UPLOAD_DIALOG_RUNTIME_CHILD === '1') {
   const browser = new Window({ url: 'https://app.example.test/t/alpha/portal/documents' });
@@ -14,7 +15,7 @@ if (process.env.CUSTOMER_UPLOAD_DIALOG_RUNTIME_CHILD === '1') {
     '70000000-0000-4000-8000-000000000007',
   ];
   let operationIndex = 0;
-  Object.assign(globalThis, {
+  installDomGlobals({
     window: browser,
     document: browser.document,
     navigator: browser.navigator,

@@ -5,6 +5,7 @@ import test from 'node:test';
 
 import React from 'react';
 import { Window } from 'happy-dom';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 
 import type { DocType } from '@/lib/validation/document';
 
@@ -31,7 +32,7 @@ if (reactServer) {
   });
 } else if (process.env.DOCUMENT_BATCH_RUNTIME_CHILD === '1') {
   const browser = new Window({ url: 'https://app.example.test/t/acme/documents' });
-  Object.assign(globalThis, {
+  installDomGlobals({
     window: browser,
     document: browser.document,
     navigator: browser.navigator,
