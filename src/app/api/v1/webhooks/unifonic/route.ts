@@ -2,11 +2,8 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyUnifonicSignature } from '@/lib/sms/signature';
-import {
-  InboundWebhookInfrastructureError,
-  recordUnifonicInbound,
-  type SmsInbound,
-} from '../inbound-recording';
+import { InboundWebhookInfrastructureError, recordUnifonicInbound } from '../inbound-recording';
+import { parseUnifonicInboundCallback, type UnifonicPayload } from './inbound';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -61,33 +58,6 @@ export async function POST(req: Request): Promise<Response> {
   return NextResponse.json({ ok: true });
 }
 
-export function parseUnifonicInboundCallback(
-  payload: UnifonicPayload,
-  rawBody: string,
-): SmsInbound | null {
-  const destinationKey = payload.To ?? payload.Recipient;
-  const providerEventId = payload.MessageID ?? payload.messageId;
-  const occurredAt = payload.Timestamp ?? payload.timestamp;
-  if (
-    payload.Status ||
-    !destinationKey ||
-    !payload.From ||
-    payload.Body === undefined ||
-    !providerEventId ||
-    !occurredAt
-  ) {
-    return null;
-  }
-  return {
-    destinationKey,
-    fromPhone: payload.From,
-    body: payload.Body,
-    providerEventId: String(providerEventId),
-    occurredAt: String(occurredAt),
-    rawPayload: rawBody,
-  };
-}
-
 const STATUS_MAP: Record<string, 'pending' | 'sent' | 'delivered' | 'failed' | 'dead'> = {
   queued: 'pending',
   pending: 'pending',
@@ -121,15 +91,3 @@ async function applyDeliveryStatus(
 
   await supabase.from('outbound_sms').update(update).eq('id', row.id);
 }
-
-type UnifonicPayload = {
-  MessageID?: string | number;
-  messageId?: string | number;
-  Status?: string;
-  From?: string;
-  Body?: string;
-  To?: string;
-  Recipient?: string;
-  Timestamp?: string | number;
-  timestamp?: string | number;
-};

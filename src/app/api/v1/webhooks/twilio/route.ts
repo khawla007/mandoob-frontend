@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyTwilioSignature } from '@/lib/sms/signature';
+import { InboundWebhookInfrastructureError, recordTwilioInbound } from '../inbound-recording';
 import {
-  InboundWebhookInfrastructureError,
-  recordTwilioInbound,
-  type SmsInbound,
-} from '../inbound-recording';
+  isTwilioInboundCallback,
+  parseFormBody,
+  parseTwilioInboundCallback,
+  twilioInboundUnavailableCode,
+} from './inbound';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -67,45 +69,6 @@ export async function POST(req: Request): Promise<Response> {
   return NextResponse.json({ ok: true });
 }
 
-export function parseTwilioInboundCallback(rawBody: string): SmsInbound | null {
-  const params = parseFormBody(rawBody);
-  const providerEventId = params.MessageSid ?? params.SmsSid;
-  const occurredAt = params.Timestamp ?? params.DateCreated;
-  if (!isTwilioInboundCallback(params) || !providerEventId || !occurredAt) {
-    return null;
-  }
-  return {
-    destinationKey: params.To,
-    fromPhone: params.From,
-    body: params.Body,
-    providerEventId,
-    occurredAt,
-    rawPayload: rawBody,
-  };
-}
-
-export function twilioInboundUnavailableCode(
-  rawBody: string,
-  enabled: boolean,
-): 'INBOUND_DISABLED' | 'TIMESTAMP_UNSUPPORTED' | null {
-  const params = parseFormBody(rawBody);
-  if (!isTwilioInboundCallback(params)) return null;
-  if (!enabled) return 'INBOUND_DISABLED';
-  if (!(params.Timestamp ?? params.DateCreated)) return 'TIMESTAMP_UNSUPPORTED';
-  return null;
-}
-
-function isTwilioInboundCallback(params: Record<string, string>): boolean {
-  const status = (params.MessageStatus ?? params.SmsStatus)?.toLowerCase();
-  return Boolean(
-    (!status || status === 'received') &&
-    params.To &&
-    params.From &&
-    params.Body !== undefined &&
-    (params.MessageSid ?? params.SmsSid),
-  );
-}
-
 function buildSignatureUrl(req: Request): string {
   const url = new URL(req.url);
   // Twilio signs the URL the request was made to. When proxied through
@@ -114,12 +77,6 @@ function buildSignatureUrl(req: Request): string {
   const proto = req.headers.get('x-forwarded-proto') ?? url.protocol.replace(':', '');
   const host = req.headers.get('x-forwarded-host') ?? url.host;
   return `${proto}://${host}${url.pathname}${url.search}`;
-}
-
-function parseFormBody(raw: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of new URLSearchParams(raw)) out[k] = v;
-  return out;
 }
 
 const STATUS_MAP: Record<string, 'pending' | 'sent' | 'delivered' | 'failed' | 'dead'> = {

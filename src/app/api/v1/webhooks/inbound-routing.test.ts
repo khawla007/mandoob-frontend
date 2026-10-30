@@ -432,7 +432,7 @@ test('atomic RPC HMACs destination and hashes raw payload before transactional w
 });
 
 test('Twilio route extracts destination and timestamp while preserving the signed raw body', async () => {
-  const { parseTwilioInboundCallback } = await import('./twilio/route');
+  const { parseTwilioInboundCallback } = await import('./twilio/inbound');
   const rawBody =
     'To=%2B12025550123&From=%2B971501234567&Body=help&MessageSid=SM123&Timestamp=2026-10-28T10%3A00%3A00.000Z';
 
@@ -447,7 +447,7 @@ test('Twilio route extracts destination and timestamp while preserving the signe
 });
 
 test('Unifonic route extracts destination and timestamp while preserving the signed raw body', async () => {
-  const { parseUnifonicInboundCallback } = await import('./unifonic/route');
+  const { parseUnifonicInboundCallback } = await import('./unifonic/inbound');
   const rawBody = JSON.stringify({
     To: '971500001111',
     From: '+971501234567',
@@ -550,7 +550,7 @@ test('WhatsApp route converts atomic RPC failures to a sanitized retryable respo
 });
 
 test('WhatsApp route atomically accepts every inbound message before status mutations', async () => {
-  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/dispatch');
   const calls: string[] = [];
   const rawBody = '{"signed":"raw-body"}';
   const timestamp = String(Math.floor(Date.now() / 1000));
@@ -604,7 +604,7 @@ test('WhatsApp route atomically accepts every inbound message before status muta
 });
 
 test('WhatsApp route treats unknown, duplicate, and stale inbound reservations as no-ops', async () => {
-  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/dispatch');
   const recorded: string[] = [];
   const payload = {
     entry: [
@@ -637,7 +637,7 @@ test('WhatsApp route treats unknown, duplicate, and stale inbound reservations a
 });
 
 test('WhatsApp route preserves status-only callback handling', async () => {
-  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/dispatch');
   const calls: string[] = [];
 
   await dispatchWhatsAppWebhookPayload(
@@ -996,7 +996,7 @@ test('atomic RPC enforces the SQL ownership shape for every no-op outcome', asyn
 });
 
 test('WhatsApp mid-batch infrastructure failure blocks statuses and retry continues safely', async () => {
-  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/route');
+  const { dispatchWhatsAppWebhookPayload } = await import('./whatsapp/dispatch');
   const calls: string[] = [];
   let failSecond = true;
   const payload = {
@@ -1082,7 +1082,7 @@ test('real Twilio inbound shape is explicitly unavailable while the provider gat
 });
 
 test('enabled Twilio inbound still fails closed when the provider omits a timestamp', async () => {
-  const { twilioInboundUnavailableCode } = await import('./twilio/route');
+  const { twilioInboundUnavailableCode } = await import('./twilio/inbound');
   const rawBody = new URLSearchParams({
     To: '+12025550123',
     From: '+971501234567',
