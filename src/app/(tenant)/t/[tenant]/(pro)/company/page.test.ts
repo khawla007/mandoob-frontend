@@ -257,8 +257,10 @@ test('employee import no longer accepts company selection or a company identifie
   assert.doesNotMatch(employeeImport, /<Select|Choose client|Select the parent client/);
   assert.match(employeeImport, /readAssignedCompanyForPro\(session\.id, slug\)/);
   assert.doesNotMatch(importActions, /formData\.get\(['"](?:parent_)?(?:client|company)_id/);
-  assert.match(importActions, /resolveImportCompany\(session\.id, tenant\.id, tenantSlug\)/);
-  assert.match(importActions, /kind: 'employees'/);
-  assert.match(importActions, /company_id: company\.id/);
+  assert.match(importActions, /const context = await requireProTenantRouteAccess\(tenantSlug\)/);
+  assert.match(importActions, /assignedProActor\(context, tenantSlug\)/);
+  assert.match(importActions, /importArtifactPath\(actor, jobId\)/);
+  assert.match(importActions, /registerImport\(p308Client\(\), actor,/);
+  assert.match(importActions, /\.eq\('company_id', actor\.companyId\)/);
   assert.doesNotMatch(importActions, /validateBulkImportRows\('company_profiles'/);
 });

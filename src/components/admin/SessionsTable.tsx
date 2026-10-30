@@ -38,7 +38,11 @@ export function SessionsTable({
     if (!confirm(t('user.sessions.confirmRevokeOne', { name: row.fullName ?? row.userId }))) return;
     setBusy(row.sessionId);
     start(async () => {
-      const r = await revokeSessionAction({ sessionId: row.sessionId, userId: row.userId });
+      const r = await revokeSessionAction({
+        sessionId: row.sessionId,
+        userId: row.userId,
+        operationId: crypto.randomUUID(),
+      });
       if (!r.ok) alert(t('user.sessions.revokeFailed', { code: r.code, error: r.error }));
       setBusy(null);
     });
@@ -48,7 +52,10 @@ export function SessionsTable({
     if (!confirm(t('user.sessions.confirmRevokeAll', { name: row.fullName ?? row.userId }))) return;
     setBusy(`all:${row.userId}`);
     start(async () => {
-      const r = await revokeAllSessionsForUserAction({ userId: row.userId });
+      const r = await revokeAllSessionsForUserAction({
+        userId: row.userId,
+        operationId: crypto.randomUUID(),
+      });
       if (!r.ok) alert(t('user.sessions.revokeAllFailed', { code: r.code, error: r.error }));
       setBusy(null);
     });

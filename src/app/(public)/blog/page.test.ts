@@ -6,9 +6,9 @@ const source = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../public-theme.css', import.meta.url), 'utf8');
 
 test('Blog index uses explicit read/search states and semantic pagination boundaries', () => {
-  assert.match(source, /resolveBlogIndex/u);
-  assert.match(source, /status === 'unavailable'/u);
-  assert.match(source, /status === 'empty'/u);
+  assert.match(source, /listPublishedBlogPostsPage/u);
+  assert.match(source, /!result \? \(/u);
+  assert.match(source, /result && total === 0 && !query/u);
   assert.match(source, /No matching articles/u);
   assert.match(source, /currentPage === 1 \? \([\s\S]*?<span/u);
   assert.match(source, /currentPage === totalPages \? \([\s\S]*?<span/u);

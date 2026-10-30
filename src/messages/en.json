@@ -1,4 +1,14 @@
 {
+  "bankEvidence": {
+    "uploadTitle": "Bank transfer evidence",
+    "uploadDescription": "Upload a PDF, JPEG, or PNG up to 10 MiB for review.",
+    "file": "Evidence file",
+    "upload": "Submit evidence",
+    "uploading": "Submitting…",
+    "submitted": "Evidence submitted for review.",
+    "invalidFile": "Choose a PDF, JPEG, or PNG up to 10 MiB.",
+    "failed": "Evidence could not be submitted. Try again."
+  },
   "operations": {
     "eyebrow": "{scope} operations",
     "roles": {
@@ -19,6 +29,77 @@
       "owner": "Implementation owner"
     },
     "phase3": "Phase 3 API and security contracts",
+    "runtime": {
+      "channels": {
+        "label": "Provider channels",
+        "disabled": "Disabled",
+        "description": "Email, SMS, and WhatsApp sending remain unavailable. This workspace shows local operational records only."
+      },
+      "scopeRequired": {
+        "title": "Choose a Company context",
+        "description": "Open this workspace from an authorized Company record. Platform-wide aggregation is not available through this Company-scoped runtime.",
+        "action": "View Companies"
+      },
+      "communications": {
+        "title": "Communication channels unavailable",
+        "description": "No user-facing inbox or thread source exists in the accepted runtime. Provider delivery is not inferred from local operational records."
+      },
+      "error": {
+        "title": "Operational records unavailable",
+        "description": "The authorized source could not be read. No empty state, count, or delivery result has been inferred.",
+        "retry": "Retry"
+      },
+      "empty": {
+        "title": "No operational records",
+        "notifications": "The authorized notification source returned no records for this page.",
+        "tasks": "The authorized task source returned no records for this page.",
+        "activity": "The authorized activity source returned no records for this page.",
+        "communications": "Communication channels remain unavailable."
+      },
+      "listLabel": "Operational records",
+      "next": "Next page",
+      "dueAt": "Due {value}",
+      "codes": {
+        "employeeRecordChanged": "Employee record updated",
+        "employeeImportFinished": "Employee import finished",
+        "renewalLifecycleChanged": "Renewal status updated",
+        "renewalReminderScheduled": "Renewal reminder scheduled",
+        "renewalAttentionDaily": "Renewal requires attention",
+        "meetingBooked": "Meeting booked",
+        "meetingRescheduled": "Meeting rescheduled",
+        "meetingCancelled": "Meeting cancelled",
+        "other": "Operational update"
+      },
+      "severity": {
+        "info": "Information",
+        "success": "Success",
+        "warning": "Warning",
+        "critical": "Critical"
+      },
+      "readState": {
+        "read": "Read",
+        "unread": "Unread"
+      },
+      "actions": {
+        "markRead": "Mark as read",
+        "markUnread": "Mark as unread",
+        "pending": "Updating…",
+        "success": "Read state updated.",
+        "error": "The read state could not be updated. Try again."
+      },
+      "priority": {
+        "low": "Low priority",
+        "normal": "Normal priority",
+        "high": "High priority",
+        "urgent": "Urgent"
+      },
+      "taskState": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "done": "Done",
+        "cancelled": "Cancelled"
+      }
+    },
     "unavailableTitle": "Production data unavailable",
     "boundariesTitle": "Operational contract",
     "boundariesDescription": "These boundaries remain visible so a missing backend contract is never mistaken for an empty or successful workflow.",
@@ -145,6 +226,7 @@
     "timezone": "Timezone",
     "create": "Create slot",
     "cancel": "Cancel",
+    "reschedule": "Reschedule",
     "book": "Book",
     "join": "Join securely",
     "recording": "Open recording",
@@ -157,10 +239,32 @@
     "noUpcoming": "No upcoming meetings.",
     "noPast": "No past meetings or recordings.",
     "noCustomerMeetings": "No meetings are booked yet.",
+    "calendarTitle": "Meeting calendar",
+    "calendarDescription": "Authorized meetings shown in Dubai time. Renewal entries keep their existing P3.08 ordering and identity.",
+    "adminDescription": "Review authorized meeting operations across companies.",
+    "employeeDescription": "Your participant meetings are shown alongside your renewal calendar.",
     "unavailableTitle": "Meeting workflow boundaries",
     "unavailableDescription": "Invitations, rescheduling, calendar sync, scheduled reminders, full consent records, notes, and action items remain unavailable until Phase 3.",
     "consentTitle": "Recording and consent",
     "consentUnavailable": "A recording link appears only after direct authorization. The accepted base does not prove full recording-consent workflow or invitation delivery.",
+    "collaboration": {
+      "consentTitle": "Recording and AI consent",
+      "consentDescription": "Recording, transcription and AI processing require current consent from every participant.",
+      "consentGranted": "Granted",
+      "consentRequired": "Required",
+      "grantConsent": "Grant consent",
+      "withdrawConsent": "Withdraw consent",
+      "notePlaceholder": "Add a participant-visible meeting note",
+      "addNote": "Add note",
+      "notes": "Meeting notes",
+      "actions": "Proposed actions",
+      "accept": "Accept",
+      "dismiss": "Dismiss",
+      "state_proposed": "Proposed",
+      "state_accepted": "Accepted",
+      "state_completed": "Completed",
+      "state_dismissed": "Dismissed"
+    },
     "summary": {
       "title": "AI summary",
       "retry": "Retry",
@@ -172,7 +276,11 @@
         "completed": "Completed",
         "failed": "Failed"
       },
-      "priorities": { "low": "Low", "medium": "Medium", "high": "High" }
+      "priorities": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
     },
     "statuses": {
       "scheduled": "Scheduled",
@@ -569,8 +677,17 @@
       "error": "The request could not be sent. Review the fields and try again."
     },
     "batch": {
-      "title": "Batch request unavailable",
-      "description": "Batch document requests are planned for Phase 3 and cannot be sent yet."
+      "trigger": "Request several documents",
+      "title": "Request several documents",
+      "description": "Create up to 25 document requests for your assigned company in one operation.",
+      "add": "Add document",
+      "remove": "Remove document",
+      "item": "Document",
+      "customType": "Custom document type",
+      "submit": "Send requests",
+      "pending": "Sending requests…",
+      "success": "The document requests were created.",
+      "maximum": "Maximum {count} documents"
     },
     "review": {
       "approve": "Approve",
@@ -685,6 +802,7 @@
       "notFound": "The requested document record was not found.",
       "tenantInactive": "This company workspace is inactive. Contact an administrator before continuing.",
       "expiryExternallyManaged": "Update this expiry from its source record.",
+      "conflict": "This request changed after it was first sent. Review it and submit again.",
       "openFailed": "The secure file link could not be created. Try again.",
       "phase3Unavailable": "This action is unavailable until its company-scoped Phase 3 workflow is released.",
       "unexpected": "The action could not be completed safely. Try again."
@@ -759,7 +877,7 @@
     "company": "Company",
     "assignedPro": "Assigned PRO",
     "settings": "Settings",
-    "profile": "My profile",
+    "profile": "Profile",
     "myRecords": "My records",
     "visaAndEid": "Visa & EID",
     "auth": "Auth",
@@ -805,7 +923,6 @@
     "proWorkspace": "PRO workspace",
     "superAdmin": "Super Admin",
     "admin": "Admin",
-    "profile": "Profile",
     "security": "Security",
     "privacy": "Privacy and data erasure",
     "terms": "Terms",
@@ -1658,7 +1775,10 @@
         "description": "Activities registered for this Company.",
         "primary": "Primary"
       },
-      "office": { "title": "Office", "description": "Registered office and lease facts." },
+      "office": {
+        "title": "Office",
+        "description": "Registered office and lease facts."
+      },
       "establishment": {
         "title": "Establishment",
         "description": "Masked establishment-card state."
@@ -1695,8 +1815,15 @@
         "iban": "IBAN",
         "accountNumber": "Account number"
       },
-      "jurisdictions": { "mainland": "Mainland", "free_zone": "Free zone", "offshore": "Offshore" },
-      "shareholderKinds": { "individual": "Individual", "company": "Company" },
+      "jurisdictions": {
+        "mainland": "Mainland",
+        "free_zone": "Free zone",
+        "offshore": "Offshore"
+      },
+      "shareholderKinds": {
+        "individual": "Individual",
+        "company": "Company"
+      },
       "officeTypes": {
         "physical": "Physical office",
         "flexi_desk": "Flexi desk",
@@ -1725,7 +1852,10 @@
         "title": "Assignment",
         "description": "Only approved professional identity information is shown."
       },
-      "fields": { "name": "Name", "title": "Title" },
+      "fields": {
+        "name": "Name",
+        "title": "Title"
+      },
       "states": {
         "missing": "No PRO has been assigned.",
         "released": "The previous assignment was released and no PRO is currently assigned.",
@@ -1774,7 +1904,10 @@
         "consentUnavailable": "Communication consent status is unavailable; no channel is assumed active.",
         "optedOut": "You opted out of: {channels}.",
         "optIn": "Opt in again",
-        "channels": { "whatsapp": "WhatsApp", "sms": "SMS" },
+        "channels": {
+          "whatsapp": "WhatsApp",
+          "sms": "SMS"
+        },
         "preferencesUnavailable": "Notification and provider preferences are unavailable."
       }
     },
@@ -1805,7 +1938,9 @@
       "uploaded": "Uploaded {date}",
       "currentVersion": "Current version",
       "fileMeta": "{mime} · {size, number} KB",
-      "scanStatus": { "unavailable": "Scan result unavailable" },
+      "scanStatus": {
+        "unavailable": "Scan result unavailable"
+      },
       "reviewStatus": {
         "pending": "Pending review",
         "approved": "Approved",
@@ -1829,6 +1964,7 @@
         "PAYLOAD_TOO_LARGE": "The file is larger than 25 MB.",
         "FILE_REJECTED_BY_SCAN": "The file did not pass the security scan.",
         "SCANNER_UNAVAILABLE": "Security scanning is temporarily unavailable. Try again.",
+        "OPERATION_REUSED": "This upload no longer matches the saved retry. Select the file again.",
         "DOCUMENT_UNAVAILABLE": "This document is not available.",
         "UPLOAD_FAILED": "The document could not be uploaded safely. Try again.",
         "OPEN_FAILED": "The secure document link could not be created. Try again."
@@ -1949,7 +2085,10 @@
       "previous": "Previous",
       "next": "Next",
       "loading": "Loading renewals…",
-      "retry": "Retry"
+      "retry": "Retry",
+      "investor_visa": "Investor/partner visa",
+      "establishment_card": "Establishment card",
+      "medical_insurance": "Medical insurance"
     },
     "financeWorkspace": {
       "eyebrow": "Company finance",
@@ -2023,6 +2162,12 @@
       "previous": "Previous",
       "next": "Next",
       "retry": "Try again",
+      "payAction": {
+        "pay": "Pay securely",
+        "redirecting": "Opening secure payment…",
+        "unavailable": "Online payment is temporarily unavailable.",
+        "failed": "Payment could not be started. Try again."
+      },
       "detail": {
         "eyebrow": "Company invoice",
         "back": "Back to invoices",
@@ -2030,6 +2175,7 @@
         "payments": "Payment history",
         "refunds": "Refund history",
         "receipt": "Open receipt",
+        "receiptUnavailable": "A verified receipt is unavailable for this legacy invoice.",
         "providerUnavailable": "Online payment is unavailable for this Company portal.",
         "providerStateUnavailable": "Online payment provider status is temporarily unavailable.",
         "paymentContractUnavailable": "Online payment remains unavailable until an atomic replay-safe initiation contract exists.",
@@ -2083,6 +2229,7 @@
     "paid": "Paid",
     "noDueDate": "No due date",
     "receipt": "Receipt",
+    "receiptUnavailable": "Verified receipt unavailable",
     "reviewerNote": "Reviewer note:",
     "pleaseReupload": "Please re-upload.",
     "docTypeLabels": {
@@ -2256,9 +2403,12 @@
       "due": "Due {date}",
       "noDeadline": "No deadline recorded",
       "uploaded": "Uploaded {date}",
-      "uploadUnavailableTitle": "Requested-document upload is unavailable",
-      "uploadUnavailable": "The accepted backend cannot yet bind an Employee upload atomically to this request and own record. Upload remains disabled until the Phase 3 contract is available.",
-      "formats": "Planned secure upload accepts PDF, JPEG, PNG, DOCX or XLSX up to 25 MB and scans files before acceptance.",
+      "uploadTitle": "Secure requested-document upload",
+      "uploadDescription": "Upload is available only for a pending request linked to your active Employee record.",
+      "uploadButton": "Upload document",
+      "uploading": "Uploading…",
+      "uploadDialogDescription": "Choose the requested file. It will be privately scanned before a version is accepted.",
+      "formats": "Secure upload accepts PDF, JPEG, PNG, DOCX or XLSX up to 25 MB and scans files before acceptance.",
       "versionUnavailable": "Version history is unavailable on the accepted contract.",
       "review": {
         "pending": "Under review",
@@ -2316,7 +2466,8 @@
       "openSecurity": "Open security settings",
       "securityTitle": "Password and multi-factor security",
       "securityDescription": "Password, MFA and session changes remain in the existing protected account security center.",
-      "openAccountSecurity": "Open protected account security"
+      "openAccountSecurity": "Open protected account security",
+      "conflict": "Your record changed. Refresh and try again."
     }
   },
   "pro": {
@@ -2501,15 +2652,25 @@
         "recordedExpiry": "Expiry recorded",
         "missingExpiry": "Expiry not recorded"
       },
-      "status": { "active": "Active", "inactive": "Inactive", "terminated": "Terminated" },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "terminated": "Terminated"
+      },
       "identity": {
         "missing": "Expiry not recorded",
         "expired": "Expired",
         "attention": "Due within 90 days",
         "current": "Current",
-        "unavailableWithoutMaskedContract": "Identifier unavailable: no accepted masked/display contract exists."
+        "unavailableWithoutMaskedContract": "Identifier unavailable: no accepted masked/display contract exists.",
+        "masked": "Masked identifier",
+        "notRecorded": "Identifier not recorded"
       },
-      "risk": { "attention": "Needs attention", "clear": "Clear", "unknown": "Not assessed" },
+      "risk": {
+        "attention": "Needs attention",
+        "clear": "Clear",
+        "unknown": "Not assessed"
+      },
       "signals": {
         "total": "Matching employees",
         "visible": "Visible on this page",
@@ -2524,10 +2685,10 @@
         "visa": "Visa expiry",
         "eid": "Emirates ID expiry",
         "risk": "Renewal risk",
-        "provenance": "Import provenance",
+        "provenance": "Actions",
         "phase3Unavailable": "Phase 3 unavailable",
         "phase3Note": "Import provenance and document actions are unavailable until Phase 3.",
-        "identifierSurfaceUnavailable": "Visa and Emirates ID identifiers are unavailable because no accepted masked/display contract exists."
+        "identifierSurfaceUnavailable": "Identifiers are encrypted; only the last four characters are shown."
       },
       "pagination": {
         "label": "Employee registry pages",
@@ -2624,23 +2785,45 @@
         "eid_expiry": "Emirates ID expiry",
         "row": "Row",
         "job": "Import job",
-        "unknown": "Unknown field"
+        "unknown": "Unknown field",
+        "job_title": "Job title"
       },
       "errorCodes": {
         "VALIDATION_FAILED": "The row did not pass validation.",
         "DUPLICATE_SKIPPED": "An existing or duplicate passport number was skipped.",
         "INSERT_FAILED": "The row could not be imported safely.",
         "CANCELLED": "The row was not imported because the job was cancelled.",
-        "UNKNOWN": "The row could not be processed."
+        "UNKNOWN": "The row could not be processed.",
+        "INVALID_FORMAT": "The value has an invalid format.",
+        "INVALID_LENGTH": "The value is too long or empty.",
+        "DUPLICATE_IN_FILE": "The passport number repeats an earlier row in this file.",
+        "DUPLICATE_EXISTING": "An employee with this passport already exists; the row will be skipped."
       },
       "errorCodeLabels": {
         "VALIDATION_FAILED": "Validation failed",
         "DUPLICATE_SKIPPED": "Duplicate skipped",
         "INSERT_FAILED": "Insert failed",
         "CANCELLED": "Cancelled",
-        "UNKNOWN": "Processing error"
+        "UNKNOWN": "Processing error",
+        "INVALID_FORMAT": "INVALID_FORMAT",
+        "INVALID_LENGTH": "INVALID_LENGTH",
+        "DUPLICATE_IN_FILE": "DUPLICATE_IN_FILE",
+        "DUPLICATE_EXISTING": "DUPLICATE_EXISTING"
       },
-      "csvHeader": "Row,Field,Message,Code"
+      "csvHeader": "Row,Field,Message,Code",
+      "outcomes": "{inserted} imported · {skipped} skipped with an exact row outcome",
+      "cancelRequested": "Cancellation requested. The import stops at the next batch boundary.",
+      "artifactRetired": "The encrypted source file was deleted under the retention policy.",
+      "failureCodes": {
+        "ASSIGNMENT_RELEASED": "Stopped: the PRO assignment was released.",
+        "IMPORT_ARTIFACT_MISMATCH": "Stopped: the stored file did not match its checksum.",
+        "IMPORT_ARTIFACT_INVALID": "Stopped: the stored file is no longer valid.",
+        "IMPORT_ARTIFACT_MISSING": "Stopped: the stored file is no longer available.",
+        "IMPORT_ARTIFACT_UNREADABLE": "Stopped: the stored file could not be decrypted.",
+        "IMPORT_BATCH_REJECTED": "Stopped: the database rejected a batch of rows; no rows from that batch were imported.",
+        "IMPORT_ATTEMPTS_EXHAUSTED": "Stopped: the import could not finish after repeated attempts.",
+        "UNKNOWN": "Stopped for a safety reason."
+      }
     },
     "settings": {
       "eyebrow": "Workspace controls",
@@ -2668,7 +2851,8 @@
         "unavailable": "This setting is temporarily unavailable. No changes were saved.",
         "forbidden": "You no longer have access to this workspace.",
         "saveFailed": "Could not save this setting.",
-        "credentialRequired": "Enter a credential before saving this configuration."
+        "credentialRequired": "Enter a credential before saving this configuration.",
+        "conflict": "These settings changed or this operation conflicts with an earlier save. Reload the page to review the latest values before saving again."
       },
       "context": {
         "title": "Verified context",
@@ -2688,8 +2872,9 @@
         "title": "Billing settings",
         "description": "Current subscription information for this verified workspace.",
         "currentSubscription": "Current subscription",
-        "readOnlyDescription": "Subscription changes are unavailable until the Phase 3 catalog and provider contracts are verified.",
+        "readOnlyDescription": "Authoritative subscription status and scheduled changes from the billing provider.",
         "providerUnavailable": "Subscription information is temporarily unavailable.",
+        "providerDisabled": "Subscription management is unavailable because Stripe is not enabled with an approved price mapping.",
         "noSubscription": "No current subscription is recorded.",
         "plan": "Plan",
         "plans": {
@@ -2707,16 +2892,30 @@
         },
         "periodEnd": "Current period ends",
         "cancellation": "Cancellation",
+        "pendingChange": "Scheduled change",
         "notAvailable": "Not available",
         "cancellationStates": {
           "cancelled": "Cancelled",
           "scheduled": "Cancellation scheduled at period end",
           "not_scheduled": "Not scheduled"
         },
-        "planSelectionUnavailable": "Plan selection unavailable — Phase 3 contract required",
+        "manageSubscription": "Manage subscription",
+        "managementDescription": "Choose an approved plan or manage the current subscription. Changes take effect at the period boundary.",
+        "choosePlan": "Choose plan",
         "changePlan": "Change plan",
         "manageBilling": "Manage billing",
         "cancelSubscription": "Cancel subscription",
+        "cadences": {
+          "monthly": "month",
+          "annual": "year"
+        },
+        "actionStates": {
+          "scheduled": "The subscription change was scheduled.",
+          "provider_disabled": "Stripe is not enabled for this catalog.",
+          "provider_unavailable": "Stripe is temporarily unavailable. No new operation was started.",
+          "stale_version": "The subscription changed. Refresh before trying again.",
+          "validation_failed": "The requested subscription change is invalid."
+        },
         "statuses": {
           "active": "Active",
           "trialing": "Trialing",
@@ -3123,6 +3322,8 @@
     "invoiceCreateDescription": "Issue an AED invoice and notify the linked customer.",
     "invoiceCreateErrorTitle": "Could not create invoice",
     "invoiceCreateErrorDescription": "The invoice could not be issued. Check the details and try again.",
+    "invoiceCustomer": "Customer",
+    "invoiceCustomerPlaceholder": "Select a customer",
     "invoiceLabel": "Label",
     "invoiceLabelPlaceholder": "Trade licence renewal",
     "invoiceAmountAed": "Amount (AED)",
@@ -3142,7 +3343,10 @@
         "sms": "SMS",
         "in_app": "In-app"
       },
-      "directions": { "in": "Inbound", "out": "Outbound" },
+      "directions": {
+        "in": "Inbound",
+        "out": "Outbound"
+      },
       "statuses": {
         "pending": "Pending",
         "queued": "Queued",
@@ -3152,6 +3356,29 @@
         "received": "Received",
         "bounced": "Bounced",
         "cancelled": "Cancelled"
+      }
+    },
+    "bankEvidence": {
+      "title": "Bank evidence review",
+      "description": "Review immutable customer evidence before manual allocation.",
+      "empty": "No bank evidence is attached to this invoice.",
+      "open": "Open evidence",
+      "clean": "Mark clean",
+      "reject": "Reject",
+      "rejectTitle": "Reject bank evidence?",
+      "rejectDescription": "This decision is irreversible. Enter the reviewer reason before rejecting the evidence.",
+      "rejectReason": "Rejection reason",
+      "confirmReject": "Confirm rejection",
+      "cancel": "Cancel",
+      "actionFailed": "Evidence action could not be completed.",
+      "states": {
+        "pending": "Pending",
+        "clean": "Clean",
+        "rejected": "Rejected",
+        "reconciled": "Reconciled",
+        "expired": "Expired",
+        "held": "Held",
+        "tombstoned": "Tombstoned"
       }
     },
     "paymentAnalytics": "Analytics",
@@ -3171,6 +3398,10 @@
     "paymentBack": "Back to payments",
     "paymentAnalyticsTitle": "Payment analytics",
     "paymentAnalyticsSubtitle": "Assigned-company collections, receivables, and payment operations.",
+    "paymentAccountingReport": "Accounting report · {month}",
+    "paymentExportCsv": "Export CSV",
+    "paymentBilled": "Billed",
+    "paymentProfit": "Profit",
     "paymentCollectedRevenue": "Net collected this month",
     "paymentOutstandingReceivables": "Outstanding receivables",
     "paymentOpenInvoices": "Open invoices",
@@ -3191,6 +3422,7 @@
     "paymentAmount": "Amount",
     "paymentMethod": "Method",
     "paymentInvoice": "Invoice",
+    "paymentInvoicesTable": "Invoice ledger",
     "paymentAttempted": "Attempted",
     "paymentDetailsUnavailable": "This payment detail is unavailable.",
     "paymentInvoiceDetails": "Invoice details",
@@ -3200,6 +3432,7 @@
     "paymentPaidAt": "Paid at",
     "paymentLinkedEntity": "Linked entity",
     "paymentReceipt": "Receipt",
+    "paymentReceiptUnavailable": "Verified receipt unavailable for this invoice.",
     "paymentAttemptsTitle": "Payment attempts",
     "paymentAttemptsNone": "No payment attempts recorded.",
     "paymentReconciliation": "Reconciliation",
@@ -3212,6 +3445,8 @@
     "paymentActions": "Actions",
     "paymentDue": "Due",
     "paymentMarkPaid": "Mark paid",
+    "paymentFinalizeInvoice": "Finalize invoice",
+    "paymentManualAmountMinor": "Payment amount (minor units)",
     "paymentVoid": "Void",
     "paymentRefund": "Refund",
     "paymentRetryRefund": "Retry pending refund",
@@ -3722,15 +3957,80 @@
         "eyebrow": "Operations · Documents",
         "title": "Document review oversight",
         "description": "Review cross-company document work while preserving company-scoped access.",
-        "summaries": { "submitted": "Submitted", "review": "Under review", "rejected": "Rejected" },
-        "filters": { "company": "Company", "status": "Review status", "type": "Document type" },
         "queueTitle": "Document review queue",
-        "queueDescription": "Company and employee context, deadlines, current versions and review decisions will appear in this primary queue.",
-        "guidance": "The accepted workflow states are requested, submitted, under review, approved and rejected. No backlog is inferred from company-scoped sources.",
-        "unavailableTitle": "Unavailable — Phase 3 contract required",
-        "unavailableDescription": "No accepted cross-company current-version review read exists on this base.",
-        "action": "Review document",
-        "actionExplanation": "Unavailable — Phase 3 mutation and ownership contract required."
+        "queueDescription": "Read-only current request and document status across company workspaces.",
+        "filters": {
+          "search": "Search",
+          "searchPlaceholder": "Workspace, company or document",
+          "state": "Workflow state",
+          "type": "Document type",
+          "apply": "Apply filters",
+          "reset": "Reset"
+        },
+        "states": {
+          "all": "All states",
+          "awaiting_upload": "Awaiting upload",
+          "under_review": "Under review",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "expired": "Expired"
+        },
+        "types": {
+          "all": "All document types",
+          "passport": "Passport",
+          "visa": "Visa",
+          "emirates_id": "Emirates ID",
+          "trade_license": "Trade license",
+          "ejari": "Ejari",
+          "moa": "Memorandum of association",
+          "shareholder_id": "Shareholder ID",
+          "other": "Other",
+          "aoa": "Articles of association",
+          "bank_reference_letter": "Bank reference letter",
+          "noc": "No-objection certificate",
+          "cv_resume": "CV or résumé",
+          "office_lease": "Office lease",
+          "medical_certificate": "Medical certificate",
+          "insurance_policy": "Insurance policy"
+        },
+        "kind": {
+          "request": "Request",
+          "document": "Document"
+        },
+        "requestStatus": {
+          "pending": "Awaiting upload",
+          "fulfilled": "Uploaded",
+          "cancelled": "Cancelled"
+        },
+        "reviewStatus": {
+          "pending": "Under review",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        },
+        "table": {
+          "label": "Cross-company document oversight",
+          "company": "Company",
+          "document": "Document",
+          "workflow": "Workflow",
+          "due": "Due",
+          "uploaded": "Uploaded",
+          "expiry": "Expiry"
+        },
+        "empty": {
+          "title": "No documents match these filters",
+          "description": "Change or reset the filters to inspect other document work."
+        },
+        "error": {
+          "title": "Document source unavailable",
+          "description": "The authoritative document source could not be loaded. Try again safely."
+        },
+        "pagination": {
+          "label": "Document pages",
+          "summary": "Page {page} of {totalPages} · {total} total",
+          "previous": "Previous",
+          "next": "Next"
+        },
+        "notAvailable": "Not available"
       },
       "employees": {
         "eyebrow": "Operations · Employees",
@@ -3741,7 +4041,11 @@
           "eidRisk": "Emirates ID attention",
           "renewalRisk": "Renewal risk"
         },
-        "filters": { "search": "Search employee", "company": "Company", "risk": "Renewal risk" },
+        "filters": {
+          "search": "Search employee",
+          "company": "Company",
+          "risk": "Renewal risk"
+        },
         "queueTitle": "Employee oversight queue",
         "queueDescription": "Employee, Company, visa, Emirates ID and renewal state belong in this primary queue with identifiers masked.",
         "guidance": "Full passport, visa and Emirates ID numbers must never appear in collection rows. Exact detail links require an authorized Admin read contract.",
@@ -3754,8 +4058,16 @@
         "eyebrow": "Operations · Compliance",
         "title": "Renewals and compliance oversight",
         "description": "Prioritize renewal risk across Companies using explicit urgency windows and truthful action availability.",
-        "summaries": { "overdue": "Overdue", "week": "Due this week", "days90": "Next 90 days" },
-        "filters": { "entity": "Entity", "type": "Renewal type", "status": "Workflow status" },
+        "summaries": {
+          "overdue": "Overdue",
+          "week": "Due this week",
+          "days90": "Next 90 days"
+        },
+        "filters": {
+          "entity": "Entity",
+          "type": "Renewal type",
+          "status": "Workflow status"
+        },
         "queueTitle": "Renewal risk queue",
         "queueDescription": "Urgency, entity, type, status, escalation and timeline context will appear in this primary queue.",
         "guidance": "Accepted urgency groups are overdue, this week, this month and next 90 days. No reminders, batches or fines are inferred.",
@@ -3779,7 +4091,21 @@
         "unavailableTitle": "Unavailable — Phase 3 contract required",
         "unavailableDescription": "No accepted platform report catalog or export job contract exists on this base.",
         "export": "Generate export",
-        "actionExplanation": "Unavailable — Phase 3 report, export-job and delivery contract required."
+        "actionExplanation": "Unavailable — Phase 3 report, export-job and delivery contract required.",
+        "partialDescription": "Integrated operational totals are current; the P3.10 distributed runtime remains unavailable.",
+        "errorDescription": "The authorized report could not be loaded safely.",
+        "generatedAt": "Generated {value} · Asia/Dubai reporting semantics",
+        "unavailableSources": "Unavailable sources: {value}",
+        "metrics": {
+          "companies": "Companies",
+          "activeEmployees": "Active employees",
+          "overdueRenewals": "Overdue renewals",
+          "scheduledMeetings": "Scheduled meetings",
+          "contactIntakes": "Contact intakes",
+          "submittedApplications": "Submitted applications",
+          "registrations": "Registrations",
+          "postedFinanceJournals": "Posted finance journals"
+        }
       },
       "compliance": {
         "eyebrow": "Platform · Governance",
@@ -3796,7 +4122,13 @@
         "unavailableTitle": "Unavailable — Phase 3 contract required",
         "unavailableDescription": "No accepted compliance aggregate or evidence catalog exists on this base.",
         "openEvidence": "Open evidence",
-        "actionExplanation": "Unavailable — Phase 3 compliance evidence contract required."
+        "actionExplanation": "Unavailable — Phase 3 compliance evidence contract required.",
+        "policyDisclaimer": "Policy status is shown as recorded. This is not a legal-compliance claim; destructive erasure remains disabled without approved policy and P3.13 runtime evidence.",
+        "dataClass": "Data class",
+        "owner": "Owner",
+        "policyStatus": "Policy status",
+        "runtimeStatus": "Runtime status",
+        "action": "Retention action"
       },
       "systemStatus": {
         "eyebrow": "Platform · Operations",
@@ -3812,12 +4144,36 @@
         "unavailableTitle": "Unavailable — Phase 3 contract required",
         "unavailableDescription": "No accepted system-health monitoring or incident source exists on this base.",
         "refresh": "Refresh status",
-        "actionExplanation": "Unavailable — Phase 3 monitoring and freshness contract required."
+        "actionExplanation": "Unavailable — Phase 3 monitoring and freshness contract required.",
+        "generatedAt": "Generated {value}",
+        "pending": "{count} pending",
+        "components": {
+          "database": "Database",
+          "eventQueue": "Event queue",
+          "distributedRuntime": "Distributed runtime"
+        }
       },
       "plans": {
         "eyebrow": "Platform · Subscriptions",
         "title": "Plans, allowances and add-ons",
-        "intro": "Design subscription management without exposing page-local prices or unsupported saves.",
+        "intro": "Manage immutable plan catalogs, provider availability, and reviewed activation.",
+        "catalogs": "Subscription catalog versions",
+        "version": "Catalog version",
+        "class": "Catalog class",
+        "currency": "Currency",
+        "revision": "Revision",
+        "effectiveFrom": "Effective from",
+        "notScheduled": "Not scheduled",
+        "providers": "Provider destinations",
+        "enabled": "Enabled",
+        "disabled": "Off",
+        "label": "Catalog label",
+        "reviewReference": "Review reference",
+        "clone": "Clone draft",
+        "edit": "Update draft",
+        "activate": "Activate version",
+        "states": { "draft": "Draft", "active": "Active", "retired": "Retired" },
+        "classes": { "demo": "Demo", "local": "Local", "commercial": "Commercial" },
         "comparison": "Plan comparison",
         "cadence": "Monthly and annual cadence",
         "allowances": "Communication and storage allowances",
@@ -3867,7 +4223,21 @@
           "preview": "Preview",
           "publish": "Publish"
         },
-        "actionExplanation": "Unavailable — Phase 3 questionnaire version, persistence, preview and publish contracts required."
+        "actionExplanation": "Unavailable — Phase 3 questionnaire version, persistence, preview and publish contracts required.",
+        "editor": {
+          "intro": "Create and version the public application questionnaire. Published versions are immutable; edits create a new draft.",
+          "keyLabel": "Definition key",
+          "titleLabel": "Title",
+          "definition": "Definition (JSON)",
+          "preview": "Preview",
+          "save": "Save draft",
+          "publish": "Publish",
+          "archive": "Archive",
+          "versions": "Versions",
+          "invalidJson": "The definition is not valid JSON or is structurally invalid.",
+          "savedHint": "Draft saved.",
+          "mfaRequired": "MFA (AAL2) is required to manage questionnaire definitions."
+        }
       }
     },
     "user": {
@@ -4457,7 +4827,11 @@
         "feeRows": "Fee rows",
         "filterAll": "All",
         "filterActive": "Active",
-        "filterInactive": "Inactive"
+        "filterInactive": "Inactive",
+        "paginationLabel": "Cost-data pages",
+        "paginationSummary": "Page {page} of {pageCount} · {total} rows",
+        "previous": "Previous",
+        "next": "Next"
       }
     },
     "companies": {
@@ -4499,6 +4873,15 @@
         "created": "Created",
         "noLicense": "License not provided",
         "unassigned": "Unassigned"
+      },
+      "operations": {
+        "label": "Operations",
+        "companyLabel": "Operational workspaces for {company}",
+        "title": "Company operations",
+        "description": "Open Company-scoped records without widening to platform aggregates.",
+        "tasks": "Tasks",
+        "notifications": "Notifications",
+        "communications": "Communications"
       },
       "status": {
         "all": "All",
@@ -4874,11 +5257,21 @@
       "intro": "Active Stripe subscription recurring value; this is not collected revenue, accounting, or profit.",
       "pointInTime": "Rendered at",
       "currencyUsd": "Currency",
+      "currency": "Currency",
+      "currenciesSeparated": "Reported separately by currency",
+      "valueUnavailable": "Unavailable",
+      "accountingTable": "Accounting totals by currency",
       "includedActive": "Included",
       "activeSubscriptionsOnly": "Active subscriptions only",
       "excludedStatuses": "Excluded",
       "nonActiveExcluded": "Trialing, past-due, canceled, unpaid, incomplete and paused subscriptions",
       "tenantMrr": "Workspace MRR",
+      "reportTitle": "Accounting report · {month}",
+      "exportCsv": "Export CSV",
+      "cashCollected": "Cash collected",
+      "billed": "Billed",
+      "receivable": "Receivable",
+      "profit": "Profit",
       "table": {
         "tenant": "Company workspace",
         "plan": "Plan",
@@ -4894,7 +5287,8 @@
         "helperMonthlyValue": "active monthly value",
         "helperMrrTimes12": "MRR x 12",
         "helperActiveSubscriptions": "active subscriptions",
-        "helperLast30Days": "last 30 days"
+        "helperLast30Days": "last 30 days",
+        "exactRemainder": "exact numerator remainder {remainder} / 12"
       },
       "subStatus": {
         "active": "Active",
@@ -4905,6 +5299,29 @@
         "incomplete": "Incomplete",
         "incomplete_expired": "Incomplete expired",
         "paused": "Paused"
+      },
+      "bankEvidence": {
+        "title": "Bank evidence review",
+        "description": "Review the newest bounded platform evidence queue.",
+        "empty": "No bank evidence is waiting for review.",
+        "open": "Open evidence",
+        "clean": "Mark clean",
+        "reject": "Reject",
+        "rejectTitle": "Reject bank evidence?",
+        "rejectDescription": "This decision is irreversible. Enter the reviewer reason before rejecting the evidence.",
+        "rejectReason": "Rejection reason",
+        "confirmReject": "Confirm rejection",
+        "cancel": "Cancel",
+        "actionFailed": "Evidence action could not be completed.",
+        "states": {
+          "pending": "Pending",
+          "clean": "Clean",
+          "rejected": "Rejected",
+          "reconciled": "Reconciled",
+          "expired": "Expired",
+          "held": "Held",
+          "tombstoned": "Tombstoned"
+        }
       },
       "unsupported": {
         "title": "Accounting, collections and reconciliation",
@@ -4940,14 +5357,16 @@
         "unknown": "Unknown",
         "noReason": "No reason provided",
         "decisionTitle": "Decision",
-        "decisionDescription": "Approval executes the anonymization cascade.",
+        "decisionDescription": "Approval records an audited dry-run decision. Destructive cleanup stays disabled pending approved policy and P3.13 acceptance.",
         "approveExecute": "Approve and execute",
         "confirmApprove": "Approve and execute this erasure request? This permanently anonymizes personal data and cannot be undone.",
+        "approveDecision": "Approve decision (dry run)",
+        "confirmApproveDecision": "Record this audited dry-run approval decision? No personal data will be erased.",
         "rejectionReason": "Rejection reason",
         "rejectRequest": "Reject request",
         "confirmReject": "Reject this erasure request? The request will close without erasing personal data.",
         "cascadeTitle": "Cascade scope",
-        "cascadeDescription": "Fields removed on approval.",
+        "cascadeDescription": "Fields proposed for cleanup after policy approval. No data is removed by this decision.",
         "profilePii": "Profile PII",
         "profilePiiDesc": "Name, phone, username, title, bio.",
         "identityFields": "Identity fields",
@@ -5095,7 +5514,11 @@
           "edit": "Edit {title}",
           "view": "View {title}",
           "delete": "Delete {title}",
-          "statuses": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published" }
+          "statuses": {
+            "draft": "Draft",
+            "scheduled": "Scheduled",
+            "published": "Published"
+          }
         },
         "editor": {
           "post": "Post",
@@ -5114,7 +5537,11 @@
           "featuredImage": "Featured image",
           "taxonomy": "Taxonomy",
           "noTerms": "No {kind} terms yet.",
-          "termKinds": { "category": "Category", "tag": "Tag", "attribute": "Attribute" },
+          "termKinds": {
+            "category": "Category",
+            "tag": "Tag",
+            "attribute": "Attribute"
+          },
           "seo": "Search metadata",
           "metaTitle": "Meta title",
           "metaDescription": "Meta description",
@@ -5151,7 +5578,11 @@
           "actions": "Actions",
           "edit": "Edit {title}",
           "delete": "Delete {title}",
-          "statuses": { "draft": "Draft", "scheduled": "Scheduled", "published": "Published" },
+          "statuses": {
+            "draft": "Draft",
+            "scheduled": "Scheduled",
+            "published": "Published"
+          },
           "deleteTitle": "Delete page?",
           "deleteDescription": "“{title}” will be removed from the page library. This action cannot be undone here.",
           "deleteError": "The page could not be deleted. Try again.",
@@ -5199,7 +5630,11 @@
           "headingAlignment": "Heading alignment",
           "textAlignment": "Text alignment",
           "buttonAlignment": "Button alignment",
-          "alignments": { "left": "Left", "center": "Center", "right": "Right" },
+          "alignments": {
+            "left": "Left",
+            "center": "Center",
+            "right": "Right"
+          },
           "backgroundColor": "Background color",
           "overlayColor": "Overlay color",
           "overlayOpacity": "Overlay opacity",
@@ -5270,7 +5705,11 @@
           "description": "Manage blog tags used for article discovery and filtering."
         },
         "manager": {
-          "termKinds": { "category": "category", "attribute": "attribute", "tag": "tag" },
+          "termKinds": {
+            "category": "category",
+            "attribute": "attribute",
+            "tag": "tag"
+          },
           "saveErrorTitle": "Could not save {kind}",
           "saveErrorDescription": "The term could not be saved. Check the details and try again.",
           "savedTitle": "{kind} saved",
@@ -5765,7 +6204,8 @@
       "noNextAction": "No next action is recorded.",
       "noDocuments": "No registration documents are recorded.",
       "noVisaPeople": "No visa people are recorded.",
-      "noHistory": "No registration history is recorded."
+      "noHistory": "No registration history is recorded.",
+      "indexError": "The registration index could not be loaded. Try again."
     },
     "stages": {
       "application_submitted": "Application submitted",
@@ -5799,6 +6239,264 @@
       "completed": "Completed",
       "unavailable": "Unavailable",
       "cancelled": "Cancelled"
+    },
+    "list": {
+      "company": "Company",
+      "pro": "Assigned PRO",
+      "title": "Registration",
+      "stage": "Current stage",
+      "status": "Status",
+      "progress": "Progress",
+      "updated": "Updated",
+      "view": "Open",
+      "results": "{count, plural, =0 {No registrations} one {# registration} other {# registrations}}"
+    }
+  },
+  "p308": {
+    "errors": {
+      "FORBIDDEN": "This record is outside your company access.",
+      "VALIDATION_FAILED": "Check the values and try again.",
+      "OPERATION_REUSED": "This request was already used for a different change. Reopen the form.",
+      "STALE_VERSION": "This record changed since you opened it. Refresh and try again.",
+      "EMPLOYEE_PASSPORT_DUPLICATE": "An employee with this passport number already exists in this company.",
+      "EMPLOYEE_NOT_FOUND": "The employee is no longer available.",
+      "EMPLOYEE_STATUS_UNCHANGED": "The employee already has this status.",
+      "EMPLOYEE_STATUS_TERMINAL": "Terminated employees cannot be changed here.",
+      "IMPORT_NOT_FOUND": "The import is no longer available.",
+      "IMPORT_DUPLICATE_ARTIFACT": "This file is already being imported.",
+      "INVALID_IMPORT_TRANSITION": "The import cannot move to that state now.",
+      "RENEWAL_NOT_FOUND": "The renewal is no longer available.",
+      "RENEWAL_DUPLICATE": "A matching active renewal already exists.",
+      "RENEWAL_TERMINAL": "Completed or cancelled renewals cannot change.",
+      "RENEWAL_BLOCKED": "Clear the blocker before advancing this renewal.",
+      "RENEWAL_LICENSE_LOCKED": "This renewal follows the company licence record and cannot be changed here.",
+      "RENEWAL_EVIDENCE_REQUIRED": "Attach at least one uploaded document as evidence.",
+      "RENEWAL_EVIDENCE_NOT_FOUND": "A selected document is not available for this company.",
+      "INVALID_RENEWAL_TRANSITION": "That stage change is not allowed.",
+      "INTERNAL": "The change could not be saved. Try again.",
+      "RATE_LIMITED": "Too many imports. Try again later.",
+      "FILE_TOO_LARGE": "The CSV file is larger than 1 MB.",
+      "INVALID_ENCODING": "The CSV file must be UTF-8 text.",
+      "MISSING_REQUIRED_HEADER": "The CSV needs a name column.",
+      "UNKNOWN_HEADER": "The CSV has a column that is not supported.",
+      "DUPLICATE_HEADER": "The CSV repeats a column.",
+      "NO_ROWS": "The CSV has no employee rows.",
+      "TOO_MANY_ROWS": "The CSV has more than 5,000 rows."
+    },
+    "renewals": {
+      "stageTitle": "Change renewal stage",
+      "stageDescription": "Current stage: {stage}. Stages move one step at a time.",
+      "blockedHint": "This renewal is blocked. Clear the blocker to advance it.",
+      "targetStage": "Next stage",
+      "evidence": "Evidence documents",
+      "noEvidence": "No uploaded company documents are available as evidence.",
+      "cancelReason": "Cancellation reason",
+      "cancelReasons": {
+        "duplicate_entry": "Duplicate entry",
+        "not_required": "No longer required",
+        "handled_elsewhere": "Handled elsewhere"
+      },
+      "close": "Close",
+      "saving": "Saving…",
+      "applyStage": "Apply stage",
+      "terminal": "Closed",
+      "changeStage": "Change stage",
+      "costs": "Costs ({currency})",
+      "governmentFee": "Government fee",
+      "serviceFee": "PRO service fee",
+      "fine": "Fine",
+      "blocker": "Blocker",
+      "noBlocker": "No blocker",
+      "blockers": {
+        "awaiting_documents": "Awaiting documents",
+        "awaiting_payment": "Awaiting payment",
+        "awaiting_government": "Awaiting government",
+        "awaiting_medical": "Awaiting medical"
+      },
+      "types": {
+        "license": "Trade license",
+        "visa": "Employee visa",
+        "investor_visa": "Investor/partner visa",
+        "eid": "Emirates ID",
+        "establishment_card": "Establishment card",
+        "ejari": "Ejari / tenancy",
+        "medical_insurance": "Medical insurance"
+      },
+      "stages": {
+        "due": "Due",
+        "in_progress": "In progress",
+        "documents_submitted": "Documents submitted",
+        "government_processing": "Government processing",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "employee": "Employee",
+      "companyLevel": "Company-level renewal",
+      "stage": "Stage",
+      "blocked": "Blocked",
+      "sourceOnboarding": "Company onboarding",
+      "batchTitle": "Start renewals in a batch",
+      "batchDescription": "Selected due renewals move to In progress together, or none move.",
+      "batchDone": "{count} renewals started.",
+      "batchStart": "Start {count} selected"
+    },
+    "employees": {
+      "add": "Add employee",
+      "edit": "Edit",
+      "addTitle": "Add employee",
+      "editTitle": "Edit employee",
+      "privacyNote": "Passport, visa and Emirates ID numbers are encrypted and only the last four characters are shown. Leave identifier fields empty to keep the stored value.",
+      "fields": {
+        "name": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "nationality": "Nationality (ISO code)",
+        "job_title": "Job title",
+        "passport_no": "Passport number",
+        "visa_no": "Visa number",
+        "visa_expiry": "Visa expiry",
+        "emirates_id": "Emirates ID",
+        "eid_expiry": "Emirates ID expiry"
+      },
+      "close": "Close",
+      "saving": "Saving…",
+      "save": "Save employee",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate"
+    },
+    "employeeSelf": {
+      "phone": "Contact phone",
+      "saving": "Saving…",
+      "save": "Save contact",
+      "success": "Your contact phone was saved.",
+      "error": "The contact phone could not be saved.",
+      "conflict": "Your record changed. Refresh and try again.",
+      "contactTitle": "My contact details",
+      "contactDescription": "You can update your own phone number. Other details are maintained by your PRO.",
+      "calendarTitle": "My renewal calendar — {month}",
+      "calendarDescription": "Your own renewals by Dubai business date.",
+      "calendarNav": "Calendar months",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "calendarEmpty": "No renewals fall in this month.",
+      "urgency": {
+        "overdue": "Overdue",
+        "due_today": "Due today",
+        "upcoming": "Upcoming"
+      },
+      "stages": {
+        "due": "Due",
+        "in_progress": "In progress",
+        "documents_submitted": "Documents submitted",
+        "government_processing": "Government processing",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "activityTitle": "My record history",
+      "activityDescription": "Changes to your employee record and your renewals.",
+      "activityEmpty": "No recorded changes yet.",
+      "activity": {
+        "profile": {
+          "created": "Record created",
+          "updated": "Record updated by your PRO",
+          "deactivated": "Record deactivated",
+          "reactivated": "Record reactivated",
+          "self_profile_updated": "You updated your contact phone",
+          "preferences_updated": "You changed reminder preference",
+          "imported": "Record imported"
+        },
+        "renewal": {
+          "created": "Renewal created",
+          "updated": "Renewal updated",
+          "transitioned": "Renewal stage changed",
+          "blocked": "Renewal blocked",
+          "unblocked": "Renewal unblocked",
+          "evidence_linked": "Evidence linked",
+          "completed": "Renewal completed",
+          "cancelled": "Renewal cancelled",
+          "escalated": "Renewal escalated"
+        }
+      },
+      "tasksTitle": "My open items",
+      "tasksDescription": "Document requests addressed to you and your renewals that need attention.",
+      "tasksEmpty": "Nothing needs your attention.",
+      "taskKinds": {
+        "document_request": "Document request",
+        "renewal": "Renewal"
+      }
+    },
+    "adminRenewals": {
+      "pagination": "Renewal pages",
+      "pageOf": "Page {page} of {pages}",
+      "previous": "Previous",
+      "next": "Next",
+      "counts": {
+        "overdue": "Overdue",
+        "week": "Due this week",
+        "days90": "Next 90 days"
+      },
+      "health": "Materialization",
+      "healthUnavailable": "Health unavailable",
+      "healthStale": "Stale since {date} (Dubai)",
+      "healthFresh": "Current · {reminders} reminders scheduled",
+      "empty": "No active renewals.",
+      "columns": {
+        "company": "Company",
+        "renewal": "Renewal",
+        "due": "Due (Dubai)",
+        "stage": "Stage"
+      },
+      "types": {
+        "license": "Trade license",
+        "visa": "Employee visa",
+        "investor_visa": "Investor/partner visa",
+        "eid": "Emirates ID",
+        "establishment_card": "Establishment card",
+        "ejari": "Ejari / tenancy",
+        "medical_insurance": "Medical insurance"
+      },
+      "stages": {
+        "due": "Due",
+        "in_progress": "In progress",
+        "documents_submitted": "Documents submitted",
+        "government_processing": "Government processing",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "buckets": {
+        "overdue": "Overdue",
+        "this_week": "This week",
+        "this_month": "This month",
+        "next_90": "Next 90 days",
+        "later": "Later"
+      },
+      "blocked": "Blocked"
+    },
+    "adminEmployees": {
+      "pagination": "Employee pages",
+      "pageOf": "Page {page} of {pages}",
+      "previous": "Previous",
+      "next": "Next",
+      "counts": {
+        "total": "Employees",
+        "visaRisk": "Visa due ≤90 days",
+        "eidRisk": "EID due ≤90 days"
+      },
+      "empty": "No employees recorded.",
+      "columns": {
+        "company": "Company",
+        "employee": "Employee",
+        "identifiers": "Masked identifiers",
+        "expiries": "Expiries",
+        "status": "Status"
+      },
+      "visa": "Visa",
+      "eid": "EID",
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "terminated": "Terminated"
+      }
     }
   }
 }

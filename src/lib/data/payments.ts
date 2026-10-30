@@ -4,6 +4,7 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 export type PendingInvoice = {
   id: string;
+  version: number;
   label: string;
   amount: string;
   amountMinor: number;
@@ -17,6 +18,7 @@ export type PaidInvoice = {
   amount: string;
   paidAt: string;
   status: 'paid' | 'refunded' | 'partially_refunded';
+  receiptAvailable: boolean;
 };
 
 export type PaymentHistory = {
@@ -26,6 +28,7 @@ export type PaymentHistory = {
 
 type InvoiceRow = {
   id: string;
+  version: number;
   label: string;
   amount_minor: number;
   currency: string;
@@ -33,18 +36,18 @@ type InvoiceRow = {
   due_at: string | null;
   paid_at: string | null;
   created_at: string;
+  receipt_available: boolean;
 };
 
 export async function getInvoicesForCustomer(profileId: string): Promise<PaymentHistory> {
   const admin = createSupabaseServiceRoleClient();
-  const { data } = await admin
-    .from('invoices')
-    .select('id, label, amount_minor, currency, status, due_at, paid_at, created_at')
-    .eq('customer_profile_id', profileId)
-    .order('created_at', { ascending: false })
-    .limit(100);
-
-  const rows = (data ?? []) as InvoiceRow[];
+  const { data, error } = await admin.rpc(
+    'p309_list_customer_payment_history' as never,
+    { p_customer_profile_id: profileId } as never,
+  );
+  if (error || !Array.isArray(data) || !data.every(isInvoiceRow))
+    return { pending: [], history: [] };
+  const rows = data as InvoiceRow[];
   const pending: PendingInvoice[] = [];
   const history: PaidInvoice[] = [];
 
@@ -53,6 +56,7 @@ export async function getInvoicesForCustomer(profileId: string): Promise<Payment
     if (row.status === 'open') {
       pending.push({
         id: row.id,
+        version: row.version,
         label: row.label,
         amount: amountFormatted,
         amountMinor: row.amount_minor,
@@ -70,9 +74,27 @@ export async function getInvoicesForCustomer(profileId: string): Promise<Payment
         amount: amountFormatted,
         paidAt: row.paid_at ?? row.created_at,
         status: row.status as 'paid' | 'refunded' | 'partially_refunded',
+        receiptAvailable: row.receipt_available,
       });
     }
   }
 
   return { pending, history };
+}
+
+function isInvoiceRow(value: unknown): value is InvoiceRow {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.id === 'string' &&
+    Number.isSafeInteger(row.version) &&
+    typeof row.label === 'string' &&
+    Number.isSafeInteger(row.amount_minor) &&
+    (row.amount_minor as number) >= 0 &&
+    typeof row.currency === 'string' &&
+    /^[A-Z]{3}$/u.test(row.currency) &&
+    typeof row.status === 'string' &&
+    typeof row.created_at === 'string' &&
+    typeof row.receipt_available === 'boolean'
+  );
 }

@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { UUID_RE } from '@/lib/util/uuid';
 import { getSessionProfile, type SessionProfile } from '@/lib/auth/require-user';
 
 type Role = NonNullable<SessionProfile['role']>;
@@ -58,7 +59,7 @@ export async function getAuthoritativeSessionProfile(
   deps: AuthoritativeSessionDeps = {},
 ): Promise<SessionProfile | null> {
   const session = await (deps.getSession ?? getSessionProfile)();
-  if (!session || !z.string().uuid().safeParse(session.id).success) return null;
+  if (!session || !z.string().regex(UUID_RE).safeParse(session.id).success) return null;
 
   const admin = deps.supabase ?? (createSupabaseServiceRoleClient() as unknown as PlatformClient);
   const { data: profile, error } = await admin
@@ -83,7 +84,7 @@ export async function getAuthoritativeSessionProfile(
     return profile.tenant_id === null ? { ...session, role: profile.role, tenantId: null } : null;
   }
   if (profile.role === 'customer' || profile.role === 'employee') {
-    return z.string().uuid().safeParse(profile.tenant_id).success
+    return z.string().regex(UUID_RE).safeParse(profile.tenant_id).success
       ? { ...session, role: profile.role, tenantId: profile.tenant_id as string }
       : null;
   }
@@ -92,7 +93,7 @@ export async function getAuthoritativeSessionProfile(
       'read_authoritative_pro_tenant',
       { p_actor_id: session.id },
     );
-    return !liveProError && z.string().uuid().safeParse(tenantId).success
+    return !liveProError && z.string().regex(UUID_RE).safeParse(tenantId).success
       ? { ...session, role: 'pro', tenantId: tenantId as string }
       : null;
   }
@@ -113,13 +114,26 @@ export async function resolveAuthoritativeRole(
 }
 
 export async function requireRole(...roles: Role[]): Promise<SessionProfile> {
-  return resolveAuthoritativeRole(roles);
+  const session = await resolveAuthoritativeRole(roles);
+  await enforcePrivilegedSession(session);
+  return session;
 }
 
 export async function requirePlatformOperator(
   deps: PlatformOperatorDeps = {},
 ): Promise<SessionProfile> {
-  return resolveAuthoritativeRole(['admin', 'super_admin'], deps);
+  const session = await resolveAuthoritativeRole(['admin', 'super_admin'], deps);
+  await enforcePrivilegedSession(session);
+  return session;
+}
+
+export async function enforcePrivilegedSession(
+  session: SessionProfile,
+  deps: MfaGuardDeps = {},
+): Promise<void> {
+  if (session.role !== 'super_admin' && session.role !== 'admin' && session.role !== 'pro') return;
+  await requireMfaEnrolled(session, deps);
+  await requireAal2(session, deps);
 }
 
 export async function requireAal2(session: SessionProfile, deps: MfaGuardDeps = {}): Promise<void> {

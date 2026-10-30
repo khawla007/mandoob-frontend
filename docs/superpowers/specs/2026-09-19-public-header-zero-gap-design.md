@@ -26,4 +26,3 @@ Change only the collapsed contact-bar CSS in `src/app/(public)/public-theme.css`
 - Run the focused public-header tests, formatting and lint checks.
 - Run the full test suite.
 - Verify in a browser that the navigation's computed `top` is exactly `0` after scrolling in light and dark modes, and smoke-check home, login and registration routes.
-

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRef, useState, useTransition } from 'react';
+import { prepareSettingsOperation, type SettingsOperation } from './settings-operation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,9 +14,19 @@ import { updateSmtpAction } from '@/app/(tenant)/t/[tenant]/(pro)/settings/actio
 import type { TenantSmtpRedacted } from '@/lib/data/tenant-settings';
 import { deriveProviderState } from '@/lib/settings/provider-state';
 
-export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: TenantSmtpRedacted }) {
+export function SettingsSmtpCard({
+  slug,
+  initial,
+  initialVersion,
+}: {
+  slug: string;
+  initial: TenantSmtpRedacted;
+  initialVersion: number;
+}) {
   const t = useTranslations('pro.settings');
-  const router = useRouter();
+  const [expected_version, setExpectedVersion] = useState(initialVersion);
+  const operation = useRef<SettingsOperation | null>(null);
+  const [stored, setStored] = useState(initial);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -28,34 +38,52 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
   const [fromAddress, setFromAddress] = useState(initial?.from_address ?? '');
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
 
-  const passwordPlaceholder = initial?.has_password
+  const passwordPlaceholder = stored?.has_password
     ? t('smtp.passwordKeepPlaceholder')
     : t('smtp.passwordPlaceholder');
   const status = deriveProviderState({
     status: 'ready',
-    data: initial && { enabled: initial.enabled, hasCredential: initial.has_password },
+    data: stored && { enabled: stored.enabled, hasCredential: stored.has_password },
   });
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (pending) return;
+    operation.current = prepareSettingsOperation(operation.current, expected_version, () =>
+      crypto.randomUUID(),
+    );
     setError(null);
     setSaved(false);
     startTransition(async () => {
-      const r = await updateSmtpAction(slug, {
-        host,
-        port,
-        username,
-        password,
-        from_address: fromAddress,
-        enabled,
-      });
-      if (!r.ok) {
-        setError(t(`actionErrors.${r.errorKey}`));
-        return;
+      try {
+        const r = await updateSmtpAction(slug, {
+          ...operation.current,
+          host,
+          port,
+          username,
+          password,
+          from_address: fromAddress,
+          enabled,
+        });
+        if (!r.ok) {
+          setError(t(`actionErrors.${r.errorKey}`));
+          return;
+        }
+        setSaved(true);
+        setPassword('');
+        setExpectedVersion(r.data.version);
+        operation.current = null;
+        setStored({
+          host,
+          port: Number(port),
+          username,
+          from_address: fromAddress,
+          enabled,
+          has_password: true,
+        });
+      } catch {
+        setError(t('actionErrors.saveFailed'));
       }
-      setSaved(true);
-      setPassword('');
-      router.refresh();
     });
   }
 
@@ -73,93 +101,106 @@ export function SettingsSmtpCard({ slug, initial }: { slug: string; initial: Ten
         </div>
       </CardHeader>
       <CardContent>
-        <form className="space-y-4" onSubmit={onSubmit}>
-          {error && (
-            <Alert variant="destructive">
-              <AlertTitle>{t('couldNotSave')}</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {saved && (
-            <Alert>
-              <AlertTitle>{t('saved')}</AlertTitle>
-              <AlertDescription>{t('smtp.savedDescription')}</AlertDescription>
-            </Alert>
-          )}
+        <form
+          className="space-y-4"
+          onSubmit={onSubmit}
+          onChange={() => {
+            operation.current = null;
+            setSaved(false);
+          }}
+        >
+          <fieldset disabled={pending} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertTitle>{t('couldNotSave')}</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {saved && (
+              <Alert>
+                <AlertTitle>{t('saved')}</AlertTitle>
+                <AlertDescription>{t('smtp.savedDescription')}</AlertDescription>
+              </Alert>
+            )}
 
-          <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+              <div className="grid gap-2">
+                <Label htmlFor="smtp-host">{t('smtp.host')}</Label>
+                <Input
+                  id="smtp-host"
+                  required
+                  value={host}
+                  onChange={(e) => setHost(e.target.value)}
+                  placeholder="smtp.example.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="smtp-port">{t('smtp.port')}</Label>
+                <Input
+                  id="smtp-port"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  required
+                  value={port}
+                  onChange={(e) => setPort(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="smtp-host">{t('smtp.host')}</Label>
+              <Label htmlFor="smtp-username">{t('smtp.username')}</Label>
               <Input
-                id="smtp-host"
+                id="smtp-username"
                 required
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                placeholder="smtp.example.com"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="smtp-port">{t('smtp.port')}</Label>
+              <Label htmlFor="smtp-password">{t('smtp.password')}</Label>
               <Input
-                id="smtp-port"
-                type="number"
-                min={1}
-                max={65535}
-                required
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
+                id="smtp-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={passwordPlaceholder}
+                autoComplete="new-password"
               />
             </div>
-          </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="smtp-username">{t('smtp.username')}</Label>
-            <Input
-              id="smtp-username"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </div>
+            <div className="grid gap-2">
+              <Label htmlFor="smtp-from">{t('smtp.fromAddress')}</Label>
+              <Input
+                id="smtp-from"
+                type="email"
+                required
+                value={fromAddress}
+                onChange={(e) => setFromAddress(e.target.value)}
+                placeholder="no-reply@acmepro.ae"
+              />
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="smtp-password">{t('smtp.password')}</Label>
-            <Input
-              id="smtp-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={passwordPlaceholder}
-              autoComplete="new-password"
-            />
-          </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="smtp-enabled"
+                checked={enabled}
+                onCheckedChange={(v) => {
+                  operation.current = null;
+                  setSaved(false);
+                  setEnabled(v === true);
+                }}
+              />
+              <Label htmlFor="smtp-enabled" className="font-normal">
+                {t('enabled')}
+              </Label>
+            </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="smtp-from">{t('smtp.fromAddress')}</Label>
-            <Input
-              id="smtp-from"
-              type="email"
-              required
-              value={fromAddress}
-              onChange={(e) => setFromAddress(e.target.value)}
-              placeholder="no-reply@acmepro.ae"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="smtp-enabled"
-              checked={enabled}
-              onCheckedChange={(v) => setEnabled(v === true)}
-            />
-            <Label htmlFor="smtp-enabled" className="font-normal">
-              {t('enabled')}
-            </Label>
-          </div>
-
-          <Button type="submit" disabled={pending}>
-            {pending ? t('saving') : t('smtp.save')}
-          </Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? t('saving') : t('smtp.save')}
+            </Button>
+          </fieldset>
         </form>
       </CardContent>
     </Card>

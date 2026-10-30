@@ -50,30 +50,51 @@ test('PRO application creation derives company ownership and exposes no company 
 
 test('PRO renewal creation derives company ownership and exposes no company selector', () => {
   assert.doesNotMatch(renewalDialog, /companyId|fixedCompanyId|clients|<Select[^>]*company/i);
-  assert.match(renewalActions, /readAssignedCompanyForPro\(session\.id, slug\)/);
-  assert.match(renewalActions, /company_id: ctx\.companyId/);
+  assert.match(
+    renewalActions,
+    /assignedProActor\(await requireProTenantRouteAccess\(slug\), slug\)/,
+  );
+  const boundary = source('src/lib/p308/server.ts');
+  assert.match(boundary, /readAssignedCompanyForPro\(access\.session\.id, tenantSlug\)/);
+  assert.match(boundary, /companyId: company\.id/);
+  assert.match(source('src/lib/renewals/commands.ts'), /p_company_id: actor\.companyId/);
 });
 
 test('PRO invoice creation derives company ownership and exposes no company selector', () => {
   assert.doesNotMatch(invoiceDialog, /companyId|fixedCompanyId|clients|invoice-company/i);
-  assert.match(invoiceActions, /resolveAssignedCompanyForCaller\(ctx\)/);
+  assert.match(invoiceActions, /readAssignedCompanyForPro\(session\.id, tenant\.slug\)/);
   assert.match(invoiceActions, /companyId: company\.id/);
   assert.doesNotMatch(invoiceActions, /\.eq\('id', input\.companyId\)/);
 });
 
 test('renewal and invoice lifecycle mutations reject same-tenant rows from another company', () => {
-  const renewalData = source('src/lib/data/renewals.ts');
-  assert.match(renewalActions, /companyId: company\.id/u);
-  assert.match(renewalData, /existing\.company_id !== ctx\.companyId/u);
-  assert.match(renewalData, /\.eq\('company_id', ctx\.companyId\)/u);
-  assert.match(renewalData, /input\.company_id !== ctx\.companyId/u);
+  // P3.08: renewal writes are RPCs that lock by (id, tenant, company) and re-resolve the PRO.
+  const migration = source('supabase/migrations/20260922080000_0108_p3_08_employees_renewals.sql');
+  assert.match(source('src/lib/p308/server.ts'), /companyId: company\.id/u);
+  for (const fn of [
+    'p308_update_renewal',
+    'p308_transition_renewal',
+    'p308_batch_transition_renewals',
+  ]) {
+    const body = migration.slice(migration.indexOf(`create function public.${fn}(`));
+    assert.match(
+      body.slice(0, 4000),
+      /renewal\.tenant_id = p_tenant_id\s+and renewal\.company_id = p_company_id/u,
+      fn,
+    );
+    assert.match(
+      body.slice(0, 4000),
+      /p308_resolve_actor\(p_actor_id, p_tenant_id, p_company_id, array\['pro'\]\)/u,
+      fn,
+    );
+  }
 
-  assert.match(invoiceActions, /resolveAssignedCompanyForCaller\(ctx\)/u);
-  assert.match(invoiceActions, /rpc\(\s*'mark_company_invoice_paid'/u);
-  assert.match(invoiceActions, /rpc\(\s*'void_company_invoice'/u);
-  assert.match(invoiceActions, /rpc\(\s*'prepare_company_refund'/u);
-  assert.match(invoiceActions, /rpc\(\s*'reconcile_company_refund'/u);
-  assert.match(invoiceActions, /p_company_id: company\.id/u);
+  assert.match(invoiceActions, /readAssignedCompanyForPro\(session\.id, tenant\.slug\)/u);
+  assert.match(invoiceActions, /allocateManualPayment\(client, input\)/u);
+  assert.match(invoiceActions, /voidInvoice\(client, input\)/u);
+  assert.match(invoiceActions, /prepareInvoiceRefund\(client, input\)/u);
+  assert.match(invoiceActions, /reconcileInvoiceRefund\(client/u);
+  assert.match(invoiceActions, /companyId: company\.id/u);
 });
 
 test('invoice receipt reads bind every child lookup to the authoritative tenant and company', () => {

@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { RenewalRowActions } from '@/components/pro/RenewalRowActions';
+import type { EvidenceOption } from '@/components/pro/RenewalStageDialog';
 import type { RenewalStatus, RenewalType } from '@/lib/data/renewals';
 import type { RenewalWorkspaceRow } from '@/lib/data/pro-renewal-workspace';
 
@@ -18,6 +19,9 @@ export type RenewalsTableLabels = {
   typeValues: Record<RenewalType, string>;
   statusValues: Record<RenewalStatus, string>;
   sourceValues: Record<RenewalWorkspaceRow['source'], string>;
+  stage: string;
+  stageValues: Record<RenewalWorkspaceRow['stage'], string>;
+  blocked: string;
 };
 
 function dueText(row: RenewalWorkspaceRow, labels: RenewalsTableLabels): string | null {
@@ -33,11 +37,13 @@ export function RenewalsTable({
   slug,
   labels,
   locale,
+  evidenceOptions = [],
 }: {
   rows: RenewalWorkspaceRow[];
   slug: string;
   labels: RenewalsTableLabels;
   locale: string;
+  evidenceOptions?: EvidenceOption[];
 }) {
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Dubai' });
   return (
@@ -56,6 +62,9 @@ export function RenewalsTable({
             </th>
             <th scope="col" className="px-3 py-2.5 text-start font-medium">
               {labels.status}
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-start font-medium">
+              {labels.stage}
             </th>
             <th scope="col" className="px-3 py-2.5 text-start font-medium">
               {labels.source}
@@ -86,12 +95,18 @@ export function RenewalsTable({
                 <Badge variant="secondary">{labels.statusValues[row.status]}</Badge>
               </td>
               <td className="px-3 py-3">
+                <Badge variant="outline">{labels.stageValues[row.stage]}</Badge>
+                {row.blockerCode ? (
+                  <div className="text-destructive mt-1 text-xs">{labels.blocked}</div>
+                ) : null}
+              </td>
+              <td className="px-3 py-3">
                 <span className="text-muted-foreground text-xs">
                   {labels.sourceValues[row.source]}
                 </span>
               </td>
               <td className="px-3 py-3 text-end">
-                <RenewalRowActions row={row} slug={slug} />
+                <RenewalRowActions row={row} slug={slug} evidenceOptions={evidenceOptions} />
               </td>
             </tr>
           ))}

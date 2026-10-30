@@ -79,13 +79,21 @@ const uploadReservationSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('complete'), credential: publicCredentialSchema }).strict(),
 ]);
 type SafeMime = 'application/pdf' | 'image/jpeg' | 'image/png';
+type ExistingObjectRead =
+  | { status: 'found'; bytes: Uint8Array; mime: string | null }
+  | { status: 'missing' }
+  | { status: 'unavailable' };
 
 type Deps = {
   guardCsrf(request: Request): Promise<Response | null>;
   requirePro(): Promise<SessionProfile>;
   resolveTarget(actorId: string): Promise<LifecycleTarget | null>;
   limit(actorId: string, targetId: string): Promise<LimitDecision>;
-  inspectFile(bytes: Uint8Array, declaredMime: string): Promise<{ mime: SafeMime } | null>;
+  inspectFile(
+    bytes: Uint8Array,
+    declaredMime: string,
+    filename: string,
+  ): Promise<{ mime: SafeMime; filename?: string; sha256?: string } | null>;
   scan(
     bytes: Uint8Array,
     options: { filename: string },
@@ -96,7 +104,7 @@ type Deps = {
     mime: SafeMime,
     signal: AbortSignal,
   ): Promise<'stored' | 'exists'>;
-  readExisting(path: string): Promise<{ bytes: Uint8Array; mime: string | null }>;
+  readExisting(path: string, signal: AbortSignal): Promise<ExistingObjectRead>;
   reserve(
     actorId: string,
     credentialId: string,
@@ -134,11 +142,19 @@ const defaults: Deps = {
       ...SENSITIVE_RATE_LIMITS.credentialUpload,
     });
   },
-  inspectFile: async (bytes) => {
-    const sniffed = await (await import('file-type')).fileTypeFromBuffer(bytes);
-    return sniffed && ['application/pdf', 'image/jpeg', 'image/png'].includes(sniffed.mime)
-      ? { mime: sniffed.mime as SafeMime }
-      : null;
+  inspectFile: async (bytes, declaredMime, filename) => {
+    try {
+      const validated = await (
+        await import('@/lib/pro-lifecycle/credential-document-adapter')
+      ).validateCredentialDocumentUpload({ data: bytes, filename, mimeType: declaredMime });
+      return {
+        mime: validated.mimeType,
+        filename: validated.filename,
+        sha256: validated.sha256,
+      };
+    } catch {
+      return null;
+    }
   },
   scan: async (bytes, options) =>
     (await import('@/lib/security/scan-file')).scanFilePrivate(bytes, options),
@@ -152,16 +168,25 @@ const defaults: Deps = {
       return 'exists';
     throw new Error('storage_upload_failed');
   },
-  readExisting: async (path) => {
-    const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
-    const { data, error } = await createSupabaseServiceRoleClient()
-      .storage.from('tenant-documents')
-      .download(path);
-    if (error || !data) throw new Error('storage_read_failed');
-    return {
-      bytes: new Uint8Array(await data.arrayBuffer()),
-      mime: data.type || null,
-    };
+  readExisting: async (path, signal) => {
+    try {
+      const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
+      const { data, error } = await createSupabaseServiceRoleClient({ signal })
+        .storage.from('tenant-documents')
+        .download(path);
+      if (error) {
+        const statusCode = (error as { statusCode?: string | number }).statusCode;
+        return String(statusCode) === '404' ? { status: 'missing' } : { status: 'unavailable' };
+      }
+      if (!data) return { status: 'unavailable' };
+      return {
+        status: 'found',
+        bytes: new Uint8Array(await data.arrayBuffer()),
+        mime: data.type || null,
+      };
+    } catch {
+      return { status: 'unavailable' };
+    }
   },
   reserve: async (...args) =>
     (await import('@/lib/data/pro-credentials')).prepareProCredentialEvidenceUpload(...args),
@@ -210,6 +235,41 @@ function safeName(name: string): boolean {
     name !== '.' &&
     name !== '..'
   );
+}
+
+async function storedObjectMatches(
+  readExisting: Deps['readExisting'],
+  path: string,
+  metadata: z.infer<typeof proCredentialEvidenceMetadataSchema>,
+  timeoutMs: number,
+): Promise<'match' | 'mismatch' | 'unavailable'> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const operation = readExisting(path, controller.signal);
+  void operation.catch(() => undefined);
+  try {
+    const existing = await Promise.race([
+      operation,
+      new Promise<ExistingObjectRead>((resolve) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          resolve({ status: 'unavailable' });
+        }, timeoutMs);
+      }),
+    ]);
+    if (existing.status === 'unavailable') return 'unavailable';
+    if (existing.status === 'missing') return 'mismatch';
+    return existing.bytes.byteLength === metadata.sizeBytes &&
+      createHash('sha256').update(existing.bytes).digest('hex') === metadata.sha256 &&
+      existing.mime === metadata.mimeType
+      ? 'match'
+      : 'mismatch';
+  } catch {
+    return 'unavailable';
+  } finally {
+    if (timer) clearTimeout(timer);
+    controller.abort();
+  }
 }
 
 export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
@@ -262,7 +322,7 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
       if (file.size > PRO_CREDENTIAL_EVIDENCE_MAX_BYTES)
         return errorResponse('PAYLOAD_TOO_LARGE', 'File is too large', 413);
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const inspected = await deps.inspectFile(bytes, file.type);
+      const inspected = await deps.inspectFile(bytes, file.type, file.name);
       if (!inspected || inspected.mime !== file.type)
         return errorResponse('UNSUPPORTED_MEDIA_TYPE', 'File type is not allowed', 415);
       const scan = await deps.scan(bytes, { filename: file.name });
@@ -280,8 +340,8 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
       const metadata = proCredentialEvidenceMetadataSchema.parse({
         mimeType: inspected.mime,
         sizeBytes: bytes.byteLength,
-        sha256: createHash('sha256').update(bytes).digest('hex'),
-        originalNameSafe: file.name,
+        sha256: inspected.sha256 ?? createHash('sha256').update(bytes).digest('hex'),
+        originalNameSafe: inspected.filename ?? file.name,
         scanProvider: scan.provider ?? 'unknown',
         scanCompletedAt: deps.now().toISOString(),
       });
@@ -297,6 +357,16 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         ),
       );
       if (reservation.status === 'complete') {
+        const storedState = await storedObjectMatches(
+          deps.readExisting,
+          path,
+          metadata,
+          deps.uploadTimeoutMs,
+        );
+        if (storedState === 'unavailable')
+          return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
+        if (storedState === 'mismatch')
+          return errorResponse('OPERATION_REUSED', 'Unable to complete lifecycle operation', 409);
         await deps.revalidate(target, session.id);
         return jsonOk({ ok: true, credential: reservation.credential });
       }
@@ -312,13 +382,15 @@ export function createEvidencePostHandler(overrides: Partial<Deps> = {}) {
         deps.uploadTimeoutMs,
       );
       if (stored === 'exists') {
-        const existing = await deps.readExisting(path);
-        const existingHash = createHash('sha256').update(existing.bytes).digest('hex');
-        if (
-          existing.bytes.byteLength !== bytes.byteLength ||
-          existingHash !== metadata.sha256 ||
-          existing.mime !== inspected.mime
-        )
+        const storedState = await storedObjectMatches(
+          deps.readExisting,
+          path,
+          metadata,
+          deps.uploadTimeoutMs,
+        );
+        if (storedState === 'unavailable')
+          return errorResponse('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
+        if (storedState === 'mismatch')
           return errorResponse('OPERATION_REUSED', 'Unable to complete lifecycle operation', 409);
       }
       let finalized: unknown;

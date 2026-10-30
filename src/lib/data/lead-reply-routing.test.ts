@@ -11,282 +11,168 @@ async function loadRouting() {
   return import('./lead-reply-routing');
 }
 
-type Row = Record<string, unknown>;
+type RpcResult = {
+  status: 'routed' | 'unmatched';
+  lead_id: string | null;
+  ambiguous: boolean;
+  candidate_lead_ids: string[];
+};
 
-function createSupabaseStub(
-  seed: Record<string, Row[]>,
-  insertErrors: Record<string, string> = {},
-) {
-  const tables = new Map(Object.entries(seed).map(([k, v]) => [k, v.map((r) => ({ ...r }))]));
-
-  function rows(table: string) {
-    if (!tables.has(table)) tables.set(table, []);
-    return tables.get(table)!;
-  }
-
-  function filterRows(table: string, filters: Record<string, unknown>) {
-    return rows(table).filter((row) =>
-      Object.entries(filters).every(([key, value]) => row[key] === value),
-    );
-  }
-
+function createSupabaseStub(result: RpcResult, errorMessage?: string) {
+  const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
   return {
-    tables,
-    from(table: string) {
-      const state: {
-        filters: Record<string, unknown>;
-        orderKey: string | null;
-        ascending: boolean;
-      } = {
-        filters: {},
-        orderKey: null,
-        ascending: true,
-      };
-      const builder = {
-        select: () => builder,
-        eq(key: string, value: unknown) {
-          state.filters[key] = value;
-          return builder;
-        },
-        order(key: string, opts?: { ascending?: boolean }) {
-          state.orderKey = key;
-          state.ascending = opts?.ascending ?? true;
-          return builder;
-        },
-        limit: () => builder,
-        insert(payload: Row) {
-          if (insertErrors[table]) {
-            return { error: { message: insertErrors[table] } };
-          }
-          rows(table).push({ id: `${table}-${rows(table).length + 1}`, ...payload });
-          return { error: null };
-        },
-        then(resolve: (value: { data: Row[]; error: null }) => void) {
-          let result = filterRows(table, state.filters);
-          if (state.orderKey) {
-            result = [...result].sort((a, b) => {
-              const av = String(a[state.orderKey!] ?? '');
-              const bv = String(b[state.orderKey!] ?? '');
-              return state.ascending ? av.localeCompare(bv) : bv.localeCompare(av);
-            });
-          }
-          resolve({ data: result, error: null });
-        },
-      };
-      return builder;
+    calls,
+    from() {
+      throw new Error('routing must not use capped collection reads');
+    },
+    async rpc(name: string, args: Record<string, unknown>) {
+      calls.push({ name, args });
+      return errorMessage
+        ? { data: null, error: { message: errorMessage } }
+        : { data: [result], error: null };
     },
   };
 }
 
-const baseLead = {
-  id: 'lead-1',
-  tenant_id: 'tenant-1',
-  name: 'Aisha Khan',
-  email: 'aisha@example.com',
-  phone: '+971 50 123 4567',
-  stage: 'new',
-  created_at: '2026-05-01T00:00:00.000Z',
+const input = {
+  tenantId: '91800000-0000-4000-8000-000000000001',
+  channel: 'sms' as const,
+  inboxId: 8,
+  operationKey: 'receipt-stable-1',
+  fromPhone: '+971501234567',
+  body: 'Retry-safe reply',
+  providerMessageId: 'sms-provider-1',
+  receivedAt: '2026-05-21T10:00:00.000Z',
 };
 
-test('routes inbound replies to a same-tenant lead by normalized phone', async () => {
-  const { routeInboundReplyToLead } = await loadRouting();
-  const supabase = createSupabaseStub({ leads: [baseLead], lead_events: [] });
-
-  const result = await routeInboundReplyToLead(
-    {
-      tenantId: 'tenant-1',
-      channel: 'whatsapp',
-      inboxId: 1,
-      fromPhone: '971501234567',
-      body: 'I am interested',
-      providerMessageId: 'wamid-1',
-      receivedAt: '2026-05-21T10:00:00.000Z',
-    },
-    { supabase: supabase as never },
-  );
-
-  assert.equal(result.status, 'routed');
-  assert.equal(supabase.tables.get('lead_events')![0].lead_id, 'lead-1');
-  assert.equal(supabase.tables.get('lead_events')![0].event_type, 'inbound_reply');
-  assert.deepEqual(
-    (supabase.tables.get('lead_events')![0].metadata as Record<string, unknown>).candidate_lead_ids,
-    [],
-  );
-});
-
-test('matches UAE local phone numbers against provider country-code format', async () => {
+test('routes through the bounded database RPC without collection reads', async () => {
   const { routeInboundReplyToLead } = await loadRouting();
   const supabase = createSupabaseStub({
-    leads: [{ ...baseLead, phone: '050 123 4567' }],
-    lead_events: [],
+    status: 'routed',
+    lead_id: '91800000-0000-4000-8000-000000000050',
+    ambiguous: false,
+    candidate_lead_ids: ['91800000-0000-4000-8000-000000000050'],
   });
 
-  const result = await routeInboundReplyToLead(
-    {
-      tenantId: 'tenant-1',
-      channel: 'whatsapp',
-      inboxId: 7,
-      fromPhone: '971501234567',
-      body: 'Local format match',
-    },
-    { supabase: supabase as never },
-  );
-
-  assert.equal(result.status, 'routed');
-  assert.equal(supabase.tables.get('lead_events')![0].lead_id, 'lead-1');
-});
-
-test('does not route replies across tenants with the same phone', async () => {
-  const { routeInboundReplyToLead } = await loadRouting();
-  const supabase = createSupabaseStub({
-    leads: [{ ...baseLead, tenant_id: 'tenant-2' }],
-    lead_events: [],
-  });
-
-  const result = await routeInboundReplyToLead(
-    {
-      tenantId: 'tenant-1',
-      channel: 'sms',
-      inboxId: 2,
-      fromPhone: '+971501234567',
-      body: 'Hello',
-    },
-    { supabase: supabase as never },
-  );
-
-  assert.equal(result.status, 'unmatched');
-  assert.equal(supabase.tables.get('lead_events')!.length, 0);
-});
-
-test('prefers newest open lead over closed leads and records ambiguity metadata', async () => {
-  const { routeInboundReplyToLead } = await loadRouting();
-  const supabase = createSupabaseStub({
-    leads: [
-      {
-        ...baseLead,
-        id: 'lead-old-open',
-        stage: 'contacted',
-        created_at: '2026-05-02T00:00:00.000Z',
-      },
-      { ...baseLead, id: 'lead-new-closed', stage: 'won', created_at: '2026-05-20T00:00:00.000Z' },
-      {
-        ...baseLead,
-        id: 'lead-new-open',
-        stage: 'qualified',
-        created_at: '2026-05-10T00:00:00.000Z',
-      },
-    ],
-    lead_events: [],
-  });
-
-  const result = await routeInboundReplyToLead(
-    {
-      tenantId: 'tenant-1',
-      channel: 'whatsapp',
-      inboxId: 'wa-inbox-3',
-      fromPhone: '+971501234567',
-      body: 'Can we talk?',
-    },
-    { supabase: supabase as never },
-  );
+  const result = await routeInboundReplyToLead(input, { supabase: supabase as never });
 
   assert.deepEqual(result, {
     status: 'routed',
-    leadId: 'lead-new-open',
-    ambiguous: true,
-    candidateLeadIds: ['lead-new-open', 'lead-old-open', 'lead-new-closed'],
+    leadId: '91800000-0000-4000-8000-000000000050',
+    ambiguous: false,
+    candidateLeadIds: ['91800000-0000-4000-8000-000000000050'],
   });
-  assert.deepEqual(
-    (supabase.tables.get('lead_events')![0].metadata as Record<string, unknown>).candidate_lead_ids,
-    ['lead-new-open', 'lead-old-open', 'lead-new-closed'],
-  );
-});
-
-test('unmatched replies create no lead event', async () => {
-  const { routeInboundReplyToLead } = await loadRouting();
-  const supabase = createSupabaseStub({ leads: [baseLead], lead_events: [] });
-
-  const result = await routeInboundReplyToLead(
+  assert.deepEqual(supabase.calls, [
     {
-      tenantId: 'tenant-1',
-      channel: 'sms',
-      inboxId: 4,
-      fromPhone: '+971509999999',
-      body: 'Wrong number',
+      name: 'route_inbound_reply_to_lead',
+      args: {
+        p_body: 'Retry-safe reply',
+        p_channel: 'sms',
+        p_from_phone: '+971501234567',
+        p_inbox_id: '8',
+        p_operation_key: 'receipt-stable-1',
+        p_provider_message_id: 'sms-provider-1',
+        p_received_at: '2026-05-21T10:00:00.000Z',
+        p_tenant_id: '91800000-0000-4000-8000-000000000001',
+      },
     },
-    { supabase: supabase as never },
-  );
-
-  assert.equal(result.status, 'unmatched');
-  assert.equal(supabase.tables.get('lead_events')!.length, 0);
+  ]);
 });
 
-test('finds older same-tenant phone matches beyond the newest 250 leads', async () => {
+test('returns a lead found beyond the provider collection row cap', async () => {
   const { routeInboundReplyToLead } = await loadRouting();
-  const fillerLeads = Array.from({ length: 300 }, (_, index) => ({
-    ...baseLead,
-    id: `lead-filler-${index}`,
-    phone: `+97150999${String(index).padStart(4, '0')}`,
-    created_at: `2026-05-${String((index % 28) + 1).padStart(2, '0')}T00:00:00.000Z`,
-  }));
   const supabase = createSupabaseStub({
-    leads: [
-      ...fillerLeads,
-      { ...baseLead, id: 'lead-old-match', created_at: '2026-01-01T00:00:00.000Z' },
-    ],
-    lead_events: [],
+    status: 'routed',
+    lead_id: '91800000-0000-4000-8000-000000001501',
+    ambiguous: false,
+    candidate_lead_ids: ['91800000-0000-4000-8000-000000001501'],
   });
 
-  const result = await routeInboundReplyToLead(
-    {
-      tenantId: 'tenant-1',
-      channel: 'sms',
-      inboxId: 6,
-      fromPhone: '+971501234567',
-      body: 'Old lead still matches',
-    },
-    { supabase: supabase as never },
-  );
+  const result = await routeInboundReplyToLead(input, { supabase: supabase as never });
 
   assert.equal(result.status, 'routed');
-  assert.equal(supabase.tables.get('lead_events')![0].lead_id, 'lead-old-match');
+  assert.equal(
+    result.status === 'routed' ? result.leadId : null,
+    '91800000-0000-4000-8000-000000001501',
+  );
+  assert.equal(supabase.calls.length, 1);
 });
 
-test('safe routing wrapper swallows routing failures', async () => {
-  const { routeInboundReplyToLeadSafely } = await loadRouting();
-  const supabase = createSupabaseStub(
-    { leads: [baseLead], lead_events: [] },
-    { lead_events: 'boom' },
-  );
+test('replays an existing inbound event returned by the database RPC', async () => {
+  const { routeInboundReplyToLead } = await loadRouting();
+  const supabase = createSupabaseStub({
+    status: 'routed',
+    lead_id: '91800000-0000-4000-8000-000000000050',
+    ambiguous: true,
+    candidate_lead_ids: [
+      '91800000-0000-4000-8000-000000000050',
+      '91800000-0000-4000-8000-000000000051',
+    ],
+  });
 
-  const result = await routeInboundReplyToLeadSafely(
-    {
-      tenantId: 'tenant-1',
-      channel: 'sms',
-      inboxId: 5,
-      fromPhone: '+971501234567',
-      body: 'Still log inbox',
-    },
+  assert.deepEqual(await routeInboundReplyToLead(input, { supabase: supabase as never }), {
+    status: 'routed',
+    leadId: '91800000-0000-4000-8000-000000000050',
+    ambiguous: true,
+    candidateLeadIds: [
+      '91800000-0000-4000-8000-000000000050',
+      '91800000-0000-4000-8000-000000000051',
+    ],
+  });
+});
+
+test('preserves unmatched as a no-op result', async () => {
+  const { routeInboundReplyToLead } = await loadRouting();
+  const supabase = createSupabaseStub({
+    status: 'unmatched',
+    lead_id: null,
+    ambiguous: false,
+    candidate_lead_ids: [],
+  });
+
+  assert.deepEqual(await routeInboundReplyToLead(input, { supabase: supabase as never }), {
+    status: 'unmatched',
+  });
+});
+
+test('invalid sender phones remain unmatched without touching the database', async () => {
+  const { routeInboundReplyToLead } = await loadRouting();
+  const supabase = createSupabaseStub({
+    status: 'unmatched',
+    lead_id: null,
+    ambiguous: false,
+    candidate_lead_ids: [],
+  });
+
+  const result = await routeInboundReplyToLead(
+    { ...input, fromPhone: '---' },
     { supabase: supabase as never },
   );
 
-  assert.equal(result.status, 'unmatched');
+  assert.deepEqual(result, { status: 'unmatched' });
+  assert.equal(supabase.calls.length, 0);
 });
 
-test('provider retries do not duplicate inbound reply lead events', async () => {
+test('routing infrastructure errors are sanitized', async () => {
   const { routeInboundReplyToLead } = await loadRouting();
-  const supabase = createSupabaseStub({ leads: [baseLead], lead_events: [] });
-  const input = {
-    tenantId: 'tenant-1',
-    channel: 'sms' as const,
-    inboxId: 8,
-    fromPhone: '+971501234567',
-    body: 'Retry-safe reply',
-    providerMessageId: 'sms-provider-1',
-  };
+  const supabase = createSupabaseStub(
+    { status: 'unmatched', lead_id: null, ambiguous: false, candidate_lead_ids: [] },
+    'duplicate key leaks private_table and tenant identity',
+  );
 
-  await routeInboundReplyToLead(input, { supabase: supabase as never });
-  await routeInboundReplyToLead({ ...input, inboxId: 9 }, { supabase: supabase as never });
+  await assert.rejects(
+    routeInboundReplyToLead(input, { supabase: supabase as never }),
+    (error: unknown) => {
+      assert.equal(error instanceof Error ? error.message : null, 'lead reply routing failed');
+      return true;
+    },
+  );
+});
 
-  assert.equal(supabase.tables.get('lead_events')!.length, 1);
+test('normalizes supported UAE phone representations consistently', async () => {
+  const { normalizePhoneForLeadMatch } = await loadRouting();
+  assert.equal(normalizePhoneForLeadMatch('050 123 4567'), '971501234567');
+  assert.equal(normalizePhoneForLeadMatch('00971 50 123 4567'), '971501234567');
+  assert.equal(normalizePhoneForLeadMatch('+971501234567'), '971501234567');
+  assert.equal(normalizePhoneForLeadMatch('---'), null);
 });

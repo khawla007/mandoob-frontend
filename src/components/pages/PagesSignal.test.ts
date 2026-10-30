@@ -28,7 +28,10 @@ test('Pages table owns one named keyboard region with logical readable columns a
   assert.equal((table.match(/TableHead className="text-start"/g) ?? []).length, 5);
   assert.match(table, /TableHead className="text-end"/);
   assert.match(table, /whitespace-normal/);
-  assert.match(table, /deleteCmsPageAction\(target.id\)/);
+  assert.match(
+    table,
+    /deleteCmsPageAction\(\s*target.id,\s*crypto.randomUUID\(\),\s*target.rowVersion \?\? 1,\s*\)/,
+  );
   assert.match(table, /role="alertdialog"/);
   assert.match(table, /invokerRef.current\?\.focus\(\)/);
   assert.match(table, /dialogTabDestination/);
@@ -41,6 +44,8 @@ test('Pages shares verified editorial geometry and keeps hero payloads and scrip
   assert.match(css, /max-height: calc\(100dvh - 2rem\)/);
   const editor = read('src/components/pages/PageEditor.tsx');
   assert.match(editor, /contentLabel=\{t\('content'\)\}/);
+  assert.match(editor, /data.set\('operationId', crypto.randomUUID\(\)\)/);
+  assert.match(editor, /data.set\('expectedVersion', String\(page.rowVersion \?\? 1\)\)/);
   assert.match(editor, /saveCmsPageAction\(page\?.id \?\? null, data\)/);
   for (const name of ['scriptHead', 'scriptBodyStart', 'scriptBodyEnd', 'schemaMarkup', 'noindex'])
     assert.match(editor, new RegExp('name="' + name + '"'));

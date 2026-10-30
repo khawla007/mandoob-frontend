@@ -93,8 +93,11 @@ test('verifyDailyWebhook fails closed on missing or invalid signature', async ()
 test('verifyDailyWebhook returns parsed event for valid signature', async () => {
   process.env.DAILY_WEBHOOK_SECRET = 'daily_webhook_secret';
   const { verifyDailyWebhook } = await loadDaily();
+  const now = new Date();
   const body = JSON.stringify({
     type: 'recording.ready',
+    id: 'evt-valid-1',
+    timestamp: now.toISOString(),
     payload: { room_name: 'mandoob-meeting-1', recording_id: 'rec-1' },
   });
   const signature = createHmac('sha256', process.env.DAILY_WEBHOOK_SECRET)
@@ -107,8 +110,30 @@ test('verifyDailyWebhook returns parsed event for valid signature', async () => 
       body,
       headers: { 'x-daily-signature': signature },
     }),
+    { now },
   );
 
   assert.equal(event?.type, 'recording.ready');
   assert.equal(event?.payload.recording_id, 'rec-1');
+});
+
+test('verifyDailyWebhook rejects expired signed payloads', async () => {
+  process.env.DAILY_WEBHOOK_SECRET = 'daily-test-secret';
+  const body = JSON.stringify({
+    type: 'recording.ready',
+    id: 'evt-1',
+    timestamp: '2026-10-27T05:00:00.000Z',
+    payload: { room_name: 'room' },
+  });
+  const signature = createHmac('sha256', 'daily-test-secret').update(body).digest('hex');
+  const request = new Request('https://example.test/api/v1/webhooks/daily', {
+    method: 'POST',
+    headers: { 'x-daily-signature': signature },
+    body,
+  });
+  const { verifyDailyWebhook } = await loadDaily();
+  assert.equal(
+    await verifyDailyWebhook(request, { now: new Date('2026-10-27T06:00:00.000Z') }),
+    null,
+  );
 });

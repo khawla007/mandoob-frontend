@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { AssignedCompanyTabs } from '@/components/pro/AssignedCompanyTabs';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { enforcePrivilegedSession } from '@/lib/auth/require-role';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { readCompanyOnboarding } from '@/lib/data/company-onboarding';
 import { loadAssignedCompanyWorkspace, type CompanyPanelState } from '@/lib/data/company-workspace';
@@ -34,6 +35,7 @@ export default async function AssignedCompanyPage({
 }) {
   const { tenant: slug } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await enforcePrivilegedSession(session);
   await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company) notFound();

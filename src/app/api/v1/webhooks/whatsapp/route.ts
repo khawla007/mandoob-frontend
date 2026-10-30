@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyHubSignature } from '@/lib/whatsapp/signature';
-import { recordWhatsAppInboundMessage, type WhatsAppInboundMessage } from '../inbound-recording';
+import { InboundWebhookInfrastructureError } from '../inbound-recording';
+import { dispatchWhatsAppWebhookPayload, type WhatsAppWebhookPayload } from './dispatch';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,96 +47,17 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const supabase = createSupabaseServiceRoleClient();
-
-  for (const entry of payload.entry ?? []) {
-    for (const change of entry.changes ?? []) {
-      const value = change.value;
-      const phoneNumberId = value.metadata?.phone_number_id ?? null;
-      const tenantId = phoneNumberId ? await resolveTenantId(supabase, phoneNumberId) : null;
-
-      for (const status of value.statuses ?? []) {
-        await applyStatusUpdate(supabase, status);
-      }
-
-      for (const message of value.messages ?? []) {
-        if (!tenantId) continue;
-        await recordWhatsAppInboundMessage(supabase, tenantId, message);
-      }
+  try {
+    await dispatchWhatsAppWebhookPayload(supabase, payload, rawBody);
+  } catch (error) {
+    if (error instanceof InboundWebhookInfrastructureError) {
+      return NextResponse.json(
+        { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
     }
+    throw error;
   }
 
   return NextResponse.json({ ok: true });
 }
-
-type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
-
-async function resolveTenantId(supabase: Supa, phoneNumberId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('tenant_whatsapp_config')
-    .select('tenant_id')
-    .eq('phone_number_id', phoneNumberId)
-    .maybeSingle();
-  return data?.tenant_id ?? null;
-}
-
-async function applyStatusUpdate(supabase: Supa, status: WhatsAppStatus): Promise<void> {
-  if (!status.id) return;
-
-  const { data: row } = await supabase
-    .from('outbound_whatsapp')
-    .select('id, attempts')
-    .eq('provider_message_id', status.id)
-    .maybeSingle();
-  if (!row) return;
-
-  const nowIso = new Date().toISOString();
-  const update: Record<string, unknown> = {};
-
-  switch (status.status) {
-    case 'sent':
-      update.status = 'sent';
-      update.sent_at = nowIso;
-      break;
-    case 'delivered':
-      update.status = 'delivered';
-      update.delivered_at = nowIso;
-      break;
-    case 'read':
-      update.status = 'read';
-      update.read_at = nowIso;
-      break;
-    case 'failed':
-      update.status = 'failed';
-      update.last_error = status.errors?.[0]?.title ?? status.errors?.[0]?.message ?? 'failed';
-      update.attempts = row.attempts + 1;
-      break;
-    default:
-      return;
-  }
-
-  await supabase.from('outbound_whatsapp').update(update).eq('id', row.id);
-}
-
-type WhatsAppWebhookPayload = {
-  object?: string;
-  entry?: Array<{
-    id?: string;
-    changes?: Array<{
-      field?: string;
-      value: {
-        messaging_product?: string;
-        metadata?: { phone_number_id?: string; display_phone_number?: string };
-        statuses?: WhatsAppStatus[];
-        messages?: WhatsAppInboundMessage[];
-      };
-    }>;
-  }>;
-};
-
-type WhatsAppStatus = {
-  id?: string;
-  status?: 'sent' | 'delivered' | 'read' | 'failed';
-  timestamp?: string;
-  recipient_id?: string;
-  errors?: Array<{ code?: number; title?: string; message?: string }>;
-};

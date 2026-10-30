@@ -73,11 +73,13 @@ export type SessionsFilters = z.infer<typeof sessionsFiltersSchema>;
 export const revokeSessionInput = z.object({
   sessionId: uuid,
   userId: uuid,
+  operationId: uuid,
 });
 
-export const revokeAllInput = z.object({ userId: uuid });
+export const revokeAllInput = z.object({ userId: uuid, operationId: uuid });
 
 export const unlockKeyInput = z.object({
+  operationId: uuid,
   key: z
     .string()
     .min(5)

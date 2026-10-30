@@ -4,10 +4,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { Window } from 'happy-dom';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 
 if (process.env.MFA_RUNTIME_CHILD === '1') {
   const browser = new Window({ url: 'https://app.example.test/mfa/enroll' });
-  Object.assign(globalThis, {
+  installDomGlobals({
     self: browser,
     window: browser,
     document: browser.document,

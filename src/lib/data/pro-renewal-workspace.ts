@@ -2,7 +2,9 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import type { RenewalRow, RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import type { RenewalRow, RenewalStage, RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import { RENEWAL_COLUMNS, renewalCostsFromRow } from '@/lib/renewals/row';
+import { RENEWAL_TYPES } from '@/lib/validation/renewal';
 import { addSignalDays, signalBusinessDate, signalDaysBetween } from '@/lib/data/signal-finance';
 
 export const RENEWAL_WORKSPACE_PAGE_SIZE = 25;
@@ -23,7 +25,7 @@ function isStrictIsoCalendarDate(value: string | undefined): value is string {
 
 const renewalWorkspaceSearchSchema = z.object({
   tab: z.enum(['active', 'completed', 'cancelled']).optional(),
-  type: z.enum(['all', 'license', 'visa', 'eid', 'ejari']).optional(),
+  type: z.enum(['all', ...RENEWAL_TYPES]).optional(),
   status: z.enum(['all', 'upcoming', 'due_soon', 'overdue']).optional(),
   urgency: z.enum(['all', 'overdue', 'today', '7', '30', '60', '90', 'future']).optional(),
   q: z.string().trim().max(120).optional(),
@@ -63,7 +65,15 @@ export type RenewalWorkspaceDbRow = {
   label: string;
   due_date: string | null;
   status: RenewalStatus;
-  source: 'license_backfill' | 'manual';
+  stage: RenewalStage;
+  version: number;
+  employee_id: string | null;
+  blocker_code: string | null;
+  government_fee_minor: number;
+  pro_service_fee_minor: number;
+  fine_minor: number;
+  currency: string;
+  source: RenewalRow['source'];
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -235,6 +245,11 @@ function toRenewalRow(row: RenewalWorkspaceDbRow, today: string): RenewalWorkspa
     dueDate: row.due_date,
     daysOut: row.due_date ? signalDaysBetween(today, row.due_date) : null,
     status: row.status,
+    stage: row.stage,
+    version: Number(row.version),
+    employeeId: row.employee_id,
+    blockerCode: row.blocker_code,
+    costs: renewalCostsFromRow(row),
     source: row.source,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -338,8 +353,7 @@ type RenewalWorkspaceQuery = PromiseLike<unknown> & {
   range: (from: number, to: number) => RenewalWorkspaceQuery;
 };
 type RenewalWorkspaceClient = { from: (table: 'renewals') => RenewalWorkspaceQuery };
-const columns =
-  'id, tenant_id, company_id, type, label, due_date, status, source, completed_at, created_at, updated_at';
+const columns = RENEWAL_COLUMNS;
 
 export async function createSupabaseRenewalWorkspaceStore(): Promise<RenewalWorkspaceStore> {
   const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');

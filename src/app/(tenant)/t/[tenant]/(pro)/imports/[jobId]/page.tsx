@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -21,6 +22,7 @@ import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
   safeImportErrorCode,
+  safeImportFailureCode,
   safeImportField,
   safeImportJobStatus,
 } from '@/lib/data/import-job-display';
@@ -53,6 +55,13 @@ type JobRow = {
   errors: ImportError[] | null;
   created_at: string;
   completed_at: string | null;
+  version: number;
+  next_row: number;
+  inserted_rows: number;
+  skipped_rows: number;
+  failure_code: string | null;
+  cancel_requested_at: string | null;
+  artifact_deleted_at: string | null;
 };
 
 export default async function BulkImportJobPage({
@@ -77,7 +86,7 @@ export default async function BulkImportJobPage({
   const { data, error } = await admin
     .from('bulk_import_jobs')
     .select(
-      'id, kind, status, total_rows, processed_rows, error_rows, errors, created_at, completed_at',
+      'id, kind, status, total_rows, processed_rows, error_rows, errors, created_at, completed_at, version, next_row, inserted_rows, skipped_rows, failure_code, cancel_requested_at, artifact_deleted_at',
     )
     .eq('tenant_id', tenant.id)
     .eq('company_id', company.id)
@@ -95,28 +104,32 @@ export default async function BulkImportJobPage({
     code: t(`errorCodeLabels.${safeImportErrorCode(error.code)}`),
   }));
 
+  // One operation id per rendered command: a double submit replays, a stale
+  // page fails with STALE_VERSION instead of acting on newer state.
+  const command = { operation_id: randomUUID(), expected_version: Number(job.version) };
+
   async function validate(_previous: ActionResult<unknown> | null, _formData: FormData) {
     'use server';
     void _previous;
     void _formData;
-    return validateBulkImportAction(slug, jobId);
+    return validateBulkImportAction(slug, jobId, command);
   }
 
-  async function execute(_previous: ActionResult<unknown> | null, formData: FormData) {
+  async function execute(_previous: ActionResult<unknown> | null, _formData: FormData) {
     'use server';
-    return executeBulkImportAction(slug, jobId, {
-      skipExisting: formData.get('skip_existing') !== null,
-    });
+    void _previous;
+    void _formData;
+    return executeBulkImportAction(slug, jobId, command);
   }
 
   async function cancel(_previous: ActionResult<unknown> | null, _formData: FormData) {
     'use server';
     void _previous;
     void _formData;
-    return cancelBulkImportAction(slug, jobId);
+    return cancelBulkImportAction(slug, jobId, command);
   }
 
-  const processed = numberFormatter.format(job.processed_rows ?? 0);
+  const processed = numberFormatter.format(job.next_row ?? job.processed_rows ?? 0);
   const errorCount = numberFormatter.format(job.error_rows ?? 0);
   const stateMessage =
     job.status === 'completed'
@@ -164,18 +177,34 @@ export default async function BulkImportJobPage({
               : t('progressNoTotal', { processed, errors: errorCount })}
           </CardDescription>
           <CardDescription>{stateMessage}</CardDescription>
+          <CardDescription>
+            {t('outcomes', {
+              inserted: numberFormatter.format(job.inserted_rows ?? 0),
+              skipped: numberFormatter.format(job.skipped_rows ?? 0),
+            })}
+          </CardDescription>
+          {job.cancel_requested_at && job.status === 'importing' ? (
+            <CardDescription>{t('cancelRequested')}</CardDescription>
+          ) : null}
+          {job.failure_code ? (
+            <CardDescription className="text-destructive">
+              {t(`failureCodes.${safeImportFailureCode(job.failure_code)}`)}
+            </CardDescription>
+          ) : null}
+          {job.artifact_deleted_at ? (
+            <CardDescription>{t('artifactRetired')}</CardDescription>
+          ) : null}
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
             <BulkImportJobActions
               status={safeImportJobStatus(job.status)}
-              canCancel={isImportJobCancellable(job.status)}
+              canCancel={isImportJobCancellable(job.status, job.cancel_requested_at !== null)}
               validateAction={validate}
               executeAction={execute}
               cancelAction={cancel}
               labels={{
                 validate: t('validate'),
-                skipExisting: t('skipExisting'),
                 confirm: t('confirm'),
                 cancel: t('cancel'),
                 cancelTitle: t('cancelTitle'),
@@ -253,7 +282,7 @@ export default async function BulkImportJobPage({
 
 function validationErrorCount(errors: ImportError[]) {
   return countDistinctImportErrorRows(
-    errors.filter((error) => !error.code || error.code === 'VALIDATION_FAILED'),
+    errors.filter((error) => error.code !== 'DUPLICATE_EXISTING'),
   );
 }
 

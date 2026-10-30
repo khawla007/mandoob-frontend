@@ -22,6 +22,7 @@
 ### Task 1: Preserve the Existing Sign-in Alignment Fix
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 - Test: `src/components/site/public-navigation.test.ts`
 
@@ -48,6 +49,7 @@ Expected diff: `.nav__cta > .link-muted` gains `display: inline-flex` and `align
 ### Task 2: Add a Tested Public Language-switcher Variant
 
 **Files:**
+
 - Modify: `src/components/i18n/LanguageSwitcher.test.ts`
 - Modify: `src/components/i18n/LanguageSwitcher.tsx`
 
@@ -161,6 +163,7 @@ git commit -m "feat(i18n): add public language selector variant"
 ### Task 3: Integrate and Style the Public Selector
 
 **Files:**
+
 - Modify: `src/components/site/SiteHeader.tsx`
 - Modify: `src/components/site/MobileNav.tsx`
 - Modify: `src/app/(public)/public-theme.css`
@@ -291,6 +294,7 @@ git commit -m "fix(public): polish header language dropdown"
 ### Task 4: Final Verification
 
 **Files:**
+
 - Verify only; no planned source changes.
 
 - [ ] **Step 1: Run static checks**

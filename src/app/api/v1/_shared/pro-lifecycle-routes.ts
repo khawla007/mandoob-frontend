@@ -26,7 +26,8 @@ export async function requireLiveLifecycleViewer(
   deps: LiveLifecycleViewerDeps = {},
 ): Promise<SessionProfile> {
   const session = await (
-    deps.requireSession ?? (async () => (await import('@/lib/auth/require-user')).requireUser())
+    deps.requireSession ??
+    (async () => (await import('@/lib/auth/require-account-user')).requireAccountUser())
   )();
   if (!z.string().uuid().safeParse(session.id).success) throw new Error('ACCESS_DENIED');
   const lookup =
@@ -57,7 +58,7 @@ export async function requireLiveLifecycleViewer(
   return {
     ...session,
     role: 'pro',
-    tenantId: typeof profile.tenant_id === 'string' ? profile.tenant_id : null,
+    tenantId: null,
   };
 }
 

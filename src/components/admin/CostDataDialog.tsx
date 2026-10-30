@@ -46,8 +46,13 @@ export function CostDataDialog({ mode, row }: { mode: 'create' | 'edit'; row?: C
     startTransition(async () => {
       const result =
         mode === 'edit' && row
-          ? await updateCostDataAction({ ...payload, id: row.id })
-          : await createCostDataAction(payload);
+          ? await updateCostDataAction({
+              ...payload,
+              id: row.id,
+              operationId: crypto.randomUUID(),
+              expectedVersion: row.rowVersion,
+            })
+          : await createCostDataAction({ ...payload, operationId: crypto.randomUUID() });
       if (!result.ok) {
         setError(`${result.code}: ${result.error}`);
         return;

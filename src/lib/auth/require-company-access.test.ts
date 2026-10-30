@@ -98,6 +98,24 @@ test('current active PRO assignment grants company access', async () => {
   });
 });
 
+test('PostgreSQL UUID identifiers are accepted even with non-RFC variant bits', async () => {
+  const { requireCompanyAccess } = await import('./require-company-access');
+  const postgresTenantId = '00000000-0000-0000-0000-000000000001';
+  const auth = authDeps(session('pro', { tenantId: postgresTenantId }), [
+    { data: { role: 'pro', status: 'active', tenant_id: postgresTenantId }, error: null },
+    { data: true, error: null },
+  ]);
+  assert.equal(
+    (await requireCompanyAccess(postgresTenantId, auth.deps)).tenantId,
+    postgresTenantId,
+  );
+  assert.deepEqual(auth.calls[1], {
+    kind: 'rpc',
+    name: 'authorize_pro_company_access',
+    args: { p_actor_id: session('pro').id, p_tenant_id: postgresTenantId, p_company_id: null },
+  });
+});
+
 test('credential invalidation immediately denies an actively assigned PRO', async () => {
   const { requireCompanyAccess } = await import('./require-company-access');
   const auth = authDeps(session('pro'), [

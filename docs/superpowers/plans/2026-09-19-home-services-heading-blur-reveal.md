@@ -20,6 +20,7 @@
 ### Task 1: Lock the reference behavior with a failing contract test
 
 **Files:**
+
 - Modify: `src/components/site/home/homepage-content-contract.test.ts`
 
 - [ ] **Step 1: Add the failing heading-animation contract**
@@ -56,7 +57,10 @@ it('gives only the services heading the SteelNova character blur reveal', () => 
     publicTheme,
     /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.home-services-title__char[\s\S]*?animation:\s*none/u,
   );
-  assert.match(publicLayout, /\.home-services-title__char\{opacity:1!important;filter:none!important/u);
+  assert.match(
+    publicLayout,
+    /\.home-services-title__char\{opacity:1!important;filter:none!important/u,
+  );
 
   assert.match(services, /home-setup-grid cards-stagger/u);
   assert.doesNotMatch(services, /card-left|card-center|card-right/u);
@@ -86,6 +90,7 @@ Expected: PASS after formatting the new test with `npx prettier --write src/comp
 ### Task 2: Implement the accessible character reveal and restore unrelated section behavior
 
 **Files:**
+
 - Modify: `src/components/site/home/ServicesSection.tsx`
 - Modify: `src/app/(public)/public-theme.css`
 - Modify: `src/app/(public)/layout.tsx`
@@ -269,6 +274,7 @@ Before committing, verify `git diff --cached --name-only` lists exactly those fo
 ### Task 3: Verify motion and isolation in the browser
 
 **Files:**
+
 - Verify: `src/components/site/home/ServicesSection.tsx`
 - Verify: `src/app/(public)/public-theme.css`
 

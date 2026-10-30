@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { VisaProcessWorkspace } from '@/components/registration/VisaProcessWorkspace';
 import { VISA_MILESTONE_CODES, type VisaMilestoneCode } from '@/lib/registration/contracts';
-import { loadVisaPresentation } from '@/lib/registration/unavailable-adapter';
+import { loadVisaPresentation } from '@/lib/registration/db-adapter';
+import { resolveCompanyActiveRegistration } from '@/lib/data/registration-workflow';
+import { resolveEmployeeVisaPresentation } from '@/lib/registration/resolve-presentation';
 import {
   authorizeEmployeePortalRead,
   classifyEmployeeDeadline,
@@ -91,13 +93,26 @@ export default async function EmployeeIdentityPage({
 }) {
   const { tenant: slug } = await params;
   const access = await authorizeEmployeePortalRead(slug);
-  const [t, tCommon, tDeadline, tRegistration, locale, visaState] = await Promise.all([
+  // Resolve the employee's company registration and load ONLY the employee's own
+  // visa person (scoped to the employee actor + deterministic own-person key).
+  // The employee never sees another person; absence fails closed.
+  const visaState = await resolveEmployeeVisaPresentation(
+    {
+      actorId: access.session.id,
+      tenantId: access.tenant.id,
+      companyId: access.employee.companyId,
+    },
+    {
+      resolveActiveRegistration: resolveCompanyActiveRegistration,
+      loadVisaPresentation,
+    },
+  );
+  const [t, tCommon, tDeadline, tRegistration, locale] = await Promise.all([
     getTranslations('employee.identity'),
     getTranslations('employee.common'),
     getTranslations('employee.deadline'),
     getTranslations('registration'),
     getLocale(),
-    loadVisaPresentation(),
   ]);
   const visaDeadline = classifyEmployeeDeadline(access.employee.visaExpiry, 'identity-date');
   const eidDeadline = classifyEmployeeDeadline(access.employee.eidExpiry, 'identity-date');

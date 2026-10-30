@@ -1,10 +1,10 @@
 import { getTranslations } from 'next-intl/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { requireUser } from '@/lib/auth/require-user';
+import { requireAccountUser } from '@/lib/auth/require-account-user';
 import { MfaPanel } from './MfaPanel';
 
 export async function MfaTab() {
-  const session = await requireUser();
+  const session = await requireAccountUser();
   const t = await getTranslations('account');
   const supabase = await createSupabaseServerClient();
   const { data: factors } = await supabase.auth.mfa.listFactors();

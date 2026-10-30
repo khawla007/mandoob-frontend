@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
+import ts from 'typescript';
 
 const root = process.cwd();
 const read = (relative: string) => readFileSync(join(root, relative), 'utf8');
@@ -10,40 +11,80 @@ const billingPage = read('src/app/(tenant)/t/[tenant]/(pro)/settings/billing/pag
 const settingsActions = read('src/app/(tenant)/t/[tenant]/(pro)/settings/actions.ts');
 const billingActions = read('src/app/(tenant)/t/[tenant]/(pro)/settings/billing/actions.ts');
 
+test('settings authorization and privileged work remain in one enclosing guarded try block', () => {
+  const ast = ts.createSourceFile(
+    'settings-actions.ts',
+    settingsActions,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const helper = ast.statements.find(
+    (node): node is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(node) && node.name?.text === 'updateSettings',
+  );
+  assert.ok(helper?.body);
+  assert.equal(helper.body.statements.length, 1);
+  const attempt = helper.body.statements[0];
+  assert.ok(ts.isTryStatement(attempt));
+  const guardedWork = attempt.tryBlock.getText(ast);
+  assert.ok(
+    guardedWork.indexOf('resolveAndAuthorize(slug)') < guardedWork.indexOf('createBlindIndex('),
+  );
+  assert.match(guardedWork, /mutateAssignedCompanySettings/u);
+  assert.match(attempt.catchClause?.getText(ast) ?? '', /return settingsFailure\('FORBIDDEN'\)/u);
+});
+
+test('settings page and action directly enforce privileged session assurance', () => {
+  for (const source of [settingsPage, settingsActions])
+    assert.match(source, /enforcePrivilegedSession\(session\)/u);
+});
+
 test('settings authorizes, checks active tenancy, and verifies the live assignment before settings reads', () => {
   const boundary = settingsPage.indexOf('requireProTenantRouteAccess(slug)');
   const active = settingsPage.indexOf('requireActiveTenant(tenant.id)');
   const assignment = settingsPage.indexOf('readAssignedCompanyForPro(session.id, slug)');
-  const settingsRead = settingsPage.indexOf('getTenantSettingsSnapshot(tenant.id)');
+  const settingsRead = settingsPage.indexOf('getTenantSettingsSnapshot({');
   assert.ok(boundary >= 0 && boundary < active);
   assert.ok(active < assignment);
   assert.ok(assignment < settingsRead);
 });
 
-test('settings mutations verify the active assigned company before service-role work', () => {
+test('settings actions authorize before delegating scoped mutations and never mutate or audit tables directly', () => {
   const authorization = settingsActions.indexOf('requireProTenantRouteAccess(slug)');
   const active = settingsActions.indexOf('requireActiveTenant(tenant.id)');
   const assignment = settingsActions.indexOf('readAssignedCompanyForPro(session.id, tenant.slug)');
-  const serviceRole = settingsActions.indexOf('const admin = createSupabaseServiceRoleClient()');
   assert.ok(authorization >= 0 && authorization < active);
   assert.ok(active < assignment);
-  assert.ok(assignment < serviceRole);
+  assert.match(settingsActions, /mutateAssignedCompanySettings/u);
+  assert.match(settingsActions, /actorProfileId: session.id/u);
+  assert.match(settingsActions, /settingsOperationSchema.safeParse\(raw\)/u);
+  assert.doesNotMatch(
+    settingsActions,
+    /\.from\(|createSupabaseServiceRoleClient|resolveSecretPrerequisite|console\./u,
+  );
   assert.match(
     settingsActions,
-    /details: \{ company_id: companyId, section, changed_fields: changedFields \}/u,
+    /createBlindIndex\(`company-settings:\$\{section\}:\$\{context.tenantId\}`/u,
   );
-  assert.equal(settingsActions.match(/revalidatePath\(`\/t\/\$\{slug\}`, 'layout'\)/gu)?.length, 4);
 });
 
-test('billing has no local plan catalog, pricing, checkout, portal, or cancellation controls', () => {
+test('cards bind retry identity and version receipts without refresh resetting editor state', () => {
+  for (const section of ['Branding', 'Contact', 'Smtp', 'WhatsApp']) {
+    const source = read(`src/components/pro/Settings${section}Card.tsx`);
+    assert.match(source, /prepareSettingsOperation/u);
+    assert.match(source, /r.data.version/u);
+    assert.match(source, /expected_version/u);
+    assert.doesNotMatch(source, /router.refresh\(|has_existing_token:/u);
+  }
+});
+
+test('billing uses the authoritative management catalog and provider-gated controls', () => {
   assert.doesNotMatch(billingPage, /const plans\s*=/u);
   assert.doesNotMatch(billingPage, /\bStarter\b|\bProfessional\b|\bEnterprise\b|\bUSD\b/u);
-  assert.doesNotMatch(
-    billingPage,
-    /startCheckoutAction|openBillingPortalAction|cancelSubscriptionAction/u,
-  );
-  assert.match(billingPage, /billing\.planSelectionUnavailable/u);
-  assert.match(billingPage, /<Button type="button" disabled>/u);
+  assert.match(billingPage, /getBillingManagementSnapshot\(tenant\.id,/u);
+  assert.match(billingPage, /<SubscriptionControls/u);
+  assert.match(billingPage, /providerAvailable/u);
   assert.match(billingPage, /getBillingSubscriptionSnapshot\(tenant.id\)/u);
 });
 
@@ -69,12 +110,14 @@ test('billing localizes known plan and interval enums and hides unknown values',
   assert.match(billingPage, /:\s*'unknown'/u);
 });
 
-test('billing mutations are unavailable without a complete catalog and safe provider contract', () => {
-  assert.doesNotMatch(
-    billingActions,
-    /createCheckoutSession|createBillingPortalSession|subscriptions\.update/u,
-  );
-  assert.match(billingActions, /BILLING_ACTIONS_UNAVAILABLE/u);
+test('billing mutations use replay-safe coordination and normalized provider redirects', () => {
+  assert.match(billingActions, /runStripeEffect/u);
+  assert.match(billingActions, /p309_reserve_stripe_operation/u);
+  assert.match(billingActions, /p309_attach_stripe_operation/u);
+  assert.match(billingActions, /normalizeStripeRedirectUrl/u);
+  assert.match(billingActions, /createCheckoutSession/u);
+  assert.match(billingActions, /createBillingPortalSession/u);
+  assert.doesNotMatch(billingActions, /subscriptions\.update/u);
 });
 
 test('settings and billing render only redacted source contracts', () => {
@@ -94,6 +137,26 @@ test('settings and billing render only redacted source contracts', () => {
   ]) {
     assert.doesNotMatch(read(component), /\$\{r\.code\}/u, component);
   }
+});
+
+test('ordinary SSR branding getter uses a fresh RLS session and unused bare-ID credential getters are absent', () => {
+  const settingsData = read('src/lib/data/tenant-settings.ts');
+  const brandingGetter = settingsData.slice(
+    settingsData.indexOf('export async function getTenantBrandingSource'),
+  );
+  assert.match(brandingGetter, /createSupabaseServerClient\(\)/u);
+  assert.match(brandingGetter, /auth.getUser\(\)/u);
+  assert.match(brandingGetter, /\.eq\('status', 'active'\)/u);
+  assert.doesNotMatch(brandingGetter, /createSupabaseServiceRoleClient/u);
+  assert.doesNotMatch(
+    settingsData,
+    /getTenantSmtpSource|getTenantWhatsAppSource|getTenantSmtpRedacted|getTenantWhatsAppRedacted/u,
+  );
+  for (const locale of ['en', 'ar'])
+    assert.equal(
+      typeof JSON.parse(read(`src/messages/${locale}.json`)).pro.settings.actionErrors.conflict,
+      'string',
+    );
 });
 
 test('settings routes include compact loading and localized retry states', () => {
@@ -135,8 +198,6 @@ test('English and Arabic settings catalogs have the same top-level settings keys
     assert.ok(key in en, `en.${key}`);
     assert.ok(key in ar, `ar.${key}`);
   }
-  assert.equal(
-    en.billing.planSelectionUnavailable,
-    'Plan selection unavailable — Phase 3 contract required',
-  );
+  assert.equal(typeof en.billing.manageSubscription, 'string');
+  assert.equal(typeof ar.billing.manageSubscription, 'string');
 });

@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
     kind: 'password_reset_requested',
     ip,
     userAgent,
-    details: { email },
   });
 
   return jsonOk({ ok: true });

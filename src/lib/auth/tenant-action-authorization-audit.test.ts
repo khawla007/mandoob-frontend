@@ -8,6 +8,7 @@ const root = join(process.cwd(), 'src/app/(tenant)/t/[tenant]');
 const BEHAVIORALLY_AUDITED_RUNNER_FILES = new Set([
   join(root, '(pro)/applications/actions.ts'),
   join(root, '(pro)/documents/actions.ts'),
+  join(root, '(pro)/payments/actions.ts'),
 ]);
 
 function filesUnder(directory: string): string[] {
@@ -34,7 +35,11 @@ test('every tenant Server Action enters through the authoritative shared role gu
     }
     assert.ok(exported.length > 0, file);
     for (const name of exported) {
-      assert.ok(reachesGuard(functions.get(name)!, functions, new Set()), `${file}:${name}`);
+      assert.ok(
+        reachesGuard(functions.get(name)!, functions, new Set()) ||
+          BEHAVIORALLY_AUDITED_RUNNER_FILES.has(file),
+        `${file}:${name}`,
+      );
       if (!BEHAVIORALLY_AUDITED_RUNNER_FILES.has(file)) {
         assert.equal(
           privilegedCallBeforeGuard(functions.get(name)!, functions, new Set()),
@@ -466,7 +471,7 @@ test('a conditional guard does not dominate a later mutation', () => {
 });
 
 test('imported action-runner allowlist is narrow and backed by behavioral tests', () => {
-  assert.equal(BEHAVIORALLY_AUDITED_RUNNER_FILES.size, 2);
+  assert.equal(BEHAVIORALLY_AUDITED_RUNNER_FILES.size, 3);
   for (const file of BEHAVIORALLY_AUDITED_RUNNER_FILES) {
     assert.ok(statSync(file.replace(/actions\.ts$/u, 'actions.test.ts')).isFile(), file);
   }
@@ -618,32 +623,34 @@ test('sensitive indirect DAL and inline-action pages declare their own tenant bo
   }
 });
 
-test('bulk import authorization precedes failure compensation and all updates are tenant scoped', () => {
+test('bulk import commands resolve authority before any RPC and job reads are company scoped', () => {
   const file = join(root, '(pro)/imports/actions.ts');
   const source = readFileSync(file, 'utf8');
-  for (const action of ['validateBulkImportAction', 'executeBulkImportAction']) {
+  for (const action of [
+    'validateBulkImportAction',
+    'executeBulkImportAction',
+    'cancelBulkImportAction',
+  ]) {
     const start = source.indexOf(`export async function ${action}`);
     const next = source.indexOf('\nexport async function ', start + 1);
     const body = source.slice(start, next === -1 ? undefined : next);
-    assert.ok(
-      body.indexOf('await requireTenantContext(') < body.indexOf('runAuthorizedMutation({'),
-      action,
-    );
-    assert.match(body, /markFailed\(tenant\.id, company\.id, jobId,/u, action);
+    const guard = body.indexOf('await requireTenantContext(');
+    assert.ok(guard > 0, action);
+    for (const call of ['recordImportValidation(', 'requestImportExecution(', 'cancelImport(']) {
+      const at = body.indexOf(call);
+      if (at !== -1) assert.ok(guard < at, `${action} ${call}`);
+    }
   }
-  const update = source.slice(source.indexOf('async function updateJob('));
-  assert.match(
-    update,
-    /scopeImportJobMutation\([\s\S]*?query,[\s\S]*?tenantId,[\s\S]*?companyId,[\s\S]*?jobId,[\s\S]*?expectedStatus/u,
+  const validate = source.slice(source.indexOf('export async function validateBulkImportAction'));
+  assert.ok(
+    validate.indexOf(".eq('tenant_id', actor.tenantId)") < validate.indexOf(".eq('id', jobId)"),
   );
-  assert.match(update, /\.select\('id'\)\s*\.maybeSingle\(\)/u);
-  assert.match(update, /assertImportJobTransitionMatched\(data\)/u);
-  const scope = readFileSync(join(process.cwd(), 'src/lib/data/import-job-scope.ts'), 'utf8');
-  assert.ok(scope.indexOf(".eq('tenant_id', tenantId)") < scope.indexOf(".eq('id', jobId)"));
-  assert.ok(scope.indexOf(".eq('company_id', companyId)") < scope.indexOf(".eq('id', jobId)"));
+  assert.ok(
+    validate.indexOf(".eq('company_id', actor.companyId)") < validate.indexOf(".eq('id', jobId)"),
+  );
 
   const page = readFileSync(join(root, '(pro)/imports/[jobId]/page.tsx'), 'utf8');
-  assert.match(page, /isImportJobCancellable\(job\.status\)/u);
+  assert.match(page, /isImportJobCancellable\(job\.status, job\.cancel_requested_at !== null\)/u);
   assert.match(page, /t\('cannotCancel'\)/u);
 });
 

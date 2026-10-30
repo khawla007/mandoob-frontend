@@ -94,7 +94,7 @@ test('production adapter honestly reports unavailable without claiming a send', 
   assert.deepEqual(result, {
     status: 'unavailable',
     sent: false,
-    message: 'Contact delivery is not available yet. No message was sent.',
+    message: 'Contact intake is temporarily unavailable.',
   });
 });
 
@@ -281,8 +281,23 @@ test('adapter source has no I/O, server action, provider, timer, random, or noti
     ['filesystem write', /\b(?:writeFile|appendFile|createWriteStream)\s*\(/u],
   ];
 
+  // Synthetic demo adapters must stay perfectly pure.
   for (const [label, pattern] of forbidden) {
     assert.doesNotMatch(source, pattern, label);
+  }
+  // The production adapter is the real client submission boundary, so it may fetch the public
+  // contact route, but it must never import providers, touch Supabase, or call the database.
+  const productionForbidden = forbidden.filter(([label]) =>
+    [
+      'Supabase',
+      'server action directive',
+      'email/SMS/WhatsApp/provider import',
+      'database call',
+      'notification call',
+      'filesystem write',
+    ].includes(label),
+  );
+  for (const [label, pattern] of productionForbidden) {
     assert.doesNotMatch(productionSource, pattern, `production ${label}`);
   }
 });

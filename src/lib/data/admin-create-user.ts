@@ -2,7 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { encryptOptional } from '@/lib/crypto/pii';
-import { hashPassportForLookup } from '@/lib/crypto/passport-lookup';
+import { adminEmployeeIdentifierColumns } from '@/lib/employees/admin-identifiers';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import type { CreateUserOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
@@ -112,10 +112,7 @@ export async function adminCreateUser(
       };
     } else if (input.role === 'employee') {
       encryptedPayload = {
-        passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-        passport_no_hash: hashPassportForLookup(input.company_id, input.passport_no),
-        visa_no_encrypted: encryptOptional(input.visa_no ?? null),
-        emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
+        ...adminEmployeeIdentifierColumns(input.company_id, input),
       };
     }
   } catch (e) {
@@ -220,11 +217,8 @@ export async function adminCreateUser(
         name: input.full_name,
         email,
         phone: input.phone,
-        passport_no_encrypted: encryptedPayload.passport_no_encrypted,
-        passport_no_hash: encryptedPayload.passport_no_hash,
-        visa_no_encrypted: encryptedPayload.visa_no_encrypted,
+        ...encryptedPayload,
         visa_expiry: input.visa_expiry ?? null,
-        emirates_id_encrypted: encryptedPayload.emirates_id_encrypted,
         eid_expiry: input.eid_expiry ?? null,
         status: 'active',
       });

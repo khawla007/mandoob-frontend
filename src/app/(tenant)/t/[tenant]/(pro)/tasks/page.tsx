@@ -1,4 +1,4 @@
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
+import { OperationalWorkspace } from '@/components/operations/OperationalWorkspace';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 
 export default async function ProTasksPage({
@@ -12,10 +12,11 @@ export default async function ProTasksPage({
   await requireProTenantRouteAccess(slug);
   const baseHref = `/t/${encodeURIComponent(slug)}/tasks`;
   return (
-    <OperationalUnavailableRoute
+    <OperationalWorkspace
       role="pro"
       module="tasks"
       baseHref={baseHref}
+      tenantSlug={slug}
       search={await searchParams}
     />
   );

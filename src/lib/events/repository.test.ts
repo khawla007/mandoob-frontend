@@ -1,0 +1,335 @@
+import assert from 'node:assert/strict';
+import { describe, test } from 'node:test';
+import { createEventQueueRepository } from './repository';
+
+const IDS = {
+  event: '11111111-1111-4111-8111-111111111111',
+  tenant: '22222222-2222-4222-8222-222222222222',
+  company: '33333333-3333-4333-8333-333333333333',
+  correlation: '44444444-4444-4444-8444-444444444444',
+  worker: '55555555-5555-4555-8555-555555555555',
+  job: '66666666-6666-4666-8666-666666666666',
+  lease: '77777777-7777-4777-8777-777777777777',
+  operation: '88888888-8888-4888-8888-888888888888',
+} as const;
+
+type Call = { name: string; args: Record<string, unknown> };
+
+function createRpcStub(results: Record<string, unknown> = {}) {
+  const calls: Call[] = [];
+  return {
+    calls,
+    client: {
+      async rpc(name: string, args: Record<string, unknown>) {
+        calls.push({ name, args });
+        return { data: results[name] ?? null, error: null };
+      },
+    },
+  };
+}
+
+const envelope = {
+  eventId: IDS.event,
+  eventType: 'documents.requested',
+  eventVersion: 1,
+  occurredAt: '2026-09-21T04:30:00.000Z',
+  tenantId: IDS.tenant,
+  companyId: IDS.company,
+  actorId: null,
+  correlationId: IDS.correlation,
+  causationId: null,
+  privacyClass: 'confidential',
+  payload: { documentRequestId: 'reference-only' },
+} as const;
+
+const eventSchemas = {
+  'documents.requested': {
+    1: { documentRequestId: 'reference' },
+  },
+} as const;
+
+describe('event repository producer and worker contract', () => {
+  test('publishes the exact validated envelope and opaque dedupe hash', async () => {
+    const stub = createRpcStub({ publish_domain_event: IDS.event });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
+    const result = await repository.publish(envelope, 'a'.repeat(64));
+
+    assert.equal(result, IDS.event);
+    assert.deepEqual(stub.calls[0], {
+      name: 'publish_domain_event',
+      args: {
+        p_event_id: IDS.event,
+        p_event_type: 'documents.requested',
+        p_event_version: 1,
+        p_occurred_at: '2026-09-21T04:30:00.000Z',
+        p_tenant_id: IDS.tenant,
+        p_company_id: IDS.company,
+        p_actor_id: null,
+        p_correlation_id: IDS.correlation,
+        p_causation_id: null,
+        p_privacy_class: 'confidential',
+        p_payload: { documentRequestId: 'reference-only' },
+        p_dedupe_key: 'a'.repeat(64),
+      },
+    });
+  });
+
+  test('claims only bounded batches and lease durations', async () => {
+    const stub = createRpcStub({ claim_event_jobs: [] });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
+
+    await repository.claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+      batchSize: 100,
+      leaseSeconds: 900,
+    });
+    assert.equal(stub.calls[0]?.name, 'claim_event_jobs');
+    assert.throws(
+      () =>
+        repository.claim({
+          workerId: IDS.worker,
+          consumerName: 'notifications.reference',
+          batchSize: 101,
+          leaseSeconds: 900,
+        }),
+      /INVALID_CLAIM_ARGUMENTS/,
+    );
+  });
+
+  test('fences extend and completion with worker plus lease token', async () => {
+    const stub = createRpcStub({
+      extend_event_job_lease: '2026-09-21T04:32:00.000Z',
+      complete_event_job: true,
+    });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
+
+    await repository.extendLease(IDS.job, IDS.worker, IDS.lease, 120);
+    await repository.succeed(IDS.job, IDS.worker, IDS.lease, 'b'.repeat(64));
+
+    assert.deepEqual(
+      stub.calls.map((call) => call.name),
+      ['extend_event_job_lease', 'complete_event_job'],
+    );
+    assert.equal(stub.calls[1]?.args.p_effect_reference_hash, 'b'.repeat(64));
+  });
+
+  test('sends only allowlisted provider failure fields to the database', async () => {
+    const stub = createRpcStub({ fail_event_job: 'retryable' });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
+
+    await repository.fail(IDS.job, IDS.worker, IDS.lease, {
+      category: 'provider_unavailable',
+      code: 'PROVIDER_UNAVAILABLE',
+      retryable: true,
+      message: 'Authorization: Bearer secret user@example.com',
+      response: { token: 'secret' },
+    });
+
+    assert.deepEqual(stub.calls[0], {
+      name: 'fail_event_job',
+      args: {
+        p_job_id: IDS.job,
+        p_worker_id: IDS.worker,
+        p_lease_token: IDS.lease,
+        p_error_category: 'provider_unavailable',
+        p_error_code: 'PROVIDER_UNAVAILABLE',
+        p_retryable: true,
+      },
+    });
+  });
+});
+
+describe('event repository scheduler, replay, and inbound contract', () => {
+  test('records ownership-bearing heartbeat and cancellation RPCs', async () => {
+    const stub = createRpcStub({
+      record_event_worker_heartbeat: true,
+      cancel_event_job: true,
+    });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
+
+    await repository.heartbeat({
+      workerId: IDS.worker,
+      workerName: 'event-worker-1',
+      consumerName: 'notifications.reference',
+      schedulerOwner: 'netlify.pending-configuration',
+      releaseVersion: 'p3.10-test',
+      startedAt: '2026-09-21T04:00:00.000Z',
+    });
+    await repository.cancel(IDS.job, 'DOMAIN_WORK_CANCELLED');
+
+    assert.deepEqual(
+      stub.calls.map((call) => call.name),
+      ['record_event_worker_heartbeat', 'cancel_event_job'],
+    );
+  });
+
+  test('manual replay carries stable operation intent and no authority override', async () => {
+    const stub = createRpcStub({ request_event_job_replay: IDS.job });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
+
+    await repository.requestReplay(IDS.job, IDS.operation, 'Retry after provider reconciliation');
+
+    assert.deepEqual(stub.calls[0], {
+      name: 'request_event_job_replay',
+      args: {
+        p_source_job_id: IDS.job,
+        p_operation_id: IDS.operation,
+        p_reason: 'Retry after provider reconciliation',
+      },
+    });
+  });
+
+  test('synthetic producer and consumer retain stable event and effect identities', async () => {
+    const claimed = {
+      job_id: IDS.job,
+      event_id: IDS.event,
+      consumer_name: 'notifications.reference',
+      attempt_number: 1,
+      max_attempts: 5,
+      lease_token: IDS.lease,
+      lease_expires_at: '2026-09-21T04:32:00.000Z',
+      effect_key: `mandoob:event-job:${IDS.job}`,
+      event_type: 'documents.requested',
+      event_version: 1,
+      occurred_at: envelope.occurredAt,
+      tenant_id: IDS.tenant,
+      company_id: IDS.company,
+      actor_id: null,
+      correlation_id: IDS.correlation,
+      causation_id: null,
+      privacy_class: 'confidential',
+      payload: envelope.payload,
+    };
+    const stub = createRpcStub({
+      publish_domain_event: IDS.event,
+      claim_event_jobs: [claimed],
+    });
+    const repository = createEventQueueRepository(stub.client, eventSchemas);
+
+    assert.equal(await repository.publish(envelope, 'c'.repeat(64)), IDS.event);
+    const jobs = await repository.claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+      batchSize: 1,
+      leaseSeconds: 120,
+    });
+    assert.equal(jobs[0]?.ok, true);
+    if (jobs[0]?.ok) {
+      assert.equal(jobs[0].job.workerId, IDS.worker);
+      assert.equal(jobs[0].job.eventType, 'documents.requested');
+      assert.deepEqual(jobs[0].job.payload, envelope.payload);
+    }
+  });
+
+  test('accepts a replay row whose stable root effect key differs from its current job id', async () => {
+    const replayJob = '99999999-9999-4999-8999-999999999999';
+    const stableRootJob = IDS.job;
+    const stub = createRpcStub({
+      claim_event_jobs: [
+        {
+          job_id: replayJob,
+          event_id: IDS.event,
+          consumer_name: 'notifications.reference',
+          attempt_number: 1,
+          max_attempts: 5,
+          lease_token: IDS.lease,
+          lease_expires_at: '2026-09-21T04:32:00.000Z',
+          effect_key: `mandoob:event-job:${stableRootJob}`,
+          event_type: 'documents.requested',
+          event_version: 1,
+          occurred_at: envelope.occurredAt,
+          tenant_id: IDS.tenant,
+          company_id: IDS.company,
+          actor_id: null,
+          correlation_id: IDS.correlation,
+          causation_id: null,
+          privacy_class: 'confidential',
+          payload: envelope.payload,
+        },
+      ],
+    });
+    const [result] = await createEventQueueRepository(stub.client, eventSchemas).claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+    });
+    assert.equal(result?.ok, true);
+    if (result?.ok) {
+      assert.equal(result.job.jobId, replayJob);
+      assert.equal(result.job.effectKey, `mandoob:event-job:${stableRootJob}`);
+    }
+  });
+
+  test('preserves unsupported-version and malformed-payload rejection reasons', async () => {
+    const base = {
+      job_id: IDS.job,
+      event_id: IDS.event,
+      consumer_name: 'notifications.reference',
+      attempt_number: 1,
+      max_attempts: 5,
+      lease_token: IDS.lease,
+      lease_expires_at: '2026-09-21T04:32:00.000Z',
+      effect_key: `mandoob:event-job:${IDS.job}`,
+      event_type: 'documents.requested',
+      occurred_at: envelope.occurredAt,
+      tenant_id: IDS.tenant,
+      company_id: IDS.company,
+      actor_id: null,
+      correlation_id: IDS.correlation,
+      causation_id: null,
+      privacy_class: 'confidential',
+    };
+    const stub = createRpcStub({
+      claim_event_jobs: [
+        { ...base, event_version: 2, payload: envelope.payload },
+        { ...base, event_version: 1, payload: { unexpected: 'reference-only' } },
+      ],
+    });
+    const results = await createEventQueueRepository(stub.client, eventSchemas).claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+    });
+    assert.deepEqual(
+      results.map((result) => (result.ok ? null : result.reason)),
+      ['unsupported_version', 'malformed_payload'],
+    );
+  });
+
+  test('strictly rejects unknown claimed fields while retaining a valid failure fence', async () => {
+    const stub = createRpcStub({
+      claim_event_jobs: [
+        {
+          job_id: IDS.job,
+          event_id: IDS.event,
+          consumer_name: 'notifications.reference',
+          attempt_number: 1,
+          max_attempts: 5,
+          lease_token: IDS.lease,
+          lease_expires_at: '2026-09-21T04:32:00.000Z',
+          effect_key: `mandoob:event-job:${IDS.job}`,
+          event_type: 'documents.requested',
+          event_version: 1,
+          occurred_at: envelope.occurredAt,
+          tenant_id: IDS.tenant,
+          company_id: IDS.company,
+          actor_id: null,
+          correlation_id: IDS.correlation,
+          causation_id: null,
+          privacy_class: 'confidential',
+          payload: envelope.payload,
+          raw_secret: 'must-not-survive',
+        },
+      ],
+    });
+    const [result] = await createEventQueueRepository(stub.client, eventSchemas).claim({
+      workerId: IDS.worker,
+      consumerName: 'notifications.reference',
+    });
+
+    assert.deepEqual(result, {
+      ok: false,
+      lease: { jobId: IDS.job, workerId: IDS.worker, leaseToken: IDS.lease },
+      reason: 'malformed_payload',
+    });
+  });
+});

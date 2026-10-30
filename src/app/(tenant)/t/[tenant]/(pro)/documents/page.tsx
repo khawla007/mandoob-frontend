@@ -19,7 +19,7 @@ import {
   DocumentWorkQueue,
   type DocumentQueueLabels,
 } from '@/components/pro/documents/DocumentWorkQueue';
-import { DocumentBatchRequestUnavailable } from '@/components/pro/documents/DocumentBatchRequestUnavailable';
+import { DocumentBatchRequestDialog } from '@/components/pro/documents/DocumentBatchRequestDialog';
 import {
   dubaiToday,
   getDocumentCenterSummary,
@@ -89,6 +89,7 @@ export default async function ProDocumentsPage({
     'documents.errors.notFound': t('errors.notFound'),
     'documents.errors.tenantInactive': t('errors.tenantInactive'),
     'documents.errors.expiryExternallyManaged': t('errors.expiryExternallyManaged'),
+    'documents.errors.conflict': t('errors.conflict'),
     'documents.errors.openFailed': t('errors.openFailed'),
     'documents.errors.unexpected': t('errors.unexpected'),
     unexpected: t('errors.unexpected'),
@@ -278,8 +279,29 @@ export default async function ProDocumentsPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DocumentActions kind="request" slug={slug} labels={actionLabels} />
-          <DocumentBatchRequestUnavailable
-            labels={{ title: t('batch.title'), description: t('batch.description') }}
+          <DocumentBatchRequestDialog
+            slug={slug}
+            locale={locale}
+            labels={{
+              trigger: t('batch.trigger'),
+              title: t('batch.title'),
+              description: t('batch.description'),
+              add: t('batch.add'),
+              remove: t('batch.remove'),
+              item: t('batch.item'),
+              customType: t('batch.customType'),
+              submit: t('batch.submit'),
+              pending: t('batch.pending'),
+              success: t('batch.success'),
+              maximum: t('batch.maximum', { count: 25 }),
+              close: t('actions.close'),
+              type: t('request.type'),
+              label: t('request.label'),
+              due: t('request.due'),
+              notes: t('request.notes'),
+              docTypes,
+              errors: errorLabels,
+            }}
           />
         </div>
       </header>

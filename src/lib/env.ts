@@ -1,5 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
+import { isExplicitLocalAcceptanceOrigin } from './local-acceptance-origin';
 
 const optionalStr = z.preprocess(
   (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
@@ -17,11 +18,7 @@ const productionAppUrl = z
   .string()
   .url()
   .refine((value) => new URL(value).protocol === 'https:', 'must use HTTPS in production');
-const explicitLocalAcceptanceOrigin =
-  (process.env.P112_ACCEPTANCE_LOCAL_ONLY === '1' &&
-    process.env.NEXT_PUBLIC_APP_URL === 'http://127.0.0.1:3001') ||
-  (process.env.P2_ACCEPTANCE_LOCAL_ONLY === '1' &&
-    process.env.NEXT_PUBLIC_APP_URL === 'http://127.0.0.1:3100');
+const explicitLocalAcceptanceOrigin = isExplicitLocalAcceptanceOrigin(process.env);
 const appUrlSchema =
   process.env.NODE_ENV === 'production' && !explicitLocalAcceptanceOrigin
     ? productionAppUrl
@@ -29,6 +26,13 @@ const appUrlSchema =
 const optionalPort = z.preprocess(
   (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
   z.coerce.number().int().positive().max(65_535).optional(),
+);
+const optionalBoolean = z.preprocess(
+  (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
+  z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
 );
 
 const schema = z.object({
@@ -45,12 +49,18 @@ const schema = z.object({
   TWILIO_AUTH_TOKEN: optionalStr,
   TWILIO_MESSAGING_SERVICE_SID: optionalStr,
   TWILIO_FROM_NUMBER: optionalStr,
+  TWILIO_INBOUND_ENABLED: optionalBoolean,
+  INBOUND_DESTINATION_HMAC_SECRET: z.preprocess(
+    (v) => (typeof v === 'string' && v.length === 0 ? undefined : v),
+    z.string().min(32).optional(),
+  ),
 
   TURNSTILE_SECRET_KEY: optionalStr,
 
   ENCRYPTION_KEY: optionalStr,
   SUPABASE_AUTH_WEBHOOK_SECRET: optionalStr,
   CRON_SECRET: optionalStr,
+  EVENT_RUNTIME_SCHEDULER_CUTOVER: optionalStr,
 
   WHATSAPP_VERIFY_TOKEN: optionalStr,
   WHATSAPP_APP_SECRET: optionalStr,
@@ -62,13 +72,12 @@ const schema = z.object({
   TAP_PUBLIC_KEY: optionalStr,
   TAP_WEBHOOK_SECRET: optionalStr,
   TAP_API_BASE: optionalStr,
+  TAP_REDIRECT_HOSTS: optionalStr,
 
   STRIPE_SECRET_KEY: optionalStr,
   STRIPE_PUBLISHABLE_KEY: optionalStr,
   STRIPE_WEBHOOK_SECRET: optionalStr,
-  STRIPE_PRICE_STARTER: optionalStr,
-  STRIPE_PRICE_PROFESSIONAL: optionalStr,
-  STRIPE_PRICE_ENTERPRISE: optionalStr,
+  STRIPE_DESTINATION: z.enum(['test', 'sandbox', 'live', 'production']).optional(),
 
   VIRUSTOTAL_API_KEY: optionalStr,
   CLAMAV_HOST: optionalStr,

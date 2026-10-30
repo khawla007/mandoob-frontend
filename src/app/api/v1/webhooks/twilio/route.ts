@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyTwilioSignature } from '@/lib/sms/signature';
-import { recordTwilioInbound } from '../inbound-recording';
+import { InboundWebhookInfrastructureError, recordTwilioInbound } from '../inbound-recording';
+import {
+  isTwilioInboundCallback,
+  parseFormBody,
+  parseTwilioInboundCallback,
+  twilioInboundUnavailableCode,
+} from './inbound';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -29,18 +35,35 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'invalid signature', code: 'FORBIDDEN' }, { status: 403 });
   }
 
-  const supabase = createSupabaseServiceRoleClient();
-
   const messageStatus = params.MessageStatus ?? params.SmsStatus;
   const messageSid = params.MessageSid ?? params.SmsSid;
+  const inboundShape = isTwilioInboundCallback(params);
+  const unavailableCode = twilioInboundUnavailableCode(rawBody, env.TWILIO_INBOUND_ENABLED);
+  if (unavailableCode) {
+    return NextResponse.json(
+      { error: 'inbound webhook unavailable', code: unavailableCode },
+      { status: 503 },
+    );
+  }
 
-  if (messageStatus && messageSid) {
+  const supabase = createSupabaseServiceRoleClient();
+
+  if (!inboundShape && messageStatus && messageSid) {
     await applyDeliveryStatus(supabase, messageSid, messageStatus);
   }
 
   // Inbound SMS: presence of Body + From, no status field.
-  if (!messageStatus && params.From && params.Body !== undefined && messageSid) {
-    await recordTwilioInbound(supabase, params.From, params.Body, messageSid);
+  const inbound = parseTwilioInboundCallback(rawBody);
+  try {
+    if (inbound) await recordTwilioInbound(supabase, inbound);
+  } catch (error) {
+    if (error instanceof InboundWebhookInfrastructureError) {
+      return NextResponse.json(
+        { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
+    throw error;
   }
 
   return NextResponse.json({ ok: true });
@@ -54,12 +77,6 @@ function buildSignatureUrl(req: Request): string {
   const proto = req.headers.get('x-forwarded-proto') ?? url.protocol.replace(':', '');
   const host = req.headers.get('x-forwarded-host') ?? url.host;
   return `${proto}://${host}${url.pathname}${url.search}`;
-}
-
-function parseFormBody(raw: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of new URLSearchParams(raw)) out[k] = v;
-  return out;
 }
 
 const STATUS_MAP: Record<string, 'pending' | 'sent' | 'delivered' | 'failed' | 'dead'> = {

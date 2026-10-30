@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { Filter, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -149,10 +150,12 @@ export function EmployeeRegistryTable({
   result,
   labels,
   locale,
+  renderActions,
 }: {
   result: EmployeeRegistryResult;
   labels: Labels;
   locale: string;
+  renderActions?: (row: EmployeeRegistryRow) => ReactNode;
 }) {
   const displayState = employeeRegistryDisplayState(result);
   if (displayState === 'unavailable')
@@ -190,7 +193,6 @@ export function EmployeeRegistryTable({
   return (
     <div className="space-y-2">
       <p className="text-muted-foreground text-sm">{labels.identifierSurfaceUnavailable}</p>
-      <p className="text-muted-foreground text-sm">{labels.phase3Note}</p>
       <div className="border-border/60 rounded-lg border">
         <Table scrollAreaLabel={labels.table}>
           <TableHeader>
@@ -205,7 +207,13 @@ export function EmployeeRegistryTable({
           </TableHeader>
           <TableBody>
             {result.rows.map((row) => (
-              <EmployeeRow row={row} key={row.id} labels={labels} formatDate={formatDate} />
+              <EmployeeRow
+                row={row}
+                key={row.id}
+                labels={labels}
+                formatDate={formatDate}
+                actions={renderActions?.(row)}
+              />
             ))}
           </TableBody>
         </Table>
@@ -290,10 +298,12 @@ function EmployeeRow({
   row,
   labels,
   formatDate,
+  actions,
 }: {
   row: EmployeeRegistryRow;
   labels: Labels;
   formatDate: Intl.DateTimeFormat;
+  actions?: ReactNode;
 }) {
   return (
     <TableRow data-state={row.risk === 'attention' ? 'selected' : undefined}>
@@ -303,6 +313,11 @@ function EmployeeRow({
           {row.email ?? labels.notRecorded}
         </p>
         <p className="text-muted-foreground text-xs">{row.nationality ?? labels.notRecorded}</p>
+        {row.passportMasked ? (
+          <p className="text-muted-foreground text-xs" dir="ltr">
+            {row.passportMasked}
+          </p>
+        ) : null}
       </TableCell>
       <TableCell>
         <Badge variant="secondary">{labels[row.status]}</Badge>
@@ -311,6 +326,7 @@ function EmployeeRow({
         expiry={row.visaExpiry}
         state={row.visaState}
         identifierState={row.visaIdentifierState}
+        masked={row.visaMasked}
         labels={labels}
         formatDate={formatDate}
       />
@@ -318,6 +334,7 @@ function EmployeeRow({
         expiry={row.eidExpiry}
         state={row.eidState}
         identifierState={row.eidIdentifierState}
+        masked={row.eidMasked}
         labels={labels}
         formatDate={formatDate}
       />
@@ -326,7 +343,13 @@ function EmployeeRow({
           {labels[row.risk]}
         </Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground text-sm">{labels.phase3Unavailable}</TableCell>
+      <TableCell className="text-end">
+        <div className="flex items-center justify-end gap-1">
+          {actions ?? (
+            <span className="text-muted-foreground text-sm">{labels.phase3Unavailable}</span>
+          )}
+        </div>
+      </TableCell>
     </TableRow>
   );
 }
@@ -335,12 +358,14 @@ function IdentityCell({
   expiry,
   state,
   identifierState,
+  masked,
   labels,
   formatDate,
 }: {
   expiry: string | null;
   state: string;
   identifierState: string;
+  masked: string | null;
   labels: Labels;
   formatDate: Intl.DateTimeFormat;
 }) {
@@ -350,12 +375,22 @@ function IdentityCell({
       <p className="text-muted-foreground mt-1 text-xs whitespace-nowrap">
         {expiry ? formatDate.format(new Date(`${expiry}T00:00:00Z`)) : labels.expiryNotRecorded}
       </p>
-      <p className="text-muted-foreground mt-1 text-xs">{labels[identifierState]}</p>
+      <p className="text-muted-foreground mt-1 text-xs" dir="ltr">
+        {masked ?? labels[identifierState]}
+      </p>
     </TableCell>
   );
 }
 
-export function EmployeeRegistryHeader({ slug, labels }: { slug: string; labels: Labels }) {
+export function EmployeeRegistryHeader({
+  slug,
+  labels,
+  addAction,
+}: {
+  slug: string;
+  labels: Labels;
+  addAction?: ReactNode;
+}) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -365,12 +400,15 @@ export function EmployeeRegistryHeader({ slug, labels }: { slug: string; labels:
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{labels.title}</h1>
         <p className="text-muted-foreground mt-1 max-w-3xl text-sm">{labels.description}</p>
       </div>
-      <Button asChild className="min-h-11 sm:min-h-9">
-        <Link href={`/t/${encodeURIComponent(slug)}/employees/import`}>
-          <Upload className="size-4" aria-hidden />
-          {labels.import}
-        </Link>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        {addAction}
+        <Button asChild variant="outline" className="min-h-11 sm:min-h-9">
+          <Link href={`/t/${encodeURIComponent(slug)}/employees/import`}>
+            <Upload className="size-4" aria-hidden />
+            {labels.import}
+          </Link>
+        </Button>
+      </div>
     </header>
   );
 }

@@ -28,4 +28,3 @@ Change only the contact-bar transition declarations and collapsed contact-bar ru
 - In light and dark modes, sample navigation position during collapse and confirm intermediate values between 45 and 0 rather than a one-frame jump.
 - Confirm the contact bar remains painted during motion, ends hidden with zero border and zero height, and leaves navigation at `top: 0`.
 - Verify expansion, focus protection, desktop/mobile home, login and registration routes, plus header-control usability.
-

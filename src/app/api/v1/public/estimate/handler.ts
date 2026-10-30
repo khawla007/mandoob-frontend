@@ -1,16 +1,24 @@
 import { NextRequest } from 'next/server';
 import { getClientIp, parseJson } from '@/lib/auth/request';
-import { calculateEstimate, buildApplyNowUrl, EstimateError, estimateInputSchema } from '@/lib/estimator';
+import {
+  buildApplyNowUrl,
+  calculateAuthoritativeEstimate,
+  createEstimateResultToken,
+  EstimateError,
+  estimateInputSchema,
+  type VersionedCostDataRow,
+} from '@/lib/estimator';
 import { listActiveEstimatorCostRows } from '@/lib/estimator/data';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-import type { CostDataRow } from '@/lib/estimator';
+import { env } from '@/lib/env';
 
 export async function handleEstimatePost(
   request: NextRequest,
   deps: {
     consume?: typeof consumeRateLimit;
-    listRows?: () => Promise<CostDataRow[]>;
+    listRows?: () => Promise<VersionedCostDataRow[]>;
+    signingSecret?: string;
   } = {},
 ) {
   const consume = deps.consume ?? consumeRateLimit;
@@ -31,10 +39,14 @@ export async function handleEstimatePost(
 
   try {
     const rows = await listRows();
-    const estimate = calculateEstimate(input, rows);
+    const estimate = calculateAuthoritativeEstimate(input, rows);
+    const signingSecret = deps.signingSecret ?? env.ENCRYPTION_KEY;
+    if (!signingSecret) throw new Error('estimate signing secret unavailable');
+    const resultToken = createEstimateResultToken(estimate, signingSecret);
     const handoff = buildApplyNowUrl(input, estimate);
     return jsonOk({
       estimate,
+      resultToken,
       handoffUrl: `${handoff.pathname}${handoff.search}`,
     });
   } catch (error) {

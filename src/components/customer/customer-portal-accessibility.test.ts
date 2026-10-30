@@ -34,3 +34,9 @@ test('payment subsection headings follow the portal page heading', () => {
   assert.doesNotMatch(paymentHistory, /<h3/u);
   assert.equal(paymentHistory.match(/<h2/gu)?.length, 2);
 });
+
+test('legacy payment history never infers receipt availability from paid status', () => {
+  assert.match(paymentHistory, /h\.receiptAvailable/u);
+  assert.match(paymentHistory, /receiptUnavailable/u);
+  assert.doesNotMatch(paymentHistory, /h\.status[\s\S]*?\/receipt/u);
+});

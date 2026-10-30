@@ -1,4 +1,4 @@
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
+import { OperationalWorkspace } from '@/components/operations/OperationalWorkspace';
 import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
 
 export default async function CustomerTasksPage({
@@ -12,10 +12,11 @@ export default async function CustomerTasksPage({
   await authorizeCustomerLinkedCompanyRead(slug);
   const baseHref = `/t/${encodeURIComponent(slug)}/portal/tasks`;
   return (
-    <OperationalUnavailableRoute
+    <OperationalWorkspace
       role="customer"
       module="tasks"
       baseHref={baseHref}
+      tenantSlug={slug}
       search={await searchParams}
     />
   );

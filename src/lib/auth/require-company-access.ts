@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { UUID_RE } from '@/lib/util/uuid';
 import type { SessionProfile } from './require-user';
 
 type DbResult = {
@@ -26,7 +27,7 @@ type AccessDeps = {
 };
 
 const PLATFORM_ROLES = new Set(['admin', 'super_admin']);
-const recordIdSchema = z.string().uuid();
+const recordIdSchema = z.string().regex(UUID_RE);
 
 async function denyAccess(deps: AccessDeps): Promise<never> {
   if (deps.deny) return deps.deny();

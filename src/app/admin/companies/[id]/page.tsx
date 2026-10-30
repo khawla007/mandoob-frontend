@@ -18,6 +18,7 @@ import {
   readCurrentCompanyAssignment,
 } from '@/lib/data/company-assignments';
 import { getCompanyById } from '@/lib/data/pro-firms';
+import { adminCompanyOperationalHref } from '@/lib/operations/admin-navigation';
 import {
   readCompanyOnboarding,
   type CompanyOnboardingSnapshot,
@@ -110,6 +111,27 @@ export default async function CompanyDetailPage({
           </div>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('operations.title')}</CardTitle>
+          <CardDescription>{t('operations.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <nav
+            className="flex flex-wrap gap-2"
+            aria-label={t('operations.companyLabel', { company: company.companyName })}
+          >
+            {(['tasks', 'notifications', 'communications'] as const).map((module) => (
+              <Button key={module} asChild variant="outline" className="min-h-11 sm:min-h-9">
+                <Link href={adminCompanyOperationalHref(company.id, module)}>
+                  {t(`operations.${module}`)}
+                </Link>
+              </Button>
+            ))}
+          </nav>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

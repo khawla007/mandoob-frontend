@@ -16,8 +16,14 @@ test('Blog collection and editors opt in individually without changing authoriza
   }
   const page = source('src/app/admin/blog/page.tsx');
   assert.match(page, /const POSTS_PER_PAGE = 8/);
-  assert.match(page, /const currentPage = Math.min\(readPage\(sp\), totalPages\)/);
-  assert.match(page, /posts.slice\(start, start \+ POSTS_PER_PAGE\)/);
+  assert.match(page, /const requestedPage = readPage\(sp\)/);
+  assert.match(
+    page,
+    /listAdminBlogPostsPage\(\{ page: requestedPage, pageSize: POSTS_PER_PAGE \}\)/,
+  );
+  assert.match(page, /const currentPage = Math.min\(requestedPage, totalPages\)/);
+  assert.match(page, /if \(currentPage !== requestedPage\)/);
+  assert.match(page, /const posts = result.items/);
   assert.match(source('src/app/admin/blog/new/page.tsx'), /post=\{null\} terms=\{terms\}/);
   assert.match(source('src/app/admin/blog/[id]/page.tsx'), /if \(!post\) notFound\(\)/);
 });
@@ -28,8 +34,11 @@ test('Blog table uses one named keyboard scroll region, readable identities and 
   assert.equal((table.match(/TableHead className="text-start"/g) ?? []).length, 4);
   assert.match(table, /formatDateTime\(post.publishedAt, locale\)/);
   assert.match(table, /post.status === 'published'/);
-  assert.match(table, /action=\{deletePost.bind\(null, post.id\)\}/);
-  assert.match(table, /await deleteBlogPostAction\(id\)/);
+  assert.match(
+    table,
+    /action=\{deletePost.bind\(null, post.id, randomUUID\(\), post.rowVersion \?\? 1\)\}/,
+  );
+  assert.match(table, /await deleteBlogPostAction\(id, operationId, expectedVersion\)/);
 });
 test('Rich editor naming is optional and supplied only by inspected editorial consumers', () => {
   const rich = source('src/components/blog/BlogEditorContent.tsx');
@@ -49,6 +58,8 @@ test('Blog controls and panel bounds are scoped, leaving checkboxes at their ori
   assert.match(css, /input:not\(\[type='checkbox'\]\):not\(\[type='radio'\]\)/);
   assert.match(css, /\.admin-editorial-workspace \.blog-editor-content/);
   const editor = source('src/components/blog/BlogEditor.tsx');
+  assert.match(editor, /formData.set\('operationId', crypto.randomUUID\(\)\)/);
+  assert.match(editor, /formData.set\('expectedVersion', String\(post.rowVersion \?\? 1\)\)/);
   assert.match(editor, /saveBlogPostAction\(post\?.id \?\? null, formData\)/);
   assert.match(editor, /\['draft', 'scheduled', 'published', 'archived'\]/);
   assert.match(editor, /maxLength=\{320\}/);

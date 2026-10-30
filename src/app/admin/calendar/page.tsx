@@ -1,20 +1,5 @@
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
-import { requirePlatformOperator } from '@/lib/auth/require-role';
+import AdminMeetingsPage from '../meetings/page';
 
-export default async function AdminCalendarPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  await requirePlatformOperator();
-  return (
-    <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace">
-      <OperationalUnavailableRoute
-        role="admin"
-        module="calendar"
-        baseHref="/admin/calendar"
-        search={await searchParams}
-      />
-    </div>
-  );
-}
+export const dynamic = 'force-dynamic';
+
+export default AdminMeetingsPage;

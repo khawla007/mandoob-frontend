@@ -1,14 +1,18 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { randomUUID } from 'node:crypto';
 
 import {
   OperationalMeetingList,
   type OperationalMeetingDisplay,
 } from '@/components/operations/OperationalMeetingList';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
+import { MeetingCollaborationPanel } from '@/components/operations/MeetingCollaborationPanel';
+import { MeetingScheduleControls } from '@/components/operations/MeetingScheduleControls';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { authorizeCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
+import { listMeetingCollaboration } from '@/lib/data/meeting-collaboration';
 import {
   getCustomerCompanyMeetingRecordingSignedUrl,
   listMeetingsForCustomerCompany,
@@ -16,7 +20,12 @@ import {
   type MeetingActor,
 } from '@/lib/data/meetings';
 import { safeExternalMeetingHref } from '@/lib/operations/meeting-presentation';
-import { bookMeetingSlotAction } from './actions';
+import {
+  bookMeetingSlotAction,
+  cancelCustomerMeetingAction,
+  rescheduleCustomerMeetingAction,
+  setCustomerMeetingConsentAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +63,11 @@ export default async function CustomerMeetingsPage({
   const recordingUrls = new Map(
     recordingPairs.filter((pair): pair is readonly [string, string] => Boolean(pair[1])),
   );
+  const collaboration = await listMeetingCollaboration(
+    meetings.map(({ id }) => id),
+    access.session.id,
+    false,
+  );
   const date = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -69,6 +83,71 @@ export default async function CustomerMeetingsPage({
     meetingUrl: safeExternalMeetingHref(meeting.meetingUrl),
     recordingUrl: safeExternalMeetingHref(recordingUrls.get(meeting.id) ?? null),
   }));
+  const collaborationLabels = {
+    consentTitle: t('collaboration.consentTitle'),
+    consentDescription: t('collaboration.consentDescription'),
+    consentGranted: t('collaboration.consentGranted'),
+    consentRequired: t('collaboration.consentRequired'),
+    grantConsent: t('collaboration.grantConsent'),
+    withdrawConsent: t('collaboration.withdrawConsent'),
+    notePlaceholder: t('collaboration.notePlaceholder'),
+    addNote: t('collaboration.addNote'),
+    notes: t('collaboration.notes'),
+    actions: t('collaboration.actions'),
+    accept: t('collaboration.accept'),
+    dismiss: t('collaboration.dismiss'),
+  };
+  const details = Object.fromEntries(
+    meetings.map((meeting) => {
+      const canChange = meeting.status === 'scheduled' && new Date(meeting.scheduledAt) > now;
+      const cancelOperationId = randomUUID();
+      const rescheduleOperationId = randomUUID();
+      return [
+        meeting.id,
+        <div key={meeting.id} className="space-y-3">
+          {canChange ? (
+            <MeetingScheduleControls
+              rescheduleLabel={t('reschedule')}
+              cancelLabel={t('cancel')}
+              startLabel={t('start')}
+              durationLabel={t('durationLabel')}
+              reschedule={async (formData) => {
+                'use server';
+                await rescheduleCustomerMeetingAction(
+                  slug,
+                  meeting.id,
+                  meeting.version,
+                  rescheduleOperationId,
+                  formData,
+                );
+              }}
+              cancel={async () => {
+                'use server';
+                await cancelCustomerMeetingAction(
+                  slug,
+                  meeting.id,
+                  meeting.version,
+                  cancelOperationId,
+                );
+              }}
+            />
+          ) : null}
+          <MeetingCollaborationPanel
+            state={
+              collaboration.get(meeting.id) ?? { consentGranted: false, notes: [], actions: [] }
+            }
+            canReview={false}
+            canAddNote={false}
+            labels={collaborationLabels}
+            setConsent={async (granted) => {
+              'use server';
+              await setCustomerMeetingConsentAction(slug, meeting.id, granted);
+            }}
+          />
+        </div>,
+      ];
+    }),
+  );
 
   return (
     <div className="signal-dashboard min-w-0 space-y-5">
@@ -85,23 +164,26 @@ export default async function CustomerMeetingsPage({
         <CardContent>
           <ul className="grid gap-3 md:grid-cols-2">
             {openSlots.length ? (
-              openSlots.map((slot) => (
-                <li key={slot.id} className="rounded-lg border p-4">
-                  <p className="font-medium">{date.format(new Date(slot.startsAt))}</p>
-                  <p className="text-muted-foreground mt-1 text-sm">{slot.timezone}</p>
-                  <form
-                    className="mt-4"
-                    action={async () => {
-                      'use server';
-                      await bookMeetingSlotAction(slug, slot.id);
-                    }}
-                  >
-                    <Button type="submit" size="sm">
-                      {t('book')}
-                    </Button>
-                  </form>
-                </li>
-              ))
+              openSlots.map((slot) => {
+                const operationId = randomUUID();
+                return (
+                  <li key={slot.id} className="rounded-lg border p-4">
+                    <p className="font-medium">{date.format(new Date(slot.startsAt))}</p>
+                    <p className="text-muted-foreground mt-1 text-sm">{slot.timezone}</p>
+                    <form
+                      className="mt-4"
+                      action={async () => {
+                        'use server';
+                        await bookMeetingSlotAction(slug, slot.id, slot.version, operationId);
+                      }}
+                    >
+                      <Button type="submit" size="sm">
+                        {t('book')}
+                      </Button>
+                    </form>
+                  </li>
+                );
+              })
             ) : (
               <li className="text-muted-foreground text-sm">{t('noOpenSlots')}</li>
             )}
@@ -118,14 +200,9 @@ export default async function CustomerMeetingsPage({
             emptyLabel={t('noCustomerMeetings')}
             joinLabel={t('join')}
             recordingLabel={t('recording')}
+            details={details}
           />
         </CardContent>
-      </Card>
-      <Card className="signal-panel">
-        <CardHeader>
-          <CardTitle>{t('consentTitle')}</CardTitle>
-          <CardDescription>{t('consentUnavailable')}</CardDescription>
-        </CardHeader>
       </Card>
     </div>
   );

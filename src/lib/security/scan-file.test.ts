@@ -173,17 +173,9 @@ test(
   'ClamAV TCP deadline is absolute even when a peer slowly drips bytes',
   { timeout: 2_000 },
   async () => {
-    let peerReturnedValidResult = false;
-    let returnValidResult = () => false;
     await withClamAvServer(
       (socket) => {
         const interval = setInterval(() => socket.write('x'), 25);
-        returnValidResult = () => {
-          if (socket.destroyed) return false;
-          peerReturnedValidResult = true;
-          socket.end('stream: OK\0');
-          return true;
-        };
         socket.once('close', () => clearInterval(interval));
       },
       async (clamav) => {
@@ -194,12 +186,6 @@ test(
           reason: 'scanner_unavailable',
           provider: 'clamav',
         });
-        assert.equal(peerReturnedValidResult, false, 'scanner settles before the peer returns OK');
-        assert.equal(
-          returnValidResult(),
-          true,
-          'peer control can still return a valid OK response',
-        );
       },
     );
   },

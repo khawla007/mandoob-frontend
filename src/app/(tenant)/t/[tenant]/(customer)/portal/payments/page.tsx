@@ -89,6 +89,7 @@ export default async function CustomerPaymentsPage({
                   key={status}
                   variant={search.status === status ? 'default' : 'outline'}
                   size="sm"
+                  className="min-h-11"
                   asChild
                 >
                   <Link href={customerFinanceHref(slug, { status, page: 1, invoice: null })}>
@@ -174,6 +175,7 @@ export default async function CustomerPaymentsPage({
               page={workspace.page}
               total={workspace.total}
               pageSize={workspace.pageSize}
+              nextCursor={workspace.nextCursor}
               t={t}
             />
           ) : null}
@@ -206,6 +208,7 @@ function Pagination({
   page,
   total,
   pageSize,
+  nextCursor,
   t,
 }: {
   slug: string;
@@ -213,6 +216,7 @@ function Pagination({
   page: number;
   total: number;
   pageSize: number;
+  nextCursor: { createdAt: string; id: string } | null;
   t: FinanceT;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -222,16 +226,16 @@ function Pagination({
         {t('page', { current: page, total: pages })}
       </span>
       <div className="flex gap-2">
-        {page > 1 ? (
+        {nextCursor ? (
           <Button variant="outline" asChild>
-            <Link href={customerFinanceHref(slug, { ...search, invoice: null, page: page - 1 })}>
-              {t('previous')}
-            </Link>
-          </Button>
-        ) : null}
-        {page < pages ? (
-          <Button variant="outline" asChild>
-            <Link href={customerFinanceHref(slug, { ...search, invoice: null, page: page + 1 })}>
+            <Link
+              href={customerFinanceHref(slug, {
+                ...search,
+                invoice: null,
+                page: page + 1,
+                cursor: nextCursor,
+              })}
+            >
               {t('next')}
             </Link>
           </Button>

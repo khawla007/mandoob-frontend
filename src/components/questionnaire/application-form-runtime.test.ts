@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 import React from 'react';
 
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
@@ -21,7 +22,7 @@ if (reactServer) {
   test('gates future stages, avoids initial autosave, and manages reset focus with Escape', async () => {
     const { Window } = await import('happy-dom');
     const browser = new Window({ url: 'https://example.test/apply' });
-    Object.assign(globalThis, {
+    installDomGlobals({
       window: browser,
       document: browser.document,
       navigator: browser.navigator,

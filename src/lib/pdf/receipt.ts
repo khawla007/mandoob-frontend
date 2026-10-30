@@ -12,6 +12,11 @@ export type ReceiptPdfInput = {
   paidAt: string | null;
   paymentMethod: string | null;
   paymentProvider: string | null;
+  subtotal?: string;
+  discount?: string;
+  vat?: string;
+  paid?: string;
+  refunded?: string;
   refunds: { amount: string; reason: string | null; status: string }[];
 };
 
@@ -69,6 +74,12 @@ export async function generateReceiptPdf(input: ReceiptPdfInput): Promise<Uint8A
   drawField(page, bold, regular, 'Description', input.label, 42, 546, muted, ink);
   drawField(page, bold, regular, 'Amount', input.amount, 42, 494, muted, ink);
   drawField(page, bold, regular, 'Status', input.status, 42, 442, muted, ink);
+  if (input.subtotal && input.vat) {
+    page.drawText(
+      `Subtotal ${input.subtotal} · Discount ${input.discount ?? '—'} · VAT ${input.vat}`,
+      { x: 42, y: 410, size: 9, font: regular, color: muted, maxWidth: 500 },
+    );
+  }
   drawField(
     page,
     bold,
@@ -102,6 +113,17 @@ export async function generateReceiptPdf(input: ReceiptPdfInput): Promise<Uint8A
     muted,
     ink,
   );
+
+  if (input.paid && input.refunded) {
+    page.drawText(`Paid ${input.paid} · Refunded ${input.refunded}`, {
+      x: 42,
+      y: 260,
+      size: 9,
+      font: regular,
+      color: muted,
+      maxWidth: 500,
+    });
+  }
 
   let y = 224;
   if (input.refunds.length > 0) {

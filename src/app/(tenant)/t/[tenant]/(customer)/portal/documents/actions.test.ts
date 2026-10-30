@@ -21,23 +21,35 @@ test('customer signing uses the exact version relation and linked-company scope 
   assert.match(source, /doc\.company_id !== ctx\.linkedCompanyId/u);
   assert.match(
     source,
-    /getCompanyDocumentSignedUrl\([\s\S]*?ctx\.tenant\.id,[\s\S]*?ctx\.linkedCompanyId,[\s\S]*?versionId/u,
+    /getCompanyDocumentSignedUrl\([\s\S]*?ctx\.caller\.id,[\s\S]*?ctx\.tenant\.id,[\s\S]*?ctx\.linkedCompanyId,[\s\S]*?versionId/u,
   );
   assert.doesNotMatch(source, /getDocumentSignedUrl\(/u);
 });
 
 test('upload and download actions return sanitized Customer-safe errors', () => {
   assert.match(source, /safeCustomerDocumentError/u);
+  assert.match(source, /logSafeActionError\('customer\.document\.upload', e\)/u);
+  assert.match(source, /logSafeActionError\('customer\.document\.open', e\)/u);
+  assert.doesNotMatch(source, /console\.error/u);
   assert.doesNotMatch(source, /error: e\.message/u);
   assert.match(source, /code: CustomerDocumentActionCode/u);
   assert.doesNotMatch(source, /\| \{ ok: false; error: string; code: string \}/u);
 });
 
-test('upload authorizes before validating or reading attacker-controlled form data', () => {
-  const body = source.slice(source.indexOf('export async function uploadDocumentAction'));
-  assert.ok(body.indexOf('resolveCustomerCallerCtx(slug)') < body.indexOf("formData.get('file')"));
+test('legacy upload directly authorizes the linked Company before reading attacker-controlled form data', () => {
+  const start = source.indexOf('export async function uploadDocumentAction');
+  const body = source.slice(start, source.indexOf('export async function', start + 1));
+  const authorization = body.indexOf('requireAuthorizedCustomerLinkedCompanyRead(slug)');
+  const formRead = body.indexOf("formData.get('file')");
+  assert.ok(authorization !== -1 && formRead !== -1 && authorization < formRead);
 });
 
-test('requested uploads accept only an awaiting-action request', () => {
-  assert.match(source, /data\.status !== 'pending'/u);
+test('upload delegates requested-upload replay enforcement to the shared service', () => {
+  assert.match(source, /submitCustomerDocumentUpload\(authority, parsed\.data, file/u);
+  assert.doesNotMatch(source, /\.from\('document_requests'\)/u);
+});
+
+test('upload validates and forwards the client operation id to the coordinator-backed DAL', () => {
+  assert.match(source, /operation_id: formData\.get\('operation_id'\)/u);
+  assert.match(source, /submitCustomerDocumentUpload\(authority, parsed\.data, file/u);
 });

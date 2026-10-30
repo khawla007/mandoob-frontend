@@ -64,6 +64,7 @@ export type ErasureSubjectKind = 'customer' | 'employee';
 
 export type ErasureRequestSummary = {
   id: string;
+  version: number;
   subjectKind: ErasureSubjectKind;
   subjectUserId: string;
   subjectTenantId: string;
@@ -174,6 +175,7 @@ function toSummary(row: Record<string, unknown>): ErasureRequestSummary {
   const t = (tenant ?? {}) as Record<string, unknown>;
   return {
     id: row.id as string,
+    version: Number(row.version ?? 1),
     subjectKind: row.subject_kind as ErasureSubjectKind,
     subjectUserId: row.subject_user_id as string,
     subjectTenantId: row.subject_tenant_id as string,
@@ -304,6 +306,7 @@ export async function createErasureRequest(args: {
       recovery_email: args.recoveryEmail,
       verification_token_hash: tokenHash(token),
       verification_sent_at: new Date().toISOString(),
+      verification_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       status: 'pending_verification',
     })
     .select('id')
@@ -346,70 +349,77 @@ export async function createErasureRequest(args: {
 
 export async function verifyErasureRequest(token: string): Promise<{ requestId: string }> {
   const supabase = client();
-  const { data, error } = await supabase
-    .from('erasure_requests')
-    .select('id, subject_tenant_id, subject_user_id, status')
-    .eq('verification_token_hash', tokenHash(token))
-    .eq('status', 'pending_verification')
-    .maybeSingle();
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-  if (!data) throw new ApiError('INVALID_TOKEN', 'Verification link is invalid or expired', 400);
+  const { data, error } = await supabase.rpc(
+    'verify_erasure_request' as never,
+    {
+      p_token_hash: tokenHash(token),
+    } as never,
+  );
+  if (error || !data) {
+    throw new ApiError('INVALID_TOKEN', 'Verification link is invalid or expired', 400);
+  }
+  return { requestId: data as unknown as string };
+}
 
-  const now = new Date().toISOString();
-  const { error: updateError } = await supabase
-    .from('erasure_requests')
-    .update({
-      status: 'submitted',
-      verified_at: now,
-      verification_token_hash: null,
-    })
-    .eq('id', data.id);
-  if (updateError) throw new ApiError('ERASURE_VERIFY_FAILED', updateError.message, 500);
-
-  await audit({
-    supabase,
-    tenantId: data.subject_tenant_id as string,
-    actorId: data.subject_user_id as string,
-    action: 'erasure_verified',
-    source: 'self_serve',
-    details: { request_id: data.id },
-  });
-
-  return { requestId: data.id as string };
+export async function approveErasureDecision(args: {
+  requestId: string;
+  actorId: string;
+  expectedVersion: number;
+  operationId: string;
+  correlationId: string;
+}): Promise<void> {
+  const { error } = await client().rpc(
+    'approve_erasure_request' as never,
+    {
+      p_request_id: args.requestId,
+      p_actor_id: args.actorId,
+      p_expected_version: args.expectedVersion,
+      p_operation_id: args.operationId,
+      p_correlation_id: args.correlationId,
+    } as never,
+  );
+  if (error) {
+    const stale = error.message.includes('ERASURE_STALE');
+    throw new ApiError(
+      stale ? 'STALE_VERSION' : 'ERASURE_APPROVE_FAILED',
+      stale ? 'The request changed; reload and try again' : 'Could not approve erasure request',
+      stale ? 409 : 500,
+    );
+  }
 }
 
 export async function rejectErasureRequest(args: {
   requestId: string;
   actorId: string;
   reason: string;
+  expectedVersion: number;
+  operationId: string;
+  correlationId: string;
 }): Promise<void> {
   const supabase = client();
   const detail = await getErasureRequestDetail(args.requestId);
   if (!detail) throw new ApiError('NOT_FOUND', 'Erasure request not found', 404);
-  if (!['submitted', 'under_review'].includes(detail.status)) {
-    throw new ApiError('INVALID_STATUS', 'Only submitted requests can be rejected', 409);
+  const { data: decision, error } = await supabase.rpc(
+    'reject_erasure_request' as never,
+    {
+      p_request_id: args.requestId,
+      p_actor_id: args.actorId,
+      p_expected_version: args.expectedVersion,
+      p_operation_id: args.operationId,
+      p_correlation_id: args.correlationId,
+      p_reason_code: 'ERASURE_REJECTED_POLICY',
+      p_reason_note: args.reason,
+    } as never,
+  );
+  if (error) {
+    const stale = error.message.includes('ERASURE_STALE');
+    throw new ApiError(
+      stale ? 'STALE_VERSION' : 'ERASURE_REJECT_FAILED',
+      stale ? 'The request changed; reload and try again' : 'Could not reject erasure request',
+      stale ? 409 : 500,
+    );
   }
-
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from('erasure_requests')
-    .update({
-      status: 'rejected',
-      reviewed_by: args.actorId,
-      reviewed_at: now,
-      rejection_reason: args.reason,
-    })
-    .eq('id', args.requestId);
-  if (error) throw new ApiError('ERASURE_REJECT_FAILED', error.message, 500);
-
-  await audit({
-    supabase,
-    tenantId: detail.subjectTenantId,
-    actorId: args.actorId,
-    action: 'erasure_rejected',
-    source: 'admin',
-    details: { request_id: args.requestId, reason: args.reason },
-  });
+  if ((decision as unknown as { replayed?: boolean } | null)?.replayed) return;
 
   await enqueueEmail({
     tenantId: detail.subjectTenantId,
@@ -434,6 +444,18 @@ export async function executeErasure(
   if (!detail) throw new ApiError('NOT_FOUND', 'Erasure request not found', 404);
   if (!['submitted', 'under_review', 'approved', 'completed'].includes(detail.status)) {
     throw new ApiError('INVALID_STATUS', 'Request is not ready for execution', 409);
+  }
+
+  const { error: policyError } = await supabase.rpc(
+    'assert_erasure_cleanup_allowed' as never,
+    { p_request_id: requestId } as never,
+  );
+  if (policyError) {
+    throw new ApiError(
+      'ERASURE_EXECUTION_DISABLED',
+      'Erasure cleanup is disabled pending approved policy and runtime acceptance',
+      409,
+    );
   }
 
   const { data: prepared, error: prepareError } = await supabase.rpc(

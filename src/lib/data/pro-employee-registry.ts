@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { maskIdentifier } from '@/lib/employees/privacy';
 
 export const EMPLOYEE_REGISTRY_PAGE_SIZE = 25;
 
@@ -37,14 +38,23 @@ export type EmployeeRegistryRow = {
   visaIdentifierState: EmployeeIdentifierDisplayState;
   eidIdentifierState: EmployeeIdentifierDisplayState;
   risk: EmployeeRisk;
+  version: number;
+  phone: string | null;
+  jobTitle: string | null;
+  passportMasked: string | null;
+  visaMasked: string | null;
+  eidMasked: string | null;
 };
 
 export type EmployeeIdentityState = 'missing' | 'expired' | 'attention' | 'current';
-export type EmployeeIdentifierDisplayState = 'unavailable_without_masked_contract';
+export type EmployeeIdentifierDisplayState = 'masked' | 'not_recorded';
 export type EmployeeRisk = 'attention' | 'clear' | 'unknown';
 
-export function employeeIdentifierDisplayState(): EmployeeIdentifierDisplayState {
-  return 'unavailable_without_masked_contract';
+/** P3.08 masked contract: only the stored last four characters are ever displayed. */
+export function employeeIdentifierDisplayState(
+  last4: string | null,
+): EmployeeIdentifierDisplayState {
+  return last4 ? 'masked' : 'not_recorded';
 }
 
 type RegistryBase = {
@@ -82,6 +92,12 @@ type EmployeeRegistryDbRow = {
   status: 'active' | 'inactive' | 'terminated';
   visa_expiry: string | null;
   eid_expiry: string | null;
+  version?: number;
+  phone?: string | null;
+  job_title?: string | null;
+  passport_no_last4?: string | null;
+  visa_no_last4?: string | null;
+  emirates_id_last4?: string | null;
 };
 
 export type EmployeeRegistryAccess = { tenantId: string; companyId: string };
@@ -248,7 +264,10 @@ export function createEmployeeRegistrySupabaseStore(
     list: async ({ tenantId, companyId, search, from, to }) => {
       let query = admin
         .from('employees')
-        .select('id, name, email, nationality, status, visa_expiry, eid_expiry', { count: 'exact' })
+        .select(
+          'id, name, email, nationality, status, visa_expiry, eid_expiry, version, phone, job_title, passport_no_last4, visa_no_last4, emirates_id_last4',
+          { count: 'exact' },
+        )
         .eq('tenant_id', tenantId)
         .eq('company_id', companyId);
       if (search.status !== 'all') query = query.eq('status', search.status);
@@ -309,9 +328,15 @@ function toRegistryRow(row: EmployeeRegistryDbRow, now: Date): EmployeeRegistryR
     eidExpiry: row.eid_expiry,
     visaState: identityState(row.visa_expiry, now),
     eidState: identityState(row.eid_expiry, now),
-    visaIdentifierState: employeeIdentifierDisplayState(),
-    eidIdentifierState: employeeIdentifierDisplayState(),
+    visaIdentifierState: employeeIdentifierDisplayState(row.visa_no_last4 ?? null),
+    eidIdentifierState: employeeIdentifierDisplayState(row.emirates_id_last4 ?? null),
     risk: employeeRisk(row.visa_expiry, row.eid_expiry, now),
+    version: Number(row.version ?? 1),
+    phone: row.phone ?? null,
+    jobTitle: row.job_title ?? null,
+    passportMasked: maskIdentifier(row.passport_no_last4 ?? null),
+    visaMasked: maskIdentifier(row.visa_no_last4 ?? null),
+    eidMasked: maskIdentifier(row.emirates_id_last4 ?? null),
   };
 }
 

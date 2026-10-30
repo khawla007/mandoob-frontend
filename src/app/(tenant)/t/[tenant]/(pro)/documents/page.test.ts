@@ -25,7 +25,7 @@ const history = read('../../../../../../components/pro/documents/VersionHistoryD
 const summary = read('../../../../../../components/pro/documents/DocumentSummaryGrid.tsx');
 const queue = read('../../../../../../components/pro/documents/DocumentWorkQueue.tsx');
 const batchRequest = readOptional(
-  '../../../../../../components/pro/documents/DocumentBatchRequestUnavailable.tsx',
+  '../../../../../../components/pro/documents/DocumentBatchRequestDialog.tsx',
 );
 const loading = readOptional('./loading.tsx');
 const errorBoundary = readOptional('./error.tsx');
@@ -240,11 +240,21 @@ test('one-company Documents removes Company controls and presentation while keep
   assert.match(page, /heading\.companyContext/u);
 });
 
-test('batch requesting is explicitly unavailable until the accepted Phase 3 mutation exists', () => {
-  assert.match(batchRequest, /disabled/u);
-  assert.match(batchRequest, /labels\.title/u);
-  assert.match(batchRequest, /labels\.description/u);
-  assert.doesNotMatch(batchRequest, /<form|action=|useActionState|requestDocumentCenterAction/u);
+test('batch requesting is accessible, bounded, custom-type aware and retry-stable', () => {
+  assert.match(batchRequest, /requestDocumentBatchAction/u);
+  assert.match(batchRequest, /useActionState/u);
+  assert.match(batchRequest, /crypto\.randomUUID/u);
+  assert.match(batchRequest, /beginBatchRequest/u);
+  assert.match(batchRequest, /changeBatchRequest/u);
+  assert.match(batchRequest, /MAX_BATCH_ITEMS\s*=\s*25/u);
+  assert.match(batchRequest, /custom_type_label/u);
+  assert.match(batchRequest, /type="button"/u);
+  assert.match(batchRequest, /aria-live="polite"/u);
+  assert.match(batchRequest, /closeLabel=\{labels\.close\}/u);
+  assert.match(batchRequest, /new Intl\.NumberFormat\(locale\)/u);
+  assert.match(batchRequest, /fieldset[^>]+disabled=\{pending\}/u);
+  assert.match(page, /locale=\{locale\}/u);
+  assert.doesNotMatch(batchRequest, /name="company_id"|disabled[\s\S]*Batch request unavailable/u);
 });
 
 test('route sends numeric counts through ICU instead of raw templates or preformatted values', () => {

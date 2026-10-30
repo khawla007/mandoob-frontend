@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { scoreLead, scoreTemperatureFromScore } from './scoring';
+import { LEAD_SCORE_VERSION, scoreLead, scoreTemperatureFromScore } from './scoring';
 
 const baseAnswers = {
   fullName: 'Aisha Khan',
@@ -97,4 +97,20 @@ test('scoreLead tolerates missing optional fields', () => {
   assert.equal(result.score, 10);
   assert.equal(result.temperature, 'cold');
   assert.deepEqual(scoreTemperatureFromScore(75), 'hot');
+});
+
+test('exposes a stable score version and ignores protected traits', () => {
+  assert.equal(LEAD_SCORE_VERSION, 1);
+  const withTraits = scoreLead({
+    answers: { ...baseAnswers, nationality: 'IN', gender: 'female', dateOfBirth: '1990-01-01' },
+  });
+  const withoutTraits = scoreLead({ answers: baseAnswers });
+  assert.equal(withTraits.score, withoutTraits.score);
+  assert.deepEqual(withTraits.factors, withoutTraits.factors);
+  assert.equal(
+    withTraits.factors.some((f) =>
+      /nation|gender|birth|age|religion/iu.test(`${f.key} ${f.label}`),
+    ),
+    false,
+  );
 });

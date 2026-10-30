@@ -37,8 +37,11 @@ test('Sessions authorization, loaders, filters, and revoke confirmation contract
   assert.match(table, /if \(!confirm\(t\('user\.sessions\.confirmRevokeOne'/u);
   assert.match(
     table,
-    /revokeSessionAction\(\{ sessionId: row\.sessionId, userId: row\.userId \}\)/u,
+    /revokeSessionAction\(\{[\s\S]*sessionId: row\.sessionId,[\s\S]*userId: row\.userId,[\s\S]*operationId: crypto\.randomUUID\(\),[\s\S]*\}\)/u,
   );
   assert.match(table, /if \(!confirm\(t\('user\.sessions\.confirmRevokeAll'/u);
-  assert.match(table, /revokeAllSessionsForUserAction\(\{ userId: row\.userId \}\)/u);
+  assert.match(
+    table,
+    /revokeAllSessionsForUserAction\(\{[\s\S]*userId: row\.userId,[\s\S]*operationId: crypto\.randomUUID\(\),[\s\S]*\}\)/u,
+  );
 });

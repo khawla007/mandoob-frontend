@@ -195,6 +195,8 @@ async function LeadDetailPanel({
           {canAssign && assignAction ? (
             <form action={assignAction as never} className="space-y-2">
               <input type="hidden" name="leadId" value={detail.id} />
+              <input type="hidden" name="operationId" value={crypto.randomUUID()} />
+              <input type="hidden" name="expectedVersion" value={detail.rowVersion} />
               <Select dir={direction} name="tenantId" defaultValue={detail.tenantId ?? undefined}>
                 <SelectTrigger aria-label={t('detail.assignPlaceholder')}>
                   <SelectValue placeholder={t('detail.assignPlaceholder')} />
@@ -215,6 +217,8 @@ async function LeadDetailPanel({
 
           <form action={stageAction as never} className="flex gap-2">
             <input type="hidden" name="leadId" value={detail.id} />
+            <input type="hidden" name="operationId" value={crypto.randomUUID()} />
+            <input type="hidden" name="expectedVersion" value={detail.rowVersion} />
             <Select dir={direction} name="stage" defaultValue={detail.stage}>
               <SelectTrigger aria-label={t('detail.stage')}>
                 <SelectValue />
@@ -268,6 +272,8 @@ async function LeadDetailPanel({
 
           <form action={noteAction as never} className="space-y-2">
             <input type="hidden" name="leadId" value={detail.id} />
+            <input type="hidden" name="operationId" value={crypto.randomUUID()} />
+            <input type="hidden" name="expectedVersion" value={detail.rowVersion} />
             <Textarea
               aria-label={t('detail.notePlaceholder')}
               name="note"

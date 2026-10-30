@@ -5,6 +5,7 @@ import { fileTypeFromBuffer } from 'file-type';
 import { sanitizeBlogHtml } from '@/lib/blog/render';
 import { normalizeBlogSlug } from '@/lib/blog/slug';
 import { ApiError } from '@/lib/errors';
+import { mutateEditorialContent } from '@/lib/data/content-mutations';
 import {
   BLOG_IMAGE_MIMES,
   MAX_GALLERY_IMAGE_BYTES,
@@ -19,11 +20,11 @@ import {
 
 const BLOG_MEDIA_BUCKET = 'blog-media';
 const BLOG_POST_COLUMNS =
-  'id, slug, title, excerpt, content_json, content_html, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, featured_media_id, author_id, created_by, updated_by, deleted_at, created_at, updated_at';
+  'id, slug, title, excerpt, content_json, content_html, status, published_at, scheduled_for, meta_title, meta_description, canonical_url, noindex, featured_media_id, author_id, created_by, updated_by, deleted_at, created_at, updated_at, row_version';
 const BLOG_TERM_COLUMNS =
-  'id, kind, slug, name, description, parent_id, sort_order, created_by, created_at, updated_at';
+  'id, kind, slug, name, description, parent_id, sort_order, created_by, created_at, updated_at, row_version';
 const BLOG_MEDIA_COLUMNS =
-  'id, storage_path, public_url, original_name, sha256, alt_text, caption, width, height, mime_type, size_bytes, uploaded_by, created_at, updated_at';
+  'id, storage_path, public_url, original_name, sha256, alt_text, caption, width, height, mime_type, size_bytes, uploaded_by, created_at, updated_at, row_version';
 
 type SupabaseLike = {
   from: (table: string) => SupabaseQueryLike;
@@ -43,6 +44,7 @@ type SupabaseLike = {
 type SupabaseQueryResult = {
   data: unknown;
   error: { message: string } | null;
+  count?: number | null;
 };
 
 type SupabaseQueryLike = PromiseLike<SupabaseQueryResult> & {
@@ -52,6 +54,8 @@ type SupabaseQueryLike = PromiseLike<SupabaseQueryResult> & {
   is: (column: string, value: unknown) => SupabaseQueryLike;
   not: (column: string, operator: string, value: unknown) => SupabaseQueryLike;
   lte: (column: string, value: unknown) => SupabaseQueryLike;
+  or: (filters: string) => SupabaseQueryLike;
+  range: (from: number, to: number) => SupabaseQueryLike;
   maybeSingle: () => Promise<SupabaseQueryResult>;
   single: () => Promise<SupabaseQueryResult>;
   insert: (payload: unknown) => SupabaseQueryLike;
@@ -75,6 +79,7 @@ export type BlogTerm = {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  rowVersion?: number;
 };
 
 export type BlogPost = {
@@ -100,6 +105,7 @@ export type BlogPost = {
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  rowVersion?: number;
 };
 
 export type BlogMedia = {
@@ -117,6 +123,7 @@ export type BlogMedia = {
   uploadedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  rowVersion?: number;
 };
 
 export type UploadBlogMediaInput = {
@@ -142,6 +149,7 @@ type BlogTermRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  row_version?: number;
 };
 
 type BlogPostRow = {
@@ -165,6 +173,7 @@ type BlogPostRow = {
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+  row_version?: number;
 };
 
 type BlogMediaRow = {
@@ -182,6 +191,7 @@ type BlogMediaRow = {
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;
+  row_version?: number;
 };
 
 type BlogPostTermRow = {
@@ -195,9 +205,18 @@ type BlogPostGalleryItemRow = {
 
 type Deps = {
   supabase?: SupabaseLike;
+  now?: Date;
+};
+
+export type BlogListPage = {
+  items: BlogPost[];
+  page: number;
+  pageSize: number;
+  total: number;
 };
 
 type UploadDeps = Deps & {
+  operationId?: string;
   scanFile?: (
     data: Uint8Array,
     options: { filename: string },
@@ -275,11 +294,11 @@ function storageSlug(name: string): string {
   return normalizeBlogSlug(base || 'image');
 }
 
-function storagePath(originalName: string, ext: string): string {
+function storagePath(originalName: string, ext: string, uniqueId: string = randomUUID()): string {
   const now = new Date();
   const yyyy = String(now.getUTCFullYear());
   const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
-  return `blog/${yyyy}/${mm}/${randomUUID()}-${storageSlug(originalName)}.${ext}`;
+  return `blog/${yyyy}/${mm}/${uniqueId}-${storageSlug(originalName)}.${ext}`;
 }
 
 export function mapBlogTermRow(row: BlogTermRow): BlogTerm {
@@ -294,6 +313,7 @@ export function mapBlogTermRow(row: BlogTermRow): BlogTerm {
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    rowVersion: row.row_version ?? 1,
   };
 }
 
@@ -321,6 +341,7 @@ export function mapBlogPostRow(row: BlogPostRow): BlogPost {
     deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    rowVersion: row.row_version ?? 1,
   };
 }
 
@@ -354,6 +375,7 @@ export function mapBlogMediaRow(row: BlogMediaRow): BlogMedia {
     uploadedBy: row.uploaded_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    rowVersion: row.row_version ?? 1,
   };
 }
 
@@ -431,15 +453,60 @@ export async function deleteBlogTerm(id: string, actor: BlogActor, deps: Deps = 
   handleError(error, 'Could not delete blog term');
 }
 
-export async function listAdminBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+function normalizeBlogListInput(input: { page?: number; pageSize?: number; q?: string }) {
+  const page =
+    Number.isInteger(input.page) && Number(input.page) > 0
+      ? Math.min(Number(input.page), 10_000)
+      : 1;
+  const pageSize =
+    Number.isInteger(input.pageSize) && Number(input.pageSize) > 0
+      ? Math.min(Number(input.pageSize), 100)
+      : 24;
+  const q = (input.q ?? '')
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/[%_,]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+    .trim();
+  return { page, pageSize, q };
+}
+
+export async function listAdminBlogPostsPage(
+  input: { page?: number; pageSize?: number; q?: string } = {},
+  deps: Deps = {},
+): Promise<BlogListPage> {
+  const normalized = normalizeBlogListInput(input);
   const supabase = await getSupabase(deps);
-  const { data, error } = await supabase
+  let query = supabase
     .from('blog_posts')
-    .select(BLOG_POST_COLUMNS)
+    .select(BLOG_POST_COLUMNS, { count: 'exact' })
     .is('deleted_at', null)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .order('id', { ascending: true });
+  if (normalized.q)
+    query = query.or(`title.ilike.%${normalized.q}%,excerpt.ilike.%${normalized.q}%`);
+  const from = (normalized.page - 1) * normalized.pageSize;
+  const { data, error, count } = await query.range(from, from + normalized.pageSize - 1);
   handleError(error, 'Could not list blog posts');
-  return ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow);
+  return {
+    items: ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow),
+    page: normalized.page,
+    pageSize: normalized.pageSize,
+    total: Math.max(0, count ?? 0),
+  };
+}
+
+export async function listAdminBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+  const result: BlogPost[] = [];
+  for (let page = 1; page <= 10_000; page += 1) {
+    const batch = await listAdminBlogPostsPage({ page, pageSize: 100 }, deps);
+    result.push(...batch.items);
+    if (page * batch.pageSize >= batch.total) break;
+  }
+  return result;
 }
 
 export async function getAdminBlogPost(id: string, deps: Deps = {}): Promise<BlogPost | null> {
@@ -606,18 +673,42 @@ export async function softDeleteBlogPost(
   handleError(error, 'Could not delete blog post');
 }
 
-export async function listPublishedBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+export async function listPublishedBlogPostsPage(
+  input: { page?: number; pageSize?: number; q?: string } = {},
+  deps: Deps = {},
+): Promise<BlogListPage> {
+  const normalized = normalizeBlogListInput(input);
   const supabase = await getSupabase(deps);
-  const { data, error } = await supabase
+  let query = supabase
     .from('blog_posts')
-    .select(BLOG_POST_COLUMNS)
+    .select(BLOG_POST_COLUMNS, { count: 'exact' })
     .eq('status', 'published')
     .is('deleted_at', null)
     .not('published_at', 'is', null)
-    .lte('published_at', new Date().toISOString())
-    .order('published_at', { ascending: false });
+    .lte('published_at', (deps.now ?? new Date()).toISOString())
+    .order('published_at', { ascending: false })
+    .order('id', { ascending: true });
+  if (normalized.q)
+    query = query.or(`title.ilike.%${normalized.q}%,excerpt.ilike.%${normalized.q}%`);
+  const from = (normalized.page - 1) * normalized.pageSize;
+  const { data, error, count } = await query.range(from, from + normalized.pageSize - 1);
   handleError(error, 'Could not list published blog posts');
-  return ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow);
+  return {
+    items: ((data as BlogPostRow[] | null) ?? []).map(mapBlogPostRow),
+    page: normalized.page,
+    pageSize: normalized.pageSize,
+    total: Math.max(0, count ?? 0),
+  };
+}
+
+export async function listPublishedBlogPosts(deps: Deps = {}): Promise<BlogPost[]> {
+  const result: BlogPost[] = [];
+  for (let page = 1; page <= 10_000; page += 1) {
+    const batch = await listPublishedBlogPostsPage({ page, pageSize: 100 }, deps);
+    result.push(...batch.items);
+    if (page * batch.pageSize >= batch.total) break;
+  }
+  return result;
 }
 
 export async function getPublishedBlogPostBySlug(
@@ -688,34 +779,72 @@ export async function uploadBlogMedia(
 
   const sha256 = createHash('sha256').update(data).digest('hex');
   const supabase = await getSupabase(deps);
-  const path = storagePath(originalName, sniffed.ext);
+  const path = storagePath(originalName, sniffed.ext, deps.operationId ?? randomUUID());
   const { error: uploadError } = await supabase.storage.from(BLOG_MEDIA_BUCKET).upload(path, data, {
     contentType: sniffed.mime,
     upsert: false,
   });
-  if (uploadError) throw new ApiError('STORAGE_UPLOAD_FAILED', uploadError.message, 502);
+  const uploadedNow = !uploadError;
+  if (uploadError && !/already exists|duplicate|resource.*exist/iu.test(uploadError.message)) {
+    throw new ApiError('STORAGE_UPLOAD_FAILED', 'Could not upload blog media', 502);
+  }
 
   const publicUrl = supabase.storage.from(BLOG_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
-  const { data: row, error: insertError } = await supabase
-    .from('blog_media')
-    .insert({
-      storage_path: path,
-      public_url: publicUrl,
-      original_name: originalName,
-      sha256,
-      alt_text: input.altText ?? null,
-      caption: input.caption ?? null,
-      width: input.width ?? null,
-      height: input.height ?? null,
-      mime_type: sniffed.mime,
-      size_bytes: data.byteLength,
-      uploaded_by: actor.id,
-    })
-    .select(BLOG_MEDIA_COLUMNS)
-    .single();
+  const mediaPayload = {
+    storage_path: path,
+    public_url: publicUrl,
+    original_name: originalName,
+    sha256,
+    alt_text: input.altText ?? null,
+    caption: input.caption ?? null,
+    width: input.width ?? null,
+    height: input.height ?? null,
+    mime_type: sniffed.mime,
+    size_bytes: data.byteLength,
+    uploaded_by: actor.id,
+  };
+  let row: unknown = null;
+  let insertError: { message: string } | null = null;
+  let registered = false;
+  try {
+    if (deps.operationId) {
+      const created = await mutateEditorialContent({
+        actorId: actor.id,
+        operationId: deps.operationId,
+        entityType: 'blog_media',
+        action: 'create',
+        payload: mediaPayload,
+      });
+      const result = await supabase
+        .from('blog_media')
+        .select(BLOG_MEDIA_COLUMNS)
+        .eq('id', created.id)
+        .single();
+      row = result.data;
+      insertError = result.error;
+      registered = true;
+    } else {
+      const result = await supabase
+        .from('blog_media')
+        .insert(mediaPayload)
+        .select(BLOG_MEDIA_COLUMNS)
+        .single();
+      row = result.data;
+      insertError = result.error;
+    }
+  } catch (error) {
+    if (!registered && uploadedNow) {
+      const { error: removeError } = await supabase.storage.from(BLOG_MEDIA_BUCKET).remove([path]);
+      if (removeError) console.error('blog media orphan cleanup failed', removeError);
+    }
+    throw error;
+  }
   if (insertError) {
-    const { error: removeError } = await supabase.storage.from(BLOG_MEDIA_BUCKET).remove([path]);
-    if (removeError) console.error('blog media orphan cleanup failed', removeError);
+    if (registered) handleError(insertError, 'Could not read created blog media');
+    if (uploadedNow) {
+      const { error: removeError } = await supabase.storage.from(BLOG_MEDIA_BUCKET).remove([path]);
+      if (removeError) console.error('blog media orphan cleanup failed', removeError);
+    }
     handleError(insertError, 'Could not create blog media');
   }
   if (!row) throw new ApiError('INTERNAL', 'Could not create blog media', 500);

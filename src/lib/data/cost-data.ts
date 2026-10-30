@@ -1,5 +1,6 @@
 import 'server-only';
-import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { z } from 'zod';
+import { ApiError } from '@/lib/errors';
 import type { ParsedCostDataInput } from '@/lib/validation/cost-data';
 
 export type CostDataRow = {
@@ -25,6 +26,10 @@ export type CostDataRow = {
   validFrom: string;
   validTo: string | null;
   updatedAt: string;
+  rowVersion: number;
+  sourceId: string | null;
+  catalogVersionId: string | null;
+  catalogAuthorityId: string | null;
 };
 
 export type CostDataFilters = {
@@ -68,6 +73,10 @@ type DbCostDataRow = {
   valid_from: string;
   valid_to: string | null;
   updated_at: string;
+  row_version: number;
+  source_id: string | null;
+  catalog_version_id: string | null;
+  catalog_authority_id: string | null;
 };
 
 type CostDataFilterQuery<T> = {
@@ -110,7 +119,34 @@ const COST_DATA_SELECT = `
   valid_from,
   valid_to,
   updated_at
+  ,row_version
+  ,source_id
+  ,catalog_version_id
+  ,catalog_authority_id
 `;
+
+type CostMutationContext = {
+  actorId: string;
+  operationId: string;
+  expectedVersion?: number;
+};
+type CostMutationClient = {
+  rpc(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { message?: string } | null }>;
+};
+type CostMutationDeps = { client?: CostMutationClient };
+const mutationResultSchema = z.object({
+  id: z.string().uuid(),
+  row_version: z.number().int().positive(),
+});
+const importResultSchema = z.object({ inserted: z.number().int().nonnegative() });
+
+async function getServiceRoleClient() {
+  const { createSupabaseServiceRoleClient } = await import('@/lib/supabase/service-role');
+  return createSupabaseServiceRoleClient();
+}
 
 export async function listCostDataRows(
   filters: CostDataFilters = {},
@@ -118,7 +154,7 @@ export async function listCostDataRows(
   const pageSize = filters.pageSize ?? 50;
   const page = Math.max(filters.page ?? 1, 1);
   let query = applyCostDataFilters(
-    createSupabaseServiceRoleClient()
+    (await getServiceRoleClient())
       .from('cost_data')
       .select(COST_DATA_SELECT, { count: 'exact' }) as unknown as CostDataQuery,
     filters,
@@ -138,7 +174,7 @@ export async function listCostDataRows(
 }
 
 export async function getCostDataSummary(): Promise<CostDataSummary> {
-  const { data, error } = await createSupabaseServiceRoleClient()
+  const { data, error } = await (await getServiceRoleClient())
     .from('cost_data')
     .select('authority, active, estimate_grade, valid_to');
   if (error) {
@@ -161,52 +197,78 @@ export async function getCostDataSummary(): Promise<CostDataSummary> {
   };
 }
 
-export async function createCostDataRow(input: ParsedCostDataInput): Promise<CostDataRow> {
-  const { data, error } = await createSupabaseServiceRoleClient()
-    .from('cost_data')
-    .insert(toDbWrite(input))
-    .select(COST_DATA_SELECT)
-    .single();
-  if (error) {
-    console.error('createCostDataRow failed', error);
-    throw new Error('Could not create cost-data row');
+async function runCostMutation(
+  action: 'create' | 'update' | 'toggle',
+  payload: Record<string, unknown>,
+  context: CostMutationContext,
+  id: string | null,
+  deps: CostMutationDeps,
+): Promise<{ id: string; rowVersion: number }> {
+  const client = deps.client ?? ((await getServiceRoleClient()) as unknown as CostMutationClient);
+  const { data, error } = await client.rpc('mutate_cost_data', {
+    p_actor_id: context.actorId,
+    p_operation_id: context.operationId,
+    p_action: action,
+    p_entity_id: id,
+    p_expected_version: context.expectedVersion ?? null,
+    p_payload: payload,
+  });
+  const parsed = mutationResultSchema.safeParse(data);
+  if (error || !parsed.success) {
+    throw new ApiError('COST_DATA_MUTATION_FAILED', 'Could not apply cost-data mutation', 409);
   }
-  return toCostDataRow(data as DbCostDataRow);
+  return { id: parsed.data.id, rowVersion: parsed.data.row_version };
+}
+
+export async function createCostDataRow(
+  input: ParsedCostDataInput,
+  context: CostMutationContext,
+  deps: CostMutationDeps = {},
+): Promise<{ id: string; rowVersion: number }> {
+  return runCostMutation('create', toDbWrite(input), context, null, deps);
 }
 
 export async function updateCostDataRow(
   id: string,
   input: ParsedCostDataInput,
-): Promise<CostDataRow> {
-  const { data, error } = await createSupabaseServiceRoleClient()
-    .from('cost_data')
-    .update(toDbWrite(input))
-    .eq('id', id)
-    .select(COST_DATA_SELECT)
-    .single();
-  if (error) {
-    console.error('updateCostDataRow failed', error);
-    throw new Error('Could not update cost-data row');
-  }
-  return toCostDataRow(data as DbCostDataRow);
+  context: CostMutationContext,
+  deps: CostMutationDeps = {},
+): Promise<{ id: string; rowVersion: number }> {
+  return runCostMutation('update', toDbWrite(input), context, id, deps);
 }
 
-export async function setCostDataActive(id: string, active: boolean): Promise<void> {
-  const { error } = await createSupabaseServiceRoleClient()
-    .from('cost_data')
-    .update({ active })
-    .eq('id', id);
-  if (error) {
-    console.error('setCostDataActive failed', error);
-    throw new Error('Could not update cost-data status');
+export async function setCostDataActive(
+  id: string,
+  active: boolean,
+  context: CostMutationContext,
+  deps: CostMutationDeps = {},
+): Promise<{ id: string; rowVersion: number }> {
+  return runCostMutation('toggle', { active }, context, id, deps);
+}
+
+export async function importCostDataRows(
+  rows: ParsedCostDataInput[],
+  context: CostMutationContext,
+  deps: CostMutationDeps = {},
+): Promise<{ inserted: number }> {
+  const client = deps.client ?? ((await getServiceRoleClient()) as unknown as CostMutationClient);
+  const { data, error } = await client.rpc('import_cost_data', {
+    p_actor_id: context.actorId,
+    p_operation_id: context.operationId,
+    p_rows: rows.map(toDbWrite),
+  });
+  const parsed = importResultSchema.safeParse(data);
+  if (error || !parsed.success) {
+    throw new ApiError('COST_DATA_IMPORT_FAILED', 'Could not import cost-data rows', 409);
   }
+  return parsed.data;
 }
 
 export async function listCostDataRowsForExport(
   filters: CostDataFilters = {},
 ): Promise<CostDataRow[]> {
   const { data, error } = await applyCostDataFilters(
-    createSupabaseServiceRoleClient()
+    (await getServiceRoleClient())
       .from('cost_data')
       .select(COST_DATA_SELECT) as unknown as CostDataQuery,
     filters,
@@ -259,6 +321,9 @@ function toDbWrite(input: ParsedCostDataInput) {
     active: input.active,
     valid_from: input.validFrom,
     valid_to: input.validTo,
+    source_id: input.sourceId,
+    catalog_version_id: input.catalogVersionId,
+    catalog_authority_id: input.catalogAuthorityId,
   };
 }
 
@@ -286,5 +351,9 @@ function toCostDataRow(row: DbCostDataRow): CostDataRow {
     validFrom: row.valid_from,
     validTo: row.valid_to,
     updatedAt: row.updated_at,
+    rowVersion: row.row_version,
+    sourceId: row.source_id,
+    catalogVersionId: row.catalog_version_id,
+    catalogAuthorityId: row.catalog_authority_id,
   };
 }

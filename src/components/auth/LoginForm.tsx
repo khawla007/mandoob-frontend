@@ -101,6 +101,7 @@ export function LoginForm() {
         error?: string;
         code?: string;
         redirectTo?: string;
+        requiresMfaChallenge?: boolean;
         details?: { email?: string };
       } | null;
       if (!res.ok || !data?.ok) {
@@ -120,7 +121,14 @@ export function LoginForm() {
       }
       startRouteProgress();
       startTransition(() => {
-        router.replace(loginSuccessDestination(data.redirectTo));
+        const requestedNext = new URLSearchParams(window.location.search).get('next');
+        router.replace(
+          loginSuccessDestination(
+            data.redirectTo,
+            requestedNext,
+            data.requiresMfaChallenge === true,
+          ),
+        );
       });
     } catch {
       showError(tErrors('networkError'));

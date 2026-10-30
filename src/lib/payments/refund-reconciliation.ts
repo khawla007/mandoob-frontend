@@ -65,13 +65,16 @@ export async function reconcilePendingTapRefund(
 
 export function mapTapRefundStatus(status: string): 'pending' | 'succeeded' | 'failed' {
   switch (status.toUpperCase()) {
-    case 'COMPLETED':
-    case 'SUCCEEDED':
     case 'REFUNDED':
       return 'succeeded';
     case 'FAILED':
     case 'DECLINED':
+    case 'REJECTED':
+    case 'RESTRICTED':
+    case 'TIMED_OUT':
+    case 'TIMEDOUT':
     case 'CANCELLED':
+    case 'CANCELED':
       return 'failed';
     default:
       return 'pending';

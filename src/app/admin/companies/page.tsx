@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { CompanyAppliedFilters } from '@/components/admin/CompanyAppliedFilters';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { summarizeVisibleCompanies } from '@/lib/admin-management/company-summaries';
+import { adminCompanyOperationalHref } from '@/lib/operations/admin-navigation';
 import {
   Table,
   TableBody,
@@ -171,6 +172,7 @@ export default async function CompaniesPage({
                     <TableHead>{t('table.status')}</TableHead>
                     <TableHead>{t('table.pro')}</TableHead>
                     <TableHead>{t('table.created')}</TableHead>
+                    <TableHead>{t('operations.label')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -209,6 +211,28 @@ export default async function CompaniesPage({
                       </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">
                         {date.format(new Date(company.createdAt))}
+                      </TableCell>
+                      <TableCell>
+                        <nav
+                          className="flex min-w-72 flex-wrap gap-2"
+                          aria-label={t('operations.companyLabel', {
+                            company: company.companyName,
+                          })}
+                        >
+                          {(['tasks', 'notifications', 'communications'] as const).map((module) => (
+                            <Button
+                              key={module}
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="min-h-11 sm:min-h-9"
+                            >
+                              <Link href={adminCompanyOperationalHref(company.id, module)}>
+                                {t(`operations.${module}`)}
+                              </Link>
+                            </Button>
+                          ))}
+                        </nav>
                       </TableCell>
                     </TableRow>
                   ))}

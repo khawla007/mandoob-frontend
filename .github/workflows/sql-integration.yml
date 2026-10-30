@@ -1,0 +1,47 @@
+name: Isolated SQL Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/sql-integration.yml'
+      - 'package.json'
+      - 'scripts/run-sql-integration.sh'
+      - 'scripts/sql-integration/**'
+      - 'supabase/migrations/**'
+      - 'supabase/tests/event_queue_foundation.sql'
+      - 'supabase/tests/p3_10_operational_runtime.sql'
+      - 'supabase/tests/inbound_webhook_atomic_lifecycle.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sql-integration.yml'
+      - 'package.json'
+      - 'scripts/run-sql-integration.sh'
+      - 'scripts/sql-integration/**'
+      - 'supabase/migrations/**'
+      - 'supabase/tests/event_queue_foundation.sql'
+      - 'supabase/tests/p3_10_operational_runtime.sql'
+      - 'supabase/tests/inbound_webhook_atomic_lifecycle.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sql-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Confirm Docker
+        run: docker version
+
+      - name: Run isolated SQL integration
+        run: npm run test:sql:integration

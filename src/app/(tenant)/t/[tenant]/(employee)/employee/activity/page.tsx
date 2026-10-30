@@ -1,18 +1,35 @@
-import { OperationalUnavailableRoute } from '@/components/operations/OperationalUnavailableRoute';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { OperationalWorkspace } from '@/components/operations/OperationalWorkspace';
+import { EmployeeActivityList } from '@/components/employee/EmployeeP308Sections';
 import { authorizeEmployeePortalRead } from '@/lib/data/employee-portal-workspace';
+import { loadEmployeeActivity } from '@/lib/employees/self-service';
+
+export const dynamic = 'force-dynamic';
 
 export default async function EmployeeActivityPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenant: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { tenant: slug } = await params;
-  await authorizeEmployeePortalRead(slug);
+  const access = await authorizeEmployeePortalRead(slug);
+  const [items, t, locale] = await Promise.all([
+    loadEmployeeActivity(access),
+    getTranslations('p308.employeeSelf'),
+    getLocale(),
+  ]);
   return (
-    <OperationalUnavailableRoute
-      role="employee"
-      module="activity"
-      baseHref={`/t/${encodeURIComponent(slug)}/employee/activity`}
-    />
+    <div className="space-y-5">
+      <EmployeeActivityList items={items} t={t} locale={locale} />
+      <OperationalWorkspace
+        role="employee"
+        module="activity"
+        baseHref={`/t/${encodeURIComponent(slug)}/employee/activity`}
+        tenantSlug={slug}
+        search={await searchParams}
+      />
+    </div>
   );
 }

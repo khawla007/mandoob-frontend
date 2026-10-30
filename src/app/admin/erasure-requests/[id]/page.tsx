@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { randomUUID } from 'node:crypto';
 import { getTranslations } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/require-role';
 import { getErasureRequestDetail } from '@/lib/data/erasure';
@@ -20,6 +21,8 @@ export default async function AdminErasureRequestDetailPage({
   const request = await getErasureRequestDetail(id);
   if (!request) notFound();
   const canReview = request.status === 'submitted' || request.status === 'under_review';
+  const approveOperationId = randomUUID();
+  const rejectOperationId = randomUUID();
 
   return (
     <div className="admin-management-signal admin-operational-workspace erasure-management-workspace space-y-6">
@@ -82,17 +85,21 @@ export default async function AdminErasureRequestDetailPage({
             <ErasureDecisionForms
               requestId={request.id}
               canReview={canReview}
-              approveLabel={t('erasure.detail.approveExecute')}
+              approveLabel={t('erasure.detail.approveDecision')}
               rejectLabel={t('erasure.detail.rejectRequest')}
               rejectionReasonLabel={t('erasure.detail.rejectionReason')}
-              confirmApprove={t('erasure.detail.confirmApprove')}
+              confirmApprove={t('erasure.detail.confirmApproveDecision')}
               confirmReject={t('erasure.detail.confirmReject')}
               approveAction={async (formData) => {
                 'use server';
+                formData.set('expectedVersion', String(request.version));
+                formData.set('operationId', approveOperationId);
                 await approveErasureAction(formData);
               }}
               rejectAction={async (formData) => {
                 'use server';
+                formData.set('expectedVersion', String(request.version));
+                formData.set('operationId', rejectOperationId);
                 await rejectErasureAction(formData);
               }}
             />

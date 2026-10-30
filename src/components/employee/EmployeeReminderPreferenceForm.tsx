@@ -17,15 +17,21 @@ const initialState: EmployeeReminderActionState = { status: 'idle' };
 export function EmployeeReminderPreferenceForm({
   slug,
   enabled,
+  version,
+  operationId,
 }: {
   slug: string;
   enabled: boolean | null;
+  version: number;
+  operationId: string;
 }) {
   const t = useTranslations('employee.settings');
   const action = updateEmployeeReminderPreferenceAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="operation_id" value={operationId} />
+      <input type="hidden" name="expected_version" value={version} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <Checkbox
@@ -54,7 +60,11 @@ export function EmployeeReminderPreferenceForm({
           aria-live="polite"
           className={state.status === 'error' ? 'text-destructive text-sm' : 'text-sm'}
         >
-          {state.status === 'success' ? t('success') : t('error')}
+          {state.status === 'success'
+            ? t('success')
+            : state.status === 'conflict'
+              ? t('conflict')
+              : t('error')}
         </p>
       ) : null}
     </form>

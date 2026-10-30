@@ -13,6 +13,7 @@
 ### Task 1: Smooth the zero-gap contact-bar collapse
 
 **Files:**
+
 - Modify: `src/components/site/public-navigation.test.ts:272-305`
 - Modify: `src/app/(public)/public-theme.css:448-505`
 
@@ -103,4 +104,3 @@ Scroll back to the top and confirm the reverse motion contains intermediate posi
 git add 'src/app/(public)/public-theme.css' src/components/site/public-navigation.test.ts
 git commit -m "fix(public): smooth sticky header collapse"
 ```
-

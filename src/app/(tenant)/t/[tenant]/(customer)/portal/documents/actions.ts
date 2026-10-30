@@ -3,9 +3,11 @@
 import 'server-only';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
+import { logSafeActionError } from '@/lib/actions/server-action-security';
 import { ApiError } from '@/lib/errors';
 import { requireAuthorizedCustomerLinkedCompanyRead } from '@/lib/data/customer-company-access';
-import { getCompanyDocumentSignedUrl, uploadDocument } from '@/lib/data/documents';
+import { submitCustomerDocumentUpload } from '@/lib/data/customer-document-upload';
+import { getCompanyDocumentSignedUrl } from '@/lib/data/documents';
 import { customerUploadActionSchema } from '@/lib/validation/document';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -20,6 +22,7 @@ export type CustomerDocumentActionCode =
   | 'PAYLOAD_TOO_LARGE'
   | 'FILE_REJECTED_BY_SCAN'
   | 'SCANNER_UNAVAILABLE'
+  | 'OPERATION_REUSED'
   | 'DOCUMENT_UNAVAILABLE'
   | 'UPLOAD_FAILED'
   | 'OPEN_FAILED';
@@ -59,6 +62,8 @@ function safeCustomerDocumentError(
     PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
     FILE_REJECTED_BY_SCAN: 'FILE_REJECTED_BY_SCAN',
     SCANNER_UNAVAILABLE: 'SCANNER_UNAVAILABLE',
+    CONFLICT: 'OPERATION_REUSED',
+    MALWARE_DETECTED: 'FILE_REJECTED_BY_SCAN',
     FORBIDDEN: 'DOCUMENT_UNAVAILABLE',
     NOT_FOUND: 'DOCUMENT_UNAVAILABLE',
     NO_LINKED_COMPANY: 'DOCUMENT_UNAVAILABLE',
@@ -66,37 +71,18 @@ function safeCustomerDocumentError(
   return { ok: false, code: safeCodes[error.code] ?? fallback };
 }
 
-async function assertRequestBelongsToCompany(args: {
-  tenantId: string;
-  companyId: string;
-  requestId: string;
-}): Promise<void> {
-  // RLS on document_requests scopes customer reads to their linked company.
-  // A null result = either the request does not exist or it belongs to a
-  // different company/tenant. Either way, deny with FORBIDDEN.
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('document_requests')
-    .select('id, status')
-    .eq('id', args.requestId)
-    .eq('tenant_id', args.tenantId)
-    .eq('company_id', args.companyId)
-    .maybeSingle();
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-  if (!data) {
-    throw new ApiError('FORBIDDEN', 'Request not found for this company', 403);
-  }
-  if (data.status !== 'pending') {
-    throw new ApiError('FORBIDDEN', 'Request is not awaiting upload', 403);
-  }
-}
-
 export async function uploadDocumentAction(
   slug: string,
   formData: FormData,
 ): Promise<ActionResult<{ documentId: string; versionId: string }>> {
   try {
-    const ctx = await resolveCustomerCallerCtx(slug);
+    const access = await requireAuthorizedCustomerLinkedCompanyRead(slug);
+    const authority = {
+      actorId: access.session.id,
+      tenantId: access.tenant.id,
+      companyId: access.company.id,
+    };
+    const hdr = await headers();
     const file = formData.get('file');
     if (!(file instanceof File)) {
       return { ok: false, code: 'PAYLOAD_EMPTY' };
@@ -104,6 +90,7 @@ export async function uploadDocumentAction(
 
     const parsed = customerUploadActionSchema.safeParse({
       doc_type: formData.get('doc_type'),
+      operation_id: formData.get('operation_id'),
       request_id: formData.get('request_id') ?? undefined,
       label: formData.get('label') ?? undefined,
     });
@@ -111,33 +98,9 @@ export async function uploadDocumentAction(
       return { ok: false, code: 'VALIDATION_FAILED' };
     }
 
-    if (parsed.data.request_id) {
-      await assertRequestBelongsToCompany({
-        tenantId: ctx.tenant.id,
-        companyId: ctx.linkedCompanyId,
-        requestId: parsed.data.request_id,
-      });
-    }
-
-    const bytes = new Uint8Array(await file.arrayBuffer());
-
-    const result = await uploadDocument({
-      tenantId: ctx.tenant.id,
-      companyId: ctx.linkedCompanyId,
-      docType: parsed.data.doc_type,
-      requestId: parsed.data.request_id,
-      label: parsed.data.label,
-      file: {
-        data: bytes,
-        originalName: file.name || 'upload',
-        mimeType: file.type || 'application/octet-stream',
-      },
-      actor: {
-        id: ctx.caller.id,
-        role: 'customer',
-        ip: ctx.ip,
-        userAgent: ctx.userAgent,
-      },
+    const result = await submitCustomerDocumentUpload(authority, parsed.data, file, {
+      ip: hdr.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+      userAgent: hdr.get('user-agent'),
     });
 
     revalidatePath(`/t/${slug}/portal/documents`);
@@ -149,7 +112,7 @@ export async function uploadDocumentAction(
     };
   } catch (e) {
     if (e instanceof ApiError) return safeCustomerDocumentError(e, 'UPLOAD_FAILED');
-    console.error('uploadDocumentAction unexpected error', e);
+    logSafeActionError('customer.document.upload', e);
     return { ok: false, code: 'UPLOAD_FAILED' };
   }
 }
@@ -190,11 +153,16 @@ export async function getCustomerDocumentSignedUrlAction(
       throw new ApiError('FORBIDDEN', 'Version not accessible', 403);
     }
 
-    const signed = await getCompanyDocumentSignedUrl(ctx.tenant.id, ctx.linkedCompanyId, versionId);
+    const signed = await getCompanyDocumentSignedUrl(
+      ctx.caller.id,
+      ctx.tenant.id,
+      ctx.linkedCompanyId,
+      versionId,
+    );
     return { ok: true, data: signed };
   } catch (e) {
     if (e instanceof ApiError) return safeCustomerDocumentError(e, 'OPEN_FAILED');
-    console.error('getCustomerDocumentSignedUrlAction unexpected error', e);
+    logSafeActionError('customer.document.open', e);
     return { ok: false, code: 'OPEN_FAILED' };
   }
 }

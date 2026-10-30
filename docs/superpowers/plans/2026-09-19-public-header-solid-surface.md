@@ -13,6 +13,7 @@
 ### Task 1: Make the shared navigation surface opaque
 
 **Files:**
+
 - Modify: `src/components/site/public-theme.test.ts`
 - Modify: `src/app/(public)/public-theme.css`
 
@@ -28,13 +29,7 @@ renderTest('sticky public header surfaces preserve their colors without transpar
   const values = [...css.matchAll(/--public-header-surface:\s*([^;]+);/gu)].map((match) =>
     match[1].trim(),
   );
-  assert.deepEqual(values, [
-    '#fff',
-    '#0a0a0a',
-    'rgb(255 255 255)',
-    'rgb(24 24 27)',
-    'inherit',
-  ]);
+  assert.deepEqual(values, ['#fff', '#0a0a0a', 'rgb(255 255 255)', 'rgb(24 24 27)', 'inherit']);
   assert.doesNotMatch(css, /--public-header-surface:[^;]*(?:rgba|\/\s*85%|0\.85)/u);
 });
 ```

@@ -26,8 +26,13 @@ test('Categories has scoped operational panels, field geometry and logical actio
 test('Taxonomy native form payload, confirmation, failure and pending contracts stay exact', () => {
   for (const name of ['kind', 'name', 'slug', 'sortOrder', 'description'])
     assert.equal((manager.match(new RegExp(`name="${name}"`, 'g')) ?? []).length, 2);
+  assert.match(manager, /formData.set\('operationId', crypto.randomUUID\(\)\)/);
+  assert.match(manager, /formData.set\('expectedVersion', String\(current.rowVersion \?\? 1\)\)/);
   assert.match(manager, /saveBlogTermAction\(id, formData\)/);
-  assert.match(manager, /deleteBlogTermAction\(term.id\)/);
+  assert.match(
+    manager,
+    /deleteBlogTermAction\(term.id, crypto.randomUUID\(\), term.rowVersion \?\? 1\)/,
+  );
   assert.match(manager, /window.confirm\(t\('deleteConfirm'/);
   assert.match(manager, /if \(!confirmed\) return/);
   assert.match(manager, /if \(!id\) form.reset\(\)/);

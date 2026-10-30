@@ -3,10 +3,11 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { Window } from 'happy-dom';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 
 if (process.env.ERASURE_DECISION_CHILD === '1') {
   const browser = new Window({ url: 'https://app.example.test/admin/erasure-requests/request-id' });
-  Object.assign(globalThis, {
+  installDomGlobals({
     window: browser,
     document: browser.document,
     navigator: browser.navigator,
@@ -27,7 +28,7 @@ if (process.env.ERASURE_DECISION_CHILD === '1') {
         import('@/messages/en.json').then((module) => module.default),
       ]);
     const prompts: string[] = [];
-    Object.assign(globalThis, {
+    installDomGlobals({
       confirm: (message: string) => {
         prompts.push(message);
         return false;
@@ -47,10 +48,10 @@ if (process.env.ERASURE_DECISION_CHILD === '1') {
         createElement(ErasureDecisionForms, {
           requestId: '11111111-1111-4111-8111-111111111111',
           canReview: true,
-          approveLabel: messages.admin.erasure.detail.approveExecute,
+          approveLabel: messages.admin.erasure.detail.approveDecision,
           rejectLabel: messages.admin.erasure.detail.rejectRequest,
           rejectionReasonLabel: messages.admin.erasure.detail.rejectionReason,
-          confirmApprove: messages.admin.erasure.detail.confirmApprove,
+          confirmApprove: messages.admin.erasure.detail.confirmApproveDecision,
           confirmReject: messages.admin.erasure.detail.confirmReject,
           approveAction: action,
           rejectAction: action,
@@ -66,10 +67,10 @@ if (process.env.ERASURE_DECISION_CHILD === '1') {
     }
     assert.equal(actions, 0);
     assert.deepEqual(prompts, [
-      messages.admin.erasure.detail.confirmApprove,
+      messages.admin.erasure.detail.confirmApproveDecision,
       messages.admin.erasure.detail.confirmReject,
     ]);
-    Object.assign(globalThis, { confirm: () => true });
+    installDomGlobals({ confirm: () => true });
     await act(async () => {
       forms[0].dispatchEvent(
         new browser.Event('submit', { bubbles: true, cancelable: true }) as unknown as Event,

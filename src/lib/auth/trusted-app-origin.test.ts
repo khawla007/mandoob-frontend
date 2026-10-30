@@ -135,14 +135,20 @@ test('allows only exact explicitly guarded loopback acceptance origins in produc
 test('documents and validates the configured application origin', () => {
   const example = readFileSync(new URL('../../../.env.example', import.meta.url), 'utf8');
   const envContract = readFileSync(new URL('../env.ts', import.meta.url), 'utf8');
+  const acceptanceOrigins = readFileSync(
+    new URL('../local-acceptance-origin.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.match(example, /^NEXT_PUBLIC_APP_URL=/mu);
   assert.match(envContract, /NEXT_PUBLIC_APP_URL:/u);
   assert.match(envContract, /process\.env\.NODE_ENV === 'production'/u);
   assert.match(envContract, /productionAppUrl/u);
   assert.match(envContract, /must use HTTPS in production/u);
-  assert.match(envContract, /P112_ACCEPTANCE_LOCAL_ONLY/u);
-  assert.match(envContract, /http:\/\/127\.0\.0\.1:3001/u);
-  assert.match(envContract, /P2_ACCEPTANCE_LOCAL_ONLY/u);
-  assert.match(envContract, /http:\/\/127\.0\.0\.1:3100/u);
+  assert.match(acceptanceOrigins, /P112_ACCEPTANCE_LOCAL_ONLY/u);
+  assert.match(acceptanceOrigins, /http:\/\/127\.0\.0\.1:3001/u);
+  assert.match(acceptanceOrigins, /P2_ACCEPTANCE_LOCAL_ONLY/u);
+  assert.match(acceptanceOrigins, /http:\/\/127\.0\.0\.1:3100/u);
+  assert.match(acceptanceOrigins, /P3_13_ACCEPTANCE_LOCAL_ONLY/u);
+  assert.match(acceptanceOrigins, /http:\/\/127\.0\.0\.1:3113/u);
 });

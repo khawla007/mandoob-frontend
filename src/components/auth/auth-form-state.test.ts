@@ -87,6 +87,12 @@ test('login permits only the fixed MFA re-enrollment query handoff', () => {
   assert.equal(loginSuccessDestination('/admin'), '/admin');
   assert.equal(loginSuccessDestination('/mfa/enroll'), '/');
   assert.equal(loginSuccessDestination('https://evil.example'), '/');
+  assert.equal(loginSuccessDestination('/admin', '/admin', true), '/mfa/challenge?next=%2Fadmin');
+  assert.equal(loginSuccessDestination('/account', '/t/acme/portal', false), '/t/acme/portal');
+  assert.equal(
+    loginSuccessDestination('/admin', 'https://evil.example', true),
+    '/mfa/challenge?next=%2Fadmin',
+  );
 });
 
 test('registration maps duplicate, verification, security, rate and unknown codes safely', () => {

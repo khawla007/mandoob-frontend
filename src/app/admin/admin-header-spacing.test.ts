@@ -27,10 +27,8 @@ const directSpacingSurfaces = [
   'src/app/admin/settings/layout.tsx',
 ] as const;
 
-const sharedUnavailableSurfaces = [
+const sharedOperationalSurfaces = [
   'src/app/admin/tasks/page.tsx',
-  'src/app/admin/calendar/page.tsx',
-  'src/app/admin/meetings/page.tsx',
   'src/app/admin/communications/page.tsx',
   'src/app/admin/notifications/page.tsx',
 ] as const;
@@ -40,14 +38,16 @@ test('every primary Admin surface after Editorial declares the 1.5rem header rhy
     assert.match(read(path), /space-y-6/u, path);
   }
 
-  for (const path of sharedUnavailableSurfaces) {
-    assert.match(read(path), /OperationalUnavailableRoute/u, path);
+  for (const path of sharedOperationalSurfaces) {
+    assert.match(read(path), /OperationalWorkspace/u, path);
   }
 
   assert.match(
-    read('src/components/operations/OperationalUnavailableWorkspace.tsx'),
+    read('src/components/operations/OperationalWorkspace.tsx'),
     /className="signal-dashboard min-w-0 space-y-6"/u,
   );
+  assert.match(read('src/app/admin/meetings/page.tsx'), /min-w-0 space-y-6/u);
+  assert.match(read('src/app/admin/calendar/page.tsx'), /AdminMeetingsPage/u);
 });
 
 test('scoped Business and operational heading styles do not erase the declared spacing', () => {

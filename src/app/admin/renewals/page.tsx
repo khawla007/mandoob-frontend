@@ -3,10 +3,24 @@ import { getTranslations } from 'next-intl/server';
 import { AdminOversightWorkspace } from '@/components/admin/management/AdminOversightWorkspace';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { requirePlatformOperator } from '@/lib/auth/require-role';
+import { AdminRenewalTable } from '@/components/admin/management/P308OversightTables';
+import { loadAdminRenewalOversight } from '@/lib/renewals/admin-oversight';
 
-export default async function AdminRenewalsPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function AdminRenewalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requirePlatformOperator();
-  const t = await getTranslations('admin.management.renewals');
+  const raw = (await searchParams).page;
+  const page = Math.min(10_000, Math.max(1, Number(Array.isArray(raw) ? raw[0] : raw) || 1));
+  const [t, p, oversight] = await Promise.all([
+    getTranslations('admin.management.renewals'),
+    getTranslations('p308.adminRenewals'),
+    loadAdminRenewalOversight(page),
+  ]);
 
   return (
     <div className="admin-management-signal admin-operational-workspace admin-operational-unavailable-workspace admin-oversight-workspace space-y-6">
@@ -16,18 +30,22 @@ export default async function AdminRenewalsPage() {
         description={t('description')}
         className="admin-operational-heading"
       />
-      <AdminOversightWorkspace
-        summaries={[t('summaries.overdue'), t('summaries.week'), t('summaries.days90')]}
-        filters={[t('filters.entity'), t('filters.type'), t('filters.status')]}
-        queueTitle={t('queueTitle')}
-        queueDescription={t('queueDescription')}
-        stateGuidance={t('guidance')}
-        unavailableTitle={t('unavailableTitle')}
-        unavailableLabel={t('unavailableTitle')}
-        unavailableDescription={t('unavailableDescription')}
-        actionLabel={t('action')}
-        actionExplanation={t('actionExplanation')}
-      />
+      {oversight.state === 'data' ? (
+        <AdminRenewalTable {...oversight} t={p} />
+      ) : (
+        <AdminOversightWorkspace
+          summaries={[t('summaries.overdue'), t('summaries.week'), t('summaries.days90')]}
+          filters={[t('filters.entity'), t('filters.type'), t('filters.status')]}
+          queueTitle={t('queueTitle')}
+          queueDescription={t('queueDescription')}
+          stateGuidance={t('guidance')}
+          unavailableTitle={t('unavailableTitle')}
+          unavailableLabel={t('unavailableTitle')}
+          unavailableDescription={t('unavailableDescription')}
+          actionLabel={t('action')}
+          actionExplanation={t('actionExplanation')}
+        />
+      )}
     </div>
   );
 }

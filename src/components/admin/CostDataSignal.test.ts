@@ -92,13 +92,22 @@ test('Cost Data dialogs are scoped, localized, viewport-scrollable working forms
   ]) {
     assert.ok(dialog.includes('"' + field + '"'), field);
   }
-  assert.match(dialog, /updateCostDataAction\(\{ \.\.\.payload, id: row.id \}\)/u);
-  assert.match(dialog, /createCostDataAction\(payload\)/u);
+  assert.match(
+    dialog,
+    /updateCostDataAction\(\{[\s\S]*\.\.\.payload,[\s\S]*id: row\.id,[\s\S]*operationId: crypto\.randomUUID\(\),[\s\S]*expectedVersion: row\.rowVersion,[\s\S]*\}\)/u,
+  );
+  assert.match(
+    dialog,
+    /createCostDataAction\(\{ \.\.\.payload, operationId: crypto\.randomUUID\(\) \}\)/u,
+  );
 });
 
 test('Cost Data status and partial import result contracts remain exact', () => {
   const status = read('src/components/admin/CostDataStatusButton.tsx');
-  assert.match(status, /toggleCostDataAction\(\{ id, active: !active \}\)/u);
+  assert.match(
+    status,
+    /toggleCostDataAction\(\{[\s\S]*id,[\s\S]*active: !active,[\s\S]*operationId: crypto\.randomUUID\(\),[\s\S]*expectedVersion: rowVersion,[\s\S]*\}\)/u,
+  );
   assert.match(status, /disabled=\{pending\}/u);
   assert.match(status, /router\.refresh\(\)/u);
   const imported = read('src/components/admin/CostDataImportDialog.tsx');

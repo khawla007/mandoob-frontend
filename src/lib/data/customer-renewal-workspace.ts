@@ -8,6 +8,7 @@ import {
 } from '@/lib/data/customer-company-access';
 import { addSignalDays, signalBusinessDate, signalDaysBetween } from '@/lib/data/signal-finance';
 import type { RenewalStatus, RenewalType } from '@/lib/data/renewals';
+import { RENEWAL_TYPES } from '@/lib/validation/renewal';
 
 export const CUSTOMER_RENEWAL_PAGE_SIZE = 25;
 const ACTIVE_STATUSES: RenewalStatus[] = ['upcoming', 'due_soon', 'overdue'];
@@ -24,7 +25,7 @@ const searchSchema = z.object({
   bucket: z
     .enum(['active', 'overdue', 'due-soon', 'upcoming', 'completed', 'cancelled', 'missing-date'])
     .optional(),
-  type: z.enum(['all', 'license', 'visa', 'eid', 'ejari']).optional(),
+  type: z.enum(['all', ...RENEWAL_TYPES]).optional(),
   q: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).max(10_000).optional(),
   focus: z.string().uuid().optional(),
@@ -45,7 +46,8 @@ export type CustomerRenewalDbRow = {
   label: string;
   due_date: string | null;
   status: RenewalStatus;
-  source: 'license_backfill' | 'manual';
+  stage?: string | null;
+  source: 'license_backfill' | 'manual' | 'company_onboarding';
   completed_at: string | null;
 };
 export type CustomerRenewalRow = {
@@ -54,6 +56,7 @@ export type CustomerRenewalRow = {
   label: string;
   dueDate: string | null;
   status: RenewalStatus;
+  stage: string | null;
   source: CustomerRenewalDbRow['source'];
   completedAt: string | null;
   bucket: Exclude<CustomerRenewalBucket, 'active'>;
@@ -298,6 +301,7 @@ export async function listCustomerRenewals(
       label: row.label,
       dueDate,
       status: row.status,
+      stage: row.stage ?? null,
       source: row.source,
       completedAt: row.completed_at,
       bucket: classifyCustomerRenewalBucket(dueDate, row.status, today),
@@ -370,7 +374,7 @@ export function createCustomerRenewalSupabaseStore(
           client
             .from('renewals')
             .select(
-              'id, tenant_id, company_id, employee_id, type, label, due_date, status, source, completed_at',
+              'id, tenant_id, company_id, employee_id, type, label, due_date, status, stage, source, completed_at',
               { count: 'exact' },
             ),
           { tenantId, companyId },

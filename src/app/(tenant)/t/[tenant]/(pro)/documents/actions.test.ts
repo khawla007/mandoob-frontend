@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/errors';
 import {
   runLoadVersionHistoryAction,
   runOpenDocumentVersionAction,
+  runRequestDocumentBatchAction,
   runRequestDocumentCenterAction,
   runReviewDocumentCenterAction,
   runSetDocumentExpiryAction,
@@ -48,12 +49,16 @@ function setup(overrides: Partial<DocumentCenterActionDependencies> = {}) {
       calls.push(`request:${ctx.tenantId}:${ctx.actorId}:${ctx.role}`);
       return { id: REQUEST_ID, companyId: COMPANY_ID };
     },
-    reviewVersion: async (companyId, versionId, ctx) => {
+    createBatch: async (ctx, input) => {
+      calls.push(`batch:${ctx.tenantId}:${ctx.actorId}:${ctx.companyId}:${input.operationId}`);
+      return { operationId: input.operationId, requestIds: [REQUEST_ID], replayed: false };
+    },
+    reviewVersion: async (companyId, versionId, _provenance, ctx) => {
       calls.push(`review:${ctx.tenantId}:${companyId}:${versionId}`);
       return { companyId: COMPANY_ID };
     },
-    openVersion: async (tenantId, companyId, versionId) => {
-      calls.push(`open:${tenantId}:${companyId}:${versionId}`);
+    openVersion: async (actorId, tenantId, companyId, versionId) => {
+      calls.push(`open:${actorId}:${tenantId}:${companyId}:${versionId}`);
       return {
         url: 'https://storage.test/signed',
         expiresAt: '2026-08-14T12:05:00.000Z',
@@ -102,9 +107,139 @@ function requestForm() {
   return form;
 }
 
+function batchRequestForm() {
+  const form = new FormData();
+  form.append('operation_id', '88888888-8888-4888-8888-888888888888');
+  form.append(
+    'items',
+    JSON.stringify([
+      { doc_type: 'passport', label: 'Passport' },
+      { doc_type: 'other', custom_type_label: 'Board resolution', label: 'Signed resolution' },
+    ]),
+  );
+  form.append('company_id', OTHER_TENANT_ID);
+  return form;
+}
+
+test('batch request authorizes exact assigned company before reading and atomically mutating', async () => {
+  let received: unknown;
+  const context = setup({
+    createBatch: async (authorization, input) => {
+      received = { authorization, input };
+      return {
+        operationId: input.operationId,
+        requestIds: [REQUEST_ID, VERSION_ID],
+        replayed: false,
+      };
+    },
+  });
+  const result = await runRequestDocumentBatchAction(
+    'acme',
+    null,
+    batchRequestForm(),
+    context.dependencies,
+  );
+  assert.deepEqual(result, {
+    ok: true,
+    code: 'SUCCESS',
+    data: {
+      operationId: '88888888-8888-4888-8888-888888888888',
+      requestIds: [REQUEST_ID, VERSION_ID],
+    },
+  });
+  assert.deepEqual(received, {
+    authorization: {
+      tenantId: TENANT_ID,
+      actorId: ACTOR_ID,
+      companyId: COMPANY_ID,
+      role: 'pro',
+    },
+    input: {
+      operationId: '88888888-8888-4888-8888-888888888888',
+      items: [
+        { doc_type: 'passport', label: 'Passport' },
+        { doc_type: 'other', custom_type_label: 'Board resolution', label: 'Signed resolution' },
+      ],
+    },
+  });
+  assert.deepEqual(context.calls.slice(0, 5), [
+    'auth',
+    'tenant:acme',
+    `active:${TENANT_ID}`,
+    'headers',
+    `company:${ACTOR_ID}:acme`,
+  ]);
+  assert.deepEqual(
+    context.calls.filter((call) => call.startsWith('revalidate:')),
+    ['revalidate:/t/acme/documents', 'revalidate:/t/acme/company', 'revalidate:/t/acme/dashboard'],
+  );
+});
+
+test('batch request rejects invalid bodies after authority and maps operation conflicts safely', async () => {
+  let mutations = 0;
+  const invalid = setup({
+    createBatch: async () => {
+      mutations += 1;
+      throw new Error('must not run');
+    },
+  });
+  const form = batchRequestForm();
+  form.set('items', '[]');
+  const invalidResult = await runRequestDocumentBatchAction(
+    'acme',
+    null,
+    form,
+    invalid.dependencies,
+  );
+  assert.deepEqual(invalidResult, {
+    ok: false,
+    code: 'VALIDATION_FAILED',
+    messageKey: 'documents.errors.validation',
+  });
+  assert.equal(mutations, 0);
+  assert.deepEqual(invalid.calls.slice(0, 5), [
+    'auth',
+    'tenant:acme',
+    `active:${TENANT_ID}`,
+    'headers',
+    `company:${ACTOR_ID}:acme`,
+  ]);
+
+  const conflict = setup({
+    createBatch: async () => {
+      throw new ApiError('CONFLICT', 'raw earlier operation payload', 409);
+    },
+  });
+  assert.deepEqual(
+    await runRequestDocumentBatchAction('acme', null, batchRequestForm(), conflict.dependencies),
+    { ok: false, code: 'CONFLICT', messageKey: 'documents.errors.conflict' },
+  );
+  assert.equal(conflict.calls.includes('logged'), false);
+
+  for (const [code, status, expected] of [
+    ['VALIDATION_FAILED', 400, 'documents.errors.validation'],
+    ['FORBIDDEN', 403, 'documents.errors.forbidden'],
+    ['CONFLICT', 409, 'documents.errors.conflict'],
+  ] as const) {
+    const mapped = setup({
+      createBatch: async () => {
+        throw new ApiError(code, 'private database detail', status);
+      },
+    });
+    assert.deepEqual(
+      await runRequestDocumentBatchAction('acme', null, batchRequestForm(), mapped.dependencies),
+      { ok: false, code, messageKey: expected },
+    );
+    assert.equal(mapped.calls.includes('logged'), false);
+  }
+});
+
 function reviewForm() {
   const form = new FormData();
+  form.append('document_id', DOCUMENT_ID);
   form.append('version_id', VERSION_ID);
+  form.append('expected_head_version_id', VERSION_ID);
+  form.append('expected_review_status', 'pending');
   form.append('company_id', COMPANY_ID);
   form.append('status', 'approved');
   form.append('note', 'Readable');
@@ -114,6 +249,8 @@ function reviewForm() {
 function expiryForm() {
   const form = new FormData();
   form.append('document_id', DOCUMENT_ID);
+  form.append('expected_head_version_id', VERSION_ID);
+  form.append('expected_expires_on', '2027-08-01');
   form.append('company_id', COMPANY_ID);
   form.append('expires_on', '2027-08-31');
   return form;
@@ -247,13 +384,14 @@ for (const action of actionOrderCases) {
   });
 }
 
-test('firm actions module exports only the five public Server Actions', () => {
+test('firm actions module exports only the six public Server Actions', () => {
   const source = readFileSync(join(import.meta.dirname, 'actions.ts'), 'utf8');
   const exportedFunctions = [...source.matchAll(/export async function (\w+)/gu)].map(
     (match) => match[1],
   );
   assert.deepEqual(exportedFunctions, [
     'requestDocumentCenterAction',
+    'requestDocumentBatchAction',
     'reviewDocumentCenterAction',
     'openDocumentVersionAction',
     'loadVersionHistoryAction',
@@ -292,7 +430,54 @@ test('review and expiry actions pass only the server-resolved assigned company t
   }
 });
 
-test('open and history pass the live assigned company into their DAL ownership boundary', async () => {
+test('review and expiry forward the exact client-observed mutation provenance', async () => {
+  let reviewProvenance: unknown;
+  let expiryInput: unknown;
+  const context = setup({
+    reviewVersion: async (_companyId, _versionId, provenance) => {
+      reviewProvenance = provenance;
+      return { companyId: COMPANY_ID };
+    },
+    setExpiry: async (_companyId, _ctx, input) => {
+      expiryInput = input;
+      return { companyId: COMPANY_ID };
+    },
+  });
+
+  assert.equal(
+    (await runReviewDocumentCenterAction('acme', null, reviewForm(), context.dependencies)).ok,
+    true,
+  );
+  assert.deepEqual(reviewProvenance, {
+    documentId: DOCUMENT_ID,
+    expectedHeadVersionId: VERSION_ID,
+    expectedReviewStatus: 'pending',
+  });
+
+  assert.equal(
+    (await runSetDocumentExpiryAction('acme', null, expiryForm(), context.dependencies)).ok,
+    true,
+  );
+  assert.deepEqual(expiryInput, {
+    document_id: DOCUMENT_ID,
+    expected_head_version_id: VERSION_ID,
+    expected_expires_on: '2027-08-01',
+    expires_on: '2027-08-31',
+  });
+});
+
+test('document action controls submit immutable observed review/head/expiry tokens', () => {
+  const source = readFileSync(
+    join(process.cwd(), 'src/components/pro/documents/DocumentActions.tsx'),
+    'utf8',
+  );
+  assert.match(source, /name="expected_review_status" value="pending"/u);
+  assert.equal((source.match(/name="expected_head_version_id"/gu) ?? []).length, 4);
+  assert.equal((source.match(/name="expected_expires_on"/gu) ?? []).length, 2);
+  assert.equal((source.match(/name="document_id"/gu) ?? []).length, 4);
+});
+
+test('open passes the authenticated actor and live assigned scope into the DAL ownership boundary', async () => {
   const opened: string[][] = [];
   const histories: string[][] = [];
   const context = setup({
@@ -309,8 +494,27 @@ test('open and history pass the live assigned company into their DAL ownership b
   await runOpenDocumentVersionAction('acme', VERSION_ID, context.dependencies);
   await runLoadVersionHistoryAction('acme', DOCUMENT_ID, context.dependencies);
 
-  assert.deepEqual(opened, [[TENANT_ID, COMPANY_ID, VERSION_ID]]);
+  assert.deepEqual(opened, [[ACTOR_ID, TENANT_ID, COMPANY_ID, VERSION_ID]]);
   assert.deepEqual(histories, [[TENANT_ID, COMPANY_ID, DOCUMENT_ID]]);
+});
+
+test('a document-access DAL failure is serialized without provider or path detail', async () => {
+  const raw = 'signed token secret at tenant-documents/private/path.pdf';
+  const context = setup({
+    openVersion: async () => {
+      throw new ApiError('DOCUMENT_ACCESS_FAILED', raw, 503);
+    },
+  });
+
+  const result = await runOpenDocumentVersionAction('acme', VERSION_ID, context.dependencies);
+
+  assert.deepEqual(result, {
+    ok: false,
+    code: 'DOCUMENT_ACCESS_FAILED',
+    messageKey: 'documents.errors.openFailed',
+  });
+  assert.doesNotMatch(JSON.stringify(result), /signed token|tenant-documents|private\/path/u);
+  assert.equal(context.calls.includes('logged'), false);
 });
 
 test('firm action logic module is server-only without becoming a Server Function', () => {

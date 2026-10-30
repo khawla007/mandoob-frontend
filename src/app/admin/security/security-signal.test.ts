@@ -26,6 +26,6 @@ test('Security authorization, dashboard loader, and unlock confirmation contract
   assert.match(page, /await loadSecurityDashboard\(\)/u);
   assert.match(page, /<LockedAccountsTable rows=\{data\.lockedAccounts\} \/>/u);
   assert.match(locked, /if \(!confirm\(t\('user\.lockedAccounts\.confirmUnlock'/u);
-  assert.match(locked, /unlockAccountAction\(\{ key \}\)/u);
+  assert.match(locked, /unlockAccountAction\(\{ key, operationId: crypto\.randomUUID\(\) \}\)/u);
   assert.match(locked, /disabled=\{pending\}/u);
 });

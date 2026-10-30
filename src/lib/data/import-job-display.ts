@@ -13,6 +13,20 @@ const IMPORT_ERROR_CODES = new Set([
   'DUPLICATE_SKIPPED',
   'INSERT_FAILED',
   'CANCELLED',
+  'INVALID_FORMAT',
+  'INVALID_LENGTH',
+  'DUPLICATE_IN_FILE',
+  'DUPLICATE_EXISTING',
+] as const);
+
+const IMPORT_FAILURE_CODES = new Set([
+  'ASSIGNMENT_RELEASED',
+  'IMPORT_ARTIFACT_MISMATCH',
+  'IMPORT_ARTIFACT_INVALID',
+  'IMPORT_ARTIFACT_MISSING',
+  'IMPORT_ARTIFACT_UNREADABLE',
+  'IMPORT_BATCH_REJECTED',
+  'IMPORT_ATTEMPTS_EXHAUSTED',
 ] as const);
 
 const IMPORT_FIELDS = new Set([
@@ -25,6 +39,7 @@ const IMPORT_FIELDS = new Set([
   'visa_expiry',
   'emirates_id',
   'eid_expiry',
+  'job_title',
   'row',
   'job',
 ] as const);
@@ -39,4 +54,8 @@ export function safeImportErrorCode(value: unknown) {
 
 export function safeImportField(value: unknown) {
   return typeof value === 'string' && IMPORT_FIELDS.has(value as never) ? value : 'unknown';
+}
+
+export function safeImportFailureCode(value: unknown) {
+  return typeof value === 'string' && IMPORT_FAILURE_CODES.has(value as never) ? value : 'UNKNOWN';
 }

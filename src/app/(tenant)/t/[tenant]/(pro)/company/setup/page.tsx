@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
+import { enforcePrivilegedSession } from '@/lib/auth/require-role';
 import { readCompanyOnboarding } from '@/lib/data/company-onboarding';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import {
@@ -17,6 +18,7 @@ export default async function CompanySetupIndex({
 }) {
   const { tenant: slug } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await enforcePrivilegedSession(session);
   if (!isCompanyOnboardingTenantStatusAllowed(tenant.status)) notFound();
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company) notFound();

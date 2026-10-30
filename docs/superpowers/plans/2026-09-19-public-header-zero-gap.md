@@ -13,6 +13,7 @@
 ### Task 1: Make the collapsed contact bar occupy zero layout space
 
 **Files:**
+
 - Modify: `src/components/site/public-navigation.test.ts:275-300`
 - Modify: `src/app/(public)/public-theme.css:499-502`
 

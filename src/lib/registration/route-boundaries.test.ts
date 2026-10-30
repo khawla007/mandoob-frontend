@@ -10,7 +10,9 @@ test('Admin registration routes authorize directly and validate detail identity'
     read('app/admin/registrations/[registrationId]/page.tsx'),
   ]);
   assert.match(index, /requirePlatformOperator\(\)/u);
-  assert.match(index, /loadRegistrationIndex\(\)/u);
+  // Admin index reads the filtered/paginated summary list via the operator
+  // index loader (not the id-composition loadRegistrationIndex()).
+  assert.match(index, /loadAdminRegistrationIndex\(/u);
   assert.match(detail, /requirePlatformOperator\(\)/u);
   assert.match(detail, /z\.string\(\)\.uuid\(\)/u);
   assert.match(detail, /registrationId/u);
@@ -50,7 +52,10 @@ test('Customer registration is linked-Company read-only and independently settle
   const source = await read('app/(tenant)/t/[tenant]/(customer)/portal/registration/page.tsx');
   assert.match(source, /authorizeCustomerLinkedCompanyRead\(slug\)/u);
   assert.match(source, /loadCustomerCompanyDisplay\(access\)/u);
-  assert.match(source, /loadRegistrationPresentation\(\)/u);
+  // Customer read resolves the linked company's active registration id, then
+  // loads the redacted presentation for that id (no no-arg loader).
+  assert.match(source, /resolveCompanyActiveRegistration/u);
+  assert.match(source, /loadRegistrationPresentation/u);
   assert.doesNotMatch(source, /<form|\saction=|createSupabaseServiceRoleClient|raw.*identifier/iu);
   for (const dimension of [
     'onboarding-lifecycle',
@@ -64,7 +69,11 @@ test('Customer registration is linked-Company read-only and independently settle
 test('Employee visa region retains own-record authorization and excludes Company stages', async () => {
   const source = await read('app/(tenant)/t/[tenant]/(employee)/employee/identity/page.tsx');
   assert.match(source, /authorizeEmployeePortalRead\(slug\)/u);
-  assert.match(source, /loadVisaPresentation\(\)/u);
+  // The employee visa region routes through the employee-scoped resolver, which
+  // loads ONLY the actor's own visa person via the employee-scoped read RPC
+  // (keyed by their own employee_id, not an ordinal person[0]).
+  assert.match(source, /resolveEmployeeVisaPresentation\(/u);
+  assert.match(source, /loadVisaPresentation/u);
   assert.match(source, /VisaProcessWorkspace/u);
   assert.doesNotMatch(source, /RegistrationWorkspace|REGISTRATION_STAGE_CODES|visaPeople\.map/iu);
 });

@@ -13,6 +13,7 @@
 ### Task 1: Add and verify the directional card reveal
 
 **Files:**
+
 - Modify: `src/components/site/home/homepage-content-contract.test.ts`
 - Modify: `src/components/site/home/ServicesSection.tsx`
 - Modify: `src/app/(public)/public-theme.css`
@@ -23,7 +24,8 @@ Add this test after the existing services-heading reveal test in `src/components
 
 ```ts
 it('matches the SteelNova directional reveal on only the three services cards', () => {
-  const services = componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
+  const services =
+    componentSources.find(({ file }) => file === 'ServicesSection.tsx')?.source ?? '';
 
   assert.match(services, /home-setup-grid cards-stagger home-setup-grid--directional-reveal/u);
   assert.match(

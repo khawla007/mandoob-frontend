@@ -2,7 +2,15 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import type { CreateDocumentRequestCtx, SetDocumentReviewCtx } from '@/lib/data/documents';
+import type {
+  CreateDocumentRequestCtx,
+  DocumentReviewProvenance,
+  SetDocumentReviewCtx,
+} from '@/lib/data/documents';
+import {
+  parseDocumentRequestBatchItems,
+  type DocumentRequestBatchItem,
+} from '@/lib/data/document-request-batch';
 import type {
   DocumentVersionHistoryEntry,
   SetDocumentExpiryContext,
@@ -26,6 +34,7 @@ type MessageKey =
   | 'documents.errors.notFound'
   | 'documents.errors.tenantInactive'
   | 'documents.errors.expiryExternallyManaged'
+  | 'documents.errors.conflict'
   | 'documents.errors.openFailed'
   | 'documents.errors.unexpected';
 
@@ -42,6 +51,9 @@ type ProSession = { id: string; role: 'pro'; tenantId: string | null };
 type TenantIdentity = { id: string };
 type CompanyIdentity = { id: string; tenantId: string };
 type CallerMetadata = { ip: string; userAgent: string | null };
+type BatchRequestContext = Pick<AuthorizedContext['actor'], 'tenantId' | 'actorId' | 'role'> & {
+  companyId: string;
+};
 
 export type DocumentCenterActionDependencies = {
   requirePro(slug: string): Promise<ProSession>;
@@ -53,13 +65,19 @@ export type DocumentCenterActionDependencies = {
     ctx: CreateDocumentRequestCtx,
     input: CreateDocumentRequestInput,
   ): Promise<{ id: string; companyId: string }>;
+  createBatch(
+    context: BatchRequestContext,
+    input: { operationId: string; items: DocumentRequestBatchItem[] },
+  ): Promise<{ operationId: string; requestIds: string[]; replayed: boolean }>;
   reviewVersion(
     companyId: string,
     versionId: string,
+    provenance: DocumentReviewProvenance,
     ctx: SetDocumentReviewCtx,
     input: DocumentReviewInput,
   ): Promise<{ companyId: string }>;
   openVersion(
+    actorId: string,
     tenantId: string,
     companyId: string,
     versionId: string,
@@ -91,6 +109,11 @@ const normalizedUuidSchema = z
   .transform((value) => value.toLowerCase());
 const requestActionSchema = createDocumentRequestSchema.omit({ company_id: true });
 const expiryActionSchema = documentExpirySchema.extend({ document_id: normalizedUuidSchema });
+const reviewProvenanceSchema = z.object({
+  document_id: normalizedUuidSchema,
+  expected_head_version_id: normalizedUuidSchema,
+  expected_review_status: z.literal('pending'),
+});
 async function resolveAndAuthorize(
   slug: string,
   session: ProSession,
@@ -135,6 +158,12 @@ function errorResult(
 ): DocumentCenterActionResult<never> {
   actionDependencies.rethrowNavigation(error);
   if (error instanceof ApiError) {
+    if (
+      label === 'document_center.open' &&
+      ['CONFLICT', 'DOCUMENT_ACCESS_EXPIRED', 'DOCUMENT_ACCESS_FAILED'].includes(error.code)
+    ) {
+      return { ok: false, code: error.code, messageKey: 'documents.errors.openFailed' };
+    }
     const mapped = {
       UNAUTHORIZED: 'documents.errors.unauthorized',
       FORBIDDEN: 'documents.errors.forbidden',
@@ -142,6 +171,7 @@ function errorResult(
       TENANT_NOT_FOUND: 'documents.errors.notFound',
       TENANT_INACTIVE: 'documents.errors.tenantInactive',
       EXPIRY_EXTERNALLY_MANAGED: 'documents.errors.expiryExternallyManaged',
+      CONFLICT: 'documents.errors.conflict',
       STORAGE_SIGN_FAILED: 'documents.errors.openFailed',
       VALIDATION_FAILED: 'documents.errors.validation',
     } as const;
@@ -203,6 +233,46 @@ export async function runRequestDocumentCenterAction(
   }
 }
 
+export async function runRequestDocumentBatchAction(
+  slug: string,
+  _previousState: DocumentCenterActionResult<{ operationId: string; requestIds: string[] }> | null,
+  formData: FormData,
+  actionDependencies: DocumentCenterActionDependencies,
+): Promise<DocumentCenterActionResult<{ operationId: string; requestIds: string[] }>> {
+  try {
+    const session = await actionDependencies.requirePro(slug);
+    const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
+    const values = readFormStrings(formData, ['operation_id', 'items'] as const);
+    const operationId = normalizedUuidSchema.safeParse(values?.operation_id);
+    if (!values || !operationId.success || typeof values.items !== 'string') {
+      return validationFailure();
+    }
+    let items: DocumentRequestBatchItem[];
+    try {
+      items = parseDocumentRequestBatchItems(values.items);
+    } catch {
+      return validationFailure();
+    }
+    const receipt = await actionDependencies.createBatch(
+      {
+        tenantId: authorization.tenant.id,
+        actorId: authorization.actor.actorId,
+        companyId: authorization.company.id,
+        role: authorization.actor.role,
+      },
+      { operationId: operationId.data, items },
+    );
+    revalidateDocumentRoutes(slug, actionDependencies);
+    return {
+      ok: true,
+      code: 'SUCCESS',
+      data: { operationId: receipt.operationId, requestIds: receipt.requestIds },
+    };
+  } catch (error) {
+    return errorResult(error, 'document_center.batch_request', actionDependencies);
+  }
+}
+
 export async function runReviewDocumentCenterAction(
   slug: string,
   _previousState: DocumentCenterActionResult | null,
@@ -212,15 +282,28 @@ export async function runReviewDocumentCenterAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, ['version_id', 'status', 'note'] as const);
+    const values = readFormStrings(formData, [
+      'document_id',
+      'version_id',
+      'expected_head_version_id',
+      'expected_review_status',
+      'status',
+      'note',
+    ] as const);
     if (!values) return validationFailure();
     const versionId = normalizedUuidSchema.safeParse(values.version_id);
     const review = documentReviewSchema.safeParse({ status: values.status, note: values.note });
-    if (!versionId.success || !review.success) return validationFailure();
+    const provenance = reviewProvenanceSchema.safeParse(values);
+    if (!versionId.success || !review.success || !provenance.success) return validationFailure();
 
     const reviewed = await actionDependencies.reviewVersion(
       authorization.company.id,
       versionId.data,
+      {
+        documentId: provenance.data.document_id,
+        expectedHeadVersionId: provenance.data.expected_head_version_id,
+        expectedReviewStatus: provenance.data.expected_review_status,
+      },
       authorization.actor,
       review.data,
     );
@@ -245,6 +328,7 @@ export async function runOpenDocumentVersionAction(
     const parsedVersionId = normalizedUuidSchema.safeParse(versionId);
     if (!parsedVersionId.success) return validationFailure();
     const signed = await actionDependencies.openVersion(
+      authorization.actor.actorId,
       authorization.tenant.id,
       authorization.company.id,
       parsedVersionId.data,
@@ -302,10 +386,17 @@ export async function runSetDocumentExpiryAction(
   try {
     const session = await actionDependencies.requirePro(slug);
     const authorization = await resolveAndAuthorize(slug, session, actionDependencies);
-    const values = readFormStrings(formData, ['document_id', 'expires_on'] as const);
+    const values = readFormStrings(formData, [
+      'document_id',
+      'expected_head_version_id',
+      'expected_expires_on',
+      'expires_on',
+    ] as const);
     if (!values) return validationFailure();
     const expiry = expiryActionSchema.safeParse({
       document_id: values.document_id,
+      expected_head_version_id: values.expected_head_version_id,
+      expected_expires_on: values.expected_expires_on,
       expires_on: values.expires_on,
     });
     if (!expiry.success) return validationFailure();

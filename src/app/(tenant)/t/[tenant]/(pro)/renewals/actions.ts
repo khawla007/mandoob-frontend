@@ -2,23 +2,28 @@
 
 import 'server-only';
 import { revalidatePath } from 'next/cache';
-import { ApiError } from '@/lib/errors';
-import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import {
-  cancelRenewal,
+  assignedProActor,
+  p308Client,
+  p308Failure,
+  type P308ActionResult,
+} from '@/lib/p308/server';
+import {
+  batchTransitionRenewals,
   createRenewal,
-  markRenewalCompleted,
+  transitionRenewal,
   updateRenewal,
-  type RenewalActorCtx,
-} from '@/lib/data/renewals';
-import { createRenewalActionSchema, updateRenewalSchema } from '@/lib/validation/renewal';
-import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
+  type RenewalReceipt,
+} from '@/lib/renewals/commands';
+import {
+  batchTransitionRenewalSchema,
+  createRenewalActionSchema,
+  transitionRenewalSchema,
+  updateRenewalSchema,
+} from '@/lib/validation/renewal';
 
-export type ActionResult<T = void> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; code: string };
+export type ActionResult<T = void> = P308ActionResult<T>;
 
 function revalidateRenewalRoutes(slug: string) {
   revalidatePath(`/t/${slug}/renewals`);
@@ -26,56 +31,31 @@ function revalidateRenewalRoutes(slug: string) {
   revalidatePath(`/t/${slug}/dashboard`);
 }
 
-async function resolveAndAuthorize(
-  slug: string,
-): Promise<{ ctx: RenewalActorCtx; tenantId: string }> {
-  const { session, tenant } = await requireProTenantRouteAccess(slug);
-  await requireActiveTenant(tenant.id);
-  const company = await readAssignedCompanyForPro(session.id, slug);
-  if (!company || company.tenantId !== tenant.id) {
-    throw new ApiError('FORBIDDEN', 'No active company assignment', 403);
-  }
-  return {
-    ctx: {
-      tenantId: tenant.id,
-      companyId: company.id,
-      actorId: session.id,
-      role: session.role,
-    },
-    tenantId: tenant.id,
-  };
+async function actor(slug: string) {
+  return assignedProActor(await requireProTenantRouteAccess(slug), slug);
 }
 
-function toResult(e: unknown, fallback: string): ActionResult<never> {
-  if (e instanceof ApiError) {
-    if (e.code === 'INTERNAL') console.error(fallback, e);
-    const messages: Record<string, string> = {
-      FORBIDDEN: 'This renewal is outside your assigned Company.',
-      NOT_FOUND: 'The renewal is no longer available.',
-      RENEWAL_DUPLICATE: 'A matching renewal already exists.',
-      TENANT_INACTIVE: 'Renewal changes are unavailable while the workspace is inactive.',
-    };
-    return { ok: false, error: messages[e.code] ?? fallback, code: e.code };
-  }
-  console.error(fallback, e);
-  return { ok: false, error: fallback, code: 'INTERNAL' };
+function invalid(): ActionResult<never> {
+  return {
+    ok: false,
+    code: 'VALIDATION_FAILED',
+    error: 'Check the highlighted values and try again.',
+  };
 }
 
 export async function createRenewalAction(
   slug: string,
   raw: unknown,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<RenewalReceipt>> {
+  const parsed = createRenewalActionSchema.safeParse(raw);
+  if (!parsed.success) return invalid();
   try {
-    const parsed = createRenewalActionSchema.safeParse(raw);
-    if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'INVALID_INPUT' };
-    }
-    const { ctx } = await resolveAndAuthorize(slug);
-    const { id } = await createRenewal(ctx, { ...parsed.data, company_id: ctx.companyId });
+    const resolved = await actor(slug);
+    const receipt = await createRenewal(p308Client(), resolved, parsed.data);
     revalidateRenewalRoutes(slug);
-    return { ok: true, data: { id } };
-  } catch (e) {
-    return toResult(e, 'Could not create renewal');
+    return { ok: true, data: receipt };
+  } catch (error) {
+    return p308Failure('renewal.create', error);
   }
 }
 
@@ -83,63 +63,72 @@ export async function updateRenewalAction(
   slug: string,
   renewalId: string,
   raw: unknown,
-): Promise<ActionResult<void>> {
+): Promise<ActionResult<RenewalReceipt>> {
+  const parsed = updateRenewalSchema.safeParse(raw);
+  if (!parsed.success) return invalid();
   try {
-    const parsed = updateRenewalSchema.safeParse(raw);
-    if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message, code: 'INVALID_INPUT' };
-    }
-    const { ctx } = await resolveAndAuthorize(slug);
-    await updateRenewal(renewalId, ctx, parsed.data);
+    const resolved = await actor(slug);
+    const receipt = await updateRenewal(p308Client(), resolved, renewalId, parsed.data);
     revalidateRenewalRoutes(slug);
-    return { ok: true, data: undefined };
-  } catch (e) {
-    return toResult(e, 'Could not update renewal');
+    return { ok: true, data: receipt };
+  } catch (error) {
+    return p308Failure('renewal.update', error);
   }
 }
 
+export async function transitionRenewalAction(
+  slug: string,
+  renewalId: string,
+  raw: unknown,
+): Promise<ActionResult<RenewalReceipt>> {
+  const parsed = transitionRenewalSchema.safeParse(raw);
+  if (!parsed.success) return invalid();
+  try {
+    const resolved = await actor(slug);
+    const receipt = await transitionRenewal(p308Client(), resolved, renewalId, parsed.data);
+    revalidateRenewalRoutes(slug);
+    return { ok: true, data: receipt };
+  } catch (error) {
+    return p308Failure('renewal.transition', error);
+  }
+}
+
+/** Completion is the guarded `government_processing → completed` transition with evidence. */
 export async function completeRenewalAction(
   slug: string,
   renewalId: string,
-): Promise<ActionResult<void>> {
-  try {
-    const { ctx } = await resolveAndAuthorize(slug);
-    await markRenewalCompleted(renewalId, ctx);
-    revalidateRenewalRoutes(slug);
-    return { ok: true, data: undefined };
-  } catch (e) {
-    return toResult(e, 'Could not mark renewal completed');
-  }
+  raw: unknown,
+): Promise<ActionResult<RenewalReceipt>> {
+  return transitionRenewalAction(slug, renewalId, {
+    ...(raw as Record<string, unknown>),
+    to_stage: 'completed',
+  });
 }
 
+/** Cancellation requires a reason code; licence-synced rows stay locked. */
 export async function cancelRenewalAction(
   slug: string,
   renewalId: string,
-): Promise<ActionResult<void>> {
+  raw: unknown,
+): Promise<ActionResult<RenewalReceipt>> {
+  return transitionRenewalAction(slug, renewalId, {
+    ...(raw as Record<string, unknown>),
+    to_stage: 'cancelled',
+  });
+}
+
+export async function batchTransitionRenewalsAction(
+  slug: string,
+  raw: unknown,
+): Promise<ActionResult<{ count: number }>> {
+  const parsed = batchTransitionRenewalSchema.safeParse(raw);
+  if (!parsed.success) return invalid();
   try {
-    const { ctx } = await resolveAndAuthorize(slug);
-    const admin = createSupabaseServiceRoleClient();
-    const { data: row, error } = await admin
-      .from('renewals')
-      .select('id, tenant_id, company_id, source')
-      .eq('id', renewalId)
-      .maybeSingle();
-    if (error) throw new ApiError('INTERNAL', error.message, 500);
-    if (!row) throw new ApiError('NOT_FOUND', 'renewal not found', 404);
-    if (row.tenant_id !== ctx.tenantId || row.company_id !== ctx.companyId) {
-      throw new ApiError('FORBIDDEN', 'renewal belongs to a different company', 403);
-    }
-    if (row.source === 'license_backfill') {
-      return {
-        ok: false,
-        code: 'RENEWAL_LICENSE_LOCKED',
-        error: "Clear the company's license_expiry instead.",
-      };
-    }
-    await cancelRenewal(renewalId, ctx);
+    const resolved = await actor(slug);
+    const result = await batchTransitionRenewals(p308Client(), resolved, parsed.data);
     revalidateRenewalRoutes(slug);
-    return { ok: true, data: undefined };
-  } catch (e) {
-    return toResult(e, 'Could not cancel renewal');
+    return { ok: true, data: { count: result.count } };
+  } catch (error) {
+    return p308Failure('renewal.batch', error);
   }
 }

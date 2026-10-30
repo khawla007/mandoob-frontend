@@ -8,6 +8,7 @@ import { lookup } from 'node:dns/promises';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+import { isReducedAuthFixtureMode, resolveFixtureSecretPath } from './acceptance-paths';
 import {
   assertLocalAcceptanceIdentitySet,
   assertLocalAcceptanceInfrastructure,
@@ -25,7 +26,6 @@ import {
 export const FIXTURE_PREFIX = 'P2.12 Local Acceptance';
 const PROJECT_ID = ACCEPTANCE_PROJECT_ID;
 const FIXTURE_DOMAIN = 'p2-12.local';
-const SECRET_PATH = resolve('tests/.auth/p2-credentials.json');
 
 type Role = 'super_admin' | 'pro' | 'customer' | 'employee';
 export type RoleSeed = {
@@ -102,6 +102,13 @@ export function buildRoleSeeds(): RoleSeed[] {
     password: password(),
     fullName: `${FIXTURE_PREFIX} ${role.replace('_', ' ')}`,
   }));
+}
+
+export async function runOptionalFixtureSeed<T>(
+  env: Record<string, string | undefined>,
+  seed: () => Promise<T>,
+): Promise<T | null> {
+  return isReducedAuthFixtureMode(env) ? null : seed();
 }
 
 async function assertSafeSecretParent(parent: string): Promise<void> {
@@ -666,6 +673,7 @@ async function main() {
   if (!['setup', 'verify', 'teardown'].includes(action))
     throw new Error('P2_FIXTURE: expected setup, verify, or teardown');
   await prepareAcceptanceWorkdir();
+  const secretPath = resolveFixtureSecretPath(process.env);
   if (action === 'setup') runSupabase(['start']);
   const status = parseSupabaseStatus(runSupabase(['status', '-o', 'json']));
   const apiUrl = requiredStatusValue(status, 'API_URL');
@@ -702,7 +710,7 @@ async function main() {
   assertLocalAcceptanceIdentitySet(unexpected.length);
 
   if (action === 'teardown') {
-    const secrets = await readReusableFixtureSecrets(SECRET_PATH);
+    const secrets = await readReusableFixtureSecrets(secretPath);
     assertReusableFixture(await verifyFixture(admin, secrets.roles), existingUsers, secrets);
     assertReusableFixtureSnapshot(
       await readReusableFixtureSnapshot(admin, existingUsers, secrets),
@@ -710,7 +718,7 @@ async function main() {
     );
     runSupabase(['stop', '--no-backup']);
     for (const file of [
-      SECRET_PATH,
+      secretPath,
       ...(['admin', 'pro', 'customer', 'employee'] as const).map((role) =>
         resolve(`tests/.auth/${role}.json`),
       ),
@@ -742,7 +750,7 @@ async function main() {
     existingUsers.length !== 0 || existingTenantCount !== 0,
     {
       verify: async () => {
-        const secrets = await readReusableFixtureSecrets(SECRET_PATH);
+        const secrets = await readReusableFixtureSecrets(secretPath);
         assertReusableFixtureIdentities(existingUsers, secrets);
         assertReusableFixture(await verifyFixture(admin, secrets.roles), existingUsers, secrets);
         assertReusableFixtureSnapshot(
@@ -972,136 +980,148 @@ async function main() {
     'employee record',
   );
 
-  const serviceCase = result(
-    await admin
-      .from('service_cases')
-      .insert({
-        tenant_id: tenantId,
-        company_id: companyId,
-        created_by: proId,
-        assigned_to: proId,
-        title: `${FIXTURE_PREFIX} Trade licence renewal`,
-        service_type: 'license_renewal',
-        priority: 'high',
-        status: 'documents_pending',
-        due_at: '2026-10-15T08:00:00Z',
-        sla_due_at: '2026-09-30T08:00:00Z',
-      })
-      .select('id')
-      .single(),
-    'service case',
-  );
-  result(
-    await admin
-      .from('document_requests')
-      .insert({
-        tenant_id: tenantId,
-        company_id: companyId,
-        employee_id: employee.id,
-        requested_by: proId,
-        doc_type: 'passport',
-        label: `${FIXTURE_PREFIX} Passport copy`,
-        status: 'pending',
-        due_at: '2026-09-30T08:00:00Z',
-      })
-      .select('id')
-      .single(),
-    'document request',
-  );
-  result(
-    await admin
-      .from('renewals')
-      .insert({
-        tenant_id: tenantId,
-        company_id: companyId,
-        employee_id: employee.id,
-        label: `${FIXTURE_PREFIX} Visa`,
-        type: 'visa',
-        source: 'manual',
-        status: 'upcoming',
-        due_date: '2027-03-31',
-      })
-      .select('id')
-      .single(),
-    'renewal',
-  );
-  const invoice = result(
-    await admin
-      .from('invoices')
-      .insert({
-        tenant_id: tenantId,
-        company_id: companyId,
-        customer_profile_id: customerId,
-        created_by: proId,
-        label: `${FIXTURE_PREFIX} Service invoice`,
-        amount_minor: 250000,
-        currency: 'AED',
-        status: 'open',
-        due_at: '2026-10-15T08:00:00Z',
-      })
-      .select('id')
-      .single(),
-    'invoice',
-  );
-  const importJob = result(
-    await admin
-      .from('bulk_import_jobs')
-      .insert({
-        tenant_id: tenantId,
-        company_id: companyId,
-        created_by: proId,
-        kind: 'employees',
-        storage_path: `bulk-imports/${tenantId}/p2-12.csv`,
-        status: 'completed',
-        total_rows: 1,
-        processed_rows: 1,
-        error_rows: 0,
-        completed_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single(),
-    'bulk import',
-  );
-  const blog = result(
-    await admin
-      .from('blog_posts')
-      .insert({
-        slug: 'p2-12-local-draft',
-        title: `${FIXTURE_PREFIX} Blog Draft`,
-        status: 'draft',
-        content_html: '<p>Synthetic local acceptance draft.</p>',
-        content_json: { type: 'doc', content: [] },
-        created_by: adminId,
-        updated_by: adminId,
-      })
-      .select('id')
-      .single(),
-    'blog draft',
-  );
-  const cmsPage = result(
-    await admin
-      .from('cms_pages')
-      .insert({
-        slug: 'p2-12-local-page',
-        title: `${FIXTURE_PREFIX} Page Draft`,
-        status: 'draft',
-        content_html: '<p>Synthetic local acceptance page.</p>',
-        content_json: { type: 'doc', content: [] },
-        hero_settings: {
-          backgroundColor: '#ffffff',
-          overlayColor: '#000000',
-          overlayOpacity: 0,
-          headingAlignment: 'center',
-          textAlignment: 'center',
-          buttonAlignment: 'center',
-        },
-        created_by: adminId,
-        updated_by: adminId,
-      })
-      .select('id')
-      .single(),
-    'CMS page draft',
-  );
+  const optionalAliases = await runOptionalFixtureSeed(process.env, async () => {
+    const serviceCase = result(
+      await admin
+        .from('service_cases')
+        .insert({
+          tenant_id: tenantId,
+          company_id: companyId,
+          created_by: proId,
+          assigned_to: proId,
+          title: `${FIXTURE_PREFIX} Trade licence renewal`,
+          service_type: 'license_renewal',
+          priority: 'high',
+          status: 'documents_pending',
+          due_at: '2026-10-15T08:00:00Z',
+          sla_due_at: '2026-09-30T08:00:00Z',
+        })
+        .select('id')
+        .single(),
+      'service case',
+    );
+    result(
+      await admin
+        .from('document_requests')
+        .insert({
+          tenant_id: tenantId,
+          company_id: companyId,
+          employee_id: employee.id,
+          requested_by: proId,
+          doc_type: 'passport',
+          label: `${FIXTURE_PREFIX} Passport copy`,
+          status: 'pending',
+          due_at: '2026-09-30T08:00:00Z',
+        })
+        .select('id')
+        .single(),
+      'document request',
+    );
+    result(
+      await admin
+        .from('renewals')
+        .insert({
+          tenant_id: tenantId,
+          company_id: companyId,
+          employee_id: employee.id,
+          label: `${FIXTURE_PREFIX} Visa`,
+          type: 'visa',
+          source: 'manual',
+          status: 'upcoming',
+          due_date: '2027-03-31',
+        })
+        .select('id')
+        .single(),
+      'renewal',
+    );
+    const invoice = result(
+      await admin
+        .from('invoices')
+        .insert({
+          tenant_id: tenantId,
+          company_id: companyId,
+          customer_profile_id: customerId,
+          created_by: proId,
+          label: `${FIXTURE_PREFIX} Service invoice`,
+          amount_minor: 250000,
+          currency: 'AED',
+          status: 'open',
+          due_at: '2026-10-15T08:00:00Z',
+        })
+        .select('id')
+        .single(),
+      'invoice',
+    );
+    const importJob = result(
+      await admin
+        .from('bulk_import_jobs')
+        .insert({
+          tenant_id: tenantId,
+          company_id: companyId,
+          created_by: proId,
+          kind: 'employees',
+          storage_path: `bulk-imports/${tenantId}/p2-12.csv`,
+          status: 'completed',
+          total_rows: 1,
+          processed_rows: 1,
+          error_rows: 0,
+          completed_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single(),
+      'bulk import',
+    );
+    const blog = result(
+      await admin
+        .from('blog_posts')
+        .insert({
+          slug: 'p2-12-local-draft',
+          title: `${FIXTURE_PREFIX} Blog Draft`,
+          status: 'draft',
+          content_html: '<p>Synthetic local acceptance draft.</p>',
+          content_json: { type: 'doc', content: [] },
+          created_by: adminId,
+          updated_by: adminId,
+        })
+        .select('id')
+        .single(),
+      'blog draft',
+    );
+    const cmsPage = result(
+      await admin
+        .from('cms_pages')
+        .insert({
+          slug: 'p2-12-local-page',
+          title: `${FIXTURE_PREFIX} Page Draft`,
+          status: 'draft',
+          content_html: '<p>Synthetic local acceptance page.</p>',
+          content_json: { type: 'doc', content: [] },
+          hero_settings: {
+            backgroundColor: '#ffffff',
+            overlayColor: '#000000',
+            overlayOpacity: 0,
+            headingAlignment: 'center',
+            textAlignment: 'center',
+            buttonAlignment: 'center',
+          },
+          created_by: adminId,
+          updated_by: adminId,
+        })
+        .select('id')
+        .single(),
+      'CMS page draft',
+    );
+    return {
+      section: 'legal',
+      registration: '00000000-0000-4000-8000-000000000012',
+      invoice: invoice.id,
+      job: importJob.id,
+      blogCms: blog.id,
+      pageCms: cmsPage.id,
+      erasure: '00000000-0000-4000-8000-000000000013',
+      serviceCase: serviceCase.id,
+    };
+  });
 
   for (const role of roles) {
     role.totpSecret = await enrollTotp(apiUrl, anonKey, role);
@@ -1123,19 +1143,12 @@ async function main() {
     encryptionKey: randomBytes(32).toString('base64'),
     aliases: {
       company: companyId,
-      section: 'legal',
-      registration: '00000000-0000-4000-8000-000000000012',
-      invoice: invoice.id,
-      job: importJob.id,
-      blogCms: blog.id,
-      pageCms: cmsPage.id,
       pro: proId,
       user: employeeProfileId,
-      erasure: '00000000-0000-4000-8000-000000000013',
-      serviceCase: serviceCase.id,
+      ...(optionalAliases ?? {}),
     },
   };
-  await writeSecretFile(SECRET_PATH, secrets);
+  await writeSecretFile(secretPath, secrets);
   assertFixtureCounts(await verifyFixture(admin, roles));
   process.stdout.write(
     'P2 fixture created and verified: 4 identities, 1 Company, 1 assignment, 1 verified credential.\n',

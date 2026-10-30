@@ -7,6 +7,7 @@ const root = process.cwd();
 const pagePath = join(root, 'src/app/(tenant)/t/[tenant]/(pro)/renewals/page.tsx');
 const tablePath = join(root, 'src/components/pro/RenewalsTable.tsx');
 const workspacePath = join(root, 'src/lib/data/pro-renewal-workspace.ts');
+const p308ServerPath = join(root, 'src/lib/p308/server.ts');
 
 test('renewal page is an active-tenant, assigned-Company, server-paginated workspace', () => {
   const page = readFileSync(pagePath, 'utf8');
@@ -37,10 +38,14 @@ test('renewal mutations reject inactive tenants before assignment and service-ro
     join(root, 'src/app/(tenant)/t/[tenant]/(pro)/renewals/actions.ts'),
     'utf8',
   );
-  const routeAt = actions.indexOf('requireProTenantRouteAccess(slug)');
-  const activeAt = actions.indexOf('requireActiveTenant(tenant.id)');
-  const assignmentAt = actions.indexOf('readAssignedCompanyForPro(session.id, slug)');
-  assert.ok(routeAt >= 0 && routeAt < activeAt && activeAt < assignmentAt);
+  assert.match(actions, /assignedProActor\(await requireProTenantRouteAccess\(slug\), slug\)/u);
+  const actorBoundary = readFileSync(p308ServerPath, 'utf8');
+  const activeAt = actorBoundary.indexOf('requireActiveTenant(access.tenant.id)');
+  const assignmentAt = actorBoundary.indexOf(
+    'readAssignedCompanyForPro(access.session.id, tenantSlug)',
+  );
+  assert.ok(activeAt >= 0 && activeAt < assignmentAt);
+  assert.match(actorBoundary, /companyId: company\.id/u);
   for (const pattern of [
     /revalidatePath\(`\/t\/\$\{slug\}\/renewals`\)/u,
     /revalidatePath\(`\/t\/\$\{slug\}\/company`\)/u,
@@ -49,15 +54,18 @@ test('renewal mutations reject inactive tenants before assignment and service-ro
     assert.match(actions, pattern);
   }
   assert.equal(actions.match(/revalidateRenewalRoutes\(slug\)/gu)?.length, 4);
-  const data = readFileSync(join(root, 'src/lib/data/renewals.ts'), 'utf8');
-  assert.equal(data.match(/renewal_id: id,\s+company_id: ctx\.companyId/gu)?.length, 3);
   const rowActions = readFileSync(join(root, 'src/components/pro/RenewalRowActions.tsx'), 'utf8');
+  const stageDialog = readFileSync(join(root, 'src/components/pro/RenewalStageDialog.tsx'), 'utf8');
   const editDialog = readFileSync(join(root, 'src/components/pro/EditRenewalDialog.tsx'), 'utf8');
   const newDialog = readFileSync(join(root, 'src/components/pro/NewRenewalDialog.tsx'), 'utf8');
-  assert.match(rowActions, /cancelConfirmationOpen/u);
-  for (const component of [rowActions, editDialog, newDialog]) {
-    assert.doesNotMatch(component, /result\.code|result\.error/u);
+  assert.match(rowActions, /RenewalStageDialog/u);
+  assert.match(stageDialog, /target === 'cancelled'/u);
+  assert.match(stageDialog, /reason_code: reason/u);
+  for (const component of [rowActions, editDialog, newDialog, stageDialog]) {
+    assert.doesNotMatch(component, /result\.error/u);
   }
+  for (const component of [editDialog, newDialog, stageDialog])
+    assert.match(component, /errors\.has\(result\.code\)/u);
   assert.doesNotMatch(actions.slice(actions.indexOf('function toResult')), /error: e\.message/u);
 });
 

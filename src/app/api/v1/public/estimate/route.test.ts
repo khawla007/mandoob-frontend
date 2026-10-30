@@ -11,7 +11,14 @@ async function postEstimate(request: Request) {
   const { handleEstimatePost } = await import('./handler');
   return handleEstimatePost(request as never, {
     consume: async () => true,
-    listRows: async () => seededCostDataRows,
+    signingSecret: 'test-estimate-secret-with-32-characters',
+    listRows: async () =>
+      seededCostDataRows.map((row) => ({
+        ...row,
+        sourceId: '90400000-0000-4000-8000-000000000001',
+        catalogVersionId: '90400000-0000-4000-8000-000000000002',
+        catalogVersion: 'test-version-1',
+      })),
   });
 }
 
@@ -41,6 +48,8 @@ test('public estimate API returns quote JSON and handoff URL without auth', asyn
   assert.ok(body.estimate.oneTimeTotalMinor > 0);
   assert.ok(body.estimate.annualTotalMinor > 0);
   assert.match(body.handoffUrl, /^\/apply\?/);
+  assert.equal(body.estimate.catalogVersion, 'test-version-1');
+  assert.equal(typeof body.resultToken, 'string');
   assert.equal(body.createdLead, undefined);
 });
 

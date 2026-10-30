@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyUnifonicSignature } from '@/lib/sms/signature';
-import { recordUnifonicInbound } from '../inbound-recording';
+import { InboundWebhookInfrastructureError, recordUnifonicInbound } from '../inbound-recording';
+import { parseUnifonicInboundCallback, type UnifonicPayload } from './inbound';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,8 +42,17 @@ export async function POST(req: Request): Promise<Response> {
     await applyDeliveryStatus(supabase, String(messageId), payload.Status);
   }
 
-  if (!payload.Status && payload.From && payload.Body !== undefined && messageId) {
-    await recordUnifonicInbound(supabase, payload.From, payload.Body ?? '', String(messageId));
+  const inbound = parseUnifonicInboundCallback(payload, rawBody);
+  try {
+    if (inbound) await recordUnifonicInbound(supabase, inbound);
+  } catch (error) {
+    if (error instanceof InboundWebhookInfrastructureError) {
+      return NextResponse.json(
+        { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
+    throw error;
   }
 
   return NextResponse.json({ ok: true });
@@ -81,11 +91,3 @@ async function applyDeliveryStatus(
 
   await supabase.from('outbound_sms').update(update).eq('id', row.id);
 }
-
-type UnifonicPayload = {
-  MessageID?: string | number;
-  messageId?: string | number;
-  Status?: string;
-  From?: string;
-  Body?: string;
-};

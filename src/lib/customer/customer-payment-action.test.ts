@@ -16,6 +16,8 @@ const invoice = {
   due_at: null,
   paid_at: null,
   created_at: '2026-09-01T00:00:00Z',
+  version: 2,
+  receipt_available: true,
 };
 
 function code(result: ReturnType<typeof validateCustomerInvoiceForPayment>) {

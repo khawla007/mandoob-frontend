@@ -46,7 +46,19 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
 }
 
 export async function requireUser(): Promise<SessionProfile> {
-  const session = await getSessionProfile();
-  if (!session) throw new Error('UNAUTHENTICATED');
-  return session;
+  const rawSession = await getSessionProfile();
+  if (!rawSession) throw new Error('UNAUTHENTICATED');
+  return resolveRequiredUser(rawSession, async (session) => {
+    const { getAuthoritativeSessionProfile } = await import('./require-role');
+    return getAuthoritativeSessionProfile({ getSession: async () => session });
+  });
+}
+
+export async function resolveRequiredUser(
+  rawSession: SessionProfile,
+  authorize: (session: SessionProfile) => Promise<SessionProfile | null>,
+): Promise<SessionProfile> {
+  const authoritative = await authorize(rawSession);
+  if (!authoritative) throw new Error('UNAUTHENTICATED');
+  return authoritative;
 }

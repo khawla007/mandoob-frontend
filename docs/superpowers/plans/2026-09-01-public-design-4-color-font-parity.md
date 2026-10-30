@@ -20,6 +20,7 @@
 ### Task 1: Lock the design-4 reference in failing tests
 
 **Files:**
+
 - Modify: `src/components/site/public-theme.test.ts`
 - Modify: `src/components/site/home/homepage-content-contract.test.ts`
 
@@ -39,12 +40,23 @@ function rawToken(block: string, name: string): string {
 renderTest('public light tokens match the canonical design-4 palette and fonts', () => {
   const block = declarations('.site-public');
   const expected = {
-    paper: '#FFFFFF', ink: '#000000', 'zinc-50': '#FAFAFA',
-    'zinc-100': '#F4F4F5', 'zinc-200': '#E4E4E7', 'zinc-300': '#D4D4D8',
-    'zinc-400': '#A1A1AA', 'zinc-500': '#71717A', 'zinc-600': '#52525B',
-    'zinc-700': '#3F3F46', 'zinc-900': '#18181B', 'zinc-950': '#09090B',
-    accent: '#FF5722', 'accent-hover': '#E64A19', 'accent-soft': '#FFF1ED',
-    'pb-border': '#E4E4E7', 'pb-border-dark': '#27272A',
+    paper: '#FFFFFF',
+    ink: '#000000',
+    'zinc-50': '#FAFAFA',
+    'zinc-100': '#F4F4F5',
+    'zinc-200': '#E4E4E7',
+    'zinc-300': '#D4D4D8',
+    'zinc-400': '#A1A1AA',
+    'zinc-500': '#71717A',
+    'zinc-600': '#52525B',
+    'zinc-700': '#3F3F46',
+    'zinc-900': '#18181B',
+    'zinc-950': '#09090B',
+    accent: '#FF5722',
+    'accent-hover': '#E64A19',
+    'accent-soft': '#FFF1ED',
+    'pb-border': '#E4E4E7',
+    'pb-border-dark': '#27272A',
   } as const;
   for (const [name, value] of Object.entries(expected)) {
     assert.equal(rawToken(block, name).toUpperCase(), value);
@@ -60,8 +72,14 @@ Delete the now-unused luminance helpers. Retain semantic-role presence and disab
 
 ```ts
 renderTest('design-4 component colors and weights are preserved', () => {
-  assert.match(declarations('.site-public .btn--accent'), /background:\s*var\(--accent\)[^}]*color:\s*#fff/isu);
-  assert.match(declarations('.site-public .btn--accent:hover'), /background:\s*var\(--accent-hover\)/u);
+  assert.match(
+    declarations('.site-public .btn--accent'),
+    /background:\s*var\(--accent\)[^}]*color:\s*#fff/isu,
+  );
+  assert.match(
+    declarations('.site-public .btn--accent:hover'),
+    /background:\s*var\(--accent-hover\)/u,
+  );
   assert.match(declarations('.site-public .eyebrow'), /color:\s*var\(--zinc-500\)/u);
   assert.match(declarations('.site-public .eyebrow--accent'), /color:\s*var\(--zinc-500\)/u);
   assert.match(declarations('.site-public .cell__link'), /color:\s*var\(--accent\)/u);
@@ -89,6 +107,7 @@ Run: `git commit -m "test(public): lock design-4 visual tokens"`
 ### Task 2: Implement scoped public parity
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 - Test: `src/components/site/public-theme.test.ts`
 - Test: `src/components/site/home/homepage-content-contract.test.ts`
@@ -144,9 +163,15 @@ Do not edit `globals.css` or `layout.tsx`; Geist, Geist Mono, and the Arabic fon
 - [ ] **Step 3: Restore reference component rules**
 
 ```css
-.site-public .eyebrow { color: var(--zinc-500); }
-.site-public .eyebrow--accent { color: var(--zinc-500); }
-.site-public .cell__link { color: var(--accent); }
+.site-public .eyebrow {
+  color: var(--zinc-500);
+}
+.site-public .eyebrow--accent {
+  color: var(--zinc-500);
+}
+.site-public .cell__link {
+  color: var(--accent);
+}
 .site-public .home-text-link {
   color: var(--accent);
   font-size: var(--fs-14);
@@ -175,6 +200,7 @@ Run: `git commit -m "style(public): match design-4 colors and fonts"`
 ### Task 3: Update the design-system document
 
 **Files:**
+
 - Modify: `../docs/design-system.md`
 
 - [ ] **Step 1: Correct document identity and sources**
@@ -220,6 +246,7 @@ Expected: no matches. The parent document is outside the `frontend` Git reposito
 ### Task 4: Full verification and localhost acceptance
 
 **Files:**
+
 - Verify: `src/app/(public)/public-theme.css`
 - Verify: `src/app/layout.tsx`
 - Verify: `../docs/design-system.md`

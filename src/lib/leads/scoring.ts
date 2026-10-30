@@ -17,6 +17,10 @@ export type LeadScoringInput = {
   estimateData?: Record<string, unknown> | null;
 };
 
+// Versioned so stored lead_score_factors/lead_score_version remain reproducible when the
+// deterministic formula below changes. Bump on any scoring-logic change.
+export const LEAD_SCORE_VERSION = 1;
+
 const JURISDICTION_POINTS: Record<string, number> = {
   mainland: 15,
   free_zone: 12,

@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { randomUUID } from 'node:crypto';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import {
@@ -6,6 +7,8 @@ import {
   type OperationalMeetingDisplay,
 } from '@/components/operations/OperationalMeetingList';
 import { MeetingAiSummaryCard } from '@/components/pro/MeetingAiSummaryCard';
+import { MeetingCollaborationPanel } from '@/components/operations/MeetingCollaborationPanel';
+import { MeetingScheduleControls } from '@/components/operations/MeetingScheduleControls';
 import { DashboardPageHeader } from '@/components/shell/DashboardPageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +24,16 @@ import {
   type MeetingActor,
 } from '@/lib/data/meetings';
 import { listMeetingAiSummariesForMeetings } from '@/lib/data/meeting-ai-summaries';
+import { listMeetingCollaboration } from '@/lib/data/meeting-collaboration';
 import { partitionMeetings, safeExternalMeetingHref } from '@/lib/operations/meeting-presentation';
-import { cancelMeetingAction, createMeetingSlotAction } from './actions';
+import {
+  addMeetingNoteAction,
+  cancelMeetingAction,
+  createMeetingSlotAction,
+  reviewMeetingActionItemAction,
+  rescheduleMeetingAction,
+  setProMeetingConsentAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +69,13 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
     meetings.map(({ id }) => id),
     actor,
   );
+  const collaboration = await listMeetingCollaboration(
+    meetings.map(({ id }) => id),
+    session.id,
+    true,
+  );
   const { upcoming, past } = partitionMeetings(meetings, now);
+  const slotOperationId = randomUUID();
   const date = new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -75,32 +92,79 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
       meetingUrl: safeExternalMeetingHref(meeting.meetingUrl),
       recordingUrl: safeExternalMeetingHref(recordingUrls.get(meeting.id) ?? null),
     }));
+  const collaborationLabels = {
+    consentTitle: t('collaboration.consentTitle'),
+    consentDescription: t('collaboration.consentDescription'),
+    consentGranted: t('collaboration.consentGranted'),
+    consentRequired: t('collaboration.consentRequired'),
+    grantConsent: t('collaboration.grantConsent'),
+    withdrawConsent: t('collaboration.withdrawConsent'),
+    notePlaceholder: t('collaboration.notePlaceholder'),
+    addNote: t('collaboration.addNote'),
+    notes: t('collaboration.notes'),
+    actions: t('collaboration.actions'),
+    accept: t('collaboration.accept'),
+    dismiss: t('collaboration.dismiss'),
+  };
   const details = Object.fromEntries(
     meetings.map((meeting) => [
       meeting.id,
-      <MeetingAiSummaryCard
-        key={meeting.id}
-        meetingId={meeting.id}
-        slug={slug}
-        summary={summaries.get(meeting.id) ?? null}
-      />,
+      <div key={meeting.id}>
+        <MeetingAiSummaryCard
+          meetingId={meeting.id}
+          slug={slug}
+          summary={summaries.get(meeting.id) ?? null}
+        />
+        <MeetingCollaborationPanel
+          state={collaboration.get(meeting.id) ?? { consentGranted: false, notes: [], actions: [] }}
+          canReview
+          canAddNote
+          labels={collaborationLabels}
+          setConsent={async (granted) => {
+            'use server';
+            await setProMeetingConsentAction(slug, meeting.id, granted);
+          }}
+          addNote={async (formData) => {
+            'use server';
+            await addMeetingNoteAction(slug, meeting.id, formData);
+          }}
+          reviewAction={async (actionItemId, decision) => {
+            'use server';
+            await reviewMeetingActionItemAction(slug, meeting.id, actionItemId, decision);
+          }}
+        />
+      </div>,
     ]),
   );
-  const cancellation = Object.fromEntries(
-    upcoming.map((meeting) => [
-      meeting.id,
-      <form
-        key={meeting.id}
-        action={async () => {
-          'use server';
-          await cancelMeetingAction(slug, meeting.id);
-        }}
-      >
-        <Button type="submit" size="sm" variant="ghost">
-          {t('cancel')}
-        </Button>
-      </form>,
-    ]),
+  const scheduleActions = Object.fromEntries(
+    upcoming.map((meeting) => {
+      const cancelOperationId = randomUUID();
+      const rescheduleOperationId = randomUUID();
+      return [
+        meeting.id,
+        <MeetingScheduleControls
+          key={meeting.id}
+          rescheduleLabel={t('reschedule')}
+          cancelLabel={t('cancel')}
+          startLabel={t('start')}
+          durationLabel={t('durationLabel')}
+          reschedule={async (formData) => {
+            'use server';
+            await rescheduleMeetingAction(
+              slug,
+              meeting.id,
+              meeting.version,
+              rescheduleOperationId,
+              formData,
+            );
+          }}
+          cancel={async () => {
+            'use server';
+            await cancelMeetingAction(slug, meeting.id, meeting.version, cancelOperationId);
+          }}
+        />,
+      ];
+    }),
   );
 
   return (
@@ -123,6 +187,7 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
               await createMeetingSlotAction(slug, formData);
             }}
           >
+            <input type="hidden" name="operation_id" value={slotOperationId} />
             <div className="space-y-2">
               <Label htmlFor="starts_at">{t('start')}</Label>
               <Input id="starts_at" name="starts_at" type="datetime-local" required />
@@ -176,7 +241,7 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
               emptyLabel={t('noUpcoming')}
               joinLabel={t('join')}
               recordingLabel={t('recording')}
-              actions={cancellation}
+              actions={scheduleActions}
               details={details}
             />
           </CardContent>
@@ -195,12 +260,6 @@ export default async function ProMeetingsPage({ params }: { params: Promise<{ te
             details={details}
           />
         </CardContent>
-      </Card>
-      <Card className="signal-panel">
-        <CardHeader>
-          <CardTitle>{t('unavailableTitle')}</CardTitle>
-          <CardDescription>{t('unavailableDescription')}</CardDescription>
-        </CardHeader>
       </Card>
     </div>
   );

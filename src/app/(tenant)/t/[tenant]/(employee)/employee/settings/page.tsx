@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 import { EmployeeReminderPreferenceForm } from '@/components/employee/EmployeeReminderPreferenceForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getEmployeeNotificationPreferences } from '@/lib/data/employee-portal';
+import { readEmployeeSelfState } from '@/lib/employees/self-service';
 import {
   authorizeEmployeePortalRead,
   employeePortalHref,
@@ -18,8 +19,8 @@ export default async function EmployeeSettingsPage({
 }) {
   const { tenant: slug } = await params;
   const access = await authorizeEmployeePortalRead(slug);
-  const [prefs, t] = await Promise.all([
-    getEmployeeNotificationPreferences(access.session.id, access.tenant.id),
+  const [self, t] = await Promise.all([
+    readEmployeeSelfState(access),
     getTranslations('employee.settings'),
   ]);
   return (
@@ -46,7 +47,9 @@ export default async function EmployeeSettingsPage({
         <CardContent>
           <EmployeeReminderPreferenceForm
             slug={access.tenant.slug}
-            enabled={prefs.renewalRemindersEnabled}
+            enabled={self.renewalRemindersEnabled}
+            version={self.version}
+            operationId={randomUUID()}
           />
         </CardContent>
       </Card>

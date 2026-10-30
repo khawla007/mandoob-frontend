@@ -1,11 +1,17 @@
 import { NextRequest } from 'next/server';
 import { getClientIp, parseJson } from '@/lib/auth/request';
-import { calculateEstimate, EstimateError, estimateInputSchema } from '@/lib/estimator';
+import {
+  calculateAuthoritativeEstimate,
+  EstimateError,
+  verifyEstimateResultToken,
+} from '@/lib/estimator';
 import { listActiveEstimatorCostRows } from '@/lib/estimator/data';
 import { errorResponse } from '@/lib/errors';
 import { formatMoney } from '@/lib/format/money';
 import { generateEstimatePdf } from '@/lib/pdf/estimate';
 import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { env } from '@/lib/env';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,17 +34,20 @@ export async function POST(request: NextRequest) {
   }
 
   const raw = await parseJson<unknown>(request);
-  const parsed = estimateInputSchema.safeParse(raw);
+  const parsed = z.object({ resultToken: z.string().min(64).max(8192) }).strict().safeParse(raw);
   if (!parsed.success) {
     return errorResponse('INVALID_INPUT', 'Invalid request', 400, {
       issues: parsed.error.issues,
     });
   }
-  const input = parsed.data;
-
   try {
-    const rows = await listActiveEstimatorCostRows();
-    const estimate = calculateEstimate(input, rows);
+    if (!env.ENCRYPTION_KEY) throw new Error('estimate signing secret unavailable');
+    const context = verifyEstimateResultToken(parsed.data.resultToken, env.ENCRYPTION_KEY);
+    const rows = await listActiveEstimatorCostRows(context.catalogVersionId);
+    const estimate = calculateAuthoritativeEstimate(context.input, rows);
+    if (estimate.reference !== context.reference) {
+      return errorResponse('ESTIMATE_DRIFT', 'Estimate source has changed', 409);
+    }
     const bytes = await generateEstimatePdf({
       reference: estimate.reference,
       jurisdictionLabel: `${estimate.input.authority} ${estimate.input.jurisdiction.replace('_', ' ')}`,

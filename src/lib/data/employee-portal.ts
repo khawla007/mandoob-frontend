@@ -1,11 +1,11 @@
 import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { decryptOptional } from '@/lib/crypto/pii';
+import { signDocumentAccess, type DocumentAccessInput } from '@/lib/data/document-access';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
-import { isNormalizedOwnedStoragePath } from '@/lib/storage/owned-path';
-import { employeeNotificationPreferencesSchema } from '@/lib/validation/employee-portal';
 
 const SIGNED_URL_TTL_SECONDS = 300;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 export type ExpiryBucket = 'missing' | 'expired' | 'critical' | 'soon' | 'ok';
 
@@ -284,43 +284,53 @@ export async function getEmployeeDocumentSignedUrl(
   actorProfileId: string,
   tenantId: string,
   versionId: string,
-): Promise<string> {
+  signer: (
+    input: DocumentAccessInput,
+  ) => Promise<{ url: string; expiresAt: string }> = signDocumentAccess,
+): Promise<{ url: string; expiresAt: string }> {
   const employee = await getOwnedEmployee(actorProfileId, tenantId);
+  const normalizedVersionId = UUID.test(versionId) ? versionId.toLowerCase() : null;
+  if (!normalizedVersionId) {
+    throw new ApiError('VALIDATION_FAILED', 'Invalid document identifier', 400);
+  }
   const admin = createSupabaseServiceRoleClient();
   const { data, error } = await admin
     .from('document_versions')
     .select(
-      'id, tenant_id, storage_path, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, employee_id)',
+      'id, tenant_id, document:documents!document_versions_document_id_fkey!inner(id, tenant_id, company_id, employee_id)',
     )
-    .eq('id', versionId)
+    .eq('id', normalizedVersionId)
     .eq('tenant_id', tenantId)
     .maybeSingle();
   if (error) throw new ApiError('INTERNAL', error.message, 500);
   const row = data as {
-    storage_path: string;
+    id: string;
+    tenant_id: string;
     document:
-      | { tenant_id: string; company_id: string; employee_id: string | null }
-      | { tenant_id: string; company_id: string; employee_id: string | null }[];
+      | { id: string; tenant_id: string; company_id: string; employee_id: string | null }
+      | { id: string; tenant_id: string; company_id: string; employee_id: string | null }[];
   } | null;
   const doc = Array.isArray(row?.document) ? row?.document[0] : row?.document;
   if (
     !row ||
     !doc ||
+    row.id !== normalizedVersionId ||
+    row.tenant_id !== tenantId ||
     doc.tenant_id !== tenantId ||
     doc.company_id !== employee.company_id ||
-    doc.employee_id !== employee.id ||
-    !isNormalizedOwnedStoragePath(row.storage_path, tenantId, employee.company_id)
+    doc.employee_id !== employee.id
   ) {
     throw new ApiError('FORBIDDEN', 'Document is not accessible', 403);
   }
 
-  const { data: signed, error: signError } = await admin.storage
-    .from('tenant-documents')
-    .createSignedUrl(row.storage_path, SIGNED_URL_TTL_SECONDS);
-  if (signError || !signed?.signedUrl) {
-    throw new ApiError('INTERNAL', signError?.message ?? 'Could not create signed URL', 500);
-  }
-  return signed.signedUrl;
+  return signer({
+    actorId: actorProfileId,
+    tenantId,
+    companyId: employee.company_id,
+    documentId: doc.id,
+    versionId: normalizedVersionId,
+    lifetimeSeconds: SIGNED_URL_TTL_SECONDS,
+  });
 }
 
 export async function getEmployeeNotificationPreferences(
@@ -329,25 +339,4 @@ export async function getEmployeeNotificationPreferences(
 ): Promise<{ renewalRemindersEnabled: boolean | null }> {
   const employee = await getOwnedEmployee(actorProfileId, tenantId);
   return { renewalRemindersEnabled: await getPreference(employee) };
-}
-
-export async function updateEmployeeNotificationPreferences(
-  actorProfileId: string,
-  tenantId: string,
-  input: unknown,
-): Promise<{ renewalRemindersEnabled: boolean }> {
-  const parsed = employeeNotificationPreferencesSchema.parse(input);
-  const employee = await getOwnedEmployee(actorProfileId, tenantId);
-  const admin = createSupabaseServiceRoleClient();
-  const { error } = await admin.from('employee_notification_preferences').upsert(
-    {
-      tenant_id: tenantId,
-      employee_id: employee.id,
-      profile_id: actorProfileId,
-      renewal_reminders_enabled: parsed.renewal_reminders_enabled,
-    },
-    { onConflict: 'employee_id' },
-  );
-  if (error) throw new ApiError('INTERNAL', error.message, 500);
-  return { renewalRemindersEnabled: parsed.renewal_reminders_enabled };
 }

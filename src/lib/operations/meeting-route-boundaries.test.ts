@@ -21,7 +21,10 @@ test('PRO meetings bind reads, cancellation, and recordings to the assigned Comp
   assert.match(proPage, /getCompanyMeetingRecordingSignedUrl/u);
   assert.doesNotMatch(proPage, /listMeetingsForTenant/u);
   assert.match(proActions, /readAssignedCompanyForPro/u);
-  assert.match(proActions, /cancelCompanyMeeting/u);
+  assert.match(proActions, /createMeetingCommands\(createSupabaseServiceRoleClient\(\)\)\.cancel/u);
+  assert.match(proActions, /actorId: actor\.id/u);
+  assert.match(proActions, /meetingId/u);
+  assert.match(proActions, /expectedVersion/u);
 });
 
 test('Customer meetings use the linked-Company authorization boundary', () => {

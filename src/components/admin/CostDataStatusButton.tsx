@@ -6,7 +6,15 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { toggleCostDataAction } from '@/app/admin/cost-data/actions';
 
-export function CostDataStatusButton({ id, active }: { id: string; active: boolean }) {
+export function CostDataStatusButton({
+  id,
+  active,
+  rowVersion,
+}: {
+  id: string;
+  active: boolean;
+  rowVersion: number;
+}) {
   const t = useTranslations('admin');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -15,7 +23,12 @@ export function CostDataStatusButton({ id, active }: { id: string; active: boole
   function onClick() {
     setMessage(null);
     startTransition(async () => {
-      const result = await toggleCostDataAction({ id, active: !active });
+      const result = await toggleCostDataAction({
+        id,
+        active: !active,
+        operationId: crypto.randomUUID(),
+        expectedVersion: rowVersion,
+      });
       if (!result.ok) {
         setMessage(result.error);
         return;

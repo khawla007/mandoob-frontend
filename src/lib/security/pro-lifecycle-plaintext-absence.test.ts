@@ -161,6 +161,21 @@ const protectedAdapterAuditExemptions = new Map<string, readonly RegExp[]>([
     [/import\s*\{[^}]*\}\s*from '@\/app\/admin\/observability\/actions';/gu],
   ],
   ['src/components/estimator/CostEstimator.tsx', [/t\(['"]metrics\.[A-Za-z]+['"]\)/gu]],
+  ['src/app/admin/reports/page.tsx', [/t\(`metrics\.\$\{key\}`\)/gu]],
+  [
+    'src/lib/billing/stripe-coordinator.ts',
+    [
+      /(?<![\w$.])attach\(intent: StripeIntent, effect: Effect\): Promise<StripeIntent>;(?![\w$.])/gu,
+      /(?<![\w$.])deps\.attach\(intent, result\.effect\)(?![\w$.])/gu,
+    ],
+  ],
+  [
+    'src/lib/meetings/recording-ingestion.ts',
+    [
+      /(?<![\w$.])attach\(metadata: RecordingMetadata\): Promise<void>;(?![\w$.])/gu,
+      /(?<![\w$.])dependencies\.attach\(metadata\)(?![\w$.])/gu,
+    ],
+  ],
 ]);
 
 const protectedAdapterPatterns = [
@@ -476,11 +491,14 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
     assert.deepEqual([...protectedAdapterAuditExemptions.keys()].sort(), [
       'src/app/admin/audit-logs/page.tsx',
       'src/app/admin/observability/actions.ts',
+      'src/app/admin/reports/page.tsx',
       'src/app/admin/sessions/page.tsx',
       'src/components/admin/LockedAccountsTable.tsx',
       'src/components/admin/SessionsTable.tsx',
       'src/components/estimator/CostEstimator.tsx',
+      'src/lib/billing/stripe-coordinator.ts',
       'src/lib/data/audit-log.ts',
+      'src/lib/meetings/recording-ingestion.ts',
     ]);
     assert.doesNotThrow(() =>
       assertNoProtectedPersistenceAdapter(
@@ -493,6 +511,41 @@ if (process.env.PRO_LIFECYCLE_CANARY_RENDER_STATE) {
         'src/components/estimator/CostEstimator.tsx',
         "t('metrics.currency')",
       ),
+    );
+    assert.doesNotThrow(() =>
+      assertNoProtectedPersistenceAdapter('src/app/admin/reports/page.tsx', 't(`metrics.${key}`)'),
+    );
+    assert.doesNotThrow(() =>
+      assertNoProtectedPersistenceAdapter(
+        'src/lib/billing/stripe-coordinator.ts',
+        'deps.attach(intent, result.effect)',
+      ),
+    );
+    for (const nearMiss of [
+      'deps.attach(intent, result.effects)',
+      'deps.attach(intent, result.effect, auditPayload)',
+      'evil.deps.attach(intent, result.effect)',
+    ]) {
+      assert.throws(
+        () =>
+          assertNoProtectedPersistenceAdapter('src/lib/billing/stripe-coordinator.ts', nearMiss),
+        /src\/lib\/billing\/stripe-coordinator\.ts/u,
+        nearMiss,
+      );
+    }
+    assert.doesNotThrow(() =>
+      assertNoProtectedPersistenceAdapter(
+        'src/lib/meetings/recording-ingestion.ts',
+        'dependencies.attach(metadata)',
+      ),
+    );
+    assert.throws(
+      () =>
+        assertNoProtectedPersistenceAdapter(
+          'src/lib/meetings/recording-ingestion.ts',
+          'audit.dependencies.attach(metadata)',
+        ),
+      /src\/lib\/meetings\/recording-ingestion\.ts/u,
     );
     assert.throws(
       () =>

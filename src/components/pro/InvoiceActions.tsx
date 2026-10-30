@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { formatMoney } from '@/lib/format/money';
 import {
+  finalizeInvoiceAction,
   issueRefundAction,
   markInvoicePaidAction,
   voidInvoiceAction,
@@ -27,60 +28,95 @@ import { syncRefundOperationId } from './refund-operation-state';
 export function InvoiceActions({
   slug,
   invoiceId,
+  version,
+  paymentId,
   amountMinor,
+  outstandingMinor,
   currency,
   remainingRefundableMinor,
   status,
   refundOperation,
-  refundAvailable = false,
+  refundDetailsLoaded = false,
+  bankEvidenceSubmissionId,
 }: {
   slug: string;
   invoiceId: string;
+  version: number;
+  paymentId: string | null;
   amountMinor: number;
+  outstandingMinor: number;
   currency: string;
   remainingRefundableMinor: number | null;
   status: string;
   refundOperation: RefundOperationState | null;
-  refundAvailable?: boolean;
+  refundDetailsLoaded?: boolean;
+  bankEvidenceSubmissionId?: string;
 }) {
   const t = useTranslations('pro');
   const locale = useLocale();
   const router = useRouter();
+  const formId = useId();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const [manualAmountMinor, setManualAmountMinor] = useState(String(outstandingMinor));
   const [confirmation, setConfirmation] = useState<'void' | 'refund' | null>(null);
   const refundOperationId = useRef<string | null>(null);
+  const bankAllocationOperationId = useRef<string | null>(null);
   const hasPendingRefund = refundOperation?.status === 'pending';
 
   useEffect(() => {
     refundOperationId.current = syncRefundOperationId(refundOperationId.current, refundOperation);
   }, [refundOperation]);
 
-  function run(action: 'paid' | 'void' | 'refund') {
+  useEffect(() => {
+    bankAllocationOperationId.current = null;
+  }, [bankEvidenceSubmissionId, invoiceId, version]);
+
+  function run(action: 'finalize' | 'paid' | 'void' | 'refund') {
     setMessage(null);
     startTransition(async () => {
       if (action === 'refund') refundOperationId.current ??= crypto.randomUUID();
+      if (action === 'paid') bankAllocationOperationId.current ??= crypto.randomUUID();
       const result =
-        action === 'paid'
-          ? await markInvoicePaidAction({ tenantSlug: slug, invoiceId, method: 'bank_transfer' })
-          : action === 'void'
-            ? await voidInvoiceAction({
+        action === 'finalize'
+          ? await finalizeInvoiceAction({
+              tenantSlug: slug,
+              invoiceId,
+              expectedVersion: version,
+              operationId: crypto.randomUUID(),
+            })
+          : action === 'paid'
+            ? await markInvoicePaidAction({
                 tenantSlug: slug,
                 invoiceId,
-                reason: reason || t('paymentDefaultVoidReason'),
+                expectedVersion: version,
+                operationId: bankAllocationOperationId.current!,
+                amountMinor: Number(manualAmountMinor),
+                method: 'bank_transfer',
+                evidenceSubmissionId: bankEvidenceSubmissionId,
               })
-            : await issueRefundAction({
-                tenantSlug: slug,
-                invoiceId,
-                amountMinor: hasPendingRefund
-                  ? refundOperation.amountMinor
-                  : (remainingRefundableMinor ?? amountMinor),
-                reason: hasPendingRefund
-                  ? (refundOperation.reason ?? t('paymentDefaultRefundReason'))
-                  : reason || t('paymentDefaultRefundReason'),
-                operationId: refundOperationId.current!,
-              });
+            : action === 'void'
+              ? await voidInvoiceAction({
+                  tenantSlug: slug,
+                  invoiceId,
+                  expectedVersion: version,
+                  operationId: crypto.randomUUID(),
+                  reason: reason || t('paymentDefaultVoidReason'),
+                })
+              : await issueRefundAction({
+                  tenantSlug: slug,
+                  invoiceId,
+                  paymentId: hasPendingRefund ? refundOperation.paymentId : paymentId!,
+                  expectedVersion: version,
+                  amountMinor: hasPendingRefund
+                    ? refundOperation.amountMinor
+                    : (remainingRefundableMinor ?? amountMinor),
+                  reason: hasPendingRefund
+                    ? (refundOperation.reason ?? t('paymentDefaultRefundReason'))
+                    : reason || t('paymentDefaultRefundReason'),
+                  operationId: refundOperationId.current!,
+                });
       if (!result.ok) {
         if (action === 'refund' && result.code === 'TAP_TERMINAL') {
           refundOperationId.current = null;
@@ -91,6 +127,7 @@ export function InvoiceActions({
       if (action === 'refund' && 'status' in result.data && result.data.status === 'succeeded') {
         refundOperationId.current = null;
       }
+      if (action === 'paid') bankAllocationOperationId.current = null;
       setMessage(
         action === 'refund' && 'status' in result.data && result.data.status === 'pending'
           ? t('paymentRefundPending')
@@ -101,11 +138,14 @@ export function InvoiceActions({
     });
   }
 
-  const canClose = status === 'open' || status === 'draft';
+  const canClose = status === 'open';
+  const canAllocateBankTransfer = canClose && Boolean(bankEvidenceSubmissionId);
+  const canFinalize = status === 'draft';
   const canRefund =
+    (hasPendingRefund || paymentId !== null) &&
     (status === 'paid' || status === 'partially_refunded') &&
     canShowRefundAction({
-      detailsAvailable: refundAvailable,
+      detailsAvailable: refundDetailsLoaded,
       remainingMinor: remainingRefundableMinor,
       hasPendingRefund,
     });
@@ -118,17 +158,30 @@ export function InvoiceActions({
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap justify-end gap-2">
+        {canFinalize ? (
+          <Button
+            size="sm"
+            className="min-h-11"
+            variant="outline"
+            disabled={pending}
+            onClick={() => run('finalize')}
+          >
+            {t('paymentFinalizeInvoice')}
+          </Button>
+        ) : null}
         {canClose && (
           <>
-            <Button
-              size="sm"
-              className="min-h-11"
-              variant="outline"
-              disabled={pending}
-              onClick={() => run('paid')}
-            >
-              {t('paymentMarkPaid')}
-            </Button>
+            {canAllocateBankTransfer ? (
+              <Button
+                size="sm"
+                className="min-h-11"
+                variant="outline"
+                disabled={pending}
+                onClick={() => run('paid')}
+              >
+                {t('paymentMarkPaid')}
+              </Button>
+            ) : null}
             <Button
               size="sm"
               className="min-h-11"
@@ -152,14 +205,35 @@ export function InvoiceActions({
           </Button>
         )}
       </div>
+      {canClose ? (
+        <label
+          className="text-muted-foreground text-xs"
+          htmlFor={`${formId}-manual-payment-amount`}
+        >
+          {t('paymentManualAmountMinor')}
+          <Input
+            id={`${formId}-manual-payment-amount`}
+            className="mt-1 min-h-11 max-w-52 text-xs"
+            type="number"
+            min={1}
+            max={outstandingMinor}
+            step={1}
+            value={manualAmountMinor}
+            onChange={(event) => {
+              bankAllocationOperationId.current = null;
+              setManualAmountMinor(event.target.value);
+            }}
+          />
+        </label>
+      ) : null}
       {(canClose || canRefund) && !hasPendingRefund && (
-        <label className="text-muted-foreground text-xs" htmlFor="refund-reason">
+        <label className="text-muted-foreground text-xs" htmlFor={`${formId}-refund-reason`}>
           {canRefund ? t('paymentRefundReason') : t('paymentVoidNote')}
         </label>
       )}
       {(canClose || canRefund) && !hasPendingRefund && (
         <Input
-          id="refund-reason"
+          id={`${formId}-refund-reason`}
           className="min-h-11 max-w-52 text-xs"
           placeholder={canRefund ? t('paymentRefundReason') : t('paymentVoidNote')}
           value={reason}

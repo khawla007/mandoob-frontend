@@ -9,6 +9,7 @@ import { SettingsSourceUnavailable } from '@/components/pro/SettingsSourceUnavai
 import { SettingsWhatsAppCard } from '@/components/pro/SettingsWhatsAppCard';
 import { SettingsWhiteLabelChecklist } from '@/components/pro/SettingsWhiteLabelChecklist';
 import { requireActiveTenant } from '@/lib/auth/require-active-tenant';
+import { enforcePrivilegedSession } from '@/lib/auth/require-role';
 import { requireProTenantRouteAccess } from '@/lib/auth/require-tenant-route-access';
 import { readAssignedCompanyForPro } from '@/lib/data/company-profile';
 import { getTenantSettingsSnapshot } from '@/lib/data/tenant-settings';
@@ -23,13 +24,18 @@ export default async function WorkspaceSettingsPage({
 }) {
   const { tenant: slug } = await params;
   const { session, tenant } = await requireProTenantRouteAccess(slug);
+  await enforcePrivilegedSession(session);
   await requireActiveTenant(tenant.id);
   const company = await readAssignedCompanyForPro(session.id, slug);
   if (!company || company.tenantId !== tenant.id) notFound();
 
   const [t, snapshot] = await Promise.all([
     getTranslations('pro.settings'),
-    getTenantSettingsSnapshot(tenant.id),
+    getTenantSettingsSnapshot({
+      actorProfileId: session.id,
+      tenantId: tenant.id,
+      companyId: company.id,
+    }),
   ]);
   const branding =
     snapshot.branding.status === 'ready' && snapshot.branding.data
@@ -87,25 +93,41 @@ export default async function WorkspaceSettingsPage({
       {snapshot.branding.status === 'unavailable' ? (
         <SettingsSourceUnavailable title={t('branding.title')} message={t('sourceUnavailable')} />
       ) : (
-        <SettingsBrandingCard slug={slug} initial={branding} />
+        <SettingsBrandingCard
+          slug={slug}
+          initial={branding}
+          initialVersion={snapshot.versions.branding!}
+        />
       )}
 
       {snapshot.contact.status === 'unavailable' ? (
         <SettingsSourceUnavailable title={t('contact.title')} message={t('sourceUnavailable')} />
       ) : (
-        <SettingsContactCard slug={slug} initial={contact} />
+        <SettingsContactCard
+          slug={slug}
+          initial={contact}
+          initialVersion={snapshot.versions.contact!}
+        />
       )}
 
       {snapshot.smtp.status === 'unavailable' ? (
         <SettingsSourceUnavailable title={t('smtp.title')} message={t('sourceUnavailable')} />
       ) : (
-        <SettingsSmtpCard slug={slug} initial={snapshot.smtp.data} />
+        <SettingsSmtpCard
+          slug={slug}
+          initial={snapshot.smtp.data}
+          initialVersion={snapshot.versions.smtp!}
+        />
       )}
 
       {snapshot.whatsapp.status === 'unavailable' ? (
         <SettingsSourceUnavailable title={t('whatsapp.title')} message={t('sourceUnavailable')} />
       ) : (
-        <SettingsWhatsAppCard slug={slug} initial={snapshot.whatsapp.data} />
+        <SettingsWhatsAppCard
+          slug={slug}
+          initial={snapshot.whatsapp.data}
+          initialVersion={snapshot.versions.whatsapp!}
+        />
       )}
     </div>
   );

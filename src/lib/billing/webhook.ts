@@ -1,4 +1,4 @@
-import { inferPlanFromPriceId, type SubscriptionPlan } from './plans';
+import type { SubscriptionPlan } from './plans';
 
 export type SubscriptionStatus =
   | 'trialing'
@@ -71,7 +71,7 @@ export function timestampToIso(seconds: number | null | undefined): string | nul
 
 export function normalizeStripeSubscription(
   subscription: StripeSubscriptionLike,
-  mapPriceIdToPlan: (priceId: string) => SubscriptionPlan = inferPlanFromPriceId,
+  mapPriceIdToPlan: (priceId: string) => SubscriptionPlan,
 ): SubscriptionUpsert {
   const item = subscription.items.data[0];
   if (!item?.price?.id) throw new Error('Stripe subscription missing price');

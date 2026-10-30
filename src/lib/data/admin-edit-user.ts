@@ -2,7 +2,7 @@ import 'server-only';
 import { ApiError } from '@/lib/errors';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { encryptOptional } from '@/lib/crypto/pii';
-import { hashPassportForLookup } from '@/lib/crypto/passport-lookup';
+import { adminEmployeeIdentifierColumns } from '@/lib/employees/admin-identifiers';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import type { EditUserOutput } from '@/lib/validation/admin-user';
 import type { Role } from '@/lib/auth/roles';
@@ -101,11 +101,8 @@ export async function adminEditUser(
       company_id: input.company_id,
       name: input.full_name,
       phone: input.phone,
-      passport_no_encrypted: encryptOptional(input.passport_no ?? null),
-      passport_no_hash: hashPassportForLookup(input.company_id, input.passport_no),
-      visa_no_encrypted: encryptOptional(input.visa_no ?? null),
+      ...adminEmployeeIdentifierColumns(input.company_id, input),
       visa_expiry: input.visa_expiry ?? null,
-      emirates_id_encrypted: encryptOptional(input.emirates_id ?? null),
       eid_expiry: input.eid_expiry ?? null,
     };
     const { error } = await admin.from('employees').update(update).eq('profile_id', targetId);

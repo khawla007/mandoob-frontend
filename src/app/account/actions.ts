@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { requireUser } from '@/lib/auth/require-user';
+import { requireAccountUser } from '@/lib/auth/require-account-user';
 import {
   ProfileGeneralSchema,
   ProfilePhoneSchema,
@@ -19,6 +19,7 @@ import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { listUserSessions, revokeSessionById, type SessionSummary } from '@/lib/auth/sessions';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { removeMfaFactorWithInvariant } from '@/lib/auth/mfa-factor-removal';
+import { verifyCurrentPassword } from '@/lib/auth/password-change';
 import { ApiError } from '@/lib/errors';
 
 export type ActionResult<T = undefined> =
@@ -35,7 +36,7 @@ async function getActionContext(): Promise<{ ip: string | null; userAgent: strin
 
 function fail(e: unknown): ActionResult {
   if (e instanceof ApiError) return { ok: false, error: { code: e.code, message: e.message } };
-  console.error('account action failed', e);
+  console.error('account-action.failed');
   return { ok: false, error: { code: 'INTERNAL', message: 'Unexpected error' } };
 }
 
@@ -43,7 +44,7 @@ export async function updateProfileAction(
   formInput: unknown,
 ): Promise<ActionResult<{ changedKeys: string[] }>> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const useGeneral =
       session.role === 'super_admin' || session.role === 'admin' || session.role === 'pro';
     let updateInput: Parameters<typeof updateSelfProfile>[0];
@@ -86,25 +87,29 @@ export async function updateProfileAction(
 
 export async function changePasswordAction(formInput: unknown): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const parsed = PasswordChangeSchema.parse(formInput);
     if (!session.email) throw new ApiError('VALIDATION_FAILED', 'No email on session', 400);
 
-    const supabase = await createSupabaseServerClient();
-    const { error: reauthErr } = await supabase.auth.signInWithPassword({
-      email: session.email,
-      password: parsed.current_password,
-    });
-    if (reauthErr) {
+    const reauthenticated = await verifyCurrentPassword(
+      session.id,
+      session.email,
+      parsed.current_password,
+    );
+    if (!reauthenticated) {
       return {
         ok: false,
         error: { code: 'REAUTH_FAILED', message: 'Current password is incorrect' },
       };
     }
 
+    const supabase = await createSupabaseServerClient();
     const { error: updateErr } = await supabase.auth.updateUser({ password: parsed.new_password });
     if (updateErr) {
-      return { ok: false, error: { code: 'PASSWORD_UPDATE_FAILED', message: updateErr.message } };
+      return {
+        ok: false,
+        error: { code: 'PASSWORD_UPDATE_FAILED', message: 'Could not update password' },
+      };
     }
 
     const ctx = await getActionContext();
@@ -125,13 +130,13 @@ export async function enrollMfaAction(): Promise<
   ActionResult<{ factorId: string; qrCode: string; secret: string }>
 > {
   try {
-    await requireUser();
+    await requireAccountUser();
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
     if (error || !data) {
       return {
         ok: false,
-        error: { code: 'MFA_ENROLL_FAILED', message: error?.message ?? 'enroll failed' },
+        error: { code: 'MFA_ENROLL_FAILED', message: 'Could not start MFA enrollment' },
       };
     }
     return {
@@ -149,7 +154,7 @@ export async function enrollMfaAction(): Promise<
 
 export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const parsed = MfaEnrollFinalizeSchema.parse(formInput);
     const supabase = await createSupabaseServerClient();
     const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({
@@ -158,7 +163,7 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
     if (chErr || !challenge) {
       return {
         ok: false,
-        error: { code: 'MFA_CHALLENGE_FAILED', message: chErr?.message ?? 'challenge failed' },
+        error: { code: 'MFA_CHALLENGE_FAILED', message: 'Could not start MFA verification' },
       };
     }
     const { error: vErr } = await supabase.auth.mfa.verify({
@@ -166,7 +171,12 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
       challengeId: challenge.id,
       code: parsed.code,
     });
-    if (vErr) return { ok: false, error: { code: 'MFA_VERIFY_FAILED', message: vErr.message } };
+    if (vErr) {
+      return {
+        ok: false,
+        error: { code: 'MFA_VERIFY_FAILED', message: 'MFA code was not accepted' },
+      };
+    }
 
     const ctx = await getActionContext();
     await recordAuthEvent({
@@ -175,7 +185,6 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
       tenantId: session.tenantId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      details: { factor_id: parsed.factor_id },
     });
     return { ok: true };
   } catch (e) {
@@ -185,7 +194,7 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
 
 export async function removeMfaFactorAction(factorId: string): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     const supabase = await createSupabaseServerClient();
     await removeMfaFactorWithInvariant(
       { userId: session.id, role: session.role, factorId },
@@ -208,7 +217,7 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
         },
         unenroll: async (id) => {
           const { error } = await supabase.auth.mfa.unenroll({ factorId: id });
-          if (error) throw new ApiError('MFA_REMOVE_FAILED', error.message, 502);
+          if (error) throw new ApiError('MFA_REMOVE_FAILED', 'Could not remove MFA factor', 502);
         },
       },
     );
@@ -219,7 +228,6 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
       tenantId: session.tenantId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      details: { factor_id: factorId },
     });
     return { ok: true };
   } catch (e) {
@@ -231,7 +239,7 @@ export async function updateRoleFieldsAction(
   formInput: unknown,
 ): Promise<ActionResult<{ changedKeys: string[] }>> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     if (session.role !== 'pro' && session.role !== 'customer' && session.role !== 'employee') {
       return {
         ok: false,
@@ -264,7 +272,7 @@ export async function updateRoleFieldsAction(
 
 export async function optInSelfCommsAction(formInput: FormData): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     if (session.role !== 'customer' && session.role !== 'super_admin') {
       throw new ApiError('FORBIDDEN', 'Only customers can update communication preferences', 403);
     }
@@ -279,7 +287,7 @@ export async function optInSelfCommsAction(formInput: FormData): Promise<ActionR
       .select('phone')
       .eq('id', session.id)
       .maybeSingle();
-    if (error) throw new ApiError('INTERNAL', error.message, 500);
+    if (error) throw new ApiError('INTERNAL', 'Could not load communication settings', 500);
     const phone = (profile?.phone as string | null) ?? null;
     if (!phone) throw new ApiError('VALIDATION_FAILED', 'No phone number on profile', 400);
 
@@ -301,7 +309,7 @@ function gateSessionsRole(role: string | null): void {
 
 export async function listMySessionsAction(): Promise<ActionResult<SessionSummary[]>> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     gateSessionsRole(session.role);
     const sessions = await listUserSessions(session.id);
     return { ok: true, data: sessions };
@@ -312,7 +320,7 @@ export async function listMySessionsAction(): Promise<ActionResult<SessionSummar
 
 export async function revokeMySessionAction(sessionId: string): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     gateSessionsRole(session.role);
     const sessions = await listUserSessions(session.id);
     const owns = sessions.some((s) => s.id === sessionId);
@@ -325,7 +333,7 @@ export async function revokeMySessionAction(sessionId: string): Promise<ActionRe
       tenantId: session.tenantId,
       ip: ctx.ip,
       userAgent: ctx.userAgent,
-      details: { session_id: sessionId, scope: 'one' },
+      details: { scope: 'one' },
     });
     revalidatePath('/account/sessions');
     return { ok: true };
@@ -336,7 +344,7 @@ export async function revokeMySessionAction(sessionId: string): Promise<ActionRe
 
 export async function signOutEverywhereAction(): Promise<ActionResult> {
   try {
-    const session = await requireUser();
+    const session = await requireAccountUser();
     gateSessionsRole(session.role);
     await revokeAllSessions(session.id);
     const ctx = await getActionContext();

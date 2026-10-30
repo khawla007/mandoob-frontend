@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import React from 'react';
 import { Window } from 'happy-dom';
+import { installDomGlobals } from '@/lib/testing/dom-globals';
 
 const reactServer = '__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE' in React;
 
@@ -27,7 +28,7 @@ if (reactServer) {
   });
 } else {
   const browser = new Window({ url: 'https://app.example.test/admin/companies' });
-  Object.assign(globalThis, {
+  installDomGlobals({
     window: browser,
     document: browser.document,
     navigator: browser.navigator,
