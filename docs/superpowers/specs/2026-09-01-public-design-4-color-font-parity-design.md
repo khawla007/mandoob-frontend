@@ -18,26 +18,26 @@ Align the public website's colors and typography with the canonical static refer
 
 `../html-design/design-4/styles.css` is authoritative for public light-theme color and font values:
 
-| Role | Reference value |
-|---|---|
-| Paper | `#FFFFFF` |
-| Ink | `#000000` |
-| Zinc 50 | `#FAFAFA` |
-| Zinc 100 | `#F4F4F5` |
-| Zinc 200 / border | `#E4E4E7` |
-| Zinc 300 | `#D4D4D8` |
-| Zinc 400 | `#A1A1AA` |
-| Zinc 500 | `#71717A` |
-| Zinc 600 | `#52525B` |
-| Zinc 700 | `#3F3F46` |
-| Zinc 900 | `#18181B` |
-| Zinc 950 | `#09090B` |
-| Accent | `#FF5722` |
-| Accent hover | `#E64A19` |
-| Accent soft | `#FFF1ED` |
-| Dark border | `#27272A` |
-| Sans font | Geist |
-| Mono font | Geist Mono |
+| Role              | Reference value |
+| ----------------- | --------------- |
+| Paper             | `#FFFFFF`       |
+| Ink               | `#000000`       |
+| Zinc 50           | `#FAFAFA`       |
+| Zinc 100          | `#F4F4F5`       |
+| Zinc 200 / border | `#E4E4E7`       |
+| Zinc 300          | `#D4D4D8`       |
+| Zinc 400          | `#A1A1AA`       |
+| Zinc 500          | `#71717A`       |
+| Zinc 600          | `#52525B`       |
+| Zinc 700          | `#3F3F46`       |
+| Zinc 900          | `#18181B`       |
+| Zinc 950          | `#09090B`       |
+| Accent            | `#FF5722`       |
+| Accent hover      | `#E64A19`       |
+| Accent soft       | `#FFF1ED`       |
+| Dark border       | `#27272A`       |
+| Sans font         | Geist           |
+| Mono font         | Geist Mono      |
 
 The fonts are already loaded through `next/font`; the implementation must continue using `--font-geist-sans` and `--font-geist-mono` rather than adding a network font or duplicate font loader.
 

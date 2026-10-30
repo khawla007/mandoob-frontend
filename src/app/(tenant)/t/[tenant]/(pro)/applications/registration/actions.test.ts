@@ -226,7 +226,10 @@ test('transition action forwards the trusted actor and version-checked input', a
   const context = setup();
   const result = await runTransitionStageAction('acme', validTransition, context.dependencies);
   assert.equal(result.ok, true);
-  assert.equal(context.calls.includes(`transition:${ACTOR_ID}:${TENANT_ID}:${COMPANY_ID}:aal1`), true);
+  assert.equal(
+    context.calls.includes(`transition:${ACTOR_ID}:${TENANT_ID}:${COMPANY_ID}:aal1`),
+    true,
+  );
 });
 
 test('create->transition->link->visa idempotency: the operationId is preserved unmodified', async () => {

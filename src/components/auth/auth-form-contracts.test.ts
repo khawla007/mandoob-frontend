@@ -35,7 +35,10 @@ describe('login and registration form contracts', () => {
 
   it('preserves the login API payload and sanitizes its server destination', () => {
     assert.match(login, /postJson\('\/api\/v1\/auth\/login', values\)/u);
-    assert.match(login, /loginSuccessDestination\([\s\S]*data\.redirectTo[\s\S]*requiresMfaChallenge/u);
+    assert.match(
+      login,
+      /loginSuccessDestination\([\s\S]*data\.redirectTo[\s\S]*requiresMfaChallenge/u,
+    );
     assert.doesNotMatch(state, /queryNext === '\/mfa\/enroll'/u);
     assert.match(state, /sharedSafeDestination\(serverRedirect\)/u);
     assert.match(login, /EMAIL_NOT_VERIFIED/u);

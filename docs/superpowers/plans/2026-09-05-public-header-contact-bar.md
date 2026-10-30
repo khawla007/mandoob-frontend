@@ -23,6 +23,7 @@
 ### Task 1: Scroll-Aware Header Frame
 
 **Files:**
+
 - Create: `src/components/site/PublicHeaderFrame.tsx`
 - Create: `src/components/site/PublicHeaderFrame.test.ts`
 
@@ -136,6 +137,7 @@ git commit -m "feat(public): add scroll-aware header frame"
 ### Task 2: Localized Contact Bar Markup
 
 **Files:**
+
 - Modify: `src/components/site/SiteHeader.tsx`
 - Modify: `src/components/site/public-navigation.test.ts`
 - Modify: `src/messages/en.json`
@@ -258,6 +260,7 @@ git commit -m "feat(public): add localized header contact bar"
 ### Task 3: Sticky Stack and Smooth Collapse Styling
 
 **Files:**
+
 - Modify: `src/app/(public)/public-theme.css`
 - Modify: `src/components/site/public-navigation.test.ts`
 
@@ -267,15 +270,33 @@ Add these assertions to the public header styling suite in `public-navigation.te
 
 ```ts
 it('keeps the complete banner sticky while smoothly collapsing its contact row', () => {
-  assert.match(cssSource, /\.site-public \.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50/u);
-  assert.match(cssSource, /\.site-public \.public-topbar\s*\{[^}]*display:\s*grid[^}]*grid-template-rows:\s*1fr[^}]*transition:[^}]*420ms/u);
-  assert.match(cssSource, /\.site-public \.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*grid-template-rows:\s*0fr[^}]*opacity:\s*0/u);
-  assert.match(cssSource, /\.site-public \.public-header-frame\[data-collapsed='true'\] \.public-topbar__inner\s*\{[^}]*transform:\s*translateY\(-100%\)/u);
+  assert.match(
+    cssSource,
+    /\.site-public \.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50/u,
+  );
+  assert.match(
+    cssSource,
+    /\.site-public \.public-topbar\s*\{[^}]*display:\s*grid[^}]*grid-template-rows:\s*1fr[^}]*transition:[^}]*420ms/u,
+  );
+  assert.match(
+    cssSource,
+    /\.site-public \.public-header-frame\[data-collapsed='true'\] \.public-topbar\s*\{[^}]*grid-template-rows:\s*0fr[^}]*opacity:\s*0/u,
+  );
+  assert.match(
+    cssSource,
+    /\.site-public \.public-header-frame\[data-collapsed='true'\] \.public-topbar__inner\s*\{[^}]*transform:\s*translateY\(-100%\)/u,
+  );
 });
 
 it('adapts the contact bar for mobile and reduced motion', () => {
-  assert.match(cssSource, /@media\s*\(max-width:\s*767px\)[^]*\.site-public \.public-topbar__tagline\s*\{[^}]*display:\s*none/u);
-  assert.match(cssSource, /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.public-topbar[^]*transition:\s*none/u);
+  assert.match(
+    cssSource,
+    /@media\s*\(max-width:\s*767px\)[^]*\.site-public \.public-topbar__tagline\s*\{[^}]*display:\s*none/u,
+  );
+  assert.match(
+    cssSource,
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)[^]*\.site-public \.public-topbar[^]*transition:\s*none/u,
+  );
 });
 ```
 
@@ -416,6 +437,7 @@ git commit -m "style(public): animate sticky contact header"
 ### Task 4: Full Verification and Live Review
 
 **Files:**
+
 - Verify only; modify touched files only if a check reveals a defect.
 
 - [ ] **Step 1: Run tests and static checks**

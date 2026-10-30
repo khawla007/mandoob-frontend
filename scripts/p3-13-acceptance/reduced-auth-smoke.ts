@@ -101,8 +101,7 @@ export async function finalizeReducedAuthRun(
   state: CleanupState,
   dependencies: CleanupDependencies = {
     stopApp: stopChild,
-    stopStack: () =>
-      runSupabase(['stop', '--no-backup'], { encoding: 'utf8', stdio: 'ignore' }),
+    stopStack: () => runSupabase(['stop', '--no-backup'], { encoding: 'utf8', stdio: 'ignore' }),
     removeArtifacts: removeReducedAuthArtifacts,
     removeWorkdir: removeAcceptanceWorkdir,
   },

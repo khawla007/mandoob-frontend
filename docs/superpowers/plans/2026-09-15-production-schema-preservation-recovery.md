@@ -13,6 +13,7 @@
 ## Task 1: Establish an isolated implementation workspace
 
 **Files:**
+
 - No source changes
 
 1. Detect whether the repository is already a worktree with `git rev-parse --git-dir`, `git rev-parse --git-common-dir`, `git branch --show-current`, and `git rev-parse --show-superproject-working-tree`.
@@ -23,6 +24,7 @@
 ## Task 2: Add preservation regression tests (RED)
 
 **Files:**
+
 - Modify: `src/lib/data/company-workspace-migration.test.ts`
 - Test: `src/lib/data/company-workspace-migration.test.ts`
 
@@ -40,6 +42,7 @@
 ## Task 3: Implement the data-preserving `0059` rebase (GREEN)
 
 **Files:**
+
 - Modify: `supabase/migrations/20260817090000_0059_company_workspace_rebase.sql`
 - Test: `src/lib/data/company-workspace-migration.test.ts`
 
@@ -57,6 +60,7 @@
 ## Task 4: Run repository verification before database rehearsal
 
 **Files:**
+
 - No additional source changes expected
 
 1. Run focused migration suites covering workspace, assignment lifecycle, PRO lifecycle, security workflows, and admin workflows.
@@ -68,6 +72,7 @@
 ## Task 5: Create protected production backups and an invariant manifest
 
 **Files:**
+
 - Create only protected temporary artifacts under an exact `mktemp -d` directory in `/tmp`
 - Do not add backup artifacts to git
 
@@ -81,6 +86,7 @@
 ## Task 6: Restore and rehearse against an isolated local Supabase database
 
 **Files:**
+
 - Temporary local database state only
 
 1. Start an isolated local Supabase stack on non-production ports and confirm its project identity cannot resolve to production.
@@ -94,6 +100,7 @@
 ## Task 7: Apply migrations to production
 
 **Files:**
+
 - Production database migration ledger and schema
 
 1. Reconfirm the linked project reference and latest production ledger immediately before writing.
@@ -105,6 +112,7 @@
 ## Task 8: Reconcile the two existing PRO identities safely
 
 **Files:**
+
 - Production database rows only
 
 1. Resolve exact IDs server-side from existing immutable auth/profile relations; do not print emails, UUIDs, or tokens.
@@ -126,6 +134,7 @@
 ## Task 9: Verify production application behavior
 
 **Files:**
+
 - No source changes expected
 
 1. Verify `/api/v1/public/health` succeeds on the configured production origin.
@@ -138,6 +147,7 @@
 ## Task 10: Finalize and report
 
 **Files:**
+
 - Update the project daily report identified by repository convention
 
 1. Record the session under Completed Work: root cause, preservation patch, backups/rehearsal, applied migrations, reconciliation, deployment, and verification evidence.

@@ -13,6 +13,7 @@
 ### Task 1: Add the nullable authoritative session resolver
 
 **Files:**
+
 - Modify: `src/lib/auth/require-role-live.test.ts`
 - Modify: `src/lib/auth/require-role.ts`
 
@@ -134,6 +135,7 @@ Expected: all role-authorization tests PASS.
 ### Task 2: Make the public header use authoritative state
 
 **Files:**
+
 - Modify: `src/components/site/public-navigation.test.ts`
 - Modify: `src/components/site/SiteHeader.tsx`
 
@@ -175,6 +177,7 @@ Expected: all focused tests PASS.
 ### Task 3: Verify and commit
 
 **Files:**
+
 - Modify: `docs/superpowers/plans/2026-09-05-public-header-authoritative-session.md` (mark completed steps)
 
 - [x] **Step 1: Run full source tests**
