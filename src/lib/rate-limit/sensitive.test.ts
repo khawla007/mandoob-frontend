@@ -1,45 +1,116 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-test('sensitive rate limiter distinguishes denied and unavailable while redacting diagnostics', async () => {
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||= 'https://example.supabase.co';
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= 'anon-key-at-least-twenty-characters';
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'service-role-key-at-least-twenty-characters';
-  process.env.NEXT_PUBLIC_ROOT_DOMAIN ||= 'example.test';
-  const { consumeSensitiveRateLimit, SENSITIVE_RATE_LIMITS } = await import('./index');
+process.env.NEXT_PUBLIC_SUPABASE_URL ||= 'https://example.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= 'anon-key-at-least-twenty-characters';
+process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'service-role-key-at-least-twenty-characters';
+process.env.NEXT_PUBLIC_ROOT_DOMAIN ||= 'example.test';
+
+const limiter = import('./index');
+
+const config = {
+  key: 'login:private-ip',
+  capacity: 1,
+  refillPerSec: 1,
+  routeLabel: 'login',
+  correlationId: 'cid',
+};
+
+test('typed rate limiter allows an accepted consumption', async () => {
+  const { consumeRateLimitDecision } = await limiter;
+
   assert.equal(
-    await consumeSensitiveRateLimit(
-      {
-        key: 'credential:actor:target',
-        routeLabel: 'credential-mutation',
-        correlationId: 'corr',
-        ...SENSITIVE_RATE_LIMITS.credentialMutation,
-      },
-      { consume: async () => ({ data: false, error: null }) },
-    ),
+    await consumeRateLimitDecision(config, {
+      consume: async () => ({ data: true, error: null }),
+    }),
+    'allowed',
+  );
+});
+
+test('typed rate limiter reports a denied consumption as limited', async () => {
+  const { consumeRateLimitDecision } = await limiter;
+
+  assert.equal(
+    await consumeRateLimitDecision(config, {
+      consume: async () => ({ data: false, error: null }),
+    }),
     'limited',
   );
+});
 
-  const messages: unknown[][] = [];
+test('typed rate limiter treats an RPC error as unavailable with redacted diagnostics', async () => {
+  const { consumeRateLimitDecision } = await limiter;
+  const logs: unknown[][] = [];
+
   assert.equal(
-    await consumeSensitiveRateLimit(
-      {
-        key: 'secret-target',
-        routeLabel: 'credential-review',
-        correlationId: 'corr',
-        ...SENSITIVE_RATE_LIMITS.credentialReview,
-      },
-      {
-        consume: async () => ({ data: null, error: { message: 'database secret' } }),
-        log: (...args) => messages.push(args),
-      },
-    ),
+    await consumeRateLimitDecision(config, {
+      consume: async () => ({ data: null, error: new Error('database-secret') }),
+      log: (...args) => logs.push(args),
+    }),
     'unavailable',
   );
-  assert.deepEqual(messages, [
-    [
-      'sensitive-rate-limit unavailable',
-      { routeLabel: 'credential-review', correlationId: 'corr' },
-    ],
+  assert.deepEqual(logs, [
+    ['rate-limit unavailable', { routeLabel: 'login', correlationId: 'cid' }],
   ]);
+  assert.doesNotMatch(JSON.stringify(logs), /private-ip|database-secret/u);
+});
+
+test('typed rate limiter treats a thrown exception as unavailable with redacted diagnostics', async () => {
+  const { consumeRateLimitDecision } = await limiter;
+  const logs: unknown[][] = [];
+
+  assert.equal(
+    await consumeRateLimitDecision(config, {
+      consume: async () => {
+        throw new Error('thrown-secret');
+      },
+      log: (...args) => logs.push(args),
+    }),
+    'unavailable',
+  );
+  assert.deepEqual(logs, [
+    ['rate-limit unavailable', { routeLabel: 'login', correlationId: 'cid' }],
+  ]);
+  assert.doesNotMatch(JSON.stringify(logs), /private-ip|thrown-secret/u);
+});
+
+test('typed rate limiter treats null data as unavailable', async () => {
+  const { consumeRateLimitDecision } = await limiter;
+
+  assert.equal(
+    await consumeRateLimitDecision(config, {
+      consume: async () => ({ data: null, error: null }),
+      log: () => undefined,
+    }),
+    'unavailable',
+  );
+});
+
+test('typed rate limiter treats non-boolean string data as unavailable', async () => {
+  const { consumeRateLimitDecision } = await limiter;
+
+  assert.equal(
+    await consumeRateLimitDecision(config, {
+      consume: async () => ({ data: 'true', error: null }),
+      log: () => undefined,
+    }),
+    'unavailable',
+  );
+});
+
+test('sensitive rate limiter preserves typed decision behavior', async () => {
+  const { consumeSensitiveRateLimit } = await limiter;
+
+  assert.equal(
+    await consumeSensitiveRateLimit(config, {
+      consume: async () => ({ data: false, error: null }),
+    }),
+    'limited',
+  );
+  assert.equal(
+    await consumeSensitiveRateLimit(config, {
+      consume: async () => ({ data: true, error: null }),
+    }),
+    'allowed',
+  );
 });
