@@ -16,6 +16,7 @@ process.env.SUPABASE_AUTH_WEBHOOK_SECRET = 'supabase-hook-secret';
 process.env.TWILIO_AUTH_TOKEN = 'twilio-auth-token';
 process.env.UNIFONIC_WEBHOOK_SECRET = 'unifonic-hook-secret';
 process.env.WHATSAPP_APP_SECRET = 'whatsapp-app-secret';
+process.env.DAILY_WEBHOOK_SECRET = 'daily-webhook-secret';
 
 const root = process.cwd();
 const apiRoot = join(root, 'src/app/api/v1');
@@ -102,6 +103,7 @@ const expectedIngress: Record<string, readonly string[]> = {
   'src/app/api/v1/webhooks/twilio/route.ts': ['readBoundedBody', 'decodeBoundedUtf8'],
   'src/app/api/v1/webhooks/unifonic/route.ts': ['readBoundedBody', 'decodeBoundedUtf8'],
   'src/app/api/v1/webhooks/whatsapp/route.ts': ['readBoundedBody', 'decodeBoundedUtf8'],
+  'src/app/api/v1/webhooks/daily/route-handler.ts': ['readBoundedBody', 'decodeBoundedUtf8'],
 };
 
 test('all auth, public, and webhook request bodies enter through canonical bounded ingress', () => {
@@ -130,6 +132,13 @@ test('the shared auth JSON parser is itself bounded by the canonical public JSON
   assert.deepEqual(originalRequestBodyCalls(path), []);
 });
 
+test('delegated Daily verification accepts bounded text, never an original Request reader', () => {
+  const path = join(root, 'src/lib/meetings/daily.ts');
+  const source = readFileSync(path, 'utf8');
+  assert.deepEqual(originalRequestBodyCalls(path), []);
+  assert.match(source, /verifyDailyWebhook\(\s*body: string,\s*signature:/u);
+});
+
 test('bounded ingress precedes parsing, signature verification, and privileged work', () => {
   const firstSensitiveMarker: Record<string, string> = {
     'src/app/api/v1/public/contact/handler.ts': 'requestSchema.safeParse',
@@ -143,6 +152,7 @@ test('bounded ingress precedes parsing, signature verification, and privileged w
     'src/app/api/v1/webhooks/twilio/route.ts': 'parseFormBody(rawBody)',
     'src/app/api/v1/webhooks/unifonic/route.ts': 'verifyUnifonicSignature(rawBody',
     'src/app/api/v1/webhooks/whatsapp/route.ts': 'verifyHubSignature(rawBody',
+    'src/app/api/v1/webhooks/daily/route-handler.ts': 'dependencies.verify(rawBody',
   };
 
   for (const [path, marker] of Object.entries(firstSensitiveMarker)) {
@@ -274,13 +284,14 @@ test('all provider webhook entry points reject actual streamed overflow with 413
     throw new Error('downstream fetch must not run');
   };
   try {
-    const [tap, stripe, supabaseAuth, twilio, unifonic, whatsapp] = await Promise.all([
+    const [tap, stripe, supabaseAuth, twilio, unifonic, whatsapp, daily] = await Promise.all([
       import('@/app/api/v1/webhooks/tap/route'),
       import('@/app/api/v1/webhooks/stripe/route'),
       import('@/app/api/v1/webhooks/supabase-auth/route'),
       import('@/app/api/v1/webhooks/twilio/route'),
       import('@/app/api/v1/webhooks/unifonic/route'),
       import('@/app/api/v1/webhooks/whatsapp/route'),
+      import('@/app/api/v1/webhooks/daily/route-handler'),
     ]);
     const routes = [
       tap.POST,
@@ -289,6 +300,19 @@ test('all provider webhook entry points reject actual streamed overflow with 413
       twilio.POST,
       unifonic.POST,
       whatsapp.POST,
+      (request: Request) =>
+        daily.handleDailyWebhook(request, {
+          verify: async () => {
+            throw new Error('Daily verification must not run on overflow');
+          },
+          reserve: async () => {
+            throw new Error('Daily reservation must not run on overflow');
+          },
+          findMeeting: async () => null,
+          hasConsent: async () => false,
+          ingestRecording: async () => undefined,
+          enqueueSummary: async () => undefined,
+        }),
     ];
     for (const [index, route] of routes.entries()) {
       for (const mode of ['chunked', 'missing', 'understated'] as const) {
@@ -315,14 +339,33 @@ test('all provider webhook entry points reject actual streamed overflow with 413
 });
 
 test('signed text webhook entry points reject invalid UTF-8 before verification or downstream work', async () => {
-  const [stripe, supabaseAuth, twilio, unifonic, whatsapp] = await Promise.all([
+  const [stripe, supabaseAuth, twilio, unifonic, whatsapp, daily] = await Promise.all([
     import('@/app/api/v1/webhooks/stripe/route'),
     import('@/app/api/v1/webhooks/supabase-auth/route'),
     import('@/app/api/v1/webhooks/twilio/route'),
     import('@/app/api/v1/webhooks/unifonic/route'),
     import('@/app/api/v1/webhooks/whatsapp/route'),
+    import('@/app/api/v1/webhooks/daily/route-handler'),
   ]);
-  for (const route of [stripe.POST, supabaseAuth.POST, twilio.POST, unifonic.POST, whatsapp.POST]) {
+  const routes = [
+    stripe.POST,
+    supabaseAuth.POST,
+    twilio.POST,
+    unifonic.POST,
+    whatsapp.POST,
+    (request: Request) =>
+      daily.handleDailyWebhook(request, {
+        verify: async () => {
+          throw new Error('Daily verification must not run for invalid UTF-8');
+        },
+        reserve: async () => false,
+        findMeeting: async () => null,
+        hasConsent: async () => false,
+        ingestRecording: async () => undefined,
+        enqueueSummary: async () => undefined,
+      }),
+  ];
+  for (const route of routes) {
     const response = await route(
       new Request('https://mandoob.test/api/v1/webhooks/provider', {
         method: 'POST',
@@ -355,4 +398,25 @@ test('exact-limit signed payloads retain every byte through bounded ingress', as
   assert.equal(bounded, raw);
   assert.equal(verifyUnifonicSignature(bounded, unifonicSignature, 'unifonic-hook-secret'), true);
   assert.equal(verifyHubSignature(bounded, whatsappSignature, 'whatsapp-app-secret'), true);
+
+  const { handleDailyWebhook } = await import('@/app/api/v1/webhooks/daily/route-handler');
+  const dailyEvent = JSON.stringify({
+    id: 'daily-exact-limit',
+    timestamp: new Date().toISOString(),
+    type: 'ignored.event',
+    payload: {},
+  });
+  const dailyRaw = `${' '.repeat(BODY_LIMITS.providerWebhook - dailyEvent.length)}${dailyEvent}`;
+  const dailySignature = createHmac('sha256', 'daily-webhook-secret')
+    .update(dailyRaw)
+    .digest('hex');
+  const dailyResponse = await handleDailyWebhook(
+    new Request('https://mandoob.test/api/v1/webhooks/daily', {
+      method: 'POST',
+      headers: { 'x-daily-signature': dailySignature },
+      body: dailyRaw,
+    }),
+  );
+  assert.equal(dailyResponse.status, 200);
+  assert.deepEqual(await dailyResponse.json(), { ignored: true });
 });

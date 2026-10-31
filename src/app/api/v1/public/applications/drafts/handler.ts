@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { getClientIp } from '@/lib/auth/request';
 import { env } from '@/lib/env';
-import { BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
+import { BODY_LIMITS, BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
 import { consumeSensitiveRateLimit } from '@/lib/rate-limit';
 import {
   createApplicationDraft,
@@ -15,7 +15,6 @@ import {
   verifyPublicTurnstile,
 } from '@/lib/public-intake/security';
 
-const MAX_BODY_BYTES = 4_096;
 const requestSchema = z
   .object({
     operationId: z.string().uuid(),
@@ -41,7 +40,7 @@ export async function handleCreateDraftPost(request: Request, deps: Deps = {}) {
   }
   let raw: unknown;
   try {
-    raw = await readBoundedJson(request, MAX_BODY_BYTES);
+    raw = await readBoundedJson(request, BODY_LIMITS.publicApplicationJson);
   } catch (error) {
     return error instanceof BodyTooLargeError
       ? fail(413, 'Request is too large.', false, 'PAYLOAD_TOO_LARGE')

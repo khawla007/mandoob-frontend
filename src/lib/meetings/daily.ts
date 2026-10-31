@@ -84,15 +84,12 @@ export async function createDailyRoom(input: CreateDailyRoomInput): Promise<Dail
 }
 
 export async function verifyDailyWebhook(
-  request: Request,
+  body: string,
+  signature: string | null,
   options: { now?: Date; toleranceMs?: number } = {},
 ): Promise<DailyWebhookEvent | null> {
   const secret = process.env.DAILY_WEBHOOK_SECRET?.trim();
   if (!secret) return null;
-
-  const body = await request.text();
-  const signature =
-    request.headers.get('x-daily-signature') ?? request.headers.get('daily-signature');
   if (!signature) return null;
 
   const expected = createHmac('sha256', secret).update(body).digest('hex');
@@ -105,7 +102,12 @@ export async function verifyDailyWebhook(
     return null;
   }
 
-  const parsed = JSON.parse(body) as DailyWebhookEvent;
+  let parsed: DailyWebhookEvent;
+  try {
+    parsed = JSON.parse(body) as DailyWebhookEvent;
+  } catch {
+    return null;
+  }
   if (
     !parsed ||
     typeof parsed.id !== 'string' ||

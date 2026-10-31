@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { getClientIp } from '@/lib/auth/request';
 import { env } from '@/lib/env';
-import { BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
+import { BODY_LIMITS, BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
 import { consumeSensitiveRateLimit } from '@/lib/rate-limit';
 import { acceptPublicContact, type AcceptContactInput } from '@/lib/public-intake/service';
 import {
@@ -12,7 +12,6 @@ import {
 } from '@/lib/public-intake/security';
 import { validateContactSubmission } from '@/lib/public-contact/validation';
 
-const MAX_BODY_BYTES = 16_384;
 const requestSchema = z
   .object({
     operationId: z.string().uuid(),
@@ -47,7 +46,7 @@ export async function handlePublicContactPost(request: Request, deps: Deps = {})
   }
   let raw: unknown;
   try {
-    raw = await readBoundedJson(request, MAX_BODY_BYTES);
+    raw = await readBoundedJson(request, BODY_LIMITS.publicContactJson);
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
       return response(

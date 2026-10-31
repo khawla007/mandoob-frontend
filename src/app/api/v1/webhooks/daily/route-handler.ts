@@ -1,4 +1,10 @@
 import { errorResponse, jsonOk } from '@/lib/errors';
+import {
+  BODY_LIMITS,
+  BodyTooLargeError,
+  decodeBoundedUtf8,
+  readBoundedBody,
+} from '@/lib/http/bounded-body';
 import { createHash } from 'node:crypto';
 import {
   dailyRecordingStoragePath,
@@ -13,7 +19,7 @@ import { scanFilePrivate } from '@/lib/security/scan-file';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 type DailyWebhookDependencies = {
-  verify(request: Request): Promise<DailyWebhookEvent | null>;
+  verify(body: string, signature: string | null): Promise<DailyWebhookEvent | null>;
   reserve(event: DailyWebhookEvent): Promise<boolean>;
   findMeeting(roomName: string): Promise<Meeting | null>;
   hasConsent(meetingId: string): Promise<boolean>;
@@ -93,7 +99,17 @@ export async function handleDailyWebhook(
   request: Request,
   dependencies: DailyWebhookDependencies = dailyWebhookDependencies,
 ): Promise<Response> {
-  const event = await dependencies.verify(request);
+  let rawBody: string;
+  try {
+    rawBody = decodeBoundedUtf8(await readBoundedBody(request, BODY_LIMITS.providerWebhook));
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? errorResponse('PAYLOAD_TOO_LARGE', 'request too large', 413)
+      : errorResponse('BAD_REQUEST', 'invalid request', 400);
+  }
+  const signature =
+    request.headers.get('x-daily-signature') ?? request.headers.get('daily-signature');
+  const event = await dependencies.verify(rawBody, signature);
   if (!event) return errorResponse('INVALID_SIGNATURE', 'Invalid Daily webhook signature', 401);
   if (event.type !== 'recording.ready') return jsonOk({ ignored: true });
   if (!(await dependencies.reserve(event))) return jsonOk({ ignored: true });

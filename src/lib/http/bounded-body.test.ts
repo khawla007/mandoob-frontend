@@ -326,6 +326,8 @@ test('rejects GET and HEAD bounded request reconstruction with a stable typed er
 test('exports the central request body limits', () => {
   assert.deepEqual(BODY_LIMITS, {
     publicJson: 64 * 1024,
+    publicContactJson: 16 * 1024,
+    publicApplicationJson: 4 * 1024,
     providerWebhook: 256 * 1024,
     publicMultipart: 12 * 1024 * 1024,
   });

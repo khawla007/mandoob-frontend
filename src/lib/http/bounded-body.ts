@@ -2,6 +2,8 @@ import 'server-only';
 
 export const BODY_LIMITS = {
   publicJson: 64 * 1024,
+  publicContactJson: 16 * 1024,
+  publicApplicationJson: 4 * 1024,
   providerWebhook: 256 * 1024,
   // Multipart buffering and parsing can temporarily retain roughly 2-3x this byte cap.
   publicMultipart: 12 * 1024 * 1024,
