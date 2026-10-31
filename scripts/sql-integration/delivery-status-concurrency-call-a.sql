@@ -1,0 +1,14 @@
+\set ON_ERROR_STOP on
+set lock_timeout = '5s';
+set statement_timeout = '15s';
+
+begin;
+select result ->> 'outcome'
+from (
+  select public.apply_provider_delivery_status(
+    'sms', 'twilio', 'LSW1-CONCURRENT-SMS', 'sent', '2026-10-31T03:01:00Z', null
+  ) as result
+) as callback;
+\! touch /tmp/delivery-status-a-locked
+select pg_catalog.pg_sleep(1);
+commit;
