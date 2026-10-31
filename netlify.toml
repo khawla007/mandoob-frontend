@@ -3,5 +3,15 @@
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_ROOT_DOMAIN"
 
+# Deploy previews must compile without inheriting production credentials.
+# Reserved .invalid endpoints keep every preview backend operation fail-closed.
+[context.deploy-preview.environment]
+  ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  NEXT_PUBLIC_APP_URL = "https://deploy-preview.invalid"
+  NEXT_PUBLIC_ROOT_DOMAIN = "deploy-preview.invalid"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "deploy-preview-anon-key-disabled"
+  NEXT_PUBLIC_SUPABASE_URL = "https://deploy-preview.invalid"
+  SUPABASE_SERVICE_ROLE_KEY = "deploy-preview-service-role-disabled"
+
 [functions."process-event-jobs"]
   schedule = "*/5 * * * *"

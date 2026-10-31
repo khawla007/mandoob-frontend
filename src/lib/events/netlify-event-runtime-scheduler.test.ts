@@ -25,6 +25,13 @@ function scheduledTomlFunctions(source: string): Array<{ name: string; schedule:
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+function deployPreviewEnvironment(source: string): Record<string, unknown> {
+  const config = parse(source) as {
+    context?: { 'deploy-preview'?: { environment?: Record<string, unknown> } };
+  };
+  return { ...(config.context?.['deploy-preview']?.environment ?? {}) };
+}
+
 describe('Netlify event runtime scheduler', () => {
   test('accepts an indexed process environment while missing runtime keys stay disabled', async () => {
     const environment: NodeJS.ProcessEnv = { NODE_ENV: 'test' };
@@ -76,6 +83,20 @@ describe('Netlify event runtime scheduler', () => {
         { name: 'process-event-jobs', schedule: '*/5 * * * *' },
       ],
     );
+  });
+
+  test('builds deploy previews with inert environment values instead of production credentials', () => {
+    const netlifyConfig = readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8');
+    const environment = deployPreviewEnvironment(netlifyConfig);
+
+    assert.deepEqual(environment, {
+      ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+      NEXT_PUBLIC_APP_URL: 'https://deploy-preview.invalid',
+      NEXT_PUBLIC_ROOT_DOMAIN: 'deploy-preview.invalid',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'deploy-preview-anon-key-disabled',
+      NEXT_PUBLIC_SUPABASE_URL: 'https://deploy-preview.invalid',
+      SUPABASE_SERVICE_ROLE_KEY: 'deploy-preview-service-role-disabled',
+    });
   });
 
   test('fails closed unless the exclusive cutover selector, URL, and secret are valid', async () => {

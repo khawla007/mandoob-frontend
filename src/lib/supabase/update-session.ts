@@ -2,7 +2,7 @@ import 'server-only';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { env } from '@/lib/env';
+import { supabasePublicEnv } from '@/lib/env.supabase-public';
 
 /**
  * Build a response that carries refreshed Supabase auth cookies.
@@ -18,8 +18,8 @@ export async function updateSession(
   const response = initialResponse ?? NextResponse.next({ request });
 
   const supabase = createServerClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabasePublicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    supabasePublicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
