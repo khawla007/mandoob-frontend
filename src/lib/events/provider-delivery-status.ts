@@ -49,7 +49,7 @@ export async function applyProviderDeliveryStatus(
     throw new ProviderDeliveryStatusUnavailableError();
   }
 
-  if (!isRecord(result) || result.error || !isRecord(result.data)) {
+  if (!isRecord(result) || result.error !== null || !isRecord(result.data)) {
     throw new ProviderDeliveryStatusUnavailableError();
   }
   const outcome = result.data.outcome;

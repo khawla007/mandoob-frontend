@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import test from 'node:test';
+import ts from 'typescript';
 
 const subject = () => import('./provider-delivery-status');
 
@@ -89,6 +91,9 @@ test('fails closed with one sanitized error for RPC errors, throws, and malforme
     null,
     42,
     'not-an-rpc-result',
+    { data: { outcome: 'applied' }, error: false },
+    { data: { outcome: 'applied' }, error: 0 },
+    { data: { outcome: 'applied' } },
     { data: null, error: { message: 'private database detail' } },
     { data: null, error: null },
     { data: [], error: null },
@@ -126,19 +131,80 @@ test('fails closed with one sanitized error for RPC errors, throws, and malforme
   }
 });
 
-test('verified callback production code contains no direct outbound status update', () => {
-  const paths = [
+test('the direct outbound access audit detects property and element access variants', () => {
+  const fixture = `
+    client.from('outbound_sms').update({ status: 'sent' });
+    getClient()['from']("outbound_whatsapp").select('id');
+    client[\`from\`]('outbound_sms');
+    client.from(dynamicTable);
+  `;
+  assert.deepEqual(directOutboundAccesses(fixture, 'fixture.ts'), [
+    "fixture.ts:2 client.from('outbound_sms')",
+    `fixture.ts:3 getClient()['from']("outbound_whatsapp")`,
+    "fixture.ts:4 client[`from`]('outbound_sms')",
+  ]);
+});
+
+test('verified callback production trees contain no direct outbound status access', () => {
+  const root = process.cwd();
+  const callbackRoot = join(root, 'src/app/api/v1/webhooks');
+  const files = ['twilio', 'unifonic', 'whatsapp'].flatMap((provider) =>
+    productionFiles(join(callbackRoot, provider)),
+  );
+  const accesses = files.flatMap((path) =>
+    directOutboundAccesses(readFileSync(path, 'utf8'), relative(root, path)),
+  );
+  assert.deepEqual(accesses, [], `direct outbound callback access:\n${accesses.join('\n')}`);
+
+  for (const path of [
     'src/app/api/v1/webhooks/twilio/route.ts',
     'src/app/api/v1/webhooks/unifonic/route.ts',
     'src/app/api/v1/webhooks/whatsapp/dispatch.ts',
-  ];
-  for (const path of paths) {
-    const source = readFileSync(path, 'utf8');
-    assert.doesNotMatch(
-      source,
-      /\.from\(\s*['"]outbound_(?:sms|whatsapp)['"]\s*\)/u,
-      `${path} must not select or update outbound delivery rows directly`,
+  ]) {
+    assert.match(
+      readFileSync(path, 'utf8'),
+      /applyProviderDeliveryStatus/u,
+      `${path} must call the atomic adapter`,
     );
-    assert.match(source, /applyProviderDeliveryStatus/u, `${path} must call the atomic adapter`);
   }
 });
+
+function productionFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return productionFiles(path);
+    return /\.(?:ts|tsx)$/u.test(entry.name) && !/\.(?:test|spec)\.(?:ts|tsx)$/u.test(entry.name)
+      ? [path]
+      : [];
+  });
+}
+
+function directOutboundAccesses(sourceText: string, path: string): string[] {
+  const source = ts.createSourceFile(path, sourceText, ts.ScriptTarget.Latest, true);
+  const accesses: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      isFromAccess(node.expression) &&
+      node.arguments.length > 0 &&
+      ts.isStringLiteralLike(node.arguments[0]) &&
+      ['outbound_sms', 'outbound_whatsapp'].includes(node.arguments[0].text)
+    ) {
+      const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+      accesses.push(`${path}:${line} ${node.getText(source)}`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return accesses;
+}
+
+function isFromAccess(expression: ts.LeftHandSideExpression): boolean {
+  if (ts.isPropertyAccessExpression(expression)) return expression.name.text === 'from';
+  if (!ts.isElementAccessExpression(expression)) return false;
+  return Boolean(
+    expression.argumentExpression &&
+    ts.isStringLiteralLike(expression.argumentExpression) &&
+    expression.argumentExpression.text === 'from',
+  );
+}
