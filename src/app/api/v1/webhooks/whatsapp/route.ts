@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
+import {
+  BODY_LIMITS,
+  BodyTooLargeError,
+  decodeBoundedUtf8,
+  readBoundedBody,
+} from '@/lib/http/bounded-body';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { verifyHubSignature } from '@/lib/whatsapp/signature';
 import { InboundWebhookInfrastructureError } from '../inbound-recording';
@@ -33,7 +39,17 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const rawBody = await req.text();
+  let rawBody: string;
+  try {
+    rawBody = decodeBoundedUtf8(await readBoundedBody(req, BODY_LIMITS.providerWebhook));
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? NextResponse.json(
+          { error: 'request too large', code: 'PAYLOAD_TOO_LARGE' },
+          { status: 413 },
+        )
+      : NextResponse.json({ error: 'invalid request', code: 'BAD_REQUEST' }, { status: 400 });
+  }
   const signatureHeader = req.headers.get('x-hub-signature-256') ?? '';
   if (!verifyHubSignature(rawBody, signatureHeader, env.WHATSAPP_APP_SECRET)) {
     return NextResponse.json({ error: 'invalid signature', code: 'FORBIDDEN' }, { status: 403 });

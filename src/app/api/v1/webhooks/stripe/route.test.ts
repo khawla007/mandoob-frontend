@@ -4,11 +4,11 @@ import { test } from 'node:test';
 const source = readFileSync(new URL('./route.ts', import.meta.url), 'utf8');
 
 test('Stripe route verifies raw body before any event handling', () => {
-  const raw = source.indexOf('await req.text()');
+  const raw = source.indexOf('await readBoundedBody(req, BODY_LIMITS.providerWebhook)');
   const verify = source.indexOf('verifyWebhookSignature(rawBody');
   const handle = source.indexOf('handleVerifiedStripeEvent(event');
   assert.ok(raw >= 0 && verify > raw && handle > verify);
-  assert.doesNotMatch(source.slice(0, verify), /req\.json\(/u);
+  assert.doesNotMatch(source.slice(0, verify), /req\.(?:json|text|arrayBuffer|formData)\(/u);
 });
 
 test('Stripe route persists via service-only atomic RPCs and emits sanitized failures', () => {

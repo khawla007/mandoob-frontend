@@ -7,7 +7,8 @@ const source = readFileSync(join(process.cwd(), 'src/app/api/v1/webhooks/tap/rou
 
 test('Tap route resolves destination before raw-byte verification and atomic reconciliation', () => {
   assert.ok(source.indexOf('resolveDestination:') < source.indexOf('verify:'));
-  assert.match(source, /req\.arrayBuffer\(\)/u);
+  assert.match(source, /readBoundedBody\(req, BODY_LIMITS\.providerWebhook\)/u);
+  assert.doesNotMatch(source, /req\.(?:json|text|arrayBuffer|formData)\(/u);
   assert.match(source, /searchParams\.get\('destination'\)/u);
   assert.match(source, /\.eq\('id', value\)/u);
   assert.match(source, /p309_reserve_tap_event/u);

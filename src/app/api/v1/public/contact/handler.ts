@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { getClientIp } from '@/lib/auth/request';
 import { env } from '@/lib/env';
+import { BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
 import { consumeSensitiveRateLimit } from '@/lib/rate-limit';
 import { acceptPublicContact, type AcceptContactInput } from '@/lib/public-intake/service';
 import {
@@ -44,15 +45,20 @@ export async function handlePublicContactPost(request: Request, deps: Deps = {})
   if (!appUrl || !isAllowedPublicOrigin(request.headers.get('origin'), appUrl)) {
     return response({ status: 'failure', sent: false, retryable: false, message: 'Request origin is not allowed.' }, 403);
   }
-  const contentLength = Number(request.headers.get('content-length') ?? 0);
-  if (contentLength > MAX_BODY_BYTES) {
-    return response({ status: 'failure', sent: false, retryable: false, message: 'Request is too large.' }, 413);
-  }
   let raw: unknown;
   try {
-    raw = await request.json();
-  } catch {
-    return response({ status: 'failure', sent: false, retryable: false, message: 'Invalid request.' }, 400);
+    raw = await readBoundedJson(request, MAX_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return response(
+        { status: 'failure', code: 'PAYLOAD_TOO_LARGE', sent: false, retryable: false, message: 'Request is too large.' },
+        413,
+      );
+    }
+    return response(
+      { status: 'failure', code: 'BAD_REQUEST', sent: false, retryable: false, message: 'Invalid request.' },
+      400,
+    );
   }
   const parsed = requestSchema.safeParse(raw);
   if (!parsed.success) {

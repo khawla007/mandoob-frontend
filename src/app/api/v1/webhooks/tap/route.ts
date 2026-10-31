@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { BODY_LIMITS, BodyTooLargeError, readBoundedBody } from '@/lib/http/bounded-body';
 import { resolveTenantTapConfig } from '@/lib/payments/config';
 import {
   normalizeTapWebhookPayload,
@@ -11,7 +12,17 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: Request): Promise<Response> {
-  const rawBody = new Uint8Array(await req.arrayBuffer());
+  let rawBody: Uint8Array;
+  try {
+    rawBody = await readBoundedBody(req, BODY_LIMITS.providerWebhook);
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? NextResponse.json(
+          { error: 'request too large', code: 'PAYLOAD_TOO_LARGE' },
+          { status: 413 },
+        )
+      : NextResponse.json({ error: 'invalid request', code: 'BAD_REQUEST' }, { status: 400 });
+  }
   const signature = req.headers.get('hashstring') ?? '';
   const destination = new URL(req.url).searchParams.get('destination') ?? '';
   const supabase = createSupabaseServiceRoleClient();

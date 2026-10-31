@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { ApiError } from '@/lib/errors';
 import { getClientIp } from '@/lib/auth/request';
 import { env } from '@/lib/env';
+import {
+  BODY_LIMITS,
+  BodyTooLargeError,
+  createBoundedRequest,
+  readBoundedBody,
+  readBoundedJson,
+} from '@/lib/http/bounded-body';
 import { consumeSensitiveRateLimit } from '@/lib/rate-limit';
 import {
   deleteDraftAttachment,
@@ -58,9 +65,12 @@ export async function handleUploadAttachmentPost(request: Request, draftId: stri
 
   let form: FormData;
   try {
-    form = await request.formData();
-  } catch {
-    return fail(400, 'Invalid request.');
+    const bytes = await readBoundedBody(request, BODY_LIMITS.publicMultipart);
+    form = await createBoundedRequest(request, bytes).formData();
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? fail(413, 'Request is too large.', 'PAYLOAD_TOO_LARGE')
+      : fail(400, 'Invalid request.', 'BAD_REQUEST');
   }
   const file = form.get('file');
   const fieldId = form.get('fieldId');
@@ -112,9 +122,11 @@ export async function handleDeleteAttachment(request: Request, draftId: string, 
   if (!token) return fail(404, 'The requested draft is unavailable.');
   let raw: unknown;
   try {
-    raw = await request.json();
-  } catch {
-    return fail(400, 'Invalid request.');
+    raw = await readBoundedJson(request, BODY_LIMITS.publicJson);
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? fail(413, 'Request is too large.', 'PAYLOAD_TOO_LARGE')
+      : fail(400, 'Invalid request.', 'BAD_REQUEST');
   }
   const parsed = deleteSchema.safeParse(raw);
   if (!parsed.success) return fail(400, 'Invalid request.');
@@ -153,9 +165,9 @@ function mapError(error: unknown) {
   return unavailable();
 }
 
-function fail(status: number, message: string) {
+function fail(status: number, message: string, code?: string) {
   return Response.json(
-    { status: 'failure', message },
+    { status: 'failure', ...(code ? { code } : {}), message },
     { status, headers: { 'cache-control': 'no-store' } },
   );
 }

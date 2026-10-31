@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { getClientIp } from '@/lib/auth/request';
 import { env } from '@/lib/env';
+import { BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
 import { consumeSensitiveRateLimit } from '@/lib/rate-limit';
 import {
   resumeApplicationDraft,
@@ -55,14 +56,13 @@ export async function handleSubmitApplicationPost(
   if (!token || token.length < 16 || token.length > 512) {
     return fail(404, 'The requested draft is unavailable.');
   }
-  if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) {
-    return fail(413, 'Request is too large.');
-  }
   let raw: unknown;
   try {
-    raw = await request.json();
-  } catch {
-    return fail(400, 'Invalid request.');
+    raw = await readBoundedJson(request, MAX_BODY_BYTES);
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? fail(413, 'Request is too large.', false, 'PAYLOAD_TOO_LARGE')
+      : fail(400, 'Invalid request.', false, 'BAD_REQUEST');
   }
   const parsed = submitSchema.safeParse(raw);
   if (!parsed.success) return fail(400, 'Invalid request.');
@@ -152,9 +152,9 @@ function mapError(error: unknown) {
   return unavailable();
 }
 
-function fail(status: number, message: string, retryable = false) {
+function fail(status: number, message: string, retryable = false, code?: string) {
   return Response.json(
-    { status: 'failure', retryable, message },
+    { status: 'failure', ...(code ? { code } : {}), retryable, message },
     { status, headers: { 'cache-control': 'no-store' } },
   );
 }
