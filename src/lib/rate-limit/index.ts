@@ -30,6 +30,20 @@ async function defaultConsume(config: RateLimitConfig) {
   });
 }
 
+function safeLogUnavailable(
+  cfg: SensitiveRateLimitConfig,
+  log: (...args: unknown[]) => void = console.error,
+) {
+  try {
+    log('rate-limit unavailable', {
+      routeLabel: cfg.routeLabel,
+      correlationId: cfg.correlationId,
+    });
+  } catch {
+    // Diagnostics are best effort and must not weaken the fail-closed decision.
+  }
+}
+
 export async function consumeRateLimitDecision(
   cfg: SensitiveRateLimitConfig,
   deps: SensitiveRateLimitDeps = {},
@@ -38,18 +52,12 @@ export async function consumeRateLimitDecision(
   try {
     const { data, error } = await consume(cfg);
     if (error || typeof data !== 'boolean') {
-      (deps.log ?? console.error)('rate-limit unavailable', {
-        routeLabel: cfg.routeLabel,
-        correlationId: cfg.correlationId,
-      });
+      safeLogUnavailable(cfg, deps.log);
       return 'unavailable';
     }
     return data ? 'allowed' : 'limited';
   } catch {
-    (deps.log ?? console.error)('rate-limit unavailable', {
-      routeLabel: cfg.routeLabel,
-      correlationId: cfg.correlationId,
-    });
+    safeLogUnavailable(cfg, deps.log);
     return 'unavailable';
   }
 }
@@ -58,10 +66,15 @@ export async function consumeRateLimitDecision(
  * Postgres token-bucket limiter. Interface abstracts over transport so we can
  * swap to Upstash/Redis later without touching callers.
  */
-export async function consumeRateLimit(cfg: RateLimitConfig): Promise<boolean> {
+export async function consumeRateLimit(
+  cfg: RateLimitConfig,
+  deps: SensitiveRateLimitDeps = {},
+): Promise<boolean> {
   return (
-    (await consumeRateLimitDecision({ ...cfg, routeLabel: 'legacy', correlationId: 'none' })) ===
-    'allowed'
+    (await consumeRateLimitDecision(
+      { ...cfg, routeLabel: 'legacy', correlationId: 'none' },
+      deps,
+    )) === 'allowed'
   );
 }
 
