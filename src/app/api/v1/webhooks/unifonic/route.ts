@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import {
+  applyProviderDeliveryStatus,
+  ProviderDeliveryStatusUnavailableError,
+} from '@/lib/events/provider-delivery-status';
+import {
   BODY_LIMITS,
   BodyTooLargeError,
   decodeBoundedUtf8,
@@ -13,8 +17,6 @@ import { parseUnifonicInboundCallback, type UnifonicPayload } from './inbound';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
 
 // Unifonic webhooks (DLR + inbound) deliver JSON. Status DLR carries
 // MessageID + Status; inbound carries From + Body + MessageID.
@@ -54,14 +56,27 @@ export async function POST(req: Request): Promise<Response> {
   const supabase = createSupabaseServiceRoleClient();
   const messageId = payload.MessageID ?? payload.messageId;
 
-  if (payload.Status && messageId) {
-    await applyDeliveryStatus(supabase, String(messageId), payload.Status);
-  }
-
-  const inbound = parseUnifonicInboundCallback(payload, rawBody);
   try {
+    if (payload.Status && messageId) {
+      await applyProviderDeliveryStatus(supabase, {
+        channel: 'sms',
+        provider: 'unifonic',
+        providerMessageId: String(messageId),
+        providerStatus: payload.Status,
+        providerOccurredAt: payload.Timestamp ?? payload.timestamp,
+        safeErrorCode: payload.ErrorCode ?? payload.errorCode,
+      });
+    }
+
+    const inbound = parseUnifonicInboundCallback(payload, rawBody);
     if (inbound) await recordUnifonicInbound(supabase, inbound);
   } catch (error) {
+    if (error instanceof ProviderDeliveryStatusUnavailableError) {
+      return NextResponse.json(
+        { error: 'webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
     if (error instanceof InboundWebhookInfrastructureError) {
       return NextResponse.json(
         { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
@@ -72,38 +87,4 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   return NextResponse.json({ ok: true });
-}
-
-const STATUS_MAP: Record<string, 'pending' | 'sent' | 'delivered' | 'failed' | 'dead'> = {
-  queued: 'pending',
-  pending: 'pending',
-  sent: 'sent',
-  delivered: 'delivered',
-  failed: 'failed',
-  rejected: 'dead',
-  expired: 'dead',
-  undelivered: 'dead',
-};
-
-async function applyDeliveryStatus(
-  supabase: Supa,
-  providerMessageId: string,
-  status: string,
-): Promise<void> {
-  const mapped = STATUS_MAP[status.toLowerCase()];
-  if (!mapped) return;
-
-  const { data: row } = await supabase
-    .from('outbound_sms')
-    .select('id')
-    .eq('provider_message_id', providerMessageId)
-    .maybeSingle();
-  if (!row) return;
-
-  const update: Record<string, unknown> = { status: mapped };
-  const nowIso = new Date().toISOString();
-  if (mapped === 'sent') update.sent_at = nowIso;
-  if (mapped === 'delivered') update.delivered_at = nowIso;
-
-  await supabase.from('outbound_sms').update(update).eq('id', row.id);
 }

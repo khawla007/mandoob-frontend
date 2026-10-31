@@ -1,4 +1,5 @@
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
+import { applyProviderDeliveryStatus } from '@/lib/events/provider-delivery-status';
 import {
   recordReservedWhatsAppInboundMessage,
   reserveWhatsAppInboundMessage,
@@ -74,40 +75,14 @@ export async function dispatchWhatsAppWebhookPayload(
 
 async function applyStatusUpdate(supabase: Supa, status: WhatsAppStatus): Promise<void> {
   if (!status.id) return;
-
-  const { data: row } = await supabase
-    .from('outbound_whatsapp')
-    .select('id, attempts')
-    .eq('provider_message_id', status.id)
-    .maybeSingle();
-  if (!row) return;
-
-  const nowIso = new Date().toISOString();
-  const update: Record<string, unknown> = {};
-
-  switch (status.status) {
-    case 'sent':
-      update.status = 'sent';
-      update.sent_at = nowIso;
-      break;
-    case 'delivered':
-      update.status = 'delivered';
-      update.delivered_at = nowIso;
-      break;
-    case 'read':
-      update.status = 'read';
-      update.read_at = nowIso;
-      break;
-    case 'failed':
-      update.status = 'failed';
-      update.last_error = status.errors?.[0]?.title ?? status.errors?.[0]?.message ?? 'failed';
-      update.attempts = row.attempts + 1;
-      break;
-    default:
-      return;
-  }
-
-  await supabase.from('outbound_whatsapp').update(update).eq('id', row.id);
+  await applyProviderDeliveryStatus(supabase, {
+    channel: 'whatsapp',
+    provider: 'whatsapp',
+    providerMessageId: status.id,
+    providerStatus: status.status ?? '',
+    providerOccurredAt: status.timestamp,
+    safeErrorCode: status.errors?.[0]?.code,
+  });
 }
 
 export type WhatsAppWebhookPayload = {

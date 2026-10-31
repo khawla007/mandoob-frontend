@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
+import { ProviderDeliveryStatusUnavailableError } from '@/lib/events/provider-delivery-status';
 import {
   BODY_LIMITS,
   BodyTooLargeError,
@@ -66,6 +67,12 @@ export async function POST(req: Request): Promise<Response> {
   try {
     await dispatchWhatsAppWebhookPayload(supabase, payload, rawBody);
   } catch (error) {
+    if (error instanceof ProviderDeliveryStatusUnavailableError) {
+      return NextResponse.json(
+        { error: 'webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
     if (error instanceof InboundWebhookInfrastructureError) {
       return NextResponse.json(
         { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },

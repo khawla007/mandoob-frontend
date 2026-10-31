@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import {
+  applyProviderDeliveryStatus,
+  ProviderDeliveryStatusUnavailableError,
+} from '@/lib/events/provider-delivery-status';
+import {
   BODY_LIMITS,
   BodyTooLargeError,
   decodeBoundedUtf8,
@@ -18,8 +22,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-type Supa = ReturnType<typeof createSupabaseServiceRoleClient>;
 
 // Twilio sends application/x-www-form-urlencoded for both Status Callback
 // and inbound SMS. The same endpoint handles both — we differentiate by
@@ -64,15 +66,28 @@ export async function POST(req: Request): Promise<Response> {
 
   const supabase = createSupabaseServiceRoleClient();
 
-  if (!inboundShape && messageStatus && messageSid) {
-    await applyDeliveryStatus(supabase, messageSid, messageStatus);
-  }
-
-  // Inbound SMS: presence of Body + From, no status field.
-  const inbound = parseTwilioInboundCallback(rawBody);
   try {
+    if (!inboundShape && messageStatus && messageSid) {
+      await applyProviderDeliveryStatus(supabase, {
+        channel: 'sms',
+        provider: 'twilio',
+        providerMessageId: messageSid,
+        providerStatus: messageStatus,
+        providerOccurredAt: params.Timestamp ?? params.DateUpdated ?? params.DateCreated,
+        safeErrorCode: params.ErrorCode,
+      });
+    }
+
+    // Inbound SMS: presence of Body + From, no status field.
+    const inbound = parseTwilioInboundCallback(rawBody);
     if (inbound) await recordTwilioInbound(supabase, inbound);
   } catch (error) {
+    if (error instanceof ProviderDeliveryStatusUnavailableError) {
+      return NextResponse.json(
+        { error: 'webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
+        { status: 503 },
+      );
+    }
     if (error instanceof InboundWebhookInfrastructureError) {
       return NextResponse.json(
         { error: 'inbound webhook unavailable', code: 'TEMPORARILY_UNAVAILABLE' },
@@ -93,40 +108,4 @@ function buildSignatureUrl(req: Request): string {
   const proto = req.headers.get('x-forwarded-proto') ?? url.protocol.replace(':', '');
   const host = req.headers.get('x-forwarded-host') ?? url.host;
   return `${proto}://${host}${url.pathname}${url.search}`;
-}
-
-const STATUS_MAP: Record<string, 'pending' | 'sent' | 'delivered' | 'failed' | 'dead'> = {
-  queued: 'pending',
-  accepted: 'pending',
-  scheduled: 'pending',
-  sending: 'pending',
-  sent: 'sent',
-  delivered: 'delivered',
-  read: 'delivered',
-  undelivered: 'dead',
-  failed: 'failed',
-  canceled: 'dead',
-};
-
-async function applyDeliveryStatus(
-  supabase: Supa,
-  providerMessageId: string,
-  twilioStatus: string,
-): Promise<void> {
-  const mapped = STATUS_MAP[twilioStatus.toLowerCase()];
-  if (!mapped) return;
-
-  const { data: row } = await supabase
-    .from('outbound_sms')
-    .select('id')
-    .eq('provider_message_id', providerMessageId)
-    .maybeSingle();
-  if (!row) return;
-
-  const update: Record<string, unknown> = { status: mapped };
-  const nowIso = new Date().toISOString();
-  if (mapped === 'sent') update.sent_at = nowIso;
-  if (mapped === 'delivered') update.delivered_at = nowIso;
-
-  await supabase.from('outbound_sms').update(update).eq('id', row.id);
 }

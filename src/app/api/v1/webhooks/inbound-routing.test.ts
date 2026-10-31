@@ -1093,3 +1093,167 @@ test('enabled Twilio inbound still fails closed when the provider omits a timest
 
   assert.equal(twilioInboundUnavailableCode(rawBody, true), 'TIMESTAMP_UNSUPPORTED');
 });
+
+test('verified Twilio delivery persistence failure returns a retryable sanitized response', async () => {
+  const { POST } = await import('./twilio/route');
+  const url = 'https://app.example.com/api/v1/webhooks/twilio';
+  const params = {
+    MessageSid: 'SM-delivery-failure',
+    MessageStatus: 'failed',
+    Timestamp: '2026-10-31T10:00:00.000Z',
+    ErrorCode: '30003',
+  };
+  const rawBody = new URLSearchParams(params).toString();
+  let signed = url;
+  for (const key of Object.keys(params).sort() as Array<keyof typeof params>) {
+    signed += key + params[key];
+  }
+  const signature = createHmac('sha1', 'twilio_token').update(signed).digest('base64');
+  const originalFetch = globalThis.fetch;
+  let rpcArgs: Record<string, unknown> | undefined;
+  globalThis.fetch = async (input, init) => {
+    assert.match(String(input), /\/rpc\/apply_provider_delivery_status$/u);
+    rpcArgs = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({ message: 'private database failure' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const response = await POST(
+      new Request(url, {
+        method: 'POST',
+        headers: { 'x-twilio-signature': signature },
+        body: rawBody,
+      }),
+    );
+    const body = await response.text();
+    assert.equal(response.status, 503);
+    assert.equal(body.includes('private database failure'), false);
+    assert.deepEqual(JSON.parse(body), {
+      error: 'webhook unavailable',
+      code: 'TEMPORARILY_UNAVAILABLE',
+    });
+    assert.deepEqual(rpcArgs, {
+      p_channel: 'sms',
+      p_provider: 'twilio',
+      p_provider_message_id: 'SM-delivery-failure',
+      p_provider_status: 'failed',
+      p_provider_occurred_at: '2026-10-31T10:00:00.000Z',
+      p_safe_error_code: '30003',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('verified Unifonic delivery persistence failure returns a retryable sanitized response', async () => {
+  const { POST } = await import('./unifonic/route');
+  const url = 'https://app.example.com/api/v1/webhooks/unifonic';
+  const rawBody = JSON.stringify({
+    MessageID: 'uni-delivery-failure',
+    Status: 'failed',
+    Timestamp: '2026-10-31T10:00:00.000Z',
+    ErrorCode: 'E_TIMEOUT',
+  });
+  const signature = createHmac('sha256', 'unifonic_secret').update(rawBody).digest('hex');
+  const originalFetch = globalThis.fetch;
+  let rpcArgs: Record<string, unknown> | undefined;
+  globalThis.fetch = async (input, init) => {
+    assert.match(String(input), /\/rpc\/apply_provider_delivery_status$/u);
+    rpcArgs = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({ message: 'private database failure' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const response = await POST(
+      new Request(url, {
+        method: 'POST',
+        headers: { 'x-unifonic-signature': signature },
+        body: rawBody,
+      }),
+    );
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+      error: 'webhook unavailable',
+      code: 'TEMPORARILY_UNAVAILABLE',
+    });
+    assert.deepEqual(rpcArgs, {
+      p_channel: 'sms',
+      p_provider: 'unifonic',
+      p_provider_message_id: 'uni-delivery-failure',
+      p_provider_status: 'failed',
+      p_provider_occurred_at: '2026-10-31T10:00:00.000Z',
+      p_safe_error_code: 'E_TIMEOUT',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('verified WhatsApp delivery persistence failure returns a retryable sanitized response', async () => {
+  const { POST } = await import('./whatsapp/route');
+  const url = 'https://app.example.com/api/v1/webhooks/whatsapp';
+  const rawBody = JSON.stringify({
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              statuses: [
+                {
+                  id: 'wamid-delivery-failure',
+                  status: 'failed',
+                  timestamp: '1735689600',
+                  errors: [{ code: 131047, title: 'private provider detail' }],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+  const signature = `sha256=${createHmac('sha256', 'whatsapp_secret')
+    .update(rawBody)
+    .digest('hex')}`;
+  const originalFetch = globalThis.fetch;
+  let rpcArgs: Record<string, unknown> | undefined;
+  globalThis.fetch = async (input, init) => {
+    assert.match(String(input), /\/rpc\/apply_provider_delivery_status$/u);
+    rpcArgs = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({ message: 'private database failure' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const response = await POST(
+      new Request(url, {
+        method: 'POST',
+        headers: { 'x-hub-signature-256': signature },
+        body: rawBody,
+      }),
+    );
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+      error: 'webhook unavailable',
+      code: 'TEMPORARILY_UNAVAILABLE',
+    });
+    assert.deepEqual(rpcArgs, {
+      p_channel: 'whatsapp',
+      p_provider: 'whatsapp',
+      p_provider_message_id: 'wamid-delivery-failure',
+      p_provider_status: 'failed',
+      p_provider_occurred_at: '2025-01-01T00:00:00.000Z',
+      p_safe_error_code: '131047',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
