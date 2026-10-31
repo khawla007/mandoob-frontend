@@ -246,10 +246,14 @@ The audit enumerates the files above and asserts they import `consumeRateLimitDe
 - [ ] **Step 2: Run the audit and representative tests and confirm RED**
 
 ```bash
-node --import tsx --test src/lib/rate-limit/legacy-route-audit.test.ts src/app/api/v1/auth/login/route.test.ts src/app/api/v1/auth/register/route.test.ts src/app/api/v1/auth/reset-password/route.test.ts src/app/api/v1/public/estimate/pdf/route.test.ts src/lib/data/erasure-p3-12.test.ts
+node --conditions=react-server --import tsx --test --test-concurrency=1 \
+  src/lib/rate-limit/legacy-route-audit.test.ts \
+  src/lib/rate-limit/legacy-route-unavailable.test.ts \
+  src/components/auth/mfa-contracts.test.ts \
+  src/app/api/v1/auth/mfa/enroll/route-safety.test.ts
 ```
 
-Expected: FAIL on legacy boolean calls and missing unavailable branches.
+Expected: FAIL because the MFA routes do not yet have pre-auth limiter decisions and the transpiled route tests reach poisoned session/provider dependencies when the limiter is unavailable.
 
 - [ ] **Step 3: Migrate every enumerated caller**
 
@@ -272,7 +276,15 @@ For `erasure.ts`, throw `ApiError('RATE_LIMIT_UNAVAILABLE', 'Request protection 
 
 - [ ] **Step 4: Run the Step 2 test command and confirm GREEN**
 
-Expected: PASS for the complete route audit and representative runtime tests.
+```bash
+node --conditions=react-server --import tsx --test --test-concurrency=1 \
+  src/lib/rate-limit/legacy-route-audit.test.ts \
+  src/lib/rate-limit/legacy-route-unavailable.test.ts \
+  src/components/auth/mfa-contracts.test.ts \
+  src/app/api/v1/auth/mfa/enroll/route-safety.test.ts
+```
+
+Expected: PASS for the complete route audit, real transpiled unavailable-route tests, and affected MFA contract/safety tests.
 
 - [ ] **Step 5: Run TypeScript to catch any missed signature migration**
 
