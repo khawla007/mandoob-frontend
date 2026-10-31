@@ -3,6 +3,7 @@ import 'server-only';
 export const BODY_LIMITS = {
   publicJson: 64 * 1024,
   providerWebhook: 256 * 1024,
+  // Multipart buffering and parsing can temporarily retain roughly 2-3x this byte cap.
   publicMultipart: 12 * 1024 * 1024,
 } as const;
 
@@ -33,6 +34,15 @@ export class BodyReadError extends Error {
   }
 }
 
+export class InvalidBoundedRequestMethodError extends Error {
+  readonly code = 'INVALID_BOUNDED_REQUEST_METHOD' as const;
+
+  constructor() {
+    super('request method does not support a body');
+    this.name = 'InvalidBoundedRequestMethodError';
+  }
+}
+
 export async function readBoundedBody(request: Request, maxBytes: number): Promise<Uint8Array> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
     throw new TypeError('invalid body limit');
@@ -46,7 +56,12 @@ export async function readBoundedBody(request: Request, maxBytes: number): Promi
 
   if (request.body === null) return new Uint8Array();
 
-  const reader = request.body.getReader();
+  let reader: ReadableStreamDefaultReader<Uint8Array>;
+  try {
+    reader = request.body.getReader();
+  } catch {
+    throw new BodyReadError();
+  }
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
 
@@ -86,12 +101,16 @@ export function decodeBoundedUtf8(bytes: Uint8Array): string {
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
-export async function readBoundedJson<T = unknown>(request: Request, maxBytes: number): Promise<T> {
+export async function readBoundedJson(request: Request, maxBytes: number): Promise<unknown> {
   const bytes = await readBoundedBody(request, maxBytes);
-  return JSON.parse(decodeBoundedUtf8(bytes)) as T;
+  return JSON.parse(decodeBoundedUtf8(bytes)) as unknown;
 }
 
 export function createBoundedRequest(request: Request, bytes: Uint8Array): Request {
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    throw new InvalidBoundedRequestMethodError();
+  }
+
   const headers = new Headers();
   const contentType = request.headers.get('content-type');
   if (contentType !== null) headers.set('content-type', contentType);

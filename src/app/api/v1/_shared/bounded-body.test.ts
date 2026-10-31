@@ -7,6 +7,49 @@ import {
   readBoundedFormData,
   readBoundedJson,
 } from './bounded-body';
+import {
+  BodyTooLargeError as CanonicalBodyTooLargeError,
+  InvalidContentLengthError,
+  readBoundedBody as canonicalReadBoundedBody,
+} from '@/lib/http/bounded-body';
+
+test('legacy exports use the canonical reader and overflow error identity', () => {
+  assert.equal(BodyTooLargeError, CanonicalBodyTooLargeError);
+  assert.equal(readBoundedBody, canonicalReadBoundedBody);
+  assert.ok(new BodyTooLargeError() instanceof CanonicalBodyTooLargeError);
+});
+
+test('legacy reader uses canonical malformed content-length semantics', async () => {
+  const request = new Request('http://localhost/test', {
+    method: 'POST',
+    headers: { 'content-length': '1.5' },
+    body: 'x',
+  });
+
+  await assert.rejects(readBoundedBody(request, 8), InvalidContentLengthError);
+});
+
+test('legacy reader uses canonical best-effort cancellation semantics', async () => {
+  let cancellations = 0;
+  const body = {
+    getReader() {
+      return {
+        cancel: async () => {
+          cancellations += 1;
+          throw new Error('runtime cancellation detail');
+        },
+        read: async () => ({ done: false as const, value: new Uint8Array(9) }),
+        releaseLock() {},
+      };
+    },
+  } as unknown as ReadableStream<Uint8Array>;
+
+  await assert.rejects(
+    readBoundedBody({ body, headers: new Headers() } as Request, 8),
+    CanonicalBodyTooLargeError,
+  );
+  assert.equal(cancellations, 1);
+});
 
 test('bounded body rejects oversized Content-Length without reading the stream', async () => {
   let pulls = 0;

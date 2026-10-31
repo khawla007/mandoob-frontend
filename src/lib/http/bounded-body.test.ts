@@ -5,6 +5,7 @@ import {
   BODY_LIMITS,
   BodyReadError,
   BodyTooLargeError,
+  InvalidBoundedRequestMethodError,
   InvalidContentLengthError,
   createBoundedRequest,
   decodeBoundedUtf8,
@@ -147,6 +148,13 @@ test('rejects malformed, negative, and non-integer content-length values', async
   }
 });
 
+test('rejects an extremely large decimal content-length as an overflow', async () => {
+  await assert.rejects(
+    readBoundedBody(requestWithStream([], { contentLength: '9'.repeat(1_000) }), 100),
+    BodyTooLargeError,
+  );
+});
+
 test('sanitizes stream read failures and releases the reader lock', async () => {
   const secret = 'private-body-fragment';
   const stream = new ReadableStream<Uint8Array>({
@@ -167,6 +175,43 @@ test('sanitizes stream read failures and releases the reader lock', async () => 
   );
   const nextReader = stream.getReader();
   nextReader.releaseLock();
+});
+
+test('sanitizes reader acquisition failure for a disturbed real Request', async () => {
+  const request = new Request('https://example.test/upload', {
+    method: 'POST',
+    body: 'already consumed',
+  });
+  await request.text();
+
+  await assert.rejects(readBoundedBody(request, 100), (error: unknown) => {
+    assert.ok(error instanceof BodyReadError);
+    assert.equal(error.code, 'BODY_READ_ERROR');
+    assert.equal(error.message, 'request body could not be read');
+    assert.doesNotMatch(error.message, /unusable|locked|disturbed/iu);
+    return true;
+  });
+});
+
+test('sanitizes reader acquisition failure for a locked real Request', async () => {
+  const request = new Request('https://example.test/upload', {
+    method: 'POST',
+    body: 'locked body',
+  });
+  const lock = request.body?.getReader();
+  assert.ok(lock);
+
+  try {
+    await assert.rejects(readBoundedBody(request, 100), (error: unknown) => {
+      assert.ok(error instanceof BodyReadError);
+      assert.equal(error.code, 'BODY_READ_ERROR');
+      assert.equal(error.message, 'request body could not be read');
+      assert.doesNotMatch(error.message, /unusable|locked|disturbed/iu);
+      return true;
+    });
+  } finally {
+    lock.releaseLock();
+  }
 });
 
 test('cancels the stream exactly once on actual overflow', async () => {
@@ -222,7 +267,7 @@ test('rejects invalid UTF-8 byte sequences', () => {
 });
 
 test('reads, decodes, and parses bounded JSON', async () => {
-  const value = await readBoundedJson<{ greeting: string }>(
+  const value: unknown = await readBoundedJson(
     requestWithStream([encoder.encode('{"greeting":"مرحبا"}')]),
     64,
   );
@@ -260,6 +305,22 @@ test('reconstructs a request with bounded bytes and allowlisted multipart metada
   assert.equal(bounded.headers.get('content-length'), null);
   assert.equal(bounded.headers.get('x-request-id'), null);
   assert.deepEqual(new Uint8Array(await bounded.arrayBuffer()), bytes);
+});
+
+test('rejects GET and HEAD bounded request reconstruction with a stable typed error', () => {
+  for (const method of ['GET', 'HEAD']) {
+    const original = new Request('https://example.test/upload', { method });
+
+    assert.throws(
+      () => createBoundedRequest(original, new Uint8Array([1])),
+      (error: unknown) => {
+        assert.ok(error instanceof InvalidBoundedRequestMethodError);
+        assert.equal(error.code, 'INVALID_BOUNDED_REQUEST_METHOD');
+        assert.equal(error.message, 'request method does not support a body');
+        return true;
+      },
+    );
+  }
 });
 
 test('exports the central request body limits', () => {

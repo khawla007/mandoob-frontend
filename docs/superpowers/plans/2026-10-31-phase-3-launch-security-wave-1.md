@@ -422,7 +422,7 @@ The audit must enumerate every `request.json()`, `request.text()`, `request.arra
 - [ ] **Step 2: Run focused ingress tests and confirm RED**
 
 ```bash
-node --import tsx --test src/lib/http/bounded-ingress-audit.test.ts src/app/api/v1/public/contact/route.test.ts src/app/api/v1/webhooks/stripe/route.test.ts src/app/api/v1/webhooks/twilio/route.test.ts src/app/api/v1/webhooks/whatsapp/route.test.ts
+node --conditions=react-server --import tsx --test src/lib/http/bounded-ingress-audit.test.ts src/app/api/v1/public/contact/route.test.ts src/app/api/v1/webhooks/stripe/route.test.ts src/app/api/v1/webhooks/twilio/route.test.ts src/app/api/v1/webhooks/whatsapp/route.test.ts
 ```
 
 Expected: FAIL because direct buffering remains and chunked overflow is accepted.
@@ -547,7 +547,7 @@ Test exact RPC arguments, timestamp parsing, error-code allowlisting, malformed 
 - [ ] **Step 2: Run focused callback tests and confirm RED**
 
 ```bash
-node --import tsx --test src/lib/events/provider-delivery-status.test.ts src/app/api/v1/webhooks/twilio/route.test.ts src/app/api/v1/webhooks/whatsapp/dispatch.test.ts
+node --conditions=react-server --import tsx --test src/lib/events/provider-delivery-status.test.ts src/app/api/v1/webhooks/twilio/route.test.ts src/app/api/v1/webhooks/whatsapp/dispatch.test.ts
 ```
 
 Expected: FAIL because handlers still use select-then-update.
@@ -608,7 +608,7 @@ git commit -m "fix: serialize delivery callback state"
 - [ ] **Step 1: Run focused security tests**
 
 ```bash
-node --import tsx --test \
+node --conditions=react-server --import tsx --test \
   src/lib/mail/sender.test.ts \
   src/lib/validation/tenant-settings.test.ts \
   src/lib/data/tenant-settings.test.ts \
