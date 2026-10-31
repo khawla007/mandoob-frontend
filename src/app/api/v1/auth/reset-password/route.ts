@@ -3,7 +3,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { resetPasswordSchema } from '@/lib/validation/auth';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
@@ -24,8 +24,22 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
 
-  if (!(await consumeRateLimit({ key: `reset:${ip}`, ...RATE_LIMITS.authPublicIp }))) {
+  const rateLimitConfig = {
+    key: `reset:${ip}`,
+    ...RATE_LIMITS.authPublicIp,
+    routeLabel: 'auth.reset-password',
+    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+  };
+  const rateLimitDecision = await consumeRateLimitDecision(rateLimitConfig);
+  if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (rateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
   }
 
   // Reset flow: after the email link, the callback route exchanges the code for

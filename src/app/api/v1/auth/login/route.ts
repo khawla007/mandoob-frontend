@@ -3,7 +3,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { loginSchema } from '@/lib/validation/auth';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkLockout, clearFailures, recordFailure } from '@/lib/auth/lockout';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -20,8 +20,22 @@ export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
 
-  if (!(await consumeRateLimit({ key: `login:${ip}`, ...RATE_LIMITS.authLoginIp }))) {
+  const rateLimitConfig = {
+    key: `login:${ip}`,
+    ...RATE_LIMITS.authLoginIp,
+    routeLabel: 'auth.login',
+    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+  };
+  const rateLimitDecision = await consumeRateLimitDecision(rateLimitConfig);
+  if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (rateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
   }
 
   const raw = await parseJson<unknown>(request);

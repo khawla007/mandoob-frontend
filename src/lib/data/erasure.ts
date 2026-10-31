@@ -1,9 +1,9 @@
 import 'server-only';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ApiError } from '@/lib/errors';
 import { env } from '@/lib/env';
 import { enqueueEmail } from '@/lib/mail/send';
-import { consumeRateLimit } from '@/lib/rate-limit';
+import { consumeRateLimitDecision } from '@/lib/rate-limit';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { runErasureExternalCleanup } from '@/lib/data/erasure-cleanup-workflow';
 
@@ -261,34 +261,67 @@ export async function getErasureRequestDetail(
   return summary;
 }
 
-export async function createErasureRequest(args: {
-  subjectKind: ErasureSubjectKind;
-  subjectUserId: string;
-  subjectTenantId: string;
-  tenantSlug: string;
-  subjectName: string | null;
-  subjectEmail: string | null;
-  recoveryEmail: string;
-  reason: string | null;
-  ip: string;
-}): Promise<{ requestId: string }> {
-  const allowedForUser = await consumeRateLimit({
+export async function createErasureRequest(
+  args: {
+    subjectKind: ErasureSubjectKind;
+    subjectUserId: string;
+    subjectTenantId: string;
+    tenantSlug: string;
+    subjectName: string | null;
+    subjectEmail: string | null;
+    recoveryEmail: string;
+    reason: string | null;
+    ip: string;
+  },
+  deps: {
+    rateLimitDecision?: typeof consumeRateLimitDecision;
+    createClient?: typeof createSupabaseServiceRoleClient;
+  } = {},
+): Promise<{ requestId: string }> {
+  const correlationId = randomUUID();
+  const userRateLimitConfig = {
     key: `erasure:${args.subjectUserId}`,
     capacity: 1,
     refillPerSec: 1 / 86400,
-  });
-  if (!allowedForUser) {
+    routeLabel: 'data.erasure.create.user',
+    correlationId,
+  };
+  const userRateLimitDecision = deps.rateLimitDecision
+    ? await deps.rateLimitDecision(userRateLimitConfig)
+    : await consumeRateLimitDecision(userRateLimitConfig);
+  if (userRateLimitDecision === 'limited') {
     throw new ApiError('RATE_LIMITED', 'An erasure request is already being processed', 429);
   }
+  if (userRateLimitDecision === 'unavailable') {
+    throw new ApiError(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable',
+      503,
+    );
+  }
 
-  const allowedForIp = await consumeRateLimit({
+  const ipRateLimitConfig = {
     key: `erasure_request:${args.ip}`,
     capacity: 5,
     refillPerSec: 5 / 3600,
-  });
-  if (!allowedForIp) throw new ApiError('RATE_LIMITED', 'Too many erasure attempts', 429);
+    routeLabel: 'data.erasure.create.ip',
+    correlationId,
+  };
+  const ipRateLimitDecision = deps.rateLimitDecision
+    ? await deps.rateLimitDecision(ipRateLimitConfig)
+    : await consumeRateLimitDecision(ipRateLimitConfig);
+  if (ipRateLimitDecision === 'limited') {
+    throw new ApiError('RATE_LIMITED', 'Too many erasure attempts', 429);
+  }
+  if (ipRateLimitDecision === 'unavailable') {
+    throw new ApiError(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable',
+      503,
+    );
+  }
 
-  const supabase = client();
+  const supabase = (deps.createClient ?? createSupabaseServiceRoleClient)();
   const token = generateVerificationToken();
   const { data: tenant } = await supabase
     .from('tenants')

@@ -3,7 +3,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { z } from 'zod';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redeemRecoveryCode, resetMfaForRecovery } from '@/lib/auth/mfa';
@@ -25,13 +25,21 @@ export async function POST(request: NextRequest) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return errorResponse('UNAUTHENTICATED', 'Sign in first', 401);
 
-  if (
-    !(await consumeRateLimit({
-      key: `mfa-recovery:${userData.user.id}`,
-      ...RATE_LIMITS.authedPerUser,
-    }))
-  ) {
+  const rateLimitDecision = await consumeRateLimitDecision({
+    key: `mfa-recovery:${userData.user.id}`,
+    ...RATE_LIMITS.authedPerUser,
+    routeLabel: 'auth.mfa.recovery',
+    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+  });
+  if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (rateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
   }
 
   const raw = await parseJson<unknown>(request);
