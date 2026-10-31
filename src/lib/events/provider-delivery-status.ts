@@ -35,7 +35,7 @@ export async function applyProviderDeliveryStatus(
   client: ProviderDeliveryStatusRpcClient,
   input: ProviderDeliveryStatusInput,
 ): Promise<DeliveryStatusOutcome> {
-  let result: RpcResult;
+  let result: unknown;
   try {
     result = await client.rpc('apply_provider_delivery_status', {
       p_channel: input.channel,
@@ -49,7 +49,7 @@ export async function applyProviderDeliveryStatus(
     throw new ProviderDeliveryStatusUnavailableError();
   }
 
-  if (result.error || !isRecord(result.data)) {
+  if (!isRecord(result) || result.error || !isRecord(result.data)) {
     throw new ProviderDeliveryStatusUnavailableError();
   }
   const outcome = result.data.outcome;

@@ -85,6 +85,10 @@ test('drops invalid timestamps and unsafe provider error details before the RPC'
 test('fails closed with one sanitized error for RPC errors, throws, and malformed data', async () => {
   const { applyProviderDeliveryStatus, ProviderDeliveryStatusUnavailableError } = await subject();
   const results = [
+    undefined,
+    null,
+    42,
+    'not-an-rpc-result',
     { data: null, error: { message: 'private database detail' } },
     { data: null, error: null },
     { data: [], error: null },
@@ -106,7 +110,7 @@ test('fails closed with one sanitized error for RPC errors, throws, and malforme
 
   for (const client of clients) {
     await assert.rejects(
-      applyProviderDeliveryStatus(client, {
+      applyProviderDeliveryStatus(client as never, {
         channel: 'sms',
         provider: 'twilio',
         providerMessageId: 'SM123',
