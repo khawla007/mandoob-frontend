@@ -211,7 +211,7 @@ test('smtpSchema treats empty password as unset (kept on update)', () => {
   assert.equal(r.success, true);
 });
 
-test('SMTP mutation is launch unavailable while stored SMTP rows remain parseable', () => {
+test('every SMTP mutation input is launch unavailable while stored SMTP rows remain parseable', () => {
   const stored = {
     host: 'smtp.example.com',
     port: 587,
@@ -221,16 +221,18 @@ test('SMTP mutation is launch unavailable while stored SMTP rows remain parseabl
     enabled: true,
   };
   assert.equal(smtpSchema.safeParse(stored).success, true);
-  const mutation = smtpMutationSchema.safeParse(stored);
-  assert.equal(mutation.success, false);
-  if (!mutation.success)
-    assert.deepEqual(mutation.error.issues, [
-      {
-        code: 'custom',
-        message: 'Tenant SMTP is unavailable for launch',
-        path: [],
-      },
-    ]);
+  for (const input of [stored, null, {}, { host: 7, port: 'bad', enabled: 'yes' }]) {
+    const mutation = smtpMutationSchema.safeParse(input);
+    assert.equal(mutation.success, false);
+    if (!mutation.success)
+      assert.deepEqual(mutation.error.issues, [
+        {
+          code: 'custom',
+          message: 'Tenant SMTP is unavailable for launch',
+          path: [],
+        },
+      ]);
+  }
 });
 
 test('whatsappSchema accepts Meta ids and first-save access token', () => {

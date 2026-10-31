@@ -17,7 +17,7 @@ export type SendResult = { ok: true; providerId?: string } | { ok: false; error:
 export type ResolvedSender = {
   from: string;
   replyTo: string | null;
-  transport: 'resend' | 'smtp';
+  transport: 'resend';
   send: (input: SendInput) => Promise<SendResult>;
 };
 
@@ -28,38 +28,20 @@ export type TenantBranding = {
   email_reply_to: string | null;
 } | null;
 
-export type SmtpRow = {
-  host: string;
-  port: number;
-  username: string;
-  from_address: string;
-  enabled: boolean;
-} | null;
-
 export type SenderConfig = {
-  transport: 'resend' | 'smtp';
+  transport: 'resend';
   from: string;
   replyTo: string | null;
 };
 
 type SenderDependencies = {
   readTenant?: (tenantId: string) => Promise<TenantBranding>;
-  readSmtp?: (tenantId: string) => Promise<unknown>;
-  makeSmtp?: () => unknown;
 };
 
 export function buildSenderConfig(
   tenant: TenantBranding,
-  smtp: SmtpRow,
   platformFrom: string = PLATFORM_FROM,
 ): SenderConfig {
-  if (smtp?.enabled) {
-    return {
-      transport: 'smtp',
-      from: smtp.from_address,
-      replyTo: tenant?.email_reply_to ?? null,
-    };
-  }
   const senderName = tenant?.email_sender_name?.trim();
   const from = senderName ? `${senderName} <${platformFrom}>` : platformFrom;
   return { transport: 'resend', from, replyTo: tenant?.email_reply_to ?? null };
@@ -110,6 +92,6 @@ export async function resolveSenderForTenant(
   if (!tenantId) return resendSender(PLATFORM_FROM, null);
 
   const tenant = await (deps.readTenant ?? readTenant)(tenantId);
-  const cfg = buildSenderConfig(tenant ?? null, null);
+  const cfg = buildSenderConfig(tenant ?? null);
   return resendSender(cfg.from, cfg.replyTo);
 }

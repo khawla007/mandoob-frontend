@@ -48,10 +48,13 @@ test('SMTP update returns launch unavailable without authorization or mutation w
       ts.isFunctionDeclaration(node) && node.name?.text === 'updateSmtpAction',
   );
   assert.ok(action?.body);
-  assert.equal(action.body.statements.length, 1);
-  assert.equal(
-    action.body.statements[0].getText(ast),
-    "return settingsFailure('SETTINGS_UNAVAILABLE');",
+  assert.deepEqual(
+    action.parameters.map((parameter) => parameter.name.getText(ast)),
+    ['slug', 'raw'],
+  );
+  assert.deepEqual(
+    action.body.statements.map((statement) => statement.getText(ast)),
+    ['void slug;', 'void raw;', "return settingsFailure('SETTINGS_UNAVAILABLE');"],
   );
 });
 

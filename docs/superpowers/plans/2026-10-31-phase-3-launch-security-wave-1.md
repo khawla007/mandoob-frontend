@@ -49,18 +49,9 @@
 Add tests that assert:
 
 ```ts
-test('legacy enabled tenant SMTP resolves to the platform transport', async () => {
+test('tenant sender resolution uses only the platform transport', async () => {
   const sender = await resolveSenderForTenant('tenant-id', {
     readTenant: async () => ({ email_sender_name: 'Acme', email_reply_to: null }),
-    readSmtp: async () => ({
-      host: '127.0.0.1',
-      port: 25,
-      username: 'blocked',
-      password_encrypted: 'blocked',
-      from_address: 'blocked@example.test',
-      enabled: true,
-    }),
-    makeSmtp: () => assert.fail('tenant SMTP transport must never be constructed'),
   });
   assert.equal(sender.transport, 'resend');
 });
@@ -88,7 +79,7 @@ Add `smtpMutationSchema` coverage proving any SMTP save attempt returns the laun
 Run:
 
 ```bash
-node --import tsx --test src/lib/mail/sender.test.ts src/lib/validation/tenant-settings.test.ts src/lib/data/tenant-settings.test.ts
+node --conditions=react-server --import tsx --test src/lib/mail/sender.test.ts src/lib/validation/tenant-settings.test.ts src/lib/data/tenant-settings.test.ts
 ```
 
 Expected: FAIL because SMTP is still constructed and `SETTINGS_UNAVAILABLE` is not defined.
@@ -116,7 +107,7 @@ const errorKeys: Record<SettingsErrorCode, SettingsErrorKey> = {
 Keep `smtpSchema` for stored-row parsing and export a mutation schema that always produces the stable unavailable issue for UI/form validation:
 
 ```ts
-export const smtpMutationSchema = smtpSchema.superRefine((_input, context) => {
+export const smtpMutationSchema = z.unknown().superRefine((_input, context) => {
   context.addIssue({
     code: 'custom',
     message: 'Tenant SMTP is unavailable for launch',
@@ -129,7 +120,7 @@ In `mutateAssignedCompanySettings`, return `settingsFailure('SETTINGS_UNAVAILABL
 Refactor `resolveSenderForTenant` to accept injectable reads in tests, remove the SMTP credential query/decryption from the production path, and always return:
 
 ```ts
-const cfg = buildSenderConfig(tenant ?? null, null);
+const cfg = buildSenderConfig(tenant ?? null);
 return resendSender(cfg.from, cfg.replyTo);
 ```
 

@@ -18,7 +18,6 @@ import { encrypt, createBlindIndex } from '@/lib/crypto/pii';
 import {
   brandingSchema,
   contactSchema,
-  smtpMutationSchema,
   whatsappSchema,
   settingsOperationSchema,
 } from '@/lib/validation/tenant-settings';
@@ -37,7 +36,7 @@ async function resolveAndAuthorize(slug: string): Promise<SettingsContext> {
 
 async function updateSettings(
   slug: string,
-  section: SettingsSection,
+  section: Exclude<SettingsSection, 'smtp'>,
   raw: unknown,
 ): Promise<SettingsResult> {
   try {
@@ -46,14 +45,11 @@ async function updateSettings(
     const parsed = {
       branding: brandingSchema,
       contact: contactSchema,
-      smtp: smtpMutationSchema,
       whatsapp: whatsappSchema,
     }[section].safeParse(raw);
     if (!operation.success || !parsed.success) return settingsFailure('INVALID_SETTINGS_INPUT');
     const input: Record<string, unknown> = { ...parsed.data };
-    const replacement =
-      section === 'smtp' ? input.password : section === 'whatsapp' ? input.access_token : null;
-    delete input.password;
+    const replacement = section === 'whatsapp' ? input.access_token : null;
     delete input.access_token;
     for (const key of Object.keys(input))
       if (typeof input[key] === 'string' && input[key] === '') input[key] = null;
@@ -94,6 +90,8 @@ export async function updateContactAction(slug: string, raw: unknown): Promise<S
   return updateSettings(slug, 'contact', raw);
 }
 export async function updateSmtpAction(slug: string, raw: unknown): Promise<SettingsResult> {
+  void slug;
+  void raw;
   return settingsFailure('SETTINGS_UNAVAILABLE');
 }
 export async function updateWhatsAppAction(slug: string, raw: unknown): Promise<SettingsResult> {
