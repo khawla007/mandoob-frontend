@@ -173,6 +173,18 @@ test('legacy account MFA authorization inspects every verified factor and both a
   assert.doesNotMatch(authorization, /data\?\.totp/u);
 });
 
+test('legacy account MFA authorization and removal share complete verified-factor extraction', () => {
+  const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
+  assert.equal(source.match(/verifiedMfaFactorIds\(data\.all\)/gu)?.length, 2);
+
+  const remove = source.slice(
+    source.indexOf('export async function removeMfaFactorAction'),
+    source.indexOf('export async function updateRoleFieldsAction'),
+  );
+  assert.match(remove, /verifiedMfaFactorIds\(data\.all\)/u);
+  assert.doesNotMatch(remove, /data\?\.totp/u);
+});
+
 test('password change preserves the browser session while reauthenticating in isolation', () => {
   const source = readFileSync(join(process.cwd(), 'src/app/account/actions.ts'), 'utf8');
   const change = source.slice(

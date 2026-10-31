@@ -19,7 +19,10 @@ import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { listUserSessions, revokeSessionById, type SessionSummary } from '@/lib/auth/sessions';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { removeMfaFactorWithInvariant } from '@/lib/auth/mfa-factor-removal';
-import { authorizeAccountMfaMutation } from '@/lib/auth/mfa-mutation-authorization';
+import {
+  authorizeAccountMfaMutation,
+  verifiedMfaFactorIds,
+} from '@/lib/auth/mfa-mutation-authorization';
 import { verifyCurrentPassword } from '@/lib/auth/password-change';
 import { ApiError } from '@/lib/errors';
 
@@ -54,7 +57,7 @@ async function authorizeAccountMfaMutationForSession(
     listVerifiedFactorIds: async () => {
       const { data, error } = await supabase.auth.mfa.listFactors();
       if (error || !data) throw error ?? new Error('MFA factor lookup failed');
-      return data.all.filter((factor) => factor.status === 'verified').map((factor) => factor.id);
+      return verifiedMfaFactorIds(data.all);
     },
   });
 }
@@ -232,10 +235,10 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
           ).releaseMfaFactorRemovalReservation(...args),
         listVerifiedFactorIds: async () => {
           const { data, error } = await supabase.auth.mfa.listFactors();
-          if (error) throw new ApiError('MFA_REMOVE_FAILED', 'Unable to read MFA factors', 502);
-          return (data?.totp ?? [])
-            .filter((factor) => factor.status === 'verified')
-            .map((factor) => factor.id);
+          if (error || !data) {
+            throw new ApiError('MFA_REMOVE_FAILED', 'Unable to read MFA factors', 502);
+          }
+          return verifiedMfaFactorIds(data.all);
         },
         unenroll: async (id) => {
           const { error } = await supabase.auth.mfa.unenroll({ factorId: id });

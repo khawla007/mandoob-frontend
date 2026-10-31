@@ -5,6 +5,12 @@ type Dependencies = {
   listVerifiedFactorIds(): Promise<string[]>;
 };
 
+type MfaFactor = { id: string; status: string; factor_type?: string };
+
+export function verifiedMfaFactorIds(factors: readonly MfaFactor[]): string[] {
+  return factors.filter((factor) => factor.status === 'verified').map((factor) => factor.id);
+}
+
 function requiresMfa(role: string | null): boolean {
   return role === 'super_admin' || role === 'admin' || role === 'pro';
 }

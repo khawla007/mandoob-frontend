@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, test } from 'node:test';
+import { parse } from 'smol-toml';
 import {
   EVENT_RUNTIME_SCHEDULE,
   EVENT_RUNTIME_SCHEDULER_OWNER,
@@ -14,6 +15,15 @@ const validEnv = {
   URL: 'https://mandoob.example',
   CRON_SECRET: '0123456789abcdef0123456789abcdef',
 };
+
+function scheduledTomlFunctions(source: string): Array<{ name: string; schedule: string }> {
+  const config = parse(source) as { functions?: Record<string, { schedule?: unknown }> };
+  return Object.entries(config.functions ?? {})
+    .flatMap(([name, value]) =>
+      typeof value.schedule === 'string' ? [{ name, schedule: value.schedule }] : [],
+    )
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
 
 describe('Netlify event runtime scheduler', () => {
   test('accepts an indexed process environment while missing runtime keys stay disabled', async () => {
@@ -55,8 +65,17 @@ describe('Netlify event runtime scheduler', () => {
 
     assert.deepEqual(scheduledFunctions, []);
     const netlifyConfig = readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8');
-    assert.match(netlifyConfig, /\[functions\."process-event-jobs"\]/u);
-    assert.match(netlifyConfig, /schedule\s*=\s*"\*\/5 \* \* \* \*"/u);
+    assert.deepEqual(scheduledTomlFunctions(netlifyConfig), [
+      { name: 'process-event-jobs', schedule: '*/5 * * * *' },
+    ]);
+
+    assert.deepEqual(
+      scheduledTomlFunctions(`${netlifyConfig}\n[functions.legacy]\nschedule = '0 * * * *'\n`),
+      [
+        { name: 'legacy', schedule: '0 * * * *' },
+        { name: 'process-event-jobs', schedule: '*/5 * * * *' },
+      ],
+    );
   });
 
   test('fails closed unless the exclusive cutover selector, URL, and secret are valid', async () => {
