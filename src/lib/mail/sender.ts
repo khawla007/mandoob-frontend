@@ -1,8 +1,6 @@
 import 'server-only';
-import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import { env } from '@/lib/env';
-import { decrypt } from '@/lib/crypto/pii';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
 export type SendInput = {
@@ -42,6 +40,12 @@ export type SenderConfig = {
   transport: 'resend' | 'smtp';
   from: string;
   replyTo: string | null;
+};
+
+type SenderDependencies = {
+  readTenant?: (tenantId: string) => Promise<TenantBranding>;
+  readSmtp?: (tenantId: string) => Promise<unknown>;
+  makeSmtp?: () => unknown;
 };
 
 export function buildSenderConfig(
@@ -89,68 +93,23 @@ function resendSender(from: string, replyTo: string | null): ResolvedSender {
   };
 }
 
-function smtpSender(cfg: {
-  host: string;
-  port: number;
-  username: string;
-  password: string;
-  fromAddress: string;
-  replyTo: string | null;
-}): ResolvedSender {
-  return {
-    from: cfg.fromAddress,
-    replyTo: cfg.replyTo,
-    transport: 'smtp',
-    async send(input) {
-      try {
-        const transporter = nodemailer.createTransport({
-          host: cfg.host,
-          port: cfg.port,
-          secure: cfg.port === 465,
-          auth: { user: cfg.username, pass: cfg.password },
-        });
-        const info = await transporter.sendMail({
-          from: input.from,
-          to: input.to,
-          replyTo: input.replyTo,
-          subject: input.subject,
-          html: input.html,
-          text: input.text,
-        });
-        return { ok: true, providerId: info.messageId };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : String(e) };
-      }
-    },
-  };
-}
-
-export async function resolveSenderForTenant(tenantId: string | null): Promise<ResolvedSender> {
-  if (!tenantId) return resendSender(PLATFORM_FROM, null);
-
+async function readTenant(tenantId: string): Promise<TenantBranding> {
   const supabase = createSupabaseServiceRoleClient();
-  const { data: tenant } = await supabase
+  const { data } = await supabase
     .from('tenants')
     .select('email_sender_name, email_reply_to')
     .eq('id', tenantId)
     .maybeSingle();
-  const { data: smtp } = await supabase
-    .from('tenant_smtp_config')
-    .select('host, port, username, password_encrypted, from_address, enabled')
-    .eq('tenant_id', tenantId)
-    .maybeSingle();
+  return data;
+}
 
-  if (smtp?.enabled) {
-    return smtpSender({
-      host: smtp.host,
-      port: smtp.port,
-      username: smtp.username,
-      password: decrypt(smtp.password_encrypted),
-      fromAddress: smtp.from_address,
-      replyTo: tenant?.email_reply_to ?? null,
-    });
-  }
+export async function resolveSenderForTenant(
+  tenantId: string | null,
+  deps: SenderDependencies = {},
+): Promise<ResolvedSender> {
+  if (!tenantId) return resendSender(PLATFORM_FROM, null);
 
+  const tenant = await (deps.readTenant ?? readTenant)(tenantId);
   const cfg = buildSenderConfig(tenant ?? null, null);
   return resendSender(cfg.from, cfg.replyTo);
 }

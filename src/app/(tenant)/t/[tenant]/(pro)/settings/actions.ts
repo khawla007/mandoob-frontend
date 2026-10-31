@@ -18,7 +18,7 @@ import { encrypt, createBlindIndex } from '@/lib/crypto/pii';
 import {
   brandingSchema,
   contactSchema,
-  smtpSchema,
+  smtpMutationSchema,
   whatsappSchema,
   settingsOperationSchema,
 } from '@/lib/validation/tenant-settings';
@@ -46,7 +46,7 @@ async function updateSettings(
     const parsed = {
       branding: brandingSchema,
       contact: contactSchema,
-      smtp: smtpSchema,
+      smtp: smtpMutationSchema,
       whatsapp: whatsappSchema,
     }[section].safeParse(raw);
     if (!operation.success || !parsed.success) return settingsFailure('INVALID_SETTINGS_INPUT');
@@ -94,7 +94,7 @@ export async function updateContactAction(slug: string, raw: unknown): Promise<S
   return updateSettings(slug, 'contact', raw);
 }
 export async function updateSmtpAction(slug: string, raw: unknown): Promise<SettingsResult> {
-  return updateSettings(slug, 'smtp', raw);
+  return settingsFailure('SETTINGS_UNAVAILABLE');
 }
 export async function updateWhatsAppAction(slug: string, raw: unknown): Promise<SettingsResult> {
   return updateSettings(slug, 'whatsapp', raw);

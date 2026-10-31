@@ -92,6 +92,13 @@ export const smtpSchema = z.object({
 });
 export type SmtpInput = z.infer<typeof smtpSchema>;
 
+export const smtpMutationSchema = smtpSchema.superRefine((_input, context) => {
+  context.addIssue({
+    code: 'custom',
+    message: 'Tenant SMTP is unavailable for launch',
+  });
+});
+
 const metaId = z
   .string()
   .trim()

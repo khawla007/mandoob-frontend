@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as schemas from './tenant-settings';
-const { brandingSchema, contactSchema, smtpSchema, whatsappSchema } = schemas;
+const { brandingSchema, contactSchema, smtpSchema, smtpMutationSchema, whatsappSchema } = schemas;
 
 test('settings URLs enforce the database length and authority subset before mutation', () => {
   const input = {
@@ -209,6 +209,28 @@ test('smtpSchema treats empty password as unset (kept on update)', () => {
     enabled: true,
   });
   assert.equal(r.success, true);
+});
+
+test('SMTP mutation is launch unavailable while stored SMTP rows remain parseable', () => {
+  const stored = {
+    host: 'smtp.example.com',
+    port: 587,
+    username: 'u',
+    password: '',
+    from_address: 'a@b.co',
+    enabled: true,
+  };
+  assert.equal(smtpSchema.safeParse(stored).success, true);
+  const mutation = smtpMutationSchema.safeParse(stored);
+  assert.equal(mutation.success, false);
+  if (!mutation.success)
+    assert.deepEqual(mutation.error.issues, [
+      {
+        code: 'custom',
+        message: 'Tenant SMTP is unavailable for launch',
+        path: [],
+      },
+    ]);
 });
 
 test('whatsappSchema accepts Meta ids and first-save access token', () => {

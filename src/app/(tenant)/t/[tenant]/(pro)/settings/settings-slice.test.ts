@@ -35,6 +35,26 @@ test('settings authorization and privileged work remain in one enclosing guarded
   assert.match(attempt.catchClause?.getText(ast) ?? '', /return settingsFailure\('FORBIDDEN'\)/u);
 });
 
+test('SMTP update returns launch unavailable without authorization or mutation work', () => {
+  const ast = ts.createSourceFile(
+    'settings-actions.ts',
+    settingsActions,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const action = ast.statements.find(
+    (node): node is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(node) && node.name?.text === 'updateSmtpAction',
+  );
+  assert.ok(action?.body);
+  assert.equal(action.body.statements.length, 1);
+  assert.equal(
+    action.body.statements[0].getText(ast),
+    "return settingsFailure('SETTINGS_UNAVAILABLE');",
+  );
+});
+
 test('settings page and action directly enforce privileged session assurance', () => {
   for (const source of [settingsPage, settingsActions])
     assert.match(source, /enforcePrivilegedSession\(session\)/u);

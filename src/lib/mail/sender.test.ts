@@ -81,3 +81,33 @@ test('buildSenderConfig: whitespace-only sender name treated as empty', async ()
   );
   assert.equal(cfg.from, 'platform@mail.test');
 });
+
+test('legacy enabled tenant SMTP resolves to the platform transport without SMTP access', async () => {
+  const { resolveSenderForTenant } = await load();
+  let tenantReads = 0;
+  let smtpReads = 0;
+  const sender = await resolveSenderForTenant('tenant-id', {
+    async readTenant() {
+      tenantReads += 1;
+      return { email_sender_name: 'Acme', email_reply_to: null };
+    },
+    async readSmtp() {
+      smtpReads += 1;
+      return {
+        host: '127.0.0.1',
+        port: 25,
+        username: 'blocked',
+        password_encrypted: 'blocked',
+        from_address: 'blocked@example.test',
+        enabled: true,
+      };
+    },
+    makeSmtp() {
+      assert.fail('tenant SMTP transport must never be constructed');
+    },
+  });
+  assert.equal(sender.transport, 'resend');
+  assert.equal(sender.from, 'Acme <no-reply@mail.fanaticcoders.com>');
+  assert.equal(tenantReads, 1);
+  assert.equal(smtpReads, 0);
+});

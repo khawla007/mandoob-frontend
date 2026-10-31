@@ -151,6 +151,39 @@ test('RPC mutation binds scope, validates returned receipt, and sanitizes databa
   assert.deepEqual(denied, { ok: false, code: 'SETTINGS_SAVE_FAILED', errorKey: 'saveFailed' });
 });
 
+test('SMTP mutation is launch unavailable before RPC execution', async () => {
+  const settings = await import('./tenant-settings');
+  let calls = 0;
+  const result = await settings.mutateAssignedCompanySettings(
+    context,
+    'smtp',
+    { operation_id: '44444444-4444-4444-8444-444444444444', expected_version: 0 },
+    {
+      host: 'smtp.example.com',
+      port: 587,
+      username: 'u',
+      from_address: 'mail@example.com',
+      enabled: true,
+    },
+    'ciphertext',
+    'a'.repeat(64),
+    {
+      supabase: {
+        async rpc() {
+          calls += 1;
+          return { data: null, error: null };
+        },
+      },
+    },
+  );
+  assert.deepEqual(result, {
+    ok: false,
+    code: 'SETTINGS_UNAVAILABLE',
+    errorKey: 'unavailable',
+  });
+  assert.equal(calls, 0);
+});
+
 test('denied and malformed snapshot responses fail closed without exposing RPC diagnostics', async () => {
   const settings = await import('./tenant-settings');
   for (const response of [
