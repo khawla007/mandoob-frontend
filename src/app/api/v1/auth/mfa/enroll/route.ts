@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { errorResponse, jsonOk } from '@/lib/errors';
+import { getClientIp } from '@/lib/auth/request';
 import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { authorizeMfaEnrollment } from '@/lib/auth/mfa-enrollment';
@@ -13,21 +14,40 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   const csrfFail = await guardCsrf(request);
   if (csrfFail) return csrfFail;
+  const ip = getClientIp(request);
+  const correlationId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+
+  const preAuthRateLimitDecision = await consumeRateLimitDecision({
+    key: `mfa-enroll-preauth:${ip}`,
+    ...RATE_LIMITS.authPublicIp,
+    routeLabel: 'auth-mfa-enroll-preauth',
+    correlationId,
+  });
+  if (preAuthRateLimitDecision === 'limited') {
+    return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (preAuthRateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return errorResponse('UNAUTHENTICATED', 'Sign in first', 401);
 
-  const rateLimitDecision = await consumeRateLimitDecision({
+  const userRateLimitDecision = await consumeRateLimitDecision({
     key: `mfa-enroll:${userData.user.id}`,
     ...RATE_LIMITS.authedPerUser,
     routeLabel: 'auth.mfa.enroll',
-    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    correlationId,
   });
-  if (rateLimitDecision === 'limited') {
+  if (userRateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
   }
-  if (rateLimitDecision === 'unavailable') {
+  if (userRateLimitDecision === 'unavailable') {
     return errorResponse(
       'RATE_LIMIT_UNAVAILABLE',
       'Request protection is temporarily unavailable.',

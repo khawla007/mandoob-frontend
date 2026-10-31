@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { z } from 'zod';
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon_key_for_tests_padded_to_min_';
@@ -21,6 +22,7 @@ function loadUnavailableRoute(file: string) {
   };
   const fallbackModule = new Proxy<Record<string, unknown>>({}, { get: () => downstream });
   const requireModule = (specifier: string) => {
+    if (specifier === 'zod') return { z };
     if (specifier === '@/lib/auth/csrf-guard') return { guardCsrf: async () => null };
     if (specifier === '@/lib/auth/request') {
       return {
@@ -117,6 +119,21 @@ test('estimate PDF returns stable 503 without querying estimator cost rows', asy
   await assertUnavailable(response);
   assert.equal(route.downstreamCalls(), 0);
 });
+
+for (const [name, file] of [
+  ['enrollment', 'src/app/api/v1/auth/mfa/enroll/route.ts'],
+  ['recovery', 'src/app/api/v1/auth/mfa/recovery/route.ts'],
+  ['verification', 'src/app/api/v1/auth/mfa/verify/route.ts'],
+] as const) {
+  test(`MFA ${name} returns stable 503 before session or provider work`, async () => {
+    const route = loadUnavailableRoute(file);
+    const response = await route.POST(
+      new Request(`https://localhost:3001/api/v1/auth/mfa/${name}`, { method: 'POST' }),
+    );
+    await assertUnavailable(response);
+    assert.equal(route.downstreamCalls(), 0);
+  });
+}
 
 test('erasure returns stable ApiError without starting service-role RPC work', async () => {
   const { createErasureRequest } = await import('@/lib/data/erasure');

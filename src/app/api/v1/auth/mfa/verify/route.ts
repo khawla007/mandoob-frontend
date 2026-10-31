@@ -40,6 +40,24 @@ export async function POST(request: NextRequest) {
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
+  const correlationId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+
+  const preAuthRateLimitDecision = await consumeRateLimitDecision({
+    key: `mfa-verify-preauth:${ip}`,
+    ...RATE_LIMITS.authPublicIp,
+    routeLabel: 'auth-mfa-verify-preauth',
+    correlationId,
+  });
+  if (preAuthRateLimitDecision === 'limited') {
+    return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (preAuthRateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
+  }
 
   type PendingCookie = {
     name: string;
@@ -71,16 +89,16 @@ export async function POST(request: NextRequest) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return errorResponse('UNAUTHENTICATED', 'Sign in first', 401);
 
-  const rateLimitDecision = await consumeRateLimitDecision({
+  const userRateLimitDecision = await consumeRateLimitDecision({
     key: `mfa-verify:${userData.user.id}`,
     ...RATE_LIMITS.authedPerUser,
     routeLabel: 'auth.mfa.verify',
-    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    correlationId,
   });
-  if (rateLimitDecision === 'limited') {
+  if (userRateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
   }
-  if (rateLimitDecision === 'unavailable') {
+  if (userRateLimitDecision === 'unavailable') {
     return errorResponse(
       'RATE_LIMIT_UNAVAILABLE',
       'Request protection is temporarily unavailable.',
