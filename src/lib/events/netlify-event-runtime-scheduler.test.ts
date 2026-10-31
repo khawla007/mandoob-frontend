@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, test } from 'node:test';
+import { parse } from 'smol-toml';
 import {
   EVENT_RUNTIME_SCHEDULE,
   EVENT_RUNTIME_SCHEDULER_OWNER,
-  config,
   createScheduledEventRuntimeHandler,
 } from '../../../netlify/functions/process-event-jobs';
 import { EVENT_RUNTIME_CADENCE_DISPOSITION } from '../../app/api/v1/cron/process-event-jobs/route-handler';
@@ -15,6 +15,22 @@ const validEnv = {
   URL: 'https://mandoob.example',
   CRON_SECRET: '0123456789abcdef0123456789abcdef',
 };
+
+function scheduledTomlFunctions(source: string): Array<{ name: string; schedule: string }> {
+  const config = parse(source) as { functions?: Record<string, { schedule?: unknown }> };
+  return Object.entries(config.functions ?? {})
+    .flatMap(([name, value]) =>
+      typeof value.schedule === 'string' ? [{ name, schedule: value.schedule }] : [],
+    )
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function deployPreviewEnvironment(source: string): Record<string, unknown> {
+  const config = parse(source) as {
+    context?: { 'deploy-preview'?: { environment?: Record<string, unknown> } };
+  };
+  return { ...(config.context?.['deploy-preview']?.environment ?? {}) };
+}
 
 describe('Netlify event runtime scheduler', () => {
   test('accepts an indexed process environment while missing runtime keys stay disabled', async () => {
@@ -39,7 +55,6 @@ describe('Netlify event runtime scheduler', () => {
   test('checks in one UTC cadence owned only by the event runtime', () => {
     assert.equal(EVENT_RUNTIME_SCHEDULER_OWNER, 'netlify.event-runtime');
     assert.equal(EVENT_RUNTIME_SCHEDULE, '*/5 * * * *');
-    assert.deepEqual(config, { schedule: EVENT_RUNTIME_SCHEDULE });
     assert.equal(EVENT_RUNTIME_CADENCE_DISPOSITION.owner, EVENT_RUNTIME_SCHEDULER_OWNER);
     assert.equal(EVENT_RUNTIME_CADENCE_DISPOSITION.cadence, EVENT_RUNTIME_SCHEDULE);
 
@@ -55,8 +70,33 @@ describe('Netlify event runtime scheduler', () => {
       })
       .sort();
 
-    assert.deepEqual(scheduledFunctions, ['process-event-jobs.ts']);
-    assert.doesNotMatch(readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8'), /schedule\s*=/u);
+    assert.deepEqual(scheduledFunctions, []);
+    const netlifyConfig = readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8');
+    assert.deepEqual(scheduledTomlFunctions(netlifyConfig), [
+      { name: 'process-event-jobs', schedule: '*/5 * * * *' },
+    ]);
+
+    assert.deepEqual(
+      scheduledTomlFunctions(`${netlifyConfig}\n[functions.legacy]\nschedule = '0 * * * *'\n`),
+      [
+        { name: 'legacy', schedule: '0 * * * *' },
+        { name: 'process-event-jobs', schedule: '*/5 * * * *' },
+      ],
+    );
+  });
+
+  test('builds deploy previews with inert environment values instead of production credentials', () => {
+    const netlifyConfig = readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8');
+    const environment = deployPreviewEnvironment(netlifyConfig);
+
+    assert.deepEqual(environment, {
+      ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+      NEXT_PUBLIC_APP_URL: 'https://deploy-preview.invalid',
+      NEXT_PUBLIC_ROOT_DOMAIN: 'deploy-preview.invalid',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'deploy-preview-anon-key-disabled',
+      NEXT_PUBLIC_SUPABASE_URL: 'https://deploy-preview.invalid',
+      SUPABASE_SERVICE_ROLE_KEY: 'deploy-preview-service-role-disabled',
+    });
   });
 
   test('fails closed unless the exclusive cutover selector, URL, and secret are valid', async () => {

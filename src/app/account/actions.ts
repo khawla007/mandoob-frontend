@@ -19,6 +19,10 @@ import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { listUserSessions, revokeSessionById, type SessionSummary } from '@/lib/auth/sessions';
 import { revokeAllSessions } from '@/lib/auth/revoke-sessions';
 import { removeMfaFactorWithInvariant } from '@/lib/auth/mfa-factor-removal';
+import {
+  authorizeAccountMfaMutation,
+  verifiedMfaFactorIds,
+} from '@/lib/auth/mfa-mutation-authorization';
 import { verifyCurrentPassword } from '@/lib/auth/password-change';
 import { ApiError } from '@/lib/errors';
 
@@ -38,6 +42,24 @@ function fail(e: unknown): ActionResult {
   if (e instanceof ApiError) return { ok: false, error: { code: e.code, message: e.message } };
   console.error('account-action.failed');
   return { ok: false, error: { code: 'INTERNAL', message: 'Unexpected error' } };
+}
+
+async function authorizeAccountMfaMutationForSession(
+  role: string | null,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+): Promise<void> {
+  await authorizeAccountMfaMutation(role, {
+    loadAssurance: async () => {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error || !data) throw error ?? new Error('MFA assurance lookup failed');
+      return data;
+    },
+    listVerifiedFactorIds: async () => {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error || !data) throw error ?? new Error('MFA factor lookup failed');
+      return verifiedMfaFactorIds(data.all);
+    },
+  });
 }
 
 export async function updateProfileAction(
@@ -130,8 +152,9 @@ export async function enrollMfaAction(): Promise<
   ActionResult<{ factorId: string; qrCode: string; secret: string }>
 > {
   try {
-    await requireAccountUser();
+    const session = await requireAccountUser();
     const supabase = await createSupabaseServerClient();
+    await authorizeAccountMfaMutationForSession(session.role, supabase);
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
     if (error || !data) {
       return {
@@ -157,6 +180,7 @@ export async function finalizeMfaEnrollmentAction(formInput: unknown): Promise<A
     const session = await requireAccountUser();
     const parsed = MfaEnrollFinalizeSchema.parse(formInput);
     const supabase = await createSupabaseServerClient();
+    await authorizeAccountMfaMutationForSession(session.role, supabase);
     const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({
       factorId: parsed.factor_id,
     });
@@ -196,6 +220,7 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
   try {
     const session = await requireAccountUser();
     const supabase = await createSupabaseServerClient();
+    await authorizeAccountMfaMutationForSession(session.role, supabase);
     await removeMfaFactorWithInvariant(
       { userId: session.id, role: session.role, factorId },
       {
@@ -210,10 +235,10 @@ export async function removeMfaFactorAction(factorId: string): Promise<ActionRes
           ).releaseMfaFactorRemovalReservation(...args),
         listVerifiedFactorIds: async () => {
           const { data, error } = await supabase.auth.mfa.listFactors();
-          if (error) throw new ApiError('MFA_REMOVE_FAILED', 'Unable to read MFA factors', 502);
-          return (data?.totp ?? [])
-            .filter((factor) => factor.status === 'verified')
-            .map((factor) => factor.id);
+          if (error || !data) {
+            throw new ApiError('MFA_REMOVE_FAILED', 'Unable to read MFA factors', 502);
+          }
+          return verifiedMfaFactorIds(data.all);
         },
         unenroll: async (id) => {
           const { error } = await supabase.auth.mfa.unenroll({ factorId: id });
