@@ -118,6 +118,14 @@ begin
     if sqlerrm <> 'RATE_LIMIT_PAIR_INVALID_KEY' then raise; end if;
   end;
   begin
+    perform public.rate_limit_consume_pair(
+      pg_catalog.repeat('x', 257), 1, 1, 1, 'valid', 1, 1, 1
+    );
+    raise exception 'ATOMIC_PAIR_OVERSIZED_KEY_ACCEPTED';
+  exception when invalid_parameter_value then
+    if sqlerrm <> 'RATE_LIMIT_PAIR_INVALID_KEY' then raise; end if;
+  end;
+  begin
     perform public.rate_limit_consume_pair('first', 0, 1, 1, 'second', 1, 1, 1);
     raise exception 'ATOMIC_PAIR_INVALID_NUMERIC_ACCEPTED';
   exception when invalid_parameter_value then
@@ -126,6 +134,30 @@ begin
   begin
     perform public.rate_limit_consume_pair('first', null, 1, 1, 'second', 1, 1, 1);
     raise exception 'ATOMIC_PAIR_NULL_NUMERIC_ACCEPTED';
+  exception when invalid_parameter_value then
+    if sqlerrm <> 'RATE_LIMIT_PAIR_INVALID_NUMERIC' then raise; end if;
+  end;
+  begin
+    perform public.rate_limit_consume_pair(
+      'first', 'NaN'::double precision, 1, 1, 'second', 1, 1, 1
+    );
+    raise exception 'ATOMIC_PAIR_NAN_ACCEPTED';
+  exception when invalid_parameter_value then
+    if sqlerrm <> 'RATE_LIMIT_PAIR_INVALID_NUMERIC' then raise; end if;
+  end;
+  begin
+    perform public.rate_limit_consume_pair(
+      'first', 'Infinity'::double precision, 1, 1, 'second', 1, 1, 1
+    );
+    raise exception 'ATOMIC_PAIR_POSITIVE_INFINITY_ACCEPTED';
+  exception when invalid_parameter_value then
+    if sqlerrm <> 'RATE_LIMIT_PAIR_INVALID_NUMERIC' then raise; end if;
+  end;
+  begin
+    perform public.rate_limit_consume_pair(
+      'first', '-Infinity'::double precision, 1, 1, 'second', 1, 1, 1
+    );
+    raise exception 'ATOMIC_PAIR_NEGATIVE_INFINITY_ACCEPTED';
   exception when invalid_parameter_value then
     if sqlerrm <> 'RATE_LIMIT_PAIR_INVALID_NUMERIC' then raise; end if;
   end;

@@ -10,6 +10,7 @@ create or replace function public.rate_limit_consume_pair(
   p_second_cost double precision
 ) returns jsonb
 language plpgsql
+set search_path = ''
 as $rate_limit_consume_pair$
 declare
   v_now timestamptz := pg_catalog.statement_timestamp();

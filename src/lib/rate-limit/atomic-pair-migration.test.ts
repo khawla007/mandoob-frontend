@@ -13,6 +13,7 @@ test('atomic pair migration locks both buckets and exposes only a redacted servi
 
   assert.match(sql, /create or replace function public\.rate_limit_consume_pair\(/iu);
   assert.match(sql, /returns jsonb/iu);
+  assert.match(sql, /language plpgsql[\s\S]*set search_path = ''/iu);
   assert.match(sql, /insert into public\.rate_limits[\s\S]*on conflict \(key\) do nothing/iu);
   assert.match(
     sql,
@@ -29,6 +30,20 @@ test('atomic pair migration locks both buckets and exposes only a redacted servi
     sql,
     /grant execute on function public\.rate_limit_consume_pair\([\s\S]*to service_role/iu,
   );
+});
+
+test('atomic pair concurrency probe runs reversed keys in bounded parallel sessions', () => {
+  const runner = readFileSync(join(process.cwd(), 'scripts/run-sql-integration.sh'), 'utf8');
+  for (const file of [
+    'atomic-rate-limit-pair-concurrency-setup.sql',
+    'atomic-rate-limit-pair-concurrency-call-a.sql',
+    'atomic-rate-limit-pair-concurrency-call-b.sql',
+    'atomic-rate-limit-pair-concurrency-verify.sql',
+  ]) {
+    assert.match(runner, new RegExp(file.replaceAll('.', '\\.')));
+    assert.doesNotThrow(() => readFileSync(join(process.cwd(), 'scripts/sql-integration', file)));
+  }
+  assert.match(runner, /wait "\$pair_pid_a"[\s\S]*wait "\$pair_pid_b"/u);
 });
 
 test('Task 3 inventory owns the atomic pair artifacts and Task 6 reserves migration 0126', () => {

@@ -229,6 +229,10 @@ git commit -m "fix: fail closed when rate limiting is unavailable"
 - Create: `src/lib/rate-limit/atomic-pair-migration.test.ts`
 - Create: `supabase/migrations/20261031005000_0125_atomic_rate_limit_pair.sql`
 - Create: `supabase/tests/atomic_rate_limit_pair.sql`
+- Create: `scripts/sql-integration/atomic-rate-limit-pair-concurrency-setup.sql`
+- Create: `scripts/sql-integration/atomic-rate-limit-pair-concurrency-call-a.sql`
+- Create: `scripts/sql-integration/atomic-rate-limit-pair-concurrency-call-b.sql`
+- Create: `scripts/sql-integration/atomic-rate-limit-pair-concurrency-verify.sql`
 - Modify: `src/lib/rate-limit/index.ts`
 - Modify: `src/lib/rate-limit/sensitive.test.ts`
 - Modify: `scripts/run-sql-integration.sh`
@@ -311,7 +315,7 @@ Expected: exit 0.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/rate-limit/index.ts src/lib/rate-limit/sensitive.test.ts src/lib/rate-limit/legacy-route-audit.test.ts src/lib/rate-limit/legacy-route-unavailable.test.ts src/lib/rate-limit/atomic-pair-migration.test.ts src/app/api/v1/auth src/app/api/v1/public/estimate/pdf/route.ts src/lib/data/erasure.ts supabase/migrations/20261031005000_0125_atomic_rate_limit_pair.sql supabase/tests/atomic_rate_limit_pair.sql scripts/run-sql-integration.sh
+git add src/lib/rate-limit/index.ts src/lib/rate-limit/sensitive.test.ts src/lib/rate-limit/legacy-route-audit.test.ts src/lib/rate-limit/legacy-route-unavailable.test.ts src/lib/rate-limit/atomic-pair-migration.test.ts src/app/api/v1/auth src/app/api/v1/public/estimate/pdf/route.ts src/lib/data/erasure.ts supabase/migrations/20261031005000_0125_atomic_rate_limit_pair.sql supabase/tests/atomic_rate_limit_pair.sql scripts/sql-integration/atomic-rate-limit-pair-concurrency-setup.sql scripts/sql-integration/atomic-rate-limit-pair-concurrency-call-a.sql scripts/sql-integration/atomic-rate-limit-pair-concurrency-call-b.sql scripts/sql-integration/atomic-rate-limit-pair-concurrency-verify.sql scripts/run-sql-integration.sh
 git commit -m "fix: gate auth and public work on limiter availability"
 ```
 
@@ -475,7 +479,7 @@ The static test requires a `security definer set search_path = ''` function, row
 node --import tsx --test src/lib/data/launch-security-wave-1-migration.test.ts
 ```
 
-Expected: FAIL because migration 0125 does not exist.
+Expected: FAIL because migration 0126 does not exist.
 
 - [ ] **Step 3: Implement the forward-only migration**
 

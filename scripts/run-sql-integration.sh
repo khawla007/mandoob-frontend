@@ -9,6 +9,10 @@ readonly PRODUCTION_RECOVERY_MIGRATION="20260915090000_0087_reconcile_existing_p
 readonly BOOTSTRAP_FILE="scripts/sql-integration/bootstrap.sql"
 readonly RECOVERY_SETUP_FILE="scripts/sql-integration/pro-access-recovery-setup.sql"
 readonly RECOVERY_VERIFY_FILE="scripts/sql-integration/pro-access-recovery-verify.sql"
+readonly PAIR_CONCURRENCY_SETUP_FILE="scripts/sql-integration/atomic-rate-limit-pair-concurrency-setup.sql"
+readonly PAIR_CONCURRENCY_CALL_A_FILE="scripts/sql-integration/atomic-rate-limit-pair-concurrency-call-a.sql"
+readonly PAIR_CONCURRENCY_CALL_B_FILE="scripts/sql-integration/atomic-rate-limit-pair-concurrency-call-b.sql"
+readonly PAIR_CONCURRENCY_VERIFY_FILE="scripts/sql-integration/atomic-rate-limit-pair-concurrency-verify.sql"
 readonly CONCURRENCY_SETUP_FILE="scripts/sql-integration/inbound-destination-concurrency-setup.sql"
 readonly CONCURRENCY_CALL_FILE="scripts/sql-integration/inbound-destination-concurrency-call.sql"
 readonly CONCURRENCY_VERIFY_FILE="scripts/sql-integration/inbound-destination-concurrency-verify.sql"
@@ -59,6 +63,10 @@ docker info >/dev/null 2>&1 || fail 'Docker daemon is unavailable'
 [[ -f "$BOOTSTRAP_FILE" ]] || fail "$BOOTSTRAP_FILE is missing"
 [[ -f "$RECOVERY_SETUP_FILE" ]] || fail "$RECOVERY_SETUP_FILE is missing"
 [[ -f "$RECOVERY_VERIFY_FILE" ]] || fail "$RECOVERY_VERIFY_FILE is missing"
+[[ -f "$PAIR_CONCURRENCY_SETUP_FILE" ]] || fail "$PAIR_CONCURRENCY_SETUP_FILE is missing"
+[[ -f "$PAIR_CONCURRENCY_CALL_A_FILE" ]] || fail "$PAIR_CONCURRENCY_CALL_A_FILE is missing"
+[[ -f "$PAIR_CONCURRENCY_CALL_B_FILE" ]] || fail "$PAIR_CONCURRENCY_CALL_B_FILE is missing"
+[[ -f "$PAIR_CONCURRENCY_VERIFY_FILE" ]] || fail "$PAIR_CONCURRENCY_VERIFY_FILE is missing"
 [[ -f "$CONCURRENCY_SETUP_FILE" ]] || fail "$CONCURRENCY_SETUP_FILE is missing"
 [[ -f "$CONCURRENCY_CALL_FILE" ]] || fail "$CONCURRENCY_CALL_FILE is missing"
 [[ -f "$CONCURRENCY_VERIFY_FILE" ]] || fail "$CONCURRENCY_VERIFY_FILE is missing"
@@ -266,6 +274,28 @@ for fixture in "${FIXTURES[@]}"; do
     -f "/tmp/mandoob-tests/$fixture"
 done
 
+echo 'PROBE atomic rate-limit pair reversed-key concurrency'
+docker exec "$CONTAINER_NAME" \
+  psql -X --set ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+  -f "/tmp/mandoob-bootstrap/$(basename "$PAIR_CONCURRENCY_SETUP_FILE")"
+docker exec "$CONTAINER_NAME" sh -eu -c '
+  psql -X --set ON_ERROR_STOP=1 -qAt -F "|" -U supabase_admin -d postgres \
+    -f /tmp/mandoob-bootstrap/atomic-rate-limit-pair-concurrency-call-a.sql > /tmp/pair-concurrency-a.out &
+  pair_pid_a=$!
+  psql -X --set ON_ERROR_STOP=1 -qAt -F "|" -U supabase_admin -d postgres \
+    -f /tmp/mandoob-bootstrap/atomic-rate-limit-pair-concurrency-call-b.sql > /tmp/pair-concurrency-b.out &
+  pair_pid_b=$!
+  wait "$pair_pid_a"
+  wait "$pair_pid_b"
+  grep -Fx "true|true" /tmp/pair-concurrency-a.out >/dev/null \
+    || { cat /tmp/pair-concurrency-a.out >&2; exit 1; }
+  grep -Fx "true|true" /tmp/pair-concurrency-b.out >/dev/null \
+    || { cat /tmp/pair-concurrency-b.out >&2; exit 1; }
+'
+docker exec "$CONTAINER_NAME" \
+  psql -X --set ON_ERROR_STOP=1 -U supabase_admin -d postgres \
+  -f "/tmp/mandoob-bootstrap/$(basename "$PAIR_CONCURRENCY_VERIFY_FILE")"
+
 echo 'PROBE inbound destination concurrent replay'
 docker exec "$CONTAINER_NAME" \
   psql -X --set ON_ERROR_STOP=1 -U supabase_admin -d postgres \
@@ -294,4 +324,4 @@ docker exec "$CONTAINER_NAME" \
   psql -X --set ON_ERROR_STOP=1 -U supabase_admin -d postgres \
   -f "/tmp/mandoob-bootstrap/$(basename "$CONCURRENCY_VERIFY_FILE")"
 
-echo "SQL_INTEGRATION_OK fixtures=${#FIXTURES[@]} concurrency_probes=1"
+echo "SQL_INTEGRATION_OK fixtures=${#FIXTURES[@]} concurrency_probes=2"

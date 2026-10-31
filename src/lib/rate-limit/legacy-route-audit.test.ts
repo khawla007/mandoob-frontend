@@ -217,6 +217,68 @@ function configFromArgument(
     : undefined;
 }
 
+function unwrapParentheses(expression: ts.Expression): ts.Expression {
+  let current = expression;
+  while (ts.isParenthesizedExpression(current)) current = current.expression;
+  return current;
+}
+
+function branchHasTerminalOutcome(
+  branch: ts.IfStatement,
+  expected: { code?: string; status: number },
+): boolean {
+  const terminals = [branch.thenStatement, ...descendants(branch.thenStatement)].flatMap((node) => {
+    if (!ts.isReturnStatement(node) && !ts.isThrowStatement(node)) return [];
+    if (!node.expression) return [];
+    const expression = unwrapParentheses(node.expression);
+    return ts.isCallExpression(expression) || ts.isNewExpression(expression) ? [expression] : [];
+  });
+
+  return terminals.some((terminal) => {
+    const argumentNodes = (terminal.arguments ?? []).flatMap((argument) => [
+      argument,
+      ...descendants(argument),
+    ]);
+    const hasStatus = argumentNodes.some(
+      (node) => ts.isNumericLiteral(node) && Number(node.text) === expected.status,
+    );
+    const hasCode =
+      expected.code === undefined ||
+      argumentNodes.some((node) => ts.isStringLiteral(node) && node.text === expected.code);
+    return hasStatus && hasCode;
+  });
+}
+
+test('branch outcome audit rejects literal-only no-ops and accepts terminal responses', () => {
+  const sourceFile = ts.createSourceFile(
+    'synthetic.ts',
+    `
+      if (decision === 'unavailable') {
+        void ['RATE_LIMIT_UNAVAILABLE', 503];
+      }
+      if (decision === 'limited') {
+        return errorResponse('RATE_LIMITED', 'slow down', 429);
+      }
+      if (pair.first === 'limited') {
+        throw new ApiError('RATE_LIMITED', 'slow down', 429);
+      }
+    `,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const branches = descendants(sourceFile).filter(ts.isIfStatement);
+
+  assert.equal(
+    branchHasTerminalOutcome(branches[0]!, {
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      status: 503,
+    }),
+    false,
+  );
+  assert.equal(branchHasTerminalOutcome(branches[1]!, { status: 429 }), true);
+  assert.equal(branchHasTerminalOutcome(branches[2]!, { status: 429 }), true);
+});
+
 test('all legacy authentication and public callers use typed fail-closed limiter decisions', () => {
   for (const file of LEGACY_PUBLIC_CALLERS) {
     const source = readFileSync(join(process.cwd(), file), 'utf8');
@@ -292,6 +354,18 @@ test('all legacy authentication and public callers use typed fail-closed limiter
         'erasure must handle every pair outcome before service-role work',
       );
       assert.ok(
+        branchHasTerminalOutcome(unavailableBranch, {
+          code: 'RATE_LIMIT_UNAVAILABLE',
+          status: 503,
+        }),
+        'erasure unavailable must throw the stable 503 outcome',
+      );
+      assert.ok(
+        branchHasTerminalOutcome(firstLimitedBranch, { status: 429 }) &&
+          branchHasTerminalOutcome(secondLimitedBranch, { status: 429 }),
+        'erasure limited pair outcomes must throw 429',
+      );
+      assert.ok(
         pairCall.getStart() < unavailableBranch.getStart() &&
           unavailableBranch.end < firstLimitedBranch.getStart() &&
           firstLimitedBranch.end < secondLimitedBranch.getStart() &&
@@ -323,9 +397,7 @@ test('all legacy authentication and public callers use typed fail-closed limiter
       const limitedBranch = branchForDecision(nodes, name, 'limited');
       assert.ok(limitedBranch, `${file} must handle limited for ${name}`);
       assert.ok(
-        descendants(limitedBranch.thenStatement).some(
-          (node) => ts.isNumericLiteral(node) && node.text === '429',
-        ),
+        branchHasTerminalOutcome(limitedBranch, { status: 429 }),
         `${file} must preserve its 429 response for ${name}`,
       );
       assert.ok(call.getStart() < limitedBranch.getStart(), `${file} must decide before 429`);
@@ -333,12 +405,10 @@ test('all legacy authentication and public callers use typed fail-closed limiter
       const unavailableBranch = branchForDecision(nodes, name, 'unavailable');
       assert.ok(unavailableBranch, `${file} must handle unavailable for ${name}`);
       assert.ok(
-        descendants(unavailableBranch.thenStatement).some(
-          (node) => ts.isStringLiteral(node) && node.text === 'RATE_LIMIT_UNAVAILABLE',
-        ) &&
-          descendants(unavailableBranch.thenStatement).some(
-            (node) => ts.isNumericLiteral(node) && node.text === '503',
-          ),
+        branchHasTerminalOutcome(unavailableBranch, {
+          code: 'RATE_LIMIT_UNAVAILABLE',
+          status: 503,
+        }),
         `${file} must return the stable unavailable error with status 503 for ${name}`,
       );
       assert.ok(call.getStart() < unavailableBranch.getStart(), `${file} must decide before 503`);
