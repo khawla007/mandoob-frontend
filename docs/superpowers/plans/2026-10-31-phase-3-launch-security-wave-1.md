@@ -332,7 +332,7 @@ Test declared overflow, missing/understated length, chunked overflow, exact limi
 - [ ] **Step 2: Run the focused test and confirm RED**
 
 ```bash
-node --import tsx --test src/lib/http/bounded-body.test.ts
+node --conditions=react-server --import tsx --test src/lib/http/bounded-body.test.ts
 ```
 
 Expected: FAIL because the module does not exist.
@@ -385,7 +385,11 @@ Add helpers that parse JSON from bounded UTF-8 and reconstruct a bounded `Reques
 
 - [ ] **Step 4: Run the focused test and confirm GREEN**
 
-Run the Step 2 command. Expected: PASS.
+```bash
+node --conditions=react-server --import tsx --test src/lib/http/bounded-body.test.ts
+```
+
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
