@@ -3,7 +3,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ApiError } from '@/lib/errors';
 import { env } from '@/lib/env';
 import { enqueueEmail } from '@/lib/mail/send';
-import { consumeRateLimitDecision } from '@/lib/rate-limit';
+import { consumeRateLimitPairDecision } from '@/lib/rate-limit';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { runErasureExternalCleanup } from '@/lib/data/erasure-cleanup-workflow';
 
@@ -274,7 +274,7 @@ export async function createErasureRequest(
     ip: string;
   },
   deps: {
-    rateLimitDecision?: typeof consumeRateLimitDecision;
+    rateLimitPairDecision?: typeof consumeRateLimitPairDecision;
     createClient?: typeof createSupabaseServiceRoleClient;
   } = {},
 ): Promise<{ requestId: string }> {
@@ -286,20 +286,6 @@ export async function createErasureRequest(
     routeLabel: 'data.erasure.create.user',
     correlationId,
   };
-  const userRateLimitDecision = deps.rateLimitDecision
-    ? await deps.rateLimitDecision(userRateLimitConfig)
-    : await consumeRateLimitDecision(userRateLimitConfig);
-  if (userRateLimitDecision === 'limited') {
-    throw new ApiError('RATE_LIMITED', 'An erasure request is already being processed', 429);
-  }
-  if (userRateLimitDecision === 'unavailable') {
-    throw new ApiError(
-      'RATE_LIMIT_UNAVAILABLE',
-      'Request protection is temporarily unavailable',
-      503,
-    );
-  }
-
   const ipRateLimitConfig = {
     key: `erasure_request:${args.ip}`,
     capacity: 5,
@@ -307,18 +293,21 @@ export async function createErasureRequest(
     routeLabel: 'data.erasure.create.ip',
     correlationId,
   };
-  const ipRateLimitDecision = deps.rateLimitDecision
-    ? await deps.rateLimitDecision(ipRateLimitConfig)
-    : await consumeRateLimitDecision(ipRateLimitConfig);
-  if (ipRateLimitDecision === 'limited') {
-    throw new ApiError('RATE_LIMITED', 'Too many erasure attempts', 429);
-  }
-  if (ipRateLimitDecision === 'unavailable') {
+  const rateLimitPairDecision = deps.rateLimitPairDecision
+    ? await deps.rateLimitPairDecision(userRateLimitConfig, ipRateLimitConfig)
+    : await consumeRateLimitPairDecision(userRateLimitConfig, ipRateLimitConfig);
+  if (rateLimitPairDecision === 'unavailable') {
     throw new ApiError(
       'RATE_LIMIT_UNAVAILABLE',
       'Request protection is temporarily unavailable',
       503,
     );
+  }
+  if (rateLimitPairDecision.first === 'limited') {
+    throw new ApiError('RATE_LIMITED', 'An erasure request is already being processed', 429);
+  }
+  if (rateLimitPairDecision.second === 'limited') {
+    throw new ApiError('RATE_LIMITED', 'Too many erasure attempts', 429);
   }
 
   const supabase = (deps.createClient ?? createSupabaseServiceRoleClient)();

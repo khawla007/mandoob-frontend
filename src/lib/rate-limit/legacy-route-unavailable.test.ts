@@ -12,17 +12,30 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_key_for_tests_padded_';
 process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'localhost:3001';
 process.env.ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
 
-const unavailable = async () => 'unavailable' as const;
+type RouteDecision = 'allowed' | 'limited' | 'unavailable';
 
-function loadUnavailableRoute(file: string) {
+function loadUnavailableRoute(file: string, decisions: RouteDecision[] = ['unavailable']) {
   let downstreamCalls = 0;
+  let decisionCalls = 0;
+  let sessionLookups = 0;
   const downstream = () => {
     downstreamCalls += 1;
     throw new Error('downstream work must not run');
   };
+  const auth = new Proxy(
+    {
+      getUser: async () => {
+        sessionLookups += 1;
+        return { data: { user: { id: 'user-1' } } };
+      },
+    },
+    { get: (target, property) => Reflect.get(target, property) ?? downstream },
+  );
+  const sessionClient = { auth };
   const fallbackModule = new Proxy<Record<string, unknown>>({}, { get: () => downstream });
   const requireModule = (specifier: string) => {
     if (specifier === 'zod') return { z };
+    if (specifier === '@supabase/ssr') return { createServerClient: () => sessionClient };
     if (specifier === '@/lib/auth/csrf-guard') return { guardCsrf: async () => null };
     if (specifier === '@/lib/auth/request') {
       return {
@@ -31,12 +44,22 @@ function loadUnavailableRoute(file: string) {
         parseJson: downstream,
       };
     }
+    if (specifier === '@/lib/supabase/server') {
+      return { createSupabaseServerClient: async () => sessionClient };
+    }
     if (specifier === '@/lib/rate-limit') {
       return {
-        consumeRateLimitDecision: unavailable,
+        consumeRateLimitDecision: async () => {
+          const decision = decisions[decisionCalls];
+          decisionCalls += 1;
+          if (!decision) throw new Error('route consumed more limiter decisions than expected');
+          return decision;
+        },
+        rateLimitCorrelationId: () => '00000000-0000-4000-8000-000000000001',
         RATE_LIMITS: {
           authLoginIp: { capacity: 10, refillPerSec: 10 / 60 },
           authPublicIp: { capacity: 20, refillPerSec: 20 / 60 },
+          authedPerUser: { capacity: 100, refillPerSec: 100 / 60 },
         },
       };
     }
@@ -73,6 +96,8 @@ function loadUnavailableRoute(file: string) {
   return {
     POST: testModule.exports.POST as (request: Request) => Promise<Response>,
     downstreamCalls: () => downstreamCalls,
+    decisionCalls: () => decisionCalls,
+    sessionLookups: () => sessionLookups,
   };
 }
 
@@ -132,42 +157,80 @@ for (const [name, file] of [
     );
     await assertUnavailable(response);
     assert.equal(route.downstreamCalls(), 0);
+    assert.equal(route.sessionLookups(), 0);
+    assert.equal(route.decisionCalls(), 1);
+  });
+
+  test(`MFA ${name} user-gate unavailability stops all post-session work`, async () => {
+    const route = loadUnavailableRoute(file, ['allowed', 'unavailable']);
+    const response = await route.POST(
+      new Request(`https://localhost:3001/api/v1/auth/mfa/${name}`, { method: 'POST' }),
+    );
+    await assertUnavailable(response);
+    assert.equal(route.sessionLookups(), 1);
+    assert.equal(route.decisionCalls(), 2);
+    assert.equal(route.downstreamCalls(), 0);
   });
 }
 
-test('erasure returns stable ApiError without starting service-role RPC work', async () => {
-  const { createErasureRequest } = await import('@/lib/data/erasure');
-  let downstreamCalls = 0;
-  await assert.rejects(
-    createErasureRequest(
-      {
-        subjectKind: 'customer',
-        subjectUserId: 'user-1',
-        subjectTenantId: 'tenant-1',
-        tenantSlug: 'tenant',
-        subjectName: 'Test User',
-        subjectEmail: 'test@example.com',
-        recoveryEmail: 'recovery@example.com',
-        reason: null,
-        ip: '127.0.0.1',
-      },
-      {
-        rateLimitDecision: unavailable,
+const erasureArgs = {
+  subjectKind: 'customer' as const,
+  subjectUserId: 'user-1',
+  subjectTenantId: 'tenant-1',
+  tenantSlug: 'tenant',
+  subjectName: 'Test User',
+  subjectEmail: 'test@example.com',
+  recoveryEmail: 'recovery@example.com',
+  reason: null,
+  ip: '127.0.0.1',
+};
+
+for (const [name, decision, code, message, status] of [
+  [
+    'unavailable',
+    'unavailable',
+    'RATE_LIMIT_UNAVAILABLE',
+    'Request protection is temporarily unavailable',
+    503,
+  ],
+  [
+    'user limited',
+    { first: 'limited', second: 'allowed' },
+    'RATE_LIMITED',
+    'An erasure request is already being processed',
+    429,
+  ],
+  [
+    'IP limited',
+    { first: 'allowed', second: 'limited' },
+    'RATE_LIMITED',
+    'Too many erasure attempts',
+    429,
+  ],
+] as const) {
+  test(`erasure ${name} pair decision starts no service-role work`, async () => {
+    const { createErasureRequest } = await import('@/lib/data/erasure');
+    let pairCalls = 0;
+    let downstreamCalls = 0;
+    await assert.rejects(
+      createErasureRequest(erasureArgs, {
+        rateLimitPairDecision: async () => {
+          pairCalls += 1;
+          return decision;
+        },
         createClient: () => {
           downstreamCalls += 1;
           throw new Error('service role client must not run');
         },
+      }),
+      (error: unknown) => {
+        assert.equal((error as { code?: string }).code, code);
+        assert.equal((error as { message?: string }).message, message);
+        assert.equal((error as { status?: number }).status, status);
+        return true;
       },
-    ),
-    (error: unknown) => {
-      assert.equal((error as { code?: string }).code, 'RATE_LIMIT_UNAVAILABLE');
-      assert.equal(
-        (error as { message?: string }).message,
-        'Request protection is temporarily unavailable',
-      );
-      assert.equal((error as { status?: number }).status, 503);
-      return true;
-    },
-  );
-  assert.equal(downstreamCalls, 0);
-});
+    );
+    assert.equal(pairCalls, 1);
+    assert.equal(downstreamCalls, 0);
+  });
+}

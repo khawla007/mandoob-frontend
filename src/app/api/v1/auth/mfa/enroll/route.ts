@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp } from '@/lib/auth/request';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { authorizeMfaEnrollment } from '@/lib/auth/mfa-enrollment';
 import { cleanupUnverifiedTotpFactors } from '@/lib/auth/mfa';
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const csrfFail = await guardCsrf(request);
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
-  const correlationId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
 
   const preAuthRateLimitDecision = await consumeRateLimitDecision({
     key: `mfa-enroll-preauth:${ip}`,

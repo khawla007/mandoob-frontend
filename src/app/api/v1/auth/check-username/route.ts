@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { errorResponse, jsonOk } from '@/lib/errors';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/auth/request';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 
@@ -11,11 +11,12 @@ const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
   const rateLimitDecision = await consumeRateLimitDecision({
     key: `uname:${ip}`,
     ...RATE_LIMITS.authPublicIp,
     routeLabel: 'auth.check-username',
-    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    correlationId,
   });
   if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many checks. Slow down.', 429);

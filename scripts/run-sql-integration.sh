@@ -13,6 +13,7 @@ readonly CONCURRENCY_SETUP_FILE="scripts/sql-integration/inbound-destination-con
 readonly CONCURRENCY_CALL_FILE="scripts/sql-integration/inbound-destination-concurrency-call.sql"
 readonly CONCURRENCY_VERIFY_FILE="scripts/sql-integration/inbound-destination-concurrency-verify.sql"
 readonly -a FIXTURES=(
+  "atomic_rate_limit_pair.sql"
   "event_queue_foundation.sql"
   "p3_10_operational_runtime.sql"
   "inbound_webhook_atomic_lifecycle.sql"

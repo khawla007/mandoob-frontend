@@ -22,6 +22,134 @@ const legacyConfig = {
   refillPerSec: config.refillPerSec,
 };
 
+const pairConfig = {
+  ...config,
+  key: 'erasure:user-1',
+  routeLabel: 'data.erasure.create.user',
+};
+
+const secondPairConfig = {
+  ...config,
+  key: 'erasure_request:127.0.0.1',
+  capacity: 5,
+  refillPerSec: 5 / 3600,
+  routeLabel: 'data.erasure.create.ip',
+};
+
+test('atomic pair limiter consumes both buckets with one RPC', async () => {
+  const { consumeRateLimitPairDecision } = await limiter;
+  const calls: unknown[][] = [];
+
+  assert.deepEqual(
+    await consumeRateLimitPairDecision(pairConfig, secondPairConfig, {
+      consume: async (...args: unknown[]) => {
+        calls.push(args);
+        return {
+          data: { first_allowed: true, second_allowed: true },
+          error: null,
+        };
+      },
+    }),
+    { first: 'allowed', second: 'allowed' },
+  );
+  assert.deepEqual(calls, [[pairConfig, secondPairConfig]]);
+});
+
+test('atomic pair limiter preserves which bucket denied without a second RPC', async () => {
+  const { consumeRateLimitPairDecision } = await limiter;
+  let calls = 0;
+
+  assert.deepEqual(
+    await consumeRateLimitPairDecision(pairConfig, secondPairConfig, {
+      consume: async () => {
+        calls += 1;
+        return {
+          data: { first_allowed: true, second_allowed: false },
+          error: null,
+        };
+      },
+    }),
+    { first: 'allowed', second: 'limited' },
+  );
+  assert.equal(calls, 1);
+});
+
+test('atomic pair limiter fails closed on malformed data with redacted diagnostics', async () => {
+  const { consumeRateLimitPairDecision } = await limiter;
+  const logs: unknown[][] = [];
+
+  assert.equal(
+    await consumeRateLimitPairDecision(pairConfig, secondPairConfig, {
+      consume: async () => ({
+        data: { first_allowed: true, second_allowed: 'private-ip' },
+        error: new Error('database-secret'),
+      }),
+      log: (...args) => logs.push(args),
+    }),
+    'unavailable',
+  );
+  assert.deepEqual(logs, [
+    [
+      'rate-limit pair unavailable',
+      {
+        routeLabels: ['data.erasure.create.user', 'data.erasure.create.ip'],
+        correlationId: 'cid',
+      },
+    ],
+  ]);
+  assert.doesNotMatch(JSON.stringify(logs), /private-ip|database-secret|erasure:user-1/u);
+});
+
+test('atomic pair limiter fails closed on an RPC error', async () => {
+  const { consumeRateLimitPairDecision } = await limiter;
+
+  assert.equal(
+    await consumeRateLimitPairDecision(pairConfig, secondPairConfig, {
+      consume: async () => ({
+        data: { first_allowed: true, second_allowed: true },
+        error: new Error('database-secret'),
+      }),
+      log: () => undefined,
+    }),
+    'unavailable',
+  );
+});
+
+test('atomic pair limiter fails closed when the RPC throws', async () => {
+  const { consumeRateLimitPairDecision } = await limiter;
+  let calls = 0;
+
+  assert.equal(
+    await consumeRateLimitPairDecision(pairConfig, secondPairConfig, {
+      consume: async () => {
+        calls += 1;
+        throw new Error('transport-secret');
+      },
+      log: () => undefined,
+    }),
+    'unavailable',
+  );
+  assert.equal(calls, 1);
+});
+
+test('rate-limit correlation ID accepts canonical UUIDs only', async () => {
+  const { rateLimitCorrelationId } = await limiter;
+  const supplied = '123e4567-e89b-42d3-a456-426614174000';
+  const generatedId = '00000000-0000-4000-8000-000000000001';
+  let generated = 0;
+  const generate = () => {
+    generated += 1;
+    return generatedId;
+  };
+
+  assert.equal(rateLimitCorrelationId(supplied, generate), supplied);
+  assert.equal(generated, 0);
+  assert.equal(rateLimitCorrelationId('private-user@example.com', generate), generatedId);
+  assert.equal(rateLimitCorrelationId('x'.repeat(4096), generate), generatedId);
+  assert.equal(rateLimitCorrelationId(null, generate), generatedId);
+  assert.equal(generated, 3);
+});
+
 test('typed rate limiter allows an accepted consumption', async () => {
   const { consumeRateLimitDecision } = await limiter;
 

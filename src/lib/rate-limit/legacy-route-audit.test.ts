@@ -113,6 +113,25 @@ function branchForIdentifier(nodes: ts.Node[], identifier: string): ts.IfStateme
   );
 }
 
+function branchForPairMember(
+  nodes: ts.Node[],
+  decisionName: string,
+  member: 'first' | 'second',
+): ts.IfStatement | undefined {
+  return nodes.find(
+    (node): node is ts.IfStatement =>
+      ts.isIfStatement(node) &&
+      ts.isBinaryExpression(node.expression) &&
+      node.expression.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken &&
+      ts.isPropertyAccessExpression(node.expression.left) &&
+      ts.isIdentifier(node.expression.left.expression) &&
+      node.expression.left.expression.text === decisionName &&
+      node.expression.left.name.text === member &&
+      ts.isStringLiteral(node.expression.right) &&
+      node.expression.right.text === 'limited',
+  );
+}
+
 function auditedFunction(sourceFile: ts.SourceFile, file: string): ts.FunctionDeclaration {
   const functionName =
     file === 'src/lib/data/erasure.ts'
@@ -180,6 +199,24 @@ function limiterConfig(
     : undefined;
 }
 
+function configFromArgument(
+  argument: ts.Expression | undefined,
+  nodes: ts.Node[],
+): ts.ObjectLiteralExpression | undefined {
+  if (argument && ts.isObjectLiteralExpression(argument)) return argument;
+  if (!argument || !ts.isIdentifier(argument)) return undefined;
+  const declaration = nodes.find(
+    (node): node is ts.VariableDeclaration =>
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === argument.text &&
+      Boolean(node.initializer && ts.isObjectLiteralExpression(node.initializer)),
+  );
+  return declaration?.initializer && ts.isObjectLiteralExpression(declaration.initializer)
+    ? declaration.initializer
+    : undefined;
+}
+
 test('all legacy authentication and public callers use typed fail-closed limiter decisions', () => {
   for (const file of LEGACY_PUBLIC_CALLERS) {
     const source = readFileSync(join(process.cwd(), file), 'utf8');
@@ -196,17 +233,73 @@ test('all legacy authentication and public callers use typed fail-closed limiter
     assert.ok(limiterImport, `${file} must import the rate limiter`);
 
     const importedNames = limiterImport.importClause?.namedBindings;
+    const expectedImport =
+      file === 'src/lib/data/erasure.ts'
+        ? 'consumeRateLimitPairDecision'
+        : 'consumeRateLimitDecision';
     assert.ok(
       importedNames &&
         ts.isNamedImports(importedNames) &&
-        importedNames.elements.some((element) => element.name.text === 'consumeRateLimitDecision'),
-      `${file} must import consumeRateLimitDecision`,
+        importedNames.elements.some((element) => element.name.text === expectedImport),
+      `${file} must import ${expectedImport}`,
     );
+    if (file !== 'src/lib/data/erasure.ts') {
+      assert.ok(
+        importedNames &&
+          ts.isNamedImports(importedNames) &&
+          importedNames.elements.some((element) => element.name.text === 'rateLimitCorrelationId'),
+        `${file} must import rateLimitCorrelationId`,
+      );
+      assert.match(
+        source,
+        /rateLimitCorrelationId\(request\.headers\.get\('x-request-id'\)\)/u,
+        `${file} must sanitize the request correlation header`,
+      );
+      assert.doesNotMatch(
+        source,
+        /correlationId:\s*request\.headers\.get/u,
+        `${file} must not pass an arbitrary request header to limiter diagnostics`,
+      );
+    }
     assert.equal(
       sourceNodes.some((node) => isCallTo(node, 'consumeRateLimit')),
       false,
       `${file} must not call consumeRateLimit`,
     );
+
+    if (file === 'src/lib/data/erasure.ts') {
+      assert.equal(
+        nodes.some((node) => isCallTo(node, 'consumeRateLimitDecision')),
+        false,
+        'erasure must not burn either bucket with sequential limiter calls',
+      );
+      const pairCalls = nodes.filter((node) => isCallTo(node, 'consumeRateLimitPairDecision'));
+      assert.equal(pairCalls.length, 1, 'erasure must consume its user and IP buckets atomically');
+      const pairCall = pairCalls[0]!;
+      const firstConfig = configFromArgument(pairCall.arguments[0], nodes);
+      const secondConfig = configFromArgument(pairCall.arguments[1], nodes);
+      assert.ok(firstConfig && secondConfig, 'erasure pair configs must be statically inspectable');
+      assert.match(firstConfig.getText(sourceFile), /erasure:\$\{args\.subjectUserId\}/u);
+      assert.match(secondConfig.getText(sourceFile), /erasure_request:\$\{args\.ip\}/u);
+      const name = decisionName(pairCall);
+      assert.ok(name, 'erasure must store the atomic pair decision');
+      const unavailableBranch = branchForDecision(nodes, name, 'unavailable');
+      const firstLimitedBranch = branchForPairMember(nodes, name, 'first');
+      const secondLimitedBranch = branchForPairMember(nodes, name, 'second');
+      const providerCall = callMentioning(nodes, 'createSupabaseServiceRoleClient');
+      assert.ok(
+        unavailableBranch && firstLimitedBranch && secondLimitedBranch && providerCall,
+        'erasure must handle every pair outcome before service-role work',
+      );
+      assert.ok(
+        pairCall.getStart() < unavailableBranch.getStart() &&
+          unavailableBranch.end < firstLimitedBranch.getStart() &&
+          firstLimitedBranch.end < secondLimitedBranch.getStart() &&
+          secondLimitedBranch.end < providerCall.getStart(),
+        'erasure must fail closed for every pair outcome before service-role work',
+      );
+      continue;
+    }
 
     const decisionCalls = nodes.filter((node) => isCallTo(node, 'consumeRateLimitDecision'));
     assert.ok(decisionCalls.length > 0, `${file} must call consumeRateLimitDecision`);
@@ -310,27 +403,6 @@ test('all legacy authentication and public callers use typed fail-closed limiter
       assert.equal(propertyLiteral(userConfig, 'routeLabel'), mfa.userLabel);
       assert.match(preAuthConfig.getText(sourceFile), /correlationId/u);
       assert.match(userConfig.getText(sourceFile), /correlationId/u);
-    }
-
-    if (file === 'src/lib/data/erasure.ts') {
-      assert.equal(decisionCalls.length, 2, 'erasure must retain user and IP limiter decisions');
-      const providerCall = callMentioning(nodes, 'createSupabaseServiceRoleClient')!;
-      const [userDecision, ipDecision] = decisionCalls;
-      const userName = decisionName(userDecision!)!;
-      const ipName = decisionName(ipDecision!)!;
-      const userLimited = branchForDecision(nodes, userName, 'limited')!;
-      const userUnavailable = branchForDecision(nodes, userName, 'unavailable')!;
-      const ipLimited = branchForDecision(nodes, ipName, 'limited')!;
-      const ipUnavailable = branchForDecision(nodes, ipName, 'unavailable')!;
-      assert.ok(
-        userDecision!.getStart() < userLimited.getStart() &&
-          userLimited.end < userUnavailable.getStart() &&
-          userUnavailable.end < ipDecision!.getStart() &&
-          ipDecision!.getStart() < ipLimited.getStart() &&
-          ipLimited.end < ipUnavailable.getStart() &&
-          ipUnavailable.end < providerCall.getStart(),
-        'erasure must fail closed at both limiter gates before service-role work',
-      );
     }
   }
 });

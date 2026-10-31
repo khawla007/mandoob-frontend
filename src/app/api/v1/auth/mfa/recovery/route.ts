@@ -3,7 +3,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { z } from 'zod';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redeemRecoveryCode, resetMfaForRecovery } from '@/lib/auth/mfa';
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
-  const correlationId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
 
   const preAuthRateLimitDecision = await consumeRateLimitDecision({
     key: `mfa-recovery-preauth:${ip}`,

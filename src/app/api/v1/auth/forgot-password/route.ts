@@ -4,7 +4,7 @@ import { trustedApplicationUrl } from '@/lib/auth/trusted-app-origin';
 import { forgotPasswordSchema } from '@/lib/validation/auth';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -16,12 +16,13 @@ export async function POST(request: NextRequest) {
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
 
   const rateLimitDecision = await consumeRateLimitDecision({
     key: `forgot:${ip}`,
     ...RATE_LIMITS.authPublicIp,
     routeLabel: 'auth.forgot-password',
-    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    correlationId,
   });
   if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);

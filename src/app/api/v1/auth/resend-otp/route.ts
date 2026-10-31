@@ -3,7 +3,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { resendEmailOtpSchema } from '@/lib/validation/auth';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, parseJson } from '@/lib/auth/request';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
 import { sendOtpEmail } from '@/lib/mail/otp';
 
@@ -14,12 +14,13 @@ export async function POST(request: NextRequest) {
   const csrfFail = await guardCsrf(request);
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
 
   const rateLimitDecision = await consumeRateLimitDecision({
     key: `resend-otp:${ip}`,
     ...RATE_LIMITS.authPublicIp,
     routeLabel: 'auth.resend-otp',
-    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    correlationId,
   });
   if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);

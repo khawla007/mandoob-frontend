@@ -9,7 +9,11 @@ import { listActiveEstimatorCostRows } from '@/lib/estimator/data';
 import { errorResponse } from '@/lib/errors';
 import { formatMoney } from '@/lib/format/money';
 import { generateEstimatePdf } from '@/lib/pdf/estimate';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import {
+  consumeRateLimitDecision,
+  rateLimitCorrelationId,
+  RATE_LIMITS,
+} from '@/lib/rate-limit';
 import { env } from '@/lib/env';
 import { z } from 'zod';
 
@@ -29,11 +33,12 @@ const DOCUMENT_LABELS: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
   const rateLimitConfig = {
     key: `estimate-pdf:${ip}`,
     ...RATE_LIMITS.authPublicIp,
     routeLabel: 'public.estimate.pdf',
-    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    correlationId,
   };
   const rateLimitDecision = await consumeRateLimitDecision(rateLimitConfig);
   if (rateLimitDecision === 'limited') {

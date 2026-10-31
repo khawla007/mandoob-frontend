@@ -4,7 +4,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { z } from 'zod';
 import { errorResponse } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { persistVerifiedMfaSession } from '@/lib/auth/mfa-session';
 import { env } from '@/lib/env';
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
-  const correlationId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
 
   const preAuthRateLimitDecision = await consumeRateLimitDecision({
     key: `mfa-verify-preauth:${ip}`,

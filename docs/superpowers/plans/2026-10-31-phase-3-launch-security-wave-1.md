@@ -17,7 +17,8 @@
 - `src/lib/validation/tenant-settings.ts`: launch-unavailable SMTP mutation schema.
 - `src/app/(tenant)/t/[tenant]/(pro)/settings/actions.ts`: stable SMTP-unavailable server action.
 - `src/lib/data/tenant-settings.ts`: authoritative application-side SMTP mutation denial.
-- `supabase/migrations/20261031010000_0125_launch_security_wave_1.sql`: database SMTP mutation denial and atomic delivery receipt RPC.
+- `supabase/migrations/20261031005000_0125_atomic_rate_limit_pair.sql`: atomic two-bucket rate-limit consumption.
+- `supabase/migrations/20261031010000_0126_launch_security_wave_1.sql`: database SMTP mutation denial and atomic delivery receipt RPC.
 - `supabase/tests/launch_security_wave_1.sql`: transactional SMTP and callback replay/order/grant proof.
 - `src/lib/rate-limit/index.ts`: typed fail-closed limiter core and compatibility wrapper.
 - `src/lib/rate-limit/sensitive.test.ts`: limiter error/malformed/exception/redaction regressions.
@@ -224,6 +225,13 @@ git commit -m "fix: fail closed when rate limiting is unavailable"
 
 **Files:**
 - Create: `src/lib/rate-limit/legacy-route-audit.test.ts`
+- Create: `src/lib/rate-limit/legacy-route-unavailable.test.ts`
+- Create: `src/lib/rate-limit/atomic-pair-migration.test.ts`
+- Create: `supabase/migrations/20261031005000_0125_atomic_rate_limit_pair.sql`
+- Create: `supabase/tests/atomic_rate_limit_pair.sql`
+- Modify: `src/lib/rate-limit/index.ts`
+- Modify: `src/lib/rate-limit/sensitive.test.ts`
+- Modify: `scripts/run-sql-integration.sh`
 - Modify: `src/app/api/v1/auth/check-username/route.ts`
 - Modify: `src/app/api/v1/auth/forgot-password/route.ts`
 - Modify: `src/app/api/v1/auth/invite/accept/route.ts`
@@ -247,13 +255,15 @@ The audit enumerates the files above and asserts they import `consumeRateLimitDe
 
 ```bash
 node --conditions=react-server --import tsx --test --test-concurrency=1 \
+  src/lib/rate-limit/sensitive.test.ts \
+  src/lib/rate-limit/atomic-pair-migration.test.ts \
   src/lib/rate-limit/legacy-route-audit.test.ts \
   src/lib/rate-limit/legacy-route-unavailable.test.ts \
   src/components/auth/mfa-contracts.test.ts \
   src/app/api/v1/auth/mfa/enroll/route-safety.test.ts
 ```
 
-Expected: FAIL because the MFA routes do not yet have pre-auth limiter decisions and the transpiled route tests reach poisoned session/provider dependencies when the limiter is unavailable.
+Expected: FAIL because the MFA routes do not yet have pre-auth limiter decisions, erasure still consumes two buckets sequentially, the atomic pair migration is missing, and the transpiled route tests reach poisoned session/provider dependencies when the limiter is unavailable.
 
 - [ ] **Step 3: Migrate every enumerated caller**
 
@@ -272,19 +282,23 @@ if (limit === 'unavailable')
   return errorResponse('RATE_LIMIT_UNAVAILABLE', 'Request protection is temporarily unavailable.', 503);
 ```
 
-For `erasure.ts`, throw `ApiError('RATE_LIMIT_UNAVAILABLE', 'Request protection is temporarily unavailable', 503)` on unavailable and preserve its existing 429 behavior on limited. Do not execute authentication, Turnstile, provider, or mutation work before the decision.
+Sanitize request correlation headers through `rateLimitCorrelationId`; accept only canonical UUIDs and generate a server UUID for arbitrary, private, or oversized values.
+
+For `erasure.ts`, consume the user and IP buckets with one `consumeRateLimitPairDecision` RPC so either-side denial subtracts cost from neither bucket. Throw `ApiError('RATE_LIMIT_UNAVAILABLE', 'Request protection is temporarily unavailable', 503)` on unavailable and preserve each existing 429 message for its corresponding limited side. Do not execute authentication, Turnstile, provider, or mutation work before the decision.
 
 - [ ] **Step 4: Run the Step 2 test command and confirm GREEN**
 
 ```bash
 node --conditions=react-server --import tsx --test --test-concurrency=1 \
+  src/lib/rate-limit/sensitive.test.ts \
+  src/lib/rate-limit/atomic-pair-migration.test.ts \
   src/lib/rate-limit/legacy-route-audit.test.ts \
   src/lib/rate-limit/legacy-route-unavailable.test.ts \
   src/components/auth/mfa-contracts.test.ts \
   src/app/api/v1/auth/mfa/enroll/route-safety.test.ts
 ```
 
-Expected: PASS for the complete route audit, real transpiled unavailable-route tests, and affected MFA contract/safety tests.
+Expected: PASS for the atomic pair core/migration contract, complete route audit, real transpiled unavailable-route tests, and affected MFA contract/safety tests.
 
 - [ ] **Step 5: Run TypeScript to catch any missed signature migration**
 
@@ -297,7 +311,7 @@ Expected: exit 0.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/rate-limit/legacy-route-audit.test.ts src/app/api/v1/auth src/app/api/v1/public/estimate/pdf/route.ts src/lib/data/erasure.ts
+git add src/lib/rate-limit/index.ts src/lib/rate-limit/sensitive.test.ts src/lib/rate-limit/legacy-route-audit.test.ts src/lib/rate-limit/legacy-route-unavailable.test.ts src/lib/rate-limit/atomic-pair-migration.test.ts src/app/api/v1/auth src/app/api/v1/public/estimate/pdf/route.ts src/lib/data/erasure.ts supabase/migrations/20261031005000_0125_atomic_rate_limit_pair.sql supabase/tests/atomic_rate_limit_pair.sql scripts/run-sql-integration.sh
 git commit -m "fix: gate auth and public work on limiter availability"
 ```
 
@@ -446,7 +460,7 @@ git commit -m "fix: bound public and webhook request bodies"
 ### Task 6: Add the atomic monotonic delivery-status RPC
 
 **Files:**
-- Create: `supabase/migrations/20261031010000_0125_launch_security_wave_1.sql`
+- Create: `supabase/migrations/20261031010000_0126_launch_security_wave_1.sql`
 - Create: `supabase/tests/launch_security_wave_1.sql`
 - Create: `src/lib/data/launch-security-wave-1-migration.test.ts`
 - Modify: `scripts/run-sql-integration.sh`
@@ -504,7 +518,7 @@ Expected: PASS; full migration chain plus Wave 1 fixture succeeds.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/20261031010000_0125_launch_security_wave_1.sql supabase/tests/launch_security_wave_1.sql src/lib/data/launch-security-wave-1-migration.test.ts scripts/run-sql-integration.sh
+git add supabase/migrations/20261031010000_0126_launch_security_wave_1.sql supabase/tests/launch_security_wave_1.sql src/lib/data/launch-security-wave-1-migration.test.ts scripts/run-sql-integration.sh
 git commit -m "fix: enforce monotonic provider delivery callbacks"
 ```
 

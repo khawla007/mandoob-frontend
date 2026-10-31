@@ -3,7 +3,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { loginSchema } from '@/lib/validation/auth';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimitDecision, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkLockout, clearFailures, recordFailure } from '@/lib/auth/lockout';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -19,12 +19,13 @@ export async function POST(request: NextRequest) {
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
 
   const rateLimitConfig = {
     key: `login:${ip}`,
     ...RATE_LIMITS.authLoginIp,
     routeLabel: 'auth.login',
-    correlationId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    correlationId,
   };
   const rateLimitDecision = await consumeRateLimitDecision(rateLimitConfig);
   if (rateLimitDecision === 'limited') {
