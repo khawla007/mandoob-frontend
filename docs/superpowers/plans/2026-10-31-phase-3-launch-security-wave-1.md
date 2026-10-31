@@ -37,6 +37,7 @@
 ### Task 1: Disable tenant-controlled SMTP at every application boundary
 
 **Files:**
+
 - Modify: `src/lib/mail/sender.ts`
 - Modify: `src/lib/mail/sender.test.ts`
 - Modify: `src/lib/validation/tenant-settings.ts`
@@ -66,7 +67,14 @@ test('SMTP mutation is launch unavailable before RPC execution', async () => {
     smtpInput,
     'ciphertext',
     'a'.repeat(64),
-    { supabase: { rpc: async () => { calls += 1; return { data: null, error: null }; } } },
+    {
+      supabase: {
+        rpc: async () => {
+          calls += 1;
+          return { data: null, error: null };
+        },
+      },
+    },
   );
   assert.deepEqual(result, { ok: false, code: 'SETTINGS_UNAVAILABLE', errorKey: 'unavailable' });
   assert.equal(calls, 0);
@@ -143,6 +151,7 @@ git commit -m "fix: disable tenant smtp for launch"
 ### Task 2: Add a typed fail-closed legacy rate-limit core
 
 **Files:**
+
 - Modify: `src/lib/rate-limit/index.ts`
 - Modify: `src/lib/rate-limit/sensitive.test.ts`
 
@@ -154,8 +163,17 @@ Cover `true`, `false`, RPC error, thrown exception, `null`, string data, and red
 test('legacy limiter treats RPC failure as unavailable without logging the key', async () => {
   const logs: unknown[][] = [];
   const decision = await consumeRateLimitDecision(
-    { key: 'login:private-ip', capacity: 1, refillPerSec: 1, routeLabel: 'login', correlationId: 'cid' },
-    { consume: async () => ({ data: null, error: new Error('secret') }), log: (...args) => logs.push(args) },
+    {
+      key: 'login:private-ip',
+      capacity: 1,
+      refillPerSec: 1,
+      routeLabel: 'login',
+      correlationId: 'cid',
+    },
+    {
+      consume: async () => ({ data: null, error: new Error('secret') }),
+      log: (...args) => logs.push(args),
+    },
   );
   assert.equal(decision, 'unavailable');
   assert.doesNotMatch(JSON.stringify(logs), /private-ip|secret/u);
@@ -206,7 +224,10 @@ Make `consumeSensitiveRateLimit` delegate to this core. Preserve `consumeRateLim
 
 ```ts
 export async function consumeRateLimit(cfg: RateLimitConfig): Promise<boolean> {
-  return (await consumeRateLimitDecision({ ...cfg, routeLabel: 'legacy', correlationId: 'none' })) === 'allowed';
+  return (
+    (await consumeRateLimitDecision({ ...cfg, routeLabel: 'legacy', correlationId: 'none' })) ===
+    'allowed'
+  );
 }
 ```
 
@@ -224,6 +245,7 @@ git commit -m "fix: fail closed when rate limiting is unavailable"
 ### Task 3: Migrate authentication and public callers to typed limiter decisions
 
 **Files:**
+
 - Create: `src/lib/rate-limit/legacy-route-audit.test.ts`
 - Create: `src/lib/rate-limit/legacy-route-unavailable.test.ts`
 - Create: `src/lib/rate-limit/atomic-pair-migration.test.ts`
@@ -283,7 +305,11 @@ const limit = await consumeRateLimitDecision({
 if (limit === 'limited')
   return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
 if (limit === 'unavailable')
-  return errorResponse('RATE_LIMIT_UNAVAILABLE', 'Request protection is temporarily unavailable.', 503);
+  return errorResponse(
+    'RATE_LIMIT_UNAVAILABLE',
+    'Request protection is temporarily unavailable.',
+    503,
+  );
 ```
 
 Sanitize request correlation headers through `rateLimitCorrelationId`; accept only canonical UUIDs and generate a server UUID for arbitrary, private, or oversized values.
@@ -322,6 +348,7 @@ git commit -m "fix: gate auth and public work on limiter availability"
 ### Task 4: Build the shared bounded streaming body reader
 
 **Files:**
+
 - Create: `src/lib/http/bounded-body.ts`
 - Create: `src/lib/http/bounded-body.test.ts`
 
@@ -373,7 +400,10 @@ export async function readBoundedBody(request: Request, maxBytes: number): Promi
   }
   const body = new Uint8Array(total);
   let offset = 0;
-  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
   return body;
 }
 
@@ -401,6 +431,7 @@ git commit -m "feat: add bounded streaming request reader"
 ### Task 5: Migrate all public and webhook body consumers to bounded ingress
 
 **Files:**
+
 - Create: `src/lib/http/bounded-ingress-audit.test.ts`
 - Modify: `src/app/api/v1/public/contact/handler.ts`
 - Modify: `src/app/api/v1/public/applications/drafts/handler.ts`
@@ -447,7 +478,10 @@ try {
   rawBody = decodeBoundedUtf8(await readBoundedBody(req, BODY_LIMITS.providerWebhook));
 } catch (error) {
   if (error instanceof BodyTooLargeError)
-    return NextResponse.json({ error: 'request too large', code: 'PAYLOAD_TOO_LARGE' }, { status: 413 });
+    return NextResponse.json(
+      { error: 'request too large', code: 'PAYLOAD_TOO_LARGE' },
+      { status: 413 },
+    );
   return NextResponse.json({ error: 'invalid request', code: 'BAD_REQUEST' }, { status: 400 });
 }
 ```
@@ -468,6 +502,7 @@ git commit -m "fix: bound public and webhook request bodies"
 ### Task 6: Add the atomic monotonic delivery-status RPC
 
 **Files:**
+
 - Create: `supabase/migrations/20261031010000_0126_launch_security_wave_1.sql`
 - Create: `supabase/tests/launch_security_wave_1.sql`
 - Create: `src/lib/data/launch-security-wave-1-migration.test.ts`
@@ -533,6 +568,7 @@ git commit -m "fix: enforce monotonic provider delivery callbacks"
 ### Task 7: Route all verified delivery callbacks through the atomic RPC
 
 **Files:**
+
 - Create: `src/lib/events/provider-delivery-status.ts`
 - Create: `src/lib/events/provider-delivery-status.test.ts`
 - Modify: `src/app/api/v1/webhooks/twilio/route.ts`
@@ -600,6 +636,7 @@ git commit -m "fix: serialize delivery callback state"
 ### Task 8: Complete verification, independent review, and evidence reconciliation
 
 **Files:**
+
 - Modify outside repo: `Reports/launch-gate-evidence/2026-10-27/phase-3-public-dashboard-apis/p3-13-integration-acceptance/penetration-security-retest.md`
 - Modify outside repo: `Reports/launch-gate-evidence/2026-10-27/phase-3-public-dashboard-apis/p3-13-integration-acceptance/remaining-blockers-or-final-acceptance.md`
 - Modify outside repo: `Reports/daily-work-report.md`
