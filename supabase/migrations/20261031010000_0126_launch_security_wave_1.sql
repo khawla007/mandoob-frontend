@@ -142,6 +142,21 @@ begin
     v_outcome := 'replayed';
     return pg_catalog.jsonb_build_object('outcome', v_outcome);
   end if;
+  if v_channel = 'sms' and v_current_status = 'delivered' then
+    v_outcome := 'stale';
+    return pg_catalog.jsonb_build_object('outcome', v_outcome);
+  end if;
+  if v_channel = 'whatsapp'
+    and v_current_status = 'delivered'
+    and v_target_status in ('failed', 'dead')
+  then
+    v_outcome := 'stale';
+    return pg_catalog.jsonb_build_object('outcome', v_outcome);
+  end if;
+  if v_channel = 'whatsapp' and v_current_status = 'read' then
+    v_outcome := 'stale';
+    return pg_catalog.jsonb_build_object('outcome', v_outcome);
+  end if;
   if v_current_terminal or v_target_rank < v_current_rank then
     v_outcome := 'stale';
     return pg_catalog.jsonb_build_object('outcome', v_outcome);

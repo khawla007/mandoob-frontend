@@ -4,17 +4,17 @@ set statement_timeout = '15s';
 do $delivery_status_concurrency_contract$
 declare
   v_status text;
-  v_sent_at timestamptz;
   v_delivered_at timestamptz;
+  v_error text;
 begin
-  select queue.status, queue.sent_at, queue.delivered_at
-  into v_status, v_sent_at, v_delivered_at
+  select queue.status, queue.delivered_at, queue.last_error
+  into v_status, v_delivered_at, v_error
   from public.outbound_sms as queue
   where queue.provider = 'twilio'
     and queue.provider_message_id = 'LSW1-CONCURRENT-SMS';
   if v_status <> 'delivered'
-    or v_sent_at <> '2026-10-31T03:01:00Z'::timestamptz
     or v_delivered_at <> '2026-10-31T03:02:00Z'::timestamptz
+    or v_error is not null
   then
     raise exception 'DELIVERY_STATUS_CONCURRENT_TRANSITIONS_NOT_SERIALIZED';
   end if;

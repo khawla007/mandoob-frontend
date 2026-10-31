@@ -60,6 +60,21 @@ test('0126 declares monotonic mappings, terminal protection, and safe timestamp/
     sql,
     /v_current_terminal or v_target_rank < v_current_rank[\s\S]*v_outcome := 'stale'/iu,
   );
+  assert.match(
+    sql,
+    /v_channel = 'sms'[\s\S]*v_current_status = 'delivered'[\s\S]*v_outcome := 'stale'/iu,
+    'SMS delivered must reject contradictory terminal callbacks',
+  );
+  assert.match(
+    sql,
+    /v_channel = 'whatsapp'[\s\S]*v_current_status = 'delivered'[\s\S]*v_target_status in \('failed', 'dead'\)[\s\S]*v_outcome := 'stale'/iu,
+    'WhatsApp delivered may advance to read but must reject failure/dead',
+  );
+  assert.match(
+    sql,
+    /v_channel = 'whatsapp'[\s\S]*v_current_status = 'read'[\s\S]*v_outcome := 'stale'/iu,
+    'WhatsApp read must be terminal',
+  );
   assert.match(sql, /sent_at = coalesce\([^;]+p_provider_occurred_at[^;]+clock_timestamp/iu);
   assert.match(sql, /delivered_at = coalesce\([^;]+p_provider_occurred_at[^;]+clock_timestamp/iu);
   assert.match(sql, /read_at = coalesce\([^;]+p_provider_occurred_at[^;]+clock_timestamp/iu);
@@ -78,10 +93,13 @@ test('transactional fixture covers outcomes, privilege boundaries, and timestamp
     'SMS_REPLAYED',
     'SMS_STALE_REJECTED',
     'SMS_TERMINAL_PROTECTED',
+    'SMS_SUCCESS_TERMINAL_PROTECTED',
     'WHATSAPP_FORWARD_APPLIED',
     'WHATSAPP_REPLAYED',
     'WHATSAPP_STALE_REJECTED',
     'WHATSAPP_TERMINAL_PROTECTED',
+    'WHATSAPP_DELIVERED_FAILURE_REJECTED',
+    'WHATSAPP_READ_TERMINAL_PROTECTED',
     'UNKNOWN_ACKNOWLEDGED',
     'NOT_FOUND_REDACTED',
     'TIMESTAMPS_PRESERVED',
@@ -107,5 +125,6 @@ test('SQL runner executes the fixture and a real two-session serialization probe
   assert.match(runner, /delivery_pid_b=\$!/u);
   assert.match(runner, /wait "\$delivery_pid_a"/u);
   assert.match(runner, /wait "\$delivery_pid_b"/u);
+  assert.match(runner, /grep -Fx "stale" \/tmp\/delivery-concurrency-b\.out/u);
   assert.match(runner, /concurrency_probes=3/u);
 });

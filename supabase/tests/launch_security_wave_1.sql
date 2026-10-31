@@ -28,6 +28,7 @@ declare
   v_status text;
   v_sent_at timestamptz;
   v_delivered_at timestamptz;
+  v_error text;
 begin
   v_result := public.apply_provider_delivery_status(
     'sms', 'twilio', 'LSW1-SMS-FORWARD', 'Sent', '2026-10-31T01:00:00Z', null
@@ -63,6 +64,19 @@ begin
   );
   if v_result <> '{"outcome":"stale"}'::jsonb then raise exception 'SMS_STALE_REJECTED'; end if;
   raise notice 'SMS_STALE_REJECTED';
+
+  v_result := public.apply_provider_delivery_status(
+    'sms', 'twilio', 'LSW1-SMS-FORWARD', 'failed', '2026-10-31T01:06:00Z', '30003'
+  );
+  select queue.status, queue.delivered_at, queue.last_error
+  into v_status, v_delivered_at, v_error
+  from public.outbound_sms as queue where queue.provider_message_id = 'LSW1-SMS-FORWARD';
+  if v_result <> '{"outcome":"stale"}'::jsonb
+    or v_status <> 'delivered'
+    or v_delivered_at <> '2026-10-31T01:05:00Z'::timestamptz
+    or v_error is not null
+  then raise exception 'SMS_SUCCESS_TERMINAL_PROTECTED'; end if;
+  raise notice 'SMS_SUCCESS_TERMINAL_PROTECTED';
 end;
 $sms_forward_contract$;
 
@@ -109,6 +123,7 @@ declare
   v_sent_at timestamptz;
   v_delivered_at timestamptz;
   v_read_at timestamptz;
+  v_error text;
 begin
   v_result := public.apply_provider_delivery_status(
     'whatsapp', 'whatsapp', 'LSW1-WA-FORWARD', 'sent', '2026-10-31T02:00:00Z', null
@@ -124,6 +139,20 @@ begin
     raise exception 'CALLBACK_CLOCK_FALLBACK';
   end if;
   raise notice 'CALLBACK_CLOCK_FALLBACK';
+
+  v_result := public.apply_provider_delivery_status(
+    'whatsapp', 'whatsapp', 'LSW1-WA-FORWARD', 'failed',
+    v_delivered_at + interval '1 minute', 'META_131026'
+  );
+  select queue.status, queue.delivered_at, queue.last_error
+  into v_status, v_delivered_at, v_error
+  from public.outbound_whatsapp as queue where queue.provider_message_id = 'LSW1-WA-FORWARD';
+  if v_result <> '{"outcome":"stale"}'::jsonb
+    or v_status <> 'delivered'
+    or v_error is not null
+  then raise exception 'WHATSAPP_DELIVERED_FAILURE_REJECTED'; end if;
+  raise notice 'WHATSAPP_DELIVERED_FAILURE_REJECTED';
+
   v_result := public.apply_provider_delivery_status(
     'whatsapp', 'whatsapp', 'LSW1-WA-FORWARD', 'read', '2026-10-31T02:02:00Z', null
   );
@@ -140,6 +169,17 @@ begin
   );
   if v_result <> '{"outcome":"replayed"}'::jsonb then raise exception 'WHATSAPP_REPLAYED'; end if;
   raise notice 'WHATSAPP_REPLAYED';
+
+  v_result := public.apply_provider_delivery_status(
+    'whatsapp', 'whatsapp', 'LSW1-WA-FORWARD', 'dead', null, 'META_131026'
+  );
+  select queue.status, queue.read_at, queue.last_error into v_status, v_read_at, v_error
+  from public.outbound_whatsapp as queue where queue.provider_message_id = 'LSW1-WA-FORWARD';
+  if v_result <> '{"outcome":"stale"}'::jsonb
+    or v_status <> 'read'
+    or v_error is not null
+  then raise exception 'WHATSAPP_READ_TERMINAL_PROTECTED'; end if;
+  raise notice 'WHATSAPP_READ_TERMINAL_PROTECTED';
 
   v_result := public.apply_provider_delivery_status(
     'whatsapp', 'whatsapp', 'LSW1-WA-FORWARD', 'sent', null, null

@@ -328,7 +328,7 @@ docker exec "$CONTAINER_NAME" sh -eu -c '
   wait "$delivery_pid_b"
   grep -Fx "applied" /tmp/delivery-concurrency-a.out >/dev/null \
     || { cat /tmp/delivery-concurrency-a.out >&2; exit 1; }
-  grep -Fx "applied" /tmp/delivery-concurrency-b.out >/dev/null \
+  grep -Fx "stale" /tmp/delivery-concurrency-b.out >/dev/null \
     || { cat /tmp/delivery-concurrency-b.out >&2; exit 1; }
 '
 docker exec "$CONTAINER_NAME" \

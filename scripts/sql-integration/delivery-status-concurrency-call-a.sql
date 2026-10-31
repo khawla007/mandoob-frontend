@@ -6,7 +6,7 @@ begin;
 select result ->> 'outcome'
 from (
   select public.apply_provider_delivery_status(
-    'sms', 'twilio', 'LSW1-CONCURRENT-SMS', 'sent', '2026-10-31T03:01:00Z', null
+    'sms', 'twilio', 'LSW1-CONCURRENT-SMS', 'delivered', '2026-10-31T03:02:00Z', null
   ) as result
 ) as callback;
 \! touch /tmp/delivery-status-a-locked
