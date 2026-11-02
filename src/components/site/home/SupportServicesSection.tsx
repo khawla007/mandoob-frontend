@@ -1,5 +1,6 @@
 import { Briefcase, Building2, CalendarClock, IdCard, Landmark, ReceiptText } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import type { CSSProperties } from 'react';
 
 const SERVICES = [
   ['companySetup', Building2],
@@ -19,9 +20,9 @@ export async function SupportServicesSection() {
         <h2 id="home-services-h" className="home-section-title">
           {t('supportHeading')}
         </h2>
-        <ul className="home-services-grid" role="list">
+        <ul className="home-services-grid" role="list" data-reveal-cards>
           {SERVICES.map(([key, Icon], index) => (
-            <li key={key}>
+            <li className="reveal" key={key} style={{ '--reveal-i': index } as CSSProperties}>
               <span className={`home-icon-medallion home-icon-medallion--${index + 1}`}>
                 <Icon aria-hidden="true" />
               </span>

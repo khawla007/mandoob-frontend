@@ -39,14 +39,16 @@ export async function TestimonialsSection() {
             {t('title')}
           </h2>
         </header>
-        <TestimonialsCarousel
-          items={items}
-          carouselLabel={t('carouselLabel')}
-          previousLabel={controls('previousLabel')}
-          nextLabel={controls('nextLabel')}
-          positionLabel={controls('positionLabel')}
-          direction={direction}
-        />
+        <div className="reveal">
+          <TestimonialsCarousel
+            items={items}
+            carouselLabel={t('carouselLabel')}
+            previousLabel={controls('previousLabel')}
+            nextLabel={controls('nextLabel')}
+            positionLabel={controls('positionLabel')}
+            direction={direction}
+          />
+        </div>
       </div>
     </section>
   );
