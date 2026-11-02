@@ -33,6 +33,12 @@ export type AuthorityDiscoveryCard = DiscoveryCard & {
   authoritySlug: string | null;
 };
 
+export type OffshoreOptionCard = AuthorityDiscoveryCard & {
+  monogram: string;
+  regionLabel: string;
+  highlights: readonly string[];
+};
+
 export type FreeZoneDirectoryItem = AuthorityDiscoveryCard & {
   emirate: EmirateKey;
   emirateLabel: string;

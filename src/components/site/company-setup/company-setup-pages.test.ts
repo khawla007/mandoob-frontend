@@ -67,6 +67,7 @@ describe('company setup discovery page contracts', () => {
     const page = source('OffshoreDiscovery.tsx');
     for (const term of [
       'OFFSHORE_OPTIONS',
+      'OFFSHORE_PLANNING',
       'Is offshore suitable',
       'What offshore may support',
       'What offshore does not automatically provide',

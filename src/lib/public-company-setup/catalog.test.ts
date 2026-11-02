@@ -5,7 +5,9 @@ import {
   FREE_ZONE_DIRECTORY,
   MAINLAND_EMIRATES,
   OFFSHORE_OPTIONS,
+  OFFSHORE_PLANNING,
   POPULAR_FREE_ZONES,
+  formatAedRange,
   formatIndicativeAed,
 } from './catalog';
 
@@ -40,12 +42,26 @@ describe('public company setup catalog', () => {
     assert.equal(formatIndicativeAed(1_250_000, 2_100_000), 'Indicative AED 12,500–21,000');
   });
 
+  it('derives offshore planning figures from accepted seed rows without visa allocation', () => {
+    assert.equal(formatAedRange(OFFSHORE_PLANNING.baseRange), 'AED 15,500–17,500');
+    assert.deepEqual(OFFSHORE_PLANNING.baseTimeline, { min: 9, max: 19 });
+    assert.equal(
+      OFFSHORE_PLANNING.fees.some((fee) => /visa/iu.test(fee.label)),
+      false,
+    );
+    assert.deepEqual(
+      OFFSHORE_OPTIONS.map((item) => item.monogram),
+      ['RAK', 'JAO', 'UAE'],
+    );
+  });
+
   it('does not publish unsupported proof or guarantees', () => {
     const content = JSON.stringify({
       mainland: MAINLAND_EMIRATES,
       popular: POPULAR_FREE_ZONES,
       directory: FREE_ZONE_DIRECTORY,
       offshore: OFFSHORE_OPTIONS,
+      offshorePlanning: OFFSHORE_PLANNING,
     });
     assert.doesNotMatch(
       content,
