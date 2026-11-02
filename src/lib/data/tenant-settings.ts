@@ -59,6 +59,7 @@ export type SettingsResult =
   | { ok: true; data: SettingsReceipt }
   | { ok: false; errorKey: SettingsErrorKey; code: SettingsErrorCode };
 type SettingsErrorCode =
+  | 'SETTINGS_UNAVAILABLE'
   | 'FORBIDDEN'
   | 'INVALID_SETTINGS_INPUT'
   | 'SETTINGS_OPERATION_CONFLICT'
@@ -170,6 +171,7 @@ export async function getTenantSettingsSnapshot(
 }
 
 const errorKeys: Record<SettingsErrorCode, SettingsErrorKey> = {
+  SETTINGS_UNAVAILABLE: 'unavailable',
   FORBIDDEN: 'forbidden',
   INVALID_SETTINGS_INPUT: 'validation',
   SETTINGS_OPERATION_CONFLICT: 'conflict',
@@ -192,6 +194,7 @@ export async function mutateAssignedCompanySettings(
   replacementFingerprint: string | null,
   deps: Dependencies = {},
 ): Promise<SettingsResult> {
+  if (section === 'smtp') return settingsFailure('SETTINGS_UNAVAILABLE');
   if (!contextSchema.safeParse(context).success) return settingsFailure('FORBIDDEN');
   if (
     !sectionSchema.safeParse(section).success ||

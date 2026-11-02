@@ -4,7 +4,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { z } from 'zod';
 import { errorResponse } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { persistVerifiedMfaSession } from '@/lib/auth/mfa-session';
 import { env } from '@/lib/env';
@@ -40,6 +40,24 @@ export async function POST(request: NextRequest) {
   if (csrfFail) return csrfFail;
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
+
+  const preAuthRateLimitDecision = await consumeRateLimitDecision({
+    key: `mfa-verify-preauth:${ip}`,
+    ...RATE_LIMITS.authPublicIp,
+    routeLabel: 'auth-mfa-verify-preauth',
+    correlationId,
+  });
+  if (preAuthRateLimitDecision === 'limited') {
+    return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (preAuthRateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
+  }
 
   type PendingCookie = {
     name: string;
@@ -71,13 +89,21 @@ export async function POST(request: NextRequest) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return errorResponse('UNAUTHENTICATED', 'Sign in first', 401);
 
-  if (
-    !(await consumeRateLimit({
-      key: `mfa-verify:${userData.user.id}`,
-      ...RATE_LIMITS.authedPerUser,
-    }))
-  ) {
+  const userRateLimitDecision = await consumeRateLimitDecision({
+    key: `mfa-verify:${userData.user.id}`,
+    ...RATE_LIMITS.authedPerUser,
+    routeLabel: 'auth.mfa.verify',
+    correlationId,
+  });
+  if (userRateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (userRateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
   }
 
   const raw = await parseJson<unknown>(request);

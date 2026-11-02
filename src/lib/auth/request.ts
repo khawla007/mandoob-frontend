@@ -1,5 +1,6 @@
 import 'server-only';
 import type { NextRequest } from 'next/server';
+import { BODY_LIMITS, readBoundedJson } from '@/lib/http/bounded-body';
 
 export function getClientIp(request: Request | NextRequest): string {
   const xff = request.headers.get('x-forwarded-for');
@@ -15,7 +16,7 @@ export function getUserAgent(request: Request | NextRequest): string | null {
 
 export async function parseJson<T>(request: Request): Promise<T | null> {
   try {
-    return (await request.json()) as T;
+    return (await readBoundedJson(request, BODY_LIMITS.publicJson)) as T;
   } catch {
     return null;
   }

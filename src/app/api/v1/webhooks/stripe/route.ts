@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import {
+  BODY_LIMITS,
+  BodyTooLargeError,
+  decodeBoundedUtf8,
+  readBoundedBody,
+} from '@/lib/http/bounded-body';
+import {
   getStripeClient,
   resolveStripeRuntimeConfig,
   verifyWebhookSignature,
@@ -20,7 +26,17 @@ export async function POST(req: Request): Promise<Response> {
       { error: 'provider unavailable', code: 'PROVIDER_DISABLED' },
       { status: 503 },
     );
-  const rawBody = await req.text();
+  let rawBody: string;
+  try {
+    rawBody = decodeBoundedUtf8(await readBoundedBody(req, BODY_LIMITS.providerWebhook));
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? NextResponse.json(
+          { error: 'request too large', code: 'PAYLOAD_TOO_LARGE' },
+          { status: 413 },
+        )
+      : NextResponse.json({ error: 'invalid request', code: 'BAD_REQUEST' }, { status: 400 });
+  }
   const signature = req.headers.get('stripe-signature');
   if (!signature)
     return NextResponse.json({ error: 'invalid signature', code: 'FORBIDDEN' }, { status: 400 });

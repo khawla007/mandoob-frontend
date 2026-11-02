@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { getClientIp } from '@/lib/auth/request';
 import { env } from '@/lib/env';
+import { BODY_LIMITS, BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
 import { consumeSensitiveRateLimit } from '@/lib/rate-limit';
 import {
   createApplicationDraft,
@@ -14,7 +15,6 @@ import {
   verifyPublicTurnstile,
 } from '@/lib/public-intake/security';
 
-const MAX_BODY_BYTES = 4_096;
 const requestSchema = z
   .object({
     operationId: z.string().uuid(),
@@ -38,14 +38,13 @@ export async function handleCreateDraftPost(request: Request, deps: Deps = {}) {
   if (!appUrl || !isAllowedPublicOrigin(request.headers.get('origin'), appUrl)) {
     return fail(403, 'Request origin is not allowed.');
   }
-  if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) {
-    return fail(413, 'Request is too large.');
-  }
   let raw: unknown;
   try {
-    raw = await request.json();
-  } catch {
-    return fail(400, 'Invalid request.');
+    raw = await readBoundedJson(request, BODY_LIMITS.publicApplicationJson);
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? fail(413, 'Request is too large.', false, 'PAYLOAD_TOO_LARGE')
+      : fail(400, 'Invalid request.', false, 'BAD_REQUEST');
   }
   const parsed = requestSchema.safeParse(raw);
   if (!parsed.success) return fail(400, 'Invalid request.');
@@ -101,9 +100,9 @@ export async function handleCreateDraftPost(request: Request, deps: Deps = {}) {
   }
 }
 
-function fail(status: number, message: string, retryable = false) {
+function fail(status: number, message: string, retryable = false, code?: string) {
   return Response.json(
-    { status: 'failure', retryable, message },
+    { status: 'failure', ...(code ? { code } : {}), retryable, message },
     { status, headers: { 'cache-control': 'no-store' } },
   );
 }

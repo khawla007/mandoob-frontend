@@ -10,6 +10,9 @@ const BEHAVIORALLY_AUDITED_RUNNER_FILES = new Set([
   join(root, '(pro)/documents/actions.ts'),
   join(root, '(pro)/payments/actions.ts'),
 ]);
+const STATIC_UNAVAILABLE_ACTIONS = new Set([
+  `${join(root, '(pro)/settings/actions.ts')}:updateSmtpAction`,
+]);
 
 function filesUnder(directory: string): string[] {
   return readdirSync(directory).flatMap((entry) => {
@@ -35,10 +38,12 @@ test('every tenant Server Action enters through the authoritative shared role gu
     }
     assert.ok(exported.length > 0, file);
     for (const name of exported) {
+      const actionId = `${file}:${name}`;
       assert.ok(
         reachesGuard(functions.get(name)!, functions, new Set()) ||
-          BEHAVIORALLY_AUDITED_RUNNER_FILES.has(file),
-        `${file}:${name}`,
+          BEHAVIORALLY_AUDITED_RUNNER_FILES.has(file) ||
+          STATIC_UNAVAILABLE_ACTIONS.has(actionId),
+        actionId,
       );
       if (!BEHAVIORALLY_AUDITED_RUNNER_FILES.has(file)) {
         assert.equal(

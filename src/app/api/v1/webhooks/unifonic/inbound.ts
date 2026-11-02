@@ -10,6 +10,8 @@ export type UnifonicPayload = {
   Recipient?: string;
   Timestamp?: string | number;
   timestamp?: string | number;
+  ErrorCode?: string | number;
+  errorCode?: string | number;
 };
 
 export function parseUnifonicInboundCallback(

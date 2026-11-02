@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { getClientIp } from '@/lib/auth/request';
 import { env } from '@/lib/env';
+import { BODY_LIMITS, BodyTooLargeError, readBoundedJson } from '@/lib/http/bounded-body';
 import { consumeSensitiveRateLimit } from '@/lib/rate-limit';
 import {
   resumeApplicationDraft,
@@ -12,7 +13,6 @@ import {
 } from '@/lib/public-intake/applications';
 import { hashRequest, isAllowedPublicOrigin } from '@/lib/public-intake/security';
 
-const MAX_BODY_BYTES = 65_536;
 const RESUME_HEADER = 'x-resume-token';
 
 const saveSchema = z
@@ -86,14 +86,13 @@ export async function handleSaveDraftPatch(
   }
   const token = resumeToken(request);
   if (!token) return fail(404, 'The requested draft is unavailable.');
-  if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) {
-    return fail(413, 'Request is too large.');
-  }
   let raw: unknown;
   try {
-    raw = await request.json();
-  } catch {
-    return fail(400, 'Invalid request.');
+    raw = await readBoundedJson(request, BODY_LIMITS.publicJson);
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? fail(413, 'Request is too large.', 'PAYLOAD_TOO_LARGE')
+      : fail(400, 'Invalid request.', 'BAD_REQUEST');
   }
   const parsed = saveSchema.safeParse(raw);
   if (!parsed.success) return fail(400, 'Invalid request.');
@@ -131,9 +130,9 @@ function mapError(error: unknown) {
   return unavailable();
 }
 
-function fail(status: number, message: string) {
+function fail(status: number, message: string, code?: string) {
   return Response.json(
-    { status: 'failure', message },
+    { status: 'failure', ...(code ? { code } : {}), message },
     { status, headers: { 'cache-control': 'no-store' } },
   );
 }

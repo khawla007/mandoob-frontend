@@ -9,7 +9,11 @@ import { listActiveEstimatorCostRows } from '@/lib/estimator/data';
 import { errorResponse } from '@/lib/errors';
 import { formatMoney } from '@/lib/format/money';
 import { generateEstimatePdf } from '@/lib/pdf/estimate';
-import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import {
+  consumeRateLimitDecision,
+  rateLimitCorrelationId,
+  RATE_LIMITS,
+} from '@/lib/rate-limit';
 import { env } from '@/lib/env';
 import { z } from 'zod';
 
@@ -29,8 +33,23 @@ const DOCUMENT_LABELS: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
-  if (!(await consumeRateLimit({ key: `estimate-pdf:${ip}`, ...RATE_LIMITS.authPublicIp }))) {
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
+  const rateLimitConfig = {
+    key: `estimate-pdf:${ip}`,
+    ...RATE_LIMITS.authPublicIp,
+    routeLabel: 'public.estimate.pdf',
+    correlationId,
+  };
+  const rateLimitDecision = await consumeRateLimitDecision(rateLimitConfig);
+  if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many PDF requests. Try again later.', 429);
+  }
+  if (rateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
   }
 
   const raw = await parseJson<unknown>(request);

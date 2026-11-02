@@ -74,20 +74,8 @@ test('verifyDailyWebhook fails closed on missing or invalid signature', async ()
     payload: { room_name: 'mandoob-meeting-1' },
   });
 
-  assert.equal(
-    await verifyDailyWebhook(new Request('https://example.test', { method: 'POST', body })),
-    null,
-  );
-  assert.equal(
-    await verifyDailyWebhook(
-      new Request('https://example.test', {
-        method: 'POST',
-        body,
-        headers: { 'x-daily-signature': 'bad' },
-      }),
-    ),
-    null,
-  );
+  assert.equal(await verifyDailyWebhook(body, null), null);
+  assert.equal(await verifyDailyWebhook(body, 'bad'), null);
 });
 
 test('verifyDailyWebhook returns parsed event for valid signature', async () => {
@@ -104,14 +92,7 @@ test('verifyDailyWebhook returns parsed event for valid signature', async () => 
     .update(body)
     .digest('hex');
 
-  const event = await verifyDailyWebhook(
-    new Request('https://example.test', {
-      method: 'POST',
-      body,
-      headers: { 'x-daily-signature': signature },
-    }),
-    { now },
-  );
+  const event = await verifyDailyWebhook(body, signature, { now });
 
   assert.equal(event?.type, 'recording.ready');
   assert.equal(event?.payload.recording_id, 'rec-1');
@@ -126,14 +107,9 @@ test('verifyDailyWebhook rejects expired signed payloads', async () => {
     payload: { room_name: 'room' },
   });
   const signature = createHmac('sha256', 'daily-test-secret').update(body).digest('hex');
-  const request = new Request('https://example.test/api/v1/webhooks/daily', {
-    method: 'POST',
-    headers: { 'x-daily-signature': signature },
-    body,
-  });
   const { verifyDailyWebhook } = await loadDaily();
   assert.equal(
-    await verifyDailyWebhook(request, { now: new Date('2026-10-27T06:00:00.000Z') }),
+    await verifyDailyWebhook(body, signature, { now: new Date('2026-10-27T06:00:00.000Z') }),
     null,
   );
 });

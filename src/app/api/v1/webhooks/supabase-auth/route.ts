@@ -2,6 +2,12 @@ import { NextRequest } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { env } from '@/lib/env';
 import { errorResponse, jsonOk } from '@/lib/errors';
+import {
+  BODY_LIMITS,
+  BodyTooLargeError,
+  decodeBoundedUtf8,
+  readBoundedBody,
+} from '@/lib/http/bounded-body';
 import { recordAuthEvent, type AuthEventKind } from '@/lib/logging/auth-events';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +35,14 @@ function verifySignature(rawBody: string, headerSig: string | null): boolean {
 }
 
 export async function POST(request: NextRequest) {
-  const raw = await request.text();
+  let raw: string;
+  try {
+    raw = decodeBoundedUtf8(await readBoundedBody(request, BODY_LIMITS.providerWebhook));
+  } catch (error) {
+    return error instanceof BodyTooLargeError
+      ? errorResponse('PAYLOAD_TOO_LARGE', 'request too large', 413)
+      : errorResponse('BAD_REQUEST', 'invalid request', 400);
+  }
   const sig =
     request.headers.get('webhook-signature') ?? request.headers.get('x-supabase-signature');
   if (!verifySignature(raw, sig)) return errorResponse('INVALID_SIGNATURE', 'bad webhook', 401);

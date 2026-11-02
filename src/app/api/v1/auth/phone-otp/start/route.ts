@@ -3,7 +3,7 @@ import { guardCsrf } from '@/lib/auth/csrf-guard';
 import { startPhoneOtpSchema } from '@/lib/validation/auth';
 import { errorResponse, jsonOk } from '@/lib/errors';
 import { getClientIp, getUserAgent, parseJson } from '@/lib/auth/request';
-import { consumeRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { consumeRateLimitDecision, rateLimitCorrelationId, RATE_LIMITS } from '@/lib/rate-limit';
 import { recordAuthEvent } from '@/lib/logging/auth-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase/service-role';
@@ -17,8 +17,22 @@ export async function POST(request: NextRequest) {
 
   const ip = getClientIp(request);
   const userAgent = getUserAgent(request);
-  if (!(await consumeRateLimit({ key: `phone-otp:${ip}`, ...RATE_LIMITS.authPublicIp }))) {
+  const correlationId = rateLimitCorrelationId(request.headers.get('x-request-id'));
+  const rateLimitDecision = await consumeRateLimitDecision({
+    key: `phone-otp:${ip}`,
+    ...RATE_LIMITS.authPublicIp,
+    routeLabel: 'auth.phone-otp.start',
+    correlationId,
+  });
+  if (rateLimitDecision === 'limited') {
     return errorResponse('RATE_LIMITED', 'Too many attempts. Try again later.', 429);
+  }
+  if (rateLimitDecision === 'unavailable') {
+    return errorResponse(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Request protection is temporarily unavailable.',
+      503,
+    );
   }
 
   const raw = await parseJson<unknown>(request);
