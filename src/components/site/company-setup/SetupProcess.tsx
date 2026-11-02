@@ -6,7 +6,32 @@ export type SetupProcessStep = {
   icon: ReactNode;
 };
 
-export function SetupProcess({ steps }: { steps: readonly SetupProcessStep[] }) {
+export function SetupProcess({
+  steps,
+  variant = 'cards',
+}: {
+  steps: readonly SetupProcessStep[];
+  variant?: 'cards' | 'timeline';
+}) {
+  if (variant === 'timeline') {
+    return (
+      <ol className="bizreg-process">
+        {steps.map((step, index) => (
+          <li key={step.title}>
+            <span className="bizreg-icon bizreg-icon--ring" aria-hidden="true">
+              {step.icon}
+            </span>
+            <span className="bizreg-badge" aria-hidden="true">
+              {index + 1}
+            </span>
+            <h3>{step.title}</h3>
+            <p>{step.description}</p>
+          </li>
+        ))}
+      </ol>
+    );
+  }
+
   return (
     <ol className="setup-process">
       {steps.map((step, index) => (

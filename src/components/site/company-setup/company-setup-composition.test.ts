@@ -62,11 +62,10 @@ describe('company setup discovery composition contracts', () => {
     assert.match(source('src/components/site/company-setup/FreeZoneDirectory.tsx'), /<table/u);
   });
 
-  it('keeps the Offshore three-column operations row and nine-part reference flow', () => {
+  it('keeps the Offshore three-column operations row and reference flow', () => {
     const component = source('src/components/site/company-setup/OffshoreDiscovery.tsx');
     assert.deepEqual(sectionIds(component), [
       'setup-hero',
-      'setup-benefits',
       'offshore-jurisdictions',
       'offshore-benefits',
       'offshore-process',
