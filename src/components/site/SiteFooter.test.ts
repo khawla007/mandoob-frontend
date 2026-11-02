@@ -8,7 +8,6 @@ const css = readFileSync(new URL('../../app/(public)/public-theme.css', import.m
 const expectedLinks = [
   ['/estimate', 'estimator'],
   ['/apply', 'startApplication'],
-  ['/pro', 'forPros'],
   ['/pricing', 'pricing'],
   ['/about', 'about'],
   ['/knowledge-base', 'knowledgeBase'],

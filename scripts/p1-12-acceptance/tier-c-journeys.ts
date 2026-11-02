@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, type Response } from '@playwright/test';
+import { expect, type Page, type Response } from '@playwright/test';
 
 import type { P112TierBTarget } from './tier-b';
 import { totpAt, type RuntimeSecrets, type SecretStore } from './secrets';
@@ -87,31 +87,32 @@ async function prepareContact(page: Page, unavailable: boolean): Promise<void> {
 }
 
 async function prepareEstimatorResult(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /Next step/u }).click();
+  await page.getByRole('button', { name: 'Calculate indicative estimate' }).click();
   await expect(page.locator('#estimate-jurisdiction-error')).not.toBeEmpty();
   await expect(page.locator('#estimate-jurisdiction')).toBeFocused();
-  for (let step = 1; step <= 8; step += 1) {
-    const panel = page
-      .locator('.estimator-step-panel')
-      .filter({ has: page.locator(`#estimate-step-${step}-heading`) });
-    await expect(panel.locator(`#estimate-step-${step}-heading`)).toBeVisible();
-    let choice: Locator | null = null;
-    if (step === 1) choice = panel.locator('input[value="free_zone"]');
-    if ([2, 3, 4, 7].includes(step)) choice = panel.locator('input[type="radio"]').first();
-    if (choice) {
-      await choice.check();
-      await expect(choice.locator('..')).toHaveAttribute('data-selected', 'true');
-    }
-    if (step === 5) await panel.locator('input[type="number"]').fill('1');
-    if (step === 6) await panel.locator('input[type="number"]').fill('0');
+
+  const jurisdiction = page.locator('#estimate-jurisdiction input[value="free_zone"]');
+  await jurisdiction.check();
+  await expect(jurisdiction.locator('..')).toHaveAttribute('data-selected', 'true');
+  await settleReactUpdate(page);
+  for (const selectId of [
+    '#estimate-authority',
+    '#estimate-activity',
+    '#estimate-legal-structure',
+  ]) {
+    const select = page.locator(selectId);
+    await expect(select).toBeEnabled();
+    const firstValue = await select.locator('option:not([disabled])').first().getAttribute('value');
+    await select.selectOption(firstValue ?? '');
     await settleReactUpdate(page);
-    await panel.getByRole('button', { name: /Next step/u }).click();
-    await expect(
-      page
-        .locator('.estimator-step-panel[data-step-state="current"]')
-        .locator(`#estimate-step-${step + 1}-heading`),
-    ).toBeVisible();
   }
+  await page.locator('#estimate-shareholders').fill('1');
+  await page.locator('#estimate-visas').fill('0');
+  const office = page.locator('#estimate-office input[type="radio"]').first();
+  await office.check();
+  await expect(office.locator('..')).toHaveAttribute('data-selected', 'true');
+  await settleReactUpdate(page);
+
   await page.getByRole('button', { name: 'Calculate indicative estimate' }).click();
   await expect(page.locator('.estimator-result')).toBeVisible();
   await expect(page.locator('#estimate-result-heading')).toBeFocused();
@@ -129,13 +130,11 @@ async function prepareEstimatorResult(page: Page): Promise<void> {
   await expect(resetDialog).toBeHidden();
   await expect(page.getByRole('button', { name: 'Reset' })).toBeFocused();
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.locator('#estimate-step-1-heading')).toBeVisible();
-  await expect(page.locator('#estimate-jurisdiction')).toBeFocused();
   await page
     .getByRole('navigation', { name: 'Estimator steps' })
-    .getByRole('button', { name: /Summary/u })
+    .getByRole('button', { name: /Review estimate/u })
     .click();
+  await expect(page.locator('#estimate-section-review-heading')).toBeFocused();
   await page.getByRole('button', { name: 'Calculate indicative estimate' }).click();
   await expect(page.locator('.estimator-result')).toBeVisible();
   await expect(page.locator('#estimate-result-heading')).toBeFocused();

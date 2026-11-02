@@ -37,22 +37,33 @@ const accountLayoutSource = readFileSync(
 describe('public navigation contract', () => {
   it('defines the shared navigation destinations in display order', () => {
     assert.deepEqual(PUBLIC_NAV_ITEMS, [
-      { id: 'platform', href: '/#services', currentPath: '/' },
-      { id: 'estimate', href: '/estimate', currentPath: '/estimate' },
-      { id: 'customers', href: '/#customers' },
-      { id: 'forPros', href: '/pro', currentPath: '/pro' },
-      { id: 'pricing', href: '/pricing', currentPath: '/pricing' },
+      {
+        id: 'businessSetup',
+        href: '/business-setup',
+        currentPath: '/business-setup',
+        children: [
+          { id: 'businessRegistration', href: '/business-setup', currentPath: '/business-setup' },
+          { id: 'costEstimator', href: '/estimate', currentPath: '/estimate' },
+        ],
+      },
+      { id: 'mainland', href: '/mainland', currentPath: '/mainland' },
+      { id: 'freeZones', href: '/free-zones', currentPath: '/free-zones' },
+      { id: 'offshore', href: '/offshore', currentPath: '/offshore' },
+      { id: 'howItWorks', href: '/how-it-works', currentPath: '/how-it-works' },
+      { id: 'knowledgeBase', href: '/knowledge-base', currentPath: '/knowledge-base' },
+      { id: 'aboutUs', href: '/about', currentPath: '/about' },
+      { id: 'contactUs', href: '/contact', currentPath: '/contact' },
     ]);
   });
 
-  it('marks Platform current only on the homepage', () => {
-    assert.equal(isPublicNavCurrent('/', '/'), true);
-    assert.equal(isPublicNavCurrent('/', '/estimate'), false);
+  it('does not link the retired PRO landing page', () => {
+    const hrefs: readonly string[] = PUBLIC_NAV_ITEMS.map((item) => item.href);
+    assert.equal(hrefs.includes('/pro'), false);
   });
 
-  it('never marks Customers current because it has no matcher', () => {
+  it('never marks a link without a matcher as current', () => {
     assert.equal(isPublicNavCurrent(undefined, '/'), false);
-    assert.equal(isPublicNavCurrent(undefined, '/customers'), false);
+    assert.equal(isPublicNavCurrent('/mainland', '/'), false);
   });
 
   it('uses exact path matching instead of prefix matching', () => {

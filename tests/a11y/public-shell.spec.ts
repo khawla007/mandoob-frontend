@@ -29,7 +29,16 @@ const copy = {
     language: /English.*Language/u,
     otherLanguage: 'العربية',
     nextTheme: { light: 'Use dark theme', dark: 'Use light theme' },
-    navigation: ['Platform', 'Estimate', 'Customers', 'For PROs', 'Pricing'],
+    navigation: [
+      'Business Setup',
+      'Mainland',
+      'Free Zones',
+      'Offshore',
+      'How It Works',
+      'Knowledge Base',
+      'About Us',
+      'Contact Us',
+    ],
   },
   ar: {
     dir: 'rtl',
@@ -42,15 +51,32 @@ const copy = {
     language: /العربية.*اللغة/u,
     otherLanguage: 'English',
     nextTheme: { light: 'استخدام المظهر الداكن', dark: 'استخدام المظهر الفاتح' },
-    navigation: ['المنصة', 'تقدير التكلفة', 'العملاء', 'لمتخصصي العلاقات الحكومية', 'الأسعار'],
+    navigation: [
+      'تأسيس الأعمال',
+      'البر الرئيسي',
+      'المناطق الحرة',
+      'الشركات الخارجية',
+      'كيف يعمل',
+      'قاعدة المعرفة',
+      'من نحن',
+      'اتصل بنا',
+    ],
   },
 } as const;
 
-const navigationHrefs = ['/#services', '/estimate', '/#customers', '/pro', '/pricing'];
+const navigationHrefs = [
+  '/business-setup',
+  '/mainland',
+  '/free-zones',
+  '/offshore',
+  '/how-it-works',
+  '/knowledge-base',
+  '/about',
+  '/contact',
+];
 const shellDestinations = [
   '/',
   '/estimate',
-  '/pro',
   '/pricing',
   '/login',
   '/apply',
@@ -63,10 +89,10 @@ const shellDestinations = [
   '/legal/trust',
 ] as const;
 const currentRouteCases = [
-  { route: '/', currentIndex: 0 },
-  { route: '/estimate', currentIndex: 1 },
-  { route: '/pro', currentIndex: 3 },
-  { route: '/pricing', currentIndex: 4 },
+  { route: '/business-setup', currentIndex: 0 },
+  { route: '/mainland', currentIndex: 1 },
+  { route: '/how-it-works', currentIndex: 4 },
+  { route: '/contact', currentIndex: 7 },
 ] as const;
 
 declare global {
@@ -340,7 +366,7 @@ for (const entry of matrix) {
     );
     await expectVisibleTargetsAtLeast44(page, 'footer.footer .footer__col a');
 
-    const desktop = entry.viewport.width >= 1200;
+    const desktop = entry.viewport.width >= 1400;
     if (desktop) {
       await expect(
         page.getByRole('button', { name: expected.nextTheme[entry.theme] }).first(),

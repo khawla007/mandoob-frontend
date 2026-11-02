@@ -69,7 +69,7 @@ describe('pricing hero and tier cards', () => {
       assert.match(html, /monthly and annual/iu);
       assert.match(html, /subject to confirmation/iu);
       assert.match(html, /<a[^>]*href="\/contact"[^>]*>Discuss plans<\/a>/u);
-      assert.match(html, /<a[^>]*href="\/pro"[^>]*>Explore PRO fit<\/a>/u);
+      assert.doesNotMatch(html, /href="\/pro"/u);
     },
   );
 

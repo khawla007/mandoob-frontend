@@ -80,39 +80,9 @@ export type ReconciliationResult = {
   errors: string[];
 };
 
-const referenceSpecs = [
-  {
-    role: 'admin',
-    id: 'authoritative-admin-overview-2026-08-14',
-    file: 'updated design mandoop/ChatGPT Image Aug 14, 2026, 04_56_44 PM.png',
-    expectedSha256: 'df0830faadf85c2f4048c86a582c7aa072b4259e873196c95eaff9998d437fb6',
-  },
-  {
-    role: 'pro',
-    id: 'authoritative-pro-overview-2026-08-14',
-    file: 'updated design mandoop/ChatGPT Image Aug 14, 2026, 04_58_28 PM.png',
-    expectedSha256: '3132b10aa46de94ae022ac0639355633bdbde4b82f26edda6643882943da72dd',
-  },
-  {
-    role: 'customer',
-    id: 'authoritative-customer-overview-2026-08-14',
-    file: 'updated design mandoop/ChatGPT Image Aug 14, 2026, 05_07_51 PM.png',
-    expectedSha256: '6b34ede347943d2ac83936a874ee9a13bef7e02a713b1c5f0cdd96ca4657b7fc',
-  },
-  {
-    role: 'employee',
-    id: 'authoritative-employee-overview-2026-08-14',
-    file: 'updated design mandoop/ChatGPT Image Aug 14, 2026, 05_08_23 PM.png',
-    expectedSha256: 'fe93903c66cf88737ee75a0d42bd0887340adf7996cbcfa789a3b6a489549f1e',
-  },
-] as const;
+const referenceSpecs: readonly Omit<ReferenceRecord, 'actualSha256' | 'hashVerified'>[] = [];
 
-const overviewReferenceByRoute = new Map<number, string>([
-  [1, referenceSpecs[0].id],
-  [49, referenceSpecs[1].id],
-  [74, referenceSpecs[2].id],
-  [91, referenceSpecs[3].id],
-]);
+const overviewReferenceByRoute = new Map<number, string>();
 
 const exactOverviewDecisions: Record<Exclude<LogicalRole, 'shared'>, Record<Theme, string>> = {
   admin: {
@@ -448,8 +418,8 @@ export async function reconcileEvidence(input: {
   const referencesVerified = input.manifest.references.filter(
     ({ hashVerified }) => hashVerified,
   ).length;
-  if (referencesVerified !== 4)
-    errors.push(`authoritative references verified: ${referencesVerified}/4`);
+  if (referencesVerified !== 0)
+    errors.push(`retired references unexpectedly present: ${referencesVerified}`);
 
   return {
     ok: errors.length === 0,
@@ -471,21 +441,7 @@ export async function reconcileEvidence(input: {
 }
 
 export function parityMarkdown(manifest: EvidenceManifest, reconciliation: ReconciliationResult) {
-  const overviewRoute = { admin: 1, pro: 49, customer: 74, employee: 91 } as const;
-  const rows = manifest.references.map((reference) => {
-    const captures = manifest.captures.filter(
-      ({ routeNumber, viewportLabel }) =>
-        routeNumber === overviewRoute[reference.role] && viewportLabel === '1536x1024',
-    );
-    const links = captures
-      .map(({ file, sha256, theme }) => `\`${theme}\` \`${file}\` (\`${sha256}\`)`)
-      .join('<br>');
-    const decisions = captures
-      .map(({ theme, visualDecision }) => `${theme}: ${visualDecision}`)
-      .join('<br>');
-    return `| ${reference.role} | \`${reference.id}\` | \`${reference.actualSha256}\` | ${reference.hashVerified ? 'verified' : 'mismatch'} | ${links} | ${decisions} |`;
-  });
-  return `# P2.12 Tier B reference parity matrix\n\nGenerated ${manifest.generatedAtUtc}. The four originals are composition authorities only; they are not pixel baselines and do not override current product, privacy, or one-PRO/one-Company truth.\n\n| Role | Reference | Verified SHA-256 | Hash | Exact-scale light/dark captures | Visual decision |\n| --- | --- | --- | --- | --- | --- |\n${rows.join('\n')}\n\n## Automated artifact review\n\n- Plan/file/manifest: **${reconciliation.expected}/${reconciliation.actual}/${reconciliation.manifest}**.\n- Authoritative references: **${reconciliation.referencesVerified}/4** hashes verified.\n- PNG structure/CRC/zlib integrity failures: **${reconciliation.integrityFailures}**.\n- CSS viewport/device-scale dimension failures: **${reconciliation.dimensionFailures}**. Full-page captures may be taller than the CSS viewport; width must equal CSS width at scale 1 and height must be at least the CSS height.\n- Filename/PNG metadata privacy failures: **${reconciliation.privacyFailures}**. Tier A also scanned rendered DOM before capture. OCR was unavailable, so this is not represented as an automated pixel-content privacy proof.\n- Exact duplicate groups: **${reconciliation.duplicateGroups}**, retained and classified in the manifest; duplicates are not silently treated as distinct visual proof.\n- Missing/unplanned/stale-hash files: **${reconciliation.missingFiles}/${reconciliation.unplannedFiles}/${reconciliation.staleHashes}**.\n\n## Visual findings and decision\n\n- **Pass:** the PRO dark Priority actions cards now use dark semantic surfaces and explicit foreground roles. frontend/src/components/pro/dashboard/action-card-contrast.test.ts verifies title, detail, metadata, urgency, and visible boundaries against both gradient endpoints.\n- **Expected compatibility redirects:** Admin pairs 11/30 and 12/31 are byte-identical because frontend/src/app/admin/pro-firms/page.tsx redirects to /admin/companies and frontend/src/app/admin/pro-firms/new/page.tsx redirects to /admin/companies/new. These legacy routes intentionally preserve canonical Companies workflows under the one-PRO/one-Company model.\n- Admin, Customer, and Employee exact-scale overviews retain the authoritative composition hierarchy while preserving current product and privacy truth. PRO light retains the assigned-Company operational hierarchy but uses truthful extended content and therefore exceeds one viewport vertically.\n- Synthetic local fixture account labels are visible in some application chrome. They are not private or real identities; no email, identifier, or secret is written into manifest fields or filenames.\n\nThe artifact reconciliation and Tier B visual acceptance are **GREEN**. The parity decision is composition-level only, not pixel identity. Any product action or datum present only in a reference remains intentionally excluded.\n`;
+  return `# P2.12 Tier B visual matrix\n\nGenerated ${manifest.generatedAtUtc}. External design references have been retired; review follows current product behavior and manual direction.\n\n## Automated artifact review\n\n- Plan/file/manifest: **${reconciliation.expected}/${reconciliation.actual}/${reconciliation.manifest}**.\n- PNG integrity failures: **${reconciliation.integrityFailures}**.\n- Dimension failures: **${reconciliation.dimensionFailures}**.\n- Privacy failures: **${reconciliation.privacyFailures}**.\n- Duplicate groups: **${reconciliation.duplicateGroups}**.\n- Missing/unplanned/stale-hash files: **${reconciliation.missingFiles}/${reconciliation.unplannedFiles}/${reconciliation.staleHashes}**.\n`;
 }
 
 async function main() {

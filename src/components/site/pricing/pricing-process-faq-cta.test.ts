@@ -162,7 +162,7 @@ describe('pricing process, FAQ, and final CTA contract', () => {
 
     assert.deepEqual(finalCta.links, [
       { label: 'Discuss plans', href: '/contact', source: finalCta.links[0].source },
-      { label: 'Explore PRO workspace', href: '/pro', source: finalCta.links[1].source },
+      { label: 'Get Estimate', href: '/estimate', source: finalCta.links[1].source },
     ]);
     assert.ok(finalCta.links.every((link) => link.source.state === 'approved-static'));
     assert.equal(Object.isFrozen(finalCta), true);
@@ -269,7 +269,7 @@ describe('pricing process, FAQ, and final CTA rendering', () => {
     );
     assert.deepEqual(links, [
       { href: '/contact', label: 'Discuss plans' },
-      { href: '/pro', label: 'Explore PRO workspace' },
+      { href: '/estimate', label: 'Get Estimate' },
     ]);
     assert.doesNotMatch(section, /AED-billed|no setup fee|start free|instant checkout/iu);
   });

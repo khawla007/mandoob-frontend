@@ -19,7 +19,8 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
       '/',
       '/estimate',
       '/pricing',
-      '/pro',
+      '/business-setup',
+      '/how-it-works',
       '/knowledge-base',
       '/blog',
       '/mainland',
@@ -31,6 +32,11 @@ test('public sitemap covers core acquisition routes and knowledge-base articles'
     [],
   );
   assert.equal(paths(entries).includes('/apply'), false, 'private application must stay noindex');
+  assert.equal(
+    paths(entries).includes('/pro'),
+    false,
+    'retired PRO landing page must not be listed',
+  );
   assert.ok(paths(entries).includes('/knowledge-base/mainland-vs-free-zone'));
   assert.ok(paths(entries).includes('/knowledge-base/uae-company-documents'));
 });

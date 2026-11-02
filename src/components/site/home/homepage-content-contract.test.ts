@@ -11,10 +11,8 @@ const componentSources = [
   'ServicesSection.tsx',
   'EstimatorSection.tsx',
   'FlowSection.tsx',
-  'WhyMandoobSection.tsx',
-  'SupportServicesSection.tsx',
-  'TestimonialsSection.tsx',
-  'TestimonialsCarousel.tsx',
+  'FeatureRowSection.tsx',
+  'ApplyChecklistSection.tsx',
   'KnowledgeFaqSection.tsx',
   'FinalCtaSection.tsx',
 ].map((file) => ({ file, source: readFileSync(join(homeDirectory, file), 'utf8') }));
@@ -60,13 +58,7 @@ describe('homepage claims and CTA contract', () => {
   });
 
   it('uses the shared eyebrow treatment on major homepage sections', () => {
-    for (const file of [
-      'ServicesSection.tsx',
-      'FlowSection.tsx',
-      'EstimatorSection.tsx',
-      'WhyMandoobSection.tsx',
-      'TestimonialsSection.tsx',
-    ]) {
+    for (const file of ['ServicesSection.tsx', 'FlowSection.tsx', 'EstimatorSection.tsx']) {
       const source = componentSources.find((component) => component.file === file)?.source ?? '';
       assert.match(source, /eyebrow eyebrow--accent/u, `${file} needs the shared eyebrow style`);
       assert.match(source, /t\('eyebrow'\)/u, `${file} needs localized eyebrow copy`);
@@ -84,14 +76,6 @@ describe('homepage claims and CTA contract', () => {
     assert.match(homeLink, /color:\s*var\(--accent\)/u);
     assert.match(homeLink, /font-size:\s*var\(--fs-13\)/u);
     assert.match(homeLink, /font-weight:\s*600\b/u);
-  });
-
-  it('keeps the testimonial heading visible without waiting for a reveal observer', () => {
-    const testimonials =
-      componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';
-
-    assert.match(testimonials, /className="home-testimonials-head"/u);
-    assert.doesNotMatch(testimonials, /className="home-testimonials-head reveal"/u);
   });
 
   it('uses the compact reference-led setup, journey and estimator structures', () => {
@@ -228,36 +212,20 @@ describe('homepage claims and CTA contract', () => {
     assert.equal(reducedMotionCards.get('transition'), 'none');
   });
 
-  it('preserves carousel density with factual workflow capabilities instead of fabricated proof', () => {
-    const testimonials =
-      componentSources.find(({ file }) => file === 'TestimonialsSection.tsx')?.source ?? '';
-    const carousel =
-      componentSources.find(({ file }) => file === 'TestimonialsCarousel.tsx')?.source ?? '';
+  it('renders the reference feature rows and requirements checklist from localized copy', () => {
+    const featureRow =
+      componentSources.find(({ file }) => file === 'FeatureRowSection.tsx')?.source ?? '';
+    const checklist =
+      componentSources.find(({ file }) => file === 'ApplyChecklistSection.tsx')?.source ?? '';
 
-    assert.match(testimonials, /TestimonialsCarousel/u);
-    assert.equal(testimonials.match(/key: 'item(?:10|[1-9])'/gu)?.length, 10);
-    assert.match(testimonials, /t\('carouselLabel'\)/u);
-    assert.doesNotMatch(testimonials, /CLIENTS|client\d+(?:Name|Role|Quote)|fiveStars/u);
-    assert.match(testimonials, /previousLabel/u);
-    assert.match(testimonials, /nextLabel/u);
-    assert.match(testimonials, /positionLabel/u);
-    assert.match(carousel, /from 'swiper\/react'/u);
-    assert.doesNotMatch(carousel, /Autoplay|autoplay=|delay:\s*0/u);
-    assert.match(carousel, /type="button"/u);
-    assert.match(carousel, /aria-label=\{previousLabel\}/u);
-    assert.match(carousel, /aria-label=\{nextLabel\}/u);
-    assert.match(carousel, /aria-live="polite"/u);
-    assert.match(carousel, /slidePrev\(\)/u);
-    assert.match(carousel, /slideNext\(\)/u);
-    assert.match(carousel, /speed=\{reducedMotion \? 0 : 350\}/u);
-    assert.match(carousel, /rewind=\{items\.length > 4\}/u);
-    assert.doesNotMatch(carousel, /blockquote|ratingLabel|★/u);
-    assert.match(carousel, /450:\s*\{ slidesPerView: 1, spaceBetween: 10 \}/u);
-    assert.match(carousel, /640:\s*\{ slidesPerView: 2, spaceBetween: 15 \}/u);
-    assert.match(carousel, /768:\s*\{ slidesPerView: 3, spaceBetween: 15 \}/u);
-    assert.match(carousel, /1024:\s*\{ slidesPerView: 4, spaceBetween: 20 \}/u);
-    assert.doesNotMatch(carousel, /onPointerDown|onTransitionEnd|CLONE_COUNT/u);
-    assert.match(carousel, /home-testimonials-controls/u);
+    assert.match(featureRow, /confidence:/u);
+    assert.match(featureRow, /beyond:/u);
+    assert.match(featureRow, /getTranslations\(`home\.\$\{variant\}`\)/u);
+    assert.match(featureRow, /className="home-feature-row"/u);
+    assert.match(checklist, /getTranslations\('home\.applyChecklist'\)/u);
+    assert.match(checklist, /href="\/apply"/u);
+    assert.match(checklist, /alt=\{t\('imageAlt'\)\}/u);
+    assert.doesNotMatch(allSource, /WhyMandoobSection|TestimonialsSection|SupportServicesSection/u);
   });
 
   it('uses explicit catalog suffixes for setup-card facts', () => {

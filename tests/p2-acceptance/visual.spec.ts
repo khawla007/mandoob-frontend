@@ -61,7 +61,7 @@ describe('P2.12 Tier B evidence', () => {
     assert.equal(result.expected, 266);
     assert.equal(result.actual, 266);
     assert.equal(result.manifest, 266);
-    assert.equal(result.referencesVerified, 4);
+    assert.equal(result.referencesVerified, 0);
     assert.equal(result.integrityFailures, 0);
     assert.equal(result.dimensionFailures, 0);
     assert.equal(result.privacyFailures, 0);

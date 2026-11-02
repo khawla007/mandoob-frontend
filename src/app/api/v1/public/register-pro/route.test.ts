@@ -28,8 +28,6 @@ test('public PRO registration renders a no-write review surface', () => {
 
 test('public sales calls to action no longer link to self-registration', () => {
   for (const file of [
-    'src/components/site/pro/ProHeroSection.tsx',
-    'src/components/site/pro/ProFinalCtaSection.tsx',
     'src/app/(public)/pricing/page.tsx',
     'src/app/(public)/contact/page.tsx',
   ]) {

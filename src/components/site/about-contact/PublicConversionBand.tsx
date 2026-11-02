@@ -7,8 +7,7 @@ export type PublicActionHref =
   | '/knowledge-base'
   | '/mainland'
   | '/free-zones'
-  | '/offshore'
-  | '/pro';
+  | '/offshore';
 
 type ConversionLink = {
   label: string;

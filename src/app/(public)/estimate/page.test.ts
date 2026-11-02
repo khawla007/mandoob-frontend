@@ -4,17 +4,12 @@ import { test } from 'node:test';
 
 const read = (path: string) => readFile(new URL(path, import.meta.url), 'utf8');
 
-test('estimate page renders the five reference regions in order with one h1 and a local hero image', async () => {
+test('estimate page renders header, workspace, and assurance band in order with one h1', async () => {
   const [page, component] = await Promise.all([
     read('./page.tsx'),
     read('../../../components/estimator/CostEstimator.tsx'),
   ]);
-  const regions = [
-    'estimator-hero',
-    '<CostEstimator',
-    'estimator-benefits',
-    'estimator-help-limitations',
-  ];
+  const regions = ['estimator-hero', '<CostEstimator', 'estimator-assurance'];
   let cursor = -1;
   for (const region of regions) {
     const next = page.indexOf(region === '<CostEstimator' ? region : `id="${region}"`);
@@ -23,28 +18,35 @@ test('estimate page renders the five reference regions in order with one h1 and 
   }
   assert.match(component, /id="estimator-workspace"/u);
   assert.equal((`${page}\n${component}`.match(/<h1\b/gu) ?? []).length, 1);
-  assert.match(page, /<Image[\s\S]*src="\/company-setup\/mainland-hero\.webp"/u);
   assert.doesNotMatch(page, /https?:\/\//u);
 });
 
-test('estimate workspace exposes nine ordered steps and non-color status semantics', async () => {
+test('estimate workspace exposes five ordered sections and non-color status semantics', async () => {
   const component = await read('../../../components/estimator/CostEstimator.tsx');
   const labels = [
-    'Jurisdiction',
-    'Authority',
-    'Business activity',
-    'Legal structure',
-    'Shareholders',
-    'Visas',
-    'Office',
-    'Add-ons',
-    'Summary',
+    'Business details',
+    'Activity & structure',
+    'Shareholders & visas',
+    'Office & additional',
+    'Review estimate',
   ];
   let cursor = -1;
   for (const label of labels) {
     const next = component.indexOf(`'${label}'`);
     assert.ok(next > cursor, `${label} must remain in the required order`);
     cursor = next;
+  }
+  for (const fieldId of [
+    'estimate-jurisdiction',
+    'estimate-authority',
+    'estimate-activity',
+    'estimate-legal-structure',
+    'estimate-shareholders',
+    'estimate-visas',
+    'estimate-office',
+    'estimate-addons',
+  ]) {
+    assert.match(component, new RegExp(fieldId, 'u'));
   }
   assert.match(component, /aria-current/u);
   assert.match(component, /aria-invalid/u);
@@ -91,29 +93,17 @@ test('estimate page removes unsafe reference claims and contact proof', async ()
   }
 });
 
-test('estimate CSS preserves reference desktop proportions, themes, focus, reduced motion, and overflow safety', async () => {
+test('estimate CSS keeps the two-column layout, themes, focus, reduced motion, and overflow safety', async () => {
   const css = await read('../public-theme.css');
   assert.match(css, /--accent-ink:\s*var\(--accent\)/u);
   assert.match(css, /\.site-public #estimator \.eyebrow\s*\{[^}]*color:\s*var\(--zinc-500\)/u);
   assert.match(
     css,
-    /\.site-public #estimator \.eyebrow--accent\s*\{[^}]*color:\s*var\(--zinc-500\)/u,
+    /\.site-public \.estimator-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.75fr\)\s+minmax\(300px,\s*1fr\)/u,
   );
-  assert.match(css, /\.site-public \.estimator-workspace__grid/u);
-  assert.match(
-    css,
-    /grid-template-columns:\s*minmax\(180px,\s*0\.72fr\)\s+minmax\(0,\s*1\.8fr\)\s+minmax\(300px,\s*1fr\)/u,
-  );
+  assert.match(css, /\.site-public \.estimator-sidebar\s*\{[^}]*position:\s*sticky/u);
   assert.match(css, /\.dark \.site-public \.estimator/u);
   assert.match(css, /\.estimator[\s\S]*:focus-visible/u);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(css, /overflow-wrap:\s*anywhere/u);
-  assert.match(
-    css,
-    /\.site-public \.estimator-hero__expectations li > span\s*\{[^}]*color:\s*var\(--public-cta-background\)/u,
-  );
-  assert.match(
-    css,
-    /\.site-public \.estimator-benefits li > span\s*\{[^}]*color:\s*var\(--public-cta-background\)/u,
-  );
 });
