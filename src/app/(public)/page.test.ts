@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
 
 describe('homepage composition contract', () => {
-  it('keeps the protected hero first and the protected final CTA last', () => {
+  it('keeps the protected hero first and the contact strip after the final CTA', () => {
     const orderedSections = [
       '<HeroSection />',
       '<TrustBandSection />',
@@ -13,10 +13,11 @@ describe('homepage composition contract', () => {
       '<FlowSection />',
       '<EstimatorSection />',
       '<FeatureRowSection variant="confidence" />',
-      '<ApplyChecklistSection />',
       '<FeatureRowSection variant="beyond" />',
+      '<TestimonialsSection />',
       '<KnowledgeFaqSection />',
       '<FinalCtaSection />',
+      '<HomeContactStrip />',
     ];
 
     let previousIndex = -1;
@@ -28,10 +29,8 @@ describe('homepage composition contract', () => {
 
     assert.doesNotMatch(pageSource, /CustomersSection/u);
     assert.doesNotMatch(pageSource, /AnnotatedShowcaseSection/u);
-    assert.doesNotMatch(
-      pageSource,
-      /WhyMandoobSection|TestimonialsSection|SupportServicesSection/u,
-    );
+    assert.doesNotMatch(pageSource, /ApplyChecklistSection/u);
+    assert.doesNotMatch(pageSource, /WhyMandoobSection|SupportServicesSection/u);
     assert.equal(
       pageSource.match(/<FinalCtaSection\s*\/>/gu)?.length,
       1,

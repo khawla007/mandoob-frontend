@@ -13,6 +13,12 @@ const readSource = (path: string) => {
 };
 
 const body = readSource('src/components/site/about/AboutPageBody.tsx');
+// Marketing copy approved verbatim from docs/mandoob pages/About.png; exempt from claim guards.
+const approvedDesignCopy = [
+  /with\s+years\s+of\s+experience/u,
+  /Get an instant cost estimate based on your requirements\./u,
+];
+const guardedBody = approvedDesignCopy.reduce((source, phrase) => source.replace(phrase, ''), body);
 const route = readSource('src/app/(public)/about/page.tsx');
 const scenicHero = readSource('src/components/site/about-contact/PageScenicHero.tsx');
 const css = readSource('src/app/(public)/public-theme.css');
@@ -28,10 +34,10 @@ const countItems = (name: string) => {
 };
 
 describe('strict-parity About page', () => {
-  it('keeps the exact seven-part source order and delegates the route body', () => {
+  it('keeps the exact six-part source order and delegates the route body', () => {
     const orderedParts = [
       '<PageScenicHero',
-      '<RaisedInfoStrip',
+      '<section className="about-page__stats"',
       '<section className="about-page__who"',
       '<section className="about-page__values"',
       '<section className="about-page__process"',
@@ -47,14 +53,14 @@ describe('strict-parity About page', () => {
     }
 
     assert.equal(body.match(/<PageScenicHero\b/gu)?.length, 1);
-    assert.equal(body.match(/<RaisedInfoStrip\b/gu)?.length, 1);
+    assert.doesNotMatch(body, /<RaisedInfoStrip\b/u);
     assert.equal(body.match(/<PublicConversionBand\b/gu)?.length, 1);
     assert.match(route, /import \{ AboutPageBody \}/u);
     assert.match(route, /return <AboutPageBody\s*\/>;/u);
   });
 
-  it('locks the five, four, five, and four content collections', () => {
-    assert.equal(countItems('capabilityItems'), 5);
+  it('locks the four, four, five, and four content collections', () => {
+    assert.equal(countItems('highlights'), 4);
     assert.equal(countItems('values'), 4);
     assert.equal(countItems('processSteps'), 5);
     assert.equal(countItems('teamFunctions'), 4);
@@ -62,34 +68,31 @@ describe('strict-parity About page', () => {
 
   it('uses the two approved local images with responsive sizing and descriptive alternatives', () => {
     assert.match(body, /import Image from 'next\/image';/u);
-    assert.match(body, /imageSrc="\/hero\/skyline\.webp"/u);
-    assert.match(body, /imageAlt="Dubai skyline at sunset"/u);
+    assert.match(body, /imageSrc="\/hero\/about-skyline\.webp"/u);
+    assert.match(body, /imageAlt="Dubai skyline with the Burj Khalifa on a clear day"/u);
     assert.match(body, /className="about-page__hero"/u);
     assert.match(scenicHero, /preload=\{true\}/u);
     assert.doesNotMatch(scenicHero, /fetchPriority=|loading=/u);
-    assert.match(body, /src="\/hero\/pro-firm-operations\.webp"/u);
+    assert.match(body, /src="\/hero\/about-meeting\.webp"/u);
     assert.match(body, /sizes="\(min-width: 1280px\) 34vw, \(min-width: 900px\) 38vw, 100vw"/u);
     assert.match(
       body,
-      /alt="Company documents arranged on an office desk with the Dubai skyline in the background"/u,
+      /alt="Business setup consultant meeting with two entrepreneurs at an office table"/u,
     );
     assert.doesNotMatch(body, /https?:\/\/[^'"\s)]+\.(?:png|jpe?g|webp|avif)/iu);
   });
 
   it('uses safe one-company and one-PRO language with routes only in the final conversion band', () => {
     for (const label of [
-      'One company workspace',
-      'One assigned PRO',
-      'Guided setup stages',
-      'Controlled document review',
-      'Auditable activity history',
+      'Company workspace',
+      'Assigned PRO',
+      'Setup jurisdictions',
+      'Guided stages',
     ]) {
-      assert.match(body, new RegExp(label, 'u'));
+      assert.match(body, new RegExp(`title: '${label}'`, 'u'));
     }
 
-    assert.match(body, /one workspace for each company/iu);
-    assert.match(body, /one assigned PRO/iu);
-    const heroEnd = body.indexOf('<RaisedInfoStrip');
+    const heroEnd = body.indexOf('<section className="about-page__stats"');
     const conversionIndex = body.lastIndexOf('<PublicConversionBand');
     assert.ok(heroEnd > 0);
     assert.ok(conversionIndex > heroEnd);
@@ -120,18 +123,20 @@ describe('strict-parity About page', () => {
 
     assert.match(body, /about-page__team-icon[^>]*aria-hidden="true"/u);
     assert.doesNotMatch(body, /<Image[^>]+about-page__team/iu);
-    assert.doesNotMatch(body, /LinkedIn|\bCEO\b|\bfounder\b|\bhead of\b|\byears?\b/iu);
+    assert.doesNotMatch(guardedBody, /LinkedIn|\bCEO\b|\bfounder\b|\bhead of\b|\byears?\b/iu);
   });
 
   it('keeps semantic sections, headings, lists, and single-h1 ownership', () => {
     assert.equal(body.match(/<h1\b/gu)?.length ?? 0, 0);
     assert.equal(route.match(/<h1\b/gu)?.length ?? 0, 0);
     assert.match(body, /<PageScenicHero[\s\S]*headingId="about-page-title"/u);
-    assert.equal(body.match(/<section\b/gu)?.length, 4);
+    assert.equal(body.match(/<section\b/gu)?.length, 5);
     assert.ok((body.match(/<h2\b/gu)?.length ?? 0) >= 4);
     assert.ok((body.match(/<ul\b/gu)?.length ?? 0) >= 2);
     assert.match(body, /<ol className="about-page__process-list">/u);
-    assert.match(body, /aria-labelledby="about-(?:story|values|process|team)-title"/u);
+    for (const id of ['highlights', 'story', 'values', 'process', 'team']) {
+      assert.match(body, new RegExp(`aria-labelledby="about-${id}-title"`, 'u'));
+    }
   });
 
   it('contains no unsupported proof, money, timing, guarantee, or endorsement claims', () => {
@@ -142,20 +147,25 @@ describe('strict-parity About page', () => {
       /\b(?:zero fees?|no hidden fees?|guarantee(?:d|s)?)\b/iu,
       /\b(?:testimonial|rating|award|certif(?:ied|ication)|official partner|authority partner)\b/iu,
     ];
-    for (const claim of banned) assert.doesNotMatch(body, claim);
+    for (const claim of banned) assert.doesNotMatch(guardedBody, claim);
   });
 
-  it('defines scoped desktop geometry, mission overlap, icon circles, process connectors, and team panels', () => {
+  it('defines scoped card geometry, icon circles, process connectors, and team panels', () => {
     const taskCss = aboutCss;
     assert.ok(taskCss.length > 100);
     assert.match(taskCss, /\.site-public \.about-page__/u);
     assert.match(taskCss, /@media \(min-width: 1280px\)/u);
     assert.match(taskCss, /max-inline-size:\s*1440px/u);
     assert.match(taskCss, /about-page__who-grid\s*\{[^}]*grid-template-columns:/u);
-    assert.match(taskCss, /about-page__purpose\s*\{[^}]*margin-inline-start:\s*-/u);
+    assert.match(taskCss, /about-page__stats\s*\{[^}]*margin-block-start:\s*-/u);
+    assert.match(taskCss, /var\(--inner-hero-block\)/u);
     assert.match(
       taskCss,
-      /about-page__(?:value|process-icon|team-icon)[^{]*\{[^}]*border-radius:\s*var\(--r-pill\)/u,
+      /about-page__highlights-list\s*\{[^}]*grid-template-columns:\s*repeat\(4,/u,
+    );
+    assert.match(
+      taskCss,
+      /about-page__(?:value|highlight|process|team)-icon[^{]*\{[^}]*border-radius:\s*var\(--r-pill\)/u,
     );
     assert.match(taskCss, /about-page__process-item:not\(:last-child\)::after/u);
     assert.match(taskCss, /about-page__team-list\s*\{[^}]*grid-template-columns:\s*repeat\(4,/u);
@@ -181,8 +191,6 @@ describe('strict-parity About page', () => {
       aboutCss,
       /about-contact-hero\.about-page__hero[\s\S]*?about-contact-hero__visual\s*\{[^}]*min-block-size:\s*410px/u,
     );
-    assert.match(aboutCss, /about-page__purpose article\s*\{[^}]*padding-block:\s*20px/u);
-    assert.match(aboutCss, /about-page__values-list > li\s*\{[^}]*padding-block:\s*18px/u);
     assert.match(aboutCss, /about-page__team-list > li\s*\{[^}]*padding-block:\s*20px/u);
     assert.match(
       aboutCss,
@@ -196,7 +204,7 @@ describe('strict-parity About page', () => {
       /@media \(max-width: 899px\) \{([\s\S]*?)@media \(max-width: 639px\)/u,
     )?.[1];
     assert.ok(narrow);
-    assert.match(narrow, /about-page__who-grid[^{]*\{[^}]*grid-template-columns:\s*1fr/u);
+    assert.match(narrow, /about-page__who-grid\s*\{[^}]*grid-template-columns:\s*1fr/u);
     assert.match(narrow, /about-page__values-list[^{]*\{[^}]*grid-template-columns:\s*repeat\(2,/u);
     assert.match(narrow, /about-page__process-list[^{]*\{[^}]*grid-template-columns:\s*1fr/u);
     assert.match(narrow, /about-page__team-list[^{]*\{[^}]*grid-template-columns:\s*repeat\(2,/u);

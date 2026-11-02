@@ -1,108 +1,101 @@
 import Image from 'next/image';
 import {
+  Medal,
   BadgeCheck,
-  Blocks,
   Building2,
+  Calculator,
   CheckCircle2,
   ClipboardCheck,
-  Compass,
   Eye,
-  FileSearch,
-  FolderKanban,
   Handshake,
   Headphones,
-  History,
   ListChecks,
   MapPinned,
-  MessagesSquare,
   PanelTop,
   ScanSearch,
   ShieldCheck,
   Target,
-  Upload,
   UserRoundCheck,
   UsersRound,
 } from 'lucide-react';
 
 import { PageScenicHero } from '../about-contact/PageScenicHero';
 import { PublicConversionBand } from '../about-contact/PublicConversionBand';
-import { RaisedInfoStrip } from '../about-contact/RaisedInfoStrip';
 
-const capabilityItems = [
+const highlights = [
   {
-    title: 'One company workspace',
-    description: 'A focused workspace for each company and its setup activity.',
+    value: '1',
+    title: 'Company workspace',
+    description: 'One workspace for each company',
     icon: <Building2 />,
   },
   {
-    title: 'One assigned PRO',
-    description: 'A clear point of coordination for company administration.',
+    value: '1',
+    title: 'Assigned PRO',
+    description: 'A defined point of coordination',
     icon: <UserRoundCheck />,
   },
   {
-    title: 'Guided setup stages',
-    description: 'Structured steps make each part of setup easier to follow.',
+    value: '3',
+    title: 'Setup jurisdictions',
+    description: 'Mainland, Free Zone and Offshore',
+    icon: <MapPinned />,
+  },
+  {
+    value: '5',
+    title: 'Guided stages',
+    description: 'From request to company record',
     icon: <ListChecks />,
-  },
-  {
-    title: 'Controlled document review',
-    description: 'Documents move through an organized review workflow.',
-    icon: <FileSearch />,
-  },
-  {
-    title: 'Auditable activity history',
-    description: 'Key actions remain visible in a clear company record.',
-    icon: <History />,
   },
 ] as const;
 
 const values = [
   {
-    title: 'Clarity',
-    description: 'We explain the work, the next step, and who is responsible.',
+    title: 'Transparency',
+    description: 'We believe in clear pricing, honest advice and zero hidden charges.',
     icon: <Eye />,
   },
   {
-    title: 'Accountability',
-    description: 'We make ownership visible throughout the company journey.',
+    title: 'Integrity',
+    description: "We follow ethical practices and always put our clients' interests first.",
     icon: <ShieldCheck />,
   },
   {
-    title: 'Practical support',
-    description: 'We turn administrative work into clear, useful actions.',
-    icon: <Handshake />,
+    title: 'Excellence',
+    description: 'We are committed to delivering high-quality service every time.',
+    icon: <Medal />,
   },
   {
-    title: 'Customer focus',
-    description: 'We design each interaction around what a business needs next.',
+    title: 'Customer Success',
+    description: 'Your success is our priority. We are with you at every step and beyond.',
     icon: <UsersRound />,
   },
 ] as const;
 
 const processSteps = [
   {
-    title: 'Share your needs',
-    description: 'Tell us about the company you are planning or operating.',
+    title: 'Estimate',
+    description: 'Get an instant cost estimate based on your requirements.',
+    icon: <Calculator />,
+  },
+  {
+    title: 'Share Details',
+    description: 'Fill out our guided questionnaire with your business information.',
     icon: <ClipboardCheck />,
   },
   {
-    title: 'Prepare details',
-    description: 'Add the information and documents relevant to the request.',
-    icon: <Upload />,
-  },
-  {
-    title: 'Review together',
-    description: 'Your assigned PRO checks the available details and next actions.',
+    title: 'Review & Approve',
+    description: 'We review your details and share the next steps.',
     icon: <ScanSearch />,
   },
   {
-    title: 'Follow the stages',
-    description: 'Work progresses through visible, guided company setup stages.',
-    icon: <FolderKanban />,
+    title: 'We Handle the Rest',
+    description: 'Sit back while we take care of registration and documentation.',
+    icon: <Handshake />,
   },
   {
-    title: 'Keep the record',
-    description: 'Return to the workspace for documents and activity history.',
+    title: 'You Focus on Growth',
+    description: 'Start your business with confidence and support.',
     icon: <CheckCircle2 />,
   },
 ] as const;
@@ -136,47 +129,62 @@ export function AboutPageBody() {
       <PageScenicHero
         className="about-page__hero"
         headingId="about-page-title"
-        eyebrow="About Mandoob"
+        eyebrow="About Us"
         title={
           <>
-            Practical support for <span className="u-accent">UAE businesses.</span>
+            Your Trusted Partner for <br />
+            <span className="u-accent">UAE Business Success</span>
           </>
         }
-        description="Mandoob brings company setup guidance and business administration into one clear workspace, with visible stages and a defined point of coordination."
-        currentLabel="About"
-        imageSrc="/hero/skyline.webp"
-        imageAlt="Dubai skyline at sunset"
+        description="We simplify business setup in the UAE for entrepreneurs, startups and investors with transparent guidance, expert support and end-to-end assistance."
+        currentLabel="About Us"
+        imageSrc="/hero/about-skyline.webp"
+        imageAlt="Dubai skyline with the Burj Khalifa on a clear day"
         features={[
           {
-            title: 'Clear workspace',
-            description: 'Company details in one place',
-            icon: <Blocks />,
+            title: 'Experienced',
+            description: 'Experts',
+            icon: <UsersRound />,
           },
           {
-            title: 'Guided setup',
-            description: 'Structured stages to follow',
-            icon: <Compass />,
+            title: 'Transparent',
+            description: 'Process',
+            icon: <ShieldCheck />,
           },
           {
-            title: 'Accountable support',
-            description: 'A defined point of coordination',
-            icon: <MessagesSquare />,
+            title: 'Dedicated',
+            description: 'Support',
+            icon: <Headphones />,
           },
         ]}
       />
 
-      <RaisedInfoStrip
-        headingId="about-capabilities-title"
-        heading="How Mandoob supports company work"
-        items={capabilityItems}
-      />
+      <section className="about-page__stats" aria-labelledby="about-highlights-title">
+        <div className="container">
+          <h2 id="about-highlights-title" className="visually-hidden">
+            Built around clear ownership
+          </h2>
+          <ul className="about-page__highlights-list">
+            {highlights.map((highlight) => (
+              <li key={highlight.title}>
+                <span className="about-page__highlight-icon" aria-hidden="true">
+                  {highlight.icon}
+                </span>
+                <strong className="about-page__highlight-value">{highlight.value}</strong>
+                <h3>{highlight.title}</h3>
+                <p>{highlight.description}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       <section className="about-page__who" aria-labelledby="about-story-title">
         <div className="about-page__who-grid container">
           <div className="about-page__who-image">
             <Image
-              src="/hero/pro-firm-operations.webp"
-              alt="Company documents arranged on an office desk with the Dubai skyline in the background"
+              src="/hero/about-meeting.webp"
+              alt="Business setup consultant meeting with two entrepreneurs at an office table"
               fill
               sizes="(min-width: 1280px) 34vw, (min-width: 900px) 38vw, 100vw"
             />
@@ -184,37 +192,42 @@ export function AboutPageBody() {
 
           <div className="about-page__story">
             <span className="eyebrow eyebrow--accent">Who we are</span>
-            <h2 id="about-story-title">Company support made easier to understand.</h2>
+            <h2 id="about-story-title">Making Business Setup in the UAE Simple</h2>
             <p>
-              Mandoob is built around a simple idea: UAE company setup and administration should be
-              easier to follow. We bring the work into one workspace for each company, with one
-              assigned PRO to coordinate the journey.
+              We are a team of business setup and PRO experts with years of experience helping
+              thousands of entrepreneurs establish their companies across Mainland, Free Zones and
+              Offshore jurisdictions in the UAE.
             </p>
             <p>
-              From initial details to document review and ongoing activity, the platform keeps
-              stages, responsibilities, and records visible without overstating what has happened.
+              Our platform brings transparency to the entire process—from cost estimation and
+              documentation to registration and beyond—so you can focus on building your business
+              while we handle the complexities.
             </p>
           </div>
 
           <aside className="about-page__purpose" aria-label="Mission and vision">
             <article>
-              <span className="about-page__purpose-icon" aria-hidden="true">
-                <Target />
-              </span>
-              <div>
-                <h3>Mission</h3>
+              <span className="eyebrow eyebrow--accent">Mission</span>
+              <div className="about-page__purpose-row">
+                <span className="about-page__purpose-icon" aria-hidden="true">
+                  <Target />
+                </span>
                 <p>
-                  Make company administration clearer through guided work and visible ownership.
+                  Empower businesses to grow in the UAE by providing accurate information,
+                  transparent pricing and end-to-end support at every step of the journey.
                 </p>
               </div>
             </article>
             <article>
-              <span className="about-page__purpose-icon" aria-hidden="true">
-                <Eye />
-              </span>
-              <div>
-                <h3>Vision</h3>
-                <p>A more understandable way for businesses to manage their UAE company journey.</p>
+              <span className="eyebrow eyebrow--accent">Vision</span>
+              <div className="about-page__purpose-row">
+                <span className="about-page__purpose-icon" aria-hidden="true">
+                  <Eye />
+                </span>
+                <p>
+                  To be the most trusted and innovative business setup platform in the UAE, driving
+                  entrepreneurial success.
+                </p>
               </div>
             </article>
           </aside>
@@ -223,9 +236,10 @@ export function AboutPageBody() {
 
       <section className="about-page__values" aria-labelledby="about-values-title">
         <div className="container">
-          <header className="about-page__section-heading">
-            <span className="eyebrow eyebrow--accent">Our values</span>
-            <h2 id="about-values-title">Principles behind the work.</h2>
+          <header className="about-page__section-heading about-page__section-heading--centered">
+            <h2 id="about-values-title" className="eyebrow eyebrow--accent">
+              Our values
+            </h2>
           </header>
           <ul className="about-page__values-list">
             {values.map((value) => (
@@ -247,7 +261,7 @@ export function AboutPageBody() {
         <div className="container">
           <header className="about-page__section-heading about-page__section-heading--centered">
             <span className="eyebrow eyebrow--accent">Our process</span>
-            <h2 id="about-process-title">A guided journey from request to record.</h2>
+            <h2 id="about-process-title">A Simple Process. End-to-End Support.</h2>
           </header>
           <ol className="about-page__process-list">
             {processSteps.map((step, index) => (
@@ -255,8 +269,9 @@ export function AboutPageBody() {
                 <span className="about-page__process-icon" aria-hidden="true">
                   {step.icon}
                 </span>
-                <span className="about-page__process-number">Step {index + 1}</span>
-                <h3>{step.title}</h3>
+                <h3>
+                  <span className="about-page__process-number">{index + 1}.</span> {step.title}
+                </h3>
                 <p>{step.description}</p>
               </li>
             ))}
@@ -266,31 +281,34 @@ export function AboutPageBody() {
 
       <section className="about-page__team" aria-labelledby="about-team-title">
         <div className="container">
-          <header className="about-page__section-heading about-page__section-heading--centered">
-            <span className="eyebrow eyebrow--accent">How we work</span>
-            <h2 id="about-team-title">Functions supporting the company journey.</h2>
-            <p>Focused functions coordinate the platform and the service experience.</p>
-          </header>
-          <ul className="about-page__team-list">
-            {teamFunctions.map((teamFunction) => (
-              <li key={teamFunction.title}>
-                <span className="about-page__team-icon" aria-hidden="true">
-                  {teamFunction.icon}
-                </span>
-                <h3>{teamFunction.title}</h3>
-                <p>{teamFunction.description}</p>
-              </li>
-            ))}
-          </ul>
+          <div className="about-page__team-card">
+            <header className="about-page__section-heading about-page__section-heading--centered">
+              <span className="eyebrow eyebrow--accent">Meet our team</span>
+              <h2 id="about-team-title">Experienced. Dedicated. Here for You.</h2>
+            </header>
+            <ul className="about-page__team-list">
+              {teamFunctions.map((teamFunction) => (
+                <li key={teamFunction.title}>
+                  <span className="about-page__team-icon" aria-hidden="true">
+                    {teamFunction.icon}
+                  </span>
+                  <div>
+                    <h3>{teamFunction.title}</h3>
+                    <p>{teamFunction.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
       <PublicConversionBand
         headingId="about-conversion-title"
-        title="Ready to plan your UAE business?"
-        description="Start with an estimate or speak with Mandoob about the company journey ahead."
-        primaryCta={{ label: 'Get an estimate', href: '/estimate' }}
-        secondaryCta={{ label: 'Contact Mandoob', href: '/contact' }}
+        title="Ready to Start Your UAE Business?"
+        description="Get a clear estimate and our experts will guide you every step of the way."
+        primaryCta={{ label: 'Calculate My Setup Cost', href: '/estimate' }}
+        secondaryCta={{ label: 'Contact Us', href: '/contact' }}
       />
     </>
   );

@@ -95,6 +95,12 @@ async function prepareEstimatorResult(page: Page): Promise<void> {
   await jurisdiction.check();
   await expect(jurisdiction.locator('..')).toHaveAttribute('data-selected', 'true');
   await settleReactUpdate(page);
+  // The estimator is a one-step-at-a-time wizard; advance after each field.
+  const nextStep = async () => {
+    await page.getByRole('button', { name: 'Next step' }).click();
+    await settleReactUpdate(page);
+  };
+  await nextStep();
   for (const selectId of [
     '#estimate-authority',
     '#estimate-activity',
@@ -105,9 +111,12 @@ async function prepareEstimatorResult(page: Page): Promise<void> {
     const firstValue = await select.locator('option:not([disabled])').first().getAttribute('value');
     await select.selectOption(firstValue ?? '');
     await settleReactUpdate(page);
+    await nextStep();
   }
   await page.locator('#estimate-shareholders').fill('1');
+  await nextStep();
   await page.locator('#estimate-visas').fill('0');
+  await nextStep();
   const office = page.locator('#estimate-office input[type="radio"]').first();
   await office.check();
   await expect(office.locator('..')).toHaveAttribute('data-selected', 'true');

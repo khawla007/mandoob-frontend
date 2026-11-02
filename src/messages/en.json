@@ -5878,18 +5878,6 @@
       "supportTitle": "Registration Support",
       "supportText": "Submit your information and track the registration journey easily."
     },
-    "applyChecklist": {
-      "title": "Know What You Need Before You Apply",
-      "lede": "Your requirements change based on your jurisdiction, business activity, ownership and visa needs. Our guided process helps you understand what information and documents are required.",
-      "passport": "Passport Copy",
-      "personal": "Personal Details",
-      "activity": "Business Activity",
-      "ownership": "Ownership Details",
-      "visa": "Visa Requirements",
-      "office": "Office Preference",
-      "cta": "Start Registration",
-      "imageAlt": "Document checklist on a clipboard beside a passport and a UAE flag"
-    },
     "beyond": {
       "title": "More Than Just Business Registration",
       "trackingTitle": "Registration Tracking",
@@ -5900,6 +5888,21 @@
       "renewalsText": "Keep track of important renewal dates and stay compliant.",
       "proTitle": "PRO Support",
       "proText": "Stay connected with our PRO experts throughout the process."
+    },
+    "testimonials": {
+      "title": "What Our Clients Say",
+      "previous": "Previous testimonial",
+      "next": "Next testimonial",
+      "rating": "Rated 5 out of 5",
+      "item1Name": "Mohammed Al Rashid",
+      "item1Role": "Entrepreneur",
+      "item1Quote": "The team made my company setup in Dubai so easy. Great support and transparency!",
+      "item2Name": "Sarah Johnson",
+      "item2Role": "Business Owner",
+      "item2Quote": "Excellent experience from start to finish. Highly recommended for anyone starting in UAE.",
+      "item3Name": "David Wilson",
+      "item3Role": "Investor",
+      "item3Quote": "Professional, efficient, and always available. They truly care about your success."
     },
     "preview": {
       "eyebrow": "05 · Inside the product",
@@ -5950,18 +5953,22 @@
       "card1Title": "Choose a UAE setup path with context",
       "card1Text": "Understand the discovery differences between Mainland, Free Zone and Offshore structures.",
       "card1Alt": "Dubai skyline beside the waterfront",
+      "card1Tag": "Business Setup",
       "card2Category": "Knowledge base",
       "card2Title": "Prepare business documents with clarity",
       "card2Text": "Review practical guidance on documents, requirements and application readiness.",
       "card2Alt": "Business research and document workspace",
+      "card2Tag": "Free Zone",
       "card3Category": "PRO operations",
       "card3Title": "Keep company work and follow-up connected",
       "card3Text": "See how an assigned PRO supports visible stages, documents and operational tasks.",
       "card3Alt": "Mandoob company operations workspace",
+      "card3Tag": "PRO Services",
       "card4Category": "Business insights",
       "card4Title": "Plan for renewals and ongoing requirements",
       "card4Text": "Read available guidance for keeping company obligations visible after setup.",
-      "card4Alt": "Business professional reviewing company information"
+      "card4Alt": "Business professional reviewing company information",
+      "card4Tag": "VAT"
     },
     "faq": {
       "eyebrow": "Common questions",
@@ -5987,6 +5994,18 @@
       "micro": "Review assumptions before sharing your business details.",
       "proPrompt": "Are you a PRO?",
       "proCta": "See the assigned-company workspace"
+    },
+    "contactStrip": {
+      "heading": "Get in touch",
+      "readyTitle": "Ready to Start Your UAE Business?",
+      "readyText": "Get in touch with our experts and start your journey today.",
+      "readyCta": "Get Started Now",
+      "whatsappTitle": "Chat on WhatsApp",
+      "whatsappText": "Talk to our experts instantly on WhatsApp.",
+      "whatsappCta": "Chat Now",
+      "callTitle": "Call Us Now",
+      "callText": "Speak with our business setup specialists.",
+      "callLabel": "Call Mandoob on {phone}"
     }
   },
   "application": {

@@ -43,6 +43,7 @@ export async function KnowledgeFaqSection() {
                   fill
                   sizes="(max-width: 767px) 100vw, (max-width: 1100px) 50vw, 25vw"
                 />
+                <span>{knowledge(`${key}Tag`)}</span>
               </div>
               <div className="home-knowledge-card__body">
                 <h3>{knowledge(`${key}Title`)}</h3>

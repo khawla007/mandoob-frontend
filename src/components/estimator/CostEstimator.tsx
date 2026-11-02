@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
-  ArrowDown,
+  ArrowLeft,
   ArrowRight,
   Building2,
   Check,
@@ -17,9 +17,7 @@ import {
   KeyRound,
   Landmark,
   Laptop,
-  Mail,
   Minus,
-  Phone,
   Plus,
   RotateCcw,
   Save,
@@ -50,22 +48,39 @@ import type {
   EstimatorActionState,
   EstimatorCatalog,
   EstimatorDraft,
-  EstimatorLineItem,
   EstimatorResult,
   EstimatorSourceState,
   EstimatorValidationError,
 } from '@/lib/estimator/public-contracts';
 
 /**
- * Five form sections shown in the top progress bar. Each groups one or more
- * validation steps from `validateEstimatorDraft` (1–8); section 5 is the review.
+ * Nine wizard steps shown in the vertical step rail. Steps 1–8 map one-to-one to
+ * the validation steps from `validateEstimatorDraft`; step 9 is the review.
  */
-const SECTIONS = [
-  { id: 'business', label: 'Business details', steps: [1, 2] },
-  { id: 'activity', label: 'Activity & structure', steps: [3, 4] },
-  { id: 'people', label: 'Shareholders & visas', steps: [5, 6] },
-  { id: 'office', label: 'Office & additional', steps: [7, 8] },
-  { id: 'review', label: 'Review estimate', steps: [9] },
+const STEPS = [
+  { id: 'jurisdiction', label: 'Jurisdiction', hint: 'Choose your jurisdiction' },
+  { id: 'authority', label: 'Emirate / Free Zone', hint: 'Select your location' },
+  { id: 'activity', label: 'Business activity', hint: 'Choose your activity' },
+  { id: 'legal', label: 'Legal structure', hint: 'Select legal structure' },
+  { id: 'shareholders', label: 'Shareholders', hint: 'Number of shareholders' },
+  { id: 'visas', label: 'Visas', hint: 'Select visa requirements' },
+  { id: 'office', label: 'Office', hint: 'Choose office type' },
+  { id: 'addons', label: 'Add-ons', hint: 'Additional services' },
+  { id: 'review', label: 'Review estimate', hint: 'Check selections and calculate' },
+] as const;
+
+const LAST_STEP = STEPS.length;
+
+/** Field focused for each validation step (index + 1 = step). */
+const STEP_FIELDS = [
+  'estimate-jurisdiction',
+  'estimate-authority',
+  'estimate-activity',
+  'estimate-legal-structure',
+  'estimate-shareholders',
+  'estimate-visas',
+  'estimate-office',
+  'estimate-addons',
 ] as const;
 
 type SectionState = 'completed' | 'current' | 'pending' | 'error';
@@ -131,10 +146,12 @@ function ReadyEstimator({
     authority?.officeTypeIds.includes(item.id),
   );
   const addOns = catalog.addOns.filter((item) => authority?.addOnIds.includes(item.id));
-  const sectionStates = SECTIONS.map((section) =>
-    sectionState(section.steps, liveValidation.errors, errors, result !== null),
+  const [currentStep, setCurrentStep] = useState(1);
+  const [focusRequest, setFocusRequest] = useState<{ id: string; at: number } | null>(null);
+  const stepStates = STEPS.map((_, index) =>
+    stepState(index + 1, currentStep, liveValidation.errors, errors, result !== null),
   );
-  const firstOpen = sectionStates.findIndex((state) => state !== 'completed');
+  const activeStep = STEPS[currentStep - 1];
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -173,6 +190,14 @@ function ReadyEstimator({
     if (resetOpen) resetCancelRef.current?.focus();
   }, [resetOpen]);
 
+  // Focus runs after the requested step has rendered its fields.
+  useEffect(() => {
+    if (!focusRequest) return;
+    const target = document.getElementById(focusRequest.id);
+    target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target?.focus({ preventScroll: true });
+  }, [focusRequest]);
+
   function change<K extends EstimatorDraftField>(field: K, value: EstimatorDraft[K]) {
     const next = applyDraftChange(draft, field, value, catalog);
     setDraft(next);
@@ -182,19 +207,28 @@ function ReadyEstimator({
   }
 
   function focusField(fieldId: string) {
-    window.requestAnimationFrame(() => {
-      const target = document.getElementById(fieldId);
-      target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      target?.focus({ preventScroll: true });
-    });
+    const step = STEP_FIELDS.indexOf(fieldId as (typeof STEP_FIELDS)[number]) + 1;
+    if (step > 0) setCurrentStep(step);
+    setFocusRequest((previous) => ({ id: fieldId, at: (previous?.at ?? 0) + 1 }));
   }
 
-  function jumpToSection(index: number) {
-    const target = document.getElementById(`estimate-section-${SECTIONS[index].id}`);
-    target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    document.getElementById(`estimate-section-${SECTIONS[index].id}-heading`)?.focus({
-      preventScroll: true,
-    });
+  function goToStep(step: number) {
+    setCurrentStep(step);
+    const id = `estimate-section-${STEPS[step - 1].id}-heading`;
+    setFocusRequest((previous) => ({ id, at: (previous?.at ?? 0) + 1 }));
+  }
+
+  function nextStep() {
+    const stepErrors = liveValidation.errors.filter((error) => error.step === currentStep);
+    setErrors((current) => [
+      ...current.filter((error) => error.step !== currentStep),
+      ...stepErrors,
+    ]);
+    if (stepErrors.length) {
+      focusField(stepErrors[0].fieldId);
+      return;
+    }
+    goToStep(Math.min(LAST_STEP, currentStep + 1));
   }
 
   function calculate() {
@@ -311,6 +345,15 @@ function ReadyEstimator({
   const visaRange = authority?.visaRange;
   const shareholderRange = authority?.shareholderRange;
 
+  const selectedLabel = (collection: Array<{ id: string; label: string }>, id: string | null) =>
+    collection.find((item) => item.id === id)?.label;
+  const summaryMeta = [
+    selectedLabel(catalog.jurisdictions, draft.jurisdiction),
+    authority?.emirate ? humanize(authority.emirate) : authority?.label,
+    selectedLabel(catalog.legalStructures, draft.legalStructureId),
+  ].filter((item): item is string => Boolean(item));
+  const oneTimeItems = result?.lineItems.filter((item) => item.recurrence === 'one_time');
+
   return (
     <section
       id="estimator-workspace"
@@ -318,35 +361,6 @@ function ReadyEstimator({
       aria-labelledby="estimator-workspace-title"
     >
       <div className="container">
-        <h2 id="estimator-workspace-title" className="sr-only">
-          Estimate your business setup cost
-        </h2>
-
-        <nav className="estimator-progress" aria-label="Estimator steps">
-          <ol>
-            {SECTIONS.map((section, index) => {
-              const state = sectionStates[index];
-              const isCurrent = index === firstOpen && state !== 'error';
-              const shown: SectionState = isCurrent ? 'current' : state;
-              return (
-                <li key={section.id} data-step-state={shown}>
-                  <button
-                    type="button"
-                    onClick={() => jumpToSection(index)}
-                    aria-current={isCurrent ? 'step' : undefined}
-                  >
-                    <span className="estimator-progress__number" aria-hidden="true">
-                      {shown === 'completed' ? <Check /> : index + 1}
-                    </span>
-                    <span className="estimator-progress__label">{section.label}</span>
-                    <span className="sr-only">, {statusLabel(shown)}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
-
         <div className="estimator-layout">
           <div className="estimator-main">
             <div className="estimator-source-notice" role="note">
@@ -396,263 +410,341 @@ function ReadyEstimator({
               </p>
             ) : null}
 
-            <form
-              className="estimator-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                calculate();
-              }}
-              noValidate
-            >
-              {calculateState.status === 'error' && errors.length > 0 ? (
-                <div
-                  className="estimator-error-summary"
-                  role="alert"
-                  aria-labelledby="estimate-errors-title"
-                >
-                  <h3 id="estimate-errors-title">Review these fields</h3>
-                  <ul>
-                    {errors.map((error) => (
-                      <li key={`${error.step}-${error.fieldId}`}>
-                        <button type="button" onClick={() => focusField(error.fieldId)}>
-                          {error.message}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+            <div className="estimator-card">
+              <header className="estimator-card__head">
+                <h2 id="estimator-workspace-title">Estimate your business setup cost</h2>
+                <span aria-live="polite">
+                  Step {currentStep} of {LAST_STEP}
+                </span>
+              </header>
 
-              <FormSection index={0} state={sectionStates[0]}>
-                <fieldset
-                  id="estimate-jurisdiction"
-                  tabIndex={-1}
-                  className="estimator-choice-fieldset"
-                  aria-describedby="estimate-jurisdiction-error"
-                  aria-invalid={hasError(errors, 'estimate-jurisdiction')}
-                >
-                  <legend>
-                    Business jurisdiction <Required />
-                  </legend>
-                  <div className="estimator-choice-grid estimator-choice-grid--three">
-                    {catalog.jurisdictions.map((item) => (
-                      <ChoiceCard
-                        key={item.id}
-                        name="jurisdiction"
-                        value={item.id}
-                        checked={draft.jurisdiction === item.id}
-                        label={item.label}
-                        description={item.description}
-                        icon={JURISDICTION_ICONS[item.id] ?? Landmark}
-                        onChange={() => change('jurisdiction', item.id)}
-                      />
-                    ))}
-                  </div>
-                  <FieldError errors={errors} fieldId="estimate-jurisdiction" />
-                </fieldset>
-                <div className="estimator-field-row">
-                  <SelectField
-                    id="estimate-authority"
-                    label={
-                      draft.jurisdiction === 'mainland'
-                        ? 'Preferred emirate / authority'
-                        : draft.jurisdiction === 'free_zone'
-                          ? 'Preferred free zone'
-                          : draft.jurisdiction === 'offshore'
-                            ? 'Offshore authority'
-                            : 'Preferred emirate / free zone'
-                    }
-                    placeholder={
-                      draft.jurisdiction ? 'Select an authority' : 'Choose a jurisdiction first'
-                    }
-                    value={draft.authorityId}
-                    disabled={!draft.jurisdiction}
-                    options={authorities.map((item) => ({
-                      id: item.id,
-                      label: item.emirate
-                        ? `${item.label} · ${humanize(item.emirate)}`
-                        : item.label,
-                    }))}
-                    errors={errors}
-                    onChange={(id) => change('authorityId', id)}
-                  />
-                </div>
-              </FormSection>
-
-              <FormSection index={1} state={sectionStates[1]}>
-                <div className="estimator-field-row estimator-field-row--two">
-                  <SelectField
-                    id="estimate-activity"
-                    label="Business activity"
-                    placeholder={
-                      authority ? 'Select business activity' : 'Choose an authority first'
-                    }
-                    value={draft.activityId}
-                    disabled={!authority}
-                    options={activities.map((item) => ({
-                      id: item.id,
-                      label: `${item.label} · ${item.code}`,
-                    }))}
-                    help="Exact activity naming and external approvals need authority confirmation."
-                    errors={errors}
-                    onChange={(id) => change('activityId', id)}
-                  />
-                  <SelectField
-                    id="estimate-legal-structure"
-                    label="Business legal structure"
-                    placeholder={authority ? 'Select legal structure' : 'Choose an authority first'}
-                    value={draft.legalStructureId}
-                    disabled={!authority}
-                    options={legalStructures}
-                    help="Descriptions are planning context, not legal advice."
-                    errors={errors}
-                    onChange={(id) =>
-                      change('legalStructureId', id as EstimatorDraft['legalStructureId'])
-                    }
-                  />
-                </div>
-              </FormSection>
-
-              <FormSection index={2} state={sectionStates[2]}>
-                <div className="estimator-field-row estimator-field-row--two">
-                  <CountField
-                    id="estimate-shareholders"
-                    label="Number of shareholders"
-                    value={draft.shareholderCount}
-                    range={shareholderRange}
-                    errors={errors}
-                    onChange={(value) => change('shareholderCount', value)}
-                  />
-                  <CountField
-                    id="estimate-visas"
-                    label="Number of visas required"
-                    value={draft.visaCount}
-                    range={visaRange}
-                    errors={errors}
-                    onChange={(value) => change('visaCount', value)}
-                  />
-                </div>
-                <p className="estimator-inline-note">
-                  <Info aria-hidden="true" />
-                  Visa cost may vary based on visa type, medical, Emirates ID, and processing fees.
-                  Eligibility and quota depend on the setup, workspace, and approvals.
-                </p>
-              </FormSection>
-
-              <FormSection index={3} state={sectionStates[3]}>
-                <fieldset
-                  id="estimate-office"
-                  tabIndex={-1}
-                  className="estimator-choice-fieldset"
-                  aria-describedby="estimate-office-help estimate-office-error"
-                  aria-invalid={hasError(errors, 'estimate-office')}
-                >
-                  <legend>
-                    Office requirement <Required />
-                  </legend>
-                  {officeTypes.length ? (
-                    <div className="estimator-choice-grid estimator-choice-grid--three">
-                      {officeTypes.map((item) => (
-                        <ChoiceCard
-                          key={item.id}
-                          name="office"
-                          value={item.id}
-                          checked={draft.officeTypeId === item.id}
-                          label={item.label}
-                          description={item.description}
-                          icon={OFFICE_ICONS[item.id] ?? Building2}
-                          onChange={() => change('officeTypeId', item.id)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <NoOptions
-                      title="Choose an authority first"
-                      body="Office options depend on the selected authority."
-                    />
-                  )}
-                  <p id="estimate-office-help" className="estimator-help">
-                    Lease, workspace, size, and visa requirements vary by authority and activity.
-                  </p>
-                  <FieldError errors={errors} fieldId="estimate-office" />
-                </fieldset>
-
-                <fieldset
-                  id="estimate-addons"
-                  tabIndex={-1}
-                  className="estimator-choice-fieldset"
-                  aria-describedby="estimate-addons-help estimate-addons-error"
-                  aria-invalid={hasError(errors, 'estimate-addons')}
-                >
-                  <legend>Additional services (optional)</legend>
-                  {addOns.length ? (
-                    <div className="estimator-addon-grid">
-                      {addOns.map((item) => {
-                        const checked = draft.addOnIds.includes(item.id);
-                        return (
-                          <label key={item.id} data-selected={checked}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() =>
-                                change(
-                                  'addOnIds',
-                                  checked
-                                    ? draft.addOnIds.filter((id) => id !== item.id)
-                                    : [...draft.addOnIds, item.id],
-                                )
-                              }
-                            />
-                            <span>
-                              <strong>{item.label}</strong>
-                              <small>{item.description}</small>
+              <div className="estimator-wizard">
+                <nav className="estimator-steps" aria-label="Estimator steps">
+                  <ol>
+                    {STEPS.map((step, index) => {
+                      const state = stepStates[index];
+                      return (
+                        <li key={step.id} data-step-state={state}>
+                          <button
+                            type="button"
+                            onClick={() => goToStep(index + 1)}
+                            aria-current={state === 'current' ? 'step' : undefined}
+                          >
+                            <span className="estimator-steps__number" aria-hidden="true">
+                              {state === 'completed' ? <Check /> : index + 1}
                             </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <NoOptions
-                      title="No optional services yet"
-                      body="Optional services appear after you choose an authority."
-                    />
-                  )}
-                  <p id="estimate-addons-help" className="estimator-help">
-                    Assistance does not guarantee a bank, tax, attestation, or other external
-                    outcome.
-                  </p>
-                  <FieldError errors={errors} fieldId="estimate-addons" />
-                </fieldset>
-              </FormSection>
+                            <span className="estimator-steps__text">
+                              <span className="estimator-steps__label">{step.label}</span>
+                              <span className="estimator-steps__hint">{step.hint}</span>
+                            </span>
+                            <span className="sr-only">, {statusLabel(state)}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </nav>
 
-              <FormSection index={4} state={sectionStates[4]}>
-                <dl className="estimator-review">
-                  {summaryRows(draft, catalog).map((row) => (
-                    <div key={row.label}>
-                      <dt>{row.label}</dt>
-                      <dd>{row.value}</dd>
+                <form
+                  id="estimator-form"
+                  className="estimator-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    calculate();
+                  }}
+                  noValidate
+                >
+                  {calculateState.status === 'error' && errors.length > 0 ? (
+                    <div
+                      className="estimator-error-summary"
+                      role="alert"
+                      aria-labelledby="estimate-errors-title"
+                    >
+                      <h3 id="estimate-errors-title">Review these fields</h3>
+                      <ul>
+                        {errors.map((error) => (
+                          <li key={`${error.step}-${error.fieldId}`}>
+                            <button type="button" onClick={() => focusField(error.fieldId)}>
+                              {error.message}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  ))}
-                </dl>
-                <div className="estimator-review__assumptions">
-                  <strong>Confirm before relying on the result</strong>
-                  <ul>
-                    {catalog.assumptions.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="estimator-form__actions">
-                  <button
-                    type="submit"
-                    className="btn btn--accent btn--lg"
-                    disabled={calculateState.status === 'pending'}
+                  ) : null}
+
+                  <section
+                    id={`estimate-section-${activeStep.id}`}
+                    className="estimator-section"
+                    data-step-state={stepStates[currentStep - 1]}
+                    aria-labelledby={`estimate-section-${activeStep.id}-heading`}
                   >
-                    {calculateState.status === 'pending'
-                      ? 'Calculating…'
-                      : 'Calculate indicative estimate'}
-                    <ArrowRight aria-hidden="true" />
-                  </button>
+                    <h3 id={`estimate-section-${activeStep.id}-heading`} tabIndex={-1}>
+                      {currentStep}. {activeStep.label}
+                    </h3>
+                    <p className="estimator-section__hint">{activeStep.hint}.</p>
+
+                    {currentStep === 1 ? (
+                      <fieldset
+                        id="estimate-jurisdiction"
+                        tabIndex={-1}
+                        className="estimator-choice-fieldset"
+                        aria-describedby="estimate-jurisdiction-error"
+                        aria-invalid={hasError(errors, 'estimate-jurisdiction')}
+                      >
+                        <legend>
+                          Business jurisdiction <Required />
+                        </legend>
+                        <div className="estimator-choice-grid estimator-choice-grid--three">
+                          {catalog.jurisdictions.map((item) => (
+                            <ChoiceCard
+                              key={item.id}
+                              name="jurisdiction"
+                              value={item.id}
+                              checked={draft.jurisdiction === item.id}
+                              label={item.label}
+                              description={item.description}
+                              icon={JURISDICTION_ICONS[item.id] ?? Landmark}
+                              onChange={() => change('jurisdiction', item.id)}
+                            />
+                          ))}
+                        </div>
+                        <FieldError errors={errors} fieldId="estimate-jurisdiction" />
+                      </fieldset>
+                    ) : null}
+
+                    {currentStep === 2 ? (
+                      <SelectField
+                        id="estimate-authority"
+                        label={
+                          draft.jurisdiction === 'mainland'
+                            ? 'Preferred emirate / authority'
+                            : draft.jurisdiction === 'free_zone'
+                              ? 'Preferred free zone'
+                              : draft.jurisdiction === 'offshore'
+                                ? 'Offshore authority'
+                                : 'Preferred emirate / free zone'
+                        }
+                        placeholder={
+                          draft.jurisdiction ? 'Select an authority' : 'Choose a jurisdiction first'
+                        }
+                        value={draft.authorityId}
+                        disabled={!draft.jurisdiction}
+                        options={authorities.map((item) => ({
+                          id: item.id,
+                          label: item.emirate
+                            ? `${item.label} · ${humanize(item.emirate)}`
+                            : item.label,
+                        }))}
+                        errors={errors}
+                        onChange={(id) => change('authorityId', id)}
+                      />
+                    ) : null}
+
+                    {currentStep === 3 ? (
+                      <SelectField
+                        id="estimate-activity"
+                        label="Business activity"
+                        placeholder={
+                          authority ? 'Select business activity' : 'Choose an authority first'
+                        }
+                        value={draft.activityId}
+                        disabled={!authority}
+                        options={activities.map((item) => ({
+                          id: item.id,
+                          label: `${item.label} · ${item.code}`,
+                        }))}
+                        help="Exact activity naming and external approvals need authority confirmation."
+                        errors={errors}
+                        onChange={(id) => change('activityId', id)}
+                      />
+                    ) : null}
+
+                    {currentStep === 4 ? (
+                      <SelectField
+                        id="estimate-legal-structure"
+                        label="Business legal structure"
+                        placeholder={
+                          authority ? 'Select legal structure' : 'Choose an authority first'
+                        }
+                        value={draft.legalStructureId}
+                        disabled={!authority}
+                        options={legalStructures}
+                        help="Descriptions are planning context, not legal advice."
+                        errors={errors}
+                        onChange={(id) =>
+                          change('legalStructureId', id as EstimatorDraft['legalStructureId'])
+                        }
+                      />
+                    ) : null}
+
+                    {currentStep === 5 ? (
+                      <CountField
+                        id="estimate-shareholders"
+                        label="Number of shareholders"
+                        value={draft.shareholderCount}
+                        range={shareholderRange}
+                        errors={errors}
+                        onChange={(value) => change('shareholderCount', value)}
+                      />
+                    ) : null}
+
+                    {currentStep === 6 ? (
+                      <>
+                        <CountField
+                          id="estimate-visas"
+                          label="Number of visas required"
+                          value={draft.visaCount}
+                          range={visaRange}
+                          errors={errors}
+                          onChange={(value) => change('visaCount', value)}
+                        />
+                        <p className="estimator-inline-note">
+                          <Info aria-hidden="true" />
+                          Visa cost may vary based on visa type, medical, Emirates ID, and
+                          processing fees. Eligibility and quota depend on the setup, workspace, and
+                          approvals.
+                        </p>
+                      </>
+                    ) : null}
+
+                    {currentStep === 7 ? (
+                      <fieldset
+                        id="estimate-office"
+                        tabIndex={-1}
+                        className="estimator-choice-fieldset"
+                        aria-describedby="estimate-office-help estimate-office-error"
+                        aria-invalid={hasError(errors, 'estimate-office')}
+                      >
+                        <legend>
+                          Office requirement <Required />
+                        </legend>
+                        {officeTypes.length ? (
+                          <div className="estimator-choice-grid estimator-choice-grid--three">
+                            {officeTypes.map((item) => (
+                              <ChoiceCard
+                                key={item.id}
+                                name="office"
+                                value={item.id}
+                                checked={draft.officeTypeId === item.id}
+                                label={item.label}
+                                description={item.description}
+                                icon={OFFICE_ICONS[item.id] ?? Building2}
+                                onChange={() => change('officeTypeId', item.id)}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <NoOptions
+                            title="Choose an authority first"
+                            body="Office options depend on the selected authority."
+                          />
+                        )}
+                        <p id="estimate-office-help" className="estimator-help">
+                          Lease, workspace, size, and visa requirements vary by authority and
+                          activity.
+                        </p>
+                        <FieldError errors={errors} fieldId="estimate-office" />
+                      </fieldset>
+                    ) : null}
+
+                    {currentStep === 8 ? (
+                      <fieldset
+                        id="estimate-addons"
+                        tabIndex={-1}
+                        className="estimator-choice-fieldset"
+                        aria-describedby="estimate-addons-help estimate-addons-error"
+                        aria-invalid={hasError(errors, 'estimate-addons')}
+                      >
+                        <legend>Additional services (optional)</legend>
+                        {addOns.length ? (
+                          <div className="estimator-addon-grid">
+                            {addOns.map((item) => {
+                              const checked = draft.addOnIds.includes(item.id);
+                              return (
+                                <label key={item.id} data-selected={checked}>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() =>
+                                      change(
+                                        'addOnIds',
+                                        checked
+                                          ? draft.addOnIds.filter((id) => id !== item.id)
+                                          : [...draft.addOnIds, item.id],
+                                      )
+                                    }
+                                  />
+                                  <span>
+                                    <strong>{item.label}</strong>
+                                    <small>{item.description}</small>
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <NoOptions
+                            title="No optional services yet"
+                            body="Optional services appear after you choose an authority."
+                          />
+                        )}
+                        <p id="estimate-addons-help" className="estimator-help">
+                          Assistance does not guarantee a bank, tax, attestation, or other external
+                          outcome.
+                        </p>
+                        <FieldError errors={errors} fieldId="estimate-addons" />
+                      </fieldset>
+                    ) : null}
+
+                    {currentStep === LAST_STEP ? (
+                      <>
+                        <dl className="estimator-review">
+                          {summaryRows(draft, catalog).map((row) => (
+                            <div key={row.label}>
+                              <dt>{row.label}</dt>
+                              <dd>{row.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                        <div className="estimator-review__assumptions">
+                          <strong>Confirm before relying on the result</strong>
+                          <ul>
+                            {catalog.assumptions.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </>
+                    ) : null}
+                  </section>
+
+                  <div className="estimator-form__actions">
+                    {currentStep > 1 ? (
+                      <button
+                        type="button"
+                        className="btn btn--outline"
+                        onClick={() => goToStep(currentStep - 1)}
+                      >
+                        <ArrowLeft aria-hidden="true" /> Back
+                      </button>
+                    ) : null}
+                    <span className="estimator-form__spacer" />
+                    <button
+                      type="submit"
+                      className={`btn ${currentStep === LAST_STEP ? 'btn--accent' : 'btn--outline'}`}
+                      disabled={calculateState.status === 'pending'}
+                    >
+                      {calculateState.status === 'pending'
+                        ? 'Calculating…'
+                        : 'Calculate indicative estimate'}
+                    </button>
+                    {currentStep < LAST_STEP ? (
+                      <button type="button" className="btn btn--accent" onClick={nextStep}>
+                        Next step <ArrowRight aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
                   {calculateState.message ? (
                     <p
                       className={`estimator-status estimator-status--${calculateState.status}`}
@@ -662,96 +754,110 @@ function ReadyEstimator({
                       {calculateState.message}
                     </p>
                   ) : null}
-                </div>
-              </FormSection>
-            </form>
+                </form>
+              </div>
+            </div>
 
             {result ? <EstimateResultView result={result} catalog={catalog} /> : null}
           </div>
 
           <aside className="estimator-sidebar" aria-label="Estimate summary">
             <div
-              className="estimator-total-card"
+              className="estimator-summary-card"
               role="region"
               aria-labelledby="estimate-result-heading"
             >
-              <h2 id="estimate-result-heading" ref={resultHeadingRef} tabIndex={-1}>
-                Your estimated cost
-              </h2>
-              <p>This is an indicative estimate. Final cost may vary based on approvals.</p>
-              <div className="estimator-total-card__box">
-                <span>Estimated total (one-time)</span>
-                <strong>{result ? formatAed(result.oneTimeTotalMinor) : 'AED —'}</strong>
-                {result ? (
-                  <a href="#estimate-breakdown">
-                    View detailed break-up below <ArrowDown aria-hidden="true" />
-                  </a>
-                ) : (
-                  <small>Complete the form and calculate to see your total.</small>
-                )}
-              </div>
-            </div>
-
-            <CostListCard
-              title="One-time costs"
-              totalLabel="Total one-time cost"
-              items={result?.lineItems.filter((item) => item.recurrence === 'one_time')}
-              totalMinor={result?.oneTimeTotalMinor}
-            />
-            <CostListCard
-              title="Recurring costs (yearly)"
-              totalLabel="Total recurring (yearly)"
-              items={result?.lineItems.filter((item) => item.recurrence === 'annual')}
-              totalMinor={result?.annualTotalMinor}
-              tone="recurring"
-            />
-
-            <div className="estimator-side-card">
-              <h3>What&apos;s included in the estimate?</h3>
-              <ul className="estimator-check-list">
-                {catalog.inclusions.map((item) => (
-                  <li key={item}>
-                    <Check aria-hidden="true" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="estimator-side-card">
-              <h3>What&apos;s next?</h3>
-              <div className="estimator-next-actions">
+              <div className="estimator-summary-card__head">
+                <div>
+                  <h2 id="estimate-result-heading" ref={resultHeadingRef} tabIndex={-1}>
+                    Your estimated cost
+                  </h2>
+                  <p className="estimator-summary-card__meta">
+                    {summaryMeta.length ? summaryMeta.join(' · ') : 'No selections yet'}
+                  </p>
+                </div>
                 <button
                   type="button"
+                  className="estimator-summary-card__edit"
+                  onClick={() => goToStep(1)}
+                >
+                  <FilePenLine aria-hidden="true" /> Edit
+                </button>
+              </div>
+
+              <div className="estimator-summary-card__total">
+                <strong>{result ? formatAed(result.oneTimeTotalMinor) : 'AED —'}</strong>
+                <span>Total one-time setup cost (indicative)</span>
+                {result ? null : <small>Complete the steps and calculate to see your total.</small>}
+              </div>
+
+              {oneTimeItems ? (
+                <dl className="estimator-summary-card__items">
+                  {oneTimeItems.map((item) => (
+                    <div key={item.id}>
+                      <dt>{item.label}</dt>
+                      <dd>{formatAed(item.totalMinor)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="estimator-help">Itemised costs appear after you calculate.</p>
+              )}
+
+              <div className="estimator-summary-card__recurring">
+                <span>Annual recurring cost</span>
+                <strong>
+                  {result ? formatAed(result.annualTotalMinor) : 'AED —'}
+                  <small> / year</small>
+                </strong>
+              </div>
+
+              <div className="estimator-summary-card__timeline">
+                <span>Indicative timeline</span>
+                <strong>
+                  {result?.timelineDays
+                    ? `${result.timelineDays.min}–${result.timelineDays.max} working days`
+                    : 'Shown after calculation'}
+                </strong>
+              </div>
+
+              <div className="estimator-summary-card__included">
+                <h3>What&apos;s included in the estimate?</h3>
+                <ul className="estimator-check-list">
+                  {catalog.inclusions.map((item) => (
+                    <li key={item}>
+                      <Check aria-hidden="true" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="estimator-summary-card__actions">
+                <Link
+                  className="btn btn--accent"
+                  href={result ? buildEstimatorApplyHref(result) : '/apply'}
+                >
+                  Start your registration
+                </Link>
+                <small>Proceed to fill in your requirements.</small>
+                <button
+                  type="button"
+                  className="btn btn--outline"
                   onClick={saveDraft}
                   disabled={storageState.status === 'pending'}
                 >
                   <Save aria-hidden="true" /> Save locally
                 </button>
-                <button ref={resetTriggerRef} type="button" onClick={() => setResetOpen(true)}>
-                  <RotateCcw aria-hidden="true" /> Reset
-                </button>
-                <Link href={result ? buildEstimatorApplyHref(result) : '/apply'}>
-                  <FilePenLine aria-hidden="true" /> Start your registration
-                </Link>
-                <Link href="/contact">
-                  <Headset aria-hidden="true" /> Talk to our team
-                </Link>
+                <div className="estimator-summary-card__links">
+                  <button ref={resetTriggerRef} type="button" onClick={() => setResetOpen(true)}>
+                    <RotateCcw aria-hidden="true" /> Reset
+                  </button>
+                  <Link href="/contact">
+                    <Headset aria-hidden="true" /> Talk to our team
+                  </Link>
+                </div>
               </div>
-            </div>
-
-            <div className="estimator-side-card estimator-help-card">
-              <span className="estimator-help-card__icon" aria-hidden="true">
-                <Headset />
-              </span>
-              <h3>Need help?</h3>
-              <p>Our business setup team can help you review your options.</p>
-              <a className="btn btn--outline btn--sm" href="tel:+97145550123">
-                <Phone aria-hidden="true" /> <bdi>+971 4 555 0123</bdi>
-              </a>
-              <a className="btn btn--outline btn--sm" href="mailto:hello@mandoob.ae">
-                <Mail aria-hidden="true" /> <bdi>hello@mandoob.ae</bdi>
-              </a>
             </div>
           </aside>
         </div>
@@ -802,31 +908,6 @@ function ReadyEstimator({
           </div>
         </div>
       ) : null}
-    </section>
-  );
-}
-
-function FormSection({
-  index,
-  state,
-  children,
-}: {
-  index: number;
-  state: SectionState;
-  children: React.ReactNode;
-}) {
-  const section = SECTIONS[index];
-  return (
-    <section
-      id={`estimate-section-${section.id}`}
-      className="estimator-section"
-      data-step-state={state}
-      aria-labelledby={`estimate-section-${section.id}-heading`}
-    >
-      <h3 id={`estimate-section-${section.id}-heading`} tabIndex={-1}>
-        {index + 1}. {section.label}
-      </h3>
-      {children}
     </section>
   );
 }
@@ -961,50 +1042,6 @@ function CountField({
         {range ? `Whole number (${min}–${max})` : 'Choose an authority to set the allowed range.'}
       </p>
       <FieldError errors={errors} fieldId={id} />
-    </div>
-  );
-}
-
-function CostListCard({
-  title,
-  totalLabel,
-  items,
-  totalMinor,
-  tone,
-}: {
-  title: string;
-  totalLabel: string;
-  items: EstimatorLineItem[] | undefined;
-  totalMinor: number | undefined;
-  tone?: 'recurring';
-}) {
-  return (
-    <div
-      className={`estimator-side-card estimator-cost-list${tone ? ` estimator-cost-list--${tone}` : ''}`}
-    >
-      <h3>{title}</h3>
-      {items ? (
-        <>
-          {items.length ? (
-            <dl>
-              {items.map((item) => (
-                <div key={item.id}>
-                  <dt>{item.label}</dt>
-                  <dd>{formatAed(item.totalMinor)}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="estimator-help">No items in this category.</p>
-          )}
-          <div className="estimator-cost-list__total">
-            <span>{totalLabel}</span>
-            <strong>{formatAed(totalMinor ?? 0)}</strong>
-          </div>
-        </>
-      ) : (
-        <p className="estimator-help">Itemised costs appear after you calculate.</p>
-      )}
     </div>
   );
 }
@@ -1191,21 +1228,6 @@ function UnavailableWorkspace({
         <h2 id="estimator-workspace-title" className="sr-only">
           Estimate your business setup cost
         </h2>
-        <nav className="estimator-progress" aria-label="Estimator steps">
-          <ol>
-            {SECTIONS.map((section, index) => (
-              <li key={section.id} data-step-state="pending">
-                <span className="estimator-progress__static">
-                  <span className="estimator-progress__number" aria-hidden="true">
-                    {index + 1}
-                  </span>
-                  <span className="estimator-progress__label">{section.label}</span>
-                  <span className="sr-only">, Pending source</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </nav>
         <div className="estimator-layout">
           <div className="estimator-source-state" role="status" aria-live="polite">
             <CircleAlert aria-hidden="true" />
@@ -1268,15 +1290,17 @@ function summaryRows(draft: EstimatorDraft, catalog: EstimatorCatalog) {
   ];
 }
 
-function sectionState(
-  steps: readonly number[],
+function stepState(
+  step: number,
+  currentStep: number,
   liveErrors: EstimatorValidationError[],
   shownErrors: EstimatorValidationError[],
   calculated: boolean,
 ): SectionState {
-  if (shownErrors.some((error) => steps.includes(error.step))) return 'error';
-  if (steps.includes(9)) return calculated ? 'completed' : 'pending';
-  return liveErrors.some((error) => steps.includes(error.step)) ? 'pending' : 'completed';
+  if (shownErrors.some((error) => error.step === step)) return 'error';
+  if (step === currentStep) return 'current';
+  if (step === LAST_STEP) return calculated ? 'completed' : 'pending';
+  return liveErrors.some((error) => error.step === step) ? 'pending' : 'completed';
 }
 
 function statusLabel(state: SectionState) {

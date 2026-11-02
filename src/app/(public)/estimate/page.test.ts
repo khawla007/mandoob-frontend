@@ -21,13 +21,17 @@ test('estimate page renders header, workspace, and assurance band in order with 
   assert.doesNotMatch(page, /https?:\/\//u);
 });
 
-test('estimate workspace exposes five ordered sections and non-color status semantics', async () => {
+test('estimate workspace exposes nine ordered wizard steps and non-color status semantics', async () => {
   const component = await read('../../../components/estimator/CostEstimator.tsx');
   const labels = [
-    'Business details',
-    'Activity & structure',
-    'Shareholders & visas',
-    'Office & additional',
+    'Jurisdiction',
+    'Emirate / Free Zone',
+    'Business activity',
+    'Legal structure',
+    'Shareholders',
+    'Visas',
+    'Office',
+    'Add-ons',
     'Review estimate',
   ];
   let cursor = -1;
@@ -54,6 +58,9 @@ test('estimate workspace exposes five ordered sections and non-color status sema
   assert.match(component, /aria-live="polite"/u);
   assert.match(component, /data-step-state/u);
   assert.match(component, /Completed|Current|Needs attention/u);
+  assert.match(component, /Next step/u);
+  assert.match(component, /Step \{currentStep\} of \{LAST_STEP\}/u);
+  assert.equal((component.match(/Calculate indicative estimate/gu) ?? []).length, 1);
 });
 
 test('public estimator uses only the coherent local source and truthful action states', async () => {
