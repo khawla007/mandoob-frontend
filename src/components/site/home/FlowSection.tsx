@@ -1,5 +1,6 @@
 import { ClipboardList, FileText, Rocket, Search } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import type { CSSProperties } from 'react';
 
 const STEPS = [
   ['step1', Search],
@@ -20,9 +21,9 @@ export async function FlowSection() {
             {t('title')}
           </h2>
         </header>
-        <ol className="home-flow-row">
+        <ol className="home-flow-row" data-reveal-cards>
           {STEPS.map(([key, Icon], index) => (
-            <li key={key}>
+            <li className="reveal" key={key} style={{ '--reveal-i': index } as CSSProperties}>
               <span className="home-flow-row__number mono">0{index + 1}</span>
               <Icon aria-hidden="true" />
               <div>

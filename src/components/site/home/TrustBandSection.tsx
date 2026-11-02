@@ -1,5 +1,6 @@
 import { BadgeCheck, CalendarClock, FileSearch, UserRoundCheck } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import type { CSSProperties } from 'react';
 
 const ITEMS = [BadgeCheck, FileSearch, UserRoundCheck, CalendarClock] as const;
 
@@ -12,9 +13,9 @@ export async function TrustBandSection() {
         {t('heading')}
       </h2>
       <div className="container">
-        <ul className="home-trust-grid" role="list">
+        <ul className="home-trust-grid" role="list" data-reveal-cards>
           {ITEMS.map((Icon, index) => (
-            <li key={index}>
+            <li className="reveal" key={index} style={{ '--reveal-i': index } as CSSProperties}>
               <span className="home-trust-grid__icon">
                 <Icon aria-hidden="true" />
               </span>

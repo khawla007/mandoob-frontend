@@ -55,13 +55,13 @@ export async function KnowledgeFaqSection() {
           ))}
         </div>
 
-        <div className="home-faq" aria-labelledby="faq-h">
-          <span className="eyebrow eyebrow--accent">{faq('eyebrow')}</span>
-          <h3 id="faq-h" className="home-section-title">
+        <div className="home-faq" aria-labelledby="faq-h" data-reveal-cards>
+          <span className="eyebrow eyebrow--accent reveal">{faq('eyebrow')}</span>
+          <h3 id="faq-h" className="home-section-title reveal">
             {faq('heading')}
           </h3>
           <FaqAccordion items={faqItems} />
-          <Link className="home-faq__link home-text-link" href="/knowledge-base">
+          <Link className="home-faq__link home-text-link reveal" href="/knowledge-base">
             {faq('viewAll')} <span aria-hidden="true">→</span>
           </Link>
         </div>

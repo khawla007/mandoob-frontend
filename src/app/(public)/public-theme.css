@@ -8371,6 +8371,118 @@
   border-radius: var(--r-md);
 }
 
+/* Homepage below-the-fold accents (trust, flow, estimator, support, why).
+   Items reveal via [data-reveal-cards]; nested accents run as keyframes
+   only once the parent gets .is-in (fill-mode: both keeps them hidden
+   during their delay). No pre-hidden state, so no-JS users see content.
+   --reveal-i is the item index set inline by each section. */
+@keyframes home-reveal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes home-reveal-spin {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes home-reveal-row {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes home-flow-arrow-in {
+  from {
+    opacity: 0;
+    translate: var(--home-flow-arrow-from, -10px) 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes home-flow-line-in {
+  from {
+    opacity: 0;
+    scale: 1 0;
+  }
+  to {
+    opacity: 1;
+    scale: 1 1;
+  }
+}
+
+.site-public.reveal-on .home-trust-grid li.is-in .home-trust-grid__icon,
+.site-public.reveal-on .home-services-grid li.is-in .home-icon-medallion,
+.site-public.reveal-on .home-flow-row li.is-in .home-flow-row__number {
+  animation: home-reveal-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--reveal-i, 0) * 60ms + 200ms);
+}
+.site-public.reveal-on .home-why-row li.is-in .home-why-row__icon {
+  animation: home-reveal-spin 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--reveal-i, 0) * 60ms + 200ms);
+}
+
+/* Flow: connector arrows draw in after each step lands. Uses the
+   individual `translate`/`scale` properties so the RTL scaleX(-1)
+   transform on the arrow stays intact. */
+[dir='rtl'] .site-public .home-flow-row {
+  --home-flow-arrow-from: 10px;
+}
+.site-public.reveal-on .home-flow-row li.is-in:not(:last-child)::after {
+  animation: home-flow-arrow-in 0.5s ease-out both;
+  animation-delay: calc(var(--reveal-i, 0) * 60ms + 450ms);
+}
+
+/* Estimator: copy and card slide in from opposite sides, then the
+   breakdown rows print in and the total pops last. */
+.site-public.reveal-on .home-reveal--from-start:not(.is-in) {
+  transform: translateX(-40px);
+}
+.site-public.reveal-on .home-reveal--from-end:not(.is-in) {
+  transform: translateX(40px);
+}
+[dir='rtl'] .site-public.reveal-on .home-reveal--from-start:not(.is-in) {
+  transform: translateX(40px);
+}
+[dir='rtl'] .site-public.reveal-on .home-reveal--from-end:not(.is-in) {
+  transform: translateX(-40px);
+}
+.site-public.reveal-on .home-estimate-card.is-in dl > div {
+  animation: home-reveal-row 0.45s ease-out both;
+  animation-delay: calc(var(--reveal-i, 0) * 90ms + 350ms);
+}
+.site-public.reveal-on .home-estimate-card.is-in .home-estimate-card__total dd {
+  animation: home-reveal-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--reveal-i, 0) * 90ms + 650ms);
+}
+
+@media (max-width: 767px) {
+  .site-public.reveal-on .home-flow-row li.is-in:not(:last-child)::after {
+    transform-origin: top;
+    animation-name: home-flow-line-in;
+  }
+}
+
 /* ========================================================================
    Bento grid — 6-tile product surface preview (BentoGridSection).
    Tiles are CSS/JSX mockups. One tile carries a CSS micro-loop.
@@ -9082,6 +9194,19 @@
     animation: none;
   }
   .site-public.reveal-on .annotated-showcase__lines line,
+  .site-public.reveal-on .home-trust-grid li.is-in .home-trust-grid__icon,
+  .site-public.reveal-on .home-services-grid li.is-in .home-icon-medallion,
+  .site-public.reveal-on .home-flow-row li.is-in .home-flow-row__number,
+  .site-public.reveal-on .home-why-row li.is-in .home-why-row__icon,
+  .site-public.reveal-on .home-flow-row li.is-in:not(:last-child)::after,
+  .site-public.reveal-on .home-estimate-card.is-in dl > div,
+  .site-public.reveal-on .home-estimate-card.is-in .home-estimate-card__total dd {
+    animation: none;
+  }
+  .site-public.reveal-on .home-reveal--from-start:not(.is-in),
+  .site-public.reveal-on .home-reveal--from-end:not(.is-in) {
+    transform: none;
+  }
   .site-public.reveal-on .annotated-showcase.is-in .annotated-showcase__lines line {
     opacity: 1;
     transition: none;

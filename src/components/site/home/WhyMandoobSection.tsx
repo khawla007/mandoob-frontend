@@ -1,5 +1,6 @@
 import { BellRing, FolderCheck, ListChecks, UserRoundCheck, Workflow } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import type { CSSProperties } from 'react';
 
 const ITEMS = [ListChecks, UserRoundCheck, FolderCheck, BellRing, Workflow] as const;
 
@@ -15,9 +16,9 @@ export async function WhyMandoobSection() {
             {t('title')}
           </h2>
         </header>
-        <ul className="home-why-row" role="list">
+        <ul className="home-why-row" role="list" data-reveal-cards>
           {ITEMS.map((Icon, index) => (
-            <li key={index}>
+            <li className="reveal" key={index} style={{ '--reveal-i': index } as CSSProperties}>
               <span className="home-why-row__icon">
                 <Icon aria-hidden="true" />
               </span>

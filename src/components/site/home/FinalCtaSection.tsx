@@ -20,17 +20,19 @@ export function FinalCtaSection() {
         pointer={pointer}
         params={{ sphereRadius: 0.13, deformationStrength: 32 }}
       />
-      <div className="cta-section__inner reveal container">
-        <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
-        <h2 id="cta-h" className="display display--cta">
+      <div className="cta-section__inner container" data-reveal-cards>
+        <span className="eyebrow eyebrow--accent reveal">{t('eyebrow')}</span>
+        <h2 id="cta-h" className="display display--cta reveal">
           {t('title')}
         </h2>
-        <Link className="btn btn--accent btn--lg" href="/estimate" id="cta-final">
-          {t('estimateCta')}
-        </Link>
-        <p className="micro mono">{t('micro')}</p>
-        <div className="cta-divider" aria-hidden="true" />
-        <p className="cta-secondary">
+        <div className="reveal">
+          <Link className="btn btn--accent btn--lg" href="/estimate" id="cta-final">
+            {t('estimateCta')}
+          </Link>
+        </div>
+        <p className="micro mono reveal">{t('micro')}</p>
+        <div className="cta-divider reveal" aria-hidden="true" />
+        <p className="cta-secondary reveal">
           {t('proPrompt')}{' '}
           <Link className="cell__link" href="/pro">
             {t('proCta')} <span aria-hidden="true">↗</span>

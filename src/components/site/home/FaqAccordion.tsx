@@ -31,7 +31,7 @@ export function FaqAccordion({ items }: FaqAccordionProps) {
 
             return (
               <article
-                className="home-faq__item"
+                className="home-faq__item reveal"
                 data-open={isOpen ? '' : undefined}
                 key={triggerId}
                 style={{ order: index }}
