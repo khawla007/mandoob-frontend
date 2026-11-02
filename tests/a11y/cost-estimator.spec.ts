@@ -18,9 +18,7 @@ for (const entry of matrix) {
     await page.setViewportSize({ width: entry.width, height: entry.height });
     await page.addInitScript((theme) => localStorage.setItem('theme', theme), entry.theme);
     await page.goto('/estimate', { waitUntil: 'domcontentloaded' });
-    await expect(
-      page.getByRole('heading', { name: 'UAE business setup cost estimator' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Cost estimator' })).toBeVisible();
 
     expect(await page.locator('h1').count()).toBe(1);
     expect(
@@ -28,10 +26,7 @@ for (const entry of matrix) {
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
       ),
     ).toBe(true);
-    await expect(page.locator('.estimator-hero__visual img')).toHaveAttribute(
-      'src',
-      /mainland-hero\.webp/u,
-    );
+    await expect(page.getByRole('navigation', { name: 'Estimator steps' })).toBeVisible();
 
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);

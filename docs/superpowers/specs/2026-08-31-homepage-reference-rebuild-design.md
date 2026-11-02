@@ -4,7 +4,7 @@ Date: 2026-08-31
 
 ## Goal
 
-Rebuild the public homepage body to follow the composition and visual rhythm of `updated design mandoop/homee.png`. Preserve Mandoob's identity instead of copying the reference brand.
+Rebuild the public homepage body with a compact, information-rich composition while preserving Mandoob's identity.
 
 ## Fixed boundaries
 

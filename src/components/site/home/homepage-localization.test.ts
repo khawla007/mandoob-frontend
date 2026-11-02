@@ -50,8 +50,6 @@ describe('homepage localization contract', () => {
       'services.eyebrow',
       'flow.eyebrow',
       'estimator.eyebrow',
-      'why.eyebrow',
-      'testimonials.eyebrow',
       'knowledge.eyebrow',
       'faq.eyebrow',
     ]) {
@@ -60,17 +58,26 @@ describe('homepage localization contract', () => {
     }
   });
 
-  it('does not publish unsupported named testimonials, ratings, or quotes', () => {
+  it('defines the reference feature-row and checklist copy in both catalogs', () => {
     for (const catalog of [en, ar]) {
-      const testimonials = valueAt((catalog as Catalog).home, 'testimonials') as Catalog;
-      const keys = Object.keys(testimonials);
-      assert.ok(keys.includes('carouselLabel'));
-      assert.equal(
-        keys.filter((key) => /^item(?:10|[1-9])(?:Title|Context|Text)$/u.test(key)).length,
-        30,
-      );
-      assert.equal(keys.filter((key) => /^client\d|fiveStars/u.test(key)).length, 0);
-      assert.doesNotMatch(JSON.stringify(testimonials), /★★★★★|five out of five|خمس نجوم/iu);
+      const home = (catalog as Catalog).home;
+      for (const path of [
+        'confidence.title',
+        'confidence.costsTitle',
+        'confidence.supportText',
+        'applyChecklist.title',
+        'applyChecklist.passport',
+        'applyChecklist.office',
+        'applyChecklist.cta',
+        'applyChecklist.imageAlt',
+        'beyond.title',
+        'beyond.trackingTitle',
+        'beyond.proText',
+      ]) {
+        assert.equal(typeof valueAt(home, path), 'string', path);
+      }
+      assert.equal(valueAt(home, 'why'), undefined);
+      assert.equal(valueAt(home, 'testimonials'), undefined);
     }
   });
 });

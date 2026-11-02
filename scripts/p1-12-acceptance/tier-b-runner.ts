@@ -5,7 +5,6 @@ import path from 'node:path';
 import {
   buildP112CapturePlan,
   createP112ScreenshotManifestRow,
-  P112_REFERENCES,
   P112_TIER_B_TARGETS,
   reconcileP112ScreenshotEvidence,
   renderP112SideBySideReviewHtml,
@@ -319,12 +318,10 @@ export async function assembleP112TierBProvisional(input: {
     renderP112SideBySideReviewHtml(
       records.map(({ capture }) => {
         const target = P112_TIER_B_TARGETS.find(({ id }) => id === capture.targetId)!;
-        const ids =
-          target.reference.kind === 'exact' ? [target.reference.id] : target.reference.ids;
         return {
           target,
           candidatePath: capture.relativePath,
-          referencePaths: ids.map((id) => `reference-review/${id}.png`),
+          referencePaths: [],
         };
       }),
     ),
@@ -421,14 +418,8 @@ async function writeShardArtifacts(
 }
 
 async function stageReferenceCopies(outputRoot: string, repositoryRoot: string): Promise<void> {
-  const destination = path.join(outputRoot, 'reference-review');
-  await mkdir(destination, { recursive: true, mode: 0o700 });
-  for (const reference of P112_REFERENCES) {
-    const source = path.join(repositoryRoot, reference.sourcePath);
-    const target = path.join(destination, `${reference.id}.png`);
-    await assertP112NoSymlinkPath(repositoryRoot, source);
-    await writeP112AtomicPrivateFile(outputRoot, target, await readFile(source));
-  }
+  void outputRoot;
+  void repositoryRoot;
 }
 
 function renderReview(rows: readonly P112ScreenshotManifestRow[]): string {
@@ -440,7 +431,7 @@ function renderReview(rows: readonly P112ScreenshotManifestRow[]): string {
       return {
         target,
         candidatePath: row.file,
-        referencePaths: referenceIds.map((referenceId) => `reference-review/${referenceId}.png`),
+        referencePaths: [],
       };
     }),
   );

@@ -35,7 +35,6 @@ export async function SiteFooter() {
       links: [
         { href: '/estimate', label: tFooter('estimator') },
         { href: '/apply', label: tFooter('startApplication') },
-        { href: '/pro', label: tFooter('forPros') },
         { href: '/pricing', label: tFooter('pricing') },
       ],
     },

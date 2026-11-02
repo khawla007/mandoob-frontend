@@ -59,9 +59,6 @@ tests/.auth/**
 /.p1-12-acceptance-runtime/
 /.p2-12-acceptance-runtime/
 
-# graphify
-/graphify-out/
-
 # local isolated feature workspaces
 /.worktrees/
 

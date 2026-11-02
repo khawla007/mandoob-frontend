@@ -46,9 +46,6 @@ export default function PricingPage() {
                 <Link className="btn btn--accent btn--lg" href="/contact">
                   Discuss plans
                 </Link>
-                <Link className="btn btn--outline btn--lg" href="/pro">
-                  Explore PRO fit
-                </Link>
               </div>
             </div>
 

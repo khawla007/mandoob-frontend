@@ -250,8 +250,8 @@ export type PublicPricingContract = DeepReadonly<{
     title: ApprovedPublicationFact;
     description: ApprovedPublicationFact;
     links: readonly {
-      label: 'Discuss plans' | 'Explore PRO workspace';
-      href: '/contact' | '/pro';
+      label: 'Discuss plans' | 'Get Estimate';
+      href: '/contact' | '/estimate';
       source: Extract<PublicPricingSource, { state: 'approved-static' }>;
     }[];
   };
@@ -686,11 +686,11 @@ export const PUBLIC_PRICING_CONTRACT = deepFreeze({
   finalCta: {
     title: approvedPublicationFact('Find the plan context that fits your Company workspace.'),
     description: approvedPublicationFact(
-      'Discuss the current specification with Mandoob or explore how the PRO workspace is structured.',
+      'Discuss the current specification with Mandoob or prepare an indicative setup estimate.',
     ),
     links: [
       { label: 'Discuss plans', href: '/contact', source: approvedStaticSource() },
-      { label: 'Explore PRO workspace', href: '/pro', source: approvedStaticSource() },
+      { label: 'Get Estimate', href: '/estimate', source: approvedStaticSource() },
     ],
   },
 } satisfies PublicPricingContract);

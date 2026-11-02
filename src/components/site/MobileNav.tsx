@@ -12,7 +12,7 @@ import { PublicThemeToggle } from './PublicThemeToggle';
 import type { PublicNavLink } from './public-navigation';
 
 type MobileNavLink = Pick<PublicNavLink, 'href' | 'label'> &
-  Partial<Pick<PublicNavLink, 'id' | 'currentPath'>>;
+  Partial<Pick<PublicNavLink, 'id' | 'currentPath' | 'children'>>;
 
 type MobileNavBaseProps = {
   links: readonly MobileNavLink[];
@@ -41,11 +41,14 @@ type MobileNavProps = MobileNavBaseProps &
   );
 
 const legacyIdsByHref: Readonly<Record<string, PublicNavLink['id']>> = {
-  '/#services': 'platform',
-  '/estimate': 'estimate',
-  '/#customers': 'customers',
-  '/pro': 'forPros',
-  '/pricing': 'pricing',
+  '/business-setup': 'businessSetup',
+  '/mainland': 'mainland',
+  '/free-zones': 'freeZones',
+  '/offshore': 'offshore',
+  '/how-it-works': 'howItWorks',
+  '/knowledge-base': 'knowledgeBase',
+  '/about': 'aboutUs',
+  '/contact': 'contactUs',
 };
 
 function legacyIdFromHref(href: string): PublicNavLink['id'] {
@@ -58,6 +61,7 @@ function normalizeLinks(links: readonly MobileNavLink[]): PublicNavLink[] {
     href: link.href,
     label: link.label,
     currentPath: link.currentPath,
+    children: link.children,
   }));
 }
 
@@ -91,7 +95,7 @@ export function MobileNav({
   }, [pathname]);
 
   useEffect(() => {
-    const desktopQuery = window.matchMedia('(min-width: 1200px)');
+    const desktopQuery = window.matchMedia('(min-width: 1400px)');
     const handleBreakpointChange = (event: MediaQueryListEvent) => {
       if (event.matches) setOpen(false);
     };
@@ -130,7 +134,7 @@ export function MobileNav({
           <DialogTitle className="public-mobile-dialog__title">{resolvedTitle}</DialogTitle>
 
           <nav className="public-mobile-dialog__nav" aria-label={resolvedNavLabel}>
-            <PublicNavLinks links={publicLinks} onNavigate={closeMenu} />
+            <PublicNavLinks links={publicLinks} onNavigate={closeMenu} variant="stacked" />
           </nav>
 
           <div className="public-mobile-dialog__utilities">

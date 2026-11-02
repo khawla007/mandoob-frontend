@@ -165,9 +165,7 @@ test('active documentation excludes stale client ownership contracts', () => {
 });
 
 test('assignment copy identifies one-to-one ownership as Mandoob policy', () => {
-  assert.match(source('src/components/site/home/ProSuiteSection.tsx'), /Mandoob platform policy/iu);
   assert.match(source('src/lib/pro/public-pro.ts'), /Mandoob platform policy/iu);
-  assert.match(source('src/components/site/pro/ProHeroSection.tsx'), /PUBLIC_PRO_CONTENT\.policy/u);
   assert.match(en.admin.companies.assignment.proDescription, /Mandoob platform policy/iu);
   assert.match(en.admin.companies.assignment.proDescription, /one active company assignment/iu);
   assert.match(ar.admin.companies.assignment.proDescription, /سياسة منصة مندوب/u);
@@ -205,36 +203,6 @@ test('localized UI copy reserves tenant wording for internal identifiers', () =>
       `Visible tenant wording remains at ar.${path}`,
     );
   }
-});
-
-test('PRO hero does not present development counts as platform metrics', () => {
-  const hero = source('src/components/site/pro/ProHeroSection.tsx');
-  assert.doesNotMatch(hero, />40\+</u);
-  assert.doesNotMatch(hero, /active PROs|company workspaces/iu);
-});
-
-test('operational product previews stay within the assigned company', () => {
-  const bento = source('src/components/site/home/BentoGridSection.tsx');
-  const operationalPreview = bento.slice(bento.indexOf('{/* Tile B'), bento.indexOf('{/* Tile D'));
-  const renewalFixtures = [...operationalPreview.matchAll(/bento-toast__title">([^<]+)</gu)].map(
-    ([, title]) => title,
-  );
-  const documentFixtures = [...operationalPreview.matchAll(/bento-docs__name">([^<]+)</gu)].map(
-    ([, name]) => name,
-  );
-
-  assert.ok(operationalPreview.length > 0, 'Expected renewal and document preview fixtures');
-  assert.deepEqual(renewalFixtures, [
-    'Trade license — Acme Trading',
-    'Visa — Sarah Al Marri',
-    'Ejari — Acme Trading',
-  ]);
-  assert.deepEqual(documentFixtures, [
-    'trade_license_acme_2026.pdf',
-    'passport_sarah.png',
-    'moa_acme_trading.pdf',
-    'visa_application_jonas.docx',
-  ]);
 });
 
 test('English and Arabic message trees retain exact keys and ICU variables', () => {

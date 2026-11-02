@@ -144,7 +144,6 @@ describe('About and Contact shared primitive contracts', () => {
       '/mainland',
       '/free-zones',
       '/offshore',
-      '/pro',
     ];
 
     assert.ok(union);

@@ -34,7 +34,7 @@ export function FinalCtaSection() {
         <div className="cta-divider reveal" aria-hidden="true" />
         <p className="cta-secondary reveal">
           {t('proPrompt')}{' '}
-          <Link className="cell__link" href="/pro">
+          <Link className="cell__link" href="/contact?topic=pro-interest">
             {t('proCta')} <span aria-hidden="true">↗</span>
           </Link>
         </p>

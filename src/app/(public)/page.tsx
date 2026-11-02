@@ -1,14 +1,13 @@
 import { buildPublicMetadata } from '@/lib/public-metadata';
+import { ApplyChecklistSection } from '@/components/site/home/ApplyChecklistSection';
 import { EstimatorSection } from '@/components/site/home/EstimatorSection';
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection';
+import { FeatureRowSection } from '@/components/site/home/FeatureRowSection';
 import { FlowSection } from '@/components/site/home/FlowSection';
 import { HeroSection } from '@/components/site/home/HeroSection';
 import { KnowledgeFaqSection } from '@/components/site/home/KnowledgeFaqSection';
 import { ServicesSection } from '@/components/site/home/ServicesSection';
-import { SupportServicesSection } from '@/components/site/home/SupportServicesSection';
 import { TrustBandSection } from '@/components/site/home/TrustBandSection';
-import { TestimonialsSection } from '@/components/site/home/TestimonialsSection';
-import { WhyMandoobSection } from '@/components/site/home/WhyMandoobSection';
 import { EntranceReveal } from '@/components/site/EntranceReveal';
 
 export const metadata = buildPublicMetadata({
@@ -27,9 +26,9 @@ export default function MarketingHomePage() {
       <ServicesSection />
       <FlowSection />
       <EstimatorSection />
-      <SupportServicesSection />
-      <WhyMandoobSection />
-      <TestimonialsSection />
+      <FeatureRowSection variant="confidence" />
+      <ApplyChecklistSection />
+      <FeatureRowSection variant="beyond" />
       <KnowledgeFaqSection />
       <FinalCtaSection />
     </>

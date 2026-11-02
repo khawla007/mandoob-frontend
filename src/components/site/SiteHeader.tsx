@@ -75,6 +75,10 @@ export async function SiteHeader({ contrastMode = 'public' }: SiteHeaderProps = 
   const navLinks: PublicNavLink[] = PUBLIC_NAV_ITEMS.map((item) => ({
     ...item,
     label: tSite(item.id),
+    children:
+      'children' in item
+        ? item.children.map((child) => ({ ...child, label: tSite(child.id) }))
+        : undefined,
   }));
 
   return (
