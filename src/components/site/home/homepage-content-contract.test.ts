@@ -12,9 +12,10 @@ const componentSources = [
   'EstimatorSection.tsx',
   'FlowSection.tsx',
   'FeatureRowSection.tsx',
-  'ApplyChecklistSection.tsx',
+  'TestimonialsSection.tsx',
   'KnowledgeFaqSection.tsx',
   'FinalCtaSection.tsx',
+  'HomeContactStrip.tsx',
 ].map((file) => ({ file, source: readFileSync(join(homeDirectory, file), 'utf8') }));
 const allSource = componentSources.map(({ source }) => source).join('\n');
 const publicTheme = readFileSync(join(process.cwd(), 'src/app/(public)/public-theme.css'), 'utf8');
@@ -212,20 +213,28 @@ describe('homepage claims and CTA contract', () => {
     assert.equal(reducedMotionCards.get('transition'), 'none');
   });
 
-  it('renders the reference feature rows and requirements checklist from localized copy', () => {
-    const featureRow =
-      componentSources.find(({ file }) => file === 'FeatureRowSection.tsx')?.source ?? '';
-    const checklist =
-      componentSources.find(({ file }) => file === 'ApplyChecklistSection.tsx')?.source ?? '';
+  it('renders the reference feature rows, testimonials and contact strip from localized copy', () => {
+    const source = (file: string) =>
+      componentSources.find((entry) => entry.file === file)?.source ?? '';
+    const featureRow = source('FeatureRowSection.tsx');
+    const testimonials = source('TestimonialsSection.tsx');
+    const contactStrip = source('HomeContactStrip.tsx');
 
     assert.match(featureRow, /confidence:/u);
     assert.match(featureRow, /beyond:/u);
+    assert.match(featureRow, /layout: 'cards'/u);
+    assert.match(featureRow, /layout: 'inline'/u);
     assert.match(featureRow, /getTranslations\(`home\.\$\{variant\}`\)/u);
-    assert.match(featureRow, /className="home-feature-row"/u);
-    assert.match(checklist, /getTranslations\('home\.applyChecklist'\)/u);
-    assert.match(checklist, /href="\/apply"/u);
-    assert.match(checklist, /alt=\{t\('imageAlt'\)\}/u);
-    assert.doesNotMatch(allSource, /WhyMandoobSection|TestimonialsSection|SupportServicesSection/u);
+    assert.match(featureRow, /home-feature-row home-feature-row--\$\{layout\}/u);
+    assert.match(testimonials, /useTranslations\('home\.testimonials'\)/u);
+    assert.match(testimonials, /Placeholder testimonials/u);
+    assert.match(contactStrip, /getTranslations\('home\.contactStrip'\)/u);
+    assert.match(contactStrip, /href="\/apply"/u);
+    assert.match(contactStrip, /rel="noopener noreferrer"/u);
+    assert.doesNotMatch(
+      allSource,
+      /ApplyChecklistSection|WhyMandoobSection|SupportServicesSection/u,
+    );
   });
 
   it('uses explicit catalog suffixes for setup-card facts', () => {

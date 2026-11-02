@@ -68,7 +68,11 @@ describe('homepage responsive and accessibility contract', () => {
     );
     assert.match(
       css,
-      /\.site-public \.home-apply-card\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1fr\)/u,
+      /\.site-public \.home-contact-strip__card\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,/u,
+    );
+    assert.match(
+      css,
+      /\.site-public \.home-testimonials__track\s*\{[\s\S]*?grid-auto-flow:\s*column/u,
     );
   });
 
@@ -154,7 +158,7 @@ describe('homepage responsive and accessibility contract', () => {
     );
     assert.match(
       css,
-      /@media \(max-width:\s*767px\)[\s\S]*?\.site-public \.home-apply-card\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
+      /@media \(max-width:\s*899px\)[\s\S]*?\.site-public \.home-contact-strip__card\s*\{[\s\S]*?grid-template-columns:\s*1fr/u,
     );
   });
 });

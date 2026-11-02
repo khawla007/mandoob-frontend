@@ -1,12 +1,13 @@
 import { buildPublicMetadata } from '@/lib/public-metadata';
-import { ApplyChecklistSection } from '@/components/site/home/ApplyChecklistSection';
 import { EstimatorSection } from '@/components/site/home/EstimatorSection';
 import { FinalCtaSection } from '@/components/site/home/FinalCtaSection';
 import { FeatureRowSection } from '@/components/site/home/FeatureRowSection';
 import { FlowSection } from '@/components/site/home/FlowSection';
 import { HeroSection } from '@/components/site/home/HeroSection';
+import { HomeContactStrip } from '@/components/site/home/HomeContactStrip';
 import { KnowledgeFaqSection } from '@/components/site/home/KnowledgeFaqSection';
 import { ServicesSection } from '@/components/site/home/ServicesSection';
+import { TestimonialsSection } from '@/components/site/home/TestimonialsSection';
 import { TrustBandSection } from '@/components/site/home/TrustBandSection';
 import { EntranceReveal } from '@/components/site/EntranceReveal';
 
@@ -27,10 +28,11 @@ export default function MarketingHomePage() {
       <FlowSection />
       <EstimatorSection />
       <FeatureRowSection variant="confidence" />
-      <ApplyChecklistSection />
       <FeatureRowSection variant="beyond" />
+      <TestimonialsSection />
       <KnowledgeFaqSection />
       <FinalCtaSection />
+      <HomeContactStrip />
     </>
   );
 }

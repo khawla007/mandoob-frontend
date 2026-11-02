@@ -15,6 +15,7 @@ import type { CSSProperties } from 'react';
 const SECTIONS = {
   confidence: {
     id: 'confidence',
+    layout: 'cards',
     items: [
       ['costs', ReceiptText],
       ['checklist', ClipboardCheck],
@@ -24,6 +25,7 @@ const SECTIONS = {
   },
   beyond: {
     id: 'beyond',
+    layout: 'inline',
     items: [
       ['tracking', MonitorCheck],
       ['documents', FolderOpen],
@@ -33,16 +35,23 @@ const SECTIONS = {
   },
 } as const satisfies Record<
   string,
-  { id: string; items: readonly (readonly [string, LucideIcon])[] }
+  {
+    id: string;
+    layout: 'cards' | 'inline';
+    items: readonly (readonly [string, LucideIcon])[];
+  }
 >;
 
 type FeatureRowSectionProps = {
   variant: keyof typeof SECTIONS;
 };
 
-/** Centered heading followed by a four-up icon + copy row (homepage reference layout). */
+/**
+ * Centered heading followed by four icon + copy items. `cards` renders bordered,
+ * centered cards; `inline` renders a compact icon-beside-copy row.
+ */
 export async function FeatureRowSection({ variant }: FeatureRowSectionProps) {
-  const { id, items } = SECTIONS[variant];
+  const { id, layout, items } = SECTIONS[variant];
   const t = await getTranslations(`home.${variant}`);
   const headingId = `home-${id}-h`;
 
@@ -55,7 +64,11 @@ export async function FeatureRowSection({ variant }: FeatureRowSectionProps) {
         <h2 id={headingId} className="home-section-title home-feature-row-section__title reveal">
           {t('title')}
         </h2>
-        <ul className="home-feature-row" role="list" data-reveal-cards>
+        <ul
+          className={`home-feature-row home-feature-row--${layout}`}
+          role="list"
+          data-reveal-cards
+        >
           {items.map(([key, Icon], index) => (
             <li className="reveal" key={key} style={{ '--reveal-i': index } as CSSProperties}>
               <span className={`home-icon-medallion home-icon-medallion--${index + 1}`}>

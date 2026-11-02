@@ -58,26 +58,26 @@ describe('homepage localization contract', () => {
     }
   });
 
-  it('defines the reference feature-row and checklist copy in both catalogs', () => {
+  it('defines the reference feature-row, testimonial and contact copy in both catalogs', () => {
     for (const catalog of [en, ar]) {
       const home = (catalog as Catalog).home;
       for (const path of [
         'confidence.title',
         'confidence.costsTitle',
         'confidence.supportText',
-        'applyChecklist.title',
-        'applyChecklist.passport',
-        'applyChecklist.office',
-        'applyChecklist.cta',
-        'applyChecklist.imageAlt',
         'beyond.title',
         'beyond.trackingTitle',
         'beyond.proText',
+        'testimonials.title',
+        'testimonials.item1Quote',
+        'contactStrip.readyTitle',
+        'contactStrip.callLabel',
+        'knowledge.card1Tag',
       ]) {
         assert.equal(typeof valueAt(home, path), 'string', path);
       }
       assert.equal(valueAt(home, 'why'), undefined);
-      assert.equal(valueAt(home, 'testimonials'), undefined);
+      assert.equal(valueAt(home, 'applyChecklist'), undefined);
     }
   });
 });

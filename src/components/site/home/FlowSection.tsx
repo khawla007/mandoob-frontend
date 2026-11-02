@@ -25,8 +25,8 @@ export async function FlowSection() {
           {STEPS.map(([key, Icon], index) => (
             <li className="reveal" key={key} style={{ '--reveal-i': index } as CSSProperties}>
               <span className="home-flow-row__number mono">0{index + 1}</span>
-              <Icon aria-hidden="true" />
               <div>
+                <Icon aria-hidden="true" />
                 <h3>{t(`${key}Title`)}</h3>
                 <p>{t(`${key}Text`)}</p>
               </div>

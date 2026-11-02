@@ -98,7 +98,8 @@ describe('About composition and Contact route shell', () => {
     assert.match(contactBodySource, /href:\s*['"]\/estimate['"]/u);
     for (const source of [aboutBodySource, contactBodySource]) {
       const heroStart = source.indexOf('<PageScenicHero');
-      const heroEnd = source.indexOf('<RaisedInfoStrip');
+      // Hero ends at the next page region: a section (About) or the info strip (Contact).
+      const heroEnd = heroStart + source.slice(heroStart).search(/<(?:section|RaisedInfoStrip)\b/u);
       assert.ok(heroStart > 0);
       assert.ok(heroEnd > heroStart);
       assert.doesNotMatch(source.slice(heroStart, heroEnd), /primaryCta|secondaryCta/u);
@@ -126,7 +127,12 @@ describe('About composition and Contact route shell', () => {
   });
 
   it('publishes no unsupported proof, timing, fine, guarantee, or sample contact claims', () => {
-    const allRouteSource = [aboutSource, aboutBodySource, contactSource, contactBodySource].join(
+    // Copy approved verbatim from docs/mandoob pages/About.png is exempt.
+    const approvedAboutCopy = aboutBodySource.replace(
+      'Get an instant cost estimate based on your requirements.',
+      '',
+    );
+    const allRouteSource = [aboutSource, approvedAboutCopy, contactSource, contactBodySource].join(
       '\n',
     );
     const unsupported = [
