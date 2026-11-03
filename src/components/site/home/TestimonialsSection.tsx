@@ -39,9 +39,13 @@ export function TestimonialsSection() {
   return (
     <section className="home-testimonials-section" aria-labelledby="testimonials-h">
       <div className="container">
-        <h2 id="testimonials-h" className="home-section-title home-testimonials__title reveal">
-          {t('title')}
-        </h2>
+        <header className="home-centered-head reveal">
+          <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
+          <h2 id="testimonials-h" className="home-section-title home-testimonials__title">
+            {t('title')}
+          </h2>
+          <p>{t('lede')}</p>
+        </header>
         <div className="home-testimonials">
           <button
             type="button"

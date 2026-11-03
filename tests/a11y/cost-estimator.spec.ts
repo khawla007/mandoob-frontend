@@ -58,6 +58,10 @@ test('pending and successful estimate states remain accessible', async ({ page }
   });
   await page.goto('/estimate', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Restore' }).click();
+  await page
+    .getByRole('navigation', { name: 'Estimator steps' })
+    .getByRole('button', { name: /Review estimate/u })
+    .click();
   await page.getByRole('button', { name: 'Calculate indicative estimate' }).click();
   await expect(page.getByText('Calculating your indicative estimate…')).toBeVisible();
 

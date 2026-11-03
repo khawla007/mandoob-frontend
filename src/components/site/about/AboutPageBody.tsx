@@ -237,9 +237,9 @@ export function AboutPageBody() {
       <section className="about-page__values" aria-labelledby="about-values-title">
         <div className="container">
           <header className="about-page__section-heading about-page__section-heading--centered">
-            <h2 id="about-values-title" className="eyebrow eyebrow--accent">
-              Our values
-            </h2>
+            <span className="eyebrow eyebrow--accent">Our values</span>
+            <h2 id="about-values-title">What We Stand For</h2>
+            <p>The principles behind every client interaction.</p>
           </header>
           <ul className="about-page__values-list">
             {values.map((value) => (
@@ -262,6 +262,7 @@ export function AboutPageBody() {
           <header className="about-page__section-heading about-page__section-heading--centered">
             <span className="eyebrow eyebrow--accent">Our process</span>
             <h2 id="about-process-title">A Simple Process. End-to-End Support.</h2>
+            <p>From your first estimate to your first customer.</p>
           </header>
           <ol className="about-page__process-list">
             {processSteps.map((step, index) => (
@@ -283,7 +284,7 @@ export function AboutPageBody() {
         <div className="container">
           <div className="about-page__team-card">
             <header className="about-page__section-heading about-page__section-heading--centered">
-              <span className="eyebrow eyebrow--accent">Meet our team</span>
+              <span className="eyebrow eyebrow--accent">Meet our leadership</span>
               <h2 id="about-team-title">Experienced. Dedicated. Here for You.</h2>
             </header>
             <ul className="about-page__team-list">

@@ -1,12 +1,16 @@
 import {
-  CalendarClock,
-  ClipboardCheck,
+  BadgePercent,
+  Building2,
+  ClipboardList,
   Clock3,
-  FolderOpen,
   Headset,
+  IdCard,
+  Landmark,
   MonitorCheck,
+  RefreshCw,
   ReceiptText,
-  UserRoundCheck,
+  ShieldCheck,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
@@ -17,20 +21,25 @@ const SECTIONS = {
     id: 'confidence',
     layout: 'cards',
     items: [
-      ['costs', ReceiptText],
-      ['checklist', ClipboardCheck],
-      ['timelines', Clock3],
-      ['support', Headset],
+      ['setup', Building2],
+      ['pro', ClipboardList],
+      ['bank', Landmark],
+      ['vat', BadgePercent],
+      ['visa', IdCard],
+      ['renewal', RefreshCw],
+      ['guidance', Headset],
     ],
   },
   beyond: {
     id: 'beyond',
     layout: 'inline',
     items: [
-      ['tracking', MonitorCheck],
-      ['documents', FolderOpen],
-      ['renewals', CalendarClock],
-      ['pro', UserRoundCheck],
+      ['expert', UsersRound],
+      ['pricing', ReceiptText],
+      ['support', Headset],
+      ['fast', Clock3],
+      ['online', MonitorCheck],
+      ['secure', ShieldCheck],
     ],
   },
 } as const satisfies Record<
@@ -47,8 +56,9 @@ type FeatureRowSectionProps = {
 };
 
 /**
- * Centered heading followed by four icon + copy items. `cards` renders bordered,
- * centered cards; `inline` renders a compact icon-beside-copy row.
+ * Centered eyebrow/heading/lede followed by icon + copy items. `cards` renders a
+ * seven-up strip of bordered, centered tiles; `inline` renders a 3-column
+ * icon-beside-copy grid.
  */
 export async function FeatureRowSection({ variant }: FeatureRowSectionProps) {
   const { id, layout, items } = SECTIONS[variant];
@@ -61,9 +71,13 @@ export async function FeatureRowSection({ variant }: FeatureRowSectionProps) {
       aria-labelledby={headingId}
     >
       <div className="container">
-        <h2 id={headingId} className="home-section-title home-feature-row-section__title reveal">
-          {t('title')}
-        </h2>
+        <header className="home-centered-head reveal">
+          <span className="eyebrow eyebrow--accent">{t('eyebrow')}</span>
+          <h2 id={headingId} className="home-section-title home-feature-row-section__title">
+            {t('title')}
+          </h2>
+          <p>{t('lede')}</p>
+        </header>
         <ul
           className={`home-feature-row home-feature-row--${layout}`}
           role="list"

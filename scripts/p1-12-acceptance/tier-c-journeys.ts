@@ -87,7 +87,8 @@ async function prepareContact(page: Page, unavailable: boolean): Promise<void> {
 }
 
 async function prepareEstimatorResult(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Calculate indicative estimate' }).click();
+  // Calculate only appears on the final Review step; Next Step validates each step.
+  await page.getByRole('button', { name: 'Next Step' }).click();
   await expect(page.locator('#estimate-jurisdiction-error')).not.toBeEmpty();
   await expect(page.locator('#estimate-jurisdiction')).toBeFocused();
 
@@ -97,7 +98,7 @@ async function prepareEstimatorResult(page: Page): Promise<void> {
   await settleReactUpdate(page);
   // The estimator is a one-step-at-a-time wizard; advance after each field.
   const nextStep = async () => {
-    await page.getByRole('button', { name: 'Next step' }).click();
+    await page.getByRole('button', { name: 'Next Step' }).click();
     await settleReactUpdate(page);
   };
   await nextStep();
@@ -121,12 +122,14 @@ async function prepareEstimatorResult(page: Page): Promise<void> {
   await office.check();
   await expect(office.locator('..')).toHaveAttribute('data-selected', 'true');
   await settleReactUpdate(page);
+  await nextStep(); // office -> add-ons
+  await nextStep(); // add-ons -> review
 
   await page.getByRole('button', { name: 'Calculate indicative estimate' }).click();
   await expect(page.locator('.estimator-result')).toBeVisible();
   await expect(page.locator('#estimate-result-heading')).toBeFocused();
 
-  await page.getByRole('button', { name: 'Save locally' }).click();
+  await page.getByRole('button', { name: 'Save Estimate' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved on this device' })).toBeVisible();
   expect(
     await page.evaluate(() => window.localStorage.getItem('mandoob.estimator.draft')),

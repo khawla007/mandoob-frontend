@@ -1,5 +1,4 @@
 import 'server-only';
-import { Mail, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { getAuthoritativeSessionProfile } from '@/lib/auth/require-role';
@@ -83,30 +82,6 @@ export async function SiteHeader({ contrastMode = 'public' }: SiteHeaderProps = 
 
   return (
     <PublicHeaderFrame>
-      <div className="public-topbar">
-        <div className="public-topbar__clip">
-          <div className="public-topbar__inner container">
-            <p className="public-topbar__tagline">{tSite('footer.description')}</p>
-            <address className="public-topbar__contacts">
-              <a
-                href="mailto:hello@mandoob.ae"
-                aria-label={tSite('contactEmailLabel', { email: 'hello@mandoob.ae' })}
-              >
-                <Mail size={13} strokeWidth={1.8} aria-hidden="true" />
-                <bdi>hello@mandoob.ae</bdi>
-              </a>
-              <span className="public-topbar__separator" aria-hidden="true" />
-              <a
-                href="tel:+97145550123"
-                aria-label={tSite('contactPhoneLabel', { phone: '+971 4 555 0123' })}
-              >
-                <Phone size={13} strokeWidth={1.8} aria-hidden="true" />
-                <bdi>+971 4 555 0123</bdi>
-              </a>
-            </address>
-          </div>
-        </div>
-      </div>
       <div className="nav" data-route-progress-anchor>
         <div className="nav__inner container">
           <Link href="/" className="nav__brand" aria-label={tSite('brandHome')}>
@@ -134,7 +109,7 @@ export async function SiteHeader({ contrastMode = 'public' }: SiteHeaderProps = 
                 workspaceSlug={workspaceSlug}
               />
             ) : (
-              <Link className="link-muted" href="/login">
+              <Link className="btn btn--outline btn--sm nav__signin" href="/login">
                 {tAuth('signIn')}
               </Link>
             )}

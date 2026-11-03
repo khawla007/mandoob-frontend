@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { isPublicNavCurrent, type PublicNavLink } from './public-navigation';
 import { PublicLinkPendingIndicator } from './PublicLinkPendingIndicator';
 
@@ -66,6 +66,9 @@ function NavDropdown({ link, pathname, onNavigate }: NavGroupProps) {
         <ChevronDown size={14} strokeWidth={2} aria-hidden="true" />
       </button>
       <ul id={menuId} className="nav-dropdown__menu" hidden={!open}>
+        <li className="nav-dropdown__title" role="presentation" aria-hidden="true">
+          {link.label}
+        </li>
         {link.children.map((child) => (
           <li key={child.id}>
             <Link
@@ -76,6 +79,7 @@ function NavDropdown({ link, pathname, onNavigate }: NavGroupProps) {
                 onNavigate?.();
               }}
             >
+              <ChevronRight className="nav-dropdown__chevron" size={14} aria-hidden="true" />
               {child.label}
               <PublicLinkPendingIndicator />
             </Link>

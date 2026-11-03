@@ -8,8 +8,11 @@ import {
   Building2,
   Check,
   ChevronDown,
+  Clock3,
   CircleAlert,
+  FileCheck2,
   FileDown,
+  FileText,
   FilePenLine,
   Globe2,
   Headset,
@@ -20,7 +23,6 @@ import {
   Minus,
   Plus,
   RotateCcw,
-  Save,
   ShieldCheck,
   Store,
   X,
@@ -70,6 +72,19 @@ const STEPS = [
 ] as const;
 
 const LAST_STEP = STEPS.length;
+
+/** Inclusions listed in the summary card (design HTML copy). */
+const ESTIMATE_INCLUSIONS = [
+  'Company registration',
+  'Trade licence',
+  'Memorandum of Association',
+  'Lease agreement (Ejari)',
+  'Establishment card',
+  'PRO services',
+  'Investor visa processing',
+  'Bank account assistance',
+  'VAT registration',
+] as const;
 
 /** Field focused for each validation step (index + 1 = step). */
 const STEP_FIELDS = [
@@ -353,6 +368,19 @@ function ReadyEstimator({
     selectedLabel(catalog.legalStructures, draft.legalStructureId),
   ].filter((item): item is string => Boolean(item));
   const oneTimeItems = result?.lineItems.filter((item) => item.recurrence === 'one_time');
+  const stepSelections = [
+    selectedLabel(catalog.jurisdictions, draft.jurisdiction),
+    authority?.label,
+    selectedLabel(catalog.activities, draft.activityId),
+    selectedLabel(catalog.legalStructures, draft.legalStructureId),
+    draft.shareholderCount || undefined,
+    draft.visaCount || undefined,
+    selectedLabel(catalog.officeTypes, draft.officeTypeId),
+    draft.addOnIds.length
+      ? draft.addOnIds.map((id) => selectedLabel(catalog.addOns, id) ?? id).join(', ')
+      : undefined,
+    result ? 'Estimate calculated' : undefined,
+  ];
 
   return (
     <section
@@ -363,14 +391,6 @@ function ReadyEstimator({
       <div className="container">
         <div className="estimator-layout">
           <div className="estimator-main">
-            <div className="estimator-source-notice" role="note">
-              <Info aria-hidden="true" />
-              <div>
-                <strong>{catalog.sourceLabel}</strong>
-                <p>{catalog.sourceContext}</p>
-              </div>
-            </div>
-
             {restoreCandidate ? (
               <div className="estimator-restore" role="status">
                 <div>
@@ -412,7 +432,7 @@ function ReadyEstimator({
 
             <div className="estimator-card">
               <header className="estimator-card__head">
-                <h2 id="estimator-workspace-title">Estimate your business setup cost</h2>
+                <h2 id="estimator-workspace-title">Estimate Your Business Setup Cost</h2>
                 <span aria-live="polite">
                   Step {currentStep} of {LAST_STEP}
                 </span>
@@ -479,10 +499,22 @@ function ReadyEstimator({
                     data-step-state={stepStates[currentStep - 1]}
                     aria-labelledby={`estimate-section-${activeStep.id}-heading`}
                   >
+                    <p className="estimator-step-notice">
+                      <Info aria-hidden="true" />
+                      <span>
+                        {currentStep === 1
+                          ? 'Select your jurisdiction to get started'
+                          : `${activeStep.hint} to continue`}
+                      </span>
+                    </p>
                     <h3 id={`estimate-section-${activeStep.id}-heading`} tabIndex={-1}>
                       {currentStep}. {activeStep.label}
                     </h3>
-                    <p className="estimator-section__hint">{activeStep.hint}.</p>
+                    <p className="estimator-section__hint">
+                      {currentStep === 1
+                        ? 'Select the type of company you want to set up in the UAE.'
+                        : 'Update this step, then continue to the next section.'}
+                    </p>
 
                     {currentStep === 1 ? (
                       <fieldset
@@ -511,6 +543,17 @@ function ReadyEstimator({
                         </div>
                         <FieldError errors={errors} fieldId="estimate-jurisdiction" />
                       </fieldset>
+                    ) : null}
+                    {currentStep === 1 ? (
+                      <p className="estimator-compare-notice">
+                        <Info aria-hidden="true" />
+                        <span>
+                          Not sure which jurisdiction is right for you?{' '}
+                          <Link href="/business-registration">
+                            Compare Jurisdictions <ArrowRight aria-hidden="true" />
+                          </Link>
+                        </span>
+                      </p>
                     ) : null}
 
                     {currentStep === 2 ? (
@@ -730,20 +773,21 @@ function ReadyEstimator({
                       </button>
                     ) : null}
                     <span className="estimator-form__spacer" />
-                    <button
-                      type="submit"
-                      className={`btn ${currentStep === LAST_STEP ? 'btn--accent' : 'btn--outline'}`}
-                      disabled={calculateState.status === 'pending'}
-                    >
-                      {calculateState.status === 'pending'
-                        ? 'Calculating…'
-                        : 'Calculate indicative estimate'}
-                    </button>
-                    {currentStep < LAST_STEP ? (
-                      <button type="button" className="btn btn--accent" onClick={nextStep}>
-                        Next step <ArrowRight aria-hidden="true" />
+                    {currentStep === LAST_STEP ? (
+                      <button
+                        type="submit"
+                        className="btn btn--accent"
+                        disabled={calculateState.status === 'pending'}
+                      >
+                        {calculateState.status === 'pending'
+                          ? 'Calculating…'
+                          : 'Calculate indicative estimate'}
                       </button>
-                    ) : null}
+                    ) : (
+                      <button type="button" className="btn btn--accent" onClick={nextStep}>
+                        Next Step <ArrowRight aria-hidden="true" />
+                      </button>
+                    )}
                   </div>
                   {calculateState.message ? (
                     <p
@@ -754,6 +798,55 @@ function ReadyEstimator({
                       {calculateState.message}
                     </p>
                   ) : null}
+
+                  <ol className="estimator-accordion" aria-label="All estimator steps">
+                    {STEPS.map((step, index) => {
+                      const open = index + 1 === currentStep;
+                      return (
+                        <li
+                          key={step.id}
+                          className="estimator-accordion__item"
+                          data-open={open ? 'true' : undefined}
+                        >
+                          <button
+                            type="button"
+                            className="estimator-accordion__trigger"
+                            aria-expanded={open}
+                            aria-controls={`estimator-accordion-${step.id}`}
+                            onClick={() => goToStep(index + 1)}
+                          >
+                            <span className="estimator-accordion__num" aria-hidden="true">
+                              {index + 1}
+                            </span>
+                            <span className="estimator-accordion__text">
+                              <strong>
+                                {index + 1}. {step.label}
+                              </strong>
+                              <small>{step.hint}</small>
+                            </span>
+                            <ChevronDown aria-hidden="true" />
+                          </button>
+                          <div
+                            id={`estimator-accordion-${step.id}`}
+                            className="estimator-accordion__panel"
+                            role="region"
+                            aria-label={step.label}
+                          >
+                            <div className="estimator-accordion__body">
+                              {open ? (
+                                'This step is currently open above.'
+                              ) : (
+                                <>
+                                  Your selection:{' '}
+                                  <strong>{stepSelections[index] ?? 'Not selected'}</strong>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
                 </form>
               </div>
             </div>
@@ -770,11 +863,8 @@ function ReadyEstimator({
               <div className="estimator-summary-card__head">
                 <div>
                   <h2 id="estimate-result-heading" ref={resultHeadingRef} tabIndex={-1}>
-                    Your estimated cost
+                    Your Estimated Cost
                   </h2>
-                  <p className="estimator-summary-card__meta">
-                    {summaryMeta.length ? summaryMeta.join(' · ') : 'No selections yet'}
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -787,7 +877,10 @@ function ReadyEstimator({
 
               <div className="estimator-summary-card__total">
                 <strong>{result ? formatAed(result.oneTimeTotalMinor) : 'AED —'}</strong>
-                <span>Total one-time setup cost (indicative)</span>
+                <span>Total One-time Setup Cost</span>
+                <p className="estimator-summary-card__meta">
+                  {summaryMeta.length ? summaryMeta.join(' • ') : 'No selections yet'}
+                </p>
                 {result ? null : <small>Complete the steps and calculate to see your total.</small>}
               </div>
 
@@ -795,7 +888,10 @@ function ReadyEstimator({
                 <dl className="estimator-summary-card__items">
                   {oneTimeItems.map((item) => (
                     <div key={item.id}>
-                      <dt>{item.label}</dt>
+                      <dt>
+                        <FileText aria-hidden="true" />
+                        {item.label}
+                      </dt>
                       <dd>{formatAed(item.totalMinor)}</dd>
                     </div>
                   ))}
@@ -805,26 +901,29 @@ function ReadyEstimator({
               )}
 
               <div className="estimator-summary-card__recurring">
-                <span>Annual recurring cost</span>
+                <span>Annual Recurring Cost</span>
                 <strong>
                   {result ? formatAed(result.annualTotalMinor) : 'AED —'}
-                  <small> / year</small>
+                  <small> / Year</small>
                 </strong>
               </div>
 
-              <div className="estimator-summary-card__timeline">
-                <span>Indicative timeline</span>
-                <strong>
-                  {result?.timelineDays
-                    ? `${result.timelineDays.min}–${result.timelineDays.max} working days`
-                    : 'Shown after calculation'}
-                </strong>
-              </div>
+              <p className="estimator-summary-card__timeline">
+                <Clock3 aria-hidden="true" />
+                <span>
+                  Estimated Timeline:{' '}
+                  <strong>
+                    {result?.timelineDays
+                      ? `${result.timelineDays.min} – ${result.timelineDays.max} Working Days`
+                      : 'shown after calculation'}
+                  </strong>
+                </span>
+              </p>
 
               <div className="estimator-summary-card__included">
-                <h3>What&apos;s included in the estimate?</h3>
+                <h3>What&apos;s Included in This Estimate?</h3>
                 <ul className="estimator-check-list">
-                  {catalog.inclusions.map((item) => (
+                  {ESTIMATE_INCLUSIONS.map((item) => (
                     <li key={item}>
                       <Check aria-hidden="true" />
                       {item}
@@ -838,16 +937,16 @@ function ReadyEstimator({
                   className="btn btn--accent"
                   href={result ? buildEstimatorApplyHref(result) : '/apply'}
                 >
-                  Start your registration
+                  Start Registration <ArrowRight aria-hidden="true" />
                 </Link>
-                <small>Proceed to fill in your requirements.</small>
+                <small>Priced to fit your requirements</small>
                 <button
                   type="button"
                   className="btn btn--outline"
                   onClick={saveDraft}
                   disabled={storageState.status === 'pending'}
                 >
-                  <Save aria-hidden="true" /> Save locally
+                  <FileCheck2 aria-hidden="true" /> Save Estimate
                 </button>
                 <div className="estimator-summary-card__links">
                   <button ref={resetTriggerRef} type="button" onClick={() => setResetOpen(true)}>

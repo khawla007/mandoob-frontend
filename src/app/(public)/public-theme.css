@@ -435,7 +435,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  block-size: 96px;
+  block-size: auto;
   background: transparent;
   pointer-events: none;
 }
@@ -13381,5 +13381,1066 @@
   }
   .site-public .offshore-jurisdiction:hover {
     transform: none;
+  }
+}
+
+/* ---------- Home layout redesign (updated design HTML, 2026-11) ----------
+   Layout-only: flow steps as cards. Typography tokens untouched. */
+/* Flow: each step becomes a bordered card — number top-start, icon top-end. */
+.site-public .home-flow-row {
+  gap: var(--sp-4);
+}
+.site-public .home-flow-row li {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+  background: var(--paper);
+}
+.site-public .home-flow-row li:not(:last-child)::after {
+  content: none;
+}
+.site-public .home-flow-row li > div > svg {
+  position: absolute;
+  top: var(--sp-4);
+  inset-inline-end: var(--sp-4);
+  margin: 0;
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .site-public .home-flow-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .site-public .home-flow-row li {
+    padding: var(--sp-4);
+  }
+  .site-public .home-flow-row li:not(:last-child)::after {
+    content: none;
+  }
+}
+
+/* Home sections that follow the updated design HTML: services strip (7 tiles),
+   why-choose grid (3 x 2), testimonials and FAQ with eyebrow + lede heads. */
+.site-public .home-feature-row-section .home-centered-head,
+.site-public .home-testimonials-section .home-centered-head {
+  margin-bottom: 26px;
+}
+.site-public .home-feature-row-section .home-feature-row-section__title,
+.site-public .home-testimonials-section .home-testimonials__title {
+  margin-bottom: 0;
+}
+.site-public .home-feature-row-section--confidence,
+.site-public .home-testimonials-section {
+  background: var(--public-surface);
+}
+.site-public .home-feature-row.home-feature-row--cards {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.site-public .home-feature-row.home-feature-row--cards li {
+  padding: var(--sp-4) var(--sp-3);
+}
+.site-public .home-feature-row.home-feature-row--inline {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4) var(--sp-5);
+}
+.site-public .home-feature-row.home-feature-row--inline li {
+  padding-inline: 0;
+}
+@media (max-width: 1199px) {
+  .site-public .home-feature-row.home-feature-row--cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1023px) {
+  .site-public .home-feature-row.home-feature-row--inline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .site-public .home-feature-row.home-feature-row--cards,
+  .site-public .home-feature-row.home-feature-row--inline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 479px) {
+  .site-public .home-feature-row.home-feature-row--inline {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Testimonials (design HTML): arrows sit top-end above the track; each card
+   stacks avatar + name/role, then stars, then the quote. */
+.site-public .home-testimonials {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  row-gap: var(--sp-3);
+  column-gap: var(--sp-2);
+}
+.site-public .home-testimonials > .home-testimonials__nav:first-child {
+  grid-row: 1;
+  grid-column: 2;
+}
+.site-public .home-testimonials > .home-testimonials__nav:last-child {
+  grid-row: 1;
+  grid-column: 3;
+}
+.site-public .home-testimonials > .home-testimonials__track {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+.site-public .home-testimonial {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'avatar caption'
+    'stars stars'
+    'quote quote';
+  align-items: center;
+  column-gap: var(--sp-3);
+  row-gap: 0;
+  padding: var(--sp-4);
+}
+.site-public .home-testimonial figure {
+  display: contents;
+}
+.site-public .home-testimonial__avatar {
+  grid-area: avatar;
+  width: 48px;
+  height: 48px;
+}
+.site-public .home-testimonial figcaption {
+  grid-area: caption;
+}
+.site-public .home-testimonial figcaption span {
+  display: block;
+  margin-top: 4px;
+}
+.site-public .home-testimonial__stars {
+  grid-area: stars;
+  margin-block: var(--sp-3) 12px;
+}
+.site-public .home-testimonial blockquote {
+  grid-area: quote;
+  font-style: italic;
+}
+@media (min-width: 1024px) {
+  .site-public .home-testimonials {
+    margin-top: calc(-40px - var(--sp-3));
+  }
+}
+@media (max-width: 767px) {
+  .site-public .home-testimonials {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Header (design HTML): links sit right after the brand, the active item is
+   underlined on the header's bottom edge, dropdowns carry a small title and
+   chevron-led items, Sign in is an outline button beside the accent CTA. */
+@media (min-width: 1400px) {
+  .site-public .nav__links {
+    align-self: stretch;
+    align-items: stretch;
+  }
+  .site-public .nav__links > div {
+    display: flex;
+    align-items: stretch;
+  }
+  .site-public .nav__links > div > a,
+  .site-public .nav__links .nav-dropdown,
+  .site-public .nav__links .nav-dropdown__trigger {
+    block-size: 100%;
+  }
+}
+.site-public .nav__links > div > a,
+.site-public .nav-dropdown__trigger {
+  padding-inline: 12px;
+  margin-block-end: -1px;
+}
+.site-public .nav__links > div > a[aria-current='page'],
+.site-public .nav-dropdown__trigger[data-current] {
+  font-weight: 600;
+}
+.site-public .nav-dropdown__menu {
+  min-inline-size: 232px;
+  padding: 8px;
+  margin-block-start: -1px;
+}
+.site-public .nav-dropdown__title {
+  padding: 8px 12px 6px;
+  color: var(--zinc-500);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.site-public .nav__links .nav-dropdown__menu a {
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+}
+.site-public .nav-dropdown__chevron {
+  flex: none;
+  color: var(--accent);
+}
+[dir='rtl'] .site-public .nav-dropdown__chevron {
+  transform: scaleX(-1);
+}
+.site-public .nav__cta > .nav__signin {
+  padding-inline: 18px;
+}
+
+/* Supporting pages (PRO Services, Registration Process, Guides, Document
+   Requirements, FAQ) built from the updated design HTML. */
+.site-public .info-page__section {
+  padding-block: clamp(40px, 5vw, 64px);
+}
+.site-public .info-page__hero + .bizreg-section {
+  padding-block: clamp(40px, 5vw, 64px);
+}
+.site-public .info-page__section--soft {
+  background: var(--public-surface);
+}
+.site-public .info-page__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-public .info-page__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: var(--sp-4);
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+}
+.site-public .info-page__card h3 {
+  color: var(--public-text-primary);
+  font-size: var(--fs-15);
+  letter-spacing: -0.02em;
+}
+.site-public .info-page__card > p {
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+  line-height: 1.5;
+}
+.site-public .info-page__card .home-text-link {
+  margin-top: auto;
+}
+.site-public .info-page__checklist {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+}
+.site-public .info-page__checklist li {
+  position: relative;
+  padding-inline-start: 22px;
+}
+.site-public .info-page__checklist li::before {
+  content: '✓';
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+.site-public .info-page__grid-2 .info-page__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 639px) {
+  .site-public .info-page__grid-2 .info-page__grid {
+    grid-template-columns: 1fr;
+  }
+}
+.site-public .info-page__actions {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--sp-5);
+}
+.site-public .info-page__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: var(--sp-4);
+  padding: var(--sp-3);
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface);
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+}
+.site-public .info-page__notice svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+.site-public .info-page__faq-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: var(--sp-5);
+}
+.site-public .info-page__faq-layout .home-faq {
+  margin-top: 0;
+}
+.site-public .info-page__faq-layout .home-faq__grid {
+  grid-template-columns: 1fr;
+}
+.site-public .info-page__aside {
+  display: grid;
+  gap: 12px;
+  padding: var(--sp-4);
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+}
+.site-public .info-page__aside h3 {
+  color: var(--public-text-primary);
+  font-size: var(--fs-15);
+}
+.site-public .info-page__aside h3 + p {
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+}
+.site-public .info-page__aside ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 1023px) {
+  .site-public .info-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .site-public .info-page__faq-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 639px) {
+  .site-public .info-page__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Estimator (design HTML): from 900px the step rail is its own card on the
+   start side; the step header and form form a second card beside it. The
+   "Why use" band loses its box and gains an eyebrow + lede head. */
+@media (min-width: 1100px) {
+  /* Design proportions: rail ~17%, step card ~56%, summary ~24%. */
+  .site-public .estimator-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+@media (min-width: 900px) {
+  .site-public .estimator-card {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    column-gap: 24px; /* matches .estimator-layout gap so both gutters are equal */
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .site-public .estimator-card > .estimator-wizard {
+    display: contents;
+  }
+  .site-public .estimator-card__head {
+    grid-column: 2;
+    grid-row: 1;
+    border: 1px solid var(--public-border-subtle);
+    border-radius: var(--r-md) var(--r-md) 0 0;
+    background: var(--public-surface-elevated);
+  }
+  .site-public .estimator-card .estimator-steps {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
+    overflow: hidden;
+    border: 1px solid var(--public-border-subtle);
+    border-radius: var(--r-md);
+    background: var(--public-surface-elevated);
+    box-shadow: 0 18px 48px color-mix(in srgb, var(--zinc-950) 6%, transparent);
+  }
+  .site-public .estimator-card .estimator-steps button,
+  .site-public .estimator-card .estimator-steps [data-step-state='current'] button {
+    border-inline-start: 0;
+    padding-inline-start: 19px;
+  }
+  .site-public .estimator-card .estimator-form {
+    grid-column: 2;
+    grid-row: 2;
+    border: 1px solid var(--public-border-subtle);
+    border-block-start: 0;
+    border-radius: 0 0 var(--r-md) var(--r-md);
+    background: var(--public-surface-elevated);
+    box-shadow: 0 18px 48px color-mix(in srgb, var(--zinc-950) 6%, transparent);
+  }
+}
+.site-public .estimator-why {
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+}
+.site-public .estimator-why__head {
+  max-width: 760px;
+  margin: 0 auto 28px;
+  text-align: center;
+}
+.site-public .estimator-why__head h2 {
+  margin: 12px 0 0;
+}
+.site-public .estimator-why__head p {
+  margin-top: 12px;
+  color: var(--zinc-600);
+  font-size: var(--fs-14);
+}
+
+/* Estimator step card (design HTML): step notice, compare notice, and a
+   collapsed list of all nine steps that opens smoothly under the form. */
+.site-public .estimator-step-notice,
+.site-public .estimator-compare-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-13);
+}
+.site-public .estimator-step-notice {
+  border: 1px solid color-mix(in srgb, #16a34a 28%, transparent);
+  background: color-mix(in srgb, #16a34a 8%, var(--public-surface-elevated));
+  color: #166534;
+}
+.dark .site-public .estimator-step-notice {
+  color: #86efac;
+}
+.site-public .estimator-compare-notice {
+  background: var(--accent-soft);
+  color: var(--public-text-primary);
+}
+.site-public .estimator-step-notice svg,
+.site-public .estimator-compare-notice > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.site-public .estimator-compare-notice > svg {
+  color: var(--accent);
+}
+.site-public .estimator-compare-notice a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.site-public .estimator-compare-notice a svg {
+  width: 14px;
+  height: 14px;
+}
+.site-public .estimator-accordion {
+  display: grid;
+  margin: 0;
+  padding: 0 clamp(20px, 3vw, 28px) clamp(12px, 2vw, 20px);
+  list-style: none;
+}
+.site-public .estimator-accordion__item {
+  border-block-end: 1px solid var(--public-border-subtle);
+}
+.site-public .estimator-accordion__trigger {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding: 14px 0;
+  border: 0;
+  background: transparent;
+  color: var(--public-text-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.site-public .estimator-accordion__trigger:focus-visible {
+  outline: 3px solid var(--public-focus-ring);
+  outline-offset: 2px;
+}
+.site-public .estimator-accordion__num {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--public-border-subtle);
+  border-radius: 50%;
+  color: var(--public-text-muted);
+  font-size: var(--fs-12);
+  font-weight: 600;
+}
+.site-public .estimator-accordion__text {
+  display: grid;
+  gap: 2px;
+}
+.site-public .estimator-accordion__text strong {
+  font-size: var(--fs-14);
+}
+.site-public .estimator-accordion__text small {
+  color: var(--public-text-muted);
+  font-size: var(--fs-12);
+}
+.site-public .estimator-accordion__trigger > svg {
+  width: 18px;
+  height: 18px;
+  color: var(--public-text-muted);
+  transition: transform var(--dur) var(--ease);
+}
+.site-public .estimator-accordion__item[data-open] .estimator-accordion__trigger > svg {
+  transform: rotate(180deg);
+}
+.site-public .estimator-accordion__item[data-open] .estimator-accordion__num {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.site-public .estimator-accordion__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.site-public .estimator-accordion__item[data-open] .estimator-accordion__panel {
+  grid-template-rows: 1fr;
+}
+.site-public .estimator-accordion__body {
+  min-height: 0;
+  overflow: hidden;
+  padding-inline-start: 42px;
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+}
+.site-public .estimator-accordion__item[data-open] .estimator-accordion__body {
+  padding-block-end: 14px;
+}
+.site-public .estimator-accordion__body strong {
+  color: var(--public-text-primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-public .estimator-accordion__panel,
+  .site-public .estimator-accordion__trigger > svg {
+    transition: none;
+  }
+}
+
+/* Estimator summary (design HTML): meta under the total, icon-led lines,
+   timeline as a tinted pill. */
+.site-public .estimator-summary-card__items dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.site-public .estimator-summary-card__items dt svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+.site-public .estimator-summary-card__total .estimator-summary-card__meta {
+  margin: 4px 0 0;
+}
+.site-public p.estimator-summary-card__timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--public-text-primary);
+  font-size: var(--fs-13);
+}
+.site-public p.estimator-summary-card__timeline span {
+  color: var(--public-text-primary);
+}
+.site-public p.estimator-summary-card__timeline svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+/* Offshore (design HTML): eyebrow heads, soft bands behind benefits and the
+   cost/requirements/timeline row, benefits as a bordered strip of cells, and
+   the process inside a card. Copy stays claim-safe. */
+.site-public .bizreg-head > .eyebrow,
+.site-public .setup-faq__inner .setup-section-heading > .eyebrow {
+  display: block;
+  margin-bottom: 12px;
+}
+.site-public .setup-faq__inner .setup-section-heading > p {
+  margin-top: 10px;
+  color: var(--zinc-600);
+}
+.site-public #offshore-benefits,
+.site-public #offshore-operations {
+  padding-block: clamp(48px, 6vw, 72px);
+  background: var(--public-surface);
+}
+.site-public .offshore-support {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.site-public .offshore-support__grid {
+  overflow: hidden;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+}
+.site-public .offshore-support__grid li {
+  padding: var(--sp-4) var(--sp-3);
+}
+.site-public .offshore-process-card {
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+  box-shadow: 0 10px 28px color-mix(in oklch, var(--zinc-950) 5%, transparent);
+}
+
+/* Offshore bottom sections, matched to the design HTML. */
+.site-public .offshore-jurisdiction__media {
+  aspect-ratio: 16 / 9; /* same ratio as the home blog/knowledge card image */
+  block-size: auto;
+}
+.site-public .offshore-jurisdiction__body {
+  gap: 14px;
+  padding: 20px 20px 18px;
+}
+.site-public .offshore-jurisdiction__head {
+  display: grid;
+  gap: 4px;
+}
+.site-public .offshore-jurisdiction__head h3 {
+  color: var(--accent-ink);
+  letter-spacing: 0.04em;
+}
+.site-public .offshore-jurisdiction__head p {
+  color: var(--public-text-primary);
+  font-weight: 600;
+}
+.site-public .offshore-support__grid li {
+  justify-items: center;
+  gap: 12px;
+  padding: var(--sp-4) var(--sp-3);
+}
+.site-public .offshore-support__grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+@media (max-width: 1199px) {
+  .site-public .offshore-support__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .site-public .offshore-support__grid li:nth-child(4) {
+    border-inline-start: 1px solid var(--pb-border);
+  }
+  .site-public .offshore-support__grid li:nth-child(5) {
+    border-inline-start: 0;
+  }
+}
+@media (max-width: 639px) {
+  .site-public .offshore-support__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .site-public .offshore-support__grid li:nth-child(n) {
+    border-inline-start: 0;
+  }
+}
+.site-public .offshore-support__grid li .bizreg-icon {
+  background: transparent;
+  box-shadow: none;
+}
+.site-public .setup-stepper {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-public .setup-stepper::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 20px;
+  inset-inline: 6%;
+  border-block-start: 1px solid var(--pb-border);
+}
+.site-public .setup-stepper li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.site-public .setup-stepper__num {
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--pb-border);
+  border-radius: 50%;
+  background: var(--public-surface-elevated);
+  box-shadow: 0 0 0 4px var(--public-surface-elevated);
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+  font-weight: 600;
+}
+.site-public .setup-stepper li[data-active] .setup-stepper__num {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  color: #fff;
+}
+.site-public .setup-stepper__label {
+  color: var(--public-text-muted);
+  font-size: var(--fs-13);
+  font-weight: 600;
+}
+.site-public .setup-stepper li[data-active] .setup-stepper__label {
+  color: var(--accent-ink);
+}
+@media (max-width: 767px) {
+  .site-public .setup-stepper {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .site-public .setup-stepper::before {
+    content: none;
+  }
+  .site-public .setup-stepper li {
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+    align-items: center;
+    text-align: start;
+  }
+}
+.site-public .offshore-rows dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.site-public .offshore-rows dt svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+.site-public .offshore-rows--timeline > li {
+  padding-block: 14px;
+  border-bottom-style: dashed;
+}
+.site-public .offshore-rows--timeline li > span:nth-child(2) {
+  flex: none;
+  color: var(--public-text-primary);
+  font-weight: 600;
+}
+.site-public .offshore-rows--timeline li > span:first-child {
+  flex: 1;
+  color: var(--zinc-700);
+}
+.site-public .offshore-rows--timeline [data-optional] > span:first-child {
+  color: var(--zinc-500);
+}
+.site-public .offshore-panel[aria-labelledby='offshore-requirements-title'] > .btn {
+  margin-top: 4px;
+}
+.site-public .offshore-panel[aria-labelledby='offshore-cost-title'] > .btn {
+  align-self: stretch;
+  justify-content: center;
+}
+/* FAQ (design HTML): soft band, compact two-column cards with a 12px gutter,
+   question and toggle vertically centred. */
+
+.site-public .offshore-faq .setup-faq__inner {
+  max-width: var(--container); /* keep the FAQ inside the page container */
+}
+.site-public .offshore-faq .setup-faq__grid {
+  gap: 12px;
+  align-items: start;
+}
+.site-public .offshore-faq .setup-faq__item summary {
+  align-items: center;
+  padding: 14px 18px;
+}
+.site-public .offshore-faq .setup-faq__item summary::after {
+  line-height: 1;
+}
+.site-public .offshore-faq .setup-faq__item[open] summary {
+  border-bottom: 1px solid var(--pb-border);
+  margin-bottom: 12px;
+}
+
+/* Offshore vertical rhythm: every section below the hero uses the site's
+   section spacing token (same as the home sections), bands alternate
+   white / soft so no two padded bands stack. */
+.site-public .offshore-page {
+  --offshore-section-pad: clamp(38px, 4.5vw, 58px);
+}
+.site-public .offshore-page > #offshore-jurisdictions,
+.site-public .offshore-page > #offshore-benefits,
+.site-public .offshore-page > #offshore-process,
+.site-public .offshore-page > #offshore-operations,
+.site-public .offshore-page > #setup-faq,
+.site-public .offshore-page > #setup-conversion {
+  padding-block: var(--offshore-section-pad);
+}
+.site-public .offshore-page > #setup-faq + #setup-conversion {
+  padding-block-start: 0; /* both white: one section gap, not two */
+}
+@media (max-width: 767px) {
+  .site-public .offshore-page {
+    --offshore-section-pad: 42px;
+  }
+}
+
+/* Mainland (design HTML). Reuses the Offshore hero/panel styles; these rules
+   add the hero badges, emirate and activity cards, license rows, the paired
+   panel rows and the same section rhythm as Offshore. */
+.site-public .mainland-page > #mainland-emirates,
+.site-public .mainland-page > #mainland-activities,
+.site-public .mainland-page > #mainland-license-cost,
+.site-public .mainland-page > #mainland-documents-timeline,
+.site-public .mainland-page > #setup-faq,
+.site-public .mainland-page > #setup-conversion {
+  padding-block: var(--offshore-section-pad);
+}
+.site-public .mainland-page > #mainland-activities,
+.site-public .mainland-page > #mainland-documents-timeline {
+  background: var(--public-surface);
+}
+.site-public .mainland-page > #setup-faq + #setup-conversion {
+  padding-block-start: 0;
+}
+.site-public .mainland-hero__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.site-public .mainland-hero__badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-sm);
+  background: var(--public-surface-elevated);
+  color: var(--public-text-primary);
+  font-size: var(--fs-12);
+  font-weight: 600;
+}
+.site-public .mainland-hero__badges svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+.site-public .mainland-emirates,
+.site-public .mainland-activities {
+  display: grid;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-public .mainland-emirates {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.site-public .mainland-activities {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+.site-public .mainland-emirate,
+.site-public .mainland-activity {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-inline-size: 0;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+  box-shadow: 0 8px 24px rgb(9 9 11 / 5%);
+}
+.site-public .mainland-emirate__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--zinc-100);
+}
+.site-public .mainland-emirate__media img {
+  object-fit: cover;
+}
+.site-public .mainland-emirate__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 12px 16px;
+  text-align: center;
+}
+.site-public .mainland-emirate__body h3 {
+  font-size: var(--fs-14);
+}
+.site-public .mainland-emirate__body p,
+.site-public .mainland-activity p {
+  color: var(--zinc-600);
+  font-size: var(--fs-12);
+  line-height: 1.5;
+}
+.site-public .mainland-emirate__body .bizreg-link,
+.site-public .mainland-activity .bizreg-link {
+  margin-top: auto;
+}
+.site-public .mainland-activity {
+  align-items: flex-start;
+  gap: 12px;
+  padding: var(--sp-4);
+}
+.site-public .mainland-activity h3 {
+  font-size: var(--fs-15);
+}
+.site-public .mainland-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--sp-4);
+}
+.site-public .mainland-licenses {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-public .mainland-licenses li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--pb-border);
+  border-radius: var(--r-md);
+}
+.site-public .mainland-licenses__icon {
+  display: inline-grid;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.site-public .mainland-licenses__icon svg {
+  width: 18px;
+  height: 18px;
+}
+.site-public .mainland-licenses strong {
+  display: block;
+  font-size: var(--fs-14);
+}
+.site-public .mainland-licenses small {
+  color: var(--zinc-600);
+  font-size: var(--fs-12);
+}
+.site-public .offshore-panel > .mainland-cost__cta {
+  align-self: stretch;
+  justify-content: center;
+}
+.site-public .mainland-page .offshore-panel > .btn--outline {
+  margin-top: 4px;
+}
+@media (max-width: 1199px) {
+  .site-public .mainland-emirates {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1023px) {
+  .site-public .mainland-activities,
+  .site-public .mainland-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .site-public .mainland-pair {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 639px) {
+  .site-public .mainland-emirates,
+  .site-public .mainland-activities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .site-public .mainland-activities {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- About layout redesign (updated design HTML, 2026-11) ----------
+   Values become four bordered cards (icon above copy) on a soft band;
+   the shared conversion band becomes a contained rounded card, matching the
+   offshore CTA. Typography untouched. */
+.site-public .about-page__values {
+  padding-block: clamp(40px, 5vw, 64px);
+  background: var(--public-surface);
+}
+.site-public .about-page__values-list {
+  gap: var(--sp-4);
+}
+.site-public .about-page__values-list > li:nth-child(n) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+}
+.site-public .about-page__section-heading > p {
+  max-width: 68ch;
+  margin: 12px auto 0;
+  color: var(--zinc-600);
+  font-size: var(--fs-14);
+}
+/* Team: each function becomes its own bordered card inside the soft panel. */
+.site-public .about-page__team-list {
+  gap: var(--sp-3);
+}
+.site-public .about-page__team-list > li:nth-child(n) {
+  padding: var(--sp-4);
+  border: 1px solid var(--public-border-subtle);
+  border-radius: var(--r-md);
+  background: var(--public-surface-elevated);
+}
+
+.site-public .about-contact-conversion {
+  inline-size: calc(100% - 2 * var(--sp-3));
+  max-inline-size: calc(var(--container) - 2 * var(--gutter));
+  margin: clamp(40px, 5vw, 64px) auto;
+  border-radius: var(--r-md);
+}
+@media (min-width: 768px) {
+  .site-public .about-contact-conversion {
+    inline-size: calc(100% - 2 * var(--gutter));
   }
 }

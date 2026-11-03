@@ -3,27 +3,29 @@ import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowRight,
+  CircleDollarSign,
+  Landmark,
+  Percent,
+  TrendingUp,
+  FileText,
   Building2,
   CalendarClock,
   CheckCircle2,
   ClipboardList,
   FileCheck2,
-  FileText,
   Globe2,
-  Network,
   Rocket,
   Scale,
   Search,
   ShieldCheck,
   UserRoundCheck,
-  Users,
-  Wallet,
 } from 'lucide-react';
 import {
   OFFSHORE_OPTIONS,
   OFFSHORE_PLANNING,
   formatAedRange,
 } from '@/lib/public-company-setup/catalog';
+import { SetupCtaBand } from './SetupCtaBand';
 import { SetupFaq } from './SetupFaq';
 import { SetupProcess } from './SetupProcess';
 
@@ -45,13 +47,15 @@ const suitabilityChecks = [
   'You will obtain tax and legal advice',
 ] as const;
 
-const supportAreas: readonly Highlight[] = [
-  { title: 'Asset holding', detail: 'Eligible asset or investment holding', icon: Wallet },
-  { title: 'International trade', detail: 'Suitable cross-border structures', icon: Globe2 },
-  { title: 'Group structuring', detail: 'A reviewed ownership structure', icon: Network },
-  { title: 'Succession planning', detail: 'One part of qualified advice', icon: Users },
-  { title: 'Agent-led filing', detail: 'Through a registered agent', icon: Building2 },
-  { title: 'Renewal tracking', detail: 'Reminders before deadlines', icon: CalendarClock },
+// Key benefits copy from the design HTML (`renderOffshore`), in its order.
+const keyBenefits: readonly { title: string; icon: LucideIcon }[] = [
+  { title: 'No Corporate Tax', icon: Percent },
+  { title: 'No Capital Gains Tax', icon: TrendingUp },
+  { title: 'No Audit Requirement', icon: FileCheck2 },
+  { title: 'No Currency Restrictions', icon: CircleDollarSign },
+  { title: 'Easy to Open Bank Accounts', icon: Landmark },
+  { title: 'Easy to Open Bank Accounts', icon: Building2 },
+  { title: 'Global Recognition & Credibility', icon: Globe2 },
 ];
 
 const requirements = [
@@ -87,7 +91,7 @@ export function OffshoreDiscovery() {
                 <Link href="/">Home</Link>
               </li>
               <li>
-                <Link href="/business-setup">Business setup</Link>
+                <Link href="/business-registration">Business Registration</Link>
               </li>
               <li aria-current="page">Offshore</li>
             </ol>
@@ -104,11 +108,11 @@ export function OffshoreDiscovery() {
             </p>
             <div className="cta-row">
               <Link className="btn btn--accent btn--lg" href="/estimate?jurisdiction=offshore">
-                Calculate my setup cost
+                Calculate My Setup Cost
                 <ArrowRight size={18} aria-hidden="true" />
               </Link>
               <Link className="btn btn--outline btn--lg" href="/apply">
-                Start registration
+                Start Registration
                 <ArrowRight size={18} aria-hidden="true" />
               </Link>
             </div>
@@ -127,7 +131,7 @@ export function OffshoreDiscovery() {
             </ul>
           </div>
           <aside className="offshore-suitability" aria-labelledby="offshore-suitability-title">
-            <h2 id="offshore-suitability-title">Why choose offshore?</h2>
+            <h2 id="offshore-suitability-title">Why Choose Offshore?</h2>
             <p>Is offshore suitable? Start with purpose and qualified review.</p>
             <ul className="offshore-checks">
               {suitabilityChecks.map((item) => (
@@ -148,11 +152,11 @@ export function OffshoreDiscovery() {
       >
         <div className="container">
           <header className="bizreg-head">
-            <h2 id="offshore-jurisdictions-title">Choose your offshore jurisdiction</h2>
-            <p>
-              Discovery paths only. They do not establish that an offshore structure suits a
-              particular person or business.
-            </p>
+            <span className="eyebrow eyebrow--accent">
+              Filter: Choose your offshore jurisdiction
+            </span>
+            <h2 id="offshore-jurisdictions-title">Choose Your Offshore Jurisdiction</h2>
+            <p>Select the jurisdiction that best suits your business objectives.</p>
           </header>
           <div className="offshore-jurisdictions">
             {OFFSHORE_OPTIONS.map((item, index) => (
@@ -168,13 +172,10 @@ export function OffshoreDiscovery() {
                 </div>
                 <div className="offshore-jurisdiction__body">
                   <header className="offshore-jurisdiction__head">
-                    <span className="offshore-monogram" aria-hidden="true">
-                      {item.monogram}
-                    </span>
-                    <div>
-                      <h3>{item.name}</h3>
-                      <p>{item.regionLabel}</p>
-                    </div>
+                    <h3>{item.name}</h3>
+                    <p>
+                      {item.name} — {item.regionLabel}
+                    </p>
                   </header>
                   <ul className="offshore-checks offshore-checks--compact">
                     {item.highlights.map((point) => (
@@ -185,7 +186,7 @@ export function OffshoreDiscovery() {
                     ))}
                   </ul>
                   <Link className="bizreg-link" href={item.href}>
-                    {item.authoritySlug ? 'View details' : 'Open estimator'}
+                    {item.authoritySlug ? 'View Details' : 'Open Estimator'}
                     <ArrowRight size={16} aria-hidden="true" />
                   </Link>
                 </div>
@@ -194,7 +195,8 @@ export function OffshoreDiscovery() {
           </div>
           <div className="offshore-center">
             <Link className="btn btn--outline" href="/estimate?jurisdiction=offshore">
-              Compare jurisdictions
+              Compare Jurisdictions
+              <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -208,20 +210,16 @@ export function OffshoreDiscovery() {
         <div className="container">
           <div className="offshore-support">
             <header className="bizreg-head">
-              <h2 id="offshore-benefits-title">What offshore may support</h2>
-              <p>
-                Potential benefits are conditional. What offshore does not automatically provide
-                includes a bank account, visa, tax outcome, or permission for onshore activity.
-              </p>
+              <span className="eyebrow eyebrow--accent">Key Benefits</span>
+              <h2 id="offshore-benefits-title">Key Benefits of Offshore Companies</h2>
             </header>
             <ul className="offshore-support__grid">
-              {supportAreas.map(({ title, detail, icon: Icon }) => (
-                <li key={title}>
+              {keyBenefits.map(({ title, icon: Icon }, index) => (
+                <li key={`${title}-${index}`}>
                   <span className="bizreg-icon" aria-hidden="true">
                     <Icon />
                   </span>
                   <strong>{title}</strong>
-                  <small>{detail}</small>
                 </li>
               ))}
             </ul>
@@ -236,39 +234,42 @@ export function OffshoreDiscovery() {
       >
         <div className="container">
           <header className="bizreg-head">
-            <h2 id="offshore-process-title">How to set up your offshore company</h2>
-            <p>A transparent process from purpose to a verified structure.</p>
+            <span className="eyebrow eyebrow--accent">How It Works</span>
+            <h2 id="offshore-process-title">How to Set Up Your Offshore Company</h2>
+            <p>A simple and transparent process to establish your offshore company.</p>
           </header>
-          <SetupProcess
-            variant="timeline"
-            steps={[
-              {
-                title: 'Choose & estimate',
-                description: 'Compare authority records and build an indicative estimate.',
-                icon: <Search />,
-              },
-              {
-                title: 'Share information',
-                description: 'Complete the questionnaire and share ownership records.',
-                icon: <ClipboardList />,
-              },
-              {
-                title: 'Review suitability',
-                description: 'Obtain legal, tax, and compliance guidance.',
-                icon: <UserRoundCheck />,
-              },
-              {
-                title: 'File & verify',
-                description: 'Submit through the registered agent and confirm issuance.',
-                icon: <FileCheck2 />,
-              },
-              {
-                title: 'Records & renewals',
-                description: 'Keep company records current and track renewals.',
-                icon: <Rocket />,
-              },
-            ]}
-          />
+          <div className="offshore-process-card">
+            <SetupProcess
+              variant="stepper"
+              steps={[
+                {
+                  title: 'Choose & Estimate',
+                  description: 'Compare authority records and build an indicative estimate.',
+                  icon: <Search />,
+                },
+                {
+                  title: 'Share Information',
+                  description: 'Complete the questionnaire and share ownership records.',
+                  icon: <ClipboardList />,
+                },
+                {
+                  title: 'Review & Approvals',
+                  description: 'Obtain legal, tax, and compliance guidance.',
+                  icon: <UserRoundCheck />,
+                },
+                {
+                  title: 'Company Formed',
+                  description: 'Submit through the registered agent and confirm issuance.',
+                  icon: <FileCheck2 />,
+                },
+                {
+                  title: "You're Ready",
+                  description: 'Keep company records current and track renewals.',
+                  icon: <Rocket />,
+                },
+              ]}
+            />
+          </div>
         </div>
       </section>
 
@@ -280,32 +281,35 @@ export function OffshoreDiscovery() {
         <div className="setup-operations--three offshore-operations container">
           <article className="offshore-panel" aria-labelledby="offshore-cost-title">
             <header>
-              <h3 id="offshore-cost-title">Estimated offshore setup cost</h3>
-              <p>Indicative, in AED. Base components only.</p>
+              <h3 id="offshore-cost-title">Estimated Offshore Setup Cost</h3>
+              <p>All costs in AED</p>
             </header>
             <p className="offshore-panel__figure">{formatAedRange(baseRange)}</p>
-            <p className="offshore-panel__caption">License and registration, by authority</p>
+            <p className="offshore-panel__caption">Total one-time setup cost</p>
             <dl className="offshore-rows">
               {fees.map((fee) => (
                 <div key={fee.label} data-optional={fee.optional || undefined}>
-                  <dt>{fee.label}</dt>
+                  <dt>
+                    <FileText aria-hidden="true" />
+                    {fee.label}
+                  </dt>
                   <dd>{formatAedRange(fee)}</dd>
                 </div>
               ))}
             </dl>
             <p className="offshore-panel__note">
-              Estimate-grade planning data, not a quotation. Authority schedules can change.
+              *Costs vary based on jurisdiction and requirements.
             </p>
             <Link className="btn btn--accent" href="/estimate?jurisdiction=offshore">
-              Calculate my exact cost
+              Calculate My Exact Setup Cost
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </article>
 
           <article className="offshore-panel" aria-labelledby="offshore-requirements-title">
             <header>
-              <h3 id="offshore-requirements-title">Requirements overview</h3>
-              <p>Records typically requested. The agent confirms the final list.</p>
+              <h3 id="offshore-requirements-title">Requirements Overview</h3>
+              <p>Basic documents typically required.</p>
             </header>
             <ul className="offshore-checks offshore-checks--compact">
               {requirements.map((item) => (
@@ -315,37 +319,31 @@ export function OffshoreDiscovery() {
                 </li>
               ))}
             </ul>
-            <Link className="btn btn--outline" href="/knowledge-base">
-              View detailed requirements
-              <FileText size={16} aria-hidden="true" />
+            <Link className="btn btn--outline" href="/document-requirements">
+              View Detailed Requirements
+              <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </article>
 
           <article className="offshore-panel" aria-labelledby="offshore-timeline-title">
             <header>
-              <h3 id="offshore-timeline-title">Estimated timeline</h3>
-              <p>Indicative working days with complete records.</p>
+              <h3 id="offshore-timeline-title">Estimated Timeline</h3>
+              <p>Average time to establish your offshore company.</p>
             </header>
             <ol className="offshore-rows offshore-rows--timeline">
               {timeline.map((step) => (
                 <li key={step.label} data-optional={step.optional || undefined}>
-                  <span className="offshore-rows__icon" aria-hidden="true">
-                    <CalendarClock />
-                  </span>
                   <span>{step.label}</span>
                   <span>{step.range}</span>
                 </li>
               ))}
+              <li className="offshore-rows__total">
+                <span>Total Estimated Time</span>
+                <span>
+                  {baseTimeline.min} – {baseTimeline.max} Working Days
+                </span>
+              </li>
             </ol>
-            <p className="offshore-panel__total">
-              <span>Base estimated time</span>
-              <strong>
-                {baseTimeline.min}–{baseTimeline.max} working days
-              </strong>
-            </p>
-            <p className="offshore-panel__note">
-              Due diligence and authority processing can extend timing.
-            </p>
           </article>
         </div>
       </section>
@@ -353,7 +351,9 @@ export function OffshoreDiscovery() {
       <section id="setup-faq" className="bizreg-section bizreg-section--tight offshore-faq">
         <SetupFaq
           headingId="offshore-faq-title"
-          title="Frequently asked questions"
+          eyebrow="FAQ"
+          title="Frequently Asked Questions"
+          lede="Common questions about offshore company formation."
           items={[
             {
               question: 'Can an offshore company operate in the UAE mainland?',
@@ -389,34 +389,12 @@ export function OffshoreDiscovery() {
         />
       </section>
 
-      <section
-        id="setup-conversion"
-        className="bizreg-cta-shell"
-        aria-labelledby="offshore-conversion-title"
-      >
-        <div className="container">
-          <div className="bizreg-cta">
-            <div className="bizreg-cta__media" aria-hidden="true">
-              <Image src="/hero/skyline.webp" alt="" fill sizes="(min-width: 900px) 50vw, 100vw" />
-            </div>
-            <div className="bizreg-cta__copy">
-              <h2 id="offshore-conversion-title">Ready to plan your offshore company?</h2>
-              <p>
-                Build an indicative cost view, then validate suitability and current requirements
-                before applying.
-              </p>
-            </div>
-            <div className="cta-row">
-              <Link className="btn btn--light btn--lg" href="/estimate?jurisdiction=offshore">
-                Calculate my setup cost
-              </Link>
-              <Link className="btn btn--light btn--lg" href="/apply">
-                Start registration
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <SetupCtaBand
+        headingId="offshore-conversion-title"
+        title="Ready to Establish Your Offshore Company?"
+        description="Get a clear estimate, understand the requirements and start your global business journey today."
+        estimateHref="/estimate?jurisdiction=offshore"
+      />
     </div>
   );
 }

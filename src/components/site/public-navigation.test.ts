@@ -39,18 +39,38 @@ describe('public navigation contract', () => {
     assert.deepEqual(PUBLIC_NAV_ITEMS, [
       {
         id: 'businessSetup',
-        href: '/business-setup',
-        currentPath: '/business-setup',
+        href: '/business-registration',
+        currentPath: '/business-registration',
         children: [
-          { id: 'businessRegistration', href: '/business-setup', currentPath: '/business-setup' },
+          {
+            id: 'businessRegistration',
+            href: '/business-registration',
+            currentPath: '/business-registration',
+          },
+          { id: 'mainland', href: '/mainland', currentPath: '/mainland' },
+          { id: 'freeZones', href: '/free-zones', currentPath: '/free-zones' },
+          { id: 'offshore', href: '/offshore', currentPath: '/offshore' },
           { id: 'costEstimator', href: '/estimate', currentPath: '/estimate' },
+          { id: 'howItWorks', href: '/how-it-works', currentPath: '/how-it-works' },
         ],
       },
-      { id: 'mainland', href: '/mainland', currentPath: '/mainland' },
-      { id: 'freeZones', href: '/free-zones', currentPath: '/free-zones' },
-      { id: 'offshore', href: '/offshore', currentPath: '/offshore' },
-      { id: 'howItWorks', href: '/how-it-works', currentPath: '/how-it-works' },
-      { id: 'knowledgeBase', href: '/knowledge-base', currentPath: '/knowledge-base' },
+      { id: 'proServices', href: '/pro-services', currentPath: '/pro-services' },
+      {
+        id: 'resources',
+        href: '/knowledge-base',
+        currentPath: '/knowledge-base',
+        children: [
+          { id: 'knowledgeBase', href: '/knowledge-base', currentPath: '/knowledge-base' },
+          { id: 'guides', href: '/guides', currentPath: '/guides' },
+          {
+            id: 'documentRequirements',
+            href: '/document-requirements',
+            currentPath: '/document-requirements',
+          },
+          { id: 'faq', href: '/faq', currentPath: '/faq' },
+          { id: 'blog', href: '/blog', currentPath: '/blog' },
+        ],
+      },
       { id: 'aboutUs', href: '/about', currentPath: '/about' },
       { id: 'contactUs', href: '/contact', currentPath: '/contact' },
     ]);
@@ -122,27 +142,14 @@ describe('PublicNavLinks renderer contract', () => {
 });
 
 describe('SiteHeader responsive navigation integration', () => {
-  it('renders the shared header frame with a localized contact bar', () => {
+  it('renders the shared header frame without the retired contact bar', () => {
     assert.match(
       headerSource,
       /import \{ PublicHeaderFrame \} from ['"]\.\/PublicHeaderFrame['"]/u,
     );
     assert.match(headerSource, /<PublicHeaderFrame>/u);
-    assert.match(headerSource, /<div className="public-topbar">/u);
-    assert.match(headerSource, /tSite\('footer\.description'\)/u);
-    assert.match(headerSource, /href="mailto:hello@mandoob\.ae"/u);
-    assert.match(headerSource, /href="tel:\+97145550123"/u);
-    assert.match(headerSource, /<bdi>hello@mandoob\.ae<\/bdi>/u);
-    assert.match(headerSource, /<bdi>\+971 4 555 0123<\/bdi>/u);
-    assert.match(headerSource, /className="public-topbar__separator" aria-hidden="true"/u);
-    assert.match(
-      headerSource,
-      /aria-label=\{tSite\('contactEmailLabel', \{ email: 'hello@mandoob\.ae' \}\)\}/u,
-    );
-    assert.match(
-      headerSource,
-      /aria-label=\{tSite\('contactPhoneLabel', \{ phone: '\+971 4 555 0123' \}\)\}/u,
-    );
+    // The updated design HTML has no contact topbar above the navigation.
+    assert.doesNotMatch(headerSource, /public-topbar/u);
     assert.match(headerSource, /<div className="nav" data-route-progress-anchor>/u);
     assert.doesNotMatch(headerSource, /<header\b/u);
   });
@@ -266,7 +273,7 @@ describe('public header navigation styling contract', () => {
   it('keeps the complete public header frame sticky above page content', () => {
     assert.match(
       cssSource,
-      /\.site-public\.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50[^}]*block-size:\s*96px[^}]*pointer-events:\s*none/u,
+      /\.site-public\.public-header-frame\s*\{[^}]*position:\s*sticky[^}]*top:\s*0[^}]*z-index:\s*50[^}]*block-size:\s*auto[^}]*pointer-events:\s*none/u,
     );
     assert.match(
       cssSource,
