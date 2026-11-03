@@ -1,5 +1,7 @@
 'use client';
 
+import { Mail } from 'lucide-react';
+
 import { useState } from 'react';
 
 type NewsletterOutcome = 'success' | 'failure' | 'unavailable';
@@ -44,11 +46,11 @@ export function KnowledgeBaseNewsletter({
     <form className="kb-newsletter" onSubmit={submit} noValidate>
       <div className="kb-newsletter__copy">
         <span className="kb-newsletter__icon" aria-hidden="true">
-          @
+          <Mail />
         </span>
         <div>
-          <h2 id="kb-newsletter-h">Review the newsletter demo</h2>
-          <p>Validate the email control and delivery states without creating a subscription.</p>
+          <h2 id="kb-newsletter-h">Stay Updated</h2>
+          <p>Subscribe to our newsletter and get the latest updates, tips and guides.</p>
         </div>
       </div>
       <div className="kb-newsletter__form">
@@ -63,7 +65,7 @@ export function KnowledgeBaseNewsletter({
             aria-invalid={error ? 'true' : undefined}
           />
           <button className="btn btn--accent" type="submit" disabled={state === 'pending'}>
-            {state === 'pending' ? 'Checking…' : state === 'failure' ? 'Retry preview' : 'Preview'}
+            {state === 'pending' ? 'Checking…' : state === 'failure' ? 'Retry' : 'Subscribe'}
           </button>
         </div>
         {error ? (

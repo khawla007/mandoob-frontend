@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Clock3, Headset, MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 
 import { KnowledgeBaseExplorer } from '@/components/knowledge-base/KnowledgeBaseExplorer';
 import { KnowledgeBaseNewsletter } from '@/components/knowledge-base/KnowledgeBaseNewsletter';
@@ -43,12 +44,13 @@ export default async function KnowledgeBasePage({
           <div>
             <header className="kb-section-row">
               <div>
-                <h2 id="kb-faq-h">Frequently asked questions</h2>
-                <p>Quick answers drawn from the reviewed Knowledge Base catalog.</p>
+                <span className="eyebrow eyebrow--accent">FAQ</span>
+                <h2 id="kb-faq-h">Frequently Asked Questions</h2>
+                <p>Quick answers to the most common questions.</p>
               </div>
-              <a className="kb-text-link" href="#faqs">
-                All FAQs in this section
-              </a>
+              <Link className="kb-text-link" href="/faq">
+                View All FAQs <span aria-hidden="true">→</span>
+              </Link>
             </header>
             <div className="kb-faq-list">
               {faqHighlights.map((item, index) => (
@@ -67,12 +69,12 @@ export default async function KnowledgeBasePage({
             role="region"
           >
             <div className="kb-support-card">
-              <span className="eyebrow">Need another route?</span>
-              <h3>Contact Mandoob</h3>
-              <p>Use the accepted no-write contact experience to review your question.</p>
+              <h3>Can&apos;t Find What You Need?</h3>
+              <p>Our experts are here to help you with any questions you may have.</p>
               <Link className="btn btn--outline" href="/contact">
-                Open contact options
+                Contact Our Experts
               </Link>
+              <Headset className="kb-support-card__art" aria-hidden="true" />
             </div>
             <div className="kb-support-card kb-support-card--unavailable">
               <span className="eyebrow">WhatsApp · Unavailable</span>
@@ -81,6 +83,7 @@ export default async function KnowledgeBasePage({
                 No verified WhatsApp destination or delivery contract is available in this phase.
               </p>
               <span className="kb-unavailable-label">Unavailable</span>
+              <MessageCircle className="kb-support-card__art" aria-hidden="true" />
             </div>
           </aside>
         </div>
@@ -99,17 +102,22 @@ export default async function KnowledgeBasePage({
       {/* KB-REGION-6: trust and information strip */}
       <section className="kb-information-strip" aria-label="Knowledge Base information qualities">
         <div className="kb-information-strip__grid container">
-          {[
-            ['Structured guidance', 'Topics follow the reviewed static catalog.'],
-            ['Source-qualified', 'Variable rules remain subject to the current authority.'],
-            ['Fast navigation', 'Search, filters, and direct guide links stay shareable.'],
+          {(
             [
-              'Visible context',
-              'Dates and reading time appear only when the catalog supplies them.',
-            ],
-          ].map(([title, description], index) => (
+              ['Expert Support', 'Get guidance from business setup professionals.', Headset],
+              ['Accurate Information', 'Trusted, up-to-date and verified resources.', ShieldCheck],
+              ['Save Time', 'Find answers quickly and move forward faster.', Clock3],
+              [
+                'Always Updated',
+                'We regularly update our content with the latest changes.',
+                RefreshCw,
+              ],
+            ] as const
+          ).map(([title, description, Icon]) => (
             <div key={title}>
-              <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+              <span aria-hidden="true">
+                <Icon />
+              </span>
               <div>
                 <h2>{title}</h2>
                 <p>{description}</p>
